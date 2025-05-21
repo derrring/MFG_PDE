@@ -13,7 +13,6 @@ $$
         u(x, T) = g(x), & x \in \Omega \\
         u(x, t) = \phi(x, t), & x \in \partial \Omega, t \in [0, T]
     \end{array}
-
 \right.
 $$
 

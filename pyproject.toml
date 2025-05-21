@@ -1,0 +1,53 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"] # Minimum version of setuptools
+build-backend = "setuptools.build_meta"
+#backend-path = ["."] # Specifies that the backend is in the current directory
+
+[project]
+name = "mfg_pde_solver"
+version = "0.1.0" # Start with an initial version
+authors = [
+    { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
+    # Add other authors if any
+]
+description = "A Python package for solving Mean Field Game PDEs."
+readme = "README.md" # Assumes you have a README.md file
+requires-python = ">=3.8" # Specify the minimum Python version
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License", # Choose your license
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy>=1.20",    # Specify versions as needed
+    "scipy>=1.7",
+    "matplotlib>=3.4",
+]
+
+# Optional: URLs for your project
+[project.urls]
+Homepage = "https://github.com/derrring/MFG_PDE" 
+Repository = "https://github.com/derrring/MFG_PDE"
+# Bug-Tracker = "https://github.com/derrring/MFG_PDE/issues"
+
+# Optional: If you want to specify entry points (e.g., command-line scripts)
+# [project.scripts]
+# mfg_run_example = "examples.damped_fixed_point:main" # If your example had a main function
+
+# --- Setuptools specific configuration ---
+# This tells setuptools to automatically find packages in the current directory.
+# If your package `mfg_pde` is directly in the root of your project (alongside pyproject.toml),
+# this is usually sufficient.
+# If `mfg_pde` is inside a `src` directory (e.g., `src/mfg_pde`), you would adjust `where`.
+[tool.setuptools.packages.find]
+where = ["."]  # Look for packages in the current directory.
+include = ["mfg_pde*"]  # Include the mfg_pde package and its subpackages
+exclude = ["examples*", "tests*"] # Exclude examples and tests from the installable package
+
+# Optional: If you have data files to include with your package
+# [tool.setuptools.package-data]
+# "mfg_pde.some_submodule" = ["*.dat"]
