@@ -4,7 +4,7 @@ import scipy.interpolate as interpolate
 import scipy.sparse as sparse
 import scipy.sparse.linalg
 import time
-from ..env.base_solver import MFGSolver
+from ..core.base_solver import MFGSolver
 from ..utils import hjb_utils
 
 
