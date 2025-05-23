@@ -7,18 +7,17 @@
 HJB equation is a fully nonlinear PDE with form
 
 $$
-\left\{
-    \begin{array}{ll}
-        \partial_t u + H(x, u, Du, D^2u) = 0, & x \in \Omega, t \in [0, T] \\
-        u(x, T) = g(x), & x \in \Omega \\
-        u(x, t) = \phi(x, t), & x \in \partial \Omega, t \in [0, T]
-    \end{array}
-\right.
+\begin{cases}
+    \partial_t u + H(x, u, Du, D^2u) = 0, & x \in \Omega, t \in [0, T] \\
+    u(x, T) = g(x), & x \in \Omega \\
+    u(x, t) = \phi(x, t), & x \in \partial \Omega, t \in [0, T]
+\end{cases}
 $$
+
+
 
 where $H$ is the Hamiltonian, $g$ is the terminal condition, $\phi$ is the boundary condition.
 
-### Finite Difference Method for HJB equation
 
 
 ## Fokker-Planck equation
@@ -32,13 +31,11 @@ $$
 where $W_t$ is a $d$-dimensional Brownian motion. the probability density function (PDF) of $X_t$, denoted as $p(x,t)$ satisfies the following Fokker-Planck equation (parabolic PDE)
 
 $$
-\left\{
-    \begin{array}{ll}
-        \partial_t p + \nabla \cdot (b(x,t) p) = \nabla \cdot (\sigma(x) \nabla p), & x \in \Omega, t \in [0, T] \\
-        p(x, 0) = p_0(x), & x \in \Omega \\
-        p(x, t) = \phi(x, t), & x \in \partial \Omega, t \in [0, T]
-    \end{array}
-\right.
+\begin{cases}   
+    \partial_t p + \nabla \cdot (b(x,t) p) = \nabla \cdot (\sigma(x) \nabla p), & x \in \Omega, t \in [0, T] \\
+    p(x, 0) = p_0(x), & x \in \Omega \\
+    p(x, t) = \phi(x, t), & x \in \partial \Omega, t \in [0, T]
+\end{cases}
 $$
 
 with drift term $b = (b_1,b_2,\ldots,b_n)$ and diffusion term $\sigma = (\sigma_1,\sigma_2,\ldots,\sigma_n)$, where the diffusion tensor $D=\frac{1}{2}\sigma\sigma^T$, i.e.
@@ -67,5 +64,3 @@ $$
 where $\Delta$ denotes the Laplace operator.
 
 
-
-### Finite Difference Method for Fokker-Planck equation
