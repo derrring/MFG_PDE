@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.alg.fdm_solver import FDMSolver
-from mfg_pde.alg.particle_solver import ParticleSolver
-from mfg_pde.utils.plot_utils import plot_results, plot_convergence
+from mfg_pde.core import MFGProblem
+from mfg_pde.alg import FDMSolver, ParticleSolver
+from mfg_pde.utiles import plot_results, plot_convergence
+
 
 print("--- Setting up MFG Problem ---")
 # --- Define Problem Parameters ---
