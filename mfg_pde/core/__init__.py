@@ -1,3 +1,5 @@
-from importlib.metadata import version
+# -*- coding: utf-8 -*-
 
-__version__ = version("mfg_pde")
+from .mfg_problem import MFGProblem
+from .base_solver import MFGSolver
+from .boundaries import BoundaryConditions

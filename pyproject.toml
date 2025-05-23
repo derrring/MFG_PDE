@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 #backend-path = ["."] # Specifies that the backend is in the current directory
 
 [project]
-name = "mfg_pde_solver"
+name = "mfg_pde"
 version = "0.1.0" # Start with an initial version
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },

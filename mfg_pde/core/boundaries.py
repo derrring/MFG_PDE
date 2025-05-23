@@ -7,7 +7,7 @@ For most applications, FEniCS and FiPy are particularly user-friendly while stil
 '''
 
 @dataclass
-class BoundaryCondition:
+class BoundaryConditions:
     """Class for boundary condition configuration
     Note the dimension of the matrix operator for the boundary conditions
     periodic: M * M
