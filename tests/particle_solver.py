@@ -4,7 +4,7 @@ import scipy.interpolate as interpolate
 import scipy.sparse as sparse
 import scipy.sparse.linalg
 import time
-from ..core.base_solver import MFGSolver
+from .base_mfg_solver import MFGSolver
 from ..utils import hjb_utils
 
 
@@ -19,6 +19,7 @@ class ParticleSolver(MFGSolver):
         l2errBoundNewton=1e-6,
     ):
         super().__init__(problem)
+        self.fp_method_name = "Particle"  # Method for FP
         self.num_particles = num_particles
         self.thetaUM = particle_thetaUM  # Damping factor for fixed-point iteration
         self.kde_bandwidth = kde_bandwidth

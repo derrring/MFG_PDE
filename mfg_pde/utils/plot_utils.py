@@ -40,7 +40,7 @@ def plot_convergence(iterations_run, l2disturel_u, l2disturel_m, solver_name="So
     # Removed: plt.savefig(f'{prefix}_{solver_name}_conv_m.pdf')
     plt.show()
 
-def plot_results(problem, u, m, solver_name="Solver"): # Modified to not require prefix
+def plot_results(problem, u, m, solver_name="Solver", prefix=None): # Modified to not require prefix
     # Subsample for plotting if desired
     kx = 2 # Example subsampling
     kt = 5 # Example subsampling

@@ -3,13 +3,14 @@ import scipy as sc
 import scipy.sparse as sparse
 import scipy.sparse.linalg
 import time
-from ..core.base_solver import MFGSolver
+from .base_mfg_solver import MFGSolver
 from ..utils import hjb_utils  # Path to the new HJB utilities
 
 
 class FDMSolver(MFGSolver):
     def __init__(self, problem, thetaUM=0.5, NiterNewton=30, l2errBoundNewton=1e-6):
         super().__init__(problem)
+        self.hjb_method_name = "FDM"  # Method for HJB
         self.thetaUM = thetaUM
         self.NiterNewton = NiterNewton  # Retain for passing to hjb_utils
         self.l2errBoundNewton = l2errBoundNewton  # Retain for passing
