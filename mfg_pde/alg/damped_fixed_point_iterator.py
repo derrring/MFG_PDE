@@ -1,32 +1,43 @@
 import numpy as np
 import time
 
-from .base_mfg_solver import MFGSolver # Assuming MFGSolver is a base for this iterator
-from ..core.mfg_problem import MFGProblem # For type hinting
+from .base_mfg_solver import MFGSolver
+from ..core.mfg_problem import MFGProblem
 from .hjb_solvers.base_hjb import BaseHJBSolver
-from .fp_solvers.base_fp import BaseFPSolver
+from .fp_solvers.base_fp import BaseFPSolver # Assuming BaseFPSolver exists
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..core.mfg_problem import MFGProblem
+    from .base_mfg_solver import MFGSolver
+    from .hjb_solvers.base_hjb import BaseHJBSolver
+    from .fp_solvers.base_fp import BaseFPSolver
 
 
-# To make this runnable standalone for checking, we might need to define dummy base classes
-class MFGSolver:  # Dummy for standalone
-    def __init__(self, problem):
-        self.problem = problem
+# Dummy base classes for standalone checking if imports are tricky
+if not TYPE_CHECKING:
 
+    class MFGSolver:
+        def __init__(self, problem):
+            self.problem = problem
 
-class BaseHJBSolver:  # Dummy
-    def __init__(self, problem):
-        self.problem = problem
+    class BaseHJBSolver:
+        def __init__(self, problem):
+            self.problem = problem
 
-    def solve_hjb_system(self, M, U_final):
-        return np.zeros_like(M)
+        hjb_method_name = "DummyHJB"
 
+        def solve_hjb_system(self, M, U_final):
+            return np.zeros_like(M)
 
-class BaseFPSolver:  # Dummy
-    def __init__(self, problem):
-        self.problem = problem
+    class BaseFPSolver:  # Assuming BaseFPSolver exists
+        def __init__(self, problem):
+            self.problem = problem
 
-    def solve_fp_system(self, m_init, U):
-        return np.zeros_like(U)
+        fp_method_name = "DummyFP"
+
+        def solve_fp_system(self, m_init, U):
+            return np.zeros_like(U)
 
 
 class FixedPointIterator(MFGSolver):
@@ -40,20 +51,19 @@ class FixedPointIterator(MFGSolver):
         super().__init__(problem)
         self.hjb_solver = hjb_solver
         self.fp_solver = fp_solver
-        self.thetaUM = thetaUM  # Damping factor
+        self.thetaUM = thetaUM
 
-        # Construct a descriptive name based on actual solver components
         hjb_name = getattr(hjb_solver, "hjb_method_name", "UnknownHJB")
         fp_name = getattr(fp_solver, "fp_method_name", "UnknownFP")
         self.name = f"HJB-{hjb_name}_FP-{fp_name}"
 
-        self.U: np.ndarray  # Stores the value function solution U(t,x)
-        self.M: np.ndarray  # Stores the density solution M(t,x)
+        self.U: np.ndarray
+        self.M: np.ndarray
 
-        self.l2distu: np.ndarray
-        self.l2distm: np.ndarray
-        self.l2disturel: np.ndarray
-        self.l2distmrel: np.ndarray
+        self.l2distu_abs: np.ndarray  # Absolute L2 error for U
+        self.l2distm_abs: np.ndarray  # Absolute L2 error for M
+        self.l2distu_rel: np.ndarray  # Relative L2 error for U
+        self.l2distm_rel: np.ndarray  # Relative L2 error for M
         self.iterations_run: int = 0
 
     def solve(
@@ -63,113 +73,104 @@ class FixedPointIterator(MFGSolver):
             f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________"
         )
         Nx = self.problem.Nx
-        Nt = self.problem.Nt  # Number of time points
-        Dx = self.problem.Dx
-        Dt = self.problem.Dt
+        Nt = self.problem.Nt
+        Dx = self.problem.Dx if self.problem.Dx > 0 else 1.0
+        Dt = self.problem.Dt if self.problem.Dt > 0 else 1.0
 
-        # Initialize U and M arrays (Nt time points, Nx spatial points)
         self.U = np.zeros((Nt, Nx))
         self.M = np.zeros((Nt, Nx))
 
-        initial_m_dist = self.problem.get_initial_m()  # Shape (Nx,)
-        final_u_cost = self.problem.get_final_u()  # Shape (Nx,)
+        initial_m_dist = self.problem.get_initial_m()
+        final_u_cost = self.problem.get_final_u()
 
-        # Initialize M at t=0 and U at t=T (which is index Nt-1)
-        self.M[0, :] = initial_m_dist
-        self.U[Nt - 1, :] = final_u_cost
+        if Nt > 0:
+            self.M[0, :] = initial_m_dist
+            self.U[Nt - 1, :] = final_u_cost
+            for n_time_idx in range(Nt - 1):
+                self.U[n_time_idx, :] = final_u_cost
+            for n_time_idx in range(1, Nt):
+                self.M[n_time_idx, :] = initial_m_dist
+        elif Nt == 0:  # Should not happen with valid Nt > 0
+            print("Warning: Nt=0, cannot initialize U and M.")
+            return self.U, self.M, 0, np.array([]), np.array([])
 
-        # Initialize U for t < T with final_u_cost, and M for t > 0 with initial_m_dist
-        for n_time_idx in range(Nt - 1):  # 0 to Nt-2
-            self.U[n_time_idx, :] = (
-                final_u_cost  # Initialize U backward (can be improved)
-            )
-        for n_time_idx in range(1, Nt):  # 1 to Nt-1
-            self.M[n_time_idx, :] = initial_m_dist  # Initialize M forward
-
-        self.l2distu = np.ones(Niter_max)
-        self.l2distm = np.ones(Niter_max)
-        self.l2disturel = np.ones(Niter_max)
-        self.l2distmrel = np.ones(Niter_max)
+        self.l2distu_abs = np.ones(Niter_max)
+        self.l2distm_abs = np.ones(Niter_max)
+        self.l2distu_rel = np.ones(Niter_max)
+        self.l2distm_rel = np.ones(Niter_max)
         self.iterations_run = 0
 
         for iiter in range(Niter_max):
             start_time_iter = time.time()
-            print(
-                f"\n******************** {self.name} Fixed-Point Iteration = {iiter + 1} / {Niter_max}"
-            )
+            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {Niter_max} ---")
 
             U_old_iter = self.U.copy()
             M_old_iter = self.M.copy()
 
             # 1. Solve HJB backward using M_old_iter
-            # The HJB solver (e.g., FdmHJBSolver) will use M_old_iter and problem.get_final_u()
-            # Its output U_new_tmp_hjb will be (Nt, Nx)
             U_new_tmp_hjb = self.hjb_solver.solve_hjb_system(M_old_iter, final_u_cost)
-
-            # Apply damping to U update
             self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_iter
 
             # 2. Solve FP forward using the newly computed U
-            # The FP solver (e.g., FdmFPSolver or ParticleFPSolver) will use initial_m_dist and self.U
-            # Its output M_new_tmp_fp will be (Nt, Nx)
             M_new_tmp_fp = self.fp_solver.solve_fp_system(initial_m_dist, self.U)
-
-            # Apply damping to M update
             self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_iter
 
-            # Convergence metrics
-            # Ensure Dx and Dt are not zero if Nx or Nt is 1
-            norm_factor = np.sqrt(max(Dx, 1e-9) * max(Dt, 1e-9))  # Avoid sqrt(0)
+            # Ensure M remains non-negative and normalized (optional, but good for stability)
+            self.M = np.maximum(self.M, 0)  # Ensure non-negativity
+            for t_step in range(Nt):
+                current_mass = np.sum(self.M[t_step, :]) * Dx
+                if current_mass > 1e-9:
+                    self.M[t_step, :] /= current_mass
+                else:  # Avoid division by zero if mass is zero
+                    # print(f"Warning: Zero mass at t_step {t_step} in iteration {iiter+1}. Setting to uniform small value.")
+                    # self.M[t_step, :] = 1.0 / (Nx * Dx) # Or handle as error
+                    pass
 
-            self.l2distu[iiter] = np.linalg.norm(self.U - U_old_iter) * norm_factor
+            norm_factor = np.sqrt(Dx * Dt)
+
+            self.l2distu_abs[iiter] = np.linalg.norm(self.U - U_old_iter) * norm_factor
             norm_U_iter = np.linalg.norm(self.U) * norm_factor
-            self.l2disturel[iiter] = (
-                self.l2distu[iiter] / norm_U_iter
-                if norm_U_iter > 1e-9
-                else self.l2distu[iiter]
+            self.l2distu_rel[iiter] = (
+                self.l2distu_abs[iiter] / norm_U_iter
+                if norm_U_iter > 1e-12  # Increased tolerance for denominator
+                else self.l2distu_abs[iiter]
             )
 
-            self.l2distm[iiter] = np.linalg.norm(self.M - M_old_iter) * norm_factor
+            self.l2distm_abs[iiter] = np.linalg.norm(self.M - M_old_iter) * norm_factor
             norm_M_iter = np.linalg.norm(self.M) * norm_factor
-            self.l2distmrel[iiter] = (
-                self.l2distm[iiter] / norm_M_iter
-                if norm_M_iter > 1e-9
-                else self.l2distm[iiter]
+            self.l2distm_rel[iiter] = (
+                self.l2distm_abs[iiter] / norm_M_iter
+                if norm_M_iter > 1e-12  # Increased tolerance
+                else self.l2distm_abs[iiter]
             )
 
             elapsed_time_iter = time.time() - start_time_iter
             print(
-                f" === Iter {iiter+1}: ||U_new-U_old||_rel = {self.l2disturel[iiter]:.2e}, ||M_new-M_old||_rel = {self.l2distmrel[iiter]:.2e}"
+                f"  Iter {iiter+1}: Rel Err U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}. Abs Err U={self.l2distu_abs[iiter]:.2e}, M={self.l2distm_abs[iiter]:.2e}. Time: {elapsed_time_iter:.2f}s"
             )
-            print(f" === Time for iteration = {elapsed_time_iter:.2f} s")
 
             self.iterations_run = iiter + 1
             if (
-                self.l2disturel[iiter] < l2errBoundPicard
-                and self.l2distmrel[iiter] < l2errBoundPicard
+                self.l2distu_rel[iiter] < l2errBoundPicard
+                and self.l2distm_rel[iiter] < l2errBoundPicard
             ):
                 print(f"Convergence reached after {iiter + 1} iterations.")
                 break
-        else:  # Loop finished without break
+        else:
             print(f"Warning: Max iterations ({Niter_max}) reached without convergence.")
 
-        # Trim convergence arrays
-        self.l2distu = self.l2distu[: self.iterations_run]
-        self.l2distm = self.l2distm[: self.iterations_run]
-        self.l2disturel = self.l2disturel[: self.iterations_run]
-        self.l2distmrel = self.l2distmrel[: self.iterations_run]
+        self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
+        self.l2distm_abs = self.l2distm_abs[: self.iterations_run]
+        self.l2distu_rel = self.l2distu_rel[: self.iterations_run]
+        self.l2distm_rel = self.l2distm_rel[: self.iterations_run]
 
-        return (
-            self.U,
-            self.M,
-            self.iterations_run,
-            self.l2disturel,
-            self.l2distmrel,
-        )  # Return relative errors
+        return self.U, self.M, self.iterations_run, self.l2distu_rel, self.l2distm_rel
 
     def get_results(self) -> tuple[np.ndarray, np.ndarray]:
-        if self.U is None or self.M is None:
-            raise ValueError("Solver has not been run yet. Call solve() first.")
+        if not hasattr(self, "U") or not hasattr(self, "M") or self.iterations_run == 0:
+            raise ValueError(
+                "Solver has not been run or did not produce results. Call solve() first."
+            )
         return self.U, self.M
 
     def get_convergence_data(
@@ -179,8 +180,8 @@ class FixedPointIterator(MFGSolver):
             raise ValueError("Solver has not been run yet. Call solve() first.")
         return (
             self.iterations_run,
-            self.l2distu,
-            self.l2distm,
-            self.l2disturel,
-            self.l2distmrel,
+            self.l2distu_abs,
+            self.l2distm_abs,
+            self.l2distu_rel,
+            self.l2distm_rel,
         )
