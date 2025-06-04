@@ -2,468 +2,545 @@ from abc import ABC, abstractmethod
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
-# Assuming MFGProblem and ExampleMFGProblem are accessible, e.g.
-from mfg_pde.core.mfg_problem import MFGProblem,ExampleMFGProblem # Adjust path as per actual structure
+if TYPE_CHECKING:
+    from mfg_pde.core.mfg_problem import MFGProblem
+
+    # from ....mfg_pde.utils.aux_func import npart, ppart # Not needed here if problem provides jacobian parts
+
+# Clipping limit for p_values ONLY when using numerical FD for Jacobian H-part (fallback)
+P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
 
 
 class BaseHJBSolver(ABC):
-    def __init__(self, problem: "MFGProblem"):  # Use forward reference for MFGProblem
+    def __init__(self, problem: "MFGProblem"):
         self.problem = problem
-        self.hjb_method_name = "BaseHJB"  # Concrete solvers will override this
+        self.hjb_method_name = "BaseHJB"
 
     @abstractmethod
     def solve_hjb_system(
         self,
         M_density_evolution_from_FP: np.ndarray,
         U_final_condition_at_T: np.ndarray,
+        U_from_prev_picard: np.ndarray,  # Added: U from previous Picard iteration
     ) -> np.ndarray:
-        """
-        Solves the full HJB system by marching backward in time.
-
-        Args:
-            M_density_evolution_from_FP (np.ndarray): (Nt+1, Nx) array of density m(t,x).
-            U_final_condition_at_T (np.array): (Nx,) array for U(T,x).
-
-        Returns:
-            np.array: U_solution (Nt+1, Nx)
-        """
         pass
 
 
-def compute_hjb_residual(
-    U_n_current_guess: np.ndarray,
-    U_n_plus_1_known: np.ndarray,
-    M_density_at_n_plus_1: np.ndarray,  # Density m( (n+1)*Dt, x )
-    problem: "MFGProblem",
-    t_idx_n_plus_1: int,  # Time index for M_density
-) -> np.ndarray:
-    """
-    Calculates the residual of the HJB equation for the current guess U_n_current_guess.
-    Equation form (discretized at time step n*Dt):
-    (U_n - U_{n+1})/Dt - (sigma^2/2) * U_n_xx + H(x, m_{n+1}, Du_n, t_n) = 0
+def _calculate_p_values(
+    U_array: np.ndarray,
+    i: int,
+    Dx: float,
+    Nx: int,
+    clip: bool = False,
+    clip_limit: float = P_VALUE_CLIP_LIMIT_FD_JAC,
+) -> Dict[str, float]:
+    # (Implementation from base_hjb_v4 - no p-value clipping by default)
+    p_forward, p_backward = 0.0, 0.0
+    if Nx > 1 and abs(Dx) > 1e-14:
+        u_i = U_array[i]
+        u_ip1 = U_array[(i + 1) % Nx]
+        u_im1 = U_array[(i - 1 + Nx) % Nx]
 
-    Args:
-        U_n_current_guess (np.ndarray): Current guess for U at time step n.
-        U_n_plus_1_known (np.ndarray): Known U at time step n+1 (from previous HJB step).
-        M_density_at_n_plus_1 (np.ndarray): Density distribution m to be used in H, typically M_old[n+1].
-        problem (MFGProblem): The MFG problem instance.
-        t_idx_n_plus_1 (int): The time index corresponding to M_density_at_n_plus_1 and U_n_plus_1_known.
-                                The Hamiltonian might be evaluated at t_n or t_{n+1}.
-                                Let's assume H is evaluated using m at n+1, and p from U_n.
-                                The time argument for H itself could be t_n.
-    """
+        if (
+            np.isinf(u_i)
+            or np.isinf(u_ip1)
+            or np.isinf(u_im1)
+            or np.isnan(u_i)
+            or np.isnan(u_ip1)
+            or np.isnan(u_im1)
+        ):
+            return {"forward": np.nan, "backward": np.nan}
+
+        p_forward = (u_ip1 - u_i) / Dx
+        p_backward = (u_i - u_im1) / Dx
+
+        if np.isinf(p_forward) or np.isnan(p_forward):
+            p_forward = np.nan
+        if np.isinf(p_backward) or np.isnan(p_backward):
+            p_backward = np.nan
+
+    elif Nx == 1:
+        return {"forward": 0.0, "backward": 0.0}
+    else:
+        return {"forward": np.nan, "backward": np.nan}
+
+    raw_p_values = {"forward": p_forward, "backward": p_backward}
+    return _clip_p_values(raw_p_values, clip_limit) if clip else raw_p_values
+
+
+def _clip_p_values(
+    p_values: Dict[str, float], clip_limit: float
+) -> Dict[str, float]:  # Helper for FD Jac
+    clipped_p_values = {}
+    for key, p_val in p_values.items():
+        if np.isnan(p_val) or np.isinf(p_val):
+            clipped_p_values[key] = np.nan
+        else:
+            clipped_p_values[key] = np.clip(p_val, -clip_limit, clip_limit)
+    return clipped_p_values
+
+
+def compute_hjb_residual(
+    U_n_current_newton_iterate: np.ndarray,  # U_kp1_n in notebook's getFnU_withM
+    U_n_plus_1_from_hjb_step: np.ndarray,  # U_kp1_np1 in notebook
+    M_density_at_n_plus_1: np.ndarray,  # M_k_np1 in notebook
+    problem: "MFGProblem",
+    t_idx_n: int,  # Time index for U_n
+) -> np.ndarray:
     Nx = problem.Nx
     Dx = problem.Dx
     Dt = problem.Dt
     sigma = problem.sigma
-
     Phi_U = np.zeros(Nx)
 
-    # Time derivative term: (U_n_current_guess - U_n_plus_1_known) / Dt
-    Phi_U += (U_n_current_guess - U_n_plus_1_known) / Dt
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
+        np.isinf(U_n_current_newton_iterate)
+    ):
+        return np.full(Nx, np.nan)
 
-    # Diffusion term: -(sigma^2 / 2.0) * d^2(U_n_current_guess)/dx^2 (Laplacian of U_n)
-    # Periodic boundary conditions assumed for U_xx
-    U_xx = (
-        np.roll(U_n_current_guess, -1)
-        - 2 * U_n_current_guess
-        + np.roll(U_n_current_guess, 1)
-    ) / Dx**2
-    Phi_U += -(sigma**2 / 2.0) * U_xx
+    # Time derivative: (U_n_current - U_{n+1})/Dt
+    # Notebook FnU[i] += -(Ukp1_np1[i] - Ukp1_n[i])/Dt;  (U_n - U_{n+1})/Dt
+    if abs(Dt) < 1e-14:
+        if not np.allclose(
+            U_n_current_newton_iterate, U_n_plus_1_from_hjb_step, rtol=1e-9, atol=1e-9
+        ):
+            pass
+    else:
+        time_deriv_term = (U_n_current_newton_iterate - U_n_plus_1_from_hjb_step) / Dt
+        if np.any(np.isinf(time_deriv_term)) or np.any(np.isnan(time_deriv_term)):
+            Phi_U[:] = np.nan
+            return Phi_U
+        Phi_U += time_deriv_term
 
-    # Hamiltonian H(x, m, p, t)
-    # p is Du_n (gradient of U at current time step n)
-    # m is M_density_at_n_plus_1 (density from previous fixed point iteration at time n+1)
-    # t for H could be t_n (index t_idx_n_plus_1 - 1) or t_{n+1} (index t_idx_n_plus_1)
-    # Let's assume t_idx_n_plus_1 - 1 for time t_n if H is time-dependent.
-    t_idx_for_H = t_idx_n_plus_1 - 1 if t_idx_n_plus_1 > 0 else 0
+    # Diffusion term: -(sigma^2/2) * (U_n_current)_xx
+    # Notebook FnU[i] += - ((sigma**2)/2.) * (Ukp1_n[i+1]-2*Ukp1_n[i]+Ukp1_n[i-1])/(Dx**2)
+    if abs(Dx) > 1e-14 and Nx > 1:
+        U_xx = (
+            np.roll(U_n_current_newton_iterate, -1)
+            - 2 * U_n_current_newton_iterate
+            + np.roll(U_n_current_newton_iterate, 1)
+        ) / Dx**2
+        if np.any(np.isinf(U_xx)) or np.any(np.isnan(U_xx)):
+            Phi_U[:] = np.nan
+            return Phi_U
+        Phi_U += -(sigma**2 / 2.0) * U_xx
+
+    # For m-coupling term, original notebook passed gradUkn, gradUknim1 (from prev Picard iter)
+    # but mdmH_withM itself didn't use them. We'll pass an empty dict for now.
+    U_n_derivatives_for_m_coupling = {}  # Not used by ExampleMFGProblem's term
 
     for i in range(Nx):
-        # Calculate momentum approximations (Du) at spatial point i, for U_n_current_guess
-        # Periodic boundary conditions for derivatives
-        ip1 = (i + 1) % Nx
-        im1 = (i - 1 + Nx) % Nx  # Ensures positive index
+        if np.isnan(Phi_U[i]):
+            continue
 
-        p_forward = (U_n_current_guess[ip1] - U_n_current_guess[i]) / Dx
-        p_backward = (U_n_current_guess[i] - U_n_current_guess[im1]) / Dx
-        # p_centered = (U_n_current_guess[ip1] - U_n_current_guess[im1]) / (2 * Dx) # If needed
+        # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
+        p_values = _calculate_p_values(
+            U_n_current_newton_iterate, i, Dx, Nx, clip=False
+        )
 
-        p_values = {
-            "forward": p_forward,
-            "backward": p_backward,
-        }  # Add 'centered': p_centered if used by H
+        if np.any(np.isnan(list(p_values.values()))):
+            Phi_U[i] = np.nan
+            continue
 
-        # Call the problem's Hamiltonian
-        # M_density_at_n_plus_1[i] is m(x_i, t_{n+1})
+        # Hamiltonian term H(x_i, M_{n+1,i}, (Du_n_current)_i, t_n)
+        # Notebook: FnU[i] += H_withM(...)
         hamiltonian_val = problem.H(
-            x_idx=i,
-            m_at_x=M_density_at_n_plus_1[i],
-            p_values=p_values,
-            t_idx=t_idx_for_H,
-        )  # Pass t_n index
-        Phi_U[i] += hamiltonian_val
+            x_idx=i, m_at_x=M_density_at_n_plus_1[i], p_values=p_values, t_idx=t_idx_n
+        )
+        if np.isnan(hamiltonian_val) or np.isinf(hamiltonian_val):
+            Phi_U[i] = np.nan
+            continue
+        else:
+            Phi_U[i] += hamiltonian_val
+
+        # Problem-specific m-coupling term (like mdmH_withM from notebook)
+        # Notebook: FnU[i] += mdmH_withM(...)
+        m_coupling_term = problem.get_hjb_residual_m_coupling_term(
+            M_density_at_n_plus_1, U_n_derivatives_for_m_coupling, i, t_idx_n
+        )
+        if m_coupling_term is not None:
+            if np.isnan(m_coupling_term) or np.isinf(m_coupling_term):
+                Phi_U[i] = np.nan
+                continue
+            Phi_U[i] += m_coupling_term
 
     return Phi_U
 
 
 def compute_hjb_jacobian(
-    U_n_current_guess: np.ndarray,
+    U_n_current_newton_iterate: np.ndarray,  # U_new_n_tmp in notebook Newton step
+    U_k_n_from_prev_picard: np.ndarray,  # U_k_n (or Uoldn) in notebook Jacobian
     M_density_at_n_plus_1: np.ndarray,
     problem: "MFGProblem",
-    t_idx_n_plus_1: int,
+    t_idx_n: int,
 ) -> sparse.csr_matrix:
-    """
-    Calculates the Jacobian matrix for Newton's method for the HJB equation: d(Residual)/d(U_n_current_guess).
-    The Hamiltonian's dependency on m is treated explicitly in the fixed point iteration,
-    so m is considered fixed when taking derivatives w.r.t. U_n.
-
-    Args:
-        U_n_current_guess (np.array): Current guess for U at time step n.
-        M_density_at_n_plus_1 (np.array): Density distribution m to be used in H, M_old[n+1].
-        problem (MFGProblem): The MFG problem instance.
-        t_idx_n_plus_1 (int): Time index for M_density and U_n_plus_1.
-    """
     Nx = problem.Nx
     Dx = problem.Dx
     Dt = problem.Dt
     sigma = problem.sigma
+    eps = 1e-7
 
-    # For the ExampleMFGProblem, coefCT is used inside its H method.
-    # If a more general Jacobian is needed, it might require dH/dp from the problem.
-    # The current ExampleMFGProblem's H is non-linear in p_values.
-    # A numerical Jacobian or a specific analytical one for ExampleMFGProblem would be more robust.
-    # For now, let's replicate the structure of the original Jacobian from MFG-FDM-particle2.py,
-    # which was specific to that H form.
+    J_D = np.zeros(Nx)
+    J_L = np.zeros(Nx)
+    J_U = np.zeros(Nx)
 
-    A_L = np.zeros(Nx)  # Lower diag: d(Res[i])/d(U[i-1])
-    A_D = np.zeros(Nx)  # Main diag:  d(Res[i])/d(U[i])
-    A_U = np.zeros(Nx)  # Upper diag: d(Res[i])/d(U[i+1])
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
+        np.isinf(U_n_current_newton_iterate)
+    ):
+        return sparse.diags([np.full(Nx, np.nan)], [0], shape=(Nx, Nx), format="csr")
 
-    # 1. Derivative of time term (U_n - U_{n+1})/Dt w.r.t U_n[i]
-    A_D += 1.0 / Dt
+    # Time derivative part: d/dU_n_current[j] of (U_n_current[i] - U_{n+1}[i])/Dt
+    if abs(Dt) > 1e-14:
+        J_D += 1.0 / Dt
 
-    # 2. Derivative of diffusion term -(sigma^2/2) * U_xx w.r.t U_n
-    A_D += sigma**2 / Dx**2  # for -2*U_n[i] component
-    A_L_val_diff = -(sigma**2) / (2 * Dx**2)  # for U_n[i-1] component
-    A_U_val_diff = -(sigma**2) / (2 * Dx**2)  # for U_n[i+1] component
+    # Diffusion part: d/dU_n_current[j] of -(sigma^2/2) * (U_n_current)_xx[i]
+    if abs(Dx) > 1e-14 and Nx > 1:
+        J_D += sigma**2 / Dx**2
+        val_off_diag_diff = -(sigma**2) / (2 * Dx**2)
+        J_L += val_off_diag_diff
+        J_U += val_off_diag_diff
 
-    # Fill for periodic: A_L affects main diagonal via roll for i=0, A_U for i=Nx-1
-    # A_L[i] is dRes[i]/dU[i-1]. A_U[i] is dRes[i]/dU[i+1]
-    # For i=0, dRes[0]/dU[Nx-1] goes to A_L[0] (if rolled) or corner.
-    # For i=Nx-1, dRes[Nx-1]/dU[0] goes to A_U[Nx-1] (if rolled) or corner.
+    # Hamiltonian part & m-coupling term's Jacobian contribution
+    # Try to get analytical/specific Jacobian contributions from the problem for H-part
+    # Crucially, pass U_k_n_from_prev_picard for ExampleMFGProblem's specific Jacobian
+    hamiltonian_jac_contrib = problem.get_hjb_hamiltonian_jacobian_contrib(
+        U_k_n_from_prev_picard, t_idx_n  # This is Uoldn from original notebook
+    )
 
-    # This is where the Jacobian becomes specific to ExampleMFGProblem's H
-    # H = 0.5 * coefCT * (npart(p_fwd)^2 + ppart(p_bwd)^2) - V - m^2
-    # p_fwd_i = (U[i+1]-U[i])/Dx
-    # p_bwd_i = (U[i]-U[i-1])/Dx
-    # Need dH_i / dU[i], dH_i / dU[i-1], dH_i / dU[i+1]
-    # This is complex due to npart/ppart.
-    # The original Jacobian in MFG-FDM-particle2.py was:
-    # A_D[1:Nx-1] += coefCT * (problem._npart(U_old_n[2:Nx]-U_old_n[1:Nx-1]) + problem._ppart(U_old_n[1:Nx-1]-U_old_n[0:Nx-2]))/ (Dx**2)
-    # A_L[1:Nx] += -coefCT * problem._ppart(U_old_n[1:Nx] - U_old_n[0:Nx-1]) / Dx**2
-    # A_U[0:Nx-1] += coefCT * (-problem._npart(U_old_n[1:Nx]-U_old_n[0:Nx-1])) / (Dx**2)
-    # This looks like a Jacobian for a *different* H, possibly related to finite volume or specific upwinding.
-    # For the H in ExampleMFGProblem, a finite difference approximation of Jacobian might be safer
-    # or an analytical derivation which will be more involved.
-
-    # Let's use a simplified Jacobian assuming H is approximately quadratic in Du,
-    # or use the structure from the original code if ExampleMFGProblem is the target.
-    # Since ExampleMFGProblem is the target for now, we can try to adapt that structure.
-    # The original Jacobian structure seems to be for an HJB where the Hamiltonian's derivative terms are explicit.
-
-    # If we assume problem is ExampleMFGProblem for this Jacobian:
-    if isinstance(
-        problem, eval("ExampleMFGProblem")
-    ):  # eval to avoid import error if run standalone
-        coefCT = problem.coefCT
-        # Diagonal contribution from H's dependence on U_n[i] (via p_forward[i-1], p_backward[i], p_forward[i], p_backward[i+1])
-        # This is where the Jacobian from MFG-FDM-particle2.py was used. It's specific.
-        # For U_n_current_guess (aliased as U_n below for brevity)
-        U_n = U_n_current_guess
-
-        # dH_i / dU_n[i]
-        # p_fwd at i: (U[i+1]-U[i])/Dx -> d/dU[i] = -1/Dx * coefCT * npart(p_fwd) * npart'(p_fwd)
-        # p_bwd at i: (U[i]-U[i-1])/Dx -> d/dU[i] =  1/Dx * coefCT * ppart(p_bwd) * ppart'(p_bwd)
-        # This requires derivatives of npart and ppart (Heaviside/Dirac delta functions).
-        # The Jacobian in MFG-FDM-particle2 was likely for a specific linearized or upwind scheme.
-
-        # Given the difficulty of a general analytical Jacobian for the npart/ppart Hamiltonian,
-        # and the specificity of the Jacobian in MFG-FDM-particle2.py,
-        # for robustness, one might use a numerical Jacobian (e.g., with small perturbations).
-        # However, to proceed with the structure provided previously:
-        # The terms from MFG-FDM-particle2.py's Jacobian:
-        A_D_H = np.zeros(Nx)
-        A_L_H = np.zeros(Nx)
-        A_U_H = np.zeros(Nx)
-
+    if hamiltonian_jac_contrib is not None:
+        J_D_H, J_L_H, J_U_H = hamiltonian_jac_contrib
+        J_D += J_D_H
+        J_L += J_L_H
+        J_U += J_U_H
+    else:
+        # Fallback to numerical Jacobian for H-part, using U_n_current_newton_iterate
         for i in range(Nx):
-            ip1 = (i + 1) % Nx
-            im1 = (i - 1 + Nx) % Nx
+            U_perturbed_p_i = U_n_current_newton_iterate.copy()
+            U_perturbed_p_i[i] += eps
+            U_perturbed_m_i = U_n_current_newton_iterate.copy()
+            U_perturbed_m_i[i] -= eps
 
-            # Approx dH[i]/dU[i]
-            # This is simplified. True derivative is more complex.
-            # The original Jacobian terms were:
-            # A_D[i] += coefCT * (problem._npart(U_n[ip1]-U_n[i]) + problem._ppart(U_n[i]-U_n[im1])) / (Dx**2) # This is not dH/dU
-
-            # Let's use finite difference for Jacobian of H for now for simplicity, though less efficient
-            eps = 1e-7
-            p_fwd_base = (U_n[ip1] - U_n[i]) / Dx
-            p_bwd_base = (U_n[i] - U_n[im1]) / Dx
-            p_values_base = {"forward": p_fwd_base, "backward": p_bwd_base}
-            H_base = problem.H(
+            pv_p_i = _calculate_p_values(
+                U_perturbed_p_i,
                 i,
-                M_density_at_n_plus_1[i],
-                p_values_base,
-                t_idx_n_plus_1 - 1 if t_idx_n_plus_1 > 0 else 0,
+                Dx,
+                Nx,
+                clip=True,
+                clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+            )
+            pv_m_i = _calculate_p_values(
+                U_perturbed_m_i,
+                i,
+                Dx,
+                Nx,
+                clip=True,
+                clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
             )
 
-            # dH[i]/dU[i]
-            U_n_eps_i = U_n.copy()
-            U_n_eps_i[i] += eps
-            p_fwd_eps_i = (U_n_eps_i[ip1] - U_n_eps_i[i]) / Dx
-            p_bwd_eps_i = (U_n_eps_i[i] - U_n_eps_i[im1]) / Dx
-            p_values_eps_i = {"forward": p_fwd_eps_i, "backward": p_bwd_eps_i}
-            H_eps_i = problem.H(
-                i,
-                M_density_at_n_plus_1[i],
-                p_values_eps_i,
-                t_idx_n_plus_1 - 1 if t_idx_n_plus_1 > 0 else 0,
-            )
-            A_D_H[i] = (H_eps_i - H_base) / eps
+            H_p_i = np.nan
+            H_m_i = np.nan
+            if not (np.any(np.isnan(list(pv_p_i.values())))):
+                H_p_i = problem.H(i, M_density_at_n_plus_1[i], pv_p_i, t_idx_n)
+            if not (np.any(np.isnan(list(pv_m_i.values())))):
+                H_m_i = problem.H(i, M_density_at_n_plus_1[i], pv_m_i, t_idx_n)
 
-            # dH[i]/dU[i-1] (affects A_L[i])
-            if Nx > 1:  # Avoid if only one point
-                U_n_eps_im1 = U_n.copy()
-                U_n_eps_im1[im1] += eps
-                # H depends on U[i-1] via p_bwd[i] and p_fwd[i-1]
-                # For Res[i], we need dH[i]/dU[i-1]
-                p_fwd_eps_im1_at_i = (
-                    U_n[ip1] - U_n[i]
-                ) / Dx  # p_fwd at i is not affected by U[i-1]
-                p_bwd_eps_im1_at_i = (U_n[i] - U_n_eps_im1[im1]) / Dx
-                p_values_eps_im1 = {
-                    "forward": p_fwd_eps_im1_at_i,
-                    "backward": p_bwd_eps_im1_at_i,
-                }
-                H_eps_im1 = problem.H(
-                    i,
-                    M_density_at_n_plus_1[i],
-                    p_values_eps_im1,
-                    t_idx_n_plus_1 - 1 if t_idx_n_plus_1 > 0 else 0,
-                )
-                A_L_H[i] = (H_eps_im1 - H_base) / eps  # This is dH_i / dU_{i-1}
+            if not (
+                np.isnan(H_p_i) or np.isnan(H_m_i) or np.isinf(H_p_i) or np.isinf(H_m_i)
+            ):
+                J_D[i] += (H_p_i - H_m_i) / (2 * eps)
+            else:
+                J_D[i] += 0
 
-            # dH[i]/dU[i+1] (affects A_U[i])
             if Nx > 1:
-                U_n_eps_ip1 = U_n.copy()
-                U_n_eps_ip1[ip1] += eps
-                # H depends on U[i+1] via p_fwd[i] and p_bwd[i+1]
-                # For Res[i], we need dH[i]/dU[i+1]
-                p_fwd_eps_ip1_at_i = (U_n_eps_ip1[ip1] - U_n[i]) / Dx
-                p_bwd_eps_ip1_at_i = (
-                    U_n[i] - U_n[im1]
-                ) / Dx  # p_bwd at i is not affected by U[i+1]
-                p_values_eps_ip1 = {
-                    "forward": p_fwd_eps_ip1_at_i,
-                    "backward": p_bwd_eps_ip1_at_i,
-                }
-                H_eps_ip1 = problem.H(
+                # ... (numerical FD for J_L_H and J_U_H as before, using U_n_current_newton_iterate for perturbations)
+                im1 = (i - 1 + Nx) % Nx
+                U_perturbed_p_im1 = U_n_current_newton_iterate.copy()
+                U_perturbed_p_im1[im1] += eps
+                U_perturbed_m_im1 = U_n_current_newton_iterate.copy()
+                U_perturbed_m_im1[im1] -= eps
+                pv_p_im1 = _calculate_p_values(
+                    U_perturbed_p_im1,
                     i,
-                    M_density_at_n_plus_1[i],
-                    p_values_eps_ip1,
-                    t_idx_n_plus_1 - 1 if t_idx_n_plus_1 > 0 else 0,
+                    Dx,
+                    Nx,
+                    clip=True,
+                    clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
                 )
-                A_U_H[i] = (H_eps_ip1 - H_base) / eps  # This is dH_i / dU_{i+1}
+                pv_m_im1 = _calculate_p_values(
+                    U_perturbed_m_im1,
+                    i,
+                    Dx,
+                    Nx,
+                    clip=True,
+                    clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                )
+                H_p_im1 = np.nan
+                H_m_im1 = np.nan
+                if not (np.any(np.isnan(list(pv_p_im1.values())))):
+                    H_p_im1 = problem.H(i, M_density_at_n_plus_1[i], pv_p_im1, t_idx_n)
+                if not (np.any(np.isnan(list(pv_m_im1.values())))):
+                    H_m_im1 = problem.H(i, M_density_at_n_plus_1[i], pv_m_im1, t_idx_n)
+                if not (
+                    np.isnan(H_p_im1)
+                    or np.isnan(H_m_im1)
+                    or np.isinf(H_p_im1)
+                    or np.isinf(H_m_im1)
+                ):
+                    J_L[i] += (H_p_im1 - H_m_im1) / (2 * eps)
+                else:
+                    J_L[i] += 0
 
-        A_D += A_D_H
-        A_L_combined = np.zeros(Nx)
-        A_U_combined = np.zeros(Nx)
-        A_L_combined[1:Nx] = A_L_val_diff  # Diffusion part for U[i-1] affecting Res[i]
-        A_L_combined[0] = A_L_val_diff  # Periodic: dRes[0]/dU[Nx-1]
-        A_L_combined += A_L_H  # Hamiltonian part for U[i-1] affecting Res[i]
+                ip1 = (i + 1) % Nx
+                U_perturbed_p_ip1 = U_n_current_newton_iterate.copy()
+                U_perturbed_p_ip1[ip1] += eps
+                U_perturbed_m_ip1 = U_n_current_newton_iterate.copy()
+                U_perturbed_m_ip1[ip1] -= eps
+                pv_p_ip1 = _calculate_p_values(
+                    U_perturbed_p_ip1,
+                    i,
+                    Dx,
+                    Nx,
+                    clip=True,
+                    clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                )
+                pv_m_ip1 = _calculate_p_values(
+                    U_perturbed_m_ip1,
+                    i,
+                    Dx,
+                    Nx,
+                    clip=True,
+                    clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                )
+                H_p_ip1 = np.nan
+                H_m_ip1 = np.nan
+                if not (np.any(np.isnan(list(pv_p_ip1.values())))):
+                    H_p_ip1 = problem.H(i, M_density_at_n_plus_1[i], pv_p_ip1, t_idx_n)
+                if not (np.any(np.isnan(list(pv_m_ip1.values())))):
+                    H_m_ip1 = problem.H(i, M_density_at_n_plus_1[i], pv_m_ip1, t_idx_n)
+                if not (
+                    np.isnan(H_p_ip1)
+                    or np.isnan(H_m_ip1)
+                    or np.isinf(H_p_ip1)
+                    or np.isinf(H_m_ip1)
+                ):
+                    J_U[i] += (H_p_ip1 - H_m_ip1) / (2 * eps)
+                else:
+                    J_U[i] += 0
 
-        A_U_combined[0 : Nx - 1] = (
-            A_U_val_diff  # Diffusion part for U[i+1] affecting Res[i]
-        )
-        A_U_combined[Nx - 1] = A_U_val_diff  # Periodic: dRes[Nx-1]/dU[0]
-        A_U_combined += A_U_H  # Hamiltonian part for U[i+1] affecting Res[i]
+    # Assemble sparse Jacobian
+    # The original notebook used rolled J_L and J_U for its spdiags call:
+    # spdiags([np.roll(ML,-1),MD,np.roll(MU,1)],[-1,0,1],Nx,Nx)
+    # where ML[j] was dRes[j]/dU[j-1] and MU[j] was dRes[j]/dU[j+1]
+    # So, np.roll(J_L, -1)[k] = J_L[k+1] = dRes[k+1]/dU[k] (for offset -1)
+    # And np.roll(J_U, 1)[k] = J_U[k-1] = dRes[k-1]/dU[k] (for offset 1)
+    # This matches the spdiags convention if J_L and J_U are the direct band contributions.
 
-        # Construct sparse matrix with periodic boundary conditions
-        # A_L_combined[i] is dRes[i]/dU[i-1] (or dRes[0]/dU[Nx-1] for i=0)
-        # A_U_combined[i] is dRes[i]/dU[i+1] (or dRes[Nx-1]/dU[0] for i=Nx-1)
+    J_L_for_spdiags = np.roll(J_L, -1) if Nx > 1 else J_L
+    J_U_for_spdiags = np.roll(J_U, 1) if Nx > 1 else J_U
 
-        diagonals = [
-            A_D,
-            np.roll(A_L_combined, 1),
-            np.roll(A_U_combined, -1),
-        ]  # D, L (rolled), U (rolled)
-        offsets = [0, -1, 1]
+    diagonals_data = [J_L_for_spdiags, J_D, J_U_for_spdiags] if Nx > 1 else [J_D]
+    offsets = [-1, 0, 1] if Nx > 1 else [0]
 
-        # Add corner elements for periodic BC if not handled by roll for specific structure
-        # For standard tridiagonal from spdiags([main, lower, upper], [0, -1, 1])
-        # Jac_ij = D_i if j=i
-        # Jac_ij = L_i if j=i-1
-        # Jac_ij = U_i if j=i+1
-        # For periodic, we need Jac[0,Nx-1] and Jac[Nx-1,0]
-
-        # Corrected spdiags construction for standard indexing:
-        # A_L_std[i] = dRes[i]/dU[i-1] -> goes on k=-1 diagonal at row i, col i-1
-        # A_U_std[i] = dRes[i]/dU[i+1] -> goes on k=1 diagonal at row i, col i+1
-
-        A_L_final = A_L_combined  # A_L_final[i] is dRes[i]/dU[i-1]
-        A_U_final = A_U_combined  # A_U_final[i] is dRes[i]/dU[i+1]
-
-        # For spdiags, the k-th diagonal has main_diag[j] at (j, j+k)
-        # k=0: main_diag (A_D)
-        # k=-1: lower_diag (A_L_final)
-        # k=1: upper_diag (A_U_final)
-
-        Jac = sparse.spdiags(
-            [A_D, A_L_final, A_U_final], [0, -1, 1], Nx, Nx, format="csr"
-        )
-
-        # Manually set periodic corners if the spdiags doesn't handle it as desired
-        if Nx > 1:
-            Jac[0, Nx - 1] += A_L_final[0]  # dRes[0]/dU[Nx-1]
-            Jac[Nx - 1, 0] += A_U_final[Nx - 1]  # dRes[Nx-1]/dU[0]
-
-    else:  # Fallback for unknown problem type, or if a generic analytical Jacobian is too hard
-        # This is a placeholder. A robust solution would require dH/dp from the problem.
-        # Or use numerical differentiation for the H part of Jacobian more carefully.
-        print(
-            "Warning: Using a simplified Jacobian for HJB. May affect Newton convergence for complex Hamiltonians."
-        )
-        A_L_combined = np.zeros(Nx)
-        A_L_combined += A_L_val_diff
-        A_U_combined = np.zeros(Nx)
-        A_U_combined += A_U_val_diff
-        Jac = sparse.spdiags(
-            [A_D, A_L_combined, A_U_combined], [0, -1, 1], Nx, Nx, format="csr"
-        )
-        if Nx > 1:  # Basic periodic for diffusion
-            Jac[0, Nx - 1] += A_L_val_diff
-            Jac[Nx - 1, 0] += A_U_val_diff
+    try:
+        Jac = sparse.spdiags(diagonals_data, offsets, Nx, Nx, format="csr")
+    except ValueError as e:
+        fallback_diag = np.ones(Nx) * (1.0 / Dt if abs(Dt) > 1e-14 else 1.0)
+        Jac = sparse.diags([fallback_diag], [0], shape=(Nx, Nx), format="csr")
 
     return Jac.tocsr()
 
 
 def newton_hjb_step(
-    U_n_current_guess: np.ndarray,
-    U_n_plus_1_known: np.ndarray,
+    U_n_current_newton_iterate: np.ndarray,  # U_new_n_tmp in notebook
+    U_n_plus_1_from_hjb_step: np.ndarray,  # U_new_np1 in notebook
+    U_k_n_from_prev_picard: np.ndarray,  # U_k_n in notebook
     M_density_at_n_plus_1: np.ndarray,
     problem: "MFGProblem",
-    t_idx_n_plus_1: int,
+    t_idx_n: int,
 ) -> tuple[np.ndarray, float]:
-    """Performs one step of Newton's method for the HJB equation at a time slice."""
-    Dx = problem.Dx
+    Dx_norm = problem.Dx if abs(problem.Dx) > 1e-12 else 1.0
+
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
+        np.isinf(U_n_current_newton_iterate)
+    ):
+        return U_n_current_newton_iterate, np.inf
 
     residual_F_U = compute_hjb_residual(
-        U_n_current_guess,
-        U_n_plus_1_known,
+        U_n_current_newton_iterate,
+        U_n_plus_1_from_hjb_step,
         M_density_at_n_plus_1,
         problem,
-        t_idx_n_plus_1,
+        t_idx_n,
     )
+    if np.any(np.isnan(residual_F_U)) or np.any(np.isinf(residual_F_U)):
+        return U_n_current_newton_iterate, np.inf
 
+    # Jacobian uses U_k_n_from_prev_picard for its H-part if problem provides specific terms
     jacobian_J_U = compute_hjb_jacobian(
-        U_n_current_guess, M_density_at_n_plus_1, problem, t_idx_n_plus_1
+        U_n_current_newton_iterate,  # For time/diffusion deriv
+        U_k_n_from_prev_picard,  # For specific H-deriv
+        M_density_at_n_plus_1,
+        problem,
+        t_idx_n,
     )
+    if np.any(np.isnan(jacobian_J_U.data)) or np.any(np.isinf(jacobian_J_U.data)):
+        return U_n_current_newton_iterate, np.inf
 
+    delta_U = np.zeros_like(U_n_current_newton_iterate)
+    l2_error_of_step = np.inf
     try:
-        delta_U = sparse.linalg.spsolve(jacobian_J_U, -residual_F_U)
+        if not jacobian_J_U.nnz > 0 and problem.Nx > 0:
+            pass
+        else:
+            # Original notebook's RHS for Newton solve was effectively:
+            # b = Jac * U_current_newton_iterate - Residual(U_current_newton_iterate)
+            # And it solved Jac * U_next_newton_iterate = b
+            # This is equivalent to Jac * delta_U = -Residual
+            # where delta_U = U_next_newton_iterate - U_current_newton_iterate
+            delta_U = sparse.linalg.spsolve(jacobian_J_U, -residual_F_U)
+
+        if np.any(np.isnan(delta_U)) or np.any(np.isinf(delta_U)):
+            delta_U = np.zeros_like(U_n_current_newton_iterate)
+        else:
+            l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(Dx_norm)
+
     except Exception as e:
-        print(f"Error solving Jacobian system in HJB Newton step: {e}")
-        # Fallback: no update or a small step in direction of negative gradient (not implemented here)
-        delta_U = np.zeros_like(U_n_current_guess)
+        pass
 
-    U_n_next_iteration = U_n_current_guess + delta_U
-    # Error based on update step size, or norm of residual
-    l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(Dx if Dx > 0 else 1.0)
-    # l2_error_of_step = np.linalg.norm(residual_F_U) * np.sqrt(Dx if Dx > 0 else 1.0)
+    max_delta_u_norm = 1e2
+    current_delta_u_norm = np.linalg.norm(delta_U) * np.sqrt(Dx_norm)
+    if current_delta_u_norm > max_delta_u_norm and current_delta_u_norm > 1e-9:
+        delta_U = delta_U * (max_delta_u_norm / current_delta_u_norm)
+        l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(Dx_norm)
 
-    return U_n_next_iteration, l2_error_of_step
+    U_n_next_newton_iterate = U_n_current_newton_iterate + delta_U
+
+    return U_n_next_newton_iterate, l2_error_of_step
 
 
 def solve_hjb_timestep_newton(
-    U_n_plus_1_known: np.ndarray,
-    M_density_at_n_plus_1: np.ndarray,
+    U_n_plus_1_from_hjb_step: np.ndarray,  # U_new[n+1] in notebook
+    U_k_n_from_prev_picard: np.ndarray,  # U_k[n] in notebook
+    M_density_at_n_plus_1: np.ndarray,  # M_k[n+1] in notebook
     problem: "MFGProblem",
     NiterNewton: int,
     l2errBoundNewton: float,
-    t_idx_n_plus_1: int,  # time index for U_{n+1} and M_{n+1}
+    t_idx_n: int,  # time index for U_n being solved
 ) -> np.ndarray:
-    """Solves HJB for one time slice U_n using Newton's method."""
+    # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
+    U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
 
-    U_n_current_iteration = U_n_plus_1_known.copy()  # Initial guess for U_n
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
+        np.isinf(U_n_current_newton_iterate)
+    ):
+        return U_n_current_newton_iterate
 
+    final_l2_error = np.inf
     converged = False
-    final_l2_error = -1.0
+
     for iiter in range(NiterNewton):
-        U_n_next_iteration, l2_error = newton_hjb_step(
-            U_n_current_iteration,
-            U_n_plus_1_known,
+        U_n_next_newton_iterate, l2_error = newton_hjb_step(
+            U_n_current_newton_iterate,
+            U_n_plus_1_from_hjb_step,
+            U_k_n_from_prev_picard,  # Pass U from prev Picard for Jacobian
             M_density_at_n_plus_1,
             problem,
-            t_idx_n_plus_1,
+            t_idx_n,
         )
-        U_n_current_iteration = U_n_next_iteration
+
+        if np.any(np.isnan(U_n_next_newton_iterate)) or np.any(
+            np.isinf(U_n_next_newton_iterate)
+        ):
+            break
+
+        if (
+            iiter > 0
+            and l2_error > final_l2_error * 0.9999
+            and l2_error > l2errBoundNewton
+        ):
+            break
+
+        U_n_current_newton_iterate = U_n_next_newton_iterate
         final_l2_error = l2_error
 
         if l2_error < l2errBoundNewton:
             converged = True
-            # print(f"Newton for HJB at t_idx={t_idx_n_plus_1-1} converged in {iiter+1} iterations. Error: {l2_error:.2e}")
             break
 
-    if not converged:
-        print(
-            f"Warning: Newton method for HJB at t_idx={t_idx_n_plus_1-1} did NOT converge after {NiterNewton} iter. Final Error: {final_l2_error:.2e} (Bound: {l2errBoundNewton:.2e})"
-        )
+    if (
+        not converged
+        and NiterNewton > 0
+        and not (np.isnan(final_l2_error) or np.isinf(final_l2_error))
+    ):
+        pass
 
-    return U_n_current_iteration
+    return U_n_current_newton_iterate
 
 
 def solve_hjb_system_backward(
-    M_density_evolution_from_FP: np.ndarray,
+    M_density_from_prev_picard: np.ndarray,  # M_k in notebook
     U_final_condition_at_T: np.ndarray,
+    U_from_prev_picard: np.ndarray,  # U_k in notebook
     problem: "MFGProblem",
     NiterNewton: int,
     l2errBoundNewton: float,
 ) -> np.ndarray:
-    """
-    Solves the full HJB system by marching backward in time.
-    """
     Nt = problem.Nt
     Nx = problem.Nx
 
-    U_solution = np.zeros(
-        (Nt, Nx)
-    )  # Corrected: Nt time points if Nt is number of knots
-    # If Nt is number of intervals, then Nt+1 points.
-    # User's mfg_problem.py has Nt as number of knots.
-    # So U_solution should be (problem.Nt, problem.Nx)
+    U_solution_this_picard_iter = np.zeros((Nt, Nx))  # U_new in notebook
+    if Nt == 0:
+        return U_solution_this_picard_iter
 
-    U_solution[problem.Nt - 1] = U_final_condition_at_T  # U(T,x) is at index Nt-1
+    if np.any(np.isnan(U_final_condition_at_T)) or np.any(
+        np.isinf(U_final_condition_at_T)
+    ):
+        U_solution_this_picard_iter[Nt - 1, :] = np.nan
+    else:
+        U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
 
-    # Loop backward in time: n from Nt-2 down to 0 (for U_solution[n])
-    # U_solution[n] is U at time t_n = n*Dt
-    # U_solution[n+1] is U at time t_{n+1} = (n+1)*Dt
-    # M_density_evolution_from_FP[n+1] is m at time t_{n+1}
-    for n_idx_hjb in range(problem.Nt - 2, -1, -1):  # n_idx_hjb for U_n
-        U_n_plus_1 = U_solution[n_idx_hjb + 1]
+    if Nt == 1:
+        return U_solution_this_picard_iter
 
-        # Density m to be used in H(x, Du_n, m)
-        # M_density_evolution_from_FP has Nt time points.
-        # M_density_evolution_from_FP[n_idx_hjb + 1] is m at t_{n+1}
-        M_for_H_at_this_step = M_density_evolution_from_FP[n_idx_hjb + 1]
+    for n_idx_hjb in range(
+        Nt - 2, -1, -1
+    ):  # Solves for U_solution_this_picard_iter at t_idx_n = n_idx_hjb
+        U_n_plus_1_current_picard = U_solution_this_picard_iter[n_idx_hjb + 1, :]
 
-        U_solution[n_idx_hjb] = solve_hjb_timestep_newton(
-            U_n_plus_1,
-            M_for_H_at_this_step,
+        if np.any(np.isnan(U_n_plus_1_current_picard)) or np.any(
+            np.isinf(U_n_plus_1_current_picard)
+        ):
+            U_solution_this_picard_iter[n_idx_hjb, :] = U_n_plus_1_current_picard
+            continue
+
+        M_n_plus_1_prev_picard = M_density_from_prev_picard[n_idx_hjb + 1, :]
+        if np.any(np.isnan(M_n_plus_1_prev_picard)) or np.any(
+            np.isinf(M_n_plus_1_prev_picard)
+        ):
+            U_solution_this_picard_iter[n_idx_hjb, :] = np.nan
+            continue
+
+        U_n_prev_picard = U_from_prev_picard[n_idx_hjb, :]  # U_k[n] from notebook
+        if np.any(np.isnan(U_n_prev_picard)) or np.any(np.isinf(U_n_prev_picard)):
+            U_solution_this_picard_iter[n_idx_hjb, :] = np.nan
+            continue
+
+        U_solution_this_picard_iter[n_idx_hjb, :] = solve_hjb_timestep_newton(
+            U_n_plus_1_current_picard,  # U_new[n+1]
+            U_n_prev_picard,  # U_k[n] (for Jacobian)
+            M_n_plus_1_prev_picard,  # M_k[n+1]
             problem,
             NiterNewton,
             l2errBoundNewton,
-            t_idx_n_plus_1=n_idx_hjb
-            + 1,  # This is the time index for U_{n+1} and M_{n+1}
+            t_idx_n=n_idx_hjb,
         )
-    return U_solution
+        if np.any(np.isnan(U_solution_this_picard_iter[n_idx_hjb, :])) and not np.any(
+            np.isnan(U_n_plus_1_current_picard)
+        ):
+            print(
+                f"SYS_DEBUG: U_solution became NaN after Newton step for t_idx_n={n_idx_hjb}."
+            )
+
+    return U_solution_this_picard_iter

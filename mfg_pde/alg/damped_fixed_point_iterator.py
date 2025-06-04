@@ -1,11 +1,6 @@
 import numpy as np
 import time
-
-from .base_mfg_solver import MFGSolver
-from ..core.mfg_problem import MFGProblem
-from .hjb_solvers.base_hjb import BaseHJBSolver
-from .fp_solvers.base_fp import BaseFPSolver # Assuming BaseFPSolver exists
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple  # Added Tuple
 
 if TYPE_CHECKING:
     from ..core.mfg_problem import MFGProblem
@@ -27,10 +22,10 @@ if not TYPE_CHECKING:
 
         hjb_method_name = "DummyHJB"
 
-        def solve_hjb_system(self, M, U_final):
-            return np.zeros_like(M)
+        def solve_hjb_system(self, M, U_final, U_prev_picard):
+            return np.zeros_like(M)  # Added U_prev_picard
 
-    class BaseFPSolver:  # Assuming BaseFPSolver exists
+    class BaseFPSolver:
         def __init__(self, problem):
             self.problem = problem
 
@@ -60,22 +55,22 @@ class FixedPointIterator(MFGSolver):
         self.U: np.ndarray
         self.M: np.ndarray
 
-        self.l2distu_abs: np.ndarray  # Absolute L2 error for U
-        self.l2distm_abs: np.ndarray  # Absolute L2 error for M
-        self.l2distu_rel: np.ndarray  # Relative L2 error for U
-        self.l2distm_rel: np.ndarray  # Relative L2 error for M
+        self.l2distu_abs: np.ndarray
+        self.l2distm_abs: np.ndarray
+        self.l2distu_rel: np.ndarray
+        self.l2distm_rel: np.ndarray
         self.iterations_run: int = 0
 
     def solve(
         self, Niter_max: int, l2errBoundPicard: float = 1e-5
-    ) -> tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
         print(
             f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________"
         )
         Nx = self.problem.Nx
         Nt = self.problem.Nt
-        Dx = self.problem.Dx if self.problem.Dx > 0 else 1.0
-        Dt = self.problem.Dt if self.problem.Dt > 0 else 1.0
+        Dx = self.problem.Dx if abs(self.problem.Dx) > 1e-12 else 1.0
+        Dt = self.problem.Dt if abs(self.problem.Dt) > 1e-12 else 1.0
 
         self.U = np.zeros((Nt, Nx))
         self.M = np.zeros((Nt, Nx))
@@ -90,7 +85,7 @@ class FixedPointIterator(MFGSolver):
                 self.U[n_time_idx, :] = final_u_cost
             for n_time_idx in range(1, Nt):
                 self.M[n_time_idx, :] = initial_m_dist
-        elif Nt == 0:  # Should not happen with valid Nt > 0
+        elif Nt == 0:
             print("Warning: Nt=0, cannot initialize U and M.")
             return self.U, self.M, 0, np.array([]), np.array([])
 
@@ -100,47 +95,75 @@ class FixedPointIterator(MFGSolver):
         self.l2distm_rel = np.ones(Niter_max)
         self.iterations_run = 0
 
+        U_picard_prev = (
+            self.U.copy()
+        )  # Initialize U from previous Picard (k-1) with initial U for k=0
+
         for iiter in range(Niter_max):
             start_time_iter = time.time()
             print(f"--- {self.name} Picard Iteration = {iiter + 1} / {Niter_max} ---")
 
-            U_old_iter = self.U.copy()
-            M_old_iter = self.M.copy()
+            U_old_current_picard_iter = self.U.copy()  # U_k
+            M_old_current_picard_iter = self.M.copy()  # M_k
 
-            # 1. Solve HJB backward using M_old_iter
-            U_new_tmp_hjb = self.hjb_solver.solve_hjb_system(M_old_iter, final_u_cost)
-            self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_iter
+            # 1. Solve HJB backward using M_old_current_picard_iter (M_k)
+            #    and U_picard_prev (U_{k-1}) for the Jacobian if needed by the specific problem type
+            U_new_tmp_hjb = self.hjb_solver.solve_hjb_system(
+                M_old_current_picard_iter,  # M_k
+                final_u_cost,
+                U_picard_prev,  # U_{k-1} (this is U_old from notebook's solveHJB_withM(sigma, U, M))
+            )
 
-            # 2. Solve FP forward using the newly computed U
+            # Apply damping to U update: U_{k+1} = theta * U_tmp + (1-theta) * U_k
+            self.U = (
+                self.thetaUM * U_new_tmp_hjb
+                + (1 - self.thetaUM) * U_old_current_picard_iter
+            )
+
+            # 2. Solve FP forward using the newly computed U (U_{k+1})
             M_new_tmp_fp = self.fp_solver.solve_fp_system(initial_m_dist, self.U)
-            self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_iter
 
-            # Ensure M remains non-negative and normalized (optional, but good for stability)
-            self.M = np.maximum(self.M, 0)  # Ensure non-negativity
+            # Apply damping to M update: M_{k+1} = theta * M_tmp + (1-theta) * M_k
+            self.M = (
+                self.thetaUM * M_new_tmp_fp
+                + (1 - self.thetaUM) * M_old_current_picard_iter
+            )
+
+            # Update U_picard_prev for the next iteration's Jacobian calculation
+            U_picard_prev = (
+                U_old_current_picard_iter.copy()
+            )  # U_k becomes U_{k-1} for next iter
+
+            """
+            # Ensure M remains non-negative and normalized
+            self.M = np.maximum(self.M, 0)
             for t_step in range(Nt):
                 current_mass = np.sum(self.M[t_step, :]) * Dx
                 if current_mass > 1e-9:
                     self.M[t_step, :] /= current_mass
-                else:  # Avoid division by zero if mass is zero
-                    # print(f"Warning: Zero mass at t_step {t_step} in iteration {iiter+1}. Setting to uniform small value.")
-                    # self.M[t_step, :] = 1.0 / (Nx * Dx) # Or handle as error
+                else:
                     pass
+            """
 
             norm_factor = np.sqrt(Dx * Dt)
 
-            self.l2distu_abs[iiter] = np.linalg.norm(self.U - U_old_iter) * norm_factor
+            self.l2distu_abs[iiter] = (
+                np.linalg.norm(self.U - U_old_current_picard_iter) * norm_factor
+            )
             norm_U_iter = np.linalg.norm(self.U) * norm_factor
             self.l2distu_rel[iiter] = (
                 self.l2distu_abs[iiter] / norm_U_iter
-                if norm_U_iter > 1e-12  # Increased tolerance for denominator
+                if norm_U_iter > 1e-12
                 else self.l2distu_abs[iiter]
             )
 
-            self.l2distm_abs[iiter] = np.linalg.norm(self.M - M_old_iter) * norm_factor
+            self.l2distm_abs[iiter] = (
+                np.linalg.norm(self.M - M_old_current_picard_iter) * norm_factor
+            )
             norm_M_iter = np.linalg.norm(self.M) * norm_factor
             self.l2distm_rel[iiter] = (
                 self.l2distm_abs[iiter] / norm_M_iter
-                if norm_M_iter > 1e-12  # Increased tolerance
+                if norm_M_iter > 1e-12
                 else self.l2distm_abs[iiter]
             )
 
@@ -166,7 +189,7 @@ class FixedPointIterator(MFGSolver):
 
         return self.U, self.M, self.iterations_run, self.l2distu_rel, self.l2distm_rel
 
-    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
+    def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
         if not hasattr(self, "U") or not hasattr(self, "M") or self.iterations_run == 0:
             raise ValueError(
                 "Solver has not been run or did not produce results. Call solve() first."
@@ -175,7 +198,7 @@ class FixedPointIterator(MFGSolver):
 
     def get_convergence_data(
         self,
-    ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         if self.iterations_run == 0:
             raise ValueError("Solver has not been run yet. Call solve() first.")
         return (

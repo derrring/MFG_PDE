@@ -17,16 +17,16 @@ def run_pure_fdm_example():
         "xmin": 0.0,
         "xmax": 1.0,
         "Nx": 51,
-        "T": 0.5,
+        "T": 1,
         "Nt": 51,  # Adjusted T for potentially faster run
-        "sigma": 0.1,
+        "sigma": 1,
         "coefCT": 0.5,
     }
     # Use the concrete ExampleMFGProblem
     mfg_problem = ExampleMFGProblem(**problem_params)
 
     # --- Solver Parameters ---
-    Niter_max_picard = 50  # Max iterations for the fixed-point loop
+    Niter_max_picard = 100  # Max iterations for the fixed-point loop
     conv_threshold_picard = 1e-5  # Convergence tolerance for Picard iteration
     damping_factor = 0.5  # Damping for the fixed-point iteration (thetaUM)
 
