@@ -4,7 +4,7 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg
 
 # Assuming MFGProblem and ExampleMFGProblem are accessible, e.g.
-from ....mfg_pde.core.mfg_problem import MFGProblem # Adjust path as per actual structure
+from mfg_pde.core.mfg_problem import MFGProblem,ExampleMFGProblem # Adjust path as per actual structure
 
 
 class BaseHJBSolver(ABC):
