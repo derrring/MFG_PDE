@@ -1,8 +1,8 @@
 
-# Numerical Scheme for Hamilton-Jacobi-Bellman equation and Fokker-Planck Equation
+# Numerical Schemes for Mean Field Games (MFGs)
 
 
-## Hamilton-Jacobi-Bellman equation
+## Hamilton-Jacobi-Bellman (HJB) equation
 
 HJB equation is a fully nonlinear PDE with form
 
@@ -20,7 +20,7 @@ where $H$ is the Hamiltonian, $g$ is the terminal condition, $\phi$ is the bound
 
 
 
-## Fokker-Planck equation
+## Fokker-Planck (FP) equation
 
 Suppose that the dynamic of a stochastic process is gorverned by the following stochastic differential equation (SDE)
 
