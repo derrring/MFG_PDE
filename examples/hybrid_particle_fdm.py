@@ -5,28 +5,27 @@ import time
 # This assumes the script is run from a location where 'mfg_pde' is in PYTHONPATH.
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
-from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
+from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver  # Using particle solver
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.utils.plot_utils import plot_results, plot_convergence
 
 
 def run_hybrid_fdm_particle_example():
     print("--- Setting up MFG Problem (Hybrid FDM-HJB / Particle-FP Example) ---")
-    # --- Define Problem Parameters ---
+    # --- Define Problem Parameters (aligning with working FDM example) ---
     problem_params = {
         "xmin": 0.0,
         "xmax": 1.0,
         "Nx": 51,  # Number of spatial points
-        "T": 0.5,
+        "T": 1.0,  # Total time duration
         "Nt": 51,  # Number of time points
-        "sigma": 0.1,
-        "coefCT": 0.5,  # Diffusion and control coefficient
+        "sigma": 1.0,  # Matched to working FDM sigma
+        "coefCT": 0.5,
     }
-    # Use the concrete ExampleMFGProblem
     mfg_problem = ExampleMFGProblem(**problem_params)
 
     # --- Solver Parameters ---
-    Niter_max_picard = 50  # Max iterations for the fixed-point loop
+    Niter_max_picard = 100  # Max iterations for the fixed-point loop
     conv_threshold_picard = 1e-5  # Convergence tolerance for Picard iteration
     damping_factor = 0.5  # Damping for the fixed-point iteration (thetaUM)
 
@@ -35,8 +34,8 @@ def run_hybrid_fdm_particle_example():
     l2errBoundNewton = 1e-7  # Newton convergence tolerance for HJB
 
     # Parameters for Particle FP solver
-    num_particles = 10000  # Number of particles for FP simulation
-    kde_bandwidth = "scott"  # KDE bandwidth estimation method (e.g., 'scott', 'silverman', or a float)
+    num_particles = 1000  # Number of particles for FP simulation
+    kde_bandwidth = "scott"  # KDE bandwidth estimation method
 
     # --- Instantiate Solvers ---
     print("\n--- Running HJB-FDM / FP-Particle Solver (via FixedPointIterator) ---")
@@ -52,6 +51,7 @@ def run_hybrid_fdm_particle_example():
     )
 
     # 3. Instantiate the FixedPointIterator with these components
+    # FixedPointIterator now handles passing U_from_prev_picard internally
     hybrid_iterator = FixedPointIterator(
         mfg_problem,
         hjb_solver=hjb_solver_component,
@@ -84,6 +84,7 @@ def run_hybrid_fdm_particle_example():
         # Plot results
         if U_hybrid is not None and M_hybrid_density is not None:
             print("\n--- Plotting Hybrid Solver Results ---")
+            # Ensure plot_results can handle potentially different M structures (though both are (Nt,Nx) grid densities)
             plot_results(
                 mfg_problem, U_hybrid, M_hybrid_density, solver_name=solver_name_hybrid
             )
@@ -94,7 +95,9 @@ def run_hybrid_fdm_particle_example():
                 solver_name=solver_name_hybrid,
             )
     else:
-        print(f"--- {solver_name_hybrid} Solver did not run any iterations. ---")
+        print(
+            f"--- {solver_name_hybrid} Solver did not run any iterations or failed. ---"
+        )
 
     print("\n--- Hybrid FDM-Particle Example Script Finished ---")
 
