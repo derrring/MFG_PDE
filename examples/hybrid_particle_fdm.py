@@ -47,7 +47,10 @@ def run_hybrid_fdm_particle_example():
 
     # 2. Instantiate the FP solver component (Particle)
     fp_solver_component = ParticleFPSolver(
-        mfg_problem, num_particles=num_particles, kde_bandwidth=kde_bandwidth
+        mfg_problem,
+        num_particles=num_particles,
+        kde_bandwidth=kde_bandwidth,
+        normalize_kde_output=False,  # Disable normalization for this example
     )
 
     # 3. Instantiate the FixedPointIterator with these components
