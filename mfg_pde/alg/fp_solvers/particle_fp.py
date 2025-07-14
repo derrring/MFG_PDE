@@ -27,7 +27,7 @@ class ParticleFPSolver(BaseFPSolver):
     def _estimate_density_from_particles(
         self, particles_at_time_t: np.ndarray
     ) -> np.ndarray:
-        Nx = self.problem.Nx
+        Nx = self.problem.Nx + 1
         xSpace = self.problem.xSpace
         xmin = self.problem.xmin
         xmax = self.problem.xmax
@@ -92,8 +92,8 @@ class ParticleFPSolver(BaseFPSolver):
     ) -> np.ndarray:
         # (Rest of the solve_fp_system method remains the same as in particle_fp_py_v1)
         # print(f"****** Solving FP ({self.fp_method_name}) with {self.num_particles} particles ******")
-        Nx = self.problem.Nx
-        Nt = self.problem.Nt
+        Nx = self.problem.Nx + 1
+        Nt = self.problem.Nt + 1
         Dx = self.problem.Dx
         Dt = self.problem.Dt
         sigma_sde = self.problem.sigma

@@ -12,8 +12,8 @@ class FdmFPSolver(BaseFPSolver):
         self.fp_method_name = "FDM"
 
     def solve_fp_system(self, m_initial_condition, U_solution_for_drift):
-        Nx = self.problem.Nx
-        Nt = self.problem.Nt
+        Nx = self.problem.Nx + 1
+        Nt = self.problem.Nt + 1
         Dx = self.problem.Dx
         Dt = self.problem.Dt
         sigma = self.problem.sigma

@@ -457,7 +457,7 @@ class GFDMHJBSolver(BaseHJBSolver):
         """Map grid values to collocation points."""
         if u_grid.shape[0] != self.n_points:
             # Simple nearest neighbor mapping
-            grid_x = np.linspace(0, 1, self.problem.Nx)
+            grid_x = np.linspace(0, 1, self.problem.Nx + 1)
             u_collocation = np.zeros(self.n_points)
             
             for i in range(self.n_points):
@@ -471,11 +471,11 @@ class GFDMHJBSolver(BaseHJBSolver):
     
     def _map_collocation_to_grid(self, u_collocation: np.ndarray) -> np.ndarray:
         """Map collocation point values to regular grid."""
-        if u_collocation.shape[0] != self.problem.Nx:
-            grid_x = np.linspace(0, 1, self.problem.Nx)
-            u_grid = np.zeros(self.problem.Nx)
+        if u_collocation.shape[0] != self.problem.Nx + 1:
+            grid_x = np.linspace(0, 1, self.problem.Nx + 1)
+            u_grid = np.zeros(self.problem.Nx + 1)
             
-            for i in range(self.problem.Nx):
+            for i in range(self.problem.Nx + 1):
                 distances = np.abs(self.collocation_points[:, 0] - grid_x[i])
                 nearest_idx = np.argmin(distances)
                 u_grid[i] = u_collocation[nearest_idx]
@@ -493,7 +493,7 @@ class GFDMHJBSolver(BaseHJBSolver):
     
     def _map_collocation_to_grid_batch(self, U_collocation: np.ndarray) -> np.ndarray:
         """Map batch of collocation arrays to grid."""
-        U_grid = np.zeros((U_collocation.shape[0], self.problem.Nx))
+        U_grid = np.zeros((U_collocation.shape[0], self.problem.Nx + 1))
         for t in range(U_collocation.shape[0]):
             U_grid[t, :] = self._map_collocation_to_grid(U_collocation[t, :])
         return U_grid
@@ -506,7 +506,7 @@ class GFDMHJBSolver(BaseHJBSolver):
         physical_x = self.problem.xmin + collocation_x * (self.problem.xmax - self.problem.xmin)
         
         # Find nearest grid index
-        grid_x = np.linspace(self.problem.xmin, self.problem.xmax, self.problem.Nx)
+        grid_x = np.linspace(self.problem.xmin, self.problem.xmax, self.problem.Nx + 1)
         distances = np.abs(grid_x - physical_x)
         grid_idx = np.argmin(distances)
         

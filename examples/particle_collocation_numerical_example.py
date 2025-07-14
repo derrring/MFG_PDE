@@ -30,16 +30,16 @@ def run_particle_collocation_example():
     problem_params = {
         "xmin": 0.0,
         "xmax": 1.0,
-        "Nx": 51,  # Grid discretization (same as other examples)
+        "Nx": 50,  # Number of steps (was 51 grid points, now 50 steps = 51 points)
         "T": 1.0,  # Final time
-        "Nt": 51,  # Time discretization (same as other examples)
+        "Nt": 50,  # Number of steps (was 51 time points, now 50 steps = 51 points)
         "sigma": 1.0,  # Diffusion coefficient (same as other examples)
         "coefCT": 0.5,
     }
 
     print(f"Problem Parameters (matching other examples):")
-    print(f"  Nx (grid points): {problem_params['Nx']}")
-    print(f"  Nt (time points): {problem_params['Nt']}")
+    print(f"  Nx (steps, {problem_params['Nx']+1} grid points): {problem_params['Nx']}")
+    print(f"  Nt (steps, {problem_params['Nt']+1} time points): {problem_params['Nt']}")
     print(f"  T (final time): {problem_params['T']}")
     print(f"  sigma (diffusion): {problem_params['sigma']}")
     print(f"  coefCT: {problem_params['coefCT']}")

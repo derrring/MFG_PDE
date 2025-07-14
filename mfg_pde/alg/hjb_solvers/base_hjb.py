@@ -89,7 +89,7 @@ def compute_hjb_residual(
     problem: "MFGProblem",
     t_idx_n: int,  # Time index for U_n
 ) -> np.ndarray:
-    Nx = problem.Nx
+    Nx = problem.Nx + 1
     Dx = problem.Dx
     Dt = problem.Dt
     sigma = problem.sigma
@@ -176,7 +176,7 @@ def compute_hjb_jacobian(
     problem: "MFGProblem",
     t_idx_n: int,
 ) -> sparse.csr_matrix:
-    Nx = problem.Nx
+    Nx = problem.Nx + 1
     Dx = problem.Dx
     Dt = problem.Dt
     sigma = problem.sigma
@@ -487,8 +487,8 @@ def solve_hjb_system_backward(
     NiterNewton: int,
     l2errBoundNewton: float,
 ) -> np.ndarray:
-    Nt = problem.Nt
-    Nx = problem.Nx
+    Nt = problem.Nt + 1
+    Nx = problem.Nx + 1
 
     U_solution_this_picard_iter = np.zeros((Nt, Nx))  # U_new in notebook
     if Nt == 0:

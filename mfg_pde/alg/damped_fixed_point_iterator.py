@@ -67,8 +67,8 @@ class FixedPointIterator(MFGSolver):
         print(
             f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________"
         )
-        Nx = self.problem.Nx
-        Nt = self.problem.Nt
+        Nx = self.problem.Nx + 1
+        Nt = self.problem.Nt + 1
         Dx = self.problem.Dx if abs(self.problem.Dx) > 1e-12 else 1.0
         Dt = self.problem.Dt if abs(self.problem.Dt) > 1e-12 else 1.0
 

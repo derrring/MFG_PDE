@@ -26,14 +26,14 @@ class MFGProblem(ABC):
         self.xmax: float = xmax
         self.Lx: float = xmax - xmin
         self.Nx: int = Nx
-        self.Dx: float = (xmax - xmin) / (Nx - 1) if Nx > 1 else 0.0
+        self.Dx: float = (xmax - xmin) / Nx if Nx > 0 else 0.0
 
         self.T: float = T
         self.Nt: int = Nt
-        self.Dt: float = T / (Nt - 1) if Nt > 1 else 0.0
+        self.Dt: float = T / Nt if Nt > 0 else 0.0
 
-        self.xSpace: np.ndarray = np.linspace(xmin, xmax, Nx, endpoint=True)
-        self.tSpace: np.ndarray = np.linspace(0, T, Nt, endpoint=True)
+        self.xSpace: np.ndarray = np.linspace(xmin, xmax, Nx + 1, endpoint=True)
+        self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
 
         self.sigma: float = sigma
         self.coefCT: float = coefCT
@@ -51,11 +51,11 @@ class MFGProblem(ABC):
         )
 
     def _initialize_functions(self, **kwargs: Any) -> None:
-        self.f_potential = np.zeros(self.Nx)
-        self.u_fin = np.zeros(self.Nx)
-        self.m_init = np.zeros(self.Nx)
+        self.f_potential = np.zeros(self.Nx + 1)
+        self.u_fin = np.zeros(self.Nx + 1)
+        self.m_init = np.zeros(self.Nx + 1)
 
-        for i in range(self.Nx):
+        for i in range(self.Nx + 1):
             x_i = self.xSpace[i]
 
             self.f_potential[i] = self._potential(x_i)
@@ -71,8 +71,8 @@ class MFGProblem(ABC):
         if np.sum(self.m_init) * self.Dx > 1e-9:
             self.m_init /= np.sum(self.m_init) * self.Dx
         elif self.Nx > 0:
-            self.m_init = np.ones(self.Nx) / (
-                self.Nx * self.Dx if self.Dx > 0 else self.Nx
+            self.m_init = np.ones(self.Nx + 1) / (
+                (self.Nx + 1) * self.Dx if self.Dx > 0 else (self.Nx + 1)
             )
 
     @abstractmethod
@@ -206,7 +206,7 @@ class ExampleMFGProblem(MFGProblem):
         U_for_jacobian_terms: np.ndarray,  # This is Uoldn from notebook (U from prev Picard iter)
         t_idx_n: int,
     ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
-        Nx = self.Nx
+        Nx = self.Nx + 1
         Dx = self.Dx
         coefCT = self.coefCT
 

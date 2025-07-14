@@ -118,8 +118,8 @@ class ParticleCollocationSolver(MFGSolver):
             print(f"  - Convergence tolerance: {l2errBound}")
         
         # Get problem dimensions
-        Nt = self.problem.Nt
-        Nx = self.problem.Nx
+        Nt = self.problem.Nt + 1
+        Nx = self.problem.Nx + 1
         
         # Initialize with terminal and initial conditions
         U_current = np.zeros((Nt, Nx))
