@@ -58,7 +58,7 @@ def run_particle_collocation_example():
     )
 
     # Solver parameters (matching other examples exactly)
-    num_particles = 1000  # Same as hybrid_particle_fdm
+    num_particles = 5000  # Same as hybrid_particle_fdm
     delta = 0.15
     taylor_order = 2
     weight_function = "gaussian"

@@ -16,9 +16,9 @@ def run_hybrid_fdm_particle_example():
     problem_params = {
         "xmin": 0.0,
         "xmax": 1.0,
-        "Nx": 51,  # Number of spatial points
+        "Nx": 50,  # Number of spatial points +1
         "T": 1.0,  # Total time duration
-        "Nt": 51,  # Number of time points
+        "Nt": 50,  # Number of time points +1
         "sigma": 1.0,  # Matched to working FDM sigma
         "coefCT": 0.5,
     }
@@ -34,7 +34,7 @@ def run_hybrid_fdm_particle_example():
     l2errBoundNewton = 1e-7  # Newton convergence tolerance for HJB
 
     # Parameters for Particle FP solver
-    num_particles = 1000  # Number of particles for FP simulation
+    num_particles = 500  # Reduced number of particles to see KDE effects more clearly
     kde_bandwidth = "scott"  # KDE bandwidth estimation method
 
     # --- Instantiate Solvers ---
@@ -84,8 +84,18 @@ def run_hybrid_fdm_particle_example():
         print(f"    Final relative error U: {final_rel_err_U:.2e}")
         print(f"    Final relative error M: {final_rel_err_M:.2e}")
 
-        # Plot results
+        # Plot results and analyze mass conservation
         if U_hybrid is not None and M_hybrid_density is not None:
+            print("\n--- Analyzing Mass Conservation ---")
+            # Calculate mass at each time step
+            total_mass = np.sum(M_hybrid_density * mfg_problem.Dx, axis=1)
+            print(f"Initial mass: {total_mass[0]:.6f}")
+            print(f"Final mass: {total_mass[-1]:.6f}")
+            print(f"Mass change: {(total_mass[-1] - total_mass[0]):.6f}")
+            print(
+                f"Relative mass change: {(total_mass[-1] - total_mass[0])/total_mass[0]*100:.3f}%"
+            )
+
             print("\n--- Plotting Hybrid Solver Results ---")
             # Ensure plot_results can handle potentially different M structures (though both are (Nt,Nx) grid densities)
             plot_results(

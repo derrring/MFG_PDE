@@ -3,11 +3,12 @@ import math
 from scipy.spatial.distance import cdist
 from scipy.linalg import lstsq
 import scipy.sparse as sparse
-from typing import TYPE_CHECKING, Dict, List, Tuple, Optional
+from typing import TYPE_CHECKING, Dict, List, Tuple, Optional, Union
 from .base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.core.boundaries import BoundaryConditions
 
 
 class GFDMHJBSolver(BaseHJBSolver):
@@ -27,12 +28,13 @@ class GFDMHJBSolver(BaseHJBSolver):
         collocation_points: np.ndarray,
         delta: float = 0.1,
         taylor_order: int = 2,
-        weight_function: str = "gaussian",
+        weight_function: str = "wendland",
         weight_scale: float = 1.0,
         NiterNewton: int = 30,
         l2errBoundNewton: float = 1e-6,
         boundary_indices: Optional[np.ndarray] = None,
-        boundary_conditions: Optional[Dict] = None,
+        boundary_conditions: Optional[Union[Dict, "BoundaryConditions"]] = None,
+        use_monotone_constraints: bool = False,
     ):
         """
         Initialize the GFDM HJB solver.
@@ -47,7 +49,8 @@ class GFDMHJBSolver(BaseHJBSolver):
             NiterNewton: Maximum Newton iterations
             l2errBoundNewton: Newton convergence tolerance
             boundary_indices: Indices of boundary collocation points
-            boundary_conditions: Dictionary specifying boundary conditions
+            boundary_conditions: Dictionary or BoundaryConditions object specifying boundary conditions
+            use_monotone_constraints: Enable constrained QP for monotonicity preservation
         """
         super().__init__(problem)
         self.hjb_method_name = "GFDM"
@@ -70,12 +73,26 @@ class GFDMHJBSolver(BaseHJBSolver):
         self.boundary_conditions = boundary_conditions if boundary_conditions is not None else {}
         self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
         
+        # Monotonicity constraint option
+        self.use_monotone_constraints = use_monotone_constraints
+        
         # Pre-compute GFDM structure
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
     
+    def _get_boundary_condition_property(self, property_name: str, default=None):
+        """Helper method to get boundary condition properties from either dict or dataclass."""
+        if hasattr(self.boundary_conditions, property_name):
+            # BoundaryConditions dataclass
+            return getattr(self.boundary_conditions, property_name)
+        elif isinstance(self.boundary_conditions, dict):
+            # Dictionary format
+            return self.boundary_conditions.get(property_name, default)
+        else:
+            return default
+    
     def _build_neighborhood_structure(self):
-        """Build δ-neighborhood structure for all collocation points."""
+        """Build δ-neighborhood structure for all collocation points with ghost particles for boundaries."""
         self.neighborhoods = {}
         
         # Compute pairwise distances
@@ -85,17 +102,70 @@ class GFDMHJBSolver(BaseHJBSolver):
             # Find neighbors within delta radius
             neighbor_mask = distances[i, :] < self.delta
             neighbor_indices = np.where(neighbor_mask)[0]
+            neighbor_points = self.collocation_points[neighbor_indices]
+            neighbor_distances = distances[i, neighbor_indices]
+            
+            # Check if this is a boundary point and add ghost particles if needed
+            is_boundary_point = i in self.boundary_indices
+            ghost_particles = []
+            ghost_distances = []
+            
+            if is_boundary_point and hasattr(self.boundary_conditions, 'type') and self.boundary_conditions.type == 'no_flux':
+                # Add ghost particles for no-flux boundary conditions
+                current_point = self.collocation_points[i]
+                
+                # For 1D case, add ghost particles beyond boundaries
+                if self.dimension == 1:
+                    x = current_point[0]
+                    
+                    # Check if near left boundary
+                    if abs(x - self.problem.xmin) < 1e-10:
+                        # Add ghost particle symmetrically reflected across left boundary
+                        # For a point at x=0, place ghost at x = -h where h is a small distance
+                        h = 0.1 * self.delta  # Distance from boundary
+                        ghost_x = self.problem.xmin - h
+                        ghost_point = np.array([ghost_x])
+                        ghost_distance = h
+                        
+                        if ghost_distance < self.delta:
+                            ghost_particles.append(ghost_point)
+                            ghost_distances.append(ghost_distance)
+                    
+                    # Check if near right boundary  
+                    if abs(x - self.problem.xmax) < 1e-10:
+                        # Add ghost particle symmetrically reflected across right boundary
+                        # For a point at x=1, place ghost at x = 1+h
+                        h = 0.1 * self.delta  # Distance from boundary
+                        ghost_x = self.problem.xmax + h
+                        ghost_point = np.array([ghost_x])
+                        ghost_distance = h
+                        
+                        if ghost_distance < self.delta:
+                            ghost_particles.append(ghost_point)
+                            ghost_distances.append(ghost_distance)
+            
+            # Combine regular neighbors and ghost particles
+            all_points = list(neighbor_points)
+            all_distances = list(neighbor_distances)
+            all_indices = list(neighbor_indices)
+            
+            for j, ghost_point in enumerate(ghost_particles):
+                all_points.append(ghost_point)
+                all_distances.append(ghost_distances[j])
+                all_indices.append(-1 - j)  # Negative indices for ghost particles
             
             # Store neighborhood information
             self.neighborhoods[i] = {
-                'indices': neighbor_indices,
-                'points': self.collocation_points[neighbor_indices],
-                'distances': distances[i, neighbor_indices],
-                'size': len(neighbor_indices)
+                'indices': np.array(all_indices),
+                'points': np.array(all_points),
+                'distances': np.array(all_distances),
+                'size': len(all_points),
+                'has_ghost': len(ghost_particles) > 0,
+                'ghost_count': len(ghost_particles)
             }
     
     def _get_multi_index_set(self, d: int, p: int) -> List[Tuple[int, ...]]:
-        """Generate multi-index set B(d,p) = {β ∈ N^d : 0 < |β| ≤ p}."""
+        """Generate multi-index set B(d,p) = {β ∈ N^d : 0 < |β| ≤ p} with lexicographical ordering."""
         multi_indices = []
         
         def generate_indices(current_index, remaining_dims, remaining_order):
@@ -108,7 +178,9 @@ class GFDMHJBSolver(BaseHJBSolver):
                 generate_indices(current_index + [i], remaining_dims - 1, remaining_order - i)
         
         generate_indices([], d, p)
-        multi_indices.sort()
+        
+        # Sort by lexicographical ordering: first by order |β|, then lexicographically
+        multi_indices.sort(key=lambda beta: (sum(beta), beta))
         return multi_indices
     
     def _build_taylor_matrices(self):
@@ -149,20 +221,67 @@ class GFDMHJBSolver(BaseHJBSolver):
             weights = self._compute_weights(neighborhood['distances'])
             W = np.diag(weights)
             
-            self.taylor_matrices[i] = {
-                'A': A,
-                'W': W,
-                'AtW': A.T @ W,
-                'AtWA_inv': None
-            }
+            # Use SVD or QR decomposition to avoid condition number amplification
+            # Instead of forming A^T W A, use SVD or QR decomposition of sqrt(W) @ A
+            sqrt_W = np.sqrt(W)
+            WA = sqrt_W @ A
             
-            # Pre-compute (A^T W A)^{-1} for least squares
+            # Try SVD first (most robust)
             try:
-                AtWA = A.T @ W @ A
-                if np.linalg.det(AtWA) > 1e-12:
-                    self.taylor_matrices[i]['AtWA_inv'] = np.linalg.inv(AtWA)
+                # SVD decomposition: WA = U @ S @ V^T
+                U, S, Vt = np.linalg.svd(WA, full_matrices=False)
+                
+                # Condition number check and regularization
+                condition_number = S[0] / S[-1] if S[-1] > 1e-15 else np.inf
+                
+                # Truncate small singular values for regularization
+                tolerance = 1e-12
+                rank = np.sum(S > tolerance)
+                
+                self.taylor_matrices[i] = {
+                    'A': A,
+                    'W': W,
+                    'sqrt_W': sqrt_W,
+                    'U': U[:, :rank],
+                    'S': S[:rank],
+                    'Vt': Vt[:rank, :],
+                    'rank': rank,
+                    'condition_number': condition_number,
+                    'use_svd': True,
+                    'use_qr': False
+                }
+                
             except:
-                pass
+                # Fallback to QR decomposition
+                try:
+                    # QR decomposition: WA = Q @ R
+                    Q, R = np.linalg.qr(WA)
+                    self.taylor_matrices[i] = {
+                        'A': A,
+                        'W': W,
+                        'sqrt_W': sqrt_W,
+                        'Q': Q,
+                        'R': R,
+                        'use_qr': True,
+                        'use_svd': False
+                    }
+                except:
+                    # Final fallback to normal equations
+                    self.taylor_matrices[i] = {
+                        'A': A,
+                        'W': W,
+                        'AtW': A.T @ W,
+                        'AtWA_inv': None,
+                        'use_qr': False,
+                        'use_svd': False
+                    }
+                    
+                    try:
+                        AtWA = A.T @ W @ A
+                        if np.linalg.det(AtWA) > 1e-12:
+                            self.taylor_matrices[i]['AtWA_inv'] = np.linalg.inv(AtWA)
+                    except:
+                        pass
     
     def _compute_weights(self, distances: np.ndarray) -> np.ndarray:
         """Compute weights based on distance and weight function."""
@@ -172,8 +291,32 @@ class GFDMHJBSolver(BaseHJBSolver):
             return 1.0 / (distances + 1e-12)
         elif self.weight_function == "uniform":
             return np.ones_like(distances)
+        elif self.weight_function == "wendland":
+            # Wendland's compactly supported kernel following equation (8): 
+            # w_{j_0,j_l} = (1/c_d) * (1 - ||X_{k,j_0} - X_{k,j_l}||/c)_+^4
+            # where c = delta (support radius) and ()_+ = max(0, .)
+            c = self.delta
+            normalized_distances = distances / c
+            
+            # Compute (1 - r/c)_+^4
+            weights = np.maximum(0, 1 - normalized_distances) ** 4
+            
+            # For 1D case, the normalization constant c_d can be computed analytically
+            # ∫_{-δ}^{δ} (1 - |x|/δ)_+^4 dx = δ * ∫_{-1}^{1} (1 - |t|)_+^4 dt = δ * (2/5) = 2δ/5
+            if self.dimension == 1:
+                c_d = 2 * c / 5
+            else:
+                # For higher dimensions, use empirical normalization
+                # or compute c_d numerically, but for now use simple normalization
+                c_d = 1.0
+            
+            # Apply normalization: w = (1/c_d) * (1 - r/c)_+^4
+            weights = weights / c_d
+            
+            return weights
         else:
-            raise ValueError(f"Unknown weight function: {self.weight_function}")
+            raise ValueError(f"Unknown weight function: {self.weight_function}. "
+                           f"Available options: 'gaussian', 'inverse_distance', 'uniform', 'wendland'")
     
     def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> Dict[Tuple[int, ...], float]:
         """
@@ -192,19 +335,77 @@ class GFDMHJBSolver(BaseHJBSolver):
         taylor_data = self.taylor_matrices[point_idx]
         neighborhood = self.neighborhoods[point_idx]
         
-        # Extract function values at neighborhood points
+        # Extract function values at neighborhood points, handling ghost particles
         neighbor_indices = neighborhood['indices']
         u_center = u_values[point_idx]
-        u_neighbors = u_values[neighbor_indices]
         
-        # Right-hand side: u(x_neighbor) - u(x_center) for proper Taylor expansion
-        b = u_neighbors - u_center
+        # Handle ghost particles for no-flux boundary conditions
+        u_neighbors = []
+        for idx in neighbor_indices:
+            if idx >= 0:
+                # Regular neighbor
+                u_neighbors.append(u_values[idx])
+            else:
+                # Ghost particle: enforce no-flux condition u_ghost = u_center
+                u_neighbors.append(u_center)
         
-        # Solve weighted least squares
-        if taylor_data['AtWA_inv'] is not None:
+        u_neighbors = np.array(u_neighbors)
+        
+        # Right-hand side: u(x_center) - u(x_neighbor) following equation (6) in the mathematical framework
+        # For ghost particles, this becomes u_center - u_center = 0, enforcing ∂u/∂n = 0
+        b = u_center - u_neighbors
+        
+        # Solve weighted least squares with optional monotonicity constraints
+        use_monotone_qp = hasattr(self, 'use_monotone_constraints') and self.use_monotone_constraints
+        
+        if use_monotone_qp:
+            # First try unconstrained solution to check if constraints are needed
+            unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)
+            
+            # Check if unconstrained solution violates monotonicity
+            needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs)
+            
+            if needs_constraints:
+                # Use constrained QP for monotonicity
+                derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
+            else:
+                # Use faster unconstrained solution
+                derivative_coeffs = unconstrained_coeffs
+        elif taylor_data.get('use_svd', False):
+            # Use SVD: solve using pseudoinverse with truncated SVD
+            sqrt_W = taylor_data['sqrt_W']
+            U = taylor_data['U']
+            S = taylor_data['S']
+            Vt = taylor_data['Vt']
+            
+            # Compute sqrt(W) @ b
+            Wb = sqrt_W @ b
+            
+            # SVD solution: x = V @ S^{-1} @ U^T @ Wb
+            UT_Wb = U.T @ Wb
+            S_inv_UT_Wb = UT_Wb / S  # Element-wise division
+            derivative_coeffs = Vt.T @ S_inv_UT_Wb
+            
+        elif taylor_data.get('use_qr', False):
+            # Use QR decomposition: solve R @ x = Q^T @ sqrt(W) @ b
+            sqrt_W = taylor_data['sqrt_W']
+            Q = taylor_data['Q']
+            R = taylor_data['R']
+            
+            Wb = sqrt_W @ b
+            QT_Wb = Q.T @ Wb
+            
+            try:
+                derivative_coeffs = np.linalg.solve(R, QT_Wb)
+            except np.linalg.LinAlgError:
+                # Fallback to least squares if R is singular
+                derivative_coeffs, _, _, _ = lstsq(taylor_data['A'], b)
+        
+        elif taylor_data.get('AtWA_inv') is not None:
+            # Use precomputed normal equations
             derivative_coeffs = taylor_data['AtWA_inv'] @ taylor_data['AtW'] @ b
         else:
-            # Fallback to lstsq
+            # Final fallback to direct least squares
             derivative_coeffs, _, _, _ = lstsq(taylor_data['A'], b)
         
         # Map coefficients to multi-indices
@@ -213,6 +414,220 @@ class GFDMHJBSolver(BaseHJBSolver):
             derivatives[beta] = derivative_coeffs[k]
         
         return derivatives
+    
+    def _solve_monotone_constrained_qp(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> np.ndarray:
+        """
+        Solve constrained quadratic programming problem for monotone derivative approximation.
+        
+        Solves: min ||W^(1/2) A x - W^(1/2) b||^2
+        subject to: monotonicity constraints on finite difference weights
+        
+        Args:
+            taylor_data: Dictionary containing precomputed matrices
+            b: Right-hand side vector
+            
+        Returns:
+            derivative_coeffs: Coefficients for derivative approximation
+        """
+        try:
+            from scipy.optimize import minimize
+        except ImportError:
+            # Fallback to unconstrained if scipy not available
+            return self._solve_unconstrained_fallback(taylor_data, b)
+        
+        A = taylor_data['A']
+        W = taylor_data['W']
+        sqrt_W = taylor_data['sqrt_W']
+        n_neighbors, n_coeffs = A.shape
+        
+        # Define objective function: ||W^(1/2) A x - W^(1/2) b||^2
+        def objective(x):
+            residual = sqrt_W @ (A @ x - b)
+            return 0.5 * np.dot(residual, residual)
+        
+        # Define gradient of objective
+        def gradient(x):
+            residual = A @ x - b
+            return A.T @ W @ residual
+        
+        # Define Hessian of objective
+        def hessian(x):
+            return A.T @ W @ A
+        
+        # Analyze the stencil structure to determine appropriate constraints
+        center_point = self.collocation_points[point_idx]
+        neighborhood = self.neighborhoods[point_idx]
+        neighbor_points = neighborhood['points']
+        neighbor_indices = neighborhood['indices']
+        
+        # Set up constraints for monotonicity
+        constraints = []
+        
+        # Implement proper monotonicity constraints for finite difference weights
+        if self.dimension == 1:
+            # For 1D, we can analyze the finite difference stencil more precisely
+            monotonicity_constraints = self._build_monotonicity_constraints(
+                A, neighbor_indices, neighbor_points, center_point
+            )
+            constraints.extend(monotonicity_constraints)
+        
+        # Set up bounds for optimization variables
+        bounds = []
+        
+        # For each coefficient, determine appropriate bounds based on physics
+        # Make bounds much more realistic for stable numerical computation
+        for k, beta in enumerate(self.multi_indices):
+            if sum(beta) == 0:  # Constant term - no physical constraint
+                bounds.append((None, None))
+            elif sum(beta) == 1:  # First derivative terms - reasonable for MFG
+                bounds.append((-20.0, 20.0))  # Realistic gradient bounds
+            elif sum(beta) == 2:  # Second derivative terms - key for monotonicity
+                if self.dimension == 1 and beta == (2,):
+                    # For 1D Laplacian: moderate diffusion bounds
+                    bounds.append((-100.0, 100.0))  # Realistic diffusion bounds
+                else:
+                    bounds.append((-50.0, 50.0))  # Conservative cross-derivative bounds
+            else:
+                bounds.append((-2.0, 2.0))  # Tight bounds for higher order terms
+        
+        # Only add monotonicity constraints when they are really needed
+        # Check if this point is near boundaries or critical regions
+        center_point = self.collocation_points[point_idx]
+        near_boundary = (abs(center_point[0] - self.problem.xmin) < 0.1 * self.delta or 
+                        abs(center_point[0] - self.problem.xmax) < 0.1 * self.delta)
+        
+        # Add conservative constraint only if near boundary and needed
+        if near_boundary and self.dimension == 1:
+            def constraint_stability(x):
+                """Mild stability constraint near boundaries"""
+                # Ensure second derivative term doesn't become extreme
+                for k, beta in enumerate(self.multi_indices):
+                    if sum(beta) == 2 and beta == (2,):
+                        return 50.0 - abs(x[k])  # Should be positive (|coeff| < 50)
+                return 1.0  # Always satisfied if no second derivative
+            
+            constraints.append({'type': 'ineq', 'fun': constraint_stability})
+        
+        # Initial guess: unconstrained solution
+        x0 = self._solve_unconstrained_fallback(taylor_data, b)
+        
+        # Solve constrained optimization with robust settings
+        try:
+            # Try fast L-BFGS-B first if only bounds constraints
+            if len(constraints) == 0:
+                result = minimize(
+                    objective,
+                    x0,
+                    method='L-BFGS-B',  # Faster for bounds-only problems
+                    jac=gradient,
+                    bounds=bounds,
+                    options={'maxiter': 50, 'ftol': 1e-6, 'gtol': 1e-6}  # More robust settings
+                )
+            else:
+                # Use SLSQP for general constraints with robust settings
+                result = minimize(
+                    objective,
+                    x0,
+                    method='SLSQP',  # Better for equality/inequality constraints
+                    jac=gradient,
+                    bounds=bounds,
+                    constraints=constraints,
+                    options={'maxiter': 40, 'ftol': 1e-6, 'eps': 1.4901161193847656e-08, 'disp': False}
+                )
+            
+            if result.success:
+                return result.x
+            else:
+                # Fallback to unconstrained if optimization fails
+                return x0
+                
+        except Exception:
+            # Fallback to unconstrained if any error occurs
+            return x0
+    
+    def _solve_unconstrained_fallback(self, taylor_data: Dict, b: np.ndarray) -> np.ndarray:
+        """Fallback to unconstrained solution using SVD or normal equations."""
+        if taylor_data.get('use_svd', False):
+            sqrt_W = taylor_data['sqrt_W']
+            U = taylor_data['U']
+            S = taylor_data['S']
+            Vt = taylor_data['Vt']
+            
+            Wb = sqrt_W @ b
+            UT_Wb = U.T @ Wb
+            S_inv_UT_Wb = UT_Wb / S
+            return Vt.T @ S_inv_UT_Wb
+        elif taylor_data.get('AtWA_inv') is not None:
+            return taylor_data['AtWA_inv'] @ taylor_data['AtW'] @ b
+        else:
+            A = taylor_data['A']
+            from scipy.linalg import lstsq
+            coeffs, _, _, _ = lstsq(A, b)
+            return coeffs
+    
+    def _build_monotonicity_constraints(self, A: np.ndarray, neighbor_indices: np.ndarray, 
+                                      neighbor_points: np.ndarray, center_point: np.ndarray) -> List[Dict]:
+        """
+        Build monotonicity constraints for finite difference weights.
+        
+        For a monotone scheme, the finite difference weights should satisfy:
+        - Off-diagonal weights should be non-negative
+        - Diagonal weight should be negative (for Laplacian)
+        - Sum property should be maintained for consistency
+        """
+        constraints = []
+        
+        if self.dimension == 1:
+            # For 1D Laplacian approximation, we want weights w_i such that:
+            # Σ w_i u_i ≈ ∂²u/∂x² at center point
+            # Monotonicity requires: w_center < 0, w_neighbors ≥ 0
+            
+            # Find the index of the second derivative term
+            second_deriv_idx = None
+            for k, beta in enumerate(self.multi_indices):
+                if beta == (2,):
+                    second_deriv_idx = k
+                    break
+            
+            if second_deriv_idx is not None:
+                # The finite difference weights are related to Taylor coefficients
+                # For second derivative: w = A_inv @ e_k where e_k selects second derivative
+                # We need w_i ≥ 0 for off-diagonal terms
+                
+                def constraint_positive_neighbors(x):
+                    """Ensure finite difference weights for neighbors are non-negative"""
+                    # Convert Taylor coefficients to finite difference weights
+                    # This is an approximation - exact relationship depends on stencil
+                    second_deriv_coeff = x[second_deriv_idx]
+                    
+                    # For well-behaved stencils, large negative second derivative coefficient
+                    # corresponds to positive neighbor weights
+                    return second_deriv_coeff + 10.0  # Should be reasonable
+                
+                constraints.append({'type': 'ineq', 'fun': constraint_positive_neighbors})
+        
+        return constraints
+    
+    def _check_monotonicity_violation(self, coeffs: np.ndarray) -> bool:
+        """
+        Check if the unconstrained solution violates monotonicity requirements.
+        
+        Returns True if constrained optimization is needed.
+        """
+        # Simple heuristic: check if any coefficients are extremely large
+        max_coeff = np.max(np.abs(coeffs))
+        
+        # If coefficients are reasonable, no need for constraints
+        if max_coeff < 100.0:
+            return False
+        
+        # Check for oscillatory patterns in derivative coefficients
+        for k, beta in enumerate(self.multi_indices):
+            if sum(beta) >= 2:  # Second or higher derivatives
+                if abs(coeffs[k]) > 200.0:  # Too large
+                    return True
+        
+        return False
     
     def solve_hjb_system(
         self,
@@ -369,19 +784,55 @@ class GFDMHJBSolver(BaseHJBSolver):
             neighbor_indices = neighborhood['indices']
             
             # Diffusion term contribution
-            if taylor_data['AtWA_inv'] is not None:
+            # Compute derivative matrix using SVD, QR or normal equations
+            if taylor_data.get('use_svd', False):
+                # For SVD approach: derivative matrix = V @ S^{-1} @ U^T @ sqrt(W)
+                try:
+                    U = taylor_data['U']
+                    S = taylor_data['S']
+                    Vt = taylor_data['Vt']
+                    sqrt_W = taylor_data['sqrt_W']
+                    
+                    # Compute pseudoinverse matrix: V @ S^{-1} @ U^T @ sqrt(W)
+                    S_inv_UT = (1.0 / S[:, np.newaxis]) * U.T  # Broadcasting for S^{-1} @ U^T
+                    derivative_matrix = Vt.T @ S_inv_UT @ sqrt_W
+                except:
+                    derivative_matrix = None
+            elif taylor_data.get('use_qr', False):
+                # For QR approach: derivative matrix = R^{-1} @ Q^T @ sqrt(W)
+                try:
+                    Q = taylor_data['Q']
+                    R = taylor_data['R']
+                    sqrt_W = taylor_data['sqrt_W']
+                    
+                    R_inv = np.linalg.inv(R)
+                    derivative_matrix = R_inv @ Q.T @ sqrt_W
+                except:
+                    derivative_matrix = None
+            elif taylor_data.get('AtWA_inv') is not None:
                 derivative_matrix = taylor_data['AtWA_inv'] @ taylor_data['AtW']
-                
+            else:
+                derivative_matrix = None
+            
+            if derivative_matrix is not None:
                 # Find second derivative indices
                 for k, beta in enumerate(self.multi_indices):
                     if (self.dimension == 1 and beta == (2,)) or \
                        (self.dimension == 2 and beta in [(2, 0), (0, 2)]):
-                        for j_local, j_global in enumerate(neighbor_indices):
-                            coeff = derivative_matrix[k, j_local]
-                            jacobian[i, j_global] -= (sigma**2 / 2.0) * coeff
+                        # Check bounds for derivative_matrix access
+                        if k < derivative_matrix.shape[0]:
+                            for j_local, j_global in enumerate(neighbor_indices):
+                                if j_local < derivative_matrix.shape[1] and j_global >= 0:
+                                    # Only apply to real particles (ghost particles have negative indices)
+                                    coeff = derivative_matrix[k, j_local]
+                                    jacobian[i, j_global] -= (sigma**2 / 2.0) * coeff
             
             # Hamiltonian Jacobian (numerical)
             for j in neighbor_indices:
+                # Skip ghost particles (negative indices)
+                if j < 0:
+                    continue
+                    
                 u_pert_plus = u_current.copy()
                 u_pert_minus = u_current.copy()
                 u_pert_plus[j] += eps
@@ -402,6 +853,41 @@ class GFDMHJBSolver(BaseHJBSolver):
         
         return jacobian
     
+    def get_decomposition_info(self) -> Dict:
+        """Get information about the decomposition methods used."""
+        total_points = self.n_points
+        svd_count = sum(1 for i in range(total_points) 
+                       if self.taylor_matrices[i] is not None and 
+                          self.taylor_matrices[i].get('use_svd', False))
+        qr_count = sum(1 for i in range(total_points) 
+                      if self.taylor_matrices[i] is not None and 
+                         self.taylor_matrices[i].get('use_qr', False))
+        normal_count = total_points - svd_count - qr_count
+        
+        # Get condition numbers for SVD points
+        condition_numbers = []
+        ranks = []
+        for i in range(total_points):
+            if (self.taylor_matrices[i] is not None and 
+                self.taylor_matrices[i].get('use_svd', False)):
+                condition_numbers.append(self.taylor_matrices[i].get('condition_number', np.inf))
+                ranks.append(self.taylor_matrices[i].get('rank', 0))
+        
+        info = {
+            'total_points': total_points,
+            'svd_points': svd_count,
+            'qr_points': qr_count,
+            'normal_equation_points': normal_count,
+            'svd_percentage': svd_count / total_points * 100 if total_points > 0 else 0,
+            'condition_numbers': condition_numbers,
+            'ranks': ranks,
+            'avg_condition_number': np.mean(condition_numbers) if condition_numbers else np.inf,
+            'min_rank': min(ranks) if ranks else 0,
+            'max_rank': max(ranks) if ranks else 0
+        }
+        
+        return info
+    
     def _apply_boundary_conditions_to_solution(self, u: np.ndarray, time_idx: int) -> np.ndarray:
         """Apply boundary conditions to solution vector."""
         u_modified = u.copy()
@@ -410,15 +896,33 @@ class GFDMHJBSolver(BaseHJBSolver):
             if boundary_idx >= len(u_modified):
                 continue
             
-            bc_type = self.boundary_conditions.get('type', 'dirichlet')
+            bc_type = self._get_boundary_condition_property('type', 'dirichlet')
             
             if bc_type == 'dirichlet':
-                if 'function' in self.boundary_conditions:
+                bc_function = self._get_boundary_condition_property('function')
+                bc_value = self._get_boundary_condition_property('value')
+                left_value = self._get_boundary_condition_property('left_value') 
+                right_value = self._get_boundary_condition_property('right_value')
+                
+                if bc_function is not None:
                     point = self.collocation_points[boundary_idx]
                     t = time_idx * self.problem.Dt
-                    u_modified[boundary_idx] = self.boundary_conditions['function'](t, point)
-                elif 'value' in self.boundary_conditions:
-                    u_modified[boundary_idx] = self.boundary_conditions['value']
+                    u_modified[boundary_idx] = bc_function(t, point)
+                elif bc_value is not None:
+                    u_modified[boundary_idx] = bc_value
+                elif left_value is not None or right_value is not None:
+                    # Use left/right values for boundary points
+                    point = self.collocation_points[boundary_idx]
+                    if point[0] <= self.problem.xmin + 1e-10 and left_value is not None:
+                        u_modified[boundary_idx] = left_value
+                    elif point[0] >= self.problem.xmax - 1e-10 and right_value is not None:
+                        u_modified[boundary_idx] = right_value
+                        
+            elif bc_type == 'no_flux':
+                # For no-flux boundaries, we don't modify the solution directly
+                # The boundary condition ∂u/∂x = 0 is enforced in the system matrix
+                # So we leave the solution value as computed by the Newton iteration
+                pass
         
         return u_modified
     
@@ -432,24 +936,33 @@ class GFDMHJBSolver(BaseHJBSolver):
             if boundary_idx >= len(residual_modified):
                 continue
             
-            bc_type = self.boundary_conditions.get('type', 'dirichlet')
+            bc_type = self._get_boundary_condition_property('type', 'dirichlet')
             
             if bc_type == 'dirichlet':
                 # Replace equation with identity
                 jacobian_modified[boundary_idx, :] = 0.0
                 jacobian_modified[boundary_idx, boundary_idx] = 1.0
                 
-                # Set target value
-                if 'function' in self.boundary_conditions:
+                # Set target value using helper method
+                bc_function = self._get_boundary_condition_property('function')
+                bc_value = self._get_boundary_condition_property('value')
+                
+                if bc_function is not None:
                     point = self.collocation_points[boundary_idx]
                     t = time_idx * self.problem.Dt
-                    target_value = self.boundary_conditions['function'](t, point)
-                elif 'value' in self.boundary_conditions:
-                    target_value = self.boundary_conditions['value']
+                    target_value = bc_function(t, point)
+                elif bc_value is not None:
+                    target_value = bc_value
                 else:
                     target_value = 0.0
                 
                 residual_modified[boundary_idx] = target_value
+                
+            elif bc_type == 'no_flux':
+                # No-flux boundary condition is now handled automatically through ghost particles
+                # The ghost particle method enforces ∂u/∂n = 0 by setting u_ghost = u_center
+                # No additional modification to the system is needed
+                pass
         
         return jacobian_modified, residual_modified
     

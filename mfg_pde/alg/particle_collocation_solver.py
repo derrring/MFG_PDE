@@ -38,6 +38,7 @@ class ParticleCollocationSolver(MFGSolver):
         normalize_kde_output: bool = True,
         boundary_indices: Optional[np.ndarray] = None,
         boundary_conditions: Optional[Dict] = None,
+        use_monotone_constraints: bool = False,
     ):
         """
         Initialize the Particle-Collocation solver.
@@ -56,6 +57,7 @@ class ParticleCollocationSolver(MFGSolver):
             normalize_kde_output: Whether to normalize KDE output
             boundary_indices: Indices of boundary collocation points
             boundary_conditions: Dictionary specifying boundary conditions
+            use_monotone_constraints: Enable constrained QP for HJB monotonicity
         """
         super().__init__(problem)
         
@@ -64,11 +66,13 @@ class ParticleCollocationSolver(MFGSolver):
         self.num_particles = num_particles
         
         # Initialize FP solver (Particle method)
+        # Use same boundary conditions for particles as for HJB
         self.fp_solver = ParticleFPSolver(
             problem=problem,
             num_particles=num_particles,
             kde_bandwidth=kde_bandwidth,
-            normalize_kde_output=normalize_kde_output
+            normalize_kde_output=normalize_kde_output,
+            boundary_conditions=boundary_conditions
         )
         
         # Initialize HJB solver (GFDM collocation)
@@ -82,7 +86,8 @@ class ParticleCollocationSolver(MFGSolver):
             NiterNewton=NiterNewton,
             l2errBoundNewton=l2errBoundNewton,
             boundary_indices=boundary_indices,
-            boundary_conditions=boundary_conditions
+            boundary_conditions=boundary_conditions,
+            use_monotone_constraints=use_monotone_constraints
         )
         
         # Storage for results
@@ -121,26 +126,38 @@ class ParticleCollocationSolver(MFGSolver):
         Nt = self.problem.Nt + 1
         Nx = self.problem.Nx + 1
         
-        # Initialize with terminal and initial conditions
+        # Better initialization: set initial guess everywhere (like other MFG solvers)
         U_current = np.zeros((Nt, Nx))
         M_current = np.zeros((Nt, Nx))
         
-        # Set terminal condition for U
+        # Get terminal condition for U
         if hasattr(self.problem, 'get_terminal_condition'):
-            U_current[Nt - 1, :] = self.problem.get_terminal_condition()
+            terminal_condition = self.problem.get_terminal_condition()
         else:
             # Default terminal condition
-            U_current[Nt - 1, :] = 0.0
+            terminal_condition = np.zeros(Nx)
         
-        # Set initial condition for M
+        # Get initial density for M
         if hasattr(self.problem, 'get_initial_density'):
-            M_current[0, :] = self.problem.get_initial_density()
+            initial_density = self.problem.get_initial_density()
         else:
             # Default uniform initial density
             if self.problem.Dx > 1e-14:
-                M_current[0, :] = 1.0 / self.problem.Lx
+                initial_density = np.ones(Nx) / self.problem.Lx
             else:
-                M_current[0, :] = 1.0
+                initial_density = np.ones(Nx)
+        
+        # Initialize U everywhere with terminal condition (better initial guess)
+        for t in range(Nt):
+            U_current[t, :] = terminal_condition
+        
+        # Initialize M everywhere with initial density (better initial guess)
+        for t in range(Nt):
+            M_current[t, :] = initial_density
+        
+        # Ensure boundary conditions are still properly enforced
+        U_current[Nt - 1, :] = terminal_condition  # Terminal condition
+        M_current[0, :] = initial_density          # Initial condition
         
         # Picard iteration
         convergence_history = []

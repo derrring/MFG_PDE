@@ -68,6 +68,8 @@ class MFGProblem(ABC):
             m_init_i = kwargs.get("m_initial_func", default_m0_func)(x_i)
             self.m_init[i] = max(m_init_i - 0.05, 0)
 
+        # Always normalize initial condition m_0 to be a probability density (integral = 1)
+        # This ensures m_0 is a proper initial distribution, but FDM evolution is natural
         if np.sum(self.m_init) * self.Dx > 1e-9:
             self.m_init /= np.sum(self.m_init) * self.Dx
         elif self.Nx > 0:

@@ -11,15 +11,16 @@ class BoundaryConditions:
     """Class for boundary condition configuration
     Note the dimension of the matrix operator for the boundary conditions
     periodic: M * M
-    dirichlet: M-1 * M-1
+    dirichlet: M-1 * M-1  
     neumann: M+1 * M+1
+    no_flux: M * M (special case of Neumann for FP equations)
     robin: M+1 * M+1
     """
 
-
-    type: str  # 'periodic', 'dirichlet', 'neumann', or 'robin'
+    type: str  # 'periodic', 'dirichlet', 'neumann', 'no_flux', or 'robin'
     # For Dirichlet: value of u
-    # For Neumann: value of du/dn
+    # For Neumann: value of du/dn 
+    # For no_flux: F(boundary) = 0 where F = v*m - D*dm/dx
     left_value: Optional[float] = None
     right_value: Optional[float] = None
     # For Robin: value of \gamma in \alpha* u + \beta* du/dn= g

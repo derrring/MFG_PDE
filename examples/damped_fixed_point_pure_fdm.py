@@ -8,6 +8,7 @@ from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
 from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.utils.plot_utils import plot_results, plot_convergence
+from mfg_pde.core.boundaries import BoundaryConditions
 
 
 def run_pure_fdm_example():
@@ -16,9 +17,9 @@ def run_pure_fdm_example():
     problem_params = {
         "xmin": 0.0,
         "xmax": 1.0,
-        "Nx": 51,
+        "Nx": 5,
         "T": 1,
-        "Nt": 51,  # Adjusted T for potentially faster run
+        "Nt": 50,  # Adjusted T for potentially faster run
         "sigma": 1,
         "coefCT": 0.5,
     }
@@ -42,9 +43,10 @@ def run_pure_fdm_example():
         mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton
     )
 
-    # 2. Instantiate the FP solver component (FDM)
-    # Assuming FdmFPSolver only needs the problem
-    fp_solver_component = FdmFPSolver(mfg_problem)
+    # 2. Instantiate the FP solver component (FDM) with Dirichlet boundaries
+    # Use homogeneous Dirichlet boundaries (m=0 at boundaries) to see mass loss
+    dirichlet_bc = BoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
+    fp_solver_component = FdmFPSolver(mfg_problem, boundary_conditions=dirichlet_bc)
 
     # 3. Instantiate the FixedPointIterator with these FDM components
     pure_fdm_iterator = FixedPointIterator(

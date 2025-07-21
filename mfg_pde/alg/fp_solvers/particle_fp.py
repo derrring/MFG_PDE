@@ -4,6 +4,7 @@ from scipy.stats import gaussian_kde
 
 from .base_fp import BaseFPSolver  # Assuming BaseFPSolver is in the same directory
 from typing import TYPE_CHECKING, Any
+from mfg_pde.core.boundaries import BoundaryConditions
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -16,6 +17,7 @@ class ParticleFPSolver(BaseFPSolver):
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
         normalize_kde_output: bool = True,
+        boundary_conditions=None,
     ):
         super().__init__(problem)
         self.fp_method_name = "Particle"
@@ -23,6 +25,12 @@ class ParticleFPSolver(BaseFPSolver):
         self.kde_bandwidth = kde_bandwidth
         self.normalize_kde_output = normalize_kde_output  # New flag
         self.M_particles_trajectory = None
+        
+        # Default to periodic boundaries for backward compatibility
+        if boundary_conditions is None:
+            self.boundary_conditions = BoundaryConditions(type='periodic')
+        else:
+            self.boundary_conditions = boundary_conditions
 
     def _estimate_density_from_particles(
         self, particles_at_time_t: np.ndarray
@@ -169,10 +177,26 @@ class ParticleFPSolver(BaseFPSolver):
                 + sigma_sde * dW
             )
 
-            if Lx > 1e-14:
+            # Apply boundary conditions to particles
+            if self.boundary_conditions.type == 'periodic' and Lx > 1e-14:
+                # Periodic boundaries: wrap around
                 current_M_particles_t[n_time_idx + 1, :] = (
                     xmin + (current_M_particles_t[n_time_idx + 1, :] - xmin) % Lx
                 )
+            elif self.boundary_conditions.type == 'no_flux':
+                # Reflecting boundaries: bounce particles back
+                xmax = xmin + Lx
+                particles = current_M_particles_t[n_time_idx + 1, :]
+                
+                # Reflect particles that go beyond left boundary
+                left_violations = particles < xmin
+                particles[left_violations] = 2*xmin - particles[left_violations]
+                
+                # Reflect particles that go beyond right boundary  
+                right_violations = particles > xmax
+                particles[right_violations] = 2*xmax - particles[right_violations]
+                
+                current_M_particles_t[n_time_idx + 1, :] = particles
 
             M_density_on_grid[n_time_idx + 1, :] = (
                 self._estimate_density_from_particles(
