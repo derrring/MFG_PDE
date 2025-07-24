@@ -23,10 +23,10 @@ try:
 except ImportError:
     OSQP_AVAILABLE = False
 
-from .gfdm_hjb import GFDMHJBSolver
+from .hjb_gfdm import HJBGFDMSolver
 
 
-class TunedSmartQPGFDMHJBSolver(GFDMHJBSolver):
+class HJBGFDMTunedSmartQPSolver(HJBGFDMSolver):
     """
     Tuned Smart QP GFDM HJB Solver calibrated for ~10% QP usage.
     
@@ -87,7 +87,7 @@ class TunedSmartQPGFDMHJBSolver(GFDMHJBSolver):
         print(f"TunedSmartQPGFDMHJBSolver initialized:")
         print(f"  Target QP usage rate: {qp_usage_target:.1%}")
         print(f"  Decision threshold: {self._decision_threshold}")
-        print(f"  CVXPY available: {'✓' if CVXPY_AVAILABLE else '✗'}")
+        print(f"  CVXPY available: {'YES' if CVXPY_AVAILABLE else 'NO'}")
         print(f"  Boundary points: {len(self.boundary_point_set)}")
         print(f"  Problem difficulty: {self._problem_difficulty:.2f}")
     
@@ -429,10 +429,10 @@ class TunedSmartQPGFDMHJBSolver(GFDMHJBSolver):
         current_rate = stats['qp_usage_rate']
         
         if current_rate <= target_rate * 1.2:
-            print(f"  Status: ✓ TARGET ACHIEVED")
+            print(f"  Status: TARGET ACHIEVED")
         elif current_rate <= target_rate * 2.0:
-            print(f"  Status: ⚠️ CLOSE TO TARGET")
+            print(f"  Status: CLOSE TO TARGET")
         else:
-            print(f"  Status: ❌ NEEDS FURTHER TUNING")
+            print(f"  Status: NEEDS FURTHER TUNING")
         
         print(f"{'='*70}")

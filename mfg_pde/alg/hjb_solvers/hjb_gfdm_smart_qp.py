@@ -23,10 +23,10 @@ try:
 except ImportError:
     OSQP_AVAILABLE = False
 
-from .gfdm_hjb import GFDMHJBSolver
+from .hjb_gfdm import HJBGFDMSolver
 
 
-class SmartQPGFDMHJBSolver(GFDMHJBSolver):
+class HJBGFDMSmartQPSolver(HJBGFDMSolver):
     """
     Smart QP GFDM HJB Solver with intelligent constraint detection.
     
@@ -84,7 +84,7 @@ class SmartQPGFDMHJBSolver(GFDMHJBSolver):
         
         print(f"SmartQPGFDMHJBSolver initialized:")
         print(f"  Target QP usage rate: {qp_usage_target:.1%}")
-        print(f"  CVXPY available: {'✓' if CVXPY_AVAILABLE else '✗'}")
+        print(f"  CVXPY available: {'YES' if CVXPY_AVAILABLE else 'NO'}")
         print(f"  Boundary points: {len(self.boundary_point_set)}")
         print(f"  Problem difficulty: {self._problem_difficulty:.2f}")
     
@@ -411,7 +411,7 @@ class SmartQPGFDMHJBSolver(GFDMHJBSolver):
         print(f"Configuration:")
         print(f"  Target QP Usage Rate: {stats['target_qp_rate']:.1%}")
         print(f"  Problem Difficulty: {stats['problem_difficulty']:.2f}")
-        print(f"  CVXPY Available: {'✓' if CVXPY_AVAILABLE else '✗'}")
+        print(f"  CVXPY Available: {'YES' if CVXPY_AVAILABLE else 'NO'}")
         print(f"  Boundary Points: {len(self.boundary_point_set)}")
         
         print(f"\nQP Decision Statistics:")
@@ -439,10 +439,10 @@ class SmartQPGFDMHJBSolver(GFDMHJBSolver):
         
         # Performance assessment
         if stats['qp_usage_rate'] <= stats['target_qp_rate'] * 1.2:
-            print(f"  Status: ✓ OPTIMIZATION SUCCESSFUL")
+            print(f"  Status: OPTIMIZATION SUCCESSFUL")
         elif stats['qp_usage_rate'] <= stats['target_qp_rate'] * 2.0:
-            print(f"  Status: ⚠️ PARTIAL OPTIMIZATION")
+            print(f"  Status: PARTIAL OPTIMIZATION")
         else:
-            print(f"  Status: ❌ OPTIMIZATION NEEDED")
+            print(f"  Status: OPTIMIZATION NEEDED")
         
         print(f"{'='*70}")

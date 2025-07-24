@@ -1,5 +1,5 @@
 from .base_fp import BaseFPSolver
-from .fdm_fp import FdmFPSolver
-from .particle_fp import ParticleFPSolver
+from .fp_fdm import FPFDMSolver
+from .fp_particle import FPParticleSolver
 
-__all__ = ["BaseFPSolver", "FdmFPSolver", "ParticleFPSolver"]
+__all__ = ["BaseFPSolver", "FPFDMSolver", "FPParticleSolver"]

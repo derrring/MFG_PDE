@@ -1,17 +1,17 @@
 from .base_hjb import BaseHJBSolver
-from .fdm_hjb import FdmHJBSolver
-from .semi_lagrangian_hjb import SemiLagrangianHJBSolver
-from .gfdm_hjb import GFDMHJBSolver
-from .optimized_gfdm_hjb import OptimizedGFDMHJBSolver
-from .smart_qp_gfdm_hjb import SmartQPGFDMHJBSolver
-from .tuned_smart_qp_gfdm_hjb import TunedSmartQPGFDMHJBSolver
+from .hjb_fdm import HJBFDMSolver
+from .hjb_semi_lagrangian import HJBSemiLagrangianSolver
+from .hjb_gfdm import HJBGFDMSolver
+from .hjb_gfdm_optimized import HJBGFDMOptimizedSolver
+from .hjb_gfdm_smart_qp import HJBGFDMSmartQPSolver
+from .hjb_gfdm_tuned_smart_qp import HJBGFDMTunedSmartQPSolver
 
 __all__ = [
     "BaseHJBSolver", 
-    "FdmHJBSolver", 
-    "SemiLagrangianHJBSolver", 
-    "GFDMHJBSolver", 
-    "OptimizedGFDMHJBSolver",
-    "SmartQPGFDMHJBSolver",
-    "TunedSmartQPGFDMHJBSolver"
+    "HJBFDMSolver", 
+    "HJBSemiLagrangianSolver", 
+    "HJBGFDMSolver", 
+    "HJBGFDMOptimizedSolver",
+    "HJBGFDMSmartQPSolver",
+    "HJBGFDMTunedSmartQPSolver"
 ]

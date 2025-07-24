@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-class ParticleFPSolver(BaseFPSolver):
+class FPParticleSolver(BaseFPSolver):
     def __init__(
         self,
         problem: "MFGProblem",

@@ -23,10 +23,10 @@ try:
 except ImportError:
     OSQP_AVAILABLE = False
 
-from .gfdm_hjb import GFDMHJBSolver
+from .hjb_gfdm import HJBGFDMSolver
 
 
-class OptimizedGFDMHJBSolver(GFDMHJBSolver):
+class HJBGFDMOptimizedSolver(HJBGFDMSolver):
     """
     Optimized GFDM HJB Solver implementing the validated efficiency improvements:
     1. Adaptive QP activation (13.77x speedup)
@@ -97,10 +97,10 @@ class OptimizedGFDMHJBSolver(GFDMHJBSolver):
         print(f"OptimizedGFDMHJBSolver initialized:")
         print(f"  Optimization level: {optimization_level}")
         print(f"  QP solver: {self.preferred_qp_solver}")
-        print(f"  Adaptive QP: {'✓' if optimization_level >= 1 else '✗'}")
-        print(f"  Batch processing: {'✓' if self.enable_batch_qp else '✗'}")
-        print(f"  Warm start: {'✓' if self.enable_warm_start else '✗'}")
-        print(f"  Caching: {'✓' if self.enable_caching else '✗'}")
+        print(f"  Adaptive QP: {'YES' if optimization_level >= 1 else 'NO'}")
+        print(f"  Batch processing: {'YES' if self.enable_batch_qp else 'NO'}")
+        print(f"  Warm start: {'YES' if self.enable_warm_start else 'NO'}")
+        print(f"  Caching: {'YES' if self.enable_caching else 'NO'}")
     
     def _needs_qp_constraints(self, unconstrained_solution: np.ndarray, 
                             point_idx: int, taylor_data: Dict) -> bool:
@@ -612,9 +612,9 @@ class OptimizedGFDMHJBSolver(GFDMHJBSolver):
         print(f"Configuration:")
         print(f"  Optimization Level: {stats['optimization_level']}")
         print(f"  QP Solver: {stats['preferred_qp_solver']}")
-        print(f"  Batch Processing: {'✓' if stats['batch_qp_enabled'] else '✗'}")
-        print(f"  Warm Start: {'✓' if stats['warm_start_enabled'] else '✗'}")
-        print(f"  Caching: {'✓' if stats['caching_enabled'] else '✗'}")
+        print(f"  Batch Processing: {'YES' if stats['batch_qp_enabled'] else 'NO'}")
+        print(f"  Warm Start: {'YES' if stats['warm_start_enabled'] else 'NO'}")
+        print(f"  Caching: {'YES' if stats['caching_enabled'] else 'NO'}")
         
         print(f"\nPerformance Metrics:")
         print(f"  Total Solve Time: {stats['total_solve_time']:.3f}s")

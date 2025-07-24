@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.boundaries import BoundaryConditions
 
 
-class GFDMHJBSolver(BaseHJBSolver):
+class HJBGFDMSolver(BaseHJBSolver):
     """
     Generalized Finite Difference Method (GFDM) solver for HJB equations using collocation.
     

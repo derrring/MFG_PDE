@@ -6,28 +6,39 @@ A Python package for solving Mean Field Game (MFG) systems using particle-colloc
 
 ```python
 from mfg_pde import ExampleMFGProblem, BoundaryConditions
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
-from mfg_pde.alg.hjb_solvers.tuned_smart_qp_gfdm_hjb import TunedSmartQPGFDMHJBSolver
+from mfg_pde.alg import AdaptiveParticleCollocationSolver
+from mfg_pde.utils import wrap_solver_with_adaptive_convergence
+import numpy as np
 
 # Create an MFG problem
 problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=1.0, Nt=30, 
                            sigma=0.1, coefCT=0.02)
 
-# Set up optimized QP-Collocation solver
+# Set up adaptive solver with automatic convergence detection
 boundary_conditions = BoundaryConditions(type="no_flux")
-solver = ParticleCollocationSolver(problem=problem, ...)
+collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
 
-# Solve the MFG system
-U, M, info = solver.solve(Niter=10, l2errBound=1e-3)
+solver = AdaptiveParticleCollocationSolver(
+    problem=problem,
+    collocation_points=collocation_points,
+    boundary_conditions=boundary_conditions,
+    num_particles=5000
+)
+
+# Automatically detects particle methods and uses advanced convergence criteria
+U, M, info = solver.solve(Niter=15, verbose=True)
+print(f"Convergence mode: {solver.get_convergence_mode()}")  # "particle_aware"
 ```
 
 ## Features
 
+- **Adaptive Convergence**: Automatic detection of particle methods with intelligent convergence criteria selection
 - **High-Performance Solvers**: Optimized QP-Collocation with ~90% reduction in QP calls
+- **Universal Decorator Pattern**: Apply advanced convergence to any solver with `@adaptive_convergence`
+- **Robust Particle-Aware Convergence**: Wasserstein distance and oscillation stabilization for particle methods
 - **Multiple Methods**: Pure FDM, Hybrid Particle-FDM, and advanced Collocation methods
-- **Robust Implementation**: Comprehensive test suite with 100% success rate across diverse problems
 - **Mass Conservation**: Excellent conservation properties with < 0.1% error
-- **Production Ready**: Battle-tested with extensive validation and benchmarking
+- **Production Ready**: Battle-tested with extensive validation and 100% success rate across diverse problems
 
 ## Installation
 
@@ -41,6 +52,7 @@ pip install -e .
 - [API Reference](docs/api/)
 - [Examples and Tutorials](docs/examples/)
 - [Technical Issues](docs/issues/)
+- [Development Documentation](docs/development/) - Update logs and development guides
 
 ## Core Solvers
 

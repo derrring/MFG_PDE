@@ -1,8 +1,8 @@
 import numpy as np
 from typing import TYPE_CHECKING, Optional, Dict, Tuple
 from .base_mfg_solver import MFGSolver
-from .fp_solvers.particle_fp import ParticleFPSolver
-from .hjb_solvers.gfdm_hjb import GFDMHJBSolver
+from .fp_solvers.fp_particle import FPParticleSolver
+from .hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -67,7 +67,7 @@ class ParticleCollocationSolver(MFGSolver):
         
         # Initialize FP solver (Particle method)
         # Use same boundary conditions for particles as for HJB
-        self.fp_solver = ParticleFPSolver(
+        self.fp_solver = FPParticleSolver(
             problem=problem,
             num_particles=num_particles,
             kde_bandwidth=kde_bandwidth,
@@ -76,7 +76,7 @@ class ParticleCollocationSolver(MFGSolver):
         )
         
         # Initialize HJB solver (GFDM collocation)
-        self.hjb_solver = GFDMHJBSolver(
+        self.hjb_solver = HJBGFDMSolver(
             problem=problem,
             collocation_points=collocation_points,
             delta=delta,

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-class SemiLagrangianHJBSolver(BaseHJBSolver):
+class HJBSemiLagrangianSolver(BaseHJBSolver):
     """
     Semi-Lagrangian method for solving Hamilton-Jacobi-Bellman equations.
     """

@@ -7,7 +7,7 @@ from mfg_pde.utils.aux_func import ppart, npart
 from mfg_pde.core.boundaries import BoundaryConditions
 
 
-class FdmFPSolver(BaseFPSolver):
+class FPFDMSolver(BaseFPSolver):
     def __init__(self, problem, boundary_conditions=None):
         super().__init__(problem)
         self.fp_method_name = "FDM"
