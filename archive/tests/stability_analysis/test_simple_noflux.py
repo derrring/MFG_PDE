@@ -122,27 +122,27 @@ def test_simple_noflux():
             # Quick visualization
             plt.figure(figsize=(12, 4))
             
-            plt.subplot(1, 3, 1)
+            plt.subplot(1, 2, 1)
             plt.plot(problem.tSpace, mass_evolution, 'b-', linewidth=2)
             plt.xlabel('Time')
             plt.ylabel('Total Mass')
             plt.title('Mass Conservation')
             plt.grid(True)
             
-            plt.subplot(1, 3, 2)
+            plt.subplot(1, 2, 2)
             plt.contourf(problem.xSpace, problem.tSpace, M, levels=20)
             plt.colorbar(label='Density m(t,x)')
             plt.xlabel('Position x')
             plt.ylabel('Time t')
             plt.title('Density Evolution')
             
-            plt.subplot(1, 3, 3)
-            if U is not None:
-                plt.contourf(problem.xSpace, problem.tSpace, U, levels=20)
-                plt.colorbar(label='Value function u(t,x)')
-                plt.xlabel('Position x')
-                plt.ylabel('Time t')
-                plt.title('Value Function')
+            # plt.subplot(1, 3, 3)
+            # if U is not None:
+            #     plt.contourf(problem.xSpace, problem.tSpace, U, levels=20)
+            #     plt.colorbar(label='Value function u(t,x)')
+            #     plt.xlabel('Position x')
+            #     plt.ylabel('Time t')
+            #     plt.title('Value Function')
             
             plt.tight_layout()
             plt.show()

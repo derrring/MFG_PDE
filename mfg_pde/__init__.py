@@ -6,5 +6,5 @@ except PackageNotFoundError:
     # package is not installed
     __version__ = "0.0.0-dev" # Or some other placeholde
 
-from .core.mfg_problem import MFGProblem
+from .core.mfg_problem import MFGProblem, ExampleMFGProblem
 from .core.boundaries import BoundaryConditions

@@ -1,707 +1,716 @@
 #!/usr/bin/env python3
 """
-Robust comparison of three MFG solver methods with enhanced stability:
-1. Robust Pure FDM with implicit schemes and adaptive controls
-2. Robust Hybrid Particle-FDM with stabilization
-3. Second-Order QP Particle-Collocation (validated implementation)
+Robust Three-Method Comparison
+Comprehensive statistical analysis of FDM, Hybrid, and Optimized QP-Collocation
+across various test cases to assess success rate and robustness.
 """
 
 import numpy as np
-import time
 import matplotlib.pyplot as plt
-import sys
-import os
-from scipy.stats import gaussian_kde
-from scipy.sparse import diags
-from scipy.sparse.linalg import spsolve
+import time
+import warnings
+warnings.filterwarnings('ignore')
 
-# Add the main package to path
-sys.path.insert(0, '/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE')
-
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
+from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
+from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
+from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
+from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
+from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.hjb_solvers.tuned_smart_qp_gfdm_hjb import TunedSmartQPGFDMHJBSolver
 from mfg_pde.core.boundaries import BoundaryConditions
-from mfg_pde.alg.base_mfg_solver import MFGSolver
 
-# Robust Pure FDM implementation
-class RobustFDMSolver(MFGSolver):
-    """Robust Pure FDM solver with implicit schemes and adaptive stability controls"""
+def generate_test_cases():
+    """Generate diverse test cases for robustness analysis"""
+    test_cases = []
     
-    def __init__(self, problem, boundary_conditions=None):
-        super().__init__(problem)
-        self.hjb_method_name = "FDM"
-        self.boundary_conditions = boundary_conditions
-        self.U = None
-        self.M = None
-        self.iterations_run = 0
-        self.converged = False
-        
-    def get_results(self):
-        if self.U is None or self.M is None:
-            raise ValueError("No solution available. Call solve() first.")
-        return self.U, self.M
-        
-    def solve(self, Niter=10, l2errBound=1e-3):
-        """Robust FDM solve with implicit schemes and stability controls"""
-        print("Running Robust Pure FDM solver...")
-        
-        Nx = self.problem.Nx
-        Nt = self.problem.Nt
-        dx = self.problem.Dx
-        dt = self.problem.Dt
-        sigma = self.problem.sigma
-        coefCT = self.problem.coefCT
-        
-        # Stability check - reduce dt if needed
-        cfl_condition = sigma**2 * dt / dx**2
-        if cfl_condition > 0.4:
-            dt_factor = 0.4 / cfl_condition
-            dt = dt * dt_factor
-            print(f"  Stability: reducing dt by factor {dt_factor:.3f}")
-        
-        # Initialize solutions
-        U = np.zeros((Nt + 1, Nx + 1))
-        M = np.zeros((Nt + 1, Nx + 1))
-        
-        # Set terminal condition for U
-        U[Nt, :] = 0.0
-        
-        # Set initial condition for M (normalized Gaussian)
-        x_center = (self.problem.xmin + self.problem.xmax) / 2
-        x_std = 0.15
-        for i in range(Nx + 1):
-            x = self.problem.xSpace[i]
-            M[0, i] = np.exp(-0.5 * ((x - x_center) / x_std) ** 2)
-        
-        # Normalize initial density
-        total_mass = np.sum(M[0, :]) * dx
-        M[0, :] = M[0, :] / total_mass
-        
-        # Picard iteration
-        for picard_iter in range(Niter):
-            U_prev = U.copy()
-            M_prev = M.copy()
-            
-            # Step 1: Solve HJB equation backward (implicit)
-            for t_idx in range(Nt - 1, -1, -1):
-                if t_idx == Nt - 1:
-                    # Terminal condition
-                    U[t_idx, :] = 0.0
-                    continue
-                    
-                # Build implicit system for HJB
-                A = np.zeros((Nx + 1, Nx + 1))
-                b = np.zeros(Nx + 1)
-                
-                # Interior points
-                for i in range(1, Nx):
-                    # Coefficients for implicit scheme
-                    diff_coeff = 0.5 * sigma**2 / dx**2
-                    
-                    # Central coefficients
-                    A[i, i-1] = -diff_coeff
-                    A[i, i] = 1.0 / dt + 2 * diff_coeff
-                    A[i, i+1] = -diff_coeff
-                    
-                    # RHS from explicit terms
-                    coupling = coefCT * M[t_idx, i]
-                    b[i] = U[t_idx + 1, i] / dt + coupling
-                
-                # Boundary conditions (no-flux: dU/dx = 0)
-                A[0, 0] = 1.0
-                A[0, 1] = -1.0
-                b[0] = 0.0
-                
-                A[Nx, Nx] = 1.0
-                A[Nx, Nx-1] = -1.0
-                b[Nx] = 0.0
-                
-                # Solve implicit system
-                try:
-                    U[t_idx, :] = np.linalg.solve(A, b)
-                except np.linalg.LinAlgError:
-                    # Fallback to explicit with very small time step
-                    for i in range(1, Nx):
-                        coupling = coefCT * M[t_idx, i]
-                        U_xx = (U[t_idx + 1, i + 1] - 2 * U[t_idx + 1, i] + U[t_idx + 1, i - 1]) / (dx ** 2)
-                        U[t_idx, i] = U[t_idx + 1, i] + 0.001 * dt * (coupling - 0.5 * sigma**2 * U_xx)
-                    U[t_idx, 0] = U[t_idx, 1]
-                    U[t_idx, Nx] = U[t_idx, Nx - 1]
-            
-            # Step 2: Solve FP equation forward (implicit)
-            for t_idx in range(1, Nt + 1):
-                # Build implicit system for FP
-                A = np.zeros((Nx + 1, Nx + 1))
-                b = np.zeros(Nx + 1)
-                
-                # Interior points
-                for i in range(1, Nx):
-                    # Diffusion coefficient
-                    diff_coeff = 0.5 * sigma**2 / dx**2
-                    
-                    # Drift from optimal control
-                    U_x = (U[t_idx - 1, i + 1] - U[t_idx - 1, i - 1]) / (2 * dx)
-                    U_x = np.clip(U_x, -10.0, 10.0)  # Stability clipping
-                    
-                    # Upwind for advection based on drift direction
-                    if U_x >= 0:
-                        # Backward difference
-                        A[i, i-1] = U_x / dx
-                        A[i, i] = 1.0 / dt + U_x / dx + 2 * diff_coeff
-                    else:
-                        # Forward difference
-                        A[i, i] = 1.0 / dt - U_x / dx + 2 * diff_coeff
-                        A[i, i+1] = -U_x / dx
-                    
-                    # Diffusion terms
-                    A[i, i-1] += -diff_coeff
-                    A[i, i+1] += -diff_coeff
-                    
-                    # RHS
-                    b[i] = M[t_idx - 1, i] / dt
-                
-                # Boundary conditions (no-flux: dM/dx = 0)
-                A[0, 0] = 1.0
-                A[0, 1] = -1.0
-                b[0] = 0.0
-                
-                A[Nx, Nx] = 1.0
-                A[Nx, Nx-1] = -1.0
-                b[Nx] = 0.0
-                
-                # Solve implicit system
-                try:
-                    M_new = np.linalg.solve(A, b)
-                    # Ensure positivity
-                    M_new = np.maximum(M_new, 0.0)
-                    M[t_idx, :] = M_new
-                except np.linalg.LinAlgError:
-                    # Fallback to simple explicit
-                    M[t_idx, :] = M[t_idx - 1, :]
-                    M[t_idx, 0] = M[t_idx, 1]
-                    M[t_idx, Nx] = M[t_idx, Nx - 1]
-            
-            # Check convergence
-            U_error = np.linalg.norm(U - U_prev) / max(np.linalg.norm(U_prev), 1e-10)
-            M_error = np.linalg.norm(M - M_prev) / max(np.linalg.norm(M_prev), 1e-10)
-            total_error = max(U_error, M_error)
-            
-            self.iterations_run = picard_iter + 1
-            
-            print(f"  Iteration {picard_iter + 1}: U_error={U_error:.2e}, M_error={M_error:.2e}")
-            
-            if total_error < l2errBound:
-                self.converged = True
-                print(f"  Converged at iteration {picard_iter + 1}")
-                break
-        
-        self.U = U
-        self.M = M
-        
-        return U, M
+    # Case 1: Small scale problems
+    for i, (sigma, coefCT) in enumerate([(0.08, 0.01), (0.1, 0.015), (0.12, 0.02)]):
+        test_cases.append({
+            'name': f'Small-{i+1}',
+            'params': {
+                'xmin': 0.0, 'xmax': 1.0, 'Nx': 15, 'T': 0.5, 'Nt': 20,
+                'sigma': sigma, 'coefCT': coefCT
+            },
+            'category': 'Small Scale',
+            'expected_difficulty': 'Easy'
+        })
+    
+    # Case 2: Medium scale problems
+    for i, (sigma, coefCT, T) in enumerate([(0.1, 0.02, 0.8), (0.12, 0.025, 1.0), (0.15, 0.03, 1.2)]):
+        test_cases.append({
+            'name': f'Medium-{i+1}',
+            'params': {
+                'xmin': 0.0, 'xmax': 1.0, 'Nx': 18, 'T': T, 'Nt': 25,
+                'sigma': sigma, 'coefCT': coefCT
+            },
+            'category': 'Medium Scale',
+            'expected_difficulty': 'Moderate'
+        })
+    
+    # Case 3: Large scale problems
+    for i, (sigma, coefCT, Nx) in enumerate([(0.12, 0.02, 22), (0.15, 0.025, 25), (0.18, 0.03, 28)]):
+        test_cases.append({
+            'name': f'Large-{i+1}',
+            'params': {
+                'xmin': 0.0, 'xmax': 1.0, 'Nx': Nx, 'T': 1.0, 'Nt': 30,
+                'sigma': sigma, 'coefCT': coefCT
+            },
+            'category': 'Large Scale',
+            'expected_difficulty': 'Hard'
+        })
+    
+    # Case 4: High volatility problems
+    for i, sigma in enumerate([0.2, 0.25, 0.3]):
+        test_cases.append({
+            'name': f'HighVol-{i+1}',
+            'params': {
+                'xmin': 0.0, 'xmax': 1.0, 'Nx': 20, 'T': 0.8, 'Nt': 25,
+                'sigma': sigma, 'coefCT': 0.02
+            },
+            'category': 'High Volatility',
+            'expected_difficulty': 'Hard'
+        })
+    
+    # Case 5: Long time horizon problems
+    for i, T in enumerate([1.5, 2.0, 2.5]):
+        test_cases.append({
+            'name': f'LongTime-{i+1}',
+            'params': {
+                'xmin': 0.0, 'xmax': 1.0, 'Nx': 18, 'T': T, 'Nt': int(T*20),
+                'sigma': 0.12, 'coefCT': 0.02
+            },
+            'category': 'Long Time Horizon',
+            'expected_difficulty': 'Hard'
+        })
+    
+    return test_cases
 
-# Robust Hybrid solver
-class RobustHybridSolver(MFGSolver):
-    """Robust Hybrid Particle-FDM solver with enhanced stability"""
-    
-    def __init__(self, problem, num_particles=1000, boundary_conditions=None):
-        super().__init__(problem)
-        self.hjb_method_name = "Hybrid"
-        self.num_particles = num_particles
-        self.boundary_conditions = boundary_conditions
-        self.U = None
-        self.M = None
-        self.particles = None
-        self.iterations_run = 0
-        self.converged = False
-        
-    def get_results(self):
-        if self.U is None or self.M is None:
-            raise ValueError("No solution available. Call solve() first.")
-        return self.U, self.M
-        
-    def solve(self, Niter=10, l2errBound=1e-3):
-        """Robust hybrid solve with enhanced stability"""
-        print("Running Robust Hybrid Particle-FDM solver...")
-        
-        Nx = self.problem.Nx
-        Nt = self.problem.Nt
-        dx = self.problem.Dx
-        dt = self.problem.Dt
-        sigma = self.problem.sigma
-        coefCT = self.problem.coefCT
-        
-        # Adaptive time stepping for particle stability
-        dt_particle = min(dt, 0.1 * dx**2 / sigma**2)
-        sub_steps = max(1, int(dt / dt_particle))
-        dt_particle = dt / sub_steps
-        
-        # Initialize HJB solution on grid
-        U = np.zeros((Nt + 1, Nx + 1))
-        U[Nt, :] = 0.0
-        
-        # Initialize particles
-        particles = np.zeros((Nt + 1, self.num_particles))
-        
-        # Initial particle distribution (same as FDM)
-        x_center = (self.problem.xmin + self.problem.xmax) / 2
-        x_std = 0.15
-        particles[0, :] = np.random.normal(x_center, x_std, self.num_particles)
-        particles[0, :] = np.clip(particles[0, :], self.problem.xmin, self.problem.xmax)
-        
-        # Picard iteration
-        for picard_iter in range(Niter):
-            U_prev = U.copy()
-            particles_prev = particles.copy()
-            
-            # Step 1: Estimate density from particles
-            M_from_particles = self._estimate_density_from_particles(particles)
-            
-            # Step 2: Solve HJB with implicit scheme
-            for t_idx in range(Nt - 1, -1, -1):
-                if t_idx == Nt - 1:
-                    U[t_idx, :] = 0.0
-                    continue
-                
-                # Simple implicit scheme for HJB
-                for i in range(1, Nx):
-                    coupling = coefCT * M_from_particles[t_idx, i]
-                    U_xx = (U[t_idx + 1, i + 1] - 2 * U[t_idx + 1, i] + U[t_idx + 1, i - 1]) / (dx ** 2)
-                    
-                    # Conservative update
-                    U[t_idx, i] = U[t_idx + 1, i] + dt * (coupling - 0.5 * sigma**2 * U_xx)
-                
-                # No-flux boundary conditions
-                U[t_idx, 0] = U[t_idx, 1]
-                U[t_idx, Nx] = U[t_idx, Nx - 1]
-            
-            # Step 3: Evolve particles with sub-stepping
-            for t_idx in range(1, Nt + 1):
-                for sub_step in range(sub_steps):
-                    for p in range(self.num_particles):
-                        x_p = particles[t_idx - 1, p]
-                        
-                        # Interpolate control field gradient
-                        i = int((x_p - self.problem.xmin) / dx)
-                        i = max(0, min(Nx - 1, i))
-                        
-                        # Linear interpolation for U_x
-                        if i < Nx:
-                            alpha = (x_p - self.problem.xSpace[i]) / dx
-                            alpha = max(0, min(1, alpha))
-                            
-                            U_x_left = (U[t_idx - 1, i + 1] - U[t_idx - 1, i]) / dx if i < Nx else 0
-                            U_x_right = (U[t_idx - 1, i + 1] - U[t_idx - 1, i]) / dx if i + 1 < Nx else 0
-                            U_x_p = (1 - alpha) * U_x_left + alpha * U_x_right
-                            
-                            # Stability clipping
-                            U_x_p = np.clip(U_x_p, -5.0, 5.0)
-                        else:
-                            U_x_p = 0
-                        
-                        # Particle SDE with sub-stepping
-                        drift = -U_x_p
-                        noise = sigma * np.random.normal(0, np.sqrt(dt_particle))
-                        
-                        new_pos = x_p + drift * dt_particle + noise
-                        
-                        # Reflect at boundaries
-                        if new_pos < self.problem.xmin:
-                            new_pos = 2 * self.problem.xmin - new_pos
-                        elif new_pos > self.problem.xmax:
-                            new_pos = 2 * self.problem.xmax - new_pos
-                        
-                        particles[t_idx - 1, p] = new_pos
-                
-                # Copy final sub-step result
-                particles[t_idx, :] = particles[t_idx - 1, :]
-            
-            # Check convergence
-            U_error = np.linalg.norm(U - U_prev) / max(np.linalg.norm(U_prev), 1e-10)
-            particles_error = np.linalg.norm(particles - particles_prev) / max(np.linalg.norm(particles_prev), 1e-10)
-            total_error = max(U_error, particles_error)
-            
-            self.iterations_run = picard_iter + 1
-            
-            print(f"  Iteration {picard_iter + 1}: U_error={U_error:.2e}, particles_error={particles_error:.2e}")
-            
-            if total_error < l2errBound:
-                self.converged = True
-                print(f"  Converged at iteration {picard_iter + 1}")
-                break
-        
-        self.U = U
-        self.particles = particles
-        self.M = self._estimate_density_from_particles(particles)
-        
-        return U, self.M
-    
-    def _estimate_density_from_particles(self, particles):
-        """Robust density estimation using KDE with fallback"""
-        Nt, Nx = self.problem.Nt + 1, self.problem.Nx + 1
-        M = np.zeros((Nt, Nx))
-        
-        for t_idx in range(Nt):
-            particles_t = particles[t_idx, :]
-            
-            # Remove outliers
-            q1, q3 = np.percentile(particles_t, [25, 75])
-            iqr = q3 - q1
-            valid_mask = (particles_t >= q1 - 1.5*iqr) & (particles_t <= q3 + 1.5*iqr)
-            particles_clean = particles_t[valid_mask]
-            
-            if len(particles_clean) > 5 and len(np.unique(particles_clean)) > 1:
-                try:
-                    # Use KDE with robust bandwidth
-                    kde = gaussian_kde(particles_clean)
-                    kde.set_bandwidth(kde.factor * 1.5)  # Slightly smoother
-                    M[t_idx, :] = kde(self.problem.xSpace)
-                    
-                    # Normalize
-                    total_mass = np.sum(M[t_idx, :]) * self.problem.Dx
-                    if total_mass > 0:
-                        M[t_idx, :] = M[t_idx, :] / total_mass
-                except:
-                    # Fallback to histogram
-                    hist, _ = np.histogram(particles_clean, bins=Nx, 
-                                         range=(self.problem.xmin, self.problem.xmax))
-                    M[t_idx, :-1] = hist / (len(particles_clean) * self.problem.Dx)
-                    M[t_idx, -1] = M[t_idx, -2]
-            else:
-                # Uniform fallback
-                M[t_idx, :] = 1.0 / (self.problem.xmax - self.problem.xmin)
-        
-        return M
-    
-    def get_particles_trajectory(self):
-        return self.particles
-
-def compare_three_methods_robust():
-    print("="*80)
-    print("ROBUST THREE-METHOD MFG COMPARISON")
-    print("="*80)
-    print("1. Robust Pure FDM (implicit schemes + stability controls)")
-    print("2. Robust Hybrid Particle-FDM (sub-stepping + stabilization)")  
-    print("3. Second-Order QP Particle-Collocation (validated implementation)")
-    
-    # Conservative test parameters for stability
-    problem_params = {
-        "xmin": 0.0,
-        "xmax": 1.0,
-        "Nx": 25,   
-        "T": 0.2,   
-        "Nt": 10,   
-        "sigma": 0.2,  
-        "coefCT": 0.01  
-    }
-    
-    print(f"\nProblem Parameters:")
-    for key, value in problem_params.items():
-        print(f"  {key}: {value}")
-    
-    problem = ExampleMFGProblem(**problem_params)
-    no_flux_bc = BoundaryConditions(type="no_flux")
-    
-    results = {}
-    
-    # Method 1: Robust Pure FDM
-    print(f"\n{'='*60}")
-    print("METHOD 1: ROBUST PURE FDM")
-    print(f"{'='*60}")
-    
+def test_pure_fdm(problem_params, test_name, timeout=300):
+    """Test Pure FDM method with timeout"""
     try:
-        start_time = time.time()
-        fdm_solver = RobustFDMSolver(problem, no_flux_bc)
-        U_fdm, M_fdm = fdm_solver.solve(Niter=8, l2errBound=1e-3)
-        time_fdm = time.time() - start_time
+        problem = ExampleMFGProblem(**problem_params)
+        no_flux_bc = BoundaryConditions(type="no_flux")
         
-        if M_fdm is not None and U_fdm is not None:
-            mass_fdm = np.sum(M_fdm * problem.Dx, axis=1)
-            initial_mass = mass_fdm[0]
-            final_mass = mass_fdm[-1]
-            mass_change = abs(final_mass - initial_mass)
-            
-            results['fdm'] = {
-                'success': True,
-                'initial_mass': initial_mass,
-                'final_mass': final_mass,
-                'mass_change': mass_change,
-                'max_U': np.max(np.abs(U_fdm)),
-                'time': time_fdm,
-                'converged': fdm_solver.converged,
-                'iterations': fdm_solver.iterations_run,
-                'violations': 0,
-                'U_solution': U_fdm,
-                'M_solution': M_fdm
+        fdm_hjb_solver = FdmHJBSolver(problem=problem)
+        fdm_fp_solver = FdmFPSolver(problem=problem, boundary_conditions=no_flux_bc)
+        fdm_solver = FixedPointIterator(
+            problem=problem,
+            hjb_solver=fdm_hjb_solver,
+            fp_solver=fdm_fp_solver,
+            thetaUM=0.5
+        )
+        
+        start_time = time.time()
+        U_fdm, M_fdm, iterations_run, l2distu_rel, l2distm_rel = fdm_solver.solve(Niter_max=6, l2errBoundPicard=1e-3)
+        solve_time = time.time() - start_time
+        
+        # Create info dict for compatibility
+        info_fdm = {
+            'converged': l2distu_rel[-1] < 1e-3 if len(l2distu_rel) > 0 else False,
+            'iterations': iterations_run
+        }
+        
+        if solve_time > timeout:
+            return {'success': False, 'error': 'Timeout', 'time': solve_time}
+        
+        # Calculate mass conservation
+        Dx = (problem_params['xmax'] - problem_params['xmin']) / problem_params['Nx']
+        initial_mass = np.sum(M_fdm[0, :]) * Dx
+        final_mass = np.sum(M_fdm[-1, :]) * Dx
+        mass_error = abs(final_mass - initial_mass) / initial_mass * 100
+        
+        return {
+            'success': True,
+            'time': solve_time,
+            'mass_error': mass_error,
+            'converged': info_fdm.get('converged', False),
+            'iterations': info_fdm.get('iterations', 0),
+            'method_specific': {
+                'type': 'Grid-based',
+                'complexity': 'Low'
             }
-            print(f"✓ FDM completed: initial_mass={initial_mass:.6f}, final_mass={final_mass:.6f}")
-            print(f"  Mass change: {mass_change:.2e}, time: {time_fdm:.2f}s")
-        else:
-            results['fdm'] = {'success': False}
-            print("❌ FDM failed")
-    except Exception as e:
-        results['fdm'] = {'success': False, 'error': str(e)}
-        print(f"❌ FDM crashed: {e}")
-    
-    # Method 2: Robust Hybrid
-    print(f"\n{'='*60}")
-    print("METHOD 2: ROBUST HYBRID PARTICLE-FDM")
-    print(f"{'='*60}")
-    
-    try:
-        start_time = time.time()
-        hybrid_solver = RobustHybridSolver(problem, num_particles=500, boundary_conditions=no_flux_bc)
-        U_hybrid, M_hybrid = hybrid_solver.solve(Niter=8, l2errBound=1e-3)
-        time_hybrid = time.time() - start_time
+        }
         
-        if M_hybrid is not None and U_hybrid is not None:
-            mass_hybrid = np.sum(M_hybrid * problem.Dx, axis=1)
-            initial_mass = mass_hybrid[0]
-            final_mass = mass_hybrid[-1]
-            mass_change = abs(final_mass - initial_mass)
-            
-            # Count boundary violations
-            violations = 0
-            if hybrid_solver.particles is not None:
-                final_particles = hybrid_solver.particles[-1, :]
-                violations = np.sum((final_particles < problem.xmin) | (final_particles > problem.xmax))
-            
-            results['hybrid'] = {
-                'success': True,
-                'initial_mass': initial_mass,
-                'final_mass': final_mass,
-                'mass_change': mass_change,
-                'max_U': np.max(np.abs(U_hybrid)),
-                'time': time_hybrid,
-                'converged': hybrid_solver.converged,
-                'iterations': hybrid_solver.iterations_run,
-                'violations': violations,
-                'U_solution': U_hybrid,
-                'M_solution': M_hybrid
+    except Exception as e:
+        return {'success': False, 'error': str(e), 'time': 0}
+
+def test_hybrid_particle_fdm(problem_params, test_name, timeout=300):
+    """Test Hybrid Particle-FDM method with timeout"""
+    try:
+        problem = ExampleMFGProblem(**problem_params)
+        no_flux_bc = BoundaryConditions(type="no_flux")
+        
+        num_particles = min(100, max(50, problem_params['Nx'] * 4))
+        
+        hybrid_hjb_solver = FdmHJBSolver(problem=problem)
+        hybrid_fp_solver = ParticleFPSolver(
+            problem=problem,
+            num_particles=num_particles,
+            boundary_conditions=no_flux_bc
+        )
+        hybrid_solver = FixedPointIterator(
+            problem=problem,
+            hjb_solver=hybrid_hjb_solver,
+            fp_solver=hybrid_fp_solver,
+            thetaUM=0.5
+        )
+        
+        start_time = time.time()
+        U_hybrid, M_hybrid, iterations_run, l2distu_rel, l2distm_rel = hybrid_solver.solve(Niter_max=6, l2errBoundPicard=1e-3)
+        solve_time = time.time() - start_time
+        
+        # Create info dict for compatibility
+        info_hybrid = {
+            'converged': l2distu_rel[-1] < 1e-3 if len(l2distu_rel) > 0 else False,
+            'iterations': iterations_run
+        }
+        
+        if solve_time > timeout:
+            return {'success': False, 'error': 'Timeout', 'time': solve_time}
+        
+        # Calculate mass conservation
+        Dx = (problem_params['xmax'] - problem_params['xmin']) / problem_params['Nx']
+        initial_mass = np.sum(M_hybrid[0, :]) * Dx
+        final_mass = np.sum(M_hybrid[-1, :]) * Dx
+        mass_error = abs(final_mass - initial_mass) / initial_mass * 100
+        
+        return {
+            'success': True,
+            'time': solve_time,
+            'mass_error': mass_error,
+            'converged': info_hybrid.get('converged', False),
+            'iterations': info_hybrid.get('iterations', 0),
+            'method_specific': {
+                'type': 'Hybrid',
+                'particles': num_particles,
+                'complexity': 'Medium'
             }
-            print(f"✓ Hybrid completed: initial_mass={initial_mass:.6f}, final_mass={final_mass:.6f}")
-            print(f"  Mass change: {mass_change:.2e}, time: {time_hybrid:.2f}s, violations: {violations}")
-        else:
-            results['hybrid'] = {'success': False}
-            print("❌ Hybrid failed")
+        }
+        
     except Exception as e:
-        results['hybrid'] = {'success': False, 'error': str(e)}
-        print(f"❌ Hybrid crashed: {e}")
-    
-    # Method 3: QP-Collocation (validated)
-    print(f"\n{'='*60}")
-    print("METHOD 3: SECOND-ORDER QP PARTICLE-COLLOCATION")
-    print(f"{'='*60}")
-    
+        return {'success': False, 'error': str(e), 'time': 0}
+
+def test_optimized_qp_collocation(problem_params, test_name, timeout=600):
+    """Test Optimized QP-Collocation method with timeout"""
     try:
-        start_time = time.time()
+        problem = ExampleMFGProblem(**problem_params)
+        no_flux_bc = BoundaryConditions(type="no_flux")
         
-        # Collocation setup
-        num_collocation_points = 10
-        collocation_points = np.linspace(problem.xmin, problem.xmax, num_collocation_points).reshape(-1, 1)
+        # Adaptive parameters based on problem size
+        num_collocation_points = min(12, max(6, problem_params['Nx'] // 2))
+        num_particles = min(150, max(80, problem_params['Nx'] * 5))
         
-        boundary_indices = []
-        for i, point in enumerate(collocation_points):
-            x = point[0]
-            if abs(x - problem.xmin) < 1e-10 or abs(x - problem.xmax) < 1e-10:
-                boundary_indices.append(i)
-        boundary_indices = np.array(boundary_indices)
+        collocation_points = np.linspace(
+            problem.xmin, problem.xmax, num_collocation_points
+        ).reshape(-1, 1)
+        boundary_indices = [0, num_collocation_points-1]
         
-        collocation_solver = ParticleCollocationSolver(
+        tuned_hjb_solver = TunedSmartQPGFDMHJBSolver(
             problem=problem,
             collocation_points=collocation_points,
-            num_particles=500,
-            delta=0.3,
+            delta=0.4,
             taylor_order=2,
             weight_function="wendland",
-            NiterNewton=6,
+            NiterNewton=4,
+            l2errBoundNewton=1e-3,
+            boundary_indices=np.array(boundary_indices),
+            boundary_conditions=no_flux_bc,
+            use_monotone_constraints=True,
+            qp_usage_target=0.1
+        )
+        
+        qp_solver = ParticleCollocationSolver(
+            problem=problem,
+            collocation_points=collocation_points,
+            num_particles=num_particles,
+            delta=0.4,
+            taylor_order=2,
+            weight_function="wendland",
+            NiterNewton=4,
             l2errBoundNewton=1e-3,
             kde_bandwidth="scott",
             normalize_kde_output=False,
-            boundary_indices=boundary_indices,
+            boundary_indices=np.array(boundary_indices),
             boundary_conditions=no_flux_bc,
             use_monotone_constraints=True
         )
+        qp_solver.hjb_solver = tuned_hjb_solver
         
-        U_colloc, M_colloc, info_colloc = collocation_solver.solve(
-            Niter=8, l2errBound=1e-3, verbose=False
-        )
+        start_time = time.time()
+        U_qp, M_qp, info_qp = qp_solver.solve(Niter=6, l2errBound=1e-3, verbose=False)
+        solve_time = time.time() - start_time
         
-        time_colloc = time.time() - start_time
+        if solve_time > timeout:
+            return {'success': False, 'error': 'Timeout', 'time': solve_time}
         
-        if M_colloc is not None and U_colloc is not None:
-            mass_colloc = np.sum(M_colloc * problem.Dx, axis=1)
-            initial_mass = mass_colloc[0]
-            final_mass = mass_colloc[-1]
-            mass_change = abs(final_mass - initial_mass)
-            
-            # Count boundary violations
-            violations = 0
-            particles_trajectory = collocation_solver.get_particles_trajectory()
-            if particles_trajectory is not None:
-                final_particles = particles_trajectory[-1, :]
-                violations = np.sum((final_particles < problem.xmin) | (final_particles > problem.xmax))
-            
-            results['collocation'] = {
-                'success': True,
-                'initial_mass': initial_mass,
-                'final_mass': final_mass,
-                'mass_change': mass_change,
-                'max_U': np.max(np.abs(U_colloc)),
-                'time': time_colloc,
-                'converged': info_colloc.get('converged', False),
-                'iterations': info_colloc.get('iterations', 0),
-                'violations': violations,
-                'U_solution': U_colloc,
-                'M_solution': M_colloc
+        # Calculate mass conservation
+        Dx = (problem_params['xmax'] - problem_params['xmin']) / problem_params['Nx']
+        initial_mass = np.sum(M_qp[0, :]) * Dx
+        final_mass = np.sum(M_qp[-1, :]) * Dx
+        mass_error = abs(final_mass - initial_mass) / initial_mass * 100
+        
+        # Get QP optimization statistics
+        qp_stats = tuned_hjb_solver.get_tuned_qp_report()
+        qp_usage_rate = qp_stats.get('qp_usage_rate', 1.0)
+        
+        return {
+            'success': True,
+            'time': solve_time,
+            'mass_error': mass_error,
+            'converged': info_qp.get('converged', False),
+            'iterations': info_qp.get('iterations', 0),
+            'method_specific': {
+                'type': 'Advanced Collocation',
+                'particles': num_particles,
+                'collocation_points': num_collocation_points,
+                'qp_usage_rate': qp_usage_rate,
+                'optimization_quality': qp_stats.get('optimization_quality', 'N/A'),
+                'complexity': 'High'
             }
-            print(f"✓ QP-Collocation completed: initial_mass={initial_mass:.6f}, final_mass={final_mass:.6f}")
-            print(f"  Mass change: {mass_change:.2e}, time: {time_colloc:.2f}s, violations: {violations}")
-        else:
-            results['collocation'] = {'success': False}
-            print("❌ QP-Collocation failed")
+        }
+        
     except Exception as e:
-        results['collocation'] = {'success': False, 'error': str(e)}
-        print(f"❌ QP-Collocation crashed: {e}")
+        return {'success': False, 'error': str(e), 'time': 0}
+
+def run_comprehensive_robustness_test():
+    """Run comprehensive robustness test across all methods and test cases"""
+    print("="*100)
+    print("COMPREHENSIVE THREE-METHOD ROBUSTNESS ANALYSIS")
+    print("="*100)
+    print("Testing Pure FDM, Hybrid Particle-FDM, and Optimized QP-Collocation")
+    print("Across diverse problem configurations for statistical analysis")
     
-    # Results comparison
+    test_cases = generate_test_cases()
+    print(f"\nGenerated {len(test_cases)} test cases across 5 categories:")
+    
+    categories = {}
+    for case in test_cases:
+        cat = case['category']
+        categories[cat] = categories.get(cat, 0) + 1
+    
+    for cat, count in categories.items():
+        print(f"  • {cat}: {count} cases")
+    
+    results = {
+        'test_cases': test_cases,
+        'fdm_results': [],
+        'hybrid_results': [],
+        'qp_results': []
+    }
+    
+    total_tests = len(test_cases) * 3
+    current_test = 0
+    
     print(f"\n{'='*80}")
-    print("ROBUST COMPARISON RESULTS")
+    print("RUNNING ROBUSTNESS TESTS")
     print(f"{'='*80}")
     
-    successful_methods = [m for m in ['fdm', 'hybrid', 'collocation'] if results.get(m, {}).get('success', False)]
+    for i, test_case in enumerate(test_cases):
+        case_name = test_case['name']
+        params = test_case['params']
+        category = test_case['category']
+        
+        print(f"\n{'-'*60}")
+        print(f"TEST CASE {i+1}/{len(test_cases)}: {case_name} ({category})")
+        print(f"Parameters: Nx={params['Nx']}, T={params['T']}, σ={params['sigma']}, coefCT={params['coefCT']}")
+        print(f"{'-'*60}")
+        
+        # Test 1: Pure FDM
+        print(f"[{current_test+1:2d}/{total_tests}] Testing Pure FDM...")
+        fdm_result = test_pure_fdm(params, case_name)
+        fdm_result['test_case'] = case_name
+        fdm_result['category'] = category
+        results['fdm_results'].append(fdm_result)
+        current_test += 1
+        
+        if fdm_result['success']:
+            print(f"    ✓ Pure FDM: {fdm_result['time']:.1f}s, mass error: {fdm_result['mass_error']:.3f}%")
+        else:
+            print(f"    ✗ Pure FDM failed: {fdm_result['error']}")
+        
+        # Test 2: Hybrid Particle-FDM
+        print(f"[{current_test+1:2d}/{total_tests}] Testing Hybrid Particle-FDM...")
+        hybrid_result = test_hybrid_particle_fdm(params, case_name)
+        hybrid_result['test_case'] = case_name
+        hybrid_result['category'] = category
+        results['hybrid_results'].append(hybrid_result)
+        current_test += 1
+        
+        if hybrid_result['success']:
+            particles = hybrid_result['method_specific']['particles']
+            print(f"    ✓ Hybrid P-FDM: {hybrid_result['time']:.1f}s, mass error: {hybrid_result['mass_error']:.3f}%, particles: {particles}")
+        else:
+            print(f"    ✗ Hybrid P-FDM failed: {hybrid_result['error']}")
+        
+        # Test 3: Optimized QP-Collocation
+        print(f"[{current_test+1:2d}/{total_tests}] Testing Optimized QP-Collocation...")
+        qp_result = test_optimized_qp_collocation(params, case_name)
+        qp_result['test_case'] = case_name
+        qp_result['category'] = category
+        results['qp_results'].append(qp_result)
+        current_test += 1
+        
+        if qp_result['success']:
+            qp_usage = qp_result['method_specific']['qp_usage_rate']
+            print(f"    ✓ QP-Collocation: {qp_result['time']:.1f}s, mass error: {qp_result['mass_error']:.3f}%, QP usage: {qp_usage:.1%}")
+        else:
+            print(f"    ✗ QP-Collocation failed: {qp_result['error']}")
     
-    if len(successful_methods) >= 2:
-        print(f"\n{'Metric':<25} {'Pure FDM':<15} {'Hybrid':<15} {'QP-Collocation':<15}")
-        print(f"{'-'*25} {'-'*15} {'-'*15} {'-'*15}")
-        
-        # Show initial and final masses
-        for method in ['fdm', 'hybrid', 'collocation']:
-            if method in successful_methods:
-                initial = results[method]['initial_mass']
-                final = results[method]['final_mass']
-                print(f"Initial mass {method.upper():<15} {initial:.6f}")
-        
-        print()
-        for method in ['fdm', 'hybrid', 'collocation']:
-            if method in successful_methods:
-                initial = results[method]['initial_mass']
-                final = results[method]['final_mass']
-                print(f"Final mass {method.upper():<17} {final:.6f}")
-        
-        print()
-        
-        # Comparison table
-        metrics = [
-            ('Mass change', 'mass_change', lambda x: f"{x:.2e}"),
-            ('Max |U|', 'max_U', lambda x: f"{x:.1e}"),
-            ('Runtime (s)', 'time', lambda x: f"{x:.2f}"),
-            ('Violations', 'violations', lambda x: str(int(x))),
-            ('Converged', 'converged', lambda x: "Yes" if x else "No"),
-            ('Iterations', 'iterations', lambda x: str(int(x)))
-        ]
-        
-        for metric_name, key, fmt in metrics:
-            row = [metric_name]
-            for method in ['fdm', 'hybrid', 'collocation']:
-                if method in successful_methods:
-                    value = results[method].get(key, 0)
-                    row.append(fmt(value))
-                else:
-                    row.append("FAILED")
-            print(f"{row[0]:<25} {row[1]:<15} {row[2]:<15} {row[3]:<15}")
-        
-        # Convergence analysis
-        print(f"\n--- Convergence Analysis ---")
-        if len(successful_methods) >= 2:
-            final_masses = [results[m]['final_mass'] for m in successful_methods]
-            max_diff = max(final_masses) - min(final_masses)
-            avg_mass = np.mean(final_masses)
-            relative_diff = (max_diff / avg_mass) * 100 if avg_mass > 0 else 0
-            
-            print(f"Final mass range: [{min(final_masses):.6f}, {max(final_masses):.6f}]")
-            print(f"Max difference: {max_diff:.2e}")
-            print(f"Relative difference: {relative_diff:.3f}%")
-            
-            if relative_diff < 1.0:
-                print("✅ EXCELLENT: All methods converge to consistent solution")
-            elif relative_diff < 5.0:
-                print("✅ GOOD: Methods show reasonable convergence")
-            else:
-                print("⚠️  WARNING: Methods show significant divergence")
-        
-        # Create plots
-        create_robust_comparison_plots(results, problem, successful_methods)
+    # Generate comprehensive statistical analysis
+    print(f"\n{'='*100}")
+    print("STATISTICAL ANALYSIS COMPLETED")
+    print(f"{'='*100}")
     
-    else:
-        print("Insufficient successful methods for comparison")
-        for method in ['fdm', 'hybrid', 'collocation']:
-            if not results.get(method, {}).get('success', False):
-                error = results.get(method, {}).get('error', 'Failed')
-                print(f"❌ {method.upper()}: {error}")
+    analyze_results_and_create_plots(results)
+    return results
 
-def create_robust_comparison_plots(results, problem, successful_methods):
-    """Create comparison plots for the robust implementations"""
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    fig.suptitle('Robust Three-Method MFG Comparison (Stable Implementations)', fontsize=16)
+def analyze_results_and_create_plots(results):
+    """Analyze results and create comprehensive statistical plots"""
     
-    method_names = {'fdm': 'Pure FDM', 'hybrid': 'Hybrid', 'collocation': 'QP-Collocation'}
-    colors = {'fdm': 'blue', 'hybrid': 'green', 'collocation': 'red'}
+    # Extract success rates by method and category
+    methods = ['Pure FDM', 'Hybrid P-FDM', 'QP-Collocation']
+    method_results = [results['fdm_results'], results['hybrid_results'], results['qp_results']]
     
-    # Final density comparison
-    ax1 = axes[0, 0]
-    for method in successful_methods:
-        M_solution = results[method]['M_solution']
-        final_density = M_solution[-1, :]
-        ax1.plot(problem.xSpace, final_density, 
-                label=method_names[method], linewidth=2, color=colors[method])
-    ax1.set_xlabel('Space x')
-    ax1.set_ylabel('Final Density M(T,x)')
-    ax1.set_title('Final Density Comparison')
-    ax1.grid(True)
-    ax1.legend()
+    # Calculate overall statistics
+    print("\nOVERALL ROBUSTNESS STATISTICS:")
+    print("=" * 50)
     
-    # Mass conservation over time
-    ax2 = axes[0, 1]
-    for method in successful_methods:
-        M_solution = results[method]['M_solution']
-        mass_evolution = np.sum(M_solution * problem.Dx, axis=1)
-        ax2.plot(problem.tSpace, mass_evolution, 
-                label=method_names[method], linewidth=2, color=colors[method])
-    ax2.set_xlabel('Time t')
-    ax2.set_ylabel('Total Mass')
-    ax2.set_title('Mass Conservation Over Time')
-    ax2.grid(True)
-    ax2.legend()
+    overall_stats = {}
+    for method_name, method_result in zip(methods, method_results):
+        total_tests = len(method_result)
+        successful_tests = sum(1 for r in method_result if r['success'])
+        success_rate = successful_tests / total_tests * 100
+        
+        successful_results = [r for r in method_result if r['success']]
+        if successful_results:
+            avg_time = np.mean([r['time'] for r in successful_results])
+            avg_mass_error = np.mean([r['mass_error'] for r in successful_results])
+            std_time = np.std([r['time'] for r in successful_results])
+            std_mass_error = np.std([r['mass_error'] for r in successful_results])
+        else:
+            avg_time = avg_mass_error = std_time = std_mass_error = 0
+        
+        overall_stats[method_name] = {
+            'success_rate': success_rate,
+            'successful_tests': successful_tests,
+            'total_tests': total_tests,
+            'avg_time': avg_time,
+            'std_time': std_time,
+            'avg_mass_error': avg_mass_error,
+            'std_mass_error': std_mass_error
+        }
+        
+        print(f"\n{method_name}:")
+        print(f"  Success Rate: {success_rate:.1f}% ({successful_tests}/{total_tests})")
+        if successful_results:
+            print(f"  Avg Time: {avg_time:.1f} ± {std_time:.1f} seconds")
+            print(f"  Avg Mass Error: {avg_mass_error:.3f} ± {std_mass_error:.3f}%")
     
-    # Mass change comparison (log scale)
-    ax3 = axes[1, 0]
-    methods = [method_names[m] for m in successful_methods]
-    mass_changes = [results[m]['mass_change'] for m in successful_methods]
-    bars = ax3.bar(methods, mass_changes, color=[colors[m] for m in successful_methods])
-    ax3.set_ylabel('Mass Change (log scale)')
-    ax3.set_title('Mass Conservation Quality')
+    # Category-wise analysis
+    categories = list(set(r['category'] for r in results['test_cases']))
+    print(f"\nCATEGORY-WISE ANALYSIS:")
+    print("=" * 50)
+    
+    category_stats = {}
+    for category in categories:
+        category_stats[category] = {}
+        
+        print(f"\n{category}:")
+        for method_name, method_result in zip(methods, method_results):
+            cat_results = [r for r in method_result if r['category'] == category]
+            successful_cat = [r for r in cat_results if r['success']]
+            
+            success_rate = len(successful_cat) / len(cat_results) * 100 if cat_results else 0
+            avg_time = np.mean([r['time'] for r in successful_cat]) if successful_cat else 0
+            
+            category_stats[category][method_name] = {
+                'success_rate': success_rate,
+                'avg_time': avg_time,
+                'successful': len(successful_cat),
+                'total': len(cat_results)
+            }
+            
+            print(f"  {method_name}: {success_rate:.1f}% ({len(successful_cat)}/{len(cat_results)})")
+            if successful_cat:
+                print(f"    Avg Time: {avg_time:.1f}s")
+    
+    # Create comprehensive statistical plots
+    create_comprehensive_statistical_plots(overall_stats, category_stats, results)
+
+def create_comprehensive_statistical_plots(overall_stats, category_stats, results):
+    """Create comprehensive statistical visualization"""
+    
+    # Create large figure with multiple subplots
+    fig = plt.figure(figsize=(20, 16))
+    
+    methods = list(overall_stats.keys())
+    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']  # Red, Teal, Blue
+    
+    # Plot 1: Overall Success Rates
+    ax1 = plt.subplot(3, 4, 1)
+    success_rates = [overall_stats[method]['success_rate'] for method in methods]
+    bars1 = ax1.bar(methods, success_rates, color=colors, alpha=0.8)
+    ax1.set_ylabel('Success Rate (%)')
+    ax1.set_title('Overall Success Rate Comparison')
+    ax1.set_ylim(0, 100)
+    ax1.grid(True, alpha=0.3)
+    
+    # Add value labels
+    for bar, rate in zip(bars1, success_rates):
+        height = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width()/2., height + 2,
+                f'{rate:.1f}%', ha='center', va='bottom', fontweight='bold')
+    
+    # Plot 2: Average Solution Time (for successful cases)
+    ax2 = plt.subplot(3, 4, 2)
+    avg_times = [overall_stats[method]['avg_time'] for method in methods]
+    std_times = [overall_stats[method]['std_time'] for method in methods]
+    
+    bars2 = ax2.bar(methods, avg_times, yerr=std_times, color=colors, alpha=0.8, capsize=5)
+    ax2.set_ylabel('Average Time (seconds)')
+    ax2.set_title('Average Solution Time\n(Successful Cases Only)')
+    ax2.grid(True, alpha=0.3)
+    
+    # Plot 3: Average Mass Conservation Error
+    ax3 = plt.subplot(3, 4, 3)
+    avg_mass_errors = [overall_stats[method]['avg_mass_error'] for method in methods]
+    std_mass_errors = [overall_stats[method]['std_mass_error'] for method in methods]
+    
+    bars3 = ax3.bar(methods, avg_mass_errors, yerr=std_mass_errors, 
+                   color=colors, alpha=0.8, capsize=5)
+    ax3.set_ylabel('Mass Conservation Error (%)')
+    ax3.set_title('Average Mass Conservation Error\n(Successful Cases Only)')
     ax3.set_yscale('log')
-    ax3.grid(True, axis='y')
-    for bar, value in zip(bars, mass_changes):
-        ax3.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                f'{value:.1e}', ha='center', va='bottom')
+    ax3.grid(True, alpha=0.3)
     
-    # Runtime comparison
-    ax4 = axes[1, 1]
-    runtimes = [results[m]['time'] for m in successful_methods]
-    bars = ax4.bar(methods, runtimes, color=[colors[m] for m in successful_methods])
-    ax4.set_ylabel('Runtime (seconds)')
-    ax4.set_title('Performance Comparison')
-    ax4.grid(True, axis='y')
-    for bar, value in zip(bars, runtimes):
-        ax4.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                f'{value:.2f}s', ha='center', va='bottom')
+    # Plot 4: Robustness Score
+    ax4 = plt.subplot(3, 4, 4)
+    
+    # Calculate robustness score (success_rate * accuracy_factor * speed_factor)
+    robustness_scores = []
+    for method in methods:
+        stats = overall_stats[method]
+        success_factor = stats['success_rate'] / 100
+        
+        if stats['avg_time'] > 0:
+            speed_factor = min(1.0, 30 / stats['avg_time'])  # Normalize to 30s baseline
+        else:
+            speed_factor = 0
+            
+        if stats['avg_mass_error'] > 0:
+            accuracy_factor = min(1.0, 1.0 / stats['avg_mass_error'])  # Better accuracy = higher score
+        else:
+            accuracy_factor = 1.0
+        
+        robustness_score = success_factor * 0.6 + speed_factor * 0.2 + accuracy_factor * 0.2
+        robustness_scores.append(robustness_score * 100)
+    
+    bars4 = ax4.bar(methods, robustness_scores, color=colors, alpha=0.8)
+    ax4.set_ylabel('Robustness Score')
+    ax4.set_title('Overall Robustness Score\n(Success×60% + Speed×20% + Accuracy×20%)')
+    ax4.set_ylim(0, 100)
+    ax4.grid(True, alpha=0.3)
+    
+    for bar, score in zip(bars4, robustness_scores):
+        height = bar.get_height()
+        ax4.text(bar.get_x() + bar.get_width()/2., height + 2,
+                f'{score:.1f}', ha='center', va='bottom', fontweight='bold')
+    
+    # Plot 5-8: Category-wise Success Rates
+    categories = list(category_stats.keys())
+    for i, category in enumerate(categories[:4]):  # Show first 4 categories
+        ax = plt.subplot(3, 4, 5 + i)
+        
+        cat_success_rates = [category_stats[category][method]['success_rate'] for method in methods]
+        bars = ax.bar(methods, cat_success_rates, color=colors, alpha=0.8)
+        ax.set_ylabel('Success Rate (%)')
+        ax.set_title(f'{category}\nSuccess Rates')
+        ax.set_ylim(0, 100)
+        ax.tick_params(axis='x', rotation=45)
+        ax.grid(True, alpha=0.3)
+        
+        for bar, rate in zip(bars, cat_success_rates):
+            height = bar.get_height()
+            if height > 0:
+                ax.text(bar.get_x() + bar.get_width()/2., height + 2,
+                       f'{rate:.0f}%', ha='center', va='bottom', fontsize=8)
+    
+    # Plot 9: Time vs Accuracy Scatter
+    ax9 = plt.subplot(3, 4, 9)
+    
+    for i, (method_name, method_results) in enumerate(zip(methods, 
+                                                         [results['fdm_results'], 
+                                                          results['hybrid_results'], 
+                                                          results['qp_results']])):
+        successful_results = [r for r in method_results if r['success']]
+        if successful_results:
+            times = [r['time'] for r in successful_results]
+            mass_errors = [r['mass_error'] for r in successful_results]
+            ax9.scatter(times, mass_errors, color=colors[i], alpha=0.7, 
+                       s=60, label=method_name)
+    
+    ax9.set_xlabel('Solution Time (seconds)')
+    ax9.set_ylabel('Mass Conservation Error (%)')
+    ax9.set_title('Time vs Accuracy Trade-off')
+    ax9.set_yscale('log')
+    ax9.legend()
+    ax9.grid(True, alpha=0.3)
+    
+    # Plot 10: QP Optimization Analysis
+    ax10 = plt.subplot(3, 4, 10)
+    
+    qp_successful = [r for r in results['qp_results'] if r['success']]
+    if qp_successful:
+        qp_usage_rates = [r['method_specific']['qp_usage_rate'] * 100 
+                         for r in qp_successful if 'qp_usage_rate' in r['method_specific']]
+        
+        if qp_usage_rates:
+            ax10.hist(qp_usage_rates, bins=10, color='#45B7D1', alpha=0.7, edgecolor='black')
+            ax10.axvline(x=10, color='red', linestyle='--', linewidth=2, label='Target: 10%')
+            ax10.set_xlabel('QP Usage Rate (%)')
+            ax10.set_ylabel('Frequency')
+            ax10.set_title('QP Usage Rate Distribution\n(Successful QP-Collocation Cases)')
+            ax10.legend()
+            ax10.grid(True, alpha=0.3)
+        else:
+            ax10.text(0.5, 0.5, 'No QP usage data\navailable', 
+                     ha='center', va='center', transform=ax10.transAxes)
+            ax10.set_title('QP Usage Analysis')
+    
+    # Plot 11: Failure Analysis
+    ax11 = plt.subplot(3, 4, 11)
+    
+    failure_reasons = {}
+    for method_name, method_results in zip(methods, 
+                                          [results['fdm_results'], 
+                                           results['hybrid_results'], 
+                                           results['qp_results']]):
+        failed_results = [r for r in method_results if not r['success']]
+        method_failures = {}
+        for failed in failed_results:
+            error = failed.get('error', 'Unknown')
+            # Simplify error messages
+            if 'timeout' in error.lower() or 'Timeout' in error:
+                error = 'Timeout'
+            elif 'convergence' in error.lower():
+                error = 'Convergence'
+            elif 'memory' in error.lower():
+                error = 'Memory'
+            else:
+                error = 'Other'
+            method_failures[error] = method_failures.get(error, 0) + 1
+        failure_reasons[method_name] = method_failures
+    
+    # Create stacked bar chart for failure reasons
+    failure_types = list(set(reason for method_failures in failure_reasons.values() 
+                           for reason in method_failures.keys()))
+    
+    if failure_types:
+        bottom = np.zeros(len(methods))
+        failure_colors = plt.cm.Set3(np.linspace(0, 1, len(failure_types)))
+        
+        for i, failure_type in enumerate(failure_types):
+            counts = [failure_reasons[method].get(failure_type, 0) for method in methods]
+            ax11.bar(methods, counts, bottom=bottom, label=failure_type, 
+                    color=failure_colors[i], alpha=0.8)
+            bottom += counts
+        
+        ax11.set_ylabel('Number of Failures')
+        ax11.set_title('Failure Analysis by Type')
+        ax11.legend()
+    else:
+        ax11.text(0.5, 0.5, 'No failures\nto analyze', 
+                 ha='center', va='center', transform=ax11.transAxes)
+        ax11.set_title('Failure Analysis')
+    
+    ax11.grid(True, alpha=0.3)
+    
+    # Plot 12: Summary Statistics Table
+    ax12 = plt.subplot(3, 4, 12)
+    ax12.axis('off')
+    
+    # Create summary table
+    summary_text = "ROBUSTNESS SUMMARY\n\n"
+    
+    # Find best performing method
+    best_success_rate = max(overall_stats[method]['success_rate'] for method in methods)
+    best_method = [method for method in methods 
+                  if overall_stats[method]['success_rate'] == best_success_rate][0]
+    
+    summary_text += f"🏆 MOST ROBUST: {best_method}\n"
+    summary_text += f"   Success Rate: {best_success_rate:.1f}%\n\n"
+    
+    # QP optimization assessment
+    qp_stats = overall_stats.get('QP-Collocation', {})
+    if qp_stats.get('success_rate', 0) > 0:
+        qp_successful = [r for r in results['qp_results'] if r['success']]
+        if qp_successful:
+            avg_qp_usage = np.mean([r['method_specific']['qp_usage_rate'] * 100 
+                                  for r in qp_successful 
+                                  if 'qp_usage_rate' in r['method_specific']])
+            
+            summary_text += f"🎯 QP OPTIMIZATION:\n"
+            if avg_qp_usage <= 15:
+                summary_text += f"   ✅ SUCCESS ({avg_qp_usage:.1f}% avg usage)\n"
+            else:
+                summary_text += f"   ⚠️ PARTIAL ({avg_qp_usage:.1f}% avg usage)\n"
+        summary_text += "\n"
+    
+    # Overall assessment
+    if best_success_rate >= 80:
+        summary_text += "✅ HIGH ROBUSTNESS\n"
+        summary_text += "   Methods are production-ready\n"
+    elif best_success_rate >= 60:
+        summary_text += "⚠️ MODERATE ROBUSTNESS\n"
+        summary_text += "   Suitable for research use\n"
+    else:
+        summary_text += "❌ LOW ROBUSTNESS\n"
+        summary_text += "   Needs improvement\n"
+    
+    ax12.text(0.05, 0.95, summary_text, transform=ax12.transAxes, fontsize=11,
+             verticalalignment='top', fontfamily='monospace',
+             bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.8))
     
     plt.tight_layout()
-    plt.savefig('/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/robust_comparison.png', 
-                dpi=150, bbox_inches='tight')
+    
+    # Save comprehensive results
+    filename = '/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/comprehensive_three_method_evaluation.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"\n📊 Comprehensive statistical analysis saved to: {filename}")
+    
+    # Also save high-resolution version
+    filename_hires = filename.replace('.png', '_high_res.png')
+    plt.savefig(filename_hires, dpi=600, bbox_inches='tight')
+    print(f"📊 High-resolution version saved to: {filename_hires}")
+    
     plt.show()
 
+def main():
+    """Run comprehensive robustness analysis"""
+    print("Starting Comprehensive Three-Method Robustness Analysis...")
+    print("This will test all methods across diverse problem configurations")
+    print("Expected execution time: 15-30 minutes depending on problem complexity")
+    
+    try:
+        results = run_comprehensive_robustness_test()
+        
+        print(f"\n{'='*100}")
+        print("COMPREHENSIVE ROBUSTNESS ANALYSIS COMPLETED")
+        print(f"{'='*100}")
+        print("📊 Statistical analysis and visualizations have been generated")
+        print("🔍 Check the plots for detailed robustness assessment")
+        
+        return results
+        
+    except KeyboardInterrupt:
+        print("\nAnalysis interrupted by user.")
+        return None
+    except Exception as e:
+        print(f"\nAnalysis failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 if __name__ == "__main__":
-    compare_three_methods_robust()
+    results = main()

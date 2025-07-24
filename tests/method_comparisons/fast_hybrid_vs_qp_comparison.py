@@ -25,13 +25,13 @@ def run_fast_comparison():
     print("="*80)
     print("Using proven implementations with optimized parameters for speed")
     
-    # Optimized problem parameters for fast execution
+    # Problem parameters for longer simulation
     problem_params = {
         "xmin": 0.0,
         "xmax": 1.0,
         "Nx": 25,        # Reduced resolution for speed
-        "T": 0.2,        # Shorter time horizon
-        "Nt": 10,        # Fewer time steps
+        "T": 2.0,        # Longer T=2 simulation
+        "Nt": 100,       # More time steps for longer simulation
         "sigma": 0.2,    # Moderate diffusion
         "coefCT": 0.05,  # Light coupling
     }
@@ -47,13 +47,13 @@ def run_fast_comparison():
     print(f"  Domain: [{mfg_problem.xmin}, {mfg_problem.xmax}] × [0, {mfg_problem.T}]")
     print(f"  Grid: Dx = {mfg_problem.Dx:.4f}, Dt = {mfg_problem.Dt:.4f}")
     
-    # Optimized shared settings
+    # Optimized shared settings for T=1 stability
     shared_settings = {
-        "num_particles": 400,          # Reduced for speed
-        "max_iterations": 8,           # Fewer iterations
-        "convergence_tolerance": 1e-3, # Relaxed tolerance
-        "newton_iterations": 5,        # Fewer Newton steps
-        "newton_tolerance": 1e-4       # Relaxed Newton tolerance
+        "num_particles": 400,          # Particles count
+        "max_iterations": 15,          # More iterations for T=1
+        "convergence_tolerance": 1e-3, # Tolerance
+        "newton_iterations": 8,        # More Newton steps for stability
+        "newton_tolerance": 1e-4       # Newton tolerance
     }
     
     print(f"\nOptimized Shared Settings:")
@@ -187,8 +187,8 @@ def run_fast_comparison():
             problem=mfg_problem,
             collocation_points=collocation_points,
             num_particles=shared_settings["num_particles"],
-            delta=0.3,  # Conservative delta
-            taylor_order=1,  # First-order for speed
+            delta=0.25,  # Smaller delta for T=1 stability
+            taylor_order=2,  # Second-order for better accuracy
             weight_function="wendland",
             NiterNewton=shared_settings["newton_iterations"],
             l2errBoundNewton=shared_settings["newton_tolerance"],
@@ -383,89 +383,106 @@ def analyze_fast_results(results, problem):
     print(f"Faster method: {faster_method} ({time_ratio:.1f}x speedup)")
 
 def create_fast_plots(results, problem):
-    """Create fast comparison plots"""
+    """Create comparison plot showing both methods on same axis"""
     if not (results.get('hybrid', {}).get('success') and results.get('qp', {}).get('success')):
         print("Cannot create plots - insufficient results")
         return
     
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle('Fast Hybrid vs QP-Collocation Comparison', fontsize=14)
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    fig.suptitle(f'Hybrid vs QP-Collocation Mass Evolution Comparison (T={problem.T})', fontsize=14)
     
     hybrid = results['hybrid']
     qp = results['qp']
     
-    # 1. Final density comparison
-    ax1 = axes[0, 0]
-    ax1.plot(problem.xSpace, hybrid['arrays']['M'][-1, :], 
-             'g-', linewidth=2, label='Hybrid')
-    ax1.plot(problem.xSpace, qp['arrays']['M'][-1, :], 
-             'r--', linewidth=2, label='QP-Collocation')
-    ax1.set_xlabel('Space x')
-    ax1.set_ylabel('Final Density')
-    ax1.set_title('Final Density Comparison')
-    ax1.grid(True)
-    ax1.legend()
+    # Plot both methods on same axis
+    ax.plot(problem.tSpace, hybrid['arrays']['mass_evolution'], 
+             'g-o', linewidth=2, markersize=4, label=f'Hybrid (Change: {hybrid["mass_change_percent"]:+.2f}%)')
+    ax.plot(problem.tSpace, qp['arrays']['mass_evolution'], 
+             'r-s', linewidth=2, markersize=4, label=f'QP-Collocation (Change: {qp["mass_change_percent"]:+.2f}%)')
     
-    # 2. Mass evolution
-    ax2 = axes[0, 1]
-    ax2.plot(problem.tSpace, hybrid['arrays']['mass_evolution'], 
-             'g-o', linewidth=2, label='Hybrid')
-    ax2.plot(problem.tSpace, qp['arrays']['mass_evolution'], 
-             'r-s', linewidth=2, label='QP-Collocation')
-    ax2.set_xlabel('Time t')
-    ax2.set_ylabel('Total Mass')
-    ax2.set_title('Mass Evolution')
-    ax2.grid(True)
-    ax2.legend()
+    # Add reference lines for initial mass
+    initial_mass_hybrid = hybrid['arrays']['mass_evolution'][0]
+    initial_mass_qp = qp['arrays']['mass_evolution'][0]
+    ax.axhline(y=initial_mass_hybrid, color='g', linestyle='--', alpha=0.5, 
+               label=f'Hybrid Initial: {initial_mass_hybrid:.6f}')
+    ax.axhline(y=initial_mass_qp, color='r', linestyle='--', alpha=0.5, 
+               label=f'QP Initial: {initial_mass_qp:.6f}')
     
-    # 3. Key metrics comparison
-    ax3 = axes[1, 0]
-    metrics = ['Center of Mass', 'Max Density Loc']
-    hybrid_vals = [hybrid['center_of_mass'], hybrid['max_density_location']]
-    qp_vals = [qp['center_of_mass'], qp['max_density_location']]
+    ax.set_xlabel('Time t')
+    ax.set_ylabel('Total Mass')
+    ax.set_title('Mass Evolution Comparison')
+    ax.grid(True, alpha=0.3)
+    ax.legend()
     
-    x_pos = np.arange(len(metrics))
-    width = 0.35
+    # Add performance comparison annotation
+    time_comparison = f"Hybrid: {hybrid['time']:.2f}s | QP: {qp['time']:.2f}s"
+    faster_method = "Hybrid" if hybrid['time'] < qp['time'] else "QP-Collocation"
+    time_ratio = max(hybrid['time'], qp['time']) / min(hybrid['time'], qp['time'])
     
-    ax3.bar(x_pos - width/2, hybrid_vals, width, label='Hybrid', color='green', alpha=0.7)
-    ax3.bar(x_pos + width/2, qp_vals, width, label='QP-Collocation', color='red', alpha=0.7)
+    ax.text(0.05, 0.95, f'{time_comparison}\nFaster: {faster_method} ({time_ratio:.1f}x)', 
+             transform=ax.transAxes, fontsize=10, 
+             bbox=dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.8))
     
-    ax3.set_xlabel('Observable')
-    ax3.set_ylabel('Value')
-    ax3.set_title('Physical Observables')
-    ax3.set_xticks(x_pos)
-    ax3.set_xticklabels(metrics)
-    ax3.legend()
-    ax3.grid(True, axis='y')
+    # # 1. Final density comparison
+    # ax1 = axes[0, 0]
+    # ax1.plot(problem.xSpace, hybrid['arrays']['M'][-1, :], 
+    #          'g-', linewidth=2, label='Hybrid')
+    # ax1.plot(problem.xSpace, qp['arrays']['M'][-1, :], 
+    #          'r--', linewidth=2, label='QP-Collocation')
+    # ax1.set_xlabel('Space x')
+    # ax1.set_ylabel('Final Density')
+    # ax1.set_title('Final Density Comparison')
+    # ax1.grid(True)
+    # ax1.legend()
     
-    # 4. Performance comparison
-    ax4 = axes[1, 1]
-    methods = ['Hybrid', 'QP-Collocation']
-    times = [hybrid['time'], qp['time']]
-    iterations = [hybrid['iterations'], qp['iterations']]
+    # # 3. Key metrics comparison
+    # ax3 = axes[1, 0]
+    # metrics = ['Center of Mass', 'Max Density Loc']
+    # hybrid_vals = [hybrid['center_of_mass'], hybrid['max_density_location']]
+    # qp_vals = [qp['center_of_mass'], qp['max_density_location']]
     
-    x_pos = np.arange(len(methods))
-    width = 0.35
+    # x_pos = np.arange(len(metrics))
+    # width = 0.35
     
-    bars1 = ax4.bar(x_pos - width/2, times, width, label='Time (s)', color='blue', alpha=0.7)
-    ax4_twin = ax4.twinx()
-    bars2 = ax4_twin.bar(x_pos + width/2, iterations, width, label='Iterations', color='orange', alpha=0.7)
+    # ax3.bar(x_pos - width/2, hybrid_vals, width, label='Hybrid', color='green', alpha=0.7)
+    # ax3.bar(x_pos + width/2, qp_vals, width, label='QP-Collocation', color='red', alpha=0.7)
     
-    ax4.set_xlabel('Method')
-    ax4.set_ylabel('Time (s)', color='blue')
-    ax4_twin.set_ylabel('Iterations', color='orange')
-    ax4.set_title('Performance Comparison')
-    ax4.set_xticks(x_pos)
-    ax4.set_xticklabels(methods)
-    ax4.grid(True, axis='y')
+    # ax3.set_xlabel('Observable')
+    # ax3.set_ylabel('Value')
+    # ax3.set_title('Physical Observables')
+    # ax3.set_xticks(x_pos)
+    # ax3.set_xticklabels(metrics)
+    # ax3.legend()
+    # ax3.grid(True, axis='y')
     
-    # Add value labels
-    for bar, value in zip(bars1, times):
-        ax4.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                f'{value:.2f}s', ha='center', va='bottom')
-    for bar, value in zip(bars2, iterations):
-        ax4_twin.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                     f'{value}', ha='center', va='bottom')
+    # # 4. Performance comparison
+    # ax4 = axes[1, 1]
+    # methods = ['Hybrid', 'QP-Collocation']
+    # times = [hybrid['time'], qp['time']]
+    # iterations = [hybrid['iterations'], qp['iterations']]
+    
+    # x_pos = np.arange(len(methods))
+    # width = 0.35
+    
+    # bars1 = ax4.bar(x_pos - width/2, times, width, label='Time (s)', color='blue', alpha=0.7)
+    # ax4_twin = ax4.twinx()
+    # bars2 = ax4_twin.bar(x_pos + width/2, iterations, width, label='Iterations', color='orange', alpha=0.7)
+    
+    # ax4.set_xlabel('Method')
+    # ax4.set_ylabel('Time (s)', color='blue')
+    # ax4_twin.set_ylabel('Iterations', color='orange')
+    # ax4.set_title('Performance Comparison')
+    # ax4.set_xticks(x_pos)
+    # ax4.set_xticklabels(methods)
+    # ax4.grid(True, axis='y')
+    
+    # # Add value labels
+    # for bar, value in zip(bars1, times):
+    #     ax4.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+    #             f'{value:.2f}s', ha='center', va='bottom')
+    # for bar, value in zip(bars2, iterations):
+    #     ax4_twin.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+    #                  f'{value}', ha='center', va='bottom')
     
     plt.tight_layout()
     plt.savefig('/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/fast_hybrid_vs_qp_comparison.png', 

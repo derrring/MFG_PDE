@@ -27,15 +27,15 @@ def run_working_comparison():
     print("Using proven implementations from examples directory")
     print("Both methods tested with identical parameters and boundary conditions")
     
-    # Unified problem parameters (balanced for both methods)
+    # Conservative parameters for mass conservation verification
     problem_params = {
         "xmin": 0.0,
         "xmax": 1.0,
-        "Nx": 50,        # Good resolution for both methods
-        "T": 0.5,        # Reasonable time horizon
-        "Nt": 25,        # Adequate time steps  
-        "sigma": 0.3,    # Moderate diffusion
-        "coefCT": 0.1,   # Balanced coupling
+        "Nx": 30,        # Conservative resolution
+        "T": 1.0,        # Shorter time to ensure stability
+        "Nt": 100,       # Sufficient time steps for small Dt
+        "sigma": 0.15,   # Lower diffusion
+        "coefCT": 0.02,  # Light coupling
     }
     
     print(f"\nUnified Problem Parameters:")
@@ -100,12 +100,12 @@ def run_working_comparison():
             boundary_conditions=no_flux_bc,
         )
         
-        # Fixed point iterator with damping
+        # Fixed point iterator with damping (conservative for stability)
         hybrid_iterator = FixedPointIterator(
             mfg_problem,
             hjb_solver=hjb_solver_component,
             fp_solver=fp_solver_component,
-            thetaUM=0.5,  # Damping factor
+            thetaUM=0.5,  # Moderate damping factor
         )
         
         print(f"  Starting Hybrid solve with {shared_particle_settings['num_particles']} particles...")
@@ -519,215 +519,79 @@ def analyze_working_comparison(results, problem):
     print("  + Superior boundary condition handling")
 
 def create_working_comparison_plots(results, problem):
-    """Create comprehensive comparison plots"""
+    """Create comparison plots showing only figures 1.1 and 1.3 with exchanged positions"""
     if not (results.get('hybrid', {}).get('success') and results.get('qp', {}).get('success')):
         print("Cannot create plots - insufficient successful results")
         return
     
-    fig, axes = plt.subplots(3, 3, figsize=(18, 15))
-    fig.suptitle('Working Hybrid vs QP-Collocation Comparison\n(Using Examples Directory Implementations)', fontsize=16)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle(f'Working Hybrid vs QP-Collocation Comparison (T={problem.T}, Nx={problem.Nx})\n(Figures 1.1 and 1.3 with Exchanged Positions)', fontsize=14)
     
     hybrid = results['hybrid']
     qp = results['qp']
     
-    colors = {'hybrid': 'green', 'qp': 'red'}
-    method_names = {'hybrid': 'Hybrid Particle-FDM', 'qp': 'QP Particle-Collocation'}
+    # Figure 1.3 in position 1.1: Mass evolution comparison (originally figure 1.3)
+    ax1.plot(problem.tSpace, hybrid['arrays']['mass_evolution'], 
+             'g-o', linewidth=2, markersize=3, label='Hybrid')
+    ax1.plot(problem.tSpace, qp['arrays']['mass_evolution'], 
+             'r-s', linewidth=2, markersize=3, label='QP-Collocation')
     
-    # 1. Final density comparison
-    ax1 = axes[0, 0]
-    ax1.plot(problem.xSpace, hybrid['arrays']['M_solution'][-1, :], 
-             'g-', linewidth=3, label='Hybrid', alpha=0.8)
-    ax1.plot(problem.xSpace, qp['arrays']['M_solution'][-1, :], 
-             'r--', linewidth=3, label='QP-Collocation', alpha=0.8)
-    ax1.set_xlabel('Space x')
-    ax1.set_ylabel('Final Density M(T,x)')
-    ax1.set_title('Final Density Comparison', fontweight='bold')
-    ax1.grid(True)
+    # Add reference lines for mass conservation
+    ax1.axhline(y=hybrid['arrays']['mass_evolution'][0], color='g', linestyle='--', alpha=0.5,
+                label=f'Hybrid Initial: {hybrid["arrays"]["mass_evolution"][0]:.4f}')
+    ax1.axhline(y=qp['arrays']['mass_evolution'][0], color='r', linestyle='--', alpha=0.5,
+                label=f'QP Initial: {qp["arrays"]["mass_evolution"][0]:.4f}')
+    
+    ax1.set_xlabel('Time t')
+    ax1.set_ylabel('Total Mass')
+    ax1.set_title('Position 1.1: Mass Evolution Comparison (Originally Fig 1.3)')
+    ax1.grid(True, alpha=0.3)
     ax1.legend()
     
-    # 2. Final density difference
-    ax2 = axes[0, 1]
-    density_diff = qp['arrays']['M_solution'][-1, :] - hybrid['arrays']['M_solution'][-1, :]
-    ax2.plot(problem.xSpace, density_diff, 'purple', linewidth=2)
-    ax2.axhline(y=0, color='black', linestyle='-', alpha=0.3)
-    ax2.set_xlabel('Space x')
-    ax2.set_ylabel('Density Difference (QP - Hybrid)')
-    ax2.set_title('Final Density Difference')
-    ax2.grid(True)
+    # Add mass change annotations
+    hybrid_change = ((hybrid['arrays']['mass_evolution'][-1] - hybrid['arrays']['mass_evolution'][0]) / 
+                     hybrid['arrays']['mass_evolution'][0] * 100)
+    qp_change = ((qp['arrays']['mass_evolution'][-1] - qp['arrays']['mass_evolution'][0]) / 
+                 qp['arrays']['mass_evolution'][0] * 100)
     
-    # 3. Mass evolution comparison
-    ax3 = axes[0, 2]
-    ax3.plot(problem.tSpace, hybrid['arrays']['mass_evolution'], 
-             'g-o', linewidth=2, markersize=4, label='Hybrid')
-    ax3.plot(problem.tSpace, qp['arrays']['mass_evolution'], 
-             'r-s', linewidth=2, markersize=4, label='QP-Collocation')
-    ax3.set_xlabel('Time t')
-    ax3.set_ylabel('Total Mass')
-    ax3.set_title('Mass Evolution Comparison')
-    ax3.grid(True)
-    ax3.legend()
+    ax1.text(0.05, 0.95, f'Hybrid: {hybrid_change:+.2f}%\nQP: {qp_change:+.2f}%', 
+             transform=ax1.transAxes, fontsize=10, 
+             bbox=dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.8))
     
-    # 4. Control field comparison
-    ax4 = axes[1, 0]
-    ax4.plot(problem.xSpace, hybrid['arrays']['U_solution'][-1, :], 
+    # Figure 1.1 in position 1.3: Final density comparison (originally figure 1.1)
+    ax2.plot(problem.xSpace, hybrid['arrays']['M_solution'][-1, :], 
              'g-', linewidth=2, label='Hybrid', alpha=0.8)
-    ax4.plot(problem.xSpace, qp['arrays']['U_solution'][-1, :], 
+    ax2.plot(problem.xSpace, qp['arrays']['M_solution'][-1, :], 
              'r--', linewidth=2, label='QP-Collocation', alpha=0.8)
-    ax4.set_xlabel('Space x')
-    ax4.set_ylabel('Final Control U(T,x)')
-    ax4.set_title('Final Control Field Comparison')
-    ax4.grid(True)
-    ax4.legend()
     
-    # 5. Physical observables comparison
-    ax5 = axes[1, 1]
-    observables = ['Center of Mass', 'Max Density Loc', 'Peak Value']
-    hybrid_vals = [
-        hybrid['physical_observables']['center_of_mass'],
-        hybrid['physical_observables']['max_density_location'],
-        hybrid['physical_observables']['final_density_peak']
-    ]
-    qp_vals = [
-        qp['physical_observables']['center_of_mass'],
-        qp['physical_observables']['max_density_location'],
-        qp['physical_observables']['final_density_peak']
-    ]
+    # Add initial density for reference
+    ax2.plot(problem.xSpace, hybrid['arrays']['M_solution'][0, :], 
+             'k:', linewidth=1, alpha=0.7, label='Initial Density')
     
-    x_pos = np.arange(len(observables))
-    width = 0.35
+    ax2.set_xlabel('Space x')
+    ax2.set_ylabel('Final Density M(T,x)')
+    ax2.set_title('Position 1.3: Final Density Comparison (Originally Fig 1.1)')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
     
-    bars1 = ax5.bar(x_pos - width/2, hybrid_vals, width, label='Hybrid', color='green', alpha=0.7)
-    bars2 = ax5.bar(x_pos + width/2, qp_vals, width, label='QP-Collocation', color='red', alpha=0.7)
+    # Add density peak annotations
+    hybrid_peak_idx = np.argmax(hybrid['arrays']['M_solution'][-1, :])
+    qp_peak_idx = np.argmax(qp['arrays']['M_solution'][-1, :])
+    hybrid_peak_loc = problem.xSpace[hybrid_peak_idx]
+    qp_peak_loc = problem.xSpace[qp_peak_idx]
+    hybrid_peak_val = hybrid['arrays']['M_solution'][-1, hybrid_peak_idx]
+    qp_peak_val = qp['arrays']['M_solution'][-1, qp_peak_idx]
     
-    ax5.set_xlabel('Observable')
-    ax5.set_ylabel('Value')
-    ax5.set_title('Physical Observables Comparison')
-    ax5.set_xticks(x_pos)
-    ax5.set_xticklabels(observables, rotation=15)
-    ax5.legend()
-    ax5.grid(True, axis='y')
-    
-    # Add value labels
-    for bar, value in zip(bars1, hybrid_vals):
-        ax5.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                f'{value:.3f}', ha='center', va='bottom', fontsize=8)
-    for bar, value in zip(bars2, qp_vals):
-        ax5.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                f'{value:.3f}', ha='center', va='bottom', fontsize=8)
-    
-    # 6. Performance metrics
-    ax6 = axes[1, 2]
-    methods = ['Hybrid', 'QP-Collocation']
-    times = [hybrid['time'], qp['time']]
-    iterations = [hybrid['iterations'], qp['iterations']]
-    
-    x_pos = np.arange(len(methods))
-    width = 0.35
-    
-    bars1 = ax6.bar(x_pos - width/2, times, width, label='Time (s)', color='blue', alpha=0.7)
-    ax6_twin = ax6.twinx()
-    bars2 = ax6_twin.bar(x_pos + width/2, iterations, width, label='Iterations', color='orange', alpha=0.7)
-    
-    ax6.set_xlabel('Method')
-    ax6.set_ylabel('Time (s)', color='blue')
-    ax6_twin.set_ylabel('Iterations', color='orange')
-    ax6.set_title('Performance Comparison')
-    ax6.set_xticks(x_pos)
-    ax6.set_xticklabels(methods)
-    ax6.grid(True, axis='y')
-    
-    # Add value labels
-    for bar, value in zip(bars1, times):
-        ax6.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                f'{value:.2f}s', ha='center', va='bottom', fontsize=9)
-    for bar, value in zip(bars2, iterations):
-        ax6_twin.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                     f'{value}', ha='center', va='bottom', fontsize=9)
-    
-    # 7. Particle trajectories (if available)
-    ax7 = axes[2, 0]
-    if hybrid['arrays']['particles_trajectory'] is not None:
-        # Show sample particle trajectories
-        sample_particles = 20
-        trajectory = hybrid['arrays']['particles_trajectory']
-        particle_indices = np.linspace(0, trajectory.shape[1]-1, sample_particles, dtype=int)
-        
-        for i in particle_indices:
-            ax7.plot(problem.tSpace, trajectory[:, i], 'g-', alpha=0.3, linewidth=1)
-        
-        ax7.set_xlabel('Time t')
-        ax7.set_ylabel('Particle Position')
-        ax7.set_title('Hybrid: Sample Particle Trajectories')
-        ax7.grid(True)
-    
-    # 8. QP particle trajectories
-    ax8 = axes[2, 1]
-    if qp['arrays']['particles_trajectory'] is not None:
-        sample_particles = 20
-        trajectory = qp['arrays']['particles_trajectory']
-        particle_indices = np.linspace(0, trajectory.shape[1]-1, sample_particles, dtype=int)
-        
-        for i in particle_indices:
-            ax8.plot(problem.tSpace, trajectory[:, i], 'r-', alpha=0.3, linewidth=1)
-        
-        ax8.set_xlabel('Time t')
-        ax8.set_ylabel('Particle Position')
-        ax8.set_title('QP: Sample Particle Trajectories')
-        ax8.grid(True)
-    
-    # 9. Convergence summary
-    ax9 = axes[2, 2]
-    
-    # Summary metrics
-    metrics_names = ['Mass Cons.', 'No Violations', 'Converged']
-    
-    # Mass conservation check (< 2% change)
-    hybrid_mass_ok = abs(hybrid['mass_conservation']['mass_change_percent']) < 2.0
-    qp_mass_ok = abs(qp['mass_conservation']['mass_change_percent']) < 2.0
-    
-    # No violations check
-    hybrid_clean = hybrid['solution_quality']['violations'] == 0
-    qp_clean = qp['solution_quality']['violations'] == 0
-    
-    # Convergence check
-    hybrid_conv = hybrid.get('converged', True)
-    qp_conv = qp.get('converged', True)
-    
-    hybrid_scores = [hybrid_mass_ok, hybrid_clean, hybrid_conv]
-    qp_scores = [qp_mass_ok, qp_clean, qp_conv]
-    
-    x_pos = np.arange(len(metrics_names))
-    width = 0.35
-    
-    bars1 = ax9.bar(x_pos - width/2, hybrid_scores, width, 
-                    label='Hybrid', color='green', alpha=0.7)
-    bars2 = ax9.bar(x_pos + width/2, qp_scores, width, 
-                    label='QP-Collocation', color='red', alpha=0.7)
-    
-    ax9.set_xlabel('Quality Metric')
-    ax9.set_ylabel('Success (1) / Failure (0)')
-    ax9.set_title('Solution Quality Summary')
-    ax9.set_xticks(x_pos)
-    ax9.set_xticklabels(metrics_names)
-    ax9.set_ylim([0, 1.2])
-    ax9.legend()
-    ax9.grid(True, axis='y')
-    
-    # Add success/failure labels
-    for bar, success in zip(bars1, hybrid_scores):
-        label = "✓" if success else "✗"
-        ax9.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.05,
-                label, ha='center', va='bottom', fontsize=12, weight='bold')
-    
-    for bar, success in zip(bars2, qp_scores):
-        label = "✓" if success else "✗"
-        ax9.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.05,
-                label, ha='center', va='bottom', fontsize=12, weight='bold')
+    ax2.text(0.05, 0.95, f'Peak Locations:\nHybrid: x={hybrid_peak_loc:.3f}\nQP: x={qp_peak_loc:.3f}', 
+             transform=ax2.transAxes, fontsize=10, 
+             bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))
     
     plt.tight_layout()
-    plt.savefig('/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/working_hybrid_vs_qp_comparison.png', 
+    plt.savefig('/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/working_hybrid_vs_qp_comparison.png', 
                 dpi=150, bbox_inches='tight')
     plt.show()
+    
+    print(f"\n✅ Comparison plots saved: working_hybrid_vs_qp_comparison.png")
 
 if __name__ == "__main__":
     print("Starting Working Hybrid vs QP-Collocation comparison...")

@@ -346,15 +346,13 @@ def create_extended_plots(problem, M_solution, U_solution, mass_evolution,
                          density_spreads, particles_trajectory, execution_time):
     """Create comprehensive plots for extended simulation"""
     
-    fig = plt.figure(figsize=(18, 14))
-    gs = fig.add_gridspec(3, 4, hspace=0.35, wspace=0.3)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
     fig.suptitle(f'QP-Collocation Extended Mass Conservation (T={problem.T})\n'
                 f'Execution: {execution_time:.1f}s, Mass change: {(mass_evolution[-1]-mass_evolution[0])/mass_evolution[0]*100:+.3f}%', 
-                fontsize=16, fontweight='bold')
+                fontsize=14, fontweight='bold')
     
-    # 1. Mass evolution (main plot)
-    ax1 = fig.add_subplot(gs[0, :2])
+    # Figure 1.1: Mass evolution (main plot)
     ax1.plot(problem.tSpace, mass_evolution, 'g-', linewidth=3, alpha=0.8, label='Total Mass')
     ax1.axhline(y=mass_evolution[0], color='r', linestyle='--', alpha=0.7, 
                 label=f'Initial: {mass_evolution[0]:.6f}')
@@ -362,7 +360,7 @@ def create_extended_plots(problem, M_solution, U_solution, mass_evolution,
                 label=f'Final: {mass_evolution[-1]:.6f}')
     ax1.set_xlabel('Time t')
     ax1.set_ylabel('Total Mass')
-    ax1.set_title(f'Mass Evolution T={problem.T} (QP-Collocation)', fontweight='bold', fontsize=14)
+    ax1.set_title(f'Figure 1.1: Mass Evolution T={problem.T} (QP-Collocation)', fontweight='bold', fontsize=12)
     ax1.grid(True, alpha=0.3)
     ax1.legend()
     
@@ -370,117 +368,116 @@ def create_extended_plots(problem, M_solution, U_solution, mass_evolution,
     mass_change_percent = (mass_evolution[-1] - mass_evolution[0]) / mass_evolution[0] * 100
     conservation_quality = "Excellent" if abs(mass_change_percent) < 1 else "Good" if abs(mass_change_percent) < 3 else "Fair"
     ax1.text(0.05, 0.95, f'Change: {mass_change_percent:+.3f}%\n{conservation_quality} Conservation', 
-             transform=ax1.transAxes, fontsize=12, 
+             transform=ax1.transAxes, fontsize=10, 
              bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgreen", alpha=0.8))
     
-    # 2. Mass variation detail
-    ax2 = fig.add_subplot(gs[0, 2:])
+    # Figure 1.2: Mass variation detail
     mass_variation = (mass_evolution - mass_evolution[0]) / mass_evolution[0] * 100
     ax2.plot(problem.tSpace, mass_variation, 'b-', linewidth=2)
     ax2.axhline(y=0, color='k', linestyle='-', alpha=0.5)
     ax2.fill_between(problem.tSpace, mass_variation, alpha=0.3, color='blue')
     ax2.set_xlabel('Time t')
     ax2.set_ylabel('Mass Change (%)')
-    ax2.set_title('Mass Conservation Detail', fontweight='bold')
+    ax2.set_title('Figure 1.2: Mass Conservation Detail', fontweight='bold', fontsize=12)
     ax2.grid(True, alpha=0.3)
     
-    # 3. Physical observables evolution
-    ax3 = fig.add_subplot(gs[1, 0])
-    ax3.plot(problem.tSpace, center_of_mass_evolution, 'purple', linewidth=2, label='Center of Mass')
-    ax3.plot(problem.tSpace, max_density_locations, 'orange', linewidth=2, label='Peak Location')
-    ax3.set_xlabel('Time t')
-    ax3.set_ylabel('Position')
-    ax3.set_title('Physical Observables')
-    ax3.grid(True, alpha=0.3)
-    ax3.legend()
+    # # 3. Physical observables evolution
+    # ax3 = fig.add_subplot(gs[1, 0])
+    # ax3.plot(problem.tSpace, center_of_mass_evolution, 'purple', linewidth=2, label='Center of Mass')
+    # ax3.plot(problem.tSpace, max_density_locations, 'orange', linewidth=2, label='Peak Location')
+    # ax3.set_xlabel('Time t')
+    # ax3.set_ylabel('Position')
+    # ax3.set_title('Physical Observables')
+    # ax3.grid(True, alpha=0.3)
+    # ax3.legend()
     
-    # 4. Density characteristics
-    ax4 = fig.add_subplot(gs[1, 1])
-    ax4.plot(problem.tSpace, peak_densities, 'red', linewidth=2, label='Peak Value')
-    ax4_twin = ax4.twinx()
-    ax4_twin.plot(problem.tSpace, density_spreads, 'green', linewidth=2, label='Spread')
-    ax4.set_xlabel('Time t')
-    ax4.set_ylabel('Peak Density', color='red')
-    ax4_twin.set_ylabel('Density Spread', color='green')
-    ax4.set_title('Density Characteristics')
-    ax4.grid(True, alpha=0.3)
+    # # 4. Density characteristics
+    # ax4 = fig.add_subplot(gs[1, 1])
+    # ax4.plot(problem.tSpace, peak_densities, 'red', linewidth=2, label='Peak Value')
+    # ax4_twin = ax4.twinx()
+    # ax4_twin.plot(problem.tSpace, density_spreads, 'green', linewidth=2, label='Spread')
+    # ax4.set_xlabel('Time t')
+    # ax4.set_ylabel('Peak Density', color='red')
+    # ax4_twin.set_ylabel('Density Spread', color='green')
+    # ax4.set_title('Density Characteristics')
+    # ax4.grid(True, alpha=0.3)
     
-    # 5. Initial vs final density
-    ax5 = fig.add_subplot(gs[1, 2])
-    ax5.plot(problem.xSpace, M_solution[0, :], 'g--', linewidth=3, alpha=0.8, label='Initial (t=0)')
-    ax5.plot(problem.xSpace, M_solution[-1, :], 'r-', linewidth=3, alpha=0.8, label=f'Final (t={problem.T})')
-    # Add intermediate snapshots
-    mid_indices = [len(problem.tSpace)//4, len(problem.tSpace)//2, 3*len(problem.tSpace)//4]
-    colors = ['blue', 'orange', 'purple']
-    for i, (idx, color) in enumerate(zip(mid_indices, colors)):
-        ax5.plot(problem.xSpace, M_solution[idx, :], color=color, linewidth=1.5, alpha=0.6, 
-                label=f't={problem.tSpace[idx]:.1f}')
+    # # 5. Initial vs final density
+    # ax5 = fig.add_subplot(gs[1, 2])
+    # ax5.plot(problem.xSpace, M_solution[0, :], 'g--', linewidth=3, alpha=0.8, label='Initial (t=0)')
+    # ax5.plot(problem.xSpace, M_solution[-1, :], 'r-', linewidth=3, alpha=0.8, label=f'Final (t={problem.T})')
+    # # Add intermediate snapshots
+    # mid_indices = [len(problem.tSpace)//4, len(problem.tSpace)//2, 3*len(problem.tSpace)//4]
+    # colors = ['blue', 'orange', 'purple']
+    # for i, (idx, color) in enumerate(zip(mid_indices, colors)):
+    #     ax5.plot(problem.xSpace, M_solution[idx, :], color=color, linewidth=1.5, alpha=0.6, 
+    #             label=f't={problem.tSpace[idx]:.1f}')
     
-    ax5.set_xlabel('Space x')
-    ax5.set_ylabel('Density')
-    ax5.set_title('Density Evolution Snapshots')
-    ax5.grid(True, alpha=0.3)
-    ax5.legend()
+    # ax5.set_xlabel('Space x')
+    # ax5.set_ylabel('Density')
+    # ax5.set_title('Density Evolution Snapshots')
+    # ax5.grid(True, alpha=0.3)
+    # ax5.legend()
     
-    # 6. Control field evolution
-    ax6 = fig.add_subplot(gs[1, 3])
-    ax6.plot(problem.xSpace, U_solution[0, :], 'g--', linewidth=2, alpha=0.7, label='Initial')
-    ax6.plot(problem.xSpace, U_solution[-1, :], 'r-', linewidth=2, label='Final')
-    ax6.set_xlabel('Space x')
-    ax6.set_ylabel('Control U')
-    ax6.set_title('Control Field Evolution')
-    ax6.grid(True, alpha=0.3)
-    ax6.legend()
+    # # 6. Control field evolution
+    # ax6 = fig.add_subplot(gs[1, 3])
+    # ax6.plot(problem.xSpace, U_solution[0, :], 'g--', linewidth=2, alpha=0.7, label='Initial')
+    # ax6.plot(problem.xSpace, U_solution[-1, :], 'r-', linewidth=2, label='Final')
+    # ax6.set_xlabel('Space x')
+    # ax6.set_ylabel('Control U')
+    # ax6.set_title('Control Field Evolution')
+    # ax6.grid(True, alpha=0.3)
+    # ax6.legend()
     
-    # 7. Density heatmap
-    ax7 = fig.add_subplot(gs[2, :2])
-    # Sample time points for visualization
-    time_samples = min(100, len(problem.tSpace))
-    time_indices = np.linspace(0, len(problem.tSpace)-1, time_samples, dtype=int)
+    # # 7. Density heatmap
+    # ax7 = fig.add_subplot(gs[2, :2])
+    # # Sample time points for visualization
+    # time_samples = min(100, len(problem.tSpace))
+    # time_indices = np.linspace(0, len(problem.tSpace)-1, time_samples, dtype=int)
     
-    im = ax7.imshow(M_solution[time_indices, :].T, aspect='auto', origin='lower',
-                    extent=[problem.tSpace[0], problem.tSpace[-1], problem.xmin, problem.xmax],
-                    cmap='viridis', interpolation='bilinear')
-    ax7.set_xlabel('Time t')
-    ax7.set_ylabel('Space x')
-    ax7.set_title('Density Evolution Heatmap')
-    plt.colorbar(im, ax=ax7, label='Density M(t,x)')
+    # im = ax7.imshow(M_solution[time_indices, :].T, aspect='auto', origin='lower',
+    #                 extent=[problem.tSpace[0], problem.tSpace[-1], problem.xmin, problem.xmax],
+    #                 cmap='viridis', interpolation='bilinear')
+    # ax7.set_xlabel('Time t')
+    # ax7.set_ylabel('Space x')
+    # ax7.set_title('Density Evolution Heatmap')
+    # plt.colorbar(im, ax=ax7, label='Density M(t,x)')
     
-    # 8. Sample particle trajectories
-    ax8 = fig.add_subplot(gs[2, 2:])
-    if particles_trajectory is not None:
-        # Show sample particle trajectories
-        sample_size = min(40, particles_trajectory.shape[1])
-        particle_indices = np.linspace(0, particles_trajectory.shape[1]-1, sample_size, dtype=int)
+    # # 8. Sample particle trajectories
+    # ax8 = fig.add_subplot(gs[2, 2:])
+    # if particles_trajectory is not None:
+    #     # Show sample particle trajectories
+    #     sample_size = min(40, particles_trajectory.shape[1])
+    #     particle_indices = np.linspace(0, particles_trajectory.shape[1]-1, sample_size, dtype=int)
         
-        for i in particle_indices:
-            ax8.plot(problem.tSpace, particles_trajectory[:, i], 'b-', alpha=0.4, linewidth=1)
+    #     for i in particle_indices:
+    #         ax8.plot(problem.tSpace, particles_trajectory[:, i], 'b-', alpha=0.4, linewidth=1)
         
-        ax8.set_xlabel('Time t')
-        ax8.set_ylabel('Particle Position')
-        ax8.set_title(f'Sample Particle Trajectories (n={sample_size})')
-        ax8.set_ylim([problem.xmin - 0.05, problem.xmax + 0.05])
-        ax8.grid(True, alpha=0.3)
+    #     ax8.set_xlabel('Time t')
+    #     ax8.set_ylabel('Particle Position')
+    #     ax8.set_title(f'Sample Particle Trajectories (n={sample_size})')
+    #     ax8.set_ylim([problem.xmin - 0.05, problem.xmax + 0.05])
+    #     ax8.grid(True, alpha=0.3)
         
-        # Add boundary lines
-        ax8.axhline(y=problem.xmin, color='red', linestyle='--', alpha=0.8, linewidth=2, label='Boundaries')
-        ax8.axhline(y=problem.xmax, color='red', linestyle='--', alpha=0.8, linewidth=2)
-        ax8.legend()
+    #     # Add boundary lines
+    #     ax8.axhline(y=problem.xmin, color='red', linestyle='--', alpha=0.8, linewidth=2, label='Boundaries')
+    #     ax8.axhline(y=problem.xmax, color='red', linestyle='--', alpha=0.8, linewidth=2)
+    #     ax8.legend()
         
-        # Add text about boundary violations
-        total_violations = 0
-        for t_step in range(particles_trajectory.shape[0]):
-            step_particles = particles_trajectory[t_step, :]
-            violations = np.sum(
-                (step_particles < problem.xmin - 1e-10) | 
-                (step_particles > problem.xmax + 1e-10)
-            )
-            total_violations += violations
+    #     # Add text about boundary violations
+    #     total_violations = 0
+    #     for t_step in range(particles_trajectory.shape[0]):
+    #         step_particles = particles_trajectory[t_step, :]
+    #         violations = np.sum(
+    #             (step_particles < problem.xmin - 1e-10) | 
+    #             (step_particles > problem.xmax + 1e-10)
+    #         )
+    #         total_violations += violations
         
-        violation_text = f"Violations: {total_violations}\n({'Perfect' if total_violations == 0 else 'Good'} boundary handling)"
-        ax8.text(0.05, 0.95, violation_text, transform=ax8.transAxes, fontsize=10,
-                bbox=dict(boxstyle="round,pad=0.3", 
-                         facecolor="lightgreen" if total_violations == 0 else "lightyellow", alpha=0.8))
+    #     violation_text = f"Violations: {total_violations}\n({'Perfect' if total_violations == 0 else 'Good'} boundary handling)"
+    #     ax8.text(0.05, 0.95, violation_text, transform=ax8.transAxes, fontsize=10,
+    #             bbox=dict(boxstyle="round,pad=0.3", 
+    #                      facecolor="lightgreen" if total_violations == 0 else "lightyellow", alpha=0.8))
     
     plt.tight_layout()
     plt.savefig('/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/qp_extended_mass_conservation.png', 
