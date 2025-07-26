@@ -55,8 +55,8 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
                  delta: float = 0.1,
                  taylor_order: int = 2,
                  weight_function: str = "wendland",
-                 NiterNewton: int = 30,
-                 l2errBoundNewton: float = 1e-4,
+                 max_newton_iterations: int = 30,
+                 newton_tolerance: float = 1e-4,
                  kde_bandwidth: str = "scott",
                  normalize_kde_output: bool = False,
                  boundary_indices: Optional[np.ndarray] = None,
@@ -75,8 +75,8 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
             delta=delta,
             taylor_order=taylor_order,
             weight_function=weight_function,
-            NiterNewton=NiterNewton,
-            l2errBoundNewton=l2errBoundNewton,
+            max_newton_iterations=max_newton_iterations,
+            newton_tolerance=newton_tolerance,
             kde_bandwidth=kde_bandwidth,
             normalize_kde_output=normalize_kde_output,
             boundary_indices=boundary_indices,
@@ -172,7 +172,7 @@ def create_adaptive_particle_solver(problem: "MFGProblem",
 
 # Example of applying decorator to existing solver classes
 @adaptive_convergence(verbose=False)  # Quiet mode for batch processing
-class QuietAdaptiveParticleCollocationSolver(ParticleCollocationSolver):
+class SilentAdaptiveParticleCollocationSolver(ParticleCollocationSolver):
     """
     Adaptive particle collocation solver with minimal output.
     Useful for batch processing or when detailed convergence info isn't needed.
@@ -192,3 +192,22 @@ class HighPrecisionAdaptiveParticleCollocationSolver(ParticleCollocationSolver):
     Suitable for problems requiring very accurate solutions.
     """
     pass
+
+
+# Backward compatibility alias
+import warnings
+
+@adaptive_convergence(verbose=False)
+class QuietAdaptiveParticleCollocationSolver(ParticleCollocationSolver):
+    """
+    Deprecated: Use SilentAdaptiveParticleCollocationSolver instead.
+    
+    This is a backward compatibility alias for the renamed class.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "QuietAdaptiveParticleCollocationSolver is deprecated. Use SilentAdaptiveParticleCollocationSolver instead.",
+            DeprecationWarning, stacklevel=2
+        )
+        super().__init__(*args, **kwargs)

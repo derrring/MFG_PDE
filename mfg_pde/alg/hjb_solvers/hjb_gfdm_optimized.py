@@ -37,7 +37,10 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
     """
     
     def __init__(self, problem, collocation_points, delta=0.35, taylor_order=2,
-                 weight_function="wendland", NiterNewton=8, l2errBoundNewton=1e-4,
+                 weight_function="wendland", 
+                 max_newton_iterations=None, newton_tolerance=None,
+                 # Deprecated parameters for backward compatibility
+                 NiterNewton=None, l2errBoundNewton=None,
                  use_monotone_constraints=True, optimization_level=3, 
                  qp_activation_tolerance=1e-3, enable_batch_qp=True, 
                  enable_warm_start=True, enable_caching=True):
@@ -62,9 +65,22 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
         enable_caching : bool
             Enable constraint matrix caching
         """
+        # Handle backward compatibility
+        if NiterNewton is not None and max_newton_iterations is None:
+            max_newton_iterations = NiterNewton
+        if l2errBoundNewton is not None and newton_tolerance is None:
+            newton_tolerance = l2errBoundNewton
+        
+        # Set defaults if still None
+        if max_newton_iterations is None:
+            max_newton_iterations = 8
+        if newton_tolerance is None:
+            newton_tolerance = 1e-4
+            
         super().__init__(problem, collocation_points, delta, taylor_order,
-                        weight_function, NiterNewton, l2errBoundNewton,
-                        use_monotone_constraints)
+                        weight_function, 
+                        max_newton_iterations=max_newton_iterations, newton_tolerance=newton_tolerance,
+                        use_monotone_constraints=use_monotone_constraints)
         
         # Optimization settings
         self.optimization_level = optimization_level

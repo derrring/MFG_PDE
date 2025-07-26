@@ -2,8 +2,8 @@ import numpy as np
 import time
 
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
-from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver
+from mfg_pde.alg.fp_solvers import FPFDMSolver
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.utils.plot_utils import plot_results, plot_convergence
 from mfg_pde.core.boundaries import BoundaryConditions
@@ -35,13 +35,13 @@ def run_no_flux_fdm_test():
     print("\n--- Instantiating Solvers with No-Flux Boundaries ---")
 
     # HJB solver (FDM)
-    hjb_solver_component = FdmHJBSolver(
+    hjb_solver_component = HJBFDMSolver(
         mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton
     )
 
     # FP solver (FDM) with no-flux boundaries
     no_flux_bc = BoundaryConditions(type="no_flux")
-    fp_solver_component = FdmFPSolver(mfg_problem, boundary_conditions=no_flux_bc)
+    fp_solver_component = FPFDMSolver(mfg_problem, boundary_conditions=no_flux_bc)
 
     # Fixed point iterator
     no_flux_iterator = FixedPointIterator(

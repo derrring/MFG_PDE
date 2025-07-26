@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.boundaries import BoundaryConditions
 
 
-class EnhancedParticleCollocationSolver(ParticleCollocationSolver):
+class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
     """
     Particle Collocation Solver with advanced convergence monitoring.
     
@@ -38,8 +38,8 @@ class EnhancedParticleCollocationSolver(ParticleCollocationSolver):
                  delta: float = 0.1,
                  taylor_order: int = 2,
                  weight_function: str = "wendland",
-                 NiterNewton: int = 30,
-                 l2errBoundNewton: float = 1e-4,
+                 max_newton_iterations: int = 30,
+                 newton_tolerance: float = 1e-4,
                  kde_bandwidth: str = "scott",
                  normalize_kde_output: bool = False,
                  boundary_indices: Optional[np.ndarray] = None,
@@ -62,8 +62,8 @@ class EnhancedParticleCollocationSolver(ParticleCollocationSolver):
             delta=delta,
             taylor_order=taylor_order,
             weight_function=weight_function,
-            NiterNewton=NiterNewton,
-            l2errBoundNewton=l2errBoundNewton,
+            max_newton_iterations=max_newton_iterations,
+            newton_tolerance=newton_tolerance,
             kde_bandwidth=kde_bandwidth,
             normalize_kde_output=normalize_kde_output,
             boundary_indices=boundary_indices,
@@ -308,7 +308,7 @@ class EnhancedParticleCollocationSolver(ParticleCollocationSolver):
 # Convenience function for creating enhanced solver
 def create_enhanced_solver(problem: "MFGProblem", 
                          collocation_points: np.ndarray,
-                         **kwargs) -> EnhancedParticleCollocationSolver:
+                         **kwargs) -> MonitoredParticleCollocationSolver:
     """
     Create enhanced particle collocation solver with optimized defaults.
     
@@ -333,4 +333,22 @@ def create_enhanced_solver(problem: "MFGProblem",
     }
     defaults.update(kwargs)
     
-    return EnhancedParticleCollocationSolver(problem, collocation_points, **defaults)
+    return MonitoredParticleCollocationSolver(problem, collocation_points, **defaults)
+
+
+# Backward compatibility alias
+import warnings
+
+class EnhancedParticleCollocationSolver(MonitoredParticleCollocationSolver):
+    """
+    Deprecated: Use MonitoredParticleCollocationSolver instead.
+    
+    This is a backward compatibility alias for the renamed class.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "EnhancedParticleCollocationSolver is deprecated. Use MonitoredParticleCollocationSolver instead.",
+            DeprecationWarning, stacklevel=2
+        )
+        super().__init__(*args, **kwargs)

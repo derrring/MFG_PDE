@@ -4,7 +4,7 @@ import time
 # Adjust these imports based on your package structure and where this script is located
 # Assuming this script is outside the mfg_pde package, and mfg_pde is installed
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver
 from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.utils.plot_utils import plot_results, plot_convergence

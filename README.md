@@ -4,29 +4,57 @@ A Python package for solving Mean Field Game (MFG) systems using particle-colloc
 
 ## Quick Start
 
+### Modern Factory Pattern (Recommended)
+
 ```python
 from mfg_pde import ExampleMFGProblem, BoundaryConditions
-from mfg_pde.alg import AdaptiveParticleCollocationSolver
-from mfg_pde.utils import wrap_solver_with_adaptive_convergence
+from mfg_pde.factory import create_fast_solver
+from mfg_pde.config import create_fast_config
 import numpy as np
 
 # Create an MFG problem
 problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=1.0, Nt=30, 
                            sigma=0.1, coefCT=0.02)
 
-# Set up adaptive solver with automatic convergence detection
+# Modern approach: Use factory pattern for one-line solver creation
+config = create_fast_config()
+solver = create_fast_solver(
+    problem=problem, 
+    solver_type="adaptive_particle",
+    config=config,
+    num_particles=5000
+)
+
+# Solve with structured results
+result = solver.solve()
+U, M = result.solution, result.density
+print(f"Convergence: {result.convergence_info}")
+```
+
+### Direct Class Usage (Alternative)
+
+```python
+from mfg_pde import ExampleMFGProblem, BoundaryConditions
+from mfg_pde.alg import SilentAdaptiveParticleCollocationSolver
+import numpy as np
+
+# Create an MFG problem
+problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=1.0, Nt=30, 
+                           sigma=0.1, coefCT=0.02)
+
+# Direct class instantiation
 boundary_conditions = BoundaryConditions(type="no_flux")
 collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
 
-solver = AdaptiveParticleCollocationSolver(
+solver = SilentAdaptiveParticleCollocationSolver(
     problem=problem,
     collocation_points=collocation_points,
     boundary_conditions=boundary_conditions,
     num_particles=5000
 )
 
-# Automatically detects particle methods and uses advanced convergence criteria
-U, M, info = solver.solve(Niter=15, verbose=True)
+# Solve with modern parameter names
+U, M, info = solver.solve(max_picard_iterations=15, verbose=True)
 print(f"Convergence mode: {solver.get_convergence_mode()}")  # "particle_aware"
 ```
 

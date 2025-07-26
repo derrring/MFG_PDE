@@ -17,7 +17,7 @@ from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
 from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
-from mfg_pde.alg.hjb_solvers.tuned_smart_qp_gfdm_hjb import TunedSmartQPGFDMHJBSolver
+from mfg_pde.alg.hjb_solvers import HJBGFDMTunedQPSolver
 from mfg_pde.core.boundaries import BoundaryConditions
 
 def comprehensive_three_method_evaluation():
@@ -215,7 +215,7 @@ def comprehensive_three_method_evaluation():
         boundary_indices = [0, num_collocation_points-1]
         
         # Create Tuned Smart QP HJB solver
-        tuned_hjb_solver = TunedSmartQPGFDMHJBSolver(
+        tuned_hjb_solver = HJBGFDMTunedQPSolver(
             problem=problem,
             collocation_points=collocation_points,
             delta=0.4,

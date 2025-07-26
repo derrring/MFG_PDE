@@ -26,7 +26,7 @@ except ImportError:
 from .hjb_gfdm import HJBGFDMSolver
 
 
-class HJBGFDMTunedSmartQPSolver(HJBGFDMSolver):
+class HJBGFDMTunedQPSolver(HJBGFDMSolver):
     """
     Tuned Smart QP GFDM HJB Solver calibrated for ~10% QP usage.
     
@@ -35,16 +35,33 @@ class HJBGFDMTunedSmartQPSolver(HJBGFDMSolver):
     """
     
     def __init__(self, problem, collocation_points, delta=0.35, taylor_order=2,
-                 weight_function="wendland", weight_scale=1.0, NiterNewton=8, 
-                 l2errBoundNewton=1e-4, boundary_indices=None, boundary_conditions=None,
+                 weight_function="wendland", weight_scale=1.0, 
+                 max_newton_iterations=None, newton_tolerance=None,
+                 # Deprecated parameters for backward compatibility
+                 NiterNewton=None, l2errBoundNewton=None,
+                 boundary_indices=None, boundary_conditions=None,
                  use_monotone_constraints=True, qp_usage_target=0.1):
         """
         Initialize tuned smart QP GFDM HJB solver.
         """
+        # Handle backward compatibility
+        if NiterNewton is not None and max_newton_iterations is None:
+            max_newton_iterations = NiterNewton
+        if l2errBoundNewton is not None and newton_tolerance is None:
+            newton_tolerance = l2errBoundNewton
+        
+        # Set defaults if still None
+        if max_newton_iterations is None:
+            max_newton_iterations = 8
+        if newton_tolerance is None:
+            newton_tolerance = 1e-4
+            
         super().__init__(
             problem, collocation_points, delta, taylor_order,
-            weight_function, weight_scale, NiterNewton, l2errBoundNewton,
-            boundary_indices, boundary_conditions, use_monotone_constraints
+            weight_function, weight_scale, 
+            max_newton_iterations=max_newton_iterations, newton_tolerance=newton_tolerance,
+            boundary_indices=boundary_indices, boundary_conditions=boundary_conditions, 
+            use_monotone_constraints=use_monotone_constraints
         )
         
         # Tuned QP settings
@@ -264,7 +281,7 @@ class HJBGFDMTunedSmartQPSolver(HJBGFDMSolver):
         # Newton iteration with context
         u_current = u_n_plus_1.copy()
         
-        for newton_iter in range(self.NiterNewton):
+        for newton_iter in range(self.max_newton_iterations):
             self._current_newton_iter = newton_iter
             
             # Compute HJB residual
@@ -272,7 +289,7 @@ class HJBGFDMTunedSmartQPSolver(HJBGFDMSolver):
             
             # Check convergence
             residual_norm = np.linalg.norm(residual)
-            if residual_norm < self.l2errBoundNewton:
+            if residual_norm < self.newton_tolerance:
                 break
             
             # Compute Jacobian and update
@@ -436,3 +453,21 @@ class HJBGFDMTunedSmartQPSolver(HJBGFDMSolver):
             print(f"  Status: NEEDS FURTHER TUNING")
         
         print(f"{'='*70}")
+
+
+# Backward compatibility alias
+import warnings
+
+class HJBGFDMTunedSmartQPSolver(HJBGFDMTunedQPSolver):
+    """
+    Deprecated: Use HJBGFDMTunedQPSolver instead.
+    
+    This is a backward compatibility alias for the renamed class.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "HJBGFDMTunedSmartQPSolver is deprecated. Use HJBGFDMTunedQPSolver instead.",
+            DeprecationWarning, stacklevel=2
+        )
+        super().__init__(*args, **kwargs)

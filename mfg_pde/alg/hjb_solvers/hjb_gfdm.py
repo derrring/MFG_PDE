@@ -30,8 +30,11 @@ class HJBGFDMSolver(BaseHJBSolver):
         taylor_order: int = 2,
         weight_function: str = "wendland",
         weight_scale: float = 1.0,
-        NiterNewton: int = 30,
-        l2errBoundNewton: float = 1e-6,
+        max_newton_iterations: int = None,
+        newton_tolerance: float = None,
+        # Deprecated parameters for backward compatibility
+        NiterNewton: int = None,
+        l2errBoundNewton: float = None,
         boundary_indices: Optional[np.ndarray] = None,
         boundary_conditions: Optional[Union[Dict, "BoundaryConditions"]] = None,
         use_monotone_constraints: bool = False,
@@ -46,14 +49,37 @@ class HJBGFDMSolver(BaseHJBSolver):
             taylor_order: Order of Taylor expansion (1 or 2)
             weight_function: Weight function type ("gaussian", "inverse_distance", "uniform")
             weight_scale: Scale parameter for weight function
-            NiterNewton: Maximum Newton iterations
-            l2errBoundNewton: Newton convergence tolerance
+            max_newton_iterations: Maximum Newton iterations (new parameter name)
+            newton_tolerance: Newton convergence tolerance (new parameter name)
+            NiterNewton: DEPRECATED - use max_newton_iterations
+            l2errBoundNewton: DEPRECATED - use newton_tolerance
             boundary_indices: Indices of boundary collocation points
             boundary_conditions: Dictionary or BoundaryConditions object specifying boundary conditions
             use_monotone_constraints: Enable constrained QP for monotonicity preservation
         """
         super().__init__(problem)
         self.hjb_method_name = "GFDM"
+        
+        import warnings
+        
+        # Handle backward compatibility
+        if NiterNewton is not None:
+            warnings.warn("Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            if max_newton_iterations is None:
+                max_newton_iterations = NiterNewton
+                
+        if l2errBoundNewton is not None:
+            warnings.warn("Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            if newton_tolerance is None:
+                newton_tolerance = l2errBoundNewton
+        
+        # Set defaults if still None
+        if max_newton_iterations is None:
+            max_newton_iterations = 30
+        if newton_tolerance is None:
+            newton_tolerance = 1e-6
         
         # Collocation parameters
         self.collocation_points = collocation_points
@@ -64,9 +90,13 @@ class HJBGFDMSolver(BaseHJBSolver):
         self.weight_function = weight_function
         self.weight_scale = weight_scale
         
-        # Newton parameters
-        self.NiterNewton = NiterNewton
-        self.l2errBoundNewton = l2errBoundNewton
+        # Newton parameters (store with new names)
+        self.max_newton_iterations = max_newton_iterations
+        self.newton_tolerance = newton_tolerance
+        
+        # Keep old names for backward compatibility (without warnings when accessed)
+        self.NiterNewton = max_newton_iterations
+        self.l2errBoundNewton = newton_tolerance
         
         # Boundary condition parameters
         self.boundary_indices = boundary_indices if boundary_indices is not None else np.array([])
@@ -675,12 +705,12 @@ class HJBGFDMSolver(BaseHJBSolver):
         """Solve HJB at one time step using Newton iteration."""
         u_current = u_n_plus_1.copy()
         
-        for newton_iter in range(self.NiterNewton):
+        for newton_iter in range(self.max_newton_iterations):
             # Compute residual
             residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
             
             # Check convergence
-            if np.linalg.norm(residual) < self.l2errBoundNewton:
+            if np.linalg.norm(residual) < self.newton_tolerance:
                 break
             
             # Compute Jacobian

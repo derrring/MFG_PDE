@@ -62,7 +62,7 @@ def demonstrate_adaptive_convergence():
     
     # Test particle detection
     detection_result = test_particle_detection(pure_fdm_solver)
-    print("🔍 Particle Detection Results:")
+    print("Particle Detection Results:")
     print(f"   Has particles: {detection_result['has_particles']}")
     print(f"   Recommended: {detection_result['recommended_convergence']} convergence")
     print(f"   Evidence: {detection_result['detection_info']['particle_components']}")
@@ -76,9 +76,22 @@ def demonstrate_adaptive_convergence():
     )
     
     print("Solving with adaptive convergence wrapper...")
-    U_fdm, M_fdm, info_fdm = adaptive_fdm.solve(Niter_max=8, l2errBoundPicard=1e-3)
+    result = adaptive_fdm.solve(Niter_max=8, l2errBoundPicard=1e-3)
     
-    print(f"✅ Solved successfully!")
+    # Handle variable return values from FixedPointIterator
+    if len(result) == 5:
+        U_fdm, M_fdm, iters_fdm, rel_distu, rel_distm = result
+        info_fdm = {
+            'iterations': iters_fdm,
+            'final_rel_distu': rel_distu,
+            'final_rel_distm': rel_distm,
+            'convergence_mode': 'classical'
+        }
+    else:
+        U_fdm, M_fdm = result[:2]
+        info_fdm = {'convergence_mode': 'classical'}
+    
+    print(f"Solved successfully!")
     print(f"   Convergence mode: {info_fdm.get('convergence_mode', 'classical')}")
     print(f"   Iterations: {info_fdm.get('iterations', 'unknown')}")
     print()
@@ -101,7 +114,7 @@ def demonstrate_adaptive_convergence():
     
     # Test particle detection
     detection_result = test_particle_detection(particle_solver)
-    print("🔍 Particle Detection Results:")
+    print("Particle Detection Results:")
     print(f"   Has particles: {detection_result['has_particles']}")
     print(f"   Recommended: {detection_result['recommended_convergence']} convergence")
     print(f"   Evidence: {detection_result['detection_info']['particle_components'][:3]}")
@@ -119,11 +132,19 @@ def demonstrate_adaptive_convergence():
     )
     
     print("Solving with adaptive convergence wrapper...")
-    U_particle, M_particle, info_particle = adaptive_particle.solve(Niter=10, l2errBound=1e-3)
+    result = adaptive_particle.solve(Niter=10, l2errBound=1e-3)
     
-    print(f"✅ Solved successfully!")
+    # Handle variable return values from ParticleCollocationSolver
+    if len(result) == 3:
+        U_particle, M_particle, info_particle = result
+    else:
+        U_particle, M_particle = result[:2]
+        info_particle = {'convergence_mode': 'particle_aware'}
+    
+    print(f"Solved successfully!")
     print(f"   Convergence mode: {info_particle.get('convergence_mode', 'unknown')}")
-    print(f"   Mass conservation error: {info_particle.get('mass_conservation_error', 'N/A'):.3f}%")
+    if 'mass_conservation_error' in info_particle:
+        print(f"   Mass conservation error: {info_particle['mass_conservation_error']:.3f}%")
     print()
     
     # Test 3: Using decorator on custom solver class
@@ -144,11 +165,11 @@ def demonstrate_adaptive_convergence():
     print("ADAPTIVE CONVERGENCE DEMONSTRATION COMPLETE")
     print("=" * 80)
     print("Key Benefits:")
-    print("✓ Automatic detection of particle methods")
-    print("✓ Seamless adaptation of convergence criteria")  
-    print("✓ No need for separate enhanced solver classes")
-    print("✓ Works with any existing solver via wrapper or decorator")
-    print("✓ Maintains backward compatibility")
+    print("- Automatic detection of particle methods")
+    print("- Seamless adaptation of convergence criteria")  
+    print("- No need for separate enhanced solver classes")
+    print("- Works with any existing solver via wrapper or decorator")
+    print("- Maintains backward compatibility")
 
 def demonstrate_decorator_pattern(problem, boundary_conditions):
     """
@@ -182,11 +203,19 @@ def demonstrate_decorator_pattern(problem, boundary_conditions):
     )
     
     print("Solving with decorated solver class...")
-    U, M, info = decorated_solver.solve(Niter=8, l2errBound=1e-3)
+    result = decorated_solver.solve(Niter=8, l2errBound=1e-3)
     
-    print(f"✅ Decorator pattern successful!")
+    # Handle variable return values
+    if len(result) == 3:
+        U, M, info = result
+    else:
+        U, M = result[:2]
+        info = {'convergence_mode': 'particle_aware'}
+    
+    print(f"Decorator pattern successful!")
     print(f"   Convergence mode: {info.get('convergence_mode', 'unknown')}")
-    print(f"   Automatic detection worked: {info.get('particle_detection', {}).get('confidence', 0):.1%} confidence")
+    if 'particle_detection' in info:
+        print(f"   Automatic detection worked: {info['particle_detection'].get('confidence', 0):.1%} confidence")
     
     # Show the wrapper reference for debugging
     if hasattr(decorated_solver, '_adaptive_convergence_wrapper'):
@@ -286,10 +315,10 @@ def demonstrate_detection_capabilities():
     
     # Run detection tests
     for name, solver in test_cases:
-        print(f"\n🧪 Testing: {name}")
+        print(f"\nTesting: {name}")
         result = test_particle_detection(solver)
         
-        print(f"   Particle methods detected: {'✅ YES' if result['has_particles'] else '❌ NO'}")
+        print(f"   Particle methods detected: {'YES' if result['has_particles'] else 'NO'}")
         print(f"   Confidence: {result['detection_info']['confidence']:.1%}")
         print(f"   Detection methods: {result['detection_info']['detection_methods']}")
         print(f"   Evidence found: {len(result['detection_info']['particle_components'])} items")

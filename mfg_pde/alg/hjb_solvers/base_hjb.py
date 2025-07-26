@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
-    # from ....mfg_pde.utils.aux_func import npart, ppart # Not needed here if problem provides jacobian parts
+    # from mfg_pde.utils.aux_func import npart, ppart # Not needed here if problem provides jacobian parts
 
 # Clipping limit for p_values ONLY when using numerical FD for Jacobian H-part (fallback)
 P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
@@ -425,10 +425,48 @@ def solve_hjb_timestep_newton(
     U_k_n_from_prev_picard: np.ndarray,  # U_k[n] in notebook
     M_density_at_n_plus_1: np.ndarray,  # M_k[n+1] in notebook
     problem: "MFGProblem",
-    NiterNewton: int,
-    l2errBoundNewton: float,
-    t_idx_n: int,  # time index for U_n being solved
+    max_newton_iterations: int = None,
+    newton_tolerance: float = None,
+    t_idx_n: int = None,  # time index for U_n being solved
+    # Deprecated parameters for backward compatibility
+    NiterNewton: int = None,
+    l2errBoundNewton: float = None,
 ) -> np.ndarray:
+    """
+    Solve HJB timestep using Newton's method.
+    
+    Args:
+        U_n_plus_1_from_hjb_step: Solution at next time step
+        U_k_n_from_prev_picard: Solution from previous Picard iteration
+        M_density_at_n_plus_1: Density at next time step
+        problem: MFG problem instance
+        max_newton_iterations: Maximum Newton iterations (new parameter name)
+        newton_tolerance: Newton convergence tolerance (new parameter name)
+        t_idx_n: Time index for current solution
+        NiterNewton: DEPRECATED - use max_newton_iterations
+        l2errBoundNewton: DEPRECATED - use newton_tolerance
+    """
+    import warnings
+    
+    # Handle backward compatibility
+    if NiterNewton is not None:
+        warnings.warn("Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.", 
+                     DeprecationWarning, stacklevel=2)
+        if max_newton_iterations is None:
+            max_newton_iterations = NiterNewton
+            
+    if l2errBoundNewton is not None:
+        warnings.warn("Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.", 
+                     DeprecationWarning, stacklevel=2)
+        if newton_tolerance is None:
+            newton_tolerance = l2errBoundNewton
+    
+    # Set defaults if still None
+    if max_newton_iterations is None:
+        max_newton_iterations = 30
+    if newton_tolerance is None:
+        newton_tolerance = 1e-6
+    
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
     U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
 
@@ -440,7 +478,7 @@ def solve_hjb_timestep_newton(
     final_l2_error = np.inf
     converged = False
 
-    for iiter in range(NiterNewton):
+    for iiter in range(max_newton_iterations):
         U_n_next_newton_iterate, l2_error = newton_hjb_step(
             U_n_current_newton_iterate,
             U_n_plus_1_from_hjb_step,
@@ -458,20 +496,20 @@ def solve_hjb_timestep_newton(
         if (
             iiter > 0
             and l2_error > final_l2_error * 0.9999
-            and l2_error > l2errBoundNewton
+            and l2_error > newton_tolerance
         ):
             break
 
         U_n_current_newton_iterate = U_n_next_newton_iterate
         final_l2_error = l2_error
 
-        if l2_error < l2errBoundNewton:
+        if l2_error < newton_tolerance:
             converged = True
             break
 
     if (
         not converged
-        and NiterNewton > 0
+        and max_newton_iterations > 0
         and not (np.isnan(final_l2_error) or np.isinf(final_l2_error))
     ):
         pass
@@ -484,9 +522,46 @@ def solve_hjb_system_backward(
     U_final_condition_at_T: np.ndarray,
     U_from_prev_picard: np.ndarray,  # U_k in notebook
     problem: "MFGProblem",
-    NiterNewton: int,
-    l2errBoundNewton: float,
+    max_newton_iterations: int = None,
+    newton_tolerance: float = None,
+    # Deprecated parameters for backward compatibility
+    NiterNewton: int = None,
+    l2errBoundNewton: float = None,
 ) -> np.ndarray:
+    """
+    Solve HJB system backward in time using Newton's method.
+    
+    Args:
+        M_density_from_prev_picard: Density from previous Picard iteration
+        U_final_condition_at_T: Terminal condition for value function
+        U_from_prev_picard: Value function from previous Picard iteration
+        problem: MFG problem instance
+        max_newton_iterations: Maximum Newton iterations (new parameter name)
+        newton_tolerance: Newton convergence tolerance (new parameter name)
+        NiterNewton: DEPRECATED - use max_newton_iterations
+        l2errBoundNewton: DEPRECATED - use newton_tolerance
+    """
+    import warnings
+    
+    # Handle backward compatibility
+    if NiterNewton is not None:
+        warnings.warn("Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.", 
+                     DeprecationWarning, stacklevel=2)
+        if max_newton_iterations is None:
+            max_newton_iterations = NiterNewton
+            
+    if l2errBoundNewton is not None:
+        warnings.warn("Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.", 
+                     DeprecationWarning, stacklevel=2)
+        if newton_tolerance is None:
+            newton_tolerance = l2errBoundNewton
+    
+    # Set defaults if still None
+    if max_newton_iterations is None:
+        max_newton_iterations = 30
+    if newton_tolerance is None:
+        newton_tolerance = 1e-6
+    
     Nt = problem.Nt + 1
     Nx = problem.Nx + 1
 
@@ -532,8 +607,8 @@ def solve_hjb_system_backward(
             U_n_prev_picard,  # U_k[n] (for Jacobian)
             M_n_plus_1_prev_picard,  # M_k[n+1]
             problem,
-            NiterNewton,
-            l2errBoundNewton,
+            max_newton_iterations=max_newton_iterations,
+            newton_tolerance=newton_tolerance,
             t_idx_n=n_idx_hjb,
         )
         if np.any(np.isnan(U_solution_this_picard_iter[n_idx_hjb, :])) and not np.any(

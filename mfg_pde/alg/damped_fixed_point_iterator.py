@@ -1,20 +1,16 @@
 import numpy as np
 import time
-from typing import TYPE_CHECKING, Tuple  # Added Tuple
+from typing import TYPE_CHECKING, Tuple, Union  # Added Union
+from .base_mfg_solver import MFGSolver
 
 if TYPE_CHECKING:
     from ..core.mfg_problem import MFGProblem
-    from .base_mfg_solver import MFGSolver
     from .hjb_solvers.base_hjb import BaseHJBSolver
     from .fp_solvers.base_fp import BaseFPSolver
 
 
 # Dummy base classes for standalone checking if imports are tricky
 if not TYPE_CHECKING:
-
-    class MFGSolver:
-        def __init__(self, problem):
-            self.problem = problem
 
     class BaseHJBSolver:
         def __init__(self, problem):
@@ -62,8 +58,66 @@ class FixedPointIterator(MFGSolver):
         self.iterations_run: int = 0
 
     def solve(
-        self, Niter_max: int, l2errBoundPicard: float = 1e-5
-    ) -> Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
+        self, 
+        max_iterations: int = None,
+        tolerance: float = None,
+        # Alias parameters for specific solver compatibility
+        max_picard_iterations: int = None,
+        picard_tolerance: float = None,
+        # Deprecated parameters for backward compatibility
+        Niter_max: int = None, 
+        l2errBoundPicard: float = None,
+        # New parameter for result format
+        return_structured: bool = False,
+        **kwargs
+    ) -> Union[Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray], 'SolverResult']:
+        import warnings
+        
+        # Handle parameter precedence: standardized > specific > deprecated
+        # Priority: max_iterations/tolerance > max_picard_iterations/picard_tolerance > Niter_max/l2errBoundPicard
+        
+        final_max_iterations = None
+        final_tolerance = None
+        
+        # Process max_iterations with precedence
+        if max_iterations is not None:
+            final_max_iterations = max_iterations
+        elif max_picard_iterations is not None:
+            final_max_iterations = max_picard_iterations
+        elif Niter_max is not None:
+            warnings.warn("Parameter 'Niter_max' is deprecated. Use 'max_iterations' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            final_max_iterations = Niter_max
+        else:
+            final_max_iterations = 20  # Default
+        
+        # Process tolerance with precedence
+        if tolerance is not None:
+            final_tolerance = tolerance
+        elif picard_tolerance is not None:
+            final_tolerance = picard_tolerance
+        elif l2errBoundPicard is not None:
+            warnings.warn("Parameter 'l2errBoundPicard' is deprecated. Use 'tolerance' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            final_tolerance = l2errBoundPicard
+        else:
+            final_tolerance = 1e-5  # Default
+            
+        # Validate parameters with enhanced error messages
+        from ..utils.exceptions import validate_parameter_value
+        
+        validate_parameter_value(
+            final_max_iterations, "max_iterations", int, (1, 1000), 
+            solver_name=f"{self.name} (Fixed Point Iterator)"
+        )
+        validate_parameter_value(
+            final_tolerance, "tolerance", (int, float), (1e-12, 1e-1), 
+            solver_name=f"{self.name} (Fixed Point Iterator)"
+        )
+            
+        # Track execution time for structured results
+        solve_start_time = time.time()
+        
         print(
             f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________"
         )
@@ -72,36 +126,49 @@ class FixedPointIterator(MFGSolver):
         Dx = self.problem.Dx if abs(self.problem.Dx) > 1e-12 else 1.0
         Dt = self.problem.Dt if abs(self.problem.Dt) > 1e-12 else 1.0
 
-        self.U = np.zeros((Nt, Nx))
-        self.M = np.zeros((Nt, Nx))
+        # Try warm start initialization first
+        warm_start_init = self._get_warm_start_initialization()
+        if warm_start_init is not None:
+            U_init, M_init = warm_start_init
+            self.U = U_init.copy()
+            self.M = M_init.copy()
+            print(f"   🚀 Using warm start initialization from previous solution")
+        else:
+            # Cold start - default initialization
+            self.U = np.zeros((Nt, Nx))
+            self.M = np.zeros((Nt, Nx))
 
         initial_m_dist = self.problem.get_initial_m()
         final_u_cost = self.problem.get_final_u()
 
         if Nt > 0:
+            # Always enforce boundary conditions (even with warm start)
             self.M[0, :] = initial_m_dist
             self.U[Nt - 1, :] = final_u_cost
-            for n_time_idx in range(Nt - 1):
-                self.U[n_time_idx, :] = final_u_cost
-            for n_time_idx in range(1, Nt):
-                self.M[n_time_idx, :] = initial_m_dist
+            
+            # For cold start, initialize interior with boundary conditions
+            if warm_start_init is None:
+                for n_time_idx in range(Nt - 1):
+                    self.U[n_time_idx, :] = final_u_cost
+                for n_time_idx in range(1, Nt):
+                    self.M[n_time_idx, :] = initial_m_dist
         elif Nt == 0:
             print("Warning: Nt=0, cannot initialize U and M.")
             return self.U, self.M, 0, np.array([]), np.array([])
 
-        self.l2distu_abs = np.ones(Niter_max)
-        self.l2distm_abs = np.ones(Niter_max)
-        self.l2distu_rel = np.ones(Niter_max)
-        self.l2distm_rel = np.ones(Niter_max)
+        self.l2distu_abs = np.ones(final_max_iterations)
+        self.l2distm_abs = np.ones(final_max_iterations)
+        self.l2distu_rel = np.ones(final_max_iterations)
+        self.l2distm_rel = np.ones(final_max_iterations)
         self.iterations_run = 0
 
         U_picard_prev = (
             self.U.copy()
         )  # Initialize U from previous Picard (k-1) with initial U for k=0
 
-        for iiter in range(Niter_max):
+        for iiter in range(final_max_iterations):
             start_time_iter = time.time()
-            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {Niter_max} ---")
+            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations} ---")
 
             U_old_current_picard_iter = self.U.copy()  # U_k
             M_old_current_picard_iter = self.M.copy()  # M_k
@@ -174,33 +241,90 @@ class FixedPointIterator(MFGSolver):
 
             self.iterations_run = iiter + 1
             if (
-                self.l2distu_rel[iiter] < l2errBoundPicard
-                and self.l2distm_rel[iiter] < l2errBoundPicard
+                self.l2distu_rel[iiter] < final_tolerance
+                and self.l2distm_rel[iiter] < final_tolerance
             ):
                 print(f"Convergence reached after {iiter + 1} iterations.")
                 break
         else:
-            print(f"Warning: Max iterations ({Niter_max}) reached without convergence.")
+            # Enhanced convergence failure reporting
+            final_error_u = self.l2distu_rel[self.iterations_run - 1] if self.iterations_run > 0 else float('inf')
+            final_error_m = self.l2distm_rel[self.iterations_run - 1] if self.iterations_run > 0 else float('inf')
+            final_error = max(final_error_u, final_error_m)
+            
+            convergence_history = list(self.l2distu_rel[:self.iterations_run]) + list(self.l2distm_rel[:self.iterations_run])
+            
+            from ..utils.exceptions import ConvergenceError
+            
+            print(f"⚠️  Convergence Warning: Max iterations ({final_max_iterations}) reached")
+            
+            # Create convergence error for detailed analysis (but don't raise it - just log the analysis)
+            try:
+                conv_error = ConvergenceError(
+                    iterations_used=self.iterations_run,
+                    max_iterations=final_max_iterations,
+                    final_error=final_error,
+                    tolerance=final_tolerance,
+                    solver_name=self.name,
+                    convergence_history=convergence_history
+                )
+                print(f"💡 {conv_error.suggested_action}")
+            except:
+                # Fallback if error analysis fails
+                print("💡 Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
 
         self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
         self.l2distm_abs = self.l2distm_abs[: self.iterations_run]
         self.l2distu_rel = self.l2distu_rel[: self.iterations_run]
         self.l2distm_rel = self.l2distm_rel[: self.iterations_run]
 
-        return self.U, self.M, self.iterations_run, self.l2distu_rel, self.l2distm_rel
+        # Mark solution as computed for warm start capability
+        self._solution_computed = True
+        
+        # Calculate total execution time
+        execution_time = time.time() - solve_start_time
+
+        # Return structured result if requested, otherwise maintain backward compatibility
+        if return_structured:
+            from ..utils.solver_result import create_solver_result
+            
+            return create_solver_result(
+                U=self.U,
+                M=self.M,
+                iterations=self.iterations_run,
+                error_history_U=self.l2distu_rel,
+                error_history_M=self.l2distm_rel,
+                solver_name=self.name,
+                convergence_achieved=(self.l2distu_rel[-1] < final_tolerance and 
+                                    self.l2distm_rel[-1] < final_tolerance) if self.iterations_run > 0 else False,
+                tolerance=final_tolerance,
+                execution_time=execution_time,
+                # Additional metadata
+                damping_parameter=self.thetaUM,
+                problem_parameters={
+                    'T': self.problem.T,
+                    'Nx': self.problem.Nx,
+                    'Nt': self.problem.Nt,
+                    'Dx': getattr(self.problem, 'Dx', None),
+                    'Dt': getattr(self.problem, 'Dt', None)
+                },
+                absolute_errors_U=self.l2distu_abs,
+                absolute_errors_M=self.l2distm_abs
+            )
+        else:
+            # Backward compatible tuple return
+            return self.U, self.M, self.iterations_run, self.l2distu_rel, self.l2distm_rel
 
     def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
-        if not hasattr(self, "U") or not hasattr(self, "M") or self.iterations_run == 0:
-            raise ValueError(
-                "Solver has not been run or did not produce results. Call solve() first."
-            )
+        from ..utils.exceptions import validate_solver_state
+        validate_solver_state(self, "get_results")
         return self.U, self.M
 
     def get_convergence_data(
         self,
     ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        if self.iterations_run == 0:
-            raise ValueError("Solver has not been run yet. Call solve() first.")
+        from ..utils.exceptions import validate_solver_state
+        validate_solver_state(self, "get_convergence_data")
         return (
             self.iterations_run,
             self.l2distu_abs,

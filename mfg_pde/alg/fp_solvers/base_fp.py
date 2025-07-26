@@ -5,9 +5,7 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ....mfg_pde.core.mfg_problem import (
-        MFGProblem,
-    )  # Adjust path as per actual structure
+    from mfg_pde.core.mfg_problem import MFGProblem
 
 
 class BaseFPSolver(ABC):

@@ -32,8 +32,8 @@ class ParticleCollocationSolver(MFGSolver):
         taylor_order: int = 2,
         weight_function: str = "gaussian",
         weight_scale: float = 1.0,
-        NiterNewton: int = 30,
-        l2errBoundNewton: float = 1e-6,
+        max_newton_iterations: int = 30,
+        newton_tolerance: float = 1e-6,
         kde_bandwidth: str = "scott",
         normalize_kde_output: bool = True,
         boundary_indices: Optional[np.ndarray] = None,
@@ -51,8 +51,8 @@ class ParticleCollocationSolver(MFGSolver):
             taylor_order: Order of Taylor expansion for GFDM
             weight_function: Weight function for GFDM ("gaussian", "inverse_distance", "uniform")
             weight_scale: Scale parameter for weight function
-            NiterNewton: Maximum Newton iterations for HJB
-            l2errBoundNewton: Newton convergence tolerance for HJB
+            max_newton_iterations: Maximum Newton iterations for HJB
+            newton_tolerance: Newton convergence tolerance for HJB
             kde_bandwidth: Bandwidth method for KDE in particle method
             normalize_kde_output: Whether to normalize KDE output
             boundary_indices: Indices of boundary collocation points
@@ -83,8 +83,8 @@ class ParticleCollocationSolver(MFGSolver):
             taylor_order=taylor_order,
             weight_function=weight_function,
             weight_scale=weight_scale,
-            NiterNewton=NiterNewton,
-            l2errBoundNewton=l2errBoundNewton,
+            max_newton_iterations=max_newton_iterations,
+            newton_tolerance=newton_tolerance,
             boundary_indices=boundary_indices,
             boundary_conditions=boundary_conditions,
             use_monotone_constraints=use_monotone_constraints
@@ -98,8 +98,11 @@ class ParticleCollocationSolver(MFGSolver):
     
     def solve(
         self,
-        Niter: int,
-        l2errBound: float = 1e-6,
+        max_iterations: int = None,
+        tolerance: float = None,
+        # Deprecated parameters for backward compatibility
+        Niter: int = None,
+        l2errBound: float = None,
         verbose: bool = True,
         **kwargs
     ) -> Tuple[np.ndarray, np.ndarray, Dict]:
@@ -107,28 +110,56 @@ class ParticleCollocationSolver(MFGSolver):
         Solve the MFG system using particle-collocation method.
         
         Args:
-            Niter: Maximum number of Picard iterations
-            l2errBound: Convergence tolerance for Picard iteration
+            max_iterations: Maximum number of Picard iterations
+            tolerance: Convergence tolerance for Picard iteration
+            Niter: (Deprecated) Use max_iterations instead
+            l2errBound: (Deprecated) Use tolerance instead
             verbose: Whether to print convergence information
             **kwargs: Additional keyword arguments
             
         Returns:
             Tuple of (U_solution, M_solution, convergence_info)
         """
+        import warnings
+        
+        # Handle parameter precedence: standardized > deprecated
+        if max_iterations is not None:
+            final_max_iterations = max_iterations
+        elif Niter is not None:
+            warnings.warn("Parameter 'Niter' is deprecated. Use 'max_iterations' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            final_max_iterations = Niter
+        else:
+            final_max_iterations = 20  # Default
+            
+        if tolerance is not None:
+            final_tolerance = tolerance
+        elif l2errBound is not None:
+            warnings.warn("Parameter 'l2errBound' is deprecated. Use 'tolerance' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            final_tolerance = l2errBound
+        else:
+            final_tolerance = 1e-6  # Default
         if verbose:
             print(f"Starting Particle-Collocation MFG solver:")
             print(f"  - Particles: {self.num_particles}")
             print(f"  - Collocation points: {self.hjb_solver.n_points}")
-            print(f"  - Max Picard iterations: {Niter}")
-            print(f"  - Convergence tolerance: {l2errBound}")
+            print(f"  - Max Picard iterations: {final_max_iterations}")
+            print(f"  - Convergence tolerance: {final_tolerance}")
         
         # Get problem dimensions
         Nt = self.problem.Nt + 1
         Nx = self.problem.Nx + 1
         
-        # Better initialization: set initial guess everywhere (like other MFG solvers)
-        U_current = np.zeros((Nt, Nx))
-        M_current = np.zeros((Nt, Nx))
+        # Try warm start initialization first
+        warm_start_init = self._get_warm_start_initialization()
+        if warm_start_init is not None:
+            U_current, M_current = warm_start_init
+            print(f"   🚀 Using warm start initialization from previous solution")
+        else:
+            # Cold start - better initialization: set initial guess everywhere (like other MFG solvers)
+            U_current = np.zeros((Nt, Nx))
+            M_current = np.zeros((Nt, Nx))
         
         # Get terminal condition for U
         if hasattr(self.problem, 'get_terminal_condition'):
@@ -147,22 +178,24 @@ class ParticleCollocationSolver(MFGSolver):
             else:
                 initial_density = np.ones(Nx)
         
-        # Initialize U everywhere with terminal condition (better initial guess)
-        for t in range(Nt):
-            U_current[t, :] = terminal_condition
+        # For cold start, initialize interior with boundary conditions
+        if warm_start_init is None:
+            # Initialize U everywhere with terminal condition (better initial guess)
+            for t in range(Nt):
+                U_current[t, :] = terminal_condition
+            
+            # Initialize M everywhere with initial density (better initial guess)
+            for t in range(Nt):
+                M_current[t, :] = initial_density
         
-        # Initialize M everywhere with initial density (better initial guess)
-        for t in range(Nt):
-            M_current[t, :] = initial_density
-        
-        # Ensure boundary conditions are still properly enforced
+        # Always enforce boundary conditions (even with warm start)
         U_current[Nt - 1, :] = terminal_condition  # Terminal condition
         M_current[0, :] = initial_density          # Initial condition
         
         # Picard iteration
         convergence_history = []
         
-        for picard_iter in range(Niter):
+        for picard_iter in range(final_max_iterations):
             if verbose and picard_iter % 10 == 0:
                 print(f"  Picard iteration {picard_iter}")
             
@@ -214,7 +247,7 @@ class ParticleCollocationSolver(MFGSolver):
                 print(f"    U error: {U_error:.2e}, M error: {M_error:.2e}")
             
             # Check convergence
-            if total_error < l2errBound:
+            if total_error < final_tolerance:
                 if verbose:
                     print(f"  Converged at iteration {picard_iter}")
                     print(f"    Final U error: {U_error:.2e}")
@@ -232,7 +265,7 @@ class ParticleCollocationSolver(MFGSolver):
         
         # Prepare convergence info
         final_convergence_info = {
-            'converged': total_error < l2errBound,
+            'converged': total_error < final_tolerance,
             'final_error': total_error,
             'iterations': len(convergence_history),
             'history': convergence_history
@@ -243,6 +276,11 @@ class ParticleCollocationSolver(MFGSolver):
             print(f"  - Converged: {final_convergence_info['converged']}")
             print(f"  - Final error: {final_convergence_info['final_error']:.2e}")
             print(f"  - Total iterations: {final_convergence_info['iterations']}")
+        
+        # Store solutions and mark as computed for warm start capability
+        self.U_solution = U_current
+        self.M_solution = M_current
+        self._solution_computed = True
         
         return U_current, M_current, final_convergence_info
     

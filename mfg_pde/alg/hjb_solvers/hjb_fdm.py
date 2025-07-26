@@ -13,13 +13,43 @@ class HJBFDMSolver(BaseHJBSolver):
     def __init__(
         self,
         problem: "MFGProblem",
-        NiterNewton: int = 30,
-        l2errBoundNewton: float = 1e-6,
+        max_newton_iterations: int = None,
+        newton_tolerance: float = None,
+        # Deprecated parameters for backward compatibility
+        NiterNewton: int = None,
+        l2errBoundNewton: float = None,
     ):
+        import warnings
+        
         super().__init__(problem)
         self.hjb_method_name = "FDM"
-        self.NiterNewton = NiterNewton
-        self.l2errBoundNewton = l2errBoundNewton
+        
+        # Handle backward compatibility
+        if NiterNewton is not None:
+            warnings.warn("Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            if max_newton_iterations is None:
+                max_newton_iterations = NiterNewton
+                
+        if l2errBoundNewton is not None:
+            warnings.warn("Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.", 
+                         DeprecationWarning, stacklevel=2)
+            if newton_tolerance is None:
+                newton_tolerance = l2errBoundNewton
+        
+        # Set defaults if still None
+        if max_newton_iterations is None:
+            max_newton_iterations = 30
+        if newton_tolerance is None:
+            newton_tolerance = 1e-6
+            
+        # Store with new names
+        self.max_newton_iterations = max_newton_iterations
+        self.newton_tolerance = newton_tolerance
+        
+        # Keep old names for backward compatibility (without warnings when accessed)
+        self.NiterNewton = max_newton_iterations
+        self.l2errBoundNewton = newton_tolerance
 
     def solve_hjb_system(
         self,
@@ -43,7 +73,7 @@ class HJBFDMSolver(BaseHJBSolver):
             U_final_condition_at_T=U_final_condition,
             U_from_prev_picard=U_from_prev_picard,  # Pass this through
             problem=self.problem,
-            NiterNewton=self.NiterNewton,
-            l2errBoundNewton=self.l2errBoundNewton,
+            max_newton_iterations=self.max_newton_iterations,
+            newton_tolerance=self.newton_tolerance,
         )
         return U_new_solution

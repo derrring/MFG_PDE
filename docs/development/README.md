@@ -9,12 +9,16 @@ This directory contains development-related documentation including update logs,
 - **v1.1_solver_renaming.md** - Solver naming convention standardization
 - **v1.2_advanced_convergence.md** - Advanced convergence criteria for particle-based methods
 - **v1.3_adaptive_convergence_decorator.md** - Decorator pattern for universal adaptive convergence
+- **v1.4_visualization_consistency_fixes.md** - Mathematical visualization consistency improvements
 
 ### Development Guides
-*(To be added as needed)*
-- Testing procedures
-- Code contribution guidelines
-- Performance benchmarking protocols
+- **CONSISTENCY_GUIDE.md** - Comprehensive consistency standards for all aspects of the repository
+- **FORMATTING_PREFERENCES.md** - Code formatting and style preferences
+- **logging_guide.md** - Logging infrastructure and best practices
+- **modern_tools_recommendations.md** - Strategic development recommendations
+
+### Consistency & Quality
+- **CONSISTENCY_GUIDE.md** - Master reference for maintaining consistency across code, documentation, mathematical notation, API design, testing, and organizational standards
 
 ## Update Log Format
 
@@ -31,6 +35,7 @@ Each update log contains:
 2. **v1.1** (2024-07-25) - Solver Renaming Convention  
 3. **v1.2** (2024-07-25) - Advanced Convergence Criteria
 4. **v1.3** (2024-07-25) - Adaptive Convergence Decorator Pattern
+5. **v1.4** (2025-07-26) - Mathematical Visualization Consistency Fixes
 
 ## Quick Reference
 
