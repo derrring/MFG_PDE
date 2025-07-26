@@ -10,7 +10,7 @@ import logging
 import sys
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 from datetime import datetime
 
 try:
@@ -211,6 +211,129 @@ def configure_logging(**kwargs):
     MFGLogger.configure(**kwargs)
 
 
+# Configuration presets for common use cases
+def configure_research_logging(experiment_name: str = None, 
+                             level: str = "INFO",
+                             include_debug: bool = False):
+    """
+    Configure logging optimized for research sessions.
+    
+    Args:
+        experiment_name: Name for the experiment (used in filename)
+        level: Base logging level
+        include_debug: Whether to include debug information
+    
+    Returns:
+        Path to the log file created
+    """
+    if include_debug:
+        level = "DEBUG"
+    
+    # Create research logs directory
+    research_dir = Path("research_logs")
+    research_dir.mkdir(exist_ok=True)
+    
+    # Generate filename
+    if experiment_name:
+        safe_name = "".join(c for c in experiment_name if c.isalnum() or c in (' ', '-', '_')).strip()
+        safe_name = safe_name.replace(' ', '_')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = research_dir / f"{safe_name}_{timestamp}.log"
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = research_dir / f"research_session_{timestamp}.log"
+    
+    configure_logging(
+        level=level,
+        log_to_file=True,
+        log_file_path=log_file,
+        use_colors=True,
+        include_location=include_debug,
+        suppress_external=True
+    )
+    
+    # Log session start
+    logger = get_logger("mfg_pde.research")
+    logger.info(f"Research session started: {experiment_name or 'Unnamed'}")
+    logger.info(f"Log file: {log_file}")
+    logger.info(f"Logging level: {level}")
+    
+    return str(log_file)
+
+
+def configure_development_logging(include_location: bool = True):
+    """
+    Configure logging optimized for development and debugging.
+    
+    Args:
+        include_location: Include file:line information
+    """
+    configure_logging(
+        level="DEBUG",
+        log_to_file=True,
+        use_colors=True,
+        include_location=include_location,
+        suppress_external=False  # Show external library logs for debugging
+    )
+    
+    logger = get_logger("mfg_pde.development")
+    logger.info("Development logging enabled - DEBUG level with full details")
+
+
+def configure_production_logging(log_file: Optional[str] = None):
+    """
+    Configure logging optimized for production use.
+    
+    Args:
+        log_file: Custom log file path (optional)
+    """
+    if log_file is None:
+        prod_dir = Path("production_logs")
+        prod_dir.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d")
+        log_file = prod_dir / f"mfg_production_{timestamp}.log"
+    
+    configure_logging(
+        level="WARNING",  # Only warnings and errors
+        log_to_file=True,
+        log_file_path=log_file,
+        use_colors=False,  # Clean output for production
+        include_location=False,
+        suppress_external=True
+    )
+    
+    logger = get_logger("mfg_pde.production")
+    logger.warning("Production logging enabled - WARNING level and above only")
+
+
+def configure_performance_logging(log_file: Optional[str] = None):
+    """
+    Configure logging optimized for performance analysis.
+    
+    Args:
+        log_file: Custom log file path (optional)
+    """
+    if log_file is None:
+        perf_dir = Path("performance_logs")
+        perf_dir.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = perf_dir / f"performance_{timestamp}.log"
+    
+    configure_logging(
+        level="INFO",
+        log_to_file=True,
+        log_file_path=log_file,
+        use_colors=False,
+        include_location=False,
+        suppress_external=True
+    )
+    
+    logger = get_logger("mfg_pde.performance")
+    logger.info("Performance logging enabled - focus on timing and metrics")
+    
+    return str(log_file)
+
+
 def log_solver_start(logger: logging.Logger, solver_name: str, config: Dict[str, Any]):
     """Log solver initialization with configuration."""
     logger.info(f"Initializing {solver_name}")
@@ -250,12 +373,111 @@ def log_validation_error(logger: logging.Logger, component: str, error_msg: str,
 
 def log_performance_metric(logger: logging.Logger, operation: str, 
                          duration: float, additional_metrics: Dict[str, Any] = None):
-    """Log performance metrics."""
+    """Log performance metrics with enhanced details."""
     msg = f"Performance - {operation}: {duration:.3f}s"
     if additional_metrics:
         metrics_str = ", ".join(f"{k}: {v}" for k, v in additional_metrics.items())
         msg += f" ({metrics_str})"
-    logger.debug(msg)
+    logger.info(msg)  # Changed to INFO level for better visibility
+
+
+def log_memory_usage(logger: logging.Logger, operation: str, 
+                    peak_memory_mb: float = None):
+    """Log memory usage information."""
+    try:
+        import psutil
+        import os
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        current_mb = memory_info.rss / 1024 / 1024
+        
+        msg = f"Memory - {operation}: {current_mb:.1f} MB"
+        if peak_memory_mb:
+            msg += f" (peak: {peak_memory_mb:.1f} MB)"
+        logger.debug(msg)
+    except ImportError:
+        if peak_memory_mb:
+            logger.debug(f"Memory - {operation}: peak {peak_memory_mb:.1f} MB")
+
+
+def log_solver_configuration(logger: logging.Logger, solver_name: str, 
+                            config: Dict[str, Any], problem_info: Dict[str, Any] = None):
+    """Enhanced solver configuration logging."""
+    logger.info(f"=== {solver_name} Configuration ===")
+    
+    # Log solver parameters
+    for key, value in config.items():
+        if isinstance(value, (int, float, str, bool)):
+            logger.info(f"  {key}: {value}")
+        elif isinstance(value, dict):
+            logger.info(f"  {key}: {len(value)} parameters")
+        else:
+            logger.info(f"  {key}: {type(value).__name__}")
+    
+    # Log problem information
+    if problem_info:
+        logger.info("=== Problem Information ===")
+        for key, value in problem_info.items():
+            logger.info(f"  {key}: {value}")
+
+
+def log_convergence_analysis(logger: logging.Logger, 
+                           error_history: List[float],
+                           final_iterations: int,
+                           tolerance: float,
+                           converged: bool):
+    """Log detailed convergence analysis."""
+    logger.info("=== Convergence Analysis ===")
+    logger.info(f"  Final status: {'CONVERGED' if converged else 'MAX_ITERATIONS'}")
+    logger.info(f"  Iterations: {final_iterations}")
+    logger.info(f"  Target tolerance: {tolerance:.2e}")
+    
+    if error_history:
+        initial_error = error_history[0]
+        final_error = error_history[-1]
+        logger.info(f"  Initial error: {initial_error:.2e}")
+        logger.info(f"  Final error: {final_error:.2e}")
+        
+        if len(error_history) > 1:
+            reduction_factor = initial_error / final_error
+            logger.info(f"  Error reduction: {reduction_factor:.2e}x")
+            
+            # Estimate convergence rate
+            if len(error_history) > 2:
+                ratios = [error_history[i+1]/error_history[i] 
+                         for i in range(len(error_history)-1) 
+                         if error_history[i] > 0]
+                if ratios:
+                    avg_ratio = sum(ratios) / len(ratios)
+                    logger.info(f"  Average convergence rate: {avg_ratio:.4f}")
+
+
+def log_mass_conservation(logger: logging.Logger, 
+                         mass_history: List[float],
+                         tolerance: float = 1e-6):
+    """Log mass conservation analysis."""
+    if not mass_history:
+        return
+    
+    logger.info("=== Mass Conservation Analysis ===")
+    initial_mass = mass_history[0]
+    final_mass = mass_history[-1]
+    max_deviation = max(abs(m - 1.0) for m in mass_history)
+    mass_drift = abs(final_mass - initial_mass)
+    
+    logger.info(f"  Initial mass: {initial_mass:.8f}")
+    logger.info(f"  Final mass: {final_mass:.8f}")
+    logger.info(f"  Mass drift: {mass_drift:.2e}")
+    logger.info(f"  Max deviation: {max_deviation:.2e}")
+    
+    if max_deviation < tolerance:
+        logger.info("  Status: ✓ Excellent mass conservation")
+    elif max_deviation < 1e-3:
+        logger.info("  Status: ✓ Good mass conservation")
+    elif max_deviation < 1e-2:
+        logger.info("  Status: ⚠ Acceptable mass conservation")
+    else:
+        logger.warning("  Status: ⚠ Mass conservation needs improvement")
 
 
 # Context manager for logging operations

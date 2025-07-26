@@ -616,3 +616,69 @@ TSWLatexianTemp*
 # option is specified. Footnotes are the stored in a file with suffix Notes.bib.
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
+
+#===============================================
+# MFG_PDE Project Specific
+#===============================================
+
+# Test and demo output directories
+*_output/
+*_test_output/
+demo_output/
+notebook_demos/
+visualization_output/
+mathematical_visualization_output/
+balanced_test_output/
+lowercase_test_output/
+math_test_output/
+spacing_test_output/
+test_output/
+
+# Runtime log directories  
+logs/
+research_logs/
+performance_logs/
+
+# Scientific computing files
+*.png
+*.pdf
+*.npy
+*.npz
+*.pkl
+*.h5
+*.hdf5
+figures/
+plots/
+
+# Jupyter notebook outputs and checkpoints
+*.ipynb_checkpoints/
+.ipynb_checkpoints/
+**/ipynb_checkpoints/
+
+# Matplotlib cache and temp files
+.matplotlib/
+mpl_temp/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.code-workspace
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*~
+.#*
+
+# Analysis and report files (generated)
+*.analysis.json
+*_analysis.html
+*_report.html
+
+# Package build artifacts
+build/
+dist/
+*.egg-info/

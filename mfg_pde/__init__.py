@@ -13,3 +13,13 @@ from .factory import (
     SolverFactory, create_solver, create_fast_solver, 
     create_accurate_solver, create_research_solver, create_monitored_solver
 )
+
+# Interactive research reporting (optional dependency)
+try:
+    from .utils.notebook_reporting import (
+        MFGNotebookReporter, create_mfg_research_report, 
+        create_comparative_analysis
+    )
+    NOTEBOOK_REPORTING_AVAILABLE = True
+except ImportError:
+    NOTEBOOK_REPORTING_AVAILABLE = False
