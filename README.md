@@ -1,6 +1,6 @@
 # MFG_PDE: Numerical Solvers for Mean Field Games
 
-A Python package for solving Mean Field Game (MFG) systems using particle-collocation and finite difference methods.
+A comprehensive Python framework for solving Mean Field Games with advanced numerical methods, interactive visualizations, and professional research tools.
 
 ## Quick Start
 
@@ -106,20 +106,31 @@ Traditional finite difference and hybrid particle-FDM approaches for comparison 
 # Run core functionality tests
 python -m pytest tests/integration/
 
-# Run comprehensive method comparisons
-python tests/method_comparisons/comprehensive_final_evaluation.py
+# Run comprehensive method comparisons (now in benchmarks)
+python benchmarks/method_comparisons/comprehensive_final_evaluation.py
 
 # Run mass conservation validation
 python -m pytest tests/mass_conservation/
+
+# Run unit tests
+python -m pytest tests/unit/
 ```
 
-## Examples
+## Examples & Documentation
 
-See the [`examples/`](examples/) directory for working implementations:
-- Basic particle-collocation usage
-- Performance comparisons
-- Parameter sensitivity studies
-- Advanced optimization techniques
+### 🚀 Quick Start
+- **[Basic Examples](examples/basic/)** - Simple demonstrations and tutorials
+- **[Interactive Notebooks](examples/notebooks/working_demo/)** - Jupyter notebook with advanced graphics
+- **[Advanced Examples](examples/advanced/)** - Complex workflows and research tools
+
+### 📊 Performance Analysis  
+- **[Benchmarks](benchmarks/)** - Method comparisons and performance analysis
+- **[Method Comparisons](benchmarks/method_comparisons/)** - Detailed solver evaluations
+
+### 📚 Documentation
+- **[User Guides](docs/guides/)** - Comprehensive usage documentation
+- **[Development Docs](docs/development/)** - Contributor guidelines and standards
+- **[Theory](docs/theory/)** - Mathematical background and algorithms
 
 ## Contributing
 

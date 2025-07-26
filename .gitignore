@@ -634,6 +634,11 @@ math_test_output/
 spacing_test_output/
 test_output/
 
+# Benchmark results and outputs
+benchmarks/results/
+benchmarks/*_output/
+benchmark_results/
+
 # Runtime log directories  
 logs/
 research_logs/

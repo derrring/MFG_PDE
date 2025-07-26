@@ -13,7 +13,7 @@ authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
 ]
-description = "A Python package for solving Mean Field Game PDEs."
+description = "A comprehensive Python framework for solving Mean Field Games with advanced numerical methods, interactive visualizations, and professional research tools."
 readme = "README.md" 
 requires-python = ">=3.8" 
 classifiers = [
@@ -27,6 +27,9 @@ dependencies = [
     "numpy>=1.20",    
     "scipy>=1.7",
     "matplotlib>=3.4",
+    "plotly>=5.0",
+    "nbformat>=5.0",
+    "jupyter>=1.0",
 ]
 
 # Optional: URLs for your project
@@ -47,7 +50,7 @@ Repository = "https://github.com/derrring/MFG_PDE"
 [tool.setuptools.packages.find]
 where = ["."]  # Look for packages in the current directory.
 include = ["mfg_pde*"]  # Include the mfg_pde package and its subpackages
-exclude = ["examples*", "tests*"] # Exclude examples and tests from the installable package
+exclude = ["examples*", "tests*", "benchmarks*", "docs*", "archive*"] # Exclude non-package directories from installation
 
 # Optional: If you have data files to include with your package
 # [tool.setuptools.package-data]
