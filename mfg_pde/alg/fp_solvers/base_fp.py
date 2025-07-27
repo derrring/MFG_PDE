@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-import numpy as np
 
 # For type hinting, using a forward reference to MFGProblem
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem

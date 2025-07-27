@@ -1,14 +1,16 @@
-import numpy as np
 import math
-from scipy.spatial.distance import cdist
-from scipy.linalg import lstsq
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+
+import numpy as np
 import scipy.sparse as sparse
-from typing import TYPE_CHECKING, Dict, List, Tuple, Optional, Union
+from scipy.linalg import lstsq
+from scipy.spatial.distance import cdist
+
 from .base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.core.boundaries import BoundaryConditions
+    from mfg_pde.core.mfg_problem import MFGProblem
 
 
 class HJBGFDMSolver(BaseHJBSolver):

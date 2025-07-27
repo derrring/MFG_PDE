@@ -8,12 +8,12 @@ and parameter studies with minimal boilerplate code.
 import functools
 import inspect
 import time
-from typing import Callable, Any, Dict, List, Optional, Union
 from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from .workflow_manager import Workflow, WorkflowManager
-from .experiment_tracker import ExperimentTracker, Experiment
+from .experiment_tracker import Experiment, ExperimentTracker
 from .parameter_sweep import ParameterSweep
+from .workflow_manager import Workflow, WorkflowManager
 
 
 def workflow_step(
@@ -251,9 +251,9 @@ def cached(
     """
 
     def decorator(func: Callable) -> Callable:
+        import hashlib
         import os
         import pickle
-        import hashlib
         from pathlib import Path
 
         # Set up cache directory

@@ -6,34 +6,35 @@ Provides factory patterns for creating optimized solver configurations with
 sensible defaults for different use cases.
 """
 
-from typing import TYPE_CHECKING, Optional, Dict, Any, Union, Literal
-import numpy as np
 from dataclasses import dataclass
+from typing import Any, Dict, Literal, Optional, TYPE_CHECKING, Union
 
-from ..config.solver_config import (
-    MFGSolverConfig,
-    PicardConfig,
-    HJBConfig,
-    FPConfig,
-    NewtonConfig,
-    GFDMConfig,
-    ParticleConfig,
-    create_fast_config,
-    create_accurate_config,
-    create_research_config,
+import numpy as np
+
+from ..alg.adaptive_particle_collocation_solver import (
+    SilentAdaptiveParticleCollocationSolver,
 )
 from ..alg.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from ..alg.enhanced_particle_collocation_solver import (
     MonitoredParticleCollocationSolver,
 )
-from ..alg.adaptive_particle_collocation_solver import (
-    SilentAdaptiveParticleCollocationSolver,
+from ..config.solver_config import (
+    create_accurate_config,
+    create_fast_config,
+    create_research_config,
+    FPConfig,
+    GFDMConfig,
+    HJBConfig,
+    MFGSolverConfig,
+    NewtonConfig,
+    ParticleConfig,
+    PicardConfig,
 )
 
 if TYPE_CHECKING:
-    from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.alg.fp_solvers.base_fp import BaseFPSolver
+    from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.core.mfg_problem import MFGProblem
 
 
 SolverType = Literal[

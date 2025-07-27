@@ -7,10 +7,11 @@ for research workflows.
 """
 
 import json
-import numpy as np
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 
 try:
     from pydantic import ValidationError
@@ -19,13 +20,13 @@ try:
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
-from .notebook_reporting import MFGNotebookReporter, NotebookReportError
 from .logging import get_logger
+from .notebook_reporting import MFGNotebookReporter, NotebookReportError
 
 # Import Pydantic configurations if available
 if PYDANTIC_AVAILABLE:
+    from ..config.array_validation import ExperimentConfig, MFGArrays, MFGGridConfig
     from ..config.pydantic_config import MFGSolverConfig
-    from ..config.array_validation import ExperimentConfig, MFGGridConfig, MFGArrays
 
 
 class PydanticNotebookReporter(MFGNotebookReporter):

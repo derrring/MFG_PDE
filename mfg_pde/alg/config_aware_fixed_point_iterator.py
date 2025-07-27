@@ -5,17 +5,19 @@ This is an enhanced version of the FixedPointIterator that uses the new
 configuration system for improved parameter management and user experience.
 """
 
-import numpy as np
 import time
-from typing import TYPE_CHECKING, Union, Optional
+from typing import Optional, TYPE_CHECKING, Union
+
+import numpy as np
+
+from ..config.solver_config import extract_legacy_parameters, MFGSolverConfig
 from .base_mfg_solver import MFGSolver
-from ..config.solver_config import MFGSolverConfig, extract_legacy_parameters
 
 if TYPE_CHECKING:
     from ..core.mfg_problem import MFGProblem
-    from .hjb_solvers.base_hjb import BaseHJBSolver
-    from .fp_solvers.base_fp import BaseFPSolver
     from ..utils.solver_result import SolverResult
+    from .fp_solvers.base_fp import BaseFPSolver
+    from .hjb_solvers.base_hjb import BaseHJBSolver
 
 
 class ConfigAwareFixedPointIterator(MFGSolver):

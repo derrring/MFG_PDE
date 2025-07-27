@@ -31,12 +31,13 @@ Usage:
     diagnostics = monitor.update(u_current, u_previous, m_current, x_grid)
 """
 
-import numpy as np
-from typing import List, Dict, Optional, Tuple, Any, Callable, TYPE_CHECKING
-from collections import deque
-import warnings
 import inspect
+import warnings
+from collections import deque
 from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+
+import numpy as np
 
 if TYPE_CHECKING:
     from mfg_pde.alg.base_mfg_solver import MFGSolver

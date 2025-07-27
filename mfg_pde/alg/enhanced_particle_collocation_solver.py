@@ -9,14 +9,16 @@ criteria specifically designed for particle-based MFG methods, addressing:
 - Multi-criteria convergence assessment
 """
 
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+
 import numpy as np
-from typing import TYPE_CHECKING, Optional, Dict, Tuple, Any
-from .particle_collocation_solver import ParticleCollocationSolver
+
 from ..utils.convergence import AdvancedConvergenceMonitor, create_default_monitor
+from .particle_collocation_solver import ParticleCollocationSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.core.boundaries import BoundaryConditions
+    from mfg_pde.core.mfg_problem import MFGProblem
 
 
 class MonitoredParticleCollocationSolver(ParticleCollocationSolver):

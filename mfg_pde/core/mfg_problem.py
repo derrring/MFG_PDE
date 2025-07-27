@@ -1,6 +1,7 @@
-import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any, Tuple, Callable, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
+import numpy as np
 from numpy.typing import NDArray
 
 # Import npart and ppart from the utils module

@@ -5,9 +5,9 @@ This module provides dataclass-based configuration objects that replace scattere
 constructor parameters with organized, validated, and well-documented settings.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Union, Dict, Any, Literal
 import warnings
+from dataclasses import dataclass, field
+from typing import Any, Dict, Literal, Optional, Union
 
 
 @dataclass

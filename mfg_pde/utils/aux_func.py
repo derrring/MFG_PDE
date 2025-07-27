@@ -1,6 +1,7 @@
 # mfg_pde/utils/aux_func.py
-import numpy as np
 from typing import Union
+
+import numpy as np
 
 # Original definition was -np.minimum(x,0), which is equivalent to np.maximum(-x,0)
 # For consistency with ppart(x) = max(x,0), npart(x) = max(-x,0)

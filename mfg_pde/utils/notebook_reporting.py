@@ -20,12 +20,13 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
 
 try:
     import nbformat as nbf
-    from nbformat.v4 import new_notebook, new_code_cell, new_markdown_cell
+    from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
 
     NOTEBOOK_AVAILABLE = True
 except ImportError:

@@ -7,13 +7,14 @@ consume significant memory.
 """
 
 import gc
-import psutil
 import warnings
-from typing import Dict, Any, List, Optional, Callable
-from functools import wraps
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
+import psutil
 
 
 @dataclass

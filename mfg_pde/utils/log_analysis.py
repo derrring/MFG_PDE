@@ -8,12 +8,13 @@ logging system, providing insights into solver performance, errors, and
 research patterns.
 """
 
-import re
 import json
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+import re
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
-from collections import defaultdict, Counter
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 
 from .logging import get_logger

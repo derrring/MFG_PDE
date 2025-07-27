@@ -21,20 +21,21 @@ Components:
 - ReportGenerator: Automated documentation and visualization
 """
 
-from typing import Optional, Dict, Any, List
 import warnings
+from typing import Any, Dict, List, Optional
 
-# Core workflow components
-from .workflow_manager import WorkflowManager, Workflow
-from .experiment_tracker import ExperimentTracker, Experiment, ExperimentResult
-from .parameter_sweep import ParameterSweep, SweepConfiguration
-from .result_analyzer import ResultAnalyzer, ComparisonReport
 from .collaborative_workspace import CollaborativeWorkspace, WorkspaceConfig
-from .report_generator import ReportGenerator, ReportConfig
 
 # Workflow decorators and utilities
-from .decorators import workflow_step, experiment, parameter_study
+from .decorators import experiment, parameter_study, workflow_step
+from .experiment_tracker import Experiment, ExperimentResult, ExperimentTracker
+from .parameter_sweep import ParameterSweep, SweepConfiguration
+from .report_generator import ReportConfig, ReportGenerator
+from .result_analyzer import ComparisonReport, ResultAnalyzer
 from .utils import create_workspace, load_experiment, save_experiment
+
+# Core workflow components
+from .workflow_manager import Workflow, WorkflowManager
 
 # Version and compatibility
 __version__ = "1.0.0"
@@ -220,8 +221,9 @@ def performance_benchmark_workflow(
 
     @workflow_step(workflow)
     def benchmark_performance(params):
-        from mfg_pde import ExampleMFGProblem, create_fast_solver
         import time
+
+        from mfg_pde import create_fast_solver, ExampleMFGProblem
 
         Nx, Nt = params["problem_size"]
         problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=1.0)

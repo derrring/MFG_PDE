@@ -7,17 +7,18 @@ support for professional mathematical communication. Designed for mathematical
 researchers with emphasis on precise notation and publication-quality output.
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Union, Any
-from pathlib import Path
 import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 # Plotly imports with LaTeX support
 try:
+    import plotly.express as px
     import plotly.graph_objects as go
     import plotly.subplots as sp
     from plotly.subplots import make_subplots
-    import plotly.express as px
 
     PLOTLY_AVAILABLE = True
 except ImportError:
@@ -25,8 +26,8 @@ except ImportError:
 
 # Matplotlib imports with LaTeX configuration
 try:
-    import matplotlib.pyplot as plt
     import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
     from matplotlib import rcParams
     from mpl_toolkits.mplot3d import Axes3D
 

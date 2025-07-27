@@ -9,7 +9,8 @@ modern features to MFG solver classes.
 import functools
 import time
 from typing import Any, Dict, Optional, Union
-from .progress import SolverTimer, IterationProgress, time_solver_operation
+
+from .progress import IterationProgress, SolverTimer, time_solver_operation
 
 
 def with_progress_monitoring(

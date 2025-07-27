@@ -1,10 +1,12 @@
+from typing import Any, TYPE_CHECKING
+
 import numpy as np
 import scipy.interpolate
 from scipy.stats import gaussian_kde
 
-from .base_fp import BaseFPSolver  # Assuming BaseFPSolver is in the same directory
-from typing import TYPE_CHECKING, Any
 from mfg_pde.core.boundaries import BoundaryConditions
+
+from .base_fp import BaseFPSolver  # Assuming BaseFPSolver is in the same directory
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem

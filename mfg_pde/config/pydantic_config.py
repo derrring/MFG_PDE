@@ -5,12 +5,13 @@ This module provides Pydantic BaseModel configurations that replace the dataclas
 system with automatic validation, serialization, and advanced numerical stability checks.
 """
 
-import numpy as np
-from pathlib import Path
-from datetime import datetime
-from typing import Optional, Dict, Any, Tuple, Union, Literal
-from pydantic import BaseModel, Field, validator, model_validator
 import warnings
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Literal, Optional, Tuple, Union
+
+import numpy as np
+from pydantic import BaseModel, Field, model_validator, validator
 
 
 class NewtonConfig(BaseModel):

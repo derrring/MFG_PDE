@@ -6,11 +6,11 @@ Provides elegant progress bars, timing, and performance monitoring for long-runn
 solver operations using modern tools like tqdm.
 """
 
-import time
 import functools
-from typing import Optional, Any, Dict, Iterator, Union
-from contextlib import contextmanager
+import time
 import warnings
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, Optional, Union
 
 try:
     from tqdm import tqdm, trange

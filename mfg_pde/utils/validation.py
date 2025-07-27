@@ -6,9 +6,10 @@ This module provides centralized validation functions to eliminate
 code duplication across different solver implementations.
 """
 
-import numpy as np
 import warnings
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import numpy as np
 
 
 class SolutionValidationError(Exception):

@@ -8,11 +8,12 @@ and other computational functions without modifying their core logic.
 
 import functools
 import time
-from typing import Any, Callable, Optional, Dict
+from typing import Any, Callable, Dict, Optional
+
 from .logging import (
     get_logger,
-    log_solver_start,
     log_solver_completion,
+    log_solver_start,
     LoggedOperation,
 )
 

@@ -1,5 +1,7 @@
+from typing import Dict, Optional, Tuple, TYPE_CHECKING
+
 import numpy as np
-from typing import TYPE_CHECKING, Optional, Dict, Tuple
+
 from .base_mfg_solver import MFGSolver
 from .fp_solvers.fp_particle import FPParticleSolver
 from .hjb_solvers.hjb_gfdm import HJBGFDMSolver

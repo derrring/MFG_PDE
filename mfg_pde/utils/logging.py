@@ -7,11 +7,11 @@ color support for better debugging and monitoring capabilities.
 """
 
 import logging
-import sys
 import os
-from pathlib import Path
-from typing import Optional, Dict, Any, Union, List
+import sys
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 try:
     import colorlog
@@ -407,8 +407,9 @@ def log_memory_usage(
 ):
     """Log memory usage information."""
     try:
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         memory_info = process.memory_info()

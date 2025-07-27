@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+from typing import Dict, Optional, Tuple, TYPE_CHECKING
+
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem

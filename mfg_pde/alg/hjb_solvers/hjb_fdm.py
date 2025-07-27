@@ -1,9 +1,10 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 # Assuming base_hjb is in the same directory or correctly pathed
 from . import base_hjb
 from .base_hjb import BaseHJBSolver
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem

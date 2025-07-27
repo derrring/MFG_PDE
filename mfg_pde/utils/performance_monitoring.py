@@ -6,16 +6,17 @@ execution time tracking, memory usage analysis, and regression detection for
 the MFG_PDE solver framework.
 """
 
-import time
 import functools
-import psutil
 import json
+import time
 import warnings
-from typing import Dict, Any, Callable, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
+import psutil
 
 
 @dataclass

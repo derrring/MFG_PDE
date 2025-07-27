@@ -6,17 +6,18 @@ including numerical operations, device management, and optimization helpers.
 """
 
 import warnings
-from typing import Tuple, Optional, Any, Callable, Union
+from typing import Any, Callable, Optional, Tuple, Union
+
 import numpy as np
 
-from . import HAS_JAX, HAS_GPU, DEFAULT_DEVICE
+from . import DEFAULT_DEVICE, HAS_GPU, HAS_JAX
 
 if HAS_JAX:
     import jax
     import jax.numpy as jnp
-    from jax import jit, vmap, grad, jacfwd, jacrev, device_put
-    from jax.lax import scan, cond
     import optax
+    from jax import device_put, grad, jacfwd, jacrev, jit, vmap
+    from jax.lax import cond, scan
 else:
     # Dummy implementations for graceful fallback
     jax = None

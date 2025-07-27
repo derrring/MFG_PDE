@@ -7,18 +7,19 @@ plots and matplotlib for publication-quality static plots. Supports MFG solution
 visualization, convergence analysis, and monitoring dashboards.
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Union, Any
-from pathlib import Path
 import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 # Plotly imports with fallback
 try:
+    import plotly.express as px
     import plotly.graph_objects as go
+    import plotly.offline as offline
     import plotly.subplots as sp
     from plotly.subplots import make_subplots
-    import plotly.express as px
-    import plotly.offline as offline
 
     PLOTLY_AVAILABLE = True
 except ImportError:
@@ -27,11 +28,11 @@ except ImportError:
 
 # Matplotlib imports with fallback
 try:
-    import matplotlib.pyplot as plt
     import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
+    from matplotlib import rcParams
     from matplotlib.animation import FuncAnimation
     from mpl_toolkits.mplot3d import Axes3D
-    from matplotlib import rcParams
 
     # Configure matplotlib for cross-platform compatibility
     rcParams["text.usetex"] = False  # Avoid LaTeX dependency

@@ -5,20 +5,20 @@ This module provides the central workflow orchestration capabilities,
 including workflow definition, execution, and lifecycle management.
 """
 
-import os
 import json
-import uuid
-import time
 import logging
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable, Union
-from dataclasses import dataclass, field, asdict
-from enum import Enum
+import os
+import pickle
+import time
 import traceback
+import uuid
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
-import pickle
 
 
 class WorkflowStatus(Enum):
@@ -643,7 +643,7 @@ class WorkflowManager:
         )
 
         def example_solve(sigma, Nx=20, Nt=10):
-            from mfg_pde import ExampleMFGProblem, create_fast_solver
+            from mfg_pde import create_fast_solver, ExampleMFGProblem
 
             problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
             solver = create_fast_solver(problem, "fixed_point")

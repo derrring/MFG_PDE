@@ -5,7 +5,8 @@ This module provides specialized exception classes that give users clear,
 actionable error messages with suggested solutions.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 

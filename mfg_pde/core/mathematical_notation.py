@@ -9,10 +9,11 @@ The notation follows established conventions in the Mean Field Games
 literature while providing clear mappings to computational variables.
 """
 
-from typing import TypeAlias, Dict, Any, List, Tuple
-import numpy as np
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Tuple, TypeAlias
+
+import numpy as np
 
 
 class VariableType(Enum):

@@ -5,10 +5,11 @@ Focused implementation that directly overrides the QP decision logic
 to achieve ~10% QP usage rate through intelligent constraint detection.
 """
 
-import numpy as np
 import time
-from typing import Optional, Dict, List, Tuple, Any
 import warnings
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 # Try to import specialized QP solvers
 try:

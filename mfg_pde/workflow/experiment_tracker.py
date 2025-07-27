@@ -6,17 +6,17 @@ including experiment creation, execution tracking, result storage,
 and comparative analysis capabilities.
 """
 
+import hashlib
 import json
+import logging
+import pickle
 import time
 import uuid
-import pickle
-import logging
-import hashlib
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Union, Callable
-from dataclasses import dataclass, field, asdict
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -488,9 +488,9 @@ class Experiment:
 
     def _capture_environment(self):
         """Capture current environment information."""
-        import sys
-        import platform
         import os
+        import platform
+        import sys
 
         self.metadata.environment = {
             "python_version": sys.version,

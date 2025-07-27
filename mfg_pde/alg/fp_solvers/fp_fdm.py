@@ -2,9 +2,10 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg
 
-from .base_fp import BaseFPSolver
-from mfg_pde.utils.aux_func import ppart, npart
 from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.utils.aux_func import npart, ppart
+
+from .base_fp import BaseFPSolver
 
 
 class FPFDMSolver(BaseFPSolver):

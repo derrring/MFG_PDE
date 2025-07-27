@@ -10,15 +10,16 @@ The solver inherits from ParticleCollocationSolver and gains adaptive convergenc
 behavior through the @adaptive_convergence decorator.
 """
 
-import numpy as np
-from typing import TYPE_CHECKING, Optional, Dict, Tuple, Any
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
-from .particle_collocation_solver import ParticleCollocationSolver
+import numpy as np
+
 from ..utils.convergence import adaptive_convergence
+from .particle_collocation_solver import ParticleCollocationSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.core.boundaries import BoundaryConditions
+    from mfg_pde.core.mfg_problem import MFGProblem
 
 
 @adaptive_convergence(

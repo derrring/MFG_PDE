@@ -6,11 +6,11 @@ equivalents while maintaining backward compatibility. It supports gradual
 migration with clear deprecation warnings and automatic parameter translation.
 """
 
+import inspect
 import warnings
-from typing import Dict, Any, Optional, List, Tuple, Set
 from dataclasses import dataclass, field
 from datetime import datetime
-import inspect
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 @dataclass

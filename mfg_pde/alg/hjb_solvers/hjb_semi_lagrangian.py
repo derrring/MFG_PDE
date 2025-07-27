@@ -1,5 +1,7 @@
-import numpy as np
 from typing import TYPE_CHECKING
+
+import numpy as np
+
 from .base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:

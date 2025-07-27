@@ -6,7 +6,8 @@ improving code readability, IDE support, and API maintainability.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, Union, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
+
 import numpy as np
 
 

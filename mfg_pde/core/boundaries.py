@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Callable, Tuple
-
+from typing import Callable, Optional, Tuple
 
 """ Struct like class for boundary conditions
 For most applications, FEniCS and FiPy are particularly user-friendly while still being powerful enough for research-level problems. 

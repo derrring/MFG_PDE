@@ -1,12 +1,14 @@
-import numpy as np
 import time
-from typing import TYPE_CHECKING, Tuple, Union  # Added Union
+from typing import Tuple, TYPE_CHECKING, Union  # Added Union
+
+import numpy as np
+
 from .base_mfg_solver import MFGSolver
 
 if TYPE_CHECKING:
     from ..core.mfg_problem import MFGProblem
-    from .hjb_solvers.base_hjb import BaseHJBSolver
     from .fp_solvers.base_fp import BaseFPSolver
+    from .hjb_solvers.base_hjb import BaseHJBSolver
 
 
 # Dummy base classes for standalone checking if imports are tricky

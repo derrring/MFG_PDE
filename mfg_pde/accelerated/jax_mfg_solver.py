@@ -7,30 +7,31 @@ with GPU acceleration, automatic differentiation, and vectorized operations.
 
 import time
 import warnings
-from typing import Optional, Dict, Any, Tuple, Callable
+from typing import Any, Callable, Dict, Optional, Tuple
+
 import numpy as np
 
-from . import HAS_JAX, HAS_GPU, DEFAULT_DEVICE
+from . import DEFAULT_DEVICE, HAS_GPU, HAS_JAX
 from .jax_utils import (
-    ensure_jax_available,
-    to_device,
-    from_device,
-    finite_difference_1d,
-    finite_difference_2d,
     apply_boundary_conditions,
-    tridiagonal_solve,
+    compute_convergence_error,
     compute_hamiltonian,
     compute_optimal_control,
-    compute_convergence_error,
+    ensure_jax_available,
+    finite_difference_1d,
+    finite_difference_2d,
+    from_device,
     mass_conservation_constraint,
+    to_device,
+    tridiagonal_solve,
 )
 
 if HAS_JAX:
     import jax
     import jax.numpy as jnp
-    from jax import jit, vmap, grad, jacfwd, device_put
-    from jax.lax import scan, cond, while_loop
     import optax
+    from jax import device_put, grad, jacfwd, jit, vmap
+    from jax.lax import cond, scan, while_loop
 else:
     jax = None
     jnp = np

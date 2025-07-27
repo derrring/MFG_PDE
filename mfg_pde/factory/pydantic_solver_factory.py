@@ -5,9 +5,10 @@ Provides factory patterns for creating optimized solver configurations with
 Pydantic validation, automatic serialization, and enhanced error checking.
 """
 
-from typing import TYPE_CHECKING, Optional, Dict, Any, Union, Literal
-import numpy as np
 import warnings
+from typing import Any, Dict, Literal, Optional, TYPE_CHECKING, Union
+
+import numpy as np
 
 try:
     from pydantic import ValidationError
@@ -16,25 +17,24 @@ try:
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
-from ..config.pydantic_config import (
-    MFGSolverConfig,
-    PicardConfig,
-    HJBConfig,
-    FPConfig,
-    NewtonConfig,
-    GFDMConfig,
-    ParticleConfig,
-    create_fast_config,
-    create_accurate_config,
-    create_research_config,
+from ..alg.adaptive_particle_collocation_solver import (
+    SilentAdaptiveParticleCollocationSolver,
 )
-
 from ..alg.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from ..alg.enhanced_particle_collocation_solver import (
     MonitoredParticleCollocationSolver,
 )
-from ..alg.adaptive_particle_collocation_solver import (
-    SilentAdaptiveParticleCollocationSolver,
+from ..config.pydantic_config import (
+    create_accurate_config,
+    create_fast_config,
+    create_research_config,
+    FPConfig,
+    GFDMConfig,
+    HJBConfig,
+    MFGSolverConfig,
+    NewtonConfig,
+    ParticleConfig,
+    PicardConfig,
 )
 
 if TYPE_CHECKING:
@@ -238,8 +238,8 @@ class PydanticSolverFactory:
         """Create validated fixed point iterator solver."""
         try:
             # Create HJB and FP solvers (simplified for now)
-            from ..alg.hjb_solvers.hjb_gfdm_smart_qp import HJBGFDMQPSolver
             from ..alg.fp_solvers.fp_particle import FPParticleSolver
+            from ..alg.hjb_solvers.hjb_gfdm_smart_qp import HJBGFDMQPSolver
 
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)

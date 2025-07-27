@@ -18,13 +18,13 @@ Dependencies:
 """
 
 import warnings
-from typing import Optional, Any
+from typing import Any, Optional
 
 # Check JAX availability
 try:
     import jax
     import jax.numpy as jnp
-    from jax import jit, vmap, grad, jacfwd, jacrev
+    from jax import grad, jacfwd, jacrev, jit, vmap
     from jax.config import config
 
     HAS_JAX = True
@@ -177,10 +177,10 @@ __all__ = [
 # Conditional imports for JAX-based solvers
 if HAS_JAX:
     try:
-        from .jax_solvers import *
-        from .jax_hjb_solver import JAXHJBSolver
         from .jax_fp_solver import JAXFokkerPlanckSolver
+        from .jax_hjb_solver import JAXHJBSolver
         from .jax_mfg_solver import JAXMFGSolver
+        from .jax_solvers import *
         from .jax_utils import *
 
         __all__.extend(["JAXHJBSolver", "JAXFokkerPlanckSolver", "JAXMFGSolver"])

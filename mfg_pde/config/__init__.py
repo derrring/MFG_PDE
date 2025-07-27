@@ -8,44 +8,42 @@ The module includes both original dataclass-based configurations and enhanced
 Pydantic-based configurations with automatic validation and serialization.
 """
 
-# Original dataclass-based configurations (for backward compatibility)
-from .solver_config import (
-    NewtonConfig as DataclassNewtonConfig,
-    PicardConfig as DataclassPicardConfig,
-    ParticleConfig as DataclassParticleConfig,
-    GFDMConfig as DataclassGFDMConfig,
-    MFGSolverConfig as DataclassMFGSolverConfig,
-    HJBConfig as DataclassHJBConfig,
-    FPConfig as DataclassFPConfig,
-    create_default_config as create_default_config_dataclass,
-    create_fast_config as create_fast_config_dataclass,
-    create_accurate_config as create_accurate_config_dataclass,
-    create_research_config as create_research_config_dataclass,
+# Advanced array and tensor validation
+from .array_validation import (
+    ArrayValidationConfig,
+    CollocationConfig,
+    ExperimentConfig,
+    MFGArrays,
+    MFGGridConfig,
 )
 
 # Enhanced Pydantic-based configurations (recommended for new code)
 from .pydantic_config import (
-    NewtonConfig,
-    PicardConfig,
-    GFDMConfig,
-    ParticleConfig,
-    HJBConfig,
-    FPConfig,
-    MFGSolverConfig,
-    create_fast_config,
     create_accurate_config,
+    create_fast_config,
     create_research_config,
     extract_legacy_parameters,
+    FPConfig,
+    GFDMConfig,
+    HJBConfig,
+    MFGSolverConfig,
+    NewtonConfig,
+    ParticleConfig,
+    PicardConfig,
 )
 
-# Advanced array and tensor validation
-from .array_validation import (
-    ArrayValidationConfig,
-    MFGGridConfig,
-    MFGArrays,
-    CollocationConfig,
-    ExperimentConfig,
-)
+# Original dataclass-based configurations (for backward compatibility)
+from .solver_config import create_accurate_config as create_accurate_config_dataclass
+from .solver_config import create_default_config as create_default_config_dataclass
+from .solver_config import create_fast_config as create_fast_config_dataclass
+from .solver_config import create_research_config as create_research_config_dataclass
+from .solver_config import FPConfig as DataclassFPConfig
+from .solver_config import GFDMConfig as DataclassGFDMConfig
+from .solver_config import HJBConfig as DataclassHJBConfig
+from .solver_config import MFGSolverConfig as DataclassMFGSolverConfig
+from .solver_config import NewtonConfig as DataclassNewtonConfig
+from .solver_config import ParticleConfig as DataclassParticleConfig
+from .solver_config import PicardConfig as DataclassPicardConfig
 
 # Default to Pydantic configurations for new code
 __all__ = [

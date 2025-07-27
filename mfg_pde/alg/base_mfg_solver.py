@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+
 import numpy as np
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..core.mfg_problem import MFGProblem

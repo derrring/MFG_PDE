@@ -1,70 +1,70 @@
-from .plot_utils import plot_results, plot_convergence
+from .advanced_visualization import (
+    MFGVisualizer,
+    quick_plot_convergence,
+    quick_plot_solution,
+    SolverMonitoringDashboard,
+    VisualizationUtils,
+)
 from .aux_func import *
-from .math_utils import *
 from .convergence import (
+    adaptive_convergence,
+    AdaptiveConvergenceWrapper,
     AdvancedConvergenceMonitor,
+    create_default_monitor,
     DistributionComparator,
     OscillationDetector,
-    create_default_monitor,
-    AdaptiveConvergenceWrapper,
-    adaptive_convergence,
-    wrap_solver_with_adaptive_convergence,
     ParticleMethodDetector,
     test_particle_detection,
-)
-from .validation import (
-    validate_solution_array,
-    validate_mfg_solution,
-    validate_convergence_parameters,
-    safe_solution_return,
+    wrap_solver_with_adaptive_convergence,
 )
 from .exceptions import (
-    MFGSolverError,
-    ConvergenceError,
+    check_numerical_stability,
     ConfigurationError,
-    SolutionNotAvailableError,
+    ConvergenceError,
     DimensionMismatchError,
+    MFGSolverError,
     NumericalInstabilityError,
-    validate_solver_state,
+    SolutionNotAvailableError,
     validate_array_dimensions,
     validate_parameter_value,
-    check_numerical_stability,
+    validate_solver_state,
 )
+from .logging import (
+    configure_logging,
+    get_logger,
+    log_performance_metric,
+    log_solver_completion,
+    log_solver_progress,
+    log_solver_start,
+    log_validation_error,
+    LoggedOperation,
+    MFGLogger,
+)
+from .logging_decorators import (
+    add_logging_to_class,
+    logged_operation,
+    logged_solver_method,
+    logged_validation,
+    LoggingMixin,
+    performance_logged,
+)
+from .math_utils import *
+from .mathematical_visualization import (
+    MFGMathematicalVisualizer,
+    quick_fp_analysis,
+    quick_hjb_analysis,
+    quick_phase_space_analysis,
+)
+from .plot_utils import plot_convergence, plot_results
 from .solver_result import (
-    SolverResult,
     ConvergenceResult,
     create_solver_result,
     MFGSolverResult,
+    SolverResult,
 )
-from .logging import (
-    get_logger,
-    configure_logging,
-    MFGLogger,
-    log_solver_start,
-    log_solver_progress,
-    log_solver_completion,
-    log_validation_error,
-    log_performance_metric,
-    LoggedOperation,
-)
-from .logging_decorators import (
-    logged_solver_method,
-    logged_operation,
-    logged_validation,
-    performance_logged,
-    LoggingMixin,
-    add_logging_to_class,
-)
-from .advanced_visualization import (
-    MFGVisualizer,
-    SolverMonitoringDashboard,
-    VisualizationUtils,
-    quick_plot_solution,
-    quick_plot_convergence,
-)
-from .mathematical_visualization import (
-    MFGMathematicalVisualizer,
-    quick_hjb_analysis,
-    quick_fp_analysis,
-    quick_phase_space_analysis,
+from .validation import (
+    safe_solution_return,
+    validate_convergence_parameters,
+    validate_mfg_solution,
+    validate_solution_array,
 )

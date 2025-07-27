@@ -8,11 +8,12 @@ MFG solvers from the command line with professional argument handling.
 
 import argparse
 import json
-import yaml
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Union
-import sys
 import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import yaml
 
 try:
     import yaml
@@ -374,8 +375,8 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
 
     try:
         # Import here to avoid circular imports
-        from ..factory import create_solver
         from .. import MFGProblem
+        from ..factory import create_solver
 
         # Create problem instance
         # This is a simplified example - in practice, you'd load from problem_file

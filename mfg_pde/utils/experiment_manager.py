@@ -1,13 +1,13 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import os
 import time
 from datetime import datetime
-from typing import List, Dict, Any, Optional
 
 # Assuming your MFGProblem class is importable for type hinting
 # from ..core.mfg_problem import MFGProblem # Adjust path if necessary
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
