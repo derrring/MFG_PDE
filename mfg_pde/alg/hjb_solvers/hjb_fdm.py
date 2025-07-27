@@ -20,43 +20,53 @@ class HJBFDMSolver(BaseHJBSolver):
         l2errBoundNewton: float = None,
     ):
         import warnings
-        
+
         super().__init__(problem)
         self.hjb_method_name = "FDM"
-        
+
         # Handle backward compatibility
         if NiterNewton is not None:
-            warnings.warn("Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.", 
-                         DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                "Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             if max_newton_iterations is None:
                 max_newton_iterations = NiterNewton
-                
+
         if l2errBoundNewton is not None:
-            warnings.warn("Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.", 
-                         DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                "Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             if newton_tolerance is None:
                 newton_tolerance = l2errBoundNewton
-        
+
         # Set defaults if still None
         if max_newton_iterations is None:
             max_newton_iterations = 30
         if newton_tolerance is None:
             newton_tolerance = 1e-6
-            
+
         # Store with new names
         self.max_newton_iterations = max_newton_iterations
         self.newton_tolerance = newton_tolerance
-        
+
         # Validate parameter ranges
         if self.max_newton_iterations < 1:
-            raise ValueError(f"max_newton_iterations must be >= 1, got {self.max_newton_iterations}")
+            raise ValueError(
+                f"max_newton_iterations must be >= 1, got {self.max_newton_iterations}"
+            )
         if self.newton_tolerance <= 0:
-            raise ValueError(f"newton_tolerance must be > 0, got {self.newton_tolerance}")
-        
+            raise ValueError(
+                f"newton_tolerance must be > 0, got {self.newton_tolerance}"
+            )
+
         # Store parameters for solver access
         self._newton_config = {
-            'max_iterations': self.max_newton_iterations,
-            'tolerance': self.newton_tolerance
+            "max_iterations": self.max_newton_iterations,
+            "tolerance": self.newton_tolerance,
         }
 
     def solve_hjb_system(

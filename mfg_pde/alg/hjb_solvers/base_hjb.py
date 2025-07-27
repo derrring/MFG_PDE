@@ -434,7 +434,7 @@ def solve_hjb_timestep_newton(
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
-    
+
     Args:
         U_n_plus_1_from_hjb_step: Solution at next time step
         U_k_n_from_prev_picard: Solution from previous Picard iteration
@@ -447,26 +447,32 @@ def solve_hjb_timestep_newton(
         l2errBoundNewton: DEPRECATED - use newton_tolerance
     """
     import warnings
-    
+
     # Handle backward compatibility
     if NiterNewton is not None:
-        warnings.warn("Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.", 
-                     DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if max_newton_iterations is None:
             max_newton_iterations = NiterNewton
-            
+
     if l2errBoundNewton is not None:
-        warnings.warn("Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.", 
-                     DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if newton_tolerance is None:
             newton_tolerance = l2errBoundNewton
-    
+
     # Set defaults if still None
     if max_newton_iterations is None:
         max_newton_iterations = 30
     if newton_tolerance is None:
         newton_tolerance = 1e-6
-    
+
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
     U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
 
@@ -530,7 +536,7 @@ def solve_hjb_system_backward(
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.
-    
+
     Args:
         M_density_from_prev_picard: Density from previous Picard iteration
         U_final_condition_at_T: Terminal condition for value function
@@ -542,26 +548,32 @@ def solve_hjb_system_backward(
         l2errBoundNewton: DEPRECATED - use newton_tolerance
     """
     import warnings
-    
+
     # Handle backward compatibility
     if NiterNewton is not None:
-        warnings.warn("Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.", 
-                     DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if max_newton_iterations is None:
             max_newton_iterations = NiterNewton
-            
+
     if l2errBoundNewton is not None:
-        warnings.warn("Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.", 
-                     DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if newton_tolerance is None:
             newton_tolerance = l2errBoundNewton
-    
+
     # Set defaults if still None
     if max_newton_iterations is None:
         max_newton_iterations = 30
     if newton_tolerance is None:
         newton_tolerance = 1e-6
-    
+
     Nt = problem.Nt + 1
     Nx = problem.Nx + 1
 

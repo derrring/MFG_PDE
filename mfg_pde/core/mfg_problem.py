@@ -58,13 +58,16 @@ class MFGProblem(ABC):
         self.m_init = np.zeros(self.Nx + 1, dtype=np.float64)
 
         # Extract functions with proper type hints
-        g_final_func: Callable[[float], float] = kwargs.get("g_final_func", lambda x_val: 0.0)
-        
-        default_m0_func: Callable[[float], float] = lambda x_val: np.exp(
-            -np.power(x_val - self.Lx / 2.0, 2.0)
-            / (2 * np.power(self.Lx / 10.0, 2.0))
+        g_final_func: Callable[[float], float] = kwargs.get(
+            "g_final_func", lambda x_val: 0.0
         )
-        m_initial_func: Callable[[float], float] = kwargs.get("m_initial_func", default_m0_func)
+
+        default_m0_func: Callable[[float], float] = lambda x_val: np.exp(
+            -np.power(x_val - self.Lx / 2.0, 2.0) / (2 * np.power(self.Lx / 10.0, 2.0))
+        )
+        m_initial_func: Callable[[float], float] = kwargs.get(
+            "m_initial_func", default_m0_func
+        )
 
         for i in range(self.Nx + 1):
             x_i: float = self.xSpace[i]

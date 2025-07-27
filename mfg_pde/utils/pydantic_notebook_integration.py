@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Any, Union
 
 try:
     from pydantic import ValidationError
+
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
@@ -30,30 +31,32 @@ if PYDANTIC_AVAILABLE:
 class PydanticNotebookReporter(MFGNotebookReporter):
     """
     Enhanced notebook reporter with Pydantic configuration support.
-    
+
     Extends the base MFGNotebookReporter with automatic Pydantic model
     serialization, validation, and enhanced metadata management.
     """
-    
+
     def __init__(self):
         super().__init__()
         self.logger = get_logger(__name__)
-        
+
         if not PYDANTIC_AVAILABLE:
-            self.logger.warning("Pydantic not available - falling back to basic notebook reporting")
-    
+            self.logger.warning(
+                "Pydantic not available - falling back to basic notebook reporting"
+            )
+
     def create_enhanced_mfg_report(
         self,
         title: str,
-        experiment_config: 'ExperimentConfig',
+        experiment_config: "ExperimentConfig",
         solver_results: Dict[str, Any],
         output_dir: str = "reports",
         export_html: bool = True,
-        include_validation_report: bool = True
+        include_validation_report: bool = True,
     ) -> Dict[str, str]:
         """
         Create comprehensive MFG research report using Pydantic configuration.
-        
+
         Args:
             title: Report title
             experiment_config: Pydantic ExperimentConfig with validation
@@ -61,138 +64,162 @@ class PydanticNotebookReporter(MFGNotebookReporter):
             output_dir: Output directory for reports
             export_html: Whether to export HTML version
             include_validation_report: Whether to include validation details
-            
+
         Returns:
             Dictionary with paths to generated files
         """
         if not PYDANTIC_AVAILABLE:
             self.logger.error("Pydantic not available for enhanced reporting")
             raise NotebookReportError("Pydantic required for enhanced reporting")
-        
+
         try:
             # Validate experiment configuration
             if not isinstance(experiment_config, ExperimentConfig):
-                raise NotebookReportError("experiment_config must be ExperimentConfig instance")
-            
+                raise NotebookReportError(
+                    "experiment_config must be ExperimentConfig instance"
+                )
+
             # Extract validated configuration
             validated_config = experiment_config.dict()
             notebook_metadata = experiment_config.to_notebook_metadata()
-            
+
             # Create enhanced problem configuration
             enhanced_problem_config = {
-                **validated_config['grid_config'],
-                'validation_passed': True,
-                'config_type': 'pydantic_enhanced',
-                'created_at': datetime.now().isoformat()
+                **validated_config["grid_config"],
+                "validation_passed": True,
+                "config_type": "pydantic_enhanced",
+                "created_at": datetime.now().isoformat(),
             }
-            
+
             # Add array statistics if available
             if experiment_config.arrays:
                 array_stats = experiment_config.arrays.get_solution_statistics()
-                enhanced_problem_config['array_statistics'] = array_stats
-                
+                enhanced_problem_config["array_statistics"] = array_stats
+
                 # Use validated arrays for visualization
                 solver_results = {
                     **solver_results,
-                    'U': experiment_config.arrays.U_solution,
-                    'M': experiment_config.arrays.M_solution,
-                    'validation_stats': array_stats
+                    "U": experiment_config.arrays.U_solution,
+                    "M": experiment_config.arrays.M_solution,
+                    "validation_stats": array_stats,
                 }
-            
+
             # Generate enhanced notebook
             notebook_content = self._create_enhanced_notebook_content(
                 title=title,
                 experiment_config=experiment_config,
                 solver_results=solver_results,
-                include_validation_report=include_validation_report
+                include_validation_report=include_validation_report,
             )
-            
+
             # Create notebook with enhanced metadata
             enhanced_metadata = {
                 **notebook_metadata,
-                'pydantic_validation': True,
-                'report_generator': 'PydanticNotebookReporter',
-                'notebook_version': '2.0'
+                "pydantic_validation": True,
+                "report_generator": "PydanticNotebookReporter",
+                "notebook_version": "2.0",
             }
-            
+
             return self._save_enhanced_notebook(
                 notebook_content=notebook_content,
                 title=title,
                 metadata=enhanced_metadata,
                 output_dir=output_dir,
-                export_html=export_html
+                export_html=export_html,
             )
-            
+
         except ValidationError as e:
             self.logger.error(f"Pydantic validation error: {e}")
             raise NotebookReportError(f"Configuration validation failed: {e}")
         except Exception as e:
             self.logger.error(f"Enhanced notebook generation failed: {e}")
             raise NotebookReportError(f"Enhanced notebook generation failed: {e}")
-    
+
     def _create_enhanced_notebook_content(
         self,
         title: str,
-        experiment_config: 'ExperimentConfig',
+        experiment_config: "ExperimentConfig",
         solver_results: Dict[str, Any],
-        include_validation_report: bool = True
+        include_validation_report: bool = True,
     ) -> List[Dict[str, Any]]:
         """Create enhanced notebook content with Pydantic configuration details."""
         cells = []
-        
+
         # Title and metadata
-        cells.append({
-            'cell_type': 'markdown',
-            'source': self._create_enhanced_title_section(title, experiment_config)
-        })
-        
+        cells.append(
+            {
+                "cell_type": "markdown",
+                "source": self._create_enhanced_title_section(title, experiment_config),
+            }
+        )
+
         # Configuration validation report
         if include_validation_report:
-            cells.append({
-                'cell_type': 'markdown',
-                'source': self._create_validation_report_section(experiment_config)
-            })
-        
+            cells.append(
+                {
+                    "cell_type": "markdown",
+                    "source": self._create_validation_report_section(experiment_config),
+                }
+            )
+
         # Enhanced configuration summary
-        cells.append({
-            'cell_type': 'code',
-            'source': self._create_enhanced_config_code_section(experiment_config)
-        })
-        
+        cells.append(
+            {
+                "cell_type": "code",
+                "source": self._create_enhanced_config_code_section(experiment_config),
+            }
+        )
+
         # Grid and numerical stability analysis
-        cells.append({
-            'cell_type': 'markdown',
-            'source': self._create_numerical_analysis_section(experiment_config)
-        })
-        
+        cells.append(
+            {
+                "cell_type": "markdown",
+                "source": self._create_numerical_analysis_section(experiment_config),
+            }
+        )
+
         # Solution visualization (if arrays are available)
         if experiment_config.arrays:
-            cells.append({
-                'cell_type': 'code',
-                'source': self._create_enhanced_visualization_code(experiment_config, solver_results)
-            })
-            
+            cells.append(
+                {
+                    "cell_type": "code",
+                    "source": self._create_enhanced_visualization_code(
+                        experiment_config, solver_results
+                    ),
+                }
+            )
+
             # Array validation results
-            cells.append({
-                'cell_type': 'markdown',
-                'source': self._create_array_validation_section(experiment_config.arrays)
-            })
-        
+            cells.append(
+                {
+                    "cell_type": "markdown",
+                    "source": self._create_array_validation_section(
+                        experiment_config.arrays
+                    ),
+                }
+            )
+
         # Standard solver results sections
         cells.extend(self._create_standard_results_sections(solver_results))
-        
+
         # Enhanced conclusions with validation summary
-        cells.append({
-            'cell_type': 'markdown',
-            'source': self._create_enhanced_conclusions_section(experiment_config, solver_results)
-        })
-        
+        cells.append(
+            {
+                "cell_type": "markdown",
+                "source": self._create_enhanced_conclusions_section(
+                    experiment_config, solver_results
+                ),
+            }
+        )
+
         return cells
-    
-    def _create_enhanced_title_section(self, title: str, experiment_config: 'ExperimentConfig') -> str:
+
+    def _create_enhanced_title_section(
+        self, title: str, experiment_config: "ExperimentConfig"
+    ) -> str:
         """Create enhanced title section with experiment metadata."""
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         return f"""# {title}
 
 **Experiment**: {experiment_config.experiment_name}  
@@ -215,11 +242,13 @@ This report uses **Pydantic-validated configurations** ensuring:
 
 **Tags**: {', '.join(experiment_config.tags) if experiment_config.tags else 'None'}
 """
-    
-    def _create_validation_report_section(self, experiment_config: 'ExperimentConfig') -> str:
+
+    def _create_validation_report_section(
+        self, experiment_config: "ExperimentConfig"
+    ) -> str:
         """Create comprehensive validation report section."""
         grid_config = experiment_config.grid_config
-        
+
         validation_report = f"""## 🔍 Configuration Validation Report
 
 ### Grid Configuration Validation
@@ -231,7 +260,7 @@ This report uses **Pydantic-validated configurations** ensuring:
 
 ### Numerical Stability Analysis
 """
-        
+
         # Add CFL analysis
         if grid_config.cfl_number > 0.5:
             validation_report += f"""
@@ -242,12 +271,12 @@ This report uses **Pydantic-validated configurations** ensuring:
             validation_report += f"""
 ✅ **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.cfl_number:.4f}.
 """
-        
+
         # Add array validation if available
         if experiment_config.arrays:
             stats = experiment_config.arrays.get_solution_statistics()
-            mass_stats = stats['mass_conservation']
-            
+            mass_stats = stats["mass_conservation"]
+
             validation_report += f"""
 ### Array Validation Results
 - **U Solution**: Shape {stats['U']['shape']}, range [{stats['U']['min']:.3e}, {stats['U']['max']:.3e}]
@@ -257,10 +286,12 @@ This report uses **Pydantic-validated configurations** ensuring:
   - Final: {mass_stats['final_mass']:.6f}
   - Drift: {mass_stats['mass_drift']:.2e} {'✅ Conserved' if abs(mass_stats['mass_drift']) < 1e-3 else '⚠️ Not conserved'}
 """
-        
+
         return validation_report
-    
-    def _create_enhanced_config_code_section(self, experiment_config: 'ExperimentConfig') -> str:
+
+    def _create_enhanced_config_code_section(
+        self, experiment_config: "ExperimentConfig"
+    ) -> str:
         """Create enhanced configuration code section with Pydantic serialization."""
         return f"""# Configuration Management with Pydantic
 
@@ -281,11 +312,13 @@ config_json = experiment_config.json(indent=2)
 print("\\nJSON-serialized configuration:")
 print(config_json[:200] + "..." if len(config_json) > 200 else config_json)
 """
-    
-    def _create_numerical_analysis_section(self, experiment_config: 'ExperimentConfig') -> str:
+
+    def _create_numerical_analysis_section(
+        self, experiment_config: "ExperimentConfig"
+    ) -> str:
         """Create numerical analysis section with stability analysis."""
         grid_config = experiment_config.grid_config
-        
+
         return f"""## 📊 Numerical Method Analysis
 
 ### Discretization Parameters
@@ -309,8 +342,10 @@ Characteristic diffusion time: $\\tau_{{\\text{{diff}}}} = \\frac{{L^2}}{{\\sigm
 
 Time steps per diffusion time: ${grid_config.T / ((grid_config.xmax - grid_config.xmin)**2 / grid_config.sigma**2) * grid_config.Nt:.1f}$
 """
-    
-    def _create_enhanced_visualization_code(self, experiment_config: 'ExperimentConfig', solver_results: Dict[str, Any]) -> str:
+
+    def _create_enhanced_visualization_code(
+        self, experiment_config: "ExperimentConfig", solver_results: Dict[str, Any]
+    ) -> str:
         """Create enhanced visualization code with array validation."""
         return f"""# Enhanced Visualization with Validated Arrays
 
@@ -405,11 +440,11 @@ if 'validation_stats' in locals():
             for stat_name, value in stats.items():
                 print(f"  {stat_name}: {value}")
 """
-    
-    def _create_array_validation_section(self, arrays: 'MFGArrays') -> str:
+
+    def _create_array_validation_section(self, arrays: "MFGArrays") -> str:
         """Create detailed array validation section."""
         stats = arrays.get_solution_statistics()
-        
+
         return f"""## 🔬 Array Validation Analysis
 
 ### Solution Array Properties
@@ -442,8 +477,10 @@ if 'validation_stats' in locals():
 ### Validation Status
 {'✅ **All validations passed** - Arrays satisfy physical constraints and numerical stability requirements.' if abs(stats['mass_conservation']['mass_drift']) < 1e-3 and stats['numerical_stability']['cfl_number'] <= 0.5 else '⚠️ **Some validations failed** - Check mass conservation and stability conditions.'}
 """
-    
-    def _create_enhanced_conclusions_section(self, experiment_config: 'ExperimentConfig', solver_results: Dict[str, Any]) -> str:
+
+    def _create_enhanced_conclusions_section(
+        self, experiment_config: "ExperimentConfig", solver_results: Dict[str, Any]
+    ) -> str:
         """Create enhanced conclusions with validation summary."""
         return f"""## 📝 Enhanced Conclusions
 
@@ -476,14 +513,14 @@ This experiment uses **Pydantic configuration management** ensuring:
 ---
 *Report generated by PydanticNotebookReporter v2.0*
 """
-    
+
     def _save_enhanced_notebook(
         self,
         notebook_content: List[Dict[str, Any]],
         title: str,
         metadata: Dict[str, Any],
         output_dir: str,
-        export_html: bool
+        export_html: bool,
     ) -> Dict[str, str]:
         """Save enhanced notebook with Pydantic metadata."""
         # Delegate to parent class with enhanced metadata
@@ -492,27 +529,27 @@ This experiment uses **Pydantic configuration management** ensuring:
             title=title,
             metadata=metadata,
             output_dir=output_dir,
-            export_html=export_html
+            export_html=export_html,
         )
 
 
 def create_pydantic_mfg_report(
     title: str,
-    experiment_config: 'ExperimentConfig',
+    experiment_config: "ExperimentConfig",
     solver_results: Dict[str, Any],
     output_dir: str = "reports",
-    export_html: bool = True
+    export_html: bool = True,
 ) -> Dict[str, str]:
     """
     Convenience function for creating enhanced MFG reports with Pydantic validation.
-    
+
     Args:
         title: Report title
         experiment_config: Validated ExperimentConfig instance
         solver_results: Solver results dictionary
         output_dir: Output directory
         export_html: Whether to export HTML
-        
+
     Returns:
         Dictionary with file paths
     """
@@ -522,5 +559,5 @@ def create_pydantic_mfg_report(
         experiment_config=experiment_config,
         solver_results=solver_results,
         output_dir=output_dir,
-        export_html=export_html
+        export_html=export_html,
     )

@@ -25,10 +25,10 @@ class FPParticleSolver(BaseFPSolver):
         self.kde_bandwidth = kde_bandwidth
         self.normalize_kde_output = normalize_kde_output  # New flag
         self.M_particles_trajectory = None
-        
+
         # Default to periodic boundaries for backward compatibility
         if boundary_conditions is None:
-            self.boundary_conditions = BoundaryConditions(type='periodic')
+            self.boundary_conditions = BoundaryConditions(type="periodic")
         else:
             self.boundary_conditions = boundary_conditions
 
@@ -178,24 +178,24 @@ class FPParticleSolver(BaseFPSolver):
             )
 
             # Apply boundary conditions to particles
-            if self.boundary_conditions.type == 'periodic' and Lx > 1e-14:
+            if self.boundary_conditions.type == "periodic" and Lx > 1e-14:
                 # Periodic boundaries: wrap around
                 current_M_particles_t[n_time_idx + 1, :] = (
                     xmin + (current_M_particles_t[n_time_idx + 1, :] - xmin) % Lx
                 )
-            elif self.boundary_conditions.type == 'no_flux':
+            elif self.boundary_conditions.type == "no_flux":
                 # Reflecting boundaries: bounce particles back
                 xmax = xmin + Lx
                 particles = current_M_particles_t[n_time_idx + 1, :]
-                
+
                 # Reflect particles that go beyond left boundary
                 left_violations = particles < xmin
-                particles[left_violations] = 2*xmin - particles[left_violations]
-                
-                # Reflect particles that go beyond right boundary  
+                particles[left_violations] = 2 * xmin - particles[left_violations]
+
+                # Reflect particles that go beyond right boundary
                 right_violations = particles > xmax
-                particles[right_violations] = 2*xmax - particles[right_violations]
-                
+                particles[right_violations] = 2 * xmax - particles[right_violations]
+
                 current_M_particles_t[n_time_idx + 1, :] = particles
 
             M_density_on_grid[n_time_idx + 1, :] = (

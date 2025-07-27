@@ -58,66 +58,80 @@ class FixedPointIterator(MFGSolver):
         self.iterations_run: int = 0
 
     def solve(
-        self, 
+        self,
         max_iterations: int = None,
         tolerance: float = None,
         # Alias parameters for specific solver compatibility
         max_picard_iterations: int = None,
         picard_tolerance: float = None,
         # Deprecated parameters for backward compatibility
-        Niter_max: int = None, 
+        Niter_max: int = None,
         l2errBoundPicard: float = None,
         # New parameter for result format
         return_structured: bool = False,
-        **kwargs
-    ) -> Union[Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray], 'SolverResult']:
+        **kwargs,
+    ) -> Union[
+        Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray], "SolverResult"
+    ]:
         import warnings
-        
+
         # Handle parameter precedence: standardized > specific > deprecated
         # Priority: max_iterations/tolerance > max_picard_iterations/picard_tolerance > Niter_max/l2errBoundPicard
-        
+
         final_max_iterations = None
         final_tolerance = None
-        
+
         # Process max_iterations with precedence
         if max_iterations is not None:
             final_max_iterations = max_iterations
         elif max_picard_iterations is not None:
             final_max_iterations = max_picard_iterations
         elif Niter_max is not None:
-            warnings.warn("Parameter 'Niter_max' is deprecated. Use 'max_iterations' instead.", 
-                         DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                "Parameter 'Niter_max' is deprecated. Use 'max_iterations' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             final_max_iterations = Niter_max
         else:
             final_max_iterations = 20  # Default
-        
+
         # Process tolerance with precedence
         if tolerance is not None:
             final_tolerance = tolerance
         elif picard_tolerance is not None:
             final_tolerance = picard_tolerance
         elif l2errBoundPicard is not None:
-            warnings.warn("Parameter 'l2errBoundPicard' is deprecated. Use 'tolerance' instead.", 
-                         DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                "Parameter 'l2errBoundPicard' is deprecated. Use 'tolerance' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             final_tolerance = l2errBoundPicard
         else:
             final_tolerance = 1e-5  # Default
-            
+
         # Validate parameters with enhanced error messages
         from ..utils.exceptions import validate_parameter_value
-        
+
         validate_parameter_value(
-            final_max_iterations, "max_iterations", int, (1, 1000), 
-            solver_name=f"{self.name} (Fixed Point Iterator)"
+            final_max_iterations,
+            "max_iterations",
+            int,
+            (1, 1000),
+            solver_name=f"{self.name} (Fixed Point Iterator)",
         )
         validate_parameter_value(
-            final_tolerance, "tolerance", (int, float), (1e-12, 1e-1), 
-            solver_name=f"{self.name} (Fixed Point Iterator)"
+            final_tolerance,
+            "tolerance",
+            (int, float),
+            (1e-12, 1e-1),
+            solver_name=f"{self.name} (Fixed Point Iterator)",
         )
-            
+
         # Track execution time for structured results
         solve_start_time = time.time()
-        
+
         print(
             f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________"
         )
@@ -145,7 +159,7 @@ class FixedPointIterator(MFGSolver):
             # Always enforce boundary conditions (even with warm start)
             self.M[0, :] = initial_m_dist
             self.U[Nt - 1, :] = final_u_cost
-            
+
             # For cold start, initialize interior with boundary conditions
             if warm_start_init is None:
                 for n_time_idx in range(Nt - 1):
@@ -168,7 +182,9 @@ class FixedPointIterator(MFGSolver):
 
         for iiter in range(final_max_iterations):
             start_time_iter = time.time()
-            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations} ---")
+            print(
+                f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations} ---"
+            )
 
             U_old_current_picard_iter = self.U.copy()  # U_k
             M_old_current_picard_iter = self.M.copy()  # M_k
@@ -248,17 +264,31 @@ class FixedPointIterator(MFGSolver):
                 break
         else:
             # Enhanced convergence failure reporting
-            final_error_u = self.l2distu_rel[self.iterations_run - 1] if self.iterations_run > 0 else float('inf')
-            final_error_m = self.l2distm_rel[self.iterations_run - 1] if self.iterations_run > 0 else float('inf')
+            final_error_u = (
+                self.l2distu_rel[self.iterations_run - 1]
+                if self.iterations_run > 0
+                else float("inf")
+            )
+            final_error_m = (
+                self.l2distm_rel[self.iterations_run - 1]
+                if self.iterations_run > 0
+                else float("inf")
+            )
             final_error = max(final_error_u, final_error_m)
-            
-            convergence_history = list(self.l2distu_rel[:self.iterations_run]) + list(self.l2distm_rel[:self.iterations_run])
-            
+
+            convergence_history = list(self.l2distu_rel[: self.iterations_run]) + list(
+                self.l2distm_rel[: self.iterations_run]
+            )
+
             from ..utils.exceptions import ConvergenceError
-            
+
             # Check configuration for strict error handling mode
-            strict_mode = getattr(self.config, 'strict_convergence_errors', False) if hasattr(self, 'config') else True
-            
+            strict_mode = (
+                getattr(self.config, "strict_convergence_errors", False)
+                if hasattr(self, "config")
+                else True
+            )
+
             if strict_mode:
                 # Strict mode: Always raise convergence errors
                 conv_error = ConvergenceError(
@@ -267,13 +297,15 @@ class FixedPointIterator(MFGSolver):
                     final_error=final_error,
                     tolerance=final_tolerance,
                     solver_name=self.name,
-                    convergence_history=convergence_history
+                    convergence_history=convergence_history,
                 )
                 raise conv_error
             else:
                 # Permissive mode: Log warning with detailed analysis
-                print(f"⚠️  Convergence Warning: Max iterations ({final_max_iterations}) reached")
-                
+                print(
+                    f"⚠️  Convergence Warning: Max iterations ({final_max_iterations}) reached"
+                )
+
                 try:
                     conv_error = ConvergenceError(
                         iterations_used=self.iterations_run,
@@ -281,14 +313,16 @@ class FixedPointIterator(MFGSolver):
                         final_error=final_error,
                         tolerance=final_tolerance,
                         solver_name=self.name,
-                        convergence_history=convergence_history
+                        convergence_history=convergence_history,
                     )
                     print(f"💡 {conv_error.suggested_action}")
                     # Store error for later analysis
                     self._convergence_warning = conv_error
                 except Exception as e:
                     # Fallback if error analysis fails
-                    print(f"💡 Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
+                    print(
+                        f"💡 Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance"
+                    )
                     print(f"⚠️  Error analysis failed: {e}")
 
         self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
@@ -298,14 +332,14 @@ class FixedPointIterator(MFGSolver):
 
         # Mark solution as computed for warm start capability
         self._solution_computed = True
-        
+
         # Calculate total execution time
         execution_time = time.time() - solve_start_time
 
         # Return structured result if requested, otherwise maintain backward compatibility
         if return_structured:
             from ..utils.solver_result import create_solver_result
-            
+
             return create_solver_result(
                 U=self.U,
                 M=self.M,
@@ -313,28 +347,41 @@ class FixedPointIterator(MFGSolver):
                 error_history_U=self.l2distu_rel,
                 error_history_M=self.l2distm_rel,
                 solver_name=self.name,
-                convergence_achieved=(self.l2distu_rel[-1] < final_tolerance and 
-                                    self.l2distm_rel[-1] < final_tolerance) if self.iterations_run > 0 else False,
+                convergence_achieved=(
+                    (
+                        self.l2distu_rel[-1] < final_tolerance
+                        and self.l2distm_rel[-1] < final_tolerance
+                    )
+                    if self.iterations_run > 0
+                    else False
+                ),
                 tolerance=final_tolerance,
                 execution_time=execution_time,
                 # Additional metadata
                 damping_parameter=self.thetaUM,
                 problem_parameters={
-                    'T': self.problem.T,
-                    'Nx': self.problem.Nx,
-                    'Nt': self.problem.Nt,
-                    'Dx': getattr(self.problem, 'Dx', None),
-                    'Dt': getattr(self.problem, 'Dt', None)
+                    "T": self.problem.T,
+                    "Nx": self.problem.Nx,
+                    "Nt": self.problem.Nt,
+                    "Dx": getattr(self.problem, "Dx", None),
+                    "Dt": getattr(self.problem, "Dt", None),
                 },
                 absolute_errors_U=self.l2distu_abs,
-                absolute_errors_M=self.l2distm_abs
+                absolute_errors_M=self.l2distm_abs,
             )
         else:
             # Backward compatible tuple return
-            return self.U, self.M, self.iterations_run, self.l2distu_rel, self.l2distm_rel
+            return (
+                self.U,
+                self.M,
+                self.iterations_run,
+                self.l2distu_rel,
+                self.l2distm_rel,
+            )
 
     def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
         from ..utils.exceptions import validate_solver_state
+
         validate_solver_state(self, "get_results")
         return self.U, self.M
 
@@ -342,6 +389,7 @@ class FixedPointIterator(MFGSolver):
         self,
     ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         from ..utils.exceptions import validate_solver_state
+
         validate_solver_state(self, "get_convergence_data")
         return (
             self.iterations_run,

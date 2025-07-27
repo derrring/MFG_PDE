@@ -63,7 +63,9 @@ def create_workflow(name: str, description: str = "", **kwargs) -> Workflow:
     return get_workflow_manager().create_workflow(name, description, **kwargs)
 
 
-def create_experiment(name: str, workflow: Optional[Workflow] = None, **kwargs) -> Experiment:
+def create_experiment(
+    name: str, workflow: Optional[Workflow] = None, **kwargs
+) -> Experiment:
     """Create a new experiment."""
     tracker = ExperimentTracker()
     return tracker.create_experiment(name, workflow=workflow, **kwargs)
@@ -74,7 +76,9 @@ def create_parameter_sweep(parameters: Dict[str, Any], **kwargs) -> ParameterSwe
     return ParameterSweep(parameters, **kwargs)
 
 
-def create_workspace(name: str, description: str = "", **kwargs) -> CollaborativeWorkspace:
+def create_workspace(
+    name: str, description: str = "", **kwargs
+) -> CollaborativeWorkspace:
     """Create a collaborative workspace."""
     config = WorkspaceConfig(name=name, description=description, **kwargs)
     return CollaborativeWorkspace(config)
@@ -86,7 +90,9 @@ def analyze_results(experiments: List[Experiment], **kwargs) -> ComparisonReport
     return analyzer.compare_experiments(experiments, **kwargs)
 
 
-def generate_report(experiments: List[Experiment], format: str = "html", **kwargs) -> str:
+def generate_report(
+    experiments: List[Experiment], format: str = "html", **kwargs
+) -> str:
     """Generate comprehensive report from experiments."""
     generator = ReportGenerator()
     config = ReportConfig(format=format, **kwargs)
@@ -94,193 +100,191 @@ def generate_report(experiments: List[Experiment], format: str = "html", **kwarg
 
 
 # Convenience functions for common workflows
-def mfg_parameter_study(problem_factory, parameters: Dict[str, List], 
-                       solver_type: str = "fixed_point", **kwargs):
+def mfg_parameter_study(
+    problem_factory,
+    parameters: Dict[str, List],
+    solver_type: str = "fixed_point",
+    **kwargs,
+):
     """
     Convenient function for MFG parameter studies.
-    
+
     Args:
         problem_factory: Function that creates MFG problems
         parameters: Dictionary of parameter names to lists of values
         solver_type: Type of solver to use
         **kwargs: Additional arguments for the workflow
-    
+
     Returns:
         Workflow with parameter study configured
     """
     workflow = create_workflow(
         name=f"mfg_parameter_study_{solver_type}",
-        description=f"Parameter study for MFG system using {solver_type} solver"
+        description=f"Parameter study for MFG system using {solver_type} solver",
     )
-    
+
     # Create parameter sweep
     sweep = create_parameter_sweep(parameters)
-    
+
     # Define solve step
     @workflow_step(workflow)
     def solve_mfg_problem(params):
         problem = problem_factory(**params)
-        
+
         # Import solver dynamically to avoid circular imports
         from mfg_pde import create_fast_solver
+
         solver = create_fast_solver(problem, solver_type)
-        
+
         return solver.solve()
-    
+
     # Execute parameter sweep
     results = sweep.execute(solve_mfg_problem)
-    
+
     return workflow, results
 
 
-def convergence_analysis_workflow(problem, solver_types: List[str], 
-                                tolerances: List[float], **kwargs):
+def convergence_analysis_workflow(
+    problem, solver_types: List[str], tolerances: List[float], **kwargs
+):
     """
     Workflow for analyzing convergence across different solvers and tolerances.
-    
+
     Args:
         problem: MFG problem instance
         solver_types: List of solver types to compare
         tolerances: List of tolerance values to test
         **kwargs: Additional workflow arguments
-    
+
     Returns:
         Workflow with convergence analysis configured
     """
     workflow = create_workflow(
         name="convergence_analysis",
-        description="Convergence analysis across solvers and tolerances"
+        description="Convergence analysis across solvers and tolerances",
     )
-    
+
     # Create parameter combinations
-    parameters = {
-        'solver_type': solver_types,
-        'tolerance': tolerances
-    }
-    
+    parameters = {"solver_type": solver_types, "tolerance": tolerances}
+
     sweep = create_parameter_sweep(parameters)
-    
+
     @workflow_step(workflow)
     def analyze_convergence(params):
         from mfg_pde import create_fast_solver
-        
-        solver = create_fast_solver(problem, params['solver_type'])
-        
+
+        solver = create_fast_solver(problem, params["solver_type"])
+
         # Modify solver tolerance if possible
-        if hasattr(solver, 'tolerance'):
-            solver.tolerance = params['tolerance']
-        
+        if hasattr(solver, "tolerance"):
+            solver.tolerance = params["tolerance"]
+
         result = solver.solve()
-        
+
         return {
-            'solver_type': params['solver_type'],
-            'tolerance': params['tolerance'],
-            'converged': result.converged,
-            'iterations': result.iterations,
-            'final_error': result.final_error,
-            'execution_time': result.execution_time
+            "solver_type": params["solver_type"],
+            "tolerance": params["tolerance"],
+            "converged": result.converged,
+            "iterations": result.iterations,
+            "final_error": result.final_error,
+            "execution_time": result.execution_time,
         }
-    
+
     results = sweep.execute(analyze_convergence)
-    
+
     return workflow, results
 
 
-def performance_benchmark_workflow(problem_sizes: List[tuple], 
-                                 solver_types: List[str], **kwargs):
+def performance_benchmark_workflow(
+    problem_sizes: List[tuple], solver_types: List[str], **kwargs
+):
     """
     Workflow for performance benchmarking across problem sizes and solvers.
-    
+
     Args:
         problem_sizes: List of (Nx, Nt) tuples
         solver_types: List of solver types to benchmark
         **kwargs: Additional workflow arguments
-    
+
     Returns:
         Workflow with performance benchmarking configured
     """
     workflow = create_workflow(
         name="performance_benchmark",
-        description="Performance benchmarking across problem sizes and solvers"
+        description="Performance benchmarking across problem sizes and solvers",
     )
-    
-    parameters = {
-        'problem_size': problem_sizes,
-        'solver_type': solver_types
-    }
-    
+
+    parameters = {"problem_size": problem_sizes, "solver_type": solver_types}
+
     sweep = create_parameter_sweep(parameters)
-    
+
     @workflow_step(workflow)
     def benchmark_performance(params):
         from mfg_pde import ExampleMFGProblem, create_fast_solver
         import time
-        
-        Nx, Nt = params['problem_size']
+
+        Nx, Nt = params["problem_size"]
         problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=1.0)
-        
-        solver = create_fast_solver(problem, params['solver_type'])
-        
+
+        solver = create_fast_solver(problem, params["solver_type"])
+
         start_time = time.time()
         result = solver.solve()
         execution_time = time.time() - start_time
-        
+
         return {
-            'problem_size': (Nx, Nt),
-            'solver_type': params['solver_type'],
-            'grid_points': Nx * Nt,
-            'execution_time': execution_time,
-            'converged': result.converged,
-            'iterations': result.iterations,
-            'memory_estimate': Nx * Nt * 16 / 1024**2  # Rough estimate in MB
+            "problem_size": (Nx, Nt),
+            "solver_type": params["solver_type"],
+            "grid_points": Nx * Nt,
+            "execution_time": execution_time,
+            "converged": result.converged,
+            "iterations": result.iterations,
+            "memory_estimate": Nx * Nt * 16 / 1024**2,  # Rough estimate in MB
         }
-    
+
     results = sweep.execute(benchmark_performance)
-    
+
     return workflow, results
 
 
 # Export public API
 __all__ = [
     # Core classes
-    'WorkflowManager',
-    'Workflow', 
-    'ExperimentTracker',
-    'Experiment',
-    'ExperimentResult',
-    'ParameterSweep',
-    'SweepConfiguration',
-    'ResultAnalyzer',
-    'ComparisonReport',
-    'CollaborativeWorkspace',
-    'WorkspaceConfig',
-    'ReportGenerator',
-    'ReportConfig',
-    
+    "WorkflowManager",
+    "Workflow",
+    "ExperimentTracker",
+    "Experiment",
+    "ExperimentResult",
+    "ParameterSweep",
+    "SweepConfiguration",
+    "ResultAnalyzer",
+    "ComparisonReport",
+    "CollaborativeWorkspace",
+    "WorkspaceConfig",
+    "ReportGenerator",
+    "ReportConfig",
     # Decorators
-    'workflow_step',
-    'experiment',
-    'parameter_study',
-    
+    "workflow_step",
+    "experiment",
+    "parameter_study",
     # Factory functions
-    'get_workflow_manager',
-    'set_workflow_manager',
-    'create_workflow',
-    'create_experiment',
-    'create_parameter_sweep',
-    'create_workspace',
-    'analyze_results',
-    'generate_report',
-    
+    "get_workflow_manager",
+    "set_workflow_manager",
+    "create_workflow",
+    "create_experiment",
+    "create_parameter_sweep",
+    "create_workspace",
+    "analyze_results",
+    "generate_report",
     # Convenience workflows
-    'mfg_parameter_study',
-    'convergence_analysis_workflow',
-    'performance_benchmark_workflow',
-    
+    "mfg_parameter_study",
+    "convergence_analysis_workflow",
+    "performance_benchmark_workflow",
     # Utilities
-    'load_experiment',
-    'save_experiment',
+    "load_experiment",
+    "save_experiment",
 ]
+
 
 # Initialize workflow system
 def _initialize_workflow_system():
@@ -288,12 +292,14 @@ def _initialize_workflow_system():
     try:
         # Set up default workspace if needed
         import os
-        if not os.getenv('MFG_WORKFLOW_INITIALIZED'):
+
+        if not os.getenv("MFG_WORKFLOW_INITIALIZED"):
             manager = get_workflow_manager()
             manager.initialize_default_workspace()
-            os.environ['MFG_WORKFLOW_INITIALIZED'] = 'true'
+            os.environ["MFG_WORKFLOW_INITIALIZED"] = "true"
     except Exception as e:
         warnings.warn(f"Could not initialize workflow system: {e}")
+
 
 # Initialize on import
 _initialize_workflow_system()

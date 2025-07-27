@@ -26,6 +26,7 @@ import numpy as np
 try:
     import nbformat as nbf
     from nbformat.v4 import new_notebook, new_code_cell, new_markdown_cell
+
     NOTEBOOK_AVAILABLE = True
 except ImportError:
     NOTEBOOK_AVAILABLE = False
@@ -34,6 +35,7 @@ try:
     import plotly.graph_objects as go
     import plotly.io as pio
     from plotly.subplots import make_subplots
+
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
@@ -44,25 +46,28 @@ from .mathematical_visualization import MFGMathematicalVisualizer
 
 class NotebookReportError(Exception):
     """Exception for notebook reporting errors."""
+
     pass
 
 
 class MFGNotebookReporter:
     """
     Comprehensive notebook reporting system for Mean Field Games research.
-    
+
     Generates interactive Jupyter notebooks with Plotly visualizations,
     LaTeX mathematical expressions, and professional documentation.
     """
-    
-    def __init__(self, 
-                 output_dir: str = "reports",
-                 enable_latex: bool = True,
-                 plotly_renderer: str = "notebook",
-                 template_style: str = "research"):
+
+    def __init__(
+        self,
+        output_dir: str = "reports",
+        enable_latex: bool = True,
+        plotly_renderer: str = "notebook",
+        template_style: str = "research",
+    ):
         """
         Initialize the notebook reporting system.
-        
+
         Args:
             output_dir: Directory for generated reports
             enable_latex: Enable LaTeX mathematical notation
@@ -74,106 +79,113 @@ class MFGNotebookReporter:
                 "Jupyter notebook support not available. "
                 "Install with: pip install nbformat jupyter"
             )
-        
+
         if not PLOTLY_AVAILABLE:
             raise NotebookReportError(
                 "Plotly not available for interactive visualizations. "
                 "Install with: pip install plotly"
             )
-        
+
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.enable_latex = enable_latex
         self.plotly_renderer = plotly_renderer
         self.template_style = template_style
         self.logger = get_logger(__name__)
-        
+
         # Configure Plotly for notebook rendering
         pio.renderers.default = plotly_renderer
-        
+
         # Initialize mathematical visualizer for consistency
         self.visualizer = MFGMathematicalVisualizer(
-            backend="plotly", 
-            enable_latex=enable_latex
+            backend="plotly", enable_latex=enable_latex
         )
-        
+
         self.logger.info(f"MFG Notebook Reporter initialized")
         self.logger.info(f"Output directory: {self.output_dir}")
         self.logger.info(f"Plotly renderer: {plotly_renderer}")
-    
-    def create_research_report(self,
-                             title: str,
-                             solver_results: Dict[str, Any],
-                             problem_config: Dict[str, Any],
-                             analysis_metadata: Optional[Dict[str, Any]] = None,
-                             custom_sections: Optional[List[Dict[str, Any]]] = None) -> str:
+
+    def create_research_report(
+        self,
+        title: str,
+        solver_results: Dict[str, Any],
+        problem_config: Dict[str, Any],
+        analysis_metadata: Optional[Dict[str, Any]] = None,
+        custom_sections: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
         """
         Create comprehensive research report notebook.
-        
+
         Args:
             title: Report title
             solver_results: Dictionary containing U, M, convergence info, etc.
             problem_config: MFG problem configuration
             analysis_metadata: Additional metadata for research context
             custom_sections: List of custom sections to add
-            
+
         Returns:
             Path to generated notebook file
         """
         self.logger.info(f"Creating research report: {title}")
-        
+
         # Create new notebook
         nb = new_notebook()
-        
+
         # Add title and metadata
         self._add_title_section(nb, title, analysis_metadata)
-        
+
         # Add problem configuration section
         self._add_problem_configuration_section(nb, problem_config)
-        
+
         # Add mathematical framework section
         self._add_mathematical_framework_section(nb)
-        
+
         # Add solver results and analysis
         self._add_solver_results_section(nb, solver_results)
-        
+
         # Add interactive visualizations
         self._add_visualization_section(nb, solver_results)
-        
+
         # Add convergence analysis
-        if 'convergence_info' in solver_results:
-            self._add_convergence_analysis_section(nb, solver_results['convergence_info'])
-        
+        if "convergence_info" in solver_results:
+            self._add_convergence_analysis_section(
+                nb, solver_results["convergence_info"]
+            )
+
         # Add mass conservation analysis
-        if 'M' in solver_results:
+        if "M" in solver_results:
             self._add_mass_conservation_section(nb, solver_results)
-        
+
         # Add custom sections if provided
         if custom_sections:
             for section in custom_sections:
                 self._add_custom_section(nb, section)
-        
+
         # Add conclusions and export information
         self._add_conclusions_section(nb)
         self._add_export_section(nb)
-        
+
         # Save notebook
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
-        safe_title = safe_title.replace(' ', '_')
+        safe_title = "".join(
+            c for c in title if c.isalnum() or c in (" ", "-", "_")
+        ).rstrip()
+        safe_title = safe_title.replace(" ", "_")
         filename = f"{safe_title}_{timestamp}.ipynb"
         notebook_path = self.output_dir / filename
-        
-        with open(notebook_path, 'w') as f:
+
+        with open(notebook_path, "w") as f:
             nbf.write(nb, f)
-        
+
         self.logger.info(f"Research report saved: {notebook_path}")
         return str(notebook_path)
-    
-    def _add_title_section(self, nb: nbf.NotebookNode, title: str, metadata: Optional[Dict] = None):
+
+    def _add_title_section(
+        self, nb: nbf.NotebookNode, title: str, metadata: Optional[Dict] = None
+    ):
         """Add title and metadata section."""
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         title_markdown = f"""# {title}
 
 **Generated:** {date_str}  
@@ -186,42 +198,48 @@ class MFGNotebookReporter:
 
 This interactive notebook presents a comprehensive analysis of Mean Field Games (MFG) solutions using the MFG_PDE computational framework. The report includes mathematical formulations, numerical results, interactive visualizations, and detailed convergence analysis.
 """
-        
+
         if metadata:
             title_markdown += "\n### Analysis Metadata\n\n"
             for key, value in metadata.items():
                 title_markdown += f"- **{key}**: {value}\n"
-        
+
         title_markdown += "\n---\n"
-        
+
         nb.cells.append(new_markdown_cell(title_markdown))
-    
-    def _add_problem_configuration_section(self, nb: nbf.NotebookNode, config: Dict[str, Any]):
+
+    def _add_problem_configuration_section(
+        self, nb: nbf.NotebookNode, config: Dict[str, Any]
+    ):
         """Add problem configuration section."""
         config_markdown = """## Problem Configuration
 
 The Mean Field Game system is defined with the following parameters:
 
 """
-        
+
         # Format configuration nicely
         for key, value in config.items():
             if isinstance(value, (int, float, str, bool)):
-                if key in ['sigma', 'T', 'coefCT']:
+                if key in ["sigma", "T", "coefCT"]:
                     # Add mathematical context for key parameters
-                    if key == 'sigma':
-                        config_markdown += f"- **Diffusion coefficient** $\\sigma = {value}$\n"
-                    elif key == 'T':
+                    if key == "sigma":
+                        config_markdown += (
+                            f"- **Diffusion coefficient** $\\sigma = {value}$\n"
+                        )
+                    elif key == "T":
                         config_markdown += f"- **Time horizon** $T = {value}$\n"
-                    elif key == 'coefCT':
-                        config_markdown += f"- **Coupling strength** $\\alpha = {value}$\n"
+                    elif key == "coefCT":
+                        config_markdown += (
+                            f"- **Coupling strength** $\\alpha = {value}$\n"
+                        )
                     else:
                         config_markdown += f"- **{key}**: {value}\n"
                 else:
                     config_markdown += f"- **{key}**: {value}\n"
-        
+
         nb.cells.append(new_markdown_cell(config_markdown))
-        
+
         # Add code cell to display configuration programmatically
         config_code = f"""# Problem Configuration Details
 import pprint
@@ -232,7 +250,7 @@ print("=" * 40)
 pprint.pprint(config, width=60, indent=2)
 """
         nb.cells.append(new_code_cell(config_code))
-    
+
     def _add_mathematical_framework_section(self, nb: nbf.NotebookNode):
         """Add mathematical framework section with LaTeX equations."""
         math_markdown = """## Mathematical Framework
@@ -272,8 +290,10 @@ The system is solved using a **particle-collocation approach**:
 ---
 """
         nb.cells.append(new_markdown_cell(math_markdown))
-    
-    def _add_solver_results_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
+
+    def _add_solver_results_section(
+        self, nb: nbf.NotebookNode, results: Dict[str, Any]
+    ):
         """Add solver results section with code to display results."""
         results_markdown = """## Solver Results
 
@@ -282,7 +302,7 @@ The system is solved using a **particle-collocation approach**:
 The numerical solution provides the value function $u(t,x)$ and population density $m(t,x)$ over the time-space domain.
 """
         nb.cells.append(new_markdown_cell(results_markdown))
-        
+
         # Add code to display basic results information
         results_code = """# Import required libraries
 import numpy as np
@@ -294,16 +314,16 @@ import plotly.io as pio
 print("Solution Summary:")
 print("=" * 50)
 """
-        
-        if 'U' in results:
+
+        if "U" in results:
             results_code += f"""
 print(f"Value function U shape: {results['U'].shape if hasattr(results['U'], 'shape') else 'scalar'}")
 if hasattr(results['U'], 'shape'):
     print(f"U range: [{np.min(results['U']):.6f}, {np.max(results['U']):.6f}]")
     print(f"U mean: {np.mean(results['U']):.6f}")
 """
-        
-        if 'M' in results:
+
+        if "M" in results:
             results_code += f"""
 print(f"Density M shape: {results['M'].shape if hasattr(results['M'], 'shape') else 'scalar'}")  
 if hasattr(results['M'], 'shape'):
@@ -317,16 +337,16 @@ if hasattr(results['M'], 'shape'):
         print(f"Final total mass: {total_mass:.8f}")
         print(f"Mass conservation error: {mass_error:.2e}")
 """
-        
+
         # Store results in notebook variables
         for key, value in results.items():
             if isinstance(value, np.ndarray):
                 results_code += f"\n{key} = np.{repr(value)}"
             elif isinstance(value, (dict, list)):
                 results_code += f"\n{key} = {repr(value)}"
-        
+
         nb.cells.append(new_code_cell(results_code))
-    
+
     def _add_visualization_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
         """Add interactive visualization section."""
         viz_markdown = """## Interactive Visualizations
@@ -336,7 +356,7 @@ if hasattr(results['M'], 'shape'):
 The following interactive plots show the evolution of the value function $u(t,x)$ and population density $m(t,x)$ over time.
 """
         nb.cells.append(new_markdown_cell(viz_markdown))
-        
+
         # Create comprehensive visualization code
         viz_code = """# Create interactive 3D surface plots
 fig = make_subplots(
@@ -456,7 +476,7 @@ fig.update_yaxes(title_text="Value", row=2, col=2)
 fig.show()
 """
         nb.cells.append(new_code_cell(viz_code))
-        
+
         # Add code for additional specialized plots
         specialized_viz_code = """# Additional Specialized Visualizations
 
@@ -520,8 +540,10 @@ if 'M' in locals():
     fig_mass.show()
 """
         nb.cells.append(new_code_cell(specialized_viz_code))
-    
-    def _add_convergence_analysis_section(self, nb: nbf.NotebookNode, convergence_info: Dict[str, Any]):
+
+    def _add_convergence_analysis_section(
+        self, nb: nbf.NotebookNode, convergence_info: Dict[str, Any]
+    ):
         """Add detailed convergence analysis section."""
         conv_markdown = """## Convergence Analysis
 
@@ -530,7 +552,7 @@ if 'M' in locals():
 Analysis of the iterative solver convergence, including error evolution and convergence criteria satisfaction.
 """
         nb.cells.append(new_markdown_cell(conv_markdown))
-        
+
         conv_code = f"""# Convergence Analysis
 convergence_info = {convergence_info}
 
@@ -556,8 +578,10 @@ if 'error_history' in convergence_info and len(convergence_info['error_history']
     print(f"Estimated convergence rate: {-np.log(avg_ratio):.4f}")
 """
         nb.cells.append(new_code_cell(conv_code))
-    
-    def _add_mass_conservation_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
+
+    def _add_mass_conservation_section(
+        self, nb: nbf.NotebookNode, results: Dict[str, Any]
+    ):
         """Add mass conservation analysis section."""
         mass_markdown = """## Mass Conservation Analysis
 
@@ -568,7 +592,7 @@ Analysis of mass conservation throughout the evolution, which is crucial for the
 The total mass should satisfy: $\\int_{\\Omega} m(t,x) dx = 1$ for all $t \\in [0,T]$
 """
         nb.cells.append(new_markdown_cell(mass_markdown))
-        
+
         mass_code = """# Mass Conservation Analysis
 if 'M' in locals() and hasattr(M, 'shape') and len(M.shape) == 2:
     # Compute mass at each time step
@@ -611,21 +635,21 @@ else:
     print("Mass conservation analysis requires 2D density array M")
 """
         nb.cells.append(new_code_cell(mass_code))
-    
+
     def _add_custom_section(self, nb: nbf.NotebookNode, section: Dict[str, Any]):
         """Add custom section to notebook."""
-        if 'title' in section:
+        if "title" in section:
             title_markdown = f"## {section['title']}\n\n"
-            if 'description' in section:
+            if "description" in section:
                 title_markdown += f"{section['description']}\n\n"
             nb.cells.append(new_markdown_cell(title_markdown))
-        
-        if 'code' in section:
-            nb.cells.append(new_code_cell(section['code']))
-        
-        if 'markdown' in section:
-            nb.cells.append(new_markdown_cell(section['markdown']))
-    
+
+        if "code" in section:
+            nb.cells.append(new_code_cell(section["code"]))
+
+        if "markdown" in section:
+            nb.cells.append(new_markdown_cell(section["markdown"]))
+
     def _add_conclusions_section(self, nb: nbf.NotebookNode):
         """Add conclusions and summary section."""
         conclusions_markdown = """## Conclusions and Analysis Summary
@@ -656,7 +680,7 @@ This solution can be used for:
 *This report was generated using the MFG_PDE computational framework with interactive Jupyter notebook capabilities.*
 """
         nb.cells.append(new_markdown_cell(conclusions_markdown))
-    
+
     def _add_export_section(self, nb: nbf.NotebookNode):
         """Add export and sharing information section."""
         export_markdown = """## Export and Sharing
@@ -667,7 +691,7 @@ This interactive notebook can be exported in multiple formats for sharing and pr
 
 """
         nb.cells.append(new_markdown_cell(export_markdown))
-        
+
         export_code = """# Export Options
 print("Export and Sharing Options:")
 print("=" * 40)
@@ -693,72 +717,79 @@ print("- Static export: fig.write_image('plot.png') # Requires kaleido")
 print("- Vector format: fig.write_image('plot.pdf')")
 """
         nb.cells.append(new_code_cell(export_code))
-    
-    def export_to_html(self, notebook_path: str, output_name: Optional[str] = None) -> str:
+
+    def export_to_html(
+        self, notebook_path: str, output_name: Optional[str] = None
+    ) -> str:
         """
         Export notebook to HTML with embedded interactive plots.
-        
+
         Args:
             notebook_path: Path to the notebook file
             output_name: Optional custom output name
-            
+
         Returns:
             Path to generated HTML file
         """
         try:
             import subprocess
-            
+
             notebook_path = Path(notebook_path)
             if not notebook_path.exists():
                 raise NotebookReportError(f"Notebook not found: {notebook_path}")
-            
+
             if output_name:
                 html_path = self.output_dir / f"{output_name}.html"
             else:
-                html_path = notebook_path.with_suffix('.html')
-            
+                html_path = notebook_path.with_suffix(".html")
+
             # Execute and convert to HTML
             cmd = [
-                "jupyter", "nbconvert",
-                "--to", "html",
+                "jupyter",
+                "nbconvert",
+                "--to",
+                "html",
                 "--execute",
                 "--allow-errors",
-                "--output", str(html_path),
-                str(notebook_path)
+                "--output",
+                str(html_path),
+                str(notebook_path),
             ]
-            
+
             result = subprocess.run(cmd, capture_output=True, text=True)
-            
+
             if result.returncode == 0:
                 self.logger.info(f"HTML export successful: {html_path}")
                 return str(html_path)
             else:
                 raise NotebookReportError(f"HTML export failed: {result.stderr}")
-                
+
         except ImportError:
             raise NotebookReportError(
                 "Jupyter nbconvert not available. Install with: pip install jupyter"
             )
         except Exception as e:
             raise NotebookReportError(f"HTML export error: {e}")
-    
-    def create_comparative_report(self, 
-                                results_dict: Dict[str, Dict[str, Any]],
-                                title: str = "Comparative MFG Analysis") -> str:
+
+    def create_comparative_report(
+        self,
+        results_dict: Dict[str, Dict[str, Any]],
+        title: str = "Comparative MFG Analysis",
+    ) -> str:
         """
         Create comparative analysis notebook for multiple solver results.
-        
+
         Args:
-            results_dict: Dictionary of {method_name: results} 
+            results_dict: Dictionary of {method_name: results}
             title: Report title
-            
+
         Returns:
             Path to generated comparative notebook
         """
         self.logger.info(f"Creating comparative report: {title}")
-        
+
         nb = new_notebook()
-        
+
         # Add title
         comp_title_markdown = f"""# {title}
 
@@ -775,13 +806,13 @@ This notebook provides a comprehensive comparison of different numerical methods
 ### Methods Under Comparison
 
 """
-        
+
         for i, method_name in enumerate(results_dict.keys(), 1):
             comp_title_markdown += f"{i}. **{method_name}**\n"
-        
+
         comp_title_markdown += "\n---\n"
         nb.cells.append(new_markdown_cell(comp_title_markdown))
-        
+
         # Add comparative visualization code
         comp_viz_code = f"""# Comparative Analysis Setup
 import numpy as np
@@ -859,9 +890,9 @@ for method, results in results_dict.items():
         if 'final_error' in conv_info:
             print(f"  Final error: {conv_info['final_error']:.2e}")
 """
-        
+
         nb.cells.append(new_code_cell(comp_viz_code))
-        
+
         # Add conclusions
         comp_conclusions = """## Comparative Conclusions
 
@@ -886,88 +917,89 @@ Based on the comparative analysis, recommendations for different use cases:
 ---
 """
         nb.cells.append(new_markdown_cell(comp_conclusions))
-        
+
         # Save comparative notebook
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") 
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"comparative_analysis_{timestamp}.ipynb"
         notebook_path = self.output_dir / filename
-        
-        with open(notebook_path, 'w') as f:
+
+        with open(notebook_path, "w") as f:
             nbf.write(nb, f)
-        
+
         self.logger.info(f"Comparative report saved: {notebook_path}")
         return str(notebook_path)
 
 
 # Convenience functions for easy usage
-def create_mfg_research_report(title: str,
-                              solver_results: Dict[str, Any],
-                              problem_config: Dict[str, Any],
-                              output_dir: str = "reports",
-                              export_html: bool = True) -> Dict[str, str]:
+def create_mfg_research_report(
+    title: str,
+    solver_results: Dict[str, Any],
+    problem_config: Dict[str, Any],
+    output_dir: str = "reports",
+    export_html: bool = True,
+) -> Dict[str, str]:
     """
     Convenience function to create a complete MFG research report.
-    
+
     Args:
         title: Report title
         solver_results: Solver results dictionary
         problem_config: Problem configuration
         output_dir: Output directory for reports
         export_html: Whether to also export HTML version
-        
+
     Returns:
         Dictionary with 'notebook' and optionally 'html' paths
     """
     reporter = MFGNotebookReporter(output_dir=output_dir)
-    
+
     notebook_path = reporter.create_research_report(
-        title=title,
-        solver_results=solver_results,
-        problem_config=problem_config
+        title=title, solver_results=solver_results, problem_config=problem_config
     )
-    
-    result_paths = {'notebook': notebook_path}
-    
+
+    result_paths = {"notebook": notebook_path}
+
     if export_html:
         try:
             html_path = reporter.export_to_html(notebook_path)
-            result_paths['html'] = html_path
+            result_paths["html"] = html_path
         except Exception as e:
             print(f"HTML export failed: {e}")
-    
+
     return result_paths
 
 
-def create_comparative_analysis(results_dict: Dict[str, Dict[str, Any]],
-                              title: str = "MFG Method Comparison",
-                              output_dir: str = "reports",
-                              export_html: bool = True) -> Dict[str, str]:
+def create_comparative_analysis(
+    results_dict: Dict[str, Dict[str, Any]],
+    title: str = "MFG Method Comparison",
+    output_dir: str = "reports",
+    export_html: bool = True,
+) -> Dict[str, str]:
     """
     Convenience function to create comparative analysis report.
-    
+
     Args:
         results_dict: Dictionary of {method_name: results}
         title: Report title
         output_dir: Output directory
         export_html: Whether to export HTML
-        
+
     Returns:
         Dictionary with file paths
     """
     reporter = MFGNotebookReporter(output_dir=output_dir)
-    
+
     notebook_path = reporter.create_comparative_report(
-        results_dict=results_dict,
-        title=title
+        results_dict=results_dict, title=title
     )
-    
-    result_paths = {'notebook': notebook_path}
-    
+
+    result_paths = {"notebook": notebook_path}
+
     if export_html:
         try:
             html_path = reporter.export_to_html(notebook_path)
-            result_paths['html'] = html_path
+            result_paths["html"] = html_path
         except Exception as e:
             print(f"HTML export failed: {e}")
-    
+
     return result_paths
