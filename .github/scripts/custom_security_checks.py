@@ -169,9 +169,14 @@ class CustomSecurityChecker:
                     matches = re.finditer(pattern, content)
                     for match in matches:
                         line_num = content[:match.start()].count('\n') + 1
+                        
+                        # Check if this is in a test or example file - lower severity
+                        is_test_or_example = any(keyword in str(py_file).lower() for keyword in ['test', 'example', 'demo'])
+                        severity = 'medium' if is_test_or_example else 'high'
+                        
                         self.findings.append({
                             'type': 'subprocess_security',
-                            'severity': 'high',
+                            'severity': severity,
                             'file': str(py_file),
                             'line': line_num,
                             'pattern': pattern,
