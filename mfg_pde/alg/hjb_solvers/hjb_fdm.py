@@ -47,9 +47,17 @@ class HJBFDMSolver(BaseHJBSolver):
         self.max_newton_iterations = max_newton_iterations
         self.newton_tolerance = newton_tolerance
         
-        # Keep old names for backward compatibility (without warnings when accessed)
-        self.NiterNewton = max_newton_iterations
-        self.l2errBoundNewton = newton_tolerance
+        # Validate parameter ranges
+        if self.max_newton_iterations < 1:
+            raise ValueError(f"max_newton_iterations must be >= 1, got {self.max_newton_iterations}")
+        if self.newton_tolerance <= 0:
+            raise ValueError(f"newton_tolerance must be > 0, got {self.newton_tolerance}")
+        
+        # Store parameters for solver access
+        self._newton_config = {
+            'max_iterations': self.max_newton_iterations,
+            'tolerance': self.newton_tolerance
+        }
 
     def solve_hjb_system(
         self,

@@ -29,11 +29,11 @@ try:
     from matplotlib import rcParams
     from mpl_toolkits.mplot3d import Axes3D
     
-    # Configure matplotlib for LaTeX rendering
-    rcParams['text.usetex'] = False  # Set to True if LaTeX is installed
-    rcParams['font.family'] = 'serif'
-    rcParams['font.serif'] = ['Computer Modern Roman']
-    rcParams['mathtext.fontset'] = 'cm'
+    # Configure matplotlib for cross-platform compatibility
+    rcParams['text.usetex'] = False  # Avoid LaTeX dependency
+    rcParams['font.family'] = 'sans-serif'  # Use system sans-serif fonts
+    rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans', 'Helvetica', 'sans-serif']
+    rcParams['mathtext.fontset'] = 'dejavusans'  # Use DejaVu for math text
     rcParams['axes.formatter.use_mathtext'] = True
     
     MATPLOTLIB_AVAILABLE = True

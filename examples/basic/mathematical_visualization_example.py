@@ -67,7 +67,7 @@ def generate_analytical_solution():
     t_grid = np.linspace(0, 1, 50)
     X, T = np.meshgrid(x_grid, t_grid)
     
-    # Value function: $U(x,t) = e^{-\\alpha t}[\\sin(\\pi x) + \\beta \\sin(3\\pi x)] + \\gamma(x - \\frac{1}{2})^2$
+    # Value function: $u(t,x) = e^{-\\alpha t}[\\sin(\\pi x) + \\beta \\sin(3\\pi x)] + \\gamma(x - \\frac{1}{2})^2$
     alpha, beta, gamma = 2.0, 0.3, 0.1
     U = (np.exp(-alpha * T) * (np.sin(np.pi * X) + beta * np.sin(3 * np.pi * X)) + 
          gamma * (X - 0.5)**2 * (1 - 0.5 * T))

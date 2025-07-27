@@ -256,10 +256,11 @@ class FixedPointIterator(MFGSolver):
             
             from ..utils.exceptions import ConvergenceError
             
-            print(f"⚠️  Convergence Warning: Max iterations ({final_max_iterations}) reached")
+            # Check configuration for strict error handling mode
+            strict_mode = getattr(self.config, 'strict_convergence_errors', False) if hasattr(self, 'config') else True
             
-            # Create convergence error for detailed analysis (but don't raise it - just log the analysis)
-            try:
+            if strict_mode:
+                # Strict mode: Always raise convergence errors
                 conv_error = ConvergenceError(
                     iterations_used=self.iterations_run,
                     max_iterations=final_max_iterations,
@@ -268,10 +269,27 @@ class FixedPointIterator(MFGSolver):
                     solver_name=self.name,
                     convergence_history=convergence_history
                 )
-                print(f"💡 {conv_error.suggested_action}")
-            except:
-                # Fallback if error analysis fails
-                print("💡 Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
+                raise conv_error
+            else:
+                # Permissive mode: Log warning with detailed analysis
+                print(f"⚠️  Convergence Warning: Max iterations ({final_max_iterations}) reached")
+                
+                try:
+                    conv_error = ConvergenceError(
+                        iterations_used=self.iterations_run,
+                        max_iterations=final_max_iterations,
+                        final_error=final_error,
+                        tolerance=final_tolerance,
+                        solver_name=self.name,
+                        convergence_history=convergence_history
+                    )
+                    print(f"💡 {conv_error.suggested_action}")
+                    # Store error for later analysis
+                    self._convergence_warning = conv_error
+                except Exception as e:
+                    # Fallback if error analysis fails
+                    print(f"💡 Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
+                    print(f"⚠️  Error analysis failed: {e}")
 
         self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
         self.l2distm_abs = self.l2distm_abs[: self.iterations_run]

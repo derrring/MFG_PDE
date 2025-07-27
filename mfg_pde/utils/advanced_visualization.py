@@ -32,11 +32,11 @@ try:
     from mpl_toolkits.mplot3d import Axes3D
     from matplotlib import rcParams
     
-    # Configure matplotlib for LaTeX rendering
-    rcParams['text.usetex'] = False  # Set to True if LaTeX is installed
-    rcParams['font.family'] = 'serif'
-    rcParams['font.serif'] = ['Computer Modern Roman']
-    rcParams['mathtext.fontset'] = 'cm'
+    # Configure matplotlib for cross-platform compatibility
+    rcParams['text.usetex'] = False  # Avoid LaTeX dependency
+    rcParams['font.family'] = 'sans-serif'  # Use system sans-serif fonts
+    rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans', 'Helvetica', 'sans-serif']
+    rcParams['mathtext.fontset'] = 'dejavusans'  # Use DejaVu for math text
     rcParams['axes.formatter.use_mathtext'] = True
     
     MATPLOTLIB_AVAILABLE = True
@@ -154,7 +154,7 @@ class MFGVisualizer:
         fig = make_subplots(
             rows=1, cols=2,
             specs=[[{'type': 'surface'}, {'type': 'surface'}]],
-            subplot_titles=['Value Function U(x,t)', 'Density M(x,t)'],
+            subplot_titles=['Value Function u(t,x)', 'Density m(t,x)'],
             horizontal_spacing=0.1
         )
         
@@ -166,7 +166,7 @@ class MFGVisualizer:
             go.Surface(
                 x=X, y=T, z=U.T,
                 colorscale='Viridis',
-                name='U(x,t)',
+                name='u(t,x)',
                 showscale=True,
                 colorbar=dict(x=0.45, len=0.8)
             ),
@@ -178,7 +178,7 @@ class MFGVisualizer:
             go.Surface(
                 x=X, y=T, z=M.T,
                 colorscale='Plasma',
-                name='M(x,t)',
+                name='m(t,x)',
                 showscale=True,
                 colorbar=dict(x=1.02, len=0.8)
             ),
@@ -191,13 +191,13 @@ class MFGVisualizer:
             scene=dict(
                 xaxis_title="Space (x)",
                 yaxis_title="Time (t)",
-                zaxis_title="U(x,t)",
+                zaxis_title="u(t,x)",
                 camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))
             ),
             scene2=dict(
                 xaxis_title="Space (x)",
                 yaxis_title="Time (t)",
-                zaxis_title="M(x,t)",
+                zaxis_title="m(t,x)",
                 camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))
             ),
             height=600,
@@ -225,8 +225,8 @@ class MFGVisualizer:
         surf1 = ax1.plot_surface(X, T, U.T, cmap='viridis', alpha=0.9)
         ax1.set_xlabel('Space (x)')
         ax1.set_ylabel('Time (t)')
-        ax1.set_zlabel('U(x,t)')
-        ax1.set_title('Value Function U(x,t)')
+        ax1.set_zlabel('u(t,x)')
+        ax1.set_title('Value Function u(t,x)')
         fig.colorbar(surf1, ax=ax1, shrink=0.8)
         
         # Density plot
@@ -234,8 +234,8 @@ class MFGVisualizer:
         surf2 = ax2.plot_surface(X, T, M.T, cmap='plasma', alpha=0.9)
         ax2.set_xlabel('Space (x)')
         ax2.set_ylabel('Time (t)')
-        ax2.set_zlabel('M(x,t)')
-        ax2.set_title('Density M(x,t)')
+        ax2.set_zlabel('m(t,x)')
+        ax2.set_title('Density m(t,x)')
         fig.colorbar(surf2, ax=ax2, shrink=0.8)
         
         plt.suptitle(title, fontsize=18, y=0.96)
@@ -382,7 +382,7 @@ class MFGVisualizer:
         """Create snapshots plot using Plotly."""
         fig = make_subplots(
             rows=2, cols=1,
-            subplot_titles=['Value Function U(x,t)', 'Density M(x,t)'],
+            subplot_titles=['Value Function u(t,x)', 'Density m(t,x)'],
             vertical_spacing=0.1
         )
         
@@ -422,8 +422,8 @@ class MFGVisualizer:
         )
         
         fig.update_xaxes(title_text="Space (x)", row=2, col=1)
-        fig.update_yaxes(title_text="U(x,t)", row=1, col=1)
-        fig.update_yaxes(title_text="M(x,t)", row=2, col=1)
+        fig.update_yaxes(title_text="u(t,x)", row=1, col=1)
+        fig.update_yaxes(title_text="m(t,x)", row=2, col=1)
         
         if save_path:
             fig.write_html(save_path)
@@ -452,14 +452,14 @@ class MFGVisualizer:
             ax2.plot(x_grid, M[:, t_idx], '--', color=color, 
                     label=f't={t_val:.2f}', linewidth=2)
         
-        ax1.set_ylabel('U(x,t)')
-        ax1.set_title('Value Function U(x,t)')
+        ax1.set_ylabel('u(t,x)')
+        ax1.set_title('Value Function u(t,x)')
         ax1.grid(True, alpha=0.3)
         ax1.legend()
         
         ax2.set_xlabel('Space (x)')
-        ax2.set_ylabel('M(x,t)')
-        ax2.set_title('Density M(x,t)')
+        ax2.set_ylabel('m(t,x)')
+        ax2.set_title('Density m(t,x)')
         ax2.grid(True, alpha=0.3)
         ax2.legend()
         

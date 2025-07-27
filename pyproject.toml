@@ -30,6 +30,41 @@ dependencies = [
     "plotly>=5.0",
     "nbformat>=5.0",
     "jupyter>=1.0",
+    "tqdm>=4.0",  # For progress bars
+    "pydantic>=2.0,<3.0",  # Data validation and serialization (v2)
+]
+
+# Optional dependencies for development and advanced features
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.0",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "pre-commit>=2.0",
+]
+typing = [
+    "types-tqdm",
+    "types-setuptools", 
+    "types-psutil",
+]
+performance = [
+    "numba>=0.56",
+    "dask[complete]>=2022.0",
+]
+jax = [
+    "jax>=0.4.0",
+    "jaxlib>=0.4.0",
+    "optax>=0.1.0",
+]
+jax-cuda = [
+    "jax[cuda12_pip]>=0.4.0",
+    "optax>=0.1.0",
+]
+advanced = [
+    "colorlog>=6.0",
+    "hypothesis>=6.0",
 ]
 
 # Optional: URLs for your project
@@ -55,3 +90,112 @@ exclude = ["examples*", "tests*", "benchmarks*", "docs*", "archive*"] # Exclude 
 # Optional: If you have data files to include with your package
 # [tool.setuptools.package-data]
 # "mfg_pde.some_submodule" = ["*.dat"]
+
+# =============================================================================
+# Code Quality and Development Tools Configuration
+# =============================================================================
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | archive
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["mfg_pde"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+force_alphabetical_sort_within_sections = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradually enable during transition
+ignore_missing_imports = true
+exclude = [
+    "archive/",
+    "build/",
+    "dist/"
+]
+
+# Mathematical variables are allowed to be single letters
+[[tool.mypy.overrides]]
+module = "mfg_pde.*"
+# Allow mathematical notation like U, M, Nx, Nt
+disable_error_code = "name-defined"
+
+[tool.pylint.messages_control]
+disable = [
+    "C0103",  # Invalid name (allow mathematical notation)
+    "R0913",  # Too many arguments (common in scientific computing)
+    "R0914",  # Too many local variables
+    "R0902",  # Too many instance attributes
+    "R0903",  # Too few public methods
+    "C0415",  # Import outside top-level
+]
+
+[tool.pylint.format]
+max-line-length = 88
+good-names = [
+    "i", "j", "k",           # Loop indices
+    "x", "y", "z", "t",      # Coordinates and time
+    "U", "M",                # MFG solution variables
+    "dx", "dt", "Dx", "Dt",  # Grid spacing
+    "Nx", "Nt",              # Grid dimensions
+    "fp", "hjb",             # Equation types
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--cov=mfg_pde",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+[tool.coverage.run]
+source = ["mfg_pde"]
+omit = [
+    "*/tests/*",
+    "*/archive/*",
+    "*/__pycache__/*",
+    "*/build/*",
+    "*/dist/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

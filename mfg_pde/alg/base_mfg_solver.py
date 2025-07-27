@@ -1,15 +1,18 @@
 from abc import ABC, abstractmethod
 import numpy as np
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..core.mfg_problem import MFGProblem
 
 class MFGSolver(ABC):
-    def __init__(self, problem):
+    def __init__(self, problem: 'MFGProblem') -> None:
         self.problem = problem
-        self.warm_start_data = None
-        self._solution_computed = False
+        self.warm_start_data: Optional[Dict[str, Any]] = None
+        self._solution_computed: bool = False
 
     @abstractmethod
-    def solve(self, max_iterations: int, tolerance: float = 1e-5, **kwargs):
+    def solve(self, max_iterations: int, tolerance: float = 1e-5, **kwargs) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
         """
         Solves the MFG system and returns U, M, and convergence info.
         
@@ -17,16 +20,26 @@ class MFGSolver(ABC):
             max_iterations: Maximum number of iterations
             tolerance: Convergence tolerance
             **kwargs: Additional solver-specific parameters
+            
+        Returns:
+            Tuple of (U, M, convergence_info) where:
+            - U: Hamilton-Jacobi-Bellman solution array
+            - M: Fokker-Planck density array  
+            - convergence_info: Dictionary with convergence details
         """
         pass
 
     @abstractmethod
-    def get_results(self):
-        """Returns the computed U and M."""
+    def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Returns the computed U and M.
+        
+        Returns:
+            Tuple of (U, M) solution arrays
+        """
         pass
     
     def set_warm_start_data(self, previous_solution: Tuple[np.ndarray, np.ndarray], 
-                           metadata: Optional[Dict[str, Any]] = None):
+                           metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         Set warm start data from a previous solution.
         

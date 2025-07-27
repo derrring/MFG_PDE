@@ -1,0 +1,243 @@
+name: Code Quality and Formatting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort mypy flake8 pylint
+        pip install -e .
+
+    - name: Check code formatting with Black
+      run: |
+        black --check --diff --color mfg_pde/
+        if [ $? -ne 0 ]; then
+          echo "❌ Code formatting issues found. Run 'black mfg_pde/' to fix."
+          exit 1
+        else
+          echo "✅ Code formatting is correct."
+        fi
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff --color mfg_pde/
+        if [ $? -ne 0 ]; then
+          echo "❌ Import sorting issues found. Run 'isort mfg_pde/' to fix."
+          exit 1
+        else
+          echo "✅ Import sorting is correct."
+        fi
+
+    - name: Type checking with mypy
+      run: |
+        echo "🔍 Running type checking..."
+        mypy mfg_pde --ignore-missing-imports --no-error-summary || true
+        # Note: Allow mypy to fail for now during transition period
+
+    - name: Linting with flake8
+      run: |
+        echo "🔍 Running flake8 linting..."
+        flake8 mfg_pde --max-line-length=88 --extend-ignore=E203,W503,E701 \
+          --exclude=mfg_pde/utils/__pycache__ --statistics
+
+    - name: Advanced linting with pylint
+      run: |
+        echo "🔍 Running pylint analysis..."
+        pylint mfg_pde --disable=C0103,R0913,R0914,R0902,R0903,C0415 \
+          --max-line-length=88 --good-names=i,j,k,x,y,z,t,U,M,dx,dt || true
+        # Note: Allow pylint to fail for now during transition period
+
+    - name: Check parameter migration compliance
+      run: |
+        echo "🔍 Checking for deprecated parameter usage..."
+        python -c "
+        from mfg_pde.utils.parameter_migration import global_parameter_migrator
+        import os
+        import ast
+
+        deprecated_params = global_parameter_migrator.get_deprecated_parameters()
+        violations = []
+
+        for root, dirs, files in os.walk('mfg_pde'):
+            for file in files:
+                if file.endswith('.py'):
+                    filepath = os.path.join(root, file)
+                    try:
+                        with open(filepath, 'r') as f:
+                            tree = ast.parse(f.read())
+                        
+                        for node in ast.walk(tree):
+                            if isinstance(node, ast.arg) and node.arg in deprecated_params:
+                                violations.append(f'{filepath}: deprecated parameter {node.arg}')
+                    except:
+                        continue
+
+        if violations:
+            print('❌ Deprecated parameter usage found:')
+            for violation in violations:
+                print(f'   {violation}')
+            exit(1)
+        else:
+            print('✅ No deprecated parameter usage found.')
+        "
+
+  memory-safety:
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install psutil memory_profiler
+        pip install -e .
+
+    - name: Memory usage test
+      run: |
+        echo "🧠 Testing memory usage with small problem..."
+        python -c "
+        from mfg_pde import ExampleMFGProblem, create_fast_solver
+        from mfg_pde.utils.memory_management import MemoryMonitor
+        import psutil
+
+        # Test with small problem to ensure memory monitoring works
+        monitor = MemoryMonitor(max_memory_gb=2.0)
+        
+        problem = ExampleMFGProblem(Nx=20, Nt=10)
+        solver = create_fast_solver(problem, 'fixed_point')
+        
+        initial_memory = monitor.get_current_memory_gb()
+        print(f'Initial memory: {initial_memory:.3f} GB')
+        
+        result = solver.solve()
+        
+        final_memory = monitor.get_current_memory_gb()
+        print(f'Final memory: {final_memory:.3f} GB')
+        print(f'Memory increase: {(final_memory - initial_memory):.3f} GB')
+        
+        if final_memory > 1.0:  # Should not use more than 1GB for small problem
+            print('❌ Excessive memory usage detected')
+            exit(1)
+        else:
+            print('✅ Memory usage within acceptable limits')
+        "
+
+  performance-regression:
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Performance regression test
+      run: |
+        echo "⚡ Testing performance regression..."
+        python -c "
+        from mfg_pde import ExampleMFGProblem, create_fast_solver
+        import time
+
+        # Benchmark small problem
+        problem = ExampleMFGProblem(Nx=30, Nt=20)
+        solver = create_fast_solver(problem, 'fixed_point')
+        
+        start_time = time.time()
+        result = solver.solve()
+        execution_time = time.time() - start_time
+        
+        print(f'Execution time: {execution_time:.2f} seconds')
+        
+        # Should complete small problem in reasonable time
+        if execution_time > 30:  # 30 second threshold
+            print(f'❌ Performance regression detected: {execution_time:.2f}s > 30s')
+            exit(1)
+        else:
+            print(f'✅ Performance within acceptable range: {execution_time:.2f}s')
+        "
+
+  documentation-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Check documentation completeness
+      run: |
+        echo "📚 Checking documentation completeness..."
+        python -c "
+        import ast
+        import os
+        from pathlib import Path
+
+        def check_docstrings(file_path):
+            with open(file_path, 'r') as f:
+                tree = ast.parse(f.read())
+            
+            missing = []
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                    if not node.name.startswith('_'):  # Public only
+                        if not ast.get_docstring(node):
+                            missing.append(f'{file_path}:{node.lineno}:{node.name}')
+            return missing
+
+        all_missing = []
+        for py_file in Path('mfg_pde').rglob('*.py'):
+            if '__pycache__' not in str(py_file):
+                missing = check_docstrings(py_file)
+                all_missing.extend(missing)
+
+        if all_missing:
+            print('⚠️  Missing docstrings (allowed during transition):')
+            for missing in all_missing[:10]:  # Show first 10
+                print(f'   {missing}')
+            if len(all_missing) > 10:
+                print(f'   ... and {len(all_missing) - 10} more')
+        else:
+            print('✅ All public functions and classes have docstrings')
+        "

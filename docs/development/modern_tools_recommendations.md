@@ -23,6 +23,12 @@ This document outlines modern tools, libraries, and abstract programming pattern
    - Subcommand structure for extensibility
    - Professional help and error handling
 
+## Current Priority Status
+
+### ⚪ Waived Tools (Temporarily)
+- **Experiment Tracking (wandb/TensorBoard)**: Sufficient visualization exists with current notebook reporting system
+- **Reason**: Focus on core functionality, type safety, and performance first
+
 ## High Priority Recommendations
 
 ### 1. Logging Infrastructure [HIGH] ✅ PARTIALLY IMPLEMENTED
@@ -161,7 +167,23 @@ def compute_hjb_residual(U, M, dt, dx):
 - Automatic parallelization
 - Easy integration
 
-### 6. Dask for Parallel Computing
+### 6. Experiment Tracking (wandb/TensorBoard) ⚪ TEMPORARILY WAIVED
+**Purpose**: Experiment tracking and visualization
+**Status**: Waived for current development phase
+**Rationale**: 
+- Current notebook reporting system provides sufficient visualization
+- Focus on core functionality and type safety first
+- Can be easily added later when experiment management becomes priority
+
+**Future Consideration**:
+```python
+# Easy integration when needed later
+import wandb
+wandb.init(project="mfg_pde")
+wandb.log({"convergence_error": error})
+```
+
+### 7. Dask for Parallel Computing
 **Purpose**: Distributed and parallel computation
 **Implementation**: Parallelize parameter studies
 
@@ -449,8 +471,12 @@ repos:
 ### Phase 2: Validation & Testing (2-3 days)
 1. Migrate to Pydantic for validation
 2. Add property-based testing with Hypothesis
-3. Setup mypy for static type checking
+3. ✅ Setup mypy for static type checking (COMPLETED)
 4. Enhanced CLI with better error handling
+
+### ⚪ Temporarily Waived
+- **Experiment Tracking (wandb/TensorBoard)**: Current notebook reporting system provides sufficient visualization
+- **Rationale**: Focus on core functionality and type safety; easy to add later when needed
 
 ### Phase 3: Performance & Scalability (1-2 weeks)
 1. Profile code and identify bottlenecks

@@ -1,6 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any, Tuple
+from typing import Dict, Optional, Any, Tuple, Callable, Union
+from numpy.typing import NDArray
 
 # Import npart and ppart from the utils module
 from mfg_pde.utils.aux_func import npart, ppart
@@ -38,9 +39,9 @@ class MFGProblem(ABC):
         self.sigma: float = sigma
         self.coefCT: float = coefCT
 
-        self.f_potential: np.ndarray
-        self.u_fin: np.ndarray
-        self.m_init: np.ndarray
+        self.f_potential: NDArray[np.float64]
+        self.u_fin: NDArray[np.float64]
+        self.m_init: NDArray[np.float64]
         self._initialize_functions(**kwargs)
 
     def _potential(self, x: float) -> float:
@@ -51,22 +52,28 @@ class MFGProblem(ABC):
         )
 
     def _initialize_functions(self, **kwargs: Any) -> None:
-        self.f_potential = np.zeros(self.Nx + 1)
-        self.u_fin = np.zeros(self.Nx + 1)
-        self.m_init = np.zeros(self.Nx + 1)
+        """Initialize potential, final condition, and initial density functions."""
+        self.f_potential = np.zeros(self.Nx + 1, dtype=np.float64)
+        self.u_fin = np.zeros(self.Nx + 1, dtype=np.float64)
+        self.m_init = np.zeros(self.Nx + 1, dtype=np.float64)
+
+        # Extract functions with proper type hints
+        g_final_func: Callable[[float], float] = kwargs.get("g_final_func", lambda x_val: 0.0)
+        
+        default_m0_func: Callable[[float], float] = lambda x_val: np.exp(
+            -np.power(x_val - self.Lx / 2.0, 2.0)
+            / (2 * np.power(self.Lx / 10.0, 2.0))
+        )
+        m_initial_func: Callable[[float], float] = kwargs.get("m_initial_func", default_m0_func)
 
         for i in range(self.Nx + 1):
-            x_i = self.xSpace[i]
+            x_i: float = self.xSpace[i]
 
             self.f_potential[i] = self._potential(x_i)
-            self.u_fin[i] = kwargs.get("g_final_func", lambda x_val: 0.0)(x_i)
+            self.u_fin[i] = g_final_func(x_i)
 
-            default_m0_func = lambda x_val: np.exp(
-                -np.power(x_val - self.Lx / 2.0, 2.0)
-                / (2 * np.power(self.Lx / 10.0, 2.0))
-            )
-            m_init_i = kwargs.get("m_initial_func", default_m0_func)(x_i)
-            self.m_init[i] = max(m_init_i - 0.05, 0)
+            m_init_i: float = m_initial_func(x_i)
+            self.m_init[i] = max(m_init_i - 0.05, 0.0)
 
         # Always normalize initial condition m_0 to be a probability density (integral = 1)
         # This ensures m_0 is a proper initial distribution, but FDM evolution is natural
