@@ -379,6 +379,19 @@ def create_fast_solver(
     Returns:
         Fast-configured solver instance
     """
+    # For fixed_point solvers, create default HJB and FP solvers if not provided
+    if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
+        import numpy as np
+        from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
+        
+        # Create stable default solvers using FDM (more stable than particle methods)
+        hjb_solver = HJBFDMSolver(problem=problem)
+        fp_solver = FPFDMSolver(problem=problem)
+        
+        kwargs["hjb_solver"] = hjb_solver
+        kwargs["fp_solver"] = fp_solver
+    
     return SolverFactory.create_solver(
         problem=problem, solver_type=solver_type, config_preset="fast", **kwargs
     )
