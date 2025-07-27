@@ -386,8 +386,9 @@ def create_fast_solver(
         and "fp_solver" not in kwargs
     ):
         import numpy as np
-        from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
+
         from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
+        from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         # Create stable default solvers using FDM (more stable than particle methods)
         hjb_solver = HJBFDMSolver(problem=problem)
