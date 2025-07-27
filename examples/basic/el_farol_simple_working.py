@@ -76,7 +76,7 @@ def analyze_el_farol_solution(problem, U, M):
     for t_idx in range(M.shape[0]):
         # Expected attendance = ∫ x * m(t,x) dx
         # (x represents probability of going, weighted by density)
-        attendance = np.trapz(x_grid * M[t_idx, :], x_grid)
+        attendance = np.trapezoid(x_grid * M[t_idx, :], x_grid)
         attendance_rates.append(attendance)
     
     # Analysis metrics
@@ -117,8 +117,9 @@ def visualize_el_farol_results(problem, U, M, analysis):
     Create El Farol Bar specific visualizations.
     """
     
-    x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-    t_grid = np.linspace(0, problem.T, problem.Nt)
+    # Use actual array shapes to ensure consistency
+    x_grid = np.linspace(problem.xmin, problem.xmax, M.shape[1])
+    t_grid = np.linspace(0, problem.T, M.shape[0])
     X, T = np.meshgrid(x_grid, t_grid)
     
     fig = plt.figure(figsize=(15, 10))
@@ -284,9 +285,9 @@ def compare_scenarios():
         analysis['scenario'] = scenario
         results.append(analysis)
         
-        # Plot attendance evolution
+        # Plot attendance evolution - use actual M shape
         plt.subplot(2, 4, i+1)
-        t_grid = np.linspace(0, 1, problem.Nt)
+        t_grid = np.linspace(0, 1, M.shape[0])
         plt.plot(t_grid, analysis['attendance_evolution'], 'b-', linewidth=2)
         plt.axhline(y=scenario['bar_capacity'], color='red', linestyle='--', alpha=0.7)
         plt.title(scenario['name'], fontsize=10)
@@ -294,9 +295,9 @@ def compare_scenarios():
         plt.ylabel('Attendance')
         plt.grid(True, alpha=0.3)
         
-        # Plot final density
+        # Plot final density - use actual M shape
         plt.subplot(2, 4, i+5)
-        x_grid = np.linspace(0, 1, problem.Nx)
+        x_grid = np.linspace(0, 1, M.shape[1])
         final_density = M[-1, :]
         plt.plot(x_grid, final_density, 'g-', linewidth=2)
         plt.axvline(x=scenario['bar_capacity'], color='red', linestyle='--', alpha=0.7)
@@ -376,10 +377,9 @@ def main():
         else:
             print("  → Near-optimal attendance achieved!")
         
-        # Optional scenario comparison
-        response = input("\n❓ Would you like to compare different scenarios? (y/n): ")
-        if response.lower().startswith('y'):
-            compare_scenarios()
+        # Optional scenario comparison - auto-run for demo
+        print("\n🔬 Running scenario comparison...")
+        compare_scenarios()
         
         print("\n🎉 El Farol Bar analysis completed!")
         print("📚 This demonstrates how individual rational decisions can lead to")
