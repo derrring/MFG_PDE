@@ -6,18 +6,33 @@ The El Farol Bar Problem (Santa Fe Bar Problem) is a classic example in game the
 where agents must decide whether to attend a bar based on their prediction of 
 attendance by others. This creates a self-referential problem perfect for MFG analysis.
 
-Problem Description:
-- N agents decide independently whether to go to the bar
-- Bar has capacity threshold C (e.g., 100 people)
-- If attendance > C: overcrowded, low utility
-- If attendance ≤ C: pleasant, high utility
-- Each agent predicts others' behavior using historical data or expectations
+Mathematical Formulation:
 
-MFG Formulation:
-- State space: [0,1] (probability of going to bar)
-- Control: u(t,x) ∈ [0,1] (rate of deciding to go)
-- Density: m(t,x) (distribution of agents over decision states)
-- Cost: Depends on expected crowd level and individual preference
+State and Population:
+- State space: x ∈ [0,1] (tendency to attend bar)  
+- Population density: m(t,x) with ∫₀¹ m(t,x) dx = 1
+- Expected attendance: A(t) = ∫₀¹ x·m(t,x) dx
+
+Dynamics:
+- State dynamics: dx_t = u_t dt + σ dW_t
+- Population evolution: ∂m/∂t = -∂/∂x[u(t,x)m(t,x)] + (σ²/2)∂²m/∂x²
+
+Cost Structure:
+- Running cost: L(t,x,u,m) = α·max(0, A(t) - C̄)² + ½u² + β(x - x_hist)²
+- Terminal cost: Φ(x) = (γ/2)(x - C̄)²
+
+HJB Equation:
+- Value function: U(t,x) satisfies
+  -∂U/∂t = min_u [L(t,x,u,m) + u·∂U/∂x + (σ²/2)∂²U/∂x²]
+- Optimal control: u*(t,x) = -∂U/∂x
+- Hamiltonian: H(t,x,p,m) = L(t,x,u*,m) + p·u*
+
+Parameters:
+- α > 0: crowd aversion parameter
+- C̄ ∈ (0,1): normalized bar capacity
+- β > 0: historical memory weight  
+- σ > 0: decision volatility
+- γ > 0: terminal penalty weight
 """
 
 import numpy as np

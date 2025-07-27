@@ -6,6 +6,18 @@ A simplified but working implementation of the El Farol Bar Problem
 using the ExampleMFGProblem as a base, with custom cost functions
 that represent the bar attendance decision-making.
 
+Mathematical Formulation:
+- State space: x ∈ [0,1] (tendency to attend bar)
+- Population density: m(t,x) with ∫₀¹ m(t,x) dx = 1
+- Expected attendance: A(t) = ∫₀¹ x·m(t,x) dx
+- Cost function: L(t,x,u,m) = α·max(0, A(t) - C̄)² + ½u² + β(x - x_hist)²
+
+Where:
+- α: crowd aversion parameter
+- C̄: normalized bar capacity
+- β: historical memory weight
+- σ: decision volatility
+
 This focuses on the key economic insights rather than full MFG formulation.
 """
 

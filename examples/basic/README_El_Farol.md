@@ -23,17 +23,35 @@ This directory contains implementations of the famous **El Farol Bar Problem** (
 
 We model this as a Mean Field Game where:
 
-- **State space x ∈ [0,1]**: Agent's tendency to go to the bar
-  - x = 0: Strong tendency to stay home
-  - x = 1: Strong tendency to go to bar
+### State and Control Variables
+
+- **State space**: $x \in [0,1]$ represents an agent's tendency to attend the bar
+  - $x = 0$: Strong tendency to stay home  
+  - $x = 1$: Strong tendency to attend bar
+
+- **Population density**: $m(t,x)$ describes the distribution of agents over decision tendencies
+  $$\int_0^1 m(t,x) \, dx = 1, \quad m(t,x) \geq 0$$
+
+- **Control variable**: $u(t,x) \in \mathbb{R}$ is the rate of changing decision tendency
+
+- **Expected attendance**: The fraction of population expected to attend
+  $$A(t) = \int_0^1 x \cdot m(t,x) \, dx$$
+
+### Dynamics and Cost Structure
+
+- **State dynamics**: $dx_t = u_t \, dt + \sigma \, dW_t$ where $\sigma > 0$ is decision volatility
+
+- **Population evolution** (Fokker-Planck equation):
+  $$\frac{\partial m}{\partial t} = -\frac{\partial}{\partial x}[u(t,x) m(t,x)] + \frac{\sigma^2}{2} \frac{\partial^2 m}{\partial x^2}$$
+
+- **Running cost function**: 
+  $$L(t, x, u, m) = \alpha \max(0, A(t) - \bar{C})^2 + \frac{1}{2} u^2 + \beta (x - x_{\text{hist}})^2$$
   
-- **Population density m(t,x)**: Distribution of agents over decision tendencies
-
-- **Control u(t,x)**: Rate of changing decision tendency
-
-- **Expected attendance**: ∫ x · m(t,x) dx (probability-weighted attendance)
-
-- **Cost function**: Includes crowding penalty, decision effort, and historical memory
+  where:
+  - $\alpha > 0$ is the crowd aversion parameter
+  - $\bar{C} \in (0,1)$ is the normalized bar capacity  
+  - $\beta > 0$ weights historical memory
+  - $x_{\text{hist}}$ represents historical attendance patterns
 
 ## Files in this Directory
 
@@ -140,25 +158,37 @@ Medium Bar, High Aversion   |      28.9% |      51.9% | Yes
 
 ## Mathematical Foundation
 
-### Cost Function
-```
-L(t, x, u, m) = α·max(0, attendance - capacity)² + ½u² + β(x - historical)²
-```
+### Hamilton-Jacobi-Bellman Formulation
 
-Where:
-- α = crowd aversion parameter
-- attendance = ∫ x·m(t,x) dx
-- β = memory/historical weight
+The **value function** $U(t,x)$ satisfies the HJB equation:
+$$-\frac{\partial U}{\partial t} = \min_{u \in \mathbb{R}} \left[ L(t,x,u,m) + u \frac{\partial U}{\partial x} + \frac{\sigma^2}{2} \frac{\partial^2 U}{\partial x^2} \right]$$
 
-### Hamiltonian
-```
-H(t, x, p, m) = min_u [L(t, x, u, m) + p·u]
-```
+### Hamiltonian and Optimal Control
 
-### Optimal Control
-```
-u* = -p (first-order condition)
-```
+The **Hamiltonian** is defined as:
+$$H(t,x,p,m) = \min_{u \in \mathbb{R}} \left[ L(t,x,u,m) + p \cdot u \right]$$
+
+where $p = \frac{\partial U}{\partial x}$ is the costate variable.
+
+The **optimal control** from the first-order condition:
+$$\frac{\partial L}{\partial u} + p = 0 \Rightarrow u^*(t,x) = -\frac{\partial U}{\partial x}$$
+
+### MFG Equilibrium System
+
+An MFG equilibrium $(U^*, m^*)$ satisfies the coupled PDE system:
+
+**Forward (Fokker-Planck):**
+$$\frac{\partial m^*}{\partial t} = \frac{\partial}{\partial x}\left[ \frac{\partial U^*}{\partial x} m^* \right] + \frac{\sigma^2}{2} \frac{\partial^2 m^*}{\partial x^2}$$
+
+**Backward (HJB):**
+$$-\frac{\partial U^*}{\partial t} = H\left(t,x,\frac{\partial U^*}{\partial x}, m^*\right) + \frac{\sigma^2}{2} \frac{\partial^2 U^*}{\partial x^2}$$
+
+### Economic Efficiency Measure
+
+**Efficiency** is quantified as:
+$$\text{Efficiency} = 1 - \frac{|A^* - \bar{C}|}{\bar{C}} \in [0,1]$$
+
+where $A^* = \lim_{t \to T} \int_0^1 x \cdot m^*(t,x) \, dx$ is the equilibrium attendance rate.
 
 ## Connection to Real-World Problems
 
