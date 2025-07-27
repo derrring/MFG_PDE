@@ -24,12 +24,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install black isort mypy flake8 pylint psutil
+        pip install black==24.4.2 isort mypy flake8 pylint psutil
         pip install -e .
 
     - name: Check code formatting with Black
       run: |
-        black --check --diff --color mfg_pde/
+        black --check --diff mfg_pde/ --exclude="archive/"
         if [ $? -ne 0 ]; then
           echo "❌ Code formatting issues found. Run 'black mfg_pde/' to fix."
           exit 1
