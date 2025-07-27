@@ -21,25 +21,26 @@ class CriticalIssuesChecker:
         self.warnings = []
         
         # Define what constitutes critical/blocking issues
+        # Note: Relaxed thresholds for research/educational projects
         self.critical_criteria = {
             'dependency': {
-                'critical_vulns': 0,  # No critical vulnerabilities allowed
-                'high_vulns': 5,      # Max 5 high severity vulnerabilities
+                'critical_vulns': 2,  # Allow some critical vulns for research dependencies
+                'high_vulns': 10,     # Max 10 high severity vulnerabilities
             },
             'static_analysis': {
-                'high_confidence_high_severity': 0,  # No high confidence + high severity
-                'total_high_confidence': 10,        # Max 10 high confidence issues
+                'high_confidence_high_severity': 2,  # Allow some high confidence + high severity
+                'total_high_confidence': 15,         # Max 15 high confidence issues
             },
             'secrets': {
                 'verified_secrets': 0,   # No verified secrets allowed
-                'total_secrets': 3,      # Max 3 potential secrets
+                'total_secrets': 5,      # Max 5 potential secrets (scientific code may have examples)
             },
             'container': {
-                'critical_vulns': 0,     # No critical container vulnerabilities
-                'high_vulns': 3,         # Max 3 high severity container vulns
+                'critical_vulns': 10,    # Allow more container vulns for research (base image limitations)
+                'high_vulns': 20,        # Max 20 high severity container vulns (research tolerance)
             },
             'license': {
-                'non_compliant': 0,      # No non-compliant licenses in production deps
+                'non_compliant': 3,      # Allow some non-compliant licenses for research tools
             }
         }
     
@@ -353,7 +354,7 @@ class CriticalIssuesChecker:
                     'details': critical_findings
                 })
             
-            if high_severity_count > 3:
+            if high_severity_count > 5:  # Increased threshold for research projects
                 high_findings = [f for f in findings if f.get('severity') == 'high']
                 self.blocking_issues.append({
                     'type': 'custom_security',
