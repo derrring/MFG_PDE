@@ -27,6 +27,7 @@ import time
 
 from mfg_pde import ExampleMFGProblem, create_fast_solver
 from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.numpy_compat import trapz_compat
 
 
 def create_el_farol_problem(
@@ -75,8 +76,8 @@ def analyze_el_farol_solution(problem, U, M):
     attendance_rates = []
     for t_idx in range(M.shape[0]):
         # Expected attendance = ∫ x * m(t,x) dx
-        # (x represents probability of going, weighted by density)
-        attendance = np.trapezoid(x_grid * M[t_idx, :], x_grid)
+        # (x represents probability of going, weighted by density)  
+        attendance = trapz_compat(x_grid * M[t_idx, :], x_grid)
         attendance_rates.append(attendance)
     
     # Analysis metrics

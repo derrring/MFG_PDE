@@ -87,6 +87,21 @@ U, M, info = solver.solve(max_picard_iterations=15, verbose=True)
 pip install -e .
 ```
 
+### Requirements
+
+- **Python**: >=3.8
+- **NumPy**: >=2.0 (recommended for best compatibility)
+  - The package includes compatibility layers for NumPy <2.0
+  - NumPy 2.0+ uses `trapezoid` instead of deprecated `trapz`
+- **SciPy**: >=1.7
+- **Matplotlib**: >=3.4
+
+For NumPy compatibility information:
+```python
+from mfg_pde.utils import check_numpy_compatibility
+check_numpy_compatibility()
+```
+
 ## Documentation
 
 - [Mathematical Background](docs/theory/mathematical_background.md)

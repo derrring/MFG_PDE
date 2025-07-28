@@ -65,7 +65,11 @@ for i in range(nt):
     center = 0.4 + 0.3 * t[i]/2  # Moving crowd
     width = 0.1 + 0.02 * t[i]/2  # Spreading
     m[i, :] = np.exp(-0.5 * ((x - center) / width)**2)
-    m[i, :] /= np.trapz(m[i, :], x)  # Mass conservation
+    # Use trapezoid if available (numpy >=2.0), otherwise trapz
+    if hasattr(np, 'trapezoid'):
+        m[i, :] /= np.trapezoid(m[i, :], x)  # Mass conservation
+    else:
+        m[i, :] /= np.trapz(m[i, :], x)  # Mass conservation
 
 # Convergence data
 iterations = np.arange(1, 21)
@@ -210,7 +214,12 @@ print("=" * 50)
 print(f"Grid size: {nx} × {nt} points")
 print(f"Time horizon: {t[-1]:.1f}")
 print(f"Value function range: [{u.min():.3f}, {u.max():.3f}]")
-print(f"Final mass: {np.trapz(m[-1, :], x):.6f}")
+# Use trapezoid if available (numpy >=2.0), otherwise trapz
+if hasattr(np, 'trapezoid'):
+    final_mass = np.trapezoid(m[-1, :], x)
+else:
+    final_mass = np.trapz(m[-1, :], x)
+print(f"Final mass: {final_mass:.6f}")
 print(f"Iterations to convergence: {len(errors)}")
 print(f"Final error: {errors[-1]:.2e}")
 print()

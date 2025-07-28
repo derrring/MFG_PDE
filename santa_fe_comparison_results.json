@@ -1,0 +1,122 @@
+{
+  "balanced_coordination": {
+    "settings": {
+      "name": "Balanced Coordination",
+      "description": "Moderate parameters for realistic coordination behavior",
+      "T": 20.0,
+      "threshold": 0.6,
+      "initial_attendance": 0.3,
+      "payoff_good": 10.0,
+      "payoff_bad": -5.0,
+      "noise_level": 1.0,
+      "sigma": 0.15,
+      "crowd_aversion": 2.0,
+      "Nx": 50,
+      "Nt": 50
+    },
+    "discrete": {
+      "solve_time": 0.12286710739135742,
+      "final_values": {
+        "u0": 0.0950589237748079,
+        "u1": -9.904941055613659
+      },
+      "analysis": {
+        "steady_state_attendance": 4.540051789783155e-05,
+        "efficiency": 7.566752982968161e-05,
+        "regime": "underutilized",
+        "convergence_achieved": true,
+        "oscillation_amplitude": 5.260420616749859e-09
+      }
+    },
+    "continuous": {
+      "solve_time": 2.1529181003570557,
+      "analysis": {
+        "steady_state_attendance": 0.6111898530675438,
+        "efficiency": 0.981350244887427,
+        "regime": "optimal",
+        "converged": false,
+        "attendance_variance": 0.0005911574823666814
+      }
+    }
+  },
+  "low_uncertainty": {
+    "settings": {
+      "name": "Low Uncertainty",
+      "description": "Strong preferences lead to deterministic decisions",
+      "T": 20.0,
+      "threshold": 0.6,
+      "initial_attendance": 0.3,
+      "payoff_good": 10.0,
+      "payoff_bad": -5.0,
+      "noise_level": 0.5,
+      "sigma": 0.08,
+      "crowd_aversion": 3.0,
+      "Nx": 50,
+      "Nt": 50
+    },
+    "discrete": {
+      "solve_time": 0.12279200553894043,
+      "final_values": {
+        "u0": 0.02183031267616682,
+        "u1": -9.9781696667123
+      },
+      "analysis": {
+        "steady_state_attendance": 4.2877984097418e-09,
+        "efficiency": 7.146330749385754e-09,
+        "regime": "underutilized",
+        "convergence_achieved": true,
+        "oscillation_amplitude": 4.426333072941711e-09
+      }
+    },
+    "continuous": {
+      "solve_time": 1.402480125427246,
+      "analysis": {
+        "steady_state_attendance": 0.6543982939511372,
+        "efficiency": 0.9093361767481045,
+        "regime": "optimal",
+        "converged": false,
+        "attendance_variance": 0.0011407154129271723
+      }
+    }
+  },
+  "high_uncertainty": {
+    "settings": {
+      "name": "High Uncertainty",
+      "description": "Weak preferences lead to exploratory behavior",
+      "T": 20.0,
+      "threshold": 0.6,
+      "initial_attendance": 0.3,
+      "payoff_good": 10.0,
+      "payoff_bad": -5.0,
+      "noise_level": 2.0,
+      "sigma": 0.25,
+      "crowd_aversion": 1.0,
+      "Nx": 50,
+      "Nt": 50
+    },
+    "discrete": {
+      "solve_time": 0.1249239444732666,
+      "final_values": {
+        "u0": 0.6991723926982204,
+        "u1": -9.300827586690245
+      },
+      "analysis": {
+        "steady_state_attendance": 0.006692858469034399,
+        "efficiency": 0.011154764115057447,
+        "regime": "underutilized",
+        "convergence_achieved": true,
+        "oscillation_amplitude": 1.4566234933510724e-08
+      }
+    },
+    "continuous": {
+      "solve_time": 6.54150390625,
+      "analysis": {
+        "steady_state_attendance": 0.6182854879428583,
+        "efficiency": 0.9695241867619028,
+        "regime": "optimal",
+        "converged": true,
+        "attendance_variance": 2.3277602503482628e-08
+      }
+    }
+  }
+}

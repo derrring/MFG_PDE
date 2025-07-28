@@ -55,6 +55,14 @@ from .mathematical_visualization import (
     quick_hjb_analysis,
     quick_phase_space_analysis,
 )
+from .numpy_compat import (
+    benchmark_performance,
+    check_numpy_compatibility,
+    get_numpy_version_info,
+    migration_assistant,
+    trapz_compat,
+    validate_installation,
+)
 from .plot_utils import plot_convergence, plot_results
 from .solver_result import (
     ConvergenceResult,
