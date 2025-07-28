@@ -13,6 +13,12 @@ from .solver_factory import (
     SolverFactory,
 )
 
+from .backend_factory import (
+    BackendFactory,
+    create_backend_for_problem,
+    print_backend_info,
+)
+
 __all__ = [
     "SolverFactory",
     "create_solver",
@@ -20,4 +26,7 @@ __all__ = [
     "create_accurate_solver",
     "create_research_solver",
     "create_monitored_solver",
+    "BackendFactory",
+    "create_backend_for_problem", 
+    "print_backend_info",
 ]
