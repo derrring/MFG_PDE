@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+from .integration import trapezoid
 
 try:
     import nbformat as nbf
@@ -42,7 +43,7 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 from .logging import get_logger
-from .mathematical_visualization import MFGMathematicalVisualizer
+from ..visualization import MFGMathematicalVisualizer
 
 
 class NotebookReportError(Exception):
@@ -333,7 +334,7 @@ if hasattr(results['M'], 'shape'):
     
     # Check mass conservation
     if len(results['M'].shape) == 2:
-        total_mass = np.trapz(results['M'][-1, :], dx=0.05)  # Approximate dx
+        total_mass = trapezoid(results['M'][-1, :], dx=0.05)  # Approximate dx
         mass_error = abs(total_mass - 1.0)
         print(f"Final total mass: {total_mass:.8f}")
         print(f"Mass conservation error: {mass_error:.2e}")
@@ -509,7 +510,7 @@ if 'convergence_info' in locals():
 if 'M' in locals():
     mass_history = []
     for t_idx in range(M.shape[0]):
-        mass = np.trapz(M[t_idx, :], x_grid)
+        mass = trapezoid(M[t_idx, :], x=x_grid)
         mass_history.append(mass)
     
     fig_mass = go.Figure()
@@ -601,7 +602,7 @@ if 'M' in locals() and hasattr(M, 'shape') and len(M.shape) == 2:
     mass_errors = []
     
     for t_idx in range(M.shape[0]):
-        mass = np.trapz(M[t_idx, :], x_grid) if 'x_grid' in locals() else np.sum(M[t_idx, :]) * (1.0 / M.shape[1])
+        mass = trapezoid(M[t_idx, :], x=x_grid) if 'x_grid' in locals() else np.sum(M[t_idx, :]) * (1.0 / M.shape[1])
         error = abs(mass - 1.0)
         mass_evolution.append(mass)
         mass_errors.append(error)

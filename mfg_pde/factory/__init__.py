@@ -19,6 +19,8 @@ from .backend_factory import (
     print_backend_info,
 )
 
+# Removed specific model factory - use GeneralMFGFactory instead
+
 __all__ = [
     "SolverFactory",
     "create_solver",

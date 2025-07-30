@@ -17,9 +17,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from mfg_pde import MFGProblem, create_fast_solver
 from mfg_pde.utils import configure_logging, get_logger
-from mfg_pde.utils.mathematical_visualization import (
-    MFGMathematicalVisualizer, quick_hjb_analysis, quick_fp_analysis,
-    quick_phase_space_analysis
+from mfg_pde.visualization import (
+    MFGMathematicalVisualizer, create_mathematical_visualizer
 )
 
 
@@ -82,7 +81,7 @@ def generate_analytical_solution():
         m1 = np.exp(-kappa1 * (x_grid - mu1(t))**2)
         m2 = np.exp(-kappa2 * (x_grid - mu2(t))**2)
         m_unnormalized = m1 + m2
-        M[i, :] = m_unnormalized / np.trapz(m_unnormalized, x_grid)
+        M[i, :] = m_unnormalized / trapezoid(m_unnormalized, x_grid)
     
     return U.T, M.T, x_grid, t_grid
 

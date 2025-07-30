@@ -28,6 +28,7 @@ from mfg_pde.utils.pydantic_notebook_integration import create_pydantic_mfg_repo
 # Import core MFG components
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.integration import trapezoid
 
 
 def demonstrate_basic_pydantic_config():
@@ -149,7 +150,7 @@ def demonstrate_grid_and_array_validation():
     M_solution = np.random.rand(Nt + 1, Nx + 1)
     # Normalize each time slice to integrate to 1
     for t in range(Nt + 1):
-        M_solution[t] = M_solution[t] / np.trapz(M_solution[t], dx=grid_config.dx)
+        M_solution[t] = M_solution[t] / trapezoid(M_solution[t], dx=grid_config.dx)
     
     try:
         # Validate arrays with Pydantic
@@ -268,7 +269,7 @@ def demonstrate_enhanced_notebook_reporting():
         M_solution = np.ones((51, 31))
         for t in range(51):
             M_solution[t] = np.exp(-(np.linspace(0, 1, 31) - 0.5)**2 / 0.1)
-            M_solution[t] = M_solution[t] / np.trapz(M_solution[t], dx=grid_config.dx)
+            M_solution[t] = M_solution[t] / trapezoid(M_solution[t], dx=grid_config.dx)
         
         arrays = MFGArrays(
             U_solution=U_solution,

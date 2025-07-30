@@ -24,8 +24,8 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "numpy>=2.0",    # Use numpy 2.0+ for trapezoid function (trapz deprecated)
-    "scipy>=1.7",
+    "numpy>=1.21",  # Support NumPy 1.21+ with trapezoid fallback via scipy
+    "scipy>=1.7",   # Required for trapezoid integration when NumPy < 2.0
     "matplotlib>=3.4",
     "plotly>=5.0",
     "nbformat>=5.0",
@@ -75,7 +75,6 @@ Repository = "https://github.com/derrring/MFG_PDE"
 
 # Command-line scripts
 [project.scripts]
-mfg-numpy-migrate = "scripts.numpy_migration_tool:main"
 
 # --- Setuptools specific configuration ---
 # This tells setuptools to automatically find packages in the current directory.

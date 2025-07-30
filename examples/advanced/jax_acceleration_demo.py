@@ -15,6 +15,7 @@ from pathlib import Path
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.factory import BackendFactory, print_backend_info
 from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.integration import trapezoid
 
 # Configure logging
 configure_research_logging("jax_acceleration_demo", level="INFO")
@@ -40,7 +41,7 @@ class BarProblemJAX(ExampleMFGProblem):
         if hasattr(self, '_backend') and self._backend:
             total_attendance = self._backend.trapezoid(m, dx=self.dx)
         else:
-            total_attendance = np.trapz(m, dx=self.dx)
+            total_attendance = trapezoid(m, dx=self.dx)
         
         # Congestion cost when attendance exceeds capacity
         congestion = max(0, total_attendance - self.capacity)

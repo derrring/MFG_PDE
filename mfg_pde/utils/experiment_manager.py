@@ -6,8 +6,20 @@ from datetime import datetime
 # from ..core.mfg_problem import MFGProblem # Adjust path if necessary
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
+
+# Modern visualization system
+try:
+    from ..visualization import (
+        create_visualization_manager,
+        modern_plot_convergence,
+        plot_convergence  # Legacy compatibility
+    )
+    VISUALIZATION_AVAILABLE = True
+except ImportError:
+    # Fallback to matplotlib if visualization system not available
+    import matplotlib.pyplot as plt
+    VISUALIZATION_AVAILABLE = False
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -173,6 +185,35 @@ def plot_comparison_total_mass(
     save_to_file: Optional[str] = None,
 ):
     """Plots total mass vs. time for multiple experiments on the same axes."""
+    if VISUALIZATION_AVAILABLE:
+        # Use modern visualization system
+        viz_manager = create_visualization_manager(prefer_plotly=False)  # Use matplotlib for comparison plots
+        
+        # Prepare data for plotting
+        plot_data = {}
+        for exp_data in experiment_data_list:
+            label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
+            plot_data[label] = {
+                'x': exp_data["tSpace"],
+                'y': exp_data["total_mass_vs_time"]
+            }
+        
+        try:
+            fig = viz_manager._create_line_comparison_plot(
+                plot_data,
+                title=f"Comparison of Total Mass Evolution {title_suffix}",
+                xlabel="t",
+                ylabel=r"Total Mass $\int m(t) dx$",
+                ylim=(0, 1.1),
+                save_path=save_to_file
+            )
+            return fig
+        except:
+            # Fallback to matplotlib if modern system fails
+            pass
+    
+    # Fallback to matplotlib
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 6))
     for exp_data in experiment_data_list:
         label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
@@ -196,6 +237,39 @@ def plot_comparison_final_m(
     save_to_file: Optional[str] = None,
 ):
     """Plots the final density M(T,x) for multiple experiments."""
+    if VISUALIZATION_AVAILABLE:
+        # Use modern visualization system
+        viz_manager = create_visualization_manager(prefer_plotly=False)
+        
+        # Prepare data for plotting
+        plot_data = {}
+        for exp_data in experiment_data_list:
+            label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
+            if exp_data["M_solution"].ndim == 2 and exp_data["M_solution"].shape[0] > 0:
+                plot_data[label] = {
+                    'x': exp_data["xSpace"],
+                    'y': exp_data["M_solution"][-1, :]  # M_solution[-1] is M(T,x)
+                }
+            else:
+                print(
+                    f"Warning: M_solution for {label} is not in expected 2D shape or is empty."
+                )
+        
+        try:
+            fig = viz_manager._create_line_comparison_plot(
+                plot_data,
+                title=f"Comparison of Final Densities m(T,x) {title_suffix}",
+                xlabel="x",
+                ylabel="m(T,x)",
+                save_path=save_to_file
+            )
+            return fig
+        except:
+            # Fallback to matplotlib if modern system fails
+            pass
+    
+    # Fallback to matplotlib
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 6))
     for exp_data in experiment_data_list:
         label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
@@ -225,6 +299,39 @@ def plot_comparison_initial_U(
     save_to_file: Optional[str] = None,
 ):
     """Plots the initial value function U(0,x) for multiple experiments."""
+    if VISUALIZATION_AVAILABLE:
+        # Use modern visualization system
+        viz_manager = create_visualization_manager(prefer_plotly=False)
+        
+        # Prepare data for plotting
+        plot_data = {}
+        for exp_data in experiment_data_list:
+            label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
+            if exp_data["U_solution"].ndim == 2 and exp_data["U_solution"].shape[0] > 0:
+                plot_data[label] = {
+                    'x': exp_data["xSpace"],
+                    'y': exp_data["U_solution"][0, :]  # U_solution[0] is U(0,x)
+                }
+            else:
+                print(
+                    f"Warning: U_solution for {label} is not in expected 2D shape or is empty."
+                )
+        
+        try:
+            fig = viz_manager._create_line_comparison_plot(
+                plot_data,
+                title=f"Comparison of Initial Values U(0,x) {title_suffix}",
+                xlabel="x",
+                ylabel="U(0,x)",
+                save_path=save_to_file
+            )
+            return fig
+        except:
+            # Fallback to matplotlib if modern system fails
+            pass
+    
+    # Fallback to matplotlib
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 6))
     for exp_data in experiment_data_list:
         label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
@@ -256,8 +363,43 @@ def plot_comparison_U_slice(
     save_to_file: Optional[str] = None,
 ):
     """Plots U(t_k, x) for a specific time_index k for multiple experiments."""
-    plt.figure(figsize=(10, 6))
     actual_time = -1
+    
+    if VISUALIZATION_AVAILABLE:
+        # Use modern visualization system
+        viz_manager = create_visualization_manager(prefer_plotly=False)
+        
+        # Prepare data for plotting
+        plot_data = {}
+        for exp_data in experiment_data_list:
+            if 0 <= time_index < exp_data["U_solution"].shape[0]:
+                actual_time = exp_data["tSpace"][time_index]
+                label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
+                plot_data[label] = {
+                    'x': exp_data["xSpace"],
+                    'y': exp_data["U_solution"][time_index, :]
+                }
+            else:
+                print(
+                    f"Warning: time_index {time_index} out of bounds for experiment {exp_data.get('solver_name', 'Unknown')}"
+                )
+        
+        try:
+            fig = viz_manager._create_line_comparison_plot(
+                plot_data,
+                title=f"Comparison of U(t,x) at t={actual_time:.2f} {title_suffix}",
+                xlabel="x",
+                ylabel=f"U(t={actual_time:.2f}, x)",
+                save_path=save_to_file
+            )
+            return fig
+        except:
+            # Fallback to matplotlib if modern system fails
+            pass
+    
+    # Fallback to matplotlib
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(10, 6))
     for exp_data in experiment_data_list:
         if 0 <= time_index < exp_data["U_solution"].shape[0]:
             actual_time = exp_data["tSpace"][time_index]

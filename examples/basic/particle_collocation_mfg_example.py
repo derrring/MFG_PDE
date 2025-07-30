@@ -154,7 +154,7 @@ def run_particle_collocation_example():
     
     # Mass conservation analysis
     print(f"\n=== Mass Conservation Analysis ===")
-    total_mass = np.trapz(M[-1, :], problem.x_grid)
+    total_mass = trapezoid(M[-1, :], problem.x_grid)
     mass_error = abs(total_mass - 1.0)
     print(f"Final total mass: {total_mass:.6f}")
     print(f"Mass conservation error: {mass_error:.2e}")

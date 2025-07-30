@@ -43,6 +43,7 @@ import time
 from mfg_pde import MFGProblem, BoundaryConditions
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.integration import trapezoid
 
 
 class ElFarolBarMFG(MFGProblem):
@@ -131,7 +132,7 @@ class ElFarolBarMFG(MFGProblem):
         # Expected total attendance (integral of m weighted by going probability)
         # In state x, probability of going is x, so expected attendance is ∫ x*m(x) dx
         x_grid = np.linspace(self.xmin, self.xmax, len(m))
-        expected_attendance = np.trapezoid(x_grid * m, x_grid)
+        expected_attendance = trapezoid(x_grid * m, x_grid)
         
         # Crowding cost: quadratic penalty when attendance exceeds capacity
         crowding_penalty = self.crowd_aversion * np.maximum(0, expected_attendance - self.bar_capacity)**2
@@ -195,7 +196,7 @@ class ElFarolBarMFG(MFGProblem):
         
         # Ensure non-negative and normalized
         density = np.maximum(density, 0.01)
-        density = density / np.trapezoid(density, x)
+        density = density / trapezoid(density, x)
         
         return density
     
@@ -245,7 +246,7 @@ class ElFarolBarMFG(MFGProblem):
         
         # Expected attendance across all agents
         if self.current_m_density is not None:
-            total_attendance = np.trapezoid(self.x_grid * self.current_m_density, self.x_grid)
+            total_attendance = trapezoid(self.x_grid * self.current_m_density, self.x_grid)
         else:
             # Fallback: assume uniform distribution
             total_attendance = 0.5  # Middle of [0,1] range
@@ -297,7 +298,7 @@ class ElFarolBarMFG(MFGProblem):
         
         # Expected total attendance
         if self.current_m_density is not None:
-            total_attendance = np.trapezoid(self.x_grid * self.current_m_density, self.x_grid)
+            total_attendance = trapezoid(self.x_grid * self.current_m_density, self.x_grid)
         else:
             # Fallback: assume uniform distribution
             total_attendance = 0.5  # Middle of [0,1] range
@@ -337,7 +338,7 @@ class ElFarolBarMFG(MFGProblem):
         attendance_rates = []
         for t_idx in range(self.Nt):
             # Expected attendance at time t
-            attendance = np.trapezoid(x_grid * M[t_idx, :], x_grid)
+            attendance = trapezoid(x_grid * M[t_idx, :], x_grid)
             attendance_rates.append(attendance)
         
         analysis['attendance_evolution'] = attendance_rates
@@ -361,7 +362,7 @@ class ElFarolBarMFG(MFGProblem):
         analysis['efficiency'] = efficiency
         
         # Herding behavior indicator
-        final_mass_center = np.trapezoid(x_grid * final_density, x_grid)
+        final_mass_center = trapezoid(x_grid * final_density, x_grid)
         analysis['herding_indicator'] = abs(final_mass_center - 0.5)  # Deviation from uniform
         
         self.logger.info(f"Equilibrium Analysis: Attendance={attendance_rates[-1]:.3f}, "

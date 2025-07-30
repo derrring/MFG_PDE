@@ -6,6 +6,34 @@ The Santa Fe Bar Problem, originally conceived by W. Brian Arthur in 1994 as a "
 
 This document provides a rigorous comparison of discrete and continuous Mean Field Game formulations of the problem, tracing its intellectual evolution from Arthur's original agent-based model through game-theoretic analysis to modern MFG theory. We examine how different mathematical approaches capture distinct aspects of the coordination paradox and reveal fundamentally different collective behaviors.
 
+### Important Note: Towel on Beach vs. El Farol Bar
+
+**The "Towel on the Beach" problem is NOT an analogue of the El Farol Bar problem.** These are two distinct problems in game theory and Mean Field Games:
+
+#### El Farol Bar Problem (This Document)
+- **Type**: Attendance/participation coordination problem
+- **Decision**: Whether to attend (binary choice)
+- **Trade-off**: Individual vs. collective benefit based on attendance thresholds
+- **State space**: Attendance inclination or binary choice
+- **Equilibrium**: Attendance rate matching capacity
+- **Mathematical structure**: Coordination game with capacity constraints
+
+#### Towel on the Beach Problem (Separate Spatial Problem)
+- **Type**: Spatial competition under congestion
+- **Decision**: Where to position on beach (continuous spatial choice)  
+- **Trade-off**: Proximity to amenities vs. crowd avoidance
+- **State space**: Continuous position $x \in [0,1]$
+- **Equilibrium**: Spatial density distribution patterns
+- **Mathematical structure**: Spatial MFG with congestion penalties $\ln(m(x))$
+
+**Key Distinction**: The El Farol problem concerns **whether to participate**, while the Beach problem concerns **where to locate**. These have fundamentally different mathematical formulations and solution structures.
+
+For the **correct** Towel on Beach spatial competition model, see:
+- **Implementation**: `examples/basic/towel_beach_spatial_problem.py`
+- **Theory**: `docs/theory/towel_beach_spatial_competition.md`
+
+The present document focuses exclusively on the **Santa Fe El Farol Bar attendance coordination problem**.
+
 ## Historical Context and Evolution
 
 ### Arthur's Original Vision: A Critique of Deductive Rationality

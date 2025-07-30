@@ -45,6 +45,19 @@ from .solver_config import NewtonConfig as DataclassNewtonConfig
 from .solver_config import ParticleConfig as DataclassParticleConfig
 from .solver_config import PicardConfig as DataclassPicardConfig
 
+# OmegaConf-based configuration management (if available)
+try:
+    from .omegaconf_manager import (
+        OmegaConfManager,
+        create_omega_manager, 
+        load_beach_config,
+        load_experiment_config,
+        create_parameter_sweep_configs
+    )
+    OMEGACONF_AVAILABLE = True
+except ImportError:
+    OMEGACONF_AVAILABLE = False
+
 # Default to Pydantic configurations for new code
 __all__ = [
     # Pydantic configurations (recommended)
@@ -78,3 +91,13 @@ __all__ = [
     "create_accurate_config_dataclass",
     "create_research_config_dataclass",
 ]
+
+# Add OmegaConf functionality if available
+if OMEGACONF_AVAILABLE:
+    __all__.extend([
+        "OmegaConfManager",
+        "create_omega_manager",
+        "load_beach_config", 
+        "load_experiment_config",
+        "create_parameter_sweep_configs"
+    ])

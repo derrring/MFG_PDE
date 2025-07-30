@@ -11,11 +11,11 @@ from typing import Any, Dict, Literal, Optional, TYPE_CHECKING, Union
 
 import numpy as np
 
-from ..alg.adaptive_particle_collocation_solver import (
+from ..alg.mfg_solvers.adaptive_particle_collocation_solver import (
     SilentAdaptiveParticleCollocationSolver,
 )
-from ..alg.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
-from ..alg.enhanced_particle_collocation_solver import (
+from ..alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from ..alg.mfg_solvers.enhanced_particle_collocation_solver import (
     MonitoredParticleCollocationSolver,
 )
 from ..config.solver_config import (

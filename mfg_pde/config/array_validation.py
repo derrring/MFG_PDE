@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 from pydantic import BaseModel, Field, model_validator, validator
+from ..utils.integration import trapezoid
 
 
 class ArrayValidationConfig(BaseModel):
@@ -195,7 +196,7 @@ class MFGArrays(BaseModel):
             # Mass conservation check
             dx = grid_config.dx
             for t_idx in range(v.shape[0]):
-                mass_at_t = np.trapz(v[t_idx], dx=dx)
+                mass_at_t = trapezoid(v[t_idx], dx=dx)
                 if not np.isclose(
                     mass_at_t, 1.0, rtol=validation_config.mass_conservation_rtol
                 ):
@@ -257,7 +258,7 @@ class MFGArrays(BaseModel):
         dx = self.grid_config.dx
         mass_history = []
         for t_idx in range(self.M_solution.shape[0]):
-            mass_at_t = np.trapz(self.M_solution[t_idx], dx=dx)
+            mass_at_t = trapezoid(self.M_solution[t_idx], dx=dx)
             mass_history.append(mass_at_t)
 
         stats["mass_conservation"] = {

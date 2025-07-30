@@ -17,11 +17,11 @@ try:
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
-from ..alg.adaptive_particle_collocation_solver import (
+from ..alg.mfg_solvers.adaptive_particle_collocation_solver import (
     SilentAdaptiveParticleCollocationSolver,
 )
-from ..alg.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
-from ..alg.enhanced_particle_collocation_solver import (
+from ..alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from ..alg.mfg_solvers.enhanced_particle_collocation_solver import (
     MonitoredParticleCollocationSolver,
 )
 from ..config.pydantic_config import (
@@ -274,7 +274,7 @@ class PydanticSolverFactory:
     ) -> "ParticleCollocationSolver":
         """Create validated particle collocation solver."""
         try:
-            from ..alg.particle_collocation_solver import ParticleCollocationSolver
+            from ..alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)

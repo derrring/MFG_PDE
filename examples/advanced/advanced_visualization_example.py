@@ -18,9 +18,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from mfg_pde import MFGProblem, create_fast_solver
 from mfg_pde.utils import configure_logging, get_logger
-from mfg_pde.utils.advanced_visualization import (
-    MFGVisualizer, SolverMonitoringDashboard, VisualizationUtils,
-    quick_plot_solution, quick_plot_convergence
+from mfg_pde.visualization import (
+    MFGPlotlyVisualizer, MFGBokehVisualizer, create_visualization_manager,
+    quick_2d_plot, quick_3d_plot
 )
 
 
@@ -80,7 +80,7 @@ def generate_sample_data():
     
     # Normalize density at each time step
     for i in range(len(t_grid)):
-        M[i, :] = M[i, :] / np.trapz(M[i, :], x_grid)
+        M[i, :] = M[i, :] / trapezoid(M[i, :], x_grid)
     
     return U.T, M.T, x_grid, t_grid
 

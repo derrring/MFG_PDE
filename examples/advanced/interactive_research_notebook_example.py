@@ -32,6 +32,7 @@ from mfg_pde.utils.notebook_reporting import (
     create_comparative_analysis
 )
 from mfg_pde.utils.logging import configure_logging, get_logger
+from mfg_pde.utils.integration import trapezoid
 
 
 def generate_sample_data():
@@ -106,7 +107,7 @@ def generate_synthetic_data(problem):
     M = np.exp(-5 * (X - 0.5 - 0.1 * np.sin(2 * np.pi * T))**2) / np.sqrt(np.pi / 5)
     # Normalize each time slice
     for t in range(M.shape[0]):
-        M[t, :] = M[t, :] / np.trapz(M[t, :], problem.x_grid)
+        M[t, :] = M[t, :] / trapezoid(M[t, :], problem.x_grid)
     
     # Synthetic convergence info
     convergence_info = {

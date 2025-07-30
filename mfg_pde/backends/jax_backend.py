@@ -121,20 +121,8 @@ class JAXBackend(BaseBackend):
         return grad(func, argnums=argnum)
     
     def trapezoid(self, y, x=None, dx=1.0, axis=-1):
-        if hasattr(jax.scipy.integrate, 'trapezoid'):
-            return jax_trapezoid(y, x=x, dx=dx, axis=axis)
-        else:
-            # Fallback to manual implementation
-            return self._manual_trapezoid(y, x, dx, axis)
+        return jax_trapezoid(y, x=x, dx=dx, axis=axis)
     
-    def _manual_trapezoid(self, y, x=None, dx=1.0, axis=-1):
-        """Manual trapezoid implementation for older JAX versions."""
-        if x is None:
-            return dx * (jnp.sum(y, axis=axis) - 0.5 * (y[..., 0] + y[..., -1]))
-        else:
-            dx_arr = jnp.diff(x, axis=axis)
-            y_avg = 0.5 * (y[..., 1:] + y[..., :-1])
-            return jnp.sum(dx_arr * y_avg, axis=axis)
     
     def diff(self, a, n=1, axis=-1):
         return jnp.diff(a, n=n, axis=axis)

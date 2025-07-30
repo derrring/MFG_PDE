@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg
 
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.aux_func import npart, ppart
 
 from .base_fp import BaseFPSolver

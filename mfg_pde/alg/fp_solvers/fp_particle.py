@@ -4,7 +4,7 @@ import numpy as np
 import scipy.interpolate
 from scipy.stats import gaussian_kde
 
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 from .base_fp import BaseFPSolver  # Assuming BaseFPSolver is in the same directory
 

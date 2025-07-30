@@ -12,8 +12,8 @@ from .config import (
     create_research_config,
     MFGSolverConfig,
 )
-from .core.boundaries import BoundaryConditions
-from .core.mfg_problem import ExampleMFGProblem, MFGProblem
+from .geometry import BoundaryConditions
+from .core.mfg_problem import MFGProblem, ExampleMFGProblem, MFGProblemBuilder, MFGComponents, create_mfg_problem
 from .factory import (
     create_accurate_solver,
     create_fast_solver,
@@ -22,6 +22,27 @@ from .factory import (
     create_solver,
     SolverFactory,
 )
+from .factory.general_mfg_factory import (
+    GeneralMFGFactory,
+    get_general_factory,
+    create_general_mfg_problem,
+)
+
+# Geometry system for 2D/3D complex domains (optional dependency)
+try:
+    from .geometry import (
+        BaseGeometry,
+        MeshData,
+        Domain2D,
+        MeshPipeline,
+        MeshManager,
+        BoundaryManager,
+        GeometricBoundaryCondition,
+    )
+    
+    GEOMETRY_SYSTEM_AVAILABLE = True
+except ImportError:
+    GEOMETRY_SYSTEM_AVAILABLE = False
 
 # Interactive research reporting (optional dependency)
 try:

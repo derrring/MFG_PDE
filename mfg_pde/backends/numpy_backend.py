@@ -7,7 +7,7 @@ Reference implementation using NumPy for CPU-based computations.
 import numpy as np
 from typing import Any, Tuple, Optional, Union
 from .base_backend import BaseBackend
-from ..utils.numpy_compat import trapz_compat
+from ..utils.integration import trapezoid
 
 
 class NumPyBackend(BaseBackend):
@@ -81,7 +81,7 @@ class NumPyBackend(BaseBackend):
         return gradient_func
     
     def trapezoid(self, y, x=None, dx=1.0, axis=-1):
-        return trapz_compat(y, x=x, dx=dx, axis=axis)
+        return trapezoid(y, x=x, dx=dx, axis=axis)
     
     def diff(self, a, n=1, axis=-1):
         return np.diff(a, n=n, axis=axis)
