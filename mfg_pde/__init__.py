@@ -13,7 +13,15 @@ from .config import (
     MFGSolverConfig,
 )
 from .geometry import BoundaryConditions
+from .geometry.network_geometry import (
+    NetworkData, NetworkType, GridNetwork, RandomNetwork, ScaleFreeNetwork,
+    create_network, compute_network_statistics
+)
 from .core.mfg_problem import MFGProblem, ExampleMFGProblem, MFGProblemBuilder, MFGComponents, create_mfg_problem
+from .core.network_mfg_problem import (
+    NetworkMFGProblem, NetworkMFGComponents,
+    create_grid_mfg_problem, create_random_mfg_problem, create_scale_free_mfg_problem
+)
 from .factory import (
     create_accurate_solver,
     create_fast_solver,

@@ -22,6 +22,11 @@ from .base_geometry import BaseGeometry, MeshData
 from .domain_2d import Domain2D
 from .mesh_manager import MeshManager, MeshPipeline
 from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
+from .network_geometry import (
+    NetworkData, NetworkType, BaseNetworkGeometry,
+    GridNetwork, RandomNetwork, ScaleFreeNetwork,
+    create_network, compute_network_statistics
+)
 
 __all__ = [
     # 1D domain components
@@ -39,7 +44,16 @@ __all__ = [
     "MeshManager",
     "MeshPipeline",
     "BoundaryManager",
-    "GeometricBoundaryCondition"
+    "GeometricBoundaryCondition",
+    # Network geometry components
+    "NetworkData",
+    "NetworkType",
+    "BaseNetworkGeometry",
+    "GridNetwork",
+    "RandomNetwork", 
+    "ScaleFreeNetwork",
+    "create_network",
+    "compute_network_statistics"
 ]
 
 # Version information
