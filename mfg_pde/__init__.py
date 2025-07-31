@@ -17,6 +17,9 @@ from .geometry.network_geometry import (
     NetworkData, NetworkType, GridNetwork, RandomNetwork, ScaleFreeNetwork,
     create_network, compute_network_statistics
 )
+from .geometry.network_backend import (
+    NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
+)
 from .core.mfg_problem import MFGProblem, ExampleMFGProblem, MFGProblemBuilder, MFGComponents, create_mfg_problem
 from .core.network_mfg_problem import (
     NetworkMFGProblem, NetworkMFGComponents,

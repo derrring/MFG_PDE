@@ -27,6 +27,10 @@ from .network_geometry import (
     GridNetwork, RandomNetwork, ScaleFreeNetwork,
     create_network, compute_network_statistics
 )
+from .network_backend import (
+    NetworkBackendType, OperationType, get_backend_manager,
+    set_preferred_backend
+)
 
 __all__ = [
     # 1D domain components
@@ -53,7 +57,12 @@ __all__ = [
     "RandomNetwork", 
     "ScaleFreeNetwork",
     "create_network",
-    "compute_network_statistics"
+    "compute_network_statistics",
+    # Network backend components
+    "NetworkBackendType",
+    "OperationType", 
+    "get_backend_manager",
+    "set_preferred_backend"
 ]
 
 # Version information

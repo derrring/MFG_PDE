@@ -20,6 +20,13 @@ import scipy.sparse as sp
 from scipy.sparse import csr_matrix, diags
 from scipy.spatial.distance import pdist, squareform
 
+# Import unified backend system
+from .network_backend import (
+    NetworkBackendManager, NetworkBackendType, OperationType,
+    get_backend_manager, BackendNotAvailableError
+)
+
+# Legacy compatibility - keep old imports for fallback
 try:
     import networkx as nx
     NETWORKX_AVAILABLE = True
@@ -91,6 +98,10 @@ class NetworkData:
     
     # Additional data
     metadata: Dict[str, Any] = field(default_factory=dict)
+    
+    # Backend information
+    backend_type: Optional[NetworkBackendType] = None
+    backend_graph: Optional[Any] = None  # Original backend graph object
     
     def __post_init__(self):
         """Compute derived network properties and matrices."""
@@ -215,10 +226,15 @@ class BaseNetworkGeometry(ABC):
     network structures for Mean Field Games on graphs.
     """
     
-    def __init__(self, num_nodes: int, network_type: NetworkType = NetworkType.CUSTOM):
+    def __init__(self, 
+                 num_nodes: int, 
+                 network_type: NetworkType = NetworkType.CUSTOM,
+                 backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH):
         self.num_nodes = num_nodes
         self.network_type = network_type
         self.network_data: Optional[NetworkData] = None
+        self.backend_preference = backend_preference
+        self.backend_manager = get_backend_manager(backend_preference)
     
     @abstractmethod
     def create_network(self, **kwargs) -> NetworkData:
@@ -262,6 +278,49 @@ class BaseNetworkGeometry(ABC):
         else:
             raise ValueError(f"Unknown Laplacian type: {operator_type}")
     
+    def _create_network_data_from_backend(self, 
+                                        backend_graph: Any, 
+                                        backend_type: NetworkBackendType,
+                                        node_positions: Optional[np.ndarray] = None) -> NetworkData:
+        """
+        Convert backend graph to NetworkData format.
+        
+        Args:
+            backend_graph: Graph object from backend
+            backend_type: Which backend was used
+            node_positions: Optional node positions for visualization
+            
+        Returns:
+            NetworkData object with all matrices computed
+        """
+        backend = self.backend_manager.get_backend(backend_type)
+        
+        # Get adjacency matrix
+        adjacency_matrix = backend.get_adjacency_matrix(backend_graph)
+        
+        # Count edges (handle directed/undirected)
+        if hasattr(backend_graph, 'is_directed'):
+            is_directed = backend_graph.is_directed()
+        else:
+            # Check if matrix is symmetric
+            is_directed = not (adjacency_matrix != adjacency_matrix.T).nnz == 0
+        
+        num_edges = adjacency_matrix.nnz if is_directed else adjacency_matrix.nnz // 2
+        
+        # Create NetworkData
+        network_data = NetworkData(
+            adjacency_matrix=adjacency_matrix,
+            num_nodes=self.num_nodes,
+            num_edges=num_edges,
+            network_type=self.network_type,
+            node_positions=node_positions,
+            is_directed=is_directed,
+            backend_type=backend_type,
+            backend_graph=backend_graph
+        )
+        
+        return network_data
+    
     def visualize_network(self, 
                          node_values: Optional[np.ndarray] = None,
                          edge_values: Optional[np.ndarray] = None,
@@ -277,19 +336,30 @@ class BaseNetworkGeometry(ABC):
 class GridNetwork(BaseNetworkGeometry):
     """Grid/lattice network for MFG problems."""
     
-    def __init__(self, width: int, height: int = None, periodic: bool = False):
+    def __init__(self, width: int, height: int = None, periodic: bool = False,
+                 backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH):
         self.width = width
         self.height = height or width
         self.periodic = periodic
-        super().__init__(self.width * self.height, NetworkType.GRID)
+        super().__init__(self.width * self.height, NetworkType.GRID, backend_preference)
     
     def create_network(self, **kwargs) -> NetworkData:
-        """Create grid network."""
+        """Create grid network using optimal backend."""
         nodes = self.width * self.height
         
-        # Create adjacency matrix for grid
-        A = sp.lil_matrix((nodes, nodes))
+        # Choose optimal backend for this size
+        backend_type = self.backend_manager.choose_backend(
+            nodes, OperationType.GENERAL, 
+            force_backend=kwargs.get('force_backend')
+        )
+        backend = self.backend_manager.get_backend(backend_type)
+        
+        # Create graph using chosen backend
+        graph = backend.create_graph(nodes, directed=False)
+        
+        # Generate node positions
         positions = np.zeros((nodes, 2))
+        edges = []
         
         for i in range(self.height):
             for j in range(self.width):
@@ -300,18 +370,16 @@ class GridNetwork(BaseNetworkGeometry):
                 neighbors = self._get_grid_neighbors(i, j)
                 for ni, nj in neighbors:
                     neighbor_id = ni * self.width + nj
-                    A[node_id, neighbor_id] = 1
+                    if node_id < neighbor_id:  # Avoid duplicate edges
+                        edges.append((node_id, neighbor_id))
         
-        A = A.tocsr()
-        num_edges = A.nnz // 2  # Undirected graph
+        # Add edges to backend graph
+        if edges:
+            backend.add_edges(graph, edges)
         
-        self.network_data = NetworkData(
-            adjacency_matrix=A,
-            num_nodes=nodes,
-            num_edges=num_edges,
-            network_type=self.network_type,
-            node_positions=positions,
-            is_directed=False
+        # Convert to NetworkData
+        self.network_data = self._create_network_data_from_backend(
+            graph, backend_type, positions
         )
         
         return self.network_data
@@ -352,36 +420,43 @@ class GridNetwork(BaseNetworkGeometry):
 class RandomNetwork(BaseNetworkGeometry):
     """Random network (Erdős–Rényi model) for MFG problems."""
     
-    def __init__(self, num_nodes: int, connection_prob: float = 0.1):
+    def __init__(self, num_nodes: int, connection_prob: float = 0.1,
+                 backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH):
         self.connection_prob = connection_prob
-        super().__init__(num_nodes, NetworkType.RANDOM)
+        super().__init__(num_nodes, NetworkType.RANDOM, backend_preference)
     
     def create_network(self, seed: Optional[int] = None, **kwargs) -> NetworkData:
-        """Create random network."""
+        """Create random network using optimal backend."""
         if seed is not None:
             np.random.seed(seed)
         
-        # Generate random adjacency matrix
-        A = sp.random(self.num_nodes, self.num_nodes, 
-                     density=self.connection_prob, format='csr')
+        # Choose optimal backend for this size
+        backend_type = self.backend_manager.choose_backend(
+            self.num_nodes, OperationType.GENERAL,
+            force_backend=kwargs.get('force_backend')
+        )
+        backend = self.backend_manager.get_backend(backend_type)
         
-        # Make symmetric (undirected)
-        A = A + A.T
-        A.data = np.minimum(A.data, 1)  # Remove multiple edges
-        A.setdiag(0)  # Remove self-loops
+        # Create graph using chosen backend
+        graph = backend.create_graph(self.num_nodes, directed=False)
         
-        num_edges = A.nnz // 2
+        # Generate random edges
+        edges = []
+        for i in range(self.num_nodes):
+            for j in range(i + 1, self.num_nodes):
+                if np.random.random() < self.connection_prob:
+                    edges.append((i, j))
+        
+        # Add edges to backend graph
+        if edges:
+            backend.add_edges(graph, edges)
         
         # Generate random node positions for visualization
         positions = np.random.rand(self.num_nodes, 2)
         
-        self.network_data = NetworkData(
-            adjacency_matrix=A,
-            num_nodes=self.num_nodes,
-            num_edges=num_edges,
-            network_type=self.network_type,
-            node_positions=positions,
-            is_directed=False
+        # Convert to NetworkData
+        self.network_data = self._create_network_data_from_backend(
+            graph, backend_type, positions
         )
         
         return self.network_data
@@ -398,36 +473,107 @@ class RandomNetwork(BaseNetworkGeometry):
 class ScaleFreeNetwork(BaseNetworkGeometry):
     """Scale-free network (Barabási–Albert model) for MFG problems."""
     
-    def __init__(self, num_nodes: int, num_edges_per_node: int = 2):
+    def __init__(self, num_nodes: int, num_edges_per_node: int = 2,
+                 backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH):
         self.num_edges_per_node = num_edges_per_node
-        super().__init__(num_nodes, NetworkType.SCALE_FREE)
+        super().__init__(num_nodes, NetworkType.SCALE_FREE, backend_preference)
     
     def create_network(self, seed: Optional[int] = None, **kwargs) -> NetworkData:
-        """Create scale-free network."""
-        if not NETWORKX_AVAILABLE:
-            raise ImportError("NetworkX required for scale-free network generation")
+        """Create scale-free network using optimal backend."""
+        if seed is not None:
+            np.random.seed(seed)
         
-        # Generate Barabási–Albert network
-        G = nx.barabasi_albert_graph(self.num_nodes, self.num_edges_per_node, seed=seed)
+        # Choose optimal backend for this size
+        backend_type = self.backend_manager.choose_backend(
+            self.num_nodes, OperationType.GENERAL,
+            force_backend=kwargs.get('force_backend')
+        )
+        backend = self.backend_manager.get_backend(backend_type)
         
-        # Convert to sparse matrix
-        A = nx.adjacency_matrix(G, format='csr')
-        num_edges = G.number_of_edges()
+        # Create graph using chosen backend
+        graph = backend.create_graph(self.num_nodes, directed=False)
         
-        # Generate positions using spring layout
-        pos = nx.spring_layout(G, seed=seed)
-        positions = np.array([[pos[i][0], pos[i][1]] for i in range(self.num_nodes)])
+        # Generate Barabási-Albert network edges
+        edges = self._generate_barabasi_albert_edges(seed)
         
-        self.network_data = NetworkData(
-            adjacency_matrix=A,
-            num_nodes=self.num_nodes,
-            num_edges=num_edges,
-            network_type=self.network_type,
-            node_positions=positions,
-            is_directed=False
+        # Add edges to backend graph
+        if edges:
+            backend.add_edges(graph, edges)
+        
+        # Generate positions using spring-like layout
+        positions = self._generate_spring_positions(seed)
+        
+        # Convert to NetworkData
+        self.network_data = self._create_network_data_from_backend(
+            graph, backend_type, positions
         )
         
         return self.network_data
+    
+    def _generate_barabasi_albert_edges(self, seed: Optional[int] = None) -> List[Tuple[int, int]]:
+        """Generate Barabási-Albert network edges using preferential attachment."""
+        if seed is not None:
+            np.random.seed(seed)
+        
+        edges = []
+        node_degrees = np.zeros(self.num_nodes)
+        
+        # Start with a complete graph of m+1 nodes
+        initial_nodes = min(self.num_edges_per_node + 1, self.num_nodes)
+        for i in range(initial_nodes):
+            for j in range(i + 1, initial_nodes):
+                edges.append((i, j))
+                node_degrees[i] += 1
+                node_degrees[j] += 1
+        
+        # Add remaining nodes with preferential attachment
+        for new_node in range(initial_nodes, self.num_nodes):
+            # Select m existing nodes to connect to based on their degrees
+            targets = []
+            total_degree = np.sum(node_degrees[:new_node])
+            
+            if total_degree > 0:
+                # Preferential attachment: probability proportional to degree
+                probabilities = node_degrees[:new_node] / total_degree
+                targets = np.random.choice(
+                    new_node, 
+                    size=min(self.num_edges_per_node, new_node),
+                    replace=False,
+                    p=probabilities
+                )
+            else:
+                # Fallback: random attachment
+                targets = np.random.choice(
+                    new_node,
+                    size=min(self.num_edges_per_node, new_node),
+                    replace=False
+                )
+            
+            # Add edges
+            for target in targets:
+                edges.append((new_node, target))
+                node_degrees[new_node] += 1
+                node_degrees[target] += 1
+        
+        return edges
+    
+    def _generate_spring_positions(self, seed: Optional[int] = None) -> np.ndarray:
+        """Generate node positions using spring-like layout."""
+        if seed is not None:
+            np.random.seed(seed)
+        
+        # Simple circular layout as fallback
+        angles = np.linspace(0, 2*np.pi, self.num_nodes, endpoint=False)
+        radius = 1.0
+        positions = np.column_stack([
+            radius * np.cos(angles),
+            radius * np.sin(angles)
+        ])
+        
+        # Add some randomness
+        positions += 0.1 * np.random.randn(self.num_nodes, 2)
+        
+        return positions
     
     def compute_distance_matrix(self) -> np.ndarray:
         """Compute shortest path distances."""
@@ -441,17 +587,19 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
 # Factory function for creating networks
 def create_network(network_type: Union[str, NetworkType], 
                   num_nodes: int, 
+                  backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH,
                   **kwargs) -> BaseNetworkGeometry:
     """
-    Factory function for creating network geometries.
+    Factory function for creating network geometries with backend selection.
     
     Args:
         network_type: Type of network to create
         num_nodes: Number of nodes in network
+        backend_preference: Preferred backend (igraph, networkit, networkx)
         **kwargs: Network-specific parameters
         
     Returns:
-        Configured network geometry object
+        Configured network geometry object with optimal backend
     """
     if isinstance(network_type, str):
         network_type = NetworkType(network_type)
@@ -460,15 +608,15 @@ def create_network(network_type: Union[str, NetworkType],
         width = kwargs.get('width', int(np.sqrt(num_nodes)))
         height = kwargs.get('height', num_nodes // width)
         periodic = kwargs.get('periodic', False)
-        return GridNetwork(width, height, periodic)
+        return GridNetwork(width, height, periodic, backend_preference)
     
     elif network_type == NetworkType.RANDOM:
         connection_prob = kwargs.get('connection_prob', 0.1)
-        return RandomNetwork(num_nodes, connection_prob)
+        return RandomNetwork(num_nodes, connection_prob, backend_preference)
     
     elif network_type == NetworkType.SCALE_FREE:
         num_edges_per_node = kwargs.get('num_edges_per_node', 2)
-        return ScaleFreeNetwork(num_nodes, num_edges_per_node)
+        return ScaleFreeNetwork(num_nodes, num_edges_per_node, backend_preference)
     
     else:
         raise ValueError(f"Unsupported network type: {network_type}")
