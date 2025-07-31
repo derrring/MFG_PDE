@@ -128,6 +128,27 @@ logger = get_logger(__name__)
 from mfg_pde.utils.logging import log_solver_configuration, log_convergence_analysis
 ```
 
+### **Progress Bar Standards**
+```python
+# Use tqdm for progress tracking in solvers and long-running operations
+from tqdm import tqdm
+
+# Preferred usage patterns:
+# 1. Solver iterations
+for iteration in tqdm(range(max_iterations), desc="Solving MFG"):
+    # solver logic
+    pass
+
+# 2. Batch processing
+for problem in tqdm(problems, desc="Processing batch"):
+    # processing logic
+    pass
+
+# 3. With custom formatting
+pbar = tqdm(total=total_steps, desc="Convergence", 
+           bar_format='{desc}: {percentage:3.0f}%|{bar}| {n}/{total}')
+```
+
 ## 🎨 **Visualization Standards**
 
 ### **Plotting Preferences**
@@ -186,6 +207,7 @@ Use explicit preservation overrides for important directories:
 ### **Dependencies**
 - **Core**: numpy, scipy, matplotlib (always available)
 - **Interactive**: plotly, jupyter, nbformat (with fallbacks)
+- **Progress**: tqdm (acceptable for progress bars in scripts and solvers)
 - **Optional**: psutil for memory monitoring
 
 ### **Installation Context**
