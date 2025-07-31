@@ -32,7 +32,7 @@ from .interactive_plots import (
     quick_2d_plot,
     quick_3d_plot,
     PLOTLY_AVAILABLE,
-    BOKEH_AVAILABLE
+    BOKEH_AVAILABLE,
 )
 
 # Comprehensive analytics engine
@@ -40,7 +40,7 @@ from .mfg_analytics import (
     MFGAnalyticsEngine,
     create_analytics_engine,
     analyze_mfg_solution_quick,
-    analyze_parameter_sweep_quick
+    analyze_parameter_sweep_quick,
 )
 
 # Mathematical plotting with LaTeX support
@@ -49,19 +49,16 @@ from .mathematical_plots import (
     MFGMathematicalVisualizer,
     plot_mathematical_function,
     plot_mfg_density,
-    create_mathematical_visualizer
+    create_mathematical_visualizer,
 )
 
 # Network MFG visualization
-from .network_plots import (
-    NetworkMFGVisualizer,
-    create_network_visualizer
-)
+from .network_plots import NetworkMFGVisualizer, create_network_visualizer
 
 # Enhanced network MFG visualization
 from .enhanced_network_plots import (
     EnhancedNetworkMFGVisualizer,
-    create_enhanced_network_visualizer
+    create_enhanced_network_visualizer,
 )
 
 # Legacy plotting for backward compatibility
@@ -74,70 +71,68 @@ from .legacy_plotting import (
     # Aliases for backward compatibility
     legacy_myplot3d,
     legacy_plot_convergence,
-    legacy_plot_results
+    legacy_plot_results,
 )
 
 __all__ = [
     # Core interactive visualization
-    'MFGPlotlyVisualizer',
-    'MFGBokehVisualizer', 
-    'MFGVisualizationManager',
-    'create_plotly_visualizer',
-    'create_bokeh_visualizer',
-    'create_visualization_manager',
-    'quick_2d_plot',
-    'quick_3d_plot',
-    
+    "MFGPlotlyVisualizer",
+    "MFGBokehVisualizer",
+    "MFGVisualizationManager",
+    "create_plotly_visualizer",
+    "create_bokeh_visualizer",
+    "create_visualization_manager",
+    "quick_2d_plot",
+    "quick_3d_plot",
     # Network MFG visualization
-    'NetworkMFGVisualizer',
-    'create_network_visualizer',
-    'EnhancedNetworkMFGVisualizer', 
-    'create_enhanced_network_visualizer',
-    
+    "NetworkMFGVisualizer",
+    "create_network_visualizer",
+    "EnhancedNetworkMFGVisualizer",
+    "create_enhanced_network_visualizer",
     # Analytics engine
-    'MFGAnalyticsEngine',
-    'create_analytics_engine',
-    'analyze_mfg_solution_quick',
-    'analyze_parameter_sweep_quick',
-    
+    "MFGAnalyticsEngine",
+    "create_analytics_engine",
+    "analyze_mfg_solution_quick",
+    "analyze_parameter_sweep_quick",
     # Mathematical plotting
-    'MathematicalPlotter',
-    'MFGMathematicalVisualizer',
-    'plot_mathematical_function',
-    'plot_mfg_density',
-    'create_mathematical_visualizer',
-    
+    "MathematicalPlotter",
+    "MFGMathematicalVisualizer",
+    "plot_mathematical_function",
+    "plot_mfg_density",
+    "create_mathematical_visualizer",
     # Legacy compatibility
-    'myplot3d',
-    'plot_convergence', 
-    'plot_results',
-    'modern_plot_mfg_solution',
-    'modern_plot_convergence',
-    
+    "myplot3d",
+    "plot_convergence",
+    "plot_results",
+    "modern_plot_mfg_solution",
+    "modern_plot_convergence",
     # Availability flags
-    'PLOTLY_AVAILABLE',
-    'BOKEH_AVAILABLE'
+    "PLOTLY_AVAILABLE",
+    "BOKEH_AVAILABLE",
 ]
 
 # Version info
-__version__ = '2.0.0'  # Updated for comprehensive migration
-__author__ = 'MFG_PDE Team'
-__description__ = 'Comprehensive visualization system for Mean Field Games with full utils/ migration'
+__version__ = "2.0.0"  # Updated for comprehensive migration
+__author__ = "MFG_PDE Team"
+__description__ = (
+    "Comprehensive visualization system for Mean Field Games with full utils/ migration"
+)
 
 # Migration completion notice
 _MIGRATION_COMPLETE = True
 _MIGRATED_MODULES = [
-    'utils/plot_utils.py',
-    'utils/advanced_visualization.py', 
-    'utils/mathematical_visualization.py'
+    "utils/plot_utils.py",
+    "utils/advanced_visualization.py",
+    "utils/mathematical_visualization.py",
 ]
+
 
 def get_migration_info():
     """Get information about the completed migration."""
     return {
-        'migration_complete': _MIGRATION_COMPLETE,
-        'migrated_modules': _MIGRATED_MODULES,
-        'new_location': 'mfg_pde.visualization',
-        'version': __version__,
-        'legacy_support': True
+        "migration_complete": _MIGRATION_COMPLETE,
+        "migrated_modules": _MIGRATED_MODULES,
+        "new_location": "mfg_pde.visualization",
+        "version": __version__,
+        "legacy_support": True,
     }

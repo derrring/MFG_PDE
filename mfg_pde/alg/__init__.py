@@ -23,13 +23,11 @@ from .mfg_solvers import (
     # Fixed Point Iterators
     ConfigAwareFixedPointIterator,
     FixedPointIterator,
-    
     # Particle Collocation Solvers
     ParticleCollocationSolver,
     AdaptiveParticleCollocationSolver,
     MonitoredParticleCollocationSolver,
     EnhancedParticleCollocationSolver,
-    
     # Solver categories
     FIXED_POINT_SOLVERS,
     PARTICLE_SOLVERS,
@@ -58,47 +56,45 @@ QuietAdaptiveParticleCollocationSolver = AdaptiveParticleCollocationSolver
 HighPrecisionAdaptiveParticleCollocationSolver = AdaptiveParticleCollocationSolver
 SilentAdaptiveParticleCollocationSolver = AdaptiveParticleCollocationSolver
 
+
 def create_adaptive_particle_solver(**kwargs):
     """Create adaptive particle solver with backward compatibility."""
     return AdaptiveParticleCollocationSolver(**kwargs)
+
 
 def create_enhanced_solver(**kwargs):
     """Create enhanced particle solver with backward compatibility."""
     return EnhancedParticleCollocationSolver(**kwargs)
 
+
 __all__ = [
     # Base class
-    'MFGSolver',
-    
+    "MFGSolver",
     # Complete MFG solvers
-    'ConfigAwareFixedPointIterator',
-    'FixedPointIterator',
-    'DampedFixedPointIterator',  # Alias
-    'ParticleCollocationSolver',
-    'AdaptiveParticleCollocationSolver',
-    'MonitoredParticleCollocationSolver',
-    'EnhancedParticleCollocationSolver',
-    
+    "ConfigAwareFixedPointIterator",
+    "FixedPointIterator",
+    "DampedFixedPointIterator",  # Alias
+    "ParticleCollocationSolver",
+    "AdaptiveParticleCollocationSolver",
+    "MonitoredParticleCollocationSolver",
+    "EnhancedParticleCollocationSolver",
     # Specialized solvers
-    'BaseHJBSolver',
-    'HJBFDMSolver',
-    'HJBGFDMSolver', 
-    'HJBSemiLagrangianSolver',
-    'BaseFPSolver',
-    'FPFDMSolver',
-    'FPParticleSolver',
-    
+    "BaseHJBSolver",
+    "HJBFDMSolver",
+    "HJBGFDMSolver",
+    "HJBSemiLagrangianSolver",
+    "BaseFPSolver",
+    "FPFDMSolver",
+    "FPParticleSolver",
     # Utilities
-    'create_adaptive_particle_solver',
-    'create_enhanced_solver',
-    
+    "create_adaptive_particle_solver",
+    "create_enhanced_solver",
     # Solver categories
-    'FIXED_POINT_SOLVERS',
-    'PARTICLE_SOLVERS', 
-    'ALL_MFG_SOLVERS',
-    
+    "FIXED_POINT_SOLVERS",
+    "PARTICLE_SOLVERS",
+    "ALL_MFG_SOLVERS",
     # Backward compatibility
-    'QuietAdaptiveParticleCollocationSolver',
-    'HighPrecisionAdaptiveParticleCollocationSolver',
-    'SilentAdaptiveParticleCollocationSolver',
+    "QuietAdaptiveParticleCollocationSolver",
+    "HighPrecisionAdaptiveParticleCollocationSolver",
+    "SilentAdaptiveParticleCollocationSolver",
 ]

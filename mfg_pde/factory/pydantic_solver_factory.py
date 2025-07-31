@@ -20,7 +20,9 @@ except ImportError:
 from ..alg.mfg_solvers.adaptive_particle_collocation_solver import (
     SilentAdaptiveParticleCollocationSolver,
 )
-from ..alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from ..alg.mfg_solvers.config_aware_fixed_point_iterator import (
+    ConfigAwareFixedPointIterator,
+)
 from ..alg.mfg_solvers.enhanced_particle_collocation_solver import (
     MonitoredParticleCollocationSolver,
 )
@@ -274,7 +276,9 @@ class PydanticSolverFactory:
     ) -> "ParticleCollocationSolver":
         """Create validated particle collocation solver."""
         try:
-            from ..alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+            from ..alg.mfg_solvers.particle_collocation_solver import (
+                ParticleCollocationSolver,
+            )
 
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)

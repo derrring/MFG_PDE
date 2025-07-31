@@ -250,11 +250,15 @@ class ConfigAwareFixedPointIterator(MFGSolver):
                 ):
                     convergence_achieved = True
                     if solve_config.picard.verbose:
-                        print(f"SUCCESS: Convergence achieved after {iiter + 1} iterations!")
+                        print(
+                            f"SUCCESS: Convergence achieved after {iiter + 1} iterations!"
+                        )
                     break
 
         if not convergence_achieved and solve_config.picard.verbose:
-            print(f"WARNING:  Max iterations ({solve_config.picard.max_iterations}) reached")
+            print(
+                f"WARNING:  Max iterations ({solve_config.picard.max_iterations}) reached"
+            )
             final_error = max(
                 self.l2distu_rel[self.iterations_run - 1],
                 self.l2distm_rel[self.iterations_run - 1],

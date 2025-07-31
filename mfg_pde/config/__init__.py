@@ -49,11 +49,12 @@ from .solver_config import PicardConfig as DataclassPicardConfig
 try:
     from .omegaconf_manager import (
         OmegaConfManager,
-        create_omega_manager, 
+        create_omega_manager,
         load_beach_config,
         load_experiment_config,
-        create_parameter_sweep_configs
+        create_parameter_sweep_configs,
     )
+
     OMEGACONF_AVAILABLE = True
 except ImportError:
     OMEGACONF_AVAILABLE = False
@@ -94,10 +95,12 @@ __all__ = [
 
 # Add OmegaConf functionality if available
 if OMEGACONF_AVAILABLE:
-    __all__.extend([
-        "OmegaConfManager",
-        "create_omega_manager",
-        "load_beach_config", 
-        "load_experiment_config",
-        "create_parameter_sweep_configs"
-    ])
+    __all__.extend(
+        [
+            "OmegaConfManager",
+            "create_omega_manager",
+            "load_beach_config",
+            "load_experiment_config",
+            "create_parameter_sweep_configs",
+        ]
+    )

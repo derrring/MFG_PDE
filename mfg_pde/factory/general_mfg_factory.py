@@ -22,33 +22,35 @@ logger = get_logger(__name__)
 class GeneralMFGFactory:
     """
     Factory for creating general MFG problems from various input formats.
-    
+
     This factory can create any MFG problem from:
     - Python function definitions
     - Configuration files with function references
     - Inline lambda expressions in YAML
     - Symbolic mathematical expressions (future extension)
     """
-    
+
     def __init__(self):
         """Initialize general MFG factory."""
         self.function_registry = {}
-    
+
     def register_functions(self, functions: Dict[str, Callable]):
         """Register named functions for use in configurations."""
         self.function_registry.update(functions)
         logger.info(f"Registered {len(functions)} functions: {list(functions.keys())}")
-    
-    def create_from_functions(self,
-                            hamiltonian_func: Callable,
-                            hamiltonian_dm_func: Callable,
-                            domain_config: Dict[str, Any],
-                            time_config: Dict[str, Any],
-                            solver_config: Optional[Dict[str, Any]] = None,
-                            **optional_components) -> MFGProblem:
+
+    def create_from_functions(
+        self,
+        hamiltonian_func: Callable,
+        hamiltonian_dm_func: Callable,
+        domain_config: Dict[str, Any],
+        time_config: Dict[str, Any],
+        solver_config: Optional[Dict[str, Any]] = None,
+        **optional_components,
+    ) -> MFGProblem:
         """
         Create MFG problem from function objects.
-        
+
         Args:
             hamiltonian_func: Hamiltonian function H(...)
             hamiltonian_dm_func: Hamiltonian derivative dH/dm(...)
@@ -57,15 +59,17 @@ class GeneralMFGFactory:
             solver_config: Solver parameters {"sigma": ..., "coefCT": ...}
             **optional_components: Additional components (potential_func, etc.)
         """
-        
-        builder = (MFGProblemBuilder()
-                  .hamiltonian(hamiltonian_func, hamiltonian_dm_func)
-                  .domain(**domain_config)
-                  .time(**time_config))
-        
+
+        builder = (
+            MFGProblemBuilder()
+            .hamiltonian(hamiltonian_func, hamiltonian_dm_func)
+            .domain(**domain_config)
+            .time(**time_config)
+        )
+
         if solver_config:
             builder.coefficients(**solver_config)
-        
+
         # Add optional components
         for key, value in optional_components.items():
             if key == "potential_func" and value is not None:
@@ -87,117 +91,125 @@ class GeneralMFGFactory:
                 builder.parameters(**value)
             elif key == "description" and value is not None:
                 builder.description(value)
-        
+
         return builder.build()
-    
+
     def create_from_config_file(self, config_path: str) -> MFGProblem:
         """
         Create MFG problem from YAML configuration file.
-        
+
         Expected format:
         ```yaml
         problem:
           description: "My custom MFG problem"
           type: "custom"
-          
+
         functions:
           hamiltonian: "my_module.my_hamiltonian"
-          hamiltonian_dm: "my_module.my_hamiltonian_dm" 
+          hamiltonian_dm: "my_module.my_hamiltonian_dm"
           potential: "lambda x: 0.5 * x**2"
           initial_density: "lambda x: np.exp(-10*(x-0.5)**2)"
-          
+
         domain:
           xmin: 0.0
           xmax: 1.0
           Nx: 101
-          
+
         time:
           T: 1.0
           Nt: 101
-          
+
         solver:
           sigma: 0.5
           coefCT: 1.0
-          
+
         parameters:
           alpha: 2.0
           beta: 0.5
         ```
         """
-        
+
         config_manager = OmegaConfManager.from_yaml(config_path)
         config = config_manager.get_config()
-        
+
         return self.create_from_config_dict(dict(config))
-    
+
     def create_from_config_dict(self, config: Dict[str, Any]) -> MFGProblem:
         """Create MFG problem from configuration dictionary."""
-        
+
         # Extract function specifications
         functions_config = config.get("functions", {})
-        
+
         # Load required functions
         hamiltonian_func = self._load_function(functions_config.get("hamiltonian"))
-        hamiltonian_dm_func = self._load_function(functions_config.get("hamiltonian_dm"))
-        
+        hamiltonian_dm_func = self._load_function(
+            functions_config.get("hamiltonian_dm")
+        )
+
         if hamiltonian_func is None:
             raise ValueError("hamiltonian function is required")
         if hamiltonian_dm_func is None:
             raise ValueError("hamiltonian_dm function is required")
-        
+
         # Load optional functions
         optional_functions = {}
-        for key in ["potential", "initial_density", "final_value", "jacobian", "coupling"]:
+        for key in [
+            "potential",
+            "initial_density",
+            "final_value",
+            "jacobian",
+            "coupling",
+        ]:
             if key in functions_config:
                 func = self._load_function(functions_config[key])
                 if func is not None:
                     optional_functions[f"{key}_func"] = func
-        
+
         # Extract configurations
         domain_config = config.get("domain", {"xmin": 0.0, "xmax": 1.0, "Nx": 51})
         time_config = config.get("time", {"T": 1.0, "Nt": 51})
         solver_config = config.get("solver", {"sigma": 1.0, "coefCT": 0.5})
-        
+
         # Extract other components
         if "boundary_conditions" in config:
             optional_functions["boundary_conditions"] = config["boundary_conditions"]
-        
+
         if "parameters" in config:
             optional_functions["parameters"] = config["parameters"]
-        
+
         if "problem" in config:
             problem_info = config["problem"]
             if "description" in problem_info:
                 optional_functions["description"] = problem_info["description"]
-        
+
         return self.create_from_functions(
             hamiltonian_func=hamiltonian_func,
             hamiltonian_dm_func=hamiltonian_dm_func,
             domain_config=domain_config,
             time_config=time_config,
             solver_config=solver_config,
-            **optional_functions
+            **optional_functions,
         )
-    
+
     def _load_function(self, func_spec: Optional[str]) -> Optional[Callable]:
         """
         Load function from various specifications.
-        
+
         Supports:
         - Module path: "my_module.my_function"
         - Lambda expressions: "lambda x: x**2"
         - Registry names: "registered_function_name"
         """
-        
+
         if func_spec is None:
             return None
-        
+
         func_spec = func_spec.strip()
-        
+
         # Check if it's in the registry
         if func_spec in self.function_registry:
             return self.function_registry[func_spec]
-        
+
         # Check if it's a lambda expression
         if func_spec.startswith("lambda"):
             try:
@@ -213,13 +225,13 @@ class GeneralMFGFactory:
                     "max": max,
                     "min": min,
                     "pi": np.pi,
-                    "e": np.e
+                    "e": np.e,
                 }
                 return eval(func_spec, safe_namespace)
             except Exception as e:
                 logger.error(f"Failed to evaluate lambda function '{func_spec}': {e}")
                 return None
-        
+
         # Check if it's a module path
         if "." in func_spec:
             try:
@@ -229,67 +241,45 @@ class GeneralMFGFactory:
             except Exception as e:
                 logger.error(f"Failed to import function '{func_spec}': {e}")
                 return None
-        
+
         logger.warning(f"Could not resolve function specification: '{func_spec}'")
         return None
-    
+
     def create_template_config(self, filename: str):
         """Create a template configuration file."""
-        
+
         template = {
-            "problem": {
-                "description": "My custom MFG problem",
-                "type": "custom"
-            },
+            "problem": {"description": "My custom MFG problem", "type": "custom"},
             "functions": {
                 "hamiltonian": "lambda x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem: 0.5 * problem.coefCT * (problem.utils.npart(p_values.get('forward', 0))**2 + problem.utils.ppart(p_values.get('backward', 0))**2) - problem.f_potential[x_idx] - m_at_x**2",
                 "hamiltonian_dm": "lambda x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem: -2.0 * m_at_x",
                 "potential": "lambda x: 0.5 * x * (1 - x)",
                 "initial_density": "lambda x: np.exp(-10 * (x - 0.3)**2)",
-                "final_value": "lambda x: (x - 0.8)**2"
+                "final_value": "lambda x: (x - 0.8)**2",
             },
-            "domain": {
-                "xmin": 0.0,
-                "xmax": 1.0,
-                "Nx": 51
-            },
-            "time": {
-                "T": 1.0,
-                "Nt": 51
-            },
-            "solver": {
-                "sigma": 0.5,
-                "coefCT": 1.0
-            },
-            "boundary_conditions": {
-                "type": "periodic"
-            },
-            "parameters": {
-                "alpha": 1.0,
-                "beta": 0.5
-            }
+            "domain": {"xmin": 0.0, "xmax": 1.0, "Nx": 51},
+            "time": {"T": 1.0, "Nt": 51},
+            "solver": {"sigma": 0.5, "coefCT": 1.0},
+            "boundary_conditions": {"type": "periodic"},
+            "parameters": {"alpha": 1.0, "beta": 0.5},
         }
-        
+
         config_manager = OmegaConfManager(template)
         config_manager.save_config(filename)
         logger.info(f"Created template configuration: {filename}")
-    
+
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Validate configuration for general MFG problem."""
-        
-        validation = {
-            "valid": True,
-            "errors": [],
-            "warnings": []
-        }
-        
+
+        validation = {"valid": True, "errors": [], "warnings": []}
+
         # Check required sections
         required_sections = ["functions", "domain", "time"]
         for section in required_sections:
             if section not in config:
                 validation["valid"] = False
                 validation["errors"].append(f"Missing required section: {section}")
-        
+
         # Check required functions
         if "functions" in config:
             required_functions = ["hamiltonian", "hamiltonian_dm"]
@@ -298,7 +288,7 @@ class GeneralMFGFactory:
                 if func not in functions:
                     validation["valid"] = False
                     validation["errors"].append(f"Missing required function: {func}")
-        
+
         # Check domain parameters
         if "domain" in config:
             domain = config["domain"]
@@ -307,7 +297,7 @@ class GeneralMFGFactory:
                 if param not in domain:
                     validation["valid"] = False
                     validation["errors"].append(f"Missing domain parameter: {param}")
-        
+
         # Check time parameters
         if "time" in config:
             time_config = config["time"]
@@ -316,7 +306,7 @@ class GeneralMFGFactory:
                 if param not in time_config:
                     validation["valid"] = False
                     validation["errors"].append(f"Missing time parameter: {param}")
-        
+
         return validation
 
 
@@ -332,34 +322,31 @@ def get_general_factory() -> GeneralMFGFactory:
     return _global_general_factory
 
 
-def create_general_mfg_problem(hamiltonian_func: Callable,
-                               hamiltonian_dm_func: Callable,
-                               **kwargs) -> MFGProblem:
+def create_general_mfg_problem(
+    hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs
+) -> MFGProblem:
     """Convenience function to create general MFG problem."""
     factory = get_general_factory()
-    
+
     # Extract configurations
     domain_config = {
         "xmin": kwargs.pop("xmin", 0.0),
         "xmax": kwargs.pop("xmax", 1.0),
-        "Nx": kwargs.pop("Nx", 51)
+        "Nx": kwargs.pop("Nx", 51),
     }
-    
-    time_config = {
-        "T": kwargs.pop("T", 1.0),
-        "Nt": kwargs.pop("Nt", 51)
-    }
-    
+
+    time_config = {"T": kwargs.pop("T", 1.0), "Nt": kwargs.pop("Nt", 51)}
+
     solver_config = {
         "sigma": kwargs.pop("sigma", 1.0),
-        "coefCT": kwargs.pop("coefCT", 0.5)
+        "coefCT": kwargs.pop("coefCT", 0.5),
     }
-    
+
     return factory.create_from_functions(
         hamiltonian_func=hamiltonian_func,
         hamiltonian_dm_func=hamiltonian_dm_func,
         domain_config=domain_config,
-        time_config=time_config, 
+        time_config=time_config,
         solver_config=solver_config,
-        **kwargs
+        **kwargs,
     )

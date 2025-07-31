@@ -14,16 +14,33 @@ from .config import (
 )
 from .geometry import BoundaryConditions
 from .geometry.network_geometry import (
-    NetworkData, NetworkType, GridNetwork, RandomNetwork, ScaleFreeNetwork,
-    create_network, compute_network_statistics
+    NetworkData,
+    NetworkType,
+    GridNetwork,
+    RandomNetwork,
+    ScaleFreeNetwork,
+    create_network,
+    compute_network_statistics,
 )
 from .geometry.network_backend import (
-    NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
+    NetworkBackendType,
+    OperationType,
+    get_backend_manager,
+    set_preferred_backend,
 )
-from .core.mfg_problem import MFGProblem, ExampleMFGProblem, MFGProblemBuilder, MFGComponents, create_mfg_problem
+from .core.mfg_problem import (
+    MFGProblem,
+    ExampleMFGProblem,
+    MFGProblemBuilder,
+    MFGComponents,
+    create_mfg_problem,
+)
 from .core.network_mfg_problem import (
-    NetworkMFGProblem, NetworkMFGComponents,
-    create_grid_mfg_problem, create_random_mfg_problem, create_scale_free_mfg_problem
+    NetworkMFGProblem,
+    NetworkMFGComponents,
+    create_grid_mfg_problem,
+    create_random_mfg_problem,
+    create_scale_free_mfg_problem,
 )
 from .factory import (
     create_accurate_solver,
@@ -50,7 +67,7 @@ try:
         BoundaryManager,
         GeometricBoundaryCondition,
     )
-    
+
     GEOMETRY_SYSTEM_AVAILABLE = True
 except ImportError:
     GEOMETRY_SYSTEM_AVAILABLE = False

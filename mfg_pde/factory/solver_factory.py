@@ -14,7 +14,9 @@ import numpy as np
 from ..alg.mfg_solvers.adaptive_particle_collocation_solver import (
     SilentAdaptiveParticleCollocationSolver,
 )
-from ..alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from ..alg.mfg_solvers.config_aware_fixed_point_iterator import (
+    ConfigAwareFixedPointIterator,
+)
 from ..alg.mfg_solvers.enhanced_particle_collocation_solver import (
     MonitoredParticleCollocationSolver,
 )

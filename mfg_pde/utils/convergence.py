@@ -426,25 +426,26 @@ class AdvancedConvergenceMonitor:
 
         # Try to use modern visualization system first
         try:
-            from ..visualization import create_visualization_manager, modern_plot_convergence
-            
+            from ..visualization import (
+                create_visualization_manager,
+                modern_plot_convergence,
+            )
+
             # Extract data for modern plotting
             iterations = [d["iteration"] for d in self.convergence_history]
             u_errors = [d["u_l2_error"] for d in self.convergence_history]
             wasserstein_dists = [
                 d.get("wasserstein_distance", np.nan) for d in self.convergence_history
             ]
-            
+
             # Prepare convergence data dictionary
-            convergence_data = {
-                "L2_Error_u": u_errors
-            }
-            
+            convergence_data = {"L2_Error_u": u_errors}
+
             # Add Wasserstein data if available
             valid_wasserstein = [w for w in wasserstein_dists if not np.isnan(w)]
             if valid_wasserstein:
                 convergence_data["Wasserstein_Distance"] = valid_wasserstein
-            
+
             # Use modern convergence plotting
             viz_manager = create_visualization_manager(prefer_plotly=False)
             fig = modern_plot_convergence(
@@ -452,15 +453,17 @@ class AdvancedConvergenceMonitor:
                 title="Advanced Convergence History",
                 tolerances={
                     "L2_Error_u": self.u_magnitude_tol,
-                    "Wasserstein_Distance": self.wasserstein_tol
+                    "Wasserstein_Distance": self.wasserstein_tol,
                 },
-                save_path=save_path
+                save_path=save_path,
             )
             return fig
-            
+
         except Exception as e:
-            warnings.warn(f"Modern visualization failed ({e}), falling back to matplotlib")
-        
+            warnings.warn(
+                f"Modern visualization failed ({e}), falling back to matplotlib"
+            )
+
         # Fallback to matplotlib
         try:
             import matplotlib.pyplot as plt

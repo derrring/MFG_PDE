@@ -21,7 +21,7 @@ from .particle_collocation_solver import ParticleCollocationSolver
 from .adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from .enhanced_particle_collocation_solver import (
     MonitoredParticleCollocationSolver,
-    EnhancedParticleCollocationSolver
+    EnhancedParticleCollocationSolver,
 )
 
 # Backward compatibility alias
@@ -29,29 +29,28 @@ DampedFixedPointIterator = FixedPointIterator
 
 __all__ = [
     # Fixed Point Iterators
-    'ConfigAwareFixedPointIterator',
-    'FixedPointIterator',
-    'DampedFixedPointIterator',  # Alias
-    
+    "ConfigAwareFixedPointIterator",
+    "FixedPointIterator",
+    "DampedFixedPointIterator",  # Alias
     # Particle Collocation Solvers
-    'ParticleCollocationSolver',
-    'AdaptiveParticleCollocationSolver',
-    'MonitoredParticleCollocationSolver',
-    'EnhancedParticleCollocationSolver',
+    "ParticleCollocationSolver",
+    "AdaptiveParticleCollocationSolver",
+    "MonitoredParticleCollocationSolver",
+    "EnhancedParticleCollocationSolver",
 ]
 
 # Solver categories for factory selection
 FIXED_POINT_SOLVERS = [
-    'ConfigAwareFixedPointIterator',
-    'FixedPointIterator',
-    'DampedFixedPointIterator',  # Alias
+    "ConfigAwareFixedPointIterator",
+    "FixedPointIterator",
+    "DampedFixedPointIterator",  # Alias
 ]
 
 PARTICLE_SOLVERS = [
-    'ParticleCollocationSolver', 
-    'AdaptiveParticleCollocationSolver',
-    'MonitoredParticleCollocationSolver',
-    'EnhancedParticleCollocationSolver',
+    "ParticleCollocationSolver",
+    "AdaptiveParticleCollocationSolver",
+    "MonitoredParticleCollocationSolver",
+    "EnhancedParticleCollocationSolver",
 ]
 
 ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + PARTICLE_SOLVERS

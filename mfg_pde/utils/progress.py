@@ -82,9 +82,13 @@ class SolverTimer:
 
         if self.verbose:
             if exc_type is None:
-                print(f"SUCCESS: {self.description} completed in {self.format_duration()}")
+                print(
+                    f"SUCCESS: {self.description} completed in {self.format_duration()}"
+                )
             else:
-                print(f"ERROR: {self.description} failed after {self.format_duration()}")
+                print(
+                    f"ERROR: {self.description} failed after {self.format_duration()}"
+                )
 
     def format_duration(self) -> str:
         """Format duration in human-readable form."""

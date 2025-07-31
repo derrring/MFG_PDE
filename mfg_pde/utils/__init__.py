@@ -76,6 +76,7 @@ try:
         create_mfg_research_report,
         MFGNotebookReporter,
     )
+
     NOTEBOOK_REPORTING_AVAILABLE = True
 except ImportError:
     NOTEBOOK_REPORTING_AVAILABLE = False
@@ -87,6 +88,7 @@ try:
         convert_to_polars,
         validate_polars_dataframe,
     )
+
     POLARS_AVAILABLE = True
 except ImportError:
     POLARS_AVAILABLE = False
@@ -94,6 +96,7 @@ except ImportError:
 # Utility modules
 try:
     from .cli import main as cli_main
+
     CLI_AVAILABLE = True
 except ImportError:
     CLI_AVAILABLE = False
@@ -103,6 +106,7 @@ try:
         ExperimentManager,
         create_experiment_manager,
     )
+
     EXPERIMENT_MANAGER_AVAILABLE = True
 except ImportError:
     EXPERIMENT_MANAGER_AVAILABLE = False
@@ -113,6 +117,7 @@ try:
         get_memory_usage,
         optimize_memory_usage,
     )
+
     MEMORY_MANAGEMENT_AVAILABLE = True
 except ImportError:
     MEMORY_MANAGEMENT_AVAILABLE = False
@@ -123,16 +128,17 @@ try:
         benchmark_solver,
         profile_function,
     )
+
     PERFORMANCE_MONITORING_AVAILABLE = True
 except ImportError:
     PERFORMANCE_MONITORING_AVAILABLE = False
 
 # Availability info
 AVAILABLE_MODULES = {
-    'notebook_reporting': NOTEBOOK_REPORTING_AVAILABLE,
-    'polars_integration': POLARS_AVAILABLE,
-    'cli': CLI_AVAILABLE,
-    'experiment_manager': EXPERIMENT_MANAGER_AVAILABLE,
-    'memory_management': MEMORY_MANAGEMENT_AVAILABLE,
-    'performance_monitoring': PERFORMANCE_MONITORING_AVAILABLE,
+    "notebook_reporting": NOTEBOOK_REPORTING_AVAILABLE,
+    "polars_integration": POLARS_AVAILABLE,
+    "cli": CLI_AVAILABLE,
+    "experiment_manager": EXPERIMENT_MANAGER_AVAILABLE,
+    "memory_management": MEMORY_MANAGEMENT_AVAILABLE,
+    "performance_monitoring": PERFORMANCE_MONITORING_AVAILABLE,
 }

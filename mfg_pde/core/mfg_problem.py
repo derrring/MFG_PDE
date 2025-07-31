@@ -18,38 +18,39 @@ VALUE_BEFORE_SQUARE_LIMIT = 1e150
 # MFG Components for Custom Problem Definition
 # ============================================================================
 
+
 @dataclass
 class MFGComponents:
     """
     Container for all components that define a custom MFG problem.
-    
+
     This class holds all the mathematical components needed to fully specify
     an MFG problem, allowing users to provide custom implementations.
     """
-    
+
     # Core Hamiltonian components
-    hamiltonian_func: Optional[Callable] = None              # H(x, m, p, t) -> float
-    hamiltonian_dm_func: Optional[Callable] = None           # dH/dm(x, m, p, t) -> float
-    
+    hamiltonian_func: Optional[Callable] = None  # H(x, m, p, t) -> float
+    hamiltonian_dm_func: Optional[Callable] = None  # dH/dm(x, m, p, t) -> float
+
     # Optional Jacobian for advanced solvers
-    hamiltonian_jacobian_func: Optional[Callable] = None     # Jacobian contribution
-    
+    hamiltonian_jacobian_func: Optional[Callable] = None  # Jacobian contribution
+
     # Potential function V(x, t)
-    potential_func: Optional[Callable] = None                # V(x, t) -> float
-    
+    potential_func: Optional[Callable] = None  # V(x, t) -> float
+
     # Initial and final conditions
-    initial_density_func: Optional[Callable] = None          # m_0(x) -> float
-    final_value_func: Optional[Callable] = None              # u_T(x) -> float
-    
+    initial_density_func: Optional[Callable] = None  # m_0(x) -> float
+    final_value_func: Optional[Callable] = None  # u_T(x) -> float
+
     # Boundary conditions
     boundary_conditions: Optional[BoundaryConditions] = None
-    
+
     # Coupling terms (for advanced MFG formulations)
-    coupling_func: Optional[Callable] = None                 # Additional coupling terms
-    
+    coupling_func: Optional[Callable] = None  # Additional coupling terms
+
     # Problem parameters
     parameters: Dict[str, Any] = field(default_factory=dict)
-    
+
     # Metadata
     description: str = "MFG Problem"
     problem_type: str = "mfg"
@@ -59,15 +60,16 @@ class MFGComponents:
 # Unified MFG Problem Class
 # ============================================================================
 
+
 class MFGProblem:
     """
     Unified MFG problem class that can handle both predefined and custom formulations.
-    
+
     This class serves as the single constructor for all MFG problems:
     - Default usage: Uses built-in Hamiltonian (equivalent to old ExampleMFGProblem)
     - Custom usage: Accepts MFGComponents for full mathematical control
     """
-    
+
     def __init__(
         self,
         xmin: float = 0.0,
@@ -82,7 +84,7 @@ class MFGProblem:
     ) -> None:
         """
         Initialize MFG problem with optional custom components.
-        
+
         Args:
             xmin, xmax, Nx: Spatial domain parameters
             T, Nt: Time domain parameters
@@ -111,7 +113,7 @@ class MFGProblem:
         # Store custom components if provided
         self.components = components
         self.is_custom = components is not None
-        
+
         # Merge parameters
         if self.is_custom:
             all_params = {**components.parameters, **kwargs}
@@ -122,10 +124,10 @@ class MFGProblem:
         self.f_potential: NDArray[np.float64]
         self.u_fin: NDArray[np.float64]
         self.m_init: NDArray[np.float64]
-        
+
         # Initialize functions
         self._initialize_functions(**all_params)
-        
+
         # Validate custom components if provided
         if self.is_custom:
             self._validate_components()
@@ -150,7 +152,7 @@ class MFGProblem:
 
     def _initialize_functions(self, **kwargs: Any) -> None:
         """Initialize potential, initial density, and final value functions."""
-        
+
         # Initialize potential
         self.f_potential = np.zeros(self.Nx + 1)
         if self.is_custom and self.components.potential_func is not None:
@@ -179,66 +181,70 @@ class MFGProblem:
         integral_m_init = np.sum(self.m_init) * self.Dx
         if integral_m_init > 1e-10:
             self.m_init /= integral_m_init
-    
+
     def _validate_components(self):
         """Validate that required components are provided."""
         if self.components.hamiltonian_func is None:
             raise ValueError("hamiltonian_func is required in MFGComponents")
-        
+
         if self.components.hamiltonian_dm_func is None:
             raise ValueError("hamiltonian_dm_func is required in MFGComponents")
-        
+
         # Validate function signatures
         self._validate_function_signature(
-            self.components.hamiltonian_func, 
+            self.components.hamiltonian_func,
             "hamiltonian_func",
-            ["x_idx", "m_at_x", "p_values", "t_idx"]
+            ["x_idx", "m_at_x", "p_values", "t_idx"],
         )
-        
+
         self._validate_function_signature(
             self.components.hamiltonian_dm_func,
-            "hamiltonian_dm_func", 
-            ["x_idx", "m_at_x", "p_values", "t_idx"]
+            "hamiltonian_dm_func",
+            ["x_idx", "m_at_x", "p_values", "t_idx"],
         )
-    
-    def _validate_function_signature(self, func: Callable, name: str, expected_params: list):
+
+    def _validate_function_signature(
+        self, func: Callable, name: str, expected_params: list
+    ):
         """Validate function signature has expected parameters."""
         sig = inspect.signature(func)
         params = list(sig.parameters.keys())
-        
+
         # Allow extra parameters, but require the expected ones
         missing = [p for p in expected_params if p not in params]
         if missing:
-            raise ValueError(f"{name} must accept parameters: {expected_params}. Missing: {missing}")
-    
+            raise ValueError(
+                f"{name} must accept parameters: {expected_params}. Missing: {missing}"
+            )
+
     def _setup_custom_potential(self):
         """Setup custom potential function."""
         potential_func = self.components.potential_func
-        
+
         for i in range(self.Nx + 1):
             x_i = self.xSpace[i]
-            
+
             # Check if potential depends on time
             sig = inspect.signature(potential_func)
-            if 't' in sig.parameters or 'time' in sig.parameters:
+            if "t" in sig.parameters or "time" in sig.parameters:
                 # Time-dependent potential - use t=0 for initialization
                 self.f_potential[i] = potential_func(x_i, 0.0)
             else:
                 # Time-independent potential
                 self.f_potential[i] = potential_func(x_i)
-    
+
     def _setup_custom_initial_density(self):
         """Setup custom initial density function."""
         initial_func = self.components.initial_density_func
-        
+
         for i in range(self.Nx + 1):
             x_i = self.xSpace[i]
             self.m_init[i] = max(initial_func(x_i), 0.0)
-    
+
     def _setup_custom_final_value(self):
         """Setup custom final value function."""
         final_func = self.components.final_value_func
-        
+
         for i in range(self.Nx + 1):
             x_i = self.xSpace[i]
             self.u_fin[i] = final_func(x_i)
@@ -253,14 +259,18 @@ class MFGProblem:
         """
         Hamiltonian function - uses custom implementation if provided, otherwise default.
         """
-        
+
         # Use custom Hamiltonian if provided
         if self.is_custom:
             try:
                 # Get current position and time
                 x_position = self.xSpace[x_idx]
-                current_time = self.tSpace[t_idx] if t_idx is not None and t_idx < len(self.tSpace) else 0.0
-                
+                current_time = (
+                    self.tSpace[t_idx]
+                    if t_idx is not None and t_idx < len(self.tSpace)
+                    else 0.0
+                )
+
                 # Call user-provided Hamiltonian
                 result = self.components.hamiltonian_func(
                     x_idx=x_idx,
@@ -269,17 +279,20 @@ class MFGProblem:
                     p_values=p_values,
                     t_idx=t_idx,
                     current_time=current_time,
-                    problem=self  # Pass reference to problem for accessing parameters
+                    problem=self,  # Pass reference to problem for accessing parameters
                 )
-                
+
                 return result
-                
+
             except Exception as e:
                 # Log error but return NaN to maintain solver stability
                 import logging
-                logging.getLogger(__name__).warning(f"Custom Hamiltonian evaluation failed at x_idx={x_idx}: {e}")
+
+                logging.getLogger(__name__).warning(
+                    f"Custom Hamiltonian evaluation failed at x_idx={x_idx}: {e}"
+                )
                 return np.nan
-        
+
         # Default Hamiltonian implementation
         p_forward = p_values.get("forward")
         p_backward = p_values.get("backward")
@@ -352,14 +365,18 @@ class MFGProblem:
         """
         Hamiltonian derivative with respect to density - uses custom if provided, otherwise default.
         """
-        
+
         # Use custom derivative if provided
         if self.is_custom:
             try:
                 # Get current position and time
                 x_position = self.xSpace[x_idx]
-                current_time = self.tSpace[t_idx] if t_idx is not None and t_idx < len(self.tSpace) else 0.0
-                
+                current_time = (
+                    self.tSpace[t_idx]
+                    if t_idx is not None and t_idx < len(self.tSpace)
+                    else 0.0
+                )
+
                 # Call user-provided derivative
                 result = self.components.hamiltonian_dm_func(
                     x_idx=x_idx,
@@ -368,17 +385,20 @@ class MFGProblem:
                     p_values=p_values,
                     t_idx=t_idx,
                     current_time=current_time,
-                    problem=self  # Pass reference to problem
+                    problem=self,  # Pass reference to problem
                 )
-                
+
                 return result
-                
+
             except Exception as e:
                 # Log error but return NaN
                 import logging
-                logging.getLogger(__name__).warning(f"Custom Hamiltonian derivative failed at x_idx={x_idx}: {e}")
+
+                logging.getLogger(__name__).warning(
+                    f"Custom Hamiltonian derivative failed at x_idx={x_idx}: {e}"
+                )
                 return np.nan
-        
+
         # Default derivative implementation
         if np.isnan(m_at_x) or np.isinf(m_at_x):
             return np.nan
@@ -398,12 +418,13 @@ class MFGProblem:
                 return self.components.hamiltonian_jacobian_func(
                     U_for_jacobian_terms=U_for_jacobian_terms,
                     t_idx_n=t_idx_n,
-                    problem=self
+                    problem=self,
                 )
             except Exception as e:
                 import logging
+
                 logging.getLogger(__name__).warning(f"Jacobian computation failed: {e}")
-        
+
         # Default Jacobian implementation (only for non-custom problems)
         if not self.is_custom:
             Nx = self.Nx + 1
@@ -432,7 +453,7 @@ class MFGProblem:
                 J_U_H[i] = -coefCT * npart(p1_i) / (Dx**2)
 
             return J_D_H, J_L_H, J_U_H
-        
+
         return None
 
     def get_hjb_residual_m_coupling_term(
@@ -453,12 +474,15 @@ class MFGProblem:
                     U_n_current_guess_derivatives=U_n_current_guess_derivatives,
                     x_idx=x_idx,
                     t_idx_n=t_idx_n,
-                    problem=self
+                    problem=self,
                 )
             except Exception as e:
                 import logging
-                logging.getLogger(__name__).warning(f"Coupling term computation failed: {e}")
-        
+
+                logging.getLogger(__name__).warning(
+                    f"Coupling term computation failed: {e}"
+                )
+
         # Default coupling implementation (only for non-custom problems)
         if not self.is_custom:
             m_val = M_density_at_n_plus_1[x_idx]
@@ -471,7 +495,7 @@ class MFGProblem:
             if np.isinf(term) or np.isnan(term):
                 return np.nan
             return term
-        
+
         return None
 
     def get_boundary_conditions(self) -> BoundaryConditions:
@@ -481,23 +505,25 @@ class MFGProblem:
         else:
             # Default periodic boundary conditions
             return BoundaryConditions(type="periodic")
-    
+
     def get_potential_at_time(self, t_idx: int) -> np.ndarray:
         """Get potential function at specific time (for time-dependent potentials)."""
         if self.is_custom and self.components.potential_func is not None:
             # Check if potential is time-dependent
             sig = inspect.signature(self.components.potential_func)
-            if 't' in sig.parameters or 'time' in sig.parameters:
+            if "t" in sig.parameters or "time" in sig.parameters:
                 # Recompute potential at current time
                 current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
                 potential_at_t = np.zeros_like(self.f_potential)
-                
+
                 for i in range(self.Nx + 1):
                     x_i = self.xSpace[i]
-                    potential_at_t[i] = self.components.potential_func(x_i, current_time)
-                    
+                    potential_at_t[i] = self.components.potential_func(
+                        x_i, current_time
+                    )
+
                 return potential_at_t
-        
+
         return self.f_potential.copy()
 
     def get_final_u(self) -> np.ndarray:
@@ -505,7 +531,7 @@ class MFGProblem:
 
     def get_initial_m(self) -> np.ndarray:
         return self.m_init.copy()
-    
+
     def get_problem_info(self) -> Dict[str, Any]:
         """Get information about the problem."""
         if self.is_custom:
@@ -522,7 +548,7 @@ class MFGProblem:
                 "parameters": self.components.parameters,
                 "domain": {"xmin": self.xmin, "xmax": self.xmax, "Nx": self.Nx},
                 "time": {"T": self.T, "Nt": self.Nt},
-                "coefficients": {"sigma": self.sigma, "coefCT": self.coefCT}
+                "coefficients": {"sigma": self.sigma, "coefCT": self.coefCT},
             }
         else:
             return {
@@ -538,7 +564,7 @@ class MFGProblem:
                 "parameters": {},
                 "domain": {"xmin": self.xmin, "xmax": self.xmax, "Nx": self.Nx},
                 "time": {"T": self.T, "Nt": self.Nt},
-                "coefficients": {"sigma": self.sigma, "coefCT": self.coefCT}
+                "coefficients": {"sigma": self.sigma, "coefCT": self.coefCT},
             }
 
 
@@ -546,24 +572,27 @@ class MFGProblem:
 # Builder Pattern for Easy Problem Construction
 # ============================================================================
 
+
 class MFGProblemBuilder:
     """
     Builder class for constructing MFG problems step by step.
-    
+
     This class provides a fluent interface for building custom MFG problems.
     """
-    
+
     def __init__(self):
         """Initialize empty builder."""
         self.components = MFGComponents()
         self.domain_params = {}
         self.time_params = {}
         self.solver_params = {}
-    
-    def hamiltonian(self, hamiltonian_func: Callable, hamiltonian_dm_func: Callable) -> 'MFGProblemBuilder':
+
+    def hamiltonian(
+        self, hamiltonian_func: Callable, hamiltonian_dm_func: Callable
+    ) -> "MFGProblemBuilder":
         """
         Set custom Hamiltonian and its derivative.
-        
+
         Args:
             hamiltonian_func: H(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem) -> float
             hamiltonian_dm_func: dH/dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem) -> float
@@ -571,78 +600,82 @@ class MFGProblemBuilder:
         self.components.hamiltonian_func = hamiltonian_func
         self.components.hamiltonian_dm_func = hamiltonian_dm_func
         return self
-    
-    def potential(self, potential_func: Callable) -> 'MFGProblemBuilder':
+
+    def potential(self, potential_func: Callable) -> "MFGProblemBuilder":
         """
         Set custom potential function.
-        
+
         Args:
             potential_func: V(x, t=None) -> float
         """
         self.components.potential_func = potential_func
         return self
-    
-    def initial_density(self, initial_func: Callable) -> 'MFGProblemBuilder':
+
+    def initial_density(self, initial_func: Callable) -> "MFGProblemBuilder":
         """
         Set custom initial density function.
-        
+
         Args:
             initial_func: m_0(x) -> float
         """
         self.components.initial_density_func = initial_func
         return self
-    
-    def final_value(self, final_func: Callable) -> 'MFGProblemBuilder':
+
+    def final_value(self, final_func: Callable) -> "MFGProblemBuilder":
         """
         Set custom final value function.
-        
+
         Args:
             final_func: u_T(x) -> float
         """
         self.components.final_value_func = final_func
         return self
-    
-    def boundary_conditions(self, bc: BoundaryConditions) -> 'MFGProblemBuilder':
+
+    def boundary_conditions(self, bc: BoundaryConditions) -> "MFGProblemBuilder":
         """Set boundary conditions."""
         self.components.boundary_conditions = bc
         return self
-    
-    def jacobian(self, jacobian_func: Callable) -> 'MFGProblemBuilder':
+
+    def jacobian(self, jacobian_func: Callable) -> "MFGProblemBuilder":
         """Set optional Jacobian function for advanced solvers."""
         self.components.hamiltonian_jacobian_func = jacobian_func
         return self
-    
-    def coupling(self, coupling_func: Callable) -> 'MFGProblemBuilder':
+
+    def coupling(self, coupling_func: Callable) -> "MFGProblemBuilder":
         """Set optional coupling function."""
         self.components.coupling_func = coupling_func
         return self
-    
-    def domain(self, xmin: float, xmax: float, Nx: int) -> 'MFGProblemBuilder':
+
+    def domain(self, xmin: float, xmax: float, Nx: int) -> "MFGProblemBuilder":
         """Set spatial domain parameters."""
         self.domain_params = {"xmin": xmin, "xmax": xmax, "Nx": Nx}
         return self
-    
-    def time(self, T: float, Nt: int) -> 'MFGProblemBuilder':
+
+    def time(self, T: float, Nt: int) -> "MFGProblemBuilder":
         """Set time domain parameters."""
         self.time_params = {"T": T, "Nt": Nt}
         return self
-    
-    def coefficients(self, sigma: float = 1.0, coefCT: float = 0.5) -> 'MFGProblemBuilder':
+
+    def coefficients(
+        self, sigma: float = 1.0, coefCT: float = 0.5
+    ) -> "MFGProblemBuilder":
         """Set solver coefficients."""
         self.solver_params.update({"sigma": sigma, "coefCT": coefCT})
         return self
-    
-    def parameters(self, **params) -> 'MFGProblemBuilder':
+
+    def parameters(self, **params) -> "MFGProblemBuilder":
         """Set additional problem parameters."""
         self.components.parameters.update(params)
         return self
-    
-    def description(self, desc: str, problem_type: str = "custom") -> 'MFGProblemBuilder':
+
+    def description(
+        self, desc: str, problem_type: str = "custom"
+    ) -> "MFGProblemBuilder":
         """Set problem description and type."""
         self.components.description = desc
         self.components.problem_type = problem_type
         return self
-    
+
     def build(self) -> MFGProblem:
         """Build the MFG problem."""
         # Validate required components
@@ -650,18 +683,18 @@ class MFGProblemBuilder:
             raise ValueError("Hamiltonian function is required")
         if self.components.hamiltonian_dm_func is None:
             raise ValueError("Hamiltonian derivative function is required")
-        
+
         # Set default domain if not specified
         if not self.domain_params:
             self.domain_params = {"xmin": 0.0, "xmax": 1.0, "Nx": 51}
-        
+
         # Set default time domain if not specified
         if not self.time_params:
             self.time_params = {"T": 1.0, "Nt": 51}
-        
+
         # Combine all parameters
         all_params = {**self.domain_params, **self.time_params, **self.solver_params}
-        
+
         # Create and return problem with custom components
         return MFGProblem(components=self.components, **all_params)
 
@@ -670,22 +703,23 @@ class MFGProblemBuilder:
 # Convenience Functions and Backward Compatibility
 # ============================================================================
 
+
 def ExampleMFGProblem(**kwargs) -> MFGProblem:
     """
     Create an MFG problem with default Hamiltonian (backward compatibility).
-    
+
     This function provides backward compatibility for code that used
     the old ExampleMFGProblem class.
     """
     return MFGProblem(**kwargs)
 
 
-def create_mfg_problem(hamiltonian_func: Callable,
-                      hamiltonian_dm_func: Callable,
-                      **kwargs) -> MFGProblem:
+def create_mfg_problem(
+    hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs
+) -> MFGProblem:
     """
     Convenience function to create custom MFG problem.
-    
+
     Args:
         hamiltonian_func: Custom Hamiltonian function
         hamiltonian_dm_func: Hamiltonian derivative function
@@ -695,30 +729,24 @@ def create_mfg_problem(hamiltonian_func: Callable,
     domain_config = {
         "xmin": kwargs.pop("xmin", 0.0),
         "xmax": kwargs.pop("xmax", 1.0),
-        "Nx": kwargs.pop("Nx", 51)
+        "Nx": kwargs.pop("Nx", 51),
     }
-    
-    time_config = {
-        "T": kwargs.pop("T", 1.0),
-        "Nt": kwargs.pop("Nt", 51)
-    }
-    
+
+    time_config = {"T": kwargs.pop("T", 1.0), "Nt": kwargs.pop("Nt", 51)}
+
     solver_config = {
         "sigma": kwargs.pop("sigma", 1.0),
-        "coefCT": kwargs.pop("coefCT", 0.5)
+        "coefCT": kwargs.pop("coefCT", 0.5),
     }
-    
+
     # Create components
     components = MFGComponents(
         hamiltonian_func=hamiltonian_func,
         hamiltonian_dm_func=hamiltonian_dm_func,
-        **{k: v for k, v in kwargs.items() if k.endswith('_func')},
-        parameters={k: v for k, v in kwargs.items() if not k.endswith('_func')}
+        **{k: v for k, v in kwargs.items() if k.endswith("_func")},
+        parameters={k: v for k, v in kwargs.items() if not k.endswith("_func")},
     )
-    
+
     return MFGProblem(
-        components=components,
-        **domain_config,
-        **time_config, 
-        **solver_config
+        components=components, **domain_config, **time_config, **solver_config
     )

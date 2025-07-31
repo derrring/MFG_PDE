@@ -29,6 +29,6 @@ __all__ = [
     "create_research_solver",
     "create_monitored_solver",
     "BackendFactory",
-    "create_backend_for_problem", 
+    "create_backend_for_problem",
     "print_backend_info",
 ]

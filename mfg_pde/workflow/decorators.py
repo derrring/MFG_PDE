@@ -375,7 +375,9 @@ def retry(
                 try:
                     result = func(*args, **kwargs)
                     if attempt > 0:
-                        print(f"SUCCESS: {func.__name__} succeeded on attempt {attempt + 1}")
+                        print(
+                            f"SUCCESS: {func.__name__} succeeded on attempt {attempt + 1}"
+                        )
                     return result
 
                 except exceptions as e:

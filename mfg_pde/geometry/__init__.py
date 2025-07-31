@@ -17,33 +17,48 @@ Key Components:
 - BoundaryManager: Advanced boundary condition management
 """
 
-from .domain_1d import BoundaryConditions, Domain1D, periodic_bc, dirichlet_bc, neumann_bc, no_flux_bc, robin_bc
+from .domain_1d import (
+    BoundaryConditions,
+    Domain1D,
+    periodic_bc,
+    dirichlet_bc,
+    neumann_bc,
+    no_flux_bc,
+    robin_bc,
+)
 from .base_geometry import BaseGeometry, MeshData
 from .domain_2d import Domain2D
 from .mesh_manager import MeshManager, MeshPipeline
 from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
 from .network_geometry import (
-    NetworkData, NetworkType, BaseNetworkGeometry,
-    GridNetwork, RandomNetwork, ScaleFreeNetwork,
-    create_network, compute_network_statistics
+    NetworkData,
+    NetworkType,
+    BaseNetworkGeometry,
+    GridNetwork,
+    RandomNetwork,
+    ScaleFreeNetwork,
+    create_network,
+    compute_network_statistics,
 )
 from .network_backend import (
-    NetworkBackendType, OperationType, get_backend_manager,
-    set_preferred_backend
+    NetworkBackendType,
+    OperationType,
+    get_backend_manager,
+    set_preferred_backend,
 )
 
 __all__ = [
     # 1D domain components
     "BoundaryConditions",
-    "Domain1D", 
+    "Domain1D",
     "periodic_bc",
-    "dirichlet_bc", 
+    "dirichlet_bc",
     "neumann_bc",
     "no_flux_bc",
     "robin_bc",
     # Multi-dimensional geometry components
     "BaseGeometry",
-    "MeshData", 
+    "MeshData",
     "Domain2D",
     "MeshManager",
     "MeshPipeline",
@@ -54,42 +69,45 @@ __all__ = [
     "NetworkType",
     "BaseNetworkGeometry",
     "GridNetwork",
-    "RandomNetwork", 
+    "RandomNetwork",
     "ScaleFreeNetwork",
     "create_network",
     "compute_network_statistics",
     # Network backend components
     "NetworkBackendType",
-    "OperationType", 
+    "OperationType",
     "get_backend_manager",
-    "set_preferred_backend"
+    "set_preferred_backend",
 ]
 
 # Version information
 __version__ = "1.0.0"
+
 
 # Optional dependency checks with helpful error messages
 def _check_optional_dependencies():
     """Check for optional dependencies and provide helpful messages."""
     dependencies = {
         "gmsh": "pip install gmsh",
-        "meshio": "pip install meshio", 
-        "pyvista": "pip install pyvista"
+        "meshio": "pip install meshio",
+        "pyvista": "pip install pyvista",
     }
-    
+
     missing = []
     for dep, install_cmd in dependencies.items():
         try:
             __import__(dep)
         except ImportError:
             missing.append(f"{dep} ({install_cmd})")
-    
+
     if missing:
         import warnings
+
         warnings.warn(
             f"Optional dependencies missing for full geometry functionality: {', '.join(missing)}",
-            ImportWarning
+            ImportWarning,
         )
+
 
 # Check dependencies on import
 _check_optional_dependencies()
