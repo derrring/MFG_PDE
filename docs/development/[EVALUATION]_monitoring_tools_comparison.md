@@ -1,8 +1,11 @@
-# Weights & Biases vs TensorBoard: Comprehensive Comparison
+# [DEFERRED] Weights & Biases vs TensorBoard: Comprehensive Comparison
 
 **Date**: July 26, 2025  
+**Status**: DEFERRED - Focus on core MFG functionality first  
 **Context**: Scientific Computing & Mathematical Research (MFG_PDE)  
 **Purpose**: Compare experiment tracking and visualization tools for research workflows
+
+**Decision**: Advanced monitoring tools evaluation postponed until core MFG and network features are stable.
 
 ## Executive Summary
 

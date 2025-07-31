@@ -1,81 +1,105 @@
 # MFG_PDE Examples
 
-This directory contains working examples demonstrating the usage of different solvers in the MFG_PDE package.
+This directory provides guidance for using MFG_PDE examples and demonstrations.
 
-## Quick Start Examples
+## 📁 Example Locations
 
-### 1. Basic Particle-Collocation Solver
-**File**: [`basic_particle_collocation.py`](../../examples/particle_collocation_no_flux_bc.py)
+Examples are organized by complexity in the main repository:
 
-The recommended approach for most applications. Combines particle methods for Fokker-Planck with generalized finite differences for Hamilton-Jacobi-Bellman.
+- **[Basic Examples](../../examples/basic/)** - Simple demonstrations and getting started
+- **[Advanced Examples](../../examples/advanced/)** - Complex workflows and research tools  
+- **[Notebooks](../../examples/notebooks/)** - Interactive Jupyter demonstrations
 
+## 🚀 Quick Start Patterns
+
+### Modern Factory Pattern (Recommended)
 ```python
-from mfg_pde import ExampleMFGProblem, BoundaryConditions
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde import ExampleMFGProblem, create_fast_solver
 
 # Create problem
 problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=1.0, Nt=30)
-boundary_conditions = BoundaryConditions(type="no_flux")
 
-# Set up solver
-solver = ParticleCollocationSolver(problem=problem, ...)
-U, M, info = solver.solve(Niter=10, l2errBound=1e-3)
+# Create solver with intelligent defaults
+solver = create_fast_solver(problem, solver_type="adaptive_particle")
+result = solver.solve()
+
+print(f"Converged: {result.convergence_achieved}")
+print(f"Execution time: {result.execution_time:.2f}s")
 ```
 
-### 2. High-Performance QP-Collocation
-**File**: [`optimized_qp_collocation.py`](optimized_qp_collocation.py) (to be created)
-
-For demanding applications requiring maximum performance. Achieves 3-8x speedup with intelligent constraint detection.
-
-### 3. Pure FDM Solver
-**File**: [`pure_fdm.py`](../../examples/damped_fixed_point_pure_fdm.py)
-
-Traditional finite difference method for reference and comparison.
-
-### 4. Hybrid Particle-FDM
-**File**: [`hybrid_method.py`](../../examples/hybrid_particle_fdm.py)
-
-Combines particle Fokker-Planck with FDM Hamilton-Jacobi-Bellman.
-
-## Performance Comparisons
-
-### Three-Method Comparison
-**File**: [`compare_all_methods.py`](../../examples/compare_all_no_flux_bc.py)
-
-Comprehensive comparison of Pure FDM, Hybrid, and Particle-Collocation methods with performance metrics.
-
-## Problem Configuration
-
-All examples use no-flux boundary conditions and the standard MFG test problem:
-
+### Network MFG (NEW 2025)
 ```python
-problem = ExampleMFGProblem(
-    xmin=0.0, xmax=1.0,  # Spatial domain
-    Nx=20,               # Spatial grid points
-    T=1.0,               # Time horizon
-    Nt=30,               # Time steps
-    sigma=0.1,           # Volatility
-    coefCT=0.02          # Control cost
-)
+from mfg_pde import create_grid_mfg_problem, create_fast_solver
+
+# Create network MFG problem
+problem = create_grid_mfg_problem(10, 10, T=1.0, Nt=50)
+solver = create_fast_solver(problem, backend="auto")
+result = solver.solve()
+
+print(f"Network nodes: {problem.num_nodes}")
 ```
 
-## Expected Results
+### GPU Acceleration (JAX Backend)
+```python
+from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfg_pde.backends import create_backend
 
-- **Mass Conservation**: < 0.1% error for all methods
-- **Convergence**: Typically 3-6 fixed-point iterations
-- **Performance**: QP-Collocation fastest, Pure FDM most stable
-- **Accuracy**: All methods achieve similar solution quality
+problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=100, T=1.0, Nt=50)
 
-## Troubleshooting
+# Use JAX backend for GPU acceleration
+jax_backend = create_backend("jax", device="gpu", jit_compile=True)
+solver = create_fast_solver(problem, backend=jax_backend)
+result = solver.solve()
+```
 
-- If solvers fail to converge, try reducing `l2errBound` or increasing `Niter`
-- For stability issues with large problems, reduce time step (`Nt`) or spatial resolution (`Nx`)
-- Memory issues: Consider using Pure FDM for very large problems
+## 📊 Available Examples
 
-## Advanced Usage
+### Basic Examples
+- **[El Farol Bar](../../examples/basic/el_farol_simple_working.py)** - Classic MFG application
+- **[Towel Beach Problem](../../examples/basic/towel_beach_problem.py)** - Spatial competition model
+- **[Mesh Pipeline Demo](../../examples/basic/mesh_pipeline_demo.py)** - Geometry system demonstration
 
-See the [`tests/method_comparisons/`](../../tests/method_comparisons/) directory for:
-- Robustness testing across parameter ranges
-- Mass conservation validation
-- Performance benchmarking
-- Statistical analysis tools
+### Advanced Examples  
+- **[Network MFG Comparison](../../examples/advanced/network_mfg_comparison.py)** - Backend performance comparison
+- **[JAX Acceleration Demo](../../examples/advanced/jax_acceleration_demo.py)** - GPU benchmarking
+- **[Enhanced Network Visualization](../../examples/advanced/enhanced_network_visualization_demo.py)** - 3D network plots
+- **[Interactive Research Notebook](../../examples/advanced/interactive_research_notebook_example.py)** - Professional workflow
+
+### Notebooks
+- **[Working Demo](../../examples/notebooks/working_demo/)** - Interactive Jupyter demonstration
+
+## 🎯 Performance Expectations
+
+### Traditional MFG
+- **Mass Conservation**: <0.1% error across all solver types
+- **GPU Speedup**: 10-100× with JAX backend on compatible hardware
+- **CPU Performance**: 3-8× faster with modern optimizations
+- **Memory Usage**: <1GB for standard problems (Nx=100, Nt=100)
+
+### Network MFG
+- **Backend Performance**: 10-50× speedup with igraph/networkit vs networkx
+- **Scalability**: Linear scaling up to 10,000+ nodes
+- **Convergence**: Typically 5-15 iterations for grid networks
+
+## 🔧 Troubleshooting
+
+### Common Issues
+- **Installation**: Run `pip install -e .` from repository root
+- **GPU Issues**: Check JAX installation with `from jax import numpy as jnp`
+- **Network Backend**: Install optional dependencies: `pip install igraph networkit`
+
+### Performance Tips
+- Use `backend="auto"` for automatic optimal backend selection
+- Start with basic examples before advanced workflows
+- Monitor memory usage with built-in performance tracking
+
+## 📚 Documentation Links
+
+- **[User Documentation](../user/)** - Complete tutorials and guides
+- **[Theory Documentation](../theory/)** - Mathematical background
+- **[API Reference](../api/)** - Function and class documentation
+- **[Development Documentation](../development/)** - Technical implementation details
+
+---
+
+**Note**: All examples use modern factory patterns and current API conventions. For legacy code patterns, see archived documentation.
