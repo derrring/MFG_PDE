@@ -5,8 +5,10 @@ This module implements 2D geometric domains using the Gmsh → Meshio → PyVist
 supporting rectangular domains, complex shapes, holes, and CAD import.
 """
 
-from typing import Dict, List, Optional, Tuple, Union, Any, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np
+
 from .base_geometry import BaseGeometry, MeshData
 
 

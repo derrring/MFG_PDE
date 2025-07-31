@@ -17,8 +17,8 @@ from ...utils.convergence import AdvancedConvergenceMonitor, create_default_moni
 from .particle_collocation_solver import ParticleCollocationSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.geometry import BoundaryConditions
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry import BoundaryConditions
 
 
 class MonitoredParticleCollocationSolver(ParticleCollocationSolver):

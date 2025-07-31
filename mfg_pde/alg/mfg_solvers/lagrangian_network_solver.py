@@ -13,15 +13,16 @@ Key features:
 - Non-global continuity boundary conditions
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Callable, TYPE_CHECKING
 import time
+from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+
 import numpy as np
 from scipy.optimize import minimize
 from scipy.sparse import csr_matrix
 
-from .network_mfg_solver import NetworkFixedPointIterator
-from ..hjb_solvers.hjb_network import NetworkHJBSolver
 from ..fp_solvers.fp_network import NetworkFPSolver
+from ..hjb_solvers.hjb_network import NetworkHJBSolver
+from .network_mfg_solver import NetworkFixedPointIterator
 
 if TYPE_CHECKING:
     from ...core.network_mfg_problem import NetworkMFGProblem

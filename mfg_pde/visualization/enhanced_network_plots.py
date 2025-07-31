@@ -13,19 +13,20 @@ Key enhancements:
 - Advanced network statistics and analysis
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union, Callable
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import matplotlib.patches as patches
-from matplotlib.colors import Normalize
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.animation import FuncAnimation
 from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 
 try:
-    import plotly.graph_objects as go
     import plotly.express as px
-    from plotly.subplots import make_subplots
     import plotly.figure_factory as ff
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 
     PLOTLY_AVAILABLE = True
 except ImportError:
@@ -38,9 +39,9 @@ try:
 except ImportError:
     NETWORKX_AVAILABLE = False
 
-from .network_plots import NetworkMFGVisualizer
-from ..geometry.network_geometry import NetworkData
 from ..core.network_mfg_problem import NetworkMFGProblem
+from ..geometry.network_geometry import NetworkData
+from .network_plots import NetworkMFGVisualizer
 
 
 class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):

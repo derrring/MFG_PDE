@@ -12,35 +12,19 @@ from .config import (
     create_research_config,
     MFGSolverConfig,
 )
-from .geometry import BoundaryConditions
-from .geometry.network_geometry import (
-    NetworkData,
-    NetworkType,
-    GridNetwork,
-    RandomNetwork,
-    ScaleFreeNetwork,
-    create_network,
-    compute_network_statistics,
-)
-from .geometry.network_backend import (
-    NetworkBackendType,
-    OperationType,
-    get_backend_manager,
-    set_preferred_backend,
-)
 from .core.mfg_problem import (
-    MFGProblem,
-    ExampleMFGProblem,
-    MFGProblemBuilder,
-    MFGComponents,
     create_mfg_problem,
+    ExampleMFGProblem,
+    MFGComponents,
+    MFGProblem,
+    MFGProblemBuilder,
 )
 from .core.network_mfg_problem import (
-    NetworkMFGProblem,
-    NetworkMFGComponents,
     create_grid_mfg_problem,
     create_random_mfg_problem,
     create_scale_free_mfg_problem,
+    NetworkMFGComponents,
+    NetworkMFGProblem,
 )
 from .factory import (
     create_accurate_solver,
@@ -51,21 +35,37 @@ from .factory import (
     SolverFactory,
 )
 from .factory.general_mfg_factory import (
+    create_general_mfg_problem,
     GeneralMFGFactory,
     get_general_factory,
-    create_general_mfg_problem,
+)
+from .geometry import BoundaryConditions
+from .geometry.network_backend import (
+    get_backend_manager,
+    NetworkBackendType,
+    OperationType,
+    set_preferred_backend,
+)
+from .geometry.network_geometry import (
+    compute_network_statistics,
+    create_network,
+    GridNetwork,
+    NetworkData,
+    NetworkType,
+    RandomNetwork,
+    ScaleFreeNetwork,
 )
 
 # Geometry system for 2D/3D complex domains (optional dependency)
 try:
     from .geometry import (
         BaseGeometry,
-        MeshData,
-        Domain2D,
-        MeshPipeline,
-        MeshManager,
         BoundaryManager,
+        Domain2D,
         GeometricBoundaryCondition,
+        MeshData,
+        MeshManager,
+        MeshPipeline,
     )
 
     GEOMETRY_SYSTEM_AVAILABLE = True

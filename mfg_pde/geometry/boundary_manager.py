@@ -6,12 +6,13 @@ complex 2D/3D geometries with multiple boundary regions, curved boundaries,
 and advanced boundary condition types.
 """
 
-from typing import Dict, List, Optional, Tuple, Union, Callable, Any
-import numpy as np
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from .domain_1d import BoundaryConditions
+import numpy as np
+
 from .base_geometry import MeshData
+from .domain_1d import BoundaryConditions
 
 
 @dataclass

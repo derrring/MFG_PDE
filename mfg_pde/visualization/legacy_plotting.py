@@ -9,19 +9,20 @@ Migrated from:
 - Basic plotting functions from utils/advanced_visualization.py
 """
 
+import warnings
+from typing import Any, Dict, List, Optional
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from matplotlib.ticker import FormatStrFormatter, LinearLocator
 from mpl_toolkits.mplot3d import Axes3D
-from typing import Dict, List, Optional, Any
-import warnings
 
 # Modern visualization imports for enhanced functions
 try:
-    import plotly.graph_objects as go
     import plotly.express as px
+    import plotly.graph_objects as go
 
     PLOTLY_AVAILABLE = True
 except ImportError:
@@ -147,7 +148,7 @@ def modern_plot_mfg_solution(
     Recommended alternative to legacy functions.
     """
     try:
-        from .interactive_plots import quick_2d_plot, create_visualization_manager
+        from .interactive_plots import create_visualization_manager, quick_2d_plot
 
         viz_manager = create_visualization_manager()
 

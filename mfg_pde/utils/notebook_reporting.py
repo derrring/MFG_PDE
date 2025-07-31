@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+
 from .integration import trapezoid
 
 try:
@@ -42,8 +43,8 @@ try:
 except ImportError:
     PLOTLY_AVAILABLE = False
 
-from .logging import get_logger
 from ..visualization import MFGMathematicalVisualizer
+from .logging import get_logger
 
 
 class NotebookReportError(Exception):

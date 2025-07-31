@@ -18,14 +18,15 @@ Key differences from continuous MFG:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import csr_matrix
 
+from ..geometry.network_geometry import BaseNetworkGeometry, NetworkData
 from .mfg_problem import MFGProblem
-from ..geometry.network_geometry import NetworkData, BaseNetworkGeometry
 
 
 @dataclass

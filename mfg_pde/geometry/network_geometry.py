@@ -13,8 +13,9 @@ Key concepts:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Union, Any, Callable
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import csr_matrix, diags
@@ -22,11 +23,11 @@ from scipy.spatial.distance import pdist, squareform
 
 # Import unified backend system
 from .network_backend import (
+    BackendNotAvailableError,
+    get_backend_manager,
     NetworkBackendManager,
     NetworkBackendType,
     OperationType,
-    get_backend_manager,
-    BackendNotAvailableError,
 )
 
 # Legacy compatibility - keep old imports for fallback

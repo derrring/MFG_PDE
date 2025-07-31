@@ -21,58 +21,57 @@ Migrated Components:
 - utils/mathematical_visualization.py → mathematical_plots.py
 """
 
-# Core interactive visualization system
-from .interactive_plots import (
-    MFGPlotlyVisualizer,
-    MFGBokehVisualizer,
-    MFGVisualizationManager,
-    create_plotly_visualizer,
-    create_bokeh_visualizer,
-    create_visualization_manager,
-    quick_2d_plot,
-    quick_3d_plot,
-    PLOTLY_AVAILABLE,
-    BOKEH_AVAILABLE,
+# Enhanced network MFG visualization
+from .enhanced_network_plots import (
+    create_enhanced_network_visualizer,
+    EnhancedNetworkMFGVisualizer,
 )
 
-# Comprehensive analytics engine
-from .mfg_analytics import (
-    MFGAnalyticsEngine,
-    create_analytics_engine,
-    analyze_mfg_solution_quick,
-    analyze_parameter_sweep_quick,
+# Core interactive visualization system
+from .interactive_plots import (
+    BOKEH_AVAILABLE,
+    create_bokeh_visualizer,
+    create_plotly_visualizer,
+    create_visualization_manager,
+    MFGBokehVisualizer,
+    MFGPlotlyVisualizer,
+    MFGVisualizationManager,
+    PLOTLY_AVAILABLE,
+    quick_2d_plot,
+    quick_3d_plot,
+)
+
+# Legacy plotting for backward compatibility
+from .legacy_plotting import (  # Aliases for backward compatibility
+    legacy_myplot3d,
+    legacy_plot_convergence,
+    legacy_plot_results,
+    modern_plot_convergence,
+    modern_plot_mfg_solution,
+    myplot3d,
+    plot_convergence,
+    plot_results,
 )
 
 # Mathematical plotting with LaTeX support
 from .mathematical_plots import (
+    create_mathematical_visualizer,
     MathematicalPlotter,
     MFGMathematicalVisualizer,
     plot_mathematical_function,
     plot_mfg_density,
-    create_mathematical_visualizer,
+)
+
+# Comprehensive analytics engine
+from .mfg_analytics import (
+    analyze_mfg_solution_quick,
+    analyze_parameter_sweep_quick,
+    create_analytics_engine,
+    MFGAnalyticsEngine,
 )
 
 # Network MFG visualization
-from .network_plots import NetworkMFGVisualizer, create_network_visualizer
-
-# Enhanced network MFG visualization
-from .enhanced_network_plots import (
-    EnhancedNetworkMFGVisualizer,
-    create_enhanced_network_visualizer,
-)
-
-# Legacy plotting for backward compatibility
-from .legacy_plotting import (
-    myplot3d,
-    plot_convergence,
-    plot_results,
-    modern_plot_mfg_solution,
-    modern_plot_convergence,
-    # Aliases for backward compatibility
-    legacy_myplot3d,
-    legacy_plot_convergence,
-    legacy_plot_results,
-)
+from .network_plots import create_network_visualizer, NetworkMFGVisualizer
 
 __all__ = [
     # Core interactive visualization

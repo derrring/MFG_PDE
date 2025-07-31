@@ -18,8 +18,8 @@ from ...utils.convergence import adaptive_convergence
 from .particle_collocation_solver import ParticleCollocationSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.geometry import BoundaryConditions
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry import BoundaryConditions
 
 
 @adaptive_convergence(

@@ -15,14 +15,14 @@ Architecture:
 - Use specialized solvers from ../hjb_solvers/ and ../fp_solvers/
 """
 
+from .adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from .config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from .damped_fixed_point_iterator import FixedPointIterator
-from .particle_collocation_solver import ParticleCollocationSolver
-from .adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from .enhanced_particle_collocation_solver import (
-    MonitoredParticleCollocationSolver,
     EnhancedParticleCollocationSolver,
+    MonitoredParticleCollocationSolver,
 )
+from .particle_collocation_solver import ParticleCollocationSolver
 
 # Backward compatibility alias
 DampedFixedPointIterator = FixedPointIterator

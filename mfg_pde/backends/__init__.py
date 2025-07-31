@@ -5,8 +5,8 @@ This module provides different computational backends for MFG solving,
 including NumPy (default) and JAX (high-performance with GPU support).
 """
 
-from typing import Dict, Any, Optional
 import warnings
+from typing import Any, Dict, Optional
 
 # Backend registry
 _BACKENDS = {}

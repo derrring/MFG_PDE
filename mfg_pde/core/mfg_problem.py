@@ -1,13 +1,14 @@
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Tuple, Union
 import inspect
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
 
 # Import npart and ppart from the utils module
 from mfg_pde.utils.aux_func import npart, ppart
+
 from ..geometry import BoundaryConditions
 
 # Define a limit for values before squaring to prevent overflow within H

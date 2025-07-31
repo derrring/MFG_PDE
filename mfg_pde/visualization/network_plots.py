@@ -14,14 +14,15 @@ Key features:
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.animation import FuncAnimation
 
 try:
-    import plotly.graph_objects as go
     import plotly.express as px
+    import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
     PLOTLY_AVAILABLE = True
@@ -35,8 +36,8 @@ try:
 except ImportError:
     NETWORKX_AVAILABLE = False
 
-from ..geometry.network_geometry import NetworkData
 from ..core.network_mfg_problem import NetworkMFGProblem
+from ..geometry.network_geometry import NetworkData
 
 
 class NetworkMFGVisualizer:

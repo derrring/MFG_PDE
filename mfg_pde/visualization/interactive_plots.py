@@ -9,17 +9,18 @@ This module provides high-quality interactive visualizations for:
 - Multi-dimensional data exploration
 """
 
-from typing import Any, Dict, List, Optional, Union, Tuple
-from pathlib import Path
-import numpy as np
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 # Core dependencies
 try:
-    import plotly.graph_objects as go
     import plotly.express as px
-    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
     import plotly.offline as offline
+    from plotly.subplots import make_subplots
 
     PLOTLY_AVAILABLE = True
 except ImportError:
@@ -27,12 +28,12 @@ except ImportError:
     go = px = make_subplots = offline = None
 
 try:
-    from bokeh.plotting import figure, save, output_file
-    from bokeh.models import HoverTool, ColorBar, LinearColorMapper, ColumnDataSource
-    from bokeh.palettes import Viridis256, Plasma256, Inferno256
-    from bokeh.layouts import gridplot, column, row
-    from bokeh.io import curdoc, push_notebook, show
     import bokeh.transform as transform
+    from bokeh.io import curdoc, push_notebook, show
+    from bokeh.layouts import column, gridplot, row
+    from bokeh.models import ColorBar, ColumnDataSource, HoverTool, LinearColorMapper
+    from bokeh.palettes import Inferno256, Plasma256, Viridis256
+    from bokeh.plotting import figure, output_file, save
 
     BOKEH_AVAILABLE = True
 except ImportError:
@@ -922,8 +923,8 @@ class MFGVisualizationManager:
             param_values = np.array([r.get(parameter_name, 0) for r in sweep_results])
             crater_depths = np.array([r.get("crater_depth", 0) for r in sweep_results])
 
-            from bokeh.plotting import figure
             from bokeh.layouts import column
+            from bokeh.plotting import figure
 
             p1 = figure(
                 title=f"Crater Depth vs {parameter_name}",

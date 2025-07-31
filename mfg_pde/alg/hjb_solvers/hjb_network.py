@@ -20,7 +20,8 @@ Key algorithms:
 - Value iteration on discrete state spaces
 """
 
-from typing import Dict, List, Optional, TYPE_CHECKING, Union, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import csr_matrix

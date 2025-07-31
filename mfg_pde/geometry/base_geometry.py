@@ -7,7 +7,8 @@ for the Gmsh → Meshio → PyVista mesh generation system.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
 

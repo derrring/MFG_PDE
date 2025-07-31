@@ -12,10 +12,11 @@ Features:
 - Integration with existing NumPy arrays
 """
 
-from typing import Any, Dict, List, Optional, Union, Tuple
-from pathlib import Path
-import numpy as np
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 try:
     import polars as pl

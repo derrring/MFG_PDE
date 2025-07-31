@@ -17,34 +17,34 @@ Key Components:
 - BoundaryManager: Advanced boundary condition management
 """
 
+from .base_geometry import BaseGeometry, MeshData
+from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
 from .domain_1d import (
     BoundaryConditions,
-    Domain1D,
-    periodic_bc,
     dirichlet_bc,
+    Domain1D,
     neumann_bc,
     no_flux_bc,
+    periodic_bc,
     robin_bc,
 )
-from .base_geometry import BaseGeometry, MeshData
 from .domain_2d import Domain2D
 from .mesh_manager import MeshManager, MeshPipeline
-from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
-from .network_geometry import (
-    NetworkData,
-    NetworkType,
-    BaseNetworkGeometry,
-    GridNetwork,
-    RandomNetwork,
-    ScaleFreeNetwork,
-    create_network,
-    compute_network_statistics,
-)
 from .network_backend import (
+    get_backend_manager,
     NetworkBackendType,
     OperationType,
-    get_backend_manager,
     set_preferred_backend,
+)
+from .network_geometry import (
+    BaseNetworkGeometry,
+    compute_network_statistics,
+    create_network,
+    GridNetwork,
+    NetworkData,
+    NetworkType,
+    RandomNetwork,
+    ScaleFreeNetwork,
 )
 
 __all__ = [

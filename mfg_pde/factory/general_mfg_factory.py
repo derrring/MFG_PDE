@@ -5,15 +5,16 @@ This module provides high-level interfaces for creating any MFG problem
 through configuration files and programmatic function definitions.
 """
 
-from typing import Dict, Any, Callable, Optional, Union
-import numpy as np
 import importlib.util
 import inspect
 from pathlib import Path
+from typing import Any, Callable, Dict, Optional, Union
 
-from ..core.mfg_problem import MFGProblem, MFGProblemBuilder, MFGComponents
-from ..geometry import BoundaryConditions
+import numpy as np
+
 from ..config.omegaconf_manager import OmegaConfManager
+from ..core.mfg_problem import MFGComponents, MFGProblem, MFGProblemBuilder
+from ..geometry import BoundaryConditions
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)

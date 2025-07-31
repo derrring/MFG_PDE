@@ -5,7 +5,8 @@ Defines the abstract interface that all computational backends must implement.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple, Optional, Union
+from typing import Any, Optional, Tuple, Union
+
 import numpy as np
 
 

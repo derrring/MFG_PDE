@@ -4,10 +4,12 @@ NumPy Backend for MFG_PDE
 Reference implementation using NumPy for CPU-based computations.
 """
 
+from typing import Any, Optional, Tuple, Union
+
 import numpy as np
-from typing import Any, Tuple, Optional, Union
-from .base_backend import BaseBackend
+
 from ..utils.integration import trapezoid
+from .base_backend import BaseBackend
 
 
 class NumPyBackend(BaseBackend):

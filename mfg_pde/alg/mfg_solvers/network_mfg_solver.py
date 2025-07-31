@@ -10,13 +10,14 @@ Key solver types:
 - NetworkPolicyMFGSolver: Policy iteration-based network MFG solver
 """
 
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING, Union
 import time
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING, Union
+
 import numpy as np
 
 from ..base_mfg_solver import MFGSolver
-from ..hjb_solvers.hjb_network import NetworkHJBSolver, create_network_hjb_solver
-from ..fp_solvers.fp_network import NetworkFPSolver, create_network_fp_solver
+from ..fp_solvers.fp_network import create_network_fp_solver, NetworkFPSolver
+from ..hjb_solvers.hjb_network import create_network_hjb_solver, NetworkHJBSolver
 
 if TYPE_CHECKING:
     from ...core.network_mfg_problem import NetworkMFGProblem

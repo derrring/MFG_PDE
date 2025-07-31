@@ -48,11 +48,11 @@ from .solver_config import PicardConfig as DataclassPicardConfig
 # OmegaConf-based configuration management (if available)
 try:
     from .omegaconf_manager import (
-        OmegaConfManager,
         create_omega_manager,
+        create_parameter_sweep_configs,
         load_beach_config,
         load_experiment_config,
-        create_parameter_sweep_configs,
+        OmegaConfManager,
     )
 
     OMEGACONF_AVAILABLE = True

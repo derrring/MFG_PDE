@@ -34,6 +34,7 @@ from .exceptions import (
     validate_parameter_value,
     validate_solver_state,
 )
+from .integration import get_integration_info, trapezoid
 from .logging import (
     configure_logging,
     configure_research_logging,
@@ -55,7 +56,6 @@ from .logging_decorators import (
     performance_logged,
 )
 from .math_utils import *
-from .integration import trapezoid, get_integration_info
 from .solver_result import (
     ConvergenceResult,
     create_solver_result,
@@ -83,9 +83,9 @@ except ImportError:
 
 try:
     from .polars_integration import (
-        PolarsDataFrameManager,
-        create_polars_manager,
         convert_to_polars,
+        create_polars_manager,
+        PolarsDataFrameManager,
         validate_polars_dataframe,
     )
 
@@ -102,10 +102,7 @@ except ImportError:
     CLI_AVAILABLE = False
 
 try:
-    from .experiment_manager import (
-        ExperimentManager,
-        create_experiment_manager,
-    )
+    from .experiment_manager import create_experiment_manager, ExperimentManager
 
     EXPERIMENT_MANAGER_AVAILABLE = True
 except ImportError:
@@ -113,8 +110,8 @@ except ImportError:
 
 try:
     from .memory_management import (
-        MemoryMonitor,
         get_memory_usage,
+        MemoryMonitor,
         optimize_memory_usage,
     )
 
@@ -124,8 +121,8 @@ except ImportError:
 
 try:
     from .performance_monitoring import (
-        PerformanceMonitor,
         benchmark_solver,
+        PerformanceMonitor,
         profile_function,
     )
 

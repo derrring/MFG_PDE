@@ -5,10 +5,11 @@ This module implements the core MeshManager and MeshPipeline classes that coordi
 the Gmsh → Meshio → PyVista workflow for professional mesh generation and analysis.
 """
 
-from typing import Dict, List, Optional, Tuple, Union, Any, Callable
-import numpy as np
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 from .base_geometry import BaseGeometry, MeshData
 from .domain_2d import Domain2D

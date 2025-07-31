@@ -9,8 +9,8 @@ from scipy.spatial.distance import cdist
 from .base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.geometry import BoundaryConditions
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry import BoundaryConditions
 
 
 class HJBGFDMSolver(BaseHJBSolver):

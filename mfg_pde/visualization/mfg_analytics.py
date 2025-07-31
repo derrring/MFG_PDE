@@ -6,18 +6,19 @@ integrating Polars data manipulation with advanced Plotly/Bokeh visualizations
 for professional research and analysis workflows.
 """
 
-from typing import Any, Dict, List, Optional, Union, Tuple
-from pathlib import Path
-import numpy as np
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 # Import MFG components
 try:
     from .interactive_plots import (
+        BOKEH_AVAILABLE,
         create_visualization_manager,
         MFGVisualizationManager,
         PLOTLY_AVAILABLE,
-        BOKEH_AVAILABLE,
     )
 
     VISUALIZATION_AVAILABLE = True
@@ -28,9 +29,9 @@ except ImportError:
 
 try:
     from ..utils.polars_integration import (
+        create_data_exporter,
         create_parameter_sweep_analyzer,
         create_time_series_analyzer,
-        create_data_exporter,
         MFGDataFrame,
         POLARS_AVAILABLE,
     )

@@ -4,7 +4,8 @@ Backend Factory for MFG_PDE
 Factory methods for creating computational backends with appropriate configurations.
 """
 
-from typing import Dict, Any, Optional, Union
+from typing import Any, Dict, Optional, Union
+
 from ..backends import create_backend, get_available_backends, get_backend_info
 from ..core.mfg_problem import MFGProblem
 

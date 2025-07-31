@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 from pydantic import BaseModel, Field, model_validator, validator
+
 from ..utils.integration import trapezoid
 
 

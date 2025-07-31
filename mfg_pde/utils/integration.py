@@ -5,8 +5,9 @@ Provides consistent integration functions that work across NumPy versions,
 with preference for NumPy 2.0+ standard but fallbacks for older versions.
 """
 
+from typing import Optional, Union
+
 import numpy as np
-from typing import Union, Optional
 
 
 def trapezoid(

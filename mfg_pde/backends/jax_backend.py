@@ -8,7 +8,7 @@ and JIT compilation.
 try:
     import jax
     import jax.numpy as jnp
-    from jax import grad, jit, vmap, device_put, device_get
+    from jax import device_get, device_put, grad, jit, vmap
     from jax.scipy.integrate import trapezoid as jax_trapezoid
 
     JAX_AVAILABLE = True
@@ -17,8 +17,10 @@ except ImportError:
     jax = None
     jnp = None
 
+from typing import Any, Optional, Tuple, Union
+
 import numpy as np
-from typing import Any, Tuple, Optional, Union
+
 from .base_backend import BaseBackend
 
 
