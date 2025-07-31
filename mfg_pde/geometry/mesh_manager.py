@@ -92,7 +92,7 @@ class MeshPipeline:
         if export_formats is None:
             export_formats = ["msh", "vtk"]
         
-        logger.info("🚀 Starting Gmsh → Meshio → PyVista pipeline")
+        logger.info("Starting Gmsh → Meshio → PyVista pipeline")
         
         # Stage 1: Generate mesh
         if "generate" in stages:
@@ -113,7 +113,7 @@ class MeshPipeline:
         if "export" in stages:
             self._stage_export_mesh(export_formats)
             
-        logger.info("✅ Pipeline completed successfully")
+        logger.info("SUCCESS: Pipeline completed successfully")
         return self.mesh_data
     
     def _stage_generate_mesh(self) -> MeshData:
@@ -124,25 +124,25 @@ class MeshPipeline:
             # Create geometry and generate mesh
             mesh_data = self.geometry.generate_mesh()
             
-            logger.info(f"✅ Mesh generated: {mesh_data.num_vertices} vertices, "
+            logger.info(f"SUCCESS: Mesh generated: {mesh_data.num_vertices} vertices, "
                        f"{mesh_data.num_elements} elements")
             
             return mesh_data
             
         except Exception as e:
-            logger.error(f"❌ Mesh generation failed: {e}")
+            logger.error(f"ERROR: Mesh generation failed: {e}")
             raise
     
     def _stage_analyze_quality(self):
         """Pipeline Stage 2: Analyze mesh quality."""
-        logger.info("🔍 Stage 2: Analyzing mesh quality")
+        logger.info(" Stage 2: Analyzing mesh quality")
         
         try:
             quality_metrics = self.geometry.compute_mesh_quality()
             
             # Log quality summary
             if self.verbose:
-                logger.info("📊 Mesh Quality Metrics:")
+                logger.info(" Mesh Quality Metrics:")
                 for metric, value in quality_metrics.items():
                     logger.info(f"   {metric}: {value:.6f}")
                     
@@ -150,12 +150,12 @@ class MeshPipeline:
             self._save_quality_report(quality_metrics)
             
         except Exception as e:
-            logger.error(f"❌ Quality analysis failed: {e}")
+            logger.error(f"ERROR: Quality analysis failed: {e}")
             raise
     
     def _stage_prepare_visualization(self):
         """Pipeline Stage 3: Prepare PyVista visualization."""
-        logger.info("🎨 Stage 3: Preparing PyVista visualization")
+        logger.info(" Stage 3: Preparing PyVista visualization")
         
         try:
             # Convert to PyVista format
@@ -167,10 +167,10 @@ class MeshPipeline:
                 if isinstance(quality_data, (list, np.ndarray)):
                     pyvista_mesh.cell_data["quality"] = quality_data
                     
-            logger.info("✅ PyVista mesh prepared for visualization")
+            logger.info("SUCCESS: PyVista mesh prepared for visualization")
             
         except Exception as e:
-            logger.error(f"❌ Visualization preparation failed: {e}")
+            logger.error(f"ERROR: Visualization preparation failed: {e}")
             raise
     
     def _stage_export_mesh(self, formats: List[str]):
@@ -184,7 +184,7 @@ class MeshPipeline:
                 logger.info(f"   Exported: {filename}")
                 
         except Exception as e:
-            logger.error(f"❌ Mesh export failed: {e}")
+            logger.error(f"ERROR: Mesh export failed: {e}")
             raise
     
     def _save_quality_report(self, quality_metrics: Dict[str, float]):

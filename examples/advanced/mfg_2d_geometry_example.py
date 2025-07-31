@@ -337,7 +337,7 @@ def integration_with_existing_config():
 
 def main():
     """Run all 2D geometry MFG demonstrations."""
-    logger.info("🚀 Starting 2D MFG geometry demonstrations")
+    logger.info(" Starting 2D MFG geometry demonstrations")
     
     try:
         # Demo 1: Rectangle with holes
@@ -363,7 +363,7 @@ def main():
         problem1.export_mesh("./output/rectangle_holes")
         problem2.export_mesh("./output/l_shaped")
         
-        logger.info("✅ All 2D MFG geometry demonstrations completed!")
+        logger.info("SUCCESS: All 2D MFG geometry demonstrations completed!")
         
         # Visualization (uncomment to show interactive plots)
         # problem1.visualize_geometry()
@@ -371,11 +371,11 @@ def main():
         # advanced_bc.visualize_boundary_conditions()
         
     except ImportError as e:
-        logger.error(f"❌ Missing dependency: {e}")
+        logger.error(f"ERROR: Missing dependency: {e}")
         logger.info("To run this demo, install: pip install gmsh meshio pyvista")
         
     except Exception as e:
-        logger.error(f"❌ Demo failed: {e}")
+        logger.error(f"ERROR: Demo failed: {e}")
         raise
 
 

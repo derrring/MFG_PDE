@@ -452,7 +452,7 @@ def main():
         plot_path = create_spatial_visualization(results)
         
         # Display results summary
-        print("\\n📊 SPATIAL EQUILIBRIUM ANALYSIS")
+        print("\\n SPATIAL EQUILIBRIUM ANALYSIS")
         print("-" * 40)
         for name, result in results.items():
             analysis = result['analysis']
@@ -463,9 +463,9 @@ def main():
             print(f"  Peak Location: x={analysis['max_density_location']:.3f}")
             print(f"  Spatial Spread: {analysis['spatial_spread']:.3f}")
         
-        print(f"\\n📈 Visualization saved to: {plot_path}")
+        print(f"\\n Visualization saved to: {plot_path}")
         
-        print("\\n🎯 KEY INSIGHTS:")
+        print("\\n KEY INSIGHTS:")
         print("• Low crowd aversion → Single peak at stall location")
         print("• High crowd aversion → Crater pattern with side peaks")
         print("• Spatial sorting emerges from individual optimization")
@@ -475,7 +475,7 @@ def main():
         logger.info("Towel Beach Spatial Problem analysis completed successfully")
         
     except Exception as e:
-        logger.error(f"❌ Error in spatial beach analysis: {e}")
+        logger.error(f"ERROR: Error in spatial beach analysis: {e}")
         raise
 
 

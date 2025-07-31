@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 
 def example_1_quadratic_hamiltonian():
     """Example 1: Custom quadratic Hamiltonian with congestion."""
-    logger.info("🔧 Example 1: Custom Quadratic Hamiltonian")
+    logger.info(" Example 1: Custom Quadratic Hamiltonian")
     
     def my_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         """Custom Hamiltonian: H = (1/2)γ|p|² - V(x) - α*m²"""
@@ -103,7 +103,7 @@ def example_1_quadratic_hamiltonian():
                .description("Quadratic Hamiltonian with congestion", "congestion_control")
                .build())
     
-    logger.info(f"✅ Created problem: {problem.components.description}")
+    logger.info(f"SUCCESS: Created problem: {problem.components.description}")
     logger.info(f"   Parameters: {problem.components.parameters}")
     
     # Test Hamiltonian evaluation
@@ -116,7 +116,7 @@ def example_1_quadratic_hamiltonian():
 
 def example_2_time_dependent_potential():
     """Example 2: Time-dependent potential and Hamiltonian."""
-    logger.info("🔧 Example 2: Time-Dependent Potential")
+    logger.info(" Example 2: Time-Dependent Potential")
     
     def time_dependent_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         """Hamiltonian with time-dependent control cost."""
@@ -185,7 +185,7 @@ def example_2_time_dependent_potential():
                .description("Time-dependent potential and control cost", "time_dependent")
                .build())
     
-    logger.info(f"✅ Created time-dependent problem: {problem.components.description}")
+    logger.info(f"SUCCESS: Created time-dependent problem: {problem.components.description}")
     
     # Test time-dependent potential
     potential_t0 = problem.get_potential_at_time(0)
@@ -198,7 +198,7 @@ def example_2_time_dependent_potential():
 
 def example_3_nonlocal_coupling():
     """Example 3: Nonlocal coupling with custom jacobian."""
-    logger.info("🔧 Example 3: Nonlocal Coupling")
+    logger.info(" Example 3: Nonlocal Coupling")
     
     def nonlocal_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         """Hamiltonian with nonlocal coupling term."""
@@ -290,7 +290,7 @@ def example_3_nonlocal_coupling():
                .description("Nonlocal coupling MFG", "nonlocal")
                .build())
     
-    logger.info(f"✅ Created nonlocal problem: {problem.components.description}")
+    logger.info(f"SUCCESS: Created nonlocal problem: {problem.components.description}")
     logger.info(f"   Has custom Jacobian: {problem.components.hamiltonian_jacobian_func is not None}")
     logger.info(f"   Has custom coupling: {problem.components.coupling_func is not None}")
     
@@ -299,7 +299,7 @@ def example_3_nonlocal_coupling():
 
 def example_4_portfolio_optimization():
     """Example 4: Portfolio optimization with realistic financial Hamiltonian."""
-    logger.info("🔧 Example 4: Portfolio Optimization")
+    logger.info(" Example 4: Portfolio Optimization")
     
     def portfolio_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         """Portfolio optimization Hamiltonian with risk aversion."""
@@ -389,7 +389,7 @@ def example_4_portfolio_optimization():
                .description("Portfolio optimization with price impact", "finance")
                .build())
     
-    logger.info(f"✅ Created portfolio problem: {problem.components.description}")
+    logger.info(f"SUCCESS: Created portfolio problem: {problem.components.description}")
     logger.info(f"   Risk aversion: {problem.components.parameters['risk_aversion']}")
     logger.info(f"   Price impact: {problem.components.parameters['price_impact']}")
     
@@ -398,7 +398,7 @@ def example_4_portfolio_optimization():
 
 def main():
     """Run all general MFG construction examples."""
-    logger.info("🚀 Starting General MFG Construction Demo")
+    logger.info(" Starting General MFG Construction Demo")
     
     try:
         # Run all examples
@@ -416,12 +416,12 @@ def main():
         
         # Summary
         logger.info("\n" + "="*60)
-        logger.info("🎉 All examples completed successfully!")
+        logger.info(" All examples completed successfully!")
         
         problems = [problem1, problem2, problem3, problem4]
         for i, prob in enumerate(problems, 1):
             info = prob.get_problem_info()
-            logger.info(f"\n📋 Problem {i}: {info['description']}")
+            logger.info(f"\n Problem {i}: {info['description']}")
             logger.info(f"   Type: {info['problem_type']}")
             logger.info(f"   Domain: [{info['domain']['xmin']}, {info['domain']['xmax']}] with {info['domain']['Nx']} points")
             logger.info(f"   Time: [0, {info['time']['T']}] with {info['time']['Nt']} steps")
@@ -433,7 +433,7 @@ def main():
         logger.info("   Usage: solver = create_fast_solver(); result = solver.solve(problem)")
         
     except Exception as e:
-        logger.error(f"❌ Demo failed: {e}")
+        logger.error(f"ERROR: Demo failed: {e}")
         import traceback
         traceback.print_exc()
 

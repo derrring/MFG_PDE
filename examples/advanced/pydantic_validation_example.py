@@ -33,7 +33,7 @@ from mfg_pde.utils.integration import trapezoid
 
 def demonstrate_basic_pydantic_config():
     """Demonstrate basic Pydantic configuration usage."""
-    print("🔧 Basic Pydantic Configuration Demo")
+    print(" Basic Pydantic Configuration Demo")
     print("=" * 50)
     
     # Create configuration with automatic validation
@@ -44,13 +44,13 @@ def demonstrate_basic_pydantic_config():
             convergence_tolerance=1e-6,
             experiment_name="basic_validation_demo"
         )
-        print("✅ Configuration created successfully!")
+        print("SUCCESS: Configuration created successfully!")
         print(f"   Newton tolerance: {config.newton.tolerance:.2e}")
         print(f"   Picard tolerance: {config.picard.tolerance:.2e}")
         print(f"   Global tolerance: {config.convergence_tolerance:.2e}")
         
     except Exception as e:
-        print(f"❌ Configuration creation failed: {e}")
+        print(f"ERROR: Configuration creation failed: {e}")
         return None
     
     # Demonstrate automatic JSON serialization
@@ -66,10 +66,10 @@ def demonstrate_basic_pydantic_config():
     # Reload with validation
     try:
         reloaded_config = MFGSolverConfig.parse_file(config_path)
-        print(f"✅ Configuration reloaded successfully!")
+        print(f"SUCCESS: Configuration reloaded successfully!")
         print(f"   Experiment name: {reloaded_config.experiment_name}")
     except Exception as e:
-        print(f"❌ Configuration reload failed: {e}")
+        print(f"ERROR: Configuration reload failed: {e}")
     
     # Clean up
     Path(config_path).unlink(missing_ok=True)
@@ -79,7 +79,7 @@ def demonstrate_basic_pydantic_config():
 
 def demonstrate_validation_errors():
     """Demonstrate Pydantic validation error handling."""
-    print("\n🚨 Validation Error Handling Demo")
+    print("\n Validation Error Handling Demo")
     print("=" * 50)
     
     # Test 1: Invalid tolerance (too small)
@@ -90,7 +90,7 @@ def demonstrate_validation_errors():
         )
         print("❓ Somehow passed validation (with warnings)")
     except Exception as e:
-        print(f"✅ Caught validation error for too-strict tolerance: {type(e).__name__}")
+        print(f"SUCCESS: Caught validation error for too-strict tolerance: {type(e).__name__}")
     
     # Test 2: Invalid iterations (negative)
     try:
@@ -98,9 +98,9 @@ def demonstrate_validation_errors():
             newton=NewtonConfig(max_iterations=-5),  # Invalid!
             picard=PicardConfig(max_iterations=0)    # Invalid!
         )
-        print("❌ Should have failed validation!")
+        print("ERROR: Should have failed validation!")
     except Exception as e:
-        print(f"✅ Caught validation error for invalid iterations: {type(e).__name__}")
+        print(f"SUCCESS: Caught validation error for invalid iterations: {type(e).__name__}")
     
     # Test 3: Invalid damping factor
     try:
@@ -108,16 +108,16 @@ def demonstrate_validation_errors():
             newton=NewtonConfig(damping_factor=1.5),  # > 1.0 invalid!
             picard=PicardConfig(damping_factor=0.0)   # <= 0.0 invalid!
         )
-        print("❌ Should have failed validation!")
+        print("ERROR: Should have failed validation!")
     except Exception as e:
-        print(f"✅ Caught validation error for invalid damping: {type(e).__name__}")
+        print(f"SUCCESS: Caught validation error for invalid damping: {type(e).__name__}")
     
-    print("✅ Validation system working correctly!")
+    print("SUCCESS: Validation system working correctly!")
 
 
 def demonstrate_grid_and_array_validation():
     """Demonstrate grid configuration and array validation."""
-    print("\n📊 Grid and Array Validation Demo")
+    print("\n Grid and Array Validation Demo")
     print("=" * 50)
     
     # Create grid configuration with CFL checking
@@ -131,7 +131,7 @@ def demonstrate_grid_and_array_validation():
             sigma=0.1
         )
         
-        print(f"✅ Grid configuration created:")
+        print(f"SUCCESS: Grid configuration created:")
         print(f"   Grid: {grid_config.Nx}×{grid_config.Nt}")
         print(f"   Domain: [{grid_config.xmin}, {grid_config.xmax}] × [0, {grid_config.T}]")
         print(f"   Spacing: dx={grid_config.dx:.6f}, dt={grid_config.dt:.6f}")
@@ -139,7 +139,7 @@ def demonstrate_grid_and_array_validation():
         print(f"   Expected array shape: {grid_config.grid_shape}")
         
     except Exception as e:
-        print(f"❌ Grid configuration failed: {e}")
+        print(f"ERROR: Grid configuration failed: {e}")
         return None
     
     # Create mock solution arrays
@@ -160,11 +160,11 @@ def demonstrate_grid_and_array_validation():
             grid_config=grid_config
         )
         
-        print(f"✅ Array validation passed!")
+        print(f"SUCCESS: Array validation passed!")
         
         # Get validation statistics
         stats = arrays.get_solution_statistics()
-        print(f"\n📈 Array Statistics:")
+        print(f"\n Array Statistics:")
         print(f"   U range: [{stats['U']['min']:.3e}, {stats['U']['max']:.3e}]")
         print(f"   M range: [{stats['M']['min']:.3e}, {stats['M']['max']:.3e}]")
         print(f"   Mass conservation:")
@@ -175,7 +175,7 @@ def demonstrate_grid_and_array_validation():
         return grid_config, arrays
         
     except Exception as e:
-        print(f"❌ Array validation failed: {e}")
+        print(f"ERROR: Array validation failed: {e}")
         return grid_config, None
 
 
@@ -199,10 +199,10 @@ def demonstrate_enhanced_solver_creation():
             config_preset="fast",
             experiment_name="factory_demo"
         )
-        print("✅ Created solver with factory (fast preset)")
+        print("SUCCESS: Created solver with factory (fast preset)")
         
     except Exception as e:
-        print(f"❌ Factory solver creation failed: {e}")
+        print(f"ERROR: Factory solver creation failed: {e}")
     
     # Method 2: Using custom Pydantic configuration
     try:
@@ -219,10 +219,10 @@ def demonstrate_enhanced_solver_creation():
             solver_type="adaptive_particle",
             config=custom_config
         )
-        print("✅ Created solver with custom Pydantic config")
+        print("SUCCESS: Created solver with custom Pydantic config")
         
     except Exception as e:
-        print(f"❌ Custom config solver creation failed: {e}")
+        print(f"ERROR: Custom config solver creation failed: {e}")
     
     # Method 3: Configuration from JSON
     try:
@@ -241,13 +241,13 @@ def demonstrate_enhanced_solver_creation():
             solver_type="monitored_particle",
             config=loaded_config
         )
-        print("✅ Created solver from JSON configuration")
+        print("SUCCESS: Created solver from JSON configuration")
         
         # Clean up
         Path(config_path).unlink(missing_ok=True)
         
     except Exception as e:
-        print(f"❌ JSON config solver creation failed: {e}")
+        print(f"ERROR: JSON config solver creation failed: {e}")
 
 
 def demonstrate_enhanced_notebook_reporting():
@@ -288,7 +288,7 @@ def demonstrate_enhanced_notebook_reporting():
             output_dir="./demo_reports"
         )
         
-        print("✅ Experiment configuration created and validated!")
+        print("SUCCESS: Experiment configuration created and validated!")
         
         # Mock solver results
         solver_results = {
@@ -301,7 +301,7 @@ def demonstrate_enhanced_notebook_reporting():
         }
         
         # Generate enhanced notebook report
-        print("\n📝 Generating enhanced notebook report...")
+        print("\n Generating enhanced notebook report...")
         
         report_paths = create_pydantic_mfg_report(
             title="Pydantic Validation Demonstration",
@@ -311,13 +311,13 @@ def demonstrate_enhanced_notebook_reporting():
             export_html=True
         )
         
-        print("✅ Enhanced notebook report generated!")
+        print("SUCCESS: Enhanced notebook report generated!")
         print(f"   Notebook: {report_paths.get('notebook_path', 'N/A')}")
         print(f"   HTML: {report_paths.get('html_path', 'N/A')}")
         
         # Print experiment metadata
         metadata = experiment_config.to_notebook_metadata()
-        print(f"\n📊 Experiment Metadata:")
+        print(f"\n Experiment Metadata:")
         print(f"   Name: {metadata['experiment_name']}")
         print(f"   Researcher: {metadata['researcher']}")
         print(f"   Tags: {metadata['tags']}")
@@ -328,7 +328,7 @@ def demonstrate_enhanced_notebook_reporting():
         return experiment_config, report_paths
         
     except Exception as e:
-        print(f"❌ Enhanced notebook reporting failed: {e}")
+        print(f"ERROR: Enhanced notebook reporting failed: {e}")
         return None, None
 
 
@@ -357,14 +357,14 @@ def demonstrate_environment_variable_support():
         # Create configuration that will read from environment
         config = MFGSolverConfig()
         
-        print("✅ Configuration created with environment variables:")
+        print("SUCCESS: Configuration created with environment variables:")
         print(f"   Newton max iterations: {config.newton.max_iterations} (from env)")
         print(f"   Newton tolerance: {config.newton.tolerance:.2e} (from env)")
         print(f"   Picard max iterations: {config.picard.max_iterations} (from env)")
         print(f"   Global tolerance: {config.convergence_tolerance:.2e} (from env)")
         
     except Exception as e:
-        print(f"❌ Environment variable configuration failed: {e}")
+        print(f"ERROR: Environment variable configuration failed: {e}")
     
     finally:
         # Restore original environment
@@ -377,7 +377,7 @@ def demonstrate_environment_variable_support():
 
 def main():
     """Run comprehensive Pydantic validation demonstration."""
-    print("🎯 MFG_PDE Pydantic Validation Comprehensive Demo")
+    print(" MFG_PDE Pydantic Validation Comprehensive Demo")
     print("=" * 60)
     print()
     
@@ -395,17 +395,17 @@ def main():
         experiment_config, report_paths = demonstrate_enhanced_notebook_reporting()
         demonstrate_environment_variable_support()
         
-        print(f"\n🎉 Pydantic Validation Demo Complete!")
+        print(f"\n Pydantic Validation Demo Complete!")
         print("=" * 60)
-        print("\n📋 Summary of Pydantic Features Demonstrated:")
-        print("   ✅ Automatic configuration validation")
-        print("   ✅ JSON serialization and deserialization")
-        print("   ✅ Advanced error handling with detailed messages")
-        print("   ✅ Grid configuration with CFL stability checking")
-        print("   ✅ Array validation with physical constraints")
-        print("   ✅ Enhanced solver factory with validation")
-        print("   ✅ Comprehensive notebook reporting integration")
-        print("   ✅ Environment variable configuration support")
+        print("\n Summary of Pydantic Features Demonstrated:")
+        print("   SUCCESS: Automatic configuration validation")
+        print("   SUCCESS: JSON serialization and deserialization")
+        print("   SUCCESS: Advanced error handling with detailed messages")
+        print("   SUCCESS: Grid configuration with CFL stability checking")
+        print("   SUCCESS: Array validation with physical constraints")
+        print("   SUCCESS: Enhanced solver factory with validation")
+        print("   SUCCESS: Comprehensive notebook reporting integration")
+        print("   SUCCESS: Environment variable configuration support")
         
         print(f"\n🔬 Key Benefits for Research:")
         print("   • Automatic parameter validation prevents numerical errors")
@@ -422,7 +422,7 @@ def main():
         
     except Exception as e:
         logger.error(f"Demonstration failed: {e}")
-        print(f"\n❌ Demo failed: {e}")
+        print(f"\nERROR: Demo failed: {e}")
         raise
 
 

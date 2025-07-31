@@ -39,6 +39,82 @@ from mfg_pde.utils.logging import get_logger, configure_research_logging
 - Reference line numbers when discussing code: `file_path:line_number`
 - Follow consistency guide in `docs/development/CONSISTENCY_GUIDE.md`
 
+### **Text and Symbol Standards** ⚠️ **CRITICAL**
+**NO emojis in program scripts (Python files):**
+```python
+# ✅ GOOD - Plain ASCII comments in code
+# Solve the HJB equation using Newton iteration
+# WARNING: This method may not converge for large sigma
+
+# ❌ BAD - No emojis in Python files  
+# 🚀 Solve the HJB equation using Newton iteration
+# ⚠️ WARNING: This method may not converge for large sigma
+```
+
+**Mathematical symbols and output formatting:**
+```python
+# ✅ GOOD - LaTeX rendering or ASCII for output
+print("Convergence achieved: ||u - u_prev|| < 1e-6")
+print(f"Mass conservation error: {error:.6f}")
+logger.info("Newton method converged in %d iterations", num_iter)
+
+# ✅ GOOD - UTF-8 in docstrings is allowed
+def solve_hjb(self) -> np.ndarray:
+    """
+    Solve HJB equation: ∂u/∂t + H(∇u) = 0
+    Uses finite difference method with Newton iteration.
+    """
+
+# ❌ BAD - Unicode math symbols in output
+print("Convergence: ‖u - u_prev‖ < 1e-6")  
+print(f"Error: Δmass = {error:.6f}")
+```
+
+**Emoji usage policy:**
+- ✅ **Allowed**: Markdown documentation files (.md)
+- ✅ **Allowed**: Comments in CLAUDE.md and README files
+- ❌ **Forbidden**: Python scripts (.py files), even in comments
+- ❌ **Forbidden**: Program output and logging messages
+- ❌ **Forbidden**: Docstrings (use UTF-8 math symbols instead)
+
+### **Development Documentation Standards** ⚠️ **CRITICAL**
+**Always document significant changes and theoretical foundations:**
+
+1. **Roadmap Documentation** (`docs/development/`):
+   - Update `CONSOLIDATED_ROADMAP_2025.md` for major feature additions
+   - Create milestone-specific roadmap files for complex features
+   - Track implementation status and dependencies
+
+2. **Change Documentation** (`docs/development/`):
+   - Document architectural changes in `ARCHITECTURAL_CHANGES.md`
+   - Create feature-specific implementation summaries
+   - Record decisions and rationale for future reference
+
+3. **Theoretical Documentation** (`docs/theory/`):
+   - Create theoretical notes for each major mathematical feature
+   - Include mathematical formulations, references, and implementation notes
+   - Link theory to code with specific file/line references
+
+**Documentation Naming Conventions**:
+```
+docs/theory/[feature]_mathematical_formulation.md
+docs/development/[feature]_implementation_summary.md
+docs/development/ROADMAP_[milestone]_[date].md
+```
+
+**Status Marking in Documentation** ⚠️ **CRITICAL**:
+- **Completed features**: Mark with `✅ COMPLETED` in title and content
+- **Closed issues**: Add `[RESOLVED]` or `[CLOSED]` prefix to filename
+- **Active development**: Use `[WIP]` (Work In Progress) prefix
+- **Archived content**: Add `[ARCHIVED]` prefix and move to appropriate archive location
+- **Example naming**:
+  ```
+  ✅ GOOD: "Network MFG Implementation ✅ COMPLETED"
+  ✅ GOOD: "[RESOLVED]_particle_collocation_analysis.md"
+  ✅ GOOD: "[WIP]_master_equation_implementation.md"
+  ❌ BAD: "network_implementation.md" (no status indication)
+  ```
+
 ### **Logging Preferences**
 ```python
 # Always use structured logging
@@ -81,6 +157,30 @@ from mfg_pde.utils.logging import log_solver_configuration, log_convergence_anal
 - Include error handling and validation
 - Support both interactive and non-interactive usage
 
+### **Smart .gitignore Strategy** ⚠️ **CRITICAL**
+Always use targeted patterns that preserve valuable code:
+```bash
+# ✅ GOOD: Only ignore root-level clutter
+/*.png
+/*_analysis.py
+/temp_*.py
+
+# ❌ BAD: Would ignore valuable examples and tests
+*.png
+*_analysis.py
+temp_*.py
+```
+
+Use explicit preservation overrides for important directories:
+```bash
+# Always track important content
+!examples/**/*.py
+!examples/**/*.png
+!tests/**/*.py
+!docs/**/*.md
+!benchmarks/**/*.py
+```
+
 ## 📊 **Package Management**
 
 ### **Dependencies**
@@ -106,6 +206,45 @@ from mfg_pde.utils.logging import log_solver_configuration, log_convergence_anal
 - Create README files for each major directory
 - Maintain consistency with established patterns
 
+### **Repository Management Principles** ⚠️ **IMPORTANT**
+- **Examples and tests are valuable**: Never create .gitignore rules that are too strict for examples/ and tests/ directories
+- **Preserve research-grade code**: All examples, demos, and analysis in proper directories should be tracked
+- **Target cleanup carefully**: Use root-level patterns (`/*.py`) rather than global patterns (`*.py`)
+- **Archive vs Delete**: When archiving obsolete code, it can be removed entirely rather than moved to archive/ if it has no historical value
+- **Clean root, preserve structure**: Keep root directory clean but maintain all organized content in proper subdirectories
+
+### **Directory Management Principles** ⚠️ **CRITICAL**
+**BE PRUDENT WHEN CREATING NEW DIRECTORIES:**
+
+**Before Creating Any New Directory Structure:**
+1. **Analyze existing content first**: Read files to understand actual purpose vs. current location
+2. **Create detailed migration plan**: Map old → new locations with justification
+3. **Identify duplicate content**: Merge overlapping documentation before moving
+4. **Update cross-references**: Fix all internal links before structural changes
+5. **Move systematically**: One directory at a time with validation after each step
+
+**Directory Creation Guidelines:**
+- **Minimum 5+ files**: Don't create directories for single files
+- **Clear functional purpose**: Each directory must have distinct, non-overlapping purpose
+- **User-centric organization**: Structure should make sense to end users, not just developers
+- **Avoid nested hierarchies**: Keep directory depth reasonable (max 3 levels)
+- **Test before finalizing**: Ensure documentation builds and links work after changes
+
+**Examples:**
+```
+❌ BAD: Creating /docs/advanced/ /docs/development/ /docs/future/ (overlapping purposes)
+✅ GOOD: Creating /docs/user/ /docs/theory/ /docs/development/ (distinct purposes)
+
+❌ BAD: Moving files first, then updating references
+✅ GOOD: Updating references first, then moving files with validation
+```
+
+### **Archiving Strategy**
+- **Delete don't archive**: Temporary analysis files, obsolete outputs, and clutter can be deleted rather than archived
+- **Archive valuable history**: Only move significant code with historical/educational value to archive/
+- **Remove completely**: Generated files, temporary scripts, and duplicate experiments should be removed
+- **Focus on quality**: Better to have fewer, high-quality examples than many obsolete ones
+
 ### **Communication Style**
 - Be concise and direct
 - Focus on practical solutions
@@ -127,8 +266,40 @@ from mfg_pde.utils.logging import log_solver_configuration, log_convergence_anal
 - Documentation style: Professional, research-grade
 - Code organization: Follow established directory structure
 
+### **Documentation Status Tracking** 📋 **MANDATORY**
+All completed features, closed issues, and finished development work must be clearly marked:
+
+**Status Categories:**
+- `[COMPLETED]` - Implemented features and finished work  
+- `[RESOLVED]` - Fixed issues and closed problems
+- `[ANALYSIS]` - Technical analysis documents (permanent reference)
+- `[EVALUATION]` - Ongoing evaluations requiring periodic review
+- `[SUPERSEDED]` - Obsolete documents replaced by newer versions
+
+**Status Marking Examples:**
+```
+✅ [COMPLETED] Network MFG Implementation Summary
+✅ [RESOLVED] Particle Collocation Fix Summary  
+✅ [ANALYSIS] QP-Collocation Performance Bottlenecks
+🔄 [EVALUATION] Pydantic Integration Analysis
+📦 [SUPERSEDED] Old Achievement Summary
+```
+
+**Documentation Cleanup Principles:**
+- Mark all completed work to show progress
+- Use descriptive status indicators in filenames
+- Remove truly obsolete content rather than archiving
+- Consolidate overlapping documentation
+- Ensure all documentation reflects current package state
+
 ---
 
-**Last Updated**: 2025-07-26  
-**Repository Version**: Post-reorganization clean structure  
-**Claude Code**: Always reference this file for MFG_PDE conventions
+**Last Updated**: 2025-07-31  
+**Repository Version**: Network MFG implementation with enhanced visualization and smart cleanup  
+**Claude Code**: Always reference this file for MFG_PDE conventions  
+
+**Key Recent Updates**:
+- ✅ Network MFG implementation with Lagrangian formulations
+- ✅ Enhanced visualization system with trajectory tracking
+- ✅ Smart .gitignore strategy preserving valuable examples/tests
+- ✅ Repository cleanup principles for sustainable development

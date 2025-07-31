@@ -493,7 +493,7 @@ class MFGAnalyticsEngine:
                 html += "<h3>Visualizations</h3><div class='visualization'>"
                 for viz_name, viz_path in analysis['visualizations'].items():
                     viz_filename = Path(viz_path).name
-                    html += f'<p><a href="{viz_filename}" class="file-link">📊 {viz_name.replace("_", " ").title()}</a></p>'
+                    html += f'<p><a href="{viz_filename}" class="file-link"> {viz_name.replace("_", " ").title()}</a></p>'
                 html += "</div>"
             
             # Add data files

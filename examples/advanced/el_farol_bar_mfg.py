@@ -421,7 +421,7 @@ def solve_el_farol_bar_problem(
     
     U, M = result.U, result.M
     
-    logger.info(f"✅ Solution completed in {solve_time:.2f} seconds")
+    logger.info(f"SUCCESS: Solution completed in {solve_time:.2f} seconds")
     logger.info(f"Convergence: {result.convergence_achieved}, "
                 f"Iterations: {getattr(result, 'iterations', 'N/A')}")
     
@@ -459,7 +459,7 @@ def create_el_farol_visualizations(
     """
     
     logger = get_logger(__name__)
-    logger.info("📊 Creating El Farol Bar visualizations...")
+    logger.info(" Creating El Farol Bar visualizations...")
     
     # Setup grids
     x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx)
@@ -662,7 +662,7 @@ def compare_crowd_aversion_scenarios() -> None:
     plt.show()
     
     # Print summary
-    logger.info("📊 Crowd Aversion Analysis Summary:")
+    logger.info(" Crowd Aversion Analysis Summary:")
     for aversion in crowd_aversions:
         analysis = results[aversion]
         logger.info(f"  Aversion {aversion}: Attendance={analysis['final_attendance']:.3f}, "
@@ -694,17 +694,17 @@ def main():
         logger.info("2. Running crowd aversion comparison...")
         compare_crowd_aversion_scenarios()
         
-        logger.info("✅ El Farol Bar analysis completed successfully!")
+        logger.info("SUCCESS: El Farol Bar analysis completed successfully!")
         
         # Print key insights
-        logger.info("\n📊 Key Economic Insights:")
+        logger.info("\n Key Economic Insights:")
         logger.info(f"  • Final attendance rate: {analysis['final_attendance']:.1%}")
         logger.info(f"  • Economic efficiency: {analysis['efficiency']:.1%}")
         logger.info(f"  • System converged: {'Yes' if analysis['converged'] else 'No'}")
         logger.info(f"  • Herding behavior: {analysis['herding_indicator']:.3f}")
         
     except Exception as e:
-        logger.error(f"❌ Error in El Farol Bar analysis: {e}")
+        logger.error(f"ERROR: Error in El Farol Bar analysis: {e}")
         raise
 
 

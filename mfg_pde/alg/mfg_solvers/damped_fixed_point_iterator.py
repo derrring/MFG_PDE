@@ -148,7 +148,7 @@ class FixedPointIterator(MFGSolver):
             U_init, M_init = warm_start_init
             self.U = U_init.copy()
             self.M = M_init.copy()
-            print(f"   🚀 Using warm start initialization from previous solution")
+            print("   Using warm start initialization from previous solution")
         else:
             # Cold start - default initialization
             self.U = np.zeros((Nt, Nx))
@@ -305,7 +305,7 @@ class FixedPointIterator(MFGSolver):
             else:
                 # Permissive mode: Log warning with detailed analysis
                 print(
-                    f"⚠️  Convergence Warning: Max iterations ({final_max_iterations}) reached"
+                    f"WARNING:  Convergence Warning: Max iterations ({final_max_iterations}) reached"
                 )
 
                 try:
@@ -317,15 +317,15 @@ class FixedPointIterator(MFGSolver):
                         solver_name=self.name,
                         convergence_history=convergence_history,
                     )
-                    print(f"💡 {conv_error.suggested_action}")
+                    print(f" {conv_error.suggested_action}")
                     # Store error for later analysis
                     self._convergence_warning = conv_error
                 except Exception as e:
                     # Fallback if error analysis fails
                     print(
-                        f"💡 Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance"
+                        f" Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance"
                     )
-                    print(f"⚠️  Error analysis failed: {e}")
+                    print(f"WARNING:  Error analysis failed: {e}")
 
         self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
         self.l2distm_abs = self.l2distm_abs[: self.iterations_run]

@@ -188,7 +188,7 @@ class DiscreteSantaFeBarMFG:
         Dict[str, Any]
             Solution dictionary with time, values, and analysis
         """
-        self.logger.info("🚀 Solving Discrete Santa Fe Bar MFG...")
+        self.logger.info(" Solving Discrete Santa Fe Bar MFG...")
         
         start_time = time.time()
         
@@ -216,7 +216,7 @@ class DiscreteSantaFeBarMFG:
                 raise RuntimeError(f"ODE solver failed: {solution.message}")
                 
         except Exception as e:
-            self.logger.error(f"❌ Solver failed: {e}")
+            self.logger.error(f"ERROR: Solver failed: {e}")
             raise
         
         solve_time = time.time() - start_time
@@ -237,7 +237,7 @@ class DiscreteSantaFeBarMFG:
         # Payoffs over time
         payoffs = np.array([self.payoff_function(m[i]) for i in range(len(t))])
         
-        self.logger.info(f"✅ Solution completed in {solve_time:.3f} seconds")
+        self.logger.info(f"SUCCESS: Solution completed in {solve_time:.3f} seconds")
         self.logger.info(f"Final attendance: {m[-1]:.1%}, "
                         f"Final values: u0={u0[-1]:.3f}, u1={u1[-1]:.3f}")
         
@@ -307,7 +307,7 @@ def create_santa_fe_visualizations(
     """
     
     logger = get_logger(__name__)
-    logger.info("📊 Creating Santa Fe Bar visualizations...")
+    logger.info(" Creating Santa Fe Bar visualizations...")
     
     t = solution['time']
     m = solution['attendance']
@@ -505,7 +505,7 @@ def compare_parameter_scenarios():
     plt.show()
     
     # Print comparison table
-    logger.info("\n📊 Parameter Comparison Results:")
+    logger.info("\n Parameter Comparison Results:")
     print("Scenario        | Noise | Threshold | Final Attend. | Efficiency | Regime")
     print("-" * 75)
     for name, result in results.items():
@@ -552,10 +552,10 @@ def main():
         logger.info("3. Running parameter comparison...")
         compare_parameter_scenarios()
         
-        logger.info("✅ Santa Fe Bar analysis completed successfully!")
+        logger.info("SUCCESS: Santa Fe Bar analysis completed successfully!")
         
         # Print key insights
-        logger.info("\n📊 Key Economic Insights:")
+        logger.info("\n Key Economic Insights:")
         logger.info(f"  • Final attendance rate: {analysis['steady_state_attendance']:.1%}")
         logger.info(f"  • Economic efficiency: {analysis['efficiency']:.1%}")
         logger.info(f"  • Regime: {analysis['regime']}")
@@ -569,7 +569,7 @@ def main():
         logger.info("   → Threshold effects in payoff structure")
         
     except Exception as e:
-        logger.error(f"❌ Error in Santa Fe Bar analysis: {e}")
+        logger.error(f"ERROR: Error in Santa Fe Bar analysis: {e}")
         raise
 
 

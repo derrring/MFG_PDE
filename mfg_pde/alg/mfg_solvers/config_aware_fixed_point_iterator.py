@@ -116,9 +116,9 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
         if solve_config.picard.verbose:
             print(f"\n{'='*80}")
-            print(f"🚀 {self.name}")
+            print(f" {self.name}")
             print(f"{'='*80}")
-            print(f"📋 Configuration:")
+            print(f" Configuration:")
             print(f"   • Picard iterations: {solve_config.picard.max_iterations}")
             print(f"   • Picard tolerance: {solve_config.picard.tolerance:.2e}")
             print(f"   • Damping factor: {solve_config.picard.damping_factor}")
@@ -144,15 +144,15 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             if warm_start_init is not None:
                 self.U, self.M = warm_start_init
                 if solve_config.picard.verbose:
-                    print("🚀 Using warm start initialization")
+                    print(" Using warm start initialization")
             else:
                 self._cold_start_initialization(Nt, Nx)
                 if solve_config.picard.verbose:
-                    print("❄️ Cold start initialization (warm start failed)")
+                    print("Cold start initialization (warm start failed)")
         else:
             self._cold_start_initialization(Nt, Nx)
             if solve_config.picard.verbose:
-                print("❄️ Cold start initialization")
+                print("Cold start initialization")
 
         # Initialize convergence tracking
         self.l2distu_abs = np.ones(solve_config.picard.max_iterations)
@@ -170,7 +170,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
             if solve_config.picard.verbose:
                 print(
-                    f"\n📊 Picard Iteration {iiter + 1}/{solve_config.picard.max_iterations}"
+                    f"\n Picard Iteration {iiter + 1}/{solve_config.picard.max_iterations}"
                 )
 
             # Store previous iteration
@@ -235,9 +235,9 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             iter_time = time.time() - iter_start_time
 
             if solve_config.picard.verbose:
-                print(f"   ⏱️  Time: {iter_time:.3f}s")
+                print(f"   Time: {iter_time:.3f}s")
                 print(
-                    f"   📉 Errors: U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}"
+                    f"    Errors: U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}"
                 )
 
             self.iterations_run = iiter + 1
@@ -250,18 +250,18 @@ class ConfigAwareFixedPointIterator(MFGSolver):
                 ):
                     convergence_achieved = True
                     if solve_config.picard.verbose:
-                        print(f"✅ Convergence achieved after {iiter + 1} iterations!")
+                        print(f"SUCCESS: Convergence achieved after {iiter + 1} iterations!")
                     break
 
         if not convergence_achieved and solve_config.picard.verbose:
-            print(f"⚠️  Max iterations ({solve_config.picard.max_iterations}) reached")
+            print(f"WARNING:  Max iterations ({solve_config.picard.max_iterations}) reached")
             final_error = max(
                 self.l2distu_rel[self.iterations_run - 1],
                 self.l2distm_rel[self.iterations_run - 1],
             )
             if final_error > solve_config.picard.tolerance * 10:
                 print(
-                    "💡 Consider: reducing time step, better initialization, or more iterations"
+                    " Consider: reducing time step, better initialization, or more iterations"
                 )
 
         # Trim convergence arrays

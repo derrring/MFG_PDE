@@ -23,12 +23,12 @@ try:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
     PLOTLY_AVAILABLE = True
-    print("✅ Plotly available - interactive plots enabled")
+    print("Plotly available - interactive plots enabled")
 except ImportError:
     PLOTLY_AVAILABLE = False
-    print("⚠️ Plotly not available - using matplotlib fallback")
+    print("WARNING: Plotly not available - using matplotlib fallback")
 
-print("📊 Notebook ready for execution!")
+print("Notebook ready for execution!")
 
 
 # ## Problem Configuration
@@ -75,9 +75,9 @@ for i in range(nt):
 iterations = np.arange(1, 21)
 errors = 1e-2 * np.exp(-0.3 * iterations)
 
-print(f"✅ Data generated: {u.shape} grid, {len(errors)} iterations")
-print(f"📈 Value function range: [{u.min():.3f}, {u.max():.3f}]")
-print(f"📊 Final error: {errors[-1]:.2e}")
+print(f"SUCCESS: Data generated: {u.shape} grid, {len(errors)} iterations")
+print(f" Value function range: [{u.min():.3f}, {u.max():.3f}]")
+print(f" Final error: {errors[-1]:.2e}")
 
 
 # ## Interactive Visualizations
@@ -88,11 +88,11 @@ print(f"📊 Final error: {errors[-1]:.2e}")
 
 
 # Create visualizations with fallback options
-print("🎨 Creating visualizations...")
+print(" Creating visualizations...")
 
 if PLOTLY_AVAILABLE:
     # Interactive Plotly version
-    print("📈 Using interactive Plotly plots...")
+    print(" Using interactive Plotly plots...")
     
     # Create subplots
     fig = make_subplots(
@@ -143,11 +143,11 @@ if PLOTLY_AVAILABLE:
     fig.update_yaxes(type="log", row=2, col=2)
     fig.show()
     
-    print("✅ Interactive plots created successfully!")
+    print("SUCCESS: Interactive plots created successfully!")
     
 else:
     # Matplotlib fallback
-    print("📊 Using matplotlib static plots...")
+    print(" Using matplotlib static plots...")
     
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     
@@ -185,7 +185,7 @@ else:
     plt.tight_layout()
     plt.show()
     
-    print("✅ Static plots created successfully!")
+    print("SUCCESS: Static plots created successfully!")
 
 
 # ## Mathematical Analysis
@@ -209,7 +209,7 @@ else:
 
 
 # Numerical analysis summary
-print("📋 SOLUTION SUMMARY")
+print(" SOLUTION SUMMARY")
 print("=" * 50)
 print(f"Grid size: {nx} × {nt} points")
 print(f"Time horizon: {t[-1]:.1f}")
@@ -223,7 +223,7 @@ print(f"Final mass: {final_mass:.6f}")
 print(f"Iterations to convergence: {len(errors)}")
 print(f"Final error: {errors[-1]:.2e}")
 print()
-print("✅ Analysis complete - notebook executed successfully!")
+print("SUCCESS: Analysis complete - notebook executed successfully!")
 
 
 # ## Export Options

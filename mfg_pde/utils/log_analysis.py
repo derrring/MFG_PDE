@@ -257,7 +257,7 @@ class LogAnalyzer:
         report.append("=" * 80)
 
         # Summary section
-        report.append(f"\n📊 SUMMARY")
+        report.append(f"\n SUMMARY")
         report.append("-" * 40)
         report.append(f"Log file: {self.log_file_path}")
         report.append(f"Analysis time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -266,13 +266,13 @@ class LogAnalyzer:
 
         # Level distribution
         if "level_counts" in summary:
-            report.append(f"\n📈 LOG LEVEL DISTRIBUTION")
+            report.append(f"\n LOG LEVEL DISTRIBUTION")
             for level, count in sorted(summary["level_counts"].items()):
                 report.append(f"  {level}: {count} entries")
 
         # Logger activity
         if "logger_counts" in summary:
-            report.append(f"\n🔧 LOGGER ACTIVITY")
+            report.append(f"\n LOGGER ACTIVITY")
             for logger, count in sorted(
                 summary["logger_counts"].items(), key=lambda x: x[1], reverse=True
             )[:10]:
@@ -281,7 +281,7 @@ class LogAnalyzer:
         # Solver performance
         solver_sessions = performance.get("solver_sessions", [])
         if solver_sessions:
-            report.append(f"\n⚡ SOLVER PERFORMANCE")
+            report.append(f"\n SOLVER PERFORMANCE")
             report.append("-" * 40)
             for session in solver_sessions[-5:]:  # Last 5 sessions
                 duration = session.get("duration", 0)
@@ -293,7 +293,7 @@ class LogAnalyzer:
 
         # Error analysis
         if errors["total_errors"] > 0:
-            report.append(f"\n❌ ERROR ANALYSIS")
+            report.append(f"\nERROR: ERROR ANALYSIS")
             report.append("-" * 40)
             report.append(f"Total errors: {errors['total_errors']}")
 
@@ -305,7 +305,7 @@ class LogAnalyzer:
         # Recent warnings
         recent_warnings = summary.get("recent_warnings", [])
         if recent_warnings:
-            report.append(f"\n⚠️  RECENT WARNINGS")
+            report.append(f"\nWARNING:  RECENT WARNINGS")
             report.append("-" * 40)
             for warning in recent_warnings:
                 report.append(f"  {warning[:70]}...")
@@ -313,7 +313,7 @@ class LogAnalyzer:
         # Performance timing
         timing_data = performance.get("timing_data", [])
         if timing_data:
-            report.append(f"\n⏱️  PERFORMANCE TIMING")
+            report.append(f"\nPERFORMANCE TIMING")
             report.append("-" * 40)
             # Group by operation
             timing_by_op = defaultdict(list)

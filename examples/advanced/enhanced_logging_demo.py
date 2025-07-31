@@ -202,19 +202,19 @@ def main():
     print("ENHANCED LOGGING FEATURES SUMMARY")
     print("=" * 80)
     
-    print("\n🎯 NEW CONFIGURATION PRESETS:")
+    print("\nNEW CONFIGURATION PRESETS:")
     print("   • configure_research_logging() - Optimized for research sessions")
     print("   • configure_development_logging() - Debug with location info")
     print("   • configure_production_logging() - Warnings/errors only")
     print("   • configure_performance_logging() - Focus on timing/metrics")
     
-    print("\n🔧 ENHANCED LOGGING FUNCTIONS:")
+    print("\nENHANCED LOGGING FUNCTIONS:")
     print("   • log_solver_configuration() - Detailed solver setup")
     print("   • log_convergence_analysis() - Convergence rate analysis")
     print("   • log_mass_conservation() - Mass conservation tracking")
     print("   • Enhanced LoggedOperation context manager")
     
-    print("\n📊 LOG ANALYSIS UTILITIES:")
+    print("\nLOG ANALYSIS UTILITIES:")
     print("   • LogAnalyzer class for comprehensive analysis")
     print("   • analyze_log_file() - Quick analysis with reports")
     print("   • find_performance_bottlenecks() - Performance optimization")

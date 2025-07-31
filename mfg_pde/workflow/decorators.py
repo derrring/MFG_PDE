@@ -227,7 +227,7 @@ def timed(func: Callable) -> Callable:
 
         except Exception as e:
             execution_time = time.time() - start_time
-            print(f"⚠️ {func.__name__} failed after {execution_time:.3f}s: {e}")
+            print(f"WARNING: {func.__name__} failed after {execution_time:.3f}s: {e}")
             raise
 
     return wrapper
@@ -282,7 +282,7 @@ def cached(
                     # No TTL - use cached result
                     with open(cache_file, "rb") as f:
                         cached_result = pickle.load(f)
-                    print(f"📋 Using cached result for {func.__name__}")
+                    print(f"Using cached result for {func.__name__}")
                     return cached_result["result"]
                 else:
                     # Check TTL
@@ -290,11 +290,11 @@ def cached(
                     if time.time() - cache_time < ttl_seconds:
                         with open(cache_file, "rb") as f:
                             cached_result = pickle.load(f)
-                        print(f"📋 Using cached result for {func.__name__}")
+                        print(f"Using cached result for {func.__name__}")
                         return cached_result["result"]
 
             # Execute function and cache result
-            print(f"🔄 Computing {func.__name__}...")
+            print(f"Computing {func.__name__}...")
             result = func(*args, **kwargs)
 
             # Save to cache
@@ -310,7 +310,7 @@ def cached(
                     )
                 print(f"💾 Cached result for {func.__name__}")
             except Exception as e:
-                print(f"⚠️ Failed to cache result: {e}")
+                print(f"WARNING: Failed to cache result: {e}")
 
             return result
 
@@ -322,7 +322,7 @@ def cached(
             if cache_path.exists():
                 shutil.rmtree(cache_path)
                 cache_path.mkdir(parents=True, exist_ok=True)
-            print(f"🗑️ Cleared cache for {func.__name__}")
+            print(f"Cleared cache for {func.__name__}")
 
         def cache_info():
             """Get information about cached results."""
@@ -375,7 +375,7 @@ def retry(
                 try:
                     result = func(*args, **kwargs)
                     if attempt > 0:
-                        print(f"✅ {func.__name__} succeeded on attempt {attempt + 1}")
+                        print(f"SUCCESS: {func.__name__} succeeded on attempt {attempt + 1}")
                     return result
 
                 except exceptions as e:
@@ -383,13 +383,13 @@ def retry(
 
                     if attempt < max_attempts - 1:
                         print(
-                            f"⚠️ {func.__name__} failed on attempt {attempt + 1}, retrying in {delay:.1f}s..."
+                            f"WARNING: {func.__name__} failed on attempt {attempt + 1}, retrying in {delay:.1f}s..."
                         )
                         time.sleep(delay)
                         delay *= backoff_factor
                     else:
                         print(
-                            f"❌ {func.__name__} failed after {max_attempts} attempts"
+                            f"ERROR: {func.__name__} failed after {max_attempts} attempts"
                         )
 
             # Re-raise the last exception

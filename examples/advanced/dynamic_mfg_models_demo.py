@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 
 def demo_available_models():
     """Demonstrate listing and exploring available MFG models."""
-    logger.info("🎯 Demo 1: Available MFG Models")
+    logger.info(" Demo 1: Available MFG Models")
     
     # Get factory instance
     factory = get_mfg_factory()
@@ -44,7 +44,7 @@ def demo_available_models():
     for model_name in models:
         try:
             info = factory.get_model_info(model_name)
-            logger.info(f"\n📋 {model_name.upper()}:")
+            logger.info(f"\n {model_name.upper()}:")
             logger.info(f"  Description: {info['description']}")
             logger.info(f"  Category: {info['category']}")
             logger.info(f"  Physics: {info['physics_type']}")
@@ -81,7 +81,7 @@ def demo_model_creation_from_templates():
             created_models[f"{model_type}_{template}"] = model
             
             # Log basic info
-            logger.info(f"  ✅ Created: {type(model).__name__}")
+            logger.info(f"  SUCCESS: Created: {type(model).__name__}")
             logger.info(f"  Domain: [{model.xmin:.1f}, {model.xmax:.1f}] with {model.Nx} points")
             logger.info(f"  Time: [0, {model.T:.1f}] with {model.Nt} steps")
             
@@ -94,7 +94,7 @@ def demo_model_creation_from_templates():
                 logger.info(f"  Infection rate: {model.infection_rate}")
                 
         except Exception as e:
-            logger.error(f"  ❌ Failed to create {model_type}: {e}")
+            logger.error(f"  ERROR: Failed to create {model_type}: {e}")
     
     return created_models
 
@@ -136,15 +136,15 @@ def demo_custom_model_configuration():
         logger.info("Creating custom crowd dynamics model...")
         crowd_model = factory.create_model("crowd_dynamics", crowd_config)
         custom_models["custom_crowd"] = crowd_model
-        logger.info(f"  ✅ Custom crowd model: panic_factor={crowd_model.panic_factor}")
+        logger.info(f"  SUCCESS: Custom crowd model: panic_factor={crowd_model.panic_factor}")
         
         logger.info("Creating custom financial market model...")
         finance_model = factory.create_model("financial_market", finance_config) 
         custom_models["custom_finance"] = finance_model
-        logger.info(f"  ✅ Custom finance model: volatility={finance_model.volatility}")
+        logger.info(f"  SUCCESS: Custom finance model: volatility={finance_model.volatility}")
         
     except Exception as e:
-        logger.error(f"❌ Custom model creation failed: {e}")
+        logger.error(f"ERROR: Custom model creation failed: {e}")
     
     return custom_models
 
@@ -182,7 +182,7 @@ def demo_configuration_file_loading():
         factory = get_mfg_factory()
         model = factory.create_from_config_file(str(config_file))
         
-        logger.info("✅ Model loaded from configuration file")
+        logger.info("SUCCESS: Model loaded from configuration file")
         logger.info(f"  Model type: {type(model).__name__}")
         logger.info(f"  Infection rate: {model.infection_rate}")
         logger.info(f"  Vaccination rate: {model.vaccination_rate}")
@@ -193,7 +193,7 @@ def demo_configuration_file_loading():
         return model
         
     except Exception as e:
-        logger.error(f"❌ Config file loading failed: {e}")
+        logger.error(f"ERROR: Config file loading failed: {e}")
         if config_file.exists():
             config_file.unlink()
         return None
@@ -201,7 +201,7 @@ def demo_configuration_file_loading():
 
 def demo_model_validation():
     """Demonstrate model configuration validation."""
-    logger.info("✅ Demo 5: Model Configuration Validation")
+    logger.info("SUCCESS: Demo 5: Model Configuration Validation")
     
     factory = get_mfg_factory()
     
@@ -238,7 +238,7 @@ def demo_model_validation():
 
 def demo_custom_model_registration():
     """Demonstrate registering custom MFG model types."""
-    logger.info("🔧 Demo 6: Custom Model Registration")
+    logger.info(" Demo 6: Custom Model Registration")
     
     # Create a custom MFG model class
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -340,23 +340,23 @@ def demo_custom_model_registration():
     from mfg_pde.factory import register_custom_model
     register_custom_model(custom_spec)
     
-    logger.info("✅ Registered custom economy MFG model")
+    logger.info("SUCCESS: Registered custom economy MFG model")
     
     # Test creating custom model
     try:
         custom_model = create_mfg_model("custom_economy", 
                                        xmin=0, xmax=1, Nx=51, T=1, Nt=51,
                                        market_power=1.5, regulation_strength=0.3)
-        logger.info(f"✅ Created custom model: market_power={custom_model.market_power}")
+        logger.info(f"SUCCESS: Created custom model: market_power={custom_model.market_power}")
         return custom_model
     except Exception as e:
-        logger.error(f"❌ Custom model creation failed: {e}")
+        logger.error(f"ERROR: Custom model creation failed: {e}")
         return None
 
 
 def demo_model_search_and_filtering():
     """Demonstrate searching and filtering models."""
-    logger.info("🔍 Demo 7: Model Search and Filtering")
+    logger.info(" Demo 7: Model Search and Filtering")
     
     factory = get_mfg_factory()
     registry = factory.registry
@@ -383,7 +383,7 @@ def demo_model_search_and_filtering():
 
 def main():
     """Run all dynamic MFG model demonstrations."""
-    logger.info("🚀 Starting Dynamic MFG Model Instantiation Demo")
+    logger.info(" Starting Dynamic MFG Model Instantiation Demo")
     
     try:
         # Run all demonstrations
@@ -397,9 +397,9 @@ def main():
         
         # Summary
         total_models = len(created_models) + len(custom_models) + (1 if config_model else 0) + (1 if custom_registered else 0)
-        logger.info(f"\n🎉 Demo completed successfully!")
-        logger.info(f"📊 Created {total_models} different MFG model instances")
-        logger.info(f"📋 Available model types: {len(models)}")
+        logger.info(f"\n Demo completed successfully!")
+        logger.info(f" Created {total_models} different MFG model instances")
+        logger.info(f" Available model types: {len(models)}")
         
         # Example of using a created model (if any exist)
         if created_models:
@@ -410,7 +410,7 @@ def main():
             logger.info(f"   Resolution: {example_model.Nx} × {example_model.Nt}")
         
     except Exception as e:
-        logger.error(f"❌ Demo failed: {e}")
+        logger.error(f"ERROR: Demo failed: {e}")
         raise
 
 

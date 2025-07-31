@@ -195,7 +195,7 @@ class NetworkFixedPointIterator(MFGSolver):
             if total_error < tolerance:
                 convergence_achieved = True
                 if verbose:
-                    print(f"\n✅ Convergence achieved after {iteration + 1} iterations!")
+                    print(f"\nSUCCESS: Convergence achieved after {iteration + 1} iterations!")
                 break
             
             self.iterations_run = iteration + 1
@@ -204,7 +204,7 @@ class NetworkFixedPointIterator(MFGSolver):
                 print()
         
         if not convergence_achieved and verbose:
-            print(f"\n⚠️  Maximum iterations ({max_iterations}) reached without convergence")
+            print(f"\nWARNING:  Maximum iterations ({max_iterations}) reached without convergence")
             print(f"Final error: {total_error:.2e}")
         
         execution_time = time.time() - solve_start_time

@@ -618,13 +618,13 @@ if 'M' in locals() and hasattr(M, 'shape') and len(M.shape) == 2:
     # Conservation quality assessment
     max_error = max(mass_errors)
     if max_error < 1e-6:
-        print("\\n✓ Excellent mass conservation achieved")
+        print("\\nExcellent mass conservation achieved")
     elif max_error < 1e-3:
-        print("\\n✓ Good mass conservation achieved")
+        print("\\nGood mass conservation achieved")
     elif max_error < 1e-2:
-        print("\\n⚠ Acceptable mass conservation")
+        print("\\nAcceptable mass conservation")
     else:
-        print("\\n⚠ Mass conservation could be improved")
+        print("\\nWARNING: Mass conservation could be improved")
     
     # Store results for potential further analysis
     mass_conservation_data = {

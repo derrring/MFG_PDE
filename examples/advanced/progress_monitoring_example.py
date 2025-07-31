@@ -165,7 +165,7 @@ def demo_solver_integration():
             })
             
             if converged:
-                print(f"\n🎉 Converged early at iteration {i+1}!")
+                print(f"\n Converged early at iteration {i+1}!")
                 break
     print()
 
@@ -212,7 +212,7 @@ def demo_enhanced_solver_wrapper():
                 if error < 1e-3:
                     converged = True
                     if verbose:
-                        print(f"\n✅ Converged at iteration {i+1}")
+                        print(f"\nSUCCESS: Converged at iteration {i+1}")
                     break
             
             return {
@@ -307,7 +307,7 @@ def demo_summary_formatting():
 
 def run_progress_demo():
     """Run complete progress monitoring demonstration."""
-    print("🚀 MFG_PDE PROGRESS MONITORING & TIMING DEMONSTRATION")
+    print(" MFG_PDE PROGRESS MONITORING & TIMING DEMONSTRATION")
     print("=" * 80)
     print("This example demonstrates modern progress bars, timing, and")
     print("performance monitoring capabilities for MFG_PDE solvers.")
@@ -323,23 +323,23 @@ def run_progress_demo():
         demo_summary_formatting()
         
         print("=" * 80)
-        print("✅ PROGRESS MONITORING DEMONSTRATION COMPLETED")
+        print("SUCCESS: PROGRESS MONITORING DEMONSTRATION COMPLETED")
         print("=" * 80)
         print()
         print("Key Features Demonstrated:")
         print("• ⏱️  Precise timing with SolverTimer context manager")
-        print("• 📊 Beautiful progress bars with tqdm integration")
-        print("• 🔧 Easy decorator-based solver enhancement")
-        print("• 📈 Real-time convergence monitoring")
-        print("• 🎯 Minimal performance overhead")
-        print("• 📋 Professional result summaries")
+        print("•  Beautiful progress bars with tqdm integration")
+        print("•  Easy decorator-based solver enhancement")
+        print("•  Real-time convergence monitoring")
+        print("•  Minimal performance overhead")
+        print("•  Professional result summaries")
         print()
         print("Installation tip: For best experience, install tqdm:")
         print("  pip install tqdm")
         print()
         
     except Exception as e:
-        print(f"❌ Error in demonstration: {e}")
+        print(f"ERROR: Error in demonstration: {e}")
         import traceback
         traceback.print_exc()
 

@@ -198,12 +198,12 @@ def print_backend_info():
     """Print information about available backends."""
     info = get_backend_info()
     
-    print("🔧 MFG_PDE Backend Information")
+    print(" MFG_PDE Backend Information")
     print("=" * 40)
     
     print(f"Available backends:")
     for name, available in info["available_backends"].items():
-        status = "✅" if available else "❌"
+        status = "SUCCESS:" if available else "ERROR:"
         print(f"  {status} {name}")
     
     print(f"\nDefault backend: {info['default_backend']}")
@@ -212,13 +212,13 @@ def print_backend_info():
     if "jax_info" in info:
         jax_info = info["jax_info"]
         if "error" not in jax_info:
-            print(f"\n🚀 JAX Information:")
+            print(f"\n JAX Information:")
             print(f"  Version: {jax_info['version']}")
             print(f"  Devices: {', '.join(jax_info['devices'])}")
             print(f"  Default device: {jax_info['default_device']}")
             print(f"  GPU available: {jax_info['has_gpu']}")
         else:
-            print(f"\n⚠️  JAX Error: {jax_info['error']}")
+            print(f"\nWARNING:  JAX Error: {jax_info['error']}")
 
 
 if __name__ == "__main__":
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     from ..core.mfg_problem import ExampleMFGProblem
     problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=50)
     
-    print(f"\n📊 Backend Recommendations for Test Problem:")
+    print(f"\n Backend Recommendations for Test Problem:")
     recommendations = BackendFactory.get_backend_recommendations(problem)
     
     print(f"Problem size: {recommendations['problem_size']} ({recommendations['size_category']})")
@@ -239,4 +239,4 @@ if __name__ == "__main__":
         if "config" in rec:
             print(f"     Config: {rec['config']}")
         if "warning" in rec:
-            print(f"     ⚠️  {rec['warning']}")
+            print(f"     WARNING:  {rec['warning']}")

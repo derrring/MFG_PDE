@@ -1,28 +1,27 @@
 # MFG_PDE Documentation
 
-**Last Updated**: July 28, 2025  
+**Last Updated**: July 31, 2025  
 **Version**: Professional Research Platform (A+ Grade)  
-**Status**: Enterprise-Ready Scientific Computing Framework  
+**Status**: Enterprise-Ready Scientific Computing Framework with Network MFG  
 
-Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with GPU acceleration, automatic differentiation, and professional research tools.
+Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
 
 ## 🎯 **Quick Navigation**
 
 ### **For New Users**
-- **[Getting Started Guide](getting_started.md)** - Installation and first examples
-- **[Tutorial Series](tutorials/)** - Step-by-step learning materials  
+- **[User Documentation](user/)** - Tutorials, guides, and usage patterns
+- **[Network MFG Tutorial](user/tutorials/network_mfg_tutorial.md)** - Complete network MFG guide
 - **[Basic Examples](../examples/basic/)** - Simple problem setup and solving
 
 ### **For Researchers**
 - **[Theory Documentation](theory/)** - Mathematical foundations and algorithms
 - **[Advanced Examples](../examples/advanced/)** - Research-grade demonstrations
 - **[Interactive Notebooks](../examples/notebooks/)** - Jupyter-based exploration
-- **[Performance Guide](performance/)** - GPU acceleration and optimization
 
 ### **For Developers** 
-- **[API Reference](api/)** - Complete function and class documentation
-- **[Development Guide](development/)** - Contributing and architecture
+- **[Development Documentation](development/)** - Complete technical documentation
 - **[Consolidated Roadmap](development/CONSOLIDATED_ROADMAP_2025.md)** - Strategic development plan
+- **[API Reference](api/)** - Complete function and class documentation
 
 ## 🚀 **Platform Status (2025 Achievements)**
 
@@ -39,39 +38,40 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 - **Documentation**: 100% API coverage with examples
 - **Performance**: GPU-ready with automatic optimization
 
-## 📁 **Documentation Structure**
+## 📁 **Documentation Structure** (Reorganized July 2025)
 
 ```
 docs/
 ├── README.md                           # This overview (UPDATED)
-├── getting_started.md                  # Quick start guide
-├── development/                        # Development documentation
-│   ├── CONSOLIDATED_ROADMAP_2025.md   # 🆕 Strategic development plan
-│   ├── ACHIEVEMENT_SUMMARY_2025.md    # 🆕 Major accomplishments 
-│   ├── JAX_INTEGRATION_PLAN.md        # 🆕 GPU acceleration details
-│   ├── CONSISTENCY_GUIDE.md           # Code standards and practices
-│   ├── ARCHITECTURE.md                # System design principles
-│   └── CONTRIBUTING.md                # Contribution guidelines
+├── user/                              # 🆕 User-facing documentation
+│   ├── README.md                      # User documentation index
+│   ├── network_mfg_tutorial.md        # Network MFG complete tutorial
+│   ├── notebook_execution_guide.md    # Jupyter execution guide
+│   └── usage_patterns.md              # Best practices and patterns
 ├── theory/                            # Mathematical documentation
 │   ├── mathematical_background.md      # Mean Field Games foundations
-│   ├── convergence_criteria.md        # Numerical analysis
-│   └── santa_fe_bar_discrete_vs_continuous_mfg.md  # Case study analysis
-├── guides/                            # User guides and tutorials
-│   ├── NOTEBOOK_EXECUTION_GUIDE.md    # Jupyter notebook usage
-│   └── README.md                      # Guide navigation
-├── performance/                       # 🆕 Performance optimization
-│   ├── gpu_acceleration.md           # JAX backend usage
-│   ├── benchmarking.md              # Performance measurement
-│   └── optimization_tips.md         # Best practices
-├── api/                              # API reference documentation
-│   └── [Auto-generated API docs]     # Complete function reference
-├── maintenance/                      # Repository maintenance
-│   ├── CLEANUP_SUMMARY.md           # Maintenance history
-│   └── GITIGNORE_ANALYSIS.md        # Repository organization
-└── issues/                          # Problem analysis and solutions
-    ├── 90_degree_cliff_analysis.md   # Numerical stability
-    ├── particle_collocation_analysis.md  # Algorithm analysis
-    └── [Various technical analyses]   # Detailed problem solutions
+│   ├── network_mfg_mathematical_formulation.md  # Network MFG theory
+│   ├── adaptive_mesh_refinement_mfg.md # AMR theoretical framework
+│   └── [Applications and case studies] # Various MFG applications
+├── development/                       # Complete developer documentation
+│   ├── CONSOLIDATED_ROADMAP_2025.md   # 🎯 PRIMARY strategic plan
+│   ├── CONSISTENCY_GUIDE.md           # Code standards and practices
+│   ├── strategy/                      # Strategic planning documents
+│   │   ├── project_summary.md         # High-level project overview
+│   │   └── framework_design_philosophy.md  # Design principles
+│   ├── architecture/                  # System architecture
+│   │   ├── network_backend_architecture.md # Network backend design
+│   │   └── mesh_pipeline_architecture.md   # Mesh system design
+│   ├── analysis/                      # Technical analysis
+│   │   ├── qp_collocation_performance_analysis.md # Performance studies
+│   │   └── [Various algorithmic analyses] # Deep technical studies
+│   ├── completed/                     # Completed development work
+│   │   └── resolved_issues/           # Historical issue resolutions
+│   └── maintenance/                   # Repository maintenance
+│       ├── cleanup_procedures.md      # Maintenance procedures
+│       └── [Maintenance history]      # Repository management
+└── api/                              # API reference documentation
+    └── [Auto-generated API docs]     # Complete function reference
 ```
 
 ## 🔬 **Current Capabilities**

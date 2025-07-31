@@ -1,6 +1,6 @@
 # MFG_PDE Archive Summary
 
-**Date**: July 25, 2025  
+**Date**: July 25, 2025 (Updated: July 31, 2025)  
 **Purpose**: Documentation of archived files after comprehensive refactoring completion
 
 ## 📋 Archive Overview
@@ -11,6 +11,20 @@ This directory contains files that have been archived after the completion of th
 - Old debugging/experimental scripts no longer needed
 - Temporary analysis files that served their purpose
 - Documentation that has been replaced by modern equivalents
+
+## ⚠️ **Archive Management Policy (Updated July 31, 2025)**
+
+**New Archiving Strategy**:
+- **Most obsolete files should be DELETED**, not archived
+- **Only preserve code with genuine historical/educational value**
+- **Generated outputs, temporary scripts, and clutter should be removed completely**
+- **Focus on quality over quantity**: Better fewer meaningful examples than many obsolete ones
+
+**Future Cleanup**: Many files in this archive could be safely deleted as they represent:
+- Temporary debugging scripts with no ongoing value
+- Generated analysis outputs that can be recreated
+- Duplicate or superseded implementations
+- Development artifacts with no historical significance
 
 ## 🗂️ Archive Organization
 

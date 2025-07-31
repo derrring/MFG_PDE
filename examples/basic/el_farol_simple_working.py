@@ -107,7 +107,7 @@ def analyze_el_farol_solution(problem, U, M):
         'bar_capacity': problem.bar_capacity
     }
     
-    logger.info(f"📊 El Farol Analysis: Attendance={final_attendance:.1%}, "
+    logger.info(f" El Farol Analysis: Attendance={final_attendance:.1%}, "
                 f"Efficiency={efficiency:.1%}, Peak={peak_location:.2f}")
     
     return analysis
@@ -209,12 +209,12 @@ def visualize_el_farol_results(problem, U, M, analysis):
     interpretation = f"""
 El Farol Bar Economic Analysis
 
-📊 Problem Setup:
+ Problem Setup:
 • Bar capacity: {problem.bar_capacity:.0%}
 • Crowd aversion: {problem.crowd_aversion:.1f}
 • Decision volatility: {problem.sigma:.2f}
 
-🎯 Equilibrium Results:
+ Equilibrium Results:
 • Final attendance: {analysis['final_attendance']:.1%}
 • Capacity utilization: {analysis['capacity_utilization']:.1%}
 • Economic efficiency: {analysis['efficiency']:.1%}
@@ -224,7 +224,7 @@ El Farol Bar Economic Analysis
 • Density concentration: {analysis['density_concentration']:.1f}×
 • Converged: {'Yes' if analysis['converged'] else 'No'}
 
-💡 Economic Interpretation:
+ Economic Interpretation:
 """
     
     if analysis['final_attendance'] > problem.bar_capacity * 1.1:
@@ -311,7 +311,7 @@ def compare_scenarios():
     plt.show()
     
     # Summary comparison
-    print("\n📊 Scenario Comparison Results:")
+    print("\n Scenario Comparison Results:")
     print("Scenario                    | Attendance | Efficiency | Converged")
     print("-" * 65)
     for result in results:
@@ -349,7 +349,7 @@ def main():
         result = solver.solve()
         U, M = result.U, result.M
         
-        print(f"✅ Solved in {result.execution_time:.2f} seconds")
+        print(f"SUCCESS: Solved in {result.execution_time:.2f} seconds")
         
         # Analyze results
         analysis = analyze_el_farol_solution(problem, U, M)
@@ -357,13 +357,13 @@ def main():
         # Create visualizations
         visualize_el_farol_results(problem, U, M, analysis)
         
-        print(f"\n📊 Key Results:")
+        print(f"\n Key Results:")
         print(f"  • Final attendance: {analysis['final_attendance']:.1%}")
         print(f"  • Economic efficiency: {analysis['efficiency']:.1%}")
         print(f"  • Capacity utilization: {analysis['capacity_utilization']:.1%}")
         
         # Economic interpretation
-        print(f"\n💡 Economic Insights:")
+        print(f"\n Economic Insights:")
         if analysis['efficiency'] > 0.8:
             print("  → High efficiency! Good coordination between agents.")
         elif analysis['efficiency'] > 0.6:
@@ -382,12 +382,12 @@ def main():
         print("\n🔬 Running scenario comparison...")
         compare_scenarios()
         
-        print("\n🎉 El Farol Bar analysis completed!")
+        print("\n El Farol Bar analysis completed!")
         print("📚 This demonstrates how individual rational decisions can lead to")
         print("   collective outcomes that may be suboptimal without coordination.")
         
     except Exception as e:
-        logger.error(f"❌ Error in El Farol analysis: {e}")
+        logger.error(f"ERROR: Error in El Farol analysis: {e}")
         raise
 
 

@@ -503,13 +503,13 @@ def log_mass_conservation(
     logger.info(f"  Max deviation: {max_deviation:.2e}")
 
     if max_deviation < tolerance:
-        logger.info("  Status: ✓ Excellent mass conservation")
+        logger.info("  Status: Excellent mass conservation")
     elif max_deviation < 1e-3:
-        logger.info("  Status: ✓ Good mass conservation")
+        logger.info("  Status: Good mass conservation")
     elif max_deviation < 1e-2:
-        logger.info("  Status: ⚠ Acceptable mass conservation")
+        logger.info("  Status: Acceptable mass conservation")
     else:
-        logger.warning("  Status: ⚠ Mass conservation needs improvement")
+        logger.warning("  Status: Mass conservation needs improvement")
 
 
 # Context manager for logging operations

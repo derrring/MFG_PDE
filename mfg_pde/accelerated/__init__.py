@@ -127,29 +127,29 @@ def configure_jax_for_scientific_computing():
 
 def print_acceleration_info():
     """Print information about acceleration capabilities."""
-    print("🚀 MFG_PDE Acceleration Status")
+    print("MFG_PDE Acceleration Status")
     print("=" * 40)
 
     info = get_device_info()
 
     if info["jax_available"]:
-        print(f"✅ JAX Version: {info['jax_version']}")
-        print(f"🖥️  Default Device: {info['default_device']}")
-        print(f"📱 All Devices: {len(info['all_devices'])} available")
+        print(f"JAX Version: {info['jax_version']}")
+        print(f"Default Device: {info['default_device']}")
+        print(f"All Devices: {len(info['all_devices'])} available")
 
         for device in info["all_devices"]:
-            device_type = "🔥 GPU" if "gpu" in device.lower() else "🖥️  CPU"
+            device_type = "GPU" if "gpu" in device.lower() else "CPU"
             print(f"   {device_type}: {device}")
 
         if info["gpu_available"]:
-            print(f"⚡ GPU Acceleration: Enabled ({len(info['gpu_devices'])} GPU(s))")
+            print(f"GPU Acceleration: Enabled ({len(info['gpu_devices'])} GPU(s))")
         else:
-            print("⚡ GPU Acceleration: Not available (using CPU)")
+            print("GPU Acceleration: Not available (using CPU)")
 
     else:
-        print("❌ JAX: Not installed")
-        print("⚡ GPU Acceleration: Not available")
-        print("💡 To enable GPU acceleration, install JAX:")
+        print("JAX: Not installed")
+        print("GPU Acceleration: Not available")
+        print("To enable GPU acceleration, install JAX:")
         print("   pip install jax jaxlib  # CPU version")
         print("   pip install jax[cuda]  # CUDA version")
         print("   pip install jax[cuda12_pip]  # CUDA 12 version")

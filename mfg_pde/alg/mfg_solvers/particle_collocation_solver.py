@@ -163,7 +163,7 @@ class ParticleCollocationSolver(MFGSolver):
         warm_start_init = self._get_warm_start_initialization()
         if warm_start_init is not None:
             U_current, M_current = warm_start_init
-            print(f"   🚀 Using warm start initialization from previous solution")
+            print("   Using warm start initialization from previous solution")
         else:
             # Cold start - better initialization: set initial guess everywhere (like other MFG solvers)
             U_current = np.zeros((Nt, Nx))

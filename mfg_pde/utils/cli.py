@@ -220,10 +220,10 @@ def save_config_file(config: Dict[str, Any], output_path: str) -> None:
                 # Default to JSON
                 json.dump(config, f, indent=2, default=str)
 
-        print(f"✅ Configuration saved to: {output_path}")
+        print(f"Configuration saved to: {output_path}")
 
     except Exception as e:
-        print(f"❌ Error saving config file: {e}")
+        print(f"ERROR: Error saving config file: {e}")
 
 
 def merge_configs(
@@ -365,12 +365,12 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
             file_config = load_config_file(args.config)
             config = merge_configs(file_config, config)
         except Exception as e:
-            print(f"❌ Error loading config file: {e}")
+            print(f"ERROR: Error loading config file: {e}")
             sys.exit(1)
 
     # Set up logging level
     if config["execution"]["verbose"]:
-        print("🚀 Starting MFG solver with configuration:")
+        print("Starting MFG solver with configuration:")
         print(json.dumps(config, indent=2, default=str))
 
     try:
@@ -438,13 +438,13 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
             solver.enable_timing(exec_config["timing"])
 
         if exec_config["verbose"]:
-            print("🔧 Solving MFG problem...")
+            print("Solving MFG problem...")
 
         # Solve the problem
         result = solver.solve(**solve_kwargs)
 
         if exec_config["verbose"]:
-            print("✅ MFG problem solved successfully!")
+            print("MFG problem solved successfully!")
             if hasattr(result, "converged"):
                 print(f"   Converged: {result.converged}")
             if hasattr(result, "iterations"):
@@ -477,14 +477,14 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
                 print(f"💾 Results saved to: {output_path}")
 
             except Exception as e:
-                print(f"⚠️  Error saving results: {e}")
+                print(f"WARNING: Error saving results: {e}")
 
         # Save configuration if requested
         if config["io"]["save_config"]:
             save_config_file(config, config["io"]["save_config"])
 
     except Exception as e:
-        print(f"❌ Error running solver: {e}")
+        print(f"ERROR: Error running solver: {e}")
         if config["execution"]["verbose"]:
             import traceback
 
@@ -530,10 +530,10 @@ def main():
         elif args.config_command == "validate":
             try:
                 config = load_config_file(args.config_file)
-                print(f"✅ Configuration file is valid: {args.config_file}")
+                print(f"Configuration file is valid: {args.config_file}")
                 print(json.dumps(config, indent=2, default=str))
             except Exception as e:
-                print(f"❌ Invalid configuration file: {e}")
+                print(f"ERROR: Invalid configuration file: {e}")
                 sys.exit(1)
     else:
         parser.print_help()

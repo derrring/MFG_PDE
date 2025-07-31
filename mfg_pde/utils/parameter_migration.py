@@ -368,7 +368,7 @@ def check_deprecated_usage(kwargs: Dict[str, Any]) -> None:
     deprecated, modern = global_parameter_migrator.check_parameters(kwargs)
 
     if deprecated:
-        print("\n⚠️  Deprecated parameters detected:")
+        print("\nWARNING: Deprecated parameters detected:")
         for old, new in zip(deprecated, modern):
             print(f"   '{old}' → use '{new}' instead")
         print("   Consider updating your code to use modern parameter names.\n")

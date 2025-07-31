@@ -33,12 +33,19 @@ class NetworkMFGComponents:
     """
     Components for defining MFG problems on networks.
     
-    This extends the continuous MFGComponents to handle discrete network structures.
+    This extends the continuous MFGComponents to handle discrete network structures,
+    including support for Lagrangian formulations and trajectory measures.
     """
     
     # Network-specific Hamiltonian (depends on node states and edge flows)
     hamiltonian_func: Optional[Callable] = None              # H(node, neighbors, m, p, t)
     hamiltonian_dm_func: Optional[Callable] = None           # dH/dm at nodes
+    
+    # Lagrangian formulation support (based on ArXiv 2207.10908v3)
+    lagrangian_func: Optional[Callable] = None               # L(node, velocity, m, t)
+    velocity_space_dim: int = 2                              # Dimension of velocity space
+    trajectory_cost_func: Optional[Callable] = None          # Cost along trajectories
+    relaxed_control: bool = False                            # Use relaxed equilibria
     
     # Node-based potential function
     node_potential_func: Optional[Callable] = None           # V(node, t)
@@ -200,6 +207,103 @@ class NetworkMFGProblem(MFGProblem):
         
         # Default: derivative of density coupling term
         return self._default_density_coupling_derivative(node, m, t)
+    
+    # Lagrangian formulation methods (based on ArXiv 2207.10908v3)
+    
+    def lagrangian(self, node: int, velocity: np.ndarray, m: np.ndarray, t: float) -> float:
+        """
+        Lagrangian function for network MFG.
+        
+        Based on the Lagrangian formulation from ArXiv 2207.10908v3,
+        this represents the cost of being at a node with given velocity.
+        
+        Args:
+            node: Current node index
+            velocity: Velocity vector in network space
+            m: Density distribution over network
+            t: Current time
+            
+        Returns:
+            Lagrangian value L(node, velocity, m, t)
+        """
+        if self.components.lagrangian_func is not None:
+            return self.components.lagrangian_func(node, velocity, m, t)
+        
+        # Default Lagrangian: kinetic energy + potential + interaction
+        kinetic_energy = 0.5 * np.linalg.norm(velocity)**2
+        potential = self.node_potential(node, t)
+        interaction = self.density_coupling(node, m, t)
+        
+        return kinetic_energy + potential + interaction
+    
+    def trajectory_cost(self, trajectory: List[int], velocities: np.ndarray, 
+                       m_evolution: np.ndarray, times: np.ndarray) -> float:
+        """
+        Compute cost along a network trajectory.
+        
+        Args:
+            trajectory: Sequence of nodes visited
+            velocities: Velocity at each time step
+            m_evolution: Density evolution over time
+            times: Time points
+            
+        Returns:
+            Total trajectory cost
+        """
+        if self.components.trajectory_cost_func is not None:
+            return self.components.trajectory_cost_func(trajectory, velocities, m_evolution, times)
+        
+        # Default: integrate Lagrangian along trajectory
+        total_cost = 0.0
+        dt = times[1] - times[0] if len(times) > 1 else 1.0
+        
+        for i, (node, t) in enumerate(zip(trajectory, times)):
+            if i < len(velocities):
+                velocity = velocities[i] if velocities.ndim > 1 else np.array([velocities[i]])
+                m_current = m_evolution[i] if m_evolution.ndim > 1 else m_evolution
+                lagrangian_value = self.lagrangian(node, velocity, m_current, t)
+                total_cost += lagrangian_value * dt
+        
+        return total_cost
+    
+    def compute_relaxed_equilibrium(self, trajectory_measures: List[Callable]) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Compute relaxed equilibrium as probability measures on trajectories.
+        
+        Based on the relaxed equilibria concept from ArXiv 2207.10908v3.
+        
+        Args:
+            trajectory_measures: List of probability measures on trajectory space
+            
+        Returns:
+            (u, m) where u is value function and m is density
+        """
+        # This is a placeholder for advanced trajectory measure computation
+        # Full implementation would require sophisticated measure theory
+        
+        u = np.zeros((self.Nt + 1, self.num_nodes))
+        m = np.zeros((self.Nt + 1, self.num_nodes))
+        
+        # Initialize with uniform distribution
+        m[0, :] = 1.0 / self.num_nodes
+        
+        # Simple trajectory-based computation (to be enhanced)
+        for t_idx in range(self.Nt):
+            # Update based on trajectory measures
+            for node in range(self.num_nodes):
+                # Aggregate trajectory contributions
+                total_measure = 0.0
+                for measure in trajectory_measures:
+                    total_measure += measure(node, t_idx)
+                m[t_idx + 1, node] = total_measure
+        
+        # Normalize density
+        for t_idx in range(self.Nt + 1):
+            total = np.sum(m[t_idx, :])
+            if total > 1e-12:
+                m[t_idx, :] /= total
+        
+        return u, m
     
     def node_potential(self, node: int, t: float) -> float:
         """Potential function at network nodes."""

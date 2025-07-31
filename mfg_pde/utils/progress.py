@@ -73,7 +73,7 @@ class SolverTimer:
     def __enter__(self):
         self.start_time = time.perf_counter()
         if self.verbose:
-            print(f"⏱️  Starting {self.description}...")
+            print(f"Starting {self.description}...")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -82,9 +82,9 @@ class SolverTimer:
 
         if self.verbose:
             if exc_type is None:
-                print(f"✅ {self.description} completed in {self.format_duration()}")
+                print(f"SUCCESS: {self.description} completed in {self.format_duration()}")
             else:
-                print(f"❌ {self.description} failed after {self.format_duration()}")
+                print(f"ERROR: {self.description} failed after {self.format_duration()}")
 
     def format_duration(self) -> str:
         """Format duration in human-readable form."""
@@ -337,7 +337,7 @@ if __name__ == "__main__":
         result = np.random.rand(100, 100) @ np.random.rand(100, 100)
 
     # Test iteration progress
-    print("\n📊 Testing iteration progress:")
+    print("\nTesting iteration progress:")
     with solver_progress(20, "Sample Solver") as progress:
         for i in range(20):
             time.sleep(0.02)  # Simulate solver iteration
@@ -350,8 +350,8 @@ if __name__ == "__main__":
         time.sleep(0.05)
         return {"result": 42, "converged": True}
 
-    print("\n⚡ Testing timed decorator:")
+    print("\nTesting timed decorator:")
     result = sample_computation()
     print(f"Result: {result}")
 
-    print("\n✅ Progress utilities test completed!")
+    print("\nProgress utilities test completed!")

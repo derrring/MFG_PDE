@@ -261,7 +261,7 @@ def format_solver_summary(
     Returns:
         Formatted summary string
     """
-    status = "✅ Converged" if converged else "⚠️  Max iterations reached"
+    status = "SUCCESS: Converged" if converged else "WARNING:  Max iterations reached"
 
     summary = f"\n{'='*60}\n"
     summary += f"{solver_name} Summary\n"

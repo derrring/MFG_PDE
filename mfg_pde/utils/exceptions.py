@@ -38,13 +38,13 @@ class MFGSolverError(Exception):
         full_message = f"[{self.solver_name}] {message}"
 
         if self.suggested_action:
-            full_message += f"\n💡 Suggestion: {self.suggested_action}"
+            full_message += f"\nSuggestion: {self.suggested_action}"
 
         if self.error_code:
-            full_message += f"\n🔍 Error Code: {self.error_code}"
+            full_message += f"\nError Code: {self.error_code}"
 
         if self.diagnostic_data:
-            full_message += "\n📊 Diagnostic Information:"
+            full_message += "\nDiagnostic Information:"
             for key, value in self.diagnostic_data.items():
                 full_message += f"\n   • {key}: {value}"
 

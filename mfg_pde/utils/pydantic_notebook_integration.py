@@ -235,11 +235,11 @@ class PydanticNotebookReporter(MFGNotebookReporter):
 ## Experiment Configuration
 
 This report uses **Pydantic-validated configurations** ensuring:
-- ✅ Automatic parameter validation
-- ✅ Numerical stability checking  
-- ✅ Physical constraint validation
-- ✅ Cross-field consistency verification
-- ✅ Professional serialization support
+- SUCCESS: Automatic parameter validation
+- SUCCESS: Numerical stability checking  
+- SUCCESS: Physical constraint validation
+- SUCCESS: Cross-field consistency verification
+- SUCCESS: Professional serialization support
 
 **Tags**: {', '.join(experiment_config.tags) if experiment_config.tags else 'None'}
 """
@@ -250,13 +250,13 @@ This report uses **Pydantic-validated configurations** ensuring:
         """Create comprehensive validation report section."""
         grid_config = experiment_config.grid_config
 
-        validation_report = f"""## 🔍 Configuration Validation Report
+        validation_report = f"""##  Configuration Validation Report
 
 ### Grid Configuration Validation
 - **Spatial Grid**: {grid_config.Nx} points, domain [{grid_config.xmin:.2f}, {grid_config.xmax:.2f}]
 - **Time Grid**: {grid_config.Nt} points, final time T = {grid_config.T:.2f}
 - **Grid Spacing**: dx = {grid_config.dx:.6f}, dt = {grid_config.dt:.6f}
-- **CFL Number**: {grid_config.cfl_number:.4f} {'✅ Stable' if grid_config.cfl_number <= 0.5 else '⚠️ May be unstable'}
+- **CFL Number**: {grid_config.cfl_number:.4f} {'SUCCESS: Stable' if grid_config.cfl_number <= 0.5 else 'WARNING: May be unstable'}
 - **Diffusion**: σ = {grid_config.sigma:.3f}
 
 ### Numerical Stability Analysis
@@ -265,12 +265,12 @@ This report uses **Pydantic-validated configurations** ensuring:
         # Add CFL analysis
         if grid_config.cfl_number > 0.5:
             validation_report += f"""
-⚠️ **CFL Warning**: CFL number ({grid_config.cfl_number:.4f}) > 0.5 may cause numerical instability.
+WARNING: **CFL Warning**: CFL number ({grid_config.cfl_number:.4f}) > 0.5 may cause numerical instability.
 **Recommendation**: Reduce dt or increase dx for better stability.
 """
         else:
             validation_report += f"""
-✅ **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.cfl_number:.4f}.
+SUCCESS: **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.cfl_number:.4f}.
 """
 
         # Add array validation if available
@@ -285,7 +285,7 @@ This report uses **Pydantic-validated configurations** ensuring:
 - **Mass Conservation**: 
   - Initial: {mass_stats['initial_mass']:.6f}
   - Final: {mass_stats['final_mass']:.6f}
-  - Drift: {mass_stats['mass_drift']:.2e} {'✅ Conserved' if abs(mass_stats['mass_drift']) < 1e-3 else '⚠️ Not conserved'}
+  - Drift: {mass_stats['mass_drift']:.2e} {'SUCCESS: Conserved' if abs(mass_stats['mass_drift']) < 1e-3 else 'WARNING: Not conserved'}
 """
 
         return validation_report
@@ -320,7 +320,7 @@ print(config_json[:200] + "..." if len(config_json) > 200 else config_json)
         """Create numerical analysis section with stability analysis."""
         grid_config = experiment_config.grid_config
 
-        return f"""## 📊 Numerical Method Analysis
+        return f"""##  Numerical Method Analysis
 
 ### Discretization Parameters
 The numerical discretization uses:
@@ -336,7 +336,7 @@ $$\\text{{CFL}} = \\frac{{\\sigma^2 \\Delta t}}{{(\\Delta x)^2}} \\leq 0.5$$
 
 **Current CFL number**: {grid_config.cfl_number:.4f}
 
-{'✅ **Stable**: The discretization satisfies the CFL condition.' if grid_config.cfl_number <= 0.5 else '⚠️ **Potentially Unstable**: CFL > 0.5 may cause numerical instability.'}
+{'SUCCESS: **Stable**: The discretization satisfies the CFL condition.' if grid_config.cfl_number <= 0.5 else 'WARNING: **Potentially Unstable**: CFL > 0.5 may cause numerical instability.'}
 
 ### Diffusion Time Scale
 Characteristic diffusion time: $\\tau_{{\\text{{diff}}}} = \\frac{{L^2}}{{\\sigma^2}} = {(grid_config.xmax - grid_config.xmin)**2 / grid_config.sigma**2:.3f}$
@@ -434,7 +434,7 @@ fig.show()
 
 # Print validation statistics
 if 'validation_stats' in locals():
-    print("\\n📊 Array Validation Statistics:")
+    print("\\n Array Validation Statistics:")
     for key, stats in validation_stats.items():
         if isinstance(stats, dict):
             print(f"\\n{key.upper()}:")
@@ -468,7 +468,7 @@ if 'validation_stats' in locals():
 - Initial mass: {stats['mass_conservation']['initial_mass']:.6f}
 - Final mass: {stats['mass_conservation']['final_mass']:.6f}
 - Mass drift: {stats['mass_conservation']['mass_drift']:.2e}
-- Conservation quality: {'✅ Excellent' if abs(stats['mass_conservation']['mass_drift']) < 1e-4 else '⚠️ Acceptable' if abs(stats['mass_conservation']['mass_drift']) < 1e-3 else '❌ Poor'}
+- Conservation quality: {'SUCCESS: Excellent' if abs(stats['mass_conservation']['mass_drift']) < 1e-4 else 'WARNING: Acceptable' if abs(stats['mass_conservation']['mass_drift']) < 1e-3 else 'ERROR: Poor'}
 
 **Numerical Stability**:
 - CFL number: {stats['numerical_stability']['cfl_number']:.4f}
@@ -476,20 +476,20 @@ if 'validation_stats' in locals():
 - Diffusion coefficient: σ = {stats['numerical_stability']['sigma']:.3f}
 
 ### Validation Status
-{'✅ **All validations passed** - Arrays satisfy physical constraints and numerical stability requirements.' if abs(stats['mass_conservation']['mass_drift']) < 1e-3 and stats['numerical_stability']['cfl_number'] <= 0.5 else '⚠️ **Some validations failed** - Check mass conservation and stability conditions.'}
+{'SUCCESS: **All validations passed** - Arrays satisfy physical constraints and numerical stability requirements.' if abs(stats['mass_conservation']['mass_drift']) < 1e-3 and stats['numerical_stability']['cfl_number'] <= 0.5 else 'WARNING: **Some validations failed** - Check mass conservation and stability conditions.'}
 """
 
     def _create_enhanced_conclusions_section(
         self, experiment_config: "ExperimentConfig", solver_results: Dict[str, Any]
     ) -> str:
         """Create enhanced conclusions with validation summary."""
-        return f"""## 📝 Enhanced Conclusions
+        return f"""##  Enhanced Conclusions
 
 ### Experiment Summary
 - **Experiment**: {experiment_config.experiment_name}
 - **Configuration**: Pydantic-validated with comprehensive checks
 - **Grid**: {experiment_config.grid_config.Nx}×{experiment_config.grid_config.Nt} points
-- **Validation**: {'✅ Passed' if experiment_config.arrays else '⚠️ Partial (no arrays)'}
+- **Validation**: {'SUCCESS: Passed' if experiment_config.arrays else 'WARNING: Partial (no arrays)'}
 
 ### Key Findings
 1. **Numerical Stability**: {'Satisfied' if experiment_config.grid_config.cfl_number <= 0.5 else 'Marginal'}

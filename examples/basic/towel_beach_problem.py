@@ -362,7 +362,7 @@ def main():
     plot_path = create_beach_visualization(results)
     
     # Display results summary
-    print("\n📊 RESULTS SUMMARY")
+    print("\n RESULTS SUMMARY")
     print("-" * 30)
     for name, result in results.items():
         print(f"\n{name}:")
@@ -385,9 +385,9 @@ def main():
         print(f"  Coordination Quality: {coordination}")
         print(f"  Converged: {result['info'].get('converged', 'Unknown')}")
     
-    print(f"\n📈 Visualization saved to: {plot_path}")
+    print(f"\n Visualization saved to: {plot_path}")
     
-    print("\n🎯 KEY INSIGHTS:")
+    print("\n KEY INSIGHTS:")
     print("• The beach problem is mathematically identical to El Farol Bar")
     print("• Different capacities lead to different coordination challenges")
     print("• Final attendance typically converges near beach capacity")

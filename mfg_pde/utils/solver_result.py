@@ -131,7 +131,7 @@ class SolverResult:
 
     def __repr__(self) -> str:
         """String representation of the result."""
-        convergence_status = "✅" if self.convergence_achieved else "⚠️"
+        convergence_status = "SUCCESS:" if self.convergence_achieved else "WARNING:"
         time_str = f", {self.execution_time:.3f}s" if self.execution_time else ""
 
         return (

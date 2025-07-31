@@ -687,3 +687,47 @@ mpl_temp/
 build/
 dist/
 *.egg-info/
+
+# MFG_PDE specific - prevent accumulation of analysis outputs
+# Only ignore output directories, not source code
+*_results/
+*_demo_data/
+*_analytics_results/
+polars_demo_data/
+research_logs/
+performance_data/
+
+# Only ignore root-level analysis outputs (not examples/ or tests/)
+/*.png
+/*.html
+/*.json
+/*_analysis.py
+/*_demo.py
+/*_comparison.py
+/*_figure*.py
+/*_comprehensive_summary.md
+/quick_*.py
+/efficient_*.py
+/beach_*.py
+/create_*.py
+/extract_*.py
+/generate_*.py
+/convergence_analysis.png
+/equilibrium_*.png
+/lambda_*.png
+/parameter_*.png
+/fig*.png
+/font_*.png
+
+# Only temporary files in root
+/temp_*.py
+/test_*.py
+
+# But always track important examples and tests (override above rules)
+!examples/**/*.py
+!examples/**/*.png
+!examples/**/*.html
+!examples/**/*.json
+!tests/**/*.py
+!docs/**/*.md
+!benchmarks/**/*.py

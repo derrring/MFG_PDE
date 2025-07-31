@@ -134,7 +134,7 @@ class JAXMFGSolver:
 
     def _compile_functions(self):
         """Compile core functions with JIT for optimal performance."""
-        print("🔥 Compiling JAX functions for optimal performance...")
+        print(" Compiling JAX functions for optimal performance...")
         compile_start = time.time()
 
         # Compile HJB solver
@@ -163,7 +163,7 @@ class JAXMFGSolver:
         _ = self._check_convergence_jit(dummy_U, dummy_U, dummy_M, dummy_M)
 
         self.compile_time = time.time() - compile_start
-        print(f"✅ Compilation completed in {self.compile_time:.2f} seconds")
+        print(f"SUCCESS: Compilation completed in {self.compile_time:.2f} seconds")
 
     def solve(self) -> Dict[str, Any]:
         """
@@ -172,7 +172,7 @@ class JAXMFGSolver:
         Returns:
             Dictionary containing solution and metadata
         """
-        print(f"🚀 Starting JAX-accelerated MFG solve on {self.device}")
+        print(f" Starting JAX-accelerated MFG solve on {self.device}")
         solve_start = time.time()
 
         convergence_history = []
@@ -219,10 +219,10 @@ class JAXMFGSolver:
         )
 
         print(
-            f"✅ JAX solve completed in {self.solve_time:.2f}s (compile: {self.compile_time:.2f}s)"
+            f"SUCCESS: JAX solve completed in {self.solve_time:.2f}s (compile: {self.compile_time:.2f}s)"
         )
         print(
-            f"📊 Converged: {converged}, Iterations: {iterations}, Final error: {final_error:.2e}"
+            f" Converged: {converged}, Iterations: {iterations}, Final error: {final_error:.2e}"
         )
 
         return result

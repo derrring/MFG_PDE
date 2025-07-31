@@ -305,7 +305,7 @@ def main():
     logger.info("Starting JAX Acceleration Demo")
     
     # Print backend information
-    print("🔧 Backend Information")
+    print(" Backend Information")
     print("=" * 50)
     print_backend_info()
     print()
@@ -316,7 +316,7 @@ def main():
     benchmark_results = benchmark_backends(problem_sizes=[100, 300, 500, 1000])
     
     # Display results
-    print("\n📊 Benchmark Results:")
+    print("\n Benchmark Results:")
     print("-" * 30)
     for i, size in enumerate(benchmark_results['problem_sizes']):
         numpy_time = benchmark_results['numpy_times'][i]
@@ -333,40 +333,40 @@ def main():
         print()
     
     # Demonstrate JAX features
-    print("🎯 JAX Feature Demonstration...")
+    print(" JAX Feature Demonstration...")
     print("=" * 50)
     jax_features = demonstrate_jax_features()
     
     if jax_features:
-        print(f"✅ Automatic differentiation test passed")
+        print(f"SUCCESS: Automatic differentiation test passed")
         print(f"   Maximum gradient error: {jax_features['error']:.2e}")
     else:
-        print("❌ JAX features not available")
+        print("ERROR: JAX features not available")
     
     # Create visualizations
-    print("\n📈 Creating Performance Visualizations...")
+    print("\n Creating Performance Visualizations...")
     print("=" * 50)
     plot_path = create_performance_plots(benchmark_results, jax_features)
-    print(f"✅ Visualizations saved to: {plot_path}")
+    print(f"SUCCESS: Visualizations saved to: {plot_path}")
     
     # Summary and recommendations
-    print("\n🎯 Summary and Recommendations:")
+    print("\n Summary and Recommendations:")
     print("=" * 50)
     
     avg_speedup = np.mean([s for s in benchmark_results['speedups'] 
                           if s > 0 and s != float('inf')])
     
     if avg_speedup > 1.5:
-        print(f"✅ JAX shows significant performance improvement (avg {avg_speedup:.2f}x speedup)")
+        print(f"SUCCESS: JAX shows significant performance improvement (avg {avg_speedup:.2f}x speedup)")
         print("   Recommendation: Use JAX backend for production workloads")
     elif avg_speedup > 1.0:
-        print(f"⚠️  JAX shows modest performance improvement ({avg_speedup:.2f}x speedup)")
+        print(f"WARNING:  JAX shows modest performance improvement ({avg_speedup:.2f}x speedup)")
         print("   Recommendation: JAX beneficial for large problems")
     else:
-        print("❌ JAX performance not superior to NumPy")
+        print("ERROR: JAX performance not superior to NumPy")
         print("   Recommendation: Check JAX installation and GPU availability")
     
-    print("\n🚀 Next Steps:")
+    print("\n Next Steps:")
     print("   • Install JAX with GPU support: pip install 'mfg_pde[jax-cuda]'")
     print("   • Use BackendFactory.create_optimal_backend() for automatic selection")
     print("   • Enable JIT compilation for maximum performance")

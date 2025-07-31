@@ -395,7 +395,7 @@ def main():
         import plotly
         print("✓ All required dependencies available")
     except ImportError as e:
-        print(f"❌ Missing dependency: {e}")
+        print(f"ERROR: Missing dependency: {e}")
         print("Install with: pip install nbformat jupyter plotly")
         return
     
@@ -453,7 +453,7 @@ def main():
         print("for viewing interactive plots without Jupyter.")
         
     else:
-        print("❌ No reports were successfully generated")
+        print("ERROR: No reports were successfully generated")
         print("Check the error messages above for troubleshooting")
     
     print("\n" + "="*60)

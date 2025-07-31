@@ -52,6 +52,18 @@ from .mathematical_plots import (
     create_mathematical_visualizer
 )
 
+# Network MFG visualization
+from .network_plots import (
+    NetworkMFGVisualizer,
+    create_network_visualizer
+)
+
+# Enhanced network MFG visualization
+from .enhanced_network_plots import (
+    EnhancedNetworkMFGVisualizer,
+    create_enhanced_network_visualizer
+)
+
 # Legacy plotting for backward compatibility
 from .legacy_plotting import (
     myplot3d,
@@ -75,6 +87,12 @@ __all__ = [
     'create_visualization_manager',
     'quick_2d_plot',
     'quick_3d_plot',
+    
+    # Network MFG visualization
+    'NetworkMFGVisualizer',
+    'create_network_visualizer',
+    'EnhancedNetworkMFGVisualizer', 
+    'create_enhanced_network_visualizer',
     
     # Analytics engine
     'MFGAnalyticsEngine',

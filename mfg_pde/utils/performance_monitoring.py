@@ -258,7 +258,7 @@ class PerformanceMonitor:
                     # Still track failed execution time
                     execution_time = time.time() - start_time
                     print(
-                        f"⚠️  Performance tracking: {name} failed after {execution_time:.2f}s"
+                        f"WARNING:  Performance tracking: {name} failed after {execution_time:.2f}s"
                     )
                     raise
 
@@ -274,7 +274,7 @@ class PerformanceMonitor:
 
             if is_regression:
                 warning_msg = (
-                    f"⚠️  Performance regression detected in {metrics.method_name}:\n"
+                    f"WARNING:  Performance regression detected in {metrics.method_name}:\n"
                     f"   {description}\n"
                     f"   Current: {metrics.execution_time:.2f}s, {metrics.peak_memory_mb:.1f}MB\n"
                     f"   Baseline: {baseline.mean_execution_time:.2f}s, {baseline.mean_memory_mb:.1f}MB"

@@ -282,7 +282,7 @@ def demo_batch_processing():
 
 def main():
     """Run all mesh pipeline demonstrations."""
-    logger.info("🚀 Starting mesh pipeline demonstrations")
+    logger.info(" Starting mesh pipeline demonstrations")
     
     try:
         # Run demonstrations
@@ -294,14 +294,14 @@ def main():
         demo_mesh_quality_analysis()
         demo_batch_processing()
         
-        logger.info("✅ All demonstrations completed successfully!")
+        logger.info("SUCCESS: All demonstrations completed successfully!")
         
     except ImportError as e:
-        logger.error(f"❌ Missing dependency: {e}")
+        logger.error(f"ERROR: Missing dependency: {e}")
         logger.info("To run this demo, install: pip install gmsh meshio pyvista")
         
     except Exception as e:
-        logger.error(f"❌ Demo failed: {e}")
+        logger.error(f"ERROR: Demo failed: {e}")
         raise
 
 
