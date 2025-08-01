@@ -80,11 +80,14 @@ class SolverFactory:
         fp_solver: Optional["BaseFPSolver"] = None,
         collocation_points: Optional[np.ndarray] = None,
         custom_config: Optional[MFGSolverConfig] = None,
+        enable_amr: bool = False,
+        amr_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> Union[
         ConfigAwareFixedPointIterator,
         MonitoredParticleCollocationSolver,
         SilentAdaptiveParticleCollocationSolver,
+        "AMREnhancedSolver",
     ]:
         """
         Create an MFG solver with optimized configuration.
@@ -97,10 +100,12 @@ class SolverFactory:
             fp_solver: FP solver instance (for fixed_point type)
             collocation_points: Spatial points (for particle types)
             custom_config: Custom configuration (overrides preset)
+            enable_amr: Enable adaptive mesh refinement enhancement
+            amr_config: AMR configuration parameters
             **kwargs: Additional solver-specific parameters
 
         Returns:
-            Configured solver instance
+            Configured solver instance (optionally AMR-enhanced)
         """
         # Get configuration
         if custom_config is not None:
@@ -111,25 +116,36 @@ class SolverFactory:
         # Update config with any kwargs
         config = SolverFactory._update_config_with_kwargs(config, **kwargs)
 
-        # Create solver based on type
+        # Create base solver based on type
         if solver_type == "fixed_point":
-            return SolverFactory._create_fixed_point_solver(
+            base_solver = SolverFactory._create_fixed_point_solver(
                 problem, config, hjb_solver, fp_solver, **kwargs
             )
         elif solver_type == "particle_collocation":
-            return SolverFactory._create_particle_collocation_solver(
+            base_solver = SolverFactory._create_particle_collocation_solver(
                 problem, config, collocation_points, **kwargs
             )
         elif solver_type == "monitored_particle":
-            return SolverFactory._create_monitored_particle_solver(
+            base_solver = SolverFactory._create_monitored_particle_solver(
                 problem, config, collocation_points, **kwargs
             )
         elif solver_type == "adaptive_particle":
-            return SolverFactory._create_adaptive_particle_solver(
+            base_solver = SolverFactory._create_adaptive_particle_solver(
                 problem, config, collocation_points, **kwargs
             )
         else:
             raise ValueError(f"Unknown solver type: {solver_type}")
+        
+        # Enhance with AMR if requested
+        if enable_amr:
+            from ..alg.amr_enhancement import create_amr_enhanced_solver
+            return create_amr_enhanced_solver(
+                base_solver=base_solver,
+                dimension=getattr(problem, 'dimension', None),
+                amr_config=amr_config
+            )
+        else:
+            return base_solver
 
     @staticmethod
     def _get_config_by_preset(preset: str) -> MFGSolverConfig:
@@ -333,6 +349,7 @@ class SolverFactory:
         )
 
 
+
 # Convenience functions for common use cases
 
 
@@ -345,13 +362,14 @@ def create_solver(
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
     SilentAdaptiveParticleCollocationSolver,
+    "AMREnhancedSolver",
 ]:
     """
     Create an MFG solver with specified type and preset.
 
     Args:
         problem: MFG problem to solve
-        solver_type: Type of solver ("fixed_point", "particle_collocation", "monitored_particle", "adaptive_particle")
+        solver_type: Type of solver ("fixed_point", "particle_collocation", "monitored_particle", "adaptive_particle", "amr")
         preset: Configuration preset ("fast", "accurate", "research", "balanced")
         **kwargs: Additional parameters
 
@@ -369,6 +387,7 @@ def create_fast_solver(
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
     SilentAdaptiveParticleCollocationSolver,
+    "AMREnhancedSolver",
 ]:
     """
     Create a fast MFG solver optimized for speed.
@@ -410,6 +429,7 @@ def create_accurate_solver(
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
     SilentAdaptiveParticleCollocationSolver,
+    "AMREnhancedSolver",
 ]:
     """
     Create an accurate MFG solver optimized for precision.
@@ -433,6 +453,7 @@ def create_research_solver(
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
     SilentAdaptiveParticleCollocationSolver,
+    "AMREnhancedSolver",
 ]:
     """
     Create a research MFG solver with comprehensive monitoring.
@@ -469,5 +490,61 @@ def create_monitored_solver(
         solver_type="monitored_particle",
         config_preset="research",
         collocation_points=collocation_points,
+        **kwargs,
+    )
+
+
+def create_amr_solver(
+    problem: "MFGProblem",
+    base_solver_type: SolverType = "fixed_point",
+    error_threshold: float = 1e-4,
+    max_levels: int = 5,
+    **kwargs
+) -> "AMREnhancedSolver":
+    """
+    Create an AMR-enhanced MFG solver.
+
+    This function creates any base solver and enhances it with adaptive
+    mesh refinement capabilities. AMR is a mesh adaptation technique
+    that can improve any underlying solution method.
+
+    Args:
+        problem: MFG problem to solve
+        base_solver_type: Base solver type to enhance with AMR
+        error_threshold: Error threshold for mesh refinement
+        max_levels: Maximum refinement levels
+        **kwargs: Additional parameters for base solver and AMR
+
+    Returns:
+        AMR-enhanced solver wrapping the base solver
+
+    Example:
+        >>> # Create FDM solver with AMR enhancement
+        >>> amr_solver = create_amr_solver(
+        ...     problem, 
+        ...     base_solver_type="fixed_point",
+        ...     error_threshold=1e-5,
+        ...     max_levels=6
+        ... )
+        >>> result = amr_solver.solve()
+    """
+    # Prepare AMR configuration
+    amr_config = {
+        'error_threshold': error_threshold,
+        'max_levels': max_levels,
+    }
+    
+    # Extract AMR-specific kwargs
+    amr_keys = {'initial_intervals', 'adaptation_frequency', 'max_adaptations'}
+    for key in amr_keys:
+        if key in kwargs:
+            amr_config[key] = kwargs.pop(key)
+    
+    return SolverFactory.create_solver(
+        problem=problem,
+        solver_type=base_solver_type,
+        config_preset="accurate",  # AMR typically used for high-accuracy solutions
+        enable_amr=True,
+        amr_config=amr_config,
         **kwargs,
     )
