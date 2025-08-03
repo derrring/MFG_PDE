@@ -15,7 +15,7 @@ import os
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.alg.hjb_solvers.gfdm_hjb import GFDMHJBSolver
 
 

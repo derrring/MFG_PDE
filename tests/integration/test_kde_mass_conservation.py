@@ -6,7 +6,7 @@ Test to verify KDE mass conservation issue
 import numpy as np
 from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 def test_kde_normalization():
     print("=== Testing KDE Mass Conservation ===")

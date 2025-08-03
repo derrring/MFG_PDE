@@ -4,9 +4,9 @@ Test no-flux boundary conditions with SVD diagnostics
 """
 
 import numpy as np
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 def test_noflux_with_svd():
     print("=== Testing No-Flux BC with SVD Diagnostics ===")

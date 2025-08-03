@@ -4,9 +4,9 @@ Test scaling up no-flux BC with SVD to larger problems
 """
 
 import numpy as np
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 def test_scaling_noflux():
     print("=== Testing Scaling of No-Flux BC with SVD ===")

@@ -4,9 +4,9 @@ Compare the current no-flux implementation with a simple approach
 """
 
 import numpy as np
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 def test_simple_noflux_comparison():
     print("=== Comparing No-Flux Implementations ===")

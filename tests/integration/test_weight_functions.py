@@ -6,7 +6,7 @@ Test different weight functions in GFDM solver
 import numpy as np
 from mfg_pde.alg.hjb_solvers.gfdm_hjb import GFDMHJBSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 def test_weight_functions():
     print("=== Testing Different Weight Functions in GFDM ===")

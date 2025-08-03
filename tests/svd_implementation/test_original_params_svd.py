@@ -4,9 +4,9 @@ Test original failing parameters with improved SVD implementation
 """
 
 import numpy as np
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 def test_original_params_with_svd():
     print("=== Testing Original Parameters with SVD + No-Flux BC ===")

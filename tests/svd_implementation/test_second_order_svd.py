@@ -4,9 +4,9 @@ Test second-order Taylor expansion with SVD and no-flux BC
 """
 
 import numpy as np
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
 
 def test_second_order_svd():
     print("=== Testing Second-Order Taylor with SVD + No-Flux BC ===")
