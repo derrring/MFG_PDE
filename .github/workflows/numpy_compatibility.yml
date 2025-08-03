@@ -1,0 +1,86 @@
+name: NumPy Compatibility Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly to catch NumPy updates
+    - cron: '0 6 * * 1'
+
+jobs:
+  test-numpy-compatibility:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+        numpy-version: 
+          - 'numpy>=1.24,<2.0'  # NumPy 1.x series
+          - 'numpy>=2.0'        # NumPy 2.x series (when available)
+        exclude:
+          # NumPy 2.0+ requires Python 3.9+
+          - python-version: '3.8'
+            numpy-version: 'numpy>=2.0'
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ${{ matrix.numpy-version }}
+        pip install scipy>=1.10 matplotlib>=3.5
+        pip install pytest pytest-benchmark
+        pip install -e .
+    
+    - name: Display environment info
+      run: |
+        python -c "import numpy as np; print(f'NumPy: {np.__version__}')"
+        python -c "import scipy; print(f'SciPy: {scipy.__version__}')"
+        python -c "from mfg_pde.utils.numpy_compat import get_numpy_info; print(get_numpy_info())"
+    
+    - name: Run NumPy compatibility tests
+      run: |
+        python test_numpy_compatibility.py
+    
+    - name: Run MFG_PDE tests with current NumPy
+      run: |
+        pytest tests/ -v --tb=short
+    
+    - name: Benchmark integration performance
+      run: |
+        python -c "
+        from test_numpy_compatibility import benchmark_integration_methods
+        benchmark_integration_methods()
+        "
+
+  test-numpy-preview:
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Allow failure for preview versions
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install NumPy nightly/preview
+      run: |
+        python -m pip install --upgrade pip
+        pip install --pre --extra-index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy
+        pip install scipy matplotlib
+        pip install -e .
+    
+    - name: Test with NumPy preview
+      run: |
+        python -c "import numpy as np; print(f'NumPy preview: {np.__version__}')"
+        python test_numpy_compatibility.py

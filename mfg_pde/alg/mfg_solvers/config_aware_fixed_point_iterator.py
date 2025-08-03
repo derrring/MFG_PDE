@@ -283,7 +283,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
         # Return appropriate format
         if solve_config.return_structured:
-            from ..utils.solver_result import create_solver_result
+            from ...utils.solver_result import create_solver_result
 
             return create_solver_result(
                 U=self.U,
@@ -336,14 +336,14 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
     def get_results(self) -> tuple:
         """Get computed U and M solutions."""
-        from ..utils.exceptions import validate_solver_state
+        from ...utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_results")
         return self.U, self.M
 
     def get_convergence_data(self) -> tuple:
         """Get convergence information."""
-        from ..utils.exceptions import validate_solver_state
+        from ...utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_convergence_data")
         return (

@@ -135,14 +135,15 @@ class SolverFactory:
             )
         else:
             raise ValueError(f"Unknown solver type: {solver_type}")
-        
+
         # Enhance with AMR if requested
         if enable_amr:
             from ..alg.amr_enhancement import create_amr_enhanced_solver
+
             return create_amr_enhanced_solver(
                 base_solver=base_solver,
-                dimension=getattr(problem, 'dimension', None),
-                amr_config=amr_config
+                dimension=getattr(problem, "dimension", None),
+                amr_config=amr_config,
             )
         else:
             return base_solver
@@ -349,7 +350,6 @@ class SolverFactory:
         )
 
 
-
 # Convenience functions for common use cases
 
 
@@ -420,6 +420,81 @@ def create_fast_solver(
 
     return SolverFactory.create_solver(
         problem=problem, solver_type=solver_type, config_preset="fast", **kwargs
+    )
+
+
+def create_semi_lagrangian_solver(
+    problem: "MFGProblem",
+    interpolation_method: str = "linear",
+    optimization_method: str = "brent",
+    characteristic_solver: str = "explicit_euler",
+    use_jax: bool = None,
+    fp_solver_type: str = "fdm",
+    **kwargs
+) -> ConfigAwareFixedPointIterator:
+    """
+    Create a fixed-point solver with semi-Lagrangian HJB method.
+    
+    The semi-Lagrangian method is particularly effective for:
+    - Problems with strong convection/transport
+    - Discontinuous or non-smooth solutions
+    - Large time steps
+    - Monotone solution requirements
+    
+    Args:
+        problem: MFG problem to solve
+        interpolation_method: Interpolation for departure points ('linear', 'cubic')
+        optimization_method: Hamiltonian optimization ('brent', 'golden')
+        characteristic_solver: Characteristic tracing ('explicit_euler', 'rk2')
+        use_jax: Enable JAX acceleration (auto-detect if None)
+        fp_solver_type: FP solver type ('fdm', 'particle')
+        **kwargs: Additional solver configuration
+        
+    Returns:
+        Fixed-point solver with semi-Lagrangian HJB method
+        
+    Example:
+        >>> # Create semi-Lagrangian solver for convection-dominated problem
+        >>> solver = create_semi_lagrangian_solver(
+        ...     problem,
+        ...     interpolation_method="cubic",
+        ...     optimization_method="brent",
+        ...     use_jax=True
+        ... )
+        >>> result = solver.solve()
+    """
+    from mfg_pde.alg.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
+    
+    # Create semi-Lagrangian HJB solver
+    hjb_solver = HJBSemiLagrangianSolver(
+        problem=problem,
+        interpolation_method=interpolation_method,
+        optimization_method=optimization_method,
+        characteristic_solver=characteristic_solver,
+        use_jax=use_jax,
+        **{k: v for k, v in kwargs.items() if k in ['tolerance', 'max_char_iterations']}
+    )
+    
+    # Create appropriate FP solver
+    if fp_solver_type == "fdm":
+        from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
+        fp_solver = FPFDMSolver(problem=problem)
+    elif fp_solver_type == "particle":
+        from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
+        fp_solver = FPParticleSolver(problem=problem)
+    else:
+        raise ValueError(f"Unknown FP solver type: {fp_solver_type}")
+    
+    # Extract relevant kwargs for fixed-point solver
+    fp_kwargs = {k: v for k, v in kwargs.items() 
+                 if k not in ['tolerance', 'max_char_iterations']}
+    
+    return create_fast_solver(
+        problem=problem,
+        solver_type="fixed_point",
+        hjb_solver=hjb_solver,
+        fp_solver=fp_solver,
+        **fp_kwargs
     )
 
 
@@ -499,7 +574,7 @@ def create_amr_solver(
     base_solver_type: SolverType = "fixed_point",
     error_threshold: float = 1e-4,
     max_levels: int = 5,
-    **kwargs
+    **kwargs,
 ) -> "AMREnhancedSolver":
     """
     Create an AMR-enhanced MFG solver.
@@ -521,7 +596,7 @@ def create_amr_solver(
     Example:
         >>> # Create FDM solver with AMR enhancement
         >>> amr_solver = create_amr_solver(
-        ...     problem, 
+        ...     problem,
         ...     base_solver_type="fixed_point",
         ...     error_threshold=1e-5,
         ...     max_levels=6
@@ -530,16 +605,16 @@ def create_amr_solver(
     """
     # Prepare AMR configuration
     amr_config = {
-        'error_threshold': error_threshold,
-        'max_levels': max_levels,
+        "error_threshold": error_threshold,
+        "max_levels": max_levels,
     }
-    
+
     # Extract AMR-specific kwargs
-    amr_keys = {'initial_intervals', 'adaptation_frequency', 'max_adaptations'}
+    amr_keys = {"initial_intervals", "adaptation_frequency", "max_adaptations"}
     for key in amr_keys:
         if key in kwargs:
             amr_config[key] = kwargs.pop(key)
-    
+
     return SolverFactory.create_solver(
         problem=problem,
         solver_type=base_solver_type,

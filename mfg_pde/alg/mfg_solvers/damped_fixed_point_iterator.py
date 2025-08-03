@@ -114,7 +114,7 @@ class FixedPointIterator(MFGSolver):
             final_tolerance = 1e-5  # Default
 
         # Validate parameters with enhanced error messages
-        from ..utils.exceptions import validate_parameter_value
+        from ...utils.exceptions import validate_parameter_value
 
         validate_parameter_value(
             final_max_iterations,
@@ -282,7 +282,7 @@ class FixedPointIterator(MFGSolver):
                 self.l2distm_rel[: self.iterations_run]
             )
 
-            from ..utils.exceptions import ConvergenceError
+            from ...utils.exceptions import ConvergenceError
 
             # Check configuration for strict error handling mode
             strict_mode = (
@@ -340,7 +340,7 @@ class FixedPointIterator(MFGSolver):
 
         # Return structured result if requested, otherwise maintain backward compatibility
         if return_structured:
-            from ..utils.solver_result import create_solver_result
+            from ...utils.solver_result import create_solver_result
 
             return create_solver_result(
                 U=self.U,
@@ -382,7 +382,7 @@ class FixedPointIterator(MFGSolver):
             )
 
     def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
-        from ..utils.exceptions import validate_solver_state
+        from ...utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_results")
         return self.U, self.M
@@ -390,7 +390,7 @@ class FixedPointIterator(MFGSolver):
     def get_convergence_data(
         self,
     ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        from ..utils.exceptions import validate_solver_state
+        from ...utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_convergence_data")
         return (

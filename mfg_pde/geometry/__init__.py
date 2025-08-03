@@ -46,17 +46,17 @@ from .network_geometry import (
     RandomNetwork,
     ScaleFreeNetwork,
 )
-from .triangular_amr import (
-    TriangularAMRMesh,
-    TriangleElement,
-    TriangularMeshErrorEstimator,
-    create_triangular_amr_mesh,
-)
 from .one_dimensional_amr import (
-    OneDimensionalAMRMesh,
-    Interval1D,
-    OneDimensionalErrorEstimator,
     create_1d_amr_mesh,
+    Interval1D,
+    OneDimensionalAMRMesh,
+    OneDimensionalErrorEstimator,
+)
+from .triangular_amr import (
+    create_triangular_amr_mesh,
+    TriangleElement,
+    TriangularAMRMesh,
+    TriangularMeshErrorEstimator,
 )
 
 __all__ = [
@@ -92,7 +92,7 @@ __all__ = [
     "set_preferred_backend",
     # Triangular AMR components
     "TriangularAMRMesh",
-    "TriangleElement", 
+    "TriangleElement",
     "TriangularMeshErrorEstimator",
     "create_triangular_amr_mesh",
     # 1D AMR components

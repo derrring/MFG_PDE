@@ -57,7 +57,7 @@ class MFGSolver(ABC):
         U_prev, M_prev = previous_solution
 
         # Validate dimensions with enhanced error messages
-        from ..utils.exceptions import validate_array_dimensions
+        from ...utils.exceptions import validate_array_dimensions
 
         expected_shape = (self.problem.Nt + 1, self.problem.Nx + 1)
 

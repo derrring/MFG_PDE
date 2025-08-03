@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+from ..utils.integration import trapezoid
+
 # Import MFG components
 try:
     from .interactive_plots import (
@@ -299,7 +301,7 @@ class MFGAnalyticsEngine:
             "final_std": float(np.std(final_density)),
             "final_max": float(np.max(final_density)),
             "final_min": float(np.min(final_density)),
-            "mass_conservation": float(np.trapz(final_density, x_grid)),
+            "mass_conservation": float(trapezoid(final_density, x=x_grid)),
             "peak_location": float(x_grid[np.argmax(final_density)]),
         }
 

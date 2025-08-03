@@ -223,7 +223,7 @@ class NetworkData:
 
     def get_neighbors(self, node_id: int) -> List[int]:
         """Get neighbors of a given node."""
-        return self.adjacency_matrix[node_id].nonzero()[1].tolist()
+        return self.adjacency_matrix.getrow(node_id).nonzero()[1].tolist()
 
     def get_edge_weight(self, node_i: int, node_j: int) -> float:
         """Get weight of edge between two nodes."""
@@ -231,7 +231,7 @@ class NetworkData:
 
     def get_node_degree(self, node_id: int) -> int:
         """Get degree of a node."""
-        return int(self.adjacency_matrix[node_id].sum())
+        return int(self.adjacency_matrix.getrow(node_id).sum())
 
 
 class BaseNetworkGeometry(ABC):

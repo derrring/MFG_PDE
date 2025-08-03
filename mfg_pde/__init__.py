@@ -4,7 +4,11 @@ try:
     __version__ = version("mfg_pde")  # Matches the name in pyproject.toml
 except PackageNotFoundError:
     # package is not installed
-    __version__ = "0.0.0-dev"  # Or some other placeholde
+    __version__ = "0.0.0-dev"  # Or some other placeholder
+
+# Ensure NumPy 2.0+ compatibility on import
+from .utils.numpy_compat import ensure_numpy_compatibility
+_numpy_info = ensure_numpy_compatibility()
 
 from .config import (
     create_accurate_config,
@@ -18,6 +22,12 @@ from .core.mfg_problem import (
     MFGComponents,
     MFGProblem,
     MFGProblemBuilder,
+)
+from .core.lagrangian_mfg_problem import (
+    create_quadratic_lagrangian_mfg,
+    create_obstacle_lagrangian_mfg,
+    LagrangianComponents,
+    LagrangianMFGProblem,
 )
 from .core.network_mfg_problem import (
     create_grid_mfg_problem,

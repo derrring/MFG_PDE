@@ -15,6 +15,7 @@ from .solver_factory import (
     create_fast_solver,
     create_monitored_solver,
     create_research_solver,
+    create_semi_lagrangian_solver,
     create_solver,
     SolverFactory,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "create_research_solver",
     "create_monitored_solver",
     "create_amr_solver",
+    "create_semi_lagrangian_solver",
     "BackendFactory",
     "create_backend_for_problem",
     "print_backend_info",
