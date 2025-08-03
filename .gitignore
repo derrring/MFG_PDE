@@ -694,8 +694,10 @@ dist/
 *_demo_data/
 *_analytics_results/
 polars_demo_data/
-research_logs/
-performance_data/
+/research_logs/
+/performance_data/
+/output/
+/results/
 
 # Only ignore root-level analysis outputs (not examples/ or tests/)
 /*.png

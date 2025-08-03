@@ -273,6 +273,60 @@ Use explicit preservation overrides for important directories:
 - Provide working examples
 - Use professional documentation standards
 
+## 🤖 **AI Interaction Design Framework**
+
+### **Mathematical Research Collaboration**
+For advanced Mean Field Games research, follow structured prompt design principles outlined in `docs/development/AI_INTERACTION_DESIGN.md`:
+
+**Core Mathematical Communication Standards:**
+Establish consistent mathematical notation for all AI interactions and documentation.
+
+**Research Context Framework:**
+- **Mathematical Depth**: Graduate/research level with complete rigor
+- **Computational Focus**: High-performance implementation with complexity analysis
+- **Academic Style**: Journal-quality exposition with mathematical elegance
+- **Multilingual Context**: Integration of mathematical traditions (German precision, French elegance, English clarity, Chinese rigor)
+
+### **Prompt Architecture Templates**
+
+**1. Theoretical Investigation Template:**
+```markdown
+**Mathematical Context**: Mean Field Games with [specific focus]
+**Theoretical Framework**: [Viscosity Solutions | Optimal Transport | Stochastic Control]
+**Problem Statement**: [Rigorous mathematical formulation with LaTeX]
+**Expected Analysis**: Graduate/research level with complete mathematical rigor
+**Implementation Requirements**: Production-quality code with performance analysis
+```
+
+**2. Computational Implementation Template:**
+```markdown
+**Implementation Challenge**: Design [numerical method] for MFG system
+**Performance Specifications**: Target complexity, memory efficiency, convergence rates
+**Code Architecture**: Factory patterns, strategy patterns, observer patterns
+**Quality Assurance**: Unit tests, benchmarks, profiling integration
+```
+
+**3. Cross-Field Analysis Template:**
+```markdown
+**Interdisciplinary Analysis**: Connect MFG theory to [economics/finance/physics]
+**Mathematical Bridge**: Shared structures, limiting behaviors, dual formulations
+**Literature Integration**: Key references and theoretical foundations
+**Practical Implications**: Field-specific applications and insights
+```
+
+### **AI Collaboration Protocols**
+
+**Session Initialization:**
+1. Establish mathematical context and notation standards
+2. Specify rigor level and target audience 
+3. Define computational performance expectations
+4. Request specific output formats (LaTeX-ready, ASCII-compatible code)
+
+**Quality Standards for AI Outputs:**
+- **Mathematical Rigor**: Precise definitions, explicit assumptions, logical proofs
+- **Computational Excellence**: Algorithm complexity, numerical stability, performance validation
+- **Academic Communication**: Journal-quality exposition with proper context and references
+
 ## 🔍 **Quality Assurance**
 
 ### **Before Completing Tasks**
@@ -280,7 +334,7 @@ Use explicit preservation overrides for important directories:
 - Check file placement follows conventions
 - Update relevant documentation
 - Test examples execute successfully
-- Maintain consistency with existing patterns
+- Maintain consistency with established patterns
 
 ### **Consistency Checks**
 - Mathematical notation: u(t,x), m(t,x)
@@ -316,12 +370,13 @@ All completed features, closed issues, and finished development work must be cle
 
 ---
 
-**Last Updated**: 2025-07-31  
-**Repository Version**: Network MFG implementation with enhanced visualization and smart cleanup  
+**Last Updated**: 2025-08-03  
+**Repository Version**: Complete MFG framework with AI interaction design  
 **Claude Code**: Always reference this file for MFG_PDE conventions  
 
 **Key Recent Updates**:
-- ✅ Network MFG implementation with Lagrangian formulations
-- ✅ Enhanced visualization system with trajectory tracking
-- ✅ Smart .gitignore strategy preserving valuable examples/tests
-- ✅ Repository cleanup principles for sustainable development
+- ✅ Semi-Lagrangian HJB solver implementation
+- ✅ Complete Lagrangian MFG system with variational and primal-dual solvers
+- ✅ NumPy 2.0+ migration with native trapezoid support
+- ✅ AI interaction design framework for mathematical research collaboration
+- ✅ Comprehensive prompt templates for advanced MFG research
