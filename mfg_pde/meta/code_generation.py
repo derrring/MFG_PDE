@@ -23,9 +23,9 @@ import numpy as np
 @dataclass
 class DiscretizationScheme:
     """Represents a discretization scheme for PDE operators."""
-    
+
     operator: str  # "grad", "div", "laplacian", etc.
-    order: int     # Approximation order
+    order: int  # Approximation order
     stencil: List[int]  # Stencil points
     coefficients: List[float]  # Stencil coefficients
     boundary_treatment: str = "periodic"
@@ -34,40 +34,40 @@ class DiscretizationScheme:
 class CodeGenerator:
     """
     Base class for generating optimized numerical code.
-    
+
     Provides utilities for AST manipulation, code templating,
     and optimization-specific transformations.
     """
-    
+
     def __init__(self, backend: str = "numpy"):
         self.backend = backend
         self.templates: Dict[str, str] = {}
         self.optimizations: List[str] = []
-    
+
     def add_template(self, name: str, template: str) -> None:
         """Add code template."""
         self.templates[name] = template
-    
+
     def generate_from_template(self, template_name: str, **kwargs) -> str:
         """Generate code from template with substitutions."""
         if template_name not in self.templates:
             raise ValueError(f"Template '{template_name}' not found")
-        
+
         template = self.templates[template_name]
         return template.format(**kwargs)
-    
+
     def optimize_code(self, code: str) -> str:
         """Apply optimization transformations to generated code."""
         # Parse code to AST
         tree = ast.parse(code)
-        
+
         # Apply optimizations
         for opt in self.optimizations:
             tree = self._apply_optimization(tree, opt)
-        
+
         # Convert back to code
         return ast.unparse(tree)
-    
+
     def _apply_optimization(self, tree: ast.AST, optimization: str) -> ast.AST:
         """Apply specific optimization to AST."""
         if optimization == "loop_unrolling":
@@ -78,9 +78,10 @@ class CodeGenerator:
             return self._vectorize_operations(tree)
         else:
             return tree
-    
+
     def _unroll_loops(self, tree: ast.AST) -> ast.AST:
         """Unroll small loops for performance."""
+
         # Simplified loop unrolling implementation
         class LoopUnroller(ast.NodeTransformer):
             def visit_For(self, node):
@@ -88,22 +89,22 @@ class CodeGenerator:
                 if self._can_unroll(node):
                     return self._unroll_for_loop(node)
                 return node
-            
+
             def _can_unroll(self, node):
                 # Simplified check - in practice would be more sophisticated
                 return False
-            
+
             def _unroll_for_loop(self, node):
                 # Simplified unrolling - would expand loop body
                 return node
-        
+
         return LoopUnroller().visit(tree)
-    
+
     def _fold_constants(self, tree: ast.AST) -> ast.AST:
         """Fold constant expressions."""
         # Would implement constant folding optimization
         return tree
-    
+
     def _vectorize_operations(self, tree: ast.AST) -> ast.AST:
         """Convert scalar operations to vectorized ones."""
         # Would implement vectorization transformations
@@ -113,20 +114,22 @@ class CodeGenerator:
 class MFGSolverGenerator(CodeGenerator):
     """
     Specialized code generator for MFG solvers.
-    
+
     Generates complete solver classes from mathematical specifications
     and discretization schemes.
     """
-    
+
     def __init__(self, backend: str = "numpy"):
         super().__init__(backend)
         self._setup_mfg_templates()
-    
+
     def _setup_mfg_templates(self):
         """Initialize MFG-specific code templates."""
-        
+
         # HJB solver template
-        self.add_template("hjb_solver", '''
+        self.add_template(
+            "hjb_solver",
+            '''
 class Generated{solver_name}(BaseHJBSolver):
     """Auto-generated HJB solver with {discretization} discretization."""
     
@@ -146,10 +149,13 @@ class Generated{solver_name}(BaseHJBSolver):
     def _newton_iteration_step(self, u_current, m_current, time_idx):
         """Single Newton iteration step."""
         {newton_code}
-''')
-        
+''',
+        )
+
         # Fokker-Planck solver template
-        self.add_template("fp_solver", '''
+        self.add_template(
+            "fp_solver",
+            '''
 class Generated{solver_name}(BaseFPSolver):
     """Auto-generated Fokker-Planck solver."""
     
@@ -160,10 +166,13 @@ class Generated{solver_name}(BaseFPSolver):
     def _compute_flux(self, m, optimal_control):
         """Compute flux m * v - sigma^2/2 * grad(m)."""
         {flux_code}
-''')
-        
+''',
+        )
+
         # Full MFG solver template
-        self.add_template("mfg_solver", '''
+        self.add_template(
+            "mfg_solver",
+            '''
 class Generated{solver_name}(BaseMFGSolver):
     """Auto-generated MFG solver combining HJB and FP components."""
     
@@ -175,26 +184,27 @@ class Generated{solver_name}(BaseMFGSolver):
     def solve(self, initial_conditions=None):
         """Solve MFG system using generated solvers."""
         {solve_code}
-''')
-    
+''',
+        )
+
     def generate_hjb_solver(
-        self, 
+        self,
         name: str,
         discretization: DiscretizationScheme,
         hamiltonian_code: str,
-        boundary_type: str = "periodic"
+        boundary_type: str = "periodic",
     ) -> str:
         """Generate HJB solver class."""
-        
+
         # Generate derivative computation code
         derivative_code = self._generate_derivative_code(discretization)
-        
+
         # Generate boundary condition code
         boundary_code = self._generate_boundary_code(boundary_type)
-        
+
         # Generate Newton iteration code
         newton_code = self._generate_newton_code(hamiltonian_code)
-        
+
         return self.generate_from_template(
             "hjb_solver",
             solver_name=name,
@@ -204,56 +214,54 @@ class Generated{solver_name}(BaseMFGSolver):
             derivative_code=derivative_code,
             boundary_type=boundary_type,
             boundary_code=boundary_code,
-            newton_code=newton_code
+            newton_code=newton_code,
         )
-    
+
     def generate_fp_solver(
-        self,
-        name: str,
-        discretization: DiscretizationScheme
+        self, name: str, discretization: DiscretizationScheme
     ) -> str:
         """Generate Fokker-Planck solver class."""
-        
+
         divergence_code = self._generate_divergence_code(discretization)
         flux_code = self._generate_flux_code()
-        
+
         return self.generate_from_template(
             "fp_solver",
             solver_name=name,
             discretization=discretization.operator,
             divergence_code=divergence_code,
-            flux_code=flux_code
+            flux_code=flux_code,
         )
-    
+
     def generate_complete_solver(
         self,
         name: str,
         hjb_scheme: DiscretizationScheme,
         fp_scheme: DiscretizationScheme,
-        hamiltonian_code: str
+        hamiltonian_code: str,
     ) -> str:
         """Generate complete MFG solver."""
-        
+
         hjb_name = f"{name}HJB"
         fp_name = f"{name}FP"
-        
+
         # Generate component solvers
         hjb_code = self.generate_hjb_solver(hjb_name, hjb_scheme, hamiltonian_code)
         fp_code = self.generate_fp_solver(fp_name, fp_scheme)
-        
+
         # Generate main solver
         solve_code = self._generate_mfg_solve_code()
-        
+
         main_solver = self.generate_from_template(
             "mfg_solver",
             solver_name=name,
             hjb_name=hjb_name,
             fp_name=fp_name,
-            solve_code=solve_code
+            solve_code=solve_code,
         )
-        
+
         return "\n\n".join([hjb_code, fp_code, main_solver])
-    
+
     def _generate_derivative_code(self, scheme: DiscretizationScheme) -> str:
         """Generate code for spatial derivative computation."""
         if scheme.operator == "gradient":
@@ -262,11 +270,12 @@ class Generated{solver_name}(BaseMFGSolver):
             return self._generate_laplacian_code(scheme)
         else:
             raise ValueError(f"Unsupported operator: {scheme.operator}")
-    
+
     def _generate_gradient_code(self, scheme: DiscretizationScheme) -> str:
         """Generate gradient computation code."""
         if scheme.order == 2:
-            return textwrap.dedent('''
+            return textwrap.dedent(
+                """
             dx = self.problem.dx
             if x_idx == 0:
                 # Forward difference at left boundary
@@ -278,9 +287,11 @@ class Generated{solver_name}(BaseMFGSolver):
                 # Central difference in interior
                 grad = (u[x_idx+1] - u[x_idx-1]) / (2*dx)
             return grad
-            ''').strip()
+            """
+            ).strip()
         elif scheme.order == 4:
-            return textwrap.dedent('''
+            return textwrap.dedent(
+                """
             dx = self.problem.dx
             # Fourth-order central difference
             if x_idx < 2 or x_idx >= len(u)-2:
@@ -292,13 +303,15 @@ class Generated{solver_name}(BaseMFGSolver):
             else:
                 grad = (-u[x_idx+2] + 8*u[x_idx+1] - 8*u[x_idx-1] + u[x_idx-2]) / (12*dx)
             return grad
-            ''').strip()
+            """
+            ).strip()
         else:
             raise ValueError(f"Unsupported gradient order: {scheme.order}")
-    
+
     def _generate_laplacian_code(self, scheme: DiscretizationScheme) -> str:
         """Generate Laplacian computation code."""
-        return textwrap.dedent('''
+        return textwrap.dedent(
+            """
         dx = self.problem.dx
         if x_idx == 0 or x_idx == len(u)-1:
             # Boundary - use one-sided stencil or Neumann condition
@@ -307,30 +320,36 @@ class Generated{solver_name}(BaseMFGSolver):
             # Standard three-point stencil
             laplacian = (u[x_idx-1] - 2*u[x_idx] + u[x_idx+1]) / (dx**2)
         return laplacian
-        ''').strip()
-    
+        """
+        ).strip()
+
     def _generate_boundary_code(self, boundary_type: str) -> str:
         """Generate boundary condition code."""
         if boundary_type == "periodic":
             return "# Periodic boundary conditions handled in stencil"
         elif boundary_type == "dirichlet":
-            return textwrap.dedent('''
+            return textwrap.dedent(
+                """
             # Dirichlet boundary conditions
             u[0] = self.problem.boundary_left
             u[-1] = self.problem.boundary_right
-            ''').strip()
+            """
+            ).strip()
         elif boundary_type == "neumann":
-            return textwrap.dedent('''
+            return textwrap.dedent(
+                """
             # Neumann boundary conditions (zero gradient)
             u[0] = u[1]
             u[-1] = u[-2]
-            ''').strip()
+            """
+            ).strip()
         else:
             return f"# {boundary_type} boundary conditions not implemented"
-    
+
     def _generate_newton_code(self, hamiltonian_code: str) -> str:
         """Generate Newton iteration code."""
-        return textwrap.dedent(f'''
+        return textwrap.dedent(
+            f"""
         # Compute Hamiltonian and its derivatives
         grad_u = self._compute_spatial_derivatives(u_current, x_idx)
         H = {hamiltonian_code}
@@ -345,11 +364,13 @@ class Generated{solver_name}(BaseMFGSolver):
             update = 0.0
         
         return u_current[x_idx] + self.config.damping_factor * update
-        ''').strip()
-    
+        """
+        ).strip()
+
     def _generate_divergence_code(self, scheme: DiscretizationScheme) -> str:
         """Generate divergence computation code."""
-        return textwrap.dedent('''
+        return textwrap.dedent(
+            """
         dx = self.problem.dx
         if x_idx == 0:
             # Forward difference
@@ -361,11 +382,13 @@ class Generated{solver_name}(BaseMFGSolver):
             # Central difference
             div = (flux[x_idx+1] - flux[x_idx-1]) / (2*dx)
         return div
-        ''').strip()
-    
+        """
+        ).strip()
+
     def _generate_flux_code(self) -> str:
         """Generate flux computation code."""
-        return textwrap.dedent('''
+        return textwrap.dedent(
+            """
         sigma = self.problem.sigma
         dx = self.problem.dx
         
@@ -380,11 +403,13 @@ class Generated{solver_name}(BaseMFGSolver):
         # Flux = m * v - sigma^2/2 * grad(m)
         flux = m[x_idx] * optimal_control[x_idx] - 0.5 * sigma**2 * m_grad
         return flux
-        ''').strip()
-    
+        """
+        ).strip()
+
     def _generate_mfg_solve_code(self) -> str:
         """Generate main MFG solve loop code."""
-        return textwrap.dedent('''
+        return textwrap.dedent(
+            """
         if initial_conditions is None:
             u, m = self._create_initial_conditions()
         else:
@@ -410,115 +435,117 @@ class Generated{solver_name}(BaseMFGSolver):
             u, m = u_new, m_new
         
         return u, m
-        ''').strip()
+        """
+        ).strip()
 
 
 def generate_solver_class(
     solver_name: str,
     mathematical_system,
     discretization_schemes: Dict[str, DiscretizationScheme],
-    backend: str = "numpy"
+    backend: str = "numpy",
 ) -> str:
     """
     Generate complete solver class from mathematical specification.
-    
+
     Args:
         solver_name: Name for generated solver class
         mathematical_system: CompiledMFGSystem instance
         discretization_schemes: Dict mapping operators to schemes
         backend: Computational backend ("numpy", "jax", "numba")
-    
+
     Returns:
         Generated solver class code as string
     """
     generator = MFGSolverGenerator(backend)
-    
+
     # Extract Hamiltonian code
     if "hamiltonian" in mathematical_system.expressions:
         hamiltonian_expr = mathematical_system.expressions["hamiltonian"]
         hamiltonian_code = hamiltonian_expr.expression
     else:
         hamiltonian_code = "0.5 * p**2"  # Default quadratic
-    
+
     # Get discretization schemes
-    hjb_scheme = discretization_schemes.get("gradient", 
-                    DiscretizationScheme("gradient", 2, [-1, 0, 1], [-0.5, 0, 0.5]))
-    fp_scheme = discretization_schemes.get("divergence",
-                    DiscretizationScheme("divergence", 2, [-1, 0, 1], [-0.5, 0, 0.5]))
-    
+    hjb_scheme = discretization_schemes.get(
+        "gradient", DiscretizationScheme("gradient", 2, [-1, 0, 1], [-0.5, 0, 0.5])
+    )
+    fp_scheme = discretization_schemes.get(
+        "divergence", DiscretizationScheme("divergence", 2, [-1, 0, 1], [-0.5, 0, 0.5])
+    )
+
     return generator.generate_complete_solver(
         solver_name, hjb_scheme, fp_scheme, hamiltonian_code
     )
 
 
 def generate_discretization(
-    operator: str,
-    order: int,
-    domain_type: str = "interval"
+    operator: str, order: int, domain_type: str = "interval"
 ) -> DiscretizationScheme:
     """
     Generate discretization scheme for given operator and order.
-    
+
     Args:
         operator: "gradient", "laplacian", "divergence", etc.
         order: Approximation order (2, 4, 6, etc.)
         domain_type: "interval", "periodic", "circle", etc.
-    
+
     Returns:
         DiscretizationScheme with appropriate stencil and coefficients
     """
     if operator == "gradient":
         if order == 2:
-            return DiscretizationScheme(
-                "gradient", 2, [-1, 1], [-0.5, 0.5]
-            )
+            return DiscretizationScheme("gradient", 2, [-1, 1], [-0.5, 0.5])
         elif order == 4:
             return DiscretizationScheme(
-                "gradient", 4, [-2, -1, 1, 2], [1/12, -8/12, 8/12, -1/12]
+                "gradient", 4, [-2, -1, 1, 2], [1 / 12, -8 / 12, 8 / 12, -1 / 12]
             )
         else:
             raise ValueError(f"Unsupported gradient order: {order}")
-    
+
     elif operator == "laplacian":
         if order == 2:
-            return DiscretizationScheme(
-                "laplacian", 2, [-1, 0, 1], [1, -2, 1]
-            )
+            return DiscretizationScheme("laplacian", 2, [-1, 0, 1], [1, -2, 1])
         elif order == 4:
             return DiscretizationScheme(
-                "laplacian", 4, [-2, -1, 0, 1, 2], 
-                [-1/12, 16/12, -30/12, 16/12, -1/12]
+                "laplacian",
+                4,
+                [-2, -1, 0, 1, 2],
+                [-1 / 12, 16 / 12, -30 / 12, 16 / 12, -1 / 12],
             )
         else:
             raise ValueError(f"Unsupported Laplacian order: {order}")
-    
+
     else:
         raise ValueError(f"Unsupported operator: {operator}")
 
 
 # Example usage and testing functions
 
+
 def test_code_generation():
     """Test the code generation framework."""
     from .mathematical_dsl import quadratic_mfg_system
-    
+
     # Create mathematical system
     system = quadratic_mfg_system(control_cost=0.5, state_cost=1.0)
-    
+
     # Define discretization schemes
     schemes = {
         "gradient": generate_discretization("gradient", 2),
         "laplacian": generate_discretization("laplacian", 2),
-        "divergence": generate_discretization("gradient", 2)  # Divergence uses gradient
+        "divergence": generate_discretization(
+            "gradient", 2
+        ),  # Divergence uses gradient
     }
-    
+
     # Generate solver
     solver_code = generate_solver_class("TestQuadraticSolver", system, schemes)
-    
+
     print("Generated Solver Code:")
     print("=" * 50)
     print(solver_code)
-    
+
     return solver_code
 
 

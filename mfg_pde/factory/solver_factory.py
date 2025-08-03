@@ -430,17 +430,17 @@ def create_semi_lagrangian_solver(
     characteristic_solver: str = "explicit_euler",
     use_jax: bool = None,
     fp_solver_type: str = "fdm",
-    **kwargs
+    **kwargs,
 ) -> ConfigAwareFixedPointIterator:
     """
     Create a fixed-point solver with semi-Lagrangian HJB method.
-    
+
     The semi-Lagrangian method is particularly effective for:
     - Problems with strong convection/transport
     - Discontinuous or non-smooth solutions
     - Large time steps
     - Monotone solution requirements
-    
+
     Args:
         problem: MFG problem to solve
         interpolation_method: Interpolation for departure points ('linear', 'cubic')
@@ -449,10 +449,10 @@ def create_semi_lagrangian_solver(
         use_jax: Enable JAX acceleration (auto-detect if None)
         fp_solver_type: FP solver type ('fdm', 'particle')
         **kwargs: Additional solver configuration
-        
+
     Returns:
         Fixed-point solver with semi-Lagrangian HJB method
-        
+
     Example:
         >>> # Create semi-Lagrangian solver for convection-dominated problem
         >>> solver = create_semi_lagrangian_solver(
@@ -464,7 +464,7 @@ def create_semi_lagrangian_solver(
         >>> result = solver.solve()
     """
     from mfg_pde.alg.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
-    
+
     # Create semi-Lagrangian HJB solver
     hjb_solver = HJBSemiLagrangianSolver(
         problem=problem,
@@ -472,29 +472,34 @@ def create_semi_lagrangian_solver(
         optimization_method=optimization_method,
         characteristic_solver=characteristic_solver,
         use_jax=use_jax,
-        **{k: v for k, v in kwargs.items() if k in ['tolerance', 'max_char_iterations']}
+        **{
+            k: v for k, v in kwargs.items() if k in ["tolerance", "max_char_iterations"]
+        },
     )
-    
+
     # Create appropriate FP solver
     if fp_solver_type == "fdm":
         from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
+
         fp_solver = FPFDMSolver(problem=problem)
     elif fp_solver_type == "particle":
         from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
+
         fp_solver = FPParticleSolver(problem=problem)
     else:
         raise ValueError(f"Unknown FP solver type: {fp_solver_type}")
-    
+
     # Extract relevant kwargs for fixed-point solver
-    fp_kwargs = {k: v for k, v in kwargs.items() 
-                 if k not in ['tolerance', 'max_char_iterations']}
-    
+    fp_kwargs = {
+        k: v for k, v in kwargs.items() if k not in ["tolerance", "max_char_iterations"]
+    }
+
     return create_fast_solver(
         problem=problem,
         solver_type="fixed_point",
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        **fp_kwargs
+        **fp_kwargs,
     )
 
 

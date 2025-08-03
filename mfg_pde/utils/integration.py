@@ -8,10 +8,12 @@ with preference for NumPy 2.0+ standard but fallbacks for older versions.
 # Import from the comprehensive NumPy compatibility module
 from .numpy_compat import trapezoid, get_numpy_info
 
+
 # Re-export for backward compatibility
 def get_integration_info() -> dict:
     """Get information about available integration methods."""
     return get_numpy_info()
 
+
 # Export the main functions
-__all__ = ['trapezoid', 'get_integration_info']
+__all__ = ["trapezoid", "get_integration_info"]

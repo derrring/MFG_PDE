@@ -8,6 +8,7 @@ except PackageNotFoundError:
 
 # Ensure NumPy 2.0+ compatibility on import
 from .utils.numpy_compat import ensure_numpy_compatibility
+
 _numpy_info = ensure_numpy_compatibility()
 
 from .config import (

@@ -37,7 +37,7 @@ from .type_system import (
 
 __all__ = [
     "CodeGenerator",
-    "MFGSolverGenerator", 
+    "MFGSolverGenerator",
     "generate_solver_class",
     "generate_discretization",
     "MathematicalExpression",
