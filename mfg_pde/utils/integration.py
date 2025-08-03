@@ -6,7 +6,7 @@ with preference for NumPy 2.0+ standard but fallbacks for older versions.
 """
 
 # Import from the comprehensive NumPy compatibility module
-from .numpy_compat import trapezoid, get_numpy_info
+from .numpy_compat import get_numpy_info, trapezoid
 
 
 # Re-export for backward compatibility

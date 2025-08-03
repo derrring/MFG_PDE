@@ -11,8 +11,8 @@ Available solvers:
 """
 
 from .base_variational import BaseVariationalSolver, VariationalSolverResult
-from .variational_mfg_solver import VariationalMFGSolver
 from .primal_dual_solver import PrimalDualMFGSolver
+from .variational_mfg_solver import VariationalMFGSolver
 
 __all__ = [
     "BaseVariationalSolver",

@@ -23,13 +23,13 @@ Key advantages of primal-dual methods:
 
 import logging
 import time
-from typing import Any, Dict, Optional, Tuple, List, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
-from .base_variational import BaseVariationalSolver, VariationalSolverResult
 from ...utils.integration import trapezoid
+from .base_variational import BaseVariationalSolver, VariationalSolverResult
 
 logger = logging.getLogger(__name__)
 

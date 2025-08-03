@@ -17,18 +17,18 @@ from .config import (
     create_research_config,
     MFGSolverConfig,
 )
+from .core.lagrangian_mfg_problem import (
+    create_obstacle_lagrangian_mfg,
+    create_quadratic_lagrangian_mfg,
+    LagrangianComponents,
+    LagrangianMFGProblem,
+)
 from .core.mfg_problem import (
     create_mfg_problem,
     ExampleMFGProblem,
     MFGComponents,
     MFGProblem,
     MFGProblemBuilder,
-)
-from .core.lagrangian_mfg_problem import (
-    create_quadratic_lagrangian_mfg,
-    create_obstacle_lagrangian_mfg,
-    LagrangianComponents,
-    LagrangianMFGProblem,
 )
 from .core.network_mfg_problem import (
     create_grid_mfg_problem,

@@ -22,8 +22,8 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from .base_variational import BaseVariationalSolver, VariationalSolverResult
 from ...utils.integration import trapezoid
+from .base_variational import BaseVariationalSolver, VariationalSolverResult
 
 logger = logging.getLogger(__name__)
 
@@ -425,9 +425,9 @@ class VariationalMFGSolver(BaseVariationalSolver):
         hamiltonian_problem = self.problem.create_compatible_mfg_problem()
 
         # Create HJB-FP solver for comparison
-        from mfg_pde.factory import create_fast_solver
-        from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
         from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
+        from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfg_pde.factory import create_fast_solver
 
         hjb_solver = HJBFDMSolver(hamiltonian_problem)
         fp_solver = FPFDMSolver(hamiltonian_problem)

@@ -23,7 +23,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 
-from .base_hjb import BaseHJBSolver, _calculate_p_values
+from .base_hjb import _calculate_p_values, BaseHJBSolver
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem

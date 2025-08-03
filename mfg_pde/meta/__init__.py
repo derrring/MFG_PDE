@@ -13,27 +13,22 @@ Key Features:
 
 from .code_generation import (
     CodeGenerator,
-    MFGSolverGenerator,
-    generate_solver_class,
     generate_discretization,
+    generate_solver_class,
+    MFGSolverGenerator,
 )
 from .mathematical_dsl import (
-    MathematicalExpression,
-    MFGSystemBuilder,
     HamiltonianBuilder,
     LagrangianBuilder,
+    MathematicalExpression,
+    MFGSystemBuilder,
 )
 from .optimization_meta import (
-    OptimizationCompiler,
-    JITSolverFactory,
     create_optimized_solver,
+    JITSolverFactory,
+    OptimizationCompiler,
 )
-from .type_system import (
-    MFGType,
-    SolverMetaclass,
-    DynamicSolver,
-    TypedMFGProblem,
-)
+from .type_system import DynamicSolver, MFGType, SolverMetaclass, TypedMFGProblem
 
 __all__ = [
     "CodeGenerator",
