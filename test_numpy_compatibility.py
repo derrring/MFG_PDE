@@ -16,19 +16,19 @@ def test_numpy_compatibility():
     
     try:
         # Test basic NumPy functionality
-        print("✓ NumPy imports successfully")
+        print("PASS: NumPy imports successfully")
         
         # Test MFG_PDE imports
         import mfg_pde
-        print("✓ MFG_PDE imports successfully")
+        print("PASS: MFG_PDE imports successfully")
         
         # Test NumPy compatibility layer
         from mfg_pde.utils.numpy_compat import trapezoid, ensure_numpy_compatibility
-        print("✓ NumPy compatibility layer imports successfully")
+        print("PASS: NumPy compatibility layer imports successfully")
         
         # Test compatibility function
         info = ensure_numpy_compatibility()
-        print(f"✓ NumPy compatibility check passed: {info}")
+        print(f"PASS: NumPy compatibility check passed: {info}")
         
         # Test trapezoid function
         x = np.linspace(0, 1, 100)
@@ -37,15 +37,15 @@ def test_numpy_compatibility():
         expected = 1.0/3.0  # Integral of x^2 from 0 to 1
         
         if abs(result - expected) < 1e-2:
-            print(f"✓ Trapezoid integration test passed: {result:.6f} ≈ {expected:.6f}")
+            print(f"PASS: Trapezoid integration test passed: {result:.6f} ≈ {expected:.6f}")
         else:
-            print(f"✗ Trapezoid integration test failed: {result:.6f} != {expected:.6f}")
+            print(f"FAIL: Trapezoid integration test failed: {result:.6f} != {expected:.6f}")
             return False
             
         # Test MFG problem creation
         from mfg_pde.core.mfg_problem import MFGProblem
         problem = MFGProblem(xmin=0, xmax=1, T=1.0, Nx=50, Nt=25)
-        print("✓ MFG problem creation successful")
+        print("PASS: MFG problem creation successful")
         
         # Test factory functions
         from mfg_pde.factory import create_fast_solver
@@ -61,13 +61,13 @@ def test_numpy_compatibility():
             hjb_solver=hjb_solver,
             fp_solver=fp_solver
         )
-        print("✓ Solver creation successful")
+        print("PASS: Solver creation successful")
         
-        print(f"\n🎉 All NumPy compatibility tests passed with NumPy {np.__version__}")
+        print(f"\nSUCCESS: All NumPy compatibility tests passed with NumPy {np.__version__}")
         return True
         
     except Exception as e:
-        print(f"\n❌ Test failed with error: {e}")
+        print(f"\nERROR: Test failed with error: {e}")
         print(f"Traceback:")
         traceback.print_exc()
         return False
@@ -90,7 +90,7 @@ def benchmark_integration_methods():
             result = trapezoid(y, x)
         trapezoid_time = time.time() - start_time
         
-        print(f"✓ Trapezoid method: {trapezoid_time:.4f}s for 100 integrations")
+        print(f"BENCHMARK: Trapezoid method: {trapezoid_time:.4f}s for 100 integrations")
         print(f"  Result: {result:.6f}")
         
         # Test different array sizes
@@ -105,10 +105,10 @@ def benchmark_integration_methods():
             
             print(f"  Size {size}: {elapsed:.6f}s, result: {result:.6f}")
             
-        print("✓ Benchmark completed successfully")
+        print("PASS: Benchmark completed successfully")
         
     except Exception as e:
-        print(f"❌ Benchmark failed: {e}")
+        print(f"ERROR: Benchmark failed: {e}")
         traceback.print_exc()
 
 if __name__ == "__main__":
