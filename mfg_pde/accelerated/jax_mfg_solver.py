@@ -27,9 +27,10 @@ from .jax_utils import (
 )
 
 if HAS_JAX:
+    import optax
+
     import jax
     import jax.numpy as jnp
-    import optax
     from jax import device_put, grad, jacfwd, jit, vmap
     from jax.lax import cond, scan, while_loop
 else:
@@ -90,9 +91,7 @@ class JAXMFGSolver:
 
         # Device management
         if device is None:
-            self.device = (
-                DEFAULT_DEVICE if (use_gpu and HAS_GPU) else jax.devices("cpu")[0]
-            )
+            self.device = DEFAULT_DEVICE if (use_gpu and HAS_GPU) else jax.devices("cpu")[0]
         else:
             self.device = device
 
@@ -150,9 +149,7 @@ class JAXMFGSolver:
         self._check_convergence_jit = jit(self._check_convergence_kernel)
 
         # Compile mass conservation
-        self._enforce_mass_conservation_jit = jit(
-            self._enforce_mass_conservation_kernel
-        )
+        self._enforce_mass_conservation_jit = jit(self._enforce_mass_conservation_kernel)
 
         # Warm-up compilation with dummy data
         dummy_U = jnp.ones((self.Nt + 1, self.Nx + 1))
@@ -183,9 +180,7 @@ class JAXMFGSolver:
         elif self.method == "newton":
             U_sol, M_sol, converged, iterations, final_error = self._solve_newton()
         elif self.method == "gradient_descent":
-            U_sol, M_sol, converged, iterations, final_error = (
-                self._solve_gradient_descent()
-            )
+            U_sol, M_sol, converged, iterations, final_error = self._solve_gradient_descent()
         else:
             raise ValueError(f"Unknown method: {self.method}")
 
@@ -218,12 +213,8 @@ class JAXMFGSolver:
             },
         )
 
-        print(
-            f"SUCCESS: JAX solve completed in {self.solve_time:.2f}s (compile: {self.compile_time:.2f}s)"
-        )
-        print(
-            f" Converged: {converged}, Iterations: {iterations}, Final error: {final_error:.2e}"
-        )
+        print(f"SUCCESS: JAX solve completed in {self.solve_time:.2f}s (compile: {self.compile_time:.2f}s)")
+        print(f" Converged: {converged}, Iterations: {iterations}, Final error: {final_error:.2e}")
 
         return result
 
@@ -262,9 +253,7 @@ class JAXMFGSolver:
             return new_carry, error
 
         # Use while loop for early stopping
-        final_carry, final_error = while_loop(
-            should_continue, iteration_step, (initial_carry, jnp.inf)
-        )
+        final_carry, final_error = while_loop(should_continue, iteration_step, (initial_carry, jnp.inf))
 
         U_final, M_final, final_iteration = final_carry
         converged = final_error <= self.tolerance
@@ -497,9 +486,7 @@ class JAXMFGSolver:
 
         return residual
 
-    def compute_sensitivity(
-        self, parameter_name: str, perturbation: float = 1e-6
-    ) -> Dict[str, Any]:
+    def compute_sensitivity(self, parameter_name: str, perturbation: float = 1e-6) -> Dict[str, Any]:
         """
         Compute sensitivity of solution to parameter changes using automatic differentiation.
 
@@ -528,14 +515,10 @@ class JAXMFGSolver:
 
                 return U_sol, M_sol
             else:
-                raise ValueError(
-                    f"Sensitivity for parameter '{parameter_name}' not implemented"
-                )
+                raise ValueError(f"Sensitivity for parameter '{parameter_name}' not implemented")
 
         # Compute sensitivity using automatic differentiation
-        grad_func = grad(
-            lambda p: jnp.sum(solve_with_parameter(p)[0])
-        )  # Simplified objective
+        grad_func = grad(lambda p: jnp.sum(solve_with_parameter(p)[0]))  # Simplified objective
 
         # Evaluate at current parameter value
         current_param = getattr(self, parameter_name)

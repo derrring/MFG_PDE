@@ -185,16 +185,10 @@ class NetworkMFGVisualizer:
             colorscale = None
 
         # Node hover text
-        node_text = [
-            f"Node {i}<br>Degree: {self.network_data.get_node_degree(i)}"
-            for i in range(self.num_nodes)
-        ]
+        node_text = [f"Node {i}<br>Degree: {self.network_data.get_node_degree(i)}" for i in range(self.num_nodes)]
 
         if node_values is not None:
-            node_text = [
-                f"{text}<br>Value: {node_values[i]:.3f}"
-                for i, text in enumerate(node_text)
-            ]
+            node_text = [f"{text}<br>Value: {node_values[i]:.3f}" for i, text in enumerate(node_text)]
 
         fig.add_trace(
             go.Scatter(
@@ -202,14 +196,11 @@ class NetworkMFGVisualizer:
                 y=node_y,
                 mode="markers+text",
                 marker=dict(
-                    size=[node_size / 10]
-                    * self.num_nodes,  # Plotly uses different scaling
+                    size=[node_size / 10] * self.num_nodes,  # Plotly uses different scaling
                     color=node_color,
                     colorscale=colorscale,
                     showscale=True if node_values is not None else False,
-                    colorbar=(
-                        dict(title="Node Values") if node_values is not None else None
-                    ),
+                    colorbar=(dict(title="Node Values") if node_values is not None else None),
                     line=dict(width=2, color="black"),
                 ),
                 text=[str(i) for i in range(self.num_nodes)],
@@ -258,9 +249,7 @@ class NetworkMFGVisualizer:
 
             # Draw edges
             edge_width = self.default_edge_width * edge_width_scale
-            nx.draw_networkx_edges(
-                G, pos, ax=ax, width=edge_width, alpha=0.6, edge_color="gray"
-            )
+            nx.draw_networkx_edges(G, pos, ax=ax, width=edge_width, alpha=0.6, edge_color="gray")
 
             # Draw nodes
             node_size = self.default_node_size * node_size_scale
@@ -278,9 +267,7 @@ class NetworkMFGVisualizer:
                 )
                 plt.colorbar(nodes, ax=ax, label="Node Values")
             else:
-                nx.draw_networkx_nodes(
-                    G, pos, ax=ax, node_color="lightblue", node_size=node_size
-                )
+                nx.draw_networkx_nodes(G, pos, ax=ax, node_color="lightblue", node_size=node_size)
 
             # Draw node labels
             nx.draw_networkx_labels(G, pos, ax=ax, font_size=8)
@@ -338,13 +325,9 @@ class NetworkMFGVisualizer:
             selected_nodes = np.argsort(avg_density)[-min(10, num_nodes) :]
 
         if interactive and PLOTLY_AVAILABLE:
-            return self._plot_density_evolution_plotly(
-                M, times, selected_nodes, title, save_path
-            )
+            return self._plot_density_evolution_plotly(M, times, selected_nodes, title, save_path)
         else:
-            return self._plot_density_evolution_matplotlib(
-                M, times, selected_nodes, title, save_path
-            )
+            return self._plot_density_evolution_matplotlib(M, times, selected_nodes, title, save_path)
 
     def _plot_density_evolution_plotly(
         self,
@@ -425,9 +408,7 @@ class NetworkMFGVisualizer:
         Similar to density evolution but for value functions.
         """
         # Reuse density evolution plotting with different title
-        return self.plot_density_evolution(
-            U, times, selected_nodes, title, interactive, save_path
-        )
+        return self.plot_density_evolution(U, times, selected_nodes, title, interactive, save_path)
 
     def create_flow_animation(
         self,
@@ -511,9 +492,7 @@ class NetworkMFGVisualizer:
         anim = FuncAnimation(fig, animate, frames=Nt, interval=interval, repeat=True)
 
         if save_path:
-            anim.save(
-                save_path, writer="pillow" if save_path.endswith(".gif") else "ffmpeg"
-            )
+            anim.save(save_path, writer="pillow" if save_path.endswith(".gif") else "ffmpeg")
 
         return anim
 
@@ -643,9 +622,7 @@ class NetworkMFGVisualizer:
                         col=2,
                     )
 
-        fig.update_layout(
-            title="Network MFG Analysis Dashboard", height=800, showlegend=True
-        )
+        fig.update_layout(title="Network MFG Analysis Dashboard", height=800, showlegend=True)
 
         # Update y-axes to log scale for convergence
         fig.update_yaxes(type="log", row=2, col=1)
@@ -694,9 +671,7 @@ class NetworkMFGVisualizer:
         # Degree distribution (top-right)
         ax = axes[0, 1]
         degrees = np.array(self.adjacency_matrix.sum(axis=1)).flatten()
-        ax.hist(
-            degrees, bins=min(20, len(np.unique(degrees))), alpha=0.7, edgecolor="black"
-        )
+        ax.hist(degrees, bins=min(20, len(np.unique(degrees))), alpha=0.7, edgecolor="black")
         ax.set_xlabel("Degree")
         ax.set_ylabel("Count")
         ax.set_title("Degree Distribution")

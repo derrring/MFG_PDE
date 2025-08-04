@@ -44,9 +44,7 @@ class SolverResult:
     def __post_init__(self):
         """Validate result data after initialization."""
         if self.U.shape != self.M.shape:
-            raise ValueError(
-                f"U and M shapes must match: U{self.U.shape} vs M{self.M.shape}"
-            )
+            raise ValueError(f"U and M shapes must match: U{self.U.shape} vs M{self.M.shape}")
 
         if len(self.error_history_U) != len(self.error_history_M):
             raise ValueError("Error history arrays must have same length")
@@ -90,16 +88,12 @@ class SolverResult:
     @property
     def final_error_U(self) -> float:
         """Get the final convergence error for U."""
-        return (
-            self.error_history_U[-1] if len(self.error_history_U) > 0 else float("inf")
-        )
+        return self.error_history_U[-1] if len(self.error_history_U) > 0 else float("inf")
 
     @property
     def final_error_M(self) -> float:
         """Get the final convergence error for M."""
-        return (
-            self.error_history_M[-1] if len(self.error_history_M) > 0 else float("inf")
-        )
+        return self.error_history_M[-1] if len(self.error_history_M) > 0 else float("inf")
 
     @property
     def max_error(self) -> float:
@@ -234,12 +228,8 @@ def create_solver_result(
 
     # Auto-detect convergence if not explicitly provided
     if not convergence_achieved and tolerance is not None and len(error_history_U) > 0:
-        final_error_U = (
-            error_history_U[-1] if len(error_history_U) > 0 else float("inf")
-        )
-        final_error_M = (
-            error_history_M[-1] if len(error_history_M) > 0 else float("inf")
-        )
+        final_error_U = error_history_U[-1] if len(error_history_U) > 0 else float("inf")
+        final_error_M = error_history_M[-1] if len(error_history_M) > 0 else float("inf")
         convergence_achieved = max(final_error_U, final_error_M) < tolerance
 
     # Create convergence analysis
@@ -251,9 +241,7 @@ def create_solver_result(
         final_tolerance=tolerance or 0.0,
         convergence_rate_estimate=None,  # Will be computed on access
     )
-    convergence_info.convergence_rate_estimate = (
-        convergence_info.estimate_convergence_rate()
-    )
+    convergence_info.convergence_rate_estimate = convergence_info.estimate_convergence_rate()
 
     # Add convergence analysis to metadata
     metadata["convergence_analysis"] = convergence_info

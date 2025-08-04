@@ -22,21 +22,18 @@ Migrated Components:
 """
 
 # Enhanced network MFG visualization
-from .enhanced_network_plots import (
-    create_enhanced_network_visualizer,
-    EnhancedNetworkMFGVisualizer,
-)
+from .enhanced_network_plots import EnhancedNetworkMFGVisualizer, create_enhanced_network_visualizer
 
 # Core interactive visualization system
 from .interactive_plots import (
     BOKEH_AVAILABLE,
-    create_bokeh_visualizer,
-    create_plotly_visualizer,
-    create_visualization_manager,
+    PLOTLY_AVAILABLE,
     MFGBokehVisualizer,
     MFGPlotlyVisualizer,
     MFGVisualizationManager,
-    PLOTLY_AVAILABLE,
+    create_bokeh_visualizer,
+    create_plotly_visualizer,
+    create_visualization_manager,
     quick_2d_plot,
     quick_3d_plot,
 )
@@ -55,23 +52,23 @@ from .legacy_plotting import (  # Aliases for backward compatibility
 
 # Mathematical plotting with LaTeX support
 from .mathematical_plots import (
-    create_mathematical_visualizer,
     MathematicalPlotter,
     MFGMathematicalVisualizer,
+    create_mathematical_visualizer,
     plot_mathematical_function,
     plot_mfg_density,
 )
 
 # Comprehensive analytics engine
 from .mfg_analytics import (
+    MFGAnalyticsEngine,
     analyze_mfg_solution_quick,
     analyze_parameter_sweep_quick,
     create_analytics_engine,
-    MFGAnalyticsEngine,
 )
 
 # Network MFG visualization
-from .network_plots import create_network_visualizer, NetworkMFGVisualizer
+from .network_plots import NetworkMFGVisualizer, create_network_visualizer
 
 __all__ = [
     # Core interactive visualization
@@ -113,9 +110,7 @@ __all__ = [
 # Version info
 __version__ = "2.0.0"  # Updated for comprehensive migration
 __author__ = "MFG_PDE Team"
-__description__ = (
-    "Comprehensive visualization system for Mean Field Games with full utils/ migration"
-)
+__description__ = "Comprehensive visualization system for Mean Field Games with full utils/ migration"
 
 # Migration completion notice
 _MIGRATION_COMPLETE = True

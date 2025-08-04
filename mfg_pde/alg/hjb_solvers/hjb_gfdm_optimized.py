@@ -17,9 +17,7 @@ try:
     CVXPY_AVAILABLE = True
 except ImportError:
     CVXPY_AVAILABLE = False
-    warnings.warn(
-        "CVXPY not available. Install with 'pip install cvxpy' for optimal performance."
-    )
+    warnings.warn("CVXPY not available. Install with 'pip install cvxpy' for optimal performance.")
 
 try:
     import osqp
@@ -140,9 +138,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
         print(f"  Warm start: {'YES' if self.enable_warm_start else 'NO'}")
         print(f"  Caching: {'YES' if self.enable_caching else 'NO'}")
 
-    def _needs_qp_constraints(
-        self, unconstrained_solution: np.ndarray, point_idx: int, taylor_data: Dict
-    ) -> bool:
+    def _needs_qp_constraints(self, unconstrained_solution: np.ndarray, point_idx: int, taylor_data: Dict) -> bool:
         """
         Determine if QP constraints are actually needed for this collocation point.
 
@@ -171,15 +167,11 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
                             violations += 1
 
             # Additional physics-based checks
-            if self._check_density_positivity_violation(
-                unconstrained_solution, point_idx
-            ):
+            if self._check_density_positivity_violation(unconstrained_solution, point_idx):
                 violations += 1
 
             # Check for derivative monotonicity if applicable
-            if self._check_derivative_monotonicity_violation(
-                unconstrained_solution, point_idx, taylor_data
-            ):
+            if self._check_derivative_monotonicity_violation(unconstrained_solution, point_idx, taylor_data):
                 violations += 1
 
             needs_qp = violations > 0
@@ -200,9 +192,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             print(f"Warning: Constraint checking failed for point {point_idx}: {e}")
             return True
 
-    def _get_monotonicity_bounds(
-        self, point_idx: int, taylor_data: Dict
-    ) -> Optional[List[Tuple]]:
+    def _get_monotonicity_bounds(self, point_idx: int, taylor_data: Dict) -> Optional[List[Tuple]]:
         """Get monotonicity bounds for the given collocation point"""
         try:
             # This is problem-specific - implement based on the specific MFG constraints
@@ -219,9 +209,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
         except Exception:
             return None
 
-    def _check_density_positivity_violation(
-        self, solution: np.ndarray, point_idx: int
-    ) -> bool:
+    def _check_density_positivity_violation(self, solution: np.ndarray, point_idx: int) -> bool:
         """Check if solution would lead to negative densities"""
         try:
             # Simple heuristic check - can be made more sophisticated
@@ -229,24 +217,18 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
         except Exception:
             return False
 
-    def _check_derivative_monotonicity_violation(
-        self, solution: np.ndarray, point_idx: int, taylor_data: Dict
-    ) -> bool:
+    def _check_derivative_monotonicity_violation(self, solution: np.ndarray, point_idx: int, taylor_data: Dict) -> bool:
         """Check if derivatives violate monotonicity"""
         try:
             # Simple check for extreme derivative values
             if len(solution) >= 2:
-                grad_norm = np.linalg.norm(
-                    solution[:2]
-                )  # First two components often gradients
+                grad_norm = np.linalg.norm(solution[:2])  # First two components often gradients
                 return grad_norm > 10.0  # Large gradients suggest instability
             return False
         except Exception:
             return False
 
-    def _solve_unconstrained_hjb(
-        self, taylor_data: Dict, b: np.ndarray, point_idx: int
-    ) -> np.ndarray:
+    def _solve_unconstrained_hjb(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> np.ndarray:
         """Solve unconstrained HJB problem (fast path)"""
         try:
             # Extract Taylor matrix
@@ -285,11 +267,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             x = cp.Variable(n_vars)
 
             # Set warm start if available and enabled
-            if (
-                self.enable_warm_start
-                and warm_start is not None
-                and len(warm_start) == n_vars
-            ):
+            if self.enable_warm_start and warm_start is not None and len(warm_start) == n_vars:
                 x.value = warm_start
                 self.performance_stats["warm_start_successes"] += 1
 
@@ -337,9 +315,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             print(f"CVXPY solve failed for point {point_idx}: {e}")
             return self._solve_qp_scipy_fallback(taylor_data, b, point_idx)
 
-    def _solve_qp_scipy_fallback(
-        self, taylor_data: Dict, b: np.ndarray, point_idx: int
-    ) -> Tuple[np.ndarray, bool]:
+    def _solve_qp_scipy_fallback(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> Tuple[np.ndarray, bool]:
         """Fallback to scipy optimization if CVXPY fails"""
         try:
             # Use the parent class method as fallback
@@ -357,24 +333,12 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
         point_indices: List[int],
     ) -> List[Tuple[np.ndarray, bool]]:
         """Solve multiple QP problems simultaneously (batch optimization)"""
-        if (
-            not self.enable_batch_qp
-            or not CVXPY_AVAILABLE
-            or len(taylor_data_batch) <= 1
-        ):
+        if not self.enable_batch_qp or not CVXPY_AVAILABLE or len(taylor_data_batch) <= 1:
             # Fall back to individual solves
             results = []
-            for i, (taylor_data, b, point_idx) in enumerate(
-                zip(taylor_data_batch, b_batch, point_indices)
-            ):
-                warm_start = (
-                    self.previous_solutions.get(point_idx, None)
-                    if self.enable_warm_start
-                    else None
-                )
-                sol, success = self._solve_qp_cvxpy(
-                    taylor_data, b, point_idx, warm_start
-                )
+            for i, (taylor_data, b, point_idx) in enumerate(zip(taylor_data_batch, b_batch, point_indices)):
+                warm_start = self.previous_solutions.get(point_idx, None) if self.enable_warm_start else None
+                sol, success = self._solve_qp_cvxpy(taylor_data, b, point_idx, warm_start)
                 results.append((sol, success))
             return results
 
@@ -382,10 +346,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             self.performance_stats["batch_qp_calls"] += 1
 
             # Determine total variable count
-            var_counts = [
-                td.get("taylor_matrix", np.eye(len(b))).shape[1]
-                for td, b in zip(taylor_data_batch, b_batch)
-            ]
+            var_counts = [td.get("taylor_matrix", np.eye(len(b))).shape[1] for td, b in zip(taylor_data_batch, b_batch)]
             total_vars = sum(var_counts)
 
             # Create batch variable
@@ -472,17 +433,9 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             print(f"Batch QP solve failed: {e}")
             # Fallback to individual solves
             results = []
-            for taylor_data, b, point_idx in zip(
-                taylor_data_batch, b_batch, point_indices
-            ):
-                warm_start = (
-                    self.previous_solutions.get(point_idx, None)
-                    if self.enable_warm_start
-                    else None
-                )
-                sol, success = self._solve_qp_cvxpy(
-                    taylor_data, b, point_idx, warm_start
-                )
+            for taylor_data, b, point_idx in zip(taylor_data_batch, b_batch, point_indices):
+                warm_start = self.previous_solutions.get(point_idx, None) if self.enable_warm_start else None
+                sol, success = self._solve_qp_cvxpy(taylor_data, b, point_idx, warm_start)
                 results.append((sol, success))
             return results
 
@@ -496,14 +449,10 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
         solve_start_time = time.time()
 
         # Step 1: Solve unconstrained problem (always fast)
-        unconstrained_solution = self._solve_unconstrained_hjb(
-            taylor_data, b, point_idx
-        )
+        unconstrained_solution = self._solve_unconstrained_hjb(taylor_data, b, point_idx)
 
         # Step 2: Check if QP constraints are actually needed
-        if not self._needs_qp_constraints(
-            unconstrained_solution, point_idx, taylor_data
-        ):
+        if not self._needs_qp_constraints(unconstrained_solution, point_idx, taylor_data):
             # Skip QP entirely - use unconstrained solution
             solve_time = time.time() - solve_start_time
             return unconstrained_solution, solve_time, True
@@ -512,21 +461,13 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
         qp_start_time = time.time()
 
         # Get warm start from previous solution if available
-        warm_start = (
-            self.previous_solutions.get(point_idx, None)
-            if self.enable_warm_start
-            else None
-        )
+        warm_start = self.previous_solutions.get(point_idx, None) if self.enable_warm_start else None
 
         # Solve constrained problem
         if self.preferred_qp_solver == "cvxpy":
-            constrained_solution, qp_success = self._solve_qp_cvxpy(
-                taylor_data, b, point_idx, warm_start=warm_start
-            )
+            constrained_solution, qp_success = self._solve_qp_cvxpy(taylor_data, b, point_idx, warm_start=warm_start)
         else:
-            constrained_solution, qp_success = self._solve_qp_scipy_fallback(
-                taylor_data, b, point_idx
-            )
+            constrained_solution, qp_success = self._solve_qp_scipy_fallback(taylor_data, b, point_idx)
 
         qp_time = time.time() - qp_start_time
         total_solve_time = time.time() - solve_start_time
@@ -540,9 +481,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
 
         return constrained_solution, total_solve_time, qp_success
 
-    def solve_hjb_system(
-        self, U_current: np.ndarray, M_current: np.ndarray, n_time_idx: int
-    ) -> np.ndarray:
+    def solve_hjb_system(self, U_current: np.ndarray, M_current: np.ndarray, n_time_idx: int) -> np.ndarray:
         """
         Optimized HJB system solve with batch processing and adaptive QP.
         Overrides the parent class method with optimizations.
@@ -561,9 +500,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             for i in range(num_collocation_points):
                 try:
                     # Build Taylor data and RHS for this point
-                    taylor_data = self._build_taylor_data(
-                        i, U_current, M_current, n_time_idx
-                    )
+                    taylor_data = self._build_taylor_data(i, U_current, M_current, n_time_idx)
                     b = self._build_rhs_vector(i, U_current, M_current, n_time_idx)
 
                     taylor_data_batch.append(taylor_data)
@@ -580,60 +517,36 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
                 needs_qp_mask = []
                 unconstrained_solutions = []
 
-                for i, (taylor_data, b, point_idx) in enumerate(
-                    zip(taylor_data_batch, b_batch, point_indices)
-                ):
-                    unconstrained_sol = self._solve_unconstrained_hjb(
-                        taylor_data, b, point_idx
-                    )
+                for i, (taylor_data, b, point_idx) in enumerate(zip(taylor_data_batch, b_batch, point_indices)):
+                    unconstrained_sol = self._solve_unconstrained_hjb(taylor_data, b, point_idx)
                     unconstrained_solutions.append(unconstrained_sol)
-                    needs_qp_mask.append(
-                        self._needs_qp_constraints(
-                            unconstrained_sol, point_idx, taylor_data
-                        )
-                    )
+                    needs_qp_mask.append(self._needs_qp_constraints(unconstrained_sol, point_idx, taylor_data))
 
                 # Step 2: Batch solve only the points that need QP
                 qp_indices = [i for i, needs_qp in enumerate(needs_qp_mask) if needs_qp]
 
                 if len(qp_indices) == 0:
                     # No QP needed - use all unconstrained solutions
-                    for i, (point_idx, solution) in enumerate(
-                        zip(point_indices, unconstrained_solutions)
-                    ):
+                    for i, (point_idx, solution) in enumerate(zip(point_indices, unconstrained_solutions)):
                         U_new[point_idx, :] = (
-                            solution[: U_new.shape[1]]
-                            if len(solution) >= U_new.shape[1]
-                            else solution
+                            solution[: U_new.shape[1]] if len(solution) >= U_new.shape[1] else solution
                         )
 
                 elif len(qp_indices) == 1:
                     # Only one QP needed - solve individually for efficiency
                     idx = qp_indices[0]
                     point_idx = point_indices[idx]
-                    solution, solve_time, success = (
-                        self.solve_collocation_point_optimized(
-                            point_idx, taylor_data_batch[idx], b_batch[idx]
-                        )
+                    solution, solve_time, success = self.solve_collocation_point_optimized(
+                        point_idx, taylor_data_batch[idx], b_batch[idx]
                     )
 
                     # Use unconstrained solutions for non-QP points
-                    for i, (pi, sol) in enumerate(
-                        zip(point_indices, unconstrained_solutions)
-                    ):
+                    for i, (pi, sol) in enumerate(zip(point_indices, unconstrained_solutions)):
                         if i != idx:
-                            U_new[pi, :] = (
-                                sol[: U_new.shape[1]]
-                                if len(sol) >= U_new.shape[1]
-                                else sol
-                            )
+                            U_new[pi, :] = sol[: U_new.shape[1]] if len(sol) >= U_new.shape[1] else sol
 
                     # Use QP solution for the QP point
-                    U_new[point_idx, :] = (
-                        solution[: U_new.shape[1]]
-                        if len(solution) >= U_new.shape[1]
-                        else solution
-                    )
+                    U_new[point_idx, :] = solution[: U_new.shape[1]] if len(solution) >= U_new.shape[1] else solution
 
                 else:
                     # Multiple QPs needed - use batch solving
@@ -641,46 +554,28 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
                     qp_b_batch = [b_batch[i] for i in qp_indices]
                     qp_point_indices = [point_indices[i] for i in qp_indices]
 
-                    qp_solutions = self._solve_batch_qp(
-                        qp_taylor_data, qp_b_batch, qp_point_indices
-                    )
+                    qp_solutions = self._solve_batch_qp(qp_taylor_data, qp_b_batch, qp_point_indices)
 
                     # Combine results
-                    for i, (point_idx, solution) in enumerate(
-                        zip(point_indices, unconstrained_solutions)
-                    ):
+                    for i, (point_idx, solution) in enumerate(zip(point_indices, unconstrained_solutions)):
                         if i in qp_indices:
                             # Use QP solution
                             qp_idx = qp_indices.index(i)
                             qp_solution, success = qp_solutions[qp_idx]
                             U_new[point_idx, :] = (
-                                qp_solution[: U_new.shape[1]]
-                                if len(qp_solution) >= U_new.shape[1]
-                                else qp_solution
+                                qp_solution[: U_new.shape[1]] if len(qp_solution) >= U_new.shape[1] else qp_solution
                             )
                         else:
                             # Use unconstrained solution
                             U_new[point_idx, :] = (
-                                solution[: U_new.shape[1]]
-                                if len(solution) >= U_new.shape[1]
-                                else solution
+                                solution[: U_new.shape[1]] if len(solution) >= U_new.shape[1] else solution
                             )
 
             else:
                 # Individual processing (fallback or low optimization level)
-                for i, (taylor_data, b, point_idx) in enumerate(
-                    zip(taylor_data_batch, b_batch, point_indices)
-                ):
-                    solution, solve_time, success = (
-                        self.solve_collocation_point_optimized(
-                            point_idx, taylor_data, b
-                        )
-                    )
-                    U_new[point_idx, :] = (
-                        solution[: U_new.shape[1]]
-                        if len(solution) >= U_new.shape[1]
-                        else solution
-                    )
+                for i, (taylor_data, b, point_idx) in enumerate(zip(taylor_data_batch, b_batch, point_indices)):
+                    solution, solve_time, success = self.solve_collocation_point_optimized(point_idx, taylor_data, b)
+                    U_new[point_idx, :] = solution[: U_new.shape[1]] if len(solution) >= U_new.shape[1] else solution
 
             # Update performance statistics
             total_system_time = time.time() - system_start_time
@@ -707,9 +602,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             # Try to use parent class methods if available
             if hasattr(self, "approximate_derivatives"):
                 # Use actual Taylor matrix construction
-                derivs = self.approximate_derivatives(
-                    U_current[point_idx, :], point_idx
-                )
+                derivs = self.approximate_derivatives(U_current[point_idx, :], point_idx)
                 taylor_matrix = np.random.randn(10, 8)  # Placeholder
             else:
                 taylor_matrix = np.eye(8)  # Identity fallback
@@ -760,9 +653,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
             stats["qp_skip_rate"] = 0.0
 
         if stats["total_solve_time"] > 0:
-            stats["qp_overhead_percentage"] = (
-                stats["qp_solve_time"] / stats["total_solve_time"]
-            ) * 100
+            stats["qp_overhead_percentage"] = (stats["qp_solve_time"] / stats["total_solve_time"]) * 100
         else:
             stats["qp_overhead_percentage"] = 0.0
 
@@ -809,9 +700,7 @@ class HJBGFDMOptimizedSolver(HJBGFDMSolver):
 
         # Calculate estimated speedup
         if stats["qp_skip_rate"] > 0:
-            estimated_speedup = 1 / (
-                1 - stats["qp_skip_rate"] * 0.9
-            )  # 90% of time saved per skip
+            estimated_speedup = 1 / (1 - stats["qp_skip_rate"] * 0.9)  # 90% of time saved per skip
             print(f"  Estimated Speedup: {estimated_speedup:.1f}x")
 
         print(f"{'='*60}")

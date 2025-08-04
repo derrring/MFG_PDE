@@ -199,9 +199,7 @@ class NetworkitBackend(AbstractNetworkBackend):
             self.nk = None
             self.available = False
 
-    def create_graph(
-        self, num_nodes: int, directed: bool = False, weighted: bool = True, **kwargs
-    ) -> Any:
+    def create_graph(self, num_nodes: int, directed: bool = False, weighted: bool = True, **kwargs) -> Any:
         if not self.available:
             raise BackendNotAvailableError("networkit not available")
         return self.nk.Graph(n=num_nodes, weighted=weighted, directed=directed)
@@ -305,9 +303,7 @@ class NetworkXBackend(AbstractNetworkBackend):
         weights: Optional[np.ndarray] = None,
     ) -> Any:
         if weights is not None:
-            weighted_edges = [
-                (u, v, {"weight": w}) for (u, v), w in zip(edges, weights)
-            ]
+            weighted_edges = [(u, v, {"weight": w}) for (u, v), w in zip(edges, weights)]
             graph.add_edges_from(weighted_edges)
         else:
             graph.add_edges_from(edges)
@@ -321,9 +317,7 @@ class NetworkXBackend(AbstractNetworkBackend):
 
     def shortest_paths(self, graph: Any, source: Optional[int] = None) -> np.ndarray:
         if source is not None:
-            paths = self.nx.single_source_dijkstra_path_length(
-                graph, source, weight="weight"
-            )
+            paths = self.nx.single_source_dijkstra_path_length(graph, source, weight="weight")
             result = np.full(graph.number_of_nodes(), np.inf)
             for target, length in paths.items():
                 result[target] = length
@@ -393,19 +387,13 @@ class NetworkBackendManager:
         ),
     }
 
-    def __init__(
-        self, preferred_backend: NetworkBackendType = NetworkBackendType.IGRAPH
-    ):
+    def __init__(self, preferred_backend: NetworkBackendType = NetworkBackendType.IGRAPH):
         self.preferred_backend = preferred_backend
         self.backends = self._initialize_backends()
-        self.available_backends = [
-            bt for bt, backend in self.backends.items() if backend.available
-        ]
+        self.available_backends = [bt for bt, backend in self.backends.items() if backend.available]
 
         if not self.available_backends:
-            raise NetworkBackendError(
-                "No network backends available. Install igraph, networkit, or networkx."
-            )
+            raise NetworkBackendError("No network backends available. Install igraph, networkit, or networkx.")
 
         # Issue warnings for missing recommended backends
         self._check_backend_availability()
@@ -515,9 +503,7 @@ class NetworkBackendManager:
     def get_backend(self, backend_type: NetworkBackendType) -> AbstractNetworkBackend:
         """Get backend instance."""
         if backend_type not in self.available_backends:
-            raise BackendNotAvailableError(
-                f"Backend {backend_type.value} not available"
-            )
+            raise BackendNotAvailableError(f"Backend {backend_type.value} not available")
         return self.backends[backend_type]
 
     def create_optimized_graph(

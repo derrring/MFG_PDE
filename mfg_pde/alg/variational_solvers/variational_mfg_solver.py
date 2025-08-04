@@ -138,9 +138,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
 
         # Validate initial guess
         if initial_guess.shape != (self.Nt, self.Nx + 1):
-            raise ValueError(
-                f"Initial guess must have shape ({self.Nt}, {self.Nx + 1})"
-            )
+            raise ValueError(f"Initial guess must have shape ({self.Nt}, {self.Nx + 1})")
 
         # Reset optimization state
         self.iteration_count = 0
@@ -185,17 +183,11 @@ class VariationalMFGSolver(BaseVariationalSolver):
             optimal_velocity = self._compute_velocity_from_density(optimal_density)
 
             # Compute representative trajectory
-            representative_trajectory = self._compute_representative_trajectory(
-                optimal_density
-            )
-            representative_velocity_traj = np.gradient(
-                representative_trajectory, self.dt
-            )
+            representative_trajectory = self._compute_representative_trajectory(optimal_density)
+            representative_velocity_traj = np.gradient(representative_trajectory, self.dt)
 
             # Final cost evaluation
-            final_cost = self.evaluate_cost_functional(
-                optimal_density, optimal_velocity
-            )
+            final_cost = self.evaluate_cost_functional(optimal_density, optimal_velocity)
 
             # Check constraints
             constraint_violations = self._evaluate_constraints(optimal_density)
@@ -218,9 +210,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
                     "optimization_method": self.optimization_method,
                     "penalty_weight": self.penalty_weight,
                     "final_objective": result.fun,
-                    "gradient_norm": (
-                        np.linalg.norm(result.jac) if hasattr(result, "jac") else None
-                    ),
+                    "gradient_norm": (np.linalg.norm(result.jac) if hasattr(result, "jac") else None),
                 },
             )
 
@@ -231,11 +221,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
                 logger.info(f"  Iterations: {self.iteration_count}")
 
                 # Log constraint violations
-                max_violation = (
-                    max(constraint_violations.values())
-                    if constraint_violations
-                    else 0.0
-                )
+                max_violation = max(constraint_violations.values()) if constraint_violations else 0.0
                 logger.info(f"  Max constraint violation: {max_violation:.2e}")
 
             return variational_result
@@ -366,9 +352,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
 
         # Continuity equation
         velocity = self._compute_velocity_from_density(density)
-        violations["continuity_equation"] = self.check_continuity_equation(
-            density, velocity
-        )
+        violations["continuity_equation"] = self.check_continuity_equation(density, velocity)
 
         return violations
 
@@ -390,9 +374,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
             # Compute center of mass
             total_mass = trapezoid(density[i, :], x=self.x_grid)
             if total_mass > 1e-12:
-                center_of_mass = (
-                    trapezoid(self.x_grid * density[i, :], x=self.x_grid) / total_mass
-                )
+                center_of_mass = trapezoid(self.x_grid * density[i, :], x=self.x_grid) / total_mass
                 trajectory[i] = center_of_mass
             else:
                 trajectory[i] = 0.5 * (self.problem.xmin + self.problem.xmax)
@@ -410,9 +392,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
 
         if self.iteration_count % 10 == 0:
             current_cost = self.cost_history[-1] if self.cost_history else np.inf
-            logger.info(
-                f"    Iteration {self.iteration_count}: cost = {current_cost:.6e}"
-            )
+            logger.info(f"    Iteration {self.iteration_count}: cost = {current_cost:.6e}")
 
     def create_comparison_with_hamiltonian(self) -> Dict[str, Any]:
         """

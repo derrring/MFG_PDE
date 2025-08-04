@@ -36,9 +36,7 @@ class BaseFPSolver(ABC):
         self.fp_method_name: str = "BaseFP"  # Concrete solvers should override this
 
     @abstractmethod
-    def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray
-    ) -> np.ndarray:
+    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.
 

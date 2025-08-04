@@ -56,9 +56,7 @@ class BoundaryConditions:
                     self.right_beta,
                 ]
             ):
-                raise ValueError(
-                    "Robin boundary conditions require alpha and beta coefficients"
-                )
+                raise ValueError("Robin boundary conditions require alpha and beta coefficients")
 
     def is_periodic(self) -> bool:
         """Check if boundary conditions are periodic."""
@@ -105,15 +103,11 @@ class BoundaryConditions:
         """Validate that required values are provided for the boundary condition type."""
         if self.type == "dirichlet":
             if self.left_value is None or self.right_value is None:
-                raise ValueError(
-                    "Dirichlet boundary conditions require left_value and right_value"
-                )
+                raise ValueError("Dirichlet boundary conditions require left_value and right_value")
 
         elif self.type == "neumann":
             if self.left_value is None or self.right_value is None:
-                raise ValueError(
-                    "Neumann boundary conditions require left_value and right_value"
-                )
+                raise ValueError("Neumann boundary conditions require left_value and right_value")
 
         elif self.type == "robin":
             required_params = [
@@ -157,9 +151,7 @@ class Domain1D:
     for 1D MFG problems, providing a unified interface for domain management.
     """
 
-    def __init__(
-        self, xmin: float, xmax: float, boundary_conditions: BoundaryConditions
-    ):
+    def __init__(self, xmin: float, xmax: float, boundary_conditions: BoundaryConditions):
         """
         Initialize 1D domain.
 
@@ -207,10 +199,7 @@ class Domain1D:
 
     def __repr__(self) -> str:
         """Detailed representation of domain."""
-        return (
-            f"Domain1D(xmin={self.xmin}, xmax={self.xmax}, "
-            f"length={self.length}, bc={self.boundary_conditions})"
-        )
+        return f"Domain1D(xmin={self.xmin}, xmax={self.xmax}, " f"length={self.length}, bc={self.boundary_conditions})"
 
 
 # Convenience functions for common boundary condition types
@@ -221,16 +210,12 @@ def periodic_bc() -> BoundaryConditions:
 
 def dirichlet_bc(left_value: float, right_value: float) -> BoundaryConditions:
     """Create Dirichlet boundary conditions."""
-    return BoundaryConditions(
-        type="dirichlet", left_value=left_value, right_value=right_value
-    )
+    return BoundaryConditions(type="dirichlet", left_value=left_value, right_value=right_value)
 
 
 def neumann_bc(left_gradient: float, right_gradient: float) -> BoundaryConditions:
     """Create Neumann boundary conditions."""
-    return BoundaryConditions(
-        type="neumann", left_value=left_gradient, right_value=right_gradient
-    )
+    return BoundaryConditions(type="neumann", left_value=left_gradient, right_value=right_gradient)
 
 
 def no_flux_bc() -> BoundaryConditions:

@@ -44,9 +44,7 @@ def validate_solution_array(
         SolutionValidationError: If validation fails
     """
     if not isinstance(solution, np.ndarray):
-        raise SolutionValidationError(
-            f"{name} must be a numpy array, got {type(solution)}"
-        )
+        raise SolutionValidationError(f"{name} must be a numpy array, got {type(solution)}")
 
     if solution.size == 0:
         raise SolutionValidationError(f"{name} array is empty")
@@ -66,22 +64,16 @@ def validate_solution_array(
     if finite_solution.size > 0:
         if min_value is not None and np.any(finite_solution < min_value):
             min_val = np.min(finite_solution)
-            raise SolutionValidationError(
-                f"{name} contains values below minimum {min_value}: {min_val}"
-            )
+            raise SolutionValidationError(f"{name} contains values below minimum {min_value}: {min_val}")
 
         if max_value is not None and np.any(finite_solution > max_value):
             max_val = np.max(finite_solution)
-            raise SolutionValidationError(
-                f"{name} contains values above maximum {max_value}: {max_val}"
-            )
+            raise SolutionValidationError(f"{name} contains values above maximum {max_value}: {max_val}")
 
     return solution
 
 
-def validate_mfg_solution(
-    U: np.ndarray, M: np.ndarray, strict: bool = True
-) -> Dict[str, Any]:
+def validate_mfg_solution(U: np.ndarray, M: np.ndarray, strict: bool = True) -> Dict[str, Any]:
     """
     Validate a complete MFG solution (value function and distribution).
 
@@ -112,9 +104,7 @@ def validate_mfg_solution(
             # Check terminal condition (should be reasonable)
             U_terminal = U[-1, :]
             if np.all(U_terminal == 0):
-                validation_results["warnings"].append(
-                    "Terminal value function is all zeros"
-                )
+                validation_results["warnings"].append("Terminal value function is all zeros")
 
         validation_results["diagnostics"]["U_stats"] = {
             "shape": U.shape,
@@ -140,22 +130,16 @@ def validate_mfg_solution(
             total_masses = np.sum(M, axis=1) * dx
 
             mass_variation = np.std(total_masses) / np.mean(total_masses) * 100
-            validation_results["diagnostics"][
-                "mass_conservation_error"
-            ] = mass_variation
+            validation_results["diagnostics"]["mass_conservation_error"] = mass_variation
 
             if mass_variation > 1.0:  # 1% threshold
-                validation_results["warnings"].append(
-                    f"Mass conservation error: {mass_variation:.2f}%"
-                )
+                validation_results["warnings"].append(f"Mass conservation error: {mass_variation:.2f}%")
 
         validation_results["diagnostics"]["M_stats"] = {
             "shape": M.shape,
             "min": np.min(M[np.isfinite(M)]) if np.any(np.isfinite(M)) else np.nan,
             "max": np.max(M[np.isfinite(M)]) if np.any(np.isfinite(M)) else np.nan,
-            "total_mass": (
-                np.sum(M[np.isfinite(M)]) if np.any(np.isfinite(M)) else np.nan
-            ),
+            "total_mass": (np.sum(M[np.isfinite(M)]) if np.any(np.isfinite(M)) else np.nan),
         }
 
     except SolutionValidationError as e:
@@ -175,9 +159,7 @@ def validate_mfg_solution(
     return validation_results
 
 
-def validate_convergence_parameters(
-    max_iterations: int, tolerance: float, parameter_name: str = "convergence"
-) -> None:
+def validate_convergence_parameters(max_iterations: int, tolerance: float, parameter_name: str = "convergence") -> None:
     """
     Validate common convergence parameters.
 
@@ -190,24 +172,16 @@ def validate_convergence_parameters(
         ValueError: If parameters are invalid
     """
     if not isinstance(max_iterations, int) or max_iterations <= 0:
-        raise ValueError(
-            f"{parameter_name} max_iterations must be a positive integer, got {max_iterations}"
-        )
+        raise ValueError(f"{parameter_name} max_iterations must be a positive integer, got {max_iterations}")
 
     if not isinstance(tolerance, (int, float)) or tolerance <= 0:
-        raise ValueError(
-            f"{parameter_name} tolerance must be a positive number, got {tolerance}"
-        )
+        raise ValueError(f"{parameter_name} tolerance must be a positive number, got {tolerance}")
 
     if tolerance >= 1.0:
-        warnings.warn(
-            f"{parameter_name} tolerance {tolerance} is unusually large (>=1.0)"
-        )
+        warnings.warn(f"{parameter_name} tolerance {tolerance} is unusually large (>=1.0)")
 
 
-def safe_solution_return(
-    U: np.ndarray, M: np.ndarray, info: Optional[Dict] = None
-) -> tuple:
+def safe_solution_return(U: np.ndarray, M: np.ndarray, info: Optional[Dict] = None) -> tuple:
     """
     Safely return MFG solution with validation.
 

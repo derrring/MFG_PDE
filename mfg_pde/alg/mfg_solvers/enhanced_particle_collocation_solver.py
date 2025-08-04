@@ -9,7 +9,7 @@ criteria specifically designed for particle-based MFG methods, addressing:
 - Multi-criteria convergence assessment
 """
 
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -111,15 +111,9 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
             print("ENHANCED PARTICLE COLLOCATION SOLVER")
             print("=" * 80)
             print("Using advanced convergence criteria:")
-            print(
-                f"  - Wasserstein tolerance: {self.convergence_monitor.wasserstein_tol}"
-            )
-            print(
-                f"  - Value function magnitude tolerance: {self.convergence_monitor.u_magnitude_tol}"
-            )
-            print(
-                f"  - Stability tolerance: {self.convergence_monitor.u_stability_tol}"
-            )
+            print(f"  - Wasserstein tolerance: {self.convergence_monitor.wasserstein_tol}")
+            print(f"  - Value function magnitude tolerance: {self.convergence_monitor.u_magnitude_tol}")
+            print(f"  - Stability tolerance: {self.convergence_monitor.u_stability_tol}")
             print()
 
         # Initialize
@@ -218,15 +212,11 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
                 if verbose:
                     print(f"  L2 errors: U={u_l2_error:.2e}, M={m_l2_error:.2e}")
                     if "wasserstein_distance" in convergence_diagnostics:
-                        print(
-                            f"  Wasserstein distance: {convergence_diagnostics['wasserstein_distance']:.2e}"
-                        )
+                        print(f"  Wasserstein distance: {convergence_diagnostics['wasserstein_distance']:.2e}")
                     if "u_oscillation" in convergence_diagnostics:
                         osc = convergence_diagnostics["u_oscillation"]
                         if "mean_error" in osc:
-                            print(
-                                f"  U oscillation: mean={osc['mean_error']:.2e}, std={osc['std_error']:.2e}"
-                            )
+                            print(f"  U oscillation: mean={osc['mean_error']:.2e}, std={osc['std_error']:.2e}")
 
                     # Show convergence criteria status
                     criteria = convergence_diagnostics["convergence_criteria"]
@@ -241,18 +231,14 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
                 if self.use_advanced_convergence:
                     if convergence_diagnostics["converged"]:
                         if verbose:
-                            print(
-                                f"\nAdvanced convergence achieved at iteration {iteration + 1}"
-                            )
+                            print(f"\nAdvanced convergence achieved at iteration {iteration + 1}")
                         converged = True
                         break
                 else:
                     # Fall back to legacy convergence
                     if u_l2_error < l2errBound:
                         if verbose:
-                            print(
-                                f"\nLegacy convergence achieved at iteration {iteration + 1}"
-                            )
+                            print(f"\nLegacy convergence achieved at iteration {iteration + 1}")
                         converged = True
                         break
 
@@ -273,13 +259,9 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
             else:
                 print(f"Did not converge in {Niter} iterations")
 
-            print(
-                f"Final L2 error: {convergence_summary.get('final_u_error', 'N/A'):.2e}"
-            )
+            print(f"Final L2 error: {convergence_summary.get('final_u_error', 'N/A'):.2e}")
             if convergence_summary.get("final_wasserstein") is not None:
-                print(
-                    f"Final Wasserstein distance: {convergence_summary['final_wasserstein']:.2e}"
-                )
+                print(f"Final Wasserstein distance: {convergence_summary['final_wasserstein']:.2e}")
             print()
 
         # Generate convergence plots if requested
@@ -313,10 +295,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
 
         # Extract key metrics over time
         u_errors = [d["u_l2_error"] for d in self.detailed_convergence_history]
-        wasserstein_dists = [
-            d.get("wasserstein_distance", np.nan)
-            for d in self.detailed_convergence_history
-        ]
+        wasserstein_dists = [d.get("wasserstein_distance", np.nan) for d in self.detailed_convergence_history]
 
         return {
             "summary": summary,

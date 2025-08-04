@@ -13,9 +13,10 @@ import numpy as np
 from . import DEFAULT_DEVICE, HAS_GPU, HAS_JAX
 
 if HAS_JAX:
+    import optax
+
     import jax
     import jax.numpy as jnp
-    import optax
     from jax import device_put, grad, jacfwd, jacrev, jit, vmap
     from jax.lax import cond, scan
 else:
@@ -28,10 +29,7 @@ else:
 def ensure_jax_available():
     """Ensure JAX is available, raise error if not."""
     if not HAS_JAX:
-        raise ImportError(
-            "JAX is required for accelerated solvers. "
-            "Install with: pip install jax jaxlib"
-        )
+        raise ImportError("JAX is required for accelerated solvers. " "Install with: pip install jax jaxlib")
 
 
 def to_device(array: Union[np.ndarray, Any], device: Optional[Any] = None) -> Any:
@@ -74,9 +72,7 @@ def finite_difference_1d(u: jnp.ndarray, dx: float, order: int = 2) -> jnp.ndarr
     elif order == 4:
         # Fourth-order central difference
         u_padded = jnp.pad(u, 2, mode="edge")
-        return (
-            -u_padded[4:] + 8 * u_padded[3:-1] - 8 * u_padded[1:-3] + u_padded[:-4]
-        ) / (12 * dx)
+        return (-u_padded[4:] + 8 * u_padded[3:-1] - 8 * u_padded[1:-3] + u_padded[:-4]) / (12 * dx)
 
     elif order == 6:
         # Sixth-order central difference
@@ -115,13 +111,9 @@ def finite_difference_2d(u: jnp.ndarray, dx: float, order: int = 2) -> jnp.ndarr
     elif order == 4:
         # Fourth-order central difference for second derivative
         u_padded = jnp.pad(u, 2, mode="edge")
-        return (
-            -u_padded[4:]
-            + 16 * u_padded[3:-1]
-            - 30 * u_padded[2:-2]
-            + 16 * u_padded[1:-3]
-            - u_padded[:-4]
-        ) / (12 * dx**2)
+        return (-u_padded[4:] + 16 * u_padded[3:-1] - 30 * u_padded[2:-2] + 16 * u_padded[1:-3] - u_padded[:-4]) / (
+            12 * dx**2
+        )
 
     elif order == 6:
         # Sixth-order central difference for second derivative
@@ -141,9 +133,7 @@ def finite_difference_2d(u: jnp.ndarray, dx: float, order: int = 2) -> jnp.ndarr
 
 
 @jit
-def apply_boundary_conditions(
-    u: jnp.ndarray, bc_type: str = "neumann", bc_value: float = 0.0
-) -> jnp.ndarray:
+def apply_boundary_conditions(u: jnp.ndarray, bc_type: str = "neumann", bc_value: float = 0.0) -> jnp.ndarray:
     """
     Apply boundary conditions to array.
 
@@ -174,9 +164,7 @@ def apply_boundary_conditions(
 
 
 @jit
-def tridiagonal_solve(
-    a: jnp.ndarray, b: jnp.ndarray, c: jnp.ndarray, d: jnp.ndarray
-) -> jnp.ndarray:
+def tridiagonal_solve(a: jnp.ndarray, b: jnp.ndarray, c: jnp.ndarray, d: jnp.ndarray) -> jnp.ndarray:
     """
     Solve tridiagonal system using Thomas algorithm.
 
@@ -199,14 +187,8 @@ def tridiagonal_solve(
     def forward_step(carry, i):
         c_mod, d_mod = carry
         w = a_pad[i] / b[i - 1] if i > 0 else 0.0
-        c_new = c_mod.at[i].set(
-            c_pad[i] / (b[i] - w * c_mod[i - 1]) if i > 0 else c_pad[i] / b[i]
-        )
-        d_new = d_mod.at[i].set(
-            (d[i] - w * d_mod[i - 1]) / (b[i] - w * c_mod[i - 1])
-            if i > 0
-            else d[i] / b[i]
-        )
+        c_new = c_mod.at[i].set(c_pad[i] / (b[i] - w * c_mod[i - 1]) if i > 0 else c_pad[i] / b[i])
+        d_new = d_mod.at[i].set((d[i] - w * d_mod[i - 1]) / (b[i] - w * c_mod[i - 1]) if i > 0 else d[i] / b[i])
         return (c_new, d_new), None
 
     c_mod = jnp.zeros_like(c_pad)
@@ -217,11 +199,7 @@ def tridiagonal_solve(
     def backward_step(carry, i):
         x = carry
         i_actual = n - 1 - i
-        x_new = (
-            d_mod[i_actual] - c_mod[i_actual] * x[i_actual + 1]
-            if i_actual < n - 1
-            else d_mod[i_actual]
-        )
+        x_new = d_mod[i_actual] - c_mod[i_actual] * x[i_actual + 1] if i_actual < n - 1 else d_mod[i_actual]
         x = x.at[i_actual].set(x_new)
         return x, None
 
@@ -298,9 +276,7 @@ def mass_conservation_constraint(m: jnp.ndarray, dx: float) -> float:
     return jnp.abs(total_mass - 1.0)
 
 
-def create_optimization_schedule(
-    learning_rate: float = 1e-3, decay_steps: int = 1000, decay_rate: float = 0.9
-) -> Any:
+def create_optimization_schedule(learning_rate: float = 1e-3, decay_steps: int = 1000, decay_rate: float = 0.9) -> Any:
     """
     Create learning rate schedule for optimization.
 
@@ -314,17 +290,13 @@ def create_optimization_schedule(
     """
     ensure_jax_available()
 
-    schedule = optax.exponential_decay(
-        init_value=learning_rate, transition_steps=decay_steps, decay_rate=decay_rate
-    )
+    schedule = optax.exponential_decay(init_value=learning_rate, transition_steps=decay_steps, decay_rate=decay_rate)
 
     return optax.adam(schedule)
 
 
 @jit
-def compute_convergence_error(
-    u_new: jnp.ndarray, u_old: jnp.ndarray, m_new: jnp.ndarray, m_old: jnp.ndarray
-) -> float:
+def compute_convergence_error(u_new: jnp.ndarray, u_old: jnp.ndarray, m_new: jnp.ndarray, m_old: jnp.ndarray) -> float:
     """
     Compute convergence error for MFG system.
 
@@ -375,9 +347,7 @@ def adaptive_time_step(
     return dt * factor
 
 
-def vectorized_solve(
-    solve_func: Callable, problems: list, batch_size: Optional[int] = None
-) -> list:
+def vectorized_solve(solve_func: Callable, problems: list, batch_size: Optional[int] = None) -> list:
     """
     Solve multiple problems in vectorized batches.
 

@@ -79,14 +79,12 @@ class MFGNotebookReporter:
         """
         if not NOTEBOOK_AVAILABLE:
             raise NotebookReportError(
-                "Jupyter notebook support not available. "
-                "Install with: pip install nbformat jupyter"
+                "Jupyter notebook support not available. " "Install with: pip install nbformat jupyter"
             )
 
         if not PLOTLY_AVAILABLE:
             raise NotebookReportError(
-                "Plotly not available for interactive visualizations. "
-                "Install with: pip install plotly"
+                "Plotly not available for interactive visualizations. " "Install with: pip install plotly"
             )
 
         self.output_dir = Path(output_dir)
@@ -100,9 +98,7 @@ class MFGNotebookReporter:
         pio.renderers.default = plotly_renderer
 
         # Initialize mathematical visualizer for consistency
-        self.visualizer = MFGMathematicalVisualizer(
-            backend="plotly", enable_latex=enable_latex
-        )
+        self.visualizer = MFGMathematicalVisualizer(backend="plotly", enable_latex=enable_latex)
 
         self.logger.info(f"MFG Notebook Reporter initialized")
         self.logger.info(f"Output directory: {self.output_dir}")
@@ -151,9 +147,7 @@ class MFGNotebookReporter:
 
         # Add convergence analysis
         if "convergence_info" in solver_results:
-            self._add_convergence_analysis_section(
-                nb, solver_results["convergence_info"]
-            )
+            self._add_convergence_analysis_section(nb, solver_results["convergence_info"])
 
         # Add mass conservation analysis
         if "M" in solver_results:
@@ -170,9 +164,7 @@ class MFGNotebookReporter:
 
         # Save notebook
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(
-            c for c in title if c.isalnum() or c in (" ", "-", "_")
-        ).rstrip()
+        safe_title = "".join(c for c in title if c.isalnum() or c in (" ", "-", "_")).rstrip()
         safe_title = safe_title.replace(" ", "_")
         filename = f"{safe_title}_{timestamp}.ipynb"
         notebook_path = self.output_dir / filename
@@ -183,9 +175,7 @@ class MFGNotebookReporter:
         self.logger.info(f"Research report saved: {notebook_path}")
         return str(notebook_path)
 
-    def _add_title_section(
-        self, nb: nbf.NotebookNode, title: str, metadata: Optional[Dict] = None
-    ):
+    def _add_title_section(self, nb: nbf.NotebookNode, title: str, metadata: Optional[Dict] = None):
         """Add title and metadata section."""
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -211,9 +201,7 @@ This interactive notebook presents a comprehensive analysis of Mean Field Games 
 
         nb.cells.append(new_markdown_cell(title_markdown))
 
-    def _add_problem_configuration_section(
-        self, nb: nbf.NotebookNode, config: Dict[str, Any]
-    ):
+    def _add_problem_configuration_section(self, nb: nbf.NotebookNode, config: Dict[str, Any]):
         """Add problem configuration section."""
         config_markdown = """## Problem Configuration
 
@@ -227,15 +215,11 @@ The Mean Field Game system is defined with the following parameters:
                 if key in ["sigma", "T", "coefCT"]:
                     # Add mathematical context for key parameters
                     if key == "sigma":
-                        config_markdown += (
-                            f"- **Diffusion coefficient** $\\sigma = {value}$\n"
-                        )
+                        config_markdown += f"- **Diffusion coefficient** $\\sigma = {value}$\n"
                     elif key == "T":
                         config_markdown += f"- **Time horizon** $T = {value}$\n"
                     elif key == "coefCT":
-                        config_markdown += (
-                            f"- **Coupling strength** $\\alpha = {value}$\n"
-                        )
+                        config_markdown += f"- **Coupling strength** $\\alpha = {value}$\n"
                     else:
                         config_markdown += f"- **{key}**: {value}\n"
                 else:
@@ -294,9 +278,7 @@ The system is solved using a **particle-collocation approach**:
 """
         nb.cells.append(new_markdown_cell(math_markdown))
 
-    def _add_solver_results_section(
-        self, nb: nbf.NotebookNode, results: Dict[str, Any]
-    ):
+    def _add_solver_results_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
         """Add solver results section with code to display results."""
         results_markdown = """## Solver Results
 
@@ -544,9 +526,7 @@ if 'M' in locals():
 """
         nb.cells.append(new_code_cell(specialized_viz_code))
 
-    def _add_convergence_analysis_section(
-        self, nb: nbf.NotebookNode, convergence_info: Dict[str, Any]
-    ):
+    def _add_convergence_analysis_section(self, nb: nbf.NotebookNode, convergence_info: Dict[str, Any]):
         """Add detailed convergence analysis section."""
         conv_markdown = """## Convergence Analysis
 
@@ -582,9 +562,7 @@ if 'error_history' in convergence_info and len(convergence_info['error_history']
 """
         nb.cells.append(new_code_cell(conv_code))
 
-    def _add_mass_conservation_section(
-        self, nb: nbf.NotebookNode, results: Dict[str, Any]
-    ):
+    def _add_mass_conservation_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
         """Add mass conservation analysis section."""
         mass_markdown = """## Mass Conservation Analysis
 
@@ -721,9 +699,7 @@ print("- Vector format: fig.write_image('plot.pdf')")
 """
         nb.cells.append(new_code_cell(export_code))
 
-    def export_to_html(
-        self, notebook_path: str, output_name: Optional[str] = None
-    ) -> str:
+    def export_to_html(self, notebook_path: str, output_name: Optional[str] = None) -> str:
         """
         Export notebook to HTML with embedded interactive plots.
 
@@ -768,9 +744,7 @@ print("- Vector format: fig.write_image('plot.pdf')")
                 raise NotebookReportError(f"HTML export failed: {result.stderr}")
 
         except ImportError:
-            raise NotebookReportError(
-                "Jupyter nbconvert not available. Install with: pip install jupyter"
-            )
+            raise NotebookReportError("Jupyter nbconvert not available. Install with: pip install jupyter")
         except Exception as e:
             raise NotebookReportError(f"HTML export error: {e}")
 
@@ -992,9 +966,7 @@ def create_comparative_analysis(
     """
     reporter = MFGNotebookReporter(output_dir=output_dir)
 
-    notebook_path = reporter.create_comparative_report(
-        results_dict=results_dict, title=title
-    )
+    notebook_path = reporter.create_comparative_report(results_dict=results_dict, title=title)
 
     result_paths = {"notebook": notebook_path}
 

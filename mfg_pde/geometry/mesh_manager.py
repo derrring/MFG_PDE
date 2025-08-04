@@ -75,9 +75,7 @@ class MeshPipeline:
         else:
             raise NotImplementedError(f"Dimension {dimension} not yet supported")
 
-    def execute_pipeline(
-        self, stages: List[str] = None, export_formats: List[str] = None
-    ) -> MeshData:
+    def execute_pipeline(self, stages: List[str] = None, export_formats: List[str] = None) -> MeshData:
         """
         Execute complete mesh pipeline.
 
@@ -128,8 +126,7 @@ class MeshPipeline:
             mesh_data = self.geometry.generate_mesh()
 
             logger.info(
-                f"SUCCESS: Mesh generated: {mesh_data.num_vertices} vertices, "
-                f"{mesh_data.num_elements} elements"
+                f"SUCCESS: Mesh generated: {mesh_data.num_vertices} vertices, " f"{mesh_data.num_elements} elements"
             )
 
             return mesh_data
@@ -303,9 +300,7 @@ class MeshManager:
         self.geometries[name] = geometry
         return geometry
 
-    def create_pipeline(
-        self, name: str, geometry_name: str, output_dir: Optional[str] = None
-    ) -> MeshPipeline:
+    def create_pipeline(self, name: str, geometry_name: str, output_dir: Optional[str] = None) -> MeshPipeline:
         """Create and register a mesh pipeline."""
         if geometry_name not in self.geometries:
             raise ValueError(f"Geometry '{geometry_name}' not found")
@@ -316,9 +311,7 @@ class MeshManager:
 
         return pipeline
 
-    def batch_generate_meshes(
-        self, pipeline_names: List[str], stages: List[str] = None
-    ) -> Dict[str, MeshData]:
+    def batch_generate_meshes(self, pipeline_names: List[str], stages: List[str] = None) -> Dict[str, MeshData]:
         """Generate multiple meshes in batch."""
         results = {}
 

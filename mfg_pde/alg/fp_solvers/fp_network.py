@@ -21,7 +21,7 @@ Key algorithms:
 - Network boundary condition handling
 """
 
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import scipy.sparse as sp
@@ -102,15 +102,11 @@ class NetworkFPSolver(BaseFPSolver):
         # Stability constraint for explicit schemes
         if self.scheme == "explicit":
             max_degree = np.max(np.array(self.adjacency_matrix.sum(axis=1)).flatten())
-            self.dt_stable = self.cfl_factor / (
-                max_degree * self.diffusion_coefficient + 1e-12
-            )
+            self.dt_stable = self.cfl_factor / (max_degree * self.diffusion_coefficient + 1e-12)
             if self.dt > self.dt_stable:
                 print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
 
-    def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray
-    ) -> np.ndarray:
+    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """
         Solve FP system on network with given control field.
 
@@ -160,9 +156,7 @@ class NetworkFPSolver(BaseFPSolver):
 
         return M
 
-    def _explicit_step(
-        self, m_current: np.ndarray, u_current: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _explicit_step(self, m_current: np.ndarray, u_current: np.ndarray, t: float) -> np.ndarray:
         """Explicit time step for network FP equation."""
         m_next = m_current.copy()
 
@@ -185,9 +179,7 @@ class NetworkFPSolver(BaseFPSolver):
 
         return m_next
 
-    def _implicit_step(
-        self, m_current: np.ndarray, u_current: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _implicit_step(self, m_current: np.ndarray, u_current: np.ndarray, t: float) -> np.ndarray:
         """Implicit time step for network FP equation."""
         # Build linear system for implicit step
         A = sp.lil_matrix((self.num_nodes, self.num_nodes))
@@ -222,9 +214,7 @@ class NetworkFPSolver(BaseFPSolver):
 
         return m_next
 
-    def _upwind_step(
-        self, m_current: np.ndarray, u_current: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _upwind_step(self, m_current: np.ndarray, u_current: np.ndarray, t: float) -> np.ndarray:
         """Upwind scheme for network FP equation (conservation-preserving)."""
         m_next = m_current.copy()
 
@@ -248,9 +238,7 @@ class NetworkFPSolver(BaseFPSolver):
 
         return m_next
 
-    def _compute_drift_term(
-        self, node: int, m: np.ndarray, u: np.ndarray, t: float
-    ) -> float:
+    def _compute_drift_term(self, node: int, m: np.ndarray, u: np.ndarray, t: float) -> float:
         """Compute drift term for FP equation at given node."""
         neighbors = self.divergence_ops[node]
 
@@ -264,24 +252,18 @@ class NetworkFPSolver(BaseFPSolver):
             du = u[neighbor] - u[node]
 
             # Flow along gradient (simplified)
-            edge_weight = self.network_problem.network_data.get_edge_weight(
-                node, neighbor
-            )
+            edge_weight = self.network_problem.network_data.get_edge_weight(node, neighbor)
             drift += edge_weight * m[node] * du
 
         return drift
 
-    def _compute_edge_flow(
-        self, node_from: int, node_to: int, m: np.ndarray, u: np.ndarray, t: float
-    ) -> float:
+    def _compute_edge_flow(self, node_from: int, node_to: int, m: np.ndarray, u: np.ndarray, t: float) -> float:
         """Compute flow along edge from node_from to node_to."""
         if node_from == node_to:
             return 0.0
 
         # Check if edge exists
-        edge_weight = self.network_problem.network_data.get_edge_weight(
-            node_from, node_to
-        )
+        edge_weight = self.network_problem.network_data.get_edge_weight(node_from, node_to)
         if edge_weight == 0:
             return 0.0
 
@@ -299,9 +281,7 @@ class NetworkFPSolver(BaseFPSolver):
 
         return flow
 
-    def forward_step(
-        self, m_prev: np.ndarray, u_current: np.ndarray, dt: float
-    ) -> np.ndarray:
+    def forward_step(self, m_prev: np.ndarray, u_current: np.ndarray, dt: float) -> np.ndarray:
         """
         Single forward time step (interface compatibility).
 
@@ -380,9 +360,7 @@ class NetworkFlowFPSolver(NetworkFPSolver):
 
         return node_edges
 
-    def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray
-    ) -> np.ndarray:
+    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """Solve FP system using flow-based approach."""
         Nt = self.network_problem.Nt
         M = np.zeros((Nt + 1, self.num_nodes))
@@ -410,9 +388,7 @@ class NetworkFlowFPSolver(NetworkFPSolver):
 
         return M
 
-    def _flow_based_step(
-        self, m_current: np.ndarray, u_current: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _flow_based_step(self, m_current: np.ndarray, u_current: np.ndarray, t: float) -> np.ndarray:
         """Flow-based time step preserving mass conservation."""
         m_next = m_current.copy()
 
@@ -449,25 +425,19 @@ class NetworkFlowFPSolver(NetworkFPSolver):
         du = u[node_to] - u[node_from]
 
         # Edge weight
-        edge_weight = self.network_problem.network_data.get_edge_weight(
-            node_from, node_to
-        )
+        edge_weight = self.network_problem.network_data.get_edge_weight(node_from, node_to)
 
         # Drift-driven flow
         drift_flow = edge_weight * m[node_from] * max(du, 0)
 
         # Diffusion flow
-        diffusion_flow = (
-            self.diffusion_coefficient * edge_weight * (m[node_to] - m[node_from])
-        )
+        diffusion_flow = self.diffusion_coefficient * edge_weight * (m[node_to] - m[node_from])
 
         return drift_flow + diffusion_flow
 
 
 # Factory function for network FP solvers
-def create_network_fp_solver(
-    problem: "NetworkMFGProblem", solver_type: str = "explicit", **kwargs
-) -> NetworkFPSolver:
+def create_network_fp_solver(problem: "NetworkMFGProblem", solver_type: str = "explicit", **kwargs) -> NetworkFPSolver:
     """
     Create network FP solver with specified type.
 

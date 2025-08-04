@@ -152,9 +152,7 @@ class MFGLogger:
         logger.setLevel(cls._log_level)
 
         # Create formatter
-        formatter = MFGFormatter(
-            use_colors=cls._use_colors, include_location=cls._include_location
-        )
+        formatter = MFGFormatter(use_colors=cls._use_colors, include_location=cls._include_location)
 
         # Console handler
         console_handler = logging.StreamHandler(sys.stdout)
@@ -166,9 +164,7 @@ class MFGLogger:
         if cls._log_to_file and cls._log_file_path:
             file_handler = logging.FileHandler(cls._log_file_path)
             # File logs always use standard formatting (no colors)
-            file_formatter = MFGFormatter(
-                use_colors=False, include_location=cls._include_location
-            )
+            file_formatter = MFGFormatter(use_colors=False, include_location=cls._include_location)
             file_handler.setFormatter(file_formatter)
             file_handler.setLevel(cls._log_level)
             logger.addHandler(file_handler)
@@ -214,9 +210,7 @@ def configure_logging(**kwargs):
 
 
 # Configuration presets for common use cases
-def configure_research_logging(
-    experiment_name: str = None, level: str = "INFO", include_debug: bool = False
-):
+def configure_research_logging(experiment_name: str = None, level: str = "INFO", include_debug: bool = False):
     """
     Configure logging optimized for research sessions.
 
@@ -237,9 +231,7 @@ def configure_research_logging(
 
     # Generate filename
     if experiment_name:
-        safe_name = "".join(
-            c for c in experiment_name if c.isalnum() or c in (" ", "-", "_")
-        ).strip()
+        safe_name = "".join(c for c in experiment_name if c.isalnum() or c in (" ", "-", "_")).strip()
         safe_name = safe_name.replace(" ", "_")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = research_dir / f"{safe_name}_{timestamp}.log"
@@ -373,15 +365,10 @@ def log_solver_completion(
     """Log solver completion with summary."""
     status = "CONVERGED" if converged else "MAX_ITERATIONS_REACHED"
     logger.info(f"{solver_name} completed - Status: {status}")
-    logger.info(
-        f"Final results: {iterations} iterations, error: {final_error:.2e}, "
-        f"time: {execution_time:.3f}s"
-    )
+    logger.info(f"Final results: {iterations} iterations, error: {final_error:.2e}, " f"time: {execution_time:.3f}s")
 
 
-def log_validation_error(
-    logger: logging.Logger, component: str, error_msg: str, suggestion: str = None
-):
+def log_validation_error(logger: logging.Logger, component: str, error_msg: str, suggestion: str = None):
     """Log validation errors with suggestions."""
     logger.error(f"Validation error in {component}: {error_msg}")
     if suggestion:
@@ -402,9 +389,7 @@ def log_performance_metric(
     logger.info(msg)  # Changed to INFO level for better visibility
 
 
-def log_memory_usage(
-    logger: logging.Logger, operation: str, peak_memory_mb: float = None
-):
+def log_memory_usage(logger: logging.Logger, operation: str, peak_memory_mb: float = None):
     """Log memory usage information."""
     try:
         import os
@@ -484,9 +469,7 @@ def log_convergence_analysis(
                     logger.info(f"  Average convergence rate: {avg_ratio:.4f}")
 
 
-def log_mass_conservation(
-    logger: logging.Logger, mass_history: List[float], tolerance: float = 1e-6
-):
+def log_mass_conservation(logger: logging.Logger, mass_history: List[float], tolerance: float = 1e-6):
     """Log mass conservation analysis."""
     if not mass_history:
         return
@@ -516,9 +499,7 @@ def log_mass_conservation(
 class LoggedOperation:
     """Context manager for logging timed operations."""
 
-    def __init__(
-        self, logger: logging.Logger, operation_name: str, log_level: int = logging.INFO
-    ):
+    def __init__(self, logger: logging.Logger, operation_name: str, log_level: int = logging.INFO):
         self.logger = logger
         self.operation_name = operation_name
         self.log_level = log_level
@@ -537,13 +518,9 @@ class LoggedOperation:
         duration = time.time() - self.start_time
 
         if exc_type is None:
-            self.logger.log(
-                self.log_level, f"Completed {self.operation_name} in {duration:.3f}s"
-            )
+            self.logger.log(self.log_level, f"Completed {self.operation_name} in {duration:.3f}s")
         else:
-            self.logger.error(
-                f"Failed {self.operation_name} after {duration:.3f}s: {exc_val}"
-            )
+            self.logger.error(f"Failed {self.operation_name} after {duration:.3f}s: {exc_val}")
 
         return False  # Don't suppress exceptions
 
@@ -576,13 +553,9 @@ def demo_logging_capabilities():
         {"max_iterations": 50, "tolerance": 1e-6},
     )
 
-    log_solver_progress(
-        solver_logger, 10, 1.5e-4, 50, {"phase": "Picard", "damping": 0.5}
-    )
+    log_solver_progress(solver_logger, 10, 1.5e-4, 50, {"phase": "Picard", "damping": 0.5})
 
-    log_solver_completion(
-        solver_logger, "ParticleCollocationSolver", 25, 8.7e-7, 2.34, True
-    )
+    log_solver_completion(solver_logger, "ParticleCollocationSolver", 25, 8.7e-7, 2.34, True)
 
     # Demonstrate context manager
     with LoggedOperation(utils_logger, "Matrix computation"):

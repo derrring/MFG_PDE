@@ -62,14 +62,10 @@ class LogAnalyzer:
 
                 match = log_pattern.match(line)
                 if match:
-                    timestamp_str, logger_name, level, message, location = (
-                        match.groups()
-                    )
+                    timestamp_str, logger_name, level, message, location = match.groups()
 
                     try:
-                        timestamp = datetime.strptime(
-                            timestamp_str, "%Y-%m-%d %H:%M:%S"
-                        )
+                        timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
                     except ValueError:
                         continue
 
@@ -163,9 +159,7 @@ class LogAnalyzer:
             if match and current_solver:
                 current_solver["end_time"] = entry["timestamp"]
                 current_solver["status"] = match.group(2)
-                current_solver["duration"] = (
-                    entry["timestamp"] - current_solver["start_time"]
-                ).total_seconds()
+                current_solver["duration"] = (entry["timestamp"] - current_solver["start_time"]).total_seconds()
                 performance_data["solver_sessions"].append(current_solver)
                 current_solver = None
                 continue
@@ -220,9 +214,7 @@ class LogAnalyzer:
 
         # Sort by frequency
         error_patterns = []
-        for pattern, occurrences in sorted(
-            error_groups.items(), key=lambda x: len(x[1]), reverse=True
-        ):
+        for pattern, occurrences in sorted(error_groups.items(), key=lambda x: len(x[1]), reverse=True):
             error_patterns.append(
                 {
                     "pattern": pattern,
@@ -230,9 +222,7 @@ class LogAnalyzer:
                     "first_occurrence": occurrences[0]["timestamp"],
                     "last_occurrence": occurrences[-1]["timestamp"],
                     "example_message": occurrences[0]["message"],
-                    "locations": list(
-                        set(e.get("location", "Unknown") for e in occurrences)
-                    ),
+                    "locations": list(set(e.get("location", "Unknown") for e in occurrences)),
                 }
             )
 
@@ -273,9 +263,7 @@ class LogAnalyzer:
         # Logger activity
         if "logger_counts" in summary:
             report.append(f"\n LOGGER ACTIVITY")
-            for logger, count in sorted(
-                summary["logger_counts"].items(), key=lambda x: x[1], reverse=True
-            )[:10]:
+            for logger, count in sorted(summary["logger_counts"].items(), key=lambda x: x[1], reverse=True)[:10]:
                 report.append(f"  {logger}: {count} entries")
 
         # Solver performance
@@ -287,8 +275,7 @@ class LogAnalyzer:
                 duration = session.get("duration", 0)
                 iterations = len(session.get("iterations", []))
                 report.append(
-                    f"  {session['solver_name']}: {session['status']} "
-                    f"in {duration:.2f}s ({iterations} iterations)"
+                    f"  {session['solver_name']}: {session['status']} " f"in {duration:.2f}s ({iterations} iterations)"
                 )
 
         # Error analysis
@@ -298,9 +285,7 @@ class LogAnalyzer:
             report.append(f"Total errors: {errors['total_errors']}")
 
             for pattern in errors["error_patterns"][:5]:  # Top 5 patterns
-                report.append(
-                    f"  Pattern (×{pattern['count']}): {pattern['pattern'][:60]}..."
-                )
+                report.append(f"  Pattern (×{pattern['count']}): {pattern['pattern'][:60]}...")
 
         # Recent warnings
         recent_warnings = summary.get("recent_warnings", [])
@@ -324,10 +309,7 @@ class LogAnalyzer:
                 avg_time = np.mean(durations)
                 total_time = sum(durations)
                 count = len(durations)
-                report.append(
-                    f"  {operation}: {avg_time:.3f}s avg "
-                    f"({total_time:.3f}s total, {count} calls)"
-                )
+                report.append(f"  {operation}: {avg_time:.3f}s avg " f"({total_time:.3f}s total, {count} calls)")
 
         report.append("\n" + "=" * 80)
 
@@ -372,9 +354,7 @@ class LogAnalyzer:
 
 
 # Convenience functions
-def analyze_log_file(
-    log_file_path: str, generate_report: bool = True
-) -> Dict[str, Any]:
+def analyze_log_file(log_file_path: str, generate_report: bool = True) -> Dict[str, Any]:
     """
     Analyze a log file and optionally generate a report.
 
@@ -398,9 +378,7 @@ def analyze_log_file(
     }
 
 
-def analyze_recent_logs(
-    log_directory: str = "logs", days_back: int = 7
-) -> Dict[str, Any]:
+def analyze_recent_logs(log_directory: str = "logs", days_back: int = 7) -> Dict[str, Any]:
     """
     Analyze recent log files from a directory.
 
@@ -451,12 +429,8 @@ def analyze_recent_logs(
             )
 
             combined_analysis["total_entries"] += summary.get("total_entries", 0)
-            combined_analysis["combined_errors"].extend(
-                errors.get("error_patterns", [])
-            )
-            combined_analysis["combined_performance"].extend(
-                performance.get("solver_sessions", [])
-            )
+            combined_analysis["combined_errors"].extend(errors.get("error_patterns", []))
+            combined_analysis["combined_performance"].extend(performance.get("solver_sessions", []))
 
         except Exception as e:
             print(f"Error analyzing {log_file}: {e}")
@@ -464,9 +438,7 @@ def analyze_recent_logs(
     return combined_analysis
 
 
-def find_performance_bottlenecks(
-    log_file_path: str, threshold_seconds: float = 1.0
-) -> List[Dict[str, Any]]:
+def find_performance_bottlenecks(log_file_path: str, threshold_seconds: float = 1.0) -> List[Dict[str, Any]]:
     """
     Find performance bottlenecks in a log file.
 

@@ -9,7 +9,7 @@ that directly optimize the Lagrangian formulation of MFG problems.
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -115,9 +115,7 @@ class BaseVariationalSolver(ABC):
         """
         pass
 
-    def evaluate_cost_functional(
-        self, density_evolution: NDArray, velocity_field: Optional[NDArray] = None
-    ) -> float:
+    def evaluate_cost_functional(self, density_evolution: NDArray, velocity_field: Optional[NDArray] = None) -> float:
         """
         Evaluate the cost functional J[m,v].
 
@@ -173,15 +171,11 @@ class BaseVariationalSolver(ABC):
 
                 if m > 1e-12:  # Avoid division by zero
                     # Time derivative ∂m/∂t
-                    dm_dt = (
-                        density_evolution[i, j] - density_evolution[i - 1, j]
-                    ) / self.dt
+                    dm_dt = (density_evolution[i, j] - density_evolution[i - 1, j]) / self.dt
 
                     # Diffusion term σ²/2 Δm
                     d2m_dx2 = (
-                        density_evolution[i, j + 1]
-                        - 2 * density_evolution[i, j]
-                        + density_evolution[i, j - 1]
+                        density_evolution[i, j + 1] - 2 * density_evolution[i, j] + density_evolution[i, j - 1]
                     ) / self.dx**2
                     diffusion = 0.5 * self.problem.sigma**2 * d2m_dx2
 
@@ -193,9 +187,7 @@ class BaseVariationalSolver(ABC):
 
         return velocity_field
 
-    def check_continuity_equation(
-        self, density_evolution: NDArray, velocity_field: NDArray
-    ) -> float:
+    def check_continuity_equation(self, density_evolution: NDArray, velocity_field: NDArray) -> float:
         """
         Check how well the continuity equation is satisfied.
 
@@ -214,9 +206,7 @@ class BaseVariationalSolver(ABC):
         for i in range(1, self.Nt):
             for j in range(1, self.Nx):
                 # Time derivative
-                dm_dt = (
-                    density_evolution[i, j] - density_evolution[i - 1, j]
-                ) / self.dt
+                dm_dt = (density_evolution[i, j] - density_evolution[i - 1, j]) / self.dt
 
                 # Divergence term ∇·(mv)
                 mv_left = density_evolution[i, j - 1] * velocity_field[i, j - 1]
@@ -225,9 +215,7 @@ class BaseVariationalSolver(ABC):
 
                 # Diffusion term
                 d2m_dx2 = (
-                    density_evolution[i, j + 1]
-                    - 2 * density_evolution[i, j]
-                    + density_evolution[i, j - 1]
+                    density_evolution[i, j + 1] - 2 * density_evolution[i, j] + density_evolution[i, j - 1]
                 ) / self.dx**2
                 diffusion = 0.5 * self.problem.sigma**2 * d2m_dx2
 
@@ -270,10 +258,7 @@ class BaseVariationalSolver(ABC):
             # Uniform density maintained over time
             for i in range(self.Nt):
                 if self.problem.components.initial_density_func:
-                    density_guess[i, :] = [
-                        self.problem.components.initial_density_func(x)
-                        for x in self.x_grid
-                    ]
+                    density_guess[i, :] = [self.problem.components.initial_density_func(x) for x in self.x_grid]
                 else:
                     density_guess[i, :] = 1.0 / (self.problem.xmax - self.problem.xmin)
 
@@ -300,9 +285,7 @@ class BaseVariationalSolver(ABC):
 
                 # Ensure positivity and normalization
                 density_guess[i, :] = np.maximum(density_guess[i, :], 1e-6)
-                density_guess[i, :] = density_guess[i, :] / trapezoid(
-                    density_guess[i, :], x=self.x_grid
-                )
+                density_guess[i, :] = density_guess[i, :] / trapezoid(density_guess[i, :], x=self.x_grid)
 
         else:
             raise ValueError(f"Unknown initial guess strategy: {strategy}")

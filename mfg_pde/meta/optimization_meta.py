@@ -98,9 +98,7 @@ class OptimizationCompiler:
 
         return optimized_func
 
-    def _infer_optimization_hints(
-        self, func: Callable, profile: PerformanceProfile
-    ) -> OptimizationHints:
+    def _infer_optimization_hints(self, func: Callable, profile: PerformanceProfile) -> OptimizationHints:
         """Infer optimization hints from function analysis."""
 
         # Analyze function source
@@ -118,9 +116,7 @@ class OptimizationCompiler:
             compute_bound=not memory_bound,
         )
 
-    def _select_backend(
-        self, profile: PerformanceProfile, hints: OptimizationHints
-    ) -> str:
+    def _select_backend(self, profile: PerformanceProfile, hints: OptimizationHints) -> str:
         """Select optimal backend based on profile and hints."""
 
         # Large problems with vectorization -> JAX
@@ -153,9 +149,7 @@ class OptimizationCompiler:
         else:
             raise ValueError(f"Unsupported backend: {backend}")
 
-    def _optimize_with_jax(
-        self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints
-    ) -> Callable:
+    def _optimize_with_jax(self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints) -> Callable:
         """Apply JAX-specific optimizations."""
         try:
             import jax
@@ -172,9 +166,7 @@ class OptimizationCompiler:
 
             # Add memory optimization if needed
             if profile.memory_constraint:
-                optimized = self._add_memory_optimization(
-                    optimized, profile.memory_constraint
-                )
+                optimized = self._add_memory_optimization(optimized, profile.memory_constraint)
 
             return optimized
 
@@ -182,9 +174,7 @@ class OptimizationCompiler:
             print("JAX not available, falling back to NumPy")
             return self._optimize_with_numpy(func, profile, hints)
 
-    def _optimize_with_numba(
-        self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints
-    ) -> Callable:
+    def _optimize_with_numba(self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints) -> Callable:
         """Apply Numba-specific optimizations."""
         try:
             import numba
@@ -207,9 +197,7 @@ class OptimizationCompiler:
             print("Numba not available, falling back to NumPy")
             return self._optimize_with_numpy(func, profile, hints)
 
-    def _optimize_with_numpy(
-        self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints
-    ) -> Callable:
+    def _optimize_with_numpy(self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints) -> Callable:
         """Apply NumPy-specific optimizations."""
 
         # For NumPy, we focus on algorithmic optimizations
@@ -238,15 +226,11 @@ class OptimizationCompiler:
 
         return memory_optimized
 
-    def _create_cache_key(
-        self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints
-    ) -> str:
+    def _create_cache_key(self, func: Callable, profile: PerformanceProfile, hints: OptimizationHints) -> str:
         """Create unique cache key for optimization."""
         return f"{func.__name__}_{profile.problem_size}_{profile.backend}_{profile.optimization_level}"
 
-    def benchmark_function(
-        self, func: Callable, args: Tuple, kwargs: Dict, num_runs: int = 10
-    ) -> Dict[str, float]:
+    def benchmark_function(self, func: Callable, args: Tuple, kwargs: Dict, num_runs: int = 10) -> Dict[str, float]:
         """Benchmark function performance."""
 
         times = []
@@ -295,9 +279,7 @@ class JITSolverFactory:
             return self.solver_cache[cache_key]
 
         # Create optimized solver class
-        optimized_class = self._create_optimized_class(
-            base_solver_class, performance_profile
-        )
+        optimized_class = self._create_optimized_class(base_solver_class, performance_profile)
 
         # Cache result
         self.solver_cache[cache_key] = optimized_class
@@ -328,9 +310,7 @@ class JITSolverFactory:
             optimization_level="balanced",
         )
 
-    def _create_optimized_class(
-        self, base_class: Type, profile: PerformanceProfile
-    ) -> Type:
+    def _create_optimized_class(self, base_class: Type, profile: PerformanceProfile) -> Type:
         """Create optimized version of solver class."""
 
         class OptimizedSolver(base_class):
@@ -355,9 +335,7 @@ class JITSolverFactory:
                 for method_name in methods_to_optimize:
                     if hasattr(self, method_name):
                         original_method = getattr(self, method_name)
-                        optimized_method = self.compiler.optimize_function(
-                            original_method, profile
-                        )
+                        optimized_method = self.compiler.optimize_function(original_method, profile)
                         setattr(self, method_name, optimized_method)
 
         # Set class name
@@ -424,9 +402,7 @@ def jit_optimize(backend: str = "auto", optimization_level: str = "balanced"):
                 # Create performance profile if not exists
                 if not hasattr(solver, "_optimization_profile"):
                     if hasattr(solver, "problem"):
-                        problem_size = getattr(solver.problem, "Nx", 100) * getattr(
-                            solver.problem, "Nt", 100
-                        )
+                        problem_size = getattr(solver.problem, "Nx", 100) * getattr(solver.problem, "Nt", 100)
                     else:
                         problem_size = 1000
 
@@ -441,9 +417,7 @@ def jit_optimize(backend: str = "auto", optimization_level: str = "balanced"):
                 cache_key = f"{func.__name__}_optimized"
                 if not hasattr(solver, cache_key):
                     compiler = OptimizationCompiler(backend)
-                    optimized_func = compiler.optimize_function(
-                        func, solver._optimization_profile
-                    )
+                    optimized_func = compiler.optimize_function(func, solver._optimization_profile)
                     setattr(solver, cache_key, optimized_func)
                 else:
                     optimized_func = getattr(solver, cache_key)
@@ -539,13 +513,9 @@ def test_optimization_framework():
     dt, dx = 0.01, 0.01
 
     # Benchmark
-    original_stats = compiler.benchmark_function(
-        example_mfg_step, (u, m, dt, dx), {}, num_runs=5
-    )
+    original_stats = compiler.benchmark_function(example_mfg_step, (u, m, dt, dx), {}, num_runs=5)
 
-    optimized_stats = compiler.benchmark_function(
-        optimized_step, (u, m, dt, dx), {}, num_runs=5
-    )
+    optimized_stats = compiler.benchmark_function(optimized_step, (u, m, dt, dx), {}, num_runs=5)
 
     print(f"Original time: {original_stats['mean_time']:.6f}s")
     print(f"Optimized time: {optimized_stats['mean_time']:.6f}s")

@@ -21,9 +21,7 @@ except ImportError:
 
     # Fallback simple progress implementation
     class tqdm:
-        def __init__(
-            self, iterable=None, total=None, desc=None, disable=False, **kwargs
-        ):
+        def __init__(self, iterable=None, total=None, desc=None, disable=False, **kwargs):
             self.iterable = iterable or range(total or 0)
             self.total = total or (len(iterable) if iterable else 0)
             self.desc = desc or ""
@@ -82,13 +80,9 @@ class SolverTimer:
 
         if self.verbose:
             if exc_type is None:
-                print(
-                    f"SUCCESS: {self.description} completed in {self.format_duration()}"
-                )
+                print(f"SUCCESS: {self.description} completed in {self.format_duration()}")
             else:
-                print(
-                    f"ERROR: {self.description} failed after {self.format_duration()}"
-                )
+                print(f"ERROR: {self.description} failed after {self.format_duration()}")
 
     def format_duration(self) -> str:
         """Format duration in human-readable form."""
@@ -184,10 +178,7 @@ class IterationProgress:
         self.current_iteration += n
 
         # Update every update_frequency iterations or on final iteration
-        if (
-            self.current_iteration % self.update_frequency == 0
-            or self.current_iteration >= self.max_iterations
-        ):
+        if self.current_iteration % self.update_frequency == 0 or self.current_iteration >= self.max_iterations:
 
             # Prepare postfix information
             postfix = {}
@@ -293,9 +284,7 @@ def check_tqdm_availability() -> bool:
 # Convenience functions for common patterns
 
 
-def solver_progress(
-    max_iterations: int, description: str = "Solver Progress", **kwargs
-) -> IterationProgress:
+def solver_progress(max_iterations: int, description: str = "Solver Progress", **kwargs) -> IterationProgress:
     """
     Create progress tracker optimized for solver iterations.
 
@@ -323,9 +312,7 @@ def time_solver_operation(func):
 
     Automatically adds execution time to solver results.
     """
-    return timed_operation(
-        description=f"Solver operation '{func.__name__}'", verbose=True
-    )(func)
+    return timed_operation(description=f"Solver operation '{func.__name__}'", verbose=True)(func)
 
 
 # Example usage demonstrations

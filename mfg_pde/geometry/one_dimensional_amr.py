@@ -145,9 +145,7 @@ class OneDimensionalAMRMesh:
         self.refinement_history = []
 
         # JAX backend integration
-        self.use_jax = JAX_AVAILABLE and (
-            backend is None or getattr(backend, "name", "") == "jax"
-        )
+        self.use_jax = JAX_AVAILABLE and (backend is None or getattr(backend, "name", "") == "jax")
 
         if self.use_jax:
             self._setup_jax_functions()
@@ -172,9 +170,7 @@ class OneDimensionalAMRMesh:
             return
 
         @jit
-        def compute_1d_gradient_error(
-            u_vals: jnp.ndarray, x_coords: jnp.ndarray
-        ) -> jnp.ndarray:
+        def compute_1d_gradient_error(u_vals: jnp.ndarray, x_coords: jnp.ndarray) -> jnp.ndarray:
             """JAX-accelerated gradient-based error estimation for 1D."""
             # First derivative using central differences
             du_dx = jnp.gradient(u_vals, x_coords)
@@ -273,9 +269,7 @@ class OneDimensionalAMRMesh:
                 continue
 
             # Estimate error for this interval
-            error = self._estimate_interval_error(
-                interval, solution_data, error_estimator
-            )
+            error = self._estimate_interval_error(interval, solution_data, error_estimator)
             interval.error_estimate = error
 
             # Refinement decision
@@ -366,9 +360,7 @@ class OneDimensionalAMRMesh:
             Tuple of (grid_points, interval_widths)
         """
         # Sort leaf intervals by x_min
-        sorted_intervals = sorted(
-            [self.intervals[iid] for iid in self.leaf_intervals], key=lambda i: i.x_min
-        )
+        sorted_intervals = sorted([self.intervals[iid] for iid in self.leaf_intervals], key=lambda i: i.x_min)
 
         # Extract grid points and spacings
         grid_points = []
@@ -388,9 +380,7 @@ class OneDimensionalAMRMesh:
             MeshData representation of 1D adaptive mesh
         """
         # Get sorted leaf intervals
-        sorted_intervals = sorted(
-            [self.intervals[iid] for iid in self.leaf_intervals], key=lambda i: i.x_min
-        )
+        sorted_intervals = sorted([self.intervals[iid] for iid in self.leaf_intervals], key=lambda i: i.x_min)
 
         # Build vertices (interval endpoints and centers)
         vertices = []
@@ -446,9 +436,7 @@ class OneDimensionalErrorEstimator(BaseErrorEstimator):
 
     def __init__(self, backend: Optional[BaseBackend] = None):
         self.backend = backend
-        self.use_jax = JAX_AVAILABLE and (
-            backend is None or getattr(backend, "name", "") == "jax"
-        )
+        self.use_jax = JAX_AVAILABLE and (backend is None or getattr(backend, "name", "") == "jax")
 
     def estimate_error(self, node, solution_data: Dict[str, np.ndarray]) -> float:
         """

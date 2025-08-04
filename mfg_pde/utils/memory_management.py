@@ -13,8 +13,9 @@ from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
 
-import numpy as np
 import psutil
+
+import numpy as np
 
 
 @dataclass
@@ -69,17 +70,13 @@ class MemoryMonitor:
 
         if current_memory > warning_threshold_gb:
             warning_msg = (
-                f"Memory usage ({current_memory:.2f} GB) exceeds warning threshold "
-                f"({warning_threshold_gb:.2f} GB)"
+                f"Memory usage ({current_memory:.2f} GB) exceeds warning threshold " f"({warning_threshold_gb:.2f} GB)"
             )
             current_warnings.append(warning_msg)
             self.memory_warnings.append(warning_msg)
 
         if current_memory > self.max_memory_gb:
-            critical_msg = (
-                f"Memory usage ({current_memory:.2f} GB) exceeds limit "
-                f"({self.max_memory_gb} GB)"
-            )
+            critical_msg = f"Memory usage ({current_memory:.2f} GB) exceeds limit " f"({self.max_memory_gb} GB)"
             current_warnings.append(critical_msg)
             self.memory_warnings.append(critical_msg)
 
@@ -207,9 +204,7 @@ def memory_monitored(
                 if final_stats.warnings:
                     warnings.warn(
                         f"Memory warnings during {func.__name__}:\n"
-                        + "\n".join(
-                            f"  - {warning}" for warning in final_stats.warnings
-                        ),
+                        + "\n".join(f"  - {warning}" for warning in final_stats.warnings),
                         UserWarning,
                     )
 

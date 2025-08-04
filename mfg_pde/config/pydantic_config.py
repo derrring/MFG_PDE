@@ -23,21 +23,11 @@ class NewtonConfig(BaseModel):
     numerical stability checks and convergence criteria validation.
     """
 
-    max_iterations: int = Field(
-        30, ge=1, le=1000, description="Maximum number of Newton iterations"
-    )
-    tolerance: float = Field(
-        1e-6, gt=1e-15, le=1e-1, description="Convergence tolerance for Newton method"
-    )
-    damping_factor: float = Field(
-        1.0, gt=0.0, le=1.0, description="Damping parameter for Newton updates"
-    )
-    line_search: bool = Field(
-        False, description="Whether to use line search for step size control"
-    )
-    verbose: bool = Field(
-        False, description="Whether to print Newton iteration details"
-    )
+    max_iterations: int = Field(30, ge=1, le=1000, description="Maximum number of Newton iterations")
+    tolerance: float = Field(1e-6, gt=1e-15, le=1e-1, description="Convergence tolerance for Newton method")
+    damping_factor: float = Field(1.0, gt=0.0, le=1.0, description="Damping parameter for Newton updates")
+    line_search: bool = Field(False, description="Whether to use line search for step size control")
+    verbose: bool = Field(False, description="Whether to print Newton iteration details")
 
     @field_validator("tolerance")
     @classmethod
@@ -74,9 +64,7 @@ class NewtonConfig(BaseModel):
     @classmethod
     def research(cls) -> "NewtonConfig":
         """Create configuration optimized for research with detailed logging."""
-        return cls(
-            max_iterations=100, tolerance=1e-10, damping_factor=1.0, verbose=True
-        )
+        return cls(max_iterations=100, tolerance=1e-10, damping_factor=1.0, verbose=True)
 
     model_config = ConfigDict(env_prefix="MFG_NEWTON_", validate_assignment=True)
 
@@ -89,19 +77,11 @@ class PicardConfig(BaseModel):
     hierarchy checks and numerical stability validation.
     """
 
-    max_iterations: int = Field(
-        20, ge=1, le=500, description="Maximum number of Picard iterations"
-    )
-    tolerance: float = Field(
-        1e-3, gt=1e-12, le=1.0, description="Convergence tolerance for Picard method"
-    )
-    damping_factor: float = Field(
-        0.5, gt=0.0, le=1.0, description="Damping parameter for Picard updates"
-    )
+    max_iterations: int = Field(20, ge=1, le=500, description="Maximum number of Picard iterations")
+    tolerance: float = Field(1e-3, gt=1e-12, le=1.0, description="Convergence tolerance for Picard method")
+    damping_factor: float = Field(0.5, gt=0.0, le=1.0, description="Damping parameter for Picard updates")
     adaptive_damping: bool = Field(False, description="Whether to use adaptive damping")
-    verbose: bool = Field(
-        False, description="Whether to print Picard iteration details"
-    )
+    verbose: bool = Field(False, description="Whether to print Picard iteration details")
 
     @field_validator("tolerance")
     @classmethod
@@ -139,12 +119,8 @@ class GFDMConfig(BaseModel):
     delta: float = Field(0.1, gt=0.0, le=1.0, description="GFDM delta parameter")
     weight_function: str = Field("gaussian", description="Weight function type")
     use_qp_constraints: bool = Field(True, description="Whether to use QP constraints")
-    constraint_tolerance: float = Field(
-        1e-8, gt=0.0, le=1e-3, description="QP constraint tolerance"
-    )
-    max_neighbors: int = Field(
-        10, ge=3, le=50, description="Maximum number of neighbors for GFDM"
-    )
+    constraint_tolerance: float = Field(1e-8, gt=0.0, le=1e-3, description="QP constraint tolerance")
+    max_neighbors: int = Field(10, ge=3, le=50, description="Maximum number of neighbors for GFDM")
 
     @field_validator("weight_function")
     @classmethod
@@ -179,21 +155,11 @@ class ParticleConfig(BaseModel):
     boundary condition checking, and KDE parameter validation.
     """
 
-    num_particles: int = Field(
-        5000, ge=100, le=1000000, description="Number of particles"
-    )
-    kde_bandwidth: float = Field(
-        0.01, gt=0.0, le=1.0, description="KDE bandwidth parameter"
-    )
-    boundary_treatment: str = Field(
-        "reflection", description="Boundary treatment method"
-    )
-    resampling_method: str = Field(
-        "systematic", description="Particle resampling method"
-    )
-    adaptive_particles: bool = Field(
-        False, description="Whether to use adaptive particle count"
-    )
+    num_particles: int = Field(5000, ge=100, le=1000000, description="Number of particles")
+    kde_bandwidth: float = Field(0.01, gt=0.0, le=1.0, description="KDE bandwidth parameter")
+    boundary_treatment: str = Field("reflection", description="Boundary treatment method")
+    resampling_method: str = Field("systematic", description="Particle resampling method")
+    adaptive_particles: bool = Field(False, description="Whether to use adaptive particle count")
 
     @field_validator("boundary_treatment")
     @classmethod
@@ -218,13 +184,9 @@ class ParticleConfig(BaseModel):
     def validate_particle_count(cls, v):
         """Validate particle count for computational efficiency."""
         if v < 1000:
-            warnings.warn(
-                f"Few particles ({v}) may give poor density approximation", UserWarning
-            )
+            warnings.warn(f"Few particles ({v}) may give poor density approximation", UserWarning)
         if v > 100000:
-            warnings.warn(
-                f"Many particles ({v}) may be computationally expensive", UserWarning
-            )
+            warnings.warn(f"Many particles ({v}) may be computationally expensive", UserWarning)
         return v
 
     model_config = ConfigDict(env_prefix="MFG_PARTICLE_", validate_assignment=True)
@@ -238,12 +200,8 @@ class HJBConfig(BaseModel):
     compatibility and numerical stability.
     """
 
-    newton: NewtonConfig = Field(
-        default_factory=NewtonConfig, description="Newton method configuration"
-    )
-    gfdm: GFDMConfig = Field(
-        default_factory=GFDMConfig, description="GFDM configuration"
-    )
+    newton: NewtonConfig = Field(default_factory=NewtonConfig, description="Newton method configuration")
+    gfdm: GFDMConfig = Field(default_factory=GFDMConfig, description="GFDM configuration")
     solver_type: str = Field("gfdm_qp", description="HJB solver type")
 
     @field_validator("solver_type")
@@ -282,9 +240,7 @@ class FPConfig(BaseModel):
     and cross-validation for numerical stability.
     """
 
-    particle: ParticleConfig = Field(
-        default_factory=ParticleConfig, description="Particle method configuration"
-    )
+    particle: ParticleConfig = Field(default_factory=ParticleConfig, description="Particle method configuration")
     solver_type: str = Field("particle", description="FP solver type")
     time_integration: str = Field("euler", description="Time integration method")
 
@@ -318,44 +274,24 @@ class MFGSolverConfig(BaseModel):
     """
 
     # Core solver configurations
-    newton: NewtonConfig = Field(
-        default_factory=NewtonConfig, description="Newton method configuration"
-    )
-    picard: PicardConfig = Field(
-        default_factory=PicardConfig, description="Picard iteration configuration"
-    )
-    hjb: HJBConfig = Field(
-        default_factory=HJBConfig, description="HJB solver configuration"
-    )
-    fp: FPConfig = Field(
-        default_factory=FPConfig, description="FP solver configuration"
-    )
+    newton: NewtonConfig = Field(default_factory=NewtonConfig, description="Newton method configuration")
+    picard: PicardConfig = Field(default_factory=PicardConfig, description="Picard iteration configuration")
+    hjb: HJBConfig = Field(default_factory=HJBConfig, description="HJB solver configuration")
+    fp: FPConfig = Field(default_factory=FPConfig, description="FP solver configuration")
 
     # Global solver settings
-    return_structured: bool = Field(
-        True, description="Whether to return structured result objects"
-    )
-    enable_warm_start: bool = Field(
-        False, description="Whether to enable warm start capability"
-    )
-    convergence_tolerance: float = Field(
-        1e-5, gt=1e-12, le=1e-1, description="Global convergence tolerance"
-    )
+    return_structured: bool = Field(True, description="Whether to return structured result objects")
+    enable_warm_start: bool = Field(False, description="Whether to enable warm start capability")
+    convergence_tolerance: float = Field(1e-5, gt=1e-12, le=1e-1, description="Global convergence tolerance")
     strict_convergence_errors: bool = Field(
         True,
         description="Whether to raise exceptions for convergence failures (True) or issue warnings (False)",
     )
 
     # Metadata and tracking
-    experiment_name: Optional[str] = Field(
-        None, description="Name for experiment tracking"
-    )
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Additional metadata"
-    )
-    created_at: datetime = Field(
-        default_factory=datetime.now, description="Configuration creation timestamp"
-    )
+    experiment_name: Optional[str] = Field(None, description="Name for experiment tracking")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    created_at: datetime = Field(default_factory=datetime.now, description="Configuration creation timestamp")
 
     @model_validator(mode="after")
     def validate_tolerance_hierarchy(self):

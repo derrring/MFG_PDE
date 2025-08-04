@@ -12,30 +12,32 @@ For visualization, use:
 # Core utility functions (non-plotting)
 from .aux_func import *
 from .convergence import (
-    adaptive_convergence,
     AdaptiveConvergenceWrapper,
     AdvancedConvergenceMonitor,
-    create_default_monitor,
     DistributionComparator,
     OscillationDetector,
     ParticleMethodDetector,
+    adaptive_convergence,
+    create_default_monitor,
     test_particle_detection,
     wrap_solver_with_adaptive_convergence,
 )
 from .exceptions import (
-    check_numerical_stability,
     ConfigurationError,
     ConvergenceError,
     DimensionMismatchError,
     MFGSolverError,
     NumericalInstabilityError,
     SolutionNotAvailableError,
+    check_numerical_stability,
     validate_array_dimensions,
     validate_parameter_value,
     validate_solver_state,
 )
 from .integration import get_integration_info, trapezoid
 from .logging import (
+    LoggedOperation,
+    MFGLogger,
     configure_logging,
     configure_research_logging,
     get_logger,
@@ -44,24 +46,17 @@ from .logging import (
     log_solver_progress,
     log_solver_start,
     log_validation_error,
-    LoggedOperation,
-    MFGLogger,
 )
 from .logging_decorators import (
+    LoggingMixin,
     add_logging_to_class,
     logged_operation,
     logged_solver_method,
     logged_validation,
-    LoggingMixin,
     performance_logged,
 )
 from .math_utils import *
-from .solver_result import (
-    ConvergenceResult,
-    create_solver_result,
-    MFGSolverResult,
-    SolverResult,
-)
+from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .validation import (
     safe_solution_return,
     validate_convergence_parameters,
@@ -71,11 +66,7 @@ from .validation import (
 
 # Optional modules with graceful handling
 try:
-    from .notebook_reporting import (
-        create_comparative_analysis,
-        create_mfg_research_report,
-        MFGNotebookReporter,
-    )
+    from .notebook_reporting import MFGNotebookReporter, create_comparative_analysis, create_mfg_research_report
 
     NOTEBOOK_REPORTING_AVAILABLE = True
 except ImportError:
@@ -83,9 +74,9 @@ except ImportError:
 
 try:
     from .polars_integration import (
+        PolarsDataFrameManager,
         convert_to_polars,
         create_polars_manager,
-        PolarsDataFrameManager,
         validate_polars_dataframe,
     )
 
@@ -102,29 +93,21 @@ except ImportError:
     CLI_AVAILABLE = False
 
 try:
-    from .experiment_manager import create_experiment_manager, ExperimentManager
+    from .experiment_manager import ExperimentManager, create_experiment_manager
 
     EXPERIMENT_MANAGER_AVAILABLE = True
 except ImportError:
     EXPERIMENT_MANAGER_AVAILABLE = False
 
 try:
-    from .memory_management import (
-        get_memory_usage,
-        MemoryMonitor,
-        optimize_memory_usage,
-    )
+    from .memory_management import MemoryMonitor, get_memory_usage, optimize_memory_usage
 
     MEMORY_MANAGEMENT_AVAILABLE = True
 except ImportError:
     MEMORY_MANAGEMENT_AVAILABLE = False
 
 try:
-    from .performance_monitoring import (
-        benchmark_solver,
-        PerformanceMonitor,
-        profile_function,
-    )
+    from .performance_monitoring import PerformanceMonitor, benchmark_solver, profile_function
 
     PERFORMANCE_MONITORING_AVAILABLE = True
 except ImportError:

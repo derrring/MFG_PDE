@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 import numpy as np
 import scipy.sparse as sparse
@@ -44,14 +44,7 @@ def _calculate_p_values(
         u_ip1 = U_array[(i + 1) % Nx]
         u_im1 = U_array[(i - 1 + Nx) % Nx]
 
-        if (
-            np.isinf(u_i)
-            or np.isinf(u_ip1)
-            or np.isinf(u_im1)
-            or np.isnan(u_i)
-            or np.isnan(u_ip1)
-            or np.isnan(u_im1)
-        ):
+        if np.isinf(u_i) or np.isinf(u_ip1) or np.isinf(u_im1) or np.isnan(u_i) or np.isnan(u_ip1) or np.isnan(u_im1):
             return {"forward": np.nan, "backward": np.nan}
 
         p_forward = (u_ip1 - u_i) / Dx
@@ -71,9 +64,7 @@ def _calculate_p_values(
     return _clip_p_values(raw_p_values, clip_limit) if clip else raw_p_values
 
 
-def _clip_p_values(
-    p_values: Dict[str, float], clip_limit: float
-) -> Dict[str, float]:  # Helper for FD Jac
+def _clip_p_values(p_values: Dict[str, float], clip_limit: float) -> Dict[str, float]:  # Helper for FD Jac
     clipped_p_values = {}
     for key, p_val in p_values.items():
         if np.isnan(p_val) or np.isinf(p_val):
@@ -96,17 +87,13 @@ def compute_hjb_residual(
     sigma = problem.sigma
     Phi_U = np.zeros(Nx)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
-        np.isinf(U_n_current_newton_iterate)
-    ):
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
         return np.full(Nx, np.nan)
 
     # Time derivative: (U_n_current - U_{n+1})/Dt
     # Notebook FnU[i] += -(Ukp1_np1[i] - Ukp1_n[i])/Dt;  (U_n - U_{n+1})/Dt
     if abs(Dt) < 1e-14:
-        if not np.allclose(
-            U_n_current_newton_iterate, U_n_plus_1_from_hjb_step, rtol=1e-9, atol=1e-9
-        ):
+        if not np.allclose(U_n_current_newton_iterate, U_n_plus_1_from_hjb_step, rtol=1e-9, atol=1e-9):
             pass
     else:
         time_deriv_term = (U_n_current_newton_iterate - U_n_plus_1_from_hjb_step) / Dt
@@ -137,9 +124,7 @@ def compute_hjb_residual(
             continue
 
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
-        p_values = _calculate_p_values(
-            U_n_current_newton_iterate, i, Dx, Nx, clip=False
-        )
+        p_values = _calculate_p_values(U_n_current_newton_iterate, i, Dx, Nx, clip=False)
 
         if np.any(np.isnan(list(p_values.values()))):
             Phi_U[i] = np.nan
@@ -147,9 +132,7 @@ def compute_hjb_residual(
 
         # Hamiltonian term H(x_i, M_{n+1,i}, (Du_n_current)_i, t_n)
         # Notebook: FnU[i] += H_withM(...)
-        hamiltonian_val = problem.H(
-            x_idx=i, m_at_x=M_density_at_n_plus_1[i], p_values=p_values, t_idx=t_idx_n
-        )
+        hamiltonian_val = problem.H(x_idx=i, m_at_x=M_density_at_n_plus_1[i], p_values=p_values, t_idx=t_idx_n)
         if np.isnan(hamiltonian_val) or np.isinf(hamiltonian_val):
             Phi_U[i] = np.nan
             continue
@@ -187,9 +170,7 @@ def compute_hjb_jacobian(
     J_L = np.zeros(Nx)
     J_U = np.zeros(Nx)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
-        np.isinf(U_n_current_newton_iterate)
-    ):
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
         return sparse.diags([np.full(Nx, np.nan)], [0], shape=(Nx, Nx), format="csr")
 
     # Time derivative part: d/dU_n_current[j] of (U_n_current[i] - U_{n+1}[i])/Dt
@@ -247,9 +228,7 @@ def compute_hjb_jacobian(
             if not (np.any(np.isnan(list(pv_m_i.values())))):
                 H_m_i = problem.H(i, M_density_at_n_plus_1[i], pv_m_i, t_idx_n)
 
-            if not (
-                np.isnan(H_p_i) or np.isnan(H_m_i) or np.isinf(H_p_i) or np.isinf(H_m_i)
-            ):
+            if not (np.isnan(H_p_i) or np.isnan(H_m_i) or np.isinf(H_p_i) or np.isinf(H_m_i)):
                 J_D[i] += (H_p_i - H_m_i) / (2 * eps)
             else:
                 J_D[i] += 0
@@ -283,12 +262,7 @@ def compute_hjb_jacobian(
                     H_p_im1 = problem.H(i, M_density_at_n_plus_1[i], pv_p_im1, t_idx_n)
                 if not (np.any(np.isnan(list(pv_m_im1.values())))):
                     H_m_im1 = problem.H(i, M_density_at_n_plus_1[i], pv_m_im1, t_idx_n)
-                if not (
-                    np.isnan(H_p_im1)
-                    or np.isnan(H_m_im1)
-                    or np.isinf(H_p_im1)
-                    or np.isinf(H_m_im1)
-                ):
+                if not (np.isnan(H_p_im1) or np.isnan(H_m_im1) or np.isinf(H_p_im1) or np.isinf(H_m_im1)):
                     J_L[i] += (H_p_im1 - H_m_im1) / (2 * eps)
                 else:
                     J_L[i] += 0
@@ -320,12 +294,7 @@ def compute_hjb_jacobian(
                     H_p_ip1 = problem.H(i, M_density_at_n_plus_1[i], pv_p_ip1, t_idx_n)
                 if not (np.any(np.isnan(list(pv_m_ip1.values())))):
                     H_m_ip1 = problem.H(i, M_density_at_n_plus_1[i], pv_m_ip1, t_idx_n)
-                if not (
-                    np.isnan(H_p_ip1)
-                    or np.isnan(H_m_ip1)
-                    or np.isinf(H_p_ip1)
-                    or np.isinf(H_m_ip1)
-                ):
+                if not (np.isnan(H_p_ip1) or np.isnan(H_m_ip1) or np.isinf(H_p_ip1) or np.isinf(H_m_ip1)):
                     J_U[i] += (H_p_ip1 - H_m_ip1) / (2 * eps)
                 else:
                     J_U[i] += 0
@@ -363,9 +332,7 @@ def newton_hjb_step(
 ) -> tuple[np.ndarray, float]:
     Dx_norm = problem.Dx if abs(problem.Dx) > 1e-12 else 1.0
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
-        np.isinf(U_n_current_newton_iterate)
-    ):
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
         return U_n_current_newton_iterate, np.inf
 
     residual_F_U = compute_hjb_residual(
@@ -477,9 +444,7 @@ def solve_hjb_timestep_newton(
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
     U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(
-        np.isinf(U_n_current_newton_iterate)
-    ):
+    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
         return U_n_current_newton_iterate
 
     final_l2_error = np.inf
@@ -495,16 +460,10 @@ def solve_hjb_timestep_newton(
             t_idx_n,
         )
 
-        if np.any(np.isnan(U_n_next_newton_iterate)) or np.any(
-            np.isinf(U_n_next_newton_iterate)
-        ):
+        if np.any(np.isnan(U_n_next_newton_iterate)) or np.any(np.isinf(U_n_next_newton_iterate)):
             break
 
-        if (
-            iiter > 0
-            and l2_error > final_l2_error * 0.9999
-            and l2_error > newton_tolerance
-        ):
+        if iiter > 0 and l2_error > final_l2_error * 0.9999 and l2_error > newton_tolerance:
             break
 
         U_n_current_newton_iterate = U_n_next_newton_iterate
@@ -514,11 +473,7 @@ def solve_hjb_timestep_newton(
             converged = True
             break
 
-    if (
-        not converged
-        and max_newton_iterations > 0
-        and not (np.isnan(final_l2_error) or np.isinf(final_l2_error))
-    ):
+    if not converged and max_newton_iterations > 0 and not (np.isnan(final_l2_error) or np.isinf(final_l2_error)):
         pass
 
     return U_n_current_newton_iterate
@@ -582,9 +537,7 @@ def solve_hjb_system_backward(
     if Nt == 0:
         return U_solution_this_picard_iter
 
-    if np.any(np.isnan(U_final_condition_at_T)) or np.any(
-        np.isinf(U_final_condition_at_T)
-    ):
+    if np.any(np.isnan(U_final_condition_at_T)) or np.any(np.isinf(U_final_condition_at_T)):
         U_solution_this_picard_iter[Nt - 1, :] = np.nan
     else:
         U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
@@ -592,21 +545,15 @@ def solve_hjb_system_backward(
     if Nt == 1:
         return U_solution_this_picard_iter
 
-    for n_idx_hjb in range(
-        Nt - 2, -1, -1
-    ):  # Solves for U_solution_this_picard_iter at t_idx_n = n_idx_hjb
+    for n_idx_hjb in range(Nt - 2, -1, -1):  # Solves for U_solution_this_picard_iter at t_idx_n = n_idx_hjb
         U_n_plus_1_current_picard = U_solution_this_picard_iter[n_idx_hjb + 1, :]
 
-        if np.any(np.isnan(U_n_plus_1_current_picard)) or np.any(
-            np.isinf(U_n_plus_1_current_picard)
-        ):
+        if np.any(np.isnan(U_n_plus_1_current_picard)) or np.any(np.isinf(U_n_plus_1_current_picard)):
             U_solution_this_picard_iter[n_idx_hjb, :] = U_n_plus_1_current_picard
             continue
 
         M_n_plus_1_prev_picard = M_density_from_prev_picard[n_idx_hjb + 1, :]
-        if np.any(np.isnan(M_n_plus_1_prev_picard)) or np.any(
-            np.isinf(M_n_plus_1_prev_picard)
-        ):
+        if np.any(np.isnan(M_n_plus_1_prev_picard)) or np.any(np.isinf(M_n_plus_1_prev_picard)):
             U_solution_this_picard_iter[n_idx_hjb, :] = np.nan
             continue
 
@@ -627,8 +574,6 @@ def solve_hjb_system_backward(
         if np.any(np.isnan(U_solution_this_picard_iter[n_idx_hjb, :])) and not np.any(
             np.isnan(U_n_plus_1_current_picard)
         ):
-            print(
-                f"SYS_DEBUG: U_solution became NaN after Newton step for t_idx_n={n_idx_hjb}."
-            )
+            print(f"SYS_DEBUG: U_solution became NaN after Newton step for t_idx_n={n_idx_hjb}.")
 
     return U_solution_this_picard_iter

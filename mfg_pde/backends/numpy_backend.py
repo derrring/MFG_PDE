@@ -27,9 +27,7 @@ class NumPyBackend(BaseBackend):
         if self.device != "cpu" and self.device != "auto":
             import warnings
 
-            warnings.warn(
-                f"NumPy backend only supports CPU, ignoring device='{self.device}'"
-            )
+            warnings.warn(f"NumPy backend only supports CPU, ignoring device='{self.device}'")
         self.device = "cpu"
 
     @property

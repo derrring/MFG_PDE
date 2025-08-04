@@ -161,9 +161,7 @@ class ParameterMigrator:
         )
         self.mappings.append(mapping)
 
-    def migrate_parameters(
-        self, kwargs: Dict[str, Any], calling_function: str = None
-    ) -> Dict[str, Any]:
+    def migrate_parameters(self, kwargs: Dict[str, Any], calling_function: str = None) -> Dict[str, Any]:
         """
         Migrate legacy parameter names to modern equivalents.
 
@@ -191,9 +189,7 @@ class ParameterMigrator:
 
         return migrated
 
-    def _process_mapping(
-        self, kwargs: Dict[str, Any], mapping: ParameterMapping, calling_function: str
-    ) -> None:
+    def _process_mapping(self, kwargs: Dict[str, Any], mapping: ParameterMapping, calling_function: str) -> None:
         """Process a single parameter mapping."""
         try:
             old_value = kwargs[mapping.old_name]
@@ -248,9 +244,7 @@ class ParameterMigrator:
 
         except Exception as e:
             self.migration_stats.errors_encountered += 1
-            self.migration_stats.migration_log.append(
-                f"ERROR: Failed to process mapping {mapping.old_name}: {e}"
-            )
+            self.migration_stats.migration_log.append(f"ERROR: Failed to process mapping {mapping.old_name}: {e}")
 
     def get_migration_report(self) -> str:
         """
@@ -356,9 +350,7 @@ global_parameter_migrator = ParameterMigrator()
 
 
 # Convenience functions
-def migrate_kwargs(
-    kwargs: Dict[str, Any], calling_function: str = None
-) -> Dict[str, Any]:
+def migrate_kwargs(kwargs: Dict[str, Any], calling_function: str = None) -> Dict[str, Any]:
     """Convenience function to migrate parameters using global migrator."""
     return global_parameter_migrator.migrate_parameters(kwargs, calling_function)
 

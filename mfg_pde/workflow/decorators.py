@@ -375,24 +375,18 @@ def retry(
                 try:
                     result = func(*args, **kwargs)
                     if attempt > 0:
-                        print(
-                            f"SUCCESS: {func.__name__} succeeded on attempt {attempt + 1}"
-                        )
+                        print(f"SUCCESS: {func.__name__} succeeded on attempt {attempt + 1}")
                     return result
 
                 except exceptions as e:
                     last_exception = e
 
                     if attempt < max_attempts - 1:
-                        print(
-                            f"WARNING: {func.__name__} failed on attempt {attempt + 1}, retrying in {delay:.1f}s..."
-                        )
+                        print(f"WARNING: {func.__name__} failed on attempt {attempt + 1}, retrying in {delay:.1f}s...")
                         time.sleep(delay)
                         delay *= backoff_factor
                     else:
-                        print(
-                            f"ERROR: {func.__name__} failed after {max_attempts} attempts"
-                        )
+                        print(f"ERROR: {func.__name__} failed after {max_attempts} attempts")
 
             # Re-raise the last exception
             raise last_exception
@@ -429,13 +423,9 @@ def validate_inputs(validation_rules: Dict[str, Callable]):
                     value = bound_args.arguments[param_name]
                     try:
                         if not validator(value):
-                            raise ValueError(
-                                f"Validation failed for parameter '{param_name}': {value}"
-                            )
+                            raise ValueError(f"Validation failed for parameter '{param_name}': {value}")
                     except Exception as e:
-                        raise ValueError(
-                            f"Validation error for parameter '{param_name}': {e}"
-                        )
+                        raise ValueError(f"Validation error for parameter '{param_name}': {e}")
 
             return func(*args, **kwargs)
 
@@ -526,19 +516,19 @@ def mfg_solver(
 
         if log_performance:
             decorated_func = timed(decorated_func)
-            decorated_func = log_execution(
-                logger_name=f"mfg_solver.{problem_type}", log_performance=True
-            )(decorated_func)
+            decorated_func = log_execution(logger_name=f"mfg_solver.{problem_type}", log_performance=True)(
+                decorated_func
+            )
 
         if retry_on_failure:
-            decorated_func = retry(
-                max_attempts=3, delay_seconds=0.1, exceptions=(RuntimeError, ValueError)
-            )(decorated_func)
+            decorated_func = retry(max_attempts=3, delay_seconds=0.1, exceptions=(RuntimeError, ValueError))(
+                decorated_func
+            )
 
         if cache_results:
-            decorated_func = cached(
-                cache_dir=f".mfg_cache/{problem_type}", ttl_seconds=3600  # 1 hour TTL
-            )(decorated_func)
+            decorated_func = cached(cache_dir=f".mfg_cache/{problem_type}", ttl_seconds=3600)(  # 1 hour TTL
+                decorated_func
+            )
 
         return decorated_func
 

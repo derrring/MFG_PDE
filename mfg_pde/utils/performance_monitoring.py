@@ -15,8 +15,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import numpy as np
 import psutil
+
+import numpy as np
 
 
 @dataclass
@@ -75,25 +76,17 @@ class PerformanceBaseline:
         Returns:
             Tuple of (is_regression, description)
         """
-        time_regression = (
-            metrics.execution_time > self.mean_execution_time * time_threshold
-        )
-        memory_regression = (
-            metrics.peak_memory_mb > self.mean_memory_mb * memory_threshold
-        )
+        time_regression = metrics.execution_time > self.mean_execution_time * time_threshold
+        memory_regression = metrics.peak_memory_mb > self.mean_memory_mb * memory_threshold
 
         issues = []
         if time_regression:
             slowdown = metrics.execution_time / self.mean_execution_time
-            issues.append(
-                f"Execution time regression: {slowdown:.2f}x slower than baseline"
-            )
+            issues.append(f"Execution time regression: {slowdown:.2f}x slower than baseline")
 
         if memory_regression:
             increase = metrics.peak_memory_mb / self.mean_memory_mb
-            issues.append(
-                f"Memory usage regression: {increase:.2f}x higher than baseline"
-            )
+            issues.append(f"Memory usage regression: {increase:.2f}x higher than baseline")
 
         return (time_regression or memory_regression, "; ".join(issues))
 
@@ -135,9 +128,7 @@ class PerformanceMonitor:
                 with open(metrics_file, "r") as f:
                     history_data = json.load(f)
                 for name, metrics_list in history_data.items():
-                    self.metrics_history[name] = [
-                        PerformanceMetrics.from_dict(m) for m in metrics_list[-100:]
-                    ]
+                    self.metrics_history[name] = [PerformanceMetrics.from_dict(m) for m in metrics_list[-100:]]
         except Exception as e:
             warnings.warn(f"Failed to load performance data: {e}", UserWarning)
 
@@ -214,11 +205,7 @@ class PerformanceMonitor:
                     convergence_info = {}
                     if track_convergence and hasattr(result, "convergence_info"):
                         convergence_info = result.convergence_info
-                    elif (
-                        track_convergence
-                        and args
-                        and hasattr(args[0], "iterations_run")
-                    ):
+                    elif track_convergence and args and hasattr(args[0], "iterations_run"):
                         # For iterative solvers
                         solver = args[0]
                         convergence_info = {
@@ -257,9 +244,7 @@ class PerformanceMonitor:
                 except Exception as e:
                     # Still track failed execution time
                     execution_time = time.time() - start_time
-                    print(
-                        f"WARNING:  Performance tracking: {name} failed after {execution_time:.2f}s"
-                    )
+                    print(f"WARNING:  Performance tracking: {name} failed after {execution_time:.2f}s")
                     raise
 
             return wrapper
@@ -347,9 +332,7 @@ Storage: {self.storage_path}
             report += "=" * len(method) + "\n"
             report += f"  Total runs: {len(metrics_list)}\n"
             report += f"  Recent performance (last {len(recent_metrics)} runs):\n"
-            report += (
-                f"    Execution time: {np.mean(times):.2f}s ± {np.std(times):.2f}s\n"
-            )
+            report += f"    Execution time: {np.mean(times):.2f}s ± {np.std(times):.2f}s\n"
             report += f"    Memory usage: {np.mean(memories):.1f}MB ± {np.std(memories):.1f}MB\n"
 
             # Baseline comparison
@@ -371,15 +354,11 @@ Storage: {self.storage_path}
                 report += f"  Problem size: {sizes}\n"
 
             # Convergence info
-            convergence_data = [
-                m.convergence_info for m in recent_metrics if m.convergence_info
-            ]
+            convergence_data = [m.convergence_info for m in recent_metrics if m.convergence_info]
             if convergence_data:
                 iterations = [c.get("iterations", 0) for c in convergence_data]
                 if iterations:
-                    report += (
-                        f"  Convergence: {np.mean(iterations):.1f} iterations (avg)\n"
-                    )
+                    report += f"  Convergence: {np.mean(iterations):.1f} iterations (avg)\n"
 
         return report
 
@@ -387,17 +366,10 @@ Storage: {self.storage_path}
         """Export all performance data to JSON file."""
         export_data = {
             "baselines": {
-                name: (
-                    baseline.to_dict()
-                    if hasattr(baseline, "to_dict")
-                    else asdict(baseline)
-                )
+                name: (baseline.to_dict() if hasattr(baseline, "to_dict") else asdict(baseline))
                 for name, baseline in self.baselines.items()
             },
-            "metrics_history": {
-                name: [m.to_dict() for m in metrics]
-                for name, metrics in self.metrics_history.items()
-            },
+            "metrics_history": {name: [m.to_dict() for m in metrics] for name, metrics in self.metrics_history.items()},
             "export_timestamp": datetime.now().isoformat(),
         }
 
@@ -405,9 +377,7 @@ Storage: {self.storage_path}
         for baseline_data in export_data["baselines"].values():
             if "last_updated" in baseline_data:
                 if isinstance(baseline_data["last_updated"], datetime):
-                    baseline_data["last_updated"] = baseline_data[
-                        "last_updated"
-                    ].isoformat()
+                    baseline_data["last_updated"] = baseline_data["last_updated"].isoformat()
 
         with open(output_file, "w") as f:
             json.dump(export_data, f, indent=2)

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -220,21 +220,15 @@ class ParticleCollocationSolver(MFGSolver):
                 )
             except Exception as e:
                 if verbose:
-                    print(
-                        f"  Warning: HJB solver failed at iteration {picard_iter}: {e}"
-                    )
+                    print(f"  Warning: HJB solver failed at iteration {picard_iter}: {e}")
                 U_new = U_current.copy()
 
             # Step 2: Solve FP equation with updated control
             try:
-                M_new = self.fp_solver.solve_fp_system(
-                    m_initial_condition=M_current[0, :], U_solution_for_drift=U_new
-                )
+                M_new = self.fp_solver.solve_fp_system(m_initial_condition=M_current[0, :], U_solution_for_drift=U_new)
             except Exception as e:
                 if verbose:
-                    print(
-                        f"  Warning: FP solver failed at iteration {picard_iter}: {e}"
-                    )
+                    print(f"  Warning: FP solver failed at iteration {picard_iter}: {e}")
                 M_new = M_current.copy()
 
             # Update solutions
@@ -242,12 +236,8 @@ class ParticleCollocationSolver(MFGSolver):
             M_current = M_new
 
             # Compute convergence metrics
-            U_error = np.linalg.norm(U_current - U_prev) / max(
-                np.linalg.norm(U_prev), 1e-10
-            )
-            M_error = np.linalg.norm(M_current - M_prev) / max(
-                np.linalg.norm(M_prev), 1e-10
-            )
+            U_error = np.linalg.norm(U_current - U_prev) / max(np.linalg.norm(U_prev), 1e-10)
+            M_error = np.linalg.norm(M_current - M_prev) / max(np.linalg.norm(M_prev), 1e-10)
             total_error = max(U_error, M_error)
 
             convergence_info = {
@@ -339,16 +329,10 @@ class ParticleCollocationSolver(MFGSolver):
         hjb_solver = self.hjb_solver
 
         # Count valid Taylor matrices
-        valid_matrices = sum(
-            1
-            for i in range(hjb_solver.n_points)
-            if hjb_solver.taylor_matrices[i] is not None
-        )
+        valid_matrices = sum(1 for i in range(hjb_solver.n_points) if hjb_solver.taylor_matrices[i] is not None)
 
         # Compute neighborhood statistics
-        neighborhood_sizes = [
-            hjb_solver.neighborhoods[i]["size"] for i in range(hjb_solver.n_points)
-        ]
+        neighborhood_sizes = [hjb_solver.neighborhoods[i]["size"] for i in range(hjb_solver.n_points)]
 
         info = {
             "n_collocation_points": hjb_solver.n_points,

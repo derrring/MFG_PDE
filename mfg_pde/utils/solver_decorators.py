@@ -64,9 +64,7 @@ def with_progress_monitoring(
 
             # Time the entire operation if requested
             timer_context = (
-                SolverTimer(f"{solver_name} Solve", verbose=show_timing and verbose)
-                if show_timing
-                else None
+                SolverTimer(f"{solver_name} Solve", verbose=show_timing and verbose) if show_timing else None
             )
 
             try:
@@ -87,11 +85,7 @@ def with_progress_monitoring(
                 result = solve_method(self, *args, **kwargs)
 
                 # Add timing information to result if it's structured
-                if (
-                    timer_context
-                    and isinstance(result, (dict, tuple))
-                    and hasattr(result, "_asdict")
-                ):
+                if timer_context and isinstance(result, (dict, tuple)) and hasattr(result, "_asdict"):
                     # For named tuples or dataclasses
                     if hasattr(result, "metadata"):
                         result.metadata["execution_time"] = timer_context.duration
@@ -113,9 +107,7 @@ def with_progress_monitoring(
     return decorator
 
 
-def enhanced_solver_method(
-    monitor_convergence: bool = True, auto_progress: bool = True, timing: bool = True
-):
+def enhanced_solver_method(monitor_convergence: bool = True, auto_progress: bool = True, timing: bool = True):
     """
     Comprehensive decorator for enhancing solver methods with modern features.
 
@@ -133,9 +125,7 @@ def enhanced_solver_method(
 
             # Apply progress monitoring if enabled
             if auto_progress:
-                enhanced_method = with_progress_monitoring(
-                    show_progress=True, show_timing=timing
-                )(solve_method)
+                enhanced_method = with_progress_monitoring(show_progress=True, show_timing=timing)(solve_method)
                 return enhanced_method(self, *args, **kwargs)
             elif timing:
                 # Just add timing without progress bars
@@ -172,9 +162,7 @@ class SolverProgressMixin:
         """Determine if progress should be shown."""
         return self._progress_enabled and verbose
 
-    def _create_progress_tracker(
-        self, max_iterations: int, description: str = None
-    ) -> Optional[IterationProgress]:
+    def _create_progress_tracker(self, max_iterations: int, description: str = None) -> Optional[IterationProgress]:
         """Create a progress tracker if progress is enabled."""
         if not self._progress_enabled:
             return None

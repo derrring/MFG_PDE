@@ -36,9 +36,7 @@ class NewtonConfig:
         if self.tolerance <= 0:
             raise ValueError(f"tolerance must be > 0, got {self.tolerance}")
         if not (0 < self.damping_factor <= 1):
-            raise ValueError(
-                f"damping_factor must be in (0, 1], got {self.damping_factor}"
-            )
+            raise ValueError(f"damping_factor must be in (0, 1], got {self.damping_factor}")
 
     @classmethod
     def fast(cls) -> "NewtonConfig":
@@ -77,13 +75,9 @@ class PicardConfig:
         if self.tolerance <= 0:
             raise ValueError(f"tolerance must be > 0, got {self.tolerance}")
         if not (0 < self.damping_factor <= 1):
-            raise ValueError(
-                f"damping_factor must be in (0, 1], got {self.damping_factor}"
-            )
+            raise ValueError(f"damping_factor must be in (0, 1], got {self.damping_factor}")
         if self.convergence_check_frequency < 1:
-            raise ValueError(
-                f"convergence_check_frequency must be >= 1, got {self.convergence_check_frequency}"
-            )
+            raise ValueError(f"convergence_check_frequency must be >= 1, got {self.convergence_check_frequency}")
 
     @classmethod
     def fast(cls) -> "PicardConfig":
@@ -112,9 +106,7 @@ class GFDMConfig:
 
     delta: float = 0.1
     taylor_order: int = 2
-    weight_function: Literal["gaussian", "inverse_distance", "uniform", "wendland"] = (
-        "gaussian"
-    )
+    weight_function: Literal["gaussian", "inverse_distance", "uniform", "wendland"] = "gaussian"
     weight_scale: float = 1.0
     use_qp_constraints: bool = False
     boundary_method: Literal["dirichlet", "neumann", "extrapolation"] = "dirichlet"
@@ -168,9 +160,7 @@ class ParticleConfig:
         if self.num_particles < 10:
             raise ValueError(f"num_particles must be >= 10, got {self.num_particles}")
         if isinstance(self.kde_bandwidth, (int, float)) and self.kde_bandwidth <= 0:
-            raise ValueError(
-                f"kde_bandwidth must be > 0 when numeric, got {self.kde_bandwidth}"
-            )
+            raise ValueError(f"kde_bandwidth must be > 0 when numeric, got {self.kde_bandwidth}")
 
     @classmethod
     def fast(cls) -> "ParticleConfig":
@@ -203,9 +193,7 @@ class HJBConfig:
     @classmethod
     def fast(cls) -> "HJBConfig":
         """Create configuration optimized for speed."""
-        return cls(
-            newton=NewtonConfig.fast(), gfdm=GFDMConfig.fast(), solver_type="fdm"
-        )
+        return cls(newton=NewtonConfig.fast(), gfdm=GFDMConfig.fast(), solver_type="fdm")
 
     @classmethod
     def accurate(cls) -> "HJBConfig":

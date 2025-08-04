@@ -168,16 +168,12 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             if primal_result is not None:
                 current_density = primal_result
             else:
-                logger.warning(
-                    f"  Primal subproblem failed at iteration {outer_iteration + 1}"
-                )
+                logger.warning(f"  Primal subproblem failed at iteration {outer_iteration + 1}")
                 break
 
             # Evaluate constraints
             constraint_violations = self._evaluate_all_constraints(current_density)
-            max_violation = (
-                max(constraint_violations.values()) if constraint_violations else 0.0
-            )
+            max_violation = max(constraint_violations.values()) if constraint_violations else 0.0
 
             # DUAL STEP: Update dual variables
             self._update_dual_variables(constraint_violations)
@@ -203,10 +199,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
                 logger.info(f"  Current penalty: {self.augmented_penalty:.1f}")
 
             # Convergence check
-            if (
-                max_violation < self.constraint_tolerance
-                and iteration_info["primal_change"] < tolerance
-            ):
+            if max_violation < self.constraint_tolerance and iteration_info["primal_change"] < tolerance:
                 converged = True
                 if verbose:
                     logger.info(f"  ✓ Converged at iteration {outer_iteration + 1}")
@@ -214,9 +207,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
 
         # Compute final solution properties
         optimal_velocity = self._compute_velocity_from_density(current_density)
-        representative_trajectory = self._compute_representative_trajectory(
-            current_density
-        )
+        representative_trajectory = self._compute_representative_trajectory(current_density)
         representative_velocity_traj = np.gradient(representative_trajectory, self.dt)
         final_cost = self.evaluate_cost_functional(current_density, optimal_velocity)
 
@@ -228,9 +219,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             representative_trajectory=representative_trajectory,
             representative_velocity=representative_velocity_traj,
             final_cost=final_cost,
-            cost_history=[
-                info["max_constraint_violation"] for info in self.primal_dual_history
-            ],
+            cost_history=[info["max_constraint_violation"] for info in self.primal_dual_history],
             converged=converged,
             num_iterations=outer_iteration + 1,
             constraint_violations=constraint_violations if converged else {},
@@ -263,24 +252,15 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         self.dual_vars["mass_conservation"] = np.zeros(self.Nt)
 
         # Dual variables for state constraints (if any)
-        if (
-            hasattr(self.problem.components, "state_constraints")
-            and self.problem.components.state_constraints
-        ):
+        if hasattr(self.problem.components, "state_constraints") and self.problem.components.state_constraints:
             self.dual_vars["state_constraints"] = np.zeros((self.Nt, self.Nx + 1))
 
         # Dual variables for velocity constraints (if any)
-        if (
-            hasattr(self.problem.components, "velocity_constraints")
-            and self.problem.components.velocity_constraints
-        ):
+        if hasattr(self.problem.components, "velocity_constraints") and self.problem.components.velocity_constraints:
             self.dual_vars["velocity_constraints"] = np.zeros((self.Nt, self.Nx + 1))
 
         # Dual variables for integral constraints (if any)
-        if (
-            hasattr(self.problem.components, "integral_constraints")
-            and self.problem.components.integral_constraints
-        ):
+        if hasattr(self.problem.components, "integral_constraints") and self.problem.components.integral_constraints:
             num_integral_constraints = len(self.problem.components.integral_constraints)
             self.dual_vars["integral_constraints"] = np.zeros(num_integral_constraints)
 
@@ -331,15 +311,11 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             if result.success:
                 optimal_density = result.x.reshape((self.Nt, self.Nx + 1))
                 if verbose:
-                    logger.info(
-                        f"    ✓ Primal subproblem converged in {result.nit} iterations"
-                    )
+                    logger.info(f"    ✓ Primal subproblem converged in {result.nit} iterations")
                 return optimal_density
             else:
                 if verbose:
-                    logger.warning(
-                        f"    ⚠ Primal subproblem did not converge: {result.message}"
-                    )
+                    logger.warning(f"    ⚠ Primal subproblem did not converge: {result.message}")
                 return None
 
         except Exception as e:
@@ -379,9 +355,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         for i in range(self.Nt):
             mass_violation = constraints.get("mass_conservation", 0.0)
             if "mass_conservation" in self.dual_vars:
-                augmented_terms += (
-                    self.dual_vars["mass_conservation"][i] * mass_violation
-                )
+                augmented_terms += self.dual_vars["mass_conservation"][i] * mass_violation
                 augmented_terms += 0.5 * self.augmented_penalty * mass_violation**2
 
         # State constraint terms
@@ -410,15 +384,10 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
 
         # Continuity equation
         velocity = self._compute_velocity_from_density(density)
-        constraints["continuity_equation"] = self.check_continuity_equation(
-            density, velocity
-        )
+        constraints["continuity_equation"] = self.check_continuity_equation(density, velocity)
 
         # State constraints (if any)
-        if (
-            hasattr(self.problem.components, "state_constraints")
-            and self.problem.components.state_constraints
-        ):
+        if hasattr(self.problem.components, "state_constraints") and self.problem.components.state_constraints:
             max_state_violation = 0.0
             for constraint_func in self.problem.components.state_constraints:
                 for i in range(self.Nt):
@@ -429,10 +398,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             constraints["state_constraints"] = max_state_violation
 
         # Velocity constraints (if any)
-        if (
-            hasattr(self.problem.components, "velocity_constraints")
-            and self.problem.components.velocity_constraints
-        ):
+        if hasattr(self.problem.components, "velocity_constraints") and self.problem.components.velocity_constraints:
             max_velocity_violation = 0.0
             for constraint_func in self.problem.components.velocity_constraints:
                 for i in range(self.Nt):
@@ -453,38 +419,22 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             # Update mass conservation dual variables
             if "mass_conservation" in self.dual_vars:
                 mass_violation = constraint_violations.get("mass_conservation", 0.0)
-                self.dual_vars["mass_conservation"] += (
-                    self.dual_step_size * mass_violation
-                )
+                self.dual_vars["mass_conservation"] += self.dual_step_size * mass_violation
 
             # Update continuity dual variables
             if "continuity" in self.dual_vars:
-                continuity_violation = constraint_violations.get(
-                    "continuity_equation", 0.0
-                )
-                self.dual_vars["continuity"] += (
-                    self.dual_step_size * continuity_violation
-                )
+                continuity_violation = constraint_violations.get("continuity_equation", 0.0)
+                self.dual_vars["continuity"] += self.dual_step_size * continuity_violation
 
             # Update state constraint dual variables
-            if (
-                "state_constraints" in self.dual_vars
-                and "state_constraints" in constraint_violations
-            ):
+            if "state_constraints" in self.dual_vars and "state_constraints" in constraint_violations:
                 state_violation = constraint_violations["state_constraints"]
-                self.dual_vars["state_constraints"] += (
-                    self.dual_step_size * state_violation
-                )
+                self.dual_vars["state_constraints"] += self.dual_step_size * state_violation
 
             # Update velocity constraint dual variables
-            if (
-                "velocity_constraints" in self.dual_vars
-                and "velocity_constraints" in constraint_violations
-            ):
+            if "velocity_constraints" in self.dual_vars and "velocity_constraints" in constraint_violations:
                 velocity_violation = constraint_violations["velocity_constraints"]
-                self.dual_vars["velocity_constraints"] += (
-                    self.dual_step_size * velocity_violation
-                )
+                self.dual_vars["velocity_constraints"] += self.dual_step_size * velocity_violation
 
         elif self.dual_update_method == "multiplier_method":
             # Classic multiplier method with exact penalty update
@@ -496,9 +446,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         if not self.use_adaptive_penalty:
             return
 
-        max_violation = (
-            max(constraint_violations.values()) if constraint_violations else 0.0
-        )
+        max_violation = max(constraint_violations.values()) if constraint_violations else 0.0
 
         # If constraints are not improving, increase penalty
         if len(self.constraint_violation_history) >= 2:
@@ -523,9 +471,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             "dual_step_size": self.dual_step_size,
             "use_adaptive_penalty": self.use_adaptive_penalty,
             "constraint_tolerance": self.constraint_tolerance,
-            "dual_variable_shapes": {
-                name: dual_var.shape for name, dual_var in self.dual_vars.items()
-            },
+            "dual_variable_shapes": {name: dual_var.shape for name, dual_var in self.dual_vars.items()},
         }
 
         return {**base_info, **primal_dual_info}

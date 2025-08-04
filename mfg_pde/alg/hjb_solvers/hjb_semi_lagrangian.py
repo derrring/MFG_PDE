@@ -17,13 +17,13 @@ where û^n is the value interpolated at the departure point of the characteristi
 """
 
 import logging
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 
-from .base_hjb import _calculate_p_values, BaseHJBSolver
+from .base_hjb import BaseHJBSolver, _calculate_p_values
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -153,9 +153,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         U_solution[Nt - 1, :] = U_final_condition_at_T
 
         if logger.isEnabledFor(logging.INFO):
-            logger.info(
-                f"Starting semi-Lagrangian HJB solve: {Nt} time steps, {Nx} spatial points"
-            )
+            logger.info(f"Starting semi-Lagrangian HJB solve: {Nt} time steps, {Nx} spatial points")
 
         # Solve backward in time using semi-Lagrangian method
         for n in range(Nt - 2, -1, -1):
@@ -179,9 +177,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         if logger.isEnabledFor(logging.INFO):
             final_residual = np.linalg.norm(U_solution[1, :] - U_solution[0, :])
-            logger.info(
-                f"Semi-Lagrangian HJB solve completed. Final residual: {final_residual:.2e}"
-            )
+            logger.info(f"Semi-Lagrangian HJB solve completed. Final residual: {final_residual:.2e}")
 
         return U_solution
 
@@ -217,9 +213,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 p_optimal = self._find_optimal_control(x_current, m_current, time_idx)
 
                 # Step 2: Trace characteristic backward to find departure point
-                x_departure = self._trace_characteristic_backward(
-                    x_current, p_optimal, self.dt
-                )
+                x_departure = self._trace_characteristic_backward(x_current, p_optimal, self.dt)
 
                 # Step 3: Interpolate value function at departure point
                 u_departure = self._interpolate_value(U_next, x_departure)
@@ -228,9 +222,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 diffusion_term = self._compute_diffusion_term(U_next, i)
 
                 # Step 5: Compute Hamiltonian at optimal control
-                hamiltonian_value = self._evaluate_hamiltonian(
-                    x_current, p_optimal, m_current, time_idx
-                )
+                hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
                 # Step 6: Semi-Lagrangian update
                 U_current[i] = u_departure - self.dt * (
@@ -300,9 +292,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             logger.debug(f"Optimization failed at x={x}: {e}")
             return 0.0
 
-    def _trace_characteristic_backward(
-        self, x_current: float, p_optimal: float, dt: float
-    ) -> float:
+    def _trace_characteristic_backward(self, x_current: float, p_optimal: float, dt: float) -> float:
         """
         Trace characteristic backward in time to find departure point.
 
@@ -445,9 +435,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 bc = self.problem.boundary_conditions
                 if hasattr(bc, "type") and bc.type == "periodic":
                     # Periodic boundary
-                    laplacian = (
-                        U_values[1] - 2 * U_values[0] + U_values[-1]
-                    ) / self.dx**2
+                    laplacian = (U_values[1] - 2 * U_values[0] + U_values[-1]) / self.dx**2
                 else:
                     # Neumann (zero derivative) boundary
                     laplacian = (U_values[1] - U_values[0]) / self.dx**2
@@ -460,9 +448,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 bc = self.problem.boundary_conditions
                 if hasattr(bc, "type") and bc.type == "periodic":
                     # Periodic boundary
-                    laplacian = (
-                        U_values[0] - 2 * U_values[-1] + U_values[-2]
-                    ) / self.dx**2
+                    laplacian = (U_values[0] - 2 * U_values[-1] + U_values[-2]) / self.dx**2
                 else:
                     # Neumann boundary
                     laplacian = (U_values[-1] - U_values[-2]) / self.dx**2
@@ -471,15 +457,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         else:
             # Central difference for interior points
-            laplacian = (
-                U_values[i + 1] - 2 * U_values[i] + U_values[i - 1]
-            ) / self.dx**2
+            laplacian = (U_values[i + 1] - 2 * U_values[i] + U_values[i - 1]) / self.dx**2
 
         return laplacian
 
-    def _evaluate_hamiltonian(
-        self, x: float, p: float, m: float, time_idx: int
-    ) -> float:
+    def _evaluate_hamiltonian(self, x: float, p: float, m: float, time_idx: int) -> float:
         """
         Evaluate Hamiltonian H(x, p, m) at given point.
 
@@ -507,9 +489,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # Fallback to simple quadratic Hamiltonian
             return 0.5 * p**2 + getattr(self.problem, "coefCT", 0.5) * m
 
-    def _fallback_backward_euler(
-        self, U_next: np.ndarray, M_next: np.ndarray, time_idx: int
-    ) -> np.ndarray:
+    def _fallback_backward_euler(self, U_next: np.ndarray, M_next: np.ndarray, time_idx: int) -> np.ndarray:
         """
         Fallback solver using simple backward Euler when semi-Lagrangian fails.
 
@@ -527,14 +507,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         for i in range(Nx):
             # Simple backward Euler: u^n = u^{n+1} - dt * H(x, 0, m)
             try:
-                hamiltonian = self._evaluate_hamiltonian(
-                    self.x_grid[i], 0.0, M_next[i], time_idx
-                )
+                hamiltonian = self._evaluate_hamiltonian(self.x_grid[i], 0.0, M_next[i], time_idx)
                 diffusion = self._compute_diffusion_term(U_next, i)
 
-                U_current[i] = U_next[i] - self.dt * (
-                    hamiltonian - 0.5 * self.problem.sigma**2 * diffusion
-                )
+                U_current[i] = U_next[i] - self.dt * (hamiltonian - 0.5 * self.problem.sigma**2 * diffusion)
             except:
                 U_current[i] = U_next[i]
 

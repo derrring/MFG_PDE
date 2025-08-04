@@ -11,60 +11,40 @@ from .utils.numpy_compat import ensure_numpy_compatibility
 
 _numpy_info = ensure_numpy_compatibility()
 
-from .config import (
-    create_accurate_config,
-    create_fast_config,
-    create_research_config,
-    MFGSolverConfig,
-)
+from .config import MFGSolverConfig, create_accurate_config, create_fast_config, create_research_config
 from .core.lagrangian_mfg_problem import (
-    create_obstacle_lagrangian_mfg,
-    create_quadratic_lagrangian_mfg,
     LagrangianComponents,
     LagrangianMFGProblem,
+    create_obstacle_lagrangian_mfg,
+    create_quadratic_lagrangian_mfg,
 )
-from .core.mfg_problem import (
-    create_mfg_problem,
-    ExampleMFGProblem,
-    MFGComponents,
-    MFGProblem,
-    MFGProblemBuilder,
-)
+from .core.mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem
 from .core.network_mfg_problem import (
+    NetworkMFGComponents,
+    NetworkMFGProblem,
     create_grid_mfg_problem,
     create_random_mfg_problem,
     create_scale_free_mfg_problem,
-    NetworkMFGComponents,
-    NetworkMFGProblem,
 )
 from .factory import (
+    SolverFactory,
     create_accurate_solver,
     create_fast_solver,
     create_monitored_solver,
     create_research_solver,
     create_solver,
-    SolverFactory,
 )
-from .factory.general_mfg_factory import (
-    create_general_mfg_problem,
-    GeneralMFGFactory,
-    get_general_factory,
-)
+from .factory.general_mfg_factory import GeneralMFGFactory, create_general_mfg_problem, get_general_factory
 from .geometry import BoundaryConditions
-from .geometry.network_backend import (
-    get_backend_manager,
-    NetworkBackendType,
-    OperationType,
-    set_preferred_backend,
-)
+from .geometry.network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
 from .geometry.network_geometry import (
-    compute_network_statistics,
-    create_network,
     GridNetwork,
     NetworkData,
     NetworkType,
     RandomNetwork,
     ScaleFreeNetwork,
+    compute_network_statistics,
+    create_network,
 )
 
 # Geometry system for 2D/3D complex domains (optional dependency)
@@ -85,11 +65,7 @@ except ImportError:
 
 # Interactive research reporting (optional dependency)
 try:
-    from .utils.notebook_reporting import (
-        create_comparative_analysis,
-        create_mfg_research_report,
-        MFGNotebookReporter,
-    )
+    from .utils.notebook_reporting import MFGNotebookReporter, create_comparative_analysis, create_mfg_research_report
 
     NOTEBOOK_REPORTING_AVAILABLE = True
 except ImportError:

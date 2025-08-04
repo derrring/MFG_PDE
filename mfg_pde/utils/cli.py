@@ -38,21 +38,11 @@ def create_base_parser() -> argparse.ArgumentParser:
 
     # Problem configuration
     problem_group = parser.add_argument_group("Problem Configuration")
-    problem_group.add_argument(
-        "--T", type=float, default=1.0, help="Terminal time for the MFG problem"
-    )
-    problem_group.add_argument(
-        "--Nt", type=int, default=50, help="Number of time steps"
-    )
-    problem_group.add_argument(
-        "--xmin", type=float, default=0.0, help="Minimum spatial domain value"
-    )
-    problem_group.add_argument(
-        "--xmax", type=float, default=1.0, help="Maximum spatial domain value"
-    )
-    problem_group.add_argument(
-        "--Nx", type=int, default=100, help="Number of spatial grid points"
-    )
+    problem_group.add_argument("--T", type=float, default=1.0, help="Terminal time for the MFG problem")
+    problem_group.add_argument("--Nt", type=int, default=50, help="Number of time steps")
+    problem_group.add_argument("--xmin", type=float, default=0.0, help="Minimum spatial domain value")
+    problem_group.add_argument("--xmax", type=float, default=1.0, help="Maximum spatial domain value")
+    problem_group.add_argument("--Nx", type=int, default=100, help="Number of spatial grid points")
 
     # Solver configuration
     solver_group = parser.add_argument_group("Solver Configuration")
@@ -100,9 +90,7 @@ def create_base_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to configuration file (JSON or YAML)",
     )
-    io_group.add_argument(
-        "--output", type=str, default=None, help="Output file path for results"
-    )
+    io_group.add_argument("--output", type=str, default=None, help="Output file path for results")
     io_group.add_argument(
         "--save-config",
         type=str,
@@ -112,12 +100,8 @@ def create_base_parser() -> argparse.ArgumentParser:
 
     # Execution options
     exec_group = parser.add_argument_group("Execution Options")
-    exec_group.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose output"
-    )
-    exec_group.add_argument(
-        "--quiet", "-q", action="store_true", help="Suppress all output except errors"
-    )
+    exec_group.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    exec_group.add_argument("--quiet", "-q", action="store_true", help="Suppress all output except errors")
     exec_group.add_argument(
         "--progress",
         action="store_true",
@@ -145,18 +129,14 @@ def create_base_parser() -> argparse.ArgumentParser:
 
     # Advanced options
     advanced_group = parser.add_argument_group("Advanced Options")
-    advanced_group.add_argument(
-        "--warm-start", action="store_true", help="Enable warm start capability"
-    )
+    advanced_group.add_argument("--warm-start", action="store_true", help="Enable warm start capability")
     advanced_group.add_argument(
         "--return-structured",
         action="store_true",
         default=True,
         help="Return structured results (default: enabled)",
     )
-    advanced_group.add_argument(
-        "--profile", action="store_true", help="Enable performance profiling"
-    )
+    advanced_group.add_argument("--profile", action="store_true", help="Enable performance profiling")
 
     return parser
 
@@ -226,9 +206,7 @@ def save_config_file(config: Dict[str, Any], output_path: str) -> None:
         print(f"ERROR: Error saving config file: {e}")
 
 
-def merge_configs(
-    base_config: Dict[str, Any], override_config: Dict[str, Any]
-) -> Dict[str, Any]:
+def merge_configs(base_config: Dict[str, Any], override_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Merge two configuration dictionaries, with override taking precedence.
 
@@ -334,16 +312,12 @@ def create_solver_cli() -> argparse.ArgumentParser:
     config_subparsers = config_parser.add_subparsers(dest="config_command")
 
     # Generate config
-    gen_config = config_subparsers.add_parser(
-        "generate", help="Generate sample configuration"
-    )
+    gen_config = config_subparsers.add_parser("generate", help="Generate sample configuration")
     gen_config.add_argument("output_file", help="Output configuration file")
     gen_config.add_argument("--format", choices=["json", "yaml"], default="json")
 
     # Validate config
-    val_config = config_subparsers.add_parser(
-        "validate", help="Validate configuration file"
-    )
+    val_config = config_subparsers.add_parser("validate", help="Validate configuration file")
     val_config.add_argument("config_file", help="Configuration file to validate")
 
     return parser
@@ -412,9 +386,7 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
         solver_config = config["solver"]
         import numpy as np
 
-        collocation_points = np.linspace(
-            problem.xmin, problem.xmax, problem.Nx
-        ).reshape(-1, 1)
+        collocation_points = np.linspace(problem.xmin, problem.xmax, problem.Nx).reshape(-1, 1)
 
         solver = create_solver(
             problem=problem,

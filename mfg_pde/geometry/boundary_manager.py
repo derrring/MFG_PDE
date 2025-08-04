@@ -34,9 +34,7 @@ class GeometricBoundaryCondition:
 
     # Robin boundary condition parameters
     alpha: Union[float, Callable[[np.ndarray], np.ndarray]] = None  # coefficient of u
-    beta: Union[float, Callable[[np.ndarray], np.ndarray]] = (
-        None  # coefficient of du/dn
-    )
+    beta: Union[float, Callable[[np.ndarray], np.ndarray]] = None  # coefficient of du/dn
 
     # Spatial and temporal dependencies
     time_dependent: bool = False
@@ -50,9 +48,7 @@ class GeometricBoundaryCondition:
         """Validate boundary condition parameters."""
         if self.bc_type == "robin":
             if self.alpha is None or self.beta is None:
-                raise ValueError(
-                    "Robin boundary conditions require alpha and beta coefficients"
-                )
+                raise ValueError("Robin boundary conditions require alpha and beta coefficients")
 
         if self.bc_type in ["dirichlet", "neumann"] and self.value is None:
             raise ValueError(f"{self.bc_type} boundary condition requires value")
@@ -76,9 +72,7 @@ class GeometricBoundaryCondition:
         else:
             return np.full(coordinates.shape[0], self.value)
 
-    def evaluate_gradient(
-        self, coordinates: np.ndarray, time: float = 0.0
-    ) -> np.ndarray:
+    def evaluate_gradient(self, coordinates: np.ndarray, time: float = 0.0) -> np.ndarray:
         """Evaluate gradient boundary condition (for Neumann/Robin)."""
         if callable(self.gradient_value):
             return self.gradient_value(coordinates)
@@ -125,10 +119,7 @@ class BoundaryManager:
             self.boundary_nodes[region_id] = region_nodes
 
             # Find boundary faces in this region
-            if (
-                hasattr(self.mesh_data, "boundary_faces")
-                and self.mesh_data.boundary_faces is not None
-            ):
+            if hasattr(self.mesh_data, "boundary_faces") and self.mesh_data.boundary_faces is not None:
                 # For 2D: boundary faces are edges
                 region_faces = []
                 for face in self.mesh_data.boundary_faces:
@@ -156,9 +147,7 @@ class BoundaryManager:
             Created boundary condition object
         """
 
-        bc = GeometricBoundaryCondition(
-            region_id=region_id, bc_type=bc_type, value=value, **kwargs
-        )
+        bc = GeometricBoundaryCondition(region_id=region_id, bc_type=bc_type, value=value, **kwargs)
 
         self.boundary_conditions[region_id] = bc
         return bc
@@ -172,9 +161,7 @@ class BoundaryManager:
         node_indices = self.get_boundary_nodes(region_id)
         return self.mesh_data.vertices[node_indices]
 
-    def evaluate_boundary_condition(
-        self, region_id: int, time: float = 0.0
-    ) -> np.ndarray:
+    def evaluate_boundary_condition(self, region_id: int, time: float = 0.0) -> np.ndarray:
         """
         Evaluate boundary condition values for a region.
 
@@ -232,9 +219,7 @@ class BoundaryManager:
 
         return system_matrix, rhs_vector
 
-    def apply_neumann_conditions(
-        self, rhs_vector: np.ndarray, time: float = 0.0
-    ) -> np.ndarray:
+    def apply_neumann_conditions(self, rhs_vector: np.ndarray, time: float = 0.0) -> np.ndarray:
         """
         Apply Neumann boundary conditions to RHS vector.
 
@@ -256,9 +241,7 @@ class BoundaryManager:
                 continue
 
             # Get gradient values
-            gradient_values = bc.evaluate_gradient(
-                self.get_boundary_coordinates(region_id), time
-            )
+            gradient_values = bc.evaluate_gradient(self.get_boundary_coordinates(region_id), time)
 
             # Apply Neumann conditions to RHS
             # This is a simplified implementation - full FEM would require
@@ -298,9 +281,7 @@ class BoundaryManager:
         if right_bc and not callable(right_bc.value):
             right_value = right_bc.value
 
-        return BoundaryConditions(
-            type=bc_type, left_value=left_value, right_value=right_value
-        )
+        return BoundaryConditions(type=bc_type, left_value=left_value, right_value=right_value)
 
     def visualize_boundary_conditions(self):
         """Visualize boundary conditions using PyVista."""
@@ -332,9 +313,7 @@ class BoundaryManager:
                 center = np.mean(coordinates, axis=0)
                 if self.mesh_data.dimension == 2:
                     # Add 2D text annotation
-                    plotter.add_point_labels(
-                        [center], [f"Region {region_id}: {bc.bc_type}"], point_size=0
-                    )
+                    plotter.add_point_labels([center], [f"Region {region_id}: {bc.bc_type}"], point_size=0)
 
         plotter.show()
 

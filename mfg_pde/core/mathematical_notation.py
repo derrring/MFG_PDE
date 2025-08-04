@@ -337,11 +337,7 @@ class MFGNotationRegistry:
 
     def get_variables_by_type(self, variable_type: VariableType) -> List[NotationEntry]:
         """Get all variables of a specific type."""
-        return [
-            entry
-            for entry in self.entries.values()
-            if entry.variable_type == variable_type and not entry.aliases
-        ]
+        return [entry for entry in self.entries.values() if entry.variable_type == variable_type and not entry.aliases]
 
     def generate_notation_guide(self) -> str:
         """Generate a comprehensive notation guide."""
@@ -442,9 +438,7 @@ PotentialFunction: TypeAlias = float  # V(x) → ℝ
 # === Utility Functions ===
 
 
-def validate_solution_arrays(
-    U: SolutionArray, M: SolutionArray, Nx: int, Nt: int
-) -> bool:
+def validate_solution_arrays(U: SolutionArray, M: SolutionArray, Nx: int, Nt: int) -> bool:
     """
     Validate that solution arrays conform to mathematical conventions.
 
@@ -463,14 +457,10 @@ def validate_solution_arrays(
     expected_shape = (Nt + 1, Nx + 1)
 
     if U.shape != expected_shape:
-        raise ValueError(
-            f"Value function U shape {U.shape} != expected {expected_shape}"
-        )
+        raise ValueError(f"Value function U shape {U.shape} != expected {expected_shape}")
 
     if M.shape != expected_shape:
-        raise ValueError(
-            f"Density function M shape {M.shape} != expected {expected_shape}"
-        )
+        raise ValueError(f"Density function M shape {M.shape} != expected {expected_shape}")
 
     # Check mathematical constraints
     if np.any(M < 0):
@@ -485,9 +475,7 @@ def validate_solution_arrays(
     return True
 
 
-def format_mathematical_summary(
-    U: SolutionArray, M: SolutionArray, problem_params: ParameterDict
-) -> str:
+def format_mathematical_summary(U: SolutionArray, M: SolutionArray, problem_params: ParameterDict) -> str:
     """
     Generate a mathematical summary of MFG solution.
 

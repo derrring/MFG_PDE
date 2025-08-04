@@ -55,13 +55,9 @@ class OmegaConfManager:
             self._OmegaConf = _OmegaConf
             self._omegaconf_available = True
         except ImportError:
-            raise ImportError(
-                "OmegaConf is not available. Install with: pip install omegaconf"
-            )
+            raise ImportError("OmegaConf is not available. Install with: pip install omegaconf")
 
-        self.config_dir = (
-            Path(config_dir) if config_dir else Path(__file__).parent / "configs"
-        )
+        self.config_dir = Path(config_dir) if config_dir else Path(__file__).parent / "configs"
         self.config_dir.mkdir(exist_ok=True)
         self._schema_cache: Dict[str, DictConfig] = {}
 
@@ -209,9 +205,7 @@ class OmegaConfManager:
 
         return config
 
-    def compose_config(
-        self, *config_paths: Union[str, Path], **overrides
-    ) -> DictConfig:
+    def compose_config(self, *config_paths: Union[str, Path], **overrides) -> DictConfig:
         """
         Compose configuration from multiple YAML files.
 
@@ -284,9 +278,7 @@ class OmegaConfManager:
         self._OmegaConf.save(config, output_path)
         logger.info(f"Configuration saved to: {output_path}")
 
-    def create_parameter_sweep(
-        self, base_config: DictConfig, sweep_params: Dict[str, List[Any]]
-    ) -> List[DictConfig]:
+    def create_parameter_sweep(self, base_config: DictConfig, sweep_params: Dict[str, List[Any]]) -> List[DictConfig]:
         """
         Create parameter sweep configurations.
 
@@ -329,9 +321,7 @@ class OmegaConfManager:
 
         return sweep_configs
 
-    def validate_config(
-        self, config: DictConfig, schema_name: Optional[str] = None
-    ) -> bool:
+    def validate_config(self, config: DictConfig, schema_name: Optional[str] = None) -> bool:
         """
         Validate configuration against schema.
 
@@ -389,9 +379,7 @@ class OmegaConfManager:
         return self.load_config(templates[template_name])
 
 
-def create_omega_manager(
-    config_dir: Optional[Union[str, Path]] = None
-) -> OmegaConfManager:
+def create_omega_manager(config_dir: Optional[Union[str, Path]] = None) -> OmegaConfManager:
     """
     Create OmegaConf configuration manager.
 
@@ -417,9 +405,7 @@ def load_experiment_config(**overrides) -> DictConfig:
     return manager.load_config("experiment.yaml", **overrides)
 
 
-def create_parameter_sweep_configs(
-    lambda_values: List[float], init_types: List[str]
-) -> List[DictConfig]:
+def create_parameter_sweep_configs(lambda_values: List[float], init_types: List[str]) -> List[DictConfig]:
     """Create parameter sweep configurations for beach problem."""
     manager = create_omega_manager()
     base_config = manager.load_config("beach_problem.yaml")

@@ -56,13 +56,9 @@ class HJBFDMSolver(BaseHJBSolver):
 
         # Validate parameter ranges
         if self.max_newton_iterations < 1:
-            raise ValueError(
-                f"max_newton_iterations must be >= 1, got {self.max_newton_iterations}"
-            )
+            raise ValueError(f"max_newton_iterations must be >= 1, got {self.max_newton_iterations}")
         if self.newton_tolerance <= 0:
-            raise ValueError(
-                f"newton_tolerance must be > 0, got {self.newton_tolerance}"
-            )
+            raise ValueError(f"newton_tolerance must be > 0, got {self.newton_tolerance}")
 
         # Store parameters for solver access
         self._newton_config = {

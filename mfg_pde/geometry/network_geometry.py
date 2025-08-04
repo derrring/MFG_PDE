@@ -24,10 +24,10 @@ from scipy.spatial.distance import pdist, squareform
 # Import unified backend system
 from .network_backend import (
     BackendNotAvailableError,
-    get_backend_manager,
     NetworkBackendManager,
     NetworkBackendType,
     OperationType,
+    get_backend_manager,
 )
 
 # Legacy compatibility - keep old imports for fallback
@@ -118,27 +118,19 @@ class NetworkData:
 
     def _validate_network_data(self):
         """Validate network data consistency."""
-        assert (
-            self.adjacency_matrix.shape[0] == self.adjacency_matrix.shape[1]
-        ), "Adjacency matrix must be square"
+        assert self.adjacency_matrix.shape[0] == self.adjacency_matrix.shape[1], "Adjacency matrix must be square"
         assert (
             self.adjacency_matrix.shape[0] == self.num_nodes
         ), f"Adjacency matrix size {self.adjacency_matrix.shape[0]} != num_nodes {self.num_nodes}"
 
         if self.node_positions is not None:
-            assert (
-                self.node_positions.shape[0] == self.num_nodes
-            ), "Node positions must match number of nodes"
+            assert self.node_positions.shape[0] == self.num_nodes, "Node positions must match number of nodes"
 
         if self.edge_weights is not None:
-            assert (
-                len(self.edge_weights) == self.num_edges
-            ), "Edge weights must match number of edges"
+            assert len(self.edge_weights) == self.num_edges, "Edge weights must match number of edges"
 
         if self.node_weights is not None:
-            assert (
-                len(self.node_weights) == self.num_nodes
-            ), "Node weights must match number of nodes"
+            assert len(self.node_weights) == self.num_nodes, "Node weights must match number of nodes"
 
     def _compute_derived_matrices(self):
         """Compute graph Laplacian and other derived matrices."""
@@ -209,9 +201,7 @@ class NetworkData:
 
         # Convert to NetworkX for connectivity check
         G = nx.from_scipy_sparse_array(self.adjacency_matrix)
-        return (
-            nx.is_connected(G) if not self.is_directed else nx.is_strongly_connected(G)
-        )
+        return nx.is_connected(G) if not self.is_directed else nx.is_strongly_connected(G)
 
     def _compute_clustering_coefficient(self) -> float:
         """Compute average clustering coefficient."""
@@ -264,9 +254,7 @@ class BaseNetworkGeometry(ABC):
         """Compute shortest path distances between all node pairs."""
         pass
 
-    def get_laplacian_operator(
-        self, operator_type: str = "combinatorial"
-    ) -> csr_matrix:
+    def get_laplacian_operator(self, operator_type: str = "combinatorial") -> csr_matrix:
         """
         Get graph Laplacian operator for MFG computations.
 
@@ -277,9 +265,7 @@ class BaseNetworkGeometry(ABC):
             Sparse Laplacian matrix
         """
         if self.network_data is None:
-            raise ValueError(
-                "Network data not initialized. Call create_network() first."
-            )
+            raise ValueError("Network data not initialized. Call create_network() first.")
 
         A = self.network_data.adjacency_matrix
         D = self.network_data.degree_matrix
@@ -407,9 +393,7 @@ class GridNetwork(BaseNetworkGeometry):
             backend.add_edges(graph, edges)
 
         # Convert to NetworkData
-        self.network_data = self._create_network_data_from_backend(
-            graph, backend_type, positions
-        )
+        self.network_data = self._create_network_data_from_backend(graph, backend_type, positions)
 
         return self.network_data
 
@@ -489,9 +473,7 @@ class RandomNetwork(BaseNetworkGeometry):
         positions = np.random.rand(self.num_nodes, 2)
 
         # Convert to NetworkData
-        self.network_data = self._create_network_data_from_backend(
-            graph, backend_type, positions
-        )
+        self.network_data = self._create_network_data_from_backend(graph, backend_type, positions)
 
         return self.network_data
 
@@ -543,15 +525,11 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
         positions = self._generate_spring_positions(seed)
 
         # Convert to NetworkData
-        self.network_data = self._create_network_data_from_backend(
-            graph, backend_type, positions
-        )
+        self.network_data = self._create_network_data_from_backend(graph, backend_type, positions)
 
         return self.network_data
 
-    def _generate_barabasi_albert_edges(
-        self, seed: Optional[int] = None
-    ) -> List[Tuple[int, int]]:
+    def _generate_barabasi_albert_edges(self, seed: Optional[int] = None) -> List[Tuple[int, int]]:
         """Generate Barabási-Albert network edges using preferential attachment."""
         if seed is not None:
             np.random.seed(seed)
@@ -584,9 +562,7 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
                 )
             else:
                 # Fallback: random attachment
-                targets = np.random.choice(
-                    new_node, size=min(self.num_edges_per_node, new_node), replace=False
-                )
+                targets = np.random.choice(new_node, size=min(self.num_edges_per_node, new_node), replace=False)
 
             # Add edges
             for target in targets:
@@ -670,9 +646,7 @@ def compute_network_statistics(network_data: NetworkData) -> Dict[str, float]:
         "density": network_data.metadata.get("density", 0),
         "average_degree": network_data.metadata.get("average_degree", 0),
         "max_degree": network_data.metadata.get("max_degree", 0),
-        "clustering_coefficient": network_data.metadata.get(
-            "clustering_coefficient", 0
-        ),
+        "clustering_coefficient": network_data.metadata.get("clustering_coefficient", 0),
         "is_connected": network_data.is_connected,
         "is_directed": network_data.is_directed,
         "is_weighted": network_data.is_weighted,
@@ -687,9 +661,7 @@ def compute_network_statistics(network_data: NetworkData) -> Dict[str, float]:
         stats.update(
             {
                 "algebraic_connectivity": eigenvals[1] if len(eigenvals) > 1 else 0,
-                "spectral_gap": (
-                    eigenvals[1] - eigenvals[0] if len(eigenvals) > 1 else 0
-                ),
+                "spectral_gap": (eigenvals[1] - eigenvals[0] if len(eigenvals) > 1 else 0),
                 "largest_eigenvalue": eigenvals[-1],
             }
         )

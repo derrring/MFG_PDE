@@ -94,9 +94,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
         if interactive and PLOTLY_AVAILABLE:
             return self._plot_trajectories_plotly(trajectories, U, M, title, save_path)
         else:
-            return self._plot_trajectories_matplotlib(
-                trajectories, U, M, title, save_path
-            )
+            return self._plot_trajectories_matplotlib(trajectories, U, M, title, save_path)
 
     def _plot_trajectories_plotly(
         self,
@@ -110,9 +108,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
         fig = go.Figure()
 
         # Base network topology
-        self._add_network_topology_to_plotly(
-            fig, node_values=M[0] if M is not None else None
-        )
+        self._add_network_topology_to_plotly(fig, node_values=M[0] if M is not None else None)
 
         # Add trajectories
         for i, trajectory in enumerate(trajectories):
@@ -198,9 +194,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
         fig, ax = plt.subplots(1, 1, figsize=(12, 10))
 
         # Base network topology
-        self._add_network_topology_to_matplotlib(
-            ax, node_values=M[0] if M is not None else None
-        )
+        self._add_network_topology_to_matplotlib(ax, node_values=M[0] if M is not None else None)
 
         # Add trajectories
         for i, trajectory in enumerate(trajectories):
@@ -284,13 +278,9 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             Plotly Figure or matplotlib Figure
         """
         if interactive and PLOTLY_AVAILABLE:
-            return self._plot_velocity_field_plotly(
-                velocity_field, M, title, time_idx, save_path
-            )
+            return self._plot_velocity_field_plotly(velocity_field, M, title, time_idx, save_path)
         else:
-            return self._plot_velocity_field_matplotlib(
-                velocity_field, M, title, time_idx, save_path
-            )
+            return self._plot_velocity_field_matplotlib(velocity_field, M, title, time_idx, save_path)
 
     def _plot_velocity_field_matplotlib(
         self,
@@ -311,9 +301,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
         # Add velocity vectors
         if self.node_positions is not None and velocity_field.ndim >= 2:
-            velocities = (
-                velocity_field[time_idx] if velocity_field.ndim == 3 else velocity_field
-            )
+            velocities = velocity_field[time_idx] if velocity_field.ndim == 3 else velocity_field
 
             for node in range(self.num_nodes):
                 x, y = self.node_positions[node]
@@ -390,13 +378,9 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             selected_nodes = list(range(min(4, self.num_nodes)))
 
         if interactive and PLOTLY_AVAILABLE:
-            return self._plot_scheme_comparison_plotly(
-                solutions, times, selected_nodes, title, save_path
-            )
+            return self._plot_scheme_comparison_plotly(solutions, times, selected_nodes, title, save_path)
         else:
-            return self._plot_scheme_comparison_matplotlib(
-                solutions, times, selected_nodes, title, save_path
-            )
+            return self._plot_scheme_comparison_matplotlib(solutions, times, selected_nodes, title, save_path)
 
     def _plot_scheme_comparison_matplotlib(
         self,
@@ -419,9 +403,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             # Value function comparison
             ax_u = axes[0, node_idx]
             for i, (scheme_name, (U, M)) in enumerate(solutions.items()):
-                ax_u.plot(
-                    times, U[:, node], label=scheme_name, color=colors[i], linewidth=2
-                )
+                ax_u.plot(times, U[:, node], label=scheme_name, color=colors[i], linewidth=2)
 
             ax_u.set_title(f"Value Function - Node {node}")
             ax_u.set_xlabel("Time")
@@ -432,9 +414,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             # Density comparison
             ax_m = axes[1, node_idx]
             for i, (scheme_name, (U, M)) in enumerate(solutions.items()):
-                ax_m.plot(
-                    times, M[:, node], label=scheme_name, color=colors[i], linewidth=2
-                )
+                ax_m.plot(times, M[:, node], label=scheme_name, color=colors[i], linewidth=2)
 
             ax_m.set_title(f"Density - Node {node}")
             ax_m.set_xlabel("Time")
@@ -532,14 +512,9 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                     color=node_color,
                     colorscale=colorscale,
                     showscale=True if node_values is not None else False,
-                    colorbar=(
-                        dict(title="Node Values") if node_values is not None else None
-                    ),
+                    colorbar=(dict(title="Node Values") if node_values is not None else None),
                 ),
-                text=[
-                    f"Node {i}<br>Height: {node_z[i]:.3f}"
-                    for i in range(self.num_nodes)
-                ],
+                text=[f"Node {i}<br>Height: {node_z[i]:.3f}" for i in range(self.num_nodes)],
                 hovertemplate="%{text}<extra></extra>",
                 name="Nodes",
             )
@@ -563,17 +538,13 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
         return fig
 
-    def _add_network_topology_to_plotly(
-        self, fig: go.Figure, node_values: Optional[np.ndarray] = None
-    ):
+    def _add_network_topology_to_plotly(self, fig: go.Figure, node_values: Optional[np.ndarray] = None):
         """Add network topology to existing Plotly figure."""
         # This would include the network plotting logic from the base class
         # For brevity, we'll reference the existing implementation
         pass
 
-    def _add_network_topology_to_matplotlib(
-        self, ax: plt.Axes, node_values: Optional[np.ndarray] = None
-    ):
+    def _add_network_topology_to_matplotlib(self, ax: plt.Axes, node_values: Optional[np.ndarray] = None):
         """Add network topology to existing matplotlib axes."""
         # Plot edges
         rows, cols = self.adjacency_matrix.nonzero()
@@ -600,9 +571,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                 )
                 plt.colorbar(scatter, ax=ax, label="Node Values")
             else:
-                ax.scatter(
-                    node_x, node_y, c="lightblue", s=100, alpha=0.8, edgecolors="black"
-                )
+                ax.scatter(node_x, node_y, c="lightblue", s=100, alpha=0.8, edgecolors="black")
 
 
 # Factory function for enhanced network visualizer

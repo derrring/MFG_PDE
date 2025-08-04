@@ -10,7 +10,7 @@ The solver inherits from ParticleCollocationSolver and gains adaptive convergenc
 behavior through the @adaptive_convergence decorator.
 """
 
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -143,9 +143,7 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
                 print(f"  Wasserstein tolerance: {monitor.wasserstein_tol}")
                 print(f"  U magnitude tolerance: {monitor.u_magnitude_tol}")
                 print(f"  Stability tolerance: {monitor.u_stability_tol}")
-                print(
-                    f"  History length: {monitor.oscillation_detector.history_length}"
-                )
+                print(f"  History length: {monitor.oscillation_detector.history_length}")
 
 
 # Convenience function for creating adaptive solver

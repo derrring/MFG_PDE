@@ -9,13 +9,7 @@ Pydantic-based configurations with automatic validation and serialization.
 """
 
 # Advanced array and tensor validation
-from .array_validation import (
-    ArrayValidationConfig,
-    CollocationConfig,
-    ExperimentConfig,
-    MFGArrays,
-    MFGGridConfig,
-)
+from .array_validation import ArrayValidationConfig, CollocationConfig, ExperimentConfig, MFGArrays, MFGGridConfig
 
 # Enhanced Pydantic-based configurations (recommended for new code)
 from .pydantic_config import (

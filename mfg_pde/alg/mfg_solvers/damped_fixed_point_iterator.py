@@ -1,5 +1,5 @@
 import time
-from typing import Tuple, TYPE_CHECKING, Union  # Added Union
+from typing import TYPE_CHECKING, Tuple, Union  # Added Union
 
 import numpy as np
 
@@ -72,9 +72,7 @@ class FixedPointIterator(MFGSolver):
         # New parameter for result format
         return_structured: bool = False,
         **kwargs,
-    ) -> Union[
-        Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray], "SolverResult"
-    ]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray], "SolverResult"]:
         import warnings
 
         # Handle parameter precedence: standardized > specific > deprecated
@@ -134,9 +132,7 @@ class FixedPointIterator(MFGSolver):
         # Track execution time for structured results
         solve_start_time = time.time()
 
-        print(
-            f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________"
-        )
+        print(f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________")
         Nx = self.problem.Nx + 1
         Nt = self.problem.Nt + 1
         Dx = self.problem.Dx if abs(self.problem.Dx) > 1e-12 else 1.0
@@ -178,15 +174,11 @@ class FixedPointIterator(MFGSolver):
         self.l2distm_rel = np.ones(final_max_iterations)
         self.iterations_run = 0
 
-        U_picard_prev = (
-            self.U.copy()
-        )  # Initialize U from previous Picard (k-1) with initial U for k=0
+        U_picard_prev = self.U.copy()  # Initialize U from previous Picard (k-1) with initial U for k=0
 
         for iiter in range(final_max_iterations):
             start_time_iter = time.time()
-            print(
-                f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations} ---"
-            )
+            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations} ---")
 
             U_old_current_picard_iter = self.U.copy()  # U_k
             M_old_current_picard_iter = self.M.copy()  # M_k
@@ -200,24 +192,16 @@ class FixedPointIterator(MFGSolver):
             )
 
             # Apply damping to U update: U_{k+1} = theta * U_tmp + (1-theta) * U_k
-            self.U = (
-                self.thetaUM * U_new_tmp_hjb
-                + (1 - self.thetaUM) * U_old_current_picard_iter
-            )
+            self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
 
             # 2. Solve FP forward using the newly computed U (U_{k+1})
             M_new_tmp_fp = self.fp_solver.solve_fp_system(initial_m_dist, self.U)
 
             # Apply damping to M update: M_{k+1} = theta * M_tmp + (1-theta) * M_k
-            self.M = (
-                self.thetaUM * M_new_tmp_fp
-                + (1 - self.thetaUM) * M_old_current_picard_iter
-            )
+            self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
 
             # Update U_picard_prev for the next iteration's Jacobian calculation
-            U_picard_prev = (
-                U_old_current_picard_iter.copy()
-            )  # U_k becomes U_{k-1} for next iter
+            U_picard_prev = U_old_current_picard_iter.copy()  # U_k becomes U_{k-1} for next iter
 
             """
             # Ensure M remains non-negative and normalized
@@ -232,24 +216,16 @@ class FixedPointIterator(MFGSolver):
 
             norm_factor = np.sqrt(Dx * Dt)
 
-            self.l2distu_abs[iiter] = (
-                np.linalg.norm(self.U - U_old_current_picard_iter) * norm_factor
-            )
+            self.l2distu_abs[iiter] = np.linalg.norm(self.U - U_old_current_picard_iter) * norm_factor
             norm_U_iter = np.linalg.norm(self.U) * norm_factor
             self.l2distu_rel[iiter] = (
-                self.l2distu_abs[iiter] / norm_U_iter
-                if norm_U_iter > 1e-12
-                else self.l2distu_abs[iiter]
+                self.l2distu_abs[iiter] / norm_U_iter if norm_U_iter > 1e-12 else self.l2distu_abs[iiter]
             )
 
-            self.l2distm_abs[iiter] = (
-                np.linalg.norm(self.M - M_old_current_picard_iter) * norm_factor
-            )
+            self.l2distm_abs[iiter] = np.linalg.norm(self.M - M_old_current_picard_iter) * norm_factor
             norm_M_iter = np.linalg.norm(self.M) * norm_factor
             self.l2distm_rel[iiter] = (
-                self.l2distm_abs[iiter] / norm_M_iter
-                if norm_M_iter > 1e-12
-                else self.l2distm_abs[iiter]
+                self.l2distm_abs[iiter] / norm_M_iter if norm_M_iter > 1e-12 else self.l2distm_abs[iiter]
             )
 
             elapsed_time_iter = time.time() - start_time_iter
@@ -258,24 +234,13 @@ class FixedPointIterator(MFGSolver):
             )
 
             self.iterations_run = iiter + 1
-            if (
-                self.l2distu_rel[iiter] < final_tolerance
-                and self.l2distm_rel[iiter] < final_tolerance
-            ):
+            if self.l2distu_rel[iiter] < final_tolerance and self.l2distm_rel[iiter] < final_tolerance:
                 print(f"Convergence reached after {iiter + 1} iterations.")
                 break
         else:
             # Enhanced convergence failure reporting
-            final_error_u = (
-                self.l2distu_rel[self.iterations_run - 1]
-                if self.iterations_run > 0
-                else float("inf")
-            )
-            final_error_m = (
-                self.l2distm_rel[self.iterations_run - 1]
-                if self.iterations_run > 0
-                else float("inf")
-            )
+            final_error_u = self.l2distu_rel[self.iterations_run - 1] if self.iterations_run > 0 else float("inf")
+            final_error_m = self.l2distm_rel[self.iterations_run - 1] if self.iterations_run > 0 else float("inf")
             final_error = max(final_error_u, final_error_m)
 
             convergence_history = list(self.l2distu_rel[: self.iterations_run]) + list(
@@ -285,11 +250,7 @@ class FixedPointIterator(MFGSolver):
             from ...utils.exceptions import ConvergenceError
 
             # Check configuration for strict error handling mode
-            strict_mode = (
-                getattr(self.config, "strict_convergence_errors", False)
-                if hasattr(self, "config")
-                else True
-            )
+            strict_mode = getattr(self.config, "strict_convergence_errors", False) if hasattr(self, "config") else True
 
             if strict_mode:
                 # Strict mode: Always raise convergence errors
@@ -304,9 +265,7 @@ class FixedPointIterator(MFGSolver):
                 raise conv_error
             else:
                 # Permissive mode: Log warning with detailed analysis
-                print(
-                    f"WARNING:  Convergence Warning: Max iterations ({final_max_iterations}) reached"
-                )
+                print(f"WARNING:  Convergence Warning: Max iterations ({final_max_iterations}) reached")
 
                 try:
                     conv_error = ConvergenceError(
@@ -322,9 +281,7 @@ class FixedPointIterator(MFGSolver):
                     self._convergence_warning = conv_error
                 except Exception as e:
                     # Fallback if error analysis fails
-                    print(
-                        f" Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance"
-                    )
+                    print(f" Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
                     print(f"WARNING:  Error analysis failed: {e}")
 
         self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
@@ -350,10 +307,7 @@ class FixedPointIterator(MFGSolver):
                 error_history_M=self.l2distm_rel,
                 solver_name=self.name,
                 convergence_achieved=(
-                    (
-                        self.l2distu_rel[-1] < final_tolerance
-                        and self.l2distm_rel[-1] < final_tolerance
-                    )
+                    (self.l2distu_rel[-1] < final_tolerance and self.l2distm_rel[-1] < final_tolerance)
                     if self.iterations_run > 0
                     else False
                 ),

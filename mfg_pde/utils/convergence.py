@@ -35,7 +35,7 @@ import inspect
 import warnings
 from collections import deque
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -104,9 +104,7 @@ class DistributionComparator:
         return np.sum(p_safe * np.log(p_safe / q_safe))
 
     @staticmethod
-    def statistical_moments(
-        distribution: np.ndarray, x: np.ndarray
-    ) -> Dict[str, float]:
+    def statistical_moments(distribution: np.ndarray, x: np.ndarray) -> Dict[str, float]:
         """
         Compute statistical moments of a distribution.
 
@@ -118,11 +116,7 @@ class DistributionComparator:
             Dictionary with mean, variance, skewness, kurtosis
         """
         # Normalize distribution
-        dist = (
-            distribution / np.sum(distribution)
-            if np.sum(distribution) > 0
-            else distribution
-        )
+        dist = distribution / np.sum(distribution) if np.sum(distribution) > 0 else distribution
 
         # Compute moments
         mean = np.sum(x * dist)
@@ -169,9 +163,7 @@ class OscillationDetector:
         """Add new error sample to history."""
         self.error_history.append(error)
 
-    def is_stabilized(
-        self, magnitude_threshold: float, stability_threshold: float
-    ) -> Tuple[bool, Dict[str, float]]:
+    def is_stabilized(self, magnitude_threshold: float, stability_threshold: float) -> Tuple[bool, Dict[str, float]]:
         """
         Check if oscillation has stabilized based on magnitude and variability.
 
@@ -298,13 +290,9 @@ class AdvancedConvergenceMonitor:
         if self.previous_m is not None:
             # Wasserstein distance
             try:
-                wasserstein_dist = self.comparator.wasserstein_1d(
-                    m_current, self.previous_m, x_grid
-                )
+                wasserstein_dist = self.comparator.wasserstein_1d(m_current, self.previous_m, x_grid)
                 diagnostics["wasserstein_distance"] = wasserstein_dist
-                diagnostics["convergence_criteria"]["wasserstein"] = (
-                    wasserstein_dist < self.wasserstein_tol
-                )
+                diagnostics["convergence_criteria"]["wasserstein"] = wasserstein_dist < self.wasserstein_tol
             except Exception as e:
                 warnings.warn(f"Wasserstein computation failed: {e}")
                 diagnostics["convergence_criteria"]["wasserstein"] = False
@@ -313,9 +301,7 @@ class AdvancedConvergenceMonitor:
             try:
                 kl_div = self.comparator.kl_divergence(m_current, self.previous_m)
                 diagnostics["kl_divergence"] = kl_div
-                diagnostics["convergence_criteria"]["kl_divergence"] = (
-                    kl_div < self.kl_divergence_tol
-                )
+                diagnostics["convergence_criteria"]["kl_divergence"] = kl_div < self.kl_divergence_tol
             except Exception as e:
                 warnings.warn(f"KL divergence computation failed: {e}")
                 diagnostics["convergence_criteria"]["kl_divergence"] = False
@@ -323,12 +309,8 @@ class AdvancedConvergenceMonitor:
             # Statistical moments
             current_moments = self.comparator.statistical_moments(m_current, x_grid)
             if self.previous_m_moments is not None:
-                mean_diff = abs(
-                    current_moments["mean"] - self.previous_m_moments["mean"]
-                )
-                var_diff = abs(
-                    current_moments["variance"] - self.previous_m_moments["variance"]
-                )
+                mean_diff = abs(current_moments["mean"] - self.previous_m_moments["mean"])
+                var_diff = abs(current_moments["variance"] - self.previous_m_moments["variance"])
 
                 diagnostics["moment_differences"] = {
                     "mean_diff": mean_diff,
@@ -343,9 +325,7 @@ class AdvancedConvergenceMonitor:
             self.previous_m_moments = current_moments
         else:
             # First iteration - no comparison possible
-            diagnostics["convergence_criteria"].update(
-                {"wasserstein": False, "kl_divergence": False, "moments": False}
-            )
+            diagnostics["convergence_criteria"].update({"wasserstein": False, "kl_divergence": False, "moments": False})
 
         # Value function oscillation analysis
         u_stabilized, u_diagnostics = self.oscillation_detector.is_stabilized(
@@ -358,9 +338,7 @@ class AdvancedConvergenceMonitor:
         # Overall convergence assessment
         criteria = diagnostics["convergence_criteria"]
         if self.iteration_count >= 3:  # Need some history for meaningful assessment
-            diagnostics["converged"] = criteria.get(
-                "wasserstein", False
-            ) and criteria.get("u_stabilized", False)
+            diagnostics["converged"] = criteria.get("wasserstein", False) and criteria.get("u_stabilized", False)
 
         # Store in history
         self.convergence_history.append(diagnostics)
@@ -380,34 +358,22 @@ class AdvancedConvergenceMonitor:
 
         # Extract time series
         u_errors = [d["u_l2_error"] for d in self.convergence_history]
-        wasserstein_dists = [
-            d.get("wasserstein_distance", np.nan) for d in self.convergence_history
-        ]
+        wasserstein_dists = [d.get("wasserstein_distance", np.nan) for d in self.convergence_history]
 
         # Convergence detection
-        converged_iterations = [
-            i for i, d in enumerate(self.convergence_history) if d["converged"]
-        ]
+        converged_iterations = [i for i, d in enumerate(self.convergence_history) if d["converged"]]
 
         summary = {
             "total_iterations": len(self.convergence_history),
             "converged": len(converged_iterations) > 0,
-            "convergence_iteration": (
-                converged_iterations[0] if converged_iterations else None
-            ),
+            "convergence_iteration": (converged_iterations[0] if converged_iterations else None),
             "final_u_error": u_errors[-1],
-            "final_wasserstein": (
-                wasserstein_dists[-1] if not np.isnan(wasserstein_dists[-1]) else None
-            ),
+            "final_wasserstein": (wasserstein_dists[-1] if not np.isnan(wasserstein_dists[-1]) else None),
             "u_error_trend": {
                 "min": np.min(u_errors),
                 "max": np.max(u_errors),
-                "final_mean": (
-                    np.mean(u_errors[-5:]) if len(u_errors) >= 5 else np.mean(u_errors)
-                ),
-                "final_std": (
-                    np.std(u_errors[-5:]) if len(u_errors) >= 5 else np.std(u_errors)
-                ),
+                "final_mean": (np.mean(u_errors[-5:]) if len(u_errors) >= 5 else np.mean(u_errors)),
+                "final_std": (np.std(u_errors[-5:]) if len(u_errors) >= 5 else np.std(u_errors)),
             },
         }
 
@@ -426,17 +392,12 @@ class AdvancedConvergenceMonitor:
 
         # Try to use modern visualization system first
         try:
-            from ..visualization import (
-                create_visualization_manager,
-                modern_plot_convergence,
-            )
+            from ..visualization import create_visualization_manager, modern_plot_convergence
 
             # Extract data for modern plotting
             iterations = [d["iteration"] for d in self.convergence_history]
             u_errors = [d["u_l2_error"] for d in self.convergence_history]
-            wasserstein_dists = [
-                d.get("wasserstein_distance", np.nan) for d in self.convergence_history
-            ]
+            wasserstein_dists = [d.get("wasserstein_distance", np.nan) for d in self.convergence_history]
 
             # Prepare convergence data dictionary
             convergence_data = {"L2_Error_u": u_errors}
@@ -460,9 +421,7 @@ class AdvancedConvergenceMonitor:
             return fig
 
         except Exception as e:
-            warnings.warn(
-                f"Modern visualization failed ({e}), falling back to matplotlib"
-            )
+            warnings.warn(f"Modern visualization failed ({e}), falling back to matplotlib")
 
         # Fallback to matplotlib
         try:
@@ -474,9 +433,7 @@ class AdvancedConvergenceMonitor:
         # Extract data
         iterations = [d["iteration"] for d in self.convergence_history]
         u_errors = [d["u_l2_error"] for d in self.convergence_history]
-        wasserstein_dists = [
-            d.get("wasserstein_distance", np.nan) for d in self.convergence_history
-        ]
+        wasserstein_dists = [d.get("wasserstein_distance", np.nan) for d in self.convergence_history]
 
         # Create subplots
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
@@ -497,14 +454,10 @@ class AdvancedConvergenceMonitor:
 
         # Plot Wasserstein distance
         valid_wasserstein = [w for w in wasserstein_dists if not np.isnan(w)]
-        valid_iterations = [
-            iterations[i] for i, w in enumerate(wasserstein_dists) if not np.isnan(w)
-        ]
+        valid_iterations = [iterations[i] for i, w in enumerate(wasserstein_dists) if not np.isnan(w)]
 
         if valid_wasserstein:
-            ax2.semilogy(
-                valid_iterations, valid_wasserstein, "g-", label="Wasserstein Distance"
-            )
+            ax2.semilogy(valid_iterations, valid_wasserstein, "g-", label="Wasserstein Distance")
             ax2.axhline(
                 y=self.wasserstein_tol,
                 color="r",
@@ -585,20 +538,14 @@ class ParticleMethodDetector:
         # Check solver's fp_solver if it exists
         if hasattr(solver, "fp_solver") and solver.fp_solver is not None:
             fp_class_name = solver.fp_solver.__class__.__name__
-            if any(
-                particle_name in fp_class_name for particle_name in particle_class_names
-            ):
-                detection_info["particle_components"].append(
-                    f"fp_solver:{fp_class_name}"
-                )
+            if any(particle_name in fp_class_name for particle_name in particle_class_names):
+                detection_info["particle_components"].append(f"fp_solver:{fp_class_name}")
                 detection_info["detection_methods"].append("component_class_inspection")
                 detection_info["confidence"] += 0.5
 
         # Check solver's own class name
         solver_class_name = solver.__class__.__name__
-        if any(
-            particle_name in solver_class_name for particle_name in particle_class_names
-        ):
+        if any(particle_name in solver_class_name for particle_name in particle_class_names):
             detection_info["particle_components"].append(f"solver:{solver_class_name}")
             detection_info["detection_methods"].append("solver_class_inspection")
             detection_info["confidence"] += 0.4
@@ -633,9 +580,7 @@ class ParticleMethodDetector:
                 ]
                 found_params = [p for p in particle_params if p in sig.parameters]
                 if found_params:
-                    detection_info["particle_components"].extend(
-                        [f"param:{p}" for p in found_params]
-                    )
+                    detection_info["particle_components"].extend([f"param:{p}" for p in found_params])
                     detection_info["detection_methods"].append("parameter_inspection")
                     detection_info["confidence"] += 0.1
             except Exception:
@@ -729,15 +674,11 @@ class AdaptiveConvergenceWrapper:
             self._particle_mode = self.force_particle_mode
             self._detection_info = {"forced": True, "mode": self.force_particle_mode}
         else:
-            self._particle_mode, self._detection_info = (
-                ParticleMethodDetector.detect_particle_methods(solver)
-            )
+            self._particle_mode, self._detection_info = ParticleMethodDetector.detect_particle_methods(solver)
 
         # Set up convergence monitoring
         if self._particle_mode:
-            self._convergence_monitor = create_default_monitor(
-                **self.advanced_convergence_kwargs
-            )
+            self._convergence_monitor = create_default_monitor(**self.advanced_convergence_kwargs)
 
         # Wrap the solve method
         if hasattr(solver, "solve") and callable(solver.solve):
@@ -762,9 +703,7 @@ class AdaptiveConvergenceWrapper:
 
             # Show detection details
             if "particle_components" in self._detection_info:
-                components = self._detection_info["particle_components"][
-                    :3
-                ]  # Show first 3
+                components = self._detection_info["particle_components"][:3]  # Show first 3
                 print(f"   -> Evidence: {', '.join(components)}")
 
             print(f"   -> Confidence: {self._detection_info.get('confidence', 0):.1%}")
@@ -799,9 +738,7 @@ class AdaptiveConvergenceWrapper:
         # Simply call the original solve method
         return self._original_solve(*args, **kwargs)
 
-    def _particle_aware_solve(
-        self, Niter: int = 20, l2errBound: float = None, verbose: bool = None, **kwargs
-    ):
+    def _particle_aware_solve(self, Niter: int = 20, l2errBound: float = None, verbose: bool = None, **kwargs):
         """
         Particle-aware solve with advanced convergence criteria.
         """
@@ -821,15 +758,11 @@ class AdaptiveConvergenceWrapper:
         problem = getattr(solver, "problem", None)
 
         if problem is None:
-            warnings.warn(
-                "Cannot access problem from solver - falling back to classical convergence"
-            )
+            warnings.warn("Cannot access problem from solver - falling back to classical convergence")
             return self._classical_solve(Niter, l2errBound, verbose, **kwargs)
 
         # Initialize convergence monitoring
-        self._convergence_monitor = create_default_monitor(
-            **self.advanced_convergence_kwargs
-        )
+        self._convergence_monitor = create_default_monitor(**self.advanced_convergence_kwargs)
 
         # Extract spatial grid for convergence analysis
         x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx)
@@ -868,9 +801,7 @@ class AdaptiveConvergenceWrapper:
                 return results
 
         except Exception as e:
-            warnings.warn(
-                f"Advanced convergence analysis failed: {e}. Falling back to classical."
-            )
+            warnings.warn(f"Advanced convergence analysis failed: {e}. Falling back to classical.")
             return self._classical_solve(Niter, l2errBound, verbose, **kwargs)
 
     def _analyze_solution_convergence(
@@ -901,9 +832,7 @@ class AdaptiveConvergenceWrapper:
                 dx = (x_grid[-1] - x_grid[0]) / (len(x_grid) - 1)
                 initial_mass = np.sum(M[0, :]) * dx
                 final_mass = np.sum(M[-1, :]) * dx
-                mass_conservation_error = (
-                    abs(final_mass - initial_mass) / initial_mass * 100
-                )
+                mass_conservation_error = abs(final_mass - initial_mass) / initial_mass * 100
 
                 advanced_info["mass_conservation_error"] = mass_conservation_error
 
@@ -927,9 +856,7 @@ class AdaptiveConvergenceWrapper:
         """Delegate attribute access to wrapped solver."""
         if self._wrapped_solver is not None:
             return getattr(self._wrapped_solver, name)
-        raise AttributeError(
-            f"'{self.__class__.__name__}' object has no attribute '{name}'"
-        )
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
 
 # =============================================================================
@@ -1022,9 +949,7 @@ def test_particle_detection(solver: "MFGSolver") -> Dict[str, Any]:
     Returns:
         Detection results dictionary
     """
-    has_particles, detection_info = ParticleMethodDetector.detect_particle_methods(
-        solver
-    )
+    has_particles, detection_info = ParticleMethodDetector.detect_particle_methods(solver)
 
     return {
         "has_particles": has_particles,

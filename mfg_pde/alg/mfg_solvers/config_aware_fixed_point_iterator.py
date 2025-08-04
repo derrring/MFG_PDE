@@ -6,11 +6,11 @@ configuration system for improved parameter management and user experience.
 """
 
 import time
-from typing import Optional, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 
-from ...config.solver_config import extract_legacy_parameters, MFGSolverConfig
+from ...config.solver_config import MFGSolverConfig, extract_legacy_parameters
 from ..base_mfg_solver import MFGSolver
 
 if TYPE_CHECKING:
@@ -91,9 +91,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         self.l2distm_rel: np.ndarray
         self.iterations_run: int = 0
 
-    def solve(
-        self, config: Optional[MFGSolverConfig] = None, **kwargs
-    ) -> Union[tuple, "SolverResult"]:
+    def solve(self, config: Optional[MFGSolverConfig] = None, **kwargs) -> Union[tuple, "SolverResult"]:
         """
         Solve the MFG system using structured configuration.
 
@@ -122,12 +120,8 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             print(f"   • Picard iterations: {solve_config.picard.max_iterations}")
             print(f"   • Picard tolerance: {solve_config.picard.tolerance:.2e}")
             print(f"   • Damping factor: {solve_config.picard.damping_factor}")
-            print(
-                f"   • Return format: {'Structured' if solve_config.return_structured else 'Tuple'}"
-            )
-            print(
-                f"   • Warm start: {'Enabled' if solve_config.warm_start else 'Disabled'}"
-            )
+            print(f"   • Return format: {'Structured' if solve_config.return_structured else 'Tuple'}")
+            print(f"   • Warm start: {'Enabled' if solve_config.warm_start else 'Disabled'}")
 
         # Track execution time
         solve_start_time = time.time()
@@ -169,9 +163,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             iter_start_time = time.time()
 
             if solve_config.picard.verbose:
-                print(
-                    f"\n Picard Iteration {iiter + 1}/{solve_config.picard.max_iterations}"
-                )
+                print(f"\n Picard Iteration {iiter + 1}/{solve_config.picard.max_iterations}")
 
             # Store previous iteration
             U_old = self.U.copy()
@@ -180,35 +172,21 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             # Solve HJB system
             U_new_tmp = self.hjb_solver.solve_hjb_system(
                 M_old,
-                (
-                    self.problem.get_final_u()
-                    if hasattr(self.problem, "get_final_u")
-                    else np.zeros(Nx)
-                ),
+                (self.problem.get_final_u() if hasattr(self.problem, "get_final_u") else np.zeros(Nx)),
                 U_picard_prev,
             )
 
             # Apply damping to U
-            self.U = (
-                solve_config.picard.damping_factor * U_new_tmp
-                + (1 - solve_config.picard.damping_factor) * U_old
-            )
+            self.U = solve_config.picard.damping_factor * U_new_tmp + (1 - solve_config.picard.damping_factor) * U_old
 
             # Solve FP system
             M_new_tmp = self.fp_solver.solve_fp_system(
-                (
-                    self.problem.get_initial_m()
-                    if hasattr(self.problem, "get_initial_m")
-                    else np.ones(Nx)
-                ),
+                (self.problem.get_initial_m() if hasattr(self.problem, "get_initial_m") else np.ones(Nx)),
                 self.U,
             )
 
             # Apply damping to M
-            self.M = (
-                solve_config.picard.damping_factor * M_new_tmp
-                + (1 - solve_config.picard.damping_factor) * M_old
-            )
+            self.M = solve_config.picard.damping_factor * M_new_tmp + (1 - solve_config.picard.damping_factor) * M_old
 
             # Update U_picard_prev for next iteration
             U_picard_prev = U_old.copy()
@@ -218,27 +196,17 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
             self.l2distu_abs[iiter] = np.linalg.norm(self.U - U_old) * norm_factor
             norm_U = np.linalg.norm(self.U) * norm_factor
-            self.l2distu_rel[iiter] = (
-                self.l2distu_abs[iiter] / norm_U
-                if norm_U > 1e-12
-                else self.l2distu_abs[iiter]
-            )
+            self.l2distu_rel[iiter] = self.l2distu_abs[iiter] / norm_U if norm_U > 1e-12 else self.l2distu_abs[iiter]
 
             self.l2distm_abs[iiter] = np.linalg.norm(self.M - M_old) * norm_factor
             norm_M = np.linalg.norm(self.M) * norm_factor
-            self.l2distm_rel[iiter] = (
-                self.l2distm_abs[iiter] / norm_M
-                if norm_M > 1e-12
-                else self.l2distm_abs[iiter]
-            )
+            self.l2distm_rel[iiter] = self.l2distm_abs[iiter] / norm_M if norm_M > 1e-12 else self.l2distm_abs[iiter]
 
             iter_time = time.time() - iter_start_time
 
             if solve_config.picard.verbose:
                 print(f"   Time: {iter_time:.3f}s")
-                print(
-                    f"    Errors: U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}"
-                )
+                print(f"    Errors: U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}")
 
             self.iterations_run = iiter + 1
 
@@ -250,23 +218,17 @@ class ConfigAwareFixedPointIterator(MFGSolver):
                 ):
                     convergence_achieved = True
                     if solve_config.picard.verbose:
-                        print(
-                            f"SUCCESS: Convergence achieved after {iiter + 1} iterations!"
-                        )
+                        print(f"SUCCESS: Convergence achieved after {iiter + 1} iterations!")
                     break
 
         if not convergence_achieved and solve_config.picard.verbose:
-            print(
-                f"WARNING:  Max iterations ({solve_config.picard.max_iterations}) reached"
-            )
+            print(f"WARNING:  Max iterations ({solve_config.picard.max_iterations}) reached")
             final_error = max(
                 self.l2distu_rel[self.iterations_run - 1],
                 self.l2distm_rel[self.iterations_run - 1],
             )
             if final_error > solve_config.picard.tolerance * 10:
-                print(
-                    " Consider: reducing time step, better initialization, or more iterations"
-                )
+                print(" Consider: reducing time step, better initialization, or more iterations")
 
         # Trim convergence arrays
         self.l2distu_abs = self.l2distu_abs[: self.iterations_run]

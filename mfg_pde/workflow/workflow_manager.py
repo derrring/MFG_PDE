@@ -132,9 +132,7 @@ class Workflow:
     process, including parameters, intermediate results, and final outputs.
     """
 
-    def __init__(
-        self, name: str, description: str = "", workspace_path: Optional[Path] = None
-    ):
+    def __init__(self, name: str, description: str = "", workspace_path: Optional[Path] = None):
         """
         Initialize workflow.
 
@@ -233,9 +231,7 @@ class Workflow:
 
         return step.outputs[output_name]
 
-    def execute(
-        self, max_workers: Optional[int] = None, save_results: bool = True
-    ) -> WorkflowResult:
+    def execute(self, max_workers: Optional[int] = None, save_results: bool = True) -> WorkflowResult:
         """
         Execute the workflow.
 
@@ -251,9 +247,7 @@ class Workflow:
         start_time = datetime.now(timezone.utc)
         self.status = WorkflowStatus.RUNNING
 
-        result = WorkflowResult(
-            workflow_id=self.id, status=WorkflowStatus.RUNNING, start_time=start_time
-        )
+        result = WorkflowResult(workflow_id=self.id, status=WorkflowStatus.RUNNING, start_time=start_time)
 
         try:
             # Execute steps in dependency order
@@ -278,9 +272,7 @@ class Workflow:
                 self.logger.info(f"Workflow '{self.name}' completed successfully")
             else:
                 self.status = WorkflowStatus.FAILED
-                self.logger.error(
-                    f"Workflow '{self.name}' failed: {result.error_message}"
-                )
+                self.logger.error(f"Workflow '{self.name}' failed: {result.error_message}")
 
         except Exception as e:
             result.status = WorkflowStatus.FAILED
@@ -446,11 +438,7 @@ class Workflow:
                 workflow_id=result_data["workflow_id"],
                 status=WorkflowStatus(result_data["status"]),
                 start_time=datetime.fromisoformat(result_data["start_time"]),
-                end_time=(
-                    datetime.fromisoformat(result_data["end_time"])
-                    if result_data["end_time"]
-                    else None
-                ),
+                end_time=(datetime.fromisoformat(result_data["end_time"]) if result_data["end_time"] else None),
                 execution_time=result_data.get("execution_time"),
                 error_message=result_data.get("error_message"),
                 metadata=result_data.get("metadata", {}),
@@ -459,12 +447,8 @@ class Workflow:
             # Load data files
             data_dir = self.workflow_dir / "data"
             if data_dir.exists():
-                result.outputs = self._load_data_files(
-                    result_data.get("outputs", {}), data_dir
-                )
-                result.step_results = self._load_data_files(
-                    result_data.get("step_results", {}), data_dir
-                )
+                result.outputs = self._load_data_files(result_data.get("outputs", {}), data_dir)
+                result.step_results = self._load_data_files(result_data.get("step_results", {}), data_dir)
 
             return result
 
@@ -472,9 +456,7 @@ class Workflow:
             self.logger.error(f"Failed to load workflow result: {e}")
             return None
 
-    def _load_data_files(
-        self, metadata: Dict[str, Any], data_dir: Path
-    ) -> Dict[str, Any]:
+    def _load_data_files(self, metadata: Dict[str, Any], data_dir: Path) -> Dict[str, Any]:
         """Load data files referenced in metadata."""
         data = {}
 
@@ -521,9 +503,7 @@ class Workflow:
             console_handler.setLevel(logging.INFO)
 
             # Formatter
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             file_handler.setFormatter(formatter)
             console_handler.setFormatter(formatter)
 
@@ -557,9 +537,7 @@ class WorkflowManager:
         # Load existing workflows
         self._load_existing_workflows()
 
-        self.logger.info(
-            f"Initialized workflow manager with workspace: {self.workspace_path}"
-        )
+        self.logger.info(f"Initialized workflow manager with workspace: {self.workspace_path}")
 
     def create_workflow(self, name: str, description: str = "", **kwargs) -> Workflow:
         """Create a new workflow."""
@@ -638,12 +616,10 @@ class WorkflowManager:
     def _create_example_workflows(self):
         """Create example workflows for demonstration."""
         # Example 1: Simple parameter study
-        workflow1 = self.create_workflow(
-            "example_parameter_study", "Example parameter study workflow"
-        )
+        workflow1 = self.create_workflow("example_parameter_study", "Example parameter study workflow")
 
         def example_solve(sigma, Nx=20, Nt=10):
-            from mfg_pde import create_fast_solver, ExampleMFGProblem
+            from mfg_pde import ExampleMFGProblem, create_fast_solver
 
             problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
             solver = create_fast_solver(problem, "fixed_point")
@@ -655,9 +631,7 @@ class WorkflowManager:
                 "execution_time": result.execution_time,
             }
 
-        workflow1.add_step(
-            "solve_problem", example_solve, inputs={"sigma": 0.5, "Nx": 20, "Nt": 10}
-        )
+        workflow1.add_step("solve_problem", example_solve, inputs={"sigma": 0.5, "Nx": 20, "Nt": 10})
 
         self.logger.info("Created example workflows")
 
@@ -687,9 +661,7 @@ class WorkflowManager:
                         self.workflows[workflow_id] = workflow
 
                 except Exception as e:
-                    self.logger.warning(
-                        f"Could not load workflow from {workflow_dir}: {e}"
-                    )
+                    self.logger.warning(f"Could not load workflow from {workflow_dir}: {e}")
 
     def _save_workflow_metadata(self, workflow: Workflow):
         """Save workflow metadata to disk."""
@@ -718,9 +690,7 @@ class WorkflowManager:
             file_handler.setLevel(logging.DEBUG)
 
             # Formatter
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             file_handler.setFormatter(formatter)
 
             logger.addHandler(file_handler)

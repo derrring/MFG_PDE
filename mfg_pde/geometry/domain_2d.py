@@ -262,17 +262,13 @@ class Domain2D(BaseGeometry):
             gmsh.model.geo.synchronize()
 
             # Boolean difference: main_surface - holes
-            result = gmsh.model.occ.cut(
-                [(2, self.main_surface)], [(2, surf) for surf in hole_surfaces]
-            )
+            result = gmsh.model.occ.cut([(2, self.main_surface)], [(2, surf) for surf in hole_surfaces])
             gmsh.model.occ.synchronize()
 
             if result[0]:
                 self.main_surface = result[0][0][1]
 
-    def set_mesh_parameters(
-        self, mesh_size: Optional[float] = None, algorithm: str = "delaunay", **kwargs
-    ) -> None:
+    def set_mesh_parameters(self, mesh_size: Optional[float] = None, algorithm: str = "delaunay", **kwargs) -> None:
         """Set mesh generation parameters."""
         if mesh_size is not None:
             self.mesh_size = mesh_size
@@ -296,9 +292,7 @@ class Domain2D(BaseGeometry):
 
         # Extract mesh data
         node_tags, node_coords, _ = gmsh.model.mesh.getNodes()
-        element_types, element_tags, element_connectivity = (
-            gmsh.model.mesh.getElements()
-        )
+        element_types, element_tags, element_connectivity = gmsh.model.mesh.getElements()
 
         # Process vertices
         vertices = node_coords.reshape(-1, 3)[:, :2]  # Remove z-coordinate for 2D
@@ -308,9 +302,7 @@ class Domain2D(BaseGeometry):
         for i, elem_type in enumerate(element_types):
             if elem_type == 2:  # Triangle element type in Gmsh
                 connectivity = element_connectivity[i]
-                triangles = (
-                    connectivity.reshape(-1, 3) - 1
-                )  # Convert to 0-based indexing
+                triangles = connectivity.reshape(-1, 3) - 1  # Convert to 0-based indexing
                 break
 
         if triangles is None:
@@ -318,9 +310,7 @@ class Domain2D(BaseGeometry):
 
         # Get boundary information
         boundary_tags = np.zeros(len(vertices), dtype=int)  # Placeholder
-        element_tags_array = np.ones(
-            len(triangles), dtype=int
-        )  # All elements in same region
+        element_tags_array = np.ones(len(triangles), dtype=int)  # All elements in same region
 
         # Create boundary faces (edges for 2D)
         boundary_faces = self._extract_boundary_edges(triangles)

@@ -111,9 +111,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
         self._problem_difficulty = self._assess_problem_difficulty()
 
         # Boundary point identification
-        self.boundary_point_set = (
-            set(boundary_indices) if boundary_indices is not None else set()
-        )
+        self.boundary_point_set = set(boundary_indices) if boundary_indices is not None else set()
 
         # Adaptive thresholds based on problem characteristics
         self._adaptive_thresholds = self._compute_adaptive_thresholds()
@@ -157,18 +155,12 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
         difficulty_multiplier = 1.0 + self._problem_difficulty
 
         return {
-            "extreme_violation": base_threshold
-            * difficulty_multiplier
-            * 10,  # 1000-2000
+            "extreme_violation": base_threshold * difficulty_multiplier * 10,  # 1000-2000
             "severe_violation": base_threshold * difficulty_multiplier * 5,  # 500-1000
             "moderate_violation": base_threshold * difficulty_multiplier * 2,  # 200-400
             "mild_violation": base_threshold * difficulty_multiplier,  # 100-200
-            "gradient_threshold": base_threshold
-            * difficulty_multiplier
-            * 0.5,  # 50-100
-            "variation_threshold": base_threshold
-            * difficulty_multiplier
-            * 0.3,  # 30-60
+            "gradient_threshold": base_threshold * difficulty_multiplier * 0.5,  # 50-100
+            "variation_threshold": base_threshold * difficulty_multiplier * 0.3,  # 30-60
         }
 
     def _check_monotonicity_violation(self, coeffs: np.ndarray) -> bool:
@@ -252,10 +244,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
 
         # Adjust threshold based on current QP usage rate
         if self.smart_qp_stats["total_qp_decisions"] > 100:  # After warmup period
-            current_qp_rate = (
-                self.smart_qp_stats["qp_activated"]
-                / self.smart_qp_stats["total_qp_decisions"]
-            )
+            current_qp_rate = self.smart_qp_stats["qp_activated"] / self.smart_qp_stats["total_qp_decisions"]
 
             # Adaptive threshold adjustment
             if current_qp_rate > self.qp_usage_target * 1.5:  # Too much QP usage
@@ -285,9 +274,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
 
         return needs_qp
 
-    def approximate_derivatives(
-        self, u_values: np.ndarray, point_idx: int
-    ) -> Dict[Tuple[int, ...], float]:
+    def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> Dict[Tuple[int, ...], float]:
         """
         Override to inject context for smart QP decisions.
         This ensures the context is available in _check_monotonicity_violation.
@@ -318,9 +305,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
             self._current_newton_iter = newton_iter
 
             # Compute HJB residual (this will call approximate_derivatives)
-            residual = self._compute_hjb_residual(
-                u_current, u_n_plus_1, m_n_plus_1, time_idx
-            )
+            residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
             # Check convergence
             residual_norm = np.linalg.norm(residual)
@@ -329,9 +314,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
 
             # Compute Jacobian and update (simplified Newton step)
             try:
-                jacobian = self._compute_hjb_jacobian(
-                    u_current, u_n_plus_1, m_n_plus_1, time_idx
-                )
+                jacobian = self._compute_hjb_jacobian(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
                 # Solve linear system: J * du = -residual
                 if jacobian.shape[0] == jacobian.shape[1]:
@@ -350,9 +333,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
 
         return u_current
 
-    def _solve_qp_optimized(
-        self, taylor_data: Dict, b: np.ndarray, point_idx: int
-    ) -> np.ndarray:
+    def _solve_qp_optimized(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> np.ndarray:
         """Optimized QP solve using CVXPY when available"""
         if not CVXPY_AVAILABLE:
             # Fallback to parent implementation
@@ -411,9 +392,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
             # Final fallback to parent implementation
             return super()._solve_monotone_constrained_qp(taylor_data, b, point_idx)
 
-    def _solve_monotone_constrained_qp(
-        self, taylor_data: Dict, b: np.ndarray, point_idx: int
-    ) -> np.ndarray:
+    def _solve_monotone_constrained_qp(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> np.ndarray:
         """Override to use optimized QP solver"""
         return self._solve_qp_optimized(taylor_data, b, point_idx)
 
@@ -436,12 +415,8 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
         total_context_decisions = boundary_decisions + interior_decisions
 
         if total_context_decisions > 0:
-            stats["boundary_qp_percentage"] = (
-                boundary_decisions / total_context_decisions * 100
-            )
-            stats["interior_qp_percentage"] = (
-                interior_decisions / total_context_decisions * 100
-            )
+            stats["boundary_qp_percentage"] = boundary_decisions / total_context_decisions * 100
+            stats["interior_qp_percentage"] = interior_decisions / total_context_decisions * 100
         else:
             stats["boundary_qp_percentage"] = 0.0
             stats["interior_qp_percentage"] = 0.0
@@ -500,9 +475,7 @@ class HJBGFDMQPSolver(HJBGFDMSolver):
             print(f"  Late Time QP: {stats['late_time_percentage']:.1f}%")
 
         print(f"\nOptimization Results:")
-        print(
-            f"  Optimization Effectiveness: {stats['optimization_effectiveness']:.1%}"
-        )
+        print(f"  Optimization Effectiveness: {stats['optimization_effectiveness']:.1%}")
 
         # Calculate estimated speedup
         if stats["qp_skip_rate"] > 0:

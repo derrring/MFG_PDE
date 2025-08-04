@@ -11,13 +11,13 @@ Key solver types:
 """
 
 import time
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 
 from ..base_mfg_solver import MFGSolver
-from ..fp_solvers.fp_network import create_network_fp_solver, NetworkFPSolver
-from ..hjb_solvers.hjb_network import create_network_hjb_solver, NetworkHJBSolver
+from ..fp_solvers.fp_network import NetworkFPSolver, create_network_fp_solver
+from ..hjb_solvers.hjb_network import NetworkHJBSolver, create_network_hjb_solver
 
 if TYPE_CHECKING:
     from ...core.network_mfg_problem import NetworkMFGProblem
@@ -62,9 +62,7 @@ class NetworkFixedPointIterator(MFGSolver):
 
         # Initialize HJB solver
         hjb_kwargs = hjb_kwargs or {}
-        self.hjb_solver = create_network_hjb_solver(
-            problem, hjb_solver_type, **hjb_kwargs
-        )
+        self.hjb_solver = create_network_hjb_solver(problem, hjb_solver_type, **hjb_kwargs)
 
         # Initialize FP solver
         fp_kwargs = fp_kwargs or {}
@@ -169,12 +167,8 @@ class NetworkFixedPointIterator(MFGSolver):
             self.M = self.damping_factor * M_new + (1 - self.damping_factor) * M_old
 
             # Compute convergence metrics
-            u_error = np.linalg.norm(self.U - U_old) / max(
-                np.linalg.norm(self.U), 1e-12
-            )
-            m_error = np.linalg.norm(self.M - M_old) / max(
-                np.linalg.norm(self.M), 1e-12
-            )
+            u_error = np.linalg.norm(self.U - U_old) / max(np.linalg.norm(self.U), 1e-12)
+            m_error = np.linalg.norm(self.M - M_old) / max(np.linalg.norm(self.M), 1e-12)
             total_error = max(u_error, m_error)
 
             iter_time = time.time() - iter_start_time
@@ -202,9 +196,7 @@ class NetworkFixedPointIterator(MFGSolver):
             if total_error < tolerance:
                 convergence_achieved = True
                 if verbose:
-                    print(
-                        f"\nSUCCESS: Convergence achieved after {iteration + 1} iterations!"
-                    )
+                    print(f"\nSUCCESS: Convergence achieved after {iteration + 1} iterations!")
                 break
 
             self.iterations_run = iteration + 1
@@ -213,18 +205,14 @@ class NetworkFixedPointIterator(MFGSolver):
                 print()
 
         if not convergence_achieved and verbose:
-            print(
-                f"\nWARNING:  Maximum iterations ({max_iterations}) reached without convergence"
-            )
+            print(f"\nWARNING:  Maximum iterations ({max_iterations}) reached without convergence")
             print(f"Final error: {total_error:.2e}")
 
         execution_time = time.time() - solve_start_time
 
         if verbose:
             print(f"\n🏁 Total execution time: {execution_time:.2f}s")
-            print(
-                f"Average time per iteration: {execution_time/self.iterations_run:.2f}s"
-            )
+            print(f"Average time per iteration: {execution_time/self.iterations_run:.2f}s")
 
         # Prepare convergence info
         convergence_info = {
@@ -253,9 +241,7 @@ class NetworkFixedPointIterator(MFGSolver):
         """Get convergence history."""
         return self.convergence_history
 
-    def get_network_flows(
-        self, time_index: Optional[int] = None
-    ) -> Dict[str, np.ndarray]:
+    def get_network_flows(self, time_index: Optional[int] = None) -> Dict[str, np.ndarray]:
         """
         Compute network flows at specified time (or all times).
 
@@ -349,17 +335,12 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
             # Flow concentration (Gini-like coefficient)
             sorted_flows = np.sort(np.abs(flows))
             n = len(sorted_flows)
-            gini = (2 * np.sum((np.arange(n) + 1) * sorted_flows)) / (
-                n * np.sum(sorted_flows)
-            ) - (n + 1) / n
+            gini = (2 * np.sum((np.arange(n) + 1) * sorted_flows)) / (n * np.sum(sorted_flows)) - (n + 1) / n
             flow_analysis["flow_concentration"].append(gini)
 
         # Identify dominant flow patterns
         avg_flows = np.mean(
-            [
-                self._compute_flows_at_time(self.U[t, :], self.M[t, :])
-                for t in range(self.Nt + 1)
-            ],
+            [self._compute_flows_at_time(self.U[t, :], self.M[t, :]) for t in range(self.Nt + 1)],
             axis=0,
         )
 

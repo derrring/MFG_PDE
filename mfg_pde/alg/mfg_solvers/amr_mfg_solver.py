@@ -7,9 +7,10 @@ automatically refining and coarsening the mesh based on solution error.
 
 from typing import Any, Dict, Optional, Tuple
 
+from tqdm import tqdm
+
 import numpy as np
 from numpy.typing import NDArray
-from tqdm import tqdm
 
 try:
     import jax
@@ -89,9 +90,7 @@ class AMRMFGSolver(MFGSolver):
             **self.solver_kwargs,
         )
 
-    def solve(
-        self, max_iterations: int = 100, tolerance: float = 1e-6, verbose: bool = True
-    ) -> SolverResult:
+    def solve(self, max_iterations: int = 100, tolerance: float = 1e-6, verbose: bool = True) -> SolverResult:
         """
         Solve MFG problem with adaptive mesh refinement.
 
@@ -163,19 +162,13 @@ class AMRMFGSolver(MFGSolver):
             adaptation_stats = self._adapt_mesh({"U": U, "M": M}, verbose=verbose)
 
             # Check if mesh stabilized
-            if (
-                adaptation_stats["total_refined"] == 0
-                and adaptation_stats["total_coarsened"] == 0
-            ):
+            if adaptation_stats["total_refined"] == 0 and adaptation_stats["total_coarsened"] == 0:
                 if verbose:
                     print("Mesh adaptation converged")
                 break
 
             # Update solver for new mesh if needed
-            if (
-                adaptation_stats["total_refined"] > 0
-                or adaptation_stats["total_coarsened"] > 0
-            ):
+            if adaptation_stats["total_refined"] > 0 or adaptation_stats["total_coarsened"] > 0:
                 U, M = self._project_solution_to_new_mesh(U, M)
 
         # Create final result
@@ -261,11 +254,7 @@ class AMRMFGSolver(MFGSolver):
         # Diffusion term
         sigma_sq = self.problem.sigma**2
         laplacian_M = (
-            np.roll(M, 1, axis=0)
-            + np.roll(M, -1, axis=0)
-            + np.roll(M, 1, axis=1)
-            + np.roll(M, -1, axis=1)
-            - 4 * M
+            np.roll(M, 1, axis=0) + np.roll(M, -1, axis=0) + np.roll(M, 1, axis=1) + np.roll(M, -1, axis=1) - 4 * M
         ) / dx**2
 
         diffusion = 0.5 * sigma_sq * laplacian_M
@@ -280,17 +269,13 @@ class AMRMFGSolver(MFGSolver):
 
         return diffusion - drift
 
-    def _compute_solution_change(
-        self, U_old: NDArray, M_old: NDArray, U_new: NDArray, M_new: NDArray
-    ) -> float:
+    def _compute_solution_change(self, U_old: NDArray, M_old: NDArray, U_new: NDArray, M_new: NDArray) -> float:
         """Compute change in solution between iterations"""
         u_change = np.max(np.abs(U_new - U_old))
         m_change = np.max(np.abs(M_new - M_old))
         return max(u_change, m_change)
 
-    def _adapt_mesh(
-        self, solution_data: Dict[str, NDArray], verbose: bool = False
-    ) -> Dict[str, int]:
+    def _adapt_mesh(self, solution_data: Dict[str, NDArray], verbose: bool = False) -> Dict[str, int]:
         """
         Adapt the mesh based on current solution.
 
@@ -317,10 +302,7 @@ class AMRMFGSolver(MFGSolver):
         efficiency = mesh_stats["total_cells"] / mesh_stats["total_area"]
         self.amr_stats["mesh_efficiency"].append(efficiency)
 
-        if verbose and (
-            adaptation_stats["total_refined"] > 0
-            or adaptation_stats["total_coarsened"] > 0
-        ):
+        if verbose and (adaptation_stats["total_refined"] > 0 or adaptation_stats["total_coarsened"] > 0):
             print(f"  Refined: {adaptation_stats['total_refined']} cells")
             print(f"  Coarsened: {adaptation_stats['total_coarsened']} cells")
             print(f"  New total: {self.adaptive_mesh.total_cells} cells")
@@ -328,19 +310,14 @@ class AMRMFGSolver(MFGSolver):
 
         return adaptation_stats
 
-    def _project_solution_to_new_mesh(
-        self, U: NDArray, M: NDArray
-    ) -> Tuple[NDArray, NDArray]:
+    def _project_solution_to_new_mesh(self, U: NDArray, M: NDArray) -> Tuple[NDArray, NDArray]:
         """
         Project solution from old mesh to new mesh after adaptation.
 
         Uses conservative interpolation to maintain mass conservation
         and solution accuracy during mesh adaptation.
         """
-        if (
-            hasattr(self.adaptive_mesh, "solution_transfer_needed")
-            and self.adaptive_mesh.solution_transfer_needed
-        ):
+        if hasattr(self.adaptive_mesh, "solution_transfer_needed") and self.adaptive_mesh.solution_transfer_needed:
             # Perform conservative interpolation
             U_new, M_new = self._conservative_interpolation(U, M)
 
@@ -352,9 +329,7 @@ class AMRMFGSolver(MFGSolver):
             # No mesh changes, return original solution
             return U, M
 
-    def _conservative_interpolation(
-        self, U: NDArray, M: NDArray
-    ) -> Tuple[NDArray, NDArray]:
+    def _conservative_interpolation(self, U: NDArray, M: NDArray) -> Tuple[NDArray, NDArray]:
         """
         Perform conservative interpolation of solution between mesh levels.
 
@@ -382,19 +357,13 @@ class AMRMFGSolver(MFGSolver):
 
                 if containing_node is not None:
                     # Get old solution values in this region
-                    old_U_val, old_M_val = self._get_region_values(
-                        U, M, containing_node, x_coords, y_coords
-                    )
+                    old_U_val, old_M_val = self._get_region_values(U, M, containing_node, x_coords, y_coords)
 
                     # Conservative interpolation for density (mass preserving)
-                    M_new[i, j] = self._conservative_density_interpolation(
-                        old_M_val, containing_node, x, y
-                    )
+                    M_new[i, j] = self._conservative_density_interpolation(old_M_val, containing_node, x, y)
 
                     # Gradient-preserving interpolation for value function
-                    U_new[i, j] = self._gradient_preserving_interpolation(
-                        old_U_val, containing_node, x, y
-                    )
+                    U_new[i, j] = self._gradient_preserving_interpolation(old_U_val, containing_node, x, y)
 
         # Ensure mass conservation globally
         M_new = self._enforce_mass_conservation(M, M_new)
@@ -459,9 +428,7 @@ class AMRMFGSolver(MFGSolver):
         # This ensures mass conservation
         return old_density
 
-    def _gradient_preserving_interpolation(
-        self, old_value: float, node: "QuadTreeNode", x: float, y: float
-    ) -> float:
+    def _gradient_preserving_interpolation(self, old_value: float, node: "QuadTreeNode", x: float, y: float) -> float:
         """
         Gradient-preserving interpolation for value function.
 
@@ -500,9 +467,7 @@ class AMRMFGSolver(MFGSolver):
                 "cells_per_level": mesh_stats["level_distribution"],
                 "refinement_ratio": mesh_stats["refinement_ratio"],
                 "average_efficiency": (
-                    np.mean(self.amr_stats["mesh_efficiency"])
-                    if self.amr_stats["mesh_efficiency"]
-                    else 0.0
+                    np.mean(self.amr_stats["mesh_efficiency"]) if self.amr_stats["mesh_efficiency"] else 0.0
                 ),
             },
         }
@@ -519,9 +484,7 @@ class JAXAcceleratedAMR:
 
     @staticmethod
     @jax.jit
-    def compute_error_indicators(
-        U: jnp.ndarray, M: jnp.ndarray, dx: float, dy: float
-    ) -> jnp.ndarray:
+    def compute_error_indicators(U: jnp.ndarray, M: jnp.ndarray, dx: float, dy: float) -> jnp.ndarray:
         """
         Compute error indicators for all cells using JAX.
 

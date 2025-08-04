@@ -20,7 +20,7 @@ Key algorithms:
 - Value iteration on discrete state spaces
 """
 
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import scipy.sparse as sp
@@ -171,9 +171,7 @@ class NetworkHJBSolver(BaseHJBSolver):
             # Update each node
             for i in range(self.num_nodes):
                 neighbors = self.gradient_ops[i]
-                hamiltonian = self.network_problem.hamiltonian(
-                    i, neighbors, m, u_current, t
-                )
+                hamiltonian = self.network_problem.hamiltonian(i, neighbors, m, u_current, t)
 
                 # Implicit update
                 u_current[i] = u_next[i] - self.dt * hamiltonian
@@ -185,9 +183,7 @@ class NetworkHJBSolver(BaseHJBSolver):
 
         return u_current
 
-    def _semi_implicit_step(
-        self, u_next: np.ndarray, m: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _semi_implicit_step(self, u_next: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
         """Semi-implicit time step handling diffusion implicitly."""
         # Split Hamiltonian into diffusion and reaction parts
         u_current = u_next.copy()
@@ -199,9 +195,7 @@ class NetworkHJBSolver(BaseHJBSolver):
             u_current[i] = u_next[i] - self.dt * hamiltonian
 
         # Implicit treatment of diffusion (graph Laplacian)
-        diffusion_coeff = getattr(
-            self.network_problem.components, "diffusion_coefficient", 1.0
-        )
+        diffusion_coeff = getattr(self.network_problem.components, "diffusion_coefficient", 1.0)
         if diffusion_coeff > 0:
             # Solve (I + dt * D * L) u = u_temp
             L = self.laplacian_matrix
@@ -215,9 +209,7 @@ class NetworkHJBSolver(BaseHJBSolver):
 
         return u_current
 
-    def backward_step(
-        self, u_next: np.ndarray, m_current: np.ndarray, dt: float
-    ) -> np.ndarray:
+    def backward_step(self, u_next: np.ndarray, m_current: np.ndarray, dt: float) -> np.ndarray:
         """
         Single backward time step (interface compatibility).
 
@@ -307,9 +299,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
         return U
 
-    def _policy_iteration_step(
-        self, u_next: np.ndarray, m: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _policy_iteration_step(self, u_next: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
         """Single time step using policy iteration."""
         u_current = u_next.copy()
 
@@ -355,9 +345,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
             self.current_policy[i] = best_action
 
-    def _policy_evaluation(
-        self, u_next: np.ndarray, m: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _policy_evaluation(self, u_next: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
         """Evaluate current policy by solving linear system."""
         # Build linear system for policy evaluation
         A = sp.lil_matrix((self.num_nodes, self.num_nodes))
@@ -401,15 +389,11 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
             self.current_policy[i] = best_action
 
-    def _compute_action_cost(
-        self, node: int, action: int, u: np.ndarray, m: np.ndarray, t: float
-    ) -> float:
+    def _compute_action_cost(self, node: int, action: int, u: np.ndarray, m: np.ndarray, t: float) -> float:
         """Compute cost of taking action from node."""
         if action == node:
             # Cost of staying at node
-            return self.network_problem.node_potential(
-                node, t
-            ) + self.network_problem.density_coupling(node, m, t)
+            return self.network_problem.node_potential(node, t) + self.network_problem.density_coupling(node, m, t)
         else:
             # Cost of moving to action node
             edge_cost = self.network_problem.edge_cost(node, action, t)

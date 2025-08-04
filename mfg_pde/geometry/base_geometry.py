@@ -87,8 +87,7 @@ class MeshData:
             self.element_volumes = self._compute_tetrahedron_volumes()
         else:
             raise NotImplementedError(
-                f"Volume computation not implemented for {self.element_type} "
-                f"elements in {self.dimension}D"
+                f"Volume computation not implemented for {self.element_type} " f"elements in {self.dimension}D"
             )
 
         return self.element_volumes
@@ -166,9 +165,7 @@ class MeshData:
             mesh = pv.UnstructuredGrid(cells, cell_types, self.vertices)
 
         else:
-            raise NotImplementedError(
-                f"PyVista conversion not implemented for {self.element_type} elements"
-            )
+            raise NotImplementedError(f"PyVista conversion not implemented for {self.element_type} elements")
 
         # Add data arrays
         if len(self.boundary_tags) > 0:

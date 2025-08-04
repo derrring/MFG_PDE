@@ -14,7 +14,7 @@ Key features:
 """
 
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from scipy.optimize import minimize
@@ -81,9 +81,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             return np.column_stack([vx.ravel(), vy.ravel()])
         else:
             # Higher dimensions
-            return np.random.uniform(
-                -2.0, 2.0, (self.velocity_discretization, self.velocity_dim)
-            )
+            return np.random.uniform(-2.0, 2.0, (self.velocity_discretization, self.velocity_dim))
 
     def solve(
         self,
@@ -108,13 +106,9 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             print()
 
         if self.use_relaxed_equilibria:
-            return self._solve_relaxed_equilibria(
-                max_iterations, tolerance, verbose, **kwargs
-            )
+            return self._solve_relaxed_equilibria(max_iterations, tolerance, verbose, **kwargs)
         else:
-            return self._solve_lagrangian_fixed_point(
-                max_iterations, tolerance, verbose, **kwargs
-            )
+            return self._solve_lagrangian_fixed_point(max_iterations, tolerance, verbose, **kwargs)
 
     def _solve_lagrangian_fixed_point(
         self, max_iterations: int, tolerance: float, verbose: bool, **kwargs
@@ -149,12 +143,8 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             self.M = self._solve_lagrangian_fp(self.U)
 
             # Compute convergence
-            u_error = np.linalg.norm(self.U - U_old) / max(
-                np.linalg.norm(self.U), 1e-12
-            )
-            m_error = np.linalg.norm(self.M - M_old) / max(
-                np.linalg.norm(self.M), 1e-12
-            )
+            u_error = np.linalg.norm(self.U - U_old) / max(np.linalg.norm(self.U), 1e-12)
+            m_error = np.linalg.norm(self.M - M_old) / max(np.linalg.norm(self.M), 1e-12)
             total_error = max(u_error, m_error)
 
             convergence_history.append(
@@ -169,9 +159,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
             if verbose:
                 print(f"  Errors: U={u_error:.2e}, M={m_error:.2e}")
-                print(
-                    f"  Total Lagrangian cost: {convergence_history[-1]['lagrangian_cost']:.4f}"
-                )
+                print(f"  Total Lagrangian cost: {convergence_history[-1]['lagrangian_cost']:.4f}")
 
             if total_error < tolerance:
                 if verbose:
@@ -208,14 +196,10 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
                 for velocity in self.velocity_grid:
                     # Compute expected future cost
-                    future_cost = self._compute_future_cost(
-                        node, velocity, U[n + 1, :], t
-                    )
+                    future_cost = self._compute_future_cost(node, velocity, U[n + 1, :], t)
 
                     # Lagrangian cost
-                    lagrangian_cost = self.network_problem.lagrangian(
-                        node, velocity, m_current, t
-                    )
+                    lagrangian_cost = self.network_problem.lagrangian(node, velocity, m_current, t)
 
                     total_cost = lagrangian_cost * self.dt + future_cost
 
@@ -238,9 +222,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
             # Compute optimal velocity for each node
             for node in range(self.num_nodes):
-                optimal_velocity = self._find_optimal_velocity(
-                    node, u_current, M[n, :], t
-                )
+                optimal_velocity = self._find_optimal_velocity(node, u_current, M[n, :], t)
 
                 # Update density based on velocity-driven flow
                 flow_out = self._compute_velocity_flow(node, optimal_velocity, M[n, :])
@@ -255,9 +237,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
         return M
 
-    def _compute_future_cost(
-        self, node: int, velocity: np.ndarray, u_next: np.ndarray, t: float
-    ) -> float:
+    def _compute_future_cost(self, node: int, velocity: np.ndarray, u_next: np.ndarray, t: float) -> float:
         """Compute expected future cost given velocity."""
         # Determine likely next nodes based on velocity
         neighbors = self.network_problem.get_node_neighbors(node)
@@ -282,9 +262,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
         return expected_cost
 
-    def _find_optimal_velocity(
-        self, node: int, u: np.ndarray, m: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _find_optimal_velocity(self, node: int, u: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
         """Find optimal velocity at node using Lagrangian optimization."""
 
         def velocity_cost(velocity):
@@ -302,9 +280,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
         return best_velocity
 
-    def _compute_velocity_flow(
-        self, node: int, velocity: np.ndarray, m: np.ndarray
-    ) -> float:
+    def _compute_velocity_flow(self, node: int, velocity: np.ndarray, m: np.ndarray) -> float:
         """Compute flow out of node based on velocity."""
         # Simple velocity-based flow computation
         speed = np.linalg.norm(velocity)
@@ -316,10 +292,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
     def _get_edge_direction(self, node_from: int, node_to: int) -> np.ndarray:
         """Get direction vector between nodes."""
         # Use node positions if available
-        if (
-            self.network_problem.network_data.node_positions is not None
-            and self.velocity_dim >= 2
-        ):
+        if self.network_problem.network_data.node_positions is not None and self.velocity_dim >= 2:
             pos_from = self.network_problem.network_data.node_positions[node_from]
             pos_to = self.network_problem.network_data.node_positions[node_to]
             direction = pos_to - pos_from
@@ -339,14 +312,10 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
             for node in range(self.num_nodes):
                 # Find optimal velocity for this node and time
-                optimal_velocity = self._find_optimal_velocity(
-                    node, self.U[n, :], m_current, t
-                )
+                optimal_velocity = self._find_optimal_velocity(node, self.U[n, :], m_current, t)
 
                 # Add Lagrangian cost
-                lagrangian_cost = self.network_problem.lagrangian(
-                    node, optimal_velocity, m_current, t
-                )
+                lagrangian_cost = self.network_problem.lagrangian(node, optimal_velocity, m_current, t)
                 total_cost += lagrangian_cost * m_current[node] * self.dt
 
         return total_cost
@@ -359,14 +328,10 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             print("Solving using relaxed equilibria (trajectory measures)...")
 
         # Initialize trajectory measures
-        self.trajectory_measures = [
-            self._create_initial_trajectory_measure() for _ in range(self.num_nodes)
-        ]
+        self.trajectory_measures = [self._create_initial_trajectory_measure() for _ in range(self.num_nodes)]
 
         # Compute relaxed equilibrium
-        U, M = self.network_problem.compute_relaxed_equilibrium(
-            self.trajectory_measures
-        )
+        U, M = self.network_problem.compute_relaxed_equilibrium(self.trajectory_measures)
 
         # Simple convergence info for relaxed case
         convergence_info = {
@@ -416,9 +381,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
                 t = self.times[n]
 
                 # Find optimal velocity
-                optimal_velocity = self._find_optimal_velocity(
-                    current_node, self.U[n, :], self.M[n, :], t
-                )
+                optimal_velocity = self._find_optimal_velocity(current_node, self.U[n, :], self.M[n, :], t)
 
                 # Choose next node based on velocity
                 neighbors = self.network_problem.get_node_neighbors(current_node)

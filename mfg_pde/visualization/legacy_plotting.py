@@ -12,12 +12,13 @@ Migrated from:
 import warnings
 from typing import Any, Dict, List, Optional
 
+from mpl_toolkits.mplot3d import Axes3D
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from matplotlib.ticker import FormatStrFormatter, LinearLocator
-from mpl_toolkits.mplot3d import Axes3D
 
 # Modern visualization imports for enhanced functions
 try:
@@ -52,9 +53,7 @@ def myplot3d(X, Y, Z, title="Surface Plot"):
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
     X, Y = np.meshgrid(X, Y)
-    surf = ax.plot_surface(
-        X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False
-    )
+    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
     ax.zaxis.set_major_locator(LinearLocator(10))
     ax.zaxis.set_major_formatter(FormatStrFormatter("%.02f"))
     ax.set_xlabel("x")
@@ -153,22 +152,16 @@ def modern_plot_mfg_solution(
         viz_manager = create_visualization_manager()
 
         # Create 2D density evolution plot
-        density_plot = viz_manager.create_2d_density_plot(
-            x_grid, t_grid, M, backend, f"{title} - Density m(t,x)"
-        )
+        density_plot = viz_manager.create_2d_density_plot(x_grid, t_grid, M, backend, f"{title} - Density m(t,x)")
 
         # For 3D surface plots
         if hasattr(viz_manager, "create_3d_surface_plot"):
-            surface_plot = viz_manager.create_3d_surface_plot(
-                x_grid, t_grid, M, "density", f"{title} - 3D Surface"
-            )
+            surface_plot = viz_manager.create_3d_surface_plot(x_grid, t_grid, M, "density", f"{title} - 3D Surface")
 
         return density_plot
 
     except ImportError:
-        warnings.warn(
-            "Modern visualization system not available, using legacy matplotlib"
-        )
+        warnings.warn("Modern visualization system not available, using legacy matplotlib")
         # Fall back to legacy plotting
         myplot3d(x_grid, t_grid, M, title)
 
@@ -198,9 +191,7 @@ def modern_plot_convergence(
     try:
         from .interactive_plots import create_visualization_manager
 
-        viz_manager = create_visualization_manager(
-            prefer_plotly=(backend != "matplotlib")
-        )
+        viz_manager = create_visualization_manager(prefer_plotly=(backend != "matplotlib"))
 
         # Create a comprehensive convergence plot
         if viz_manager.plotly_viz and backend != "matplotlib":

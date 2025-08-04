@@ -45,9 +45,7 @@ class MFGDataFrame:
 
     def __init__(
         self,
-        data: Optional[
-            Union[pl.DataFrame, Dict[str, Any], List[Dict[str, Any]], np.ndarray]
-        ] = None,
+        data: Optional[Union[pl.DataFrame, Dict[str, Any], List[Dict[str, Any]], np.ndarray]] = None,
     ):
         """
         Initialize MFG DataFrame.
@@ -221,9 +219,7 @@ class MFGParameterSweepAnalyzer:
 
         return pl.DataFrame(results)
 
-    def compute_correlation_matrix(
-        self, df: MFGDataFrame, columns: Optional[List[str]] = None
-    ) -> pl.DataFrame:
+    def compute_correlation_matrix(self, df: MFGDataFrame, columns: Optional[List[str]] = None) -> pl.DataFrame:
         """
         Compute correlation matrix between columns.
 
@@ -247,19 +243,13 @@ class MFGParameterSweepAnalyzer:
         for i, col1 in enumerate(columns):
             for j, col2 in enumerate(columns):
                 if i <= j:  # Only compute upper triangle
-                    corr = df.df.select(
-                        [pl.corr(col1, col2).alias("correlation")]
-                    ).item()
+                    corr = df.df.select([pl.corr(col1, col2).alias("correlation")]).item()
 
-                    correlations.append(
-                        {"column1": col1, "column2": col2, "correlation": corr}
-                    )
+                    correlations.append({"column1": col1, "column2": col2, "correlation": corr})
 
         return pl.DataFrame(correlations)
 
-    def find_optimal_parameters(
-        self, df: MFGDataFrame, objective_column: str, minimize: bool = True
-    ) -> Dict[str, Any]:
+    def find_optimal_parameters(self, df: MFGDataFrame, objective_column: str, minimize: bool = True) -> Dict[str, Any]:
         """
         Find optimal parameter combination based on objective.
 
@@ -272,13 +262,9 @@ class MFGParameterSweepAnalyzer:
             Dictionary with optimal parameters and objective value
         """
         if minimize:
-            optimal_row = df.df.filter(
-                pl.col(objective_column) == pl.col(objective_column).min()
-            ).limit(1)
+            optimal_row = df.df.filter(pl.col(objective_column) == pl.col(objective_column).min()).limit(1)
         else:
-            optimal_row = df.df.filter(
-                pl.col(objective_column) == pl.col(objective_column).max()
-            ).limit(1)
+            optimal_row = df.df.filter(pl.col(objective_column) == pl.col(objective_column).max()).limit(1)
 
         if len(optimal_row) == 0:
             raise ValueError(f"No valid values found in column {objective_column}")
@@ -296,9 +282,7 @@ class MFGTimeSeriesAnalyzer:
         if not POLARS_AVAILABLE:
             raise ImportError("Polars not available. Install with: pip install polars")
 
-    def create_convergence_dataframe(
-        self, convergence_history: List[Dict[str, Any]]
-    ) -> MFGDataFrame:
+    def create_convergence_dataframe(self, convergence_history: List[Dict[str, Any]]) -> MFGDataFrame:
         """
         Create DataFrame from convergence history.
 
@@ -315,9 +299,7 @@ class MFGTimeSeriesAnalyzer:
 
         return MFGDataFrame(convergence_history)
 
-    def analyze_convergence_rate(
-        self, df: MFGDataFrame, error_column: str = "error"
-    ) -> Dict[str, float]:
+    def analyze_convergence_rate(self, df: MFGDataFrame, error_column: str = "error") -> Dict[str, float]:
         """
         Analyze convergence rate from error time series.
 
@@ -492,9 +474,7 @@ class MFGDataExporter:
         return MFGDataFrame(df)
 
 
-def create_mfg_dataframe(
-    data: Optional[Union[pl.DataFrame, Dict[str, Any], np.ndarray]] = None
-) -> MFGDataFrame:
+def create_mfg_dataframe(data: Optional[Union[pl.DataFrame, Dict[str, Any], np.ndarray]] = None) -> MFGDataFrame:
     """
     Convenience function to create MFGDataFrame.
 

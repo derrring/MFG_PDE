@@ -11,23 +11,9 @@ Key Features:
 - Dynamic type system for numerical methods
 """
 
-from .code_generation import (
-    CodeGenerator,
-    generate_discretization,
-    generate_solver_class,
-    MFGSolverGenerator,
-)
-from .mathematical_dsl import (
-    HamiltonianBuilder,
-    LagrangianBuilder,
-    MathematicalExpression,
-    MFGSystemBuilder,
-)
-from .optimization_meta import (
-    create_optimized_solver,
-    JITSolverFactory,
-    OptimizationCompiler,
-)
+from .code_generation import CodeGenerator, MFGSolverGenerator, generate_discretization, generate_solver_class
+from .mathematical_dsl import HamiltonianBuilder, LagrangianBuilder, MathematicalExpression, MFGSystemBuilder
+from .optimization_meta import JITSolverFactory, OptimizationCompiler, create_optimized_solver
 from .type_system import DynamicSolver, MFGType, SolverMetaclass, TypedMFGProblem
 
 __all__ = [

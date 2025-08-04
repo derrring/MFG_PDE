@@ -143,9 +143,7 @@ class GeneralMFGFactory:
 
         # Load required functions
         hamiltonian_func = self._load_function(functions_config.get("hamiltonian"))
-        hamiltonian_dm_func = self._load_function(
-            functions_config.get("hamiltonian_dm")
-        )
+        hamiltonian_dm_func = self._load_function(functions_config.get("hamiltonian_dm"))
 
         if hamiltonian_func is None:
             raise ValueError("hamiltonian function is required")
@@ -323,9 +321,7 @@ def get_general_factory() -> GeneralMFGFactory:
     return _global_general_factory
 
 
-def create_general_mfg_problem(
-    hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs
-) -> MFGProblem:
+def create_general_mfg_problem(hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs) -> MFGProblem:
     """Convenience function to create general MFG problem."""
     factory = get_general_factory()
 

@@ -29,10 +29,11 @@ except ImportError:
 
 # Matplotlib imports with LaTeX configuration
 try:
+    from mpl_toolkits.mplot3d import Axes3D
+
     import matplotlib.colors as mcolors
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
-    from mpl_toolkits.mplot3d import Axes3D
 
     # Configure matplotlib for cross-platform compatibility
     rcParams["text.usetex"] = False  # Avoid LaTeX dependency
@@ -120,19 +121,13 @@ class MathematicalPlotter:
         if self.backend == "plotly":
             return self._plot_function_plotly(x, y, title, xlabel, ylabel, save_path)
         else:
-            return self._plot_function_matplotlib(
-                x, y, title, xlabel, ylabel, save_path
-            )
+            return self._plot_function_matplotlib(x, y, title, xlabel, ylabel, save_path)
 
     def _plot_function_plotly(self, x, y, title, xlabel, ylabel, save_path):
         """Plot function using Plotly with LaTeX support."""
         fig = go.Figure()
 
-        fig.add_trace(
-            go.Scatter(
-                x=x, y=y, mode="lines", line=dict(width=2, color="blue"), name="f(x)"
-            )
-        )
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line=dict(width=2, color="blue"), name="f(x)"))
 
         fig.update_layout(
             title=dict(text=title, x=0.5, font=dict(size=16)),
@@ -191,9 +186,7 @@ class MathematicalPlotter:
         if self.backend == "plotly":
             return self._plot_density_plotly(x_grid, t_grid, density, title, save_path)
         else:
-            return self._plot_density_matplotlib(
-                x_grid, t_grid, density, title, save_path
-            )
+            return self._plot_density_matplotlib(x_grid, t_grid, density, title, save_path)
 
     def _plot_density_plotly(self, x_grid, t_grid, density, title, save_path):
         """Plot density evolution using Plotly."""
@@ -329,12 +322,8 @@ class MFGMathematicalVisualizer:
                 subplot_titles=[r"Value Function u(x)", r"Gradient ∂u/∂x"],
             )
 
-            fig.add_trace(
-                go.Scatter(x=x_grid, y=u, mode="lines", name="u(x)"), row=1, col=1
-            )
-            fig.add_trace(
-                go.Scatter(x=x_grid, y=du_dx, mode="lines", name="∂u/∂x"), row=2, col=1
-            )
+            fig.add_trace(go.Scatter(x=x_grid, y=u, mode="lines", name="u(x)"), row=1, col=1)
+            fig.add_trace(go.Scatter(x=x_grid, y=du_dx, mode="lines", name="∂u/∂x"), row=2, col=1)
 
             fig.update_layout(title=title, height=800)
             return fig
@@ -378,9 +367,7 @@ class MFGMathematicalVisualizer:
             Figure object
         """
         if self.backend == "plotly":
-            fig = make_subplots(
-                rows=1, cols=2, subplot_titles=["Density m(t,x)", "Current j(t,x)"]
-            )
+            fig = make_subplots(rows=1, cols=2, subplot_titles=["Density m(t,x)", "Current j(t,x)"])
 
             fig.add_trace(
                 go.Heatmap(z=density, x=x_grid, y=t_grid, colorscale="Viridis"),
@@ -429,9 +416,7 @@ def plot_mathematical_function(
     return plotter.plot_mathematical_function(x, y, title)
 
 
-def plot_mfg_density(
-    x_grid: np.ndarray, t_grid: np.ndarray, density: np.ndarray, backend: str = "auto"
-) -> Any:
+def plot_mfg_density(x_grid: np.ndarray, t_grid: np.ndarray, density: np.ndarray, backend: str = "auto") -> Any:
     """Quick MFG density plotting."""
     plotter = MathematicalPlotter(backend)
     return plotter.plot_mfg_density_evolution(x_grid, t_grid, density)

@@ -51,8 +51,7 @@ except ImportError:
         def __getattr__(self, name):
             def dummy_func(*args, **kwargs):
                 raise ImportError(
-                    "JAX is required for GPU-accelerated solvers. "
-                    "Install with: pip install jax jaxlib"
+                    "JAX is required for GPU-accelerated solvers. " "Install with: pip install jax jaxlib"
                 )
 
             return dummy_func
@@ -94,12 +93,8 @@ def get_device_info() -> dict:
         try:
             # Get GPU memory info if available
             for device in jax.devices("gpu"):
-                memory_info = (
-                    device.memory_stats() if hasattr(device, "memory_stats") else {}
-                )
-                info["gpu_memory"].append(
-                    {"device": str(device), "memory_info": memory_info}
-                )
+                memory_info = device.memory_stats() if hasattr(device, "memory_stats") else {}
+                info["gpu_memory"].append({"device": str(device), "memory_info": memory_info})
         except:
             pass
 

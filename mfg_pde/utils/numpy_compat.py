@@ -60,18 +60,14 @@ def trapezoid(
     if HAS_TRAPZ:
         if NUMPY_VERSION >= (2, 0):
             warnings.warn(
-                "Using deprecated np.trapz with NumPy 2.0+. "
-                "Consider updating code to use np.trapezoid directly.",
+                "Using deprecated np.trapz with NumPy 2.0+. " "Consider updating code to use np.trapezoid directly.",
                 DeprecationWarning,
                 stacklevel=2,
             )
         return np.trapz(y, x=x, dx=dx, axis=axis)
 
     # Should never reach here in normal environments
-    raise RuntimeError(
-        "No trapezoidal integration function available. "
-        "Please install NumPy 2.0+ or scipy."
-    )
+    raise RuntimeError("No trapezoidal integration function available. " "Please install NumPy 2.0+ or scipy.")
 
 
 def get_numpy_info() -> dict:
@@ -117,8 +113,7 @@ def ensure_numpy_compatibility():
 
     if NUMPY_VERSION >= (2, 0) and HAS_TRAPZ and not HAS_TRAPEZOID:
         warnings.warn(
-            "NumPy 2.0+ detected but using deprecated trapz. "
-            "Consider updating your code to use np.trapezoid.",
+            "NumPy 2.0+ detected but using deprecated trapz. " "Consider updating your code to use np.trapezoid.",
             DeprecationWarning,
         )
 

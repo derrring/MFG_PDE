@@ -72,9 +72,7 @@ class ConvergenceError(MFGSolverError):
         }
 
         if convergence_history:
-            diagnostic_data["convergence_trend"] = _analyze_convergence_trend(
-                convergence_history
-            )
+            diagnostic_data["convergence_trend"] = _analyze_convergence_trend(convergence_history)
 
         # Generate helpful suggestions based on the convergence pattern
         suggested_action = _generate_convergence_suggestions(
@@ -145,9 +143,7 @@ class SolutionNotAvailableError(MFGSolverError):
             "solver_state": solver_state or "not_solved",
         }
 
-        suggested_action = (
-            f"Call solve() method first before attempting '{operation_attempted}'"
-        )
+        suggested_action = f"Call solve() method first before attempting '{operation_attempted}'"
 
         message = f"Cannot perform '{operation_attempted}' - solver has not been run"
 
@@ -175,17 +171,13 @@ class DimensionMismatchError(MFGSolverError):
             "array_name": array_name,
             "provided_shape": str(provided_shape),
             "expected_shape": str(expected_shape),
-            "dimension_mismatch": _describe_dimension_mismatch(
-                provided_shape, expected_shape
-            ),
+            "dimension_mismatch": _describe_dimension_mismatch(provided_shape, expected_shape),
         }
 
         if context:
             diagnostic_data["context"] = context
 
-        suggested_action = _generate_dimension_suggestions(
-            array_name, provided_shape, expected_shape
-        )
+        suggested_action = _generate_dimension_suggestions(array_name, provided_shape, expected_shape)
 
         message = f"Dimension mismatch for {array_name}"
 
@@ -216,9 +208,7 @@ class NumericalInstabilityError(MFGSolverError):
         if problematic_values:
             diagnostic_data.update(problematic_values)
 
-        suggested_action = _generate_stability_suggestions(
-            instability_type, problematic_values
-        )
+        suggested_action = _generate_stability_suggestions(instability_type, problematic_values)
 
         message = f"Numerical instability detected: {instability_type}"
 
@@ -268,7 +258,9 @@ def _generate_convergence_suggestions(
     elif error_ratio < 10:
         return "Try: 1) Increase max_iterations, 2) Relax tolerance slightly, or 3) Improve initial guess"
     else:
-        base_suggestion = "Large error suggests: 1) Check problem parameters, 2) Reduce time step size, 3) Use better initialization"
+        base_suggestion = (
+            "Large error suggests: 1) Check problem parameters, 2) Reduce time step size, 3) Use better initialization"
+        )
 
         if history and len(history) > 3:
             trend = _analyze_convergence_trend(history)
@@ -295,36 +287,24 @@ def _generate_configuration_suggestions(
 
     if valid_range and isinstance(provided_value, (int, float)):
         if provided_value < valid_range[0]:
-            suggestions.append(
-                f"Increase {parameter_name} to at least {valid_range[0]}"
-            )
+            suggestions.append(f"Increase {parameter_name} to at least {valid_range[0]}")
         elif provided_value > valid_range[1]:
             suggestions.append(f"Decrease {parameter_name} to at most {valid_range[1]}")
 
     # Common parameter-specific suggestions
-    if "tolerance" in parameter_name.lower() and isinstance(
-        provided_value, (int, float)
-    ):
+    if "tolerance" in parameter_name.lower() and isinstance(provided_value, (int, float)):
         if provided_value <= 0:
             suggestions.append("Tolerance must be positive")
         elif provided_value > 1e-2:
             suggestions.append("Consider smaller tolerance for better accuracy")
 
-    if "iteration" in parameter_name.lower() and isinstance(
-        provided_value, (int, float)
-    ):
+    if "iteration" in parameter_name.lower() and isinstance(provided_value, (int, float)):
         if provided_value <= 0:
             suggestions.append("Number of iterations must be positive")
         elif provided_value < 5:
-            suggestions.append(
-                "Consider at least 5 iterations for meaningful convergence"
-            )
+            suggestions.append("Consider at least 5 iterations for meaningful convergence")
 
-    return (
-        " | ".join(suggestions)
-        if suggestions
-        else f"Check {parameter_name} value and try again"
-    )
+    return " | ".join(suggestions) if suggestions else f"Check {parameter_name} value and try again"
 
 
 def _describe_dimension_mismatch(provided_shape: tuple, expected_shape: tuple) -> str:
@@ -341,9 +321,7 @@ def _describe_dimension_mismatch(provided_shape: tuple, expected_shape: tuple) -
     return " | ".join(mismatches)
 
 
-def _generate_dimension_suggestions(
-    array_name: str, provided_shape: tuple, expected_shape: tuple
-) -> str:
+def _generate_dimension_suggestions(array_name: str, provided_shape: tuple, expected_shape: tuple) -> str:
     """Generate specific suggestions for dimension errors."""
 
     if "warm_start" in array_name.lower():
@@ -357,9 +335,7 @@ def _generate_dimension_suggestions(
         return f"Reshape {array_name} to match problem grid: {expected_shape}"
 
 
-def _generate_stability_suggestions(
-    instability_type: str, problematic_values: Optional[Dict[str, Any]]
-) -> str:
+def _generate_stability_suggestions(instability_type: str, problematic_values: Optional[Dict[str, Any]]) -> str:
     """Generate suggestions for numerical stability issues."""
 
     if "nan" in instability_type.lower():
@@ -371,9 +347,7 @@ def _generate_stability_suggestions(
     elif "divergence" in instability_type.lower():
         return "Consider: 1) Smaller time steps, 2) More conservative parameters, 3) Improved regularization"
     else:
-        return (
-            "Check numerical parameters and consider using more stable solver settings"
-        )
+        return "Check numerical parameters and consider using more stable solver settings"
 
 
 # Convenience functions for common error scenarios
@@ -388,9 +362,7 @@ def validate_solver_state(solver, operation_name: str):
         )
 
 
-def validate_array_dimensions(
-    array: np.ndarray, expected_shape: tuple, array_name: str, solver_name: str = None
-):
+def validate_array_dimensions(array: np.ndarray, expected_shape: tuple, array_name: str, solver_name: str = None):
     """Validate that array has expected dimensions."""
     if array.shape != expected_shape:
         raise DimensionMismatchError(
@@ -427,9 +399,7 @@ def validate_parameter_value(
             )
 
 
-def check_numerical_stability(
-    array: np.ndarray, array_name: str, iteration: int = None, solver_name: str = None
-):
+def check_numerical_stability(array: np.ndarray, array_name: str, iteration: int = None, solver_name: str = None):
     """Check array for numerical stability issues."""
     problematic_values = {}
 

@@ -1,4 +1,4 @@
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import scipy.interpolate
@@ -34,9 +34,7 @@ class FPParticleSolver(BaseFPSolver):
         else:
             self.boundary_conditions = boundary_conditions
 
-    def _estimate_density_from_particles(
-        self, particles_at_time_t: np.ndarray
-    ) -> np.ndarray:
+    def _estimate_density_from_particles(self, particles_at_time_t: np.ndarray) -> np.ndarray:
         Nx = self.problem.Nx + 1
         xSpace = self.problem.xSpace
         xmin = self.problem.xmin
@@ -47,9 +45,7 @@ class FPParticleSolver(BaseFPSolver):
             return np.zeros(Nx)
 
         unique_particles = np.unique(particles_at_time_t)
-        if len(unique_particles) < 2 or np.std(particles_at_time_t) < 1e-9 * (
-            xmax - xmin
-        ):
+        if len(unique_particles) < 2 or np.std(particles_at_time_t) < 1e-9 * (xmax - xmin):
             m_density_estimated = np.zeros(Nx)
             if len(particles_at_time_t) > 0:
                 mean_pos = np.mean(particles_at_time_t)
@@ -97,9 +93,7 @@ class FPParticleSolver(BaseFPSolver):
         else:
             return m_density_estimated  # Return raw KDE output on grid
 
-    def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray
-    ) -> np.ndarray:
+    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         # (Rest of the solve_fp_system method remains the same as in particle_fp_py_v1)
         # print(f"****** Solving FP ({self.fp_method_name}) with {self.num_particles} particles ******")
         Nx = self.problem.Nx + 1
@@ -122,13 +116,9 @@ class FPParticleSolver(BaseFPSolver):
             m0_probs_unnormalized = m_initial_condition * Dx
             m0_probs = m0_probs_unnormalized / np.sum(m0_probs_unnormalized)
             try:
-                initial_particle_positions = np.random.choice(
-                    x_grid, size=self.num_particles, p=m0_probs, replace=True
-                )
+                initial_particle_positions = np.random.choice(x_grid, size=self.num_particles, p=m0_probs, replace=True)
             except ValueError as e:
-                initial_particle_positions = np.random.uniform(
-                    xmin, xmin + Lx, self.num_particles
-                )
+                initial_particle_positions = np.random.uniform(xmin, xmin + Lx, self.num_particles)
         else:
             initial_particle_positions = (
                 np.random.uniform(xmin, xmin + Lx, self.num_particles)
@@ -137,9 +127,7 @@ class FPParticleSolver(BaseFPSolver):
             )
 
         current_M_particles_t[0, :] = initial_particle_positions
-        M_density_on_grid[0, :] = self._estimate_density_from_particles(
-            current_M_particles_t[0, :]
-        )
+        M_density_on_grid[0, :] = self._estimate_density_from_particles(current_M_particles_t[0, :])
 
         if Nt == 1:
             self.M_particles_trajectory = current_M_particles_t
@@ -158,9 +146,7 @@ class FPParticleSolver(BaseFPSolver):
                     interp_func_dUdx = scipy.interpolate.interp1d(
                         x_grid, dUdx_grid, kind="linear", fill_value="extrapolate"
                     )
-                    dUdx_at_particles = interp_func_dUdx(
-                        current_M_particles_t[n_time_idx, :]
-                    )
+                    dUdx_at_particles = interp_func_dUdx(current_M_particles_t[n_time_idx, :])
                 except ValueError as ve:
                     dUdx_at_particles = np.zeros(self.num_particles)
             else:
@@ -174,17 +160,13 @@ class FPParticleSolver(BaseFPSolver):
                 dW = np.zeros(self.num_particles)
 
             current_M_particles_t[n_time_idx + 1, :] = (
-                current_M_particles_t[n_time_idx, :]
-                + alpha_optimal_at_particles * Dt
-                + sigma_sde * dW
+                current_M_particles_t[n_time_idx, :] + alpha_optimal_at_particles * Dt + sigma_sde * dW
             )
 
             # Apply boundary conditions to particles
             if self.boundary_conditions.type == "periodic" and Lx > 1e-14:
                 # Periodic boundaries: wrap around
-                current_M_particles_t[n_time_idx + 1, :] = (
-                    xmin + (current_M_particles_t[n_time_idx + 1, :] - xmin) % Lx
-                )
+                current_M_particles_t[n_time_idx + 1, :] = xmin + (current_M_particles_t[n_time_idx + 1, :] - xmin) % Lx
             elif self.boundary_conditions.type == "no_flux":
                 # Reflecting boundaries: bounce particles back
                 xmax = xmin + Lx
@@ -200,10 +182,8 @@ class FPParticleSolver(BaseFPSolver):
 
                 current_M_particles_t[n_time_idx + 1, :] = particles
 
-            M_density_on_grid[n_time_idx + 1, :] = (
-                self._estimate_density_from_particles(
-                    current_M_particles_t[n_time_idx + 1, :]
-                )
+            M_density_on_grid[n_time_idx + 1, :] = self._estimate_density_from_particles(
+                current_M_particles_t[n_time_idx + 1, :]
             )
 
         self.M_particles_trajectory = current_M_particles_t

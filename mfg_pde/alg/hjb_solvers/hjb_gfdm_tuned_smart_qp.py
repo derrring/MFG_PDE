@@ -108,9 +108,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
         self._problem_difficulty = self._assess_problem_difficulty()
 
         # Boundary point identification
-        self.boundary_point_set = (
-            set(boundary_indices) if boundary_indices is not None else set()
-        )
+        self.boundary_point_set = set(boundary_indices) if boundary_indices is not None else set()
 
         # More aggressive thresholds calibrated from validation results
         # Previous version achieved 29.5%, so we need ~3x more restrictive thresholds
@@ -158,24 +156,12 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
         difficulty_multiplier = (1.0 + self._problem_difficulty) * 3.0
 
         return {
-            "extreme_violation": base_threshold
-            * difficulty_multiplier
-            * 20,  # 6000-12000 (vs 1000-2000)
-            "severe_violation": base_threshold
-            * difficulty_multiplier
-            * 10,  # 3000-6000 (vs 500-1000)
-            "moderate_violation": base_threshold
-            * difficulty_multiplier
-            * 5,  # 1500-3000 (vs 200-400)
-            "mild_violation": base_threshold
-            * difficulty_multiplier
-            * 3,  # 900-1800 (vs 100-200)
-            "gradient_threshold": base_threshold
-            * difficulty_multiplier
-            * 2,  # 600-1200 (vs 50-100)
-            "variation_threshold": base_threshold
-            * difficulty_multiplier
-            * 1,  # 300-600 (vs 30-60)
+            "extreme_violation": base_threshold * difficulty_multiplier * 20,  # 6000-12000 (vs 1000-2000)
+            "severe_violation": base_threshold * difficulty_multiplier * 10,  # 3000-6000 (vs 500-1000)
+            "moderate_violation": base_threshold * difficulty_multiplier * 5,  # 1500-3000 (vs 200-400)
+            "mild_violation": base_threshold * difficulty_multiplier * 3,  # 900-1800 (vs 100-200)
+            "gradient_threshold": base_threshold * difficulty_multiplier * 2,  # 600-1200 (vs 50-100)
+            "variation_threshold": base_threshold * difficulty_multiplier * 1,  # 300-600 (vs 30-60)
         }
 
     def _check_monotonicity_violation(self, coeffs: np.ndarray) -> bool:
@@ -260,10 +246,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
 
         # Continuous threshold adaptation based on current QP usage
         if self.tuned_qp_stats["total_qp_decisions"] > 50:  # After short warmup
-            current_qp_rate = (
-                self.tuned_qp_stats["qp_activated"]
-                / self.tuned_qp_stats["total_qp_decisions"]
-            )
+            current_qp_rate = self.tuned_qp_stats["qp_activated"] / self.tuned_qp_stats["total_qp_decisions"]
 
             target_rate = self.qp_usage_target
 
@@ -302,9 +285,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
 
         return needs_qp
 
-    def approximate_derivatives(
-        self, u_values: np.ndarray, point_idx: int
-    ) -> Dict[Tuple[int, ...], float]:
+    def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> Dict[Tuple[int, ...], float]:
         """Override to inject context for tuned QP decisions"""
         self._current_point_idx = point_idx
         return super().approximate_derivatives(u_values, point_idx)
@@ -328,9 +309,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
             self._current_newton_iter = newton_iter
 
             # Compute HJB residual
-            residual = self._compute_hjb_residual(
-                u_current, u_n_plus_1, m_n_plus_1, time_idx
-            )
+            residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
             # Check convergence
             residual_norm = np.linalg.norm(residual)
@@ -339,9 +318,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
 
             # Compute Jacobian and update
             try:
-                jacobian = self._compute_hjb_jacobian(
-                    u_current, u_n_plus_1, m_n_plus_1, time_idx
-                )
+                jacobian = self._compute_hjb_jacobian(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
                 if jacobian.shape[0] == jacobian.shape[1]:
                     du = np.linalg.solve(jacobian, -residual)
@@ -355,9 +332,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
 
         return u_current
 
-    def _solve_monotone_constrained_qp(
-        self, taylor_data: Dict, b: np.ndarray, point_idx: int
-    ) -> np.ndarray:
+    def _solve_monotone_constrained_qp(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> np.ndarray:
         """Optimized QP solve using CVXPY when available"""
         if not CVXPY_AVAILABLE:
             return super()._solve_monotone_constrained_qp(taylor_data, b, point_idx)
@@ -415,9 +390,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
         if total_decisions > 0:
             stats["qp_usage_rate"] = stats["qp_activated"] / total_decisions
             stats["qp_skip_rate"] = stats["qp_skipped"] / total_decisions
-            stats["extreme_violation_rate"] = (
-                stats["extreme_violations"] / total_decisions
-            )
+            stats["extreme_violation_rate"] = stats["extreme_violations"] / total_decisions
         else:
             stats["qp_usage_rate"] = 0.0
             stats["qp_skip_rate"] = 0.0
@@ -426,18 +399,10 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
         # Context analysis
         total_qp_activated = stats["qp_activated"]
         if total_qp_activated > 0:
-            stats["boundary_qp_percentage"] = (
-                stats["boundary_qp_activations"] / total_qp_activated * 100
-            )
-            stats["interior_qp_percentage"] = (
-                stats["interior_qp_activations"] / total_qp_activated * 100
-            )
-            stats["early_time_percentage"] = (
-                stats["early_time_qp_activations"] / total_qp_activated * 100
-            )
-            stats["late_time_percentage"] = (
-                stats["late_time_qp_activations"] / total_qp_activated * 100
-            )
+            stats["boundary_qp_percentage"] = stats["boundary_qp_activations"] / total_qp_activated * 100
+            stats["interior_qp_percentage"] = stats["interior_qp_activations"] / total_qp_activated * 100
+            stats["early_time_percentage"] = stats["early_time_qp_activations"] / total_qp_activated * 100
+            stats["late_time_percentage"] = stats["late_time_qp_activations"] / total_qp_activated * 100
         else:
             stats["boundary_qp_percentage"] = 0.0
             stats["interior_qp_percentage"] = 0.0
@@ -450,9 +415,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
 
         if current_rate <= target_rate * 1.2:  # Within 20% of target
             stats["optimization_quality"] = "EXCELLENT"
-            stats["optimization_effectiveness"] = min(
-                1.0, target_rate / max(0.01, current_rate)
-            )
+            stats["optimization_effectiveness"] = min(1.0, target_rate / max(0.01, current_rate))
         elif current_rate <= target_rate * 2.0:  # Within 100% of target
             stats["optimization_quality"] = "GOOD"
             stats["optimization_effectiveness"] = target_rate / current_rate
@@ -489,9 +452,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
         print(f"  Total QP Decisions: {stats['total_qp_decisions']}")
         print(f"  QP Activated: {stats['qp_activated']} ({stats['qp_usage_rate']:.1%})")
         print(f"  QP Skipped: {stats['qp_skipped']} ({stats['qp_skip_rate']:.1%})")
-        print(
-            f"  Extreme Violations: {stats['extreme_violations']} ({stats['extreme_violation_rate']:.1%})"
-        )
+        print(f"  Extreme Violations: {stats['extreme_violations']} ({stats['extreme_violation_rate']:.1%})")
 
         print(f"\nContext Analysis:")
         if stats["qp_activated"] > 0:
@@ -502,9 +463,7 @@ class HJBGFDMTunedQPSolver(HJBGFDMSolver):
 
         print(f"\nOptimization Results:")
         print(f"  Optimization Quality: {stats['optimization_quality']}")
-        print(
-            f"  Optimization Effectiveness: {stats['optimization_effectiveness']:.1%}"
-        )
+        print(f"  Optimization Effectiveness: {stats['optimization_effectiveness']:.1%}")
 
         # Calculate estimated speedup
         if stats["qp_skip_rate"] > 0:

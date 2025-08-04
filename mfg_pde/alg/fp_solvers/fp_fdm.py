@@ -77,12 +77,7 @@ class FPFDMSolver(BaseFPSolver):
                         ip1 = (i + 1) % Nx
                         im1 = (i - 1 + Nx) % Nx
                         val_A_ii += (
-                            coefCT
-                            * (
-                                npart(u_at_tk[ip1] - u_at_tk[i])
-                                + ppart(u_at_tk[i] - u_at_tk[im1])
-                            )
-                            / Dx**2
+                            coefCT * (npart(u_at_tk[ip1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[im1])) / Dx**2
                         )
 
                     row_indices.append(i)
@@ -93,9 +88,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Lower diagonal term
                         im1 = (i - 1 + Nx) % Nx  # Previous cell index (periodic)
                         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_im1 += (
-                            -coefCT * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2
-                        )
+                        val_A_i_im1 += -coefCT * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2
                         row_indices.append(i)
                         col_indices.append(im1)
                         data_values.append(val_A_i_im1)
@@ -103,9 +96,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Upper diagonal term
                         ip1 = (i + 1) % Nx  # Next cell index (periodic)
                         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_ip1 += (
-                            -coefCT * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2
-                        )
+                        val_A_i_ip1 += -coefCT * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2
                         row_indices.append(i)
                         col_indices.append(ip1)
                         data_values.append(val_A_i_ip1)
@@ -127,10 +118,7 @@ class FPFDMSolver(BaseFPSolver):
                             if i > 0 and i < Nx - 1:
                                 val_A_ii += (
                                     coefCT
-                                    * (
-                                        npart(u_at_tk[i + 1] - u_at_tk[i])
-                                        + ppart(u_at_tk[i] - u_at_tk[i - 1])
-                                    )
+                                    * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1]))
                                     / Dx**2
                                 )
 
@@ -141,9 +129,7 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1 and i > 0:
                             # Lower diagonal term (flux from left)
                             val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                            val_A_i_im1 += (
-                                -coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2
-                            )
+                            val_A_i_im1 += -coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2
                             row_indices.append(i)
                             col_indices.append(i - 1)
                             data_values.append(val_A_i_im1)
@@ -151,9 +137,7 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1 and i < Nx - 1:
                             # Upper diagonal term (flux from right)
                             val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                            val_A_i_ip1 += (
-                                -coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2
-                            )
+                            val_A_i_ip1 += -coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2
                             row_indices.append(i)
                             col_indices.append(i + 1)
                             data_values.append(val_A_i_ip1)
@@ -200,12 +184,7 @@ class FPFDMSolver(BaseFPSolver):
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
                         val_A_ii += (
-                            coefCT
-                            * (
-                                npart(u_at_tk[i + 1] - u_at_tk[i])
-                                + ppart(u_at_tk[i] - u_at_tk[i - 1])
-                            )
-                            / Dx**2
+                            coefCT * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1])) / Dx**2
                         )
 
                         row_indices.append(i)
@@ -214,25 +193,19 @@ class FPFDMSolver(BaseFPSolver):
 
                         # Lower diagonal term
                         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_im1 += (
-                            -coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2
-                        )
+                        val_A_i_im1 += -coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2
                         row_indices.append(i)
                         col_indices.append(i - 1)
                         data_values.append(val_A_i_im1)
 
                         # Upper diagonal term
                         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_ip1 += (
-                            -coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2
-                        )
+                        val_A_i_ip1 += -coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2
                         row_indices.append(i)
                         col_indices.append(i + 1)
                         data_values.append(val_A_i_ip1)
 
-            A_matrix = sparse.coo_matrix(
-                (data_values, (row_indices, col_indices)), shape=(Nx, Nx)
-            ).tocsr()
+            A_matrix = sparse.coo_matrix((data_values, (row_indices, col_indices)), shape=(Nx, Nx)).tocsr()
 
             # Set up right-hand side
             b_rhs = m[k_idx_fp, :] / Dt
@@ -253,9 +226,7 @@ class FPFDMSolver(BaseFPSolver):
                 else:
                     m_next_step_raw = sparse.linalg.spsolve(A_matrix, b_rhs)
 
-                if np.any(np.isnan(m_next_step_raw)) or np.any(
-                    np.isinf(m_next_step_raw)
-                ):
+                if np.any(np.isnan(m_next_step_raw)) or np.any(np.isinf(m_next_step_raw)):
                     m_next_step_raw = m[k_idx_fp, :]
             except Exception as e:
                 m_next_step_raw = m[k_idx_fp, :]

@@ -170,9 +170,7 @@ class BaseErrorEstimator(ABC):
     """Base class for error estimation algorithms"""
 
     @abstractmethod
-    def estimate_error(
-        self, node: QuadTreeNode, solution_data: Dict[str, NDArray]
-    ) -> float:
+    def estimate_error(self, node: QuadTreeNode, solution_data: Dict[str, NDArray]) -> float:
         """
         Estimate the local error in a mesh cell.
 
@@ -192,9 +190,7 @@ class GradientErrorEstimator(BaseErrorEstimator):
     def __init__(self, backend: Optional[BaseBackend] = None):
         self.backend = backend
 
-    def estimate_error(
-        self, node: QuadTreeNode, solution_data: Dict[str, NDArray]
-    ) -> float:
+    def estimate_error(self, node: QuadTreeNode, solution_data: Dict[str, NDArray]) -> float:
         """
         Estimate error based on solution gradients.
 
@@ -248,9 +244,7 @@ class AdaptiveMesh:
 
     def __init__(
         self,
-        domain_bounds: Tuple[
-            float, float, float, float
-        ],  # (x_min, x_max, y_min, y_max)
+        domain_bounds: Tuple[float, float, float, float],  # (x_min, x_max, y_min, y_max)
         initial_resolution: Tuple[int, int] = (32, 32),
         refinement_criteria: Optional[AMRRefinementCriteria] = None,
         error_estimator: Optional[BaseErrorEstimator] = None,
@@ -356,9 +350,7 @@ class AdaptiveMesh:
             Number of cells that were coarsened
         """
         coarsened_count = 0
-        coarsening_threshold = (
-            self.criteria.error_threshold * self.criteria.coarsening_threshold
-        )
+        coarsening_threshold = self.criteria.error_threshold * self.criteria.coarsening_threshold
 
         # Group leaf nodes by parent
         parent_groups = {}
@@ -391,16 +383,12 @@ class AdaptiveMesh:
                 parent.is_leaf = True
                 self.leaf_nodes.append(parent)
 
-                self.total_cells -= (
-                    3  # Net decrease of 3 cells (4 children -> 1 parent)
-                )
+                self.total_cells -= 3  # Net decrease of 3 cells (4 children -> 1 parent)
                 coarsened_count += 1
 
         return coarsened_count
 
-    def adapt_mesh(
-        self, solution_data: Dict[str, NDArray], max_iterations: int = 5
-    ) -> Dict[str, int]:
+    def adapt_mesh(self, solution_data: Dict[str, NDArray], max_iterations: int = 5) -> Dict[str, int]:
         """
         Perform complete mesh adaptation (refinement + coarsening).
 
@@ -464,9 +452,7 @@ class AdaptiveMesh:
             "total_area": total_area,
             "min_cell_size": min_cell_size,
             "max_cell_size": max_cell_size,
-            "refinement_ratio": (
-                max_cell_size / min_cell_size if min_cell_size > 0 else 1.0
-            ),
+            "refinement_ratio": (max_cell_size / min_cell_size if min_cell_size > 0 else 1.0),
         }
 
     def interpolate_solution(
@@ -496,10 +482,7 @@ class AdaptiveMesh:
             for j, y in enumerate(y_coords):
                 containing_node = self._find_containing_node(x, y)
 
-                if (
-                    containing_node is not None
-                    and containing_node.solution_data is not None
-                ):
+                if containing_node is not None and containing_node.solution_data is not None:
                     # Simple piecewise constant interpolation for now
                     for key in coarse_solution.keys():
                         if key in containing_node.solution_data:
@@ -538,9 +521,7 @@ class AdaptiveMesh:
 if JAX_AVAILABLE:
 
     @jit
-    def compute_gradient_error_jax(
-        U: jnp.ndarray, M: jnp.ndarray, dx: float, dy: float
-    ) -> jnp.ndarray:
+    def compute_gradient_error_jax(U: jnp.ndarray, M: jnp.ndarray, dx: float, dy: float) -> jnp.ndarray:
         """
         Compute gradient-based error estimate using JAX.
 
@@ -590,9 +571,7 @@ def create_amr_mesh(
     backend_instance = create_backend(backend)
 
     # Create refinement criteria
-    criteria = AMRRefinementCriteria(
-        error_threshold=error_threshold, max_refinement_levels=max_levels
-    )
+    criteria = AMRRefinementCriteria(error_threshold=error_threshold, max_refinement_levels=max_levels)
 
     # Create error estimator
     error_estimator = GradientErrorEstimator(backend_instance)

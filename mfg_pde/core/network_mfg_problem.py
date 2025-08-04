@@ -160,9 +160,7 @@ class NetworkMFGProblem(MFGProblem):
 
     # Network-specific MFG components
 
-    def hamiltonian(
-        self, node: int, neighbors: List[int], m: np.ndarray, p: np.ndarray, t: float
-    ) -> float:
+    def hamiltonian(self, node: int, neighbors: List[int], m: np.ndarray, p: np.ndarray, t: float) -> float:
         """
         Network Hamiltonian function.
 
@@ -204,9 +202,7 @@ class NetworkMFGProblem(MFGProblem):
 
         return control_cost + potential + coupling
 
-    def hamiltonian_dm(
-        self, node: int, neighbors: List[int], m: np.ndarray, p: np.ndarray, t: float
-    ) -> float:
+    def hamiltonian_dm(self, node: int, neighbors: List[int], m: np.ndarray, p: np.ndarray, t: float) -> float:
         """Derivative of Hamiltonian with respect to density."""
         if self.components.hamiltonian_dm_func is not None:
             return self.components.hamiltonian_dm_func(node, neighbors, m, p, t)
@@ -216,9 +212,7 @@ class NetworkMFGProblem(MFGProblem):
 
     # Lagrangian formulation methods (based on ArXiv 2207.10908v3)
 
-    def lagrangian(
-        self, node: int, velocity: np.ndarray, m: np.ndarray, t: float
-    ) -> float:
+    def lagrangian(self, node: int, velocity: np.ndarray, m: np.ndarray, t: float) -> float:
         """
         Lagrangian function for network MFG.
 
@@ -264,9 +258,7 @@ class NetworkMFGProblem(MFGProblem):
             Total trajectory cost
         """
         if self.components.trajectory_cost_func is not None:
-            return self.components.trajectory_cost_func(
-                trajectory, velocities, m_evolution, times
-            )
+            return self.components.trajectory_cost_func(trajectory, velocities, m_evolution, times)
 
         # Default: integrate Lagrangian along trajectory
         total_cost = 0.0
@@ -274,18 +266,14 @@ class NetworkMFGProblem(MFGProblem):
 
         for i, (node, t) in enumerate(zip(trajectory, times)):
             if i < len(velocities):
-                velocity = (
-                    velocities[i] if velocities.ndim > 1 else np.array([velocities[i]])
-                )
+                velocity = velocities[i] if velocities.ndim > 1 else np.array([velocities[i]])
                 m_current = m_evolution[i] if m_evolution.ndim > 1 else m_evolution
                 lagrangian_value = self.lagrangian(node, velocity, m_current, t)
                 total_cost += lagrangian_value * dt
 
         return total_cost
 
-    def compute_relaxed_equilibrium(
-        self, trajectory_measures: List[Callable]
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def compute_relaxed_equilibrium(self, trajectory_measures: List[Callable]) -> Tuple[np.ndarray, np.ndarray]:
         """
         Compute relaxed equilibrium as probability measures on trajectories.
 
@@ -338,9 +326,7 @@ class NetworkMFGProblem(MFGProblem):
         # Default: quadratic congestion at nodes
         return 0.5 * m[node] ** 2
 
-    def _default_density_coupling_derivative(
-        self, node: int, m: np.ndarray, t: float
-    ) -> float:
+    def _default_density_coupling_derivative(self, node: int, m: np.ndarray, t: float) -> float:
         """Derivative of default density coupling."""
         return m[node]  # d/dm[i] (0.5 * m[i]^2) = m[i]
 
@@ -358,12 +344,7 @@ class NetworkMFGProblem(MFGProblem):
     def get_initial_density(self) -> np.ndarray:
         """Initial density distribution on network nodes."""
         if self.components.initial_node_density_func is not None:
-            return np.array(
-                [
-                    self.components.initial_node_density_func(i)
-                    for i in range(self.num_nodes)
-                ]
-            )
+            return np.array([self.components.initial_node_density_func(i) for i in range(self.num_nodes)])
 
         # Default: uniform distribution
         initial_density = np.ones(self.num_nodes) / self.num_nodes
@@ -372,12 +353,7 @@ class NetworkMFGProblem(MFGProblem):
     def get_terminal_value(self) -> np.ndarray:
         """Terminal value function on network nodes."""
         if self.components.terminal_node_value_func is not None:
-            return np.array(
-                [
-                    self.components.terminal_node_value_func(i)
-                    for i in range(self.num_nodes)
-                ]
-            )
+            return np.array([self.components.terminal_node_value_func(i) for i in range(self.num_nodes)])
 
         # Default: zero terminal values
         return np.zeros(self.num_nodes)
@@ -430,9 +406,7 @@ class NetworkMFGProblem(MFGProblem):
 
         return divergence
 
-    def apply_graph_laplacian(
-        self, u: np.ndarray, coefficient: float = 1.0
-    ) -> np.ndarray:
+    def apply_graph_laplacian(self, u: np.ndarray, coefficient: float = 1.0) -> np.ndarray:
         """
         Apply graph Laplacian operator to node values.
 

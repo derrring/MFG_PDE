@@ -55,12 +55,8 @@ class ExperimentMetadata:
             "description": self.description,
             "tags": self.tags,
             "created_time": self.created_time.isoformat(),
-            "started_time": (
-                self.started_time.isoformat() if self.started_time else None
-            ),
-            "completed_time": (
-                self.completed_time.isoformat() if self.completed_time else None
-            ),
+            "started_time": (self.started_time.isoformat() if self.started_time else None),
+            "completed_time": (self.completed_time.isoformat() if self.completed_time else None),
             "status": self.status.value,
             "parameters": self.parameters,
             "environment": self.environment,
@@ -129,9 +125,7 @@ class Experiment:
             workspace_path: Path to experiment workspace
             tags: List of tags for categorization
         """
-        self.metadata = ExperimentMetadata(
-            id=str(uuid.uuid4()), name=name, description=description, tags=tags or []
-        )
+        self.metadata = ExperimentMetadata(id=str(uuid.uuid4()), name=name, description=description, tags=tags or [])
 
         # Workspace setup
         self.workspace_path = workspace_path or Path.cwd() / ".mfg_experiments"
@@ -168,13 +162,9 @@ class Experiment:
         self.metadata.status = ExperimentStatus.COMPLETED
 
         if self.metadata.started_time:
-            self.execution_time = (
-                self.metadata.completed_time - self.metadata.started_time
-            ).total_seconds()
+            self.execution_time = (self.metadata.completed_time - self.metadata.started_time).total_seconds()
 
-        self.logger.info(
-            f"Completed experiment '{self.metadata.name}' in {self.execution_time:.2f}s"
-        )
+        self.logger.info(f"Completed experiment '{self.metadata.name}' in {self.execution_time:.2f}s")
 
     def fail(self, error_message: str):
         """Mark experiment as failed."""
@@ -183,9 +173,7 @@ class Experiment:
 
         if self.metadata.started_time:
             failed_time = datetime.now(timezone.utc)
-            self.execution_time = (
-                failed_time - self.metadata.started_time
-            ).total_seconds()
+            self.execution_time = (failed_time - self.metadata.started_time).total_seconds()
 
         self.logger.error(f"Experiment '{self.metadata.name}' failed: {error_message}")
 
@@ -204,9 +192,7 @@ class Experiment:
         self.metadata.parameters.update(parameters)
         self.logger.debug(f"Set parameters: {parameters}")
 
-    def add_result(
-        self, name: str, value: Any, metadata: Optional[Dict[str, Any]] = None
-    ):
+    def add_result(self, name: str, value: Any, metadata: Optional[Dict[str, Any]] = None):
         """Add result to experiment."""
         result = ExperimentResult(
             experiment_id=self.metadata.id,
@@ -229,10 +215,7 @@ class Experiment:
             result = self.results[name]
 
             # Load array data if needed
-            if (
-                isinstance(result.value, dict)
-                and result.value.get("type") == "numpy_array"
-            ):
+            if isinstance(result.value, dict) and result.value.get("type") == "numpy_array":
                 return self._load_array_result(name)
 
             return result.value
@@ -371,9 +354,7 @@ class Experiment:
                 for name, path_str in state_data.get("artifacts", {}).items():
                     self.artifacts[name] = Path(path_str)
 
-            self.logger.info(
-                f"Loaded experiment '{self.metadata.name}' from {experiment_dir}"
-            )
+            self.logger.info(f"Loaded experiment '{self.metadata.name}' from {experiment_dir}")
 
         except Exception as e:
             self.logger.error(f"Failed to load experiment: {e}")
@@ -402,9 +383,7 @@ class Experiment:
         }
 
         # Compare parameters
-        all_param_names = set(self.metadata.parameters.keys()) | set(
-            other.metadata.parameters.keys()
-        )
+        all_param_names = set(self.metadata.parameters.keys()) | set(other.metadata.parameters.keys())
         for param_name in all_param_names:
             this_value = self.metadata.parameters.get(param_name, "NOT_SET")
             other_value = other.metadata.parameters.get(param_name, "NOT_SET")
@@ -423,9 +402,7 @@ class Experiment:
 
             if this_result is not None and other_result is not None:
                 # Numeric comparison
-                if isinstance(this_result, (int, float)) and isinstance(
-                    other_result, (int, float)
-                ):
+                if isinstance(this_result, (int, float)) and isinstance(other_result, (int, float)):
                     comparison["result_differences"][result_name] = {
                         "this": this_result,
                         "other": other_result,
@@ -434,18 +411,12 @@ class Experiment:
                         / max(abs(this_result), abs(other_result), 1e-10),
                     }
                 # Array comparison
-                elif isinstance(this_result, np.ndarray) and isinstance(
-                    other_result, np.ndarray
-                ):
+                elif isinstance(this_result, np.ndarray) and isinstance(other_result, np.ndarray):
                     if this_result.shape == other_result.shape:
                         comparison["result_differences"][result_name] = {
                             "shape": this_result.shape,
-                            "max_absolute_difference": np.max(
-                                np.abs(this_result - other_result)
-                            ),
-                            "mean_absolute_difference": np.mean(
-                                np.abs(this_result - other_result)
-                            ),
+                            "max_absolute_difference": np.max(np.abs(this_result - other_result)),
+                            "mean_absolute_difference": np.mean(np.abs(this_result - other_result)),
                             "relative_error": np.linalg.norm(this_result - other_result)
                             / max(
                                 np.linalg.norm(this_result),
@@ -462,9 +433,7 @@ class Experiment:
         if self.execution_time is not None and other.execution_time is not None:
             comparison["performance_comparison"] = {
                 "execution_time_ratio": self.execution_time / other.execution_time,
-                "absolute_time_difference": abs(
-                    self.execution_time - other.execution_time
-                ),
+                "absolute_time_difference": abs(self.execution_time - other.execution_time),
             }
 
         return comparison
@@ -498,9 +467,7 @@ class Experiment:
             "hostname": platform.node(),
             "working_directory": str(Path.cwd()),
             "environment_variables": {
-                key: value
-                for key, value in os.environ.items()
-                if key.startswith(("MFG_", "PYTHON", "PATH"))
+                key: value for key, value in os.environ.items() if key.startswith(("MFG_", "PYTHON", "PATH"))
             },
         }
 
@@ -531,9 +498,7 @@ class Experiment:
             file_handler.setLevel(logging.DEBUG)
 
             # Formatter
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             file_handler.setFormatter(formatter)
 
             logger.addHandler(file_handler)
@@ -565,9 +530,7 @@ class ExperimentTracker:
         # Load existing experiments
         self._load_existing_experiments()
 
-        self.logger.info(
-            f"Initialized experiment tracker with workspace: {self.workspace_path}"
-        )
+        self.logger.info(f"Initialized experiment tracker with workspace: {self.workspace_path}")
 
     def create_experiment(
         self,
@@ -586,9 +549,7 @@ class ExperimentTracker:
 
         self.experiments[experiment.metadata.id] = experiment
 
-        self.logger.info(
-            f"Created experiment '{name}' with ID {experiment.metadata.id}"
-        )
+        self.logger.info(f"Created experiment '{name}' with ID {experiment.metadata.id}")
         return experiment
 
     def get_experiment(self, experiment_id: str) -> Optional[Experiment]:
@@ -682,9 +643,7 @@ class ExperimentTracker:
 
         return comparison
 
-    def find_similar_experiments(
-        self, experiment_id: str, similarity_threshold: float = 0.8
-    ) -> List[Dict[str, Any]]:
+    def find_similar_experiments(self, experiment_id: str, similarity_threshold: float = 0.8) -> List[Dict[str, Any]]:
         """Find experiments similar to the given one."""
         target_experiment = self.get_experiment(experiment_id)
         if target_experiment is None:
@@ -696,9 +655,7 @@ class ExperimentTracker:
             if exp_id == experiment_id:
                 continue
 
-            similarity = self._compute_experiment_similarity(
-                target_experiment, experiment
-            )
+            similarity = self._compute_experiment_similarity(target_experiment, experiment)
 
             if similarity >= similarity_threshold:
                 similar_experiments.append(
@@ -717,9 +674,7 @@ class ExperimentTracker:
 
         return similar_experiments
 
-    def export_experiments(
-        self, experiment_ids: List[str], export_format: str = "json"
-    ) -> str:
+    def export_experiments(self, experiment_ids: List[str], export_format: str = "json") -> str:
         """Export experiments to specified format."""
         experiments_data = []
 
@@ -728,10 +683,7 @@ class ExperimentTracker:
             if experiment is not None:
                 exp_data = {
                     "metadata": experiment.metadata.to_dict(),
-                    "results": {
-                        name: result.to_dict()
-                        for name, result in experiment.results.items()
-                    },
+                    "results": {name: result.to_dict() for name, result in experiment.results.items()},
                     "execution_time": experiment.execution_time,
                     "error_message": experiment.error_message,
                 }
@@ -769,9 +721,7 @@ class ExperimentTracker:
         else:
             raise ValueError(f"Unsupported export format: {export_format}")
 
-        self.logger.info(
-            f"Exported {len(experiments_data)} experiments to {export_file}"
-        )
+        self.logger.info(f"Exported {len(experiments_data)} experiments to {export_file}")
         return str(export_file)
 
     def _load_existing_experiments(self):
@@ -787,13 +737,9 @@ class ExperimentTracker:
                     self.experiments[experiment.metadata.id] = experiment
 
                 except Exception as e:
-                    self.logger.warning(
-                        f"Could not load experiment from {experiment_dir}: {e}"
-                    )
+                    self.logger.warning(f"Could not load experiment from {experiment_dir}: {e}")
 
-    def _analyze_experiment_group(
-        self, experiments: List[Experiment]
-    ) -> Dict[str, Any]:
+    def _analyze_experiment_group(self, experiments: List[Experiment]) -> Dict[str, Any]:
         """Analyze a group of experiments for aggregate patterns."""
         analysis = {
             "execution_times": [],
@@ -804,9 +750,7 @@ class ExperimentTracker:
         }
 
         # Collect execution times
-        execution_times = [
-            exp.execution_time for exp in experiments if exp.execution_time is not None
-        ]
+        execution_times = [exp.execution_time for exp in experiments if exp.execution_time is not None]
         if execution_times:
             analysis["execution_times"] = {
                 "mean": np.mean(execution_times),
@@ -816,11 +760,7 @@ class ExperimentTracker:
             }
 
         # Success rate
-        successful = sum(
-            1
-            for exp in experiments
-            if exp.metadata.status == ExperimentStatus.COMPLETED
-        )
+        successful = sum(1 for exp in experiments if exp.metadata.status == ExperimentStatus.COMPLETED)
         analysis["success_rate"] = successful / len(experiments)
 
         # Parameter analysis
@@ -843,9 +783,7 @@ class ExperimentTracker:
 
         return analysis
 
-    def _compute_experiment_similarity(
-        self, exp1: Experiment, exp2: Experiment
-    ) -> float:
+    def _compute_experiment_similarity(self, exp1: Experiment, exp2: Experiment) -> float:
         """Compute similarity score between two experiments."""
         # Simple similarity based on parameter overlap
         params1 = set(exp1.metadata.parameters.items())
@@ -883,9 +821,7 @@ class ExperimentTracker:
             file_handler.setLevel(logging.DEBUG)
 
             # Formatter
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             file_handler.setFormatter(formatter)
 
             logger.addHandler(file_handler)

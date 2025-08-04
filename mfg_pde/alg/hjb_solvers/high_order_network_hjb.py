@@ -12,7 +12,7 @@ Key features:
 - Adaptive time stepping
 """
 
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import scipy.sparse as sp
@@ -106,9 +106,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
                     cols.append(j)
                     data.append(1.0)
 
-        gradient_matrices["first_order"] = csr_matrix(
-            (data, (rows, cols)), shape=(self.num_nodes, self.num_nodes)
-        )
+        gradient_matrices["first_order"] = csr_matrix((data, (rows, cols)), shape=(self.num_nodes, self.num_nodes))
 
         # Second-order gradient (if requested)
         if self.order >= 2:
@@ -191,9 +189,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
                 # Neighbor contributions
                 for j in neighbors:
                     edge_weight = self.network_data.get_edge_weight(i, j)
-                    neighbor_weight = edge_weight * (
-                        1.0 + self.artificial_viscosity / degree
-                    )
+                    neighbor_weight = edge_weight * (1.0 + self.artificial_viscosity / degree)
 
                     rows.append(i)
                     cols.append(j)
@@ -260,9 +256,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
 
         return U
 
-    def _network_upwind_step(
-        self, u_next: np.ndarray, m: np.ndarray, t: float, dt: float
-    ) -> np.ndarray:
+    def _network_upwind_step(self, u_next: np.ndarray, m: np.ndarray, t: float, dt: float) -> np.ndarray:
         """Network-adapted upwind scheme for HJB equation."""
         u_current = u_next.copy()
 
@@ -284,9 +278,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
 
         return u_current
 
-    def _lax_friedrichs_step(
-        self, u_next: np.ndarray, m: np.ndarray, t: float, dt: float
-    ) -> np.ndarray:
+    def _lax_friedrichs_step(self, u_next: np.ndarray, m: np.ndarray, t: float, dt: float) -> np.ndarray:
         """Lax-Friedrichs scheme with artificial viscosity."""
         u_current = u_next.copy()
 
@@ -301,15 +293,11 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
             neighbors = self.gradient_ops[i]
             hamiltonian = self.network_problem.hamiltonian(i, neighbors, m, u_next, t)
 
-            u_current[i] = u_next[i] - dt * (
-                hamiltonian + spatial_term[i] - viscosity_term[i]
-            )
+            u_current[i] = u_next[i] - dt * (hamiltonian + spatial_term[i] - viscosity_term[i])
 
         return u_current
 
-    def _godunov_step(
-        self, u_next: np.ndarray, m: np.ndarray, t: float, dt: float
-    ) -> np.ndarray:
+    def _godunov_step(self, u_next: np.ndarray, m: np.ndarray, t: float, dt: float) -> np.ndarray:
         """Godunov scheme for network Hamilton-Jacobi equations."""
         u_current = u_next.copy()
 
@@ -330,9 +318,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
 
         return u_current
 
-    def _solve_network_riemann_problem(
-        self, node_i: int, node_j: int, u: np.ndarray, m: np.ndarray, t: float
-    ) -> float:
+    def _solve_network_riemann_problem(self, node_i: int, node_j: int, u: np.ndarray, m: np.ndarray, t: float) -> float:
         """Solve Riemann problem between two nodes (simplified)."""
         # Simplified Riemann solver for networks
         ui, uj = u[node_i], u[node_j]
@@ -393,9 +379,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
 
         return dt_adaptive
 
-    def _apply_non_global_boundary_conditions(
-        self, u: np.ndarray, t: float
-    ) -> np.ndarray:
+    def _apply_non_global_boundary_conditions(self, u: np.ndarray, t: float) -> np.ndarray:
         """Apply boundary conditions with non-global continuity."""
         u_bc = u.copy()
 
@@ -433,9 +417,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
 
         return u_modified
 
-    def _enforce_monotonicity(
-        self, u_current: np.ndarray, u_next: np.ndarray
-    ) -> np.ndarray:
+    def _enforce_monotonicity(self, u_current: np.ndarray, u_next: np.ndarray) -> np.ndarray:
         """Enforce monotonicity preservation in time."""
         if not self.monotone_scheme:
             return u_current
@@ -449,9 +431,7 @@ class HighOrderNetworkHJBSolver(NetworkHJBSolver):
 
         # Limit excessive changes
         excessive_change = np.abs(change) > max_change
-        u_monotone[excessive_change] = (
-            u_next[excessive_change] + np.sign(change[excessive_change]) * max_change
-        )
+        u_monotone[excessive_change] = u_next[excessive_change] + np.sign(change[excessive_change]) * max_change
 
         return u_monotone
 

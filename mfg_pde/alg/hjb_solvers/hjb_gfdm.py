@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import scipy.sparse as sparse
@@ -107,15 +107,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         self.l2errBoundNewton = newton_tolerance
 
         # Boundary condition parameters
-        self.boundary_indices = (
-            boundary_indices if boundary_indices is not None else np.array([])
-        )
-        self.boundary_conditions = (
-            boundary_conditions if boundary_conditions is not None else {}
-        )
-        self.interior_indices = np.setdiff1d(
-            np.arange(self.n_points), self.boundary_indices
-        )
+        self.boundary_indices = boundary_indices if boundary_indices is not None else np.array([])
+        self.boundary_conditions = boundary_conditions if boundary_conditions is not None else {}
+        self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
 
         # Monotonicity constraint option
         self.use_monotone_constraints = use_monotone_constraints
@@ -223,9 +217,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 return
 
             for i in range(remaining_order + 1):
-                generate_indices(
-                    current_index + [i], remaining_dims - 1, remaining_order - i
-                )
+                generate_indices(current_index + [i], remaining_dims - 1, remaining_order - i)
 
         generate_indices([], d, p)
 
@@ -236,9 +228,7 @@ class HJBGFDMSolver(BaseHJBSolver):
     def _build_taylor_matrices(self):
         """Pre-compute Taylor expansion matrices A for all collocation points."""
         self.taylor_matrices = {}
-        self.multi_indices = self._get_multi_index_set(
-            self.dimension, self.taylor_order
-        )
+        self.multi_indices = self._get_multi_index_set(self.dimension, self.taylor_order)
         self.n_derivatives = len(self.multi_indices)
 
         for i in range(self.n_points):
@@ -372,9 +362,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 f"Available options: 'gaussian', 'inverse_distance', 'uniform', 'wendland'"
             )
 
-    def approximate_derivatives(
-        self, u_values: np.ndarray, point_idx: int
-    ) -> Dict[Tuple[int, ...], float]:
+    def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> Dict[Tuple[int, ...], float]:
         """
         Approximate derivatives at collocation point using weighted least squares.
 
@@ -412,9 +400,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         b = u_center - u_neighbors
 
         # Solve weighted least squares with optional monotonicity constraints
-        use_monotone_qp = (
-            hasattr(self, "use_monotone_constraints") and self.use_monotone_constraints
-        )
+        use_monotone_qp = hasattr(self, "use_monotone_constraints") and self.use_monotone_constraints
 
         if use_monotone_qp:
             # First try unconstrained solution to check if constraints are needed
@@ -425,9 +411,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
             if needs_constraints:
                 # Use constrained QP for monotonicity
-                derivative_coeffs = self._solve_monotone_constrained_qp(
-                    taylor_data, b, point_idx
-                )
+                derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
             else:
                 # Use faster unconstrained solution
                 derivative_coeffs = unconstrained_coeffs
@@ -475,9 +459,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         return derivatives
 
-    def _solve_monotone_constrained_qp(
-        self, taylor_data: Dict, b: np.ndarray, point_idx: int
-    ) -> np.ndarray:
+    def _solve_monotone_constrained_qp(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> np.ndarray:
         """
         Solve constrained quadratic programming problem for monotone derivative approximation.
 
@@ -619,9 +601,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             # Fallback to unconstrained if any error occurs
             return x0
 
-    def _solve_unconstrained_fallback(
-        self, taylor_data: Dict, b: np.ndarray
-    ) -> np.ndarray:
+    def _solve_unconstrained_fallback(self, taylor_data: Dict, b: np.ndarray) -> np.ndarray:
         """Fallback to unconstrained solution using SVD or normal equations."""
         if taylor_data.get("use_svd", False):
             sqrt_W = taylor_data["sqrt_W"]
@@ -686,9 +666,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     # corresponds to positive neighbor weights
                     return second_deriv_coeff + 10.0  # Should be reasonable
 
-                constraints.append(
-                    {"type": "ineq", "fun": constraint_positive_neighbors}
-                )
+                constraints.append({"type": "ineq", "fun": constraint_positive_neighbors})
 
         return constraints
 
@@ -739,9 +717,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         U_prev_collocation = self._map_grid_to_collocation_batch(U_from_prev_picard)
 
         # Set final condition
-        U_solution_collocation[Nt - 1, :] = self._map_grid_to_collocation(
-            U_final_condition_at_T
-        )
+        U_solution_collocation[Nt - 1, :] = self._map_grid_to_collocation(U_final_condition_at_T)
 
         # Backward time stepping
         for n in range(Nt - 2, -1, -1):
@@ -768,23 +744,17 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         for newton_iter in range(self.max_newton_iterations):
             # Compute residual
-            residual = self._compute_hjb_residual(
-                u_current, u_n_plus_1, m_n_plus_1, time_idx
-            )
+            residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
             # Check convergence
             if np.linalg.norm(residual) < self.newton_tolerance:
                 break
 
             # Compute Jacobian
-            jacobian = self._compute_hjb_jacobian(
-                u_current, u_prev_picard, m_n_plus_1, time_idx
-            )
+            jacobian = self._compute_hjb_jacobian(u_current, u_prev_picard, m_n_plus_1, time_idx)
 
             # Apply boundary conditions
-            jacobian_bc, residual_bc = self._apply_boundary_conditions_to_system(
-                jacobian, residual, time_idx
-            )
+            jacobian_bc, residual_bc = self._apply_boundary_conditions_to_system(jacobian, residual, time_idx)
 
             # Newton update with step size limiting
             try:
@@ -840,16 +810,12 @@ class HJBGFDMSolver(BaseHJBSolver):
             p_values = self._extract_gradient(derivatives)
             # Map collocation index to grid index for Hamiltonian evaluation
             grid_idx = self._map_collocation_index_to_grid_index(i)
-            hamiltonian = self.problem.H(
-                x_idx=grid_idx, m_at_x=m_n_plus_1[i], p_values=p_values, t_idx=time_idx
-            )
+            hamiltonian = self.problem.H(x_idx=grid_idx, m_at_x=m_n_plus_1[i], p_values=p_values, t_idx=time_idx)
             residual[i] += hamiltonian
 
         return residual
 
-    def _extract_gradient(
-        self, derivatives: Dict[Tuple[int, ...], float]
-    ) -> Dict[str, float]:
+    def _extract_gradient(self, derivatives: Dict[Tuple[int, ...], float]) -> Dict[str, float]:
         """Extract gradient components for Hamiltonian."""
         p_values = {}
 
@@ -901,9 +867,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     sqrt_W = taylor_data["sqrt_W"]
 
                     # Compute pseudoinverse matrix: V @ S^{-1} @ U^T @ sqrt(W)
-                    S_inv_UT = (
-                        1.0 / S[:, np.newaxis]
-                    ) * U.T  # Broadcasting for S^{-1} @ U^T
+                    S_inv_UT = (1.0 / S[:, np.newaxis]) * U.T  # Broadcasting for S^{-1} @ U^T
                     derivative_matrix = Vt.T @ S_inv_UT @ sqrt_W
                 except:
                     derivative_matrix = None
@@ -926,16 +890,11 @@ class HJBGFDMSolver(BaseHJBSolver):
             if derivative_matrix is not None:
                 # Find second derivative indices
                 for k, beta in enumerate(self.multi_indices):
-                    if (self.dimension == 1 and beta == (2,)) or (
-                        self.dimension == 2 and beta in [(2, 0), (0, 2)]
-                    ):
+                    if (self.dimension == 1 and beta == (2,)) or (self.dimension == 2 and beta in [(2, 0), (0, 2)]):
                         # Check bounds for derivative_matrix access
                         if k < derivative_matrix.shape[0]:
                             for j_local, j_global in enumerate(neighbor_indices):
-                                if (
-                                    j_local < derivative_matrix.shape[1]
-                                    and j_global >= 0
-                                ):
+                                if j_local < derivative_matrix.shape[1] and j_global >= 0:
                                     # Only apply to real particles (ghost particles have negative indices)
                                     coeff = derivative_matrix[k, j_local]
                                     jacobian[i, j_global] -= (sigma**2 / 2.0) * coeff
@@ -972,14 +931,12 @@ class HJBGFDMSolver(BaseHJBSolver):
         svd_count = sum(
             1
             for i in range(total_points)
-            if self.taylor_matrices[i] is not None
-            and self.taylor_matrices[i].get("use_svd", False)
+            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_svd", False)
         )
         qr_count = sum(
             1
             for i in range(total_points)
-            if self.taylor_matrices[i] is not None
-            and self.taylor_matrices[i].get("use_qr", False)
+            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_qr", False)
         )
         normal_count = total_points - svd_count - qr_count
 
@@ -987,12 +944,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         condition_numbers = []
         ranks = []
         for i in range(total_points):
-            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get(
-                "use_svd", False
-            ):
-                condition_numbers.append(
-                    self.taylor_matrices[i].get("condition_number", np.inf)
-                )
+            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_svd", False):
+                condition_numbers.append(self.taylor_matrices[i].get("condition_number", np.inf))
                 ranks.append(self.taylor_matrices[i].get("rank", 0))
 
         info = {
@@ -1003,18 +956,14 @@ class HJBGFDMSolver(BaseHJBSolver):
             "svd_percentage": svd_count / total_points * 100 if total_points > 0 else 0,
             "condition_numbers": condition_numbers,
             "ranks": ranks,
-            "avg_condition_number": (
-                np.mean(condition_numbers) if condition_numbers else np.inf
-            ),
+            "avg_condition_number": (np.mean(condition_numbers) if condition_numbers else np.inf),
             "min_rank": min(ranks) if ranks else 0,
             "max_rank": max(ranks) if ranks else 0,
         }
 
         return info
 
-    def _apply_boundary_conditions_to_solution(
-        self, u: np.ndarray, time_idx: int
-    ) -> np.ndarray:
+    def _apply_boundary_conditions_to_solution(self, u: np.ndarray, time_idx: int) -> np.ndarray:
         """Apply boundary conditions to solution vector."""
         u_modified = u.copy()
 
@@ -1041,10 +990,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     point = self.collocation_points[boundary_idx]
                     if point[0] <= self.problem.xmin + 1e-10 and left_value is not None:
                         u_modified[boundary_idx] = left_value
-                    elif (
-                        point[0] >= self.problem.xmax - 1e-10
-                        and right_value is not None
-                    ):
+                    elif point[0] >= self.problem.xmax - 1e-10 and right_value is not None:
                         u_modified[boundary_idx] = right_value
 
             elif bc_type == "no_flux":
@@ -1146,9 +1092,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Collocation points are in [0, 1], map to [xmin, xmax]
         collocation_x = self.collocation_points[collocation_idx, 0]
         # Scale to physical domain
-        physical_x = self.problem.xmin + collocation_x * (
-            self.problem.xmax - self.problem.xmin
-        )
+        physical_x = self.problem.xmin + collocation_x * (self.problem.xmax - self.problem.xmin)
 
         # Find nearest grid index
         grid_x = np.linspace(self.problem.xmin, self.problem.xmax, self.problem.Nx + 1)

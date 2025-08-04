@@ -127,9 +127,7 @@ def compiled_func({', '.join(self.variables)}):
         # This is a placeholder for symbolic differentiation
         # In practice, would use SymPy or similar for full symbolic math
         diff_expr = f"derivative_of({self.expression})_wrt_{var}"
-        return MathematicalExpression(
-            diff_expr, self.variables, self.parameters, self.backend
-        )
+        return MathematicalExpression(diff_expr, self.variables, self.parameters, self.backend)
 
 
 class MFGSystemBuilder:
@@ -157,9 +155,7 @@ class MFGSystemBuilder:
         if variables is None:
             variables = ["t", "x", "p", "m"]
 
-        self.expressions["hamiltonian"] = MathematicalExpression(
-            expr, variables, self.parameters
-        )
+        self.expressions["hamiltonian"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
     def lagrangian(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
@@ -167,33 +163,23 @@ class MFGSystemBuilder:
         if variables is None:
             variables = ["t", "x", "v", "m"]
 
-        self.expressions["lagrangian"] = MathematicalExpression(
-            expr, variables, self.parameters
-        )
+        self.expressions["lagrangian"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
-    def running_cost(
-        self, expr: str, variables: List[str] = None
-    ) -> "MFGSystemBuilder":
+    def running_cost(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
         """Define running cost function f(t,x,m)."""
         if variables is None:
             variables = ["t", "x", "m"]
 
-        self.expressions["running_cost"] = MathematicalExpression(
-            expr, variables, self.parameters
-        )
+        self.expressions["running_cost"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
-    def terminal_cost(
-        self, expr: str, variables: List[str] = None
-    ) -> "MFGSystemBuilder":
+    def terminal_cost(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
         """Define terminal cost function g(x,m)."""
         if variables is None:
             variables = ["x", "m"]
 
-        self.expressions["terminal_cost"] = MathematicalExpression(
-            expr, variables, self.parameters
-        )
+        self.expressions["terminal_cost"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
     def constraint(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
@@ -201,9 +187,7 @@ class MFGSystemBuilder:
         if variables is None:
             variables = ["t", "x", "m"]
 
-        self.constraints.append(
-            MathematicalExpression(expr, variables, self.parameters)
-        )
+        self.constraints.append(MathematicalExpression(expr, variables, self.parameters))
         return self
 
     def parameter(self, name: str, value: Any) -> "MFGSystemBuilder":
@@ -211,9 +195,7 @@ class MFGSystemBuilder:
         self.parameters[name] = value
         return self
 
-    def domain(
-        self, xmin: float, xmax: float, tmax: float, nx: int = 100, nt: int = 50
-    ) -> "MFGSystemBuilder":
+    def domain(self, xmin: float, xmax: float, tmax: float, nx: int = 100, nt: int = 50) -> "MFGSystemBuilder":
         """Define computational domain."""
         self.domain_info = {
             "xmin": xmin,
@@ -226,9 +208,7 @@ class MFGSystemBuilder:
 
     def build(self) -> "CompiledMFGSystem":
         """Build and compile the MFG system."""
-        return CompiledMFGSystem(
-            self.expressions, self.constraints, self.parameters, self.domain_info
-        )
+        return CompiledMFGSystem(self.expressions, self.constraints, self.parameters, self.domain_info)
 
 
 class HamiltonianBuilder(MFGSystemBuilder):
@@ -370,9 +350,7 @@ def congestion_mfg_system(
     )
 
 
-def network_mfg_system(
-    network_structure: Dict[str, Any], transition_costs: Dict[str, str]
-) -> CompiledMFGSystem:
+def network_mfg_system(network_structure: Dict[str, Any], transition_costs: Dict[str, str]) -> CompiledMFGSystem:
     """Create network-based MFG system."""
     builder = MFGSystemBuilder()
 
@@ -383,8 +361,4 @@ def network_mfg_system(
 
     full_hamiltonian = " + ".join(hamiltonian_terms)
 
-    return (
-        builder.hamiltonian(full_hamiltonian)
-        .parameter("network", network_structure)
-        .build()
-    )
+    return builder.hamiltonian(full_hamiltonian).parameter("network", network_structure).build()

@@ -4,7 +4,7 @@ from datetime import datetime
 
 # Assuming your MFGProblem class is importable for type hinting
 # from ..core.mfg_problem import MFGProblem # Adjust path if necessary
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 
@@ -143,12 +143,8 @@ def load_experiment_data(filepath: str) -> Optional[Dict[str, Any]]:
         data = np.load(filepath, allow_pickle=True)
         # Convert problem_params back to a standard dict if it's an array object
         loaded_data = {key: data[key] for key in data.files}
-        if "problem_params" in loaded_data and isinstance(
-            loaded_data["problem_params"], np.ndarray
-        ):
-            if loaded_data["problem_params"].size == 1 and isinstance(
-                loaded_data["problem_params"].item(), dict
-            ):
+        if "problem_params" in loaded_data and isinstance(loaded_data["problem_params"], np.ndarray):
+            if loaded_data["problem_params"].size == 1 and isinstance(loaded_data["problem_params"].item(), dict):
                 loaded_data["problem_params"] = loaded_data["problem_params"].item()
         print(f"Experiment data loaded from: {filepath}")
         return loaded_data
@@ -186,9 +182,7 @@ def plot_comparison_total_mass(
     """Plots total mass vs. time for multiple experiments on the same axes."""
     if VISUALIZATION_AVAILABLE:
         # Use modern visualization system
-        viz_manager = create_visualization_manager(
-            prefer_plotly=False
-        )  # Use matplotlib for comparison plots
+        viz_manager = create_visualization_manager(prefer_plotly=False)  # Use matplotlib for comparison plots
 
         # Prepare data for plotting
         plot_data = {}
@@ -253,9 +247,7 @@ def plot_comparison_final_m(
                     "y": exp_data["M_solution"][-1, :],  # M_solution[-1] is M(T,x)
                 }
             else:
-                print(
-                    f"Warning: M_solution for {label} is not in expected 2D shape or is empty."
-                )
+                print(f"Warning: M_solution for {label} is not in expected 2D shape or is empty.")
 
         try:
             fig = viz_manager._create_line_comparison_plot(
@@ -277,13 +269,9 @@ def plot_comparison_final_m(
     for exp_data in experiment_data_list:
         label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
         if exp_data["M_solution"].ndim == 2 and exp_data["M_solution"].shape[0] > 0:
-            plt.plot(
-                exp_data["xSpace"], exp_data["M_solution"][-1, :], label=label
-            )  # M_solution[-1] is M(T,x)
+            plt.plot(exp_data["xSpace"], exp_data["M_solution"][-1, :], label=label)  # M_solution[-1] is M(T,x)
         else:
-            print(
-                f"Warning: M_solution for {label} is not in expected 2D shape or is empty."
-            )
+            print(f"Warning: M_solution for {label} is not in expected 2D shape or is empty.")
 
     plt.xlabel("x")
     plt.ylabel("m(T,x)")
@@ -316,9 +304,7 @@ def plot_comparison_initial_U(
                     "y": exp_data["U_solution"][0, :],  # U_solution[0] is U(0,x)
                 }
             else:
-                print(
-                    f"Warning: U_solution for {label} is not in expected 2D shape or is empty."
-                )
+                print(f"Warning: U_solution for {label} is not in expected 2D shape or is empty.")
 
         try:
             fig = viz_manager._create_line_comparison_plot(
@@ -340,13 +326,9 @@ def plot_comparison_initial_U(
     for exp_data in experiment_data_list:
         label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
         if exp_data["U_solution"].ndim == 2 and exp_data["U_solution"].shape[0] > 0:
-            plt.plot(
-                exp_data["xSpace"], exp_data["U_solution"][0, :], label=label
-            )  # U_solution[0] is U(0,x)
+            plt.plot(exp_data["xSpace"], exp_data["U_solution"][0, :], label=label)  # U_solution[0] is U(0,x)
         else:
-            print(
-                f"Warning: U_solution for {label} is not in expected 2D shape or is empty."
-            )
+            print(f"Warning: U_solution for {label} is not in expected 2D shape or is empty.")
 
     plt.xlabel("x")
     plt.ylabel("U(0,x)")
@@ -409,9 +391,7 @@ def plot_comparison_U_slice(
         if 0 <= time_index < exp_data["U_solution"].shape[0]:
             actual_time = exp_data["tSpace"][time_index]
             label = f"{exp_data.get('solver_name', 'Unknown')}_{exp_data.get('timestamp', '')[-6:]}"
-            plt.plot(
-                exp_data["xSpace"], exp_data["U_solution"][time_index, :], label=label
-            )
+            plt.plot(exp_data["xSpace"], exp_data["U_solution"][time_index, :], label=label)
         else:
             print(
                 f"Warning: time_index {time_index} out of bounds for experiment {exp_data.get('solver_name', 'Unknown')}"
@@ -498,7 +478,5 @@ if __name__ == "__main__":
     # else:
     #     print("No experiment data loaded for plotting.")
 
-    print(
-        "Experiment manager module can be tested by uncommenting and running the example usage section."
-    )
+    print("Experiment manager module can be tested by uncommenting and running the example usage section.")
     print("Ensure MFGProblem/ExampleMFGProblem is importable if running this block.")

@@ -10,12 +10,7 @@ import functools
 import time
 from typing import Any, Callable, Dict, Optional
 
-from .logging import (
-    get_logger,
-    log_solver_completion,
-    log_solver_start,
-    LoggedOperation,
-)
+from .logging import LoggedOperation, get_logger, log_solver_completion, log_solver_start
 
 
 def logged_solver_method(
@@ -94,9 +89,7 @@ def logged_solver_method(
 
             except Exception as e:
                 execution_time = time.time() - start_time
-                logger.error(
-                    f"{solver_name} failed after {execution_time:.3f}s: {str(e)}"
-                )
+                logger.error(f"{solver_name} failed after {execution_time:.3f}s: {str(e)}")
                 raise
 
         return wrapper
@@ -156,9 +149,7 @@ def logged_operation(
     return decorator
 
 
-def logged_validation(
-    component_name: Optional[str] = None, logger_name: Optional[str] = None
-):
+def logged_validation(component_name: Optional[str] = None, logger_name: Optional[str] = None):
     """
     Decorator to add logging to validation functions.
 
@@ -260,9 +251,7 @@ class LoggingMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = get_logger(
-            f"{self.__class__.__module__}.{self.__class__.__name__}"
-        )
+        self._logger = get_logger(f"{self.__class__.__module__}.{self.__class__.__name__}")
         self._enable_logging = True
 
     def enable_logging(self, enabled: bool = True):

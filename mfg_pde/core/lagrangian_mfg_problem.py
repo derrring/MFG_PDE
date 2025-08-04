@@ -268,9 +268,7 @@ class LagrangianMFGProblem:
         else:
             return 0.0  # Default: no terminal cost
 
-    def compute_lagrangian_derivatives(
-        self, t: float, x: float, v: float, m: float
-    ) -> Dict[str, float]:
+    def compute_lagrangian_derivatives(self, t: float, x: float, v: float, m: float) -> Dict[str, float]:
         """
         Compute all partial derivatives of Lagrangian.
 
@@ -366,9 +364,7 @@ class LagrangianMFGProblem:
             "hamiltonian_dm": hamiltonian_dm,
         }
 
-    def compute_action_functional(
-        self, trajectory: NDArray, velocity: NDArray, density_evolution: NDArray
-    ) -> float:
+    def compute_action_functional(self, trajectory: NDArray, velocity: NDArray, density_evolution: NDArray) -> float:
         """
         Compute action functional for given trajectory and density evolution.
 
@@ -443,9 +439,7 @@ class LagrangianMFGProblem:
         """
         residual = np.zeros(self.Nt)
 
-        for i, (t, x, v, a) in enumerate(
-            zip(self.t, trajectory, velocity, acceleration)
-        ):
+        for i, (t, x, v, a) in enumerate(zip(self.t, trajectory, velocity, acceleration)):
             # Interpolate density
             m_at_x = self._interpolate_density(density_evolution[i], x)
 
@@ -472,12 +466,10 @@ class LagrangianMFGProblem:
 
         # Create MFG components
         mfg_components = MFGComponents(
-            hamiltonian_func=lambda x_idx, m_at_x, p_values, t_idx: hamiltonian_funcs[
-                "hamiltonian"
-            ](self.x[x_idx], p_values.get("forward", 0.0), m_at_x, self.t[t_idx]),
-            hamiltonian_dm_func=lambda x_idx, m_at_x, p_values, t_idx: hamiltonian_funcs[
-                "hamiltonian_dm"
-            ](
+            hamiltonian_func=lambda x_idx, m_at_x, p_values, t_idx: hamiltonian_funcs["hamiltonian"](
+                self.x[x_idx], p_values.get("forward", 0.0), m_at_x, self.t[t_idx]
+            ),
+            hamiltonian_dm_func=lambda x_idx, m_at_x, p_values, t_idx: hamiltonian_funcs["hamiltonian_dm"](
                 self.x[x_idx], p_values.get("forward", 0.0), m_at_x, self.t[t_idx]
             ),
             initial_density_func=self.components.initial_density_func,
@@ -513,8 +505,7 @@ class LagrangianMFGProblem:
                 "has_lagrangian": self.components.lagrangian_func is not None,
                 "has_terminal_cost": self.components.terminal_cost_func is not None,
                 "has_constraints": (
-                    self.components.state_constraints is not None
-                    or self.components.velocity_constraints is not None
+                    self.components.state_constraints is not None or self.components.velocity_constraints is not None
                 ),
                 "has_jax_acceleration": self.use_jax,
             },
@@ -573,9 +564,7 @@ def create_quadratic_lagrangian_mfg(
         description="Quadratic Lagrangian MFG",
     )
 
-    return LagrangianMFGProblem(
-        xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components
-    )
+    return LagrangianMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)
 
 
 def create_obstacle_lagrangian_mfg(
@@ -612,9 +601,7 @@ def create_obstacle_lagrangian_mfg(
         # Obstacle penalty
         obstacle_distance = abs(x - obstacle_center)
         if obstacle_distance < obstacle_radius:
-            obstacle_cost = (
-                obstacle_penalty * (obstacle_radius - obstacle_distance) ** 2
-            )
+            obstacle_cost = obstacle_penalty * (obstacle_radius - obstacle_distance) ** 2
         else:
             obstacle_cost = 0.0
 
@@ -641,6 +628,4 @@ def create_obstacle_lagrangian_mfg(
         description="Obstacle Avoidance Lagrangian MFG",
     )
 
-    return LagrangianMFGProblem(
-        xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components
-    )
+    return LagrangianMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)

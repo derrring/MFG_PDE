@@ -77,9 +77,7 @@ class TriangleElement:
         e12 = v2 - v1
         e20 = v0 - v2
 
-        self.edge_lengths = np.array(
-            [np.linalg.norm(e01), np.linalg.norm(e12), np.linalg.norm(e20)]
-        )
+        self.edge_lengths = np.array([np.linalg.norm(e01), np.linalg.norm(e12), np.linalg.norm(e20)])
 
         # Area using cross product
         self.area = 0.5 * abs(np.cross(e01, e12))
@@ -128,12 +126,8 @@ class TriangleElement:
         if abs(denom) < 1e-12:
             return False
 
-        a = (
-            (v1[1] - v2[1]) * (point[0] - v2[0]) + (v2[0] - v1[0]) * (point[1] - v2[1])
-        ) / denom
-        b = (
-            (v2[1] - v0[1]) * (point[0] - v2[0]) + (v0[0] - v2[0]) * (point[1] - v2[1])
-        ) / denom
+        a = ((v1[1] - v2[1]) * (point[0] - v2[0]) + (v2[0] - v1[0]) * (point[1] - v2[1])) / denom
+        b = ((v2[1] - v0[1]) * (point[0] - v2[0]) + (v0[0] - v2[0]) * (point[1] - v2[1])) / denom
         c = 1 - a - b
 
         return a >= 0 and b >= 0 and c >= 0
@@ -162,9 +156,7 @@ class TriangularAMRMesh:
             backend: Computational backend
         """
         if initial_mesh_data.element_type != "triangle":
-            raise ValueError(
-                f"Expected triangle elements, got {initial_mesh_data.element_type}"
-            )
+            raise ValueError(f"Expected triangle elements, got {initial_mesh_data.element_type}")
 
         if initial_mesh_data.dimension != 2:
             raise ValueError(f"Expected 2D mesh, got {initial_mesh_data.dimension}D")
@@ -192,16 +184,12 @@ class TriangularAMRMesh:
 
         for i, element in enumerate(elements):
             if len(element) != 3:
-                raise ValueError(
-                    f"Expected triangle with 3 vertices, got {len(element)}"
-                )
+                raise ValueError(f"Expected triangle with 3 vertices, got {len(element)}")
 
             # Get vertex coordinates
             triangle_vertices = vertices[element]
 
-            triangle = TriangleElement(
-                element_id=i, vertices=triangle_vertices, vertex_ids=element, level=0
-            )
+            triangle = TriangleElement(element_id=i, vertices=triangle_vertices, vertex_ids=element, level=0)
 
             self.triangles[i] = triangle
             self.leaf_triangles.append(i)
@@ -330,9 +318,7 @@ class TriangularAMRMesh:
 
         return children_ids
 
-    def adapt_mesh(
-        self, solution_data: Dict[str, np.ndarray], error_estimator: BaseErrorEstimator
-    ) -> Dict[str, int]:
+    def adapt_mesh(self, solution_data: Dict[str, np.ndarray], error_estimator: BaseErrorEstimator) -> Dict[str, int]:
         """
         Adapt triangular mesh based on error estimates.
 
@@ -350,9 +336,7 @@ class TriangularAMRMesh:
         # Collect leaf triangles that need refinement
         triangles_to_refine = []
 
-        for (
-            triangle_id
-        ) in self.leaf_triangles.copy():  # Copy since we'll modify during iteration
+        for triangle_id in self.leaf_triangles.copy():  # Copy since we'll modify during iteration
             triangle = self.triangles[triangle_id]
 
             # Check refinement constraints
@@ -362,9 +346,7 @@ class TriangularAMRMesh:
                 continue
 
             # Estimate error for this triangle
-            error = self._estimate_triangle_error(
-                triangle, solution_data, error_estimator
-            )
+            error = self._estimate_triangle_error(triangle, solution_data, error_estimator)
             triangle.error_estimate = error
 
             # Refinement decision
@@ -374,9 +356,7 @@ class TriangularAMRMesh:
         # Execute refinements
         for triangle_id, triangle in triangles_to_refine:
             # Choose refinement strategy based on triangle quality
-            if (
-                triangle.aspect_ratio < 3.0 and triangle.min_angle > np.pi / 9
-            ):  # ~20 degrees
+            if triangle.aspect_ratio < 3.0 and triangle.min_angle > np.pi / 9:  # ~20 degrees
                 # Good quality triangle - use red refinement
                 self.refine_triangle(triangle_id, "red")
                 red_refinements += 1
@@ -454,9 +434,7 @@ class TriangularAMRMesh:
             "total_area": total_area,
             "min_aspect_ratio": min_aspect_ratio,
             "max_aspect_ratio": max_aspect_ratio,
-            "refinement_ratio": (
-                max_aspect_ratio / min_aspect_ratio if min_aspect_ratio > 0 else 1.0
-            ),
+            "refinement_ratio": (max_aspect_ratio / min_aspect_ratio if min_aspect_ratio > 0 else 1.0),
             "initial_elements": len(self.initial_mesh_data.elements),
             "refinement_history": self.refinement_history,
         }
@@ -514,9 +492,7 @@ class TriangularMeshErrorEstimator(BaseErrorEstimator):
 
     def __init__(self, backend: Optional[BaseBackend] = None):
         self.backend = backend
-        self.use_jax = JAX_AVAILABLE and (
-            backend is None or getattr(backend, "name", "") == "jax"
-        )
+        self.use_jax = JAX_AVAILABLE and (backend is None or getattr(backend, "name", "") == "jax")
 
     def estimate_error(self, node, solution_data: Dict[str, np.ndarray]) -> float:
         """
@@ -577,10 +553,6 @@ def create_triangular_amr_mesh(
     Returns:
         TriangularAMRMesh ready for adaptive refinement
     """
-    criteria = AMRRefinementCriteria(
-        error_threshold=error_threshold, max_refinement_levels=max_levels
-    )
+    criteria = AMRRefinementCriteria(error_threshold=error_threshold, max_refinement_levels=max_levels)
 
-    return TriangularAMRMesh(
-        initial_mesh_data=mesh_data, refinement_criteria=criteria, backend=backend
-    )
+    return TriangularAMRMesh(initial_mesh_data=mesh_data, refinement_criteria=criteria, backend=backend)

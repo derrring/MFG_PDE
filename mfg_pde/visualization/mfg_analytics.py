@@ -18,9 +18,9 @@ from ..utils.integration import trapezoid
 try:
     from .interactive_plots import (
         BOKEH_AVAILABLE,
-        create_visualization_manager,
-        MFGVisualizationManager,
         PLOTLY_AVAILABLE,
+        MFGVisualizationManager,
+        create_visualization_manager,
     )
 
     VISUALIZATION_AVAILABLE = True
@@ -31,11 +31,11 @@ except ImportError:
 
 try:
     from ..utils.polars_integration import (
+        POLARS_AVAILABLE,
+        MFGDataFrame,
         create_data_exporter,
         create_parameter_sweep_analyzer,
         create_time_series_analyzer,
-        MFGDataFrame,
-        POLARS_AVAILABLE,
     )
 except ImportError:
     POLARS_AVAILABLE = False
@@ -60,9 +60,7 @@ class MFGAnalyticsEngine:
     - Integrated research workflows
     """
 
-    def __init__(
-        self, prefer_plotly: bool = True, output_dir: Optional[Union[str, Path]] = None
-    ):
+    def __init__(self, prefer_plotly: bool = True, output_dir: Optional[Union[str, Path]] = None):
         """
         Initialize MFG Analytics Engine.
 
@@ -71,9 +69,7 @@ class MFGAnalyticsEngine:
             output_dir: Directory for saving outputs
         """
         self.prefer_plotly = prefer_plotly
-        self.output_dir = (
-            Path(output_dir) if output_dir else Path("mfg_analytics_results")
-        )
+        self.output_dir = Path(output_dir) if output_dir else Path("mfg_analytics_results")
         self.output_dir.mkdir(exist_ok=True)
 
         # Initialize components
@@ -164,16 +160,12 @@ class MFGAnalyticsEngine:
 
             # Convergence visualizations
             if self.viz_manager:
-                conv_viz = self._create_convergence_visualizations(
-                    convergence_data, title
-                )
+                conv_viz = self._create_convergence_visualizations(convergence_data, title)
                 results["visualizations"].update(conv_viz)
 
         # Export data if available
         if self.data_exporter:
-            data_files = self._export_solution_data(
-                x_grid, time_grid, density_history, value_history, title
-            )
+            data_files = self._export_solution_data(x_grid, time_grid, density_history, value_history, title)
             results["data_files"] = data_files
 
         logger.info(f"MFG solution analysis completed: {title}")
@@ -224,45 +216,32 @@ class MFGAnalyticsEngine:
 
             # Find optimal parameters
             if "metric_crater_depth" in sweep_df.columns:
-                optimal = self.sweep_analyzer.find_optimal_parameters(
-                    sweep_df, "metric_crater_depth", minimize=True
-                )
+                optimal = self.sweep_analyzer.find_optimal_parameters(sweep_df, "metric_crater_depth", minimize=True)
                 results["optimal_parameters"] = optimal
 
             # Correlation analysis
-            correlation_matrix = self.sweep_analyzer.compute_correlation_matrix(
-                sweep_df
-            )
+            correlation_matrix = self.sweep_analyzer.compute_correlation_matrix(sweep_df)
             results["correlations"] = correlation_matrix.to_dicts()
 
             # Export sweep data
             if self.data_exporter:
-                sweep_file = (
-                    self.output_dir
-                    / f"{title.lower().replace(' ', '_')}_sweep_data.parquet"
-                )
+                sweep_file = self.output_dir / f"{title.lower().replace(' ', '_')}_sweep_data.parquet"
                 self.data_exporter.export_to_parquet(sweep_df, sweep_file)
                 results["data_files"]["sweep_data"] = str(sweep_file)
 
         # Create visualizations
         if self.viz_manager:
             # Interactive dashboard
-            dashboard = self.viz_manager.create_parameter_sweep_dashboard(
-                sweep_results, parameter_name, "auto"
-            )
+            dashboard = self.viz_manager.create_parameter_sweep_dashboard(sweep_results, parameter_name, "auto")
 
-            dashboard_file = (
-                self.output_dir / f"{title.lower().replace(' ', '_')}_dashboard.html"
-            )
+            dashboard_file = self.output_dir / f"{title.lower().replace(' ', '_')}_dashboard.html"
             self.viz_manager.save_plot(dashboard, dashboard_file)
             results["visualizations"]["dashboard"] = str(dashboard_file)
 
         logger.info(f"Parameter sweep analysis completed: {len(sweep_results)} sweeps")
         return results
 
-    def create_research_report(
-        self, analyses: List[Dict[str, Any]], report_title: str = "MFG Research Report"
-    ) -> Path:
+    def create_research_report(self, analyses: List[Dict[str, Any]], report_title: str = "MFG Research Report") -> Path:
         """
         Generate comprehensive research report combining multiple analyses.
 
@@ -318,8 +297,7 @@ class MFGAnalyticsEngine:
         # Temporal evolution
         stats["evolution"] = {
             "density_variance_trend": [
-                float(np.var(density_history[i, :]))
-                for i in range(0, len(time_grid), max(1, len(time_grid) // 10))
+                float(np.var(density_history[i, :])) for i in range(0, len(time_grid), max(1, len(time_grid) // 10))
             ],
             "value_range_trend": [
                 float(np.max(value_history[i, :]) - np.min(value_history[i, :]))
@@ -348,9 +326,7 @@ class MFGAnalyticsEngine:
             "auto",
             f"{title}: Density Evolution m(t,x)",
         )
-        density_2d_file = (
-            self.output_dir / f"{title.lower().replace(' ', '_')}_density_2d.html"
-        )
+        density_2d_file = self.output_dir / f"{title.lower().replace(' ', '_')}_density_2d.html"
         self.viz_manager.save_plot(density_2d, density_2d_file)
         viz_files["density_2d"] = str(density_2d_file)
 
@@ -363,9 +339,7 @@ class MFGAnalyticsEngine:
                 "density",
                 f"{title}: 3D Density Surface",
             )
-            density_3d_file = (
-                self.output_dir / f"{title.lower().replace(' ', '_')}_density_3d.html"
-            )
+            density_3d_file = self.output_dir / f"{title.lower().replace(' ', '_')}_density_3d.html"
             self.viz_manager.save_plot(density_3d, density_3d_file)
             viz_files["density_3d"] = str(density_3d_file)
 
@@ -373,9 +347,7 @@ class MFGAnalyticsEngine:
             value_3d = self.viz_manager.create_3d_surface_plot(
                 x_grid, time_grid, value_history, "value", f"{title}: 3D Value Function"
             )
-            value_3d_file = (
-                self.output_dir / f"{title.lower().replace(' ', '_')}_value_3d.html"
-            )
+            value_3d_file = self.output_dir / f"{title.lower().replace(' ', '_')}_value_3d.html"
             self.viz_manager.save_plot(value_3d, value_3d_file)
             viz_files["value_3d"] = str(value_3d_file)
 
@@ -399,14 +371,10 @@ class MFGAnalyticsEngine:
             "convergence_statistics": conv_stats,
             "plateau_iteration": plateau_iter,
             "total_iterations": len(convergence_data),
-            "final_error": (
-                convergence_data[-1].get("error", 0) if convergence_data else 0
-            ),
+            "final_error": (convergence_data[-1].get("error", 0) if convergence_data else 0),
         }
 
-    def _create_convergence_visualizations(
-        self, convergence_data: List[Dict], title: str
-    ) -> Dict[str, str]:
+    def _create_convergence_visualizations(self, convergence_data: List[Dict], title: str) -> Dict[str, str]:
         """Create convergence visualizations."""
         viz_files = {}
 
@@ -416,9 +384,7 @@ class MFGAnalyticsEngine:
                 convergence_data, f"{title}: Convergence Animation"
             )
 
-            conv_file = (
-                self.output_dir / f"{title.lower().replace(' ', '_')}_convergence.html"
-            )
+            conv_file = self.output_dir / f"{title.lower().replace(' ', '_')}_convergence.html"
             self.viz_manager.save_plot(conv_animation, conv_file)
             viz_files["convergence_animation"] = str(conv_file)
 
@@ -450,11 +416,7 @@ class MFGAnalyticsEngine:
                     "x_position": float(x),
                     "final_density": float(final_density[i]),
                     "final_value": float(final_value[i]),
-                    "density_gradient": (
-                        float(np.gradient(final_density)[i])
-                        if len(final_density) > 1
-                        else 0.0
-                    ),
+                    "density_gradient": (float(np.gradient(final_density)[i]) if len(final_density) > 1 else 0.0),
                 }
             )
 
@@ -487,9 +449,7 @@ class MFGAnalyticsEngine:
 
         return data_files
 
-    def _generate_html_report(
-        self, analyses: List[Dict[str, Any]], report_title: str
-    ) -> str:
+    def _generate_html_report(self, analyses: List[Dict[str, Any]], report_title: str) -> str:
         """Generate comprehensive HTML research report."""
         html = f"""
 <!DOCTYPE html>
@@ -564,7 +524,9 @@ class MFGAnalyticsEngine:
                 html += "<h3>Visualizations</h3><div class='visualization'>"
                 for viz_name, viz_path in analysis["visualizations"].items():
                     viz_filename = Path(viz_path).name
-                    html += f'<p><a href="{viz_filename}" class="file-link"> {viz_name.replace("_", " ").title()}</a></p>'
+                    html += (
+                        f'<p><a href="{viz_filename}" class="file-link"> {viz_name.replace("_", " ").title()}</a></p>'
+                    )
                 html += "</div>"
 
             # Add data files
@@ -572,7 +534,9 @@ class MFGAnalyticsEngine:
                 html += "<h3>Data Files</h3><div class='visualization'>"
                 for file_name, file_path in analysis["data_files"].items():
                     filename = Path(file_path).name
-                    html += f'<p><a href="{filename}" class="file-link">💾 {file_name.replace("_", " ").title()}</a></p>'
+                    html += (
+                        f'<p><a href="{filename}" class="file-link">💾 {file_name.replace("_", " ").title()}</a></p>'
+                    )
                 html += "</div>"
 
         html += """
@@ -605,9 +569,7 @@ def analyze_mfg_solution_quick(
 ) -> Dict[str, Any]:
     """Quick MFG solution analysis with default settings."""
     engine = create_analytics_engine()
-    return engine.analyze_mfg_solution(
-        x_grid, time_grid, density_history, value_history, title=title
-    )
+    return engine.analyze_mfg_solution(x_grid, time_grid, density_history, value_history, title=title)
 
 
 def analyze_parameter_sweep_quick(

@@ -244,9 +244,7 @@ class PluginManager:
         try:
             # Validate plugin class
             if not issubclass(plugin_class, (SolverPlugin, AnalysisPlugin)):
-                raise ValueError(
-                    "Plugin must inherit from SolverPlugin or AnalysisPlugin"
-                )
+                raise ValueError("Plugin must inherit from SolverPlugin or AnalysisPlugin")
 
             # Get metadata
             temp_instance = plugin_class()
@@ -254,9 +252,7 @@ class PluginManager:
 
             # Check version compatibility
             if not self._check_version_compatibility(metadata):
-                self.logger.warning(
-                    f"Plugin {metadata.name} version incompatible with current MFG_PDE version"
-                )
+                self.logger.warning(f"Plugin {metadata.name} version incompatible with current MFG_PDE version")
                 return False
 
             # Register plugin
@@ -409,17 +405,10 @@ class PluginManager:
             plugin_name = self.solver_type_registry[solver_type]
             plugin_info = self.plugins[plugin_name]
 
-            if (
-                plugin_info.status == PluginStatus.LOADED
-                and plugin_info.plugin_instance
-            ):
-                return plugin_info.plugin_instance.create_solver(
-                    problem, solver_type, config, **kwargs
-                )
+            if plugin_info.status == PluginStatus.LOADED and plugin_info.plugin_instance:
+                return plugin_info.plugin_instance.create_solver(problem, solver_type, config, **kwargs)
             else:
-                raise ValueError(
-                    f"Plugin {plugin_name} providing {solver_type} is not loaded"
-                )
+                raise ValueError(f"Plugin {plugin_name} providing {solver_type} is not loaded")
 
         # Check if it's a core solver
         if solver_type in self._core_solvers:
@@ -448,13 +437,9 @@ class PluginManager:
         plugin_info = self.plugins[plugin_name]
 
         if plugin_info.status == PluginStatus.LOADED and plugin_info.plugin_instance:
-            return plugin_info.plugin_instance.run_analysis(
-                result, analysis_type, **kwargs
-            )
+            return plugin_info.plugin_instance.run_analysis(result, analysis_type, **kwargs)
         else:
-            raise ValueError(
-                f"Plugin {plugin_name} providing {analysis_type} is not loaded"
-            )
+            raise ValueError(f"Plugin {plugin_name} providing {analysis_type} is not loaded")
 
     def list_available_solvers(self) -> Dict[str, Dict[str, Any]]:
         """List all available solver types with descriptions.
@@ -475,18 +460,11 @@ class PluginManager:
         # Add plugin solvers
         for solver_type, plugin_name in self.solver_type_registry.items():
             plugin_info = self.plugins[plugin_name]
-            if (
-                plugin_info.status == PluginStatus.LOADED
-                and plugin_info.plugin_instance
-            ):
+            if plugin_info.status == PluginStatus.LOADED and plugin_info.plugin_instance:
                 solvers[solver_type] = {
                     "provider": f"plugin:{plugin_name}",
-                    "description": plugin_info.plugin_instance.get_solver_description(
-                        solver_type
-                    ),
-                    "parameters": plugin_info.plugin_instance.get_solver_parameters(
-                        solver_type
-                    ),
+                    "description": plugin_info.plugin_instance.get_solver_description(solver_type),
+                    "parameters": plugin_info.plugin_instance.get_solver_parameters(solver_type),
                 }
 
         return solvers
@@ -501,10 +479,7 @@ class PluginManager:
 
         for analysis_type, plugin_name in self.analysis_type_registry.items():
             plugin_info = self.plugins[plugin_name]
-            if (
-                plugin_info.status == PluginStatus.LOADED
-                and plugin_info.plugin_instance
-            ):
+            if plugin_info.status == PluginStatus.LOADED and plugin_info.plugin_instance:
                 analyses[analysis_type] = {
                     "provider": f"plugin:{plugin_name}",
                     "plugin_metadata": plugin_info.metadata,
@@ -580,9 +555,7 @@ class PluginManager:
                     if self.register_plugin(plugin_class):
                         discovered.append(entry_point.name)
                 except Exception as e:
-                    self.logger.error(
-                        f"Failed to load entry point plugin {entry_point.name}: {e}"
-                    )
+                    self.logger.error(f"Failed to load entry point plugin {entry_point.name}: {e}")
         except Exception as e:
             self.logger.warning(f"Error discovering entry point plugins: {e}")
 
@@ -601,9 +574,7 @@ class PluginManager:
 
             try:
                 # Dynamic import
-                spec = importlib.util.spec_from_file_location(
-                    plugin_file.stem, plugin_file
-                )
+                spec = importlib.util.spec_from_file_location(plugin_file.stem, plugin_file)
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
 
@@ -673,9 +644,7 @@ def discover_and_load_plugins(
     return manager.load_all_plugins()
 
 
-def create_solver_with_plugins(
-    problem, solver_type: str, config: Optional[MFGSolverConfig] = None, **kwargs
-):
+def create_solver_with_plugins(problem, solver_type: str, config: Optional[MFGSolverConfig] = None, **kwargs):
     """Create solver with plugin support."""
     return get_plugin_manager().create_solver(problem, solver_type, config, **kwargs)
 

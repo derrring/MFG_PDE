@@ -18,15 +18,9 @@ from ..utils.integration import trapezoid
 class ArrayValidationConfig(BaseModel):
     """Configuration for array validation tolerances and checks."""
 
-    mass_conservation_rtol: float = Field(
-        1e-3, gt=0.0, description="Relative tolerance for mass conservation"
-    )
-    smoothness_threshold: float = Field(
-        1e3, gt=0.0, description="Threshold for smoothness checking"
-    )
-    cfl_max: float = Field(
-        0.5, gt=0.0, le=1.0, description="Maximum CFL number allowed"
-    )
+    mass_conservation_rtol: float = Field(1e-3, gt=0.0, description="Relative tolerance for mass conservation")
+    smoothness_threshold: float = Field(1e3, gt=0.0, description="Threshold for smoothness checking")
+    cfl_max: float = Field(0.5, gt=0.0, le=1.0, description="Maximum CFL number allowed")
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -93,9 +87,7 @@ class MFGGridConfig(BaseModel):
                 cfl = v**2 * dt / (dx**2)
 
                 if cfl > 0.5:
-                    warnings.warn(
-                        f"CFL number {cfl:.3f} > 0.5 may cause instability", UserWarning
-                    )
+                    warnings.warn(f"CFL number {cfl:.3f} > 0.5 may cause instability", UserWarning)
 
         return v
 
@@ -128,9 +120,7 @@ class MFGArrays(BaseModel):
 
             # Shape validation
             if v.shape != expected_shape:
-                raise ValueError(
-                    f"U solution shape {v.shape} != expected {expected_shape}"
-                )
+                raise ValueError(f"U solution shape {v.shape} != expected {expected_shape}")
 
             # Data type validation
             if not np.issubdtype(v.dtype, np.floating):
@@ -170,9 +160,7 @@ class MFGArrays(BaseModel):
         """Validate FP density array properties."""
         if info.data:
             grid_config = info.data.get("grid_config")
-            validation_config = info.data.get(
-                "validation_config", ArrayValidationConfig()
-            )
+            validation_config = info.data.get("validation_config", ArrayValidationConfig())
         else:
             grid_config = None
             validation_config = ArrayValidationConfig()
@@ -182,9 +170,7 @@ class MFGArrays(BaseModel):
 
             # Shape validation
             if v.shape != expected_shape:
-                raise ValueError(
-                    f"M solution shape {v.shape} != expected {expected_shape}"
-                )
+                raise ValueError(f"M solution shape {v.shape} != expected {expected_shape}")
 
             # Data type validation
             if not np.issubdtype(v.dtype, np.floating):
@@ -209,9 +195,7 @@ class MFGArrays(BaseModel):
             dx = grid_config.dx
             for t_idx in range(v.shape[0]):
                 mass_at_t = trapezoid(v[t_idx], dx=dx)
-                if not np.isclose(
-                    mass_at_t, 1.0, rtol=validation_config.mass_conservation_rtol
-                ):
+                if not np.isclose(mass_at_t, 1.0, rtol=validation_config.mass_conservation_rtol):
                     if t_idx == 0:
                         # Initial condition
                         warnings.warn(
@@ -236,9 +220,7 @@ class MFGArrays(BaseModel):
         if U_solution is not None and M_solution is not None:
             # Shape consistency
             if U_solution.shape != M_solution.shape:
-                raise ValueError(
-                    f"U and M shape mismatch: {U_solution.shape} vs {M_solution.shape}"
-                )
+                raise ValueError(f"U and M shape mismatch: {U_solution.shape} vs {M_solution.shape}")
 
         return self
 
@@ -311,9 +293,7 @@ class CollocationConfig(BaseModel):
         """Validate collocation points properties."""
         # Shape validation
         if v.ndim != 2 or v.shape[1] != 1:
-            raise ValueError(
-                f"Collocation points must be Nx1 array, got shape {v.shape}"
-            )
+            raise ValueError(f"Collocation points must be Nx1 array, got shape {v.shape}")
 
         # Domain validation
         grid_config = info.data.get("grid_config") if info.data else None
@@ -370,12 +350,8 @@ class ExperimentConfig(BaseModel):
 
     # Core configurations
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
-    arrays: Optional[MFGArrays] = Field(
-        None, description="Solution arrays (if available)"
-    )
-    collocation: Optional[CollocationConfig] = Field(
-        None, description="Collocation configuration"
-    )
+    arrays: Optional[MFGArrays] = Field(None, description="Solution arrays (if available)")
+    collocation: Optional[CollocationConfig] = Field(None, description="Collocation configuration")
 
     # Experiment metadata
     experiment_name: str = Field(..., min_length=1, description="Experiment name")
@@ -395,9 +371,7 @@ class ExperimentConfig(BaseModel):
         import re
 
         if not re.match(r"^[a-zA-Z0-9_\-\.]+$", v):
-            raise ValueError(
-                "Experiment name must contain only letters, numbers, _, -, and ."
-            )
+            raise ValueError("Experiment name must contain only letters, numbers, _, -, and .")
         return v
 
     @model_validator(mode="after")

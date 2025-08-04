@@ -20,23 +20,18 @@ from .base_mfg_solver import MFGSolver
 from .fp_solvers import BaseFPSolver, FPFDMSolver, FPParticleSolver
 
 # Specialized solvers for advanced usage
-from .hjb_solvers import (
-    BaseHJBSolver,
-    HJBFDMSolver,
-    HJBGFDMSolver,
-    HJBSemiLagrangianSolver,
-)
+from .hjb_solvers import BaseHJBSolver, HJBFDMSolver, HJBGFDMSolver, HJBSemiLagrangianSolver
 
 # Complete MFG solvers (combinations of HJB + FP)
 from .mfg_solvers import (  # Fixed Point Iterators; Particle Collocation Solvers; Solver categories
-    AdaptiveParticleCollocationSolver,
     ALL_MFG_SOLVERS,
+    FIXED_POINT_SOLVERS,
+    PARTICLE_SOLVERS,
+    AdaptiveParticleCollocationSolver,
     ConfigAwareFixedPointIterator,
     EnhancedParticleCollocationSolver,
-    FIXED_POINT_SOLVERS,
     FixedPointIterator,
     MonitoredParticleCollocationSolver,
-    PARTICLE_SOLVERS,
     ParticleCollocationSolver,
 )
 

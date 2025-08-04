@@ -11,7 +11,7 @@ This design reflects that by wrapping existing solvers with AMR capability.
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -105,9 +105,7 @@ class AMREnhancedSolver:
             print(f"Starting AMR-enhanced {type(self.base_solver).__name__}")
             print(f"  Base solver: {type(self.base_solver).__name__}")
             print(f"  AMR mesh: {type(self.amr_mesh).__name__}")
-            print(
-                f"  Problem dimension: {getattr(self.problem, 'dimension', 'unknown')}"
-            )
+            print(f"  Problem dimension: {getattr(self.problem, 'dimension', 'unknown')}")
 
         # Main AMR iteration loop
         for amr_cycle in range(self.amr_config["max_adaptations"] + 1):
@@ -116,9 +114,7 @@ class AMREnhancedSolver:
                 self._print_mesh_status()
 
             # Solve on current mesh
-            solution_result = self._solve_on_current_mesh(
-                max_iterations, tolerance, verbose, **kwargs
-            )
+            solution_result = self._solve_on_current_mesh(max_iterations, tolerance, verbose, **kwargs)
 
             # Check convergence - if converged and no significant errors, we're done
             if solution_result.get("converged", False) and amr_cycle > 0:
@@ -129,9 +125,7 @@ class AMREnhancedSolver:
             # Skip adaptation on last allowed cycle
             if amr_cycle >= self.amr_config["max_adaptations"]:
                 if verbose:
-                    print(
-                        f"  Reached maximum AMR cycles ({self.amr_config['max_adaptations']})"
-                    )
+                    print(f"  Reached maximum AMR cycles ({self.amr_config['max_adaptations']})")
                 break
 
             # Estimate errors and adapt mesh
@@ -143,9 +137,7 @@ class AMREnhancedSolver:
                 break
             else:
                 # Transfer solution to new mesh
-                solution_result = self._transfer_solution_to_new_mesh(
-                    solution_result, adaptation_stats, verbose
-                )
+                solution_result = self._transfer_solution_to_new_mesh(solution_result, adaptation_stats, verbose)
                 self.current_mesh_generation += 1
 
         # Collect final results
@@ -156,9 +148,7 @@ class AMREnhancedSolver:
 
         return final_result
 
-    def _solve_on_current_mesh(
-        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs
-    ) -> Dict[str, Any]:
+    def _solve_on_current_mesh(self, max_iterations: int, tolerance: float, verbose: bool, **kwargs) -> Dict[str, Any]:
         """Solve using base solver on current mesh."""
         if verbose:
             current_mesh_size = self._get_current_mesh_size()
@@ -166,9 +156,7 @@ class AMREnhancedSolver:
 
         try:
             # Call base solver - handle different return formats
-            solver_result = self.base_solver.solve(
-                max_iterations=max_iterations, tolerance=tolerance, **kwargs
-            )
+            solver_result = self.base_solver.solve(max_iterations=max_iterations, tolerance=tolerance, **kwargs)
 
             # Normalize result format
             if isinstance(solver_result, tuple):
@@ -185,19 +173,13 @@ class AMREnhancedSolver:
                 # New format: already a dict
                 return solver_result
             else:
-                raise ValueError(
-                    f"Unexpected solver result format: {type(solver_result)}"
-                )
+                raise ValueError(f"Unexpected solver result format: {type(solver_result)}")
 
         except Exception as e:
             logger.error(f"Base solver failed: {e}")
-            raise RuntimeError(
-                f"Base solver {type(self.base_solver).__name__} failed: {e}"
-            )
+            raise RuntimeError(f"Base solver {type(self.base_solver).__name__} failed: {e}")
 
-    def _adapt_mesh_if_needed(
-        self, solution_result: Dict[str, Any], verbose: bool
-    ) -> Dict[str, Any]:
+    def _adapt_mesh_if_needed(self, solution_result: Dict[str, Any], verbose: bool) -> Dict[str, Any]:
         """Estimate errors and adapt mesh if refinement is needed."""
         try:
             # Extract solution data
@@ -215,9 +197,7 @@ class AMREnhancedSolver:
 
             # Record adaptation
             self.adaptation_history.append(stats)
-            self.total_adaptations += stats.get(
-                "total_refined", stats.get("total_adapted", 0)
-            )
+            self.total_adaptations += stats.get("total_refined", stats.get("total_adapted", 0))
 
             if verbose and stats.get("total_refined", 0) > 0:
                 print(f"  Adapted {stats.get('total_refined', 0)} elements")
@@ -264,15 +244,11 @@ class AMREnhancedSolver:
 
         if hasattr(self.amr_mesh, "get_mesh_statistics"):
             stats = self.amr_mesh.get_mesh_statistics()
-            print(
-                f"  Current mesh: {mesh_size} elements, {stats.get('max_level', 0)} levels"
-            )
+            print(f"  Current mesh: {mesh_size} elements, {stats.get('max_level', 0)} levels")
         else:
             print(f"  Current mesh: {mesh_size} elements")
 
-    def _collect_final_results(
-        self, solution_result: Dict[str, Any], verbose: bool
-    ) -> Dict[str, Any]:
+    def _collect_final_results(self, solution_result: Dict[str, Any], verbose: bool) -> Dict[str, Any]:
         """Collect comprehensive results including AMR statistics."""
 
         # Get final mesh statistics
@@ -340,10 +316,7 @@ def create_amr_enhanced_solver(
     """
     from ..geometry.amr_mesh import AdaptiveMesh, GradientErrorEstimator
     from ..geometry.domain_1d import Domain1D, periodic_bc
-    from ..geometry.one_dimensional_amr import (
-        create_1d_amr_mesh,
-        OneDimensionalErrorEstimator,
-    )
+    from ..geometry.one_dimensional_amr import OneDimensionalErrorEstimator, create_1d_amr_mesh
 
     problem = base_solver.problem
 
@@ -368,12 +341,8 @@ def create_amr_enhanced_solver(
 
         amr_mesh = create_1d_amr_mesh(
             domain_1d=domain_1d,
-            initial_intervals=(
-                amr_config.get("initial_intervals", 20) if amr_config else 20
-            ),
-            error_threshold=(
-                amr_config.get("error_threshold", 1e-4) if amr_config else 1e-4
-            ),
+            initial_intervals=(amr_config.get("initial_intervals", 20) if amr_config else 20),
+            error_threshold=(amr_config.get("error_threshold", 1e-4) if amr_config else 1e-4),
             max_levels=amr_config.get("max_levels", 5) if amr_config else 5,
         )
         error_estimator = OneDimensionalErrorEstimator()

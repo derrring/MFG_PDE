@@ -18,10 +18,7 @@ Architecture:
 from .adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from .config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from .damped_fixed_point_iterator import FixedPointIterator
-from .enhanced_particle_collocation_solver import (
-    EnhancedParticleCollocationSolver,
-    MonitoredParticleCollocationSolver,
-)
+from .enhanced_particle_collocation_solver import EnhancedParticleCollocationSolver, MonitoredParticleCollocationSolver
 from .particle_collocation_solver import ParticleCollocationSolver
 
 # Backward compatibility alias

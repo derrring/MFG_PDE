@@ -45,7 +45,7 @@ except ImportError:
 
 # Optional Polars integration
 try:
-    from ..utils.polars_integration import MFGDataFrame, POLARS_AVAILABLE
+    from ..utils.polars_integration import POLARS_AVAILABLE, MFGDataFrame
 except ImportError:
     POLARS_AVAILABLE = False
     MFGDataFrame = None
@@ -232,9 +232,7 @@ class MFGPlotlyVisualizer:
         param_values = [result.get(parameter_name, 0) for result in sweep_results]
         crater_depths = [result.get("crater_depth", 0) for result in sweep_results]
         spatial_spreads = [result.get("spatial_spread", 0) for result in sweep_results]
-        equilibrium_types = [
-            result.get("equilibrium_type", "Unknown") for result in sweep_results
-        ]
+        equilibrium_types = [result.get("equilibrium_type", "Unknown") for result in sweep_results]
 
         # Create subplots
         fig = make_subplots(
@@ -464,9 +462,7 @@ class MFGPlotlyVisualizer:
 
         return fig
 
-    def save_figure(
-        self, fig: go.Figure, filepath: Union[str, Path], format: str = "html", **kwargs
-    ) -> None:
+    def save_figure(self, fig: go.Figure, filepath: Union[str, Path], format: str = "html", **kwargs) -> None:
         """
         Save Plotly figure to file.
 
@@ -542,9 +538,7 @@ class MFGBokehVisualizer:
         source = ColumnDataSource(data=dict(x=x_flat, y=t_flat, density=density_flat))
 
         # Create color mapper
-        color_mapper = LinearColorMapper(
-            palette=Viridis256, low=np.min(density_flat), high=np.max(density_flat)
-        )
+        color_mapper = LinearColorMapper(palette=Viridis256, low=np.min(density_flat), high=np.max(density_flat))
 
         # Create figure
         p = figure(
@@ -616,15 +610,11 @@ class MFGBokehVisualizer:
         )
 
         # Add line plot
-        p.line(
-            "iterations", "errors", line_width=2, color="blue", alpha=0.8, source=source
-        )
+        p.line("iterations", "errors", line_width=2, color="blue", alpha=0.8, source=source)
         p.circle("iterations", "errors", size=6, color="blue", alpha=0.6, source=source)
 
         # Add hover tool
-        hover = HoverTool(
-            tooltips=[("Iteration", "@iterations"), ("Error", "@errors{0.0000e+00}")]
-        )
+        hover = HoverTool(tooltips=[("Iteration", "@iterations"), ("Error", "@errors{0.0000e+00}")])
         p.add_tools(hover)
 
         return p
@@ -651,9 +641,7 @@ class MFGBokehVisualizer:
             Bokeh layout object
         """
         # Create data sources
-        main_source = ColumnDataSource(
-            data=dict(x=x_grid, density=density, value_func=value_func)
-        )
+        main_source = ColumnDataSource(data=dict(x=x_grid, density=density, value_func=value_func))
 
         # Density plot
         p1 = figure(
@@ -700,9 +688,7 @@ class MFGBokehVisualizer:
             iterations = convergence_data.get("iterations", np.array([]))
             errors = convergence_data.get("errors", np.array([]))
 
-            conv_source = ColumnDataSource(
-                data=dict(iterations=iterations, errors=errors)
-            )
+            conv_source = ColumnDataSource(data=dict(iterations=iterations, errors=errors))
 
             p3 = figure(
                 title="Convergence History",
@@ -713,9 +699,7 @@ class MFGBokehVisualizer:
                 height=300,
                 tools=self.default_tools,
             )
-            p3.line(
-                "iterations", "errors", line_width=2, color="green", source=conv_source
-            )
+            p3.line("iterations", "errors", line_width=2, color="green", source=conv_source)
             p3.circle(
                 "iterations",
                 "errors",
@@ -809,9 +793,7 @@ class MFGVisualizationManager:
                 logger.warning(f"Failed to initialize Bokeh visualizer: {e}")
 
         if not self.plotly_viz and not self.bokeh_viz:
-            raise ImportError(
-                "No visualization libraries available. Install plotly and/or bokeh"
-            )
+            raise ImportError("No visualization libraries available. Install plotly and/or bokeh")
 
     def get_available_backends(self) -> List[str]:
         """Get list of available visualization backends."""
@@ -846,13 +828,9 @@ class MFGVisualizationManager:
         backend = self._select_backend(backend)
 
         if backend == "plotly" and self.plotly_viz:
-            return self.plotly_viz.plot_density_evolution_2d(
-                x_grid, time_grid, density_history, title
-            )
+            return self.plotly_viz.plot_density_evolution_2d(x_grid, time_grid, density_history, title)
         elif backend == "bokeh" and self.bokeh_viz:
-            return self.bokeh_viz.plot_density_heatmap(
-                x_grid, time_grid, density_history, title
-            )
+            return self.bokeh_viz.plot_density_heatmap(x_grid, time_grid, density_history, title)
         else:
             raise ValueError(f"Backend {backend} not available")
 
@@ -881,13 +859,9 @@ class MFGVisualizationManager:
             raise ValueError("3D surface plots require Plotly")
 
         if data_type == "density":
-            return self.plotly_viz.plot_density_surface_3d(
-                x_grid, time_grid, data, title
-            )
+            return self.plotly_viz.plot_density_surface_3d(x_grid, time_grid, data, title)
         elif data_type == "value":
-            return self.plotly_viz.plot_value_function_3d(
-                x_grid, time_grid, data, title
-            )
+            return self.plotly_viz.plot_value_function_3d(x_grid, time_grid, data, title)
         else:
             raise ValueError(f"Unknown data type: {data_type}")
 
@@ -911,9 +885,7 @@ class MFGVisualizationManager:
         backend = self._select_backend(backend)
 
         if backend == "plotly" and self.plotly_viz:
-            return self.plotly_viz.create_parameter_sweep_dashboard(
-                sweep_results, parameter_name
-            )
+            return self.plotly_viz.create_parameter_sweep_dashboard(sweep_results, parameter_name)
         else:
             # For Bokeh, create simpler dashboard
             if not self.bokeh_viz:
@@ -1079,9 +1051,7 @@ def quick_2d_plot(
 ) -> Union[go.Figure, Any]:
     """Quick 2D density plot creation."""
     viz_manager = create_visualization_manager()
-    return viz_manager.create_2d_density_plot(
-        x_grid, time_grid, density_history, backend, title
-    )
+    return viz_manager.create_2d_density_plot(x_grid, time_grid, density_history, backend, title)
 
 
 def quick_3d_plot(

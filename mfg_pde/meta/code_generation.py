@@ -217,9 +217,7 @@ class Generated{solver_name}(BaseMFGSolver):
             newton_code=newton_code,
         )
 
-    def generate_fp_solver(
-        self, name: str, discretization: DiscretizationScheme
-    ) -> str:
+    def generate_fp_solver(self, name: str, discretization: DiscretizationScheme) -> str:
         """Generate Fokker-Planck solver class."""
 
         divergence_code = self._generate_divergence_code(discretization)
@@ -467,21 +465,15 @@ def generate_solver_class(
         hamiltonian_code = "0.5 * p**2"  # Default quadratic
 
     # Get discretization schemes
-    hjb_scheme = discretization_schemes.get(
-        "gradient", DiscretizationScheme("gradient", 2, [-1, 0, 1], [-0.5, 0, 0.5])
-    )
+    hjb_scheme = discretization_schemes.get("gradient", DiscretizationScheme("gradient", 2, [-1, 0, 1], [-0.5, 0, 0.5]))
     fp_scheme = discretization_schemes.get(
         "divergence", DiscretizationScheme("divergence", 2, [-1, 0, 1], [-0.5, 0, 0.5])
     )
 
-    return generator.generate_complete_solver(
-        solver_name, hjb_scheme, fp_scheme, hamiltonian_code
-    )
+    return generator.generate_complete_solver(solver_name, hjb_scheme, fp_scheme, hamiltonian_code)
 
 
-def generate_discretization(
-    operator: str, order: int, domain_type: str = "interval"
-) -> DiscretizationScheme:
+def generate_discretization(operator: str, order: int, domain_type: str = "interval") -> DiscretizationScheme:
     """
     Generate discretization scheme for given operator and order.
 
@@ -497,9 +489,7 @@ def generate_discretization(
         if order == 2:
             return DiscretizationScheme("gradient", 2, [-1, 1], [-0.5, 0.5])
         elif order == 4:
-            return DiscretizationScheme(
-                "gradient", 4, [-2, -1, 1, 2], [1 / 12, -8 / 12, 8 / 12, -1 / 12]
-            )
+            return DiscretizationScheme("gradient", 4, [-2, -1, 1, 2], [1 / 12, -8 / 12, 8 / 12, -1 / 12])
         else:
             raise ValueError(f"Unsupported gradient order: {order}")
 
@@ -534,9 +524,7 @@ def test_code_generation():
     schemes = {
         "gradient": generate_discretization("gradient", 2),
         "laplacian": generate_discretization("laplacian", 2),
-        "divergence": generate_discretization(
-            "gradient", 2
-        ),  # Divergence uses gradient
+        "divergence": generate_discretization("gradient", 2),  # Divergence uses gradient
     }
 
     # Generate solver

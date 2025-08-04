@@ -64,9 +64,7 @@ def create_workflow(name: str, description: str = "", **kwargs) -> Workflow:
     return get_workflow_manager().create_workflow(name, description, **kwargs)
 
 
-def create_experiment(
-    name: str, workflow: Optional[Workflow] = None, **kwargs
-) -> Experiment:
+def create_experiment(name: str, workflow: Optional[Workflow] = None, **kwargs) -> Experiment:
     """Create a new experiment."""
     tracker = ExperimentTracker()
     return tracker.create_experiment(name, workflow=workflow, **kwargs)
@@ -77,9 +75,7 @@ def create_parameter_sweep(parameters: Dict[str, Any], **kwargs) -> ParameterSwe
     return ParameterSweep(parameters, **kwargs)
 
 
-def create_workspace(
-    name: str, description: str = "", **kwargs
-) -> CollaborativeWorkspace:
+def create_workspace(name: str, description: str = "", **kwargs) -> CollaborativeWorkspace:
     """Create a collaborative workspace."""
     config = WorkspaceConfig(name=name, description=description, **kwargs)
     return CollaborativeWorkspace(config)
@@ -91,9 +87,7 @@ def analyze_results(experiments: List[Experiment], **kwargs) -> ComparisonReport
     return analyzer.compare_experiments(experiments, **kwargs)
 
 
-def generate_report(
-    experiments: List[Experiment], format: str = "html", **kwargs
-) -> str:
+def generate_report(experiments: List[Experiment], format: str = "html", **kwargs) -> str:
     """Generate comprehensive report from experiments."""
     generator = ReportGenerator()
     config = ReportConfig(format=format, **kwargs)
@@ -145,9 +139,7 @@ def mfg_parameter_study(
     return workflow, results
 
 
-def convergence_analysis_workflow(
-    problem, solver_types: List[str], tolerances: List[float], **kwargs
-):
+def convergence_analysis_workflow(problem, solver_types: List[str], tolerances: List[float], **kwargs):
     """
     Workflow for analyzing convergence across different solvers and tolerances.
 
@@ -196,9 +188,7 @@ def convergence_analysis_workflow(
     return workflow, results
 
 
-def performance_benchmark_workflow(
-    problem_sizes: List[tuple], solver_types: List[str], **kwargs
-):
+def performance_benchmark_workflow(problem_sizes: List[tuple], solver_types: List[str], **kwargs):
     """
     Workflow for performance benchmarking across problem sizes and solvers.
 
@@ -223,7 +213,7 @@ def performance_benchmark_workflow(
     def benchmark_performance(params):
         import time
 
-        from mfg_pde import create_fast_solver, ExampleMFGProblem
+        from mfg_pde import ExampleMFGProblem, create_fast_solver
 
         Nx, Nt = params["problem_size"]
         problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=1.0)

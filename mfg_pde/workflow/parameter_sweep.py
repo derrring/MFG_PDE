@@ -12,13 +12,14 @@ import logging
 import multiprocessing as mp
 import pickle
 import time
-from concurrent.futures import as_completed, ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import numpy as np
 import pandas as pd
+
+import numpy as np
 
 
 @dataclass
@@ -26,9 +27,7 @@ class SweepConfiguration:
     """Configuration for parameter sweep execution."""
 
     parameters: Dict[str, List[Any]]
-    execution_mode: str = (
-        "sequential"  # "sequential", "parallel_threads", "parallel_processes"
-    )
+    execution_mode: str = "sequential"  # "sequential", "parallel_threads", "parallel_processes"
     max_workers: Optional[int] = None
     batch_size: Optional[int] = None
     save_intermediate: bool = True
@@ -56,9 +55,7 @@ class ParameterSweep:
     including grid search, random sampling, and adaptive methods.
     """
 
-    def __init__(
-        self, parameters: Dict[str, Any], config: Optional[SweepConfiguration] = None
-    ):
+    def __init__(self, parameters: Dict[str, Any], config: Optional[SweepConfiguration] = None):
         """
         Initialize parameter sweep.
 
@@ -85,9 +82,7 @@ class ParameterSweep:
         # Setup logging
         self.logger = self._setup_logging()
 
-        self.logger.info(
-            f"Initialized parameter sweep with {self.total_combinations} combinations"
-        )
+        self.logger.info(f"Initialized parameter sweep with {self.total_combinations} combinations")
 
     def _generate_combinations(self) -> List[Dict[str, Any]]:
         """Generate all parameter combinations."""
@@ -122,9 +117,7 @@ class ParameterSweep:
         Returns:
             List of results for each parameter combination
         """
-        self.logger.info(
-            f"Starting parameter sweep execution with {self.total_combinations} combinations"
-        )
+        self.logger.info(f"Starting parameter sweep execution with {self.total_combinations} combinations")
 
         self.start_time = time.time()
 
@@ -136,9 +129,7 @@ class ParameterSweep:
             elif self.config.execution_mode == "parallel_processes":
                 results = self._execute_parallel_processes(function, **kwargs)
             else:
-                raise ValueError(
-                    f"Unknown execution mode: {self.config.execution_mode}"
-                )
+                raise ValueError(f"Unknown execution mode: {self.config.execution_mode}")
 
             self.end_time = time.time()
 
@@ -146,12 +137,8 @@ class ParameterSweep:
             if self.config.save_intermediate:
                 self._save_results()
 
-            self.logger.info(
-                f"Parameter sweep completed in {self.end_time - self.start_time:.2f}s"
-            )
-            self.logger.info(
-                f"Successful runs: {len(self.results)}/{self.total_combinations}"
-            )
+            self.logger.info(f"Parameter sweep completed in {self.end_time - self.start_time:.2f}s")
+            self.logger.info(f"Successful runs: {len(self.results)}/{self.total_combinations}")
 
             return self.results
 
@@ -162,9 +149,7 @@ class ParameterSweep:
     def _execute_sequential(self, function: Callable, **kwargs) -> List[Dict[str, Any]]:
         """Execute parameter sweep sequentially."""
         for i, params in enumerate(self.parameter_combinations):
-            self.logger.info(
-                f"Executing combination {i+1}/{self.total_combinations}: {params}"
-            )
+            self.logger.info(f"Executing combination {i+1}/{self.total_combinations}: {params}")
 
             result = self._execute_single(function, params, run_id=i, **kwargs)
 
@@ -181,17 +166,13 @@ class ParameterSweep:
 
         return self.results
 
-    def _execute_parallel_threads(
-        self, function: Callable, **kwargs
-    ) -> List[Dict[str, Any]]:
+    def _execute_parallel_threads(self, function: Callable, **kwargs) -> List[Dict[str, Any]]:
         """Execute parameter sweep using thread pool."""
         with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
             # Submit all tasks
             future_to_params = {}
             for i, params in enumerate(self.parameter_combinations):
-                future = executor.submit(
-                    self._execute_single, function, params, run_id=i, **kwargs
-                )
+                future = executor.submit(self._execute_single, function, params, run_id=i, **kwargs)
                 future_to_params[future] = (i, params)
 
             # Collect results as they complete
@@ -208,9 +189,7 @@ class ParameterSweep:
 
                     self.completed_runs += 1
 
-                    self.logger.info(
-                        f"Completed {self.completed_runs}/{self.total_combinations}: {params}"
-                    )
+                    self.logger.info(f"Completed {self.completed_runs}/{self.total_combinations}: {params}")
 
                     # Save intermediate results
                     if self.config.save_intermediate and self.completed_runs % 10 == 0:
@@ -230,9 +209,7 @@ class ParameterSweep:
 
         return self.results
 
-    def _execute_parallel_processes(
-        self, function: Callable, **kwargs
-    ) -> List[Dict[str, Any]]:
+    def _execute_parallel_processes(self, function: Callable, **kwargs) -> List[Dict[str, Any]]:
         """Execute parameter sweep using process pool."""
 
         # Create worker function that can be pickled
@@ -242,10 +219,7 @@ class ParameterSweep:
 
         with ProcessPoolExecutor(max_workers=self.config.max_workers) as executor:
             # Prepare arguments for each worker
-            worker_args = [
-                (function, params, i, kwargs)
-                for i, params in enumerate(self.parameter_combinations)
-            ]
+            worker_args = [(function, params, i, kwargs) for i, params in enumerate(self.parameter_combinations)]
 
             # Submit all tasks
             futures = [executor.submit(worker_function, args) for args in worker_args]
@@ -263,9 +237,7 @@ class ParameterSweep:
                     self.completed_runs += 1
 
                     params = self.parameter_combinations[result["run_id"]]
-                    self.logger.info(
-                        f"Completed {self.completed_runs}/{self.total_combinations}: {params}"
-                    )
+                    self.logger.info(f"Completed {self.completed_runs}/{self.total_combinations}: {params}")
 
                     # Save intermediate results
                     if self.config.save_intermediate and self.completed_runs % 10 == 0:
@@ -285,9 +257,7 @@ class ParameterSweep:
 
         return self.results
 
-    def _execute_single(
-        self, function: Callable, params: Dict[str, Any], run_id: int, **kwargs
-    ) -> Dict[str, Any]:
+    def _execute_single(self, function: Callable, params: Dict[str, Any], run_id: int, **kwargs) -> Dict[str, Any]:
         """Execute function with single parameter combination."""
         start_time = time.time()
 
@@ -329,9 +299,7 @@ class ParameterSweep:
             if self.config.retry_failed and hasattr(self, "_retry_count"):
                 if self._retry_count.get(run_id, 0) < self.config.max_retries:
                     self._retry_count[run_id] = self._retry_count.get(run_id, 0) + 1
-                    self.logger.warning(
-                        f"Retrying run {run_id} (attempt {self._retry_count[run_id]})"
-                    )
+                    self.logger.warning(f"Retrying run {run_id} (attempt {self._retry_count[run_id]})")
                     return self._execute_single(function, params, run_id, **kwargs)
 
             return error_record
@@ -347,12 +315,8 @@ class ParameterSweep:
                 "successful_runs": len(self.results),
                 "failed_runs": len(self.failed_runs),
                 "success_rate": len(self.results) / self.total_combinations,
-                "total_time": (
-                    self.end_time - self.start_time if self.end_time else None
-                ),
-                "average_time_per_run": np.mean(
-                    [r["execution_time"] for r in self.results]
-                ),
+                "total_time": (self.end_time - self.start_time if self.end_time else None),
+                "average_time_per_run": np.mean([r["execution_time"] for r in self.results]),
             },
             "parameter_analysis": {},
             "performance_analysis": {},
@@ -373,9 +337,7 @@ class ParameterSweep:
         # Get numeric result columns
         numeric_columns = df.select_dtypes(include=[np.number]).columns
         result_columns = [
-            col
-            for col in numeric_columns
-            if col not in list(self.parameters.keys()) + ["run_id", "execution_time"]
+            col for col in numeric_columns if col not in list(self.parameters.keys()) + ["run_id", "execution_time"]
         ]
 
         for param_name in self.parameters.keys():
@@ -385,9 +347,7 @@ class ParameterSweep:
                 for result_col in result_columns:
                     if result_col in df.columns:
                         # Group by parameter value and compute statistics
-                        grouped = df.groupby(param_name)[result_col].agg(
-                            ["mean", "std", "min", "max"]
-                        )
+                        grouped = df.groupby(param_name)[result_col].agg(["mean", "std", "min", "max"])
                         param_effects[result_col] = grouped.to_dict()
 
                 effects[param_name] = param_effects
@@ -501,9 +461,7 @@ class ParameterSweep:
             "total_combinations": self.total_combinations,
             "successful_runs": len(self.results),
             "failed_runs": len(self.failed_runs),
-            "execution_time": (
-                self.end_time - self.start_time if self.end_time else None
-            ),
+            "execution_time": (self.end_time - self.start_time if self.end_time else None),
         }
 
         with open(json_file, "w") as f:
@@ -523,9 +481,7 @@ class ParameterSweep:
             "successful_runs": len(self.results),
             "failed_runs": len(self.failed_runs),
             "progress": self.completed_runs / self.total_combinations,
-            "latest_results": (
-                self.results[-5:] if len(self.results) >= 5 else self.results
-            ),
+            "latest_results": (self.results[-5:] if len(self.results) >= 5 else self.results),
         }
 
         with open(intermediate_file, "w") as f:
@@ -547,9 +503,7 @@ class ParameterSweep:
             console_handler.setLevel(logging.INFO)
 
             # Formatter
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             file_handler.setFormatter(formatter)
             console_handler.setFormatter(formatter)
 
@@ -564,9 +518,7 @@ def create_grid_sweep(parameters: Dict[str, List]) -> ParameterSweep:
     return ParameterSweep(parameters)
 
 
-def create_random_sweep(
-    parameters: Dict[str, Tuple], n_samples: int = 100
-) -> ParameterSweep:
+def create_random_sweep(parameters: Dict[str, Tuple], n_samples: int = 100) -> ParameterSweep:
     """
     Create a random parameter sweep.
 
@@ -579,14 +531,10 @@ def create_random_sweep(
     for param_name, (min_val, max_val) in parameters.items():
         if isinstance(min_val, int) and isinstance(max_val, int):
             # Integer parameters
-            random_params[param_name] = np.random.randint(
-                min_val, max_val + 1, size=n_samples
-            )
+            random_params[param_name] = np.random.randint(min_val, max_val + 1, size=n_samples)
         else:
             # Float parameters
-            random_params[param_name] = np.random.uniform(
-                min_val, max_val, size=n_samples
-            )
+            random_params[param_name] = np.random.uniform(min_val, max_val, size=n_samples)
 
     return ParameterSweep(random_params)
 

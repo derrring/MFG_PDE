@@ -42,9 +42,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
         self.logger = get_logger(__name__)
 
         if not PYDANTIC_AVAILABLE:
-            self.logger.warning(
-                "Pydantic not available - falling back to basic notebook reporting"
-            )
+            self.logger.warning("Pydantic not available - falling back to basic notebook reporting")
 
     def create_enhanced_mfg_report(
         self,
@@ -76,9 +74,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
         try:
             # Validate experiment configuration
             if not isinstance(experiment_config, ExperimentConfig):
-                raise NotebookReportError(
-                    "experiment_config must be ExperimentConfig instance"
-                )
+                raise NotebookReportError("experiment_config must be ExperimentConfig instance")
 
             # Extract validated configuration
             validated_config = experiment_config.dict()
@@ -184,9 +180,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
             cells.append(
                 {
                     "cell_type": "code",
-                    "source": self._create_enhanced_visualization_code(
-                        experiment_config, solver_results
-                    ),
+                    "source": self._create_enhanced_visualization_code(experiment_config, solver_results),
                 }
             )
 
@@ -194,9 +188,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
             cells.append(
                 {
                     "cell_type": "markdown",
-                    "source": self._create_array_validation_section(
-                        experiment_config.arrays
-                    ),
+                    "source": self._create_array_validation_section(experiment_config.arrays),
                 }
             )
 
@@ -207,17 +199,13 @@ class PydanticNotebookReporter(MFGNotebookReporter):
         cells.append(
             {
                 "cell_type": "markdown",
-                "source": self._create_enhanced_conclusions_section(
-                    experiment_config, solver_results
-                ),
+                "source": self._create_enhanced_conclusions_section(experiment_config, solver_results),
             }
         )
 
         return cells
 
-    def _create_enhanced_title_section(
-        self, title: str, experiment_config: "ExperimentConfig"
-    ) -> str:
+    def _create_enhanced_title_section(self, title: str, experiment_config: "ExperimentConfig") -> str:
         """Create enhanced title section with experiment metadata."""
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -244,9 +232,7 @@ This report uses **Pydantic-validated configurations** ensuring:
 **Tags**: {', '.join(experiment_config.tags) if experiment_config.tags else 'None'}
 """
 
-    def _create_validation_report_section(
-        self, experiment_config: "ExperimentConfig"
-    ) -> str:
+    def _create_validation_report_section(self, experiment_config: "ExperimentConfig") -> str:
         """Create comprehensive validation report section."""
         grid_config = experiment_config.grid_config
 
@@ -290,9 +276,7 @@ SUCCESS: **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.c
 
         return validation_report
 
-    def _create_enhanced_config_code_section(
-        self, experiment_config: "ExperimentConfig"
-    ) -> str:
+    def _create_enhanced_config_code_section(self, experiment_config: "ExperimentConfig") -> str:
         """Create enhanced configuration code section with Pydantic serialization."""
         return f"""# Configuration Management with Pydantic
 
@@ -314,9 +298,7 @@ print("\\nJSON-serialized configuration:")
 print(config_json[:200] + "..." if len(config_json) > 200 else config_json)
 """
 
-    def _create_numerical_analysis_section(
-        self, experiment_config: "ExperimentConfig"
-    ) -> str:
+    def _create_numerical_analysis_section(self, experiment_config: "ExperimentConfig") -> str:
         """Create numerical analysis section with stability analysis."""
         grid_config = experiment_config.grid_config
 

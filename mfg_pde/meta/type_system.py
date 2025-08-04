@@ -81,16 +81,10 @@ class MFGType:
             return False
 
         # Additional compatibility checks
-        if (
-            method == NumericalMethod.SPECTRAL
-            and self.state_space != MathematicalSpace.TORUS
-        ):
+        if method == NumericalMethod.SPECTRAL and self.state_space != MathematicalSpace.TORUS:
             return False
 
-        if (
-            method == NumericalMethod.PARTICLE
-            and self.density_space != MathematicalSpace.PROBABILITY_MEASURES
-        ):
+        if method == NumericalMethod.PARTICLE and self.density_space != MathematicalSpace.PROBABILITY_MEASURES:
             return False
 
         return True
@@ -113,9 +107,7 @@ class TypedMFGProblem(Generic[T]):
     automatic solver selection and optimization.
     """
 
-    def __init__(
-        self, problem_data: Any, mfg_type: MFGType, type_parameter: Type[T] = None
-    ):
+    def __init__(self, problem_data: Any, mfg_type: MFGType, type_parameter: Type[T] = None):
         self.problem_data = problem_data
         self.mfg_type = mfg_type
         self.type_parameter = type_parameter
@@ -165,9 +157,7 @@ class TypedMFGProblem(Generic[T]):
         if "max_dt" in constraints:
             max_dt = constraints["max_dt"]
             if hasattr(self.problem_data, "dt") and self.problem_data.dt > max_dt:
-                raise TypeError(
-                    f"Time step {self.problem_data.dt} exceeds stability limit {max_dt}"
-                )
+                raise TypeError(f"Time step {self.problem_data.dt} exceeds stability limit {max_dt}")
 
     def get_compatible_solvers(self) -> List[Type]:
         """Get list of solver types compatible with this problem type."""
@@ -261,9 +251,7 @@ class SolverMetaclass(type):
                     raise TypeError("Problem fails type validation")
 
                 if not problem.mfg_type.is_compatible_with(self.method_type):
-                    raise TypeError(
-                        f"Solver {type(self).__name__} incompatible with problem type"
-                    )
+                    raise TypeError(f"Solver {type(self).__name__} incompatible with problem type")
 
             return solve_method(self, problem, *args, **kwargs)
 
@@ -426,9 +414,7 @@ def create_typed_problem(problem, mfg_type: MFGType = None) -> TypedMFGProblem:
     return TypedMFGProblem(problem, mfg_type)
 
 
-def dispatch_solver(
-    problem: TypedMFGProblem, method_preference: Optional[NumericalMethod] = None
-) -> DynamicSolver:
+def dispatch_solver(problem: TypedMFGProblem, method_preference: Optional[NumericalMethod] = None) -> DynamicSolver:
     """Automatically dispatch appropriate solver for typed problem."""
     if method_preference:
         solver_class = SolverRegistry.get_solver_for_method(method_preference)

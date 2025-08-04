@@ -28,9 +28,7 @@ class BackendFactory:
         return create_backend(backend_name, **kwargs)
 
     @staticmethod
-    def create_optimal_backend(
-        problem: MFGProblem, prefer_gpu: bool = True, precision: str = "float64"
-    ) -> Any:
+    def create_optimal_backend(problem: MFGProblem, prefer_gpu: bool = True, precision: str = "float64") -> Any:
         """
         Create optimal backend based on problem characteristics.
 
@@ -58,9 +56,7 @@ class BackendFactory:
             return create_backend("numpy", precision=precision)
 
     @staticmethod
-    def benchmark_backends(
-        problem: MFGProblem, backends: Optional[list] = None
-    ) -> Dict[str, Any]:
+    def benchmark_backends(problem: MFGProblem, backends: Optional[list] = None) -> Dict[str, Any]:
         """
         Benchmark available backends on a given problem.
 
@@ -132,11 +128,7 @@ class BackendFactory:
 
         recommendations = {
             "problem_size": total_size,
-            "size_category": (
-                "small"
-                if total_size < 10000
-                else "medium" if total_size < 100000 else "large"
-            ),
+            "size_category": ("small" if total_size < 10000 else "medium" if total_size < 100000 else "large"),
             "available_backends": available,
             "recommendations": [],
         }
@@ -193,9 +185,7 @@ class BackendFactory:
         return recommendations
 
 
-def create_backend_for_problem(
-    problem: MFGProblem, backend: str = "auto", **kwargs
-) -> Any:
+def create_backend_for_problem(problem: MFGProblem, backend: str = "auto", **kwargs) -> Any:
     """
     Convenience function to create backend for a specific problem.
 
@@ -252,9 +242,7 @@ if __name__ == "__main__":
     print(f"\n Backend Recommendations for Test Problem:")
     recommendations = BackendFactory.get_backend_recommendations(problem)
 
-    print(
-        f"Problem size: {recommendations['problem_size']} ({recommendations['size_category']})"
-    )
+    print(f"Problem size: {recommendations['problem_size']} ({recommendations['size_category']})")
     print(f"Recommendations:")
     for i, rec in enumerate(recommendations["recommendations"], 1):
         print(f"  {i}. {rec['backend']} - {rec['reason']}")
