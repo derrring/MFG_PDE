@@ -102,8 +102,8 @@ exclude = ["examples*", "tests*", "benchmarks*", "docs*", "archive*"] # Exclude 
 # =============================================================================
 
 [tool.black]
-line-length = 88
-target-version = ['py39']
+line-length = 100
+target-version = ['py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -124,10 +124,11 @@ extend-exclude = '''
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-line_length = 88
+line_length = 100
 known_first_party = ["mfg_pde"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-force_alphabetical_sort_within_sections = true
+known_scientific = ["numpy", "scipy", "matplotlib", "plotly", "jax", "jaxlib"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "SCIENTIFIC", "FIRSTPARTY", "LOCALFOLDER"]
+# Removed force_alphabetical_sort_within_sections for scientific code readability
 
 [tool.mypy]
 python_version = "3.9"
@@ -158,7 +159,7 @@ disable = [
 ]
 
 [tool.pylint.format]
-max-line-length = 88
+max-line-length = 100
 good-names = [
     "i", "j", "k",           # Loop indices
     "x", "y", "z", "t",      # Coordinates and time
