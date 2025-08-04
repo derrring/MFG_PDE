@@ -9,7 +9,7 @@ import warnings
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..utils.integration import trapezoid
 
@@ -169,7 +169,9 @@ class MFGArrays(BaseModel):
         """Validate FP density array properties."""
         if info.data:
             grid_config = info.data.get("grid_config")
-            validation_config = info.data.get("validation_config", ArrayValidationConfig())
+            validation_config = info.data.get(
+                "validation_config", ArrayValidationConfig()
+            )
         else:
             grid_config = None
             validation_config = ArrayValidationConfig()
@@ -288,10 +290,7 @@ class MFGArrays(BaseModel):
 
         return stats
 
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True
-    )
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
 
 class CollocationConfig(BaseModel):
@@ -357,10 +356,7 @@ class CollocationConfig(BaseModel):
 
         return v
 
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True
-    )
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
 
 class ExperimentConfig(BaseModel):
@@ -444,7 +440,4 @@ class ExperimentConfig(BaseModel):
 
         return metadata
 
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True
-    )
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)

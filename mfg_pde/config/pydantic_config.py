@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class NewtonConfig(BaseModel):
@@ -77,10 +77,7 @@ class NewtonConfig(BaseModel):
             max_iterations=100, tolerance=1e-10, damping_factor=1.0, verbose=True
         )
 
-    model_config = ConfigDict(
-        env_prefix="MFG_NEWTON_",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(env_prefix="MFG_NEWTON_", validate_assignment=True)
 
 
 class PicardConfig(BaseModel):
@@ -127,10 +124,7 @@ class PicardConfig(BaseModel):
         """Create configuration optimized for accuracy."""
         return cls(max_iterations=100, tolerance=1e-6, damping_factor=0.3)
 
-    model_config = ConfigDict(
-        env_prefix="MFG_PICARD_",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(env_prefix="MFG_PICARD_", validate_assignment=True)
 
 
 class GFDMConfig(BaseModel):
@@ -173,10 +167,7 @@ class GFDMConfig(BaseModel):
             warnings.warn(f"Large delta ({v:.3f}) may reduce accuracy", UserWarning)
         return v
 
-    model_config = ConfigDict(
-        env_prefix="MFG_GFDM_",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(env_prefix="MFG_GFDM_", validate_assignment=True)
 
 
 class ParticleConfig(BaseModel):
@@ -235,10 +226,7 @@ class ParticleConfig(BaseModel):
             )
         return v
 
-    model_config = ConfigDict(
-        env_prefix="MFG_PARTICLE_",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(env_prefix="MFG_PARTICLE_", validate_assignment=True)
 
 
 class HJBConfig(BaseModel):
@@ -282,10 +270,7 @@ class HJBConfig(BaseModel):
 
         return self
 
-    model_config = ConfigDict(
-        env_prefix="MFG_HJB_",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(env_prefix="MFG_HJB_", validate_assignment=True)
 
 
 class FPConfig(BaseModel):
@@ -320,10 +305,7 @@ class FPConfig(BaseModel):
             raise ValueError(f"Time integration must be one of {allowed_methods}")
         return v
 
-    model_config = ConfigDict(
-        env_prefix="MFG_FP_",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(env_prefix="MFG_FP_", validate_assignment=True)
 
 
 class MFGSolverConfig(BaseModel):
@@ -466,10 +448,7 @@ class MFGSolverConfig(BaseModel):
             enable_warm_start=True,
         )
 
-    model_config = ConfigDict(
-        env_prefix="MFG_",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(env_prefix="MFG_", validate_assignment=True)
 
 
 # Convenience factory functions for backward compatibility

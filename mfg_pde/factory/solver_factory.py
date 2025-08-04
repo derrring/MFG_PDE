@@ -122,9 +122,14 @@ class SolverFactory:
                 "Problem cannot be None. Please provide a valid MFGProblem instance.\n"
                 "Example: problem = ExampleMFGProblem(Nx=50, Nt=100, T=1.0)"
             )
-        
+
         # Validate solver type with helpful suggestions
-        valid_types = ["fixed_point", "particle_collocation", "monitored_particle", "adaptive_particle"]
+        valid_types = [
+            "fixed_point",
+            "particle_collocation",
+            "monitored_particle",
+            "adaptive_particle",
+        ]
         if solver_type not in valid_types:
             suggestions = "\n".join([f"  • {t}" for t in valid_types])
             raise ValueError(
@@ -174,7 +179,7 @@ class SolverFactory:
                 f"Valid presets are:\n{suggestions}\n\n"
                 f"Example: create_fast_solver(problem, config_preset='fast')"
             )
-            
+
         if preset == "fast":
             return create_fast_config()
         elif preset == "accurate":
