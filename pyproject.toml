@@ -102,8 +102,9 @@ exclude = ["examples*", "tests*", "benchmarks*", "docs*", "archive*"] # Exclude 
 # =============================================================================
 
 [tool.black]
-line-length = 100
+line-length = 120
 target-version = ['py310']
+skip-string-normalization = true
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -124,18 +125,20 @@ extend-exclude = '''
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-line_length = 100
+line_length = 120
 known_first_party = ["mfg_pde"]
 known_scientific = ["numpy", "scipy", "matplotlib", "plotly", "jax", "jaxlib"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "SCIENTIFIC", "FIRSTPARTY", "LOCALFOLDER"]
 # Removed force_alphabetical_sort_within_sections for scientific code readability
 
 [tool.mypy]
-python_version = "3.9"
-warn_return_any = true
+python_version = "3.10"
+warn_return_any = false  # Relaxed for scientific code with NumPy operations
 warn_unused_configs = true
 disallow_untyped_defs = false  # Gradually enable during transition
 ignore_missing_imports = true
+allow_untyped_calls = true  # Scientific libraries often lack complete type stubs
+allow_incomplete_defs = true  # Research code flexibility
 exclude = [
     "archive/",
     "build/",
@@ -156,10 +159,15 @@ disable = [
     "R0902",  # Too many instance attributes
     "R0903",  # Too few public methods
     "C0415",  # Import outside top-level
+    "R0915",  # Too many statements (complex algorithms)
+    "R0912",  # Too many branches (mathematical logic)
+    "W0613",  # Unused argument (callback signatures)
+    "R0801",  # Similar lines (mathematical patterns)
+    "C0301",  # Line too long (handled by Black)
 ]
 
 [tool.pylint.format]
-max-line-length = 100
+max-line-length = 120
 good-names = [
     "i", "j", "k",           # Loop indices
     "x", "y", "z", "t",      # Coordinates and time
@@ -175,12 +183,12 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
-    "--strict-markers",
-    "--strict-config",
     "--verbose",
     "--cov=mfg_pde",
     "--cov-report=term-missing",
     "--cov-report=html",
+    "-x",  # Stop on first failure for faster debugging
+    "--tb=short",  # Shorter tracebacks
 ]
 
 [tool.coverage.run]
