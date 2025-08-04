@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from mfg_pde.alg.hjb_solvers.gfdm_hjb import GFDMHJBSolver
+from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 
 
 class MockMFGProblem:

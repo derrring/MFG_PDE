@@ -4,7 +4,7 @@ Test SVD implementation in GFDM solver
 """
 
 import numpy as np
-from mfg_pde.alg.hjb_solvers.gfdm_hjb import GFDMHJBSolver
+from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.geometry import BoundaryConditions
 

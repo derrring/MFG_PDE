@@ -111,7 +111,7 @@ python examples/notebooks/working_demo/MFG_Working_Demo.py
 
 - **Documentation**: See [../docs/](../docs/) for comprehensive guides
 - **Issues**: Report problems in the GitHub issue tracker
-- **Questions**: Check [../docs/guides/](../docs/guides/) for troubleshooting
+- **Questions**: Check [../docs/user/](../docs/user/) for user guides and troubleshooting
 
 ---
 

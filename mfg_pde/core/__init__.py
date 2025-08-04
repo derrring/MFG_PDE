@@ -7,7 +7,13 @@ from .lagrangian_mfg_problem import (
     LagrangianComponents,
     LagrangianMFGProblem,
 )
-from .mfg_problem import MFGProblem
+from .mfg_problem import (
+    create_mfg_problem,
+    ExampleMFGProblem,
+    MFGComponents,
+    MFGProblem,
+    MFGProblemBuilder,
+)
 from .network_mfg_problem import (
     create_grid_mfg_problem,
     create_random_mfg_problem,

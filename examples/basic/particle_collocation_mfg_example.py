@@ -17,9 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.utils.integration import trapezoid
 
 # Optional: Modern factory pattern usage
 try:

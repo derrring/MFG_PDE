@@ -1,6 +1,6 @@
 # MFG_PDE Documentation
 
-**Last Updated**: July 31, 2025  
+**Last Updated**: August 3, 2025  
 **Version**: Professional Research Platform (A+ Grade)  
 **Status**: Enterprise-Ready Scientific Computing Framework with Network MFG  
 
@@ -21,7 +21,7 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 ### **For Developers** 
 - **[Development Documentation](development/)** - Complete technical documentation
 - **[Consolidated Roadmap](development/CONSOLIDATED_ROADMAP_2025.md)** - Strategic development plan
-- **[API Reference](api/)** - Complete function and class documentation
+- **[Source Reference](../mfg_pde/)** - Complete function and class documentation in source
 
 ## 🚀 **Platform Status (2025 Achievements)**
 
@@ -70,8 +70,8 @@ docs/
 │   └── maintenance/                   # Repository maintenance
 │       ├── cleanup_procedures.md      # Maintenance procedures
 │       └── [Maintenance history]      # Repository management
-└── api/                              # API reference documentation
-    └── [Auto-generated API docs]     # Complete function reference
+└── reference/                        # Quick reference guides
+    └── [Quick reference materials]   # Fast lookup documentation
 ```
 
 ## 🔬 **Current Capabilities**
@@ -114,13 +114,13 @@ config = create_fast_config(
 
 ### 🎓 **Learning Materials**
 
-#### **[Getting Started](getting_started.md)**
+#### **[Getting Started](user/README.md)**
 - Quick installation guide (pip install mfg_pde)
 - Your first MFG problem in 5 minutes
 - Backend selection and GPU setup
 - Common patterns and best practices
 
-#### **[Guides](guides/)**
+#### **[User Guides](user/)**
 - **Interactive Notebooks**: Jupyter integration and research workflows
 - **Performance Optimization**: GPU acceleration and scaling
 - **Problem Setup**: Custom MFG problem development
@@ -142,7 +142,7 @@ config = create_fast_config(
 
 ### 🛠️ **Technical Documentation**
 
-#### **[API Reference](api/)**
+#### **[Source Reference](../mfg_pde/)**
 - **Core Classes**: MFGProblem, solvers, configurations
 - **Backend System**: NumPy and JAX computational backends
 - **Factory Methods**: Automatic solver and backend creation
@@ -156,7 +156,7 @@ config = create_fast_config(
 
 ### 🏎️ **Performance Documentation**
 
-#### **[Performance](performance/)** 🆕
+#### **[Benchmarks](../benchmarks/)** 🆕
 - **GPU Acceleration**: JAX backend setup and optimization
 - **Benchmarking**: Performance measurement and comparison tools  
 - **Scaling**: Large problem solving and memory management
@@ -224,8 +224,8 @@ config = create_fast_config(
 ## 📞 **Getting Help**
 
 ### **Quick Solutions**
-- **Installation Issues**: Check [Getting Started](getting_started.md) and [Troubleshooting](maintenance/)
-- **Performance Questions**: See [Performance Guides](performance/) and GPU setup
+- **Installation Issues**: Check [User Documentation](user/) and [Troubleshooting](development/maintenance/)
+- **Performance Questions**: See [Benchmarks](../benchmarks/) and GPU setup
 - **Research Workflow**: Review [Theory](theory/) and [Advanced Examples](../examples/advanced/)
 
 ### **Community Support** 

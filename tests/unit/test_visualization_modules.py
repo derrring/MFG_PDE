@@ -15,8 +15,8 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from mfg_pde.utils import configure_logging, get_logger
-from mfg_pde.utils.advanced_visualization import MFGVisualizer, quick_plot_solution
-from mfg_pde.utils.mathematical_visualization import MFGMathematicalVisualizer, quick_hjb_analysis
+from mfg_pde.visualization.interactive_plots import create_mfg_solution_plot
+from mfg_pde.visualization.mathematical_plots import create_hjb_analysis_plot
 
 def create_test_data():
     """Create simple test data for visualization."""
@@ -40,15 +40,11 @@ def test_advanced_visualization():
     output_dir.mkdir(exist_ok=True)
     
     try:
-        # Test automatic backend selection
-        visualizer = MFGVisualizer(backend="auto")
-        
-        # Test basic MFG solution plot
-        fig = visualizer.plot_mfg_solution(
+        # Test MFG solution plot
+        fig = create_mfg_solution_plot(
             U, M, x_grid, t_grid,
             title="Test MFG Solution",
-            save_path=output_dir / "test_mfg_solution.png",
-            show=False
+            save_path=str(output_dir / "test_mfg_solution.png")
         )
         
         logger.info("Advanced visualization test successful")
@@ -68,15 +64,11 @@ def test_mathematical_visualization():
     output_dir.mkdir(exist_ok=True)
     
     try:
-        # Test with LaTeX disabled for robustness
-        visualizer = MFGMathematicalVisualizer(backend="matplotlib", enable_latex=False)
-        
         # Test HJB analysis
-        fig = visualizer.plot_hjb_analysis(
+        fig = create_hjb_analysis_plot(
             U, x_grid, t_grid,
             title="Test HJB Analysis",
-            save_path=output_dir / "test_hjb_analysis.png",
-            show=False
+            save_path=str(output_dir / "test_hjb_analysis.png")
         )
         
         logger.info("Mathematical visualization test successful")
@@ -96,16 +88,17 @@ def test_quick_functions():
     
     try:
         # Test quick plot solution
-        fig1 = quick_plot_solution(
+        fig1 = create_mfg_solution_plot(
             U, M, x_grid, t_grid,
-            backend="auto",
-            save_path=output_dir / "quick_solution.png"
+            title="Quick Solution",
+            save_path=str(output_dir / "quick_solution.png")
         )
         
         # Test quick HJB analysis
-        fig2 = quick_hjb_analysis(
+        fig2 = create_hjb_analysis_plot(
             U, x_grid, t_grid,
-            save_path=output_dir / "quick_hjb.png"
+            title="Quick HJB",
+            save_path=str(output_dir / "quick_hjb.png")
         )
         
         logger.info("Quick functions test successful")

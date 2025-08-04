@@ -101,7 +101,7 @@ U, M, info = solver.solve(max_picard_iterations=15, verbose=True)
 ### 🚀 **Core Solver Capabilities**
 - **Multiple Solver Types**: Fixed-point, particle-collocation, monitored, and adaptive methods
 - **Factory Pattern API**: One-line solver creation with intelligent defaults
-- **Modern Type Safety**: Comprehensive type annotations with NumPy 2.0+ support
+- **NumPy 2.0+ Ready**: Full forward compatibility - upgrade to NumPy 2.0+ with zero code changes
 - **Parameter Migration**: Automatic legacy parameter conversion with deprecation warnings
 - **Professional Configuration**: Pydantic-based validation and type safety
 
@@ -122,7 +122,7 @@ pip install -e .
 
 **Core Dependencies:**
 - **Python**: >=3.8
-- **NumPy**: >=2.0 (recommended for optimal performance)
+- **NumPy**: >=1.21 (NumPy 2.0+ fully supported for optimal performance)
 - **SciPy**: >=1.7
 - **Matplotlib**: >=3.4
 
@@ -141,8 +141,10 @@ pip install -e .
 
 Check your installation:
 ```python
-from mfg_pde import check_installation_status
-check_installation_status()  # Shows available backends and optional features
+from mfg_pde.backends import get_backend_info
+info = get_backend_info()
+print(f"Available backends: {info['available_backends']}")
+print(f"JAX GPU support: {info.get('jax_info', {}).get('has_gpu', False)}")
 ```
 
 ## Documentation
@@ -155,7 +157,7 @@ check_installation_status()  # Shows available backends and optional features
 ### 🔬 **Technical Documentation**
 - **[Mathematical Background](docs/theory/mathematical_background.md)** - MFG theory and formulations
 - **[Network MFG Theory](docs/theory/network_mfg_mathematical_formulation.md)** - Discrete MFG foundations
-- **[API Reference](docs/api/)** - Complete function and class documentation
+- **[Package Reference](mfg_pde/)** - Complete function and class documentation in source
 
 ### 🛠️ **Development Documentation**
 - **[Consolidated Roadmap](docs/development/CONSOLIDATED_ROADMAP_2025.md)** - Strategic development plan

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, Field, model_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 
 class NewtonConfig(BaseModel):
@@ -38,7 +38,8 @@ class NewtonConfig(BaseModel):
         False, description="Whether to print Newton iteration details"
     )
 
-    @validator("tolerance")
+    @field_validator("tolerance")
+    @classmethod
     def validate_numerical_stability(cls, v):
         """Validate tolerance for numerical stability."""
         if v < 1e-12:
@@ -48,7 +49,8 @@ class NewtonConfig(BaseModel):
             )
         return v
 
-    @validator("damping_factor")
+    @field_validator("damping_factor")
+    @classmethod
     def validate_damping_convergence(cls, v):
         """Validate damping factor for convergence properties."""
         if v < 0.1:
@@ -75,10 +77,10 @@ class NewtonConfig(BaseModel):
             max_iterations=100, tolerance=1e-10, damping_factor=1.0, verbose=True
         )
 
-    class Config:
-        env_prefix = "MFG_NEWTON_"
-        validate_assignment = True
-        json_encoders = {np.ndarray: lambda v: v.tolist()}
+    model_config = ConfigDict(
+        env_prefix="MFG_NEWTON_",
+        validate_assignment=True
+    )
 
 
 class PicardConfig(BaseModel):
@@ -103,10 +105,11 @@ class PicardConfig(BaseModel):
         False, description="Whether to print Picard iteration details"
     )
 
-    @validator("tolerance")
-    def validate_convergence_feasibility(cls, v, values):
+    @field_validator("tolerance")
+    @classmethod
+    def validate_convergence_feasibility(cls, v, info):
         """Validate tolerance is achievable within iteration limits."""
-        max_iter = values.get("max_iterations", 20)
+        max_iter = info.data.get("max_iterations", 20) if info.data else 20
         if v < 1e-8 and max_iter < 50:
             warnings.warn(
                 f"Strict tolerance ({v:.2e}) with few iterations ({max_iter}) may not converge",
@@ -124,9 +127,10 @@ class PicardConfig(BaseModel):
         """Create configuration optimized for accuracy."""
         return cls(max_iterations=100, tolerance=1e-6, damping_factor=0.3)
 
-    class Config:
-        env_prefix = "MFG_PICARD_"
-        validate_assignment = True
+    model_config = ConfigDict(
+        env_prefix="MFG_PICARD_",
+        validate_assignment=True
+    )
 
 
 class GFDMConfig(BaseModel):
@@ -147,7 +151,8 @@ class GFDMConfig(BaseModel):
         10, ge=3, le=50, description="Maximum number of neighbors for GFDM"
     )
 
-    @validator("weight_function")
+    @field_validator("weight_function")
+    @classmethod
     def validate_weight_function(cls, v):
         """Validate weight function type."""
         allowed_functions = {"gaussian", "linear", "cubic", "quintic"}
@@ -155,7 +160,8 @@ class GFDMConfig(BaseModel):
             raise ValueError(f"Weight function must be one of {allowed_functions}")
         return v
 
-    @validator("delta")
+    @field_validator("delta")
+    @classmethod
     def validate_delta_stability(cls, v):
         """Validate delta parameter for stability."""
         if v < 0.01:
@@ -167,9 +173,10 @@ class GFDMConfig(BaseModel):
             warnings.warn(f"Large delta ({v:.3f}) may reduce accuracy", UserWarning)
         return v
 
-    class Config:
-        env_prefix = "MFG_GFDM_"
-        validate_assignment = True
+    model_config = ConfigDict(
+        env_prefix="MFG_GFDM_",
+        validate_assignment=True
+    )
 
 
 class ParticleConfig(BaseModel):
@@ -196,7 +203,8 @@ class ParticleConfig(BaseModel):
         False, description="Whether to use adaptive particle count"
     )
 
-    @validator("boundary_treatment")
+    @field_validator("boundary_treatment")
+    @classmethod
     def validate_boundary_treatment(cls, v):
         """Validate boundary treatment method."""
         allowed_treatments = {"reflection", "absorption", "periodic"}
@@ -204,7 +212,8 @@ class ParticleConfig(BaseModel):
             raise ValueError(f"Boundary treatment must be one of {allowed_treatments}")
         return v
 
-    @validator("resampling_method")
+    @field_validator("resampling_method")
+    @classmethod
     def validate_resampling_method(cls, v):
         """Validate resampling method."""
         allowed_methods = {"systematic", "multinomial", "residual", "stratified"}
@@ -212,7 +221,8 @@ class ParticleConfig(BaseModel):
             raise ValueError(f"Resampling method must be one of {allowed_methods}")
         return v
 
-    @validator("num_particles")
+    @field_validator("num_particles")
+    @classmethod
     def validate_particle_count(cls, v):
         """Validate particle count for computational efficiency."""
         if v < 1000:
@@ -225,9 +235,10 @@ class ParticleConfig(BaseModel):
             )
         return v
 
-    class Config:
-        env_prefix = "MFG_PARTICLE_"
-        validate_assignment = True
+    model_config = ConfigDict(
+        env_prefix="MFG_PARTICLE_",
+        validate_assignment=True
+    )
 
 
 class HJBConfig(BaseModel):
@@ -246,7 +257,8 @@ class HJBConfig(BaseModel):
     )
     solver_type: str = Field("gfdm_qp", description="HJB solver type")
 
-    @validator("solver_type")
+    @field_validator("solver_type")
+    @classmethod
     def validate_solver_type(cls, v):
         """Validate HJB solver type."""
         allowed_types = {"gfdm_qp", "gfdm_tuned", "fdm", "semi_lagrangian"}
@@ -270,9 +282,10 @@ class HJBConfig(BaseModel):
 
         return self
 
-    class Config:
-        env_prefix = "MFG_HJB_"
-        validate_assignment = True
+    model_config = ConfigDict(
+        env_prefix="MFG_HJB_",
+        validate_assignment=True
+    )
 
 
 class FPConfig(BaseModel):
@@ -289,7 +302,8 @@ class FPConfig(BaseModel):
     solver_type: str = Field("particle", description="FP solver type")
     time_integration: str = Field("euler", description="Time integration method")
 
-    @validator("solver_type")
+    @field_validator("solver_type")
+    @classmethod
     def validate_solver_type(cls, v):
         """Validate FP solver type."""
         allowed_types = {"particle", "fdm", "hybrid"}
@@ -297,7 +311,8 @@ class FPConfig(BaseModel):
             raise ValueError(f"FP solver type must be one of {allowed_types}")
         return v
 
-    @validator("time_integration")
+    @field_validator("time_integration")
+    @classmethod
     def validate_time_integration(cls, v):
         """Validate time integration method."""
         allowed_methods = {"euler", "rk4", "implicit_euler", "crank_nicolson"}
@@ -305,9 +320,10 @@ class FPConfig(BaseModel):
             raise ValueError(f"Time integration must be one of {allowed_methods}")
         return v
 
-    class Config:
-        env_prefix = "MFG_FP_"
-        validate_assignment = True
+    model_config = ConfigDict(
+        env_prefix="MFG_FP_",
+        validate_assignment=True
+    )
 
 
 class MFGSolverConfig(BaseModel):
@@ -380,8 +396,9 @@ class MFGSolverConfig(BaseModel):
 
         return self
 
-    @validator("convergence_tolerance")
-    def validate_global_convergence(cls, v, values):
+    @field_validator("convergence_tolerance")
+    @classmethod
+    def validate_global_convergence(cls, v):
         """Validate global convergence tolerance is reasonable."""
         if v < 1e-10:
             warnings.warn(
@@ -449,13 +466,10 @@ class MFGSolverConfig(BaseModel):
             enable_warm_start=True,
         )
 
-    class Config:
-        env_prefix = "MFG_"
-        validate_assignment = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            np.ndarray: lambda v: v.tolist(),
-        }
+    model_config = ConfigDict(
+        env_prefix="MFG_",
+        validate_assignment=True
+    )
 
 
 # Convenience factory functions for backward compatibility

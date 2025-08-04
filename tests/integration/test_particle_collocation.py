@@ -16,7 +16,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
-from mfg_pde.alg.hjb_solvers.gfdm_hjb import GFDMHJBSolver
+from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 
 
 class ExampleMFGProblem:

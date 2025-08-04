@@ -9,7 +9,7 @@ import warnings
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, Field, model_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 from ..utils.integration import trapezoid
 
@@ -27,8 +27,7 @@ class ArrayValidationConfig(BaseModel):
         0.5, gt=0.0, le=1.0, description="Maximum CFL number allowed"
     )
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class MFGGridConfig(BaseModel):
@@ -46,12 +45,14 @@ class MFGGridConfig(BaseModel):
     T: float = Field(1.0, gt=0.0, le=100.0, description="Final time")
     sigma: float = Field(0.1, gt=0.0, le=10.0, description="Diffusion coefficient")
 
-    @validator("xmax")
-    def validate_domain(cls, v, values):
+    @field_validator("xmax")
+    @classmethod
+    def validate_domain(cls, v, info):
         """Validate spatial domain is well-defined."""
-        xmin = values.get("xmin", 0.0)
-        if v <= xmin:
-            raise ValueError(f"xmax ({v}) must be > xmin ({xmin})")
+        if info.data and "xmin" in info.data:
+            xmin = info.data["xmin"]
+            if v <= xmin:
+                raise ValueError(f"xmax ({v}) must be > xmin ({xmin})")
         return v
 
     @property
@@ -74,29 +75,30 @@ class MFGGridConfig(BaseModel):
         """Expected shape for solution arrays (Nt+1, Nx+1)."""
         return (self.Nt + 1, self.Nx + 1)
 
-    @validator("sigma")
-    def validate_cfl_stability(cls, v, values):
+    @field_validator("sigma")
+    @classmethod
+    def validate_cfl_stability(cls, v, info):
         """Validate CFL condition for numerical stability."""
-        Nx = values.get("Nx")
-        Nt = values.get("Nt")
-        xmin = values.get("xmin", 0.0)
-        xmax = values.get("xmax", 1.0)
-        T = values.get("T", 1.0)
+        if info.data:
+            Nx = info.data.get("Nx")
+            Nt = info.data.get("Nt")
+            xmin = info.data.get("xmin", 0.0)
+            xmax = info.data.get("xmax", 1.0)
+            T = info.data.get("T", 1.0)
 
-        if Nx and Nt and xmax > xmin and T > 0:
-            dx = (xmax - xmin) / Nx
-            dt = T / Nt
-            cfl = v**2 * dt / (dx**2)
+            if Nx and Nt and xmax > xmin and T > 0:
+                dx = (xmax - xmin) / Nx
+                dt = T / Nt
+                cfl = v**2 * dt / (dx**2)
 
-            if cfl > 0.5:
-                warnings.warn(
-                    f"CFL number {cfl:.3f} > 0.5 may cause instability", UserWarning
-                )
+                if cfl > 0.5:
+                    warnings.warn(
+                        f"CFL number {cfl:.3f} > 0.5 may cause instability", UserWarning
+                    )
 
         return v
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class MFGArrays(BaseModel):
@@ -114,10 +116,11 @@ class MFGArrays(BaseModel):
         default_factory=ArrayValidationConfig, description="Validation configuration"
     )
 
-    @validator("U_solution")
-    def validate_U_solution(cls, v, values):
+    @field_validator("U_solution")
+    @classmethod
+    def validate_U_solution(cls, v, info):
         """Validate HJB solution array properties."""
-        grid_config = values.get("grid_config")
+        grid_config = info.data.get("grid_config") if info.data else None
 
         if grid_config:
             expected_shape = grid_config.grid_shape
@@ -160,11 +163,16 @@ class MFGArrays(BaseModel):
 
         return v
 
-    @validator("M_solution")
-    def validate_M_solution(cls, v, values):
+    @field_validator("M_solution")
+    @classmethod
+    def validate_M_solution(cls, v, info):
         """Validate FP density array properties."""
-        grid_config = values.get("grid_config")
-        validation_config = values.get("validation_config", ArrayValidationConfig())
+        if info.data:
+            grid_config = info.data.get("grid_config")
+            validation_config = info.data.get("validation_config", ArrayValidationConfig())
+        else:
+            grid_config = None
+            validation_config = ArrayValidationConfig()
 
         if grid_config:
             expected_shape = grid_config.grid_shape
@@ -280,20 +288,10 @@ class MFGArrays(BaseModel):
 
         return stats
 
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
-        json_encoders = {
-            np.ndarray: lambda v: {
-                "shape": v.shape,
-                "dtype": str(v.dtype),
-                "summary_stats": {
-                    "min": float(np.min(v)),
-                    "max": float(np.max(v)),
-                    "mean": float(np.mean(v)),
-                },
-            }
-        }
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True
+    )
 
 
 class CollocationConfig(BaseModel):
@@ -307,8 +305,9 @@ class CollocationConfig(BaseModel):
     points: np.ndarray = Field(..., description="Collocation points array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
 
-    @validator("points")
-    def validate_collocation_points(cls, v, values):
+    @field_validator("points")
+    @classmethod
+    def validate_collocation_points(cls, v, info):
         """Validate collocation points properties."""
         # Shape validation
         if v.ndim != 2 or v.shape[1] != 1:
@@ -317,7 +316,7 @@ class CollocationConfig(BaseModel):
             )
 
         # Domain validation
-        grid_config = values.get("grid_config")
+        grid_config = info.data.get("grid_config") if info.data else None
         if grid_config:
             xmin, xmax = grid_config.xmin, grid_config.xmax
             if np.any(v < xmin) or np.any(v > xmax):
@@ -358,9 +357,10 @@ class CollocationConfig(BaseModel):
 
         return v
 
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True
+    )
 
 
 class ExperimentConfig(BaseModel):
@@ -391,7 +391,8 @@ class ExperimentConfig(BaseModel):
     save_arrays: bool = Field(True, description="Whether to save solution arrays")
     save_plots: bool = Field(True, description="Whether to save visualization plots")
 
-    @validator("experiment_name")
+    @field_validator("experiment_name")
+    @classmethod
     def validate_experiment_name(cls, v):
         """Validate experiment name is filesystem-safe."""
         import re
@@ -443,6 +444,7 @@ class ExperimentConfig(BaseModel):
 
         return metadata
 
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True
+    )

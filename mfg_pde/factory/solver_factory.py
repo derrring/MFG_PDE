@@ -116,6 +116,23 @@ class SolverFactory:
         # Update config with any kwargs
         config = SolverFactory._update_config_with_kwargs(config, **kwargs)
 
+        # Validate problem first
+        if problem is None:
+            raise ValueError(
+                "Problem cannot be None. Please provide a valid MFGProblem instance.\n"
+                "Example: problem = ExampleMFGProblem(Nx=50, Nt=100, T=1.0)"
+            )
+        
+        # Validate solver type with helpful suggestions
+        valid_types = ["fixed_point", "particle_collocation", "monitored_particle", "adaptive_particle"]
+        if solver_type not in valid_types:
+            suggestions = "\n".join([f"  • {t}" for t in valid_types])
+            raise ValueError(
+                f"Unknown solver type: '{solver_type}'\n\n"
+                f"Valid solver types are:\n{suggestions}\n\n"
+                f"Example: create_fast_solver(problem, solver_type='particle_collocation')"
+            )
+
         # Create base solver based on type
         if solver_type == "fixed_point":
             base_solver = SolverFactory._create_fixed_point_solver(
@@ -133,8 +150,6 @@ class SolverFactory:
             base_solver = SolverFactory._create_adaptive_particle_solver(
                 problem, config, collocation_points, **kwargs
             )
-        else:
-            raise ValueError(f"Unknown solver type: {solver_type}")
 
         # Enhance with AMR if requested
         if enable_amr:
@@ -151,6 +166,15 @@ class SolverFactory:
     @staticmethod
     def _get_config_by_preset(preset: str) -> MFGSolverConfig:
         """Get configuration by preset name."""
+        valid_presets = ["fast", "accurate", "research", "balanced"]
+        if preset not in valid_presets:
+            suggestions = "\n".join([f"  • {p}" for p in valid_presets])
+            raise ValueError(
+                f"Unknown config preset: '{preset}'\n\n"
+                f"Valid presets are:\n{suggestions}\n\n"
+                f"Example: create_fast_solver(problem, config_preset='fast')"
+            )
+            
         if preset == "fast":
             return create_fast_config()
         elif preset == "accurate":

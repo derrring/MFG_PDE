@@ -18,7 +18,7 @@ from mfg_pde import (
     create_accurate_solver, create_research_solver, create_monitored_solver,
     SolverFactory
 )
-from mfg_pde.config import create_research_config
+from mfg_pde.config import create_research_config_dataclass as create_research_config
 from mfg_pde.alg.hjb_solvers import HJBGFDMSolver
 from mfg_pde.alg.fp_solvers import FPParticleSolver
 
