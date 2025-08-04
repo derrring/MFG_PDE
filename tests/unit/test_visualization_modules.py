@@ -15,8 +15,8 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from mfg_pde.utils import configure_logging, get_logger
-from mfg_pde.visualization.interactive_plots import create_mfg_solution_plot
-from mfg_pde.visualization.mathematical_plots import create_hjb_analysis_plot
+from mfg_pde.visualization.interactive_plots import quick_2d_plot as create_mfg_solution_plot
+from mfg_pde.visualization.mathematical_plots import create_mathematical_visualizer
 
 def create_test_data():
     """Create simple test data for visualization."""
@@ -42,9 +42,8 @@ def test_advanced_visualization():
     try:
         # Test MFG solution plot
         fig = create_mfg_solution_plot(
-            U, M, x_grid, t_grid,
-            title="Test MFG Solution",
-            save_path=str(output_dir / "test_mfg_solution.png")
+            x_grid, t_grid, M,
+            title="Test MFG Solution"
         )
         
         logger.info("Advanced visualization test successful")
@@ -65,10 +64,11 @@ def test_mathematical_visualization():
     
     try:
         # Test HJB analysis
-        fig = create_hjb_analysis_plot(
-            U, x_grid, t_grid,
-            title="Test HJB Analysis",
-            save_path=str(output_dir / "test_hjb_analysis.png")
+        visualizer = create_mathematical_visualizer()
+        du_dx = np.gradient(U, x_grid, axis=0)
+        fig = visualizer.visualize_hjb_equation(
+            x_grid, U[:, 0], du_dx[:, 0],
+            title="Test HJB Analysis"
         )
         
         logger.info("Mathematical visualization test successful")
@@ -89,16 +89,16 @@ def test_quick_functions():
     try:
         # Test quick plot solution
         fig1 = create_mfg_solution_plot(
-            U, M, x_grid, t_grid,
-            title="Quick Solution",
-            save_path=str(output_dir / "quick_solution.png")
+            x_grid, t_grid, M,
+            title="Quick Solution"
         )
         
         # Test quick HJB analysis
-        fig2 = create_hjb_analysis_plot(
-            U, x_grid, t_grid,
-            title="Quick HJB",
-            save_path=str(output_dir / "quick_hjb.png")
+        visualizer = create_mathematical_visualizer()
+        du_dx = np.gradient(U, x_grid, axis=0)
+        fig2 = visualizer.visualize_hjb_equation(
+            x_grid, U[:, 0], du_dx[:, 0],
+            title="Quick HJB"
         )
         
         logger.info("Quick functions test successful")
