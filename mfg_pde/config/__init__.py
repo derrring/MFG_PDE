@@ -19,10 +19,6 @@ from .array_validation import (
 
 # Enhanced Pydantic-based configurations (recommended for new code)
 from .pydantic_config import (
-    create_accurate_config,
-    create_fast_config,
-    create_research_config,
-    extract_legacy_parameters,
     FPConfig,
     GFDMConfig,
     HJBConfig,
@@ -30,13 +26,13 @@ from .pydantic_config import (
     NewtonConfig,
     ParticleConfig,
     PicardConfig,
+    create_accurate_config,
+    create_fast_config,
+    create_research_config,
+    extract_legacy_parameters,
 )
 
 # Original dataclass-based configurations (for backward compatibility)
-from .solver_config import create_accurate_config as create_accurate_config_dataclass
-from .solver_config import create_default_config as create_default_config_dataclass
-from .solver_config import create_fast_config as create_fast_config_dataclass
-from .solver_config import create_research_config as create_research_config_dataclass
 from .solver_config import FPConfig as DataclassFPConfig
 from .solver_config import GFDMConfig as DataclassGFDMConfig
 from .solver_config import HJBConfig as DataclassHJBConfig
@@ -44,15 +40,19 @@ from .solver_config import MFGSolverConfig as DataclassMFGSolverConfig
 from .solver_config import NewtonConfig as DataclassNewtonConfig
 from .solver_config import ParticleConfig as DataclassParticleConfig
 from .solver_config import PicardConfig as DataclassPicardConfig
+from .solver_config import create_accurate_config as create_accurate_config_dataclass
+from .solver_config import create_default_config as create_default_config_dataclass
+from .solver_config import create_fast_config as create_fast_config_dataclass
+from .solver_config import create_research_config as create_research_config_dataclass
 
 # OmegaConf-based configuration management (if available)
 try:
     from .omegaconf_manager import (
+        OmegaConfManager,
         create_omega_manager,
         create_parameter_sweep_configs,
         load_beach_config,
         load_experiment_config,
-        OmegaConfManager,
     )
 
     OMEGACONF_AVAILABLE = True

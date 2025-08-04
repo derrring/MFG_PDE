@@ -24,7 +24,7 @@ except ImportError:
     ConfigAttributeError = AttributeError
     UnsupportedInterpolation = Exception
 
-from .pydantic_config import create_accurate_config, create_fast_config, MFGSolverConfig
+from .pydantic_config import MFGSolverConfig, create_accurate_config, create_fast_config
 
 logger = logging.getLogger(__name__)
 

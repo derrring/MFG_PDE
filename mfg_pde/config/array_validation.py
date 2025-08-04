@@ -8,8 +8,9 @@ numerical properties, and physical constraints specific to MFG problems.
 import warnings
 from typing import Any, Dict, Optional, Tuple, Union
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+import numpy as np
 
 from ..utils.integration import trapezoid
 

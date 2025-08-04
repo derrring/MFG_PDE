@@ -10,8 +10,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+import numpy as np
 
 
 class NewtonConfig(BaseModel):
