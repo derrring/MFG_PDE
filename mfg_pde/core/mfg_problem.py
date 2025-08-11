@@ -711,3 +711,6 @@ def create_mfg_problem(hamiltonian_func: Callable, hamiltonian_dm_func: Callable
     )
 
     return MFGProblem(components=components, **domain_config, **time_config, **solver_config)
+
+
+# Test comment
