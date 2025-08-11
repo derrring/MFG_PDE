@@ -1,12 +1,13 @@
-import numpy as np
 import time
 
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
+import numpy as np
+
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
-from mfg_pde.utils.plot_utils import plot_results, plot_convergence
+from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver
 from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.core.mfg_problem import ExampleMFGProblem
+from mfg_pde.utils.plot_utils import plot_convergence, plot_results
 
 
 def run_hybrid_no_flux_test():
@@ -39,9 +40,7 @@ def run_hybrid_no_flux_test():
     print("\n--- Instantiating Hybrid Solvers with No-Flux Boundaries ---")
 
     # HJB solver (FDM)
-    hjb_solver_component = FdmHJBSolver(
-        mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton
-    )
+    hjb_solver_component = FdmHJBSolver(mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton)
 
     # FP solver (Particle) with no-flux boundaries
     no_flux_bc = BoundaryConditions(type="no_flux")
@@ -71,9 +70,7 @@ def run_hybrid_no_flux_test():
     )
 
     solve_time = time.time() - start_time
-    print(
-        f"--- {solver_name} Finished in {solve_time:.2f} seconds ({iters_run} iterations) ---"
-    )
+    print(f"--- {solver_name} Finished in {solve_time:.2f} seconds ({iters_run} iterations) ---")
 
     # Analyze mass conservation and particle behavior
     if U_solution is not None and M_solution is not None and iters_run > 0:
@@ -85,9 +82,7 @@ def run_hybrid_no_flux_test():
         print(f"Initial mass: {total_mass[0]:.10f}")
         print(f"Final mass: {total_mass[-1]:.10f}")
         print(f"Mass change: {(total_mass[-1] - total_mass[0]):.2e}")
-        print(
-            f"Relative mass change: {(total_mass[-1] - total_mass[0])/total_mass[0]*100:.6f}%"
-        )
+        print(f"Relative mass change: {(total_mass[-1] - total_mass[0])/total_mass[0]*100:.6f}%")
 
         # Check mass conservation over time
         max_mass = np.max(total_mass)
@@ -105,16 +100,10 @@ def run_hybrid_no_flux_test():
 
             # Check final particle positions
             final_particles = particles_trajectory[-1, :]
-            particles_in_bounds = np.all(
-                (final_particles >= xmin) & (final_particles <= xmax)
-            )
+            particles_in_bounds = np.all((final_particles >= xmin) & (final_particles <= xmax))
 
-            print(
-                f"All particles within bounds [{xmin:.2f}, {xmax:.2f}]: {particles_in_bounds}"
-            )
-            print(
-                f"Final particle range: [{np.min(final_particles):.4f}, {np.max(final_particles):.4f}]"
-            )
+            print(f"All particles within bounds [{xmin:.2f}, {xmax:.2f}]: {particles_in_bounds}")
+            print(f"Final particle range: [{np.min(final_particles):.4f}, {np.max(final_particles):.4f}]")
             print(f"Number of particles: {len(final_particles)}")
 
             # Count boundary violations over time
@@ -139,12 +128,8 @@ def run_hybrid_no_flux_test():
             print("✗ POOR: Significant mass variation - check KDE estimation")
 
         print("\n--- Plotting Results ---")
-        plot_results(
-            mfg_problem, U_solution, M_solution, solver_name=f"{solver_name}_NoFlux"
-        )
-        plot_convergence(
-            iters_run, rel_distu, rel_distm, solver_name=f"{solver_name}_NoFlux"
-        )
+        plot_results(mfg_problem, U_solution, M_solution, solver_name=f"{solver_name}_NoFlux")
+        plot_convergence(iters_run, rel_distu, rel_distm, solver_name=f"{solver_name}_NoFlux")
 
         # Mass conservation plot
         import matplotlib.pyplot as plt

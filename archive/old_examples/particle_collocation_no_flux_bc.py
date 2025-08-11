@@ -7,14 +7,15 @@ This example tests the particle-collocation method with no-flux boundary conditi
 to evaluate mass conservation properties.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import time
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.utils.plot_utils import plot_results, plot_convergence
 from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.core.mfg_problem import ExampleMFGProblem
+from mfg_pde.utils.plot_utils import plot_convergence, plot_results
 
 
 def run_particle_collocation_no_flux_test():
@@ -43,25 +44,18 @@ def run_particle_collocation_no_flux_test():
 
     # Create collocation points (proven stable scaled up)
     num_collocation_points = 15
-    collocation_points = np.linspace(
-        problem.xmin, problem.xmax, num_collocation_points
-    ).reshape(-1, 1)
+    collocation_points = np.linspace(problem.xmin, problem.xmax, num_collocation_points).reshape(-1, 1)
 
     # Identify boundary points for no-flux conditions
     boundary_tolerance = 1e-10
     boundary_indices = []
     for i, point in enumerate(collocation_points):
         x = point[0]
-        if (
-            abs(x - problem.xmin) < boundary_tolerance
-            or abs(x - problem.xmax) < boundary_tolerance
-        ):
+        if abs(x - problem.xmin) < boundary_tolerance or abs(x - problem.xmax) < boundary_tolerance:
             boundary_indices.append(i)
 
     boundary_indices = np.array(boundary_indices)
-    print(
-        f"Boundary collocation points: {len(boundary_indices)} out of {num_collocation_points}"
-    )
+    print(f"Boundary collocation points: {len(boundary_indices)} out of {num_collocation_points}")
 
     # No-flux boundary conditions
     no_flux_bc = BoundaryConditions(type="no_flux")
@@ -92,9 +86,7 @@ def run_particle_collocation_no_flux_test():
 
     # Create solver
     print(f"\n--- Creating Particle-Collocation Solver ---")
-    solver = ParticleCollocationSolver(
-        problem=problem, collocation_points=collocation_points, **solver_params
-    )
+    solver = ParticleCollocationSolver(problem=problem, collocation_points=collocation_points, **solver_params)
 
     # Solve (balanced settings for T=1 with QP constraints)
     max_iterations = 18
@@ -112,9 +104,7 @@ def run_particle_collocation_no_flux_test():
         iterations_run = solve_info.get("iterations", max_iterations)
         converged = solve_info.get("converged", False)
 
-        print(
-            f"\n--- Solver finished in {solve_time:.2f} seconds ({iterations_run} iterations) ---"
-        )
+        print(f"\n--- Solver finished in {solve_time:.2f} seconds ({iterations_run} iterations) ---")
         print(f"Converged: {converged}")
 
         if U_solution is not None and M_solution is not None:
@@ -125,9 +115,7 @@ def run_particle_collocation_no_flux_test():
             print(f"Initial mass: {total_mass[0]:.10f}")
             print(f"Final mass: {total_mass[-1]:.10f}")
             print(f"Mass change: {(total_mass[-1] - total_mass[0]):.2e}")
-            print(
-                f"Relative mass change: {(total_mass[-1] - total_mass[0])/total_mass[0]*100:.6f}%"
-            )
+            print(f"Relative mass change: {(total_mass[-1] - total_mass[0])/total_mass[0]*100:.6f}%")
 
             max_mass = np.max(total_mass)
             min_mass = np.min(total_mass)
@@ -142,25 +130,17 @@ def run_particle_collocation_no_flux_test():
                 xmin, xmax = problem.xmin, problem.xmax
 
                 final_particles = particles_trajectory[-1, :]
-                particles_in_bounds = np.all(
-                    (final_particles >= xmin) & (final_particles <= xmax)
-                )
+                particles_in_bounds = np.all((final_particles >= xmin) & (final_particles <= xmax))
 
-                print(
-                    f"All particles within bounds [{xmin:.2f}, {xmax:.2f}]: {particles_in_bounds}"
-                )
-                print(
-                    f"Final particle range: [{np.min(final_particles):.4f}, {np.max(final_particles):.4f}]"
-                )
+                print(f"All particles within bounds [{xmin:.2f}, {xmax:.2f}]: {particles_in_bounds}")
+                print(f"Final particle range: [{np.min(final_particles):.4f}, {np.max(final_particles):.4f}]")
                 print(f"Number of particles: {len(final_particles)}")
 
                 # Count boundary violations
                 total_violations = 0
                 for t_step in range(particles_trajectory.shape[0]):
                     step_particles = particles_trajectory[t_step, :]
-                    violations = np.sum(
-                        (step_particles < xmin) | (step_particles > xmax)
-                    )
+                    violations = np.sum((step_particles < xmin) | (step_particles > xmax))
                     total_violations += violations
 
                 print(f"Total boundary violations: {total_violations}")
@@ -180,9 +160,7 @@ def run_particle_collocation_no_flux_test():
             # Plotting
             print(f"\n--- Plotting Results ---")
             solver_name = "Particle-Collocation"
-            plot_results(
-                problem, U_solution, M_solution, solver_name=f"{solver_name}_NoFlux"
-            )
+            plot_results(problem, U_solution, M_solution, solver_name=f"{solver_name}_NoFlux")
 
             # Mass conservation plot
             plt.figure()
@@ -200,9 +178,7 @@ def run_particle_collocation_no_flux_test():
             plt.legend()
 
             # Adaptive y-axis
-            y_margin = (
-                0.1 * abs(max_mass - min_mass) if mass_variation > 1e-10 else 0.01
-            )
+            y_margin = 0.1 * abs(max_mass - min_mass) if mass_variation > 1e-10 else 0.01
             plt.ylim([min_mass - y_margin, max_mass + y_margin])
             plt.show()
 

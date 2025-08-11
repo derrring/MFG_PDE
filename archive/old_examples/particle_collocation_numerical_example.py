@@ -8,17 +8,18 @@ settings as the existing test examples (fdm_solver.py and particle_solver.py).
 It matches the problem setup and parameters from the test files.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-import sys
 import os
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Add the project root to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.utils.plot_utils import plot_results, plot_convergence
+from mfg_pde.utils.plot_utils import plot_convergence, plot_results
 
 
 def run_particle_collocation_example():
@@ -53,9 +54,7 @@ def run_particle_collocation_example():
 
     print(f"\nCollocation Setup:")
     print(f"  Number of collocation points: {n_collocation}")
-    print(
-        f"  Collocation points range: [{collocation_points.min():.2f}, {collocation_points.max():.2f}]"
-    )
+    print(f"  Collocation points range: [{collocation_points.min():.2f}, {collocation_points.max():.2f}]")
 
     # Solver parameters (matching other examples exactly)
     num_particles = 5000  # Same as hybrid_particle_fdm
@@ -95,12 +94,8 @@ def run_particle_collocation_example():
     print(f"\nSolver Information:")
     info = solver.get_solver_info()
     print(f"  Method: {info['method']}")
-    print(
-        f"  FP Solver: {info['fp_solver']['method']} with {info['fp_solver']['num_particles']} particles"
-    )
-    print(
-        f"  HJB Solver: {info['hjb_solver']['method']} with {info['hjb_solver']['n_collocation_points']} points"
-    )
+    print(f"  FP Solver: {info['fp_solver']['method']} with {info['fp_solver']['num_particles']} particles")
+    print(f"  HJB Solver: {info['hjb_solver']['method']} with {info['hjb_solver']['n_collocation_points']} points")
 
     # Print collocation information
     coll_info = solver.get_collocation_info()
@@ -128,20 +123,14 @@ def run_particle_collocation_example():
         U_min, U_max = U_solution.min(), U_solution.max()
         U_initial_range = f"[{U_solution[0].min():.2f}, {U_solution[0].max():.2f}]"
         U_final_range = f"[{U_solution[-1].min():.2f}, {U_solution[-1].max():.2f}]"
-        print(
-            f"  U value range: overall[{U_min:.2f}, {U_max:.2f}], initial{U_initial_range}, final{U_final_range}"
-        )
+        print(f"  U value range: overall[{U_min:.2f}, {U_max:.2f}], initial{U_initial_range}, final{U_final_range}")
 
         # Check if evolution direction is correct (should increase toward 0)
         u_t0 = U_solution[0].mean()  # Early time
         u_t_mid = U_solution[U_solution.shape[0] // 2].mean()  # Mid time
         u_T = U_solution[-1].mean()  # Final time (should be 0)
-        print(
-            f"  U evolution check: t=0({u_t0:.1f}) → t=0.5({u_t_mid:.1f}) → t=T({u_T:.1f})"
-        )
-        print(
-            f"  {'✓ CORRECT' if u_t0 < u_t_mid < u_T else '✗ WRONG'} - Should increase toward 0"
-        )
+        print(f"  U evolution check: t=0({u_t0:.1f}) → t=0.5({u_t_mid:.1f}) → t=T({u_T:.1f})")
+        print(f"  {'✓ CORRECT' if u_t0 < u_t_mid < u_T else '✗ WRONG'} - Should increase toward 0")
 
         # Create output directory if it doesn't exist
         output_dir = "../tests/output"
@@ -162,9 +151,7 @@ def run_particle_collocation_example():
             m_errors = [h["M_error"] for h in history]
             iterations_run = len(history)
 
-            plot_convergence(
-                iterations_run, u_errors, m_errors, solver_name=solver_name
-            )
+            plot_convergence(iterations_run, u_errors, m_errors, solver_name=solver_name)
 
         # Additional visualization: particle trajectories
         particles = solver.get_particles_trajectory()
@@ -175,9 +162,7 @@ def run_particle_collocation_example():
 
             # Sample particles for visualization
             n_sample = min(100, particles.shape[1])
-            sample_indices = np.random.choice(
-                particles.shape[1], n_sample, replace=False
-            )
+            sample_indices = np.random.choice(particles.shape[1], n_sample, replace=False)
 
             # Plot trajectories
             for i in sample_indices:
@@ -191,9 +176,7 @@ def run_particle_collocation_example():
 
             ax.set_xlabel("x")
             ax.set_ylabel("t")
-            ax.set_title(
-                f"Particle Trajectories (Sample of {n_sample}) - {solver_name}"
-            )
+            ax.set_title(f"Particle Trajectories (Sample of {n_sample}) - {solver_name}")
             ax.grid(True, alpha=0.3)
 
             # Save particle plot
@@ -229,9 +212,7 @@ if __name__ == "__main__":
         print("✗ Particle-collocation numerical example failed.")
 
     print("\nExample Summary:")
-    print(
-        "- Uses exact same parameters as other examples (ExampleMFGProblem, sigma=1.0, Nx=Nt=51)"
-    )
+    print("- Uses exact same parameters as other examples (ExampleMFGProblem, sigma=1.0, Nx=Nt=51)")
     print("- Applies particle-collocation method with GFDM for HJB")
     print("- Same convergence tolerances and iterations as other examples")
     print("- Includes comprehensive visualization of results")

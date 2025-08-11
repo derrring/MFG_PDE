@@ -1,11 +1,13 @@
+import time
+
 import numpy as np
-from scipy.stats import gaussian_kde
 import scipy.interpolate as interpolate
 import scipy.sparse as sparse
 import scipy.sparse.linalg
-import time
-from .base_mfg_solver import MFGSolver
+from scipy.stats import gaussian_kde
+
 from ..utils import hjb_utils
+from .base_mfg_solver import MFGSolver
 
 
 class ParticleSolver(MFGSolver):
@@ -59,13 +61,9 @@ class ParticleSolver(MFGSolver):
             return m_density_estimated
 
         try:
-            kde = scipy.stats.gaussian_kde(
-                particles_at_time_t, bw_method=self.kde_bandwidth
-            )
+            kde = scipy.stats.gaussian_kde(particles_at_time_t, bw_method=self.kde_bandwidth)
             m_density_estimated = kde(xSpace)
-            m_density_estimated[xSpace < xmin] = (
-                0  # Ensure density is zero outside domain
-            )
+            m_density_estimated[xSpace < xmin] = 0  # Ensure density is zero outside domain
             m_density_estimated[xSpace > xmax] = 0
             current_mass = np.sum(m_density_estimated) * Dx
             if current_mass > 1e-9:
@@ -83,9 +81,7 @@ class ParticleSolver(MFGSolver):
         print("****** Solving FP (Particle Evolution)")
         Nt = self.problem.Nt
         Dt = self.problem.Dt
-        sigma_sde = (
-            self.problem.sigma
-        )  # Sigma for SDE, distinct from HJB sigma if needed
+        sigma_sde = self.problem.sigma  # Sigma for SDE, distinct from HJB sigma if needed
         Dx = self.problem.Dx
         coefCT = self.problem.coefCT  # For optimal control
 
@@ -108,9 +104,7 @@ class ParticleSolver(MFGSolver):
                 )
                 dUdx_at_particles = interp_func_dUdx(current_M_particles[n_time_idx, :])
             except ValueError as ve:
-                print(
-                    f"Interpolation error at t_idx {n_time_idx}: {ve}. Particles might be out of bounds."
-                )
+                print(f"Interpolation error at t_idx {n_time_idx}: {ve}. Particles might be out of bounds.")
                 # Handle particles out of bounds for interpolation if `fill_value="extrapolate"` is not robust enough
                 # For now, this might lead to NaNs if particles are far out.
                 # A robust solution would be to cap particle positions to domain before interpolation or use nearest fill.
@@ -122,17 +116,13 @@ class ParticleSolver(MFGSolver):
             # Evolve particles using Euler-Maruyama: dX = alpha*dt + sigma*dW
             dW = np.random.normal(0.0, np.sqrt(Dt), self.num_particles)
             current_M_particles[n_time_idx + 1, :] = (
-                current_M_particles[n_time_idx, :]
-                + alpha_optimal_at_particles * Dt
-                + sigma_sde * dW
+                current_M_particles[n_time_idx, :] + alpha_optimal_at_particles * Dt + sigma_sde * dW
             )
 
             # Apply periodic boundary conditions for particles
             xmin = self.problem.xmin
             Lx = self.problem.Lx  # Length of domain
-            current_M_particles[n_time_idx + 1, :] = (
-                xmin + (current_M_particles[n_time_idx + 1, :] - xmin) % Lx
-            )
+            current_M_particles[n_time_idx + 1, :] = xmin + (current_M_particles[n_time_idx + 1, :] - xmin) % Lx
 
         return current_M_particles
 
@@ -150,9 +140,7 @@ class ParticleSolver(MFGSolver):
         return U_new_solution
 
     def solve(self, Niter, l2errBoundPicard=1e-5):
-        print(
-            f"\n________________ Solving MFG with Hybrid Particle Method (T={self.problem.T}) _______________"
-        )
+        print(f"\n________________ Solving MFG with Hybrid Particle Method (T={self.problem.T}) _______________")
         Nt = self.problem.Nt
         Nx = self.problem.Nx
         Dx = self.problem.Dx
@@ -171,26 +159,18 @@ class ParticleSolver(MFGSolver):
         if not np.isclose(np.sum(m0_probs), 1.0):
             m0_probs = m0_probs / np.sum(m0_probs)  # Normalize if not already
 
-        initial_particle_positions = np.random.choice(
-            self.problem.xSpace, size=self.num_particles, p=m0_probs
-        )
+        initial_particle_positions = np.random.choice(self.problem.xSpace, size=self.num_particles, p=m0_probs)
 
         self.M_particles = np.zeros((Nt + 1, self.num_particles))
         self.M_particles[0, :] = initial_particle_positions
 
         self.M_density = np.zeros((Nt + 1, Nx))
-        self.M_density[0, :] = self._estimate_density_from_particles(
-            self.M_particles[0, :]
-        )
+        self.M_density[0, :] = self._estimate_density_from_particles(self.M_particles[0, :])
 
         # Initialize M_particles and M_density for t > 0 (as per original)
         for n_idx in range(1, Nt + 1):
-            self.M_particles[n_idx, :] = self.M_particles[
-                0, :
-            ]  # Initialize with t=0 positions
-            self.M_density[n_idx, :] = self.M_density[
-                0, :
-            ]  # Initialize with t=0 density estimate
+            self.M_particles[n_idx, :] = self.M_particles[0, :]  # Initialize with t=0 positions
+            self.M_density[n_idx, :] = self.M_density[0, :]  # Initialize with t=0 density estimate
 
         self.l2distu = np.ones(Niter)
         self.l2distm_density = np.ones(Niter)  # Convergence for M_density
@@ -200,14 +180,10 @@ class ParticleSolver(MFGSolver):
 
         for iiter in range(Niter):
             start_time_iter = time.time()
-            print(
-                f"\n******************** Hybrid Particle Iteration = {iiter + 1} / {Niter}"
-            )
+            print(f"\n******************** Hybrid Particle Iteration = {iiter + 1} / {Niter}")
 
             U_old_iter = self.U.copy()
-            M_density_old_iter = (
-                self.M_density.copy()
-            )  # Store previously estimated density
+            M_density_old_iter = self.M_density.copy()  # Store previously estimated density
 
             # Solve HJB backward using the *estimated density* M_density_old_iter
             U_new_tmp_hjb = self._solveHJB_FDM(M_density_old_iter)
@@ -224,9 +200,7 @@ class ParticleSolver(MFGSolver):
             # Estimate density on the grid from the new particle positions
             M_density_new_estimated_fp = np.zeros_like(self.M_density)
             for n_idx in range(Nt + 1):  # Estimate density at each time step
-                M_density_new_estimated_fp[n_idx, :] = (
-                    self._estimate_density_from_particles(self.M_particles[n_idx, :])
-                )
+                M_density_new_estimated_fp[n_idx, :] = self._estimate_density_from_particles(self.M_particles[n_idx, :])
 
             # Apply damping to M_density update (original code did not explicitly show M_density damping)
             # If damping M_density:
@@ -237,15 +211,9 @@ class ParticleSolver(MFGSolver):
             # Convergence Check
             self.l2distu[iiter] = np.linalg.norm(self.U - U_old_iter) * np.sqrt(Dx * Dt)
             norm_U_iter = np.linalg.norm(self.U) * np.sqrt(Dx * Dt)
-            self.l2disturel[iiter] = (
-                self.l2distu[iiter] / norm_U_iter
-                if norm_U_iter > 1e-9
-                else self.l2distu[iiter]
-            )
+            self.l2disturel[iiter] = self.l2distu[iiter] / norm_U_iter if norm_U_iter > 1e-9 else self.l2distu[iiter]
 
-            self.l2distm_density[iiter] = np.linalg.norm(
-                self.M_density - M_density_old_iter
-            ) * np.sqrt(Dx * Dt)
+            self.l2distm_density[iiter] = np.linalg.norm(self.M_density - M_density_old_iter) * np.sqrt(Dx * Dt)
             norm_M_dens_iter = np.linalg.norm(self.M_density) * np.sqrt(Dx * Dt)
             self.l2distmrel_density[iiter] = (
                 self.l2distm_density[iiter] / norm_M_dens_iter
@@ -263,10 +231,7 @@ class ParticleSolver(MFGSolver):
             print(f" === Time for iteration = {elapsed_time_iter:.2f} s")
 
             self.iterations_run = iiter + 1
-            if (
-                self.l2disturel[iiter] < l2errBoundPicard
-                and self.l2distmrel_density[iiter] < l2errBoundPicard
-            ):
+            if self.l2disturel[iiter] < l2errBoundPicard and self.l2distmrel_density[iiter] < l2errBoundPicard:
                 print(f"Convergence reached after {iiter + 1} iterations.")
                 break
 

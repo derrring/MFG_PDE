@@ -1,10 +1,12 @@
+import time
+
 import numpy as np
 import scipy as sc
 import scipy.sparse as sparse
 import scipy.sparse.linalg
-import time
-from .base_mfg_solver import MFGSolver
+
 from ..utils import hjb_utils  # Path to the new HJB utilities
+from .base_mfg_solver import MFGSolver
 
 
 class FDMSolver(MFGSolver):
@@ -63,10 +65,7 @@ class FDMSolver(MFGSolver):
             )
             A_D[0] += (
                 coefCT
-                * (
-                    self.problem._npart(u_at_tk[1] - u_at_tk[0])
-                    + self.problem._ppart(u_at_tk[0] - u_at_tk[Nx - 1])
-                )
+                * (self.problem._npart(u_at_tk[1] - u_at_tk[0]) + self.problem._ppart(u_at_tk[0] - u_at_tk[Nx - 1]))
                 / Dx**2
             )
             A_D[Nx - 1] += (
@@ -82,28 +81,14 @@ class FDMSolver(MFGSolver):
             A_U_val_diff = -(sigma**2) / (2 * Dx**2)
 
             A_L[1:Nx] += A_L_val_diff
-            A_L[1:Nx] += (
-                -coefCT
-                * self.problem._npart(u_at_tk[1:Nx] - u_at_tk[0 : Nx - 1])
-                / Dx**2
-            )
+            A_L[1:Nx] += -coefCT * self.problem._npart(u_at_tk[1:Nx] - u_at_tk[0 : Nx - 1]) / Dx**2
 
             A_U[0 : Nx - 1] += A_U_val_diff
-            A_U[0 : Nx - 1] += (
-                -coefCT
-                * self.problem._ppart(u_at_tk[1:Nx] - u_at_tk[0 : Nx - 1])
-                / Dx**2
-            )
+            A_U[0 : Nx - 1] += -coefCT * self.problem._ppart(u_at_tk[1:Nx] - u_at_tk[0 : Nx - 1]) / Dx**2
 
             # Periodic Corners (from original _solveFP)
-            A_upcorner[0] = (
-                A_U_val_diff
-                - coefCT * self.problem._ppart(u_at_tk[1] - u_at_tk[0]) / Dx**2
-            )
-            A_lowcorner[Nx - 1] = (
-                A_L_val_diff
-                - coefCT * self.problem._npart(u_at_tk[0] - u_at_tk[Nx - 1]) / Dx**2
-            )
+            A_upcorner[0] = A_U_val_diff - coefCT * self.problem._ppart(u_at_tk[1] - u_at_tk[0]) / Dx**2
+            A_lowcorner[Nx - 1] = A_L_val_diff - coefCT * self.problem._npart(u_at_tk[0] - u_at_tk[Nx - 1]) / Dx**2
 
             A_L_sp = np.roll(A_L, -1)
             A_U_sp = np.roll(A_U, 1)
@@ -121,9 +106,7 @@ class FDMSolver(MFGSolver):
             try:
                 m[k_idx_fp + 1] = sparse.linalg.spsolve(A_matrix, b_rhs)
             except Exception as e:
-                print(
-                    f"Error solving linear system for FP at time step {k_idx_fp + 1}: {e}"
-                )
+                print(f"Error solving linear system for FP at time step {k_idx_fp + 1}: {e}")
                 m[k_idx_fp + 1] = m[k_idx_fp]  # Fallback
         return m
 
@@ -141,9 +124,7 @@ class FDMSolver(MFGSolver):
         return U_new_solution
 
     def solve(self, Niter, l2errBoundPicard=1e-5):
-        print(
-            f"\n________________ Solving MFG with FDM (T={self.problem.T}) _______________"
-        )
+        print(f"\n________________ Solving MFG with FDM (T={self.problem.T}) _______________")
         Nx = self.problem.Nx
         Nt = self.problem.Nt  # Total number of temporal knots for U and M (0 to Nt)
         Dx = self.problem.Dx
@@ -172,9 +153,7 @@ class FDMSolver(MFGSolver):
 
         for iiter in range(Niter):
             start_time_iter = time.time()
-            print(
-                f"\n******************** FDM Fixed-Point Iteration = {iiter + 1} / {Niter}"
-            )
+            print(f"\n******************** FDM Fixed-Point Iteration = {iiter + 1} / {Niter}")
 
             U_old_iter = self.U.copy()
             M_old_iter = self.M.copy()
@@ -195,19 +174,11 @@ class FDMSolver(MFGSolver):
             # Convergence metrics
             self.l2distu[iiter] = np.linalg.norm(self.U - U_old_iter) * np.sqrt(Dx * Dt)
             norm_U_iter = np.linalg.norm(self.U) * np.sqrt(Dx * Dt)
-            self.l2disturel[iiter] = (
-                self.l2distu[iiter] / norm_U_iter
-                if norm_U_iter > 1e-9
-                else self.l2distu[iiter]
-            )
+            self.l2disturel[iiter] = self.l2distu[iiter] / norm_U_iter if norm_U_iter > 1e-9 else self.l2distu[iiter]
 
             self.l2distm[iiter] = np.linalg.norm(self.M - M_old_iter) * np.sqrt(Dx * Dt)
             norm_M_iter = np.linalg.norm(self.M) * np.sqrt(Dx * Dt)
-            self.l2distmrel[iiter] = (
-                self.l2distm[iiter] / norm_M_iter
-                if norm_M_iter > 1e-9
-                else self.l2distm[iiter]
-            )
+            self.l2distmrel[iiter] = self.l2distm[iiter] / norm_M_iter if norm_M_iter > 1e-9 else self.l2distm[iiter]
 
             elapsed_time_iter = time.time() - start_time_iter
             print(
@@ -219,10 +190,7 @@ class FDMSolver(MFGSolver):
             print(f" === Time for iteration = {elapsed_time_iter:.2f} s")
 
             self.iterations_run = iiter + 1
-            if (
-                self.l2disturel[iiter] < l2errBoundPicard
-                and self.l2distmrel[iiter] < l2errBoundPicard
-            ):
+            if self.l2disturel[iiter] < l2errBoundPicard and self.l2distmrel[iiter] < l2errBoundPicard:
                 print(f"Convergence reached after {iiter + 1} iterations.")
                 break
 

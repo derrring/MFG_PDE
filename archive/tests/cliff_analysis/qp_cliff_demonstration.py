@@ -4,13 +4,14 @@ QP-Collocation Cliff Demonstration
 Quick demonstration of the sudden mass loss "cliff" phenomenon.
 """
 
-import numpy as np
 import time
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.core.mfg_problem import ExampleMFGProblem
 
 
 def demonstrate_cliff_behavior():
@@ -25,19 +26,31 @@ def demonstrate_cliff_behavior():
         {
             "name": "Stable Case",
             "params": {
-                "T": 1.0, "Nt": 50, "Nx": 30, "sigma": 0.2, "coefCT": 0.05,
-                "num_particles": 500, "delta": 0.4, "max_iter": 10
+                "T": 1.0,
+                "Nt": 50,
+                "Nx": 30,
+                "sigma": 0.2,
+                "coefCT": 0.05,
+                "num_particles": 500,
+                "delta": 0.4,
+                "max_iter": 10,
             },
-            "description": "Conservative parameters - should remain stable"
+            "description": "Conservative parameters - should remain stable",
         },
         {
-            "name": "Cliff Case", 
+            "name": "Cliff Case",
             "params": {
-                "T": 2.0, "Nt": 40, "Nx": 60, "sigma": 0.1, "coefCT": 0.02,
-                "num_particles": 1500, "delta": 0.2, "max_iter": 20
+                "T": 2.0,
+                "Nt": 40,
+                "Nx": 60,
+                "sigma": 0.1,
+                "coefCT": 0.02,
+                "num_particles": 1500,
+                "delta": 0.2,
+                "max_iter": 20,
             },
-            "description": "Aggressive parameters - likely to trigger cliff"
-        }
+            "description": "Aggressive parameters - likely to trigger cliff",
+        },
     ]
 
     results = {}
@@ -47,7 +60,7 @@ def demonstrate_cliff_behavior():
         name = scenario["name"]
         params = scenario["params"]
         description = scenario["description"]
-        
+
         print(f"\n{'='*50}")
         print(f"SCENARIO: {name}")
         print(f"{'='*50}")
@@ -55,14 +68,18 @@ def demonstrate_cliff_behavior():
 
         # Create problem
         problem_params = {
-            "xmin": 0.0, "xmax": 1.0,
-            "T": params["T"], "Nt": params["Nt"], "Nx": params["Nx"],
-            "sigma": params["sigma"], "coefCT": params["coefCT"]
+            "xmin": 0.0,
+            "xmax": 1.0,
+            "T": params["T"],
+            "Nt": params["Nt"],
+            "Nx": params["Nx"],
+            "sigma": params["sigma"],
+            "coefCT": params["coefCT"],
         }
 
         try:
             problem = ExampleMFGProblem(**problem_params)
-            
+
             print(f"Problem: T={params['T']}, Dt={problem.Dt:.4f}, Dx={problem.Dx:.4f}")
             print(f"CFL = {params['sigma']**2 * problem.Dt / problem.Dx**2:.3f}")
 
@@ -80,7 +97,7 @@ def demonstrate_cliff_behavior():
                 "l2errBoundNewton": 1e-4,
                 "kde_bandwidth": "scott",
                 "normalize_kde_output": False,
-                "use_monotone_constraints": True
+                "use_monotone_constraints": True,
             }
 
             solver = ParticleCollocationSolver(
@@ -88,17 +105,13 @@ def demonstrate_cliff_behavior():
                 collocation_points=collocation_points,
                 boundary_indices=np.array(boundary_indices),
                 boundary_conditions=no_flux_bc,
-                **solver_params
+                **solver_params,
             )
 
             print(f"Starting {name} simulation...")
             start_time = time.time()
 
-            U_solution, M_solution, solve_info = solver.solve(
-                Niter=params["max_iter"],
-                l2errBound=1e-3,
-                verbose=True
-            )
+            U_solution, M_solution, solve_info = solver.solve(Niter=params["max_iter"], l2errBound=1e-3, verbose=True)
 
             total_time = time.time() - start_time
 
@@ -107,29 +120,27 @@ def demonstrate_cliff_behavior():
                 mass_evolution = np.sum(M_solution * problem.Dx, axis=1)
                 initial_mass = mass_evolution[0]
                 final_mass = mass_evolution[-1]
-                
+
                 # Detect cliff: sudden large drops
                 mass_diff = np.diff(mass_evolution)
                 mass_diff_percent = (mass_diff / initial_mass) * 100
-                
+
                 # Find the biggest single-step loss
                 biggest_loss_step = np.argmin(mass_diff_percent)
                 biggest_loss_percent = mass_diff_percent[biggest_loss_step]
                 biggest_loss_time = problem.tSpace[biggest_loss_step]
-                
+
                 # Cliff criteria
                 cliff_detected = biggest_loss_percent < -10  # >10% loss in one step
                 mass_collapse = final_mass < 0.1 * initial_mass
-                
+
                 # Check particle violations
                 particles_trajectory = solver.fp_solver.M_particles_trajectory
                 total_violations = 0
                 if particles_trajectory is not None:
                     for t_step in range(particles_trajectory.shape[0]):
                         step_particles = particles_trajectory[t_step, :]
-                        violations = np.sum(
-                            (step_particles < -0.01) | (step_particles > 1.01)
-                        )
+                        violations = np.sum((step_particles < -0.01) | (step_particles > 1.01))
                         total_violations += violations
 
                 results[name] = {
@@ -147,8 +158,8 @@ def demonstrate_cliff_behavior():
                         'mass_evolution': mass_evolution,
                         'tSpace': problem.tSpace,
                         'M_solution': M_solution,
-                        'xSpace': problem.xSpace
-                    }
+                        'xSpace': problem.xSpace,
+                    },
                 }
 
                 print(f"✓ {name} completed in {total_time:.1f}s")
@@ -156,7 +167,7 @@ def demonstrate_cliff_behavior():
                 print(f"  Total change: {(final_mass-initial_mass)/initial_mass*100:+.2f}%")
                 print(f"  Biggest single loss: {biggest_loss_percent:.2f}% at t={biggest_loss_time:.3f}")
                 print(f"  Particle violations: {total_violations}")
-                
+
                 if mass_collapse:
                     print(f"  ❌ MASS COLLAPSE: Final mass < 10% of initial")
                 elif cliff_detected:
@@ -178,17 +189,17 @@ def demonstrate_cliff_behavior():
 
     # Create comparison plot
     create_cliff_demonstration_plot(results)
-    
+
     # Explain the cliff phenomenon
     explain_cliff_phenomenon(results)
-    
+
     return results
 
 
 def create_cliff_demonstration_plot(results):
     """Create a plot clearly showing the cliff behavior"""
     successful = [(name, result) for name, result in results.items() if result.get('success', False)]
-    
+
     if len(successful) < 1:
         print("No successful results to plot")
         return
@@ -197,13 +208,13 @@ def create_cliff_demonstration_plot(results):
     fig.suptitle('QP-Collocation Cliff Behavior Demonstration', fontsize=16, fontweight='bold')
 
     colors = ['green', 'red']
-    
+
     # 1. Mass evolution comparison
     ax1 = axes[0, 0]
     for i, (name, result) in enumerate(successful):
         arrays = result['arrays']
         color = colors[i % len(colors)]
-        
+
         if result['cliff_detected']:
             linestyle = '--'
             linewidth = 3
@@ -212,19 +223,24 @@ def create_cliff_demonstration_plot(results):
             linestyle = '-'
             linewidth = 2
             alpha = 0.8
-            
-        ax1.plot(arrays['tSpace'], arrays['mass_evolution'], 
-                color=color, linestyle=linestyle, linewidth=linewidth, alpha=alpha,
-                label=f"{name}")
-        
+
+        ax1.plot(
+            arrays['tSpace'],
+            arrays['mass_evolution'],
+            color=color,
+            linestyle=linestyle,
+            linewidth=linewidth,
+            alpha=alpha,
+            label=f"{name}",
+        )
+
         # Mark cliff point if detected
         if result['cliff_detected']:
             cliff_time = result['biggest_loss_time']
             cliff_idx = np.argmin(np.abs(arrays['tSpace'] - cliff_time))
             cliff_mass = arrays['mass_evolution'][cliff_idx]
-            ax1.plot(cliff_time, cliff_mass, 'ro', markersize=10, 
-                    label=f"Cliff at t={cliff_time:.3f}")
-    
+            ax1.plot(cliff_time, cliff_mass, 'ro', markersize=10, label=f"Cliff at t={cliff_time:.3f}")
+
     ax1.set_xlabel('Time t')
     ax1.set_ylabel('Total Mass')
     ax1.set_title('Mass Evolution: Cliff vs Stable')
@@ -236,21 +252,20 @@ def create_cliff_demonstration_plot(results):
     for i, (name, result) in enumerate(successful):
         arrays = result['arrays']
         color = colors[i % len(colors)]
-        
+
         # Calculate mass change rate
         mass_diff = np.diff(arrays['mass_evolution'])
         time_centers = (arrays['tSpace'][:-1] + arrays['tSpace'][1:]) / 2
-        
-        ax2.plot(time_centers, mass_diff, color=color, linewidth=2, alpha=0.8,
-                label=f"{name} rate")
-        
+
+        ax2.plot(time_centers, mass_diff, color=color, linewidth=2, alpha=0.8, label=f"{name} rate")
+
         # Mark cliff point
         if result['cliff_detected']:
             cliff_time = result['biggest_loss_time']
             cliff_idx = np.argmin(np.abs(time_centers - cliff_time))
             cliff_rate = mass_diff[cliff_idx]
             ax2.plot(cliff_time, cliff_rate, 'ro', markersize=10)
-    
+
     ax2.set_xlabel('Time t')
     ax2.set_ylabel('Mass Change Rate')
     ax2.set_title('Mass Change Rate (Shows Cliff as Spike)')
@@ -262,12 +277,11 @@ def create_cliff_demonstration_plot(results):
     for i, (name, result) in enumerate(successful):
         arrays = result['arrays']
         color = colors[i % len(colors)]
-        
+
         final_density = arrays['M_solution'][-1, :]
-        
-        ax3.plot(arrays['xSpace'], final_density, color=color, linewidth=2, 
-                alpha=0.8, label=f"{name} final")
-    
+
+        ax3.plot(arrays['xSpace'], final_density, color=color, linewidth=2, alpha=0.8, label=f"{name} final")
+
     ax3.set_xlabel('Space x')
     ax3.set_ylabel('Final Density')
     ax3.set_title('Final Density Profiles')
@@ -276,20 +290,18 @@ def create_cliff_demonstration_plot(results):
 
     # 4. Summary statistics
     ax4 = axes[1, 1]
-    
+
     if len(successful) >= 2:
         names = [name for name, _ in successful]
         mass_changes = [result['total_change_percent'] for _, result in successful]
         cliff_losses = [result['biggest_loss_percent'] for _, result in successful]
-        
+
         x_pos = np.arange(len(names))
         width = 0.35
-        
-        bars1 = ax4.bar(x_pos - width/2, mass_changes, width, 
-                       label='Total Mass Change (%)', alpha=0.7)
-        bars2 = ax4.bar(x_pos + width/2, cliff_losses, width, 
-                       label='Biggest Single Loss (%)', alpha=0.7)
-        
+
+        bars1 = ax4.bar(x_pos - width / 2, mass_changes, width, label='Total Mass Change (%)', alpha=0.7)
+        bars2 = ax4.bar(x_pos + width / 2, cliff_losses, width, label='Biggest Single Loss (%)', alpha=0.7)
+
         ax4.set_xlabel('Scenario')
         ax4.set_ylabel('Percentage (%)')
         ax4.set_title('Mass Change Summary')
@@ -297,18 +309,33 @@ def create_cliff_demonstration_plot(results):
         ax4.set_xticklabels(names)
         ax4.legend()
         ax4.grid(True, axis='y', alpha=0.3)
-        
+
         # Add value labels
         for bar, value in zip(bars1, mass_changes):
-            ax4.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                    f'{value:.1f}%', ha='center', va='bottom', fontsize=9)
+            ax4.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                bar.get_height(),
+                f'{value:.1f}%',
+                ha='center',
+                va='bottom',
+                fontsize=9,
+            )
         for bar, value in zip(bars2, cliff_losses):
-            ax4.text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                    f'{value:.1f}%', ha='center', va='bottom', fontsize=9)
+            ax4.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                bar.get_height(),
+                f'{value:.1f}%',
+                ha='center',
+                va='bottom',
+                fontsize=9,
+            )
 
     plt.tight_layout()
-    plt.savefig('/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/qp_cliff_demonstration.png', 
-                dpi=150, bbox_inches='tight')
+    plt.savefig(
+        '/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/qp_cliff_demonstration.png',
+        dpi=150,
+        bbox_inches='tight',
+    )
     plt.show()
 
 
@@ -317,15 +344,19 @@ def explain_cliff_phenomenon(results):
     print(f"\n{'='*80}")
     print("CLIFF PHENOMENON EXPLANATION")
     print(f"{'='*80}")
-    
-    cliff_cases = [name for name, result in results.items() 
-                   if result.get('success', False) and result.get('cliff_detected', False)]
-    stable_cases = [name for name, result in results.items() 
-                    if result.get('success', False) and not result.get('cliff_detected', False)]
+
+    cliff_cases = [
+        name for name, result in results.items() if result.get('success', False) and result.get('cliff_detected', False)
+    ]
+    stable_cases = [
+        name
+        for name, result in results.items()
+        if result.get('success', False) and not result.get('cliff_detected', False)
+    ]
 
     print(f"🔬 ANALYSIS OF THE SUDDEN MASS LOSS 'CLIFF':")
     print(f"")
-    
+
     if cliff_cases:
         print(f"✅ CLIFF DEMONSTRATED in: {', '.join(cliff_cases)}")
         for name in cliff_cases:
@@ -333,10 +364,10 @@ def explain_cliff_phenomenon(results):
             print(f"   {name}: {result['biggest_loss_percent']:.1f}% loss at t={result['biggest_loss_time']:.3f}")
     else:
         print(f"❌ NO CLIFF DETECTED in current test cases")
-    
+
     if stable_cases:
         print(f"✅ STABLE BEHAVIOR in: {', '.join(stable_cases)}")
-    
+
     print(f"\n🧠 WHY THE CLIFF OCCURS:")
     print(f"The sudden 'vertical drop' in mass happens due to:")
     print(f"")
@@ -382,4 +413,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nDemo failed: {e}")
         import traceback
+
         traceback.print_exc()

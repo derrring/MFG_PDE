@@ -5,23 +5,24 @@ Comprehensive statistical evaluation of all three methods with extensive test ca
 to demonstrate robustness, stability, computational cost, and mass conservation.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import time
 import warnings
+
+import matplotlib.pyplot as plt
+import numpy as np
 import scipy.stats as stats
 from scipy import ndimage
 
 warnings.filterwarnings("ignore")
 
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
+from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
 from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
-from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
 from mfg_pde.alg.hjb_solvers.tuned_smart_qp_gfdm_hjb import TunedSmartQPGFDMHJBSolver
+from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.core.mfg_problem import ExampleMFGProblem
 
 
 def generate_extensive_test_cases():
@@ -91,10 +92,7 @@ def generate_extensive_test_cases():
                         "difficulty": "Easy" if T <= 1.0 else "Challenge",
                     }
                 )
-            if (
-                len([case for case in test_cases if case["category"] == "Time Horizon"])
-                >= 9
-            ):
+            if len([case for case in test_cases if case["category"] == "Time Horizon"]) >= 9:
                 break
 
     # 4. Control cost variation (8 cases)
@@ -175,17 +173,11 @@ def test_method_with_stats(method_name, solver_func, params, test_name, timeout=
         Dx = (params["xmax"] - params["xmin"]) / params["Nx"]
         initial_mass = np.sum(M[0, :]) * Dx
         final_mass = np.sum(M[-1, :]) * Dx
-        mass_error = (
-            abs(final_mass - initial_mass) / initial_mass * 100
-            if initial_mass > 1e-9
-            else 0
-        )
+        mass_error = abs(final_mass - initial_mass) / initial_mass * 100 if initial_mass > 1e-9 else 0
 
         # Solution stability metrics
         if M.shape[0] > 2:
-            temporal_changes = np.linalg.norm(
-                M[1:, :] - M[:-1, :], axis=1
-            ) / np.linalg.norm(M[:-1, :], axis=1)
+            temporal_changes = np.linalg.norm(M[1:, :] - M[:-1, :], axis=1) / np.linalg.norm(M[:-1, :], axis=1)
             temporal_stability = np.mean(temporal_changes)
         else:
             temporal_stability = 0.0
@@ -229,17 +221,13 @@ def test_pure_fdm(problem_params, test_name, timeout=300):
         )
 
         start_time = time.time()
-        U_fdm, M_fdm, iterations_run, l2distu_rel, l2distm_rel = fdm_solver.solve(
-            Niter_max=50, l2errBoundPicard=1e-3
-        )
+        U_fdm, M_fdm, iterations_run, l2distu_rel, l2distm_rel = fdm_solver.solve(Niter_max=50, l2errBoundPicard=1e-3)
         solve_time = time.time() - start_time
 
         if solve_time > timeout:
             return {"success": False, "error": "Timeout", "time": solve_time}
 
-        converged = (
-            len(l2distu_rel) > 0 and l2distu_rel[-1] < 1e-3 and l2distm_rel[-1] < 1e-3
-        )
+        converged = len(l2distu_rel) > 0 and l2distu_rel[-1] < 1e-3 and l2distm_rel[-1] < 1e-3
 
         return {
             "success": True,
@@ -274,17 +262,15 @@ def test_hybrid_particle_fdm(problem_params, test_name, timeout=300):
         )
 
         start_time = time.time()
-        U_hybrid, M_hybrid, iterations_run, l2distu_rel, l2distm_rel = (
-            hybrid_solver.solve(Niter_max=50, l2errBoundPicard=1e-3)
+        U_hybrid, M_hybrid, iterations_run, l2distu_rel, l2distm_rel = hybrid_solver.solve(
+            Niter_max=50, l2errBoundPicard=1e-3
         )
         solve_time = time.time() - start_time
 
         if solve_time > timeout:
             return {"success": False, "error": "Timeout", "time": solve_time}
 
-        converged = (
-            len(l2distu_rel) > 0 and l2distu_rel[-1] < 1e-3 and l2distm_rel[-1] < 1e-3
-        )
+        converged = len(l2distu_rel) > 0 and l2distu_rel[-1] < 1e-3 and l2distm_rel[-1] < 1e-3
 
         return {
             "success": True,
@@ -307,9 +293,7 @@ def test_optimized_qp_collocation(problem_params, test_name, timeout=600):
 
         num_collocation_points = min(12, max(8, problem_params["Nx"] // 2))
         num_particles = min(150, max(100, problem_params["Nx"] * 5))
-        collocation_points = np.linspace(
-            problem.xmin, problem.xmax, num_collocation_points
-        ).reshape(-1, 1)
+        collocation_points = np.linspace(problem.xmin, problem.xmax, num_collocation_points).reshape(-1, 1)
 
         qp_solver = ParticleCollocationSolver(
             problem=problem,
@@ -368,9 +352,7 @@ def run_extensive_statistical_analysis():
         params = test_case["params"]
         difficulty = test_case["difficulty"]
 
-        print(
-            f"\n--- TEST CASE {i+1}/{total_cases}: {case_name} (Difficulty: {difficulty}) ---"
-        )
+        print(f"\n--- TEST CASE {i+1}/{total_cases}: {case_name} (Difficulty: {difficulty}) ---")
 
         for method_name, test_func in methods:
             current_test += 1
@@ -382,9 +364,7 @@ def run_extensive_statistical_analysis():
 
             timeout = 300 if difficulty in ["Easy", "Moderate"] else 900
 
-            result = test_method_with_stats(
-                method_name, test_func, params, case_name, timeout
-            )
+            result = test_method_with_stats(method_name, test_func, params, case_name, timeout)
             result["difficulty"] = difficulty
 
             if method_name == "Pure FDM":
@@ -416,9 +396,7 @@ def run_extensive_statistical_analysis():
     for i, test_case in enumerate(test_cases):
         print(f"\n--- Running Case {i+1}/{len(test_cases)}: {test_case['name']} ---")
         for method_name, test_func in methods:
-            result = test_method_with_stats(
-                method_name, test_func, test_case["params"], test_case["name"]
-            )
+            result = test_method_with_stats(method_name, test_func, test_case["params"], test_case["name"])
             result["difficulty"] = test_case["difficulty"]
             if method_name == "Pure FDM":
                 results["fdm_results"].append(result)
@@ -460,17 +438,13 @@ def create_selected_3_panel_figure(overall_stats, method_results_map):
 
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5.5))
-    fig.suptitle(
-        "Selected Performance Analysis of Three Methods", fontsize=18, fontweight="bold"
-    )
+    fig.suptitle("Selected Performance Analysis of Three Methods", fontsize=18, fontweight="bold")
 
     methods = ["Pure FDM", "Hybrid", "QP-Collocation"]
     colors = {"Pure FDM": "#348ABD", "Hybrid": "#7A68A6", "QP-Collocation": "#A60628"}
 
     # --- Plot 1: Mass Conservation Quality ---
-    mass_data = [
-        stats["mass_errors"] for stats in overall_stats.values() if stats["mass_errors"]
-    ]
+    mass_data = [stats["mass_errors"] for stats in overall_stats.values() if stats["mass_errors"]]
     if mass_data:
         bp1 = ax1.boxplot(mass_data, patch_artist=True, showfliers=False, widths=0.6)
         for patch, name in zip(bp1["boxes"], methods):

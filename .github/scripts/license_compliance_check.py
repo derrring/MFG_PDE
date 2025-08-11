@@ -6,15 +6,15 @@ Checks dependencies for license compatibility and compliance.
 
 import json
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, List, Set
 
 
 class LicenseComplianceChecker:
     """Check license compliance for project dependencies."""
-    
+
     # Approved licenses for research/academic use
     APPROVED_LICENSES = {
         "MIT License",
@@ -22,7 +22,7 @@ class LicenseComplianceChecker:
         "BSD License",
         "BSD",
         "BSD-3-Clause",
-        "BSD-2-Clause", 
+        "BSD-2-Clause",
         "Apache Software License",
         "Apache 2.0",
         "Apache-2.0",
@@ -37,7 +37,7 @@ class LicenseComplianceChecker:
         "GNU Lesser General Public License v2.1 (LGPLv2.1)",
         "LGPL-2.1",
     }
-    
+
     # Licenses requiring review
     REVIEW_REQUIRED = {
         "GNU General Public License v3 (GPLv3)",
@@ -46,32 +46,21 @@ class LicenseComplianceChecker:
         "GPL-2.0",
         "Copyleft",
     }
-    
+
     # Prohibited licenses
     PROHIBITED_LICENSES = {
         "AGPL",
-        "Proprietary", 
+        "Proprietary",
         "Commercial",
     }
 
     def __init__(self):
-        self.results = {
-            "approved": [],
-            "review_required": [],
-            "prohibited": [],
-            "unknown": [],
-            "summary": {}
-        }
+        self.results = {"approved": [], "review_required": [], "prohibited": [], "unknown": [], "summary": {}}
 
     def run_license_check(self) -> Dict:
         """Run pip-licenses and parse results."""
         try:
-            result = subprocess.run(
-                ["pip-licenses", "--format=json"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            result = subprocess.run(["pip-licenses", "--format=json"], capture_output=True, text=True, check=True)
             return json.loads(result.stdout)
         except subprocess.CalledProcessError as e:
             print(f"Error running pip-licenses: {e}")
@@ -84,14 +73,14 @@ class LicenseComplianceChecker:
         """Categorize a license based on our policies."""
         if not license_name or license_name.strip() == "":
             return "unknown"
-        
+
         # Normalize license name
         license_clean = license_name.strip()
-        
+
         # Handle common variations and UNKNOWN licenses
         if license_clean.upper() == "UNKNOWN":
             return "unknown"
-        
+
         if license_clean in self.APPROVED_LICENSES:
             return "approved"
         elif license_clean in self.REVIEW_REQUIRED:
@@ -103,37 +92,32 @@ class LicenseComplianceChecker:
             for approved in self.APPROVED_LICENSES:
                 if approved.lower() in license_clean.lower():
                     return "approved"
-            
+
             for review in self.REVIEW_REQUIRED:
                 if review.lower() in license_clean.lower():
                     return "review_required"
-                    
+
             for prohibited in self.PROHIBITED_LICENSES:
                 if prohibited.lower() in license_clean.lower():
                     return "prohibited"
-                    
+
             return "unknown"
 
     def check_compliance(self) -> Dict:
         """Check license compliance for all dependencies."""
         license_data = self.run_license_check()
-        
+
         for package in license_data:
             name = package.get("Name", "Unknown")
             version = package.get("Version", "Unknown")
             license_name = package.get("License", "UNKNOWN")
-            
+
             category = self.categorize_license(license_name)
-            
-            package_info = {
-                "name": name,
-                "version": version,
-                "license": license_name,
-                "category": category
-            }
-            
+
+            package_info = {"name": name, "version": version, "license": license_name, "category": category}
+
             self.results[category].append(package_info)
-        
+
         # Generate summary
         self.results["summary"] = {
             "total_packages": len(license_data),
@@ -141,9 +125,9 @@ class LicenseComplianceChecker:
             "review_required": len(self.results["review_required"]),
             "prohibited": len(self.results["prohibited"]),
             "unknown": len(self.results["unknown"]),
-            "compliance_status": "PASS" if len(self.results["prohibited"]) == 0 else "FAIL"
+            "compliance_status": "PASS" if len(self.results["prohibited"]) == 0 else "FAIL",
         }
-        
+
         return self.results
 
     def generate_report(self) -> str:
@@ -151,7 +135,7 @@ class LicenseComplianceChecker:
         report = []
         report.append("# License Compliance Report")
         report.append("")
-        
+
         summary = self.results["summary"]
         report.append("## Summary")
         report.append(f"- **Total Packages**: {summary['total_packages']}")
@@ -161,25 +145,25 @@ class LicenseComplianceChecker:
         report.append(f"- **Unknown**: {summary['unknown']}")
         report.append(f"- **Status**: {summary['compliance_status']}")
         report.append("")
-        
+
         if self.results["prohibited"]:
             report.append("## ❌ Prohibited Licenses")
             for pkg in self.results["prohibited"]:
                 report.append(f"- **{pkg['name']}** v{pkg['version']}: {pkg['license']}")
             report.append("")
-        
+
         if self.results["review_required"]:
             report.append("## ⚠️ Licenses Requiring Review")
             for pkg in self.results["review_required"]:
                 report.append(f"- **{pkg['name']}** v{pkg['version']}: {pkg['license']}")
             report.append("")
-        
+
         if self.results["unknown"]:
             report.append("## ❓ Unknown Licenses")
             for pkg in self.results["unknown"]:
                 report.append(f"- **{pkg['name']}** v{pkg['version']}: {pkg['license']}")
             report.append("")
-        
+
         return "\n".join(report)
 
     def save_results(self):
@@ -187,22 +171,24 @@ class LicenseComplianceChecker:
         # Save JSON results
         with open("license-compliance-report.json", "w") as f:
             json.dump(self.results, f, indent=2)
-        
+
         # Save markdown report
         with open("license-summary.md", "w") as f:
             f.write(self.generate_report())
-        
+
         print("License compliance check completed.")
         print(f"Status: {self.results['summary']['compliance_status']}")
-        
+
         if self.results["prohibited"]:
             print(f"❌ Found {len(self.results['prohibited'])} prohibited licenses!")
             sys.exit(1)
         elif self.results["review_required"]:
             print(f"⚠️ Found {len(self.results['review_required'])} licenses requiring review.")
         elif self.results["unknown"]:
-            print(f"ℹ️ Found {len(self.results['unknown'])} unknown licenses - treating as non-critical for scientific software.")
-        
+            print(
+                f"ℹ️ Found {len(self.results['unknown'])} unknown licenses - treating as non-critical for scientific software."
+            )
+
         print("✅ License compliance check passed.")
 
 

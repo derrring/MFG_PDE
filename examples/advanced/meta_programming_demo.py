@@ -13,174 +13,183 @@ The meta-programming framework enables users to specify MFG problems in a
 high-level mathematical language and automatically generate optimized solvers.
 """
 
-import numpy as np
 import time
-from typing import Dict, Any
+from typing import Any, Dict
 
-# Import meta-programming framework
-from mfg_pde.meta import (
-    MFGSystemBuilder,
-    HamiltonianBuilder,
-    LagrangianBuilder,
-    generate_solver_class,
-    generate_discretization,
-    create_optimized_solver,
-    TypedMFGProblem,
-    QUADRATIC_MFG_TYPE,
-    CONGESTION_MFG_TYPE,
-    infer_mfg_type,
-    OptimizationCompiler,
-    PerformanceProfile,
-    jit_optimize,
-    adaptive_backend
-)
+import numpy as np
 
 # Import standard MFG components for comparison
 from mfg_pde import MFGProblem
 from mfg_pde.factory import create_fast_solver
 
+# Import meta-programming framework
+from mfg_pde.meta import (
+    CONGESTION_MFG_TYPE,
+    QUADRATIC_MFG_TYPE,
+    HamiltonianBuilder,
+    LagrangianBuilder,
+    MFGSystemBuilder,
+    OptimizationCompiler,
+    PerformanceProfile,
+    TypedMFGProblem,
+    adaptive_backend,
+    create_optimized_solver,
+    generate_discretization,
+    generate_solver_class,
+    infer_mfg_type,
+    jit_optimize,
+)
+
 
 def demo_mathematical_dsl():
     """Demonstrate the mathematical DSL for MFG system specification."""
-    
+
     print("=== Mathematical DSL Demonstration ===")
     print()
-    
+
     # Example 1: Quadratic MFG system using fluent API
     print("1. Quadratic MFG System (Hamiltonian approach):")
-    
-    quadratic_system = (HamiltonianBuilder()
-                       .quadratic_control_cost(0.5)
-                       .potential("0.5 * (x - x_target)**2")
-                       .interaction_potential("interaction_strength * x * m")
-                       .running_cost("0.1 * (x - 0.5)**2")
-                       .terminal_cost("0.5 * (x - x_final)**2")
-                       .parameter("x_target", 0.0)
-                       .parameter("x_final", 1.0)
-                       .parameter("interaction_strength", 1.0)
-                       .domain(xmin=0, xmax=1, tmax=1.0, nx=100, nt=50)
-                       .build())
-    
+
+    quadratic_system = (
+        HamiltonianBuilder()
+        .quadratic_control_cost(0.5)
+        .potential("0.5 * (x - x_target)**2")
+        .interaction_potential("interaction_strength * x * m")
+        .running_cost("0.1 * (x - 0.5)**2")
+        .terminal_cost("0.5 * (x - x_final)**2")
+        .parameter("x_target", 0.0)
+        .parameter("x_final", 1.0)
+        .parameter("interaction_strength", 1.0)
+        .domain(xmin=0, xmax=1, tmax=1.0, nx=100, nt=50)
+        .build()
+    )
+
     print(f"   Hamiltonian: {quadratic_system.expressions['hamiltonian'].expression}")
     print(f"   Parameters: {quadratic_system.parameters}")
     print()
-    
+
     # Example 2: Congestion MFG system using Lagrangian approach
     print("2. Congestion MFG System (Lagrangian approach):")
-    
-    congestion_system = (LagrangianBuilder()
-                        .kinetic_energy(0.5)
-                        .congestion_cost("m**2")
-                        .running_cost("0.5 * (x - x_target)**2")
-                        .terminal_cost("terminal_cost_coeff * (x - 1.0)**2")
-                        .constraint("sum(m) - 1.0")  # Mass conservation
-                        .parameter("congestion_coeff", 2.0)
-                        .parameter("x_target", 0.5)
-                        .parameter("terminal_cost_coeff", 1.0)
-                        .domain(xmin=0, xmax=1, tmax=0.5, nx=80, nt=30)
-                        .build())
-    
+
+    congestion_system = (
+        LagrangianBuilder()
+        .kinetic_energy(0.5)
+        .congestion_cost("m**2")
+        .running_cost("0.5 * (x - x_target)**2")
+        .terminal_cost("terminal_cost_coeff * (x - 1.0)**2")
+        .constraint("sum(m) - 1.0")  # Mass conservation
+        .parameter("congestion_coeff", 2.0)
+        .parameter("x_target", 0.5)
+        .parameter("terminal_cost_coeff", 1.0)
+        .domain(xmin=0, xmax=1, tmax=0.5, nx=80, nt=30)
+        .build()
+    )
+
     print(f"   Lagrangian: {congestion_system.expressions['lagrangian'].expression}")
     print(f"   Constraints: {len(congestion_system.constraints)} constraint(s)")
     print(f"   Domain: {congestion_system.domain_info}")
     print()
-    
+
     # Example 3: Custom MFG system with complex interactions
     print("3. Custom MFG System with Complex Interactions:")
-    
-    custom_system = (MFGSystemBuilder()
-                    .hamiltonian("0.5 * p**2 + V_ext(x) + phi(x, m)")
-                    .running_cost("alpha * (x - x_ref)**2 + beta * m_penalty(m)")
-                    .terminal_cost("gamma * terminal_penalty(x, m_final)")
-                    .constraint("energy_conservation(x, p, m)")
-                    .constraint("boundary_condition(x)")
-                    .parameter("alpha", 0.1)
-                    .parameter("beta", 0.5)
-                    .parameter("gamma", 2.0)
-                    .parameter("x_ref", 0.3)
-                    .domain(xmin=-1, xmax=1, tmax=2.0, nx=150, nt=100)
-                    .build())
-    
+
+    custom_system = (
+        MFGSystemBuilder()
+        .hamiltonian("0.5 * p**2 + V_ext(x) + phi(x, m)")
+        .running_cost("alpha * (x - x_ref)**2 + beta * m_penalty(m)")
+        .terminal_cost("gamma * terminal_penalty(x, m_final)")
+        .constraint("energy_conservation(x, p, m)")
+        .constraint("boundary_condition(x)")
+        .parameter("alpha", 0.1)
+        .parameter("beta", 0.5)
+        .parameter("gamma", 2.0)
+        .parameter("x_ref", 0.3)
+        .domain(xmin=-1, xmax=1, tmax=2.0, nx=150, nt=100)
+        .build()
+    )
+
     print(f"   Hamiltonian: {custom_system.expressions['hamiltonian'].expression}")
     print(f"   Number of constraints: {len(custom_system.constraints)}")
     print()
-    
+
     return quadratic_system, congestion_system, custom_system
 
 
 def demo_automatic_code_generation():
     """Demonstrate automatic solver code generation."""
-    
+
     print("=== Automatic Code Generation Demonstration ===")
     print()
-    
+
     # Create a mathematical system
-    system = (HamiltonianBuilder()
-             .quadratic_control_cost(0.5)
-             .potential("0.5 * x**2")
-             .domain(xmin=0, xmax=1, tmax=1.0, nx=50, nt=25)
-             .build())
-    
+    system = (
+        HamiltonianBuilder()
+        .quadratic_control_cost(0.5)
+        .potential("0.5 * x**2")
+        .domain(xmin=0, xmax=1, tmax=1.0, nx=50, nt=25)
+        .build()
+    )
+
     # Define discretization schemes
     discretization_schemes = {
         "gradient": generate_discretization("gradient", order=2),
         "laplacian": generate_discretization("laplacian", order=2),
-        "divergence": generate_discretization("gradient", order=2)
+        "divergence": generate_discretization("gradient", order=2),
     }
-    
+
     print("1. Generated Discretization Schemes:")
     for name, scheme in discretization_schemes.items():
         print(f"   {name}: {scheme.operator} (order {scheme.order})")
         print(f"      Stencil: {scheme.stencil}")
         print(f"      Coefficients: {scheme.coefficients}")
     print()
-    
+
     # Generate solver code
     print("2. Generating Solver Code...")
     solver_code = generate_solver_class(
         solver_name="AutoGeneratedQuadratic",
         mathematical_system=system,
         discretization_schemes=discretization_schemes,
-        backend="numpy"
+        backend="numpy",
     )
-    
+
     print("   Generated solver class (first 20 lines):")
     lines = solver_code.split('\n')
     for i, line in enumerate(lines[:20]):
         print(f"   {i+1:2d}: {line}")
-    
+
     if len(lines) > 20:
         print(f"   ... ({len(lines) - 20} more lines)")
     print()
-    
+
     return solver_code
 
 
 def demo_type_driven_dispatch():
     """Demonstrate type-driven solver dispatch."""
-    
+
     print("=== Type-Driven Solver Dispatch Demonstration ===")
     print()
-    
+
     # Create different problem types
     problems = []
-    
+
     # Quadratic problem
     quad_problem = MFGProblem(xmin=0, xmax=1, T=1.0, Nx=100, Nt=50)
     quad_typed = TypedMFGProblem(quad_problem, QUADRATIC_MFG_TYPE)
     problems.append(("Quadratic", quad_typed))
-    
+
     # Congestion problem
     cong_problem = MFGProblem(xmin=0, xmax=1, T=0.5, Nx=80, Nt=30)
     cong_typed = TypedMFGProblem(cong_problem, CONGESTION_MFG_TYPE)
     problems.append(("Congestion", cong_typed))
-    
+
     # Inferred type problem
     inf_problem = MFGProblem(xmin=-1, xmax=1, T=2.0, Nx=200, Nt=100)
     inf_type = infer_mfg_type(inf_problem)
     inf_typed = TypedMFGProblem(inf_problem, inf_type)
     problems.append(("Inferred", inf_typed))
-    
+
     for name, typed_problem in problems:
         print(f"{name} Problem Type Analysis:")
         print(f"   State space: {typed_problem.mfg_type.state_space}")
@@ -189,7 +198,7 @@ def demo_type_driven_dispatch():
         print(f"   Time horizon: {typed_problem.mfg_type.time_horizon}")
         print(f"   Preferred methods: {typed_problem.mfg_type.preferred_methods}")
         print(f"   Validation passed: {typed_problem.validate_type_constraints()}")
-        
+
         # Get compatible solvers (would need actual solver registration)
         compatible = typed_problem.get_compatible_solvers()
         print(f"   Compatible solvers: {len(compatible)} found")
@@ -198,154 +207,145 @@ def demo_type_driven_dispatch():
 
 def demo_performance_optimization():
     """Demonstrate runtime performance optimization."""
-    
+
     print("=== Performance Optimization Demonstration ===")
     print()
-    
+
     # Create test problems of different sizes
-    problem_sizes = [
-        (50, 25, "Small"),
-        (200, 100, "Medium"), 
-        (500, 250, "Large")
-    ]
-    
+    problem_sizes = [(50, 25, "Small"), (200, 100, "Medium"), (500, 250, "Large")]
+
     optimization_results = []
-    
+
     for nx, nt, size_name in problem_sizes:
         print(f"{size_name} Problem ({nx}x{nt} grid):")
-        
+
         # Create problem
         problem = MFGProblem(xmin=0, xmax=1, T=1.0, Nx=nx, Nt=nt)
-        
+
         # Create standard solver
         standard_solver = create_fast_solver(problem)
-        
+
         # Create performance profile
         profile = PerformanceProfile(
-            problem_size=nx * nt,
-            backend="auto",
-            target_precision=1e-6,
-            optimization_level="balanced"
+            problem_size=nx * nt, backend="auto", target_precision=1e-6, optimization_level="balanced"
         )
-        
+
         # Create optimization compiler
         compiler = OptimizationCompiler()
-        
+
         # Benchmark function (simplified example)
         def test_function(u, m):
             """Simple test function for benchmarking."""
             grad_u = np.gradient(u)
             result = 0.5 * grad_u**2 + u * m
             return np.sum(result)
-        
+
         # Create test data
         u = np.random.randn(nx)
         m = np.abs(np.random.randn(nx))
         m = m / np.sum(m)  # Normalize
-        
+
         # Benchmark original function
-        original_stats = compiler.benchmark_function(
-            test_function, (u, m), {}, num_runs=5
-        )
-        
+        original_stats = compiler.benchmark_function(test_function, (u, m), {}, num_runs=5)
+
         # Optimize function
         optimized_function = compiler.optimize_function(test_function, profile)
-        
+
         # Benchmark optimized function
-        optimized_stats = compiler.benchmark_function(
-            optimized_function, (u, m), {}, num_runs=5
-        )
-        
+        optimized_stats = compiler.benchmark_function(optimized_function, (u, m), {}, num_runs=5)
+
         # Calculate speedup
         speedup = original_stats['mean_time'] / optimized_stats['mean_time']
-        
+
         print(f"   Original time: {original_stats['mean_time']:.6f}s")
         print(f"   Optimized time: {optimized_stats['mean_time']:.6f}s")
         print(f"   Speedup: {speedup:.2f}x")
         print(f"   Backend selected: {profile.backend}")
         print()
-        
-        optimization_results.append({
-            'size': size_name,
-            'problem_size': nx * nt,
-            'original_time': original_stats['mean_time'],
-            'optimized_time': optimized_stats['mean_time'],
-            'speedup': speedup,
-            'backend': profile.backend
-        })
-    
+
+        optimization_results.append(
+            {
+                'size': size_name,
+                'problem_size': nx * nt,
+                'original_time': original_stats['mean_time'],
+                'optimized_time': optimized_stats['mean_time'],
+                'speedup': speedup,
+                'backend': profile.backend,
+            }
+        )
+
     return optimization_results
 
 
 def demo_decorators_and_jit():
     """Demonstrate optimization decorators and JIT compilation."""
-    
+
     print("=== Optimization Decorators and JIT Demonstration ===")
     print()
-    
+
     # Example solver methods with decorators
     class ExampleSolver:
         def __init__(self, problem):
             self.problem = problem
             self.dx = (problem.xmax - problem.xmin) / problem.Nx
             self.dt = problem.T / problem.Nt
-        
+
         @jit_optimize(backend="auto", optimization_level="speed")
         def compute_gradient(self, u):
             """Compute gradient with JIT optimization."""
             return np.gradient(u, self.dx)
-        
+
         @adaptive_backend(backends=["numpy", "numba", "jax"])
         def solve_hjb_step(self, u, m):
             """HJB step with adaptive backend selection."""
             grad_u = self.compute_gradient(u)
             laplacian_u = np.gradient(grad_u, self.dx)
-            
+
             # Simple HJB update
             hamiltonian = 0.5 * grad_u**2
             u_new = u + self.dt * (0.5 * laplacian_u - hamiltonian)
-            
+
             return u_new
-        
+
         def solve_fp_step(self, m, optimal_control):
             """Fokker-Planck step."""
             flux = m * optimal_control
             div_flux = np.gradient(flux, self.dx)
             diffusion = 0.5 * np.gradient(np.gradient(m, self.dx), self.dx)
-            
+
             m_new = m + self.dt * (diffusion - div_flux)
             return np.maximum(m_new, 0)  # Ensure non-negativity
-    
+
     # Test the decorated solver
     problem = MFGProblem(xmin=0, xmax=1, T=0.5, Nx=100, Nt=25)
     solver = ExampleSolver(problem)
-    
+
     # Create test data
     u = np.sin(2 * np.pi * np.linspace(0, 1, problem.Nx))
-    m = np.exp(-((np.linspace(0, 1, problem.Nx) - 0.5)**2) / 0.1)
+    m = np.exp(-((np.linspace(0, 1, problem.Nx) - 0.5) ** 2) / 0.1)
     m = m / np.sum(m)  # Normalize
-    
+
     print("Testing decorated solver methods:")
-    
+
     # Test gradient computation
     start_time = time.perf_counter()
     grad = solver.compute_gradient(u)
     grad_time = time.perf_counter() - start_time
     print(f"   Gradient computation: {grad_time:.6f}s")
-    
+
     # Test HJB step
     start_time = time.perf_counter()
     u_new = solver.solve_hjb_step(u, m)
     hjb_time = time.perf_counter() - start_time
     print(f"   HJB step: {hjb_time:.6f}s")
-    
+
     # Test FP step
     optimal_control = -grad  # Simple control law
     start_time = time.perf_counter()
     m_new = solver.solve_fp_step(m, optimal_control)
     fp_time = time.perf_counter() - start_time
     print(f"   FP step: {fp_time:.6f}s")
-    
+
     # Check mass conservation
     mass_error = abs(np.sum(m_new) - np.sum(m))
     print(f"   Mass conservation error: {mass_error:.2e}")
@@ -354,13 +354,13 @@ def demo_decorators_and_jit():
 
 def demo_backend_comparison():
     """Compare performance across different backends."""
-    
+
     print("=== Backend Performance Comparison ===")
     print()
-    
+
     # Create test problem
     problem = MFGProblem(xmin=0, xmax=1, T=1.0, Nx=200, Nt=100)
-    
+
     # Test function for backend comparison
     def mfg_iteration(u, m, dt, dx):
         """Single MFG iteration for backend testing."""
@@ -369,7 +369,7 @@ def demo_backend_comparison():
         laplacian_u = np.gradient(grad_u, dx)
         hamiltonian = 0.5 * grad_u**2
         u_new = u + dt * (0.5 * laplacian_u - hamiltonian)
-        
+
         # FP step
         flux = m * (-grad_u)  # Optimal control
         div_flux = np.gradient(flux, dx)
@@ -377,89 +377,84 @@ def demo_backend_comparison():
         m_new = m + dt * (diffusion - div_flux)
         m_new = np.maximum(m_new, 0)  # Non-negativity
         m_new = m_new / np.sum(m_new)  # Renormalize
-        
+
         return u_new, m_new
-    
+
     # Create test data
     x = np.linspace(0, 1, problem.Nx)
     u = np.sin(2 * np.pi * x)
-    m = np.exp(-((x - 0.5)**2) / 0.1)
+    m = np.exp(-((x - 0.5) ** 2) / 0.1)
     m = m / np.sum(m)
     dt = problem.T / problem.Nt
     dx = (problem.xmax - problem.xmin) / problem.Nx
-    
+
     backends = ["numpy", "numba", "jax"]
     results = {}
-    
+
     for backend in backends:
         try:
             # Create performance profile for backend
             profile = PerformanceProfile(
-                problem_size=problem.Nx * problem.Nt,
-                backend=backend,
-                target_precision=1e-6,
-                optimization_level="speed"
+                problem_size=problem.Nx * problem.Nt, backend=backend, target_precision=1e-6, optimization_level="speed"
             )
-            
+
             # Optimize function for backend
             compiler = OptimizationCompiler(backend)
             optimized_func = compiler.optimize_function(mfg_iteration, profile)
-            
+
             # Benchmark
-            stats = compiler.benchmark_function(
-                optimized_func, (u.copy(), m.copy(), dt, dx), {}, num_runs=3
-            )
-            
+            stats = compiler.benchmark_function(optimized_func, (u.copy(), m.copy(), dt, dx), {}, num_runs=3)
+
             results[backend] = stats
             print(f"{backend.upper()} Backend:")
             print(f"   Mean time: {stats['mean_time']:.6f}s")
             print(f"   Std time: {stats['std_time']:.6f}s")
             print()
-            
+
         except Exception as e:
             print(f"{backend.upper()} Backend: Not available ({e})")
             print()
-    
+
     # Compare results
     if len(results) > 1:
         print("Performance Comparison:")
         fastest_backend = min(results.keys(), key=lambda k: results[k]['mean_time'])
         fastest_time = results[fastest_backend]['mean_time']
-        
+
         for backend, stats in results.items():
             speedup = fastest_time / stats['mean_time']
             print(f"   {backend}: {speedup:.2f}x relative to fastest")
         print()
-    
+
     return results
 
 
 def main():
     """Run all meta-programming demonstrations."""
-    
+
     print("MFG_PDE Meta-Programming Framework Demonstration")
     print("=" * 60)
     print()
-    
+
     try:
         # 1. Mathematical DSL
         systems = demo_mathematical_dsl()
-        
+
         # 2. Code generation
         solver_code = demo_automatic_code_generation()
-        
+
         # 3. Type-driven dispatch
         demo_type_driven_dispatch()
-        
+
         # 4. Performance optimization
         optimization_results = demo_performance_optimization()
-        
+
         # 5. Decorators and JIT
         demo_decorators_and_jit()
-        
+
         # 6. Backend comparison
         backend_results = demo_backend_comparison()
-        
+
         # Summary
         print("=== Summary ===")
         print()
@@ -471,20 +466,20 @@ def main():
         print("✓ Backend-agnostic optimization with automatic selection")
         print("✓ Decorator-based method optimization")
         print()
-        
+
         # Performance summary
         if optimization_results:
             avg_speedup = np.mean([r['speedup'] for r in optimization_results])
             print(f"Average optimization speedup: {avg_speedup:.2f}x")
-        
+
         if backend_results:
             fastest = min(backend_results.keys(), key=lambda k: backend_results[k]['mean_time'])
             print(f"Fastest backend for test problem: {fastest.upper()}")
-        
+
         print()
         print("Meta-programming enables researchers to focus on mathematical")
         print("formulations while automatically generating efficient implementations.")
-        
+
     except Exception as e:
         print(f"Error during demonstration: {e}")
         print("Some meta-programming features may require additional dependencies.")

@@ -1,17 +1,24 @@
 name: Code Quality and Formatting
+#
+# Cost-optimized workflow: Manual triggers only to reduce GitHub Actions usage
+#
+# To run manually:
+# 1. Go to GitHub repo → Actions tab → "Code Quality and Formatting"
+# 2. Click "Run workflow" → Select branch → Run
+#
+# Automatically runs on releases for quality assurance
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:  # Manual trigger only to reduce costs
+  release:
+    types: [published]  # Run on releases for quality assurance
 
 jobs:
   code-quality:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.11"]  # Reduced to single version to save minutes
 
     steps:
     - uses: actions/checkout@v4
@@ -106,19 +113,19 @@ jobs:
 
         # Test with small problem to ensure memory monitoring works
         monitor = MemoryMonitor(max_memory_gb=2.0)
-        
+
         problem = ExampleMFGProblem(Nx=20, Nt=10)
         solver = create_fast_solver(problem, 'fixed_point')
-        
+
         initial_memory = monitor.get_current_memory_gb()
         print(f'Initial memory: {initial_memory:.3f} GB')
-        
+
         result = solver.solve()
-        
+
         final_memory = monitor.get_current_memory_gb()
         print(f'Final memory: {final_memory:.3f} GB')
         print(f'Memory increase: {(final_memory - initial_memory):.3f} GB')
-        
+
         if final_memory > 1.0:  # Should not use more than 1GB for small problem
             print('❌ Excessive memory usage detected')
             exit(1)
@@ -153,13 +160,13 @@ jobs:
         # Benchmark small problem
         problem = ExampleMFGProblem(Nx=30, Nt=20)
         solver = create_fast_solver(problem, 'fixed_point')
-        
+
         start_time = time.time()
         result = solver.solve()
         execution_time = time.time() - start_time
-        
+
         print(f'Execution time: {execution_time:.2f} seconds')
-        
+
         # Should complete small problem in reasonable time
         if execution_time > 30:  # 30 second threshold
             print(f'❌ Performance regression detected: {execution_time:.2f}s > 30s')
@@ -195,7 +202,7 @@ jobs:
         def check_docstrings(file_path):
             with open(file_path, 'r') as f:
                 tree = ast.parse(f.read())
-            
+
             missing = []
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.ClassDef)):

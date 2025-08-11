@@ -1,14 +1,16 @@
-import numpy as np
 import time
+
+import numpy as np
+
+from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
+from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.boundaries import BoundaryConditions
 
 # Adjust these imports based on your package structure and where this script is located
 # Assuming this script is outside the mfg_pde package, and mfg_pde is installed
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
-from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
-from mfg_pde.utils.plot_utils import plot_results, plot_convergence
-from mfg_pde.core.boundaries import BoundaryConditions
+from mfg_pde.utils.plot_utils import plot_convergence, plot_results
 
 
 def run_pure_fdm_example():
@@ -39,9 +41,7 @@ def run_pure_fdm_example():
     print("\n--- Running Pure FDM Solver (via FixedPointIterator) ---")
 
     # 1. Instantiate the HJB solver component (FDM)
-    hjb_solver_component = FdmHJBSolver(
-        mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton
-    )
+    hjb_solver_component = FdmHJBSolver(mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton)
 
     # 2. Instantiate the FP solver component (FDM) with Dirichlet boundaries
     # Use homogeneous Dirichlet boundaries (m=0 at boundaries) to see mass loss
@@ -64,17 +64,13 @@ def run_pure_fdm_example():
         Niter_max_picard, conv_threshold_picard
     )
     time_fdm_solve = time.time() - start_time_fdm
-    print(
-        f"--- {solver_name_fdm} Solver Finished in {time_fdm_solve:.2f} seconds ({iters_fdm} iterations) ---"
-    )
+    print(f"--- {solver_name_fdm} Solver Finished in {time_fdm_solve:.2f} seconds ({iters_fdm} iterations) ---")
 
     # Plot results
     if U_fdm is not None and M_fdm is not None and iters_fdm > 0:
         print("\n--- Plotting Pure FDM Solver Results ---")
         plot_results(mfg_problem, U_fdm, M_fdm, solver_name=solver_name_fdm)
-        plot_convergence(
-            iters_fdm, rel_distu_fdm, rel_distm_fdm, solver_name=solver_name_fdm
-        )
+        plot_convergence(iters_fdm, rel_distu_fdm, rel_distm_fdm, solver_name=solver_name_fdm)
 
     print("\n--- Pure FDM Example Script Finished ---")
 

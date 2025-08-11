@@ -1,13 +1,15 @@
-import numpy as np
 import time
+
+import numpy as np
+
+from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
+from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver  # Using particle solver
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver
 
 # Adjust these imports based on your package structure and where this script is located.
 # This assumes the script is run from a location where 'mfg_pde' is in PYTHONPATH.
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver  # Using particle solver
-from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
-from mfg_pde.utils.plot_utils import plot_results, plot_convergence
+from mfg_pde.utils.plot_utils import plot_convergence, plot_results
 
 
 def run_hybrid_fdm_particle_example():
@@ -41,9 +43,7 @@ def run_hybrid_fdm_particle_example():
     print("\n--- Running HJB-FDM / FP-Particle Solver (via FixedPointIterator) ---")
 
     # 1. Instantiate the HJB solver component (FDM)
-    hjb_solver_component = FdmHJBSolver(
-        mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton
-    )
+    hjb_solver_component = FdmHJBSolver(mfg_problem, NiterNewton=NiterNewton, l2errBoundNewton=l2errBoundNewton)
 
     # 2. Instantiate the FP solver component (Particle)
     fp_solver_component = ParticleFPSolver(
@@ -66,8 +66,8 @@ def run_hybrid_fdm_particle_example():
 
     start_time_hybrid = time.time()
     # solve returns: U, M, iterations_run, l2disturel_u, l2disturel_m
-    U_hybrid, M_hybrid_density, iters_hybrid, rel_distu_hybrid, rel_distm_hybrid = (
-        hybrid_iterator.solve(Niter_max_picard, conv_threshold_picard)
+    U_hybrid, M_hybrid_density, iters_hybrid, rel_distu_hybrid, rel_distm_hybrid = hybrid_iterator.solve(
+        Niter_max_picard, conv_threshold_picard
     )
     time_hybrid_solve = time.time() - start_time_hybrid
 
@@ -75,12 +75,8 @@ def run_hybrid_fdm_particle_example():
         print(
             f"--- {solver_name_hybrid} Solver Finished in {time_hybrid_solve:.2f} seconds ({iters_hybrid} iterations) ---"
         )
-        final_rel_err_U = (
-            rel_distu_hybrid[iters_hybrid - 1] if iters_hybrid > 0 else float("nan")
-        )
-        final_rel_err_M = (
-            rel_distm_hybrid[iters_hybrid - 1] if iters_hybrid > 0 else float("nan")
-        )
+        final_rel_err_U = rel_distu_hybrid[iters_hybrid - 1] if iters_hybrid > 0 else float("nan")
+        final_rel_err_M = rel_distm_hybrid[iters_hybrid - 1] if iters_hybrid > 0 else float("nan")
         print(f"    Final relative error U: {final_rel_err_U:.2e}")
         print(f"    Final relative error M: {final_rel_err_M:.2e}")
 
@@ -92,15 +88,11 @@ def run_hybrid_fdm_particle_example():
             print(f"Initial mass: {total_mass[0]:.6f}")
             print(f"Final mass: {total_mass[-1]:.6f}")
             print(f"Mass change: {(total_mass[-1] - total_mass[0]):.6f}")
-            print(
-                f"Relative mass change: {(total_mass[-1] - total_mass[0])/total_mass[0]*100:.3f}%"
-            )
+            print(f"Relative mass change: {(total_mass[-1] - total_mass[0])/total_mass[0]*100:.3f}%")
 
             print("\n--- Plotting Hybrid Solver Results ---")
             # Ensure plot_results can handle potentially different M structures (though both are (Nt,Nx) grid densities)
-            plot_results(
-                mfg_problem, U_hybrid, M_hybrid_density, solver_name=solver_name_hybrid
-            )
+            plot_results(mfg_problem, U_hybrid, M_hybrid_density, solver_name=solver_name_hybrid)
             plot_convergence(
                 iters_hybrid,
                 rel_distu_hybrid,
@@ -108,9 +100,7 @@ def run_hybrid_fdm_particle_example():
                 solver_name=solver_name_hybrid,
             )
     else:
-        print(
-            f"--- {solver_name_hybrid} Solver did not run any iterations or failed. ---"
-        )
+        print(f"--- {solver_name_hybrid} Solver did not run any iterations or failed. ---")
 
     print("\n--- Hybrid FDM-Particle Example Script Finished ---")
 
