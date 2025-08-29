@@ -6,7 +6,41 @@ A state-of-the-art Python framework for solving Mean Field Games with GPU accele
 **🌐 Network MFG**: Complete discrete MFG implementation on graph structures  
 **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
 
-## Quick Start
+## 🚀 Quick Start
+
+### Installation Options
+
+#### **Option 1: UV (Recommended - 10x Faster)**
+```bash
+# Install uv (modern, fast package manager)
+pip install uv
+
+# One-command setup with exact reproducible environment  
+git clone https://github.com/derrring/MFG_PDE.git
+cd MFG_PDE
+uv sync --extra dev        # Creates .venv with all dependencies (294 packages)
+
+# Run examples and tests
+uv run python examples/basic/semi_lagrangian_example.py
+uv run pytest tests/unit/ -v
+```
+
+#### **Option 2: Traditional pip/conda**
+```bash
+git clone https://github.com/derrring/MFG_PDE.git
+cd MFG_PDE
+pip install -e ".[dev]"    # Standard installation
+python examples/basic/semi_lagrangian_example.py
+```
+
+### Verify Installation
+```python
+# Check backend availability  
+from mfg_pde.backends import get_backend_info
+info = get_backend_info()
+print(f"Available backends: {info['available_backends']}")
+# Expected: {'numpy': True, 'jax': False/True}
+```
 
 ### 🌐 Network Mean Field Games (NEW)
 
@@ -197,18 +231,28 @@ print(f"JAX GPU support: {info.get('jax_info', {}).get('has_gpu', False)}")
 ## Testing
 
 ### 🧪 **Quality Assurance**
+
+#### **UV Workflow (Recommended)**
 ```bash
-# Run all tests
-python -m pytest tests/
+# Fast testing with exact reproducible environment
+uv run pytest tests/                    # All tests
+uv run pytest tests/unit/ -v           # Unit tests with verbose output  
+uv run pytest tests/integration/       # Integration tests
+uv run pytest --cov=mfg_pde            # Coverage testing
 
-# Run property-based tests
-python -m pytest tests/property_based/
+# Development workflow
+uv run black mfg_pde/                  # Auto-format code
+uv run mypy mfg_pde/core/              # Type checking (core modules)
+uv run python examples/basic/semi_lagrangian_example.py  # Run examples
+```
 
-# Run unit tests
-python -m pytest tests/unit/
-
-# Run integration tests  
-python -m pytest tests/integration/
+#### **Traditional Workflow**
+```bash
+# Standard testing
+python -m pytest tests/                # All tests
+python -m pytest tests/property_based/ # Property-based tests  
+python -m pytest tests/unit/           # Unit tests
+python -m pytest tests/integration/    # Integration tests
 ```
 
 ### 📊 **CI/CD Pipeline**

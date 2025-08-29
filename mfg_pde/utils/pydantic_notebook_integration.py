@@ -211,10 +211,10 @@ class PydanticNotebookReporter(MFGNotebookReporter):
 
         return f"""# {title}
 
-**Experiment**: {experiment_config.experiment_name}  
-**Researcher**: {experiment_config.researcher}  
-**Generated**: {created_at}  
-**Configuration**: Enhanced Pydantic Validation  
+**Experiment**: {experiment_config.experiment_name}
+**Researcher**: {experiment_config.researcher}
+**Generated**: {created_at}
+**Configuration**: Enhanced Pydantic Validation
 
 {experiment_config.description or "MFG numerical analysis with comprehensive validation"}
 
@@ -224,7 +224,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
 
 This report uses **Pydantic-validated configurations** ensuring:
 - SUCCESS: Automatic parameter validation
-- SUCCESS: Numerical stability checking  
+- SUCCESS: Numerical stability checking
 - SUCCESS: Physical constraint validation
 - SUCCESS: Cross-field consistency verification
 - SUCCESS: Professional serialization support
@@ -268,7 +268,7 @@ SUCCESS: **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.c
 ### Array Validation Results
 - **U Solution**: Shape {stats['U']['shape']}, range [{stats['U']['min']:.3e}, {stats['U']['max']:.3e}]
 - **M Solution**: Shape {stats['M']['shape']}, range [{stats['M']['min']:.3e}, {stats['M']['max']:.3e}]
-- **Mass Conservation**: 
+- **Mass Conservation**:
   - Initial: {mass_stats['initial_mass']:.6f}
   - Final: {mass_stats['final_mass']:.6f}
   - Drift: {mass_stats['mass_drift']:.2e} {'SUCCESS: Conserved' if abs(mass_stats['mass_drift']) < 1e-3 else 'WARNING: Not conserved'}
@@ -347,7 +347,7 @@ t_grid = np.linspace(0, {experiment_config.grid_config.T}, {experiment_config.gr
 # Create interactive subplots
 fig = make_subplots(
     rows=2, cols=2,
-    subplot_titles=('HJB Solution U(t,x)', 'FP Density M(t,x)', 
+    subplot_titles=('HJB Solution U(t,x)', 'FP Density M(t,x)',
                    'Final U Profile', 'Final M Profile'),
     specs=[[{{"type": "heatmap"}}, {{"type": "heatmap"}}],
            [{{"type": "scatter"}}, {{"type": "scatter"}}]]
@@ -365,7 +365,7 @@ fig.add_trace(
     row=1, col=1
 )
 
-# M solution heatmap  
+# M solution heatmap
 fig.add_trace(
     go.Heatmap(
         z=M_solution,
@@ -391,7 +391,7 @@ fig.add_trace(
 
 fig.add_trace(
     go.Scatter(
-        x=x_grid, 
+        x=x_grid,
         y=M_solution[-1],
         mode='lines+markers',
         name='M(T,x)',

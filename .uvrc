@@ -1,0 +1,15 @@
+# UV Configuration for MFG_PDE
+# This file can be used by IDE integrations to automatically detect UV environment
+
+export UV_PROJECT_ENVIRONMENT=".venv"
+export UV_PYTHON_VERSION="3.12"
+export UV_EXTRA_GROUPS="dev"
+
+# Performance optimizations
+export UV_CACHE_DIR="$HOME/.cache/uv"
+export UV_COMPILE_BYTECODE="1"
+
+# Scientific computing optimizations
+export MKL_NUM_THREADS="4"
+export OPENBLAS_NUM_THREADS="4"
+export NUMEXPR_MAX_THREADS="4"

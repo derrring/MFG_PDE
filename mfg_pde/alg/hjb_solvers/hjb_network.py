@@ -9,7 +9,7 @@ Mathematical formulation:
 u(T, i) = g(i)                  terminal condition
 
 where:
-- H_i: Hamiltonian at node i  
+- H_i: Hamiltonian at node i
 - ∇_G: Discrete gradient on graph
 - Network-specific boundary conditions
 

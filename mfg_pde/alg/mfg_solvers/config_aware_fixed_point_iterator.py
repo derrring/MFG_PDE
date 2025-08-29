@@ -1,7 +1,7 @@
 """
 Configuration-aware Fixed Point Iterator for Mean Field Games.
 
-This is an enhanced version of the FixedPointIterator that uses the new 
+This is an enhanced version of the FixedPointIterator that uses the new
 configuration system for improved parameter management and user experience.
 """
 

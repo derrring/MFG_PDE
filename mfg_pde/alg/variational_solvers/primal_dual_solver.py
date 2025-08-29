@@ -11,7 +11,7 @@ min J[m,v] = ∫₀ᵀ ∫ L(t,x,v,m) m dxdt + ∫ g(x)m(T,x) dx
 subject to:
 - Continuity equation: ∂m/∂t + ∇·(mv) = σ²/2 Δm
 - State constraints: c(t,x) ≤ 0
-- Velocity constraints: h(t,x,v) ≤ 0  
+- Velocity constraints: h(t,x,v) ≤ 0
 - Integral constraints: ∫ ψ(x,m) dx = constant
 
 Key advantages of primal-dual methods:

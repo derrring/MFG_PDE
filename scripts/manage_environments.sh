@@ -43,41 +43,41 @@ check_conda() {
 # Function to create development environment
 create_dev_env() {
     print_info "Creating development environment (mfg_dev)..."
-    
+
     conda env create -f environment.yml -n mfg_dev || {
         print_warning "Environment creation failed, trying update..."
         conda env update -f environment.yml -n mfg_dev
     }
-    
+
     print_status "Activating environment and installing MFG_PDE..."
     source $(conda info --base)/etc/profile.d/conda.sh
     conda activate mfg_dev
     pip install -e .
-    
+
     print_status "Development environment ready!"
 }
 
 # Function to create performance-optimized environment
 create_performance_env() {
     print_info "Creating performance environment (mfg_performance)..."
-    
+
     conda env create -f conda_performance.yml -n mfg_performance || {
         print_warning "Environment creation failed, trying update..."
         conda env update -f conda_performance.yml -n mfg_performance
     }
-    
+
     print_status "Activating environment and installing MFG_PDE..."
     source $(conda info --base)/etc/profile.d/conda.sh
     conda activate mfg_performance
     pip install -e .
-    
+
     print_status "Performance environment ready!"
 }
 
 # Function to create NumPy 2.0+ testing environment
 create_numpy2_env() {
     print_info "Creating NumPy 2.0+ testing environment (mfg_numpy2)..."
-    
+
     cat > /tmp/numpy2_env.yml << EOF
 name: mfg_numpy2
 channels:
@@ -94,34 +94,34 @@ dependencies:
   - pip:
     - -e .
 EOF
-    
+
     conda env create -f /tmp/numpy2_env.yml || {
         print_warning "NumPy 2.0+ not available yet, creating preview environment..."
-        
+
         conda create -n mfg_numpy2 python=3.12 scipy matplotlib jupyter pytest pip -y
         source $(conda info --base)/etc/profile.d/conda.sh
         conda activate mfg_numpy2
         pip install --pre --extra-index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy
         pip install -e .
     }
-    
+
     print_status "NumPy 2.0+ testing environment ready!"
 }
 
 # Function to verify environments
 verify_environments() {
     print_info "Verifying MFG_PDE environments..."
-    
+
     local envs=("mfg_dev" "mfg_performance" "mfg_numpy2")
-    
+
     for env in "${envs[@]}"; do
         if conda env list | grep -q "^$env "; then
             print_status "Environment $env exists"
-            
+
             # Test the environment
             source $(conda info --base)/etc/profile.d/conda.sh
             conda activate "$env"
-            
+
             print_info "Testing $env environment..."
             python -c "
 import sys
@@ -155,10 +155,10 @@ except Exception as e:
 clean_environments() {
     print_warning "This will remove all MFG_PDE environments. Continue? (y/N)"
     read -r response
-    
+
     if [[ "$response" =~ ^[Yy]$ ]]; then
         local envs=("mfg_dev" "mfg_performance" "mfg_numpy2")
-        
+
         for env in "${envs[@]}"; do
             if conda env list | grep -q "^$env "; then
                 print_info "Removing environment $env..."
@@ -175,14 +175,14 @@ clean_environments() {
 show_env_info() {
     print_info "MFG_PDE Environment Information"
     echo
-    
+
     print_info "Available environments:"
     conda env list | grep mfg || print_warning "No MFG_PDE environments found"
-    
+
     echo
     print_info "Current environment:"
     echo "CONDA_DEFAULT_ENV: ${CONDA_DEFAULT_ENV:-Not set}"
-    
+
     if [[ -n "$CONDA_DEFAULT_ENV" ]] && [[ "$CONDA_DEFAULT_ENV" == mfg* ]]; then
         echo
         print_info "Current environment details:"
@@ -193,27 +193,27 @@ show_env_info() {
 # Function to activate environment with setup
 activate_env() {
     local env_name="$1"
-    
+
     if [[ -z "$env_name" ]]; then
         print_error "Please specify environment name (mfg_dev, mfg_performance, mfg_numpy2)"
         return 1
     fi
-    
+
     if ! conda env list | grep -q "^$env_name "; then
         print_error "Environment $env_name not found"
         return 1
     fi
-    
+
     print_info "Activating environment $env_name..."
     source $(conda info --base)/etc/profile.d/conda.sh
     conda activate "$env_name"
-    
+
     # Source environment variables if available
     if [[ -f "setup_env_vars.sh" ]]; then
         print_info "Loading environment variables..."
         source setup_env_vars.sh
     fi
-    
+
     print_status "Environment $env_name activated!"
     print_info "Run 'python verify_environment.py' to test the setup"
 }

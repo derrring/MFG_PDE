@@ -381,12 +381,12 @@ symbol and the variable name for clarity:
 
     def solve_hjb(self, U: np.ndarray) -> np.ndarray:
         '''Solve Hamilton-Jacobi-Bellman equation for value function.
-        
+
         Solves: ∂u/∂t + H(x, ∇u, m) = 0 with terminal condition u(T,x).
-        
+
         Args:
             U: Value function u(t,x) array of shape (Nt+1, Nx+1)
-            
+
         Returns:
             Updated value function array
         '''
@@ -397,7 +397,7 @@ Mathematical Equations in Documentation
 Use LaTeX notation with double backslashes for proper rendering:
 
 - Value function: $u(t,x)$ → ``$u(t,x)$``
-- Density function: $m(t,x)$ → ``$m(t,x)$`` 
+- Density function: $m(t,x)$ → ``$m(t,x)$``
 - Hamiltonian: $H(x,\\nabla u, m)$ → ``$H(x,\\\\nabla u, m)$``
 - HJB equation: $\\partial_t u + H(x, \\nabla u, m) = 0$
 
@@ -508,7 +508,7 @@ Solution Statistics:
   Value function u(t,x):
     Range: [{np.min(U):.6f}, {np.max(U):.6f}]
     Mean: {np.mean(U):.6f}
-    
+
   Density function m(t,x):
     Range: [{np.min(M):.6f}, {np.max(M):.6f}]
     Total mass: {np.sum(M) * problem_params.get('Dx', 1.0) * problem_params.get('Dt', 1.0):.6f}

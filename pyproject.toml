@@ -14,11 +14,11 @@ authors = [
     # et al.
 ]
 description = "A comprehensive Python framework for solving Mean Field Games with advanced numerical methods, interactive visualizations, and professional research tools."
-readme = "README.md" 
-requires-python = ">=3.8" 
+readme = "README.md"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License", 
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -47,7 +47,7 @@ dev = [
 ]
 typing = [
     "types-tqdm",
-    "types-setuptools", 
+    "types-setuptools",
     "types-psutil",
 ]
 performance = [
@@ -58,7 +58,7 @@ performance = [
 networks = [
     "networkit>=10.0",   # Large-scale networks (parallel algorithms)
     "networkx>=3.0",     # Comprehensive algorithm library
-    "graph-tool>=2.45",  # Ultimate performance (optional)
+    # NOTE: graph-tool>=2.45 requires conda/system installation
 ]
 jax = [
     "jax>=0.4.0",
@@ -66,7 +66,7 @@ jax = [
     "optax>=0.1.0",
 ]
 jax-cuda = [
-    "jax[cuda12_pip]>=0.4.0",
+    "jax[cuda12-pip]>=0.4.0",  # Fixed CUDA extra name
     "optax>=0.1.0",
 ]
 advanced = [
@@ -76,7 +76,7 @@ advanced = [
 
 # Optional: URLs for your project
 [project.urls]
-Homepage = "https://github.com/derrring/MFG_PDE" 
+Homepage = "https://github.com/derrring/MFG_PDE"
 Repository = "https://github.com/derrring/MFG_PDE"
 # Bug-Tracker = "https://github.com/derrring/MFG_PDE/issues"
 

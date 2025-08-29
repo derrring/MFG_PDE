@@ -485,7 +485,7 @@ class MFGAnalyticsEngine:
         for i, analysis in enumerate(analyses, 1):
             html += f"""
     <h2>Analysis {i}: {analysis.get('title', 'Untitled')}</h2>
-    
+
     <h3>Key Statistics</h3>
     <div class="statistics">
 """

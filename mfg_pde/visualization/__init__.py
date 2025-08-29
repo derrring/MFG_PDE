@@ -6,7 +6,7 @@ with full migration of all plotting utilities from utils/ for centralized manage
 
 Features:
 - Interactive 2D/3D plotting with Plotly & Bokeh
-- Real-time monitoring and dashboards  
+- Real-time monitoring and dashboards
 - Parameter sweep analysis & dashboards
 - Convergence animations & monitoring
 - Mathematical plotting with LaTeX support

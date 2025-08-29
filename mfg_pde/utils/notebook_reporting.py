@@ -181,9 +181,9 @@ class MFGNotebookReporter:
 
         title_markdown = f"""# {title}
 
-**Generated:** {date_str}  
-**Platform:** MFG_PDE Computational Framework  
-**Report Type:** Interactive Research Analysis  
+**Generated:** {date_str}
+**Platform:** MFG_PDE Computational Framework
+**Report Type:** Interactive Research Analysis
 
 ---
 
@@ -310,11 +310,11 @@ if hasattr(results['U'], 'shape'):
 
         if "M" in results:
             results_code += f"""
-print(f"Density M shape: {results['M'].shape if hasattr(results['M'], 'shape') else 'scalar'}")  
+print(f"Density M shape: {results['M'].shape if hasattr(results['M'], 'shape') else 'scalar'}")
 if hasattr(results['M'], 'shape'):
     print(f"M range: [{np.min(results['M']):.6f}, {np.max(results['M']):.6f}]")
     print(f"M mean: {np.mean(results['M']):.6f}")
-    
+
     # Check mass conservation
     if len(results['M'].shape) == 2:
         total_mass = trapezoid(results['M'][-1, :], dx=0.05)  # Approximate dx
@@ -349,7 +349,7 @@ fig = make_subplots(
     specs=[[{'type': 'surface'}, {'type': 'surface'}],
            [{'type': 'xy'}, {'type': 'xy'}]],
     subplot_titles=[
-        'Value Function u(t,x)', 
+        'Value Function u(t,x)',
         'Population Density m(t,x)',
         'Final Profiles',
         'Time Evolution at x=0.5'
@@ -363,7 +363,7 @@ if 'U' in locals() and 'M' in locals():
     x_grid = np.linspace(0, 1, Nx)
     t_grid = np.linspace(0, 1, Nt)  # Adjust T based on actual problem
     X_mesh, T_mesh = np.meshgrid(x_grid, t_grid)
-    
+
     # 3D Surface: Value Function
     fig.add_trace(
         go.Surface(
@@ -374,7 +374,7 @@ if 'U' in locals() and 'M' in locals():
         ),
         row=1, col=1
     )
-    
+
     # 3D Surface: Density
     fig.add_trace(
         go.Surface(
@@ -385,7 +385,7 @@ if 'U' in locals() and 'M' in locals():
         ),
         row=1, col=2
     )
-    
+
     # Final profiles comparison
     fig.add_trace(
         go.Scatter(
@@ -396,7 +396,7 @@ if 'U' in locals() and 'M' in locals():
         ),
         row=2, col=1
     )
-    
+
     fig.add_trace(
         go.Scatter(
             x=x_grid, y=M[-1, :],
@@ -407,7 +407,7 @@ if 'U' in locals() and 'M' in locals():
         ),
         row=2, col=1
     )
-    
+
     # Time evolution at center point
     center_idx = Nx // 2
     fig.add_trace(
@@ -419,7 +419,7 @@ if 'U' in locals() and 'M' in locals():
         ),
         row=2, col=2
     )
-    
+
     fig.add_trace(
         go.Scatter(
             x=t_grid, y=M[:, center_idx],
@@ -468,7 +468,7 @@ fig.show()
 # 1. Convergence-focused analysis
 if 'convergence_info' in locals():
     fig_conv = go.Figure()
-    
+
     if 'error_history' in convergence_info:
         fig_conv.add_trace(
             go.Scatter(
@@ -478,7 +478,7 @@ if 'convergence_info' in locals():
                 line=dict(color='blue', width=2)
             )
         )
-    
+
     fig_conv.update_layout(
         title="Convergence History",
         xaxis_title="Iteration",
@@ -486,7 +486,7 @@ if 'convergence_info' in locals():
         yaxis_type="log",
         height=400
     )
-    
+
     fig_conv.show()
 
 # 2. Mass conservation tracking
@@ -495,7 +495,7 @@ if 'M' in locals():
     for t_idx in range(M.shape[0]):
         mass = trapezoid(M[t_idx, :], x=x_grid)
         mass_history.append(mass)
-    
+
     fig_mass = go.Figure()
     fig_mass.add_trace(
         go.Scatter(
@@ -506,22 +506,22 @@ if 'M' in locals():
             line=dict(color='red', width=2)
         )
     )
-    
+
     # Add ideal mass line
     fig_mass.add_hline(
-        y=1.0, 
-        line_dash="dash", 
+        y=1.0,
+        line_dash="dash",
         line_color="black",
         annotation_text="Ideal Mass = 1.0"
     )
-    
+
     fig_mass.update_layout(
         title="Mass Conservation Over Time",
         xaxis_title="Time t",
         yaxis_title="Total Mass ∫m(t,x)dx",
         height=400
     )
-    
+
     fig_mass.show()
 """
         nb.cells.append(new_code_cell(specialized_viz_code))
@@ -555,7 +555,7 @@ if 'error_history' in convergence_info and len(convergence_info['error_history']
     # Compute convergence rate
     ratios = errors[1:] / errors[:-1]
     avg_ratio = np.mean(ratios[ratios > 0])
-    
+
     print(f"\\nConvergence Rate Analysis:")
     print(f"Average error reduction ratio: {avg_ratio:.4f}")
     print(f"Estimated convergence rate: {-np.log(avg_ratio):.4f}")
@@ -579,13 +579,13 @@ if 'M' in locals() and hasattr(M, 'shape') and len(M.shape) == 2:
     # Compute mass at each time step
     mass_evolution = []
     mass_errors = []
-    
+
     for t_idx in range(M.shape[0]):
         mass = trapezoid(M[t_idx, :], x=x_grid) if 'x_grid' in locals() else np.sum(M[t_idx, :]) * (1.0 / M.shape[1])
         error = abs(mass - 1.0)
         mass_evolution.append(mass)
         mass_errors.append(error)
-    
+
     print("Mass Conservation Summary:")
     print("=" * 45)
     print(f"Initial mass: {mass_evolution[0]:.8f}")
@@ -593,7 +593,7 @@ if 'M' in locals() and hasattr(M, 'shape') and len(M.shape) == 2:
     print(f"Maximum mass error: {max(mass_errors):.2e}")
     print(f"Average mass error: {np.mean(mass_errors):.2e}")
     print(f"Mass drift: {abs(mass_evolution[-1] - mass_evolution[0]):.2e}")
-    
+
     # Conservation quality assessment
     max_error = max(mass_errors)
     if max_error < 1e-6:
@@ -604,7 +604,7 @@ if 'M' in locals() and hasattr(M, 'shape') and len(M.shape) == 2:
         print("\\nAcceptable mass conservation")
     else:
         print("\\nWARNING: Mass conservation could be improved")
-    
+
     # Store results for potential further analysis
     mass_conservation_data = {
         'mass_evolution': mass_evolution,
@@ -770,8 +770,8 @@ print("- Vector format: fig.write_image('plot.pdf')")
         # Add title
         comp_title_markdown = f"""# {title}
 
-**Generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}  
-**Type:** Comparative Analysis Report  
+**Generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+**Type:** Comparative Analysis Report
 **Methods Compared:** {', '.join(results_dict.keys())}
 
 ---
@@ -810,7 +810,7 @@ fig = make_subplots(
     rows=2, cols=2,
     subplot_titles=[
         'Final Value Functions u(T,x)',
-        'Final Densities m(T,x)', 
+        'Final Densities m(T,x)',
         'Convergence Comparison',
         'Mass Conservation Comparison'
     ]
@@ -818,20 +818,20 @@ fig = make_subplots(
 
 for i, (method, results) in enumerate(results_dict.items()):
     color = method_colors[i % len(method_colors)]
-    
+
     if 'U' in results and hasattr(results['U'], 'shape'):
         # Assume standard grid
         Nx = results['U'].shape[1] if len(results['U'].shape) > 1 else len(results['U'])
         x_grid = np.linspace(0, 1, Nx)
-        
+
         # Final value function
         final_U = results['U'][-1, :] if len(results['U'].shape) > 1 else results['U']
         fig.add_trace(
-            go.Scatter(x=x_grid, y=final_U, name=f'{method} u(T,x)', 
+            go.Scatter(x=x_grid, y=final_U, name=f'{method} u(T,x)',
                       line=dict(color=color, width=2)),
             row=1, col=1
         )
-        
+
         # Final density
         if 'M' in results:
             final_M = results['M'][-1, :] if len(results['M'].shape) > 1 else results['M']
@@ -840,7 +840,7 @@ for i, (method, results) in enumerate(results_dict.items()):
                           line=dict(color=color, width=2, dash='dash')),
                 row=1, col=2
             )
-    
+
     # Convergence comparison
     if 'convergence_info' in results and 'error_history' in results['convergence_info']:
         errors = results['convergence_info']['error_history']
@@ -878,7 +878,7 @@ for method, results in results_dict.items():
 The comparative analysis reveals the relative strengths and characteristics of each numerical method:
 
 - **Accuracy**: Comparison of final solution quality
-- **Convergence**: Rate and reliability of iterative convergence  
+- **Convergence**: Rate and reliability of iterative convergence
 - **Conservation**: Mass conservation properties
 - **Computational Cost**: Relative computational requirements
 

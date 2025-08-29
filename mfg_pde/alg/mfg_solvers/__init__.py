@@ -6,7 +6,7 @@ to solve the coupled MFG system. All solvers inherit from the base_mfg_solver ab
 
 Solver Types:
 - Fixed Point Iterators: Picard iteration-based solvers
-- Particle Collocation: Meshfree particle-based solvers  
+- Particle Collocation: Meshfree particle-based solvers
 - Enhanced Solvers: Adaptive and monitored variants
 
 Architecture:

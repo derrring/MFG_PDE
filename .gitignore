@@ -639,7 +639,7 @@ benchmarks/results/
 benchmarks/*_output/
 benchmark_results/
 
-# Runtime log directories  
+# Runtime log directories
 logs/
 research_logs/
 performance_logs/

@@ -10,7 +10,7 @@ m(0, i) = m_0(i)                             initial condition
 
 where:
 - div_G: Graph divergence operator
-- Δ_G: Graph Laplacian operator  
+- Δ_G: Graph Laplacian operator
 - H_p: Derivative of Hamiltonian w.r.t. momentum
 - σ²: Diffusion coefficient on network
 

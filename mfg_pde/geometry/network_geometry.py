@@ -6,7 +6,7 @@ extending the MFG framework from continuous domains to discrete network topologi
 
 Key concepts:
 - Nodes: Discrete locations where players can position themselves
-- Edges: Connections between nodes allowing player movement  
+- Edges: Connections between nodes allowing player movement
 - Network flows: Discrete analogue of continuous density evolution
 - Graph Laplacians: Discrete operators for diffusion and gradient terms
 """

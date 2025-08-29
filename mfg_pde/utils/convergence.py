@@ -22,10 +22,10 @@ Usage:
     @adaptive_convergence()
     class MySolver(BaseMFGSolver):
         ...
-    
+
     # Or as wrapper
     adaptive_solver = wrap_solver_with_adaptive_convergence(solver)
-    
+
     # Manual advanced monitoring
     monitor = AdvancedConvergenceMonitor()
     diagnostics = monitor.update(u_current, u_previous, m_current, x_grid)

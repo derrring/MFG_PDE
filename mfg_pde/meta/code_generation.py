@@ -132,20 +132,20 @@ class MFGSolverGenerator(CodeGenerator):
             '''
 class Generated{solver_name}(BaseHJBSolver):
     """Auto-generated HJB solver with {discretization} discretization."""
-    
+
     def __init__(self, problem, config=None):
         super().__init__(problem, config)
         self.stencil = {stencil}
         self.coefficients = {coefficients}
-    
+
     def _compute_spatial_derivatives(self, u, x_idx):
         """Compute spatial derivatives using {discretization} scheme."""
         {derivative_code}
-    
+
     def _apply_boundary_conditions(self, u):
         """Apply {boundary_type} boundary conditions."""
         {boundary_code}
-    
+
     def _newton_iteration_step(self, u_current, m_current, time_idx):
         """Single Newton iteration step."""
         {newton_code}
@@ -158,11 +158,11 @@ class Generated{solver_name}(BaseHJBSolver):
             '''
 class Generated{solver_name}(BaseFPSolver):
     """Auto-generated Fokker-Planck solver."""
-    
+
     def _compute_divergence(self, flux, x_idx):
         """Compute divergence using {discretization} scheme."""
         {divergence_code}
-    
+
     def _compute_flux(self, m, optimal_control):
         """Compute flux m * v - sigma^2/2 * grad(m)."""
         {flux_code}
@@ -175,12 +175,12 @@ class Generated{solver_name}(BaseFPSolver):
             '''
 class Generated{solver_name}(BaseMFGSolver):
     """Auto-generated MFG solver combining HJB and FP components."""
-    
+
     def __init__(self, problem, config=None):
         super().__init__(problem, config)
         self.hjb_solver = Generated{hjb_name}(problem, config.hjb)
         self.fp_solver = Generated{fp_name}(problem, config.fp)
-    
+
     def solve(self, initial_conditions=None):
         """Solve MFG system using generated solvers."""
         {solve_code}
@@ -279,7 +279,7 @@ class Generated{solver_name}(BaseMFGSolver):
                 # Forward difference at left boundary
                 grad = (-3*u[0] + 4*u[1] - u[2]) / (2*dx)
             elif x_idx == len(u)-1:
-                # Backward difference at right boundary  
+                # Backward difference at right boundary
                 grad = (u[-3] - 4*u[-2] + 3*u[-1]) / (2*dx)
             else:
                 # Central difference in interior
@@ -353,14 +353,14 @@ class Generated{solver_name}(BaseMFGSolver):
         H = {hamiltonian_code}
         H_p = self._compute_hamiltonian_derivative_p(grad_u, m_current[x_idx])
         H_pp = self._compute_hamiltonian_derivative_pp(grad_u, m_current[x_idx])
-        
+
         # Newton update
         residual = H + self.problem.running_cost(x_idx, m_current[x_idx])
         if abs(H_pp) > 1e-12:
             update = -residual / H_pp
         else:
             update = 0.0
-        
+
         return u_current[x_idx] + self.config.damping_factor * update
         """
         ).strip()
@@ -389,7 +389,7 @@ class Generated{solver_name}(BaseMFGSolver):
             """
         sigma = self.problem.sigma
         dx = self.problem.dx
-        
+
         # Compute density gradient
         if x_idx == 0:
             m_grad = (m[1] - m[0]) / dx
@@ -397,7 +397,7 @@ class Generated{solver_name}(BaseMFGSolver):
             m_grad = (m[-1] - m[-2]) / dx
         else:
             m_grad = (m[x_idx+1] - m[x_idx-1]) / (2*dx)
-        
+
         # Flux = m * v - sigma^2/2 * grad(m)
         flux = m[x_idx] * optimal_control[x_idx] - 0.5 * sigma**2 * m_grad
         return flux
@@ -412,26 +412,26 @@ class Generated{solver_name}(BaseMFGSolver):
             u, m = self._create_initial_conditions()
         else:
             u, m = initial_conditions
-        
+
         for iteration in range(self.config.max_iterations):
             # HJB step
             u_new = self.hjb_solver.solve_backward(u, m)
-            
+
             # Compute optimal control
             optimal_control = self.hjb_solver.compute_optimal_control(u_new, m)
-            
+
             # Fokker-Planck step
             m_new = self.fp_solver.solve_forward(m, optimal_control)
-            
+
             # Check convergence
             u_error = np.linalg.norm(u_new - u)
             m_error = np.linalg.norm(m_new - m)
-            
+
             if u_error < self.config.tolerance and m_error < self.config.tolerance:
                 break
-            
+
             u, m = u_new, m_new
-        
+
         return u, m
         """
         ).strip()

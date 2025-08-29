@@ -413,7 +413,7 @@ Migration Strategy:
 For automatic migration, use the @migrate_parameters decorator:
 
     from mfg_pde.utils.parameter_migration import migrate_parameters
-    
+
     @migrate_parameters()
     def your_function(**kwargs):
         # Parameters automatically migrated

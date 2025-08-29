@@ -1,0 +1,98 @@
+# .pre-commit-config.yaml
+# Complete local CI/CD replacement for MFG_PDE
+# This replicates GitHub Actions workflows locally for cost savings
+
+repos:
+  # Code formatting (matches code_quality.yml exactly)
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        args: [--line-length=120]
+
+  # Import sorting (matches code_quality.yml exactly)
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black, --line-length=120]
+
+  # Type checking (matches code_quality.yml exactly)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: [--config-file=pyproject.toml]
+        additional_dependencies: [
+          types-requests,
+          types-setuptools,
+          numpy,
+          pydantic
+        ]
+        files: ^mfg_pde/
+
+  # Code linting (matches code_quality.yml exactly)
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=120, --extend-ignore=E203,W503]
+
+  # Security scanning (replaces security.yml)
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, --severity-level=medium]
+        files: ^mfg_pde/.*\.py$
+
+  # Dependency security (replaces security.yml dependency scanning)
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+        files: requirements.*\.txt$
+
+  # General code quality and safety
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  # MFG_PDE specific checks (enforces CLAUDE.md standards)
+  - repo: local
+    hooks:
+      # Ensure no emojis in Python files (per CLAUDE.md standards)
+      - id: no-emojis-in-python
+        name: Check no emojis in Python source files
+        entry: python
+        args: [-c, "import re, sys; emoji_pattern = re.compile(r'[^\\x00-\\x7F]'); failed = False; [print(f'❌ {file}: Contains non-ASCII characters') or setattr(sys.modules[__name__], 'failed', True) for file in sys.argv[1:] if file.endswith('.py') and emoji_pattern.search(open(file, 'r', encoding='utf-8').read())]; sys.exit(1 if failed else 0)"]
+        language: system
+        files: \.py$
+        pass_filenames: true
+
+      # Check that examples are properly categorized
+      - id: example-categorization
+        name: Check examples are in proper directories
+        entry: bash
+        args: [-c, 'find examples/ -name "*.py" -not -path "examples/basic/*" -not -path "examples/advanced/*" -not -path "examples/notebooks/*" -not -path "examples/tutorials/*" | grep . && echo "❌ Examples must be in basic/, advanced/, notebooks/, or tutorials/" && exit 1 || echo "✅ All examples properly categorized"']
+        language: system
+        pass_filenames: false
+
+# Configuration for pre-commit performance
+default_language_version:
+  python: python3.12
+
+# Speed optimizations
+default_stages: [pre-commit]
+minimum_pre_commit_version: "3.0.0"

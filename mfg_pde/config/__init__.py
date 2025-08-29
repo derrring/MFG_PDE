@@ -4,7 +4,7 @@ Configuration management for MFG_PDE solvers.
 This module provides structured configuration objects for all solver components,
 replacing scattered constructor parameters with organized, validated config classes.
 
-The module includes both original dataclass-based configurations and enhanced 
+The module includes both original dataclass-based configurations and enhanced
 Pydantic-based configurations with automatic validation and serialization.
 """
 

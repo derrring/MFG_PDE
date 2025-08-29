@@ -8,7 +8,7 @@ This module provides a unified interface for multiple network libraries:
 
 The backend system automatically selects the optimal library based on:
 - Network size
-- Operation type  
+- Operation type
 - Available libraries
 - Performance requirements
 """
