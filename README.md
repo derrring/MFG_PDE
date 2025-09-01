@@ -285,7 +285,20 @@ python -c "from mfg_pde import ExampleMFGProblem, create_fast_solver; ..."
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines, coding standards, and submission requirements.
+
+## Citation
+
+If you use this library in your research, please cite:
+
+```bibtex
+@software{mfg_pde2025,
+  title={MFG_PDE: Advanced Mean Field Games Framework},
+  author={derrring},
+  year={2025},
+  url={https://github.com/derrring/MFG_PDE}
+}
+```
 
 ## License
 
