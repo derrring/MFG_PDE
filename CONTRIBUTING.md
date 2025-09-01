@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to the Mean Field Games Partial Differential Equations (MFG_PDE) library! This guide will help you understand our development workflow and coding standards.
 
-## <× Repository Structure
+## Repository Structure
 
 Our codebase follows a strict organizational pattern:
 
@@ -17,7 +17,7 @@ Our codebase follows a strict organizational pattern:
 - **`docs/`** - Documentation organized by category
 - **`archive/`** - Historical code (do not modify)
 
-## =Ý Code Style and Standards
+## Code Style and Standards
 
 ### Import Conventions
 ```python
@@ -47,7 +47,7 @@ configure_research_logging("session_name", level="INFO")
 logger = get_logger(__name__)
 ```
 
-## =€ Development Workflow
+## Development Workflow
 
 ### Adding New Features
 1. **Core functionality**: Add to appropriate `mfg_pde/` subdirectory
@@ -68,7 +68,7 @@ logger = get_logger(__name__)
 - Use meaningful test names and documentation
 - Test both success and error cases
 
-## =Ê Mathematical Standards
+## Mathematical Standards
 
 ### Notation Consistency
 - **State variables**: `u(t,x)` for value function, `m(t,x)` for mass distribution
@@ -80,7 +80,7 @@ logger = get_logger(__name__)
 - Include complexity analysis for new algorithms
 - Provide benchmarks for performance-critical code
 
-## <¨ Visualization Guidelines
+## Visualization Guidelines
 
 ### Plotting Standards
 - **Primary**: Use Plotly for interactive plots when possible
@@ -88,7 +88,7 @@ logger = get_logger(__name__)
 - **Export**: Support both HTML (interactive) and PNG (static)
 - **Mathematical notation**: Consistent u(t,x) and m(t,x) conventions
 
-## =Ë Pull Request Process
+## Pull Request Process
 
 1. **Fork** the repository and create a feature branch
 2. **Implement** your changes following the coding standards
@@ -103,7 +103,7 @@ logger = get_logger(__name__)
 - Mathematical notation is consistent
 - No emojis in Python code files
 
-## = Quality Assurance
+## Quality Assurance
 
 Before submitting:
 - Verify all imports work correctly
@@ -112,14 +112,14 @@ Before submitting:
 - Test examples execute successfully
 - Run linting and type checking
 
-## > Getting Help
+## Getting Help
 
 - Check existing documentation in `docs/`
 - Review examples in `examples/`
 - Look at existing code patterns in `mfg_pde/`
 - Open an issue for questions or bug reports
 
-## =Ú Mathematical Background
+## Mathematical Background
 
 This library implements sophisticated Mean Field Games methods. Contributors should be familiar with:
 - Partial differential equations
