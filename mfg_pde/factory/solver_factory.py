@@ -13,11 +13,10 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 
-from ..alg.amr_enhancement import AMREnhancedSolver
-from ..alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
-from ..alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
-from ..alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
-from ..config.solver_config import (
+from mfg_pde.alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from mfg_pde.alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
+from mfg_pde.config.solver_config import (
     FPConfig,
     GFDMConfig,
     HJBConfig,
@@ -31,6 +30,7 @@ from ..config.solver_config import (
 )
 
 if TYPE_CHECKING:
+    from mfg_pde.alg.amr_enhancement import AMREnhancedSolver
     from mfg_pde.alg.fp_solvers.base_fp import BaseFPSolver
     from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -151,7 +151,7 @@ class SolverFactory:
 
         # Enhance with AMR if requested
         if enable_amr:
-            from ..alg.amr_enhancement import create_amr_enhanced_solver
+            from mfg_pde.alg.amr_enhancement import create_amr_enhanced_solver
 
             return create_amr_enhanced_solver(
                 base_solver=base_solver,
@@ -498,7 +498,7 @@ def create_semi_lagrangian_solver(
         **fp_kwargs,
     )
     # Type assertion since we know this returns ConfigAwareFixedPointIterator for fixed_point solver_type
-    return cast(ConfigAwareFixedPointIterator, solver)
+    return cast("ConfigAwareFixedPointIterator", solver)
 
 
 def create_accurate_solver(
@@ -567,7 +567,7 @@ def create_monitored_solver(
         **kwargs,
     )
     # Type assertion since we know this returns MonitoredParticleCollocationSolver for monitored_particle solver_type
-    return cast(MonitoredParticleCollocationSolver, solver)
+    return cast("MonitoredParticleCollocationSolver", solver)
 
 
 def create_amr_solver(
@@ -625,4 +625,4 @@ def create_amr_solver(
         **kwargs,
     )
     # Type assertion since we know this returns AMREnhancedSolver when enable_amr=True
-    return cast(AMREnhancedSolver, solver)
+    return cast("AMREnhancedSolver", solver)
