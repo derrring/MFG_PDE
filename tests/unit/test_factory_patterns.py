@@ -11,7 +11,7 @@ import sys
 import numpy as np
 
 # Add the parent directory to the path so we can import mfg_pde
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde import (
     MFGProblem,
@@ -23,13 +23,13 @@ from mfg_pde import (
     create_solver,
 )
 from mfg_pde.alg import (
+    AdaptiveParticleCollocationSolver,
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
-    SilentAdaptiveParticleCollocationSolver,
 )
 from mfg_pde.alg.fp_solvers import FPParticleSolver
 from mfg_pde.alg.hjb_solvers import HJBGFDMSolver
-from mfg_pde.config import MFGSolverConfig, create_research_config
+from mfg_pde.config import create_research_config
 
 
 def create_test_problem():
@@ -139,7 +139,7 @@ def test_solver_types():
         results["fixed_point"] = {
             "success": True,
             "solver_class": type(solver).__name__,
-            "has_config": hasattr(solver, 'config'),
+            "has_config": hasattr(solver, "config"),
         }
         print(f"  ✓ fixed_point: {type(solver).__name__}")
     except Exception as e:
@@ -170,7 +170,7 @@ def test_configuration_presets():
                 "success": True,
                 "particles": solver.num_particles,
                 "newton_tolerance": solver.hjb_solver.newton_tolerance,
-                "has_monitor": hasattr(solver, 'convergence_monitor'),
+                "has_monitor": hasattr(solver, "convergence_monitor"),
             }
             print(f"  ✓ {preset}: {solver.num_particles} particles, {solver.hjb_solver.newton_tolerance} tolerance")
         except Exception as e:
@@ -302,7 +302,7 @@ def test_type_consistency():
     expected_types = {
         "particle_collocation": MonitoredParticleCollocationSolver,
         "monitored_particle": MonitoredParticleCollocationSolver,
-        "adaptive_particle": SilentAdaptiveParticleCollocationSolver,
+        "adaptive_particle": AdaptiveParticleCollocationSolver,
     }
 
     results = {}

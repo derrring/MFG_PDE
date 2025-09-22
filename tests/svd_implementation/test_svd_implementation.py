@@ -19,7 +19,7 @@ def test_svd_implementation():
     num_collocation_points = 7
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
     boundary_indices = np.array([0, num_collocation_points - 1])
-    no_flux_bc = BoundaryConditions(type='no_flux')
+    no_flux_bc = BoundaryConditions(type="no_flux")
 
     print(f"Problem: {num_collocation_points} collocation points")
 
@@ -39,13 +39,13 @@ def test_svd_implementation():
     # Get decomposition info
     decomp_info = hjb_solver.get_decomposition_info()
 
-    print(f"\n=== Decomposition Statistics ===")
+    print("\n=== Decomposition Statistics ===")
     print(f"Total collocation points: {decomp_info['total_points']}")
     print(f"SVD points: {decomp_info['svd_points']} ({decomp_info['svd_percentage']:.1f}%)")
     print(f"QR points: {decomp_info['qr_points']}")
     print(f"Normal equation points: {decomp_info['normal_equation_points']}")
 
-    if decomp_info['condition_numbers']:
+    if decomp_info["condition_numbers"]:
         print(f"Average condition number: {decomp_info['avg_condition_number']:.2e}")
         print(f"Rank range: [{decomp_info['min_rank']}, {decomp_info['max_rank']}]")
         print(
@@ -53,7 +53,7 @@ def test_svd_implementation():
         )
 
     # Test with actual HJB solve
-    print(f"\n=== Testing HJB Solution ===")
+    print("\n=== Testing HJB Solution ===")
     M_simple = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.5
     U_terminal = np.zeros(problem.Nx + 1)
     U_initial = np.zeros((problem.Nt + 1, problem.Nx + 1))
@@ -67,14 +67,14 @@ def test_svd_implementation():
         print(f"Solution success: Max |U| = {max_val:.3f}")
 
         if np.any(np.isnan(U_solution)) or np.any(np.isinf(U_solution)):
-            print(f"ERROR: Solution contains NaN or Inf")
+            print("ERROR: Solution contains NaN or Inf")
         elif max_val > 1e6:
-            print(f"WARNING: Solution has extreme values")
+            print("WARNING: Solution has extreme values")
         else:
-            print(f"OK: Solution seems reasonable")
+            print("OK: Solution seems reasonable")
 
         # Test derivative approximation quality
-        print(f"\n=== Testing Derivative Approximation ===")
+        print("\n=== Testing Derivative Approximation ===")
         u_test = np.sin(np.pi * collocation_points.flatten())  # Test function
 
         # Test derivatives at middle point
@@ -84,7 +84,7 @@ def test_svd_implementation():
         # Analytical derivatives for sin(πx) at x = 0.5
         x_mid = collocation_points[mid_idx, 0]
         analytical_first = np.pi * np.cos(np.pi * x_mid)  # Should be 0 at x=0.5
-        analytical_second = -np.pi**2 * np.sin(np.pi * x_mid)  # Should be -π² at x=0.5
+        analytical_second = -(np.pi**2) * np.sin(np.pi * x_mid)  # Should be -π² at x=0.5
 
         if (1,) in derivatives:
             numerical_first = derivatives[(1,)]

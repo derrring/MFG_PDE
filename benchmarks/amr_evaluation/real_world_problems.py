@@ -17,7 +17,6 @@ Problem Collection:
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -33,9 +32,9 @@ class ProblemSpecification:
     name: str
     description: str
     dimension: int
-    expected_features: List[str]  # e.g., ["sharp_gradients", "localized_density"]
+    expected_features: list[str]  # e.g., ["sharp_gradients", "localized_density"]
     amr_advantage: str  # Why AMR should help
-    baseline_grid_size: Tuple[int, ...]
+    baseline_grid_size: tuple[int, ...]
     reference_solution_method: str
     physical_interpretation: str
 
@@ -353,7 +352,7 @@ class RealWorldMFGProblems:
 
     def __init__(self):
         self.problems = {
-            'traffic_flow': ProblemSpecification(
+            "traffic_flow": ProblemSpecification(
                 name="Highway Traffic Flow",
                 description="Vehicle flow with bottlenecks and variable capacity",
                 dimension=1,
@@ -363,7 +362,7 @@ class RealWorldMFGProblems:
                 reference_solution_method="high_resolution_uniform",
                 physical_interpretation="Vehicles/km density and optimal speed policy",
             ),
-            'financial_market': ProblemSpecification(
+            "financial_market": ProblemSpecification(
                 name="Financial Market Trading",
                 description="Asset pricing with volatility clustering and liquidity shocks",
                 dimension=1,
@@ -373,7 +372,7 @@ class RealWorldMFGProblems:
                 reference_solution_method="fine_grid_accurate",
                 physical_interpretation="Trader density and optimal trading strategy",
             ),
-            'crowd_dynamics': ProblemSpecification(
+            "crowd_dynamics": ProblemSpecification(
                 name="Emergency Evacuation",
                 description="Crowd evacuation with obstacles and multiple exits",
                 dimension=1,
@@ -383,7 +382,7 @@ class RealWorldMFGProblems:
                 reference_solution_method="obstacle_aware_refinement",
                 physical_interpretation="People density and optimal evacuation paths",
             ),
-            'energy_trading': ProblemSpecification(
+            "energy_trading": ProblemSpecification(
                 name="Electricity Market",
                 description="Energy trading with renewable intermittency",
                 dimension=1,
@@ -393,7 +392,7 @@ class RealWorldMFGProblems:
                 reference_solution_method="high_temporal_resolution",
                 physical_interpretation="Energy price distribution and trading strategies",
             ),
-            'epidemic_spread': ProblemSpecification(
+            "epidemic_spread": ProblemSpecification(
                 name="Epidemic Control",
                 description="Individual behavior during epidemic with control measures",
                 dimension=1,
@@ -408,15 +407,15 @@ class RealWorldMFGProblems:
     def create_problem(self, problem_type: str, **kwargs) -> ExampleMFGProblem:
         """Create a specific real-world MFG problem."""
 
-        if problem_type == 'traffic_flow':
+        if problem_type == "traffic_flow":
             return TrafficFlowProblem(**kwargs)
-        elif problem_type == 'financial_market':
+        elif problem_type == "financial_market":
             return FinancialMarketProblem(**kwargs)
-        elif problem_type == 'crowd_dynamics':
+        elif problem_type == "crowd_dynamics":
             return CrowdDynamicsProblem(**kwargs)
-        elif problem_type == 'energy_trading':
+        elif problem_type == "energy_trading":
             return EnergyTradingProblem(**kwargs)
-        elif problem_type == 'epidemic_spread':
+        elif problem_type == "epidemic_spread":
             return EpidemicSpreadProblem(**kwargs)
         else:
             raise ValueError(f"Unknown problem type: {problem_type}")
@@ -427,11 +426,11 @@ class RealWorldMFGProblems:
             raise ValueError(f"Unknown problem type: {problem_type}")
         return self.problems[problem_type]
 
-    def list_available_problems(self) -> List[str]:
+    def list_available_problems(self) -> list[str]:
         """List all available problem types."""
         return list(self.problems.keys())
 
-    def create_benchmark_suite(self) -> Dict[str, ExampleMFGProblem]:
+    def create_benchmark_suite(self) -> dict[str, ExampleMFGProblem]:
         """Create the complete benchmark suite with default parameters."""
         suite = {}
 
@@ -452,7 +451,7 @@ class RealWorldMFGProblems:
 
         report_file = output_path / "real_world_problems_report.md"
 
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             f.write("# Real-World MFG Benchmark Problems Report\n\n")
             f.write("This document describes the collection of real-world MFG problems\n")
             f.write("designed for benchmarking AMR-enhanced solvers.\n\n")
@@ -464,7 +463,7 @@ class RealWorldMFGProblems:
                 f.write(f"**Dimension**: {spec.dimension}D  \n")
                 f.write(f"**Baseline Grid**: {spec.baseline_grid_size}  \n\n")
 
-                f.write(f"**Expected Features**:\n")
+                f.write("**Expected Features**:\n")
                 for feature in spec.expected_features:
                     f.write(f"- {feature.replace('_', ' ').title()}\n")
                 f.write("\n")
@@ -475,7 +474,7 @@ class RealWorldMFGProblems:
                 # Create and analyze problem
                 try:
                     problem = self.create_problem(problem_type)
-                    f.write(f"**Problem Parameters**:\n")
+                    f.write("**Problem Parameters**:\n")
                     f.write(f"- Time horizon: {problem.T}\n")
                     f.write(f"- Spatial domain: [{problem.xmin}, {problem.xmax}]\n")
                     f.write(f"- Grid size: {problem.Nx} × {problem.Nt}\n")

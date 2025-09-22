@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -13,12 +15,12 @@ if TYPE_CHECKING:
 class HJBFDMSolver(BaseHJBSolver):
     def __init__(
         self,
-        problem: "MFGProblem",
-        max_newton_iterations: int = None,
-        newton_tolerance: float = None,
+        problem: MFGProblem,
+        max_newton_iterations: int | None = None,
+        newton_tolerance: float | None = None,
         # Deprecated parameters for backward compatibility
-        NiterNewton: int = None,
-        l2errBoundNewton: float = None,
+        NiterNewton: int | None = None,
+        l2errBoundNewton: float | None = None,
     ):
         import warnings
 

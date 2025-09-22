@@ -1,22 +1,23 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from ..core.mfg_problem import MFGProblem
+    from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.types.internal import SolverReturnTuple
 
 
 class MFGSolver(ABC):
-    def __init__(self, problem: "MFGProblem") -> None:
+    def __init__(self, problem: MFGProblem) -> None:
         self.problem = problem
-        self.warm_start_data: Optional[Dict[str, Any]] = None
+        self.warm_start_data: dict[str, Any] | None = None
         self._solution_computed: bool = False
 
     @abstractmethod
-    def solve(
-        self, max_iterations: int, tolerance: float = 1e-5, **kwargs
-    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+    def solve(self, max_iterations: int, tolerance: float = 1e-5, **kwargs) -> SolverReturnTuple:
         """
         Solves the MFG system and returns U, M, and convergence info.
 
@@ -31,21 +32,19 @@ class MFGSolver(ABC):
             - M: Fokker-Planck density array
             - convergence_info: Dictionary with convergence details
         """
-        pass
 
     @abstractmethod
-    def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
         """Returns the computed U and M.
 
         Returns:
             Tuple of (U, M) solution arrays
         """
-        pass
 
     def set_warm_start_data(
         self,
-        previous_solution: Tuple[np.ndarray, np.ndarray],
-        metadata: Optional[Dict[str, Any]] = None,
+        previous_solution: tuple[np.ndarray, np.ndarray],
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Set warm start data from a previous solution.
@@ -57,7 +56,7 @@ class MFGSolver(ABC):
         U_prev, M_prev = previous_solution
 
         # Validate dimensions with enhanced error messages
-        from ...utils.exceptions import validate_array_dimensions
+        from mfg_pde.utils.exceptions import validate_array_dimensions
 
         expected_shape = (self.problem.Nt + 1, self.problem.Nx + 1)
 
@@ -82,7 +81,7 @@ class MFGSolver(ABC):
     def _extrapolate_solution(
         self,
         previous_solution: np.ndarray,
-        parameter_change_info: Optional[Dict] = None,
+        parameter_change_info: dict | None = None,
     ) -> np.ndarray:
         """
         Extrapolate previous solution for warm start initialization.
@@ -97,14 +96,14 @@ class MFGSolver(ABC):
         # For now, use simple copy (can be enhanced with linear extrapolation, etc.)
         return previous_solution.copy()
 
-    def _get_warm_start_initialization(self) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    def _get_warm_start_initialization(self) -> tuple[np.ndarray, np.ndarray] | None:
         """
         Get warm start initialization if available.
 
         Returns:
             Tuple of (U_init, M_init) if warm start data available, None otherwise
         """
-        if not self.has_warm_start_data():
+        if not self.has_warm_start_data() or self.warm_start_data is None:
             return None
 
         U_init = self._extrapolate_solution(self.warm_start_data["U"])

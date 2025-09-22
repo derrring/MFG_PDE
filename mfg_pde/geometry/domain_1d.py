@@ -6,8 +6,9 @@ serving as the foundation for the geometry system and maintaining compatibility
 with existing solvers.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Callable, Optional, Tuple
 
 
 @dataclass
@@ -34,15 +35,15 @@ class BoundaryConditions:
     # For Dirichlet: value of u at boundary
     # For Neumann: value of du/dn at boundary
     # For no_flux: F(boundary) = 0 where F = v*m - D*dm/dx
-    left_value: Optional[float] = None
-    right_value: Optional[float] = None
+    left_value: float | None = None
+    right_value: float | None = None
 
     # Robin boundary condition parameters: αu + βdu/dn = g
     # α coefficients (multiplier of solution value)
-    left_alpha: Optional[float] = None  # coefficient of u at left boundary
-    left_beta: Optional[float] = None  # coefficient of du/dn at left boundary
-    right_alpha: Optional[float] = None  # coefficient of u at right boundary
-    right_beta: Optional[float] = None  # coefficient of du/dn at right boundary
+    left_alpha: float | None = None  # coefficient of u at left boundary
+    left_beta: float | None = None  # coefficient of du/dn at left boundary
+    right_alpha: float | None = None  # coefficient of u at right boundary
+    right_beta: float | None = None  # coefficient of du/dn at right boundary
 
     def __post_init__(self):
         """Validate boundary condition parameters."""

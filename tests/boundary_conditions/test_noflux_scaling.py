@@ -32,21 +32,21 @@ def test_scaling_noflux():
 
         # Create problem
         problem = ExampleMFGProblem(
-            xmin=0.0, xmax=1.0, Nx=case['Nx'], T=case['T'], Nt=case['Nt'], sigma=0.5, coefCT=0.1
+            xmin=0.0, xmax=1.0, Nx=case["Nx"], T=case["T"], Nt=case["Nt"], sigma=0.5, coefCT=0.1
         )
 
         # Create collocation points
-        num_collocation_points = case['n_colloc']
+        num_collocation_points = case["n_colloc"]
         collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
         boundary_indices = np.array([0, num_collocation_points - 1])
-        no_flux_bc = BoundaryConditions(type='no_flux')
+        no_flux_bc = BoundaryConditions(type="no_flux")
 
         try:
             # Create solver with conservative settings
             solver = ParticleCollocationSolver(
                 problem=problem,
                 collocation_points=collocation_points,
-                num_particles=case['particles'],
+                num_particles=case["particles"],
                 delta=0.8,  # Keep large delta for stability
                 taylor_order=1,  # Keep first order for stability
                 weight_function="wendland",
@@ -70,7 +70,7 @@ def test_scaling_noflux():
                 mass_change = mass_evolution[-1] - mass_evolution[0]
                 max_U = np.max(np.abs(U)) if U is not None else np.inf
 
-                print(f"Results:")
+                print("Results:")
                 print(f"  Mass change: {mass_change:.2e}")
                 print(f"  Max |U|: {max_U:.1e}")
                 print(f"  Convergence: {info.get('converged', False)}")
@@ -88,13 +88,13 @@ def test_scaling_noflux():
                 print(f"  Status: {status}")
 
             else:
-                print(f"  ❌ FAILED: M is None")
+                print("  ❌ FAILED: M is None")
 
         except Exception as e:
             print(f"❌ ERROR: {e}")
 
     print(f"\n{'='*50}")
-    print(f"SCALING ANALYSIS COMPLETE")
+    print("SCALING ANALYSIS COMPLETE")
     print(f"{'='*50}")
 
 

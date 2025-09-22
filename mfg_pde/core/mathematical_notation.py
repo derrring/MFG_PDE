@@ -9,11 +9,17 @@ The notation follows established conventions in the Mean Field Games
 literature while providing clear mappings to computational variables.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Tuple, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import numpy as np
+
+if TYPE_CHECKING:
+    # For type checking only - these imports may not be available at runtime
+    import numpy as np
 
 
 class VariableType(Enum):
@@ -37,7 +43,7 @@ class NotationEntry:
     units: str = ""  # Physical units when applicable
     variable_type: VariableType = VariableType.SOLUTION
     latex: str = ""  # LaTeX representation
-    aliases: List[str] = None  # Alternative names or legacy names
+    aliases: list[str] | None = None  # Alternative names or legacy names
 
     def __post_init__(self):
         if self.aliases is None:
@@ -50,7 +56,7 @@ class MFGNotationRegistry:
     """Central registry for all mathematical notation used in MFG_PDE."""
 
     def __init__(self):
-        self.entries: Dict[str, NotationEntry] = {}
+        self.entries: dict[str, NotationEntry] = {}
         self._register_standard_notation()
 
     def _register_standard_notation(self) -> None:
@@ -302,21 +308,22 @@ class MFGNotationRegistry:
         self.entries[entry.variable_name] = entry
 
         # Also register aliases
-        for alias in entry.aliases:
-            if alias not in self.entries:
-                alias_entry = NotationEntry(
-                    symbol=entry.symbol,
-                    variable_name=alias,
-                    description=f"Alias for {entry.variable_name}: {entry.description}",
-                    domain=entry.domain,
-                    units=entry.units,
-                    variable_type=entry.variable_type,
-                    latex=entry.latex,
-                    aliases=[],
-                )
-                self.entries[alias] = alias_entry
+        if entry.aliases is not None:
+            for alias in entry.aliases:
+                if alias not in self.entries:
+                    alias_entry = NotationEntry(
+                        symbol=entry.symbol,
+                        variable_name=alias,
+                        description=f"Alias for {entry.variable_name}: {entry.description}",
+                        domain=entry.domain,
+                        units=entry.units,
+                        variable_type=entry.variable_type,
+                        latex=entry.latex,
+                        aliases=[],
+                    )
+                    self.entries[alias] = alias_entry
 
-    def get_entry(self, variable_name: str) -> NotationEntry:
+    def get_entry(self, variable_name: str) -> NotationEntry | None:
         """Get notation entry by variable name."""
         return self.entries.get(variable_name)
 
@@ -335,7 +342,7 @@ class MFGNotationRegistry:
         entry = self.get_entry(variable_name)
         return entry.description if entry else "Unknown variable"
 
-    def get_variables_by_type(self, variable_type: VariableType) -> List[NotationEntry]:
+    def get_variables_by_type(self, variable_type: VariableType) -> list[NotationEntry]:
         """Get all variables of a specific type."""
         return [entry for entry in self.entries.values() if entry.variable_type == variable_type and not entry.aliases]
 
@@ -420,8 +427,8 @@ Consistency Rules
 SpatialArray: TypeAlias = np.ndarray  # Shape: (Nx+1,) - spatial discretization
 TemporalArray: TypeAlias = np.ndarray  # Shape: (Nt+1,) - temporal discretization
 SolutionArray: TypeAlias = np.ndarray  # Shape: (Nt+1, Nx+1) - spatio-temporal solutions
-ParameterDict: TypeAlias = Dict[str, Any]  # Mathematical and numerical parameters
-ConfigDict: TypeAlias = Dict[str, Any]  # Solver configuration parameters
+ParameterDict: TypeAlias = dict[str, Any]  # Mathematical and numerical parameters
+ConfigDict: TypeAlias = dict[str, Any]  # Solver configuration parameters
 
 # Coordinate and grid types
 SpatialCoordinate: TypeAlias = float  # Single spatial point x ∈ [xmin, xmax]

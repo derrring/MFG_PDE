@@ -8,14 +8,16 @@ This module provides advanced optimization capabilities including:
 - Automatic memory layout optimization
 """
 
+from __future__ import annotations
+
 import functools
 import inspect
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any
 
 import numpy as np
-from numpy.typing import NDArray
 
 
 @dataclass
@@ -25,8 +27,8 @@ class PerformanceProfile:
     problem_size: int
     backend: str
     target_precision: float
-    memory_constraint: Optional[int] = None  # MB
-    time_constraint: Optional[float] = None  # seconds
+    memory_constraint: int | None = None  # MB
+    time_constraint: float | None = None  # seconds
     optimization_level: str = "balanced"  # "speed", "balanced", "accuracy"
 
 
@@ -44,8 +46,8 @@ class OptimizationHints:
     vectorize_inner_loops: bool = True
 
     # Backend-specific hints
-    jax_hints: Dict[str, Any] = None
-    numba_hints: Dict[str, Any] = None
+    jax_hints: dict[str, Any] | None = None
+    numba_hints: dict[str, Any] | None = None
 
     def __post_init__(self):
         if self.jax_hints is None:
@@ -64,14 +66,14 @@ class OptimizationCompiler:
 
     def __init__(self, backend: str = "auto"):
         self.backend = backend
-        self.optimization_cache: Dict[str, Callable] = {}
-        self.performance_stats: Dict[str, Dict] = {}
+        self.optimization_cache: dict[str, Callable] = {}
+        self.performance_stats: dict[str, dict] = {}
 
     def optimize_function(
         self,
         func: Callable,
         profile: PerformanceProfile,
-        hints: OptimizationHints = None,
+        hints: OptimizationHints | None = None,
     ) -> Callable:
         """Optimize function based on performance profile."""
 
@@ -230,7 +232,7 @@ class OptimizationCompiler:
         """Create unique cache key for optimization."""
         return f"{func.__name__}_{profile.problem_size}_{profile.backend}_{profile.optimization_level}"
 
-    def benchmark_function(self, func: Callable, args: Tuple, kwargs: Dict, num_runs: int = 10) -> Dict[str, float]:
+    def benchmark_function(self, func: Callable, args: tuple, kwargs: dict, num_runs: int = 10) -> dict[str, float]:
         """Benchmark function performance."""
 
         times = []
@@ -242,10 +244,10 @@ class OptimizationCompiler:
             times.append(end_time - start_time)
 
         return {
-            "mean_time": np.mean(times),
-            "std_time": np.std(times),
-            "min_time": np.min(times),
-            "max_time": np.max(times),
+            "mean_time": float(np.mean(times)),
+            "std_time": float(np.std(times)),
+            "min_time": float(np.min(times)),
+            "max_time": float(np.max(times)),
         }
 
 
@@ -259,14 +261,14 @@ class JITSolverFactory:
 
     def __init__(self):
         self.compiler = OptimizationCompiler()
-        self.solver_cache: Dict[str, Type] = {}
+        self.solver_cache: dict[str, type] = {}
 
     def create_optimized_solver(
         self,
-        base_solver_class: Type,
+        base_solver_class: type,
         problem,
-        performance_profile: PerformanceProfile = None,
-    ) -> Type:
+        performance_profile: PerformanceProfile | None = None,
+    ) -> type:
         """Create optimized solver class for given problem."""
 
         if performance_profile is None:
@@ -310,7 +312,7 @@ class JITSolverFactory:
             optimization_level="balanced",
         )
 
-    def _create_optimized_class(self, base_class: Type, profile: PerformanceProfile) -> Type:
+    def _create_optimized_class(self, base_class: type, profile: PerformanceProfile) -> type:
         """Create optimized version of solver class."""
 
         class OptimizedSolver(base_class):
@@ -346,7 +348,7 @@ class JITSolverFactory:
 
 
 def create_optimized_solver(
-    solver_class: Type,
+    solver_class: type,
     problem,
     optimization_level: str = "balanced",
     backend: str = "auto",
@@ -357,7 +359,7 @@ def create_optimized_solver(
     Args:
         solver_class: Base solver class to optimize
         problem: MFG problem instance
-        optimization_level: "speed", "balanced", or "accuracy"
+        optimization_level: speed, "balanced", or "accuracy"
         backend: Computational backend ("auto", "jax", "numba", "numpy")
 
     Returns:
@@ -431,7 +433,7 @@ def jit_optimize(backend: str = "auto", optimization_level: str = "balanced"):
     return decorator
 
 
-def adaptive_backend(backends: List[str] = None):
+def adaptive_backend(backends: list[str] | None = None):
     """Decorator for adaptive backend selection based on problem size."""
 
     if backends is None:

@@ -1,22 +1,25 @@
+from __future__ import annotations
+
 import os
-import time
 from datetime import datetime
 
 # Assuming your MFGProblem class is importable for type hinting
 # from ..core.mfg_problem import MFGProblem # Adjust path if necessary
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 # Modern visualization system
 try:
-    from ..visualization import plot_convergence  # Legacy compatibility
-    from ..visualization import create_visualization_manager, modern_plot_convergence
+    from ..visualization import (
+        create_visualization_manager,
+        modern_plot_convergence,
+        plot_convergence,  # Legacy compatibility
+    )
 
     VISUALIZATION_AVAILABLE = True
 except ImportError:
     # Fallback to matplotlib if visualization system not available
-    import matplotlib.pyplot as plt
 
     VISUALIZATION_AVAILABLE = False
 
@@ -32,7 +35,7 @@ def calculate_total_mass(M: np.ndarray, Dx: float) -> np.ndarray:
 
 
 def save_experiment_data(
-    problem: "MFGProblem",
+    problem: MFGProblem,
     U_solution: np.ndarray,
     M_solution: np.ndarray,
     solver_name: str,
@@ -43,7 +46,7 @@ def save_experiment_data(
     abs_dist_M: np.ndarray,
     execution_time: float,
     output_dir_base: str = "mfg_results",
-    additional_params: Optional[Dict[str, Any]] = None,
+    additional_params: dict[str, Any] | None = None,
 ) -> str:
     """
     Saves the results and parameters of an MFG experiment to an .npz file.
@@ -128,7 +131,7 @@ def save_experiment_data(
         return ""
 
 
-def load_experiment_data(filepath: str) -> Optional[Dict[str, Any]]:
+def load_experiment_data(filepath: str) -> dict[str, Any] | None:
     """
     Loads experiment data from an .npz file.
 
@@ -153,7 +156,7 @@ def load_experiment_data(filepath: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def load_experiments_from_dir(directory_path: str) -> List[Dict[str, Any]]:
+def load_experiments_from_dir(directory_path: str) -> list[dict[str, Any]]:
     """
     Loads all .npz experiment files from a given directory.
     """
@@ -175,9 +178,9 @@ def load_experiments_from_dir(directory_path: str) -> List[Dict[str, Any]]:
 
 
 def plot_comparison_total_mass(
-    experiment_data_list: List[Dict[str, Any]],
+    experiment_data_list: list[dict[str, Any]],
     title_suffix: str = "",
-    save_to_file: Optional[str] = None,
+    save_to_file: str | None = None,
 ):
     """Plots total mass vs. time for multiple experiments on the same axes."""
     if VISUALIZATION_AVAILABLE:
@@ -228,9 +231,9 @@ def plot_comparison_total_mass(
 
 
 def plot_comparison_final_m(
-    experiment_data_list: List[Dict[str, Any]],
+    experiment_data_list: list[dict[str, Any]],
     title_suffix: str = "",
-    save_to_file: Optional[str] = None,
+    save_to_file: str | None = None,
 ):
     """Plots the final density M(T,x) for multiple experiments."""
     if VISUALIZATION_AVAILABLE:
@@ -285,9 +288,9 @@ def plot_comparison_final_m(
 
 
 def plot_comparison_initial_U(
-    experiment_data_list: List[Dict[str, Any]],
+    experiment_data_list: list[dict[str, Any]],
     title_suffix: str = "",
-    save_to_file: Optional[str] = None,
+    save_to_file: str | None = None,
 ):
     """Plots the initial value function U(0,x) for multiple experiments."""
     if VISUALIZATION_AVAILABLE:
@@ -343,10 +346,10 @@ def plot_comparison_initial_U(
 
 # Example of a more detailed comparison plot: U at a specific time slice
 def plot_comparison_U_slice(
-    experiment_data_list: List[Dict[str, Any]],
+    experiment_data_list: list[dict[str, Any]],
     time_index: int,
     title_suffix: str = "",
-    save_to_file: Optional[str] = None,
+    save_to_file: str | None = None,
 ):
     """Plots U(t_k, x) for a specific time_index k for multiple experiments."""
     actual_time = -1

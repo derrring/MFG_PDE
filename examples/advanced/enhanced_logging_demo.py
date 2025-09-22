@@ -14,10 +14,8 @@ import sys
 import time
 from pathlib import Path
 
-import numpy as np
-
 # Add the parent directory to the path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde.utils.log_analysis import LogAnalyzer, analyze_log_file, find_performance_bottlenecks
 from mfg_pde.utils.logging import (
@@ -79,7 +77,7 @@ def demonstrate_advanced_logging_functions():
 
     problem_info = {"problem_type": "Mean Field Game", "domain": "[0,1] x [0,T]", "agents": 1000, "time_horizon": 2.0}
 
-    log_solver_configuration(logger, "HJBGFDMTunedQPSolver", solver_config, problem_info)
+    log_solver_configuration(logger, "GFDM-Tuned-QP", solver_config, problem_info)
 
     # 2. Convergence analysis logging
     print("\n2. Convergence Analysis:")
@@ -113,12 +111,12 @@ def demonstrate_log_analysis():
 
     # Generate various log entries for analysis
     for i in range(5):
-        logger.info(f"Initializing HJBSolver")
+        logger.info("Initializing HJBSolver")
         logger.info(f"Performance - Matrix assembly: {0.1 + i*0.05:.3f}s")
         logger.info(f"Iteration {i+1}/10 (10.0%) - Error: {1e-3/(i+1):.2e}")
         if i == 2:
             logger.error("Convergence issue detected - reducing time step")
-        logger.info(f"HJBSolver completed - Status: CONVERGED")
+        logger.info("HJBSolver completed - Status: CONVERGED")
         time.sleep(0.01)  # Small delay for timestamp variation
 
     # Now analyze the log
@@ -129,7 +127,7 @@ def demonstrate_log_analysis():
         # Use the comprehensive analysis function
         analysis_results = analyze_log_file(str(log_file), generate_report=True)
 
-        print(f"\n3. Analysis Summary:")
+        print("\n3. Analysis Summary:")
         print(f"   Total entries: {analysis_results['summary'].get('total_entries', 0)}")
         print(f"   Error count: {analysis_results['errors'].get('total_errors', 0)}")
         print(f"   Solver sessions: {len(analysis_results['performance'].get('solver_sessions', []))}")

@@ -14,7 +14,6 @@ Tests include:
 """
 
 import time
-from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,7 +31,7 @@ class AnalyticalSolution:
     """Container for analytical MFG solutions used for validation."""
 
     @staticmethod
-    def linear_solution(x: np.ndarray, t: float, T: float) -> Tuple[np.ndarray, np.ndarray]:
+    def linear_solution(x: np.ndarray, t: float, T: float) -> tuple[np.ndarray, np.ndarray]:
         """
         Linear analytical solution for validation.
 
@@ -53,7 +52,7 @@ class AnalyticalSolution:
         return u_analytical, m_analytical
 
     @staticmethod
-    def quadratic_solution(x: np.ndarray, t: float, T: float) -> Tuple[np.ndarray, np.ndarray]:
+    def quadratic_solution(x: np.ndarray, t: float, T: float) -> tuple[np.ndarray, np.ndarray]:
         """
         Quadratic analytical solution.
 
@@ -90,11 +89,17 @@ def create_validation_problem(nx: int = 51, nt: int = 51) -> MFGProblem:
         MFG problem with known analytical properties
     """
     return MFGProblem(
-        xmin=0.0, xmax=1.0, Nx=nx, T=0.5, Nt=nt, sigma=0.1, coefCT=0.5  # Moderate diffusion  # Standard control cost
+        xmin=0.0,
+        xmax=1.0,
+        Nx=nx,
+        T=0.5,
+        Nt=nt,
+        sigma=0.1,
+        coefCT=0.5,  # Moderate diffusion  # Standard control cost
     )
 
 
-def test_analytical_convergence() -> Dict[str, float]:
+def test_analytical_convergence() -> dict[str, float]:
     """
     Test convergence to analytical solution.
 
@@ -114,7 +119,7 @@ def test_analytical_convergence() -> Dict[str, float]:
         # Solve numerically
         result = solver.solve()
 
-        if not hasattr(result, 'U') or not hasattr(result, 'M'):
+        if not hasattr(result, "U") or not hasattr(result, "M"):
             logger.error("Result missing U or M fields")
             return {"error": np.inf}
 
@@ -147,7 +152,7 @@ def test_analytical_convergence() -> Dict[str, float]:
         return {"error": np.inf}
 
 
-def test_grid_convergence() -> Dict[str, list]:
+def test_grid_convergence() -> dict[str, list]:
     """
     Test spatial and temporal convergence rates.
 
@@ -217,7 +222,7 @@ def test_grid_convergence() -> Dict[str, list]:
     }
 
 
-def test_large_timestep_stability() -> Dict[str, bool]:
+def test_large_timestep_stability() -> dict[str, bool]:
     """
     Test stability for large time steps.
 
@@ -244,7 +249,7 @@ def test_large_timestep_stability() -> Dict[str, bool]:
             result = solver.solve()
 
             # Check for stability (no blow-up, reasonable values)
-            if hasattr(result, 'U') and hasattr(result, 'M'):
+            if hasattr(result, "U") and hasattr(result, "M"):
                 u_max = np.max(np.abs(result.U))
                 m_max = np.max(np.abs(result.M))
                 has_nan = np.any(np.isnan(result.U)) or np.any(np.isnan(result.M))
@@ -260,7 +265,7 @@ def test_large_timestep_stability() -> Dict[str, bool]:
                     logger.warning(f"    ✗ Unstable (NaN: {has_nan}, Inf: {has_inf}, max U: {u_max:.2e})")
             else:
                 stability_results[f"nt_{nt}"] = False
-                logger.warning(f"    ✗ Missing solution fields")
+                logger.warning("    ✗ Missing solution fields")
 
         except Exception as e:
             logger.warning(f"    ✗ Stability test failed for Nt={nt}: {e}")
@@ -269,7 +274,7 @@ def test_large_timestep_stability() -> Dict[str, bool]:
     return stability_results
 
 
-def test_interpolation_methods() -> Dict[str, float]:
+def test_interpolation_methods() -> dict[str, float]:
     """
     Compare different interpolation methods.
 
@@ -294,7 +299,7 @@ def test_interpolation_methods() -> Dict[str, float]:
 
             solve_time = time.time() - start_time
 
-            if hasattr(result, 'U'):
+            if hasattr(result, "U"):
                 # Compute solution quality metric
                 x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
                 u_analytical, _ = AnalyticalSolution.linear_solution(x_grid, problem.T, problem.T)
@@ -305,7 +310,7 @@ def test_interpolation_methods() -> Dict[str, float]:
                 logger.info(f"    ✓ Success: error={error:.2e}, time={solve_time:.2f}s")
             else:
                 results[method] = {"error": np.inf, "solve_time": solve_time, "success": False}
-                logger.warning(f"    ✗ Failed: missing solution")
+                logger.warning("    ✗ Failed: missing solution")
 
         except Exception as e:
             logger.warning(f"    ✗ Failed with {method} interpolation: {e}")
@@ -314,7 +319,7 @@ def test_interpolation_methods() -> Dict[str, float]:
     return results
 
 
-def create_validation_plots(convergence_data: Dict[str, list], interpolation_results: Dict[str, float]):
+def create_validation_plots(convergence_data: dict[str, list], interpolation_results: dict[str, float]):
     """
     Create validation plots.
 
@@ -339,17 +344,17 @@ def create_validation_plots(convergence_data: Dict[str, list], interpolation_res
             nx_valid = [nx_values[i] for i in valid_indices]
             errors_valid = [spatial_errors[i] for i in valid_indices]
 
-            ax1.loglog(nx_valid, errors_valid, 'bo-', linewidth=2, markersize=6)
+            ax1.loglog(nx_valid, errors_valid, "bo-", linewidth=2, markersize=6)
 
             # Add theoretical convergence line (O(h²) for second order)
             if len(nx_valid) >= 2:
                 h_values = [1.0 / nx for nx in nx_valid]
                 theoretical_line = errors_valid[0] * (np.array(h_values) / h_values[0]) ** 2
-                ax1.loglog(nx_valid, theoretical_line, 'r--', alpha=0.7, label='O(h²)')
+                ax1.loglog(nx_valid, theoretical_line, "r--", alpha=0.7, label="O(h²)")
 
-    ax1.set_xlabel('Number of spatial points (Nx)')
-    ax1.set_ylabel('L2 Error')
-    ax1.set_title('Spatial Convergence')
+    ax1.set_xlabel("Number of spatial points (Nx)")
+    ax1.set_ylabel("L2 Error")
+    ax1.set_title("Spatial Convergence")
     ax1.grid(True, alpha=0.3)
     ax1.legend()
 
@@ -365,17 +370,17 @@ def create_validation_plots(convergence_data: Dict[str, list], interpolation_res
             nt_valid = [nt_values[i] for i in valid_indices]
             errors_valid = [temporal_errors[i] for i in valid_indices]
 
-            ax2.loglog(nt_valid, errors_valid, 'go-', linewidth=2, markersize=6)
+            ax2.loglog(nt_valid, errors_valid, "go-", linewidth=2, markersize=6)
 
             # Add theoretical convergence line (O(dt) for first order)
             if len(nt_valid) >= 2:
                 dt_values = [0.5 / (nt - 1) for nt in nt_valid]
                 theoretical_line = errors_valid[0] * (np.array(dt_values) / dt_values[0])
-                ax2.loglog(nt_valid, theoretical_line, 'r--', alpha=0.7, label='O(Δt)')
+                ax2.loglog(nt_valid, theoretical_line, "r--", alpha=0.7, label="O(Δt)")
 
-    ax2.set_xlabel('Number of time points (Nt)')
-    ax2.set_ylabel('L2 Error')
-    ax2.set_title('Temporal Convergence')
+    ax2.set_xlabel("Number of time points (Nt)")
+    ax2.set_ylabel("L2 Error")
+    ax2.set_title("Temporal Convergence")
     ax2.grid(True, alpha=0.3)
     ax2.legend()
 
@@ -386,20 +391,20 @@ def create_validation_plots(convergence_data: Dict[str, list], interpolation_res
         errors = []
         for method, result in interpolation_results.items():
             if result["success"] and np.isfinite(result["error"]):
-                methods.append(method.replace('_', ' ').title())
+                methods.append(method.replace("_", " ").title())
                 errors.append(result["error"])
 
         if methods:
-            bars = ax3.bar(methods, errors, alpha=0.7, color=['blue', 'green', 'red'][: len(methods)])
-            ax3.set_ylabel('L2 Error')
-            ax3.set_title('Interpolation Method Accuracy')
-            ax3.set_yscale('log')
+            bars = ax3.bar(methods, errors, alpha=0.7, color=["blue", "green", "red"][: len(methods)])
+            ax3.set_ylabel("L2 Error")
+            ax3.set_title("Interpolation Method Accuracy")
+            ax3.set_yscale("log")
             ax3.grid(True, alpha=0.3)
 
             # Add value labels on bars
-            for bar, error in zip(bars, errors):
+            for bar, error in zip(bars, errors, strict=False):
                 height = bar.get_height()
-                ax3.text(bar.get_x() + bar.get_width() / 2.0, height, f'{error:.1e}', ha='center', va='bottom')
+                ax3.text(bar.get_x() + bar.get_width() / 2.0, height, f"{error:.1e}", ha="center", va="bottom")
 
     # Plot 4: Interpolation method comparison (time)
     ax4 = axes[1, 1]
@@ -408,25 +413,25 @@ def create_validation_plots(convergence_data: Dict[str, list], interpolation_res
         times = []
         for method, result in interpolation_results.items():
             if result["success"] and np.isfinite(result["solve_time"]):
-                methods.append(method.replace('_', ' ').title())
+                methods.append(method.replace("_", " ").title())
                 times.append(result["solve_time"])
 
         if methods:
-            bars = ax4.bar(methods, times, alpha=0.7, color=['blue', 'green', 'red'][: len(methods)])
-            ax4.set_ylabel('Solve Time (seconds)')
-            ax4.set_title('Interpolation Method Performance')
+            bars = ax4.bar(methods, times, alpha=0.7, color=["blue", "green", "red"][: len(methods)])
+            ax4.set_ylabel("Solve Time (seconds)")
+            ax4.set_title("Interpolation Method Performance")
             ax4.grid(True, alpha=0.3)
 
             # Add value labels on bars
-            for bar, solve_time in zip(bars, times):
+            for bar, solve_time in zip(bars, times, strict=False):
                 height = bar.get_height()
-                ax4.text(bar.get_x() + bar.get_width() / 2.0, height, f'{solve_time:.2f}s', ha='center', va='bottom')
+                ax4.text(bar.get_x() + bar.get_width() / 2.0, height, f"{solve_time:.2f}s", ha="center", va="bottom")
 
     plt.tight_layout()
 
     # Save plot
     plot_filename = "semi_lagrangian_validation.png"
-    plt.savefig(plot_filename, dpi=150, bbox_inches='tight')
+    plt.savefig(plot_filename, dpi=150, bbox_inches="tight")
     logger.info(f"Validation plots saved as: {plot_filename}")
 
     try:

@@ -5,6 +5,8 @@ Provides consistent integration functions that work across NumPy versions,
 with preference for NumPy 2.0+ standard but fallbacks for older versions.
 """
 
+from __future__ import annotations
+
 # Import from the comprehensive NumPy compatibility module
 from .numpy_compat import get_numpy_info, trapezoid
 

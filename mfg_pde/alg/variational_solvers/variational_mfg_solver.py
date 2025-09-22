@@ -15,9 +15,11 @@ subject to:
 - Non-negativity: m(t,x) ≥ 0
 """
 
+from __future__ import annotations
+
 import logging
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -34,13 +36,9 @@ try:
 except ImportError:
     SCIPY_AVAILABLE = False
 
-try:
-    import jax.numpy as jnp
-    from jax import grad, jit
+import importlib.util
 
-    JAX_AVAILABLE = True
-except ImportError:
-    JAX_AVAILABLE = False
+JAX_AVAILABLE = importlib.util.find_spec("jax") is not None
 
 
 class VariationalMFGSolver(BaseVariationalSolver):
@@ -62,7 +60,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
         problem,
         optimization_method: str = "L-BFGS-B",
         penalty_weight: float = 1000.0,
-        use_jax: bool = None,
+        use_jax: bool | None = None,
         constraint_tolerance: float = 1e-6,
     ):
         """
@@ -104,7 +102,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
 
     def solve(
         self,
-        initial_guess: Optional[NDArray] = None,
+        initial_guess: NDArray | None = None,
         max_iterations: int = 100,
         tolerance: float = 1e-6,
         verbose: bool = True,
@@ -327,7 +325,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
 
         return penalty
 
-    def _evaluate_constraints(self, density: NDArray) -> Dict[str, float]:
+    def _evaluate_constraints(self, density: NDArray) -> dict[str, float]:
         """
         Evaluate constraint violations.
 
@@ -394,7 +392,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
             current_cost = self.cost_history[-1] if self.cost_history else np.inf
             logger.info(f"    Iteration {self.iteration_count}: cost = {current_cost:.6e}")
 
-    def create_comparison_with_hamiltonian(self) -> Dict[str, Any]:
+    def create_comparison_with_hamiltonian(self) -> dict[str, Any]:
         """
         Create equivalent Hamiltonian problem for comparison.
 
@@ -426,7 +424,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
             "lagrangian_solver": self,
         }
 
-    def get_solver_info(self) -> Dict[str, Any]:
+    def get_solver_info(self) -> dict[str, Any]:
         """Return detailed solver information."""
         base_info = super().get_solver_info()
 

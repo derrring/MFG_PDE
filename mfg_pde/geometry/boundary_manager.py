@@ -6,8 +6,11 @@ complex 2D/3D geometries with multiple boundary regions, curved boundaries,
 and advanced boundary condition types.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -29,20 +32,20 @@ class GeometricBoundaryCondition:
     bc_type: str  # 'dirichlet', 'neumann', 'robin', 'no_flux'
 
     # Values (can be constants or functions)
-    value: Union[float, Callable[[np.ndarray], np.ndarray]] = None
-    gradient_value: Union[float, Callable[[np.ndarray], np.ndarray]] = None
+    value: float | Callable[[np.ndarray], np.ndarray] = None
+    gradient_value: float | Callable[[np.ndarray], np.ndarray] = None
 
     # Robin boundary condition parameters
-    alpha: Union[float, Callable[[np.ndarray], np.ndarray]] = None  # coefficient of u
-    beta: Union[float, Callable[[np.ndarray], np.ndarray]] = None  # coefficient of du/dn
+    alpha: float | Callable[[np.ndarray], np.ndarray] = None  # coefficient of u
+    beta: float | Callable[[np.ndarray], np.ndarray] = None  # coefficient of du/dn
 
     # Spatial and temporal dependencies
     time_dependent: bool = False
-    spatial_function: Optional[Callable[[np.ndarray, float], np.ndarray]] = None
+    spatial_function: Callable[[np.ndarray, float], np.ndarray] | None = None
 
     # Metadata
     description: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate boundary condition parameters."""
@@ -97,9 +100,9 @@ class BoundaryManager:
             mesh_data: Mesh data containing boundary information
         """
         self.mesh_data = mesh_data
-        self.boundary_conditions: Dict[int, GeometricBoundaryCondition] = {}
-        self.boundary_nodes: Dict[int, np.ndarray] = {}
-        self.boundary_faces: Dict[int, np.ndarray] = {}
+        self.boundary_conditions: dict[int, GeometricBoundaryCondition] = {}
+        self.boundary_nodes: dict[int, np.ndarray] = {}
+        self.boundary_faces: dict[int, np.ndarray] = {}
 
         # Extract boundary information from mesh
         self._extract_boundary_regions()
@@ -131,7 +134,7 @@ class BoundaryManager:
         self,
         region_id: int,
         bc_type: str,
-        value: Union[float, Callable] = None,
+        value: float | Callable = None,
         **kwargs,
     ) -> GeometricBoundaryCondition:
         """
@@ -183,7 +186,7 @@ class BoundaryManager:
 
     def apply_dirichlet_conditions(
         self, system_matrix: np.ndarray, rhs_vector: np.ndarray, time: float = 0.0
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Apply Dirichlet boundary conditions to linear system.
 
@@ -317,7 +320,7 @@ class BoundaryManager:
 
         plotter.show()
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get summary of boundary condition setup."""
         summary = {"num_regions": len(self.boundary_conditions), "regions": {}}
 

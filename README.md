@@ -10,27 +10,43 @@ A state-of-the-art Python framework for solving Mean Field Games with GPU accele
 
 ### Installation Options
 
-#### **Option 1: UV (Recommended - 10x Faster)**
+#### **For Users (Learning/Research)**
+```bash
+git clone https://github.com/derrring/MFG_PDE.git
+cd MFG_PDE
+pip install -e .           # Installs MFG_PDE + core scientific dependencies
+
+# Run examples and explore
+python examples/basic/semi_lagrangian_example.py
+jupyter lab examples/notebooks/
+```
+
+#### **For Contributors/Developers**
+```bash
+git clone https://github.com/derrring/MFG_PDE.git
+cd MFG_PDE
+pip install -e ".[dev]"    # Adds development tools (pytest, ruff, mypy)
+
+# Run tests and contribute
+python examples/basic/semi_lagrangian_example.py
+pytest tests/unit/ -v
+pre-commit install
+```
+
+#### **UV Installation (Power Users - 10x Faster)**
+For researchers doing intensive development with frequent dependency changes:
 ```bash
 # Install uv (modern, fast package manager)
 pip install uv
 
-# One-command setup with exact reproducible environment  
+# One-command setup with exact reproducible environment
 git clone https://github.com/derrring/MFG_PDE.git
 cd MFG_PDE
-uv sync --extra dev        # Creates .venv with all dependencies (294 packages)
+uv sync --extra dev        # Creates .venv with exact dependency resolution
 
 # Run examples and tests
 uv run python examples/basic/semi_lagrangian_example.py
 uv run pytest tests/unit/ -v
-```
-
-#### **Option 2: Traditional pip/conda**
-```bash
-git clone https://github.com/derrring/MFG_PDE.git
-cd MFG_PDE
-pip install -e ".[dev]"    # Standard installation
-python examples/basic/semi_lagrangian_example.py
 ```
 
 ### Verify Installation
@@ -241,7 +257,8 @@ uv run pytest tests/integration/       # Integration tests
 uv run pytest --cov=mfg_pde            # Coverage testing
 
 # Development workflow
-uv run black mfg_pde/                  # Auto-format code
+uv run ruff format mfg_pde/            # Auto-format code (10x faster than Black)
+uv run ruff check --fix mfg_pde/       # Lint and auto-fix (replaces Pylint+isort)
 uv run mypy mfg_pde/core/              # Type checking (core modules)
 uv run python examples/basic/semi_lagrangian_example.py  # Run examples
 ```
@@ -258,9 +275,8 @@ python -m pytest tests/integration/    # Integration tests
 ### 📊 **CI/CD Pipeline**
 ```bash
 # Check code quality (locally)
-black --check mfg_pde/
-isort --check-only mfg_pde/
-flake8 mfg_pde/
+ruff format --check mfg_pde/           # Check formatting
+ruff check mfg_pde/                    # Check linting
 
 # Run memory and performance tests
 python -c "from mfg_pde import ExampleMFGProblem, create_fast_solver; ..."

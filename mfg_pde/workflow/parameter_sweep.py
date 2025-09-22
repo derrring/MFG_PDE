@@ -6,16 +6,19 @@ enabling researchers to efficiently study the behavior of MFG systems
 across different parameter configurations.
 """
 
+from __future__ import annotations
+
 import itertools
 import json
 import logging
 import multiprocessing as mp
 import pickle
 import time
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import pandas as pd
 
@@ -26,13 +29,13 @@ import numpy as np
 class SweepConfiguration:
     """Configuration for parameter sweep execution."""
 
-    parameters: Dict[str, List[Any]]
+    parameters: dict[str, list[Any]]
     execution_mode: str = "sequential"  # "sequential", "parallel_threads", "parallel_processes"
-    max_workers: Optional[int] = None
-    batch_size: Optional[int] = None
+    max_workers: int | None = None
+    batch_size: int | None = None
     save_intermediate: bool = True
-    output_dir: Optional[Path] = None
-    timeout_per_run: Optional[float] = None
+    output_dir: Path | None = None
+    timeout_per_run: float | None = None
     retry_failed: bool = True
     max_retries: int = 3
 
@@ -55,7 +58,7 @@ class ParameterSweep:
     including grid search, random sampling, and adaptive methods.
     """
 
-    def __init__(self, parameters: Dict[str, Any], config: Optional[SweepConfiguration] = None):
+    def __init__(self, parameters: dict[str, Any], config: SweepConfiguration | None = None):
         """
         Initialize parameter sweep.
 
@@ -71,20 +74,20 @@ class ParameterSweep:
         self.total_combinations = len(self.parameter_combinations)
 
         # Results storage
-        self.results: List[Dict[str, Any]] = []
-        self.failed_runs: List[Dict[str, Any]] = []
+        self.results: list[dict[str, Any]] = []
+        self.failed_runs: list[dict[str, Any]] = []
 
         # Execution tracking
         self.completed_runs = 0
-        self.start_time: Optional[float] = None
-        self.end_time: Optional[float] = None
+        self.start_time: float | None = None
+        self.end_time: float | None = None
 
         # Setup logging
         self.logger = self._setup_logging()
 
         self.logger.info(f"Initialized parameter sweep with {self.total_combinations} combinations")
 
-    def _generate_combinations(self) -> List[Dict[str, Any]]:
+    def _generate_combinations(self) -> list[dict[str, Any]]:
         """Generate all parameter combinations."""
         param_names = []
         param_values = []
@@ -101,12 +104,12 @@ class ParameterSweep:
         # Generate Cartesian product
         combinations = []
         for combo in itertools.product(*param_values):
-            combination = dict(zip(param_names, combo))
+            combination = dict(zip(param_names, combo, strict=True))
             combinations.append(combination)
 
         return combinations
 
-    def execute(self, function: Callable, **kwargs) -> List[Dict[str, Any]]:
+    def execute(self, function: Callable, **kwargs) -> list[dict[str, Any]]:
         """
         Execute parameter sweep with given function.
 
@@ -123,11 +126,11 @@ class ParameterSweep:
 
         try:
             if self.config.execution_mode == "sequential":
-                results = self._execute_sequential(function, **kwargs)
+                self._execute_sequential(function, **kwargs)
             elif self.config.execution_mode == "parallel_threads":
-                results = self._execute_parallel_threads(function, **kwargs)
+                self._execute_parallel_threads(function, **kwargs)
             elif self.config.execution_mode == "parallel_processes":
-                results = self._execute_parallel_processes(function, **kwargs)
+                self._execute_parallel_processes(function, **kwargs)
             else:
                 raise ValueError(f"Unknown execution mode: {self.config.execution_mode}")
 
@@ -146,7 +149,7 @@ class ParameterSweep:
             self.logger.error(f"Parameter sweep failed: {e}")
             raise
 
-    def _execute_sequential(self, function: Callable, **kwargs) -> List[Dict[str, Any]]:
+    def _execute_sequential(self, function: Callable, **kwargs) -> list[dict[str, Any]]:
         """Execute parameter sweep sequentially."""
         for i, params in enumerate(self.parameter_combinations):
             self.logger.info(f"Executing combination {i+1}/{self.total_combinations}: {params}")
@@ -166,7 +169,7 @@ class ParameterSweep:
 
         return self.results
 
-    def _execute_parallel_threads(self, function: Callable, **kwargs) -> List[Dict[str, Any]]:
+    def _execute_parallel_threads(self, function: Callable, **kwargs) -> list[dict[str, Any]]:
         """Execute parameter sweep using thread pool."""
         with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
             # Submit all tasks
@@ -209,7 +212,7 @@ class ParameterSweep:
 
         return self.results
 
-    def _execute_parallel_processes(self, function: Callable, **kwargs) -> List[Dict[str, Any]]:
+    def _execute_parallel_processes(self, function: Callable, **kwargs) -> list[dict[str, Any]]:
         """Execute parameter sweep using process pool."""
 
         # Create worker function that can be pickled
@@ -257,7 +260,7 @@ class ParameterSweep:
 
         return self.results
 
-    def _execute_single(self, function: Callable, params: Dict[str, Any], run_id: int, **kwargs) -> Dict[str, Any]:
+    def _execute_single(self, function: Callable, params: dict[str, Any], run_id: int, **kwargs) -> dict[str, Any]:
         """Execute function with single parameter combination."""
         start_time = time.time()
 
@@ -296,7 +299,9 @@ class ParameterSweep:
             }
 
             # Retry if configured
-            if self.config.retry_failed and hasattr(self, "_retry_count"):
+            if self.config.retry_failed:
+                if not hasattr(self, "_retry_count"):
+                    self._retry_count = {}
                 if self._retry_count.get(run_id, 0) < self.config.max_retries:
                     self._retry_count[run_id] = self._retry_count.get(run_id, 0) + 1
                     self.logger.warning(f"Retrying run {run_id} (attempt {self._retry_count[run_id]})")
@@ -304,7 +309,7 @@ class ParameterSweep:
 
             return error_record
 
-    def analyze_results(self) -> Dict[str, Any]:
+    def analyze_results(self) -> dict[str, Any]:
         """Analyze parameter sweep results."""
         if not self.results:
             return {"error": "No successful results to analyze"}
@@ -314,8 +319,8 @@ class ParameterSweep:
                 "total_runs": self.total_combinations,
                 "successful_runs": len(self.results),
                 "failed_runs": len(self.failed_runs),
-                "success_rate": len(self.results) / self.total_combinations,
-                "total_time": (self.end_time - self.start_time if self.end_time else None),
+                "success_rate": len(self.results) / self.total_combinations if self.total_combinations > 0 else 0,
+                "total_time": (self.end_time - self.start_time if self.end_time and self.start_time else None),
                 "average_time_per_run": np.mean([r["execution_time"] for r in self.results]),
             },
             "parameter_analysis": {},
@@ -330,17 +335,17 @@ class ParameterSweep:
 
         return analysis
 
-    def _analyze_parameter_effects(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _analyze_parameter_effects(self, df: pd.DataFrame) -> dict[str, Any]:
         """Analyze effects of different parameters on results."""
         effects = {}
 
         # Get numeric result columns
         numeric_columns = df.select_dtypes(include=[np.number]).columns
         result_columns = [
-            col for col in numeric_columns if col not in list(self.parameters.keys()) + ["run_id", "execution_time"]
+            col for col in numeric_columns if col not in [*self.parameters.keys(), "run_id", "execution_time"]
         ]
 
-        for param_name in self.parameters.keys():
+        for param_name in self.parameters:
             if param_name in df.columns:
                 param_effects = {}
 
@@ -354,7 +359,7 @@ class ParameterSweep:
 
         return effects
 
-    def _analyze_performance(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _analyze_performance(self, df: pd.DataFrame) -> dict[str, Any]:
         """Analyze performance characteristics."""
         performance = {}
 
@@ -381,7 +386,7 @@ class ParameterSweep:
 
         return performance
 
-    def to_dataframe(self) -> Optional[pd.DataFrame]:
+    def to_dataframe(self) -> pd.DataFrame | None:
         """Convert results to pandas DataFrame for analysis."""
         if not self.results:
             return None
@@ -415,7 +420,7 @@ class ParameterSweep:
             self.logger.error(f"Failed to create DataFrame: {e}")
             return None
 
-    def save_to_csv(self, filename: Optional[str] = None) -> str:
+    def save_to_csv(self, filename: str | None = None) -> str:
         """Save results to CSV file."""
         df = self.to_dataframe()
         if df is None:
@@ -425,7 +430,7 @@ class ParameterSweep:
             timestamp = int(time.time())
             filename = f"parameter_sweep_{timestamp}.csv"
 
-        filepath = self.config.output_dir / filename
+        filepath = self.config.output_dir / filename if self.config.output_dir is not None else Path(filename)
         df.to_csv(filepath, index=False)
 
         self.logger.info(f"Saved results to {filepath}")
@@ -436,7 +441,10 @@ class ParameterSweep:
         timestamp = int(time.time())
 
         # Save results as pickle
-        results_file = self.config.output_dir / f"sweep_results_{timestamp}.pkl"
+        if self.config.output_dir is not None:
+            results_file = self.config.output_dir / f"sweep_results_{timestamp}.pkl"
+        else:
+            results_file = Path(f"sweep_results_{timestamp}.pkl")
         with open(results_file, "wb") as f:
             pickle.dump(
                 {
@@ -455,13 +463,16 @@ class ParameterSweep:
             )
 
         # Save as JSON (excluding non-serializable data)
-        json_file = self.config.output_dir / f"sweep_summary_{timestamp}.json"
+        if self.config.output_dir is not None:
+            json_file = self.config.output_dir / f"sweep_summary_{timestamp}.json"
+        else:
+            json_file = Path(f"sweep_summary_{timestamp}.json")
         summary = {
             "parameters": self.parameters,
             "total_combinations": self.total_combinations,
             "successful_runs": len(self.results),
             "failed_runs": len(self.failed_runs),
-            "execution_time": (self.end_time - self.start_time if self.end_time else None),
+            "execution_time": (self.end_time - self.start_time if self.end_time and self.start_time else None),
         }
 
         with open(json_file, "w") as f:
@@ -473,14 +484,17 @@ class ParameterSweep:
         """Save intermediate results during execution."""
         timestamp = int(time.time())
 
-        intermediate_file = self.config.output_dir / f"intermediate_{timestamp}.json"
+        if self.config.output_dir is not None:
+            intermediate_file = self.config.output_dir / f"intermediate_{timestamp}.json"
+        else:
+            intermediate_file = Path(f"intermediate_{timestamp}.json")
 
         summary = {
             "completed_runs": self.completed_runs,
             "total_combinations": self.total_combinations,
             "successful_runs": len(self.results),
             "failed_runs": len(self.failed_runs),
-            "progress": self.completed_runs / self.total_combinations,
+            "progress": self.completed_runs / self.total_combinations if self.total_combinations > 0 else 0,
             "latest_results": (self.results[-5:] if len(self.results) >= 5 else self.results),
         }
 
@@ -489,12 +503,15 @@ class ParameterSweep:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for parameter sweep."""
-        logger = logging.getLogger(f"mfg_parameter_sweep")
+        logger = logging.getLogger("mfg_parameter_sweep")
         logger.setLevel(logging.INFO)
 
         if not logger.handlers:
             # File handler
-            log_file = self.config.output_dir / "parameter_sweep.log"
+            if self.config.output_dir is not None:
+                log_file = self.config.output_dir / "parameter_sweep.log"
+            else:
+                log_file = Path("parameter_sweep.log")
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(logging.DEBUG)
 
@@ -513,12 +530,12 @@ class ParameterSweep:
         return logger
 
 
-def create_grid_sweep(parameters: Dict[str, List]) -> ParameterSweep:
+def create_grid_sweep(parameters: dict[str, list]) -> ParameterSweep:
     """Create a grid-based parameter sweep."""
     return ParameterSweep(parameters)
 
 
-def create_random_sweep(parameters: Dict[str, Tuple], n_samples: int = 100) -> ParameterSweep:
+def create_random_sweep(parameters: dict[str, tuple], n_samples: int = 100) -> ParameterSweep:
     """
     Create a random parameter sweep.
 
@@ -540,7 +557,7 @@ def create_random_sweep(parameters: Dict[str, Tuple], n_samples: int = 100) -> P
 
 
 def create_adaptive_sweep(
-    parameters: Dict[str, List],
+    parameters: dict[str, list],
     objective_function: Callable,
     n_initial: int = 10,
     n_iterations: int = 50,
@@ -563,7 +580,7 @@ def create_adaptive_sweep(
 __all__ = [
     "ParameterSweep",
     "SweepConfiguration",
+    "create_adaptive_sweep",
     "create_grid_sweep",
     "create_random_sweep",
-    "create_adaptive_sweep",
 ]

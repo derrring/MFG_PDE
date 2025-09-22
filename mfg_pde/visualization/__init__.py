@@ -21,6 +21,8 @@ Migrated Components:
 - utils/mathematical_visualization.py → mathematical_plots.py
 """
 
+from __future__ import annotations
+
 # Enhanced network MFG visualization
 from .enhanced_network_plots import EnhancedNetworkMFGVisualizer, create_enhanced_network_visualizer
 
@@ -71,40 +73,44 @@ from .mfg_analytics import (
 from .network_plots import NetworkMFGVisualizer, create_network_visualizer
 
 __all__ = [
-    # Core interactive visualization
-    "MFGPlotlyVisualizer",
-    "MFGBokehVisualizer",
-    "MFGVisualizationManager",
-    "create_plotly_visualizer",
-    "create_bokeh_visualizer",
-    "create_visualization_manager",
-    "quick_2d_plot",
-    "quick_3d_plot",
-    # Network MFG visualization
-    "NetworkMFGVisualizer",
-    "create_network_visualizer",
+    # Availability flags
+    "BOKEH_AVAILABLE",
+    "PLOTLY_AVAILABLE",
+    # Enhanced network MFG visualization
     "EnhancedNetworkMFGVisualizer",
-    "create_enhanced_network_visualizer",
     # Analytics engine
     "MFGAnalyticsEngine",
-    "create_analytics_engine",
-    "analyze_mfg_solution_quick",
-    "analyze_parameter_sweep_quick",
+    "MFGBokehVisualizer",
+    "MFGMathematicalVisualizer",
+    # Core interactive visualization
+    "MFGPlotlyVisualizer",
+    "MFGVisualizationManager",
     # Mathematical plotting
     "MathematicalPlotter",
-    "MFGMathematicalVisualizer",
-    "plot_mathematical_function",
-    "plot_mfg_density",
+    # Network MFG visualization
+    "NetworkMFGVisualizer",
+    "analyze_mfg_solution_quick",
+    "analyze_parameter_sweep_quick",
+    "create_analytics_engine",
+    "create_bokeh_visualizer",
+    "create_enhanced_network_visualizer",
     "create_mathematical_visualizer",
-    # Legacy compatibility
+    "create_network_visualizer",
+    "create_plotly_visualizer",
+    "create_visualization_manager",
+    # Legacy compatibility (including unused legacy functions)
+    "legacy_myplot3d",
+    "legacy_plot_convergence",
+    "legacy_plot_results",
+    "modern_plot_convergence",
+    "modern_plot_mfg_solution",
     "myplot3d",
     "plot_convergence",
+    "plot_mathematical_function",
+    "plot_mfg_density",
     "plot_results",
-    "modern_plot_mfg_solution",
-    "modern_plot_convergence",
-    # Availability flags
-    "PLOTLY_AVAILABLE",
-    "BOKEH_AVAILABLE",
+    "quick_2d_plot",
+    "quick_3d_plot",
 ]
 
 # Version info

@@ -5,9 +5,11 @@ This module provides dataclass-based configuration objects that replace scattere
 constructor parameters with organized, validated, and well-documented settings.
 """
 
+from __future__ import annotations
+
 import warnings
 from dataclasses import dataclass, field
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Literal
 
 
 @dataclass
@@ -29,7 +31,7 @@ class NewtonConfig:
     line_search: bool = False
     verbose: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration parameters."""
         if self.max_iterations < 1:
             raise ValueError(f"max_iterations must be >= 1, got {self.max_iterations}")
@@ -39,12 +41,12 @@ class NewtonConfig:
             raise ValueError(f"damping_factor must be in (0, 1], got {self.damping_factor}")
 
     @classmethod
-    def fast(cls) -> "NewtonConfig":
+    def fast(cls) -> NewtonConfig:
         """Create configuration optimized for speed."""
         return cls(max_iterations=10, tolerance=1e-4, damping_factor=0.8)
 
     @classmethod
-    def accurate(cls) -> "NewtonConfig":
+    def accurate(cls) -> NewtonConfig:
         """Create configuration optimized for accuracy."""
         return cls(max_iterations=50, tolerance=1e-8, damping_factor=1.0)
 
@@ -68,7 +70,7 @@ class PicardConfig:
     convergence_check_frequency: int = 1
     verbose: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration parameters."""
         if self.max_iterations < 1:
             raise ValueError(f"max_iterations must be >= 1, got {self.max_iterations}")
@@ -80,12 +82,12 @@ class PicardConfig:
             raise ValueError(f"convergence_check_frequency must be >= 1, got {self.convergence_check_frequency}")
 
     @classmethod
-    def fast(cls) -> "PicardConfig":
+    def fast(cls) -> PicardConfig:
         """Create configuration optimized for speed."""
         return cls(max_iterations=10, tolerance=1e-3, damping_factor=0.7)
 
     @classmethod
-    def accurate(cls) -> "PicardConfig":
+    def accurate(cls) -> PicardConfig:
         """Create configuration optimized for accuracy."""
         return cls(max_iterations=50, tolerance=1e-7, damping_factor=0.3)
 
@@ -111,7 +113,7 @@ class GFDMConfig:
     use_qp_constraints: bool = False
     boundary_method: Literal["dirichlet", "neumann", "extrapolation"] = "dirichlet"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration parameters."""
         if self.delta <= 0:
             raise ValueError(f"delta must be > 0, got {self.delta}")
@@ -121,12 +123,12 @@ class GFDMConfig:
             raise ValueError(f"weight_scale must be > 0, got {self.weight_scale}")
 
     @classmethod
-    def fast(cls) -> "GFDMConfig":
+    def fast(cls) -> GFDMConfig:
         """Create configuration optimized for speed."""
         return cls(delta=0.15, taylor_order=1, weight_function="uniform")
 
     @classmethod
-    def accurate(cls) -> "GFDMConfig":
+    def accurate(cls) -> GFDMConfig:
         """Create configuration optimized for accuracy."""
         return cls(
             delta=0.05,
@@ -150,25 +152,25 @@ class ParticleConfig:
     """
 
     num_particles: int = 5000
-    kde_bandwidth: Union[str, float] = "scott"
+    kde_bandwidth: str | float = "scott"
     normalize_output: bool = True
     boundary_handling: Literal["absorbing", "reflecting", "periodic"] = "absorbing"
-    random_seed: Optional[int] = None
+    random_seed: int | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration parameters."""
         if self.num_particles < 10:
             raise ValueError(f"num_particles must be >= 10, got {self.num_particles}")
-        if isinstance(self.kde_bandwidth, (int, float)) and self.kde_bandwidth <= 0:
+        if isinstance(self.kde_bandwidth, int | float) and self.kde_bandwidth <= 0:
             raise ValueError(f"kde_bandwidth must be > 0 when numeric, got {self.kde_bandwidth}")
 
     @classmethod
-    def fast(cls) -> "ParticleConfig":
+    def fast(cls) -> ParticleConfig:
         """Create configuration optimized for speed."""
         return cls(num_particles=1000, kde_bandwidth="scott", normalize_output=False)
 
     @classmethod
-    def accurate(cls) -> "ParticleConfig":
+    def accurate(cls) -> ParticleConfig:
         """Create configuration optimized for accuracy."""
         return cls(num_particles=10000, kde_bandwidth=0.01, normalize_output=True)
 
@@ -188,15 +190,15 @@ class HJBConfig:
     newton: NewtonConfig = field(default_factory=NewtonConfig)
     gfdm: GFDMConfig = field(default_factory=GFDMConfig)
     solver_type: Literal["fdm", "gfdm", "gfdm_qp", "semi_lagrangian"] = "gfdm"
-    boundary_conditions: Optional[Dict[str, Any]] = None
+    boundary_conditions: dict[str, Any] | None = None
 
     @classmethod
-    def fast(cls) -> "HJBConfig":
+    def fast(cls) -> HJBConfig:
         """Create configuration optimized for speed."""
         return cls(newton=NewtonConfig.fast(), gfdm=GFDMConfig.fast(), solver_type="fdm")
 
     @classmethod
-    def accurate(cls) -> "HJBConfig":
+    def accurate(cls) -> HJBConfig:
         """Create configuration optimized for accuracy."""
         return cls(
             newton=NewtonConfig.accurate(),
@@ -218,15 +220,15 @@ class FPConfig:
 
     particle: ParticleConfig = field(default_factory=ParticleConfig)
     solver_type: Literal["fdm", "particle"] = "fdm"
-    boundary_conditions: Optional[Dict[str, Any]] = None
+    boundary_conditions: dict[str, Any] | None = None
 
     @classmethod
-    def fast(cls) -> "FPConfig":
+    def fast(cls) -> FPConfig:
         """Create configuration optimized for speed."""
         return cls(particle=ParticleConfig.fast(), solver_type="fdm")
 
     @classmethod
-    def accurate(cls) -> "FPConfig":
+    def accurate(cls) -> FPConfig:
         """Create configuration optimized for accuracy."""
         return cls(particle=ParticleConfig.accurate(), solver_type="particle")
 
@@ -253,16 +255,16 @@ class MFGSolverConfig:
     fp: FPConfig = field(default_factory=FPConfig)
     warm_start: bool = False
     return_structured: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary for serialization."""
         from dataclasses import asdict
 
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "MFGSolverConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> MFGSolverConfig:
         """Create configuration from dictionary."""
         # Handle nested dataclasses
         if "picard" in config_dict and isinstance(config_dict["picard"], dict):
@@ -341,7 +343,7 @@ def create_production_config() -> MFGSolverConfig:
 # Backward compatibility functions for existing parameter handling
 
 
-def extract_legacy_parameters(config: MFGSolverConfig, **kwargs) -> Dict[str, Any]:
+def extract_legacy_parameters(config: MFGSolverConfig, **kwargs: Any) -> dict[str, Any]:
     """
     Extract parameters from legacy keyword arguments and merge with config.
 

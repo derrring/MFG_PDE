@@ -53,6 +53,7 @@ try:
         BaseGeometry,
         BoundaryManager,
         Domain2D,
+        Domain3D,
         GeometricBoundaryCondition,
         MeshData,
         MeshManager,
@@ -63,6 +64,18 @@ try:
 except ImportError:
     GEOMETRY_SYSTEM_AVAILABLE = False
 
+# High-dimensional MFG capabilities
+try:
+    from .core.highdim_mfg_problem import (
+        GridBasedMFGProblem,
+        HighDimMFGProblem,
+        HybridMFGSolver,
+    )
+
+    HIGHDIM_MFG_AVAILABLE = True
+except ImportError:
+    HIGHDIM_MFG_AVAILABLE = False
+
 # Interactive research reporting (optional dependency)
 try:
     from .utils.notebook_reporting import MFGNotebookReporter, create_comparative_analysis, create_mfg_research_report
@@ -70,3 +83,56 @@ try:
     NOTEBOOK_REPORTING_AVAILABLE = True
 except ImportError:
     NOTEBOOK_REPORTING_AVAILABLE = False
+
+
+# Public API exports
+__all__ = [
+    # Core MFG classes
+    "ExampleMFGProblem",
+    "MFGComponents",
+    "MFGProblem",
+    "MFGProblemBuilder",
+    "create_mfg_problem",
+    # Lagrangian MFG
+    "LagrangianComponents",
+    "LagrangianMFGProblem",
+    "create_obstacle_lagrangian_mfg",
+    "create_quadratic_lagrangian_mfg",
+    # Network MFG
+    "NetworkMFGComponents",
+    "NetworkMFGProblem",
+    "create_grid_mfg_problem",
+    "create_random_mfg_problem",
+    "create_scale_free_mfg_problem",
+    # Configuration
+    "MFGSolverConfig",
+    "create_accurate_config",
+    "create_fast_config",
+    "create_research_config",
+    # Factory methods
+    "SolverFactory",
+    "create_accurate_solver",
+    "create_fast_solver",
+    "create_monitored_solver",
+    "create_research_solver",
+    "create_solver",
+    # General MFG factory
+    "GeneralMFGFactory",
+    "create_general_mfg_problem",
+    "get_general_factory",
+    # Geometry
+    "BoundaryConditions",
+    # Network backend
+    "NetworkBackendType",
+    "OperationType",
+    "get_backend_manager",
+    "set_preferred_backend",
+    # Network geometry
+    "GridNetwork",
+    "NetworkData",
+    "NetworkType",
+    "RandomNetwork",
+    "ScaleFreeNetwork",
+    "compute_network_statistics",
+    "create_network",
+]

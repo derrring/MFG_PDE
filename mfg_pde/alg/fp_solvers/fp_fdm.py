@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import numpy as np
 import scipy.sparse as sparse
-import scipy.sparse.linalg
 
 from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.aux_func import npart, ppart
@@ -228,7 +229,7 @@ class FPFDMSolver(BaseFPSolver):
 
                 if np.any(np.isnan(m_next_step_raw)) or np.any(np.isinf(m_next_step_raw)):
                     m_next_step_raw = m[k_idx_fp, :]
-            except Exception as e:
+            except Exception:
                 m_next_step_raw = m[k_idx_fp, :]
 
             m[k_idx_fp + 1, :] = m_next_step_raw

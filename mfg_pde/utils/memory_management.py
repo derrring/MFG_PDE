@@ -6,12 +6,15 @@ computations, particularly important for large-scale MFG problems that can
 consume significant memory.
 """
 
+from __future__ import annotations
+
 import gc
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import psutil
 
@@ -26,7 +29,7 @@ class MemoryStats:
     peak_memory_gb: float
     memory_limit_gb: float
     timestamp: datetime = field(default_factory=datetime.now)
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 class MemoryMonitor:
@@ -43,7 +46,7 @@ class MemoryMonitor:
         self.max_memory_gb = max_memory_gb
         self.warning_threshold = warning_threshold
         self.peak_memory = 0.0
-        self.memory_warnings: List[str] = []
+        self.memory_warnings: list[str] = []
         self.process = psutil.Process()
 
     def get_current_memory_gb(self) -> float:
@@ -131,7 +134,7 @@ class MemoryMonitor:
 
         return array.nbytes / (1024**3)
 
-    def suggest_memory_optimization(self) -> List[str]:
+    def suggest_memory_optimization(self) -> list[str]:
         """
         Suggest memory optimization strategies based on current usage.
 
@@ -235,7 +238,7 @@ class MemoryProfiler:
     """Profile memory usage across multiple solver runs."""
 
     def __init__(self):
-        self.profiles: Dict[str, List[MemoryStats]] = {}
+        self.profiles: dict[str, list[MemoryStats]] = {}
 
     def start_profiling(self, profile_name: str, max_memory_gb: float = 8.0):
         """Start profiling a new computation."""
@@ -249,7 +252,7 @@ class MemoryProfiler:
         if profile_name in self.profiles:
             self.profiles[profile_name].append(stats)
 
-    def get_profile_summary(self, profile_name: str) -> Dict[str, Any]:
+    def get_profile_summary(self, profile_name: str) -> dict[str, Any]:
         """Get summary statistics for a profile."""
         if profile_name not in self.profiles or not self.profiles[profile_name]:
             return {}
@@ -274,7 +277,7 @@ class MemoryProfiler:
 
 def estimate_problem_memory_requirements(
     nx: int, nt: int, num_solvers: int = 2, dtype_size: int = 8
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Estimate memory requirements for an MFG problem.
 
@@ -309,7 +312,7 @@ def estimate_problem_memory_requirements(
     }
 
 
-def check_system_memory_availability() -> Dict[str, float]:
+def check_system_memory_availability() -> dict[str, float]:
     """
     Check system memory availability.
 

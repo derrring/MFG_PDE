@@ -6,12 +6,13 @@ Provides structured logging with configurable levels, formatting, and optional
 color support for better debugging and monitoring capabilities.
 """
 
+from __future__ import annotations
+
 import logging
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, ClassVar
 
 try:
     import colorlog
@@ -60,24 +61,24 @@ class MFGLogger:
     """Central logging manager for MFG_PDE with configuration management."""
 
     _instance = None
-    _loggers: Dict[str, logging.Logger] = {}
+    _loggers: ClassVar[dict[str, logging.Logger]] = {}
     _log_level = logging.INFO
     _log_to_file = False
-    _log_file_path: Optional[Path] = None
+    _log_file_path: Path | None = None
     _use_colors = True
     _include_location = False
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(MFGLogger, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     @classmethod
     def configure(
         cls,
-        level: Union[str, int] = "INFO",
+        level: str | int = "INFO",
         log_to_file: bool = False,
-        log_file_path: Optional[Union[str, Path]] = None,
+        log_file_path: str | Path | None = None,
         use_colors: bool = True,
         include_location: bool = False,
         suppress_external: bool = True,
@@ -174,7 +175,7 @@ class MFGLogger:
 
 
 # Convenience functions for easy usage
-def get_logger(name: str = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     """
     Get a logger for the current module.
 
@@ -188,8 +189,11 @@ def get_logger(name: str = None) -> logging.Logger:
         # Get caller's module name
         import inspect
 
-        frame = inspect.currentframe().f_back
-        name = frame.f_globals.get("__name__", "mfg_pde")
+        frame = inspect.currentframe()
+        if frame and frame.f_back:
+            name = frame.f_back.f_globals.get("__name__", "mfg_pde")
+        else:
+            name = "mfg_pde"
 
     return MFGLogger.get_logger(name)
 
@@ -210,7 +214,7 @@ def configure_logging(**kwargs):
 
 
 # Configuration presets for common use cases
-def configure_research_logging(experiment_name: str = None, level: str = "INFO", include_debug: bool = False):
+def configure_research_logging(experiment_name: str | None = None, level: str = "INFO", include_debug: bool = False):
     """
     Configure logging optimized for research sessions.
 
@@ -234,10 +238,10 @@ def configure_research_logging(experiment_name: str = None, level: str = "INFO",
         safe_name = "".join(c for c in experiment_name if c.isalnum() or c in (" ", "-", "_")).strip()
         safe_name = safe_name.replace(" ", "_")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = research_dir / f"{safe_name}_{timestamp}.log"
+        log_file = str(research_dir / f"{safe_name}_{timestamp}.log")
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = research_dir / f"research_session_{timestamp}.log"
+        log_file = str(research_dir / f"research_session_{timestamp}.log")
 
     configure_logging(
         level=level,
@@ -276,7 +280,7 @@ def configure_development_logging(include_location: bool = True):
     logger.info("Development logging enabled - DEBUG level with full details")
 
 
-def configure_production_logging(log_file: Optional[str] = None):
+def configure_production_logging(log_file: str | None = None):
     """
     Configure logging optimized for production use.
 
@@ -287,7 +291,7 @@ def configure_production_logging(log_file: Optional[str] = None):
         prod_dir = Path("production_logs")
         prod_dir.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d")
-        log_file = prod_dir / f"mfg_production_{timestamp}.log"
+        log_file = str(prod_dir / f"mfg_production_{timestamp}.log")
 
     configure_logging(
         level="WARNING",  # Only warnings and errors
@@ -302,7 +306,7 @@ def configure_production_logging(log_file: Optional[str] = None):
     logger.warning("Production logging enabled - WARNING level and above only")
 
 
-def configure_performance_logging(log_file: Optional[str] = None):
+def configure_performance_logging(log_file: str | None = None):
     """
     Configure logging optimized for performance analysis.
 
@@ -313,7 +317,7 @@ def configure_performance_logging(log_file: Optional[str] = None):
         perf_dir = Path("performance_logs")
         perf_dir.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = perf_dir / f"performance_{timestamp}.log"
+        log_file = str(perf_dir / f"performance_{timestamp}.log")
 
     configure_logging(
         level="INFO",
@@ -330,7 +334,7 @@ def configure_performance_logging(log_file: Optional[str] = None):
     return str(log_file)
 
 
-def log_solver_start(logger: logging.Logger, solver_name: str, config: Dict[str, Any]):
+def log_solver_start(logger: logging.Logger, solver_name: str, config: dict[str, Any]):
     """Log solver initialization with configuration."""
     logger.info(f"Initializing {solver_name}")
     logger.debug(f"Solver configuration: {config}")
@@ -341,7 +345,7 @@ def log_solver_progress(
     iteration: int,
     error: float,
     max_iterations: int,
-    additional_info: Dict[str, Any] = None,
+    additional_info: dict[str, Any] | None = None,
 ):
     """Log solver iteration progress."""
     progress_pct = (iteration / max_iterations) * 100
@@ -368,7 +372,7 @@ def log_solver_completion(
     logger.info(f"Final results: {iterations} iterations, error: {final_error:.2e}, " f"time: {execution_time:.3f}s")
 
 
-def log_validation_error(logger: logging.Logger, component: str, error_msg: str, suggestion: str = None):
+def log_validation_error(logger: logging.Logger, component: str, error_msg: str, suggestion: str | None = None):
     """Log validation errors with suggestions."""
     logger.error(f"Validation error in {component}: {error_msg}")
     if suggestion:
@@ -379,7 +383,7 @@ def log_performance_metric(
     logger: logging.Logger,
     operation: str,
     duration: float,
-    additional_metrics: Dict[str, Any] = None,
+    additional_metrics: dict[str, Any] | None = None,
 ):
     """Log performance metrics with enhanced details."""
     msg = f"Performance - {operation}: {duration:.3f}s"
@@ -389,7 +393,7 @@ def log_performance_metric(
     logger.info(msg)  # Changed to INFO level for better visibility
 
 
-def log_memory_usage(logger: logging.Logger, operation: str, peak_memory_mb: float = None):
+def log_memory_usage(logger: logging.Logger, operation: str, peak_memory_mb: float | None = None):
     """Log memory usage information."""
     try:
         import os
@@ -412,15 +416,15 @@ def log_memory_usage(logger: logging.Logger, operation: str, peak_memory_mb: flo
 def log_solver_configuration(
     logger: logging.Logger,
     solver_name: str,
-    config: Dict[str, Any],
-    problem_info: Dict[str, Any] = None,
+    config: dict[str, Any],
+    problem_info: dict[str, Any] | None = None,
 ):
     """Enhanced solver configuration logging."""
     logger.info(f"=== {solver_name} Configuration ===")
 
     # Log solver parameters
     for key, value in config.items():
-        if isinstance(value, (int, float, str, bool)):
+        if isinstance(value, int | float | str | bool):
             logger.info(f"  {key}: {value}")
         elif isinstance(value, dict):
             logger.info(f"  {key}: {len(value)} parameters")
@@ -436,7 +440,7 @@ def log_solver_configuration(
 
 def log_convergence_analysis(
     logger: logging.Logger,
-    error_history: List[float],
+    error_history: list[float],
     final_iterations: int,
     tolerance: float,
     converged: bool,
@@ -469,7 +473,7 @@ def log_convergence_analysis(
                     logger.info(f"  Average convergence rate: {avg_ratio:.4f}")
 
 
-def log_mass_conservation(logger: logging.Logger, mass_history: List[float], tolerance: float = 1e-6):
+def log_mass_conservation(logger: logging.Logger, mass_history: list[float], tolerance: float = 1e-6):
     """Log mass conservation analysis."""
     if not mass_history:
         return
@@ -503,7 +507,7 @@ class LoggedOperation:
         self.logger = logger
         self.operation_name = operation_name
         self.log_level = log_level
-        self.start_time = None
+        self.start_time: float | None = None
 
     def __enter__(self):
         self.logger.log(self.log_level, f"Starting {self.operation_name}")
@@ -515,7 +519,7 @@ class LoggedOperation:
     def __exit__(self, exc_type, exc_val, exc_tb):
         import time
 
-        duration = time.time() - self.start_time
+        duration = time.time() - (self.start_time or 0)
 
         if exc_type is None:
             self.logger.log(self.log_level, f"Completed {self.operation_name} in {duration:.3f}s")
@@ -537,7 +541,6 @@ def demo_logging_capabilities():
 
     # Get loggers for different components
     solver_logger = get_logger("mfg_pde.solvers")
-    config_logger = get_logger("mfg_pde.config")
     utils_logger = get_logger("mfg_pde.utils")
 
     # Demonstrate different log levels

@@ -15,7 +15,7 @@ authors = [
 ]
 description = "A comprehensive Python framework for solving Mean Field Games with advanced numerical methods, interactive visualizations, and professional research tools."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"  # Updated to match conda environments
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -24,54 +24,123 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "numpy>=1.21",  # Support NumPy 1.21+ with trapezoid fallback via scipy
-    "scipy>=1.7",   # Required for trapezoid integration when NumPy < 2.0
-    "matplotlib>=3.4",
-    "plotly>=5.0",
-    "nbformat>=5.0",
+    # Core scientific computing with NumPy 2.0+
+    "numpy>=2.0",           # Native NumPy 2.0+ with trapezoid
+    "scipy>=1.13",          # NumPy 2.0+ compatible
+    "matplotlib>=3.8",      # Updated for NumPy 2.0+
+
+    # Data processing
+    "pandas>=2.1",          # NumPy 2.0+ compatible
+    "h5py>=3.9",            # HDF5 files
+
+    # Interactive computing
     "jupyter>=1.0",
-    "tqdm>=4.0",  # For progress bars
-    "pydantic>=2.0,<3.0",  # Data validation and serialization (v2)
-    "igraph>=0.10.0",  # Primary network backend (C-based, fast)
+    "jupyterlab>=4.0",
+    "ipython>=8.12",
+    "nbformat>=5.0",
+
+    # Visualization
+    "plotly>=5.17",         # Interactive plotting
+    "seaborn>=0.13",        # Statistical plotting
+
+    # Progress and utilities
+    "tqdm>=4.0",            # For progress bars
+    "psutil>=5.9",          # System monitoring
+
+    # Data validation
+    "pydantic>=2.0,<3.0",   # Data validation and serialization (v2)
+
+    # Network analysis
+    "igraph>=0.10.0",       # Primary network backend (C-based, fast)
+
+    # Text utilities
+    "texttable",            # Text tables
+    "typing-inspection",    # Runtime type inspection
 ]
 
 # Optional dependencies for development and advanced features
 [project.optional-dependencies]
+# Development tools (modern unified tooling - Ruff standard)
 dev = [
-    "mypy>=1.0",
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "black>=22.0",
-    "isort>=5.0",
-    "pre-commit>=2.0",
+    "pytest>=7.0",          # Testing framework
+    "pytest-benchmark",     # Performance testing
+    "ruff>=0.6.0",          # Fast unified linting and formatting
+    "mypy>=1.5",            # Type checking
+    "pre-commit>=2.0",      # Pre-commit hooks
 ]
+
+# Documentation
+docs = [
+    "sphinx>=7.0",          # Documentation generation
+    "sphinx-rtd-theme",     # RTD theme
+    "nbsphinx",             # Jupyter notebook docs
+]
+
+# Performance libraries
+performance = [
+    "numba>=0.59",          # NumPy 2.0+ support
+    "jax>=0.4.20",          # Latest with NumPy 2.0+ support
+    "jaxlib",               # JAX support library
+    "polars>=0.20",         # Fast data processing
+    "memory-profiler",      # Memory profiling
+    "line-profiler",        # Line-by-line profiling
+]
+
+# Optimized performance build (equivalent to conda_performance.yml)
+performance-optimized = [
+    "numba>=0.59",          # NumPy 2.0+ support
+    "cython>=3.0",          # C extensions
+    "joblib>=1.3",          # Parallel processing
+    "jax>=0.4.20",
+    "jaxlib",
+    "memory-profiler",
+    "line-profiler",
+    "mpi4py",               # MPI support for parallel computing
+    "zarr",                 # Cloud-optimized data storage
+]
+
+# Advanced visualization
+viz = [
+    "bokeh>=3.3",           # Advanced visualizations
+]
+
+# Network analysis
+networks = [
+    "networkit>=10.0",      # Large-scale networks (parallel algorithms)
+    "networkx>=3.0",        # Comprehensive algorithm library
+]
+
+# GPU acceleration
+gpu = [
+    "jax[cuda12_pip]>=0.4.20",  # Fixed underscore for CUDA extra
+    "cupy",                     # CUDA GPU support
+]
+
+# Typing support
 typing = [
     "types-tqdm",
     "types-setuptools",
     "types-psutil",
 ]
-performance = [
-    "numba>=0.56",
-    "dask[complete]>=2022.0",
-    "networkit>=10.0",  # Large-scale network performance
-]
-networks = [
-    "networkit>=10.0",   # Large-scale networks (parallel algorithms)
-    "networkx>=3.0",     # Comprehensive algorithm library
-    # NOTE: graph-tool>=2.45 requires conda/system installation
-]
-jax = [
-    "jax>=0.4.0",
-    "jaxlib>=0.4.0",
-    "optax>=0.1.0",
-]
-jax-cuda = [
-    "jax[cuda12-pip]>=0.4.0",  # Fixed CUDA extra name
-    "optax>=0.1.0",
-]
-advanced = [
-    "colorlog>=6.0",
-    "hypothesis>=6.0",
+
+# All extras combined (Ruff unified tooling)
+all = [
+    "pytest>=7.0",
+    "pytest-benchmark",
+    "ruff>=0.6.0",          # Unified linting and formatting
+    "mypy>=1.5",
+    "sphinx>=7.0",
+    "sphinx-rtd-theme",
+    "nbsphinx",
+    "numba>=0.59",
+    "jax>=0.4.20",
+    "jaxlib",
+    "polars>=0.20",
+    "bokeh>=3.3",
+    "memory-profiler",
+    "line-profiler",
+    "networkit>=10.0",
+    "networkx>=3.0",
 ]
 
 # Optional: URLs for your project
@@ -101,81 +170,89 @@ exclude = ["examples*", "tests*", "benchmarks*", "docs*", "archive*"] # Exclude 
 # Code Quality and Development Tools Configuration
 # =============================================================================
 
-[tool.black]
-line-length = 120
-target-version = ['py310']
-skip-string-normalization = true
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | archive
-)/
-'''
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 120
-known_first_party = ["mfg_pde"]
-known_scientific = ["numpy", "scipy", "matplotlib", "plotly", "jax", "jaxlib"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "SCIENTIFIC", "FIRSTPARTY", "LOCALFOLDER"]
-# Removed force_alphabetical_sort_within_sections for scientific code readability
-
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_return_any = false  # Relaxed for scientific code with NumPy operations
 warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
 disallow_untyped_defs = false  # Gradually enable during transition
-ignore_missing_imports = true
-allow_untyped_calls = true  # Scientific libraries often lack complete type stubs
-allow_incomplete_defs = true  # Research code flexibility
+disallow_incomplete_defs = false  # Research code flexibility
+disallow_untyped_calls = false  # Scientific libraries often lack complete type stubs
+check_untyped_defs = false  # Too strict for research code
+no_implicit_optional = false
+strict_optional = false  # More lenient for optional types
+warn_no_return = false  # Research code may have incomplete returns
+warn_unreachable = false  # Allow unreachable code in research context
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+color_output = true
+namespace_packages = true
+explicit_package_bases = true
+cache_dir = ".mypy_cache"
+sqlite_cache = true
 exclude = [
     "archive/",
     "build/",
-    "dist/"
+    "dist/",
+    ".venv/",
+    "examples/experimental/",
 ]
 
-# Mathematical variables are allowed to be single letters
+# Scientific computing libraries
 [[tool.mypy.overrides]]
-module = "mfg_pde.*"
-# Allow mathematical notation like U, M, Nx, Nt
-disable_error_code = "name-defined"
-
-[tool.pylint.messages_control]
-disable = [
-    "C0103",  # Invalid name (allow mathematical notation)
-    "R0913",  # Too many arguments (common in scientific computing)
-    "R0914",  # Too many local variables
-    "R0902",  # Too many instance attributes
-    "R0903",  # Too few public methods
-    "C0415",  # Import outside top-level
-    "R0915",  # Too many statements (complex algorithms)
-    "R0912",  # Too many branches (mathematical logic)
-    "W0613",  # Unused argument (callback signatures)
-    "R0801",  # Similar lines (mathematical patterns)
-    "C0301",  # Line too long (handled by Black)
+module = [
+    "numpy.*",
+    "scipy.*",
+    "matplotlib.*",
+    "plotly.*",
+    "jax.*",
+    "jaxlib.*",
+    "numba.*",
+    "tqdm.*",
+    "nbformat.*",
+    "jupyter.*",
+    "pytest.*",
+    "hypothesis.*",
+    "colorlog.*",
+    "dask.*",
+    "igraph.*",
+    "networkit.*",
+    "networkx.*",
+    "polars.*",
+    "memory_profiler.*",
+    "line_profiler.*",
+    "h5py.*",
+    "psutil.*",
+    "texttable.*",
+    "cvxpy.*",
+    "osqp.*",
 ]
+ignore_missing_imports = true
 
-[tool.pylint.format]
-max-line-length = 120
-good-names = [
-    "i", "j", "k",           # Loop indices
-    "x", "y", "z", "t",      # Coordinates and time
-    "U", "M",                # MFG solution variables
-    "dx", "dt", "Dx", "Dt",  # Grid spacing
-    "Nx", "Nt",              # Grid dimensions
-    "fp", "hjb",             # Equation types
+# Core MFG_PDE modules - stricter checking
+[[tool.mypy.overrides]]
+module = [
+    "mfg_pde.factory.*",
+    "mfg_pde.config.*",
+    "mfg_pde.utils.validation.*",
 ]
+disallow_untyped_defs = true
+check_untyped_defs = true
+strict_optional = true
+
+# Gradual strictness for other core modules
+[[tool.mypy.overrides]]
+module = [
+    "mfg_pde.core.*",
+    "mfg_pde.alg.*",
+]
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+# Mathematical variables and naming conventions handled by Ruff configuration
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -214,3 +291,95 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+# =============================================================================
+# Ruff Configuration (Unified Linting and Formatting)
+# =============================================================================
+# Modern unified tooling - 10-100x faster than legacy tools
+# Install with: pip install mfg_pde[dev]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = [
+    ".eggs",
+    ".git",
+    ".mypy_cache",
+    ".tox",
+    ".venv",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "archive",
+]
+
+[tool.ruff.lint]
+# Enable comprehensive rules matching current Pylint + flake8 configuration
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "PT",   # flake8-pytest-style
+    "SIM",  # flake8-simplify
+    "RUF",  # Ruff-specific rules
+    "TCH",  # flake8-type-checking
+    "TID",  # flake8-tidy-imports
+    "PIE",  # flake8-pie
+]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "E722",   # Do not use bare `except` (allow in research code for robustness)
+    "N803",   # Argument should be lowercase (mathematical notation: allow u, m, U, M, etc.)
+    "N806",   # Variable should be lowercase (mathematical notation: allow U, M, etc.)
+    "N816",   # Mixed case variable in global scope (mathematical notation)
+    "A003",   # Builtin shadowing (common in scientific code for 'id', 'type', etc.)
+    "B008",   # Do not perform function calls in argument defaults (common pattern in factories)
+    "B028",   # No explicit stacklevel in warnings (optional in research code)
+    "RUF001", # String contains ambiguous Unicode character (allow mathematical symbols)
+    "RUF002", # Docstring contains ambiguous Unicode character (allow mathematical symbols)
+    "RUF003", # Comment contains ambiguous Unicode character (allow mathematical symbols)
+    "SIM108", # Ternary operator suggestion (allow both styles)
+    "SIM102", # Nested if statements (allow for clarity in mathematical conditions)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "N802", "N806", "A003",  # Allow uppercase and shadowing in tests
+    "B011",                  # Allow assert False in tests
+    "PT011",                 # pytest.raises too broad
+]
+"examples/**/*.py" = [
+    "N803", "N806", "N816",  # Allow mathematical notation in examples
+    "T20",                   # Allow print statements in examples
+    "B007",                  # Allow unused loop variables in examples
+]
+"benchmarks/**/*.py" = [
+    "N803", "N806", "N816",  # Allow mathematical notation in benchmarks
+    "T20",                   # Allow print statements in benchmarks
+]
+"mfg_pde/alg/**/*.py" = [
+    "N803", "N806", "N816",  # Mathematical notation in algorithms
+    "C901",                  # Complex functions allowed in algorithms
+]
+"mfg_pde/core/**/*.py" = [
+    "N803", "N806", "N816",  # Mathematical notation in core modules
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mfg_pde"]
+section-order = ["future", "standard-library", "third-party", "scientific", "first-party", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+scientific = ["numpy", "scipy", "matplotlib", "plotly", "jax", "jaxlib"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

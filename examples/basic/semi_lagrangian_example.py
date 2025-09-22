@@ -72,7 +72,7 @@ def solve_with_methods(problem):
         result_sl_linear = solver_sl_linear.solve()
         results["semi_lagrangian_linear"] = result_sl_linear
 
-        if hasattr(result_sl_linear, 'converged') and result_sl_linear.converged:
+        if hasattr(result_sl_linear, "converged") and result_sl_linear.converged:
             logger.info("  ✓ Semi-Lagrangian (linear) converged successfully")
         else:
             logger.warning("  ⚠ Semi-Lagrangian (linear) did not converge")
@@ -95,7 +95,7 @@ def solve_with_methods(problem):
         result_sl_cubic = solver_sl_cubic.solve()
         results["semi_lagrangian_cubic"] = result_sl_cubic
 
-        if hasattr(result_sl_cubic, 'converged') and result_sl_cubic.converged:
+        if hasattr(result_sl_cubic, "converged") and result_sl_cubic.converged:
             logger.info("  ✓ Semi-Lagrangian (cubic) converged successfully")
         else:
             logger.warning("  ⚠ Semi-Lagrangian (cubic) did not converge")
@@ -118,7 +118,7 @@ def solve_with_methods(problem):
         result_fdm = solver_fdm.solve()
         results["finite_difference"] = result_fdm
 
-        if hasattr(result_fdm, 'converged') and result_fdm.converged:
+        if hasattr(result_fdm, "converged") and result_fdm.converged:
             logger.info("  ✓ Finite difference converged successfully")
         else:
             logger.warning("  ⚠ Finite difference did not converge")
@@ -148,13 +148,13 @@ def analyze_results(problem, results):
         return
 
     logger.info(f"Successfully solved with {len(successful_results)} methods:")
-    for method_name in successful_results.keys():
+    for method_name in successful_results:
         logger.info(f"  - {method_name}")
 
     # Compare solution properties
     for method_name, result in successful_results.items():
         try:
-            if hasattr(result, 'U') and hasattr(result, 'M'):
+            if hasattr(result, "U") and hasattr(result, "M"):
                 U = result.U
                 M = result.M
 
@@ -171,11 +171,11 @@ def analyze_results(problem, results):
 
                 # Check for numerical issues
                 if np.any(np.isnan(U)) or np.any(np.isinf(U)):
-                    logger.warning(f"    ⚠ Contains NaN/Inf values in U")
+                    logger.warning("    ⚠ Contains NaN/Inf values in U")
                 if np.any(np.isnan(M)) or np.any(np.isinf(M)):
-                    logger.warning(f"    ⚠ Contains NaN/Inf values in M")
+                    logger.warning("    ⚠ Contains NaN/Inf values in M")
                 if np.any(M < -1e-10):
-                    logger.warning(f"    ⚠ Negative density values detected")
+                    logger.warning("    ⚠ Negative density values detected")
 
         except Exception as e:
             logger.warning(f"  Error analyzing {method_name}: {e}")
@@ -199,67 +199,67 @@ def create_comparison_plots(problem, results):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle("Semi-Lagrangian vs Finite Difference Methods", fontsize=14)
 
-    x_grid = problem.x if hasattr(problem, 'x') else np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+    x_grid = problem.x if hasattr(problem, "x") else np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
 
     # Plot 1: Final value function
     ax1 = axes[0, 0]
     for method_name, result in successful_results.items():
-        if hasattr(result, 'U'):
+        if hasattr(result, "U"):
             U_final = result.U[-1, :]
-            label = method_name.replace('_', ' ').title()
+            label = method_name.replace("_", " ").title()
             ax1.plot(x_grid, U_final, label=label, linewidth=2)
 
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('u(T, x)')
-    ax1.set_title('Final Value Function')
+    ax1.set_xlabel("x")
+    ax1.set_ylabel("u(T, x)")
+    ax1.set_title("Final Value Function")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     # Plot 2: Final density
     ax2 = axes[0, 1]
     for method_name, result in successful_results.items():
-        if hasattr(result, 'M'):
+        if hasattr(result, "M"):
             M_final = result.M[-1, :]
-            label = method_name.replace('_', ' ').title()
+            label = method_name.replace("_", " ").title()
             ax2.plot(x_grid, M_final, label=label, linewidth=2)
 
-    ax2.set_xlabel('x')
-    ax2.set_ylabel('m(T, x)')
-    ax2.set_title('Final Density')
+    ax2.set_xlabel("x")
+    ax2.set_ylabel("m(T, x)")
+    ax2.set_title("Final Density")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
     # Plot 3: Value function evolution (for first successful method)
     ax3 = axes[1, 0]
     first_result = next(iter(successful_results.values()))
-    if hasattr(first_result, 'U'):
+    if hasattr(first_result, "U"):
         U = first_result.U
         t_grid = np.linspace(0, problem.T, U.shape[0])
 
         # Plot selected time slices
         time_indices = [0, U.shape[0] // 4, U.shape[0] // 2, 3 * U.shape[0] // 4, -1]
         for i in time_indices:
-            label = f't={t_grid[i]:.2f}'
+            label = f"t={t_grid[i]:.2f}"
             ax3.plot(x_grid, U[i, :], label=label, alpha=0.7)
 
-    ax3.set_xlabel('x')
-    ax3.set_ylabel('u(t, x)')
-    ax3.set_title('Value Function Evolution (First Method)')
+    ax3.set_xlabel("x")
+    ax3.set_ylabel("u(t, x)")
+    ax3.set_title("Value Function Evolution (First Method)")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
     # Plot 4: Convergence comparison (if available)
     ax4 = axes[1, 1]
     for method_name, result in successful_results.items():
-        if hasattr(result, 'convergence_history'):
+        if hasattr(result, "convergence_history"):
             history = result.convergence_history
             iterations = range(len(history))
-            label = method_name.replace('_', ' ').title()
-            ax4.semilogy(iterations, history, label=label, linewidth=2, marker='o', markersize=3)
+            label = method_name.replace("_", " ").title()
+            ax4.semilogy(iterations, history, label=label, linewidth=2, marker="o", markersize=3)
 
-    ax4.set_xlabel('Picard Iteration')
-    ax4.set_ylabel('Residual (log scale)')
-    ax4.set_title('Convergence History')
+    ax4.set_xlabel("Picard Iteration")
+    ax4.set_ylabel("Residual (log scale)")
+    ax4.set_title("Convergence History")
     ax4.legend()
     ax4.grid(True, alpha=0.3)
 
@@ -267,7 +267,7 @@ def create_comparison_plots(problem, results):
 
     # Save the plot
     plot_filename = "semi_lagrangian_comparison.png"
-    plt.savefig(plot_filename, dpi=150, bbox_inches='tight')
+    plt.savefig(plot_filename, dpi=150, bbox_inches="tight")
     logger.info(f"Comparison plot saved as: {plot_filename}")
 
     # Show plot if running interactively
@@ -298,7 +298,7 @@ def demonstrate_characteristics():
     logger.info(f"  Optimal control: p = {p_optimal}")
     logger.info(f"  Time step: Δt = {dt}")
     logger.info(f"  Departure point: x_dep = {x_departure}")
-    logger.info(f"  Characteristic traced: x_dep = x - p*Δt")
+    logger.info("  Characteristic traced: x_dep = x - p*Δt")
 
 
 def main():

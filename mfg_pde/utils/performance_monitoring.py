@@ -6,14 +6,17 @@ execution time tracking, memory usage analysis, and regression detection for
 the MFG_PDE solver framework.
 """
 
+from __future__ import annotations
+
 import functools
 import json
 import time
 import warnings
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 import psutil
 
@@ -28,19 +31,19 @@ class PerformanceMetrics:
     execution_time: float
     peak_memory_mb: float
     cpu_percent: float
-    problem_size: Dict[str, int] = field(default_factory=dict)  # Nx, Nt, etc.
-    convergence_info: Dict[str, Any] = field(default_factory=dict)
+    problem_size: dict[str, int] = field(default_factory=dict)  # Nx, Nt, etc.
+    convergence_info: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
-    git_hash: Optional[str] = None
+    git_hash: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
         data["timestamp"] = self.timestamp.isoformat()
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PerformanceMetrics":
+    def from_dict(cls, data: dict[str, Any]) -> PerformanceMetrics:
         """Create instance from dictionary."""
         data = data.copy()
         data["timestamp"] = datetime.fromisoformat(data["timestamp"])
@@ -64,7 +67,7 @@ class PerformanceBaseline:
         metrics: PerformanceMetrics,
         time_threshold: float = 1.5,
         memory_threshold: float = 1.3,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Check if metrics indicate performance regression.
 
@@ -94,7 +97,7 @@ class PerformanceBaseline:
 class PerformanceMonitor:
     """Comprehensive performance monitoring system."""
 
-    def __init__(self, storage_path: Optional[Path] = None):
+    def __init__(self, storage_path: Path | None = None):
         """
         Initialize performance monitor.
 
@@ -104,8 +107,8 @@ class PerformanceMonitor:
         self.storage_path = storage_path or Path("performance_data")
         self.storage_path.mkdir(exist_ok=True)
 
-        self.metrics_history: Dict[str, List[PerformanceMetrics]] = {}
-        self.baselines: Dict[str, PerformanceBaseline] = {}
+        self.metrics_history: dict[str, list[PerformanceMetrics]] = {}
+        self.baselines: dict[str, PerformanceBaseline] = {}
 
         # Load existing data
         self._load_stored_data()
@@ -116,7 +119,7 @@ class PerformanceMonitor:
             # Load baselines
             baseline_file = self.storage_path / "baselines.json"
             if baseline_file.exists():
-                with open(baseline_file, "r") as f:
+                with open(baseline_file) as f:
                     baseline_data = json.load(f)
                 for name, data in baseline_data.items():
                     data["last_updated"] = datetime.fromisoformat(data["last_updated"])
@@ -125,7 +128,7 @@ class PerformanceMonitor:
             # Load metrics history (last 100 entries per method)
             metrics_file = self.storage_path / "metrics_history.json"
             if metrics_file.exists():
-                with open(metrics_file, "r") as f:
+                with open(metrics_file) as f:
                     history_data = json.load(f)
                 for name, metrics_list in history_data.items():
                     self.metrics_history[name] = [PerformanceMetrics.from_dict(m) for m in metrics_list[-100:]]
@@ -160,7 +163,7 @@ class PerformanceMonitor:
 
     def performance_tracked(
         self,
-        method_name: Optional[str] = None,
+        method_name: str | None = None,
         track_convergence: bool = True,
         update_baseline: bool = True,
     ):
@@ -241,7 +244,7 @@ class PerformanceMonitor:
 
                     return result
 
-                except Exception as e:
+                except Exception:
                     # Still track failed execution time
                     execution_time = time.time() - start_time
                     print(f"WARNING:  Performance tracking: {name} failed after {execution_time:.2f}s")
@@ -282,16 +285,16 @@ class PerformanceMonitor:
 
         baseline = PerformanceBaseline(
             method_name=method_name,
-            mean_execution_time=np.mean(times),
-            std_execution_time=np.std(times),
-            mean_memory_mb=np.mean(memories),
-            std_memory_mb=np.std(memories),
+            mean_execution_time=float(np.mean(times)),
+            std_execution_time=float(np.std(times)),
+            mean_memory_mb=float(np.mean(memories)),
+            std_memory_mb=float(np.std(memories)),
             sample_count=len(recent_metrics),
         )
 
         self.baselines[method_name] = baseline
 
-    def get_performance_report(self, method_name: Optional[str] = None) -> str:
+    def get_performance_report(self, method_name: str | None = None) -> str:
         """
         Generate comprehensive performance report.
 
@@ -344,7 +347,7 @@ Storage: {self.storage_path}
                 time_change = (current_time / baseline.mean_execution_time - 1) * 100
                 memory_change = (current_memory / baseline.mean_memory_mb - 1) * 100
 
-                report += f"  Baseline comparison:\n"
+                report += "  Baseline comparison:\n"
                 report += f"    Time change: {time_change:+.1f}%\n"
                 report += f"    Memory change: {memory_change:+.1f}%\n"
 
@@ -365,10 +368,7 @@ Storage: {self.storage_path}
     def export_performance_data(self, output_file: Path) -> None:
         """Export all performance data to JSON file."""
         export_data = {
-            "baselines": {
-                name: (baseline.to_dict() if hasattr(baseline, "to_dict") else asdict(baseline))
-                for name, baseline in self.baselines.items()
-            },
+            "baselines": {name: asdict(baseline) for name, baseline in self.baselines.items()},
             "metrics_history": {name: [m.to_dict() for m in metrics] for name, metrics in self.metrics_history.items()},
             "export_timestamp": datetime.now().isoformat(),
         }
@@ -382,7 +382,7 @@ Storage: {self.storage_path}
         with open(output_file, "w") as f:
             json.dump(export_data, f, indent=2)
 
-    def clear_data(self, method_name: Optional[str] = None) -> None:
+    def clear_data(self, method_name: str | None = None) -> None:
         """Clear performance data for specified method or all methods."""
         if method_name:
             self.metrics_history.pop(method_name, None)
@@ -399,19 +399,19 @@ global_performance_monitor = PerformanceMonitor()
 
 
 # Convenience functions and decorators
-def performance_tracked(method_name: Optional[str] = None, **kwargs):
+def performance_tracked(method_name: str | None = None, **kwargs):
     """Convenience decorator using global monitor."""
     return global_performance_monitor.performance_tracked(method_name, **kwargs)
 
 
-def get_performance_report(method_name: Optional[str] = None) -> str:
+def get_performance_report(method_name: str | None = None) -> str:
     """Get performance report using global monitor."""
     return global_performance_monitor.get_performance_report(method_name)
 
 
 def benchmark_solver(
-    solver_class, problem, config_variations: List[Dict[str, Any]], repetitions: int = 3
-) -> Dict[str, Any]:
+    solver_class, problem, config_variations: list[dict[str, Any]], repetitions: int = 3
+) -> dict[str, Any]:
     """
     Benchmark solver performance across different configurations.
 

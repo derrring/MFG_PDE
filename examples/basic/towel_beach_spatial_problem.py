@@ -62,7 +62,7 @@ class TowelBeachSpatialProblem(MFGProblem):
         self.movement_cost = movement_cost
         self.noise_level = noise_level
 
-        logger.info(f"Created Towel Beach Spatial Problem:")
+        logger.info("Created Towel Beach Spatial Problem:")
         logger.info(f"  Stall position: {stall_position}")
         logger.info(f"  Crowd aversion: {crowd_aversion}")
         logger.info(f"  Movement cost: {movement_cost}")
@@ -200,15 +200,15 @@ class TowelBeachSpatialProblem(MFGProblem):
         equilibrium_type = self._classify_equilibrium(final_density, stall_idx)
 
         analysis = {
-            'equilibrium_type': equilibrium_type,
-            'critical_points': critical_points,
-            'density_at_stall': density_at_stall,
-            'max_density_location': max_density_location,
-            'max_density_value': max_density_value,
-            'mean_position': mean_position,
-            'spatial_spread': spatial_spread,
-            'stall_position': self.stall_position,
-            'crowd_aversion': self.crowd_aversion,
+            "equilibrium_type": equilibrium_type,
+            "critical_points": critical_points,
+            "density_at_stall": density_at_stall,
+            "max_density_location": max_density_location,
+            "max_density_value": max_density_value,
+            "mean_position": mean_position,
+            "spatial_spread": spatial_spread,
+            "stall_position": self.stall_position,
+            "crowd_aversion": self.crowd_aversion,
         }
 
         logger.info(f"Equilibrium type: {equilibrium_type}")
@@ -261,7 +261,7 @@ def solve_beach_spatial_variants():
             Nx=100,
             Nt=50,
             stall_position=0.6,  # Slightly off-center for asymmetry
-            crowd_aversion=scenario['crowd_aversion'],
+            crowd_aversion=scenario["crowd_aversion"],
             movement_cost=0.5,
             noise_level=0.1,
         )
@@ -275,13 +275,13 @@ def solve_beach_spatial_variants():
         # Analyze equilibrium
         equilibrium_analysis = problem.analyze_equilibrium(U, M)
 
-        results[scenario['name']] = {
-            'problem': problem,
-            'solution': (U, M),
-            'info': info,
-            'analysis': equilibrium_analysis,
-            'crowd_aversion': scenario['crowd_aversion'],
-            'description': scenario['description'],
+        results[scenario["name"]] = {
+            "problem": problem,
+            "solution": (U, M),
+            "info": info,
+            "analysis": equilibrium_analysis,
+            "crowd_aversion": scenario["crowd_aversion"],
+            "description": scenario["description"],
         }
 
         logger.info(f"  Equilibrium: {equilibrium_analysis['equilibrium_type']}")
@@ -295,86 +295,86 @@ def create_spatial_visualization(results):
     """Create comprehensive visualization of spatial equilibrium patterns."""
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    fig.suptitle('Towel on Beach: Spatial Competition with Varying Crowd Aversion', fontsize=16, fontweight='bold')
+    fig.suptitle("Towel on Beach: Spatial Competition with Varying Crowd Aversion", fontsize=16, fontweight="bold")
 
-    colors = ['blue', 'green', 'red']
+    colors = ["blue", "green", "red"]
     scenario_names = list(results.keys())
 
     # Plot 1: Final Density Distributions
     ax1 = axes[0, 0]
     for i, (name, result) in enumerate(results.items()):
-        problem = result['problem']
-        U, M = result['solution']
+        problem = result["problem"]
+        U, M = result["solution"]
         x_grid = problem.xSpace
 
         ax1.plot(x_grid, M[-1, :], color=colors[i], linewidth=2, label=f"{name} (λ={result['crowd_aversion']})")
 
         # Mark stall position
-        ax1.axvline(x=problem.stall_position, color=colors[i], linestyle='--', alpha=0.5)
+        ax1.axvline(x=problem.stall_position, color=colors[i], linestyle="--", alpha=0.5)
 
-    ax1.set_xlabel('Beach Position')
-    ax1.set_ylabel('Population Density')
-    ax1.set_title('Final Spatial Distributions')
+    ax1.set_xlabel("Beach Position")
+    ax1.set_ylabel("Population Density")
+    ax1.set_title("Final Spatial Distributions")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     # Plot 2: Density Evolution Over Time (Medium Aversion)
     ax2 = axes[0, 1]
     medium_result = results["Medium Aversion"]
-    problem = medium_result['problem']
-    U, M = medium_result['solution']
+    problem = medium_result["problem"]
+    U, M = medium_result["solution"]
 
     X, T = np.meshgrid(problem.xSpace, np.linspace(0, problem.T, problem.Nt))
-    contour = ax2.contourf(X, T, M, levels=20, cmap='viridis')
-    plt.colorbar(contour, ax=ax2, label='Density')
-    ax2.axvline(x=problem.stall_position, color='red', linestyle='--', alpha=0.8, label='Stall')
-    ax2.set_xlabel('Beach Position')
-    ax2.set_ylabel('Time')
-    ax2.set_title('Density Evolution (Medium Aversion)')
+    contour = ax2.contourf(X, T, M, levels=20, cmap="viridis")
+    plt.colorbar(contour, ax=ax2, label="Density")
+    ax2.axvline(x=problem.stall_position, color="red", linestyle="--", alpha=0.8, label="Stall")
+    ax2.set_xlabel("Beach Position")
+    ax2.set_ylabel("Time")
+    ax2.set_title("Density Evolution (Medium Aversion)")
     ax2.legend()
 
     # Plot 3: Equilibrium Type Analysis
     ax3 = axes[0, 2]
-    crowd_aversions = [result['crowd_aversion'] for result in results.values()]
-    densities_at_stall = [result['analysis']['density_at_stall'] for result in results.values()]
-    max_densities = [result['analysis']['max_density_value'] for result in results.values()]
+    crowd_aversions = [result["crowd_aversion"] for result in results.values()]
+    densities_at_stall = [result["analysis"]["density_at_stall"] for result in results.values()]
+    max_densities = [result["analysis"]["max_density_value"] for result in results.values()]
 
-    ax3.plot(crowd_aversions, densities_at_stall, 'ro-', linewidth=2, markersize=8, label='Density at Stall')
-    ax3.plot(crowd_aversions, max_densities, 'bs-', linewidth=2, markersize=8, label='Maximum Density')
-    ax3.set_xlabel('Crowd Aversion Parameter (λ)')
-    ax3.set_ylabel('Density')
-    ax3.set_title('Stall vs Maximum Density')
+    ax3.plot(crowd_aversions, densities_at_stall, "ro-", linewidth=2, markersize=8, label="Density at Stall")
+    ax3.plot(crowd_aversions, max_densities, "bs-", linewidth=2, markersize=8, label="Maximum Density")
+    ax3.set_xlabel("Crowd Aversion Parameter (λ)")
+    ax3.set_ylabel("Density")
+    ax3.set_title("Stall vs Maximum Density")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
     # Plot 4: Spatial Spread Analysis
     ax4 = axes[1, 0]
-    spatial_spreads = [result['analysis']['spatial_spread'] for result in results.values()]
+    spatial_spreads = [result["analysis"]["spatial_spread"] for result in results.values()]
 
     bars = ax4.bar(scenario_names, spatial_spreads, color=colors, alpha=0.7)
-    ax4.set_ylabel('Spatial Spread (σ)')
-    ax4.set_title('Population Dispersion')
-    ax4.grid(True, alpha=0.3, axis='y')
+    ax4.set_ylabel("Spatial Spread (σ)")
+    ax4.set_title("Population Dispersion")
+    ax4.grid(True, alpha=0.3, axis="y")
 
     # Add value labels on bars
-    for bar, spread in zip(bars, spatial_spreads):
+    for bar, spread in zip(bars, spatial_spreads, strict=False):
         height = bar.get_height()
         ax4.text(
             bar.get_x() + bar.get_width() / 2.0,
             height + 0.005,
-            f'{spread:.3f}',
-            ha='center',
-            va='bottom',
-            fontweight='bold',
+            f"{spread:.3f}",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
         )
 
     # Plot 5: Equilibrium Classification
     ax5 = axes[1, 1]
-    ax5.axis('off')
+    ax5.axis("off")
 
     classification_text = "EQUILIBRIUM CLASSIFICATION\\n\\n"
     for name, result in results.items():
-        analysis = result['analysis']
+        analysis = result["analysis"]
         classification_text += f"{name}:\\n"
         classification_text += f"  Type: {analysis['equilibrium_type']}\\n"
         classification_text += f"  Stall density: {analysis['density_at_stall']:.3f}\\n"
@@ -387,14 +387,14 @@ def create_spatial_visualization(results):
         classification_text,
         transform=ax5.transAxes,
         fontsize=10,
-        verticalalignment='top',
-        fontfamily='monospace',
+        verticalalignment="top",
+        fontfamily="monospace",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
     )
 
     # Plot 6: Problem Description
     ax6 = axes[1, 2]
-    ax6.axis('off')
+    ax6.axis("off")
 
     description_text = """
 TOWEL ON BEACH SPATIAL MODEL
@@ -427,7 +427,7 @@ to rich spatial equilibrium patterns.
         description_text,
         transform=ax6.transAxes,
         fontsize=9,
-        verticalalignment='top',
+        verticalalignment="top",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgray", alpha=0.8),
     )
 
@@ -437,7 +437,7 @@ to rich spatial equilibrium patterns.
     output_dir = Path("examples/basic/outputs")
     output_dir.mkdir(exist_ok=True)
     output_path = output_dir / "towel_beach_spatial_analysis.png"
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     logger.info(f"Spatial visualization saved to: {output_path}")
 
     return output_path
@@ -469,7 +469,7 @@ def main():
         print("\\n SPATIAL EQUILIBRIUM ANALYSIS")
         print("-" * 40)
         for name, result in results.items():
-            analysis = result['analysis']
+            analysis = result["analysis"]
             print(f"\\n{name} (λ={result['crowd_aversion']}):")
             print(f"  Equilibrium Type: {analysis['equilibrium_type']}")
             print(f"  Density at Stall: {analysis['density_at_stall']:.3f}")

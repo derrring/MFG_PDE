@@ -4,8 +4,9 @@ Base Backend Interface for MFG_PDE
 Defines the abstract interface that all computational backends must implement.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 
@@ -35,119 +36,97 @@ class BaseBackend(ABC):
     @abstractmethod
     def _setup_backend(self):
         """Backend-specific initialization."""
-        pass
 
     @property
     @abstractmethod
     def name(self) -> str:
         """Backend name identifier."""
-        pass
 
     @property
     @abstractmethod
     def array_module(self):
         """The array module (numpy, jax.numpy, etc.)."""
-        pass
 
     # Array Operations
     @abstractmethod
     def array(self, data, dtype=None):
         """Create backend-specific array."""
-        pass
 
     @abstractmethod
     def zeros(self, shape, dtype=None):
         """Create array of zeros."""
-        pass
 
     @abstractmethod
     def ones(self, shape, dtype=None):
         """Create array of ones."""
-        pass
 
     @abstractmethod
     def linspace(self, start, stop, num):
         """Create linearly spaced array."""
-        pass
 
     @abstractmethod
     def meshgrid(self, *arrays, indexing="xy"):
         """Create coordinate arrays from arrays."""
-        pass
 
     # Mathematical Operations
     @abstractmethod
     def grad(self, func, argnum=0):
         """Compute gradient of function."""
-        pass
 
     @abstractmethod
     def trapezoid(self, y, x=None, dx=1.0, axis=-1):
         """Trapezoidal integration."""
-        pass
 
     @abstractmethod
     def diff(self, a, n=1, axis=-1):
         """Discrete difference."""
-        pass
 
     @abstractmethod
     def interp(self, x, xp, fp):
         """1-D linear interpolation."""
-        pass
 
     # Linear Algebra
     @abstractmethod
     def solve(self, A, b):
         """Solve linear system Ax = b."""
-        pass
 
     @abstractmethod
     def eig(self, a):
         """Compute eigenvalues and eigenvectors."""
-        pass
 
     # Statistics
     @abstractmethod
     def mean(self, a, axis=None):
         """Compute mean along axis."""
-        pass
 
     @abstractmethod
     def std(self, a, axis=None):
         """Compute standard deviation."""
-        pass
 
     @abstractmethod
     def max(self, a, axis=None):
         """Maximum values along axis."""
-        pass
 
     @abstractmethod
     def min(self, a, axis=None):
         """Minimum values along axis."""
-        pass
 
     # MFG-Specific Operations
     @abstractmethod
     def compute_hamiltonian(self, x, p, m, problem_params):
         """Compute Hamiltonian H(x, p, m)."""
-        pass
 
     @abstractmethod
     def compute_optimal_control(self, x, p, m, problem_params):
         """Compute optimal control a*(x, p, m)."""
-        pass
 
     @abstractmethod
     def hjb_step(self, U, M, dt, dx, problem_params):
         """Single Hamilton-Jacobi-Bellman time step."""
-        pass
 
     @abstractmethod
     def fpk_step(self, M, U, dt, dx, problem_params):
         """Single Fokker-Planck-Kolmogorov time step."""
-        pass
 
     # Performance and Compilation
     def compile_function(self, func, *args, **kwargs):
@@ -191,7 +170,7 @@ class BaseBackend(ABC):
             "precision": self.precision,
         }
 
-    def memory_usage(self) -> Optional[dict]:
+    def memory_usage(self) -> dict | None:
         """Get memory usage information if available."""
         return None  # Override in specific backends
 
@@ -202,4 +181,3 @@ class BaseBackend(ABC):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
-        pass

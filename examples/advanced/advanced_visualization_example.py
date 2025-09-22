@@ -15,17 +15,10 @@ from pathlib import Path
 import numpy as np
 
 # Add the parent directory to the path so we can import mfg_pde
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde import MFGProblem, create_fast_solver
 from mfg_pde.utils import configure_logging, get_logger
-from mfg_pde.visualization import (
-    MFGBokehVisualizer,
-    MFGPlotlyVisualizer,
-    create_visualization_manager,
-    quick_2d_plot,
-    quick_3d_plot,
-)
 
 
 def create_test_problem():
@@ -166,10 +159,10 @@ def demo_convergence_visualization():
     # Generate realistic convergence data
     iterations = 50
     convergence_data = {
-        'HJB_residual': [1e-1 * (0.85**i) * (1 + 0.1 * np.sin(i * 0.5)) for i in range(iterations)],
-        'FP_residual': [8e-2 * (0.82**i) * (1 + 0.15 * np.cos(i * 0.3)) for i in range(iterations)],
-        'L2_error': [5e-2 * (0.88**i) for i in range(iterations)],
-        'mass_conservation': [1e-3 * (0.9**i) * (1 + 0.05 * np.random.random()) for i in range(iterations)],
+        "HJB_residual": [1e-1 * (0.85**i) * (1 + 0.1 * np.sin(i * 0.5)) for i in range(iterations)],
+        "FP_residual": [8e-2 * (0.82**i) * (1 + 0.15 * np.cos(i * 0.3)) for i in range(iterations)],
+        "L2_error": [5e-2 * (0.88**i) for i in range(iterations)],
+        "mass_conservation": [1e-3 * (0.9**i) * (1 + 0.05 * np.random.random()) for i in range(iterations)],
     }
 
     output_dir = Path("visualization_output")
@@ -332,8 +325,8 @@ def demo_interactive_report():
 
         # Convergence plot
         convergence_data = {
-            'Total_Error': [1e-1 * (0.85**i) for i in range(30)],
-            'HJB_Residual': [5e-2 * (0.88**i) for i in range(30)],
+            "Total_Error": [1e-1 * (0.85**i) for i in range(30)],
+            "HJB_Residual": [5e-2 * (0.88**i) for i in range(30)],
         }
 
         convergence_fig = visualizer.plot_convergence_history(
@@ -387,7 +380,7 @@ def demo_solver_integration():
         result = solver.solve(verbose=False)
 
         # Extract solution data
-        if hasattr(result, 'U') and hasattr(result, 'M'):
+        if hasattr(result, "U") and hasattr(result, "M"):
             U, M = result.U, result.M
         else:
             # Handle tuple result
@@ -428,7 +421,7 @@ def demo_solver_integration():
         logger.info("Successfully visualized real solver results")
 
         # Generate convergence data if available
-        if hasattr(result, 'convergence_history'):
+        if hasattr(result, "convergence_history"):
             convergence_fig = visualizer.plot_convergence_history(
                 result.convergence_history,
                 title="Real Solver Convergence",

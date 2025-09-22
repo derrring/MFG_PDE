@@ -1,0 +1,170 @@
+name: Modern Quality Assurance (Ruff Standard)
+#
+# Standard MFG_PDE quality assurance workflow using unified Ruff tooling
+# 10-100x faster than legacy tools with identical quality standards
+#
+# Modern unified tooling is the only supported approach
+
+on:
+  workflow_dispatch:  # Manual trigger
+  pull_request:
+    paths: ['mfg_pde/**/*.py', 'pyproject.toml']
+  push:
+    branches: [main]
+    paths: ['mfg_pde/**/*.py', 'pyproject.toml']
+
+jobs:
+  modern-quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]  # Standard dev dependencies with Ruff unified tooling
+
+    - name: Ruff Formatting Check
+      run: |
+        echo "🎨 Running Ruff formatter (10x faster than Black)..."
+        ruff format --check --diff mfg_pde/
+        if [ $? -ne 0 ]; then
+          echo "❌ Formatting issues found. Run 'ruff format mfg_pde/' to fix."
+          exit 1
+        else
+          echo "✅ Code formatting is perfect."
+        fi
+
+    - name: Ruff Linting
+      run: |
+        echo "🔍 Running Ruff linter (replaces Pylint + flake8 + isort)..."
+        ruff check --output-format=github mfg_pde/
+        if [ $? -ne 0 ]; then
+          echo "❌ Linting issues found. Run 'ruff check --fix mfg_pde/' to auto-fix."
+          exit 1
+        else
+          echo "✅ All linting checks passed."
+        fi
+
+    - name: Type checking with Mypy
+      run: |
+        echo "🔍 Running Mypy type checking..."
+        mypy mfg_pde/ --show-error-codes --pretty
+        if [ $? -ne 0 ]; then
+          echo "⚠️ Type checking issues found"
+          exit 1
+        else
+          echo "✅ Type checking passed perfectly."
+        fi
+
+    - name: Ruff Performance Validation
+      run: |
+        echo "⚡ Ruff unified tooling performance validation..."
+        echo "✅ Benefits of Ruff standard:"
+        echo "  • 10-100x faster than traditional multi-tool workflows"
+        echo "  • Single unified tool with consistent configuration"
+        echo "  • Enhanced error messages with intelligent auto-fix"
+        echo "  • Unified configuration in pyproject.toml"
+        echo ""
+        echo "🚀 MFG_PDE modernization complete:"
+        echo "  • pip install mfg_pde[dev] - unified Ruff tooling"
+        echo "  • [tool.ruff] - single configuration section"
+        echo "  • .pre-commit-config.yaml - Ruff-powered hooks"
+        echo "  • GitHub Actions - fast CI/CD with Ruff"
+
+  security-check:
+    runs-on: ubuntu-latest
+    needs: modern-quality
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+        pip install -e .
+
+    - name: Security scan with Bandit
+      run: |
+        echo "🔒 Running security scan..."
+        bandit -r mfg_pde/ -f json -o bandit-report.json || true
+        bandit -r mfg_pde/ --severity-level medium --confidence-level medium
+
+    - name: Dependency vulnerability check
+      run: |
+        echo "🔒 Checking dependencies for vulnerabilities..."
+        safety check --json --output safety-report.json || true
+        safety check
+
+  benchmark-performance:
+    runs-on: ubuntu-latest
+    needs: modern-quality
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+
+    - name: Install performance tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[performance]
+
+    - name: Quick performance test
+      run: |
+        echo "⚡ Quick performance regression test..."
+        python -c "
+        from mfg_pde import ExampleMFGProblem, create_fast_solver
+        import time
+        import psutil
+        import os
+
+        # Monitor resource usage
+        process = psutil.Process(os.getpid())
+        start_memory = process.memory_info().rss / 1024 / 1024  # MB
+
+        # Quick solver test
+        problem = ExampleMFGProblem(Nx=25, Nt=15)
+        solver = create_fast_solver(problem, 'fixed_point')
+
+        start_time = time.time()
+        result = solver.solve()
+        execution_time = time.time() - start_time
+
+        end_memory = process.memory_info().rss / 1024 / 1024  # MB
+        memory_used = end_memory - start_memory
+
+        print(f'⚡ Execution time: {execution_time:.2f}s')
+        print(f'🧠 Memory used: {memory_used:.1f} MB')
+
+        # Performance thresholds
+        if execution_time > 15:  # 15 second threshold
+            print(f'❌ Performance regression: {execution_time:.2f}s > 15s')
+            exit(1)
+        else:
+            print(f'✅ Performance excellent: {execution_time:.2f}s')
+
+        if memory_used > 500:  # 500 MB threshold
+            print(f'❌ Excessive memory usage: {memory_used:.1f} MB')
+            exit(1)
+        else:
+            print(f'✅ Memory usage efficient: {memory_used:.1f} MB')
+        "

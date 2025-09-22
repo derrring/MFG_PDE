@@ -15,7 +15,7 @@ def test_kde_normalization():
 
     problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, sigma=1.0, coefCT=0.5)
 
-    no_flux_bc = BoundaryConditions(type='no_flux')
+    no_flux_bc = BoundaryConditions(type="no_flux")
 
     print("Test 1: With normalize_kde_output=False (current)")
     solver1 = ParticleFPSolver(

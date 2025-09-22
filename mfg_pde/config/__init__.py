@@ -53,8 +53,39 @@ try:
 except ImportError:
     OMEGACONF_AVAILABLE = False
 
+# Modern builder-pattern configurations (new API)
+from .modern_config import (
+    PresetConfig,
+    SolverConfig,
+    accurate_config,
+    create_config,
+    crowd_dynamics_config,
+    educational_config,
+    epidemic_config,
+    fast_config,
+    financial_config,
+    large_scale_config,
+    production_config,
+    research_config,
+    traffic_config,
+)
+
 # Default to Pydantic configurations for new code
 __all__ = [
+    # Modern builder API (recommended for new code)
+    "SolverConfig",
+    "PresetConfig",
+    "create_config",
+    "research_config",
+    "production_config",
+    "fast_config",
+    "accurate_config",
+    "educational_config",
+    "crowd_dynamics_config",
+    "financial_config",
+    "epidemic_config",
+    "traffic_config",
+    "large_scale_config",
     # Pydantic configurations (recommended)
     "NewtonConfig",
     "PicardConfig",

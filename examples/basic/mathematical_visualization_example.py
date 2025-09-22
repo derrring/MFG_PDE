@@ -14,11 +14,11 @@ from pathlib import Path
 import numpy as np
 
 # Add the parent directory to the path so we can import mfg_pde
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde import MFGProblem, create_fast_solver
 from mfg_pde.utils import configure_logging, get_logger
-from mfg_pde.visualization import MFGMathematicalVisualizer, create_mathematical_visualizer
+from mfg_pde.visualization import MFGMathematicalVisualizer
 
 
 def create_mathematical_test_problem():
@@ -95,9 +95,9 @@ def demo_hjb_mathematical_analysis():
 
     # Compute gradients for comprehensive analysis
     gradients = {}
-    gradients['du_dx'] = np.gradient(U, x_grid, axis=0)
-    gradients['du_dt'] = np.gradient(U, t_grid, axis=1)
-    gradients['d2u_dx2'] = np.gradient(gradients['du_dx'], x_grid, axis=0)
+    gradients["du_dx"] = np.gradient(U, x_grid, axis=0)
+    gradients["du_dt"] = np.gradient(U, t_grid, axis=1)
+    gradients["d2u_dx2"] = np.gradient(gradients["du_dx"], x_grid, axis=0)
 
     logger.info("Creating comprehensive HJB analysis with LaTeX notation")
 
@@ -201,17 +201,17 @@ def demo_convergence_theory_analysis():
     np.random.seed(42)  # Reproducible results
 
     convergence_data = {
-        r'$\|U^k - U^*\|_{L^2(\Omega)}$': generate_convergence_sequence(0.82, 35, 0.08),
-        r'$\|m^k - m^*\|_{L^1(\Omega)}$': generate_convergence_sequence(0.85, 35, 0.06),
-        r'$\|\text{HJB residual}\|_{L^{\infty}}$': generate_convergence_sequence(0.78, 35, 0.12),
-        r'$\|\text{FP residual}\|_{L^2}$': generate_convergence_sequence(0.80, 35, 0.10),
+        r"$\|U^k - U^*\|_{L^2(\Omega)}$": generate_convergence_sequence(0.82, 35, 0.08),
+        r"$\|m^k - m^*\|_{L^1(\Omega)}$": generate_convergence_sequence(0.85, 35, 0.06),
+        r"$\|\text{HJB residual}\|_{L^{\infty}}$": generate_convergence_sequence(0.78, 35, 0.12),
+        r"$\|\text{FP residual}\|_{L^2}$": generate_convergence_sequence(0.80, 35, 0.10),
     }
 
     theoretical_rates = {
-        r'$\|U^k - U^*\|_{L^2(\Omega)}$': 0.82,
-        r'$\|m^k - m^*\|_{L^1(\Omega)}$': 0.85,
-        r'$\|\text{HJB residual}\|_{L^{\infty}}$': 0.78,
-        r'$\|\text{FP residual}\|_{L^2}$': 0.80,
+        r"$\|U^k - U^*\|_{L^2(\Omega)}$": 0.82,
+        r"$\|m^k - m^*\|_{L^1(\Omega)}$": 0.85,
+        r"$\|\text{HJB residual}\|_{L^{\infty}}$": 0.78,
+        r"$\|\text{FP residual}\|_{L^2}$": 0.80,
     }
 
     output_dir = Path("mathematical_visualization_output")
@@ -298,7 +298,7 @@ def demo_real_solver_mathematical_analysis():
         result = solver.solve(verbose=False)
 
         # Extract solution
-        if hasattr(result, 'U') and hasattr(result, 'M'):
+        if hasattr(result, "U") and hasattr(result, "M"):
             U, M = result.U, result.M
         else:
             U, M = result[0], result[1]

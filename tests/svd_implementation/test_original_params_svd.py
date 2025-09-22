@@ -33,7 +33,7 @@ def test_original_params_with_svd():
     ]
 
     problem = ExampleMFGProblem(**problem_params)
-    no_flux_bc = BoundaryConditions(type='no_flux')
+    no_flux_bc = BoundaryConditions(type="no_flux")
 
     print(f"Problem: Nx={problem_params['Nx']}, T={problem_params['T']}, Nt={problem_params['Nt']}")
     print(f"Initial mass: {np.sum(problem.m_init * problem.Dx):.6f}")
@@ -46,7 +46,7 @@ def test_original_params_with_svd():
         print(f"{'='*60}")
 
         # Create collocation points
-        num_collocation_points = settings['n_colloc']
+        num_collocation_points = settings["n_colloc"]
         collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
         boundary_indices = np.array([0, num_collocation_points - 1])
 
@@ -54,9 +54,9 @@ def test_original_params_with_svd():
             solver = ParticleCollocationSolver(
                 problem=problem,
                 collocation_points=collocation_points,
-                num_particles=settings['particles'],
-                delta=settings['delta'],
-                taylor_order=settings['taylor_order'],
+                num_particles=settings["particles"],
+                delta=settings["delta"],
+                taylor_order=settings["taylor_order"],
                 weight_function="wendland",
                 NiterNewton=10,
                 l2errBoundNewton=1e-5,
@@ -68,18 +68,18 @@ def test_original_params_with_svd():
 
             # Get detailed SVD diagnostics
             decomp_info = solver.hjb_solver.get_decomposition_info()
-            print(f"SVD Diagnostics:")
+            print("SVD Diagnostics:")
             print(f"  SVD coverage: {decomp_info['svd_percentage']:.1f}%")
             print(f"  Condition number: avg={decomp_info['avg_condition_number']:.1e}")
-            if decomp_info['condition_numbers']:
-                cond_min = min(decomp_info['condition_numbers'])
-                cond_max = max(decomp_info['condition_numbers'])
+            if decomp_info["condition_numbers"]:
+                cond_min = min(decomp_info["condition_numbers"])
+                cond_max = max(decomp_info["condition_numbers"])
                 print(f"  Condition range: [{cond_min:.1e}, {cond_max:.1e}]")
             print(f"  Rank: [{decomp_info['min_rank']}, {decomp_info['max_rank']}]")
 
             # Run with limited iterations first
-            print(f"\nRunning 5 Picard iterations...")
-            start_time = time.time() if 'time' in dir() else 0
+            print("\nRunning 5 Picard iterations...")
+            start_time = time.time() if "time" in dir() else 0
 
             U, M, info = solver.solve(Niter=5, l2errBound=1e-4, verbose=False)
 
@@ -92,7 +92,7 @@ def test_original_params_with_svd():
 
                 max_U = np.max(np.abs(U)) if U is not None else np.inf
 
-                print(f"Results:")
+                print("Results:")
                 print(f"  Initial mass: {mass_initial:.6f}")
                 print(f"  Final mass: {mass_final:.6f}")
                 print(f"  Mass change: {mass_change:.2e}")
@@ -125,7 +125,7 @@ def test_original_params_with_svd():
                     print(f"  Particle violations: {outside_bounds}")
 
             else:
-                print(f"  ❌ FAILED: Solution is None")
+                print("  ❌ FAILED: Solution is None")
 
         except Exception as e:
             print(f"❌ ERROR: {e}")
@@ -134,7 +134,7 @@ def test_original_params_with_svd():
             traceback.print_exc()
 
     print(f"\n{'='*60}")
-    print(f"ORIGINAL PARAMETERS TEST COMPLETE")
+    print("ORIGINAL PARAMETERS TEST COMPLETE")
     print(f"{'='*60}")
 
 

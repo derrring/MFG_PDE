@@ -4,7 +4,9 @@ Backend Factory for MFG_PDE
 Factory methods for creating computational backends with appropriate configurations.
 """
 
-from typing import Any, Dict, Optional, Union
+from __future__ import annotations
+
+from typing import Any
 
 from ..backends import create_backend, get_available_backends, get_backend_info
 from ..core.mfg_problem import MFGProblem
@@ -56,7 +58,7 @@ class BackendFactory:
             return create_backend("numpy", precision=precision)
 
     @staticmethod
-    def benchmark_backends(problem: MFGProblem, backends: Optional[list] = None) -> Dict[str, Any]:
+    def benchmark_backends(problem: MFGProblem, backends: list | None = None) -> dict[str, Any]:
         """
         Benchmark available backends on a given problem.
 
@@ -113,7 +115,7 @@ class BackendFactory:
         return results
 
     @staticmethod
-    def get_backend_recommendations(problem: MFGProblem) -> Dict[str, Any]:
+    def get_backend_recommendations(problem: MFGProblem) -> dict[str, Any]:
         """
         Get backend recommendations based on problem characteristics.
 
@@ -210,7 +212,7 @@ def print_backend_info():
     print(" MFG_PDE Backend Information")
     print("=" * 40)
 
-    print(f"Available backends:")
+    print("Available backends:")
     for name, available in info["available_backends"].items():
         status = "SUCCESS:" if available else "ERROR:"
         print(f"  {status} {name}")
@@ -221,7 +223,7 @@ def print_backend_info():
     if "jax_info" in info:
         jax_info = info["jax_info"]
         if "error" not in jax_info:
-            print(f"\n JAX Information:")
+            print("\n JAX Information:")
             print(f"  Version: {jax_info['version']}")
             print(f"  Devices: {', '.join(jax_info['devices'])}")
             print(f"  Default device: {jax_info['default_device']}")
@@ -239,11 +241,11 @@ if __name__ == "__main__":
 
     problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=50)
 
-    print(f"\n Backend Recommendations for Test Problem:")
+    print("\n Backend Recommendations for Test Problem:")
     recommendations = BackendFactory.get_backend_recommendations(problem)
 
     print(f"Problem size: {recommendations['problem_size']} ({recommendations['size_category']})")
-    print(f"Recommendations:")
+    print("Recommendations:")
     for i, rec in enumerate(recommendations["recommendations"], 1):
         print(f"  {i}. {rec['backend']} - {rec['reason']}")
         if "config" in rec:

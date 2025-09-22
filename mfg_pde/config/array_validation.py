@@ -5,10 +5,12 @@ This module provides Pydantic models for validating complex array shapes,
 numerical properties, and physical constraints specific to MFG problems.
 """
 
-import warnings
-from typing import Any, Dict, Optional, Tuple, Union
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+import warnings
+from typing import Any
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 import numpy as np
 
@@ -22,7 +24,7 @@ class ArrayValidationConfig(BaseModel):
     smoothness_threshold: float = Field(1e3, gt=0.0, description="Threshold for smoothness checking")
     cfl_max: float = Field(0.5, gt=0.0, le=1.0, description="Maximum CFL number allowed")
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = {"validate_assignment": True}
 
 
 class MFGGridConfig(BaseModel):
@@ -66,7 +68,7 @@ class MFGGridConfig(BaseModel):
         return self.sigma**2 * self.dt / (self.dx**2)
 
     @property
-    def grid_shape(self) -> Tuple[int, int]:
+    def grid_shape(self) -> tuple[int, int]:
         """Expected shape for solution arrays (Nt+1, Nx+1)."""
         return (self.Nt + 1, self.Nx + 1)
 
@@ -91,7 +93,7 @@ class MFGGridConfig(BaseModel):
 
         return v
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = {"validate_assignment": True}
 
 
 class MFGArrays(BaseModel):
@@ -106,7 +108,10 @@ class MFGArrays(BaseModel):
     M_solution: np.ndarray = Field(..., description="FP density array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
     validation_config: ArrayValidationConfig = Field(
-        default_factory=ArrayValidationConfig, description="Validation configuration"
+        default_factory=lambda: ArrayValidationConfig(
+            mass_conservation_rtol=1e-3, smoothness_threshold=1e3, cfl_max=0.5
+        ),
+        description="Validation configuration",
     )
 
     @field_validator("U_solution")
@@ -160,10 +165,15 @@ class MFGArrays(BaseModel):
         """Validate FP density array properties."""
         if info.data:
             grid_config = info.data.get("grid_config")
-            validation_config = info.data.get("validation_config", ArrayValidationConfig())
+            validation_config = info.data.get(
+                "validation_config",
+                ArrayValidationConfig(mass_conservation_rtol=1e-3, smoothness_threshold=1e3, cfl_max=0.5),
+            )
         else:
             grid_config = None
-            validation_config = ArrayValidationConfig()
+            validation_config = ArrayValidationConfig(
+                mass_conservation_rtol=1e-3, smoothness_threshold=1e3, cfl_max=0.5
+            )
 
         if grid_config:
             expected_shape = grid_config.grid_shape
@@ -224,7 +234,7 @@ class MFGArrays(BaseModel):
 
         return self
 
-    def get_solution_statistics(self) -> Dict[str, Any]:
+    def get_solution_statistics(self) -> dict[str, Any]:
         """Get comprehensive statistics for both solutions."""
         stats = {}
 
@@ -273,7 +283,7 @@ class MFGArrays(BaseModel):
 
         return stats
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
+    model_config = {"arbitrary_types_allowed": True, "validate_assignment": True}
 
 
 class CollocationConfig(BaseModel):
@@ -337,7 +347,7 @@ class CollocationConfig(BaseModel):
 
         return v
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
+    model_config = {"arbitrary_types_allowed": True, "validate_assignment": True}
 
 
 class ExperimentConfig(BaseModel):
@@ -350,12 +360,12 @@ class ExperimentConfig(BaseModel):
 
     # Core configurations
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
-    arrays: Optional[MFGArrays] = Field(None, description="Solution arrays (if available)")
-    collocation: Optional[CollocationConfig] = Field(None, description="Collocation configuration")
+    arrays: MFGArrays | None = Field(None, description="Solution arrays (if available)")
+    collocation: CollocationConfig | None = Field(None, description="Collocation configuration")
 
     # Experiment metadata
     experiment_name: str = Field(..., min_length=1, description="Experiment name")
-    description: Optional[str] = Field(None, description="Experiment description")
+    description: str | None = Field(None, description="Experiment description")
     researcher: str = Field("", description="Researcher name")
     tags: list = Field(default_factory=list, description="Experiment tags")
 
@@ -397,7 +407,7 @@ class ExperimentConfig(BaseModel):
 
         return self
 
-    def to_notebook_metadata(self) -> Dict[str, Any]:
+    def to_notebook_metadata(self) -> dict[str, Any]:
         """Convert to metadata suitable for notebook reporting."""
         metadata = {
             "experiment_name": self.experiment_name,
@@ -415,4 +425,4 @@ class ExperimentConfig(BaseModel):
 
         return metadata
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
+    model_config = {"arbitrary_types_allowed": True, "validate_assignment": True}

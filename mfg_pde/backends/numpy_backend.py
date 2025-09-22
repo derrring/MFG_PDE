@@ -4,7 +4,7 @@ NumPy Backend for MFG_PDE
 Reference implementation using NumPy for CPU-based computations.
 """
 
-from typing import Any, Optional, Tuple, Union
+from __future__ import annotations
 
 import numpy as np
 
@@ -58,7 +58,10 @@ class NumPyBackend(BaseBackend):
         return np.linspace(start, stop, num, dtype=self.dtype)
 
     def meshgrid(self, *arrays, indexing="xy"):
-        return np.meshgrid(*arrays, indexing=indexing)
+        from typing import Literal, cast
+
+        valid_indexing = cast(Literal["xy", "ij"], indexing)
+        return np.meshgrid(*arrays, indexing=valid_indexing)
 
     # Mathematical Operations
     def grad(self, func, argnum=0):
@@ -69,7 +72,11 @@ class NumPyBackend(BaseBackend):
 
         def gradient_func(*args):
             # Simple finite difference gradient
-            eps = np.sqrt(np.finfo(self.dtype).eps)
+            # Get machine epsilon for the current dtype
+            # Ensure dtype is properly converted for np.finfo
+            dtype_for_finfo = np.dtype(self.dtype) if not isinstance(self.dtype, np.dtype) else self.dtype
+            finfo = np.finfo(dtype_for_finfo)
+            eps = float(np.sqrt(finfo.eps))
             args_list = list(args)
             x = args_list[argnum]
 
@@ -223,7 +230,7 @@ class NumPyBackend(BaseBackend):
             "numpy_version": np.__version__,
         }
 
-    def memory_usage(self) -> Optional[dict]:
+    def memory_usage(self) -> dict | None:
         """Get memory usage information."""
         try:
             import psutil

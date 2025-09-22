@@ -5,15 +5,16 @@ This module provides high-level interfaces for creating any MFG problem
 through configuration files and programmatic function definitions.
 """
 
+from __future__ import annotations
+
 import importlib.util
-import inspect
-from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
 from ..config.omegaconf_manager import OmegaConfManager
-from ..core.mfg_problem import MFGComponents, MFGProblem, MFGProblemBuilder
+from ..core.mfg_problem import MFGProblem, MFGProblemBuilder
 from ..geometry import BoundaryConditions
 from ..utils.logging import get_logger
 
@@ -35,7 +36,7 @@ class GeneralMFGFactory:
         """Initialize general MFG factory."""
         self.function_registry = {}
 
-    def register_functions(self, functions: Dict[str, Callable]):
+    def register_functions(self, functions: dict[str, Callable]):
         """Register named functions for use in configurations."""
         self.function_registry.update(functions)
         logger.info(f"Registered {len(functions)} functions: {list(functions.keys())}")
@@ -44,9 +45,9 @@ class GeneralMFGFactory:
         self,
         hamiltonian_func: Callable,
         hamiltonian_dm_func: Callable,
-        domain_config: Dict[str, Any],
-        time_config: Dict[str, Any],
-        solver_config: Optional[Dict[str, Any]] = None,
+        domain_config: dict[str, Any],
+        time_config: dict[str, Any],
+        solver_config: dict[str, Any] | None = None,
         **optional_components,
     ) -> MFGProblem:
         """
@@ -103,7 +104,7 @@ class GeneralMFGFactory:
         ```yaml
         problem:
           description: "My custom MFG problem"
-          type: "custom"
+          type: custom
 
         functions:
           hamiltonian: "my_module.my_hamiltonian"
@@ -130,12 +131,12 @@ class GeneralMFGFactory:
         ```
         """
 
-        config_manager = OmegaConfManager.from_yaml(config_path)
-        config = config_manager.get_config()
+        config_manager = OmegaConfManager()
+        config = config_manager.load_config(config_path)
 
         return self.create_from_config_dict(dict(config))
 
-    def create_from_config_dict(self, config: Dict[str, Any]) -> MFGProblem:
+    def create_from_config_dict(self, config: dict[str, Any]) -> MFGProblem:
         """Create MFG problem from configuration dictionary."""
 
         # Extract function specifications
@@ -190,14 +191,14 @@ class GeneralMFGFactory:
             **optional_functions,
         )
 
-    def _load_function(self, func_spec: Optional[str]) -> Optional[Callable]:
+    def _load_function(self, func_spec: str | None) -> Callable | None:
         """
         Load function from various specifications.
 
         Supports:
         - Module path: "my_module.my_function"
         - Lambda expressions: "lambda x: x**2"
-        - Registry names: "registered_function_name"
+        - Registry names: registered_function_name
         """
 
         if func_spec is None:
@@ -263,11 +264,11 @@ class GeneralMFGFactory:
             "parameters": {"alpha": 1.0, "beta": 0.5},
         }
 
-        config_manager = OmegaConfManager(template)
-        config_manager.save_config(filename)
+        config_manager = OmegaConfManager()
+        config_manager.save_config(template, filename)
         logger.info(f"Created template configuration: {filename}")
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """Validate configuration for general MFG problem."""
 
         validation = {"valid": True, "errors": [], "warnings": []}
@@ -310,7 +311,7 @@ class GeneralMFGFactory:
 
 
 # Global factory instance
-_global_general_factory: Optional[GeneralMFGFactory] = None
+_global_general_factory: GeneralMFGFactory | None = None
 
 
 def get_general_factory() -> GeneralMFGFactory:

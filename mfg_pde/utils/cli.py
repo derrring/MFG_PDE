@@ -6,12 +6,13 @@ Provides argument parsing, configuration loading, and CLI tools for running
 MFG solvers from the command line with professional argument handling.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import yaml
 
@@ -141,7 +142,7 @@ def create_base_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def load_config_file(config_path: str) -> Dict[str, Any]:
+def load_config_file(config_path: str | Path) -> dict[str, Any]:
     """
     Load configuration from JSON or YAML file.
 
@@ -164,7 +165,7 @@ def load_config_file(config_path: str) -> Dict[str, Any]:
     suffix = config_path.suffix.lower()
 
     try:
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             if suffix == ".json":
                 return json.load(f)
             elif suffix in [".yaml", ".yml"]:
@@ -177,7 +178,7 @@ def load_config_file(config_path: str) -> Dict[str, Any]:
         raise ValueError(f"Error loading config file {config_path}: {e}")
 
 
-def save_config_file(config: Dict[str, Any], output_path: str) -> None:
+def save_config_file(config: dict[str, Any], output_path: str | Path) -> None:
     """
     Save configuration to JSON or YAML file.
 
@@ -206,7 +207,7 @@ def save_config_file(config: Dict[str, Any], output_path: str) -> None:
         print(f"ERROR: Error saving config file: {e}")
 
 
-def merge_configs(base_config: Dict[str, Any], override_config: Dict[str, Any]) -> Dict[str, Any]:
+def merge_configs(base_config: dict[str, Any], override_config: dict[str, Any]) -> dict[str, Any]:
     """
     Merge two configuration dictionaries, with override taking precedence.
 
@@ -228,7 +229,7 @@ def merge_configs(base_config: Dict[str, Any], override_config: Dict[str, Any]) 
     return merged
 
 
-def args_to_config(args: argparse.Namespace) -> Dict[str, Any]:
+def args_to_config(args: argparse.Namespace) -> dict[str, Any]:
     """
     Convert argparse Namespace to configuration dictionary.
 
@@ -405,9 +406,13 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
 
         # Add progress/timing control
         if hasattr(solver, "enable_progress"):
-            solver.enable_progress(exec_config["progress"])
+            enable_progress = getattr(solver, "enable_progress", None)
+            if callable(enable_progress):
+                enable_progress(exec_config["progress"])
         if hasattr(solver, "enable_timing"):
-            solver.enable_timing(exec_config["timing"])
+            enable_timing = getattr(solver, "enable_timing", None)
+            if callable(enable_timing):
+                enable_timing(exec_config["timing"])
 
         if exec_config["verbose"]:
             print("Solving MFG problem...")
@@ -417,10 +422,12 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
 
         if exec_config["verbose"]:
             print("MFG problem solved successfully!")
-            if hasattr(result, "converged"):
-                print(f"   Converged: {result.converged}")
-            if hasattr(result, "iterations"):
-                print(f"   Iterations: {result.iterations}")
+            converged = getattr(result, "converged", None)
+            if converged is not None:
+                print(f"   Converged: {converged}")
+            iterations = getattr(result, "iterations", None)
+            if iterations is not None:
+                print(f"   Iterations: {iterations}")
 
         # Save results if requested
         if config["io"]["output"]:
@@ -435,12 +442,14 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
                     }
                 else:
                     # Structured result
+                    U = getattr(result, "U", None)
+                    M = getattr(result, "M", None)
                     result_dict = {
-                        "U": result.U.tolist(),
-                        "M": result.M.tolist(),
-                        "iterations": result.iterations,
-                        "converged": result.converged,
-                        "metadata": result.metadata,
+                        "U": U.tolist() if U is not None else None,
+                        "M": M.tolist() if M is not None else None,
+                        "iterations": getattr(result, "iterations", None),
+                        "converged": getattr(result, "converged", None),
+                        "metadata": getattr(result, "metadata", None),
                     }
 
                 with open(output_path, "w") as f:

@@ -18,62 +18,53 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]  # Reduced to single version to save minutes
+        python-version: ["3.12"]  # Updated to minimum supported version
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5  # Updated to latest
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install black==24.4.2 "isort[colors]" mypy flake8 pylint psutil colorama
-        pip install -e .
+        pip install -e .[dev]  # Use pyproject.toml dev dependencies
 
-    - name: Check code formatting with Black
+    - name: Ruff Formatting Check
       run: |
-        black --check --diff mfg_pde/ --exclude="archive/"
+        echo "🎨 Running Ruff formatter (10x faster than Black, uses pyproject.toml config)..."
+        ruff format --check --diff mfg_pde/
         if [ $? -ne 0 ]; then
-          echo "❌ Code formatting issues found. Run 'black mfg_pde/' to fix."
+          echo "❌ Formatting issues found. Run 'ruff format mfg_pde/' to fix."
           exit 1
         else
-          echo "✅ Code formatting is correct."
+          echo "✅ Code formatting is perfect."
         fi
 
-    - name: Check import sorting with isort
+    - name: Ruff Linting
       run: |
-        isort --check-only --diff --color mfg_pde/
+        echo "🔍 Running Ruff linter (replaces Pylint + flake8 + isort, uses pyproject.toml config)..."
+        ruff check --output-format=github mfg_pde/
         if [ $? -ne 0 ]; then
-          echo "❌ Import sorting issues found. Run 'isort mfg_pde/' to fix."
+          echo "❌ Linting issues found. Run 'ruff check --fix mfg_pde/' to auto-fix."
           exit 1
         else
-          echo "✅ Import sorting is correct."
+          echo "✅ All linting checks passed."
         fi
 
     - name: Type checking with mypy
       run: |
-        echo "🔍 Running type checking..."
-        mypy mfg_pde --ignore-missing-imports --no-error-summary || true
-        # Note: Allow mypy to fail for now during transition period
-
-    - name: Linting with flake8
-      run: |
-        echo "🔍 Running flake8 linting..."
-        flake8 mfg_pde --max-line-length=88 \
-          --extend-ignore=E203,W503,E701,F401,F403,E722,E731,F541,F811,F841 \
-          --exclude=mfg_pde/utils/__pycache__,archive/ --statistics || true
-        # Note: Relaxed linting during codebase modernization
-
-    - name: Advanced linting with pylint
-      run: |
-        echo "🔍 Running pylint analysis..."
-        pylint mfg_pde --disable=C0103,R0913,R0914,R0902,R0903,C0415 \
-          --max-line-length=88 --good-names=i,j,k,x,y,z,t,U,M,dx,dt || true
-        # Note: Allow pylint to fail for now during transition period
+        echo "🔍 Running mypy type checking (uses pyproject.toml config)..."
+        mypy mfg_pde/
+        if [ $? -ne 0 ]; then
+          echo "⚠️ Type checking issues found (allowed during modernization)"
+        else
+          echo "✅ Type checking passed."
+        fi
+        # Continue regardless of mypy result during modernization
 
     - name: Check parameter migration compliance
       run: |
@@ -92,16 +83,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install psutil memory_profiler
-        pip install -e .
+        pip install -e .[performance]  # Use pyproject.toml performance dependencies
 
     - name: Memory usage test
       run: |
@@ -140,15 +130,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install -e .[performance]
 
     - name: Performance regression test
       run: |
@@ -181,15 +171,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install -e .[docs]
 
     - name: Check documentation completeness
       run: |

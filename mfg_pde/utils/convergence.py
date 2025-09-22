@@ -31,11 +31,13 @@ Usage:
     diagnostics = monitor.update(u_current, u_previous, m_current, x_grid)
 """
 
+from __future__ import annotations
+
 import inspect
 import warnings
 from collections import deque
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -104,7 +106,7 @@ class DistributionComparator:
         return np.sum(p_safe * np.log(p_safe / q_safe))
 
     @staticmethod
-    def statistical_moments(distribution: np.ndarray, x: np.ndarray) -> Dict[str, float]:
+    def statistical_moments(distribution: np.ndarray, x: np.ndarray) -> dict[str, float]:
         """
         Compute statistical moments of a distribution.
 
@@ -163,7 +165,9 @@ class OscillationDetector:
         """Add new error sample to history."""
         self.error_history.append(error)
 
-    def is_stabilized(self, magnitude_threshold: float, stability_threshold: float) -> Tuple[bool, Dict[str, float]]:
+    def is_stabilized(
+        self, magnitude_threshold: float, stability_threshold: float
+    ) -> tuple[bool, dict[str, float | str | int]]:
         """
         Check if oscillation has stabilized based on magnitude and variability.
 
@@ -198,7 +202,7 @@ class OscillationDetector:
             "max_error": np.max(errors),
         }
 
-        return magnitude_ok and stability_ok, diagnostics
+        return bool(magnitude_ok and stability_ok), diagnostics
 
 
 # =============================================================================
@@ -259,7 +263,7 @@ class AdvancedConvergenceMonitor:
         u_previous: np.ndarray,
         m_current: np.ndarray,
         x_grid: np.ndarray,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update convergence monitoring with current iteration data.
 
@@ -275,7 +279,7 @@ class AdvancedConvergenceMonitor:
         self.x_grid = x_grid
 
         # Compute L2 error for value function
-        u_l2_error = np.linalg.norm(u_current - u_previous)
+        u_l2_error = float(np.linalg.norm(u_current - u_previous))
         self.oscillation_detector.add_sample(u_l2_error)
 
         # Initialize diagnostics
@@ -346,7 +350,7 @@ class AdvancedConvergenceMonitor:
 
         return diagnostics
 
-    def get_convergence_summary(self) -> Dict[str, Any]:
+    def get_convergence_summary(self) -> dict[str, Any]:
         """
         Get summary of convergence behavior over all iterations.
 
@@ -379,7 +383,7 @@ class AdvancedConvergenceMonitor:
 
         return summary
 
-    def plot_convergence_history(self, save_path: Optional[str] = None):
+    def plot_convergence_history(self, save_path: str | None = None):
         """
         Plot convergence history with multiple criteria.
 
@@ -490,7 +494,7 @@ class ParticleMethodDetector:
     """
 
     @staticmethod
-    def detect_particle_methods(solver: "MFGSolver") -> Tuple[bool, Dict[str, Any]]:
+    def detect_particle_methods(solver: MFGSolver) -> tuple[bool, dict[str, Any]]:
         """
         Detect if solver uses particle-based methods.
 
@@ -536,8 +540,9 @@ class ParticleMethodDetector:
         ]
 
         # Check solver's fp_solver if it exists
-        if hasattr(solver, "fp_solver") and solver.fp_solver is not None:
-            fp_class_name = solver.fp_solver.__class__.__name__
+        fp_solver = getattr(solver, "fp_solver", None)
+        if fp_solver is not None:
+            fp_class_name = fp_solver.__class__.__name__
             if any(particle_name in fp_class_name for particle_name in particle_class_names):
                 detection_info["particle_components"].append(f"fp_solver:{fp_class_name}")
                 detection_info["detection_methods"].append("component_class_inspection")
@@ -619,9 +624,9 @@ class AdaptiveConvergenceWrapper:
 
     def __init__(
         self,
-        solver: Optional["MFGSolver"] = None,
+        solver: MFGSolver | None = None,
         classical_tol: float = 1e-3,
-        force_particle_mode: Optional[bool] = None,
+        force_particle_mode: bool | None = None,
         verbose: bool = True,
         **advanced_convergence_kwargs,
     ):
@@ -665,7 +670,7 @@ class AdaptiveConvergenceWrapper:
         solver_class.__init__ = wrapped_init
         return solver_class
 
-    def _wrap_solver(self, solver: "MFGSolver"):
+    def _wrap_solver(self, solver: MFGSolver):
         """Apply adaptive convergence wrapping to a solver instance."""
         self._wrapped_solver = solver
 
@@ -702,17 +707,24 @@ class AdaptiveConvergenceWrapper:
             print("   -> Wasserstein distance + oscillation stabilization")
 
             # Show detection details
-            if "particle_components" in self._detection_info:
-                components = self._detection_info["particle_components"][:3]  # Show first 3
-                print(f"   -> Evidence: {', '.join(components)}")
+            if self._detection_info and "particle_components" in self._detection_info:
+                particle_components = self._detection_info["particle_components"]
+                if isinstance(particle_components, list):
+                    components = particle_components[:3]  # Show first 3
+                    print(f"   -> Evidence: {', '.join(components)}")
 
-            print(f"   -> Confidence: {self._detection_info.get('confidence', 0):.1%}")
+            confidence = self._detection_info.get("confidence", 0) if self._detection_info else 0
+            print(f"   -> Confidence: {confidence:.1%}")
 
             # Show advanced settings
             monitor = self._convergence_monitor
-            print(f"   -> Wasserstein tolerance: {monitor.wasserstein_tol}")
-            print(f"   -> U magnitude tolerance: {monitor.u_magnitude_tol}")
-            print(f"   -> Stability tolerance: {monitor.u_stability_tol}")
+            if monitor:
+                wasserstein_tol = getattr(monitor, "wasserstein_tol", "N/A")
+                u_magnitude_tol = getattr(monitor, "u_magnitude_tol", "N/A")
+                u_stability_tol = getattr(monitor, "u_stability_tol", "N/A")
+                print(f"   -> Wasserstein tolerance: {wasserstein_tol}")
+                print(f"   -> U magnitude tolerance: {u_magnitude_tol}")
+                print(f"   -> Stability tolerance: {u_stability_tol}")
         else:
             print("GRID-BASED METHODS DETECTED")
             print("   -> Using CLASSICAL L2 error convergence")
@@ -736,9 +748,14 @@ class AdaptiveConvergenceWrapper:
         Classical solve with L2 error convergence.
         """
         # Simply call the original solve method
-        return self._original_solve(*args, **kwargs)
+        if self._original_solve is not None:
+            return self._original_solve(*args, **kwargs)
+        else:
+            raise RuntimeError("No original solve method available")
 
-    def _particle_aware_solve(self, Niter: int = 20, l2errBound: float = None, verbose: bool = None, **kwargs):
+    def _particle_aware_solve(
+        self, Niter: int = 20, l2errBound: float | None = None, verbose: bool | None = None, **kwargs
+    ):
         """
         Particle-aware solve with advanced convergence criteria.
         """
@@ -780,7 +797,10 @@ class AdaptiveConvergenceWrapper:
 
         try:
             # Store original results
-            results = self._original_solve(Niter, l2errBound, verbose=False, **kwargs)
+            if self._original_solve is not None:
+                results = self._original_solve(Niter, l2errBound, verbose=False, **kwargs)
+            else:
+                raise RuntimeError("No original solve method available")
 
             # If we got valid results, analyze them with advanced criteria
             if len(results) >= 2:
@@ -805,8 +825,8 @@ class AdaptiveConvergenceWrapper:
             return self._classical_solve(Niter, l2errBound, verbose, **kwargs)
 
     def _analyze_solution_convergence(
-        self, U: np.ndarray, M: np.ndarray, x_grid: np.ndarray, original_info: Dict
-    ) -> Dict[str, Any]:
+        self, U: np.ndarray, M: np.ndarray, x_grid: np.ndarray, original_info: dict
+    ) -> dict[str, Any]:
         """
         Post-hoc analysis of solution convergence using advanced criteria.
         """
@@ -848,7 +868,7 @@ class AdaptiveConvergenceWrapper:
         """Get current convergence mode."""
         return "particle_aware" if self._particle_mode else "classical"
 
-    def get_detection_info(self) -> Dict[str, Any]:
+    def get_detection_info(self) -> dict[str, Any]:
         """Get particle detection information."""
         return self._detection_info or {}
 
@@ -889,7 +909,7 @@ def create_default_monitor(**kwargs) -> AdvancedConvergenceMonitor:
 
 def adaptive_convergence(
     classical_tol: float = 1e-3,
-    force_particle_mode: Optional[bool] = None,
+    force_particle_mode: bool | None = None,
     verbose: bool = True,
     **advanced_kwargs,
 ):
@@ -919,7 +939,7 @@ def adaptive_convergence(
     return decorator
 
 
-def wrap_solver_with_adaptive_convergence(solver: "MFGSolver", **kwargs) -> "MFGSolver":
+def wrap_solver_with_adaptive_convergence(solver: MFGSolver, **kwargs) -> MFGSolver:
     """
     Wrap an existing solver instance with adaptive convergence.
 
@@ -939,7 +959,7 @@ def wrap_solver_with_adaptive_convergence(solver: "MFGSolver", **kwargs) -> "MFG
     return solver  # The solver is modified in-place by the wrapper
 
 
-def test_particle_detection(solver: "MFGSolver") -> Dict[str, Any]:
+def test_particle_detection(solver: MFGSolver) -> dict[str, Any]:
     """
     Test particle method detection on a solver without wrapping it.
 

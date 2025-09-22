@@ -49,7 +49,7 @@ def run_particle_collocation_example():
         "coefCT": 0.05,
     }
 
-    print(f"\nProblem Configuration:")
+    print("\nProblem Configuration:")
     for key, value in problem_params.items():
         print(f"  {key}: {value}")
 
@@ -90,7 +90,7 @@ def run_particle_collocation_example():
         "use_monotone_constraints": True,
     }
 
-    print(f"\nSolver Configuration:")
+    print("\nSolver Configuration:")
     for key, value in solver_params.items():
         if key != "boundary_indices":
             if key == "use_monotone_constraints" and value:
@@ -100,7 +100,7 @@ def run_particle_collocation_example():
 
     # Method 1: Modern factory pattern (if available)
     if FACTORY_AVAILABLE:
-        print(f"\n=== Method 1: Factory Pattern Usage ===")
+        print("\n=== Method 1: Factory Pattern Usage ===")
         config = create_fast_config()
         # Customize config for this example
         config.particle.num_particles = solver_params["num_particles"]
@@ -124,7 +124,7 @@ def run_particle_collocation_example():
             factory_result = factory_solver.solve(max_picard_iterations=18, verbose=True)
             factory_time = time.time() - start_time
 
-            if hasattr(factory_result, 'solution'):
+            if hasattr(factory_result, "solution"):
                 U_factory, M_factory = factory_result.solution, factory_result.density
                 print(f"Factory method completed in {factory_time:.2f}s")
                 print(f"Factory convergence: {factory_result.convergence_info}")
@@ -136,13 +136,15 @@ def run_particle_collocation_example():
             FACTORY_AVAILABLE = False
 
     # Method 2: Direct class usage (always available)
-    print(f"\n=== Method 2: Direct Class Usage ===")
+    print("\n=== Method 2: Direct Class Usage ===")
     solver = ParticleCollocationSolver(problem=problem, collocation_points=collocation_points, **solver_params)
 
     # Solve with modern parameter names
     start_time = time.time()
     U, M, info = solver.solve(
-        max_picard_iterations=18, picard_tolerance=1e-5, verbose=True  # Modern parameter name  # Modern parameter name
+        max_picard_iterations=18,
+        picard_tolerance=1e-5,
+        verbose=True,  # Modern parameter name  # Modern parameter name
     )
     solve_time = time.time() - start_time
 
@@ -150,7 +152,7 @@ def run_particle_collocation_example():
     print(f"Convergence: {info.get('converged', 'Unknown')}")
 
     # Mass conservation analysis
-    print(f"\n=== Mass Conservation Analysis ===")
+    print("\n=== Mass Conservation Analysis ===")
     total_mass = trapezoid(M[-1, :], problem.x_grid)
     mass_error = abs(total_mass - 1.0)
     print(f"Final total mass: {total_mass:.6f}")
@@ -164,46 +166,46 @@ def run_particle_collocation_example():
         print("⚠ Mass conservation could be improved")
 
     # Basic visualization
-    print(f"\n=== Creating Visualization ===")
+    print("\n=== Creating Visualization ===")
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
 
     # Value function evolution
     T_plot, X_plot = np.meshgrid(problem.t_grid, problem.x_grid)
-    im1 = ax1.contourf(T_plot, X_plot, U.T, levels=20, cmap='viridis')
-    ax1.set_title('Value Function u(t,x)', fontsize=14)
-    ax1.set_xlabel('Time t')
-    ax1.set_ylabel('Space x')
+    im1 = ax1.contourf(T_plot, X_plot, U.T, levels=20, cmap="viridis")
+    ax1.set_title("Value Function u(t,x)", fontsize=14)
+    ax1.set_xlabel("Time t")
+    ax1.set_ylabel("Space x")
     plt.colorbar(im1, ax=ax1)
 
     # Density evolution
-    im2 = ax2.contourf(T_plot, X_plot, M.T, levels=20, cmap='plasma')
-    ax2.set_title('Density m(t,x)', fontsize=14)
-    ax2.set_xlabel('Time t')
-    ax2.set_ylabel('Space x')
+    im2 = ax2.contourf(T_plot, X_plot, M.T, levels=20, cmap="plasma")
+    ax2.set_title("Density m(t,x)", fontsize=14)
+    ax2.set_xlabel("Time t")
+    ax2.set_ylabel("Space x")
     plt.colorbar(im2, ax=ax2)
 
     # Final profiles
-    ax3.plot(problem.x_grid, U[-1, :], 'b-', linewidth=2, label='Final value function')
-    ax3.set_title('Final Value Function u(T,x)', fontsize=14)
-    ax3.set_xlabel('Space x')
-    ax3.set_ylabel('u(T,x)')
+    ax3.plot(problem.x_grid, U[-1, :], "b-", linewidth=2, label="Final value function")
+    ax3.set_title("Final Value Function u(T,x)", fontsize=14)
+    ax3.set_xlabel("Space x")
+    ax3.set_ylabel("u(T,x)")
     ax3.grid(True, alpha=0.3)
     ax3.legend()
 
-    ax4.plot(problem.x_grid, M[-1, :], 'r-', linewidth=2, label='Final density')
-    ax4.set_title('Final Density m(T,x)', fontsize=14)
-    ax4.set_xlabel('Space x')
-    ax4.set_ylabel('m(T,x)')
+    ax4.plot(problem.x_grid, M[-1, :], "r-", linewidth=2, label="Final density")
+    ax4.set_title("Final Density m(T,x)", fontsize=14)
+    ax4.set_xlabel("Space x")
+    ax4.set_ylabel("m(T,x)")
     ax4.grid(True, alpha=0.3)
     ax4.legend()
 
     plt.tight_layout()
-    plt.savefig('particle_collocation_example.png', dpi=150, bbox_inches='tight')
+    plt.savefig("particle_collocation_example.png", dpi=150, bbox_inches="tight")
     print("Visualization saved as 'particle_collocation_example.png'")
 
     # Show comparison if both methods worked
-    if FACTORY_AVAILABLE and 'U_factory' in locals():
-        print(f"\n=== Method Comparison ===")
+    if FACTORY_AVAILABLE and "U_factory" in locals():
+        print("\n=== Method Comparison ===")
         solution_diff = np.max(np.abs(U - U_factory))
         density_diff = np.max(np.abs(M - M_factory))
         print(f"Max solution difference: {solution_diff:.2e}")
@@ -214,14 +216,14 @@ def run_particle_collocation_example():
         else:
             print("ℹ Methods produce slightly different results (expected)")
 
-    print(f"\n=== Example Summary ===")
-    print(f"✓ Particle-collocation method successfully demonstrated")
+    print("\n=== Example Summary ===")
+    print("✓ Particle-collocation method successfully demonstrated")
     print(f"✓ Mass conservation error: {mass_error:.2e}")
-    print(f"✓ Modern API usage with updated parameter names")
+    print("✓ Modern API usage with updated parameter names")
     if FACTORY_AVAILABLE:
-        print(f"✓ Factory pattern demonstrated")
-    print(f"✓ No-flux boundary conditions properly handled")
-    print(f"✓ QP constraints enabled for monotonicity preservation")
+        print("✓ Factory pattern demonstrated")
+    print("✓ No-flux boundary conditions properly handled")
+    print("✓ QP constraints enabled for monotonicity preservation")
 
     return U, M, info
 

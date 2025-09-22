@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 # For type hinting, using a forward reference to MFGProblem
@@ -24,7 +26,7 @@ class BaseFPSolver(ABC):
     complex optimal control.
     """
 
-    def __init__(self, problem: "MFGProblem"):
+    def __init__(self, problem: MFGProblem):
         """
         Initializes the FP solver with the MFG problem definition.
 
@@ -56,4 +58,3 @@ class BaseFPSolver(ABC):
             np.ndarray: A 2D array of shape (Nt, Nx) representing the computed
                         density M(t,x) over the time-space grid.
         """
-        pass

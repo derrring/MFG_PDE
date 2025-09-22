@@ -8,13 +8,11 @@ This module provides a sophisticated type system that enables:
 - Mathematical constraint validation through types
 """
 
-from abc import ABC, abstractmethod
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar, Union
-
-import numpy as np
-from numpy.typing import NDArray
+from typing import Any, Generic, TypeVar
 
 
 class MathematicalSpace(Enum):
@@ -58,16 +56,16 @@ class MFGType:
     state_space: MathematicalSpace
     control_space: MathematicalSpace
     density_space: MathematicalSpace
-    time_horizon: Union[float, str]  # "finite" or "infinite"
+    time_horizon: float | str  # "finite" or "infinite"
 
     # Regularity properties
     hamiltonian_regularity: str = "C²"
     cost_regularity: str = "C¹"
-    constraint_type: Optional[str] = None
+    constraint_type: str | None = None
 
     # Numerical properties
-    preferred_methods: List[NumericalMethod] = None
-    stability_constraints: Dict[str, Any] = None
+    preferred_methods: list[NumericalMethod] | None = None
+    stability_constraints: dict[str, Any] | None = None
 
     def __post_init__(self):
         if self.preferred_methods is None:
@@ -89,9 +87,11 @@ class MFGType:
 
         return True
 
-    def get_stability_constraint(self, parameter: str) -> Optional[Any]:
+    def get_stability_constraint(self, parameter: str) -> Any | None:
         """Get stability constraint for given parameter."""
-        return self.stability_constraints.get(parameter)
+        if self.stability_constraints is not None:
+            return self.stability_constraints.get(parameter)
+        return None
 
 
 T = TypeVar("T")
@@ -107,7 +107,7 @@ class TypedMFGProblem(Generic[T]):
     automatic solver selection and optimization.
     """
 
-    def __init__(self, problem_data: Any, mfg_type: MFGType, type_parameter: Type[T] = None):
+    def __init__(self, problem_data: Any, mfg_type: MFGType, type_parameter: type[T] | None = None):
         self.problem_data = problem_data
         self.mfg_type = mfg_type
         self.type_parameter = type_parameter
@@ -154,12 +154,12 @@ class TypedMFGProblem(Generic[T]):
         """Validate numerical stability constraints."""
         constraints = self.mfg_type.stability_constraints
 
-        if "max_dt" in constraints:
+        if constraints is not None and "max_dt" in constraints:
             max_dt = constraints["max_dt"]
             if hasattr(self.problem_data, "dt") and self.problem_data.dt > max_dt:
                 raise TypeError(f"Time step {self.problem_data.dt} exceeds stability limit {max_dt}")
 
-    def get_compatible_solvers(self) -> List[Type]:
+    def get_compatible_solvers(self) -> list[type]:
         """Get list of solver types compatible with this problem type."""
         compatible = []
 
@@ -171,7 +171,7 @@ class TypedMFGProblem(Generic[T]):
 
         return compatible
 
-    def specialize_for_backend(self, backend: str) -> "TypedMFGProblem[T]":
+    def specialize_for_backend(self, backend: str) -> TypedMFGProblem[T]:
         """Create specialized version for specific computational backend."""
         specialized_type = MFGType(
             state_space=self.mfg_type.state_space,
@@ -187,8 +187,11 @@ class TypedMFGProblem(Generic[T]):
 
         return TypedMFGProblem(self.problem_data, specialized_type, self.type_parameter)
 
-    def _filter_methods_for_backend(self, backend: str) -> List[NumericalMethod]:
+    def _filter_methods_for_backend(self, backend: str) -> list[NumericalMethod]:
         """Filter numerical methods based on backend capabilities."""
+        if self.mfg_type.preferred_methods is None:
+            return []
+
         if backend == "jax":
             # JAX excels at certain methods
             return [
@@ -206,8 +209,11 @@ class TypedMFGProblem(Generic[T]):
         else:
             return self.mfg_type.preferred_methods
 
-    def _adjust_constraints_for_backend(self, backend: str) -> Dict[str, Any]:
+    def _adjust_constraints_for_backend(self, backend: str) -> dict[str, Any]:
         """Adjust stability constraints for backend."""
+        if self.mfg_type.stability_constraints is None:
+            return {}
+
         constraints = self.mfg_type.stability_constraints.copy()
 
         if backend == "jax":
@@ -231,7 +237,8 @@ class SolverMetaclass(type):
 
         # Extract type information from class
         if hasattr(cls, "compatible_types"):
-            for mfg_type in cls.compatible_types:
+            compatible_types = cls.compatible_types
+            for mfg_type in compatible_types:
                 SolverRegistry.register_solver(cls, mfg_type)
 
         # Add type checking to solve method
@@ -261,11 +268,11 @@ class SolverMetaclass(type):
 class SolverRegistry:
     """Registry for type-based solver dispatch."""
 
-    _solvers: Dict[MFGType, List[Type]] = {}
-    _method_map: Dict[NumericalMethod, Type] = {}
+    _solvers: dict[MFGType, list[type]] = {}
+    _method_map: dict[NumericalMethod, type] = {}
 
     @classmethod
-    def register_solver(cls, solver_class: Type, mfg_type: MFGType):
+    def register_solver(cls, solver_class: type, mfg_type: MFGType):
         """Register solver for given MFG type."""
         if mfg_type not in cls._solvers:
             cls._solvers[mfg_type] = []
@@ -276,7 +283,7 @@ class SolverRegistry:
             cls._method_map[solver_class.method_type] = solver_class
 
     @classmethod
-    def get_solver_for_type(cls, mfg_type: MFGType) -> Optional[Type]:
+    def get_solver_for_type(cls, mfg_type: MFGType) -> type | None:
         """Get best solver for given MFG type."""
         compatible_solvers = cls._solvers.get(mfg_type, [])
         if compatible_solvers:
@@ -285,12 +292,12 @@ class SolverRegistry:
         return None
 
     @classmethod
-    def get_solver_for_method(cls, method: NumericalMethod) -> Optional[Type]:
+    def get_solver_for_method(cls, method: NumericalMethod) -> type | None:
         """Get solver implementing given numerical method."""
         return cls._method_map.get(method)
 
     @classmethod
-    def find_compatible_solvers(cls, problem: TypedMFGProblem) -> List[Type]:
+    def find_compatible_solvers(cls, problem: TypedMFGProblem) -> list[type]:
         """Find all solvers compatible with given typed problem."""
         compatible = []
 
@@ -310,12 +317,12 @@ class DynamicSolver(metaclass=SolverMetaclass):
     Uses metaclass to provide automatic type checking and registration.
     """
 
-    method_type: NumericalMethod = None
-    compatible_types: List[MFGType] = []
+    method_type: NumericalMethod | None = None
+    compatible_types: list[MFGType] = []
 
     def __init__(self, config=None):
         self.config = config
-        self.problem_type: Optional[MFGType] = None
+        self.problem_type: MFGType | None = None
 
     def solve(self, problem, *args, **kwargs):
         """Solve method with automatic type checking (added by metaclass)."""
@@ -326,10 +333,12 @@ class DynamicSolver(metaclass=SolverMetaclass):
         self.problem_type = mfg_type
 
         # Adjust configuration based on type constraints
-        if mfg_type.get_stability_constraint("max_dt"):
-            max_dt = mfg_type.get_stability_constraint("max_dt")
-            if hasattr(self.config, "dt") and self.config.dt > max_dt:
-                self.config.dt = max_dt * 0.9  # Safety margin
+        if self.config is not None:
+            max_dt_constraint = mfg_type.get_stability_constraint("max_dt")
+            if max_dt_constraint is not None:
+                max_dt = max_dt_constraint
+                if hasattr(self.config, "dt") and self.config.dt > max_dt:
+                    self.config.dt = max_dt * 0.9  # Safety margin
 
 
 # Predefined MFG types for common problems
@@ -406,15 +415,15 @@ def infer_mfg_type(problem) -> MFGType:
     )
 
 
-def create_typed_problem(problem, mfg_type: MFGType = None) -> TypedMFGProblem:
+def create_typed_problem(problem, mfg_type: MFGType | None = None) -> TypedMFGProblem:
     """Create typed MFG problem from standard problem."""
     if mfg_type is None:
         mfg_type = infer_mfg_type(problem)
 
-    return TypedMFGProblem(problem, mfg_type)
+    return TypedMFGProblem(problem, mfg_type, None)
 
 
-def dispatch_solver(problem: TypedMFGProblem, method_preference: Optional[NumericalMethod] = None) -> DynamicSolver:
+def dispatch_solver(problem: TypedMFGProblem, method_preference: NumericalMethod | None = None) -> DynamicSolver:
     """Automatically dispatch appropriate solver for typed problem."""
     if method_preference:
         solver_class = SolverRegistry.get_solver_for_method(method_preference)

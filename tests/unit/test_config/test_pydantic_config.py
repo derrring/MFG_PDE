@@ -11,8 +11,6 @@ import pytest
 from pydantic import ValidationError
 
 from mfg_pde.config.pydantic_config import (
-    FPConfig,
-    HJBConfig,
     MFGSolverConfig,
     NewtonConfig,
     PicardConfig,
@@ -229,11 +227,11 @@ class TestMFGSolverConfig:
         # Check that the Config class has env_prefix set correctly
         # In Pydantic v2, model_config can be a dict or ConfigDict
         env_prefix = None
-        if hasattr(MFGSolverConfig.model_config, 'env_prefix'):
+        if hasattr(MFGSolverConfig.model_config, "env_prefix"):
             env_prefix = MFGSolverConfig.model_config.env_prefix
         elif isinstance(MFGSolverConfig.model_config, dict):
-            env_prefix = MFGSolverConfig.model_config.get('env_prefix')
-        assert env_prefix == 'MFG_'
+            env_prefix = MFGSolverConfig.model_config.get("env_prefix")
+        assert env_prefix == "MFG_"
 
     def test_metadata_handling(self):
         """Test metadata dictionary handling."""
@@ -342,8 +340,8 @@ class TestConfigurationFactories:
         # Should be able to serialize to dict
         config_dict = config.model_dump()
         assert isinstance(config_dict, dict)
-        assert 'newton' in config_dict
-        assert 'picard' in config_dict
+        assert "newton" in config_dict
+        assert "picard" in config_dict
 
         # Should be able to reconstruct
         reconstructed = MFGSolverConfig(**config_dict)
@@ -395,7 +393,6 @@ class TestConfigurationEdgeCases:
             # This should either work or raise ValidationError
             config.convergence_tolerance = -1.0
             # If we get here, validation_assignment might be False
-            pass
         except (ValidationError, ValueError):
             # This is expected behavior with validation_assignment=True
             pass

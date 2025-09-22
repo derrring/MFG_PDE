@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 # Add the parent directory to the path so we can import mfg_pde
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde.utils import configure_logging, get_logger
 from mfg_pde.visualization.interactive_plots import quick_2d_plot as create_mfg_solution_plot

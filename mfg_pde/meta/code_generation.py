@@ -11,13 +11,11 @@ Features:
 - Backend-agnostic code generation
 """
 
+from __future__ import annotations
+
 import ast
-import inspect
 import textwrap
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type, Union
-
-import numpy as np
 
 
 @dataclass
@@ -26,8 +24,8 @@ class DiscretizationScheme:
 
     operator: str  # "grad", "div", "laplacian", etc.
     order: int  # Approximation order
-    stencil: List[int]  # Stencil points
-    coefficients: List[float]  # Stencil coefficients
+    stencil: list[int]  # Stencil points
+    coefficients: list[float]  # Stencil coefficients
     boundary_treatment: str = "periodic"
 
 
@@ -41,8 +39,8 @@ class CodeGenerator:
 
     def __init__(self, backend: str = "numpy"):
         self.backend = backend
-        self.templates: Dict[str, str] = {}
-        self.optimizations: List[str] = []
+        self.templates: dict[str, str] = {}
+        self.optimizations: list[str] = []
 
     def add_template(self, name: str, template: str) -> None:
         """Add code template."""
@@ -440,7 +438,7 @@ class Generated{solver_name}(BaseMFGSolver):
 def generate_solver_class(
     solver_name: str,
     mathematical_system,
-    discretization_schemes: Dict[str, DiscretizationScheme],
+    discretization_schemes: dict[str, DiscretizationScheme],
     backend: str = "numpy",
 ) -> str:
     """
@@ -478,9 +476,9 @@ def generate_discretization(operator: str, order: int, domain_type: str = "inter
     Generate discretization scheme for given operator and order.
 
     Args:
-        operator: "gradient", "laplacian", "divergence", etc.
+        operator: gradient, "laplacian", "divergence", etc.
         order: Approximation order (2, 4, 6, etc.)
-        domain_type: "interval", "periodic", "circle", etc.
+        domain_type: interval, "periodic", "circle", etc.
 
     Returns:
         DiscretizationScheme with appropriate stencil and coefficients

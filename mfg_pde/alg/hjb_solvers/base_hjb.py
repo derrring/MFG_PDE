@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 import scipy.sparse as sparse
-import scipy.sparse.linalg
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -15,7 +16,7 @@ P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
 
 
 class BaseHJBSolver(ABC):
-    def __init__(self, problem: "MFGProblem"):
+    def __init__(self, problem: MFGProblem):
         self.problem = problem
         self.hjb_method_name = "BaseHJB"
 
@@ -36,7 +37,7 @@ def _calculate_p_values(
     Nx: int,
     clip: bool = False,
     clip_limit: float = P_VALUE_CLIP_LIMIT_FD_JAC,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     # (Implementation from base_hjb_v4 - no p-value clipping by default)
     p_forward, p_backward = 0.0, 0.0
     if Nx > 1 and abs(Dx) > 1e-14:
@@ -64,7 +65,7 @@ def _calculate_p_values(
     return _clip_p_values(raw_p_values, clip_limit) if clip else raw_p_values
 
 
-def _clip_p_values(p_values: Dict[str, float], clip_limit: float) -> Dict[str, float]:  # Helper for FD Jac
+def _clip_p_values(p_values: dict[str, float], clip_limit: float) -> dict[str, float]:  # Helper for FD Jac
     clipped_p_values = {}
     for key, p_val in p_values.items():
         if np.isnan(p_val) or np.isinf(p_val):
@@ -78,7 +79,7 @@ def compute_hjb_residual(
     U_n_current_newton_iterate: np.ndarray,  # U_kp1_n in notebook's getFnU_withM
     U_n_plus_1_from_hjb_step: np.ndarray,  # U_kp1_np1 in notebook
     M_density_at_n_plus_1: np.ndarray,  # M_k_np1 in notebook
-    problem: "MFGProblem",
+    problem: MFGProblem,
     t_idx_n: int,  # Time index for U_n
 ) -> np.ndarray:
     Nx = problem.Nx + 1
@@ -157,7 +158,7 @@ def compute_hjb_jacobian(
     U_n_current_newton_iterate: np.ndarray,  # U_new_n_tmp in notebook Newton step
     U_k_n_from_prev_picard: np.ndarray,  # U_k_n (or Uoldn) in notebook Jacobian
     M_density_at_n_plus_1: np.ndarray,
-    problem: "MFGProblem",
+    problem: MFGProblem,
     t_idx_n: int,
 ) -> sparse.csr_matrix:
     Nx = problem.Nx + 1
@@ -171,7 +172,7 @@ def compute_hjb_jacobian(
     J_U = np.zeros(Nx)
 
     if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
-        return sparse.diags([np.full(Nx, np.nan)], [0], shape=(Nx, Nx), format="csr")
+        return sparse.diags([np.full(Nx, np.nan)], [0], shape=(Nx, Nx)).tocsr()
 
     # Time derivative part: d/dU_n_current[j] of (U_n_current[i] - U_{n+1}[i])/Dt
     if abs(Dt) > 1e-14:
@@ -188,7 +189,8 @@ def compute_hjb_jacobian(
     # Try to get analytical/specific Jacobian contributions from the problem for H-part
     # Crucially, pass U_k_n_from_prev_picard for ExampleMFGProblem's specific Jacobian
     hamiltonian_jac_contrib = problem.get_hjb_hamiltonian_jacobian_contrib(
-        U_k_n_from_prev_picard, t_idx_n  # This is Uoldn from original notebook
+        U_k_n_from_prev_picard,
+        t_idx_n,  # This is Uoldn from original notebook
     )
 
     if hamiltonian_jac_contrib is not None:
@@ -315,9 +317,9 @@ def compute_hjb_jacobian(
 
     try:
         Jac = sparse.spdiags(diagonals_data, offsets, Nx, Nx, format="csr")
-    except ValueError as e:
+    except ValueError:
         fallback_diag = np.ones(Nx) * (1.0 / Dt if abs(Dt) > 1e-14 else 1.0)
-        Jac = sparse.diags([fallback_diag], [0], shape=(Nx, Nx), format="csr")
+        Jac = sparse.diags([fallback_diag], [0], shape=(Nx, Nx)).tocsr()
 
     return Jac.tocsr()
 
@@ -327,7 +329,7 @@ def newton_hjb_step(
     U_n_plus_1_from_hjb_step: np.ndarray,  # U_new_np1 in notebook
     U_k_n_from_prev_picard: np.ndarray,  # U_k_n in notebook
     M_density_at_n_plus_1: np.ndarray,
-    problem: "MFGProblem",
+    problem: MFGProblem,
     t_idx_n: int,
 ) -> tuple[np.ndarray, float]:
     Dx_norm = problem.Dx if abs(problem.Dx) > 1e-12 else 1.0
@@ -374,7 +376,7 @@ def newton_hjb_step(
         else:
             l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(Dx_norm)
 
-    except Exception as e:
+    except Exception:
         pass
 
     max_delta_u_norm = 1e2
@@ -392,13 +394,13 @@ def solve_hjb_timestep_newton(
     U_n_plus_1_from_hjb_step: np.ndarray,  # U_new[n+1] in notebook
     U_k_n_from_prev_picard: np.ndarray,  # U_k[n] in notebook
     M_density_at_n_plus_1: np.ndarray,  # M_k[n+1] in notebook
-    problem: "MFGProblem",
-    max_newton_iterations: int = None,
-    newton_tolerance: float = None,
-    t_idx_n: int = None,  # time index for U_n being solved
+    problem: MFGProblem,
+    max_newton_iterations: int | None = None,
+    newton_tolerance: float | None = None,
+    t_idx_n: int | None = None,  # time index for U_n being solved
     # Deprecated parameters for backward compatibility
-    NiterNewton: int = None,
-    l2errBoundNewton: float = None,
+    NiterNewton: int | None = None,
+    l2errBoundNewton: float | None = None,
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
@@ -451,6 +453,10 @@ def solve_hjb_timestep_newton(
     converged = False
 
     for iiter in range(max_newton_iterations):
+        # Ensure t_idx_n is not None
+        if t_idx_n is None:
+            t_idx_n = 0  # Default time index
+
         U_n_next_newton_iterate, l2_error = newton_hjb_step(
             U_n_current_newton_iterate,
             U_n_plus_1_from_hjb_step,
@@ -483,12 +489,12 @@ def solve_hjb_system_backward(
     M_density_from_prev_picard: np.ndarray,  # M_k in notebook
     U_final_condition_at_T: np.ndarray,
     U_from_prev_picard: np.ndarray,  # U_k in notebook
-    problem: "MFGProblem",
-    max_newton_iterations: int = None,
-    newton_tolerance: float = None,
+    problem: MFGProblem,
+    max_newton_iterations: int | None = None,
+    newton_tolerance: float | None = None,
     # Deprecated parameters for backward compatibility
-    NiterNewton: int = None,
-    l2errBoundNewton: float = None,
+    NiterNewton: int | None = None,
+    l2errBoundNewton: float | None = None,
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.

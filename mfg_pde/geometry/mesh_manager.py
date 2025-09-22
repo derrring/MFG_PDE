@@ -5,9 +5,11 @@ This module implements the core MeshManager and MeshPipeline classes that coordi
 the Gmsh → Meshio → PyVista workflow for professional mesh generation and analysis.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -27,8 +29,8 @@ class MeshPipeline:
 
     def __init__(
         self,
-        geometry: Union[BaseGeometry, Dict],
-        output_dir: Optional[str] = None,
+        geometry: BaseGeometry | dict,
+        output_dir: str | None = None,
         verbose: bool = True,
     ):
         """
@@ -49,7 +51,7 @@ class MeshPipeline:
         self.output_dir.mkdir(exist_ok=True)
 
         self.verbose = verbose
-        self.mesh_data: Optional[MeshData] = None
+        self.mesh_data: MeshData | None = None
 
         # Pipeline stages tracking
         self.stages_completed = {
@@ -59,7 +61,7 @@ class MeshPipeline:
             "visualization_ready": False,
         }
 
-    def _create_geometry_from_config(self, config: Dict) -> BaseGeometry:
+    def _create_geometry_from_config(self, config: dict) -> BaseGeometry:
         """Create geometry object from configuration dictionary."""
         geometry_type = config.get("type", "rectangle")
         dimension = config.get("dimension", 2)
@@ -75,7 +77,7 @@ class MeshPipeline:
         else:
             raise NotImplementedError(f"Dimension {dimension} not yet supported")
 
-    def execute_pipeline(self, stages: List[str] = None, export_formats: List[str] = None) -> MeshData:
+    def execute_pipeline(self, stages: list[str] | None = None, export_formats: list[str] | None = None) -> MeshData:
         """
         Execute complete mesh pipeline.
 
@@ -115,6 +117,8 @@ class MeshPipeline:
             self._stage_export_mesh(export_formats)
 
         logger.info("SUCCESS: Pipeline completed successfully")
+        if self.mesh_data is None:
+            raise RuntimeError("Failed to generate mesh data")
         return self.mesh_data
 
     def _stage_generate_mesh(self) -> MeshData:
@@ -160,11 +164,14 @@ class MeshPipeline:
         logger.info(" Stage 3: Preparing PyVista visualization")
 
         try:
+            if self.mesh_data is None:
+                raise RuntimeError("Mesh data is None")
+
             # Convert to PyVista format
             pyvista_mesh = self.mesh_data.to_pyvista()
 
             # Add quality data if available
-            if "quality" in self.mesh_data.quality_metrics:
+            if self.mesh_data.quality_metrics and "quality" in self.mesh_data.quality_metrics:
                 quality_data = self.mesh_data.quality_metrics["quality"]
                 if isinstance(quality_data, (list, np.ndarray)):
                     pyvista_mesh.cell_data["quality"] = quality_data
@@ -175,7 +182,7 @@ class MeshPipeline:
             logger.error(f"ERROR: Visualization preparation failed: {e}")
             raise
 
-    def _stage_export_mesh(self, formats: List[str]):
+    def _stage_export_mesh(self, formats: list[str]):
         """Pipeline Stage 4: Export mesh in multiple formats."""
         logger.info(f"💾 Stage 4: Exporting mesh in formats: {formats}")
 
@@ -189,15 +196,18 @@ class MeshPipeline:
             logger.error(f"ERROR: Mesh export failed: {e}")
             raise
 
-    def _save_quality_report(self, quality_metrics: Dict[str, float]):
+    def _save_quality_report(self, quality_metrics: dict[str, float]):
         """Save mesh quality report to file."""
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
+
         report_file = self.output_dir / "quality_report.txt"
 
         with open(report_file, "w") as f:
             f.write("Mesh Quality Analysis Report\n")
             f.write("=" * 30 + "\n\n")
 
-            f.write(f"Mesh Information:\n")
+            f.write("Mesh Information:\n")
             f.write(f"  Vertices: {self.mesh_data.num_vertices}\n")
             f.write(f"  Elements: {self.mesh_data.num_elements}\n")
             f.write(f"  Element Type: {self.mesh_data.element_type}\n")
@@ -213,7 +223,7 @@ class MeshPipeline:
         self,
         show_quality: bool = True,
         show_edges: bool = True,
-        scalars: Optional[str] = None,
+        scalars: str | None = None,
     ):
         """Create interactive PyVista visualization."""
         if not self.stages_completed["visualization_ready"]:
@@ -223,6 +233,9 @@ class MeshPipeline:
             import pyvista as pv
         except ImportError:
             raise ImportError("pyvista is required for interactive visualization")
+
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
 
         mesh = self.mesh_data.to_pyvista()
         plotter = pv.Plotter(title="MFG_PDE Mesh Visualization")
@@ -250,7 +263,7 @@ class MeshPipeline:
 
         plotter.show()
 
-    def get_pipeline_summary(self) -> Dict[str, Any]:
+    def get_pipeline_summary(self) -> dict[str, Any]:
         """Get summary of pipeline execution."""
         return {
             "geometry_type": type(self.geometry).__name__,
@@ -273,7 +286,7 @@ class MeshManager:
     managing multiple geometries and coordinating with MFG solvers.
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize mesh manager.
 
@@ -281,10 +294,10 @@ class MeshManager:
             config: Global mesh configuration
         """
         self.config = config or {}
-        self.geometries: Dict[str, BaseGeometry] = {}
-        self.pipelines: Dict[str, MeshPipeline] = {}
+        self.geometries: dict[str, BaseGeometry] = {}
+        self.pipelines: dict[str, MeshPipeline] = {}
 
-    def create_geometry(self, name: str, geometry_config: Dict) -> BaseGeometry:
+    def create_geometry(self, name: str, geometry_config: dict) -> BaseGeometry:
         """Create and register a geometry."""
         if geometry_config.get("dimension", 2) == 2:
             geometry = Domain2D(
@@ -300,7 +313,7 @@ class MeshManager:
         self.geometries[name] = geometry
         return geometry
 
-    def create_pipeline(self, name: str, geometry_name: str, output_dir: Optional[str] = None) -> MeshPipeline:
+    def create_pipeline(self, name: str, geometry_name: str, output_dir: str | None = None) -> MeshPipeline:
         """Create and register a mesh pipeline."""
         if geometry_name not in self.geometries:
             raise ValueError(f"Geometry '{geometry_name}' not found")
@@ -311,7 +324,7 @@ class MeshManager:
 
         return pipeline
 
-    def batch_generate_meshes(self, pipeline_names: List[str], stages: List[str] = None) -> Dict[str, MeshData]:
+    def batch_generate_meshes(self, pipeline_names: list[str], stages: list[str] | None = None) -> dict[str, MeshData]:
         """Generate multiple meshes in batch."""
         results = {}
 
@@ -328,7 +341,7 @@ class MeshManager:
 
         return results
 
-    def compare_mesh_quality(self, pipeline_names: List[str]) -> Dict[str, Dict]:
+    def compare_mesh_quality(self, pipeline_names: list[str]) -> dict[str, dict]:
         """Compare quality metrics across multiple meshes."""
         comparison = {}
 

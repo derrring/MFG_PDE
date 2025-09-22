@@ -18,29 +18,26 @@ Architecture:
 from .adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from .config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from .damped_fixed_point_iterator import FixedPointIterator
-from .enhanced_particle_collocation_solver import EnhancedParticleCollocationSolver, MonitoredParticleCollocationSolver
+from .enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
+from .hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 from .particle_collocation_solver import ParticleCollocationSolver
 
-# Backward compatibility alias
-DampedFixedPointIterator = FixedPointIterator
-
 __all__ = [
+    # Particle Collocation Solvers
+    "AdaptiveParticleCollocationSolver",
     # Fixed Point Iterators
     "ConfigAwareFixedPointIterator",
     "FixedPointIterator",
-    "DampedFixedPointIterator",  # Alias
-    # Particle Collocation Solvers
-    "ParticleCollocationSolver",
-    "AdaptiveParticleCollocationSolver",
+    # Hybrid Solvers
+    "HybridFPParticleHJBFDM",
     "MonitoredParticleCollocationSolver",
-    "EnhancedParticleCollocationSolver",
+    "ParticleCollocationSolver",
 ]
 
 # Solver categories for factory selection
 FIXED_POINT_SOLVERS = [
     "ConfigAwareFixedPointIterator",
     "FixedPointIterator",
-    "DampedFixedPointIterator",  # Alias
 ]
 
 PARTICLE_SOLVERS = [
@@ -50,4 +47,8 @@ PARTICLE_SOLVERS = [
     "EnhancedParticleCollocationSolver",
 ]
 
-ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + PARTICLE_SOLVERS
+HYBRID_SOLVERS = [
+    "HybridFPParticleHJBFDM",
+]
+
+ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + PARTICLE_SOLVERS + HYBRID_SOLVERS

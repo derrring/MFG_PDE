@@ -9,7 +9,6 @@ of parameter combinations.
 import pytest
 from hypothesis import assume, given, note, settings
 from hypothesis import strategies as st
-from hypothesis.extra.numpy import arrays
 
 import numpy as np
 

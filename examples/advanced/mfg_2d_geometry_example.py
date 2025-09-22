@@ -19,7 +19,6 @@ from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryManager, Domain2D, MeshPipeline
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 from mfg_pde.utils.polars_integration import create_analysis_dataframe
-from mfg_pde.visualization import MFGAnalytics
 
 # Configure logging
 configure_research_logging("mfg_2d_geometry", level="INFO")
@@ -219,7 +218,7 @@ def demonstrate_advanced_boundary_conditions():
 
     # Top: Time-dependent Dirichlet u = t*exp(-x²)
     def time_dependent_top(coords, time):
-        return time * np.exp(-coords[:, 0] ** 2)
+        return time * np.exp(-(coords[:, 0] ** 2))
 
     boundary_manager.add_boundary_condition(
         region_id=3,

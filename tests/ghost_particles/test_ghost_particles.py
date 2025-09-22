@@ -20,7 +20,7 @@ def test_ghost_particles():
     num_collocation_points = 5
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
     boundary_indices = np.array([0, num_collocation_points - 1])  # First and last points
-    no_flux_bc = BoundaryConditions(type='no_flux')
+    no_flux_bc = BoundaryConditions(type="no_flux")
 
     print(f"Collocation points: {collocation_points.flatten()}")
     print(f"Boundary indices: {boundary_indices}")
@@ -39,7 +39,7 @@ def test_ghost_particles():
     )
 
     # Examine neighborhood structure for boundary points
-    print(f"\n=== Neighborhood Analysis ===")
+    print("\n=== Neighborhood Analysis ===")
     for i in [0, num_collocation_points - 1]:  # Boundary points
         neighborhood = hjb_solver.neighborhoods[i]
         print(f"\nBoundary point {i} at x = {collocation_points[i, 0]:.3f}:")
@@ -51,13 +51,13 @@ def test_ghost_particles():
         print(f"  Neighbor distances: {neighborhood['distances']}")
 
     # Test derivative approximation with a known function
-    print(f"\n=== Testing Derivative Approximation ===")
+    print("\n=== Testing Derivative Approximation ===")
 
     # Test with a quadratic function u(x) = x^2
     # Analytical: u'(0) = 0, u'(1) = 2, u''(x) = 2 everywhere
     u_test_quadratic = collocation_points.flatten() ** 2
 
-    print(f"Test function: u(x) = x^2")
+    print("Test function: u(x) = x^2")
     print(f"Function values: {u_test_quadratic}")
 
     # Test derivatives at boundary points
@@ -85,7 +85,7 @@ def test_ghost_particles():
             )
 
     # Test with a function that should have zero derivative at boundaries
-    print(f"\n=== Testing with Zero-Derivative Function ===")
+    print("\n=== Testing with Zero-Derivative Function ===")
 
     # Test with u(x) = 1 - 2*x + x^2 = (x-1)^2
     # This has u'(0) = -2, u'(1) = 0, which violates no-flux at left boundary
@@ -95,7 +95,7 @@ def test_ghost_particles():
     # Better test: u(x) = cos(π*x) which has u'(0) = 0, u'(1) = 0 naturally
     u_test_cosine = np.cos(np.pi * collocation_points.flatten())
 
-    print(f"Test function: u(x) = cos(π*x)")
+    print("Test function: u(x) = cos(π*x)")
     print(f"Function values: {u_test_cosine}")
 
     for boundary_idx in [0, num_collocation_points - 1]:
@@ -103,7 +103,7 @@ def test_ghost_particles():
         derivatives = hjb_solver.approximate_derivatives(u_test_cosine, boundary_idx)
 
         analytical_first = -np.pi * np.sin(np.pi * x)  # Should be 0 at both boundaries
-        analytical_second = -np.pi**2 * np.cos(np.pi * x)
+        analytical_second = -(np.pi**2) * np.cos(np.pi * x)
 
         print(f"\nBoundary point {boundary_idx} at x = {x:.3f}:")
 
@@ -115,12 +115,12 @@ def test_ghost_particles():
             )
 
             if abs(numerical_first) < 1e-6:
-                print(f"  ✓ No-flux condition satisfied!")
+                print("  ✓ No-flux condition satisfied!")
             else:
-                print(f"  ⚠ No-flux condition violated")
+                print("  ⚠ No-flux condition violated")
 
     # Test HJB solution
-    print(f"\n=== Testing HJB Solution ===")
+    print("\n=== Testing HJB Solution ===")
     M_simple = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.5
     U_terminal = np.zeros(problem.Nx + 1)
     U_initial = np.zeros((problem.Nt + 1, problem.Nx + 1))
@@ -138,9 +138,9 @@ def test_ghost_particles():
         print(f"U at boundaries (t=0): left={u_at_boundaries[0]:.6f}, right={u_at_boundaries[1]:.6f}")
 
         if max_val < 1e6:
-            print(f"✓ Solution seems reasonable")
+            print("✓ Solution seems reasonable")
         else:
-            print(f"⚠ Solution has large values")
+            print("⚠ Solution has large values")
 
     except Exception as e:
         print(f"❌ HJB solution failed: {e}")

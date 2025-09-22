@@ -6,9 +6,11 @@ integrating Polars data manipulation with advanced Plotly/Bokeh visualizations
 for professional research and analysis workflows.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -60,7 +62,7 @@ class MFGAnalyticsEngine:
     - Integrated research workflows
     """
 
-    def __init__(self, prefer_plotly: bool = True, output_dir: Optional[Union[str, Path]] = None):
+    def __init__(self, prefer_plotly: bool = True, output_dir: str | Path | None = None):
         """
         Initialize MFG Analytics Engine.
 
@@ -100,7 +102,7 @@ class MFGAnalyticsEngine:
             except Exception as e:
                 logger.warning(f"Failed to initialize data analytics: {e}")
 
-    def get_capabilities(self) -> Dict[str, bool]:
+    def get_capabilities(self) -> dict[str, bool]:
         """Get available analytics capabilities."""
         return {
             "visualization": self.viz_manager is not None,
@@ -118,9 +120,9 @@ class MFGAnalyticsEngine:
         time_grid: np.ndarray,
         density_history: np.ndarray,
         value_history: np.ndarray,
-        convergence_data: Optional[List[Dict]] = None,
+        convergence_data: list[dict] | None = None,
         title: str = "MFG Solution Analysis",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Comprehensive analysis of MFG solution with visualizations.
 
@@ -173,10 +175,10 @@ class MFGAnalyticsEngine:
 
     def analyze_parameter_sweep(
         self,
-        sweep_results: List[Dict[str, Any]],
+        sweep_results: list[dict[str, Any]],
         parameter_name: str = "lambda",
         title: str = "Parameter Sweep Analysis",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Comprehensive parameter sweep analysis.
 
@@ -241,7 +243,7 @@ class MFGAnalyticsEngine:
         logger.info(f"Parameter sweep analysis completed: {len(sweep_results)} sweeps")
         return results
 
-    def create_research_report(self, analyses: List[Dict[str, Any]], report_title: str = "MFG Research Report") -> Path:
+    def create_research_report(self, analyses: list[dict[str, Any]], report_title: str = "MFG Research Report") -> Path:
         """
         Generate comprehensive research report combining multiple analyses.
 
@@ -269,7 +271,7 @@ class MFGAnalyticsEngine:
         time_grid: np.ndarray,
         density_history: np.ndarray,
         value_history: np.ndarray,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze statistical properties of MFG solution."""
         stats = {}
 
@@ -314,7 +316,7 @@ class MFGAnalyticsEngine:
         density_history: np.ndarray,
         value_history: np.ndarray,
         title: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Create comprehensive solution visualizations."""
         viz_files = {}
 
@@ -353,7 +355,7 @@ class MFGAnalyticsEngine:
 
         return viz_files
 
-    def _analyze_convergence(self, convergence_data: List[Dict]) -> Dict[str, Any]:
+    def _analyze_convergence(self, convergence_data: list[dict]) -> dict[str, Any]:
         """Analyze convergence properties."""
         if not self.ts_analyzer:
             return {}
@@ -374,7 +376,7 @@ class MFGAnalyticsEngine:
             "final_error": (convergence_data[-1].get("error", 0) if convergence_data else 0),
         }
 
-    def _create_convergence_visualizations(self, convergence_data: List[Dict], title: str) -> Dict[str, str]:
+    def _create_convergence_visualizations(self, convergence_data: list[dict], title: str) -> dict[str, str]:
         """Create convergence visualizations."""
         viz_files = {}
 
@@ -397,7 +399,7 @@ class MFGAnalyticsEngine:
         density_history: np.ndarray,
         value_history: np.ndarray,
         title: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Export solution data in multiple formats."""
         data_files = {}
 
@@ -449,7 +451,7 @@ class MFGAnalyticsEngine:
 
         return data_files
 
-    def _generate_html_report(self, analyses: List[Dict[str, Any]], report_title: str) -> str:
+    def _generate_html_report(self, analyses: list[dict[str, Any]], report_title: str) -> str:
         """Generate comprehensive HTML research report."""
         html = f"""
 <!DOCTYPE html>
@@ -520,7 +522,7 @@ class MFGAnalyticsEngine:
             html += "</div>"
 
             # Add visualizations
-            if "visualizations" in analysis and analysis["visualizations"]:
+            if analysis.get("visualizations"):
                 html += "<h3>Visualizations</h3><div class='visualization'>"
                 for viz_name, viz_path in analysis["visualizations"].items():
                     viz_filename = Path(viz_path).name
@@ -530,7 +532,7 @@ class MFGAnalyticsEngine:
                 html += "</div>"
 
             # Add data files
-            if "data_files" in analysis and analysis["data_files"]:
+            if analysis.get("data_files"):
                 html += "<h3>Data Files</h3><div class='visualization'>"
                 for file_name, file_path in analysis["data_files"].items():
                     filename = Path(file_path).name
@@ -552,9 +554,7 @@ class MFGAnalyticsEngine:
 
 
 # Factory function
-def create_analytics_engine(
-    prefer_plotly: bool = True, output_dir: Optional[Union[str, Path]] = None
-) -> MFGAnalyticsEngine:
+def create_analytics_engine(prefer_plotly: bool = True, output_dir: str | Path | None = None) -> MFGAnalyticsEngine:
     """Create MFG Analytics Engine instance."""
     return MFGAnalyticsEngine(prefer_plotly, output_dir)
 
@@ -566,17 +566,17 @@ def analyze_mfg_solution_quick(
     density_history: np.ndarray,
     value_history: np.ndarray,
     title: str = "MFG Analysis",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Quick MFG solution analysis with default settings."""
     engine = create_analytics_engine()
     return engine.analyze_mfg_solution(x_grid, time_grid, density_history, value_history, title=title)
 
 
 def analyze_parameter_sweep_quick(
-    sweep_results: List[Dict[str, Any]],
+    sweep_results: list[dict[str, Any]],
     parameter_name: str = "lambda",
     title: str = "Parameter Sweep",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Quick parameter sweep analysis with default settings."""
     engine = create_analytics_engine()
     return engine.analyze_parameter_sweep(sweep_results, parameter_name, title)

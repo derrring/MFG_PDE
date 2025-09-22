@@ -16,7 +16,7 @@ from .variational_mfg_solver import VariationalMFGSolver
 
 __all__ = [
     "BaseVariationalSolver",
-    "VariationalSolverResult",
-    "VariationalMFGSolver",
     "PrimalDualMFGSolver",
+    "VariationalMFGSolver",
+    "VariationalSolverResult",
 ]

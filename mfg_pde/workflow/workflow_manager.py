@@ -5,18 +5,18 @@ This module provides the central workflow orchestration capabilities,
 including workflow definition, execution, and lifecycle management.
 """
 
+from __future__ import annotations
+
 import json
 import logging
-import os
-import pickle
-import time
 import traceback
 import uuid
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
 
@@ -49,16 +49,16 @@ class WorkflowStep:
     id: str
     name: str
     function: Callable
-    inputs: Dict[str, Any] = field(default_factory=dict)
-    outputs: Dict[str, Any] = field(default_factory=dict)
-    dependencies: List[str] = field(default_factory=list)
+    inputs: dict[str, Any] = field(default_factory=dict)
+    outputs: dict[str, Any] = field(default_factory=dict)
+    dependencies: list[str] = field(default_factory=list)
     status: StepStatus = StepStatus.PENDING
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert step to dictionary for serialization."""
         return {
             "id": self.id,
@@ -81,14 +81,14 @@ class WorkflowResult:
     workflow_id: str
     status: WorkflowStatus
     start_time: datetime
-    end_time: Optional[datetime] = None
-    outputs: Dict[str, Any] = field(default_factory=dict)
-    step_results: Dict[str, Any] = field(default_factory=dict)
-    error_message: Optional[str] = None
-    execution_time: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    end_time: datetime | None = None
+    outputs: dict[str, Any] = field(default_factory=dict)
+    step_results: dict[str, Any] = field(default_factory=dict)
+    error_message: str | None = None
+    execution_time: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for serialization."""
         return {
             "workflow_id": self.workflow_id,
@@ -102,7 +102,7 @@ class WorkflowResult:
             "metadata": self.metadata,
         }
 
-    def _serialize_outputs(self, outputs: Dict[str, Any]) -> Dict[str, Any]:
+    def _serialize_outputs(self, outputs: dict[str, Any]) -> dict[str, Any]:
         """Serialize outputs for JSON storage."""
         serialized = {}
         for key, value in outputs.items():
@@ -119,7 +119,7 @@ class WorkflowResult:
                 try:
                     json.dumps(value)  # Test if JSON serializable
                     serialized[key] = value
-                except:
+                except Exception:
                     serialized[key] = str(value)
         return serialized
 
@@ -132,7 +132,7 @@ class Workflow:
     process, including parameters, intermediate results, and final outputs.
     """
 
-    def __init__(self, name: str, description: str = "", workspace_path: Optional[Path] = None):
+    def __init__(self, name: str, description: str = "", workspace_path: Path | None = None):
         """
         Initialize workflow.
 
@@ -144,16 +144,16 @@ class Workflow:
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
-        self.created_time = datetime.now(timezone.utc)
+        self.created_time = datetime.now(datetime.UTC)
         self.modified_time = self.created_time
 
         # Workflow structure
-        self.steps: Dict[str, WorkflowStep] = {}
-        self.step_order: List[str] = []
+        self.steps: dict[str, WorkflowStep] = {}
+        self.step_order: list[str] = []
 
         # Execution state
         self.status = WorkflowStatus.CREATED
-        self.current_result: Optional[WorkflowResult] = None
+        self.current_result: WorkflowResult | None = None
 
         # Storage
         self.workspace_path = workspace_path or Path.cwd() / ".mfg_workflows"
@@ -164,7 +164,7 @@ class Workflow:
         self.logger = self._setup_logging()
 
         # Execution context
-        self.context: Dict[str, Any] = {}
+        self.context: dict[str, Any] = {}
 
         self.logger.info(f"Created workflow '{name}' with ID {self.id}")
 
@@ -172,9 +172,9 @@ class Workflow:
         self,
         name: str,
         function: Callable,
-        inputs: Optional[Dict[str, Any]] = None,
-        dependencies: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        inputs: dict[str, Any] | None = None,
+        dependencies: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Add a step to the workflow.
@@ -202,7 +202,7 @@ class Workflow:
 
         self.steps[step_id] = step
         self.step_order.append(step_id)
-        self.modified_time = datetime.now(timezone.utc)
+        self.modified_time = datetime.now(datetime.UTC)
 
         self.logger.info(f"Added step '{name}' with ID {step_id}")
         return step_id
@@ -213,7 +213,7 @@ class Workflow:
             raise ValueError(f"Step {step_id} not found")
 
         self.steps[step_id].inputs[input_name] = value
-        self.modified_time = datetime.now(timezone.utc)
+        self.modified_time = datetime.now(datetime.UTC)
 
         self.logger.debug(f"Set input '{input_name}' for step {step_id}")
 
@@ -231,7 +231,7 @@ class Workflow:
 
         return step.outputs[output_name]
 
-    def execute(self, max_workers: Optional[int] = None, save_results: bool = True) -> WorkflowResult:
+    def execute(self, max_workers: int | None = None, save_results: bool = True) -> WorkflowResult:
         """
         Execute the workflow.
 
@@ -244,7 +244,7 @@ class Workflow:
         """
         self.logger.info(f"Starting execution of workflow '{self.name}'")
 
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(datetime.UTC)
         self.status = WorkflowStatus.RUNNING
 
         result = WorkflowResult(workflow_id=self.id, status=WorkflowStatus.RUNNING, start_time=start_time)
@@ -283,7 +283,7 @@ class Workflow:
             self.logger.debug(traceback.format_exc())
 
         finally:
-            end_time = datetime.now(timezone.utc)
+            end_time = datetime.now(datetime.UTC)
             result.end_time = end_time
             result.execution_time = (end_time - start_time).total_seconds()
 
@@ -294,14 +294,14 @@ class Workflow:
 
         return result
 
-    def _execute_step(self, step_id: str) -> Dict[str, Any]:
+    def _execute_step(self, step_id: str) -> dict[str, Any]:
         """Execute a single workflow step."""
         step = self.steps[step_id]
 
         self.logger.info(f"Executing step '{step.name}' ({step_id})")
 
         step.status = StepStatus.RUNNING
-        step.start_time = datetime.now(timezone.utc)
+        step.start_time = datetime.now(datetime.UTC)
 
         try:
             # Prepare inputs
@@ -329,7 +329,7 @@ class Workflow:
                 step.outputs = {"result": result}
 
             step.status = StepStatus.COMPLETED
-            step.end_time = datetime.now(timezone.utc)
+            step.end_time = datetime.now(datetime.UTC)
 
             execution_time = (step.end_time - step.start_time).total_seconds()
             self.logger.info(f"Step '{step.name}' completed in {execution_time:.2f}s")
@@ -342,7 +342,7 @@ class Workflow:
 
         except Exception as e:
             step.status = StepStatus.FAILED
-            step.end_time = datetime.now(timezone.utc)
+            step.end_time = datetime.now(datetime.UTC)
             step.error_message = str(e)
 
             self.logger.error(f"Step '{step.name}' failed: {e}")
@@ -354,10 +354,10 @@ class Workflow:
                 "traceback": traceback.format_exc(),
             }
 
-    def _compute_execution_order(self) -> List[str]:
+    def _compute_execution_order(self) -> list[str]:
         """Compute the order of step execution based on dependencies."""
         # Simple topological sort
-        in_degree = {step_id: 0 for step_id in self.steps}
+        in_degree = dict.fromkeys(self.steps, 0)
 
         # Calculate in-degrees
         for step_id, step in self.steps.items():
@@ -385,11 +385,11 @@ class Workflow:
 
         return execution_order
 
-    def _collect_outputs(self) -> Dict[str, Any]:
+    def _collect_outputs(self) -> dict[str, Any]:
         """Collect final outputs from all completed steps."""
         outputs = {}
 
-        for step_id, step in self.steps.items():
+        for _, step in self.steps.items():
             if step.status == StepStatus.COMPLETED:
                 for output_name, output_value in step.outputs.items():
                     final_name = f"{step.name}_{output_name}"
@@ -414,7 +414,7 @@ class Workflow:
 
         self.logger.info(f"Saved workflow result to {result_file}")
 
-    def _save_data_files(self, data: Dict[str, Any], data_dir: Path):
+    def _save_data_files(self, data: dict[str, Any], data_dir: Path):
         """Save data files (numpy arrays, etc.) separately."""
         for key, value in data.items():
             if isinstance(value, np.ndarray):
@@ -422,7 +422,7 @@ class Workflow:
             elif hasattr(value, "save"):
                 value.save(data_dir / f"{key}.pkl")
 
-    def load_result(self) -> Optional[WorkflowResult]:
+    def load_result(self) -> WorkflowResult | None:
         """Load workflow result from disk."""
         result_file = self.workflow_dir / "result.json"
 
@@ -430,7 +430,7 @@ class Workflow:
             return None
 
         try:
-            with open(result_file, "r") as f:
+            with open(result_file) as f:
                 result_data = json.load(f)
 
             # Reconstruct result object
@@ -456,7 +456,7 @@ class Workflow:
             self.logger.error(f"Failed to load workflow result: {e}")
             return None
 
-    def _load_data_files(self, metadata: Dict[str, Any], data_dir: Path) -> Dict[str, Any]:
+    def _load_data_files(self, metadata: dict[str, Any], data_dir: Path) -> dict[str, Any]:
         """Load data files referenced in metadata."""
         data = {}
 
@@ -473,7 +473,7 @@ class Workflow:
 
         return data
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert workflow to dictionary for serialization."""
         return {
             "id": self.id,
@@ -521,7 +521,7 @@ class WorkflowManager:
     the entire MFG_PDE research environment.
     """
 
-    def __init__(self, workspace_path: Optional[Path] = None):
+    def __init__(self, workspace_path: Path | None = None):
         """
         Initialize workflow manager.
 
@@ -531,7 +531,7 @@ class WorkflowManager:
         self.workspace_path = workspace_path or Path.cwd() / ".mfg_workflows"
         self.workspace_path.mkdir(parents=True, exist_ok=True)
 
-        self.workflows: Dict[str, Workflow] = {}
+        self.workflows: dict[str, Workflow] = {}
         self.logger = self._setup_logging()
 
         # Load existing workflows
@@ -550,11 +550,11 @@ class WorkflowManager:
         self.logger.info(f"Created workflow '{name}' with ID {workflow.id}")
         return workflow
 
-    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow(self, workflow_id: str) -> Workflow | None:
         """Get workflow by ID."""
         return self.workflows.get(workflow_id)
 
-    def list_workflows(self) -> List[Dict[str, Any]]:
+    def list_workflows(self) -> list[dict[str, Any]]:
         """List all workflows with metadata."""
         workflows = []
 
@@ -592,7 +592,7 @@ class WorkflowManager:
         self.logger.info(f"Deleted workflow {workflow_id}")
         return True
 
-    def execute_workflow(self, workflow_id: str, **kwargs) -> Optional[WorkflowResult]:
+    def execute_workflow(self, workflow_id: str, **kwargs) -> WorkflowResult | None:
         """Execute workflow by ID."""
         workflow = self.get_workflow(workflow_id)
         if workflow is None:
@@ -625,10 +625,10 @@ class WorkflowManager:
             solver = create_fast_solver(problem, "fixed_point")
             result = solver.solve()
             return {
-                "converged": result.converged,
-                "iterations": result.iterations,
-                "final_error": result.final_error,
-                "execution_time": result.execution_time,
+                "converged": getattr(result, "converged", False),
+                "iterations": getattr(result, "iterations", 0),
+                "final_error": getattr(result, "final_error", 0.0),
+                "execution_time": getattr(result, "execution_time", 0.0),
             }
 
         workflow1.add_step("solve_problem", example_solve, inputs={"sigma": 0.5, "Nx": 20, "Nt": 10})
@@ -647,7 +647,7 @@ class WorkflowManager:
                     # Load workflow metadata if available
                     metadata_file = workflow_dir / "metadata.json"
                     if metadata_file.exists():
-                        with open(metadata_file, "r") as f:
+                        with open(metadata_file) as f:
                             metadata = json.load(f)
 
                         workflow = Workflow(
@@ -700,10 +700,10 @@ class WorkflowManager:
 
 # Export main classes
 __all__ = [
+    "StepStatus",
     "Workflow",
     "WorkflowManager",
     "WorkflowResult",
     "WorkflowStep",
     "WorkflowStatus",
-    "StepStatus",
 ]

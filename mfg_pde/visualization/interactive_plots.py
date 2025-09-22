@@ -9,9 +9,14 @@ This module provides high-quality interactive visualizations for:
 - Multi-dimensional data exploration
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 import numpy as np
 
@@ -32,6 +37,7 @@ try:
     from bokeh.io import curdoc, push_notebook, show
     from bokeh.layouts import column, gridplot, row
     from bokeh.models import ColorBar, ColumnDataSource, HoverTool, LinearColorMapper
+    from bokeh.models.tools import BoxZoomTool, PanTool, ResetTool, SaveTool, WheelZoomTool
     from bokeh.palettes import Inferno256, Plasma256, Viridis256
     from bokeh.plotting import figure, output_file, save
 
@@ -39,6 +45,7 @@ try:
 except ImportError:
     BOKEH_AVAILABLE = False
     figure = save = output_file = HoverTool = ColorBar = LinearColorMapper = None
+    PanTool = WheelZoomTool = BoxZoomTool = ResetTool = SaveTool = None
     Viridis256 = Plasma256 = Inferno256 = None
     gridplot = column = row = curdoc = push_notebook = show = transform = None
     ColumnDataSource = None
@@ -88,7 +95,7 @@ class MFGPlotlyVisualizer:
         time_grid: np.ndarray,
         density_history: np.ndarray,
         title: str = "MFG Density Evolution",
-    ) -> go.Figure:
+    ) -> Any:
         """
         Create 2D heatmap of density evolution over time.
 
@@ -101,6 +108,9 @@ class MFGPlotlyVisualizer:
         Returns:
             Plotly Figure object
         """
+        if not PLOTLY_AVAILABLE or go is None:
+            raise ImportError("Plotly not available for 2D heatmap plotting")
+
         fig = go.Figure(
             data=go.Heatmap(
                 z=density_history,
@@ -108,15 +118,15 @@ class MFGPlotlyVisualizer:
                 y=time_grid,
                 colorscale="Viridis",
                 hovertemplate="Position: %{x:.3f}<br>Time: %{y:.3f}<br>Density: %{z:.4f}<extra></extra>",
-                colorbar=dict(title="Density m(t,x)"),
+                colorbar={"title": "Density m(t,x)"},
             )
         )
 
         fig.update_layout(
-            title=dict(text=title, x=0.5),
+            title={"text": title, "x": 0.5},
             xaxis_title="Position x",
             yaxis_title="Time t",
-            font=dict(size=12),
+            font={"size": 12},
             width=800,
             height=600,
         )
@@ -129,7 +139,7 @@ class MFGPlotlyVisualizer:
         time_grid: np.ndarray,
         density_history: np.ndarray,
         title: str = "3D MFG Density Surface",
-    ) -> go.Figure:
+    ) -> Any:
         """
         Create 3D surface plot of density evolution.
 
@@ -142,6 +152,9 @@ class MFGPlotlyVisualizer:
         Returns:
             Plotly Figure object
         """
+        if not PLOTLY_AVAILABLE or go is None:
+            raise ImportError("Plotly not available for 3D surface plotting")
+
         fig = go.Figure(
             data=go.Surface(
                 z=density_history,
@@ -149,18 +162,18 @@ class MFGPlotlyVisualizer:
                 y=time_grid,
                 colorscale="Viridis",
                 hovertemplate="Position: %{x:.3f}<br>Time: %{y:.3f}<br>Density: %{z:.4f}<extra></extra>",
-                colorbar=dict(title="Density m(t,x)", x=1.1),
+                colorbar={"title": "Density m(t,x)", "x": 1.1},
             )
         )
 
         fig.update_layout(
-            title=dict(text=title, x=0.5),
-            scene=dict(
-                xaxis_title="Position x",
-                yaxis_title="Time t",
-                zaxis_title="Density m(t,x)",
-                camera=dict(eye=dict(x=1.5, y=1.5, z=1.2)),
-            ),
+            title={"text": title, "x": 0.5},
+            scene={
+                "xaxis_title": "Position x",
+                "yaxis_title": "Time t",
+                "zaxis_title": "Density m(t,x)",
+                "camera": {"eye": {"x": 1.5, "y": 1.5, "z": 1.2}},
+            },
             width=900,
             height=700,
         )
@@ -173,7 +186,7 @@ class MFGPlotlyVisualizer:
         time_grid: np.ndarray,
         value_history: np.ndarray,
         title: str = "3D Value Function u(t,x)",
-    ) -> go.Figure:
+    ) -> Any:
         """
         Create 3D surface plot of value function evolution.
 
@@ -186,6 +199,9 @@ class MFGPlotlyVisualizer:
         Returns:
             Plotly Figure object
         """
+        if not PLOTLY_AVAILABLE or go is None:
+            raise ImportError("Plotly not available for 3D surface plotting")
+
         fig = go.Figure(
             data=go.Surface(
                 z=value_history,
@@ -193,18 +209,18 @@ class MFGPlotlyVisualizer:
                 y=time_grid,
                 colorscale="Plasma",
                 hovertemplate="Position: %{x:.3f}<br>Time: %{y:.3f}<br>Value: %{z:.4f}<extra></extra>",
-                colorbar=dict(title="Value u(t,x)", x=1.1),
+                colorbar={"title": "Value u(t,x)", "x": 1.1},
             )
         )
 
         fig.update_layout(
-            title=dict(text=title, x=0.5),
-            scene=dict(
-                xaxis_title="Position x",
-                yaxis_title="Time t",
-                zaxis_title="Value u(t,x)",
-                camera=dict(eye=dict(x=1.5, y=1.5, z=1.2)),
-            ),
+            title={"text": title, "x": 0.5},
+            scene={
+                "xaxis_title": "Position x",
+                "yaxis_title": "Time t",
+                "zaxis_title": "Value u(t,x)",
+                "camera": {"eye": {"x": 1.5, "y": 1.5, "z": 1.2}},
+            },
             width=900,
             height=700,
         )
@@ -213,10 +229,10 @@ class MFGPlotlyVisualizer:
 
     def create_parameter_sweep_dashboard(
         self,
-        sweep_results: List[Dict[str, Any]],
+        sweep_results: list[dict[str, Any]],
         parameter_name: str = "lambda",
         title: str = "Parameter Sweep Analysis",
-    ) -> go.Figure:
+    ) -> Any:
         """
         Create interactive dashboard for parameter sweep results.
 
@@ -228,6 +244,9 @@ class MFGPlotlyVisualizer:
         Returns:
             Plotly Figure with subplots
         """
+        if not PLOTLY_AVAILABLE or make_subplots is None or go is None:
+            raise ImportError("Plotly not available for parameter sweep dashboard")
+
         # Extract data
         param_values = [result.get(parameter_name, 0) for result in sweep_results]
         crater_depths = [result.get("crater_depth", 0) for result in sweep_results]
@@ -257,7 +276,7 @@ class MFGPlotlyVisualizer:
                 y=crater_depths,
                 mode="markers+lines",
                 name="Crater Depth",
-                marker=dict(color="blue", size=8),
+                marker={"color": "blue", "size": 8},
                 hovertemplate=f"{parameter_name}: %{{x:.3f}}<br>Crater Depth: %{{y:.4f}}<extra></extra>",
             ),
             row=1,
@@ -271,7 +290,7 @@ class MFGPlotlyVisualizer:
                 y=spatial_spreads,
                 mode="markers+lines",
                 name="Spatial Spread",
-                marker=dict(color="red", size=8),
+                marker={"color": "red", "size": 8},
                 hovertemplate=f"{parameter_name}: %{{x:.3f}}<br>Spatial Spread: %{{y:.4f}}<extra></extra>",
             ),
             row=1,
@@ -300,7 +319,7 @@ class MFGPlotlyVisualizer:
                 y=crater_depths,
                 z=spatial_spreads,
                 mode="markers",
-                marker=dict(size=5, color=param_values, colorscale="Viridis"),
+                marker={"size": 5, "color": param_values, "colorscale": "Viridis"},
                 name="Parameter Space",
                 hovertemplate=f"{parameter_name}: %{{x:.3f}}<br>Crater: %{{y:.4f}}<br>Spread: %{{z:.4f}}<extra></extra>",
             ),
@@ -308,15 +327,15 @@ class MFGPlotlyVisualizer:
             col=2,
         )
 
-        fig.update_layout(title=dict(text=title, x=0.5), height=800, showlegend=True)
+        fig.update_layout(title={"text": title, "x": 0.5}, height=800, showlegend=True)
 
         return fig
 
     def create_convergence_animation(
         self,
-        convergence_history: List[Dict[str, np.ndarray]],
+        convergence_history: list[dict[str, np.ndarray]],
         title: str = "MFG Convergence Animation",
-    ) -> go.Figure:
+    ) -> Any:
         """
         Create animated convergence visualization.
 
@@ -327,6 +346,9 @@ class MFGPlotlyVisualizer:
         Returns:
             Plotly Figure with animation
         """
+        if not PLOTLY_AVAILABLE or go is None:
+            raise ImportError("Plotly not available for convergence animation")
+
         frames = []
 
         for i, data in enumerate(convergence_history):
@@ -341,14 +363,14 @@ class MFGPlotlyVisualizer:
                         y=density,
                         mode="lines",
                         name="Density m(t,x)",
-                        line=dict(color="blue", width=3),
+                        line={"color": "blue", "width": 3},
                     ),
                     go.Scatter(
                         x=x_grid,
                         y=value_func,
                         mode="lines",
                         name="Value u(t,x)",
-                        line=dict(color="red", width=3),
+                        line={"color": "red", "width": 3},
                         yaxis="y2",
                     ),
                 ],
@@ -369,14 +391,14 @@ class MFGPlotlyVisualizer:
                     y=density,
                     mode="lines",
                     name="Density m(t,x)",
-                    line=dict(color="blue", width=3),
+                    line={"color": "blue", "width": 3},
                 ),
                 go.Scatter(
                     x=x_grid,
                     y=value_func,
                     mode="lines",
                     name="Value u(t,x)",
-                    line=dict(color="red", width=3),
+                    line={"color": "red", "width": 3},
                     yaxis="y2",
                 ),
             ],
@@ -384,10 +406,10 @@ class MFGPlotlyVisualizer:
         )
 
         fig.update_layout(
-            title=dict(text=title, x=0.5),
+            title={"text": title, "x": 0.5},
             xaxis_title="Position x",
-            yaxis=dict(title="Density m(t,x)", side="left"),
-            yaxis2=dict(title="Value u(t,x)", side="right", overlaying="y"),
+            yaxis={"title": "Density m(t,x)", "side": "left"},
+            yaxis2={"title": "Value u(t,x)", "side": "right", "overlaying": "y"},
             updatemenus=[
                 {
                     "buttons": [
@@ -462,29 +484,29 @@ class MFGPlotlyVisualizer:
 
         return fig
 
-    def save_figure(self, fig: go.Figure, filepath: Union[str, Path], format: str = "html", **kwargs) -> None:
+    def save_figure(self, fig: Any, filepath: str | Path, file_format: str = "html", **kwargs) -> None:
         """
         Save Plotly figure to file.
 
         Args:
             fig: Plotly Figure object
             filepath: Output file path
-            format: Output format ('html', 'png', 'pdf', 'svg')
+            file_format: Output format ('html', 'png', 'pdf', 'svg')
             **kwargs: Additional arguments for plotly save functions
         """
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
-        if format.lower() == "html":
+        if file_format.lower() == "html":
             fig.write_html(str(filepath), config=self.default_config, **kwargs)
-        elif format.lower() == "png":
+        elif file_format.lower() == "png":
             fig.write_image(str(filepath), format="png", **kwargs)
-        elif format.lower() == "pdf":
+        elif file_format.lower() == "pdf":
             fig.write_image(str(filepath), format="pdf", **kwargs)
-        elif format.lower() == "svg":
+        elif file_format.lower() == "svg":
             fig.write_image(str(filepath), format="svg", **kwargs)
         else:
-            raise ValueError(f"Unsupported format: {format}")
+            raise ValueError(f"Unsupported format: {file_format}")
 
         logger.info(f"Plotly figure saved: {filepath}")
 
@@ -502,10 +524,21 @@ class MFGBokehVisualizer:
 
     def __init__(self):
         """Initialize Bokeh visualizer."""
-        if not BOKEH_AVAILABLE:
+        if (
+            not BOKEH_AVAILABLE
+            or any(tool is None for tool in [PanTool, WheelZoomTool, BoxZoomTool, ResetTool, SaveTool])
+            or any(func is None for func in [figure, ColumnDataSource, HoverTool, gridplot, output_file, save, show])
+            or Viridis256 is None
+        ):
             raise ImportError("Bokeh not available. Install with: pip install bokeh")
 
-        self.default_tools = "pan,wheel_zoom,box_zoom,reset,save"
+        # Type assertion since we verified availability above
+        assert PanTool is not None
+        assert WheelZoomTool is not None
+        assert BoxZoomTool is not None
+        assert ResetTool is not None
+        assert SaveTool is not None
+        self.default_tools = [PanTool(), WheelZoomTool(), BoxZoomTool(), ResetTool(), SaveTool()]
         self.default_width = 800
         self.default_height = 600
 
@@ -528,6 +561,11 @@ class MFGBokehVisualizer:
         Returns:
             Bokeh Figure object
         """
+        # Direct assertions for type checking
+        assert ColumnDataSource is not None
+        assert figure is not None
+        assert HoverTool is not None
+
         # Prepare data for Bokeh heatmap
         x_coords, t_coords = np.meshgrid(x_grid, time_grid)
         x_flat = x_coords.flatten()
@@ -535,20 +573,21 @@ class MFGBokehVisualizer:
         density_flat = density_history.flatten()
 
         # Create data source
-        source = ColumnDataSource(data=dict(x=x_flat, y=t_flat, density=density_flat))
+        source = ColumnDataSource(data={"x": x_flat, "y": t_flat, "density": density_flat})
 
         # Create color mapper
-        color_mapper = LinearColorMapper(palette=Viridis256, low=np.min(density_flat), high=np.max(density_flat))
+        palette = Viridis256 if Viridis256 is not None else ["#440154", "#21918c", "#fde725"]
+        color_mapper = LinearColorMapper(palette=palette, low=np.min(density_flat), high=np.max(density_flat))
 
         # Create figure
         p = figure(
             title=title,
-            x_axis_label="Position x",
-            y_axis_label="Time t",
             width=self.default_width,
             height=self.default_height,
             tools=self.default_tools,
         )
+        p.xaxis.axis_label = "Position x"
+        p.yaxis.axis_label = "Time t"
 
         # Add rectangles for heatmap
         dx = x_grid[1] - x_grid[0] if len(x_grid) > 1 else 0.01
@@ -596,22 +635,27 @@ class MFGBokehVisualizer:
         Returns:
             Bokeh Figure object
         """
+        # Direct assertions for type checking
+        assert ColumnDataSource is not None
+        assert figure is not None
+        assert HoverTool is not None
+
         # Create data source
-        source = ColumnDataSource(data=dict(iterations=iterations, errors=errors))
+        source = ColumnDataSource(data={"iterations": iterations, "errors": errors})
 
         p = figure(
             title=title,
-            x_axis_label="Iteration",
-            y_axis_label="Error",
-            y_axis_type="log",
             width=self.default_width,
             height=self.default_height,
             tools=self.default_tools,
+            y_axis_type="log",
         )
+        p.xaxis.axis_label = "Iteration"
+        p.yaxis.axis_label = "Error"
 
         # Add line plot
         p.line("iterations", "errors", line_width=2, color="blue", alpha=0.8, source=source)
-        p.circle("iterations", "errors", size=6, color="blue", alpha=0.6, source=source)
+        p.circle("iterations", "errors", radius=6, color="blue", alpha=0.6, source=source)
 
         # Add hover tool
         hover = HoverTool(tooltips=[("Iteration", "@iterations"), ("Error", "@errors{0.0000e+00}")])
@@ -624,7 +668,7 @@ class MFGBokehVisualizer:
         x_grid: np.ndarray,
         density: np.ndarray,
         value_func: np.ndarray,
-        convergence_data: Optional[Dict] = None,
+        convergence_data: dict | None = None,
         title: str = "MFG Solution Dashboard",
     ) -> Any:
         """
@@ -640,18 +684,24 @@ class MFGBokehVisualizer:
         Returns:
             Bokeh layout object
         """
+        # Direct assertions for type checking
+        assert ColumnDataSource is not None
+        assert figure is not None
+        assert HoverTool is not None
+        assert gridplot is not None
+
         # Create data sources
-        main_source = ColumnDataSource(data=dict(x=x_grid, density=density, value_func=value_func))
+        main_source = ColumnDataSource(data={"x": x_grid, "density": density, "value_func": value_func})
 
         # Density plot
         p1 = figure(
             title="Density Distribution m(t,x)",
-            x_axis_label="Position x",
-            y_axis_label="Density",
             width=400,
             height=300,
             tools=self.default_tools,
         )
+        p1.xaxis.axis_label = "Position x"
+        p1.yaxis.axis_label = "Density"
         p1.line(
             "x",
             "density",
@@ -660,17 +710,17 @@ class MFGBokehVisualizer:
             legend_label="m(t,x)",
             source=main_source,
         )
-        p1.circle("x", "density", size=4, color="blue", alpha=0.6, source=main_source)
+        p1.circle("x", "density", radius=4, color="blue", alpha=0.6, source=main_source)
 
         # Value function plot
         p2 = figure(
             title="Value Function u(t,x)",
-            x_axis_label="Position x",
-            y_axis_label="Value",
             width=400,
             height=300,
             tools=self.default_tools,
         )
+        p2.xaxis.axis_label = "Position x"
+        p2.yaxis.axis_label = "Value"
         p2.line(
             "x",
             "value_func",
@@ -679,31 +729,33 @@ class MFGBokehVisualizer:
             legend_label="u(t,x)",
             source=main_source,
         )
-        p2.circle("x", "value_func", size=4, color="red", alpha=0.6, source=main_source)
+        p2.circle("x", "value_func", radius=4, color="red", alpha=0.6, source=main_source)
 
-        plots = [[p1, p2]]
+        from typing import cast
+
+        plots: list[list[Any]] = cast(list[list[Any]], [[p1, p2]])
 
         # Add convergence plot if data provided
         if convergence_data:
             iterations = convergence_data.get("iterations", np.array([]))
             errors = convergence_data.get("errors", np.array([]))
 
-            conv_source = ColumnDataSource(data=dict(iterations=iterations, errors=errors))
+            conv_source = ColumnDataSource(data={"iterations": iterations, "errors": errors})
 
             p3 = figure(
                 title="Convergence History",
-                x_axis_label="Iteration",
-                y_axis_label="Error",
                 y_axis_type="log",
                 width=400,
                 height=300,
                 tools=self.default_tools,
             )
+            p3.xaxis.axis_label = "Iteration"
+            p3.yaxis.axis_label = "Error"
             p3.line("iterations", "errors", line_width=2, color="green", source=conv_source)
             p3.circle(
                 "iterations",
                 "errors",
-                size=6,
+                radius=6,
                 color="green",
                 alpha=0.6,
                 source=conv_source,
@@ -712,20 +764,20 @@ class MFGBokehVisualizer:
             # Phase space plot (if available)
             if "phase_x" in convergence_data and "phase_y" in convergence_data:
                 phase_source = ColumnDataSource(
-                    data=dict(
-                        phase_x=convergence_data["phase_x"],
-                        phase_y=convergence_data["phase_y"],
-                    )
+                    data={
+                        "phase_x": convergence_data["phase_x"],
+                        "phase_y": convergence_data["phase_y"],
+                    }
                 )
 
                 p4 = figure(
                     title="Phase Space",
-                    x_axis_label="Phase X",
-                    y_axis_label="Phase Y",
                     width=400,
                     height=300,
                     tools=self.default_tools,
                 )
+                p4.xaxis.axis_label = "Phase X"
+                p4.yaxis.axis_label = "Phase Y"
                 p4.line(
                     "phase_x",
                     "phase_y",
@@ -742,7 +794,7 @@ class MFGBokehVisualizer:
 
         return grid
 
-    def save_plot(self, plot: Any, filepath: Union[str, Path]) -> None:
+    def save_plot(self, plot: Any, filepath: str | Path) -> None:
         """
         Save Bokeh plot to HTML file.
 
@@ -750,6 +802,10 @@ class MFGBokehVisualizer:
             plot: Bokeh plot object
             filepath: Output file path
         """
+        # Direct assertions for type checking
+        assert output_file is not None
+        assert save is not None
+
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
@@ -795,7 +851,7 @@ class MFGVisualizationManager:
         if not self.plotly_viz and not self.bokeh_viz:
             raise ImportError("No visualization libraries available. Install plotly and/or bokeh")
 
-    def get_available_backends(self) -> List[str]:
+    def get_available_backends(self) -> list[str]:
         """Get list of available visualization backends."""
         backends = []
         if self.plotly_viz:
@@ -811,7 +867,7 @@ class MFGVisualizationManager:
         density_history: np.ndarray,
         backend: str = "auto",
         title: str = "MFG Density Evolution",
-    ) -> Union[go.Figure, Any]:
+    ) -> Any:
         """
         Create 2D density plot using specified backend.
 
@@ -841,7 +897,7 @@ class MFGVisualizationManager:
         data: np.ndarray,
         data_type: str = "density",
         title: str = "3D MFG Surface",
-    ) -> go.Figure:
+    ) -> Any:
         """
         Create 3D surface plot (Plotly only).
 
@@ -867,10 +923,10 @@ class MFGVisualizationManager:
 
     def create_parameter_sweep_dashboard(
         self,
-        sweep_results: List[Dict[str, Any]],
+        sweep_results: list[dict[str, Any]],
         parameter_name: str = "lambda",
         backend: str = "auto",
-    ) -> Union[go.Figure, Any]:
+    ) -> Any:
         """
         Create parameter sweep dashboard.
 
@@ -895,24 +951,23 @@ class MFGVisualizationManager:
             param_values = np.array([r.get(parameter_name, 0) for r in sweep_results])
             crater_depths = np.array([r.get("crater_depth", 0) for r in sweep_results])
 
-            from bokeh.layouts import column
             from bokeh.plotting import figure
 
             p1 = figure(
                 title=f"Crater Depth vs {parameter_name}",
-                x_axis_label=parameter_name,
-                y_axis_label="Crater Depth",
             )
-            p1.circle(param_values, crater_depths, size=8, alpha=0.6)
+            p1.xaxis.axis_label = parameter_name
+            p1.yaxis.axis_label = "Crater Depth"
+            p1.circle(param_values, crater_depths, radius=8, alpha=0.6)
             p1.line(param_values, crater_depths, line_width=2, alpha=0.8)
 
             return p1
 
     def save_plot(
         self,
-        plot: Union[go.Figure, Any],
-        filepath: Union[str, Path],
-        format: str = "html",
+        plot: Any,
+        filepath: str | Path,
+        file_format: str = "html",
         **kwargs,
     ) -> None:
         """
@@ -926,19 +981,19 @@ class MFGVisualizationManager:
         """
         if hasattr(plot, "write_html"):  # Plotly figure
             if self.plotly_viz:
-                self.plotly_viz.save_figure(plot, filepath, format, **kwargs)
+                self.plotly_viz.save_figure(plot, filepath, file_format, **kwargs)
         else:  # Bokeh plot
             if self.bokeh_viz:
                 self.bokeh_viz.save_plot(plot, filepath)
 
     def _create_line_comparison_plot(
         self,
-        plot_data: Dict[str, Dict[str, np.ndarray]],
+        plot_data: dict[str, dict[str, np.ndarray]],
         title: str = "Comparison Plot",
         xlabel: str = "x",
         ylabel: str = "y",
-        ylim: Optional[Tuple[float, float]] = None,
-        save_path: Optional[str] = None,
+        ylim: tuple[float, float] | None = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Create a line comparison plot for multiple data series.
@@ -954,7 +1009,7 @@ class MFGVisualizationManager:
         Returns:
             Figure object
         """
-        if self.prefer_plotly and self.plotly_viz:
+        if self.prefer_plotly and self.plotly_viz and PLOTLY_AVAILABLE and go is not None and px is not None:
             # Use Plotly for comparison plot
             fig = go.Figure()
 
@@ -966,7 +1021,7 @@ class MFGVisualizationManager:
                         y=data["y"],
                         mode="lines",
                         name=series_name,
-                        line=dict(color=colors[i % len(colors)], width=2),
+                        line={"color": colors[i % len(colors)], "width": 2},
                     )
                 )
 
@@ -1048,7 +1103,7 @@ def quick_2d_plot(
     density_history: np.ndarray,
     title: str = "MFG Density",
     backend: str = "auto",
-) -> Union[go.Figure, Any]:
+) -> Any:
     """Quick 2D density plot creation."""
     viz_manager = create_visualization_manager()
     return viz_manager.create_2d_density_plot(x_grid, time_grid, density_history, backend, title)
@@ -1060,7 +1115,7 @@ def quick_3d_plot(
     data: np.ndarray,
     data_type: str = "density",
     title: str = "3D MFG Surface",
-) -> go.Figure:
+) -> Any:
     """Quick 3D surface plot creation."""
     viz_manager = create_visualization_manager()
     return viz_manager.create_3d_surface_plot(x_grid, time_grid, data, data_type, title)

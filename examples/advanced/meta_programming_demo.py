@@ -14,7 +14,6 @@ high-level mathematical language and automatically generate optimized solvers.
 """
 
 import time
-from typing import Any, Dict
 
 import numpy as np
 
@@ -33,7 +32,6 @@ from mfg_pde.meta import (
     PerformanceProfile,
     TypedMFGProblem,
     adaptive_backend,
-    create_optimized_solver,
     generate_discretization,
     generate_solver_class,
     infer_mfg_type,
@@ -154,7 +152,7 @@ def demo_automatic_code_generation():
     )
 
     print("   Generated solver class (first 20 lines):")
-    lines = solver_code.split('\n')
+    lines = solver_code.split("\n")
     for i, line in enumerate(lines[:20]):
         print(f"   {i+1:2d}: {line}")
 
@@ -255,7 +253,7 @@ def demo_performance_optimization():
         optimized_stats = compiler.benchmark_function(optimized_function, (u, m), {}, num_runs=5)
 
         # Calculate speedup
-        speedup = original_stats['mean_time'] / optimized_stats['mean_time']
+        speedup = original_stats["mean_time"] / optimized_stats["mean_time"]
 
         print(f"   Original time: {original_stats['mean_time']:.6f}s")
         print(f"   Optimized time: {optimized_stats['mean_time']:.6f}s")
@@ -265,12 +263,12 @@ def demo_performance_optimization():
 
         optimization_results.append(
             {
-                'size': size_name,
-                'problem_size': nx * nt,
-                'original_time': original_stats['mean_time'],
-                'optimized_time': optimized_stats['mean_time'],
-                'speedup': speedup,
-                'backend': profile.backend,
+                "size": size_name,
+                "problem_size": nx * nt,
+                "original_time": original_stats["mean_time"],
+                "optimized_time": optimized_stats["mean_time"],
+                "speedup": speedup,
+                "backend": profile.backend,
             }
         )
 
@@ -418,11 +416,11 @@ def demo_backend_comparison():
     # Compare results
     if len(results) > 1:
         print("Performance Comparison:")
-        fastest_backend = min(results.keys(), key=lambda k: results[k]['mean_time'])
-        fastest_time = results[fastest_backend]['mean_time']
+        fastest_backend = min(results.keys(), key=lambda k: results[k]["mean_time"])
+        fastest_time = results[fastest_backend]["mean_time"]
 
         for backend, stats in results.items():
-            speedup = fastest_time / stats['mean_time']
+            speedup = fastest_time / stats["mean_time"]
             print(f"   {backend}: {speedup:.2f}x relative to fastest")
         print()
 
@@ -469,11 +467,11 @@ def main():
 
         # Performance summary
         if optimization_results:
-            avg_speedup = np.mean([r['speedup'] for r in optimization_results])
+            avg_speedup = np.mean([r["speedup"] for r in optimization_results])
             print(f"Average optimization speedup: {avg_speedup:.2f}x")
 
         if backend_results:
-            fastest = min(backend_results.keys(), key=lambda k: backend_results[k]['mean_time'])
+            fastest = min(backend_results.keys(), key=lambda k: backend_results[k]["mean_time"])
             print(f"Fastest backend for test problem: {fastest.upper()}")
 
         print()

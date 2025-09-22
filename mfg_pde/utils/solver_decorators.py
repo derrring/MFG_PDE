@@ -6,9 +6,9 @@ Provides decorators for adding progress monitoring, timing, and other
 modern features to MFG solver classes.
 """
 
+from __future__ import annotations
+
 import functools
-import time
-from typing import Any, Dict, Optional, Union
 
 from .progress import IterationProgress, SolverTimer, time_solver_operation
 
@@ -16,7 +16,7 @@ from .progress import IterationProgress, SolverTimer, time_solver_operation
 def with_progress_monitoring(
     show_progress: bool = True,
     show_timing: bool = True,
-    update_frequency: Optional[int] = None,
+    update_frequency: int | None = None,
 ):
     """
     Decorator to add progress monitoring to solver methods.
@@ -59,7 +59,7 @@ def with_progress_monitoring(
             disable_progress = not (show_progress and verbose)
 
             # Determine solver name for progress description
-            solver_name = getattr(self, "__class__").__name__
+            solver_name = self.__class__.__name__
             description = f"{solver_name} Progress"
 
             # Time the entire operation if requested
@@ -85,12 +85,17 @@ def with_progress_monitoring(
                 result = solve_method(self, *args, **kwargs)
 
                 # Add timing information to result if it's structured
-                if timer_context and isinstance(result, (dict, tuple)) and hasattr(result, "_asdict"):
-                    # For named tuples or dataclasses
-                    if hasattr(result, "metadata"):
-                        result.metadata["execution_time"] = timer_context.duration
-                elif timer_context and isinstance(result, dict):
-                    result["execution_time"] = timer_context.duration
+                if timer_context:
+                    # For objects with metadata attribute (dataclasses, etc.)
+                    metadata = getattr(result, "metadata", None)
+                    if metadata is not None and hasattr(metadata, "__setitem__"):
+                        metadata["execution_time"] = timer_context.duration
+                    # For dictionaries
+                    elif isinstance(result, dict):
+                        result["execution_time"] = timer_context.duration
+                    # For named tuples with _asdict method - immutable, can't modify
+                    elif hasattr(result, "_asdict"):
+                        pass
 
                 return result
 
@@ -162,7 +167,7 @@ class SolverProgressMixin:
         """Determine if progress should be shown."""
         return self._progress_enabled and verbose
 
-    def _create_progress_tracker(self, max_iterations: int, description: str = None) -> Optional[IterationProgress]:
+    def _create_progress_tracker(self, max_iterations: int, description: str | None = None) -> IterationProgress | None:
         """Create a progress tracker if progress is enabled."""
         if not self._progress_enabled:
             return None
@@ -208,9 +213,9 @@ def upgrade_solver_with_progress(solver_class):
 
 
 def update_solver_progress(
-    progress_tracker: Optional[IterationProgress],
+    progress_tracker: IterationProgress | None,
     iteration: int,
-    error: Optional[float] = None,
+    error: float | None = None,
     **additional_info,
 ):
     """
@@ -232,8 +237,8 @@ def update_solver_progress(
 def format_solver_summary(
     solver_name: str,
     iterations: int,
-    final_error: Optional[float] = None,
-    execution_time: Optional[float] = None,
+    final_error: float | None = None,
+    execution_time: float | None = None,
     converged: bool = True,
 ) -> str:
     """

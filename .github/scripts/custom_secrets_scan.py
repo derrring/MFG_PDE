@@ -5,11 +5,9 @@ Scans for hardcoded secrets, API keys, and sensitive information.
 """
 
 import json
-import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 
 class CustomSecretsScanner:
@@ -166,7 +164,7 @@ class CustomSecretsScanner:
                 return True
 
         # Check if it's in comments or documentation
-        if any(marker in content_lower for marker in ["#", "//", "/*", "\"\"\"", "'''"]):
+        if any(marker in content_lower for marker in ["#", "//", "/*", '"""', "'''"]):
             return True
 
         # Check if it's a template or example
@@ -175,12 +173,12 @@ class CustomSecretsScanner:
 
         return False
 
-    def scan_file(self, file_path: Path) -> List[Dict]:
+    def scan_file(self, file_path: Path) -> list[dict]:
         """Scan a single file for secrets."""
         findings = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             lines = content.splitlines()
@@ -195,7 +193,7 @@ class CustomSecretsScanner:
                             continue
 
                         # Find line number
-                        line_num = content[: match.start()].count('\n') + 1
+                        line_num = content[: match.start()].count("\n") + 1
 
                         # Get context
                         context_start = max(0, line_num - 2)
@@ -248,7 +246,7 @@ class CustomSecretsScanner:
 
         return True
 
-    def scan_directory(self) -> List[Dict]:
+    def scan_directory(self) -> list[dict]:
         """Scan entire directory tree for secrets."""
         print(f"🔍 Scanning {self.root_dir} for secrets...")
 
@@ -259,7 +257,7 @@ class CustomSecretsScanner:
 
         return self.findings
 
-    def generate_report(self) -> Dict:
+    def generate_report(self) -> dict:
         """Generate comprehensive secrets scan report."""
         # Group findings by severity
         by_severity = {"HIGH": [], "MEDIUM": [], "LOW": []}
@@ -304,18 +302,18 @@ class CustomSecretsScanner:
         with open("secrets-summary.md", "w") as f:
             f.write(markdown_report)
 
-        print(f"Custom secrets scan completed.")
+        print("Custom secrets scan completed.")
         print(f"Total findings: {report['summary']['total_findings']}")
 
-        if report['summary']['high_severity'] > 0:
+        if report["summary"]["high_severity"] > 0:
             print(f"❌ Found {report['summary']['high_severity']} HIGH severity secrets!")
             sys.exit(1)
-        elif report['summary']['medium_severity'] > 0:
+        elif report["summary"]["medium_severity"] > 0:
             print(f"⚠️ Found {report['summary']['medium_severity']} MEDIUM severity secrets.")
 
         print("✅ No critical secrets found.")
 
-    def generate_markdown_report(self, report: Dict) -> str:
+    def generate_markdown_report(self, report: dict) -> str:
         """Generate markdown report."""
         lines = []
         lines.append("# Custom Secrets Scan Report")

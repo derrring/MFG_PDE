@@ -6,9 +6,11 @@ This module extends the AMR capabilities to work with triangular meshes,
 leveraging the existing MeshData and geometry infrastructure.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -18,6 +20,11 @@ from .base_geometry import MeshData
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    import jax.numpy as jnp
+    from jax import jit
+
+# Always define JAX_AVAILABLE at module level
 try:
     import jax.numpy as jnp
     from jax import jit
@@ -46,17 +53,17 @@ class TriangleElement:
     level: int = 0
 
     # AMR hierarchy
-    parent_id: Optional[int] = None
-    children_ids: Optional[List[int]] = None
+    parent_id: int | None = None
+    children_ids: list[int] | None = None
 
     # Solution and error data
-    solution_data: Optional[Dict[str, float]] = None
+    solution_data: dict[str, Any] | None = None
     error_estimate: float = 0.0
 
     # Geometric properties (computed)
     area: float = 0.0
-    centroid: np.ndarray = None
-    edge_lengths: np.ndarray = None
+    centroid: np.ndarray | None = None
+    edge_lengths: np.ndarray | None = None
     aspect_ratio: float = 0.0
     min_angle: float = 0.0
     max_angle: float = 0.0
@@ -80,7 +87,8 @@ class TriangleElement:
         self.edge_lengths = np.array([np.linalg.norm(e01), np.linalg.norm(e12), np.linalg.norm(e20)])
 
         # Area using cross product
-        self.area = 0.5 * abs(np.cross(e01, e12))
+        cross_product = np.cross(e01, e12)
+        self.area = float(0.5 * abs(cross_product))
 
         # Centroid
         self.centroid = (v0 + v1 + v2) / 3.0
@@ -115,7 +123,9 @@ class TriangleElement:
     @property
     def diameter(self) -> float:
         """Maximum edge length."""
-        return np.max(self.edge_lengths)
+        if self.edge_lengths is not None:
+            return float(np.max(self.edge_lengths))
+        return 0.0
 
     def contains_point(self, point: np.ndarray) -> bool:
         """Check if point is inside triangle using barycentric coordinates."""
@@ -144,8 +154,8 @@ class TriangularAMRMesh:
     def __init__(
         self,
         initial_mesh_data: MeshData,
-        refinement_criteria: Optional[AMRRefinementCriteria] = None,
-        backend: Optional[BaseBackend] = None,
+        refinement_criteria: AMRRefinementCriteria | None = None,
+        backend: BaseBackend | None = None,
     ):
         """
         Initialize triangular AMR mesh from existing MeshData.
@@ -166,8 +176,8 @@ class TriangularAMRMesh:
         self.backend = backend
 
         # Build triangle elements from MeshData
-        self.triangles: Dict[int, TriangleElement] = {}
-        self.leaf_triangles: List[int] = []
+        self.triangles: dict[int, TriangleElement] = {}
+        self.leaf_triangles: list[int] = []
         self._next_element_id = 0
 
         self._build_initial_triangles()
@@ -195,13 +205,13 @@ class TriangularAMRMesh:
             self.leaf_triangles.append(i)
             self._next_element_id = max(self._next_element_id, i + 1)
 
-    def refine_triangle(self, triangle_id: int, strategy: str = "red") -> List[int]:
+    def refine_triangle(self, triangle_id: int, strategy: str = "red") -> list[int]:
         """
         Refine a triangle using specified strategy.
 
         Args:
             triangle_id: ID of triangle to refine
-            strategy: "red" (4-way) or "green" (2-way) refinement
+            strategy: red (4-way) or "green" (2-way) refinement
 
         Returns:
             List of new triangle IDs
@@ -233,7 +243,7 @@ class TriangularAMRMesh:
 
         return children_ids
 
-    def _red_refinement(self, parent: TriangleElement) -> List[int]:
+    def _red_refinement(self, parent: TriangleElement) -> list[int]:
         """
         Red refinement: divide triangle into 4 similar triangles.
 
@@ -269,14 +279,15 @@ class TriangularAMRMesh:
                 level=parent.level + 1,
                 parent_id=parent.element_id,
             )
-            child.solution_data["refinement_type"] = f"red_{child_type}"
+            if child.solution_data is not None:
+                child.solution_data["refinement_type"] = f"red_{child_type}"
 
             self.triangles[child_id] = child
             children_ids.append(child_id)
 
         return children_ids
 
-    def _green_refinement(self, parent: TriangleElement, edge_index: int) -> List[int]:
+    def _green_refinement(self, parent: TriangleElement, edge_index: int) -> list[int]:
         """
         Green refinement: divide triangle into 2 triangles by bisecting one edge.
 
@@ -311,14 +322,15 @@ class TriangularAMRMesh:
                 level=parent.level + 1,
                 parent_id=parent.element_id,
             )
-            child.solution_data["refinement_type"] = f"green_{edge_index}_{i}"
+            if child.solution_data is not None:
+                child.solution_data["refinement_type"] = f"green_{edge_index}_{i}"
 
             self.triangles[child_id] = child
             children_ids.append(child_id)
 
         return children_ids
 
-    def adapt_mesh(self, solution_data: Dict[str, np.ndarray], error_estimator: BaseErrorEstimator) -> Dict[str, int]:
+    def adapt_mesh(self, solution_data: dict[str, np.ndarray], error_estimator: BaseErrorEstimator) -> dict[str, int]:
         """
         Adapt triangular mesh based on error estimates.
 
@@ -362,7 +374,10 @@ class TriangularAMRMesh:
                 red_refinements += 1
             else:
                 # Poor quality triangle - use green refinement on longest edge
-                longest_edge = np.argmax(triangle.edge_lengths)
+                if triangle.edge_lengths is not None:
+                    longest_edge = np.argmax(triangle.edge_lengths)
+                else:
+                    longest_edge = 0
                 self.refine_triangle(triangle_id, f"green{longest_edge}")
                 green_refinements += 1
 
@@ -384,7 +399,7 @@ class TriangularAMRMesh:
     def _estimate_triangle_error(
         self,
         triangle: TriangleElement,
-        solution_data: Dict[str, np.ndarray],
+        solution_data: dict[str, np.ndarray],
         error_estimator: BaseErrorEstimator,
     ) -> float:
         """
@@ -399,15 +414,20 @@ class TriangularAMRMesh:
                 self.dx = triangle.diameter
                 self.dy = triangle.diameter
                 self.area = triangle.area
-                self.center_x = triangle.centroid[0]
-                self.center_y = triangle.centroid[1]
+                if triangle.centroid is not None:
+                    self.center_x = triangle.centroid[0]
+                    self.center_y = triangle.centroid[1]
+                else:
+                    self.center_x = 0.0
+                    self.center_y = 0.0
 
         pseudo_node = PseudoNode(triangle)
 
-        # Use existing error estimator
-        return error_estimator.estimate_error(pseudo_node, solution_data)
+        # Use existing error estimator - cast to expected type
 
-    def get_mesh_statistics(self) -> Dict[str, Any]:
+        return error_estimator.estimate_error(pseudo_node, solution_data)  # type: ignore[arg-type]
+
+    def get_mesh_statistics(self) -> dict[str, Any]:
         """Get comprehensive mesh statistics."""
         # Level distribution
         level_counts = {}
@@ -490,11 +510,11 @@ class TriangularAMRMesh:
 class TriangularMeshErrorEstimator(BaseErrorEstimator):
     """Error estimator specifically designed for triangular meshes."""
 
-    def __init__(self, backend: Optional[BaseBackend] = None):
+    def __init__(self, backend: BaseBackend | None = None):
         self.backend = backend
         self.use_jax = JAX_AVAILABLE and (backend is None or getattr(backend, "name", "") == "jax")
 
-    def estimate_error(self, node, solution_data: Dict[str, np.ndarray]) -> float:
+    def estimate_error(self, node, solution_data: dict[str, np.ndarray]) -> float:
         """
         Estimate error for triangular element.
 
@@ -539,7 +559,7 @@ def create_triangular_amr_mesh(
     mesh_data: MeshData,
     error_threshold: float = 1e-4,
     max_levels: int = 5,
-    backend: Optional[BaseBackend] = None,
+    backend: BaseBackend | None = None,
 ) -> TriangularAMRMesh:
     """
     Create triangular AMR mesh from existing MeshData.

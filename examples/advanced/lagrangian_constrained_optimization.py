@@ -20,7 +20,6 @@ The Lagrangian approach naturally handles:
 """
 
 import time
-from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -191,7 +190,7 @@ def create_social_distancing_problem() -> LagrangianMFGProblem:
     return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=0.6, Nt=30, sigma=0.05, components=components)
 
 
-def solve_constrained_problem(problem: LagrangianMFGProblem, problem_name: str, max_iterations: int = 30) -> Dict:
+def solve_constrained_problem(problem: LagrangianMFGProblem, problem_name: str, max_iterations: int = 30) -> dict:
     """
     Solve a constrained Lagrangian MFG problem.
 
@@ -361,7 +360,7 @@ def create_budget_aware_initial_guess(problem: LagrangianMFGProblem) -> np.ndarr
     return density_guess
 
 
-def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, result: 'VariationalSolverResult') -> Dict:
+def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, result: "VariationalSolverResult") -> dict:
     """
     Analyze how well constraints are satisfied in the solution.
 
@@ -372,7 +371,7 @@ def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, result: 'Vari
     Returns:
         Dictionary with constraint satisfaction analysis
     """
-    if not result or not hasattr(result, 'optimal_flow') or result.optimal_flow is None:
+    if not result or not hasattr(result, "optimal_flow") or result.optimal_flow is None:
         return {"status": "no_solution"}
 
     analysis = {}
@@ -409,7 +408,7 @@ def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, result: 'Vari
     return analysis
 
 
-def create_constraint_comparison_plots(solutions: List[Dict]):
+def create_constraint_comparison_plots(solutions: list[dict]):
     """
     Create plots comparing different constrained problems.
 
@@ -452,7 +451,7 @@ def create_constraint_comparison_plots(solutions: List[Dict]):
             # Plot 1: Final density distribution
             ax1 = axes[0, i]
             final_density = density[-1, :]
-            ax1.plot(x_grid, final_density, 'b-', linewidth=2)
+            ax1.plot(x_grid, final_density, "b-", linewidth=2)
 
             # Add constraint visualization
             if "obstacle" in problem_name.lower():
@@ -462,18 +461,18 @@ def create_constraint_comparison_plots(solutions: List[Dict]):
                 # Shade obstacle region
                 obstacle_left = obstacle_center - obstacle_radius
                 obstacle_right = obstacle_center + obstacle_radius
-                ax1.axvspan(obstacle_left, obstacle_right, alpha=0.3, color='red', label='Obstacle')
+                ax1.axvspan(obstacle_left, obstacle_right, alpha=0.3, color="red", label="Obstacle")
                 ax1.legend()
 
             elif "distancing" in problem_name.lower():
                 # Shade high-risk zone
-                ax1.axvspan(0.4, 0.6, alpha=0.3, color='orange', label='High-Risk Zone')
-                ax1.axhline(y=2.0, color='red', linestyle='--', label='Capacity Limit')
+                ax1.axvspan(0.4, 0.6, alpha=0.3, color="orange", label="High-Risk Zone")
+                ax1.axhline(y=2.0, color="red", linestyle="--", label="Capacity Limit")
                 ax1.legend()
 
-            ax1.set_xlabel('x')
-            ax1.set_ylabel('m(T, x)')
-            ax1.set_title(f'{problem_name}\nFinal Density')
+            ax1.set_xlabel("x")
+            ax1.set_ylabel("m(T, x)")
+            ax1.set_title(f"{problem_name}\nFinal Density")
             ax1.grid(True, alpha=0.3)
 
             # Plot 2: Density evolution over time
@@ -481,7 +480,7 @@ def create_constraint_comparison_plots(solutions: List[Dict]):
 
             # Create space-time heatmap
             X, T = np.meshgrid(x_grid, t_grid)
-            im = ax2.contourf(X, T, density, levels=20, cmap='viridis')
+            im = ax2.contourf(X, T, density, levels=20, cmap="viridis")
 
             # Add constraint overlays
             if "obstacle" in problem_name.lower():
@@ -493,14 +492,14 @@ def create_constraint_comparison_plots(solutions: List[Dict]):
                     ax2.plot(
                         [obstacle_center - obstacle_radius, obstacle_center + obstacle_radius],
                         [t, t],
-                        'r-',
+                        "r-",
                         linewidth=2,
                         alpha=0.7,
                     )
 
-            ax2.set_xlabel('x')
-            ax2.set_ylabel('t')
-            ax2.set_title(f'{problem_name}\nDensity Evolution')
+            ax2.set_xlabel("x")
+            ax2.set_ylabel("t")
+            ax2.set_title(f"{problem_name}\nDensity Evolution")
 
             # Add colorbar
             plt.colorbar(im, ax=ax2, shrink=0.8)
@@ -509,7 +508,7 @@ def create_constraint_comparison_plots(solutions: List[Dict]):
 
         # Save plot
         plot_filename = "lagrangian_constrained_comparison.png"
-        plt.savefig(plot_filename, dpi=150, bbox_inches='tight')
+        plt.savefig(plot_filename, dpi=150, bbox_inches="tight")
         logger.info(f"Constraint comparison plots saved as: {plot_filename}")
 
         try:
@@ -565,7 +564,7 @@ def main():
             logger.info(f"\n{problem_name}:")
 
             if solution["success"]:
-                logger.info(f"  ✓ Optimization: SUCCESS")
+                logger.info("  ✓ Optimization: SUCCESS")
                 logger.info(f"  ✓ Solve time: {solution['solve_time']:.2f}s")
 
                 # Constraint analysis
@@ -582,7 +581,7 @@ def main():
                 logger.info(f"  ✓ Mass conservation error: {mass_error:.2e}")
 
             else:
-                logger.info(f"  ✗ Optimization: FAILED")
+                logger.info("  ✗ Optimization: FAILED")
                 if "error" in solution:
                     logger.info(f"     Error: {solution['error']}")
 

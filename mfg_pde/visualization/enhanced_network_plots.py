@@ -13,27 +13,23 @@ Key enhancements:
 - Advanced network statistics and analysis
 """
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
 
-import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.animation import FuncAnimation
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
+from matplotlib import cm
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 try:
-    import plotly.express as px
-    import plotly.figure_factory as ff
     import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
 
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
 
 try:
-    import networkx as nx
+    import networkx as nx  # type: ignore[import-untyped] # noqa: F401
 
     NETWORKX_AVAILABLE = True
 except ImportError:
@@ -57,8 +53,8 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
     def __init__(
         self,
-        problem: Optional[NetworkMFGProblem] = None,
-        network_data: Optional[NetworkData] = None,
+        problem: NetworkMFGProblem | None = None,
+        network_data: NetworkData | None = None,
     ):
         """Initialize enhanced network visualizer."""
         super().__init__(problem, network_data)
@@ -70,13 +66,13 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
     def plot_lagrangian_trajectories(
         self,
-        trajectories: List[List[int]],
-        U: Optional[np.ndarray] = None,
-        M: Optional[np.ndarray] = None,
+        trajectories: list[list[int]],
+        U: np.ndarray | None = None,
+        M: np.ndarray | None = None,
         title: str = "Lagrangian Trajectories",
         interactive: bool = True,
-        save_path: Optional[str] = None,
-    ) -> Union[go.Figure, plt.Figure]:
+        save_path: str | None = None,
+    ) -> go.Figure | Figure:
         """
         Visualize Lagrangian trajectories on the network.
 
@@ -98,11 +94,11 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
     def _plot_trajectories_plotly(
         self,
-        trajectories: List[List[int]],
-        U: Optional[np.ndarray] = None,
-        M: Optional[np.ndarray] = None,
+        trajectories: list[list[int]],
+        U: np.ndarray | None = None,
+        M: np.ndarray | None = None,
         title: str = "Lagrangian Trajectories",
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> go.Figure:
         """Create interactive trajectory plot using Plotly."""
         fig = go.Figure()
@@ -131,8 +127,8 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                     x=traj_x,
                     y=traj_y,
                     mode="lines+markers",
-                    line=dict(width=3, color=color),
-                    marker=dict(size=8, color=color, symbol="circle"),
+                    line={"width": 3, "color": color},
+                    marker={"size": 8, "color": color, "symbol": "circle"},
                     name=f"Trajectory {i+1}",
                     hovertemplate=f"Trajectory {i+1}<br>Step: %{{pointNumber}}<br>Node: %{{customdata}}<extra></extra>",
                     customdata=trajectory,
@@ -147,7 +143,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                         x=[traj_x[0]],
                         y=[traj_y[0]],
                         mode="markers",
-                        marker=dict(size=12, color="green", symbol="star"),
+                        marker={"size": 12, "color": "green", "symbol": "star"},
                         name=f"Start {i+1}",
                         showlegend=False,
                         hovertemplate=f"Start of Trajectory {i+1}<br>Node: {trajectory[0]}<extra></extra>",
@@ -160,7 +156,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                         x=[traj_x[-1]],
                         y=[traj_y[-1]],
                         mode="markers",
-                        marker=dict(size=12, color="red", symbol="square"),
+                        marker={"size": 12, "color": "red", "symbol": "square"},
                         name=f"End {i+1}",
                         showlegend=False,
                         hovertemplate=f"End of Trajectory {i+1}<br>Node: {trajectory[-1]}<extra></extra>",
@@ -172,8 +168,8 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             title=title,
             showlegend=True,
             hovermode="closest",
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
             plot_bgcolor="white",
         )
 
@@ -184,12 +180,12 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
     def _plot_trajectories_matplotlib(
         self,
-        trajectories: List[List[int]],
-        U: Optional[np.ndarray] = None,
-        M: Optional[np.ndarray] = None,
+        trajectories: list[list[int]],
+        U: np.ndarray | None = None,
+        M: np.ndarray | None = None,
         title: str = "Lagrangian Trajectories",
-        save_path: Optional[str] = None,
-    ) -> plt.Figure:
+        save_path: str | None = None,
+    ) -> Figure:
         """Create trajectory plot using matplotlib."""
         fig, ax = plt.subplots(1, 1, figsize=(12, 10))
 
@@ -257,12 +253,12 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
     def plot_velocity_field(
         self,
         velocity_field: np.ndarray,
-        M: Optional[np.ndarray] = None,
+        M: np.ndarray | None = None,
         title: str = "Network Velocity Field",
         time_idx: int = 0,
         interactive: bool = True,
-        save_path: Optional[str] = None,
-    ) -> Union[go.Figure, plt.Figure]:
+        save_path: str | None = None,
+    ) -> go.Figure | Figure:
         """
         Visualize velocity field on the network.
 
@@ -285,11 +281,11 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
     def _plot_velocity_field_matplotlib(
         self,
         velocity_field: np.ndarray,
-        M: Optional[np.ndarray] = None,
+        M: np.ndarray | None = None,
         title: str = "Network Velocity Field",
         time_idx: int = 0,
-        save_path: Optional[str] = None,
-    ) -> plt.Figure:
+        save_path: str | None = None,
+    ) -> Figure:
         """Create velocity field plot using matplotlib."""
         fig, ax = plt.subplots(1, 1, figsize=(12, 10))
 
@@ -353,13 +349,13 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
     def plot_scheme_comparison(
         self,
-        solutions: Dict[str, Tuple[np.ndarray, np.ndarray]],
+        solutions: dict[str, tuple[np.ndarray, np.ndarray]],
         times: np.ndarray,
-        selected_nodes: List[int] = None,
+        selected_nodes: list[int] | None = None,
         title: str = "Discretization Scheme Comparison",
         interactive: bool = True,
-        save_path: Optional[str] = None,
-    ) -> Union[go.Figure, plt.Figure]:
+        save_path: str | None = None,
+    ) -> go.Figure | Figure:
         """
         Compare solutions from different discretization schemes.
 
@@ -384,12 +380,12 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
     def _plot_scheme_comparison_matplotlib(
         self,
-        solutions: Dict[str, Tuple[np.ndarray, np.ndarray]],
+        solutions: dict[str, tuple[np.ndarray, np.ndarray]],
         times: np.ndarray,
-        selected_nodes: List[int],
+        selected_nodes: list[int],
         title: str = "Discretization Scheme Comparison",
-        save_path: Optional[str] = None,
-    ) -> plt.Figure:
+        save_path: str | None = None,
+    ) -> Figure:
         """Create scheme comparison plot using matplotlib."""
         n_nodes = len(selected_nodes)
         fig, axes = plt.subplots(2, n_nodes, figsize=(4 * n_nodes, 8))
@@ -397,12 +393,12 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
         if n_nodes == 1:
             axes = axes.reshape(2, 1)
 
-        colors = plt.cm.Set1(np.linspace(0, 1, len(solutions)))
+        colors = cm.get_cmap("Set1")(np.linspace(0, 1, len(solutions)))
 
         for node_idx, node in enumerate(selected_nodes):
             # Value function comparison
             ax_u = axes[0, node_idx]
-            for i, (scheme_name, (U, M)) in enumerate(solutions.items()):
+            for i, (scheme_name, (U, _M)) in enumerate(solutions.items()):
                 ax_u.plot(times, U[:, node], label=scheme_name, color=colors[i], linewidth=2)
 
             ax_u.set_title(f"Value Function - Node {node}")
@@ -413,7 +409,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
             # Density comparison
             ax_m = axes[1, node_idx]
-            for i, (scheme_name, (U, M)) in enumerate(solutions.items()):
+            for i, (scheme_name, (_U, M)) in enumerate(solutions.items()):
                 ax_m.plot(times, M[:, node], label=scheme_name, color=colors[i], linewidth=2)
 
             ax_m.set_title(f"Density - Node {node}")
@@ -432,11 +428,11 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
     def plot_network_3d(
         self,
-        node_values: Optional[np.ndarray] = None,
-        edge_values: Optional[np.ndarray] = None,
+        node_values: np.ndarray | None = None,
+        edge_values: np.ndarray | None = None,
         title: str = "3D Network Visualization",
         height_scale: float = 1.0,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> go.Figure:
         """
         Create 3D network visualization with node values as height.
@@ -480,7 +476,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
         edge_x, edge_y, edge_z = [], [], []
         rows, cols = self.adjacency_matrix.nonzero()
 
-        for i, j in zip(rows, cols):
+        for i, j in zip(rows, cols, strict=False):
             # Edge coordinates
             edge_x.extend([node_x[i], node_x[j], None])
             edge_y.extend([node_y[i], node_y[j], None])
@@ -493,7 +489,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                 y=edge_y,
                 z=edge_z,
                 mode="lines",
-                line=dict(width=2, color="lightgray"),
+                line={"width": 2, "color": "lightgray"},
                 hoverinfo="none",
                 showlegend=False,
                 name="Edges",
@@ -507,13 +503,13 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                 y=node_y,
                 z=node_z,
                 mode="markers",
-                marker=dict(
-                    size=8,
-                    color=node_color,
-                    colorscale=colorscale,
-                    showscale=True if node_values is not None else False,
-                    colorbar=(dict(title="Node Values") if node_values is not None else None),
-                ),
+                marker={
+                    "size": 8,
+                    "color": node_color,
+                    "colorscale": colorscale,
+                    "showscale": node_values is not None,
+                    "colorbar": ({"title": "Node Values"} if node_values is not None else None),
+                },
                 text=[f"Node {i}<br>Height: {node_z[i]:.3f}" for i in range(self.num_nodes)],
                 hovertemplate="%{text}<extra></extra>",
                 name="Nodes",
@@ -523,13 +519,13 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
         # Update layout for 3D
         fig.update_layout(
             title=title,
-            scene=dict(
-                xaxis_title="X",
-                yaxis_title="Y",
-                zaxis_title="Height",
-                aspectmode="manual",
-                aspectratio=dict(x=1, y=1, z=0.5),
-            ),
+            scene={
+                "xaxis_title": "X",
+                "yaxis_title": "Y",
+                "zaxis_title": "Height",
+                "aspectmode": "manual",
+                "aspectratio": {"x": 1, "y": 1, "z": 0.5},
+            },
             showlegend=False,
         )
 
@@ -538,17 +534,16 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
 
         return fig
 
-    def _add_network_topology_to_plotly(self, fig: go.Figure, node_values: Optional[np.ndarray] = None):
+    def _add_network_topology_to_plotly(self, fig: go.Figure, node_values: np.ndarray | None = None):
         """Add network topology to existing Plotly figure."""
         # This would include the network plotting logic from the base class
         # For brevity, we'll reference the existing implementation
-        pass
 
-    def _add_network_topology_to_matplotlib(self, ax: plt.Axes, node_values: Optional[np.ndarray] = None):
+    def _add_network_topology_to_matplotlib(self, ax: Axes, node_values: np.ndarray | None = None):
         """Add network topology to existing matplotlib axes."""
         # Plot edges
         rows, cols = self.adjacency_matrix.nonzero()
-        for i, j in zip(rows, cols):
+        for i, j in zip(rows, cols, strict=False):
             if self.node_positions is not None:
                 x0, y0 = self.node_positions[i]
                 x1, y1 = self.node_positions[j]
@@ -573,11 +568,43 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             else:
                 ax.scatter(node_x, node_y, c="lightblue", s=100, alpha=0.8, edgecolors="black")
 
+    def _plot_velocity_field_plotly(
+        self,
+        velocity_field: np.ndarray,
+        M: np.ndarray | None,
+        title: str,
+        time_idx: int,
+        save_path: str | None = None,
+    ) -> go.Figure:
+        """Plot velocity field using Plotly (placeholder implementation)."""
+        # Placeholder - would implement velocity field visualization
+        fig = go.Figure()
+        fig.update_layout(title=f"{title} - Velocity Field (t={time_idx})")
+        if save_path:
+            fig.write_html(save_path)
+        return fig
+
+    def _plot_scheme_comparison_plotly(
+        self,
+        solutions: dict[str, tuple[np.ndarray, np.ndarray]],
+        times: np.ndarray,
+        selected_nodes: list[int],
+        title: str,
+        save_path: str | None = None,
+    ) -> go.Figure:
+        """Plot scheme comparison using Plotly (placeholder implementation)."""
+        # Placeholder - would implement scheme comparison visualization
+        fig = go.Figure()
+        fig.update_layout(title=f"{title} - Scheme Comparison")
+        if save_path:
+            fig.write_html(save_path)
+        return fig
+
 
 # Factory function for enhanced network visualizer
 def create_enhanced_network_visualizer(
-    problem: Optional[NetworkMFGProblem] = None,
-    network_data: Optional[NetworkData] = None,
+    problem: NetworkMFGProblem | None = None,
+    network_data: NetworkData | None = None,
 ) -> EnhancedNetworkMFGVisualizer:
     """
     Create enhanced network MFG visualizer.

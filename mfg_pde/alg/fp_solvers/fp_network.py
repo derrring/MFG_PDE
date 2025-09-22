@@ -21,11 +21,12 @@ Key algorithms:
 - Network boundary condition handling
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
 from .base_fp import BaseFPSolver
@@ -46,7 +47,7 @@ class NetworkFPSolver(BaseFPSolver):
 
     def __init__(
         self,
-        problem: "NetworkMFGProblem",
+        problem: NetworkMFGProblem,
         scheme: str = "explicit",
         diffusion_coefficient: float = 0.1,
         cfl_factor: float = 0.5,
@@ -167,7 +168,11 @@ class NetworkFPSolver(BaseFPSolver):
             # Diffusion term: -σ²/2 * Δ_G m
             diffusion_term = 0.0
             for j in neighbors:
-                edge_weight = self.network_problem.network_data.get_edge_weight(i, j)
+                edge_weight = (
+                    self.network_problem.network_data.get_edge_weight(i, j)
+                    if self.network_problem.network_data is not None
+                    else 1.0  # Default edge weight
+                )
                 diffusion_term += edge_weight * (m_current[j] - m_current[i])
             diffusion_term *= self.diffusion_coefficient
 
@@ -193,7 +198,11 @@ class NetworkFPSolver(BaseFPSolver):
 
             # Diffusion terms (implicit)
             for j in neighbors:
-                edge_weight = self.network_problem.network_data.get_edge_weight(i, j)
+                edge_weight = (
+                    self.network_problem.network_data.get_edge_weight(i, j)
+                    if self.network_problem.network_data is not None
+                    else 1.0  # Default edge weight
+                )
                 coeff = self.dt * self.diffusion_coefficient * edge_weight
 
                 A[i, i] += coeff
@@ -207,6 +216,10 @@ class NetworkFPSolver(BaseFPSolver):
         A = A.tocsr()
         try:
             m_next = spsolve(A, b)
+            # Ensure result is numpy array
+            if hasattr(m_next, "toarray"):
+                m_next = m_next.toarray().flatten()
+            m_next = np.asarray(m_next)
         except Exception:
             # Fallback to explicit if implicit solve fails
             print("Warning: Implicit solve failed, falling back to explicit")
@@ -252,7 +265,11 @@ class NetworkFPSolver(BaseFPSolver):
             du = u[neighbor] - u[node]
 
             # Flow along gradient (simplified)
-            edge_weight = self.network_problem.network_data.get_edge_weight(node, neighbor)
+            edge_weight = (
+                self.network_problem.network_data.get_edge_weight(node, neighbor)
+                if self.network_problem.network_data is not None
+                else 1.0  # Default edge weight
+            )
             drift += edge_weight * m[node] * du
 
         return drift
@@ -263,7 +280,11 @@ class NetworkFPSolver(BaseFPSolver):
             return 0.0
 
         # Check if edge exists
-        edge_weight = self.network_problem.network_data.get_edge_weight(node_from, node_to)
+        edge_weight = (
+            self.network_problem.network_data.get_edge_weight(node_from, node_to)
+            if self.network_problem.network_data is not None
+            else 1.0  # Default edge weight
+        )
         if edge_weight == 0:
             return 0.0
 
@@ -327,7 +348,7 @@ class NetworkFlowFPSolver(NetworkFPSolver):
     providing better conservation properties and physical interpretation.
     """
 
-    def __init__(self, problem: "NetworkMFGProblem", **kwargs):
+    def __init__(self, problem: NetworkMFGProblem, **kwargs):
         """Initialize flow-based network FP solver."""
         super().__init__(problem, **kwargs)
 
@@ -338,19 +359,19 @@ class NetworkFlowFPSolver(NetworkFPSolver):
         self.edge_list = self._build_edge_list()
         self.node_to_edges = self._build_node_edge_mapping()
 
-    def _build_edge_list(self) -> List[Tuple[int, int]]:
+    def _build_edge_list(self) -> list[tuple[int, int]]:
         """Build list of edges from adjacency matrix."""
         edges = []
         rows, cols = self.adjacency_matrix.nonzero()
 
         # For undirected graphs, avoid duplicate edges
-        for i, j in zip(rows, cols):
+        for i, j in zip(rows, cols, strict=False):
             if i < j:  # Only include each edge once
                 edges.append((i, j))
 
         return edges
 
-    def _build_node_edge_mapping(self) -> Dict[int, List[int]]:
+    def _build_node_edge_mapping(self) -> dict[int, list[int]]:
         """Build mapping from nodes to incident edges."""
         node_edges = {i: [] for i in range(self.num_nodes)}
 
@@ -425,7 +446,11 @@ class NetworkFlowFPSolver(NetworkFPSolver):
         du = u[node_to] - u[node_from]
 
         # Edge weight
-        edge_weight = self.network_problem.network_data.get_edge_weight(node_from, node_to)
+        edge_weight = (
+            self.network_problem.network_data.get_edge_weight(node_from, node_to)
+            if self.network_problem.network_data is not None
+            else 1.0  # Default edge weight
+        )
 
         # Drift-driven flow
         drift_flow = edge_weight * m[node_from] * max(du, 0)
@@ -437,7 +462,7 @@ class NetworkFlowFPSolver(NetworkFPSolver):
 
 
 # Factory function for network FP solvers
-def create_network_fp_solver(problem: "NetworkMFGProblem", solver_type: str = "explicit", **kwargs) -> NetworkFPSolver:
+def create_network_fp_solver(problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs) -> NetworkFPSolver:
     """
     Create network FP solver with specified type.
 

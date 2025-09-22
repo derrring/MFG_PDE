@@ -20,15 +20,15 @@ def test_simple_noflux_comparison():
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
     boundary_indices = np.array([0, num_collocation_points - 1])
 
-    print(f"Problem: Simple test case")
+    print("Problem: Simple test case")
     print(f"Initial mass: {np.sum(problem.m_init * problem.Dx):.6f}")
 
     # Test 1: Current ghost particle implementation
     print(f"\n{'='*50}")
-    print(f"TEST 1: Current Ghost Particle Implementation")
+    print("TEST 1: Current Ghost Particle Implementation")
     print(f"{'='*50}")
 
-    no_flux_bc = BoundaryConditions(type='no_flux')
+    no_flux_bc = BoundaryConditions(type="no_flux")
 
     try:
         solver1 = ParticleCollocationSolver(
@@ -64,7 +64,7 @@ def test_simple_noflux_comparison():
             mass1 = np.sum(M1 * problem.Dx, axis=1)
             max_U1 = np.max(np.abs(U1)) if U1 is not None else np.inf
 
-            print(f"Results:")
+            print("Results:")
             print(f"  Mass change: {mass1[-1] - mass1[0]:.2e}")
             print(f"  Max |U|: {max_U1:.1e}")
 
@@ -77,7 +77,7 @@ def test_simple_noflux_comparison():
 
             print(f"  Status: {status1}")
         else:
-            print(f"  ❌ FAILED")
+            print("  ❌ FAILED")
             status1 = "❌ FAILED"
 
     except Exception as e:
@@ -86,7 +86,7 @@ def test_simple_noflux_comparison():
 
     # Test 2: Dirichlet BC for comparison (should work)
     print(f"\n{'='*50}")
-    print(f"TEST 2: Dirichlet BC (Reference)")
+    print("TEST 2: Dirichlet BC (Reference)")
     print(f"{'='*50}")
 
     dirichlet_bc = {"type": "dirichlet", "value": 0.0}
@@ -113,7 +113,7 @@ def test_simple_noflux_comparison():
             mass2 = np.sum(M2 * problem.Dx, axis=1)
             max_U2 = np.max(np.abs(U2)) if U2 is not None else np.inf
 
-            print(f"Results:")
+            print("Results:")
             print(f"  Mass change: {mass2[-1] - mass2[0]:.2e}")
             print(f"  Max |U|: {max_U2:.1e}")
 
@@ -126,7 +126,7 @@ def test_simple_noflux_comparison():
 
             print(f"  Status: {status2}")
         else:
-            print(f"  ❌ FAILED")
+            print("  ❌ FAILED")
             status2 = "❌ FAILED"
 
     except Exception as e:
@@ -135,7 +135,7 @@ def test_simple_noflux_comparison():
 
     # Summary
     print(f"\n{'='*50}")
-    print(f"COMPARISON SUMMARY")
+    print("COMPARISON SUMMARY")
     print(f"{'='*50}")
     print(f"{'Method':<25} {'Status'}")
     print(f"{'-'*25} {'-'*15}")
@@ -143,11 +143,11 @@ def test_simple_noflux_comparison():
     print(f"{'Dirichlet (Reference)':<25} {status2}")
 
     if status1 in ["✓ EXCELLENT", "✓ STABLE"] and status2 in ["✓ EXCELLENT", "✓ STABLE"]:
-        print(f"\n✓ Both methods are working - ghost particle no-flux is successful!")
+        print("\n✓ Both methods are working - ghost particle no-flux is successful!")
     elif status2 in ["✓ EXCELLENT", "✓ STABLE"]:
-        print(f"\n⚠ Dirichlet works but no-flux ghost particle needs improvement")
+        print("\n⚠ Dirichlet works but no-flux ghost particle needs improvement")
     else:
-        print(f"\n❌ Both methods have issues - check basic implementation")
+        print("\n❌ Both methods have issues - check basic implementation")
 
 
 if __name__ == "__main__":

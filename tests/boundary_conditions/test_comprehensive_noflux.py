@@ -21,7 +21,7 @@ def test_comprehensive_noflux():
         {"Nx": 25, "T": 0.2, "Nt": 15, "n_colloc": 10, "particles": 250, "name": "XLarge"},
     ]
 
-    no_flux_bc = BoundaryConditions(type='no_flux')
+    no_flux_bc = BoundaryConditions(type="no_flux")
     results = {}
 
     for i, case in enumerate(test_cases):
@@ -32,11 +32,11 @@ def test_comprehensive_noflux():
 
         # Create problem
         problem = ExampleMFGProblem(
-            xmin=0.0, xmax=1.0, Nx=case['Nx'], T=case['T'], Nt=case['Nt'], sigma=0.3, coefCT=0.1
+            xmin=0.0, xmax=1.0, Nx=case["Nx"], T=case["T"], Nt=case["Nt"], sigma=0.3, coefCT=0.1
         )
 
         # Create collocation points
-        num_collocation_points = case['n_colloc']
+        num_collocation_points = case["n_colloc"]
         collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
         boundary_indices = np.array([0, num_collocation_points - 1])
 
@@ -44,7 +44,7 @@ def test_comprehensive_noflux():
             solver = ParticleCollocationSolver(
                 problem=problem,
                 collocation_points=collocation_points,
-                num_particles=case['particles'],
+                num_particles=case["particles"],
                 delta=0.8,
                 taylor_order=1,  # Keep first order for stability
                 weight_function="wendland",
@@ -64,7 +64,7 @@ def test_comprehensive_noflux():
             for b_idx in [0, num_collocation_points - 1]:
                 neighborhood = solver.hjb_solver.neighborhoods[b_idx]
                 boundary_info.append(
-                    {'index': b_idx, 'ghosts': neighborhood['ghost_count'], 'total_neighbors': neighborhood['size']}
+                    {"index": b_idx, "ghosts": neighborhood["ghost_count"], "total_neighbors": neighborhood["size"]}
                 )
 
             print(f"SVD: {decomp_info['svd_percentage']:.0f}%, κ={decomp_info['avg_condition_number']:.1e}")
@@ -83,9 +83,9 @@ def test_comprehensive_noflux():
                 mass_variation = np.max(mass_evolution) - np.min(mass_evolution)
 
                 max_U = np.max(np.abs(U)) if U is not None else np.inf
-                converged = info.get('converged', False)
+                converged = info.get("converged", False)
 
-                print(f"Results:")
+                print("Results:")
                 print(f"  Initial mass: {mass_initial:.6f}")
                 print(f"  Final mass: {mass_final:.6f}")
                 print(f"  Mass change: {mass_change:.2e}")
@@ -127,27 +127,27 @@ def test_comprehensive_noflux():
                 else:
                     violations = "N/A"
 
-                results[case['name']] = {
-                    'status': status,
-                    'score': score,
-                    'mass_change': mass_change,
-                    'max_U': max_U,
-                    'violations': violations,
-                    'svd_percentage': decomp_info['svd_percentage'],
-                    'condition_number': decomp_info['avg_condition_number'],
+                results[case["name"]] = {
+                    "status": status,
+                    "score": score,
+                    "mass_change": mass_change,
+                    "max_U": max_U,
+                    "violations": violations,
+                    "svd_percentage": decomp_info["svd_percentage"],
+                    "condition_number": decomp_info["avg_condition_number"],
                 }
 
             else:
-                print(f"  ❌ FAILED: M is None")
-                results[case['name']] = {'status': '❌ FAILED', 'score': 0}
+                print("  ❌ FAILED: M is None")
+                results[case["name"]] = {"status": "❌ FAILED", "score": 0}
 
         except Exception as e:
             print(f"❌ ERROR: {e}")
-            results[case['name']] = {'status': '❌ ERROR', 'score': 0}
+            results[case["name"]] = {"status": "❌ ERROR", "score": 0}
 
     # Summary
     print(f"\n{'='*80}")
-    print(f"COMPREHENSIVE RESULTS SUMMARY")
+    print("COMPREHENSIVE RESULTS SUMMARY")
     print(f"{'='*80}")
     print(f"{'Case':<10} {'Status':<12} {'Mass Δ':<10} {'Max |U|':<8} {'SVD%':<6} {'Score'}")
     print(f"{'-'*10} {'-'*12} {'-'*10} {'-'*8} {'-'*6} {'-'*5}")
@@ -156,11 +156,11 @@ def test_comprehensive_noflux():
     max_score = 0
 
     for name, result in results.items():
-        if result.get('score', 0) > 0:
+        if result.get("score", 0) > 0:
             mass_change = f"{result['mass_change']:.1e}"
             max_U = f"{result['max_U']:.1e}"
             svd_pct = f"{result['svd_percentage']:.0f}%"
-            score = result['score']
+            score = result["score"]
         else:
             mass_change = "-"
             max_U = "-"
@@ -176,18 +176,18 @@ def test_comprehensive_noflux():
     success_rate = total_score / max_score * 100 if max_score > 0 else 0
 
     print(f"\n{'='*80}")
-    print(f"OVERALL ASSESSMENT")
+    print("OVERALL ASSESSMENT")
     print(f"{'='*80}")
     print(f"Success Rate: {success_rate:.1f}% ({total_score}/{max_score})")
 
     if success_rate >= 80:
-        print(f"✓ EXCELLENT: Ghost particle no-flux implementation is highly successful!")
+        print("✓ EXCELLENT: Ghost particle no-flux implementation is highly successful!")
     elif success_rate >= 60:
-        print(f"✓ GOOD: Ghost particle implementation works well for most cases")
+        print("✓ GOOD: Ghost particle implementation works well for most cases")
     elif success_rate >= 40:
-        print(f"⚠ FAIR: Ghost particle implementation has mixed results")
+        print("⚠ FAIR: Ghost particle implementation has mixed results")
     else:
-        print(f"❌ POOR: Ghost particle implementation needs significant improvement")
+        print("❌ POOR: Ghost particle implementation needs significant improvement")
 
 
 if __name__ == "__main__":

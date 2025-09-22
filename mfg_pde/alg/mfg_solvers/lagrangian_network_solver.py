@@ -13,18 +13,18 @@ Key features:
 - Non-global continuity boundary conditions
 """
 
+from __future__ import annotations
+
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.optimize import minimize
-from scipy.sparse import csr_matrix
 
-from ..fp_solvers.fp_network import NetworkFPSolver
-from ..hjb_solvers.hjb_network import NetworkHJBSolver
 from .network_mfg_solver import NetworkFixedPointIterator
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...core.network_mfg_problem import NetworkMFGProblem
 
 
@@ -39,9 +39,9 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
     def __init__(
         self,
-        problem: "NetworkMFGProblem",
+        problem: NetworkMFGProblem,
         velocity_discretization: int = 10,
-        trajectory_length: int = None,
+        trajectory_length: int | None = None,
         use_relaxed_equilibria: bool = False,
         **kwargs,
     ):
@@ -60,6 +60,10 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         self.velocity_discretization = velocity_discretization
         self.trajectory_length = trajectory_length or problem.Nt
         self.use_relaxed_equilibria = use_relaxed_equilibria
+
+        # Time discretization attributes (missing from parent initialization)
+        self.dt = problem.T / problem.Nt if problem.Nt > 0 else 0.1
+        self.times = np.linspace(0, problem.T, problem.Nt + 1)
 
         # Velocity space setup
         self.velocity_dim = problem.components.velocity_space_dim
@@ -89,7 +93,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         tolerance: float = 1e-5,
         verbose: bool = True,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+    ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """
         Solve network MFG using Lagrangian formulation.
 
@@ -98,7 +102,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         """
         if verbose:
             print(f"\n{'='*80}")
-            print(f"LAGRANGIAN NETWORK MFG SOLVER")
+            print("LAGRANGIAN NETWORK MFG SOLVER")
             print(f"{'='*80}")
             print(f"Velocity discretization: {self.velocity_discretization}")
             print(f"Trajectory length: {self.trajectory_length}")
@@ -112,7 +116,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
     def _solve_lagrangian_fixed_point(
         self, max_iterations: int, tolerance: float, verbose: bool, **kwargs
-    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+    ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """Solve using Lagrangian fixed point iteration."""
         solve_start_time = time.time()
 
@@ -163,7 +167,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
             if total_error < tolerance:
                 if verbose:
-                    print(f"\nLagrangian convergence achieved!")
+                    print("\nLagrangian convergence achieved!")
                 break
 
         execution_time = time.time() - solve_start_time
@@ -292,7 +296,12 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
     def _get_edge_direction(self, node_from: int, node_to: int) -> np.ndarray:
         """Get direction vector between nodes."""
         # Use node positions if available
-        if self.network_problem.network_data.node_positions is not None and self.velocity_dim >= 2:
+        if (
+            hasattr(self.network_problem, "network_data")
+            and hasattr(self.network_problem.network_data, "node_positions")
+            and self.network_problem.network_data.node_positions is not None
+            and self.velocity_dim >= 2
+        ):
             pos_from = self.network_problem.network_data.node_positions[node_from]
             pos_to = self.network_problem.network_data.node_positions[node_to]
             direction = pos_to - pos_from
@@ -304,6 +313,10 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
     def _compute_total_lagrangian_cost(self) -> float:
         """Compute total Lagrangian cost for current solution."""
+        # Check if solution exists
+        if self.U is None or self.M is None:
+            return 0.0
+
         total_cost = 0.0
 
         for n in range(self.Nt):
@@ -322,7 +335,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
     def _solve_relaxed_equilibria(
         self, max_iterations: int, tolerance: float, verbose: bool, **kwargs
-    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+    ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """Solve using relaxed equilibria formulation."""
         if verbose:
             print("Solving using relaxed equilibria (trajectory measures)...")
@@ -354,7 +367,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
         return trajectory_measure
 
-    def get_optimal_trajectories(self, num_trajectories: int = 10) -> Dict[str, List]:
+    def get_optimal_trajectories(self, num_trajectories: int = 10) -> dict[str, Any]:
         """
         Extract optimal trajectories from Lagrangian solution.
 
@@ -369,7 +382,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
         trajectories = []
 
-        for traj_idx in range(num_trajectories):
+        for _traj_idx in range(num_trajectories):
             # Start from random initial node weighted by initial density
             start_node = np.random.choice(self.num_nodes, p=self.M[0, :])
 
@@ -412,7 +425,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
 # Factory function for Lagrangian network MFG solvers
 def create_lagrangian_network_solver(
-    problem: "NetworkMFGProblem", solver_type: str = "lagrangian", **kwargs
+    problem: NetworkMFGProblem, solver_type: str = "lagrangian", **kwargs
 ) -> LagrangianNetworkMFGSolver:
     """
     Create Lagrangian network MFG solver.

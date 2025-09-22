@@ -19,7 +19,7 @@ import numpy as np
 from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.alg.variational_solvers.variational_mfg_solver import VariationalMFGSolver
-from mfg_pde.core.lagrangian_mfg_problem import LagrangianMFGProblem, create_quadratic_lagrangian_mfg
+from mfg_pde.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.utils.integration import trapezoid
 from mfg_pde.utils.logging import configure_research_logging, get_logger
@@ -55,8 +55,8 @@ def create_test_problems():
 
     logger.info(f"  Domain: [{xmin}, {xmax}] × [0, {T}]")
     logger.info(f"  Grid: {Nx+1} × {Nt} (space × time)")
-    logger.info(f"  Lagrangian: L(t,x,v,m) = |v|²/2 + 0.5*m")
-    logger.info(f"  Hamiltonian: H(x,p,m) = |p|²/2 + 0.5*m")
+    logger.info("  Lagrangian: L(t,x,v,m) = |v|²/2 + 0.5*m")
+    logger.info("  Hamiltonian: H(x,p,m) = |p|²/2 + 0.5*m")
 
     return lagrangian_problem, hamiltonian_problem
 
@@ -76,7 +76,10 @@ def solve_lagrangian_formulation(problem):
     try:
         # Create variational solver
         solver = VariationalMFGSolver(
-            problem, optimization_method="L-BFGS-B", penalty_weight=100.0, use_jax=False  # For compatibility
+            problem,
+            optimization_method="L-BFGS-B",
+            penalty_weight=100.0,
+            use_jax=False,  # For compatibility
         )
 
         # Solve with moderate tolerance for demo
@@ -87,7 +90,7 @@ def solve_lagrangian_formulation(problem):
             logger.info(f"  ✓ Final cost: {result.final_cost:.6e}")
             logger.info(f"  ✓ Solve time: {result.solve_time:.2f}s")
         else:
-            logger.warning(f"  ⚠ Did not converge (max constraint violation)")
+            logger.warning("  ⚠ Did not converge (max constraint violation)")
 
         return result
 
@@ -126,11 +129,11 @@ def solve_hamiltonian_formulation(problem):
         # Solve
         result = solver.solve()
 
-        if hasattr(result, 'converged') and result.converged:
-            logger.info(f"  ✓ Converged successfully")
+        if hasattr(result, "converged") and result.converged:
+            logger.info("  ✓ Converged successfully")
             logger.info(f"  ✓ Final error: {result.final_error:.6e}")
         else:
-            logger.warning(f"  ⚠ Convergence status unclear")
+            logger.warning("  ⚠ Convergence status unclear")
 
         return result
 
@@ -156,14 +159,14 @@ def compare_solutions(lagrangian_result, hamiltonian_result, lagrangian_problem)
 
     try:
         # Extract density fields
-        if hasattr(lagrangian_result, 'optimal_flow') and lagrangian_result.optimal_flow is not None:
+        if hasattr(lagrangian_result, "optimal_flow") and lagrangian_result.optimal_flow is not None:
             m_lagrangian = lagrangian_result.optimal_flow
             logger.info("  ✓ Lagrangian density field available")
         else:
             logger.warning("  ⚠ Lagrangian density field missing")
             return
 
-        if hasattr(hamiltonian_result, 'M') and hamiltonian_result.M is not None:
+        if hasattr(hamiltonian_result, "M") and hamiltonian_result.M is not None:
             m_hamiltonian = hamiltonian_result.M
             logger.info("  ✓ Hamiltonian density field available")
         else:
@@ -189,7 +192,7 @@ def compare_solutions(lagrangian_result, hamiltonian_result, lagrangian_problem)
 
         # Compare representative trajectories if available
         if (
-            hasattr(lagrangian_result, 'representative_trajectory')
+            hasattr(lagrangian_result, "representative_trajectory")
             and lagrangian_result.representative_trajectory is not None
         ):
             traj_lag = lagrangian_result.representative_trajectory
@@ -231,74 +234,74 @@ def create_comparison_plots(lagrangian_result, hamiltonian_result, lagrangian_pr
 
         # Plot 1: Final density comparison
         ax1 = axes[0, 0]
-        if hasattr(lagrangian_result, 'optimal_flow') and lagrangian_result.optimal_flow is not None:
+        if hasattr(lagrangian_result, "optimal_flow") and lagrangian_result.optimal_flow is not None:
             m_lag_final = lagrangian_result.optimal_flow[-1, :]
-            ax1.plot(x_grid, m_lag_final, 'b-', linewidth=2, label='Lagrangian (Variational)')
+            ax1.plot(x_grid, m_lag_final, "b-", linewidth=2, label="Lagrangian (Variational)")
 
-        if hasattr(hamiltonian_result, 'M') and hamiltonian_result.M is not None:
+        if hasattr(hamiltonian_result, "M") and hamiltonian_result.M is not None:
             m_ham_final = hamiltonian_result.M[-1, :]
-            ax1.plot(x_grid, m_ham_final, 'r--', linewidth=2, label='Hamiltonian (HJB-FP)')
+            ax1.plot(x_grid, m_ham_final, "r--", linewidth=2, label="Hamiltonian (HJB-FP)")
 
-        ax1.set_xlabel('x')
-        ax1.set_ylabel('m(T, x)')
-        ax1.set_title('Final Density Distribution')
+        ax1.set_xlabel("x")
+        ax1.set_ylabel("m(T, x)")
+        ax1.set_title("Final Density Distribution")
         ax1.legend()
         ax1.grid(True, alpha=0.3)
 
         # Plot 2: Value function (if available from Hamiltonian)
         ax2 = axes[0, 1]
-        if hasattr(hamiltonian_result, 'U') and hamiltonian_result.U is not None:
+        if hasattr(hamiltonian_result, "U") and hamiltonian_result.U is not None:
             U_final = hamiltonian_result.U[-1, :]
-            ax2.plot(x_grid, U_final, 'r-', linewidth=2, label='u(T, x)')
-            ax2.set_xlabel('x')
-            ax2.set_ylabel('u(T, x)')
-            ax2.set_title('Final Value Function (Hamiltonian)')
+            ax2.plot(x_grid, U_final, "r-", linewidth=2, label="u(T, x)")
+            ax2.set_xlabel("x")
+            ax2.set_ylabel("u(T, x)")
+            ax2.set_title("Final Value Function (Hamiltonian)")
             ax2.grid(True, alpha=0.3)
         else:
-            ax2.text(0.5, 0.5, 'Value Function\nNot Available', ha='center', va='center', transform=ax2.transAxes)
-            ax2.set_title('Value Function (N/A)')
+            ax2.text(0.5, 0.5, "Value Function\nNot Available", ha="center", va="center", transform=ax2.transAxes)
+            ax2.set_title("Value Function (N/A)")
 
         # Plot 3: Representative trajectory (Lagrangian)
         ax3 = axes[1, 0]
         if (
-            hasattr(lagrangian_result, 'representative_trajectory')
+            hasattr(lagrangian_result, "representative_trajectory")
             and lagrangian_result.representative_trajectory is not None
         ):
             traj = lagrangian_result.representative_trajectory
-            ax3.plot(t_grid, traj, 'b-', linewidth=2, marker='o', markersize=3)
-            ax3.set_xlabel('t')
-            ax3.set_ylabel('x(t)')
-            ax3.set_title('Representative Trajectory (Lagrangian)')
+            ax3.plot(t_grid, traj, "b-", linewidth=2, marker="o", markersize=3)
+            ax3.set_xlabel("t")
+            ax3.set_ylabel("x(t)")
+            ax3.set_title("Representative Trajectory (Lagrangian)")
             ax3.grid(True, alpha=0.3)
         else:
             ax3.text(
-                0.5, 0.5, 'Representative\nTrajectory\nNot Available', ha='center', va='center', transform=ax3.transAxes
+                0.5, 0.5, "Representative\nTrajectory\nNot Available", ha="center", va="center", transform=ax3.transAxes
             )
-            ax3.set_title('Representative Trajectory (N/A)')
+            ax3.set_title("Representative Trajectory (N/A)")
 
         # Plot 4: Convergence history
         ax4 = axes[1, 1]
 
         # Lagrangian convergence
-        if hasattr(lagrangian_result, 'cost_history') and lagrangian_result.cost_history:
+        if hasattr(lagrangian_result, "cost_history") and lagrangian_result.cost_history:
             iterations_lag = range(len(lagrangian_result.cost_history))
             costs = lagrangian_result.cost_history
-            ax4.semilogy(iterations_lag, costs, 'b-', linewidth=2, marker='o', markersize=3, label='Lagrangian Cost')
+            ax4.semilogy(iterations_lag, costs, "b-", linewidth=2, marker="o", markersize=3, label="Lagrangian Cost")
 
         # Hamiltonian convergence (if available)
-        if hasattr(hamiltonian_result, 'convergence_history') and hamiltonian_result.convergence_history:
+        if hasattr(hamiltonian_result, "convergence_history") and hamiltonian_result.convergence_history:
             iterations_ham = range(len(hamiltonian_result.convergence_history))
             errors = hamiltonian_result.convergence_history
             ax4_twin = ax4.twinx()
             ax4_twin.semilogy(
-                iterations_ham, errors, 'r--', linewidth=2, marker='s', markersize=3, label='Hamiltonian Error'
+                iterations_ham, errors, "r--", linewidth=2, marker="s", markersize=3, label="Hamiltonian Error"
             )
-            ax4_twin.set_ylabel('HJB-FP Error', color='r')
-            ax4_twin.tick_params(axis='y', labelcolor='r')
+            ax4_twin.set_ylabel("HJB-FP Error", color="r")
+            ax4_twin.tick_params(axis="y", labelcolor="r")
 
-        ax4.set_xlabel('Iteration')
-        ax4.set_ylabel('Cost/Error')
-        ax4.set_title('Convergence History')
+        ax4.set_xlabel("Iteration")
+        ax4.set_ylabel("Cost/Error")
+        ax4.set_title("Convergence History")
         ax4.legend()
         ax4.grid(True, alpha=0.3)
 
@@ -306,7 +309,7 @@ def create_comparison_plots(lagrangian_result, hamiltonian_result, lagrangian_pr
 
         # Save plot
         plot_filename = "lagrangian_vs_hamiltonian_comparison.png"
-        plt.savefig(plot_filename, dpi=150, bbox_inches='tight')
+        plt.savefig(plot_filename, dpi=150, bbox_inches="tight")
         logger.info(f"Comparison plots saved as: {plot_filename}")
 
         try:
@@ -383,10 +386,10 @@ def main():
         logger.info("=" * 70)
 
         lagrangian_success = lagrangian_result is not None and (
-            not hasattr(lagrangian_result, 'converged') or lagrangian_result.converged
+            not hasattr(lagrangian_result, "converged") or lagrangian_result.converged
         )
         hamiltonian_success = hamiltonian_result is not None and (
-            not hasattr(hamiltonian_result, 'converged') or hamiltonian_result.converged
+            not hasattr(hamiltonian_result, "converged") or hamiltonian_result.converged
         )
 
         if lagrangian_success:

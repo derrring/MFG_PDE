@@ -11,15 +11,15 @@ Features:
 - Integration with modern visualization system
 """
 
+from __future__ import annotations
+
 import warnings
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
 # Plotly imports with LaTeX support
 try:
-    import plotly.express as px
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
@@ -29,9 +29,6 @@ except ImportError:
 
 # Matplotlib imports with LaTeX configuration
 try:
-    from mpl_toolkits.mplot3d import Axes3D
-
-    import matplotlib.colors as mcolors
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
 
@@ -91,8 +88,8 @@ class MathematicalPlotter:
             rcParams["text.usetex"] = True
             rcParams["font.family"] = "serif"
             rcParams["font.serif"] = ["Computer Modern Roman"]
-        except:
-            warnings.warn("LaTeX setup failed, falling back to mathtext")
+        except Exception:
+            warnings.warn("LaTeX setup failed, falling back to mathtext", stacklevel=2)
             self.use_latex = False
 
     def plot_mathematical_function(
@@ -102,7 +99,7 @@ class MathematicalPlotter:
         title: str = "Mathematical Function",
         xlabel: str = r"$x$",
         ylabel: str = r"$f(x)$",
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Plot mathematical function with proper notation.
@@ -127,16 +124,16 @@ class MathematicalPlotter:
         """Plot function using Plotly with LaTeX support."""
         fig = go.Figure()
 
-        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line=dict(width=2, color="blue"), name="f(x)"))
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line={"width": 2, "color": "blue"}, name="f(x)"))
 
         fig.update_layout(
-            title=dict(text=title, x=0.5, font=dict(size=16)),
+            title={"text": title, "x": 0.5, "font": {"size": 16}},
             xaxis_title=xlabel,
             yaxis_title=ylabel,
             template="plotly_white",
             width=800,
             height=600,
-            font=dict(size=14),
+            font={"size": 14},
         )
 
         if save_path:
@@ -168,7 +165,7 @@ class MathematicalPlotter:
         t_grid: np.ndarray,
         density: np.ndarray,
         title: str = "Density Evolution $m(t,x)$",
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Plot MFG density evolution with mathematical notation.
@@ -196,12 +193,12 @@ class MathematicalPlotter:
                 x=x_grid,
                 y=t_grid,
                 colorscale="Viridis",
-                colorbar=dict(title="m(t,x)"),
+                colorbar={"title": "m(t,x)"},
             )
         )
 
         fig.update_layout(
-            title=dict(text=title, x=0.5),
+            title={"text": title, "x": 0.5},
             xaxis_title="Position x",
             yaxis_title="Time t",
             width=800,
@@ -241,7 +238,7 @@ class MathematicalPlotter:
         xlabel: str = r"$x$",
         ylabel: str = r"$\dot{x}$",
         title: str = "Phase Portrait",
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Plot phase portrait with mathematical notation.

@@ -17,15 +17,16 @@ Key differences from continuous MFG:
 - Boundary conditions → Network boundary nodes
 """
 
-from abc import ABC, abstractmethod
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
-import scipy.sparse as sp
 from scipy.sparse import csr_matrix
 
-from ..geometry.network_geometry import BaseNetworkGeometry, NetworkData
+from ..geometry.network_geometry import BaseNetworkGeometry
 from .mfg_problem import MFGProblem
 
 
@@ -39,40 +40,40 @@ class NetworkMFGComponents:
     """
 
     # Network-specific Hamiltonian (depends on node states and edge flows)
-    hamiltonian_func: Optional[Callable] = None  # H(node, neighbors, m, p, t)
-    hamiltonian_dm_func: Optional[Callable] = None  # dH/dm at nodes
+    hamiltonian_func: Callable | None = None  # H(node, neighbors, m, p, t)
+    hamiltonian_dm_func: Callable | None = None  # dH/dm at nodes
 
     # Lagrangian formulation support (based on ArXiv 2207.10908v3)
-    lagrangian_func: Optional[Callable] = None  # L(node, velocity, m, t)
+    lagrangian_func: Callable | None = None  # L(node, velocity, m, t)
     velocity_space_dim: int = 2  # Dimension of velocity space
-    trajectory_cost_func: Optional[Callable] = None  # Cost along trajectories
+    trajectory_cost_func: Callable | None = None  # Cost along trajectories
     relaxed_control: bool = False  # Use relaxed equilibria
 
     # Node-based potential function
-    node_potential_func: Optional[Callable] = None  # V(node, t)
+    node_potential_func: Callable | None = None  # V(node, t)
 
     # Edge-based costs/rewards
-    edge_cost_func: Optional[Callable] = None  # Cost of moving along edges
-    congestion_func: Optional[Callable] = None  # Congestion effects
+    edge_cost_func: Callable | None = None  # Cost of moving along edges
+    congestion_func: Callable | None = None  # Congestion effects
 
     # Initial and terminal conditions on network
-    initial_node_density_func: Optional[Callable] = None  # m_0(node)
-    terminal_node_value_func: Optional[Callable] = None  # u_T(node)
+    initial_node_density_func: Callable | None = None  # m_0(node)
+    terminal_node_value_func: Callable | None = None  # u_T(node)
 
     # Network boundary conditions
-    boundary_nodes: Optional[List[int]] = None  # Nodes with boundary conditions
-    boundary_values_func: Optional[Callable] = None  # Boundary values
+    boundary_nodes: list[int] | None = None  # Nodes with boundary conditions
+    boundary_values_func: Callable | None = None  # Boundary values
 
     # Flow dynamics parameters
     diffusion_coefficient: float = 1.0  # Diffusion strength
     drift_coefficient: float = 1.0  # Drift/advection strength
 
     # Network-specific coupling
-    node_interaction_func: Optional[Callable] = None  # Local node interactions
-    edge_interaction_func: Optional[Callable] = None  # Edge-based interactions
+    node_interaction_func: Callable | None = None  # Local node interactions
+    edge_interaction_func: Callable | None = None  # Edge-based interactions
 
     # Problem parameters
-    problem_params: Dict[str, Any] = field(default_factory=dict)
+    problem_params: dict[str, Any] = field(default_factory=dict)
 
 
 class NetworkMFGProblem(MFGProblem):
@@ -104,7 +105,7 @@ class NetworkMFGProblem(MFGProblem):
         network_geometry: BaseNetworkGeometry,
         T: float = 1.0,
         Nt: int = 100,
-        components: Optional[NetworkMFGComponents] = None,
+        components: NetworkMFGComponents | None = None,
         problem_name: str = "NetworkMFG",
     ):
         """
@@ -138,9 +139,9 @@ class NetworkMFGProblem(MFGProblem):
         self.spatial_dimension = 0  # Discrete network, not continuous space
 
         # Network-specific matrices
-        self.adjacency_matrix: Optional[csr_matrix] = None
-        self.laplacian_matrix: Optional[csr_matrix] = None
-        self.incidence_matrix: Optional[csr_matrix] = None
+        self.adjacency_matrix: csr_matrix | None = None
+        self.laplacian_matrix: csr_matrix | None = None
+        self.incidence_matrix: csr_matrix | None = None
 
         self._initialize_network_operators()
 
@@ -160,7 +161,7 @@ class NetworkMFGProblem(MFGProblem):
 
     # Network-specific MFG components
 
-    def hamiltonian(self, node: int, neighbors: List[int], m: np.ndarray, p: np.ndarray, t: float) -> float:
+    def hamiltonian(self, node: int, neighbors: list[int], m: np.ndarray, p: np.ndarray, t: float) -> float:
         """
         Network Hamiltonian function.
 
@@ -181,7 +182,7 @@ class NetworkMFGProblem(MFGProblem):
         return self._default_network_hamiltonian(node, neighbors, m, p, t)
 
     def _default_network_hamiltonian(
-        self, node: int, neighbors: List[int], m: np.ndarray, p: np.ndarray, t: float
+        self, node: int, neighbors: list[int], m: np.ndarray, p: np.ndarray, t: float
     ) -> float:
         """Default network Hamiltonian implementation."""
         # Quadratic control cost + potential + density coupling
@@ -189,7 +190,10 @@ class NetworkMFGProblem(MFGProblem):
 
         # Sum over possible moves to neighbors
         for neighbor in neighbors:
-            edge_weight = self.network_data.get_edge_weight(node, neighbor)
+            if self.network_data is None:
+                edge_weight = 1.0  # Default weight
+            else:
+                edge_weight = self.network_data.get_edge_weight(node, neighbor)
             # Control cost for moving to neighbor
             dp = p[neighbor] - p[node]  # Discrete gradient
             control_cost += 0.5 * edge_weight * dp**2
@@ -202,7 +206,7 @@ class NetworkMFGProblem(MFGProblem):
 
         return control_cost + potential + coupling
 
-    def hamiltonian_dm(self, node: int, neighbors: List[int], m: np.ndarray, p: np.ndarray, t: float) -> float:
+    def hamiltonian_dm(self, node: int, neighbors: list[int], m: np.ndarray, p: np.ndarray, t: float) -> float:
         """Derivative of Hamiltonian with respect to density."""
         if self.components.hamiltonian_dm_func is not None:
             return self.components.hamiltonian_dm_func(node, neighbors, m, p, t)
@@ -236,11 +240,11 @@ class NetworkMFGProblem(MFGProblem):
         potential = self.node_potential(node, t)
         interaction = self.density_coupling(node, m, t)
 
-        return kinetic_energy + potential + interaction
+        return float(kinetic_energy + potential + interaction)
 
     def trajectory_cost(
         self,
-        trajectory: List[int],
+        trajectory: list[int],
         velocities: np.ndarray,
         m_evolution: np.ndarray,
         times: np.ndarray,
@@ -264,7 +268,7 @@ class NetworkMFGProblem(MFGProblem):
         total_cost = 0.0
         dt = times[1] - times[0] if len(times) > 1 else 1.0
 
-        for i, (node, t) in enumerate(zip(trajectory, times)):
+        for i, (node, t) in enumerate(zip(trajectory, times, strict=False)):
             if i < len(velocities):
                 velocity = velocities[i] if velocities.ndim > 1 else np.array([velocities[i]])
                 m_current = m_evolution[i] if m_evolution.ndim > 1 else m_evolution
@@ -273,7 +277,7 @@ class NetworkMFGProblem(MFGProblem):
 
         return total_cost
 
-    def compute_relaxed_equilibrium(self, trajectory_measures: List[Callable]) -> Tuple[np.ndarray, np.ndarray]:
+    def compute_relaxed_equilibrium(self, trajectory_measures: list[Callable]) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute relaxed equilibrium as probability measures on trajectories.
 
@@ -336,6 +340,8 @@ class NetworkMFGProblem(MFGProblem):
             return self.components.edge_cost_func(node_from, node_to, t)
 
         # Default: unit cost weighted by edge weight
+        if self.network_data is None:
+            return 1.0  # Default weight
         edge_weight = self.network_data.get_edge_weight(node_from, node_to)
         return edge_weight
 
@@ -375,7 +381,10 @@ class NetworkMFGProblem(MFGProblem):
         gradients = np.zeros((self.num_nodes, self.num_nodes))
 
         for i in range(self.num_nodes):
-            neighbors = self.network_data.get_neighbors(i)
+            if self.network_data is None:
+                neighbors = []  # No neighbors if no network data
+            else:
+                neighbors = self.network_data.get_neighbors(i)
             for j in neighbors:
                 gradients[i, j] = u[j] - u[i]
 
@@ -397,7 +406,10 @@ class NetworkMFGProblem(MFGProblem):
         # This is a simplified implementation
         # Full implementation would handle edge-based flows properly
         for i in range(self.num_nodes):
-            neighbors = self.network_data.get_neighbors(i)
+            if self.network_data is None:
+                neighbors = []  # No neighbors if no network data
+            else:
+                neighbors = self.network_data.get_neighbors(i)
             div_i = 0.0
             for j in neighbors:
                 # Flow from j to i minus flow from i to j
@@ -417,7 +429,7 @@ class NetworkMFGProblem(MFGProblem):
         Returns:
             Laplacian applied to u
         """
-        return coefficient * (self.laplacian_matrix @ u)
+        return np.asarray(coefficient * (self.laplacian_matrix @ u))
 
     # Boundary conditions for networks
 
@@ -487,30 +499,42 @@ class NetworkMFGProblem(MFGProblem):
 
     # Network-specific properties
 
-    def get_network_statistics(self) -> Dict[str, Any]:
+    def get_network_statistics(self) -> dict[str, Any]:
         """Get comprehensive network statistics."""
         from ..geometry.network_geometry import compute_network_statistics
 
+        if self.network_data is None:
+            raise ValueError("Network data not initialized")
         return compute_network_statistics(self.network_data)
 
     def get_adjacency_matrix(self) -> csr_matrix:
         """Get network adjacency matrix."""
+        if self.adjacency_matrix is None:
+            raise ValueError("Adjacency matrix not initialized")
         return self.adjacency_matrix
 
     def get_laplacian_matrix(self) -> csr_matrix:
         """Get network Laplacian matrix."""
+        if self.laplacian_matrix is None:
+            raise ValueError("Laplacian matrix not initialized")
         return self.laplacian_matrix
 
-    def get_node_neighbors(self, node: int) -> List[int]:
+    def get_node_neighbors(self, node: int) -> list[int]:
         """Get neighbors of a specific node."""
+        if self.network_data is None:
+            return []  # No neighbors if no network data
         return self.network_data.get_neighbors(node)
 
     def __str__(self) -> str:
         """String representation of network MFG problem."""
         stats = self.get_network_statistics()
+        network_type = "Unknown"
+        if self.network_data is not None and hasattr(self.network_data, "network_type"):
+            network_type = getattr(self.network_data.network_type, "value", str(self.network_data.network_type))
+
         return (
             f"NetworkMFGProblem({self.problem_name})\n"
-            f"  Network: {self.network_data.network_type.value}\n"
+            f"  Network: {network_type}\n"
             f"  Nodes: {self.num_nodes}, Edges: {self.num_edges}\n"
             f"  Time: T={self.T}, Nt={self.Nt}\n"
             f"  Connected: {stats['is_connected']}\n"
@@ -523,7 +547,7 @@ class NetworkMFGProblem(MFGProblem):
 
 def create_grid_mfg_problem(
     width: int,
-    height: int = None,
+    height: int | None = None,
     T: float = 1.0,
     Nt: int = 100,
     periodic: bool = False,
@@ -552,7 +576,7 @@ def create_random_mfg_problem(
     connection_prob: float = 0.1,
     T: float = 1.0,
     Nt: int = 100,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     **kwargs,
 ) -> NetworkMFGProblem:
     """Create MFG problem on random network."""
@@ -577,7 +601,7 @@ def create_scale_free_mfg_problem(
     num_edges_per_node: int = 2,
     T: float = 1.0,
     Nt: int = 100,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     **kwargs,
 ) -> NetworkMFGProblem:
     """Create MFG problem on scale-free network."""

@@ -4,10 +4,8 @@ QP Optimization Success Summary
 Demonstrates the successful QP optimization achievement
 """
 
-import time
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 def create_success_summary():
@@ -19,39 +17,39 @@ def create_success_summary():
 
     # Results from our successful tests
     optimization_results = {
-        'baseline_qp': {
-            'name': 'Baseline QP-Collocation',
-            'qp_usage_rate': 1.0,  # 100% QP usage
-            'estimated_time': 300,  # Estimated from previous tests
-            'status': 'BASELINE',
+        "baseline_qp": {
+            "name": "Baseline QP-Collocation",
+            "qp_usage_rate": 1.0,  # 100% QP usage
+            "estimated_time": 300,  # Estimated from previous tests
+            "status": "BASELINE",
         },
-        'smart_qp': {
-            'name': 'Smart QP-Collocation',
-            'qp_usage_rate': 0.354,  # 35.4% from quick test
-            'time': 12.6,
-            'speedup': 2.4,
-            'status': 'GOOD',
+        "smart_qp": {
+            "name": "Smart QP-Collocation",
+            "qp_usage_rate": 0.354,  # 35.4% from quick test
+            "time": 12.6,
+            "speedup": 2.4,
+            "status": "GOOD",
         },
-        'tuned_qp_small': {
-            'name': 'Tuned QP (Small Problem)',
-            'qp_usage_rate': 0.082,  # 8.2% from quick test
-            'time': 3.6,
-            'speedup': 5.8,
-            'status': 'EXCELLENT',
+        "tuned_qp_small": {
+            "name": "Tuned QP (Small Problem)",
+            "qp_usage_rate": 0.082,  # 8.2% from quick test
+            "time": 3.6,
+            "speedup": 5.8,
+            "status": "EXCELLENT",
         },
-        'tuned_qp_medium': {
-            'name': 'Tuned QP (Medium Problem)',
-            'qp_usage_rate': 0.037,  # 3.7% from final test
-            'time': 5.8,
-            'speedup': 7.5,
-            'status': 'EXCELLENT',
+        "tuned_qp_medium": {
+            "name": "Tuned QP (Medium Problem)",
+            "qp_usage_rate": 0.037,  # 3.7% from final test
+            "time": 5.8,
+            "speedup": 7.5,
+            "status": "EXCELLENT",
         },
-        'tuned_qp_large': {
-            'name': 'Tuned QP (Large Problem)',
-            'qp_usage_rate': 0.075,  # 7.5% from comprehensive test
-            'time': 26.4,
-            'speedup': 6.0,
-            'status': 'EXCELLENT',
+        "tuned_qp_large": {
+            "name": "Tuned QP (Large Problem)",
+            "qp_usage_rate": 0.075,  # 7.5% from comprehensive test
+            "time": 26.4,
+            "speedup": 6.0,
+            "status": "EXCELLENT",
         },
     }
 
@@ -59,13 +57,13 @@ def create_success_summary():
     print("-" * 50)
 
     for key, result in optimization_results.items():
-        qp_rate = result['qp_usage_rate']
-        name = result['name']
-        status = result['status']
+        qp_rate = result["qp_usage_rate"]
+        name = result["name"]
+        status = result["status"]
 
         print(f"{name:<35} QP Usage: {qp_rate:>6.1%}  Status: {status}")
 
-        if 'speedup' in result:
+        if "speedup" in result:
             print(f"{'':35} Time: {result['time']:>6.1f}s  Speedup: {result['speedup']:.1f}x")
 
     # Key achievements
@@ -143,51 +141,51 @@ def create_optimization_visualization(results):
     speedups = []
     colors = []
 
-    color_map = {'BASELINE': 'red', 'GOOD': 'orange', 'EXCELLENT': 'green'}
+    color_map = {"BASELINE": "red", "GOOD": "orange", "EXCELLENT": "green"}
 
     for key, result in results.items():
-        if key != 'baseline_qp':  # Skip baseline for cleaner visualization
-            methods.append(result['name'].replace('Tuned QP ', ''))
-            qp_rates.append(result['qp_usage_rate'] * 100)
-            speedups.append(result.get('speedup', 1.0))
-            colors.append(color_map[result['status']])
+        if key != "baseline_qp":  # Skip baseline for cleaner visualization
+            methods.append(result["name"].replace("Tuned QP ", ""))
+            qp_rates.append(result["qp_usage_rate"] * 100)
+            speedups.append(result.get("speedup", 1.0))
+            colors.append(color_map[result["status"]])
 
     # Create comprehensive visualization
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
 
     # Plot 1: QP Usage Rate Evolution
     ax1.bar(range(len(qp_rates)), qp_rates, color=colors, alpha=0.7)
-    ax1.axhline(y=10, color='black', linestyle='--', linewidth=2, label='Target: 10%')
-    ax1.set_ylabel('QP Usage Rate (%)')
-    ax1.set_title('QP Usage Rate Optimization Progress')
+    ax1.axhline(y=10, color="black", linestyle="--", linewidth=2, label="Target: 10%")
+    ax1.set_ylabel("QP Usage Rate (%)")
+    ax1.set_title("QP Usage Rate Optimization Progress")
     ax1.set_xticks(range(len(methods)))
-    ax1.set_xticklabels(methods, rotation=45, ha='right')
+    ax1.set_xticklabels(methods, rotation=45, ha="right")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     # Add value labels
     for i, rate in enumerate(qp_rates):
-        ax1.text(i, rate + 1, f'{rate:.1f}%', ha='center', va='bottom', fontweight='bold')
+        ax1.text(i, rate + 1, f"{rate:.1f}%", ha="center", va="bottom", fontweight="bold")
 
     # Plot 2: Speedup Achievement
     ax2.bar(range(len(speedups)), speedups, color=colors, alpha=0.7)
-    ax2.set_ylabel('Speedup Factor')
-    ax2.set_title('Performance Improvement vs Baseline QP')
+    ax2.set_ylabel("Speedup Factor")
+    ax2.set_title("Performance Improvement vs Baseline QP")
     ax2.set_xticks(range(len(methods)))
-    ax2.set_xticklabels(methods, rotation=45, ha='right')
+    ax2.set_xticklabels(methods, rotation=45, ha="right")
     ax2.grid(True, alpha=0.3)
 
     # Add value labels
     for i, speedup in enumerate(speedups):
-        ax2.text(i, speedup + 0.1, f'{speedup:.1f}x', ha='center', va='bottom', fontweight='bold')
+        ax2.text(i, speedup + 0.1, f"{speedup:.1f}x", ha="center", va="bottom", fontweight="bold")
 
     # Plot 3: Optimization Quality Assessment
-    ax3.axis('off')
+    ax3.axis("off")
 
     assessment_text = "OPTIMIZATION QUALITY ASSESSMENT\n\n"
     assessment_text += "Target: Reduce QP usage from 100% to ~10%\n\n"
 
-    for i, (method, rate) in enumerate(zip(methods, qp_rates)):
+    for i, (method, rate) in enumerate(zip(methods, qp_rates, strict=False)):
         if rate <= 12:  # Within 20% of 10% target
             quality = "✅ EXCELLENT"
         elif rate <= 20:  # Within 100% of target
@@ -208,13 +206,13 @@ def create_optimization_visualization(results):
         assessment_text,
         transform=ax3.transAxes,
         fontsize=11,
-        verticalalignment='top',
-        fontfamily='monospace',
+        verticalalignment="top",
+        fontfamily="monospace",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.8),
     )
 
     # Plot 4: Technical Innovation Summary
-    ax4.axis('off')
+    ax4.axis("off")
 
     innovation_text = "TECHNICAL INNOVATIONS\n\n"
     innovation_text += "🔧 DEEP INTEGRATION:\n"
@@ -242,16 +240,16 @@ def create_optimization_visualization(results):
         innovation_text,
         transform=ax4.transAxes,
         fontsize=10,
-        verticalalignment='top',
-        fontfamily='monospace',
+        verticalalignment="top",
+        fontfamily="monospace",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
     )
 
     plt.tight_layout()
 
     # Save results
-    filename = '/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/qp_optimization_success_summary.png'
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    filename = "/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/qp_optimization_success_summary.png"
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
     print(f"\nOptimization success summary saved to: {filename}")
     plt.show()
 

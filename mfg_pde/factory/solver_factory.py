@@ -6,12 +6,15 @@ Provides factory patterns for creating optimized solver configurations with
 sensible defaults for different use cases.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 
-from ..alg.mfg_solvers.adaptive_particle_collocation_solver import SilentAdaptiveParticleCollocationSolver
+from ..alg.amr_enhancement import AMREnhancedSolver
+from ..alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from ..alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from ..alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
 from ..config.solver_config import (
@@ -44,8 +47,8 @@ class SolverFactoryConfig:
     config_preset: str = "balanced"  # fast, accurate, research, balanced
     return_structured: bool = True
     warm_start: bool = False
-    custom_config: Optional[MFGSolverConfig] = None
-    solver_kwargs: Dict[str, Any] = None
+    custom_config: MFGSolverConfig | None = None
+    solver_kwargs: dict[str, Any] | None = None
 
     def __post_init__(self):
         if self.solver_kwargs is None:
@@ -65,22 +68,17 @@ class SolverFactory:
 
     @staticmethod
     def create_solver(
-        problem: "MFGProblem",
+        problem: MFGProblem,
         solver_type: SolverType = "fixed_point",
         config_preset: str = "balanced",
-        hjb_solver: Optional["BaseHJBSolver"] = None,
-        fp_solver: Optional["BaseFPSolver"] = None,
-        collocation_points: Optional[np.ndarray] = None,
-        custom_config: Optional[MFGSolverConfig] = None,
+        hjb_solver: BaseHJBSolver | None = None,
+        fp_solver: BaseFPSolver | None = None,
+        collocation_points: np.ndarray | None = None,
+        custom_config: MFGSolverConfig | None = None,
         enable_amr: bool = False,
-        amr_config: Optional[Dict[str, Any]] = None,
+        amr_config: dict[str, Any] | None = None,
         **kwargs,
-    ) -> Union[
-        ConfigAwareFixedPointIterator,
-        MonitoredParticleCollocationSolver,
-        SilentAdaptiveParticleCollocationSolver,
-        "AMREnhancedSolver",
-    ]:
+    ) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
         """
         Create an MFG solver with optimized configuration.
 
@@ -225,10 +223,10 @@ class SolverFactory:
 
     @staticmethod
     def _create_fixed_point_solver(
-        problem: "MFGProblem",
+        problem: MFGProblem,
         config: MFGSolverConfig,
-        hjb_solver: Optional["BaseHJBSolver"],
-        fp_solver: Optional["BaseFPSolver"],
+        hjb_solver: BaseHJBSolver | None,
+        fp_solver: BaseFPSolver | None,
         **kwargs,
     ) -> ConfigAwareFixedPointIterator:
         """Create a fixed point iterator solver."""
@@ -258,9 +256,9 @@ class SolverFactory:
 
     @staticmethod
     def _create_particle_collocation_solver(
-        problem: "MFGProblem",
+        problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: Optional[np.ndarray],
+        collocation_points: np.ndarray | None,
         **kwargs,
     ) -> MonitoredParticleCollocationSolver:
         """Create a particle collocation solver."""
@@ -302,9 +300,9 @@ class SolverFactory:
 
     @staticmethod
     def _create_monitored_particle_solver(
-        problem: "MFGProblem",
+        problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: Optional[np.ndarray],
+        collocation_points: np.ndarray | None,
         **kwargs,
     ) -> MonitoredParticleCollocationSolver:
         """Create a monitored particle collocation solver with enhanced convergence."""
@@ -313,11 +311,11 @@ class SolverFactory:
 
     @staticmethod
     def _create_adaptive_particle_solver(
-        problem: "MFGProblem",
+        problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: Optional[np.ndarray],
+        collocation_points: np.ndarray | None,
         **kwargs,
-    ) -> SilentAdaptiveParticleCollocationSolver:
+    ) -> AdaptiveParticleCollocationSolver:
         """Create an adaptive particle collocation solver."""
         if collocation_points is None:
             collocation_points = np.linspace(problem.xmin, problem.xmax, problem.Nx)
@@ -348,8 +346,8 @@ class SolverFactory:
             **{k: v for k, v in kwargs.items() if k not in config_keys},
         }
 
-        return SilentAdaptiveParticleCollocationSolver(
-            problem=problem, collocation_points=collocation_points, **solver_kwargs
+        return AdaptiveParticleCollocationSolver(
+            problem=problem, collocation_points=collocation_points, verbose=False, **solver_kwargs
         )
 
 
@@ -357,16 +355,11 @@ class SolverFactory:
 
 
 def create_solver(
-    problem: "MFGProblem",
+    problem: MFGProblem,
     solver_type: SolverType = "fixed_point",
     preset: str = "balanced",
     **kwargs,
-) -> Union[
-    ConfigAwareFixedPointIterator,
-    MonitoredParticleCollocationSolver,
-    SilentAdaptiveParticleCollocationSolver,
-    "AMREnhancedSolver",
-]:
+) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
     """
     Create an MFG solver with specified type and preset.
 
@@ -382,12 +375,9 @@ def create_solver(
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset=preset, **kwargs)
 
 
-def create_fast_solver(problem: "MFGProblem", solver_type: SolverType = "fixed_point", **kwargs) -> Union[
-    ConfigAwareFixedPointIterator,
-    MonitoredParticleCollocationSolver,
-    SilentAdaptiveParticleCollocationSolver,
-    "AMREnhancedSolver",
-]:
+def create_fast_solver(
+    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs
+) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
     """
     Create a fast MFG solver optimized for speed.
 
@@ -401,7 +391,6 @@ def create_fast_solver(problem: "MFGProblem", solver_type: SolverType = "fixed_p
     """
     # For fixed_point solvers, create default HJB and FP solvers if not provided
     if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
-        import numpy as np
 
         from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
         from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
@@ -417,11 +406,11 @@ def create_fast_solver(problem: "MFGProblem", solver_type: SolverType = "fixed_p
 
 
 def create_semi_lagrangian_solver(
-    problem: "MFGProblem",
+    problem: MFGProblem,
     interpolation_method: str = "linear",
     optimization_method: str = "brent",
     characteristic_solver: str = "explicit_euler",
-    use_jax: bool = None,
+    use_jax: bool | None = None,
     fp_solver_type: str = "fdm",
     **kwargs,
 ) -> ConfigAwareFixedPointIterator:
@@ -483,21 +472,20 @@ def create_semi_lagrangian_solver(
     # Extract relevant kwargs for fixed-point solver
     fp_kwargs = {k: v for k, v in kwargs.items() if k not in ["tolerance", "max_char_iterations"]}
 
-    return create_fast_solver(
+    solver = create_fast_solver(
         problem=problem,
         solver_type="fixed_point",
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
         **fp_kwargs,
     )
+    # Type assertion since we know this returns ConfigAwareFixedPointIterator for fixed_point solver_type
+    return cast(ConfigAwareFixedPointIterator, solver)
 
 
-def create_accurate_solver(problem: "MFGProblem", solver_type: SolverType = "fixed_point", **kwargs) -> Union[
-    ConfigAwareFixedPointIterator,
-    MonitoredParticleCollocationSolver,
-    SilentAdaptiveParticleCollocationSolver,
-    "AMREnhancedSolver",
-]:
+def create_accurate_solver(
+    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs
+) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
     """
     Create an accurate MFG solver optimized for precision.
 
@@ -512,12 +500,9 @@ def create_accurate_solver(problem: "MFGProblem", solver_type: SolverType = "fix
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="accurate", **kwargs)
 
 
-def create_research_solver(problem: "MFGProblem", solver_type: SolverType = "monitored_particle", **kwargs) -> Union[
-    ConfigAwareFixedPointIterator,
-    MonitoredParticleCollocationSolver,
-    SilentAdaptiveParticleCollocationSolver,
-    "AMREnhancedSolver",
-]:
+def create_research_solver(
+    problem: MFGProblem, solver_type: SolverType = "monitored_particle", **kwargs
+) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
     """
     Create a research MFG solver with comprehensive monitoring.
 
@@ -533,7 +518,7 @@ def create_research_solver(problem: "MFGProblem", solver_type: SolverType = "mon
 
 
 def create_monitored_solver(
-    problem: "MFGProblem", collocation_points: Optional[np.ndarray] = None, **kwargs
+    problem: MFGProblem, collocation_points: np.ndarray | None = None, **kwargs
 ) -> MonitoredParticleCollocationSolver:
     """
     Create a monitored particle collocation solver with enhanced convergence analysis.
@@ -546,22 +531,24 @@ def create_monitored_solver(
     Returns:
         Monitored particle collocation solver
     """
-    return SolverFactory.create_solver(
+    solver = SolverFactory.create_solver(
         problem=problem,
         solver_type="monitored_particle",
         config_preset="research",
         collocation_points=collocation_points,
         **kwargs,
     )
+    # Type assertion since we know this returns MonitoredParticleCollocationSolver for monitored_particle solver_type
+    return cast(MonitoredParticleCollocationSolver, solver)
 
 
 def create_amr_solver(
-    problem: "MFGProblem",
+    problem: MFGProblem,
     base_solver_type: SolverType = "fixed_point",
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     **kwargs,
-) -> "AMREnhancedSolver":
+) -> AMREnhancedSolver:
     """
     Create an AMR-enhanced MFG solver.
 
@@ -601,7 +588,7 @@ def create_amr_solver(
         if key in kwargs:
             amr_config[key] = kwargs.pop(key)
 
-    return SolverFactory.create_solver(
+    solver = SolverFactory.create_solver(
         problem=problem,
         solver_type=base_solver_type,
         config_preset="accurate",  # AMR typically used for high-accuracy solutions
@@ -609,3 +596,5 @@ def create_amr_solver(
         amr_config=amr_config,
         **kwargs,
     )
+    # Type assertion since we know this returns AMREnhancedSolver when enable_amr=True
+    return cast(AMREnhancedSolver, solver)

@@ -5,9 +5,11 @@ This module defines the abstract base classes and core data structures
 for the Gmsh → Meshio → PyVista mesh generation system.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -40,9 +42,9 @@ class MeshData:
     element_tags: np.ndarray  # Element region IDs
     boundary_faces: np.ndarray  # Boundary connectivity
     dimension: int  # 2 or 3
-    quality_metrics: Dict[str, Any] = None
-    element_volumes: np.ndarray = None
-    metadata: Dict[str, Any] = None
+    quality_metrics: dict[str, Any] | None = None
+    element_volumes: np.ndarray | None = None
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         """Initialize derived quantities and validate mesh data."""
@@ -72,7 +74,7 @@ class MeshData:
         return self.elements.shape[0]
 
     @property
-    def bounds(self) -> Tuple[np.ndarray, np.ndarray]:
+    def bounds(self) -> tuple[np.ndarray, np.ndarray]:
         """Bounding box of the mesh: (min_coords, max_coords)."""
         return np.min(self.vertices, axis=0), np.max(self.vertices, axis=0)
 
@@ -191,34 +193,29 @@ class BaseGeometry(ABC):
             dimension: Spatial dimension (2 or 3)
         """
         self.dimension = dimension
-        self.mesh_data: Optional[MeshData] = None
+        self.mesh_data: MeshData | None = None
         self._gmsh_model = None
 
     @abstractmethod
     def create_gmsh_geometry(self) -> Any:
         """Create geometry using Gmsh API. Must be implemented by subclasses."""
-        pass
 
     @abstractmethod
     def set_mesh_parameters(self, **kwargs) -> None:
         """Set mesh generation parameters. Must be implemented by subclasses."""
-        pass
 
     @abstractmethod
     def generate_mesh(self) -> MeshData:
         """Generate mesh using Gmsh → Meshio pipeline. Must be implemented by subclasses."""
-        pass
 
     @property
     @abstractmethod
-    def bounds(self) -> Tuple[np.ndarray, np.ndarray]:
+    def bounds(self) -> tuple[np.ndarray, np.ndarray]:
         """Get geometry bounding box. Must be implemented by subclasses."""
-        pass
 
     @abstractmethod
     def export_mesh(self, format: str, filename: str) -> None:
         """Export mesh in specified format. Must be implemented by subclasses."""
-        pass
 
     def visualize_mesh(self, show_edges: bool = True, show_quality: bool = False):
         """Visualize mesh using PyVista."""
@@ -230,12 +227,14 @@ class BaseGeometry(ABC):
         except ImportError:
             raise ImportError("pyvista is required for mesh visualization")
 
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
         mesh = self.mesh_data.to_pyvista()
         plotter = pv.Plotter()
 
         if show_quality:
             # Color by mesh quality if available
-            if "quality" in self.mesh_data.quality_metrics:
+            if self.mesh_data.quality_metrics and "quality" in self.mesh_data.quality_metrics:
                 mesh.cell_data["quality"] = self.mesh_data.quality_metrics["quality"]
                 plotter.add_mesh(mesh, scalars="quality", show_edges=show_edges)
             else:
@@ -245,10 +244,13 @@ class BaseGeometry(ABC):
 
         plotter.show()
 
-    def compute_mesh_quality(self) -> Dict[str, float]:
+    def compute_mesh_quality(self) -> dict[str, float]:
         """Compute mesh quality metrics."""
         if self.mesh_data is None:
             self.generate_mesh()
+
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
 
         quality_metrics = {}
 
@@ -257,11 +259,14 @@ class BaseGeometry(ABC):
         elif self.mesh_data.element_type == "tetrahedron":
             quality_metrics.update(self._compute_tetrahedron_quality())
 
-        self.mesh_data.quality_metrics.update(quality_metrics)
+        if self.mesh_data.quality_metrics is not None:
+            self.mesh_data.quality_metrics.update(quality_metrics)
         return quality_metrics
 
-    def _compute_triangle_quality(self) -> Dict[str, float]:
+    def _compute_triangle_quality(self) -> dict[str, float]:
         """Compute quality metrics for triangular elements."""
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
         areas = self.mesh_data.compute_element_volumes()
 
         # Compute aspect ratios
@@ -278,21 +283,23 @@ class BaseGeometry(ABC):
             aspect_ratios.append(max(e1, e2, e3) / min(e1, e2, e3))
 
         return {
-            "min_area": np.min(areas),
-            "max_area": np.max(areas),
-            "mean_area": np.mean(areas),
-            "min_aspect_ratio": np.min(aspect_ratios),
-            "max_aspect_ratio": np.max(aspect_ratios),
-            "mean_aspect_ratio": np.mean(aspect_ratios),
+            "min_area": float(np.min(areas)),
+            "max_area": float(np.max(areas)),
+            "mean_area": float(np.mean(areas)),
+            "min_aspect_ratio": float(np.min(aspect_ratios)),
+            "max_aspect_ratio": float(np.max(aspect_ratios)),
+            "mean_aspect_ratio": float(np.mean(aspect_ratios)),
         }
 
-    def _compute_tetrahedron_quality(self) -> Dict[str, float]:
+    def _compute_tetrahedron_quality(self) -> dict[str, float]:
         """Compute quality metrics for tetrahedral elements."""
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
         volumes = self.mesh_data.compute_element_volumes()
 
         # Basic volume statistics
         return {
-            "min_volume": np.min(volumes),
-            "max_volume": np.max(volumes),
-            "mean_volume": np.mean(volumes),
+            "min_volume": float(np.min(volumes)),
+            "max_volume": float(np.max(volumes)),
+            "mean_volume": float(np.mean(volumes)),
         }

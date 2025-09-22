@@ -11,7 +11,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
@@ -31,7 +31,7 @@ def test_method_comparison():
     print("Methods: Pure FDM, Hybrid Particle-FDM, Improved QP-Collocation")
 
     # Problem parameters - moderate size for reasonable execution time
-    problem_params = {'xmin': 0.0, 'xmax': 1.0, 'Nx': 20, 'T': 1.0, 'Nt': 40, 'sigma': 0.15, 'coefCT': 0.02}
+    problem_params = {"xmin": 0.0, "xmax": 1.0, "Nx": 20, "T": 1.0, "Nt": 40, "sigma": 0.15, "coefCT": 0.02}
 
     print(f"Problem: Nx={problem_params['Nx']}, T={problem_params['T']}, Nt={problem_params['Nt']}")
     print(f"Parameters: σ={problem_params['sigma']}, coefCT={problem_params['coefCT']}")
@@ -63,28 +63,28 @@ def test_method_comparison():
         fdm_time = time.time() - start_time
 
         # Calculate mass conservation
-        Dx = (problem_params['xmax'] - problem_params['xmin']) / problem_params['Nx']
+        Dx = (problem_params["xmax"] - problem_params["xmin"]) / problem_params["Nx"]
         initial_mass_fdm = np.sum(M_fdm[0, :]) * Dx
         final_mass_fdm = np.sum(M_fdm[-1, :]) * Dx
         mass_error_fdm = abs(final_mass_fdm - initial_mass_fdm) / initial_mass_fdm * 100
 
-        results['fdm'] = {
-            'method': 'Pure FDM',
-            'success': True,
-            'time': fdm_time,
-            'mass_error': mass_error_fdm,
-            'converged': rel_err_u_fdm[-1] < 1e-3 and rel_err_m_fdm[-1] < 1e-3,
-            'iterations': iterations_fdm,
-            'U': U_fdm,
-            'M': M_fdm,
-            'final_error': max(rel_err_u_fdm[-1], rel_err_m_fdm[-1]),
+        results["fdm"] = {
+            "method": "Pure FDM",
+            "success": True,
+            "time": fdm_time,
+            "mass_error": mass_error_fdm,
+            "converged": rel_err_u_fdm[-1] < 1e-3 and rel_err_m_fdm[-1] < 1e-3,
+            "iterations": iterations_fdm,
+            "U": U_fdm,
+            "M": M_fdm,
+            "final_error": max(rel_err_u_fdm[-1], rel_err_m_fdm[-1]),
         }
 
         print(f"✓ FDM completed: {fdm_time:.1f}s, mass error: {mass_error_fdm:.2f}%, iterations: {iterations_fdm}")
 
     except Exception as e:
         print(f"✗ FDM failed: {e}")
-        results['fdm'] = {'method': 'Pure FDM', 'success': False, 'error': str(e)}
+        results["fdm"] = {"method": "Pure FDM", "success": False, "error": str(e)}
 
     # Method 2: Hybrid Particle-FDM
     print(f"\n{'-'*60}")
@@ -103,7 +103,7 @@ def test_method_comparison():
             num_particles=1500,
             kde_bandwidth="scott",
             normalize_kde_output=True,
-            boundary_conditions=BoundaryConditions(type='no_flux'),
+            boundary_conditions=BoundaryConditions(type="no_flux"),
         )
 
         # Create fixed point iterator
@@ -117,21 +117,21 @@ def test_method_comparison():
         hybrid_time = time.time() - start_time
 
         # Calculate mass conservation
-        Dx = (problem_params['xmax'] - problem_params['xmin']) / problem_params['Nx']
+        Dx = (problem_params["xmax"] - problem_params["xmin"]) / problem_params["Nx"]
         initial_mass_hybrid = np.sum(M_hybrid[0, :]) * Dx
         final_mass_hybrid = np.sum(M_hybrid[-1, :]) * Dx
         mass_error_hybrid = abs(final_mass_hybrid - initial_mass_hybrid) / initial_mass_hybrid * 100
 
-        results['hybrid'] = {
-            'method': 'Hybrid Particle-FDM',
-            'success': True,
-            'time': hybrid_time,
-            'mass_error': mass_error_hybrid,
-            'converged': rel_err_u_hybrid[-1] < 1e-3 and rel_err_m_hybrid[-1] < 1e-3,
-            'iterations': iterations_hybrid,
-            'U': U_hybrid,
-            'M': M_hybrid,
-            'final_error': max(rel_err_u_hybrid[-1], rel_err_m_hybrid[-1]),
+        results["hybrid"] = {
+            "method": "Hybrid Particle-FDM",
+            "success": True,
+            "time": hybrid_time,
+            "mass_error": mass_error_hybrid,
+            "converged": rel_err_u_hybrid[-1] < 1e-3 and rel_err_m_hybrid[-1] < 1e-3,
+            "iterations": iterations_hybrid,
+            "U": U_hybrid,
+            "M": M_hybrid,
+            "final_error": max(rel_err_u_hybrid[-1], rel_err_m_hybrid[-1]),
         }
 
         print(
@@ -140,7 +140,7 @@ def test_method_comparison():
 
     except Exception as e:
         print(f"✗ Hybrid failed: {e}")
-        results['hybrid'] = {'method': 'Hybrid Particle-FDM', 'success': False, 'error': str(e)}
+        results["hybrid"] = {"method": "Hybrid Particle-FDM", "success": False, "error": str(e)}
 
     # Method 3: Improved QP-Collocation
     print(f"\n{'-'*60}")
@@ -199,27 +199,27 @@ def test_method_comparison():
         qp_time = time.time() - start_time
 
         # Calculate mass conservation
-        Dx = (problem_params['xmax'] - problem_params['xmin']) / problem_params['Nx']
+        Dx = (problem_params["xmax"] - problem_params["xmin"]) / problem_params["Nx"]
         initial_mass_qp = np.sum(M_qp[0, :]) * Dx
         final_mass_qp = np.sum(M_qp[-1, :]) * Dx
         mass_error_qp = abs(final_mass_qp - initial_mass_qp) / initial_mass_qp * 100
 
         # Get optimization statistics
         optimization_stats = {}
-        if hasattr(optimized_hjb_solver, 'get_performance_report'):
+        if hasattr(optimized_hjb_solver, "get_performance_report"):
             optimization_stats = optimized_hjb_solver.get_performance_report()
 
-        results['qp'] = {
-            'method': 'Improved QP-Collocation',
-            'success': True,
-            'time': qp_time,
-            'mass_error': mass_error_qp,
-            'converged': info_qp.get('converged', False),
-            'iterations': info_qp.get('iterations', 0),
-            'U': U_qp,
-            'M': M_qp,
-            'optimization_stats': optimization_stats,
-            'final_error': info_qp.get('final_error', 0),
+        results["qp"] = {
+            "method": "Improved QP-Collocation",
+            "success": True,
+            "time": qp_time,
+            "mass_error": mass_error_qp,
+            "converged": info_qp.get("converged", False),
+            "iterations": info_qp.get("iterations", 0),
+            "U": U_qp,
+            "M": M_qp,
+            "optimization_stats": optimization_stats,
+            "final_error": info_qp.get("final_error", 0),
         }
 
         print(
@@ -228,13 +228,13 @@ def test_method_comparison():
 
         # Print optimization statistics
         if optimization_stats:
-            print(f"QP Optimization Statistics:")
+            print("QP Optimization Statistics:")
             print(f"  QP Activation Rate: {optimization_stats.get('qp_activation_rate', 0):.1%}")
             print(f"  QP Skip Rate: {optimization_stats.get('qp_skip_rate', 0):.1%}")
             print(f"  Total QP Calls: {optimization_stats.get('total_qp_calls', 0)}")
 
-            if optimization_stats.get('qp_skip_rate', 0) > 0:
-                estimated_speedup = 1 / (1 - optimization_stats['qp_skip_rate'] * 0.9)
+            if optimization_stats.get("qp_skip_rate", 0) > 0:
+                estimated_speedup = 1 / (1 - optimization_stats["qp_skip_rate"] * 0.9)
                 print(f"  Estimated Speedup from Optimization: {estimated_speedup:.1f}x")
 
     except Exception as e:
@@ -242,7 +242,7 @@ def test_method_comparison():
         import traceback
 
         traceback.print_exc()
-        results['qp'] = {'method': 'Improved QP-Collocation', 'success': False, 'error': str(e)}
+        results["qp"] = {"method": "Improved QP-Collocation", "success": False, "error": str(e)}
 
     # Print summary
     print(f"\n{'='*80}")
@@ -253,11 +253,11 @@ def test_method_comparison():
     print("-" * 85)
 
     for key, result in results.items():
-        if result['success']:
+        if result["success"]:
             success_str = "✓"
             time_str = f"{result['time']:.1f}"
             mass_str = f"{result['mass_error']:.2f}"
-            conv_str = "✓" if result['converged'] else "✗"
+            conv_str = "✓" if result["converged"] else "✗"
             iter_str = f"{result['iterations']}"
         else:
             success_str = "✗"
@@ -269,42 +269,42 @@ def test_method_comparison():
         print(f"{result['method']:<25} {success_str:<8} {time_str:<10} {mass_str:<12} {conv_str:<10} {iter_str:<10}")
 
     # Performance analysis
-    successful_results = {k: v for k, v in results.items() if v['success']}
+    successful_results = {k: v for k, v in results.items() if v["success"]}
 
     if len(successful_results) > 1:
-        print(f"\nPERFORMANCE ANALYSIS:")
+        print("\nPERFORMANCE ANALYSIS:")
         print("-" * 40)
 
         # Find fastest method
-        fastest = min(successful_results.items(), key=lambda x: x[1]['time'])
+        fastest = min(successful_results.items(), key=lambda x: x[1]["time"])
         print(f"Fastest Method: {fastest[1]['method']} ({fastest[1]['time']:.1f}s)")
 
         # Find most accurate method
-        most_accurate = min(successful_results.items(), key=lambda x: x[1]['mass_error'])
+        most_accurate = min(successful_results.items(), key=lambda x: x[1]["mass_error"])
         print(f"Best Mass Conservation: {most_accurate[1]['method']} ({most_accurate[1]['mass_error']:.2f}% error)")
 
         # Calculate relative speedups
-        if 'fdm' in successful_results:
-            fdm_time = successful_results['fdm']['time']
-            print(f"\nSpeedup vs FDM:")
+        if "fdm" in successful_results:
+            fdm_time = successful_results["fdm"]["time"]
+            print("\nSpeedup vs FDM:")
             for key, result in successful_results.items():
-                if key != 'fdm':
-                    speedup = fdm_time / result['time']
+                if key != "fdm":
+                    speedup = fdm_time / result["time"]
                     print(f"  {result['method']}: {speedup:.2f}x")
 
     # QP Optimization Analysis
-    if 'qp' in results and results['qp']['success'] and 'optimization_stats' in results['qp']:
-        stats = results['qp']['optimization_stats']
+    if "qp" in results and results["qp"]["success"] and "optimization_stats" in results["qp"]:
+        stats = results["qp"]["optimization_stats"]
         if stats:
-            print(f"\nQP OPTIMIZATION ANALYSIS:")
+            print("\nQP OPTIMIZATION ANALYSIS:")
             print("-" * 40)
             print(f"QP Activation Rate: {stats.get('qp_activation_rate', 0):.1%}")
             print(f"QP Skip Rate: {stats.get('qp_skip_rate', 0):.1%}")
             print(f"Total QP Calls: {stats.get('total_qp_calls', 0)}")
             print(f"QP Calls Skipped: {stats.get('qp_calls_skipped', 0)}")
 
-            if stats.get('qp_skip_rate', 0) > 0:
-                estimated_speedup = 1 / (1 - stats['qp_skip_rate'] * 0.9)
+            if stats.get("qp_skip_rate", 0) > 0:
+                estimated_speedup = 1 / (1 - stats["qp_skip_rate"] * 0.9)
                 print(f"Estimated Speedup from QP Optimization: {estimated_speedup:.1f}x")
 
     # Create comparison plots
@@ -315,7 +315,7 @@ def test_method_comparison():
 
 def create_comparison_plots(results, problem_params):
     """Create comparison plots"""
-    successful_results = {k: v for k, v in results.items() if v['success']}
+    successful_results = {k: v for k, v in results.items() if v["success"]}
 
     if len(successful_results) == 0:
         print("No successful results to plot")
@@ -324,45 +324,45 @@ def create_comparison_plots(results, problem_params):
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
     # Plot 1: Solve Time Comparison
-    methods = [r['method'] for r in successful_results.values()]
-    times = [r['time'] for r in successful_results.values()]
-    colors = ['red', 'blue', 'green'][: len(methods)]
+    methods = [r["method"] for r in successful_results.values()]
+    times = [r["time"] for r in successful_results.values()]
+    colors = ["red", "blue", "green"][: len(methods)]
 
     bars1 = ax1.bar(methods, times, color=colors, alpha=0.7)
-    ax1.set_ylabel('Solve Time (seconds)')
-    ax1.set_title('Computational Time Comparison')
-    ax1.tick_params(axis='x', rotation=45)
+    ax1.set_ylabel("Solve Time (seconds)")
+    ax1.set_title("Computational Time Comparison")
+    ax1.tick_params(axis="x", rotation=45)
     ax1.grid(True, alpha=0.3)
 
     # Add value labels on bars
-    for bar, time_val in zip(bars1, times):
+    for bar, time_val in zip(bars1, times, strict=False):
         height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width() / 2.0, height + 0.5, f'{time_val:.1f}s', ha='center', va='bottom')
+        ax1.text(bar.get_x() + bar.get_width() / 2.0, height + 0.5, f"{time_val:.1f}s", ha="center", va="bottom")
 
     # Plot 2: Mass Conservation Error
-    mass_errors = [r['mass_error'] for r in successful_results.values()]
+    mass_errors = [r["mass_error"] for r in successful_results.values()]
 
     bars2 = ax2.bar(methods, mass_errors, color=colors, alpha=0.7)
-    ax2.set_ylabel('Mass Conservation Error (%)')
-    ax2.set_title('Mass Conservation Quality')
-    ax2.tick_params(axis='x', rotation=45)
+    ax2.set_ylabel("Mass Conservation Error (%)")
+    ax2.set_title("Mass Conservation Quality")
+    ax2.tick_params(axis="x", rotation=45)
     ax2.grid(True, alpha=0.3)
-    ax2.set_yscale('log')
+    ax2.set_yscale("log")
 
     # Add value labels
-    for bar, error in zip(bars2, mass_errors):
+    for bar, error in zip(bars2, mass_errors, strict=False):
         height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width() / 2.0, height * 1.1, f'{error:.2f}%', ha='center', va='bottom')
+        ax2.text(bar.get_x() + bar.get_width() / 2.0, height * 1.1, f"{error:.2f}%", ha="center", va="bottom")
 
     # Plot 3: Final Density Profiles
     x_grid = np.linspace(
-        problem_params['xmin'],
-        problem_params['xmax'],
-        successful_results[list(successful_results.keys())[0]]['M'].shape[1],
+        problem_params["xmin"],
+        problem_params["xmax"],
+        successful_results[list(successful_results.keys())[0]]["M"].shape[1],
     )
 
     for i, (key, result) in enumerate(successful_results.items()):
-        M = result['M']
+        M = result["M"]
         ax3.plot(x_grid, M[-1, :], label=f"{result['method']} (final)", color=colors[i], linewidth=2)
         ax3.plot(
             x_grid,
@@ -370,69 +370,69 @@ def create_comparison_plots(results, problem_params):
             label=f"{result['method']} (initial)",
             color=colors[i],
             linewidth=1,
-            linestyle='--',
+            linestyle="--",
             alpha=0.7,
         )
 
-    ax3.set_xlabel('x')
-    ax3.set_ylabel('Density')
-    ax3.set_title('Density Evolution Comparison')
+    ax3.set_xlabel("x")
+    ax3.set_ylabel("Density")
+    ax3.set_title("Density Evolution Comparison")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
     # Plot 4: QP Optimization Statistics (if available)
     qp_stats = None
     for result in successful_results.values():
-        if 'optimization_stats' in result and result['optimization_stats']:
-            qp_stats = result['optimization_stats']
+        if result.get("optimization_stats"):
+            qp_stats = result["optimization_stats"]
             break
 
     if qp_stats:
-        categories = ['QP Activation Rate', 'QP Skip Rate']
-        values = [qp_stats.get('qp_activation_rate', 0) * 100, qp_stats.get('qp_skip_rate', 0) * 100]
+        categories = ["QP Activation Rate", "QP Skip Rate"]
+        values = [qp_stats.get("qp_activation_rate", 0) * 100, qp_stats.get("qp_skip_rate", 0) * 100]
 
-        bars4 = ax4.bar(categories, values, color=['orange', 'green'], alpha=0.7)
-        ax4.set_ylabel('Rate (%)')
-        ax4.set_title('QP Optimization Performance')
-        ax4.tick_params(axis='x', rotation=45)
+        bars4 = ax4.bar(categories, values, color=["orange", "green"], alpha=0.7)
+        ax4.set_ylabel("Rate (%)")
+        ax4.set_title("QP Optimization Performance")
+        ax4.tick_params(axis="x", rotation=45)
         ax4.grid(True, alpha=0.3)
 
         # Add value labels
-        for bar, value in zip(bars4, values):
+        for bar, value in zip(bars4, values, strict=False):
             height = bar.get_height()
-            ax4.text(bar.get_x() + bar.get_width() / 2.0, height + 1, f'{value:.1f}%', ha='center', va='bottom')
+            ax4.text(bar.get_x() + bar.get_width() / 2.0, height + 1, f"{value:.1f}%", ha="center", va="bottom")
 
         # Add estimated speedup text
-        if qp_stats.get('qp_skip_rate', 0) > 0:
-            estimated_speedup = 1 / (1 - qp_stats['qp_skip_rate'] * 0.9)
+        if qp_stats.get("qp_skip_rate", 0) > 0:
+            estimated_speedup = 1 / (1 - qp_stats["qp_skip_rate"] * 0.9)
             ax4.text(
                 0.5,
                 0.9,
-                f'Estimated Speedup: {estimated_speedup:.1f}x',
+                f"Estimated Speedup: {estimated_speedup:.1f}x",
                 transform=ax4.transAxes,
-                ha='center',
+                ha="center",
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.5),
             )
     else:
         ax4.text(
             0.5,
             0.5,
-            'No QP optimization\nstatistics available',
+            "No QP optimization\nstatistics available",
             transform=ax4.transAxes,
-            ha='center',
-            va='center',
+            ha="center",
+            va="center",
             fontsize=12,
-            style='italic',
+            style="italic",
         )
-        ax4.set_title('QP Optimization Statistics')
+        ax4.set_title("QP Optimization Statistics")
 
     plt.tight_layout()
     plt.savefig(
-        '/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/fixed_method_comparison.png',
+        "/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/fixed_method_comparison.png",
         dpi=300,
-        bbox_inches='tight',
+        bbox_inches="tight",
     )
-    print(f"\nComparison plots saved to: fixed_method_comparison.png")
+    print("\nComparison plots saved to: fixed_method_comparison.png")
     plt.show()
 
 

@@ -13,15 +13,16 @@ Features:
 - Configuration integration
 """
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import logging
-import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any
 
 import pkg_resources
 
@@ -52,9 +53,9 @@ class PluginMetadata:
     license: str
     homepage: str
     min_mfg_version: str
-    max_mfg_version: Optional[str] = None
-    dependencies: List[str] = None
-    tags: List[str] = None
+    max_mfg_version: str | None = None
+    dependencies: list[str] | None = None
+    tags: list[str] | None = None
 
     def __post_init__(self):
         if self.dependencies is None:
@@ -74,23 +75,21 @@ class SolverPlugin(ABC):
     @abstractmethod
     def metadata(self) -> PluginMetadata:
         """Return plugin metadata information."""
-        pass
 
     @abstractmethod
-    def get_solver_types(self) -> List[str]:
+    def get_solver_types(self) -> list[str]:
         """Return list of solver types this plugin provides.
 
         Returns:
             List of solver type names that can be created by this plugin.
         """
-        pass
 
     @abstractmethod
     def create_solver(
         self,
         problem,
         solver_type: str,
-        config: Optional[MFGSolverConfig] = None,
+        config: MFGSolverConfig | None = None,
         **kwargs,
     ):
         """Create solver instance for the specified type.
@@ -104,7 +103,6 @@ class SolverPlugin(ABC):
         Returns:
             Solver instance implementing the standard MFG solver interface
         """
-        pass
 
     @abstractmethod
     def validate_solver_type(self, solver_type: str) -> bool:
@@ -116,7 +114,6 @@ class SolverPlugin(ABC):
         Returns:
             True if solver type is supported, False otherwise
         """
-        pass
 
     def get_solver_description(self, solver_type: str) -> str:
         """Get description for a specific solver type.
@@ -129,7 +126,7 @@ class SolverPlugin(ABC):
         """
         return f"Solver of type '{solver_type}' provided by {self.metadata.name}"
 
-    def get_solver_parameters(self, solver_type: str) -> Dict[str, Any]:
+    def get_solver_parameters(self, solver_type: str) -> dict[str, Any]:
         """Get available parameters for a specific solver type.
 
         Args:
@@ -142,11 +139,9 @@ class SolverPlugin(ABC):
 
     def on_load(self):
         """Called when plugin is loaded. Override for initialization."""
-        pass
 
     def on_unload(self):
         """Called when plugin is unloaded. Override for cleanup."""
-        pass
 
 
 class AnalysisPlugin(ABC):
@@ -156,12 +151,10 @@ class AnalysisPlugin(ABC):
     @abstractmethod
     def metadata(self) -> PluginMetadata:
         """Return plugin metadata information."""
-        pass
 
     @abstractmethod
-    def get_analysis_types(self) -> List[str]:
+    def get_analysis_types(self) -> list[str]:
         """Return list of analysis types this plugin provides."""
-        pass
 
     @abstractmethod
     def run_analysis(self, result, analysis_type: str, **kwargs):
@@ -175,19 +168,18 @@ class AnalysisPlugin(ABC):
         Returns:
             Analysis result
         """
-        pass
 
 
 @dataclass
 class RegisteredPlugin:
     """Information about a registered plugin."""
 
-    plugin_class: Type[SolverPlugin]
-    plugin_instance: Optional[SolverPlugin]
+    plugin_class: type[SolverPlugin] | type[AnalysisPlugin]
+    plugin_instance: SolverPlugin | AnalysisPlugin | None
     metadata: PluginMetadata
     status: PluginStatus
-    error_message: Optional[str] = None
-    load_time: Optional[float] = None
+    error_message: str | None = None
+    load_time: float | None = None
 
 
 class PluginManager:
@@ -199,15 +191,15 @@ class PluginManager:
     """
 
     def __init__(self):
-        self.plugins: Dict[str, RegisteredPlugin] = {}
-        self.solver_type_registry: Dict[str, str] = {}  # solver_type -> plugin_name
-        self.analysis_type_registry: Dict[str, str] = {}  # analysis_type -> plugin_name
+        self.plugins: dict[str, RegisteredPlugin] = {}
+        self.solver_type_registry: dict[str, str] = {}  # solver_type -> plugin_name
+        self.analysis_type_registry: dict[str, str] = {}  # analysis_type -> plugin_name
         self._core_solvers = self._discover_core_solvers()
 
         # Initialize logging
         self.logger = logging.getLogger(__name__ + ".PluginManager")
 
-    def discover_plugins(self, search_paths: Optional[List[Path]] = None) -> List[str]:
+    def discover_plugins(self, search_paths: list[Path] | None = None) -> list[str]:
         """Discover available plugins in specified paths.
 
         Args:
@@ -232,7 +224,7 @@ class PluginManager:
         self.logger.info(f"Discovered {len(discovered)} plugins")
         return discovered
 
-    def register_plugin(self, plugin_class: Type[SolverPlugin]) -> bool:
+    def register_plugin(self, plugin_class: type[SolverPlugin] | type[AnalysisPlugin]) -> bool:
         """Register a plugin class.
 
         Args:
@@ -298,7 +290,8 @@ class PluginManager:
                 return False
 
             # Call plugin initialization
-            plugin_instance.on_load()
+            if isinstance(plugin_instance, SolverPlugin):
+                plugin_instance.on_load()
 
             # Update plugin info
             plugin_info.plugin_instance = plugin_instance
@@ -342,7 +335,7 @@ class PluginManager:
 
         try:
             # Call plugin cleanup
-            if plugin_info.plugin_instance:
+            if plugin_info.plugin_instance and isinstance(plugin_info.plugin_instance, SolverPlugin):
                 plugin_info.plugin_instance.on_unload()
 
             # Unregister solver types
@@ -368,7 +361,7 @@ class PluginManager:
             self.logger.error(f"Failed to unload plugin {plugin_name}: {e}")
             return False
 
-    def load_all_plugins(self) -> Dict[str, bool]:
+    def load_all_plugins(self) -> dict[str, bool]:
         """Load all discovered plugins.
 
         Returns:
@@ -383,7 +376,7 @@ class PluginManager:
         self,
         problem,
         solver_type: str,
-        config: Optional[MFGSolverConfig] = None,
+        config: MFGSolverConfig | None = None,
         **kwargs,
     ):
         """Create solver instance using registered plugins or core solvers.
@@ -405,7 +398,11 @@ class PluginManager:
             plugin_name = self.solver_type_registry[solver_type]
             plugin_info = self.plugins[plugin_name]
 
-            if plugin_info.status == PluginStatus.LOADED and plugin_info.plugin_instance:
+            if (
+                plugin_info.status == PluginStatus.LOADED
+                and plugin_info.plugin_instance
+                and isinstance(plugin_info.plugin_instance, SolverPlugin)
+            ):
                 return plugin_info.plugin_instance.create_solver(problem, solver_type, config, **kwargs)
             else:
                 raise ValueError(f"Plugin {plugin_name} providing {solver_type} is not loaded")
@@ -437,11 +434,15 @@ class PluginManager:
         plugin_info = self.plugins[plugin_name]
 
         if plugin_info.status == PluginStatus.LOADED and plugin_info.plugin_instance:
-            return plugin_info.plugin_instance.run_analysis(result, analysis_type, **kwargs)
+            # Check if it's an analysis plugin with run_analysis method
+            if isinstance(plugin_info.plugin_instance, AnalysisPlugin):
+                return plugin_info.plugin_instance.run_analysis(result, analysis_type, **kwargs)
+            else:
+                raise ValueError(f"Plugin {plugin_name} does not support analysis")
         else:
             raise ValueError(f"Plugin {plugin_name} providing {analysis_type} is not loaded")
 
-    def list_available_solvers(self) -> Dict[str, Dict[str, Any]]:
+    def list_available_solvers(self) -> dict[str, dict[str, Any]]:
         """List all available solver types with descriptions.
 
         Returns:
@@ -460,7 +461,11 @@ class PluginManager:
         # Add plugin solvers
         for solver_type, plugin_name in self.solver_type_registry.items():
             plugin_info = self.plugins[plugin_name]
-            if plugin_info.status == PluginStatus.LOADED and plugin_info.plugin_instance:
+            if (
+                plugin_info.status == PluginStatus.LOADED
+                and plugin_info.plugin_instance
+                and isinstance(plugin_info.plugin_instance, SolverPlugin)
+            ):
                 solvers[solver_type] = {
                     "provider": f"plugin:{plugin_name}",
                     "description": plugin_info.plugin_instance.get_solver_description(solver_type),
@@ -469,7 +474,7 @@ class PluginManager:
 
         return solvers
 
-    def list_available_analyses(self) -> Dict[str, Dict[str, Any]]:
+    def list_available_analyses(self) -> dict[str, dict[str, Any]]:
         """List all available analysis types with descriptions.
 
         Returns:
@@ -487,7 +492,7 @@ class PluginManager:
 
         return analyses
 
-    def get_plugin_info(self, plugin_name: str) -> Optional[RegisteredPlugin]:
+    def get_plugin_info(self, plugin_name: str) -> RegisteredPlugin | None:
         """Get information about a specific plugin.
 
         Args:
@@ -498,7 +503,7 @@ class PluginManager:
         """
         return self.plugins.get(plugin_name)
 
-    def list_plugins(self) -> Dict[str, RegisteredPlugin]:
+    def list_plugins(self) -> dict[str, RegisteredPlugin]:
         """List all registered plugins.
 
         Returns:
@@ -506,7 +511,7 @@ class PluginManager:
         """
         return self.plugins.copy()
 
-    def _discover_core_solvers(self) -> List[str]:
+    def _discover_core_solvers(self) -> list[str]:
         """Discover core solver types available in MFG_PDE."""
         # This would scan the core solver modules to find available types
         # For now, return the known core solver types
@@ -516,16 +521,19 @@ class PluginManager:
         self,
         problem,
         solver_type: str,
-        config: Optional[MFGSolverConfig] = None,
+        config: MFGSolverConfig | None = None,
         **kwargs,
     ):
         """Create core solver instance."""
         # Import here to avoid circular imports
+        from typing import cast
+
         from ..factory import create_solver
+        from ..factory.solver_factory import SolverType
 
-        return create_solver(problem, solver_type, config=config, **kwargs)
+        return create_solver(problem, cast(SolverType, solver_type), config=config, **kwargs)
 
-    def _get_default_plugin_paths(self) -> List[Path]:
+    def _get_default_plugin_paths(self) -> list[Path]:
         """Get default plugin search paths."""
         paths = []
 
@@ -544,7 +552,7 @@ class PluginManager:
 
         return [p for p in paths if p.exists()]
 
-    def _discover_entry_point_plugins(self) -> List[str]:
+    def _discover_entry_point_plugins(self) -> list[str]:
         """Discover plugins via setuptools entry points."""
         discovered = []
 
@@ -561,7 +569,7 @@ class PluginManager:
 
         return discovered
 
-    def _discover_path_plugins(self, path: Path) -> List[str]:
+    def _discover_path_plugins(self, path: Path) -> list[str]:
         """Discover plugins in a filesystem path."""
         discovered = []
 
@@ -574,7 +582,11 @@ class PluginManager:
 
             try:
                 # Dynamic import
+                import importlib.util
+
                 spec = importlib.util.spec_from_file_location(plugin_file.stem, plugin_file)
+                if spec is None or spec.loader is None:
+                    continue
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
 
@@ -609,7 +621,7 @@ class PluginManager:
 
     def _check_dependencies(self, metadata: PluginMetadata) -> bool:
         """Check if plugin dependencies are available."""
-        for dependency in metadata.dependencies:
+        for dependency in metadata.dependencies or []:
             try:
                 importlib.import_module(dependency)
             except ImportError:
@@ -619,7 +631,7 @@ class PluginManager:
 
 
 # Global plugin manager instance
-_plugin_manager: Optional[PluginManager] = None
+_plugin_manager: PluginManager | None = None
 
 
 def get_plugin_manager() -> PluginManager:
@@ -630,25 +642,25 @@ def get_plugin_manager() -> PluginManager:
     return _plugin_manager
 
 
-def register_plugin(plugin_class: Type[SolverPlugin]) -> bool:
+def register_plugin(plugin_class: type[SolverPlugin] | type[AnalysisPlugin]) -> bool:
     """Convenience function to register a plugin."""
     return get_plugin_manager().register_plugin(plugin_class)
 
 
 def discover_and_load_plugins(
-    search_paths: Optional[List[Path]] = None,
-) -> Dict[str, bool]:
+    search_paths: list[Path] | None = None,
+) -> dict[str, bool]:
     """Convenience function to discover and load all plugins."""
     manager = get_plugin_manager()
     manager.discover_plugins(search_paths)
     return manager.load_all_plugins()
 
 
-def create_solver_with_plugins(problem, solver_type: str, config: Optional[MFGSolverConfig] = None, **kwargs):
+def create_solver_with_plugins(problem, solver_type: str, config: MFGSolverConfig | None = None, **kwargs):
     """Create solver with plugin support."""
     return get_plugin_manager().create_solver(problem, solver_type, config, **kwargs)
 
 
-def list_available_solvers() -> Dict[str, Dict[str, Any]]:
+def list_available_solvers() -> dict[str, dict[str, Any]]:
     """List all available solver types including plugins."""
     return get_plugin_manager().list_available_solvers()

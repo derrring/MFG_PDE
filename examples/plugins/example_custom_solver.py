@@ -7,7 +7,7 @@ implements a simple gradient descent-based solver for educational purposes.
 """
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -81,10 +81,10 @@ class GradientDescentMFGSolver:
             execution_time=execution_time,
             convergence_history=convergence_history,
             solver_info={
-                'solver_type': 'gradient_descent',
-                'learning_rate': self.learning_rate,
-                'max_iterations': self.max_iterations,
-                'tolerance': self.tolerance,
+                "solver_type": "gradient_descent",
+                "learning_rate": self.learning_rate,
+                "max_iterations": self.max_iterations,
+                "tolerance": self.tolerance,
             },
         )
 
@@ -171,9 +171,9 @@ class SimplifiedNewtonMFGSolver:
         # Modify result to indicate it came from our custom solver
         result.solver_info.update(
             {
-                'solver_type': 'simplified_newton',
-                'plugin_provided': True,
-                'custom_parameters': {'max_iterations': self.max_iterations, 'tolerance': self.tolerance},
+                "solver_type": "simplified_newton",
+                "plugin_provided": True,
+                "custom_parameters": {"max_iterations": self.max_iterations, "tolerance": self.tolerance},
             }
         )
 
@@ -205,11 +205,11 @@ class ExampleSolverPlugin(SolverPlugin):
             tags=["educational", "gradient_descent", "newton_method"],
         )
 
-    def get_solver_types(self) -> List[str]:
+    def get_solver_types(self) -> list[str]:
         """Return available solver types."""
         return ["gradient_descent", "simplified_newton"]
 
-    def create_solver(self, problem: MFGProblem, solver_type: str, config: Optional[MFGSolverConfig] = None, **kwargs):
+    def create_solver(self, problem: MFGProblem, solver_type: str, config: MFGSolverConfig | None = None, **kwargs):
         """Create solver instance."""
         if not self.validate_solver_type(solver_type):
             raise ValueError(f"Unsupported solver type: {solver_type}")
@@ -240,7 +240,7 @@ class ExampleSolverPlugin(SolverPlugin):
         }
         return descriptions.get(solver_type, "Custom solver provided by example plugin")
 
-    def get_solver_parameters(self, solver_type: str) -> Dict[str, Any]:
+    def get_solver_parameters(self, solver_type: str) -> dict[str, Any]:
         """Get available parameters for solver type."""
         if solver_type == "gradient_descent":
             return {
@@ -280,7 +280,7 @@ class ExampleSolverPlugin(SolverPlugin):
             }
         return {}
 
-    def _create_gradient_descent_solver(self, problem: MFGProblem, config: Optional[MFGSolverConfig] = None, **kwargs):
+    def _create_gradient_descent_solver(self, problem: MFGProblem, config: MFGSolverConfig | None = None, **kwargs):
         """Create gradient descent solver instance."""
         # Extract parameters
         learning_rate = kwargs.get("learning_rate", 0.01)
@@ -297,7 +297,7 @@ class ExampleSolverPlugin(SolverPlugin):
             problem=problem, learning_rate=learning_rate, max_iterations=max_iterations, tolerance=tolerance
         )
 
-    def _create_simplified_newton_solver(self, problem: MFGProblem, config: Optional[MFGSolverConfig] = None, **kwargs):
+    def _create_simplified_newton_solver(self, problem: MFGProblem, config: MFGSolverConfig | None = None, **kwargs):
         """Create simplified Newton solver instance."""
         max_iterations = kwargs.get("max_iterations", 50)
         tolerance = kwargs.get("tolerance", 1e-6)

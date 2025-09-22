@@ -74,10 +74,12 @@ except ImportError:
 
 try:
     from .polars_integration import (
-        PolarsDataFrameManager,
-        convert_to_polars,
-        create_polars_manager,
-        validate_polars_dataframe,
+        MFGDataFrame,
+        benchmark_polars_vs_pandas,
+        create_data_exporter,
+        create_mfg_dataframe,
+        create_parameter_sweep_analyzer,
+        create_time_series_analyzer,
     )
 
     POLARS_AVAILABLE = True
@@ -93,21 +95,37 @@ except ImportError:
     CLI_AVAILABLE = False
 
 try:
-    from .experiment_manager import ExperimentManager, create_experiment_manager
+    from .experiment_manager import (
+        load_experiment_data,
+        load_experiments_from_dir,
+        plot_comparison_final_m,
+        plot_comparison_total_mass,
+        save_experiment_data,
+    )
 
     EXPERIMENT_MANAGER_AVAILABLE = True
 except ImportError:
     EXPERIMENT_MANAGER_AVAILABLE = False
 
 try:
-    from .memory_management import MemoryMonitor, get_memory_usage, optimize_memory_usage
+    from .memory_management import (
+        MemoryMonitor,
+        check_system_memory_availability,
+        estimate_problem_memory_requirements,
+        memory_usage_report,
+    )
 
     MEMORY_MANAGEMENT_AVAILABLE = True
 except ImportError:
     MEMORY_MANAGEMENT_AVAILABLE = False
 
 try:
-    from .performance_monitoring import PerformanceMonitor, benchmark_solver, profile_function
+    from .performance_monitoring import (
+        PerformanceMonitor,
+        benchmark_solver,
+        get_performance_report,
+        performance_tracked,
+    )
 
     PERFORMANCE_MONITORING_AVAILABLE = True
 except ImportError:

@@ -6,12 +6,10 @@ configuration support, automatic serialization, and enhanced validation
 for research workflows.
 """
 
-import json
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from __future__ import annotations
 
-import numpy as np
+from datetime import datetime
+from typing import Any
 
 try:
     from pydantic import ValidationError
@@ -25,8 +23,7 @@ from .notebook_reporting import MFGNotebookReporter, NotebookReportError
 
 # Import Pydantic configurations if available
 if PYDANTIC_AVAILABLE:
-    from ..config.array_validation import ExperimentConfig, MFGArrays, MFGGridConfig
-    from ..config.pydantic_config import MFGSolverConfig
+    from ..config.array_validation import ExperimentConfig, MFGArrays
 
 
 class PydanticNotebookReporter(MFGNotebookReporter):
@@ -47,12 +44,12 @@ class PydanticNotebookReporter(MFGNotebookReporter):
     def create_enhanced_mfg_report(
         self,
         title: str,
-        experiment_config: "ExperimentConfig",
-        solver_results: Dict[str, Any],
+        experiment_config: ExperimentConfig,
+        solver_results: dict[str, Any],
         output_dir: str = "reports",
         export_html: bool = True,
         include_validation_report: bool = True,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Create comprehensive MFG research report using Pydantic configuration.
 
@@ -84,7 +81,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
             enhanced_problem_config = {
                 **validated_config["grid_config"],
                 "validation_passed": True,
-                "config_type": "pydantic_enhanced",
+                "config_type": pydantic_enhanced,
                 "created_at": datetime.now().isoformat(),
             }
 
@@ -113,7 +110,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
             enhanced_metadata = {
                 **notebook_metadata,
                 "pydantic_validation": True,
-                "report_generator": "PydanticNotebookReporter",
+                "report_generator": PydanticNotebookReporter,
                 "notebook_version": "2.0",
             }
 
@@ -135,10 +132,10 @@ class PydanticNotebookReporter(MFGNotebookReporter):
     def _create_enhanced_notebook_content(
         self,
         title: str,
-        experiment_config: "ExperimentConfig",
-        solver_results: Dict[str, Any],
+        experiment_config: ExperimentConfig,
+        solver_results: dict[str, Any],
         include_validation_report: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Create enhanced notebook content with Pydantic configuration details."""
         cells = []
 
@@ -162,7 +159,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
         # Enhanced configuration summary
         cells.append(
             {
-                "cell_type": "code",
+                "cell_type": code,
                 "source": self._create_enhanced_config_code_section(experiment_config),
             }
         )
@@ -179,7 +176,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
         if experiment_config.arrays:
             cells.append(
                 {
-                    "cell_type": "code",
+                    "cell_type": code,
                     "source": self._create_enhanced_visualization_code(experiment_config, solver_results),
                 }
             )
@@ -205,7 +202,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
 
         return cells
 
-    def _create_enhanced_title_section(self, title: str, experiment_config: "ExperimentConfig") -> str:
+    def _create_enhanced_title_section(self, title: str, experiment_config: ExperimentConfig) -> str:
         """Create enhanced title section with experiment metadata."""
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -232,7 +229,7 @@ This report uses **Pydantic-validated configurations** ensuring:
 **Tags**: {', '.join(experiment_config.tags) if experiment_config.tags else 'None'}
 """
 
-    def _create_validation_report_section(self, experiment_config: "ExperimentConfig") -> str:
+    def _create_validation_report_section(self, experiment_config: ExperimentConfig) -> str:
         """Create comprehensive validation report section."""
         grid_config = experiment_config.grid_config
 
@@ -276,19 +273,19 @@ SUCCESS: **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.c
 
         return validation_report
 
-    def _create_enhanced_config_code_section(self, experiment_config: "ExperimentConfig") -> str:
+    def _create_enhanced_config_code_section(self, experiment_config: ExperimentConfig) -> str:
         """Create enhanced configuration code section with Pydantic serialization."""
         return f"""# Configuration Management with Pydantic
 
 # Experiment configuration (validated)
-experiment_config = {repr(experiment_config.dict())}
+experiment_config = {experiment_config.dict()!r}
 
 # Grid configuration with automatic validation
-grid_config = {repr(experiment_config.grid_config.dict())}
+grid_config = {experiment_config.grid_config.dict()!r}
 
 # Computed grid properties
-print(f"Grid spacing: dx = {{experiment_config.grid_config.dx:.6f}}, dt = {{experiment_config.grid_config.dt:.6f}}")
-print(f"CFL number: {{experiment_config.grid_config.cfl_number:.4f}}")
+print(f"Grid spacing: dx = {experiment_config.grid_config.dx:.6f}, dt = {experiment_config.grid_config.dt:.6f}")
+print(f"CFL number: {experiment_config.grid_config.cfl_number:.4f}")
 print(f"Expected array shape: {{experiment_config.grid_config.grid_shape}}")
 
 # JSON serialization (automatic with Pydantic)
@@ -298,7 +295,7 @@ print("\\nJSON-serialized configuration:")
 print(config_json[:200] + "..." if len(config_json) > 200 else config_json)
 """
 
-    def _create_numerical_analysis_section(self, experiment_config: "ExperimentConfig") -> str:
+    def _create_numerical_analysis_section(self, experiment_config: ExperimentConfig) -> str:
         """Create numerical analysis section with stability analysis."""
         grid_config = experiment_config.grid_config
 
@@ -327,7 +324,7 @@ Time steps per diffusion time: ${grid_config.T / ((grid_config.xmax - grid_confi
 """
 
     def _create_enhanced_visualization_code(
-        self, experiment_config: "ExperimentConfig", solver_results: Dict[str, Any]
+        self, experiment_config: ExperimentConfig, solver_results: dict[str, Any]
     ) -> str:
         """Create enhanced visualization code with array validation."""
         return f"""# Enhanced Visualization with Validated Arrays
@@ -349,8 +346,8 @@ fig = make_subplots(
     rows=2, cols=2,
     subplot_titles=('HJB Solution U(t,x)', 'FP Density M(t,x)',
                    'Final U Profile', 'Final M Profile'),
-    specs=[[{{"type": "heatmap"}}, {{"type": "heatmap"}}],
-           [{{"type": "scatter"}}, {{"type": "scatter"}}]]
+    specs=[[{{"type": heatmap}}, {{"type": heatmap}}],
+           [{{"type": scatter}}, {{"type": scatter}}]]
 )
 
 # U solution heatmap
@@ -424,7 +421,7 @@ if 'validation_stats' in locals():
                 print(f"  {stat_name}: {value}")
 """
 
-    def _create_array_validation_section(self, arrays: "MFGArrays") -> str:
+    def _create_array_validation_section(self, arrays: MFGArrays) -> str:
         """Create detailed array validation section."""
         stats = arrays.get_solution_statistics()
 
@@ -462,7 +459,7 @@ if 'validation_stats' in locals():
 """
 
     def _create_enhanced_conclusions_section(
-        self, experiment_config: "ExperimentConfig", solver_results: Dict[str, Any]
+        self, experiment_config: ExperimentConfig, solver_results: dict[str, Any]
     ) -> str:
         """Create enhanced conclusions with validation summary."""
         return f"""##  Enhanced Conclusions
@@ -470,7 +467,7 @@ if 'validation_stats' in locals():
 ### Experiment Summary
 - **Experiment**: {experiment_config.experiment_name}
 - **Configuration**: Pydantic-validated with comprehensive checks
-- **Grid**: {experiment_config.grid_config.Nx}×{experiment_config.grid_config.Nt} points
+- **Grid**: {experiment_config.grid_config.Nx}×{experiment_config.grid_config.Nt}  points
 - **Validation**: {'SUCCESS: Passed' if experiment_config.arrays else 'WARNING: Partial (no arrays)'}
 
 ### Key Findings
@@ -499,12 +496,12 @@ This experiment uses **Pydantic configuration management** ensuring:
 
     def _save_enhanced_notebook(
         self,
-        notebook_content: List[Dict[str, Any]],
+        notebook_content: list[dict[str, Any]],
         title: str,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
         output_dir: str,
         export_html: bool,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Save enhanced notebook with Pydantic metadata."""
         # Delegate to parent class with enhanced metadata
         return super().save_notebook(
@@ -518,11 +515,11 @@ This experiment uses **Pydantic configuration management** ensuring:
 
 def create_pydantic_mfg_report(
     title: str,
-    experiment_config: "ExperimentConfig",
-    solver_results: Dict[str, Any],
+    experiment_config: ExperimentConfig,
+    solver_results: dict[str, Any],
     output_dir: str = "reports",
     export_html: bool = True,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Convenience function for creating enhanced MFG reports with Pydantic validation.
 

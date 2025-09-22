@@ -13,11 +13,13 @@ The backend system automatically selects the optimal library based on:
 - Performance requirements
 """
 
+from __future__ import annotations
+
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -62,68 +64,63 @@ class BackendCapabilities:
 class NetworkBackendError(Exception):
     """Base exception for network backend issues."""
 
-    pass
 
 
 class BackendNotAvailableError(NetworkBackendError):
     """Raised when requested backend is not available."""
 
-    pass
 
 
 class AbstractNetworkBackend(ABC):
     """Abstract base class for network backends."""
 
+    def __init__(self):
+        """Initialize backend."""
+        self.available: bool = False
+
     @abstractmethod
     def create_graph(self, num_nodes: int, **kwargs) -> Any:
         """Create empty graph with specified number of nodes."""
-        pass
 
     @abstractmethod
     def add_edges(
         self,
         graph: Any,
-        edges: List[Tuple[int, int]],
-        weights: Optional[np.ndarray] = None,
+        edges: list[tuple[int, int]],
+        weights: np.ndarray | None = None,
     ) -> Any:
         """Add edges to graph."""
-        pass
 
     @abstractmethod
     def get_adjacency_matrix(self, graph: Any) -> csr_matrix:
         """Get sparse adjacency matrix."""
-        pass
 
     @abstractmethod
     def get_laplacian_matrix(self, graph: Any) -> csr_matrix:
         """Get graph Laplacian matrix."""
-        pass
 
     @abstractmethod
-    def shortest_paths(self, graph: Any, source: Optional[int] = None) -> np.ndarray:
+    def shortest_paths(self, graph: Any, source: int | None = None) -> np.ndarray:
         """Compute shortest paths."""
-        pass
 
     @abstractmethod
-    def connected_components(self, graph: Any) -> List[List[int]]:
+    def connected_components(self, graph: Any) -> list[list[int]]:
         """Find connected components."""
-        pass
 
     @abstractmethod
     def node_degrees(self, graph: Any) -> np.ndarray:
         """Get node degrees."""
-        pass
 
     @abstractmethod
     def clustering_coefficient(self, graph: Any) -> float:
         """Compute average clustering coefficient."""
-        pass
 
 
 class IGraphBackend(AbstractNetworkBackend):
     """igraph backend implementation."""
 
     def __init__(self):
+        super().__init__()
         try:
             import igraph as ig
 
@@ -134,15 +131,15 @@ class IGraphBackend(AbstractNetworkBackend):
             self.available = False
 
     def create_graph(self, num_nodes: int, directed: bool = False, **kwargs) -> Any:
-        if not self.available:
+        if not self.available or self.ig is None:
             raise BackendNotAvailableError("igraph not available")
         return self.ig.Graph(n=num_nodes, directed=directed)
 
     def add_edges(
         self,
         graph: Any,
-        edges: List[Tuple[int, int]],
-        weights: Optional[np.ndarray] = None,
+        edges: list[tuple[int, int]],
+        weights: np.ndarray | None = None,
     ) -> Any:
         graph.add_edges(edges)
         if weights is not None:
@@ -151,7 +148,12 @@ class IGraphBackend(AbstractNetworkBackend):
 
     def get_adjacency_matrix(self, graph: Any) -> csr_matrix:
         # igraph returns dense by default, convert to sparse
-        adj_dense = np.array(graph.get_adjacency(attribute="weight").data)
+        # Use weight attribute if it exists, otherwise unweighted
+        try:
+            adj_dense = np.array(graph.get_adjacency(attribute="weight").data)
+        except (ValueError, KeyError):
+            # No weight attribute, use unweighted adjacency
+            adj_dense = np.array(graph.get_adjacency().data)
         return csr_matrix(adj_dense)
 
     def get_laplacian_matrix(self, graph: Any) -> csr_matrix:
@@ -163,15 +165,21 @@ class IGraphBackend(AbstractNetworkBackend):
         degree_matrix = diags(degrees, format="csr")
         return degree_matrix - adj
 
-    def shortest_paths(self, graph: Any, source: Optional[int] = None) -> np.ndarray:
+    def shortest_paths(self, graph: Any, source: int | None = None) -> np.ndarray:
+        # Use weights if available, otherwise unweighted
+        try:
+            weight_attr = "weight" if "weight" in graph.es.attributes() else None
+        except:
+            weight_attr = None
+
         if source is not None:
-            paths = graph.shortest_paths_dijkstra(source=source, weights="weight")
+            paths = graph.shortest_paths_dijkstra(source=source, weights=weight_attr)
             return np.array(paths[0])
         else:
-            paths = graph.shortest_paths_dijkstra(weights="weight")
+            paths = graph.shortest_paths_dijkstra(weights=weight_attr)
             return np.array(paths)
 
-    def connected_components(self, graph: Any) -> List[List[int]]:
+    def connected_components(self, graph: Any) -> list[list[int]]:
         components = graph.connected_components()
         return [list(component) for component in components]
 
@@ -190,6 +198,7 @@ class NetworkitBackend(AbstractNetworkBackend):
     """networkit backend implementation."""
 
     def __init__(self):
+        super().__init__()
         try:
             import networkit as nk
 
@@ -200,15 +209,15 @@ class NetworkitBackend(AbstractNetworkBackend):
             self.available = False
 
     def create_graph(self, num_nodes: int, directed: bool = False, weighted: bool = True, **kwargs) -> Any:
-        if not self.available:
+        if not self.available or self.nk is None:
             raise BackendNotAvailableError("networkit not available")
         return self.nk.Graph(n=num_nodes, weighted=weighted, directed=directed)
 
     def add_edges(
         self,
         graph: Any,
-        edges: List[Tuple[int, int]],
-        weights: Optional[np.ndarray] = None,
+        edges: list[tuple[int, int]],
+        weights: np.ndarray | None = None,
     ) -> Any:
         for i, (u, v) in enumerate(edges):
             weight = weights[i] if weights is not None else 1.0
@@ -236,7 +245,7 @@ class NetworkitBackend(AbstractNetworkBackend):
         degree_matrix = diags(degrees, format="csr")
         return degree_matrix - adj
 
-    def shortest_paths(self, graph: Any, source: Optional[int] = None) -> np.ndarray:
+    def shortest_paths(self, graph: Any, source: int | None = None) -> np.ndarray:
         if source is not None:
             spsp = self.nk.distance.Dijkstra(graph, source)
             spsp.run()
@@ -246,7 +255,7 @@ class NetworkitBackend(AbstractNetworkBackend):
             apsp.run()
             return np.array(apsp.getDistanceMatrix())
 
-    def connected_components(self, graph: Any) -> List[List[int]]:
+    def connected_components(self, graph: Any) -> list[list[int]]:
         cc = self.nk.components.ConnectedComponents(graph)
         cc.run()
         components = []
@@ -275,6 +284,7 @@ class NetworkXBackend(AbstractNetworkBackend):
     """networkx backend implementation."""
 
     def __init__(self):
+        super().__init__()
         try:
             import networkx as nx
 
@@ -285,7 +295,7 @@ class NetworkXBackend(AbstractNetworkBackend):
             self.available = False
 
     def create_graph(self, num_nodes: int, directed: bool = False, **kwargs) -> Any:
-        if not self.available:
+        if not self.available or self.nx is None:
             raise BackendNotAvailableError("networkx not available")
 
         if directed:
@@ -299,23 +309,31 @@ class NetworkXBackend(AbstractNetworkBackend):
     def add_edges(
         self,
         graph: Any,
-        edges: List[Tuple[int, int]],
-        weights: Optional[np.ndarray] = None,
+        edges: list[tuple[int, int]],
+        weights: np.ndarray | None = None,
     ) -> Any:
         if weights is not None:
-            weighted_edges = [(u, v, {"weight": w}) for (u, v), w in zip(edges, weights)]
+            weighted_edges = [(u, v, {"weight": w}) for (u, v), w in zip(edges, weights, strict=False)]
             graph.add_edges_from(weighted_edges)
         else:
             graph.add_edges_from(edges)
         return graph
 
     def get_adjacency_matrix(self, graph: Any) -> csr_matrix:
-        return self.nx.adjacency_matrix(graph, weight="weight")
+        if self.nx is None:
+            raise BackendNotAvailableError("networkx not available")
+        adj_matrix = self.nx.adjacency_matrix(graph, weight="weight")
+        return csr_matrix(adj_matrix)
 
     def get_laplacian_matrix(self, graph: Any) -> csr_matrix:
-        return self.nx.laplacian_matrix(graph, weight="weight")
+        if self.nx is None:
+            raise BackendNotAvailableError("networkx not available")
+        lap_matrix = self.nx.laplacian_matrix(graph, weight="weight")
+        return csr_matrix(lap_matrix)
 
-    def shortest_paths(self, graph: Any, source: Optional[int] = None) -> np.ndarray:
+    def shortest_paths(self, graph: Any, source: int | None = None) -> np.ndarray:
+        if self.nx is None:
+            raise BackendNotAvailableError("networkx not available")
         if source is not None:
             paths = self.nx.single_source_dijkstra_path_length(graph, source, weight="weight")
             result = np.full(graph.number_of_nodes(), np.inf)
@@ -330,7 +348,9 @@ class NetworkXBackend(AbstractNetworkBackend):
                     result[source, target] = length
             return result
 
-    def connected_components(self, graph: Any) -> List[List[int]]:
+    def connected_components(self, graph: Any) -> list[list[int]]:
+        if self.nx is None:
+            raise BackendNotAvailableError("networkx not available")
         if graph.is_directed():
             components = self.nx.strongly_connected_components(graph)
         else:
@@ -342,6 +362,8 @@ class NetworkXBackend(AbstractNetworkBackend):
         return np.array([degrees[node] for node in sorted(degrees.keys())])
 
     def clustering_coefficient(self, graph: Any) -> float:
+        if self.nx is None:
+            raise BackendNotAvailableError("networkx not available")
         return self.nx.average_clustering(graph, weight="weight")
 
 
@@ -398,7 +420,7 @@ class NetworkBackendManager:
         # Issue warnings for missing recommended backends
         self._check_backend_availability()
 
-    def _initialize_backends(self) -> Dict[NetworkBackendType, AbstractNetworkBackend]:
+    def _initialize_backends(self) -> dict[NetworkBackendType, AbstractNetworkBackend]:
         """Initialize all available backends."""
         backends = {
             NetworkBackendType.IGRAPH: IGraphBackend(),
@@ -434,7 +456,7 @@ class NetworkBackendManager:
         self,
         num_nodes: int,
         operation_type: OperationType = OperationType.GENERAL,
-        force_backend: Optional[NetworkBackendType] = None,
+        force_backend: NetworkBackendType | None = None,
     ) -> NetworkBackendType:
         """
         Choose optimal backend based on problem characteristics.
@@ -510,9 +532,9 @@ class NetworkBackendManager:
         self,
         num_nodes: int,
         operation_type: OperationType = OperationType.GENERAL,
-        force_backend: Optional[NetworkBackendType] = None,
+        force_backend: NetworkBackendType | None = None,
         **kwargs,
-    ) -> Tuple[Any, NetworkBackendType]:
+    ) -> tuple[Any, NetworkBackendType]:
         """
         Create graph using optimal backend.
 
@@ -528,7 +550,7 @@ class NetworkBackendManager:
         """Get capabilities of a specific backend."""
         return self.BACKEND_CAPABILITIES[backend_type]
 
-    def get_backend_info(self) -> Dict[str, Any]:
+    def get_backend_info(self) -> dict[str, Any]:
         """Get comprehensive backend information."""
         info = {
             "available_backends": [bt.value for bt in self.available_backends],

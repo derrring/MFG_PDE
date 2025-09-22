@@ -20,7 +20,6 @@ Key concepts demonstrated:
 - Basic visualization of results
 """
 
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +28,6 @@ from mfg_pde.alg.mfg_solvers.network_mfg_solver import create_network_mfg_solver
 
 # MFG_PDE imports
 from mfg_pde.core.network_mfg_problem import NetworkMFGComponents, NetworkMFGProblem, create_grid_mfg_problem
-from mfg_pde.geometry.network_geometry import GridNetwork, create_network
 from mfg_pde.visualization.network_plots import create_network_visualizer
 
 
@@ -97,7 +95,7 @@ def create_simple_congestion_problem() -> NetworkMFGProblem:
         drift_coefficient=1.0,
     )
 
-    print(f"Created network MFG problem:")
+    print("Created network MFG problem:")
     print(f"  Network: {width}x{height} grid")
     print(f"  Nodes: {problem.num_nodes}")
     print(f"  Edges: {problem.num_edges}")
@@ -123,14 +121,14 @@ def solve_network_mfg(problem: NetworkMFGProblem) -> tuple:
         hjb_solver_type="explicit",
         fp_solver_type="explicit",
         damping_factor=0.6,
-        hjb_kwargs={'cfl_factor': 0.3},
-        fp_kwargs={'cfl_factor': 0.3, 'enforce_mass_conservation': True},
+        hjb_kwargs={"cfl_factor": 0.3},
+        fp_kwargs={"cfl_factor": 0.3, "enforce_mass_conservation": True},
     )
 
     # Solve the problem
     U, M, convergence_info = solver.solve(max_iterations=30, tolerance=1e-4, verbose=True)
 
-    print(f"\nSolution completed:")
+    print("\nSolution completed:")
     print(f"  Converged: {convergence_info['converged']}")
     print(f"  Iterations: {convergence_info['iterations']}")
     print(f"  Final error: {convergence_info['final_error']:.2e}")
@@ -197,7 +195,7 @@ def analyze_and_visualize_results(problem: NetworkMFGProblem, U: np.ndarray, M: 
     # 5. Analysis dashboard
     print("  - Creating analysis dashboard...")
     fig_dashboard = visualizer.plot_network_statistics_dashboard(convergence_info=convergence_info)
-    if hasattr(fig_dashboard, 'show'):
+    if hasattr(fig_dashboard, "show"):
         fig_dashboard.show()  # Plotly figure
     else:
         plt.show()  # Matplotlib figure

@@ -20,11 +20,12 @@ Key algorithms:
 - Value iteration on discrete state spaces
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
 from .base_hjb import BaseHJBSolver
@@ -45,7 +46,7 @@ class NetworkHJBSolver(BaseHJBSolver):
 
     def __init__(
         self,
-        problem: "NetworkMFGProblem",
+        problem: NetworkMFGProblem,
         scheme: str = "explicit",
         cfl_factor: float = 0.5,
         max_iterations: int = 1000,
@@ -103,7 +104,7 @@ class NetworkHJBSolver(BaseHJBSolver):
         self,
         M_density_evolution: np.ndarray,
         U_final_condition_at_T: np.ndarray,
-        U_from_prev_picard: Optional[np.ndarray] = None,
+        U_from_prev_picard: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve HJB system on network with given density evolution.
@@ -165,7 +166,7 @@ class NetworkHJBSolver(BaseHJBSolver):
         u_current = u_next.copy()
 
         # Fixed point iteration for implicit step
-        for iteration in range(self.max_iterations):
+        for _iteration in range(self.max_iterations):
             u_old = u_current.copy()
 
             # Update each node
@@ -207,7 +208,7 @@ class NetworkHJBSolver(BaseHJBSolver):
                 # Fallback to explicit if implicit solve fails
                 u_current = u_current - self.dt * diffusion_coeff * (L @ u_current)
 
-        return u_current
+        return np.asarray(u_current)
 
     def backward_step(self, u_next: np.ndarray, m_current: np.ndarray, dt: float) -> np.ndarray:
         """
@@ -251,7 +252,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
     def __init__(
         self,
-        problem: "NetworkMFGProblem",
+        problem: NetworkMFGProblem,
         max_policy_iterations: int = 50,
         policy_tolerance: float = 1e-6,
         **kwargs,
@@ -278,7 +279,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         self,
         M_density_evolution: np.ndarray,
         U_final_condition_at_T: np.ndarray,
-        U_from_prev_picard: Optional[np.ndarray] = None,
+        U_from_prev_picard: np.ndarray | None = None,
     ) -> np.ndarray:
         """Solve HJB using policy iteration."""
         Nt = self.network_problem.Nt
@@ -307,7 +308,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         self._initialize_policy(u_next, m, t)
 
         # Policy iteration loop
-        for policy_iter in range(self.max_policy_iterations):
+        for _policy_iter in range(self.max_policy_iterations):
             # Policy evaluation: solve linear system
             u_new = self._policy_evaluation(u_next, m, t)
 
@@ -371,7 +372,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         A = A.tocsr()
         u_evaluated = spsolve(A, b)
 
-        return u_evaluated
+        return np.asarray(u_evaluated)
 
     def _policy_improvement(self, u: np.ndarray, m: np.ndarray, t: float):
         """Improve policy greedily."""
@@ -399,22 +400,16 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
             edge_cost = self.network_problem.edge_cost(node, action, t)
             return edge_cost + u[action]
 
-    def _policies_equal(self, policy1: Dict[int, int], policy2: Dict[int, int]) -> bool:
+    def _policies_equal(self, policy1: dict[int, int], policy2: dict[int, int]) -> bool:
         """Check if two policies are equal."""
         if len(policy1) != len(policy2):
             return False
 
-        for node in policy1:
-            if policy1[node] != policy2.get(node):
-                return False
-
-        return True
+        return all(policy1[node] == policy2.get(node) for node in policy1)
 
 
 # Factory function for network HJB solvers
-def create_network_hjb_solver(
-    problem: "NetworkMFGProblem", solver_type: str = "explicit", **kwargs
-) -> NetworkHJBSolver:
+def create_network_hjb_solver(problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs) -> NetworkHJBSolver:
     """
     Create network HJB solver with specified type.
 

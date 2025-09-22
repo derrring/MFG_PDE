@@ -10,7 +10,6 @@ Demonstrates the enhanced Pydantic-based configuration system with:
 - Research workflow integration
 """
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -23,9 +22,6 @@ from mfg_pde.config import (
     MFGSolverConfig,
     NewtonConfig,
     PicardConfig,
-    create_accurate_config,
-    create_fast_config,
-    create_research_config,
 )
 
 # Import core MFG components
@@ -62,18 +58,18 @@ def demonstrate_basic_pydantic_config():
 
     # Demonstrate automatic JSON serialization
     config_json = config.json(indent=2)
-    print(f"\n📄 JSON Serialization (first 200 chars):")
+    print("\n📄 JSON Serialization (first 200 chars):")
     print(config_json[:200] + "...")
 
     # Save and reload configuration
     config_path = "demo_config.json"
-    with open(config_path, 'w') as f:
+    with open(config_path, "w") as f:
         f.write(config_json)
 
     # Reload with validation
     try:
         reloaded_config = MFGSolverConfig.parse_file(config_path)
-        print(f"SUCCESS: Configuration reloaded successfully!")
+        print("SUCCESS: Configuration reloaded successfully!")
         print(f"   Experiment name: {reloaded_config.experiment_name}")
     except Exception as e:
         print(f"ERROR: Configuration reload failed: {e}")
@@ -92,7 +88,8 @@ def demonstrate_validation_errors():
     # Test 1: Invalid tolerance (too small)
     try:
         config = MFGSolverConfig(
-            newton=NewtonConfig(tolerance=1e-20), convergence_tolerance=1e-15  # Too strict!  # Too strict!
+            newton=NewtonConfig(tolerance=1e-20),
+            convergence_tolerance=1e-15,  # Too strict!  # Too strict!
         )
         print("❓ Somehow passed validation (with warnings)")
     except Exception as e:
@@ -101,7 +98,8 @@ def demonstrate_validation_errors():
     # Test 2: Invalid iterations (negative)
     try:
         config = MFGSolverConfig(
-            newton=NewtonConfig(max_iterations=-5), picard=PicardConfig(max_iterations=0)  # Invalid!  # Invalid!
+            newton=NewtonConfig(max_iterations=-5),
+            picard=PicardConfig(max_iterations=0),  # Invalid!  # Invalid!
         )
         print("ERROR: Should have failed validation!")
     except Exception as e:
@@ -129,7 +127,7 @@ def demonstrate_grid_and_array_validation():
     try:
         grid_config = MFGGridConfig(Nx=50, Nt=100, xmin=0.0, xmax=1.0, T=1.0, sigma=0.1)
 
-        print(f"SUCCESS: Grid configuration created:")
+        print("SUCCESS: Grid configuration created:")
         print(f"   Grid: {grid_config.Nx}×{grid_config.Nt}")
         print(f"   Domain: [{grid_config.xmin}, {grid_config.xmax}] × [0, {grid_config.T}]")
         print(f"   Spacing: dx={grid_config.dx:.6f}, dt={grid_config.dt:.6f}")
@@ -154,14 +152,14 @@ def demonstrate_grid_and_array_validation():
         # Validate arrays with Pydantic
         arrays = MFGArrays(U_solution=U_solution, M_solution=M_solution, grid_config=grid_config)
 
-        print(f"SUCCESS: Array validation passed!")
+        print("SUCCESS: Array validation passed!")
 
         # Get validation statistics
         stats = arrays.get_solution_statistics()
-        print(f"\n Array Statistics:")
+        print("\n Array Statistics:")
         print(f"   U range: [{stats['U']['min']:.3e}, {stats['U']['max']:.3e}]")
         print(f"   M range: [{stats['M']['min']:.3e}, {stats['M']['max']:.3e}]")
-        print(f"   Mass conservation:")
+        print("   Mass conservation:")
         print(f"     Initial: {stats['mass_conservation']['initial_mass']:.6f}")
         print(f"     Final: {stats['mass_conservation']['final_mass']:.6f}")
         print(f"     Drift: {stats['mass_conservation']['mass_drift']:.2e}")
@@ -213,7 +211,7 @@ def demonstrate_enhanced_solver_creation():
         config_path = "solver_config.json"
         custom_config.json()  # Validate JSON serialization works
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             f.write(custom_config.json(indent=2))
 
         # Load and use config
@@ -288,12 +286,12 @@ def demonstrate_enhanced_notebook_reporting():
 
         # Print experiment metadata
         metadata = experiment_config.to_notebook_metadata()
-        print(f"\n Experiment Metadata:")
+        print("\n Experiment Metadata:")
         print(f"   Name: {metadata['experiment_name']}")
         print(f"   Researcher: {metadata['researcher']}")
         print(f"   Tags: {metadata['tags']}")
-        if 'solution_statistics' in metadata:
-            mass_stats = metadata['solution_statistics']['mass_conservation']
+        if "solution_statistics" in metadata:
+            mass_stats = metadata["solution_statistics"]["mass_conservation"]
             print(f"   Mass drift: {mass_stats['mass_drift']:.2e}")
 
         return experiment_config, report_paths
@@ -312,10 +310,10 @@ def demonstrate_environment_variable_support():
 
     # Set environment variables
     test_env_vars = {
-        'MFG_NEWTON_MAX_ITERATIONS': '25',
-        'MFG_NEWTON_TOLERANCE': '1e-7',
-        'MFG_PICARD_MAX_ITERATIONS': '15',
-        'MFG_CONVERGENCE_TOLERANCE': '1e-5',
+        "MFG_NEWTON_MAX_ITERATIONS": "25",
+        "MFG_NEWTON_TOLERANCE": "1e-7",
+        "MFG_PICARD_MAX_ITERATIONS": "15",
+        "MFG_CONVERGENCE_TOLERANCE": "1e-5",
     }
 
     # Save original environment
@@ -366,7 +364,7 @@ def main():
         experiment_config, report_paths = demonstrate_enhanced_notebook_reporting()
         demonstrate_environment_variable_support()
 
-        print(f"\n Pydantic Validation Demo Complete!")
+        print("\n Pydantic Validation Demo Complete!")
         print("=" * 60)
         print("\n Summary of Pydantic Features Demonstrated:")
         print("   SUCCESS: Automatic configuration validation")
@@ -378,14 +376,14 @@ def main():
         print("   SUCCESS: Comprehensive notebook reporting integration")
         print("   SUCCESS: Environment variable configuration support")
 
-        print(f"\n🔬 Key Benefits for Research:")
+        print("\n🔬 Key Benefits for Research:")
         print("   • Automatic parameter validation prevents numerical errors")
         print("   • JSON serialization enables experiment reproducibility")
         print("   • Enhanced error messages speed up debugging")
         print("   • Array validation ensures physical constraint compliance")
         print("   • Professional reporting suitable for publications")
 
-        if report_paths and report_paths.get('notebook_path'):
+        if report_paths and report_paths.get("notebook_path"):
             print(f"\n📖 Generated Report: {report_paths['notebook_path']}")
             print("   Open this notebook to see the full validation report!")
 

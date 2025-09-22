@@ -6,8 +6,10 @@ Handles NumPy version differences, particularly the trapz → trapezoid transiti
 in NumPy 2.0+. Provides consistent interface across NumPy versions.
 """
 
+from __future__ import annotations
+
 import warnings
-from typing import Optional, Union
+from typing import Any
 
 import numpy as np
 
@@ -25,9 +27,7 @@ except ImportError:
     HAS_SCIPY_TRAPEZOID = False
 
 
-def trapezoid(
-    y, x: Optional[Union[np.ndarray, float]] = None, dx: float = 1.0, axis: int = -1
-) -> Union[float, np.ndarray]:
+def trapezoid(y: Any, x: np.ndarray | float | None = None, dx: float = 1.0, axis: int = -1) -> Any:
     """
     NumPy 2.0+ compatible trapezoidal integration.
 
@@ -60,14 +60,14 @@ def trapezoid(
     if HAS_TRAPZ:
         if NUMPY_VERSION >= (2, 0):
             warnings.warn(
-                "Using deprecated np.trapz with NumPy 2.0+. " "Consider updating code to use np.trapezoid directly.",
+                "Using deprecated np.trapz with NumPy 2.0+. Consider updating code to use np.trapezoid directly.",
                 DeprecationWarning,
                 stacklevel=2,
             )
         return np.trapz(y, x=x, dx=dx, axis=axis)
 
     # Should never reach here in normal environments
-    raise RuntimeError("No trapezoidal integration function available. " "Please install NumPy 2.0+ or scipy.")
+    raise RuntimeError("No trapezoidal integration function available. Please install NumPy 2.0+ or scipy.")
 
 
 def get_numpy_info() -> dict:
@@ -109,12 +109,14 @@ def ensure_numpy_compatibility():
             f"NumPy {np.__version__} appears to be 2.0+ but doesn't have trapezoid. "
             "This may indicate a problem with your NumPy installation.",
             UserWarning,
+            stacklevel=2,
         )
 
     if NUMPY_VERSION >= (2, 0) and HAS_TRAPZ and not HAS_TRAPEZOID:
         warnings.warn(
-            "NumPy 2.0+ detected but using deprecated trapz. " "Consider updating your code to use np.trapezoid.",
+            "NumPy 2.0+ detected but using deprecated trapz. Consider updating your code to use np.trapezoid.",
             DeprecationWarning,
+            stacklevel=2,
         )
 
     return info
@@ -132,14 +134,14 @@ elif HAS_TRAPZ:
     numpy_trapezoid = np.trapz
 else:
     # No integration available
-    def numpy_trapezoid(*args, **kwargs):
+    def numpy_trapezoid(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("No trapezoidal integration function available")
 
 
 # Export the main function for backward compatibility
 __all__ = [
-    "trapezoid",
-    "numpy_trapezoid",
-    "get_numpy_info",
     "ensure_numpy_compatibility",
+    "get_numpy_info",
+    "numpy_trapezoid",
+    "trapezoid",
 ]

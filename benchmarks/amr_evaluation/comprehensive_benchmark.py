@@ -17,7 +17,6 @@ Features:
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from amr_accuracy_benchmark import AMRAccuracyBenchmark
 from amr_gpu_profiler import AMRGPUProfiler
@@ -58,12 +57,12 @@ class ComprehensiveAMRBenchmark:
 
         # Benchmark results storage
         self.benchmark_summary = {
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-            'performance': {},
-            'accuracy': {},
-            'gpu_profiling': {},
-            'memory_analysis': {},
-            'real_world_validation': {},
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "performance": {},
+            "accuracy": {},
+            "gpu_profiling": {},
+            "memory_analysis": {},
+            "real_world_validation": {},
         }
 
         print("Comprehensive AMR Benchmark Suite")
@@ -93,15 +92,15 @@ class ComprehensiveAMRBenchmark:
                 avg_uniform_time = np.mean([r.solve_time for r in uniform_results])
                 avg_efficiency = np.mean([r.mesh_efficiency_ratio for r in amr_results if r.mesh_efficiency_ratio])
 
-                self.benchmark_summary['performance'] = {
-                    'avg_amr_solve_time': avg_amr_time,
-                    'avg_uniform_solve_time': avg_uniform_time,
-                    'speedup_ratio': avg_uniform_time / avg_amr_time if avg_amr_time > 0 else 0,
-                    'avg_mesh_efficiency': avg_efficiency,
-                    'total_benchmarks': len(self.performance_suite.results),
+                self.benchmark_summary["performance"] = {
+                    "avg_amr_solve_time": avg_amr_time,
+                    "avg_uniform_solve_time": avg_uniform_time,
+                    "speedup_ratio": avg_uniform_time / avg_amr_time if avg_amr_time > 0 else 0,
+                    "avg_mesh_efficiency": avg_efficiency,
+                    "total_benchmarks": len(self.performance_suite.results),
                 }
 
-                print(f"Performance Summary:")
+                print("Performance Summary:")
                 print(f"  Average AMR time: {avg_amr_time:.3f}s")
                 print(f"  Average uniform time: {avg_uniform_time:.3f}s")
                 print(f"  Speedup ratio: {avg_uniform_time/avg_amr_time:.2f}x")
@@ -117,21 +116,21 @@ class ComprehensiveAMRBenchmark:
 
         # Extract accuracy metrics
         if self.accuracy_suite.results:
-            amr_results = [r for r in self.accuracy_suite.results if 'AMR' in r.solver_name]
-            uniform_results = [r for r in self.accuracy_suite.results if 'Uniform' in r.solver_name]
+            amr_results = [r for r in self.accuracy_suite.results if "AMR" in r.solver_name]
+            uniform_results = [r for r in self.accuracy_suite.results if "Uniform" in r.solver_name]
 
             if amr_results and uniform_results:
                 avg_amr_error = np.mean([r.l2_error_u for r in amr_results if not np.isnan(r.l2_error_u)])
                 avg_uniform_error = np.mean([r.l2_error_u for r in uniform_results if not np.isnan(r.l2_error_u)])
 
-                self.benchmark_summary['accuracy'] = {
-                    'avg_amr_l2_error': avg_amr_error,
-                    'avg_uniform_l2_error': avg_uniform_error,
-                    'accuracy_improvement': avg_uniform_error / avg_amr_error if avg_amr_error > 0 else 0,
-                    'total_accuracy_tests': len(self.accuracy_suite.results),
+                self.benchmark_summary["accuracy"] = {
+                    "avg_amr_l2_error": avg_amr_error,
+                    "avg_uniform_l2_error": avg_uniform_error,
+                    "accuracy_improvement": avg_uniform_error / avg_amr_error if avg_amr_error > 0 else 0,
+                    "total_accuracy_tests": len(self.accuracy_suite.results),
                 }
 
-                print(f"Accuracy Summary:")
+                print("Accuracy Summary:")
                 print(f"  Average AMR L2 error: {avg_amr_error:.2e}")
                 print(f"  Average uniform L2 error: {avg_uniform_error:.2e}")
                 print(f"  Accuracy improvement: {avg_uniform_error/avg_amr_error:.2f}x better")
@@ -152,16 +151,16 @@ class ComprehensiveAMRBenchmark:
                 avg_compilation_time = np.mean([r.compilation_time * 1000 for r in compilation_results])  # ms
                 avg_compute_time = np.mean([r.compute_time * 1000 for r in compilation_results])  # ms
 
-                self.benchmark_summary['gpu_profiling'] = {
-                    'avg_compilation_time_ms': avg_compilation_time,
-                    'avg_compute_time_ms': avg_compute_time,
-                    'compilation_overhead_ratio': (
+                self.benchmark_summary["gpu_profiling"] = {
+                    "avg_compilation_time_ms": avg_compilation_time,
+                    "avg_compute_time_ms": avg_compute_time,
+                    "compilation_overhead_ratio": (
                         avg_compilation_time / avg_compute_time if avg_compute_time > 0 else 0
                     ),
-                    'total_profiles': len(self.gpu_profiler.results),
+                    "total_profiles": len(self.gpu_profiler.results),
                 }
 
-                print(f"GPU Profiling Summary:")
+                print("GPU Profiling Summary:")
                 print(f"  Average compilation time: {avg_compilation_time:.2f}ms")
                 print(f"  Average compute time: {avg_compute_time:.2f}ms")
                 print(f"  Compilation overhead: {avg_compilation_time/avg_compute_time:.2f}x")
@@ -184,19 +183,19 @@ class ComprehensiveAMRBenchmark:
                 avg_efficiency = np.mean([r.memory_efficiency for r in scaling_results if r.memory_efficiency > 0])
 
                 memory_summary = {
-                    'avg_memory_usage_mb': avg_memory_usage,
-                    'avg_memory_efficiency': avg_efficiency,
-                    'total_memory_tests': len(self.memory_profiler.results),
+                    "avg_memory_usage_mb": avg_memory_usage,
+                    "avg_memory_efficiency": avg_efficiency,
+                    "total_memory_tests": len(self.memory_profiler.results),
                 }
 
                 if leak_results:
                     leak_rate = leak_results[0].max_memory_growth_rate
-                    memory_summary['memory_leak_rate_mb_per_iter'] = leak_rate
-                    memory_summary['memory_leak_detected'] = abs(leak_rate) > 0.1
+                    memory_summary["memory_leak_rate_mb_per_iter"] = leak_rate
+                    memory_summary["memory_leak_detected"] = abs(leak_rate) > 0.1
 
-                self.benchmark_summary['memory_analysis'] = memory_summary
+                self.benchmark_summary["memory_analysis"] = memory_summary
 
-                print(f"Memory Analysis Summary:")
+                print("Memory Analysis Summary:")
                 print(f"  Average memory usage: {avg_memory_usage:.1f}MB")
                 print(f"  Average efficiency: {avg_efficiency:.3f}")
                 if leak_results:
@@ -220,39 +219,39 @@ class ComprehensiveAMRBenchmark:
 
             try:
                 # Test uniform solver
-                uniform_solver = create_solver(problem, solver_type='fixed_point', preset='fast')
+                uniform_solver = create_solver(problem, solver_type="fixed_point", preset="fast")
                 uniform_start = time.perf_counter()
                 uniform_result = uniform_solver.solve(max_iterations=50, tolerance=1e-5, verbose=False)
                 uniform_time = time.perf_counter() - uniform_start
 
                 # Test AMR solver
                 amr_solver = create_amr_solver(
-                    problem, base_solver_type='fixed_point', error_threshold=1e-4, max_levels=4
+                    problem, base_solver_type="fixed_point", error_threshold=1e-4, max_levels=4
                 )
                 amr_start = time.perf_counter()
                 amr_result = amr_solver.solve(max_iterations=50, tolerance=1e-5, verbose=False)
                 amr_time = time.perf_counter() - amr_start
 
                 # Extract metrics
-                uniform_converged = uniform_result.get('converged', False) if isinstance(uniform_result, dict) else True
-                amr_converged = amr_result.get('converged', False) if isinstance(amr_result, dict) else True
+                uniform_converged = uniform_result.get("converged", False) if isinstance(uniform_result, dict) else True
+                amr_converged = amr_result.get("converged", False) if isinstance(amr_result, dict) else True
 
-                if isinstance(amr_result, dict) and 'mesh_statistics' in amr_result:
-                    total_elements = amr_result['mesh_statistics'].get('total_intervals', problem.Nx)
+                if isinstance(amr_result, dict) and "mesh_statistics" in amr_result:
+                    total_elements = amr_result["mesh_statistics"].get("total_intervals", problem.Nx)
                     efficiency = total_elements / problem.Nx
                 else:
                     total_elements = problem.Nx
                     efficiency = 1.0
 
                 validation_results[problem_name] = {
-                    'uniform_time': uniform_time,
-                    'amr_time': amr_time,
-                    'speedup': uniform_time / amr_time if amr_time > 0 else 0,
-                    'uniform_converged': uniform_converged,
-                    'amr_converged': amr_converged,
-                    'mesh_efficiency': efficiency,
-                    'total_elements': total_elements,
-                    'baseline_elements': problem.Nx,
+                    "uniform_time": uniform_time,
+                    "amr_time": amr_time,
+                    "speedup": uniform_time / amr_time if amr_time > 0 else 0,
+                    "uniform_converged": uniform_converged,
+                    "amr_converged": amr_converged,
+                    "mesh_efficiency": efficiency,
+                    "total_elements": total_elements,
+                    "baseline_elements": problem.Nx,
                 }
 
                 print(f"  Uniform: {uniform_time:.3f}s ({'✓' if uniform_converged else '✗'})")
@@ -262,18 +261,18 @@ class ComprehensiveAMRBenchmark:
 
             except Exception as e:
                 print(f"  Error testing {problem_name}: {e}")
-                validation_results[problem_name] = {'error': str(e)}
+                validation_results[problem_name] = {"error": str(e)}
 
-        self.benchmark_summary['real_world_validation'] = validation_results
+        self.benchmark_summary["real_world_validation"] = validation_results
 
         # Summary statistics
-        successful_tests = [r for r in validation_results.values() if 'error' not in r]
+        successful_tests = [r for r in validation_results.values() if "error" not in r]
         if successful_tests:
-            avg_speedup = np.mean([r['speedup'] for r in successful_tests if r['speedup'] > 0])
-            avg_efficiency = np.mean([r['mesh_efficiency'] for r in successful_tests])
-            convergence_rate = np.mean([r['amr_converged'] for r in successful_tests])
+            avg_speedup = np.mean([r["speedup"] for r in successful_tests if r["speedup"] > 0])
+            avg_efficiency = np.mean([r["mesh_efficiency"] for r in successful_tests])
+            convergence_rate = np.mean([r["amr_converged"] for r in successful_tests])
 
-            print(f"\nReal-World Validation Summary:")
+            print("\nReal-World Validation Summary:")
             print(f"  Successful tests: {len(successful_tests)}/{len(validation_results)}")
             print(f"  Average speedup: {avg_speedup:.2f}x")
             print(f"  Average mesh efficiency: {avg_efficiency:.3f}")
@@ -286,7 +285,7 @@ class ComprehensiveAMRBenchmark:
 
         report_file = self.output_dir / "comprehensive_benchmark_report.md"
 
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             f.write("# Comprehensive AMR Benchmark Report\n\n")
             f.write(f"**Generated**: {self.benchmark_summary['timestamp']}  \n")
             f.write(f"**System**: {self.performance_suite.system_info['platform']}  \n")
@@ -301,8 +300,8 @@ class ComprehensiveAMRBenchmark:
             f.write("performance, accuracy, GPU utilization, memory efficiency, and real-world applicability.\n\n")
 
             # Performance Summary
-            if 'performance' in self.benchmark_summary and self.benchmark_summary['performance']:
-                perf = self.benchmark_summary['performance']
+            if self.benchmark_summary.get("performance"):
+                perf = self.benchmark_summary["performance"]
                 f.write("### Performance Results\n")
                 f.write(f"- **Average Speedup**: {perf.get('speedup_ratio', 0):.2f}x over uniform grids\n")
                 f.write(f"- **Mesh Efficiency**: {perf.get('avg_mesh_efficiency', 0):.3f} ")
@@ -310,43 +309,43 @@ class ComprehensiveAMRBenchmark:
                 f.write(f"- **Total Benchmarks**: {perf.get('total_benchmarks', 0)}\n\n")
 
             # Accuracy Summary
-            if 'accuracy' in self.benchmark_summary and self.benchmark_summary['accuracy']:
-                acc = self.benchmark_summary['accuracy']
+            if self.benchmark_summary.get("accuracy"):
+                acc = self.benchmark_summary["accuracy"]
                 f.write("### Accuracy Results\n")
                 f.write(f"- **Accuracy Improvement**: {acc.get('accuracy_improvement', 0):.2f}x better than uniform\n")
                 f.write(f"- **AMR L2 Error**: {acc.get('avg_amr_l2_error', 0):.2e}\n")
                 f.write(f"- **Uniform L2 Error**: {acc.get('avg_uniform_l2_error', 0):.2e}\n\n")
 
             # GPU Profiling Summary
-            if 'gpu_profiling' in self.benchmark_summary and self.benchmark_summary['gpu_profiling']:
-                gpu = self.benchmark_summary['gpu_profiling']
+            if self.benchmark_summary.get("gpu_profiling"):
+                gpu = self.benchmark_summary["gpu_profiling"]
                 f.write("### GPU Performance\n")
                 f.write(f"- **Compilation Overhead**: {gpu.get('compilation_overhead_ratio', 0):.2f}x compute time\n")
                 f.write(f"- **Average Compilation**: {gpu.get('avg_compilation_time_ms', 0):.2f}ms\n")
                 f.write(f"- **Average Compute**: {gpu.get('avg_compute_time_ms', 0):.2f}ms\n\n")
 
             # Memory Analysis Summary
-            if 'memory_analysis' in self.benchmark_summary and self.benchmark_summary['memory_analysis']:
-                mem = self.benchmark_summary['memory_analysis']
+            if self.benchmark_summary.get("memory_analysis"):
+                mem = self.benchmark_summary["memory_analysis"]
                 f.write("### Memory Efficiency\n")
                 f.write(f"- **Average Memory Usage**: {mem.get('avg_memory_usage_mb', 0):.1f}MB\n")
                 f.write(f"- **Memory Efficiency**: {mem.get('avg_memory_efficiency', 0):.3f}\n")
-                if 'memory_leak_detected' in mem:
-                    leak_status = "Detected" if mem['memory_leak_detected'] else "None detected"
+                if "memory_leak_detected" in mem:
+                    leak_status = "Detected" if mem["memory_leak_detected"] else "None detected"
                     f.write(f"- **Memory Leaks**: {leak_status}\n")
                 f.write("\n")
 
             # Real-World Validation Summary
-            if 'real_world_validation' in self.benchmark_summary:
-                real_world = self.benchmark_summary['real_world_validation']
-                successful = [r for r in real_world.values() if 'error' not in r]
+            if "real_world_validation" in self.benchmark_summary:
+                real_world = self.benchmark_summary["real_world_validation"]
+                successful = [r for r in real_world.values() if "error" not in r]
 
                 f.write("### Real-World Problem Validation\n")
                 f.write(f"- **Test Coverage**: {len(successful)}/{len(real_world)} problems passed\n")
 
                 if successful:
-                    avg_speedup = np.mean([r['speedup'] for r in successful if r['speedup'] > 0])
-                    avg_efficiency = np.mean([r['mesh_efficiency'] for r in successful])
+                    avg_speedup = np.mean([r["speedup"] for r in successful if r["speedup"] > 0])
+                    avg_efficiency = np.mean([r["mesh_efficiency"] for r in successful])
                     f.write(f"- **Average Speedup**: {avg_speedup:.2f}x\n")
                     f.write(f"- **Average Mesh Efficiency**: {avg_efficiency:.3f}\n")
                 f.write("\n")
@@ -363,18 +362,18 @@ class ComprehensiveAMRBenchmark:
             f.write("## Recommendations\n\n")
 
             # Generate data-driven recommendations
-            perf = self.benchmark_summary.get('performance', {})
-            if perf.get('avg_mesh_efficiency', 1) < 0.7:
+            perf = self.benchmark_summary.get("performance", {})
+            if perf.get("avg_mesh_efficiency", 1) < 0.7:
                 f.write(
                     "✅ **AMR Highly Effective**: Significant mesh reduction demonstrates strong efficiency gains.\n\n"
                 )
 
-            acc = self.benchmark_summary.get('accuracy', {})
-            if acc.get('accuracy_improvement', 0) > 1.2:
+            acc = self.benchmark_summary.get("accuracy", {})
+            if acc.get("accuracy_improvement", 0) > 1.2:
                 f.write("✅ **AMR Accuracy Advantage**: Demonstrates superior solution accuracy.\n\n")
 
-            mem = self.benchmark_summary.get('memory_analysis', {})
-            if mem.get('memory_leak_detected', False):
+            mem = self.benchmark_summary.get("memory_analysis", {})
+            if mem.get("memory_leak_detected", False):
                 f.write("⚠️ **Memory Leak Attention**: Monitor memory usage in production deployments.\n\n")
 
             f.write("**General Guidelines**:\n")
@@ -387,7 +386,7 @@ class ComprehensiveAMRBenchmark:
 
         # Save benchmark summary as JSON
         summary_file = self.output_dir / "benchmark_summary.json"
-        with open(summary_file, 'w') as f:
+        with open(summary_file, "w") as f:
             json.dump(self.benchmark_summary, f, indent=2, default=str)
         print(f"Benchmark summary saved: {summary_file}")
 
@@ -419,7 +418,7 @@ class ComprehensiveAMRBenchmark:
 
             total_time = time.perf_counter() - start_time
 
-            print(f"\n✅ Comprehensive Benchmark Complete!")
+            print("\n✅ Comprehensive Benchmark Complete!")
             print(f"Total time: {total_time:.1f} seconds")
             print(f"Results saved to: {self.output_dir}")
 

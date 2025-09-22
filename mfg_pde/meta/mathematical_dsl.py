@@ -8,14 +8,13 @@ Mathematical expressions are represented as abstract syntax trees that can be
 manipulated, optimized, and compiled to different backends (NumPy, JAX, Numba).
 """
 
-import ast
-import inspect
-from abc import ABC, abstractmethod
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
-from numpy.typing import NDArray
 
 
 @dataclass
@@ -28,12 +27,12 @@ class MathematicalExpression:
     """
 
     expression: str
-    variables: List[str] = field(default_factory=list)
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    variables: list[str] = field(default_factory=list)
+    parameters: dict[str, Any] = field(default_factory=dict)
     backend: str = "numpy"
-    _compiled_func: Optional[Callable] = field(default=None, init=False, repr=False)
+    _compiled_func: Callable | None = field(default=None, init=False, repr=False)
 
-    def compile(self, backend: str = None) -> Callable:
+    def compile(self, backend: str | None = None) -> Callable:
         """Compile expression to specified backend."""
         if backend is None:
             backend = self.backend
@@ -122,7 +121,7 @@ def compiled_func({', '.join(self.variables)}):
         except ImportError:
             raise ValueError("Numba not available for compilation")
 
-    def differentiate(self, var: str) -> "MathematicalExpression":
+    def differentiate(self, var: str) -> MathematicalExpression:
         """Symbolic differentiation (simplified implementation)."""
         # This is a placeholder for symbolic differentiation
         # In practice, would use SymPy or similar for full symbolic math
@@ -145,12 +144,12 @@ class MFGSystemBuilder:
     """
 
     def __init__(self):
-        self.expressions: Dict[str, MathematicalExpression] = {}
-        self.constraints: List[MathematicalExpression] = []
-        self.parameters: Dict[str, Any] = {}
-        self.domain_info: Dict[str, Any] = {}
+        self.expressions: dict[str, MathematicalExpression] = {}
+        self.constraints: list[MathematicalExpression] = []
+        self.parameters: dict[str, Any] = {}
+        self.domain_info: dict[str, Any] = {}
 
-    def hamiltonian(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
+    def hamiltonian(self, expr: str, variables: list[str] | None = None) -> MFGSystemBuilder:
         """Define Hamiltonian function H(t,x,p,m)."""
         if variables is None:
             variables = ["t", "x", "p", "m"]
@@ -158,7 +157,7 @@ class MFGSystemBuilder:
         self.expressions["hamiltonian"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
-    def lagrangian(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
+    def lagrangian(self, expr: str, variables: list[str] | None = None) -> MFGSystemBuilder:
         """Define Lagrangian function L(t,x,v,m)."""
         if variables is None:
             variables = ["t", "x", "v", "m"]
@@ -166,7 +165,7 @@ class MFGSystemBuilder:
         self.expressions["lagrangian"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
-    def running_cost(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
+    def running_cost(self, expr: str, variables: list[str] | None = None) -> MFGSystemBuilder:
         """Define running cost function f(t,x,m)."""
         if variables is None:
             variables = ["t", "x", "m"]
@@ -174,7 +173,7 @@ class MFGSystemBuilder:
         self.expressions["running_cost"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
-    def terminal_cost(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
+    def terminal_cost(self, expr: str, variables: list[str] | None = None) -> MFGSystemBuilder:
         """Define terminal cost function g(x,m)."""
         if variables is None:
             variables = ["x", "m"]
@@ -182,7 +181,7 @@ class MFGSystemBuilder:
         self.expressions["terminal_cost"] = MathematicalExpression(expr, variables, self.parameters)
         return self
 
-    def constraint(self, expr: str, variables: List[str] = None) -> "MFGSystemBuilder":
+    def constraint(self, expr: str, variables: list[str] | None = None) -> MFGSystemBuilder:
         """Add constraint to the MFG system."""
         if variables is None:
             variables = ["t", "x", "m"]
@@ -190,12 +189,12 @@ class MFGSystemBuilder:
         self.constraints.append(MathematicalExpression(expr, variables, self.parameters))
         return self
 
-    def parameter(self, name: str, value: Any) -> "MFGSystemBuilder":
+    def parameter(self, name: str, value: Any) -> MFGSystemBuilder:
         """Set parameter value."""
         self.parameters[name] = value
         return self
 
-    def domain(self, xmin: float, xmax: float, tmax: float, nx: int = 100, nt: int = 50) -> "MFGSystemBuilder":
+    def domain(self, xmin: float, xmax: float, tmax: float, nx: int = 100, nt: int = 50) -> MFGSystemBuilder:
         """Define computational domain."""
         self.domain_info = {
             "xmin": xmin,
@@ -206,7 +205,7 @@ class MFGSystemBuilder:
         }
         return self
 
-    def build(self) -> "CompiledMFGSystem":
+    def build(self) -> CompiledMFGSystem:
         """Build and compile the MFG system."""
         return CompiledMFGSystem(self.expressions, self.constraints, self.parameters, self.domain_info)
 
@@ -214,12 +213,12 @@ class MFGSystemBuilder:
 class HamiltonianBuilder(MFGSystemBuilder):
     """Specialized builder for Hamiltonian MFG systems."""
 
-    def quadratic_control_cost(self, coeff: float = 0.5) -> "HamiltonianBuilder":
+    def quadratic_control_cost(self, coeff: float = 0.5) -> HamiltonianBuilder:
         """Add quadratic control cost: coeff * p^2."""
         self.hamiltonian(f"{coeff} * p**2")
         return self
 
-    def potential(self, expr: str) -> "HamiltonianBuilder":
+    def potential(self, expr: str) -> HamiltonianBuilder:
         """Add potential function V(x,m)."""
         current_h = self.expressions.get("hamiltonian")
         if current_h:
@@ -230,7 +229,7 @@ class HamiltonianBuilder(MFGSystemBuilder):
         self.hamiltonian(new_expr)
         return self
 
-    def interaction_potential(self, kernel: str = "x * m") -> "HamiltonianBuilder":
+    def interaction_potential(self, kernel: str = "x * m") -> HamiltonianBuilder:
         """Add mean-field interaction potential."""
         self.potential(f"interaction_strength * ({kernel})")
         return self
@@ -239,12 +238,12 @@ class HamiltonianBuilder(MFGSystemBuilder):
 class LagrangianBuilder(MFGSystemBuilder):
     """Specialized builder for Lagrangian MFG systems."""
 
-    def kinetic_energy(self, coeff: float = 0.5) -> "LagrangianBuilder":
+    def kinetic_energy(self, coeff: float = 0.5) -> LagrangianBuilder:
         """Add kinetic energy: coeff * v^2."""
         self.lagrangian(f"{coeff} * v**2")
         return self
 
-    def congestion_cost(self, expr: str = "m") -> "LagrangianBuilder":
+    def congestion_cost(self, expr: str = "m") -> LagrangianBuilder:
         """Add congestion cost function."""
         current_l = self.expressions.get("lagrangian")
         if current_l:
@@ -265,10 +264,10 @@ class CompiledMFGSystem:
     and metadata for solver generation.
     """
 
-    expressions: Dict[str, MathematicalExpression]
-    constraints: List[MathematicalExpression]
-    parameters: Dict[str, Any]
-    domain_info: Dict[str, Any]
+    expressions: dict[str, MathematicalExpression]
+    constraints: list[MathematicalExpression]
+    parameters: dict[str, Any]
+    domain_info: dict[str, Any]
 
     def compile_all(self, backend: str = "numpy") -> None:
         """Compile all expressions to specified backend."""
@@ -287,6 +286,9 @@ class CompiledMFGSystem:
         if expr._compiled_func is None:
             expr.compile()
 
+        if expr._compiled_func is None:
+            raise RuntimeError(f"Failed to compile expression '{name}'")
+
         return expr._compiled_func
 
     def to_mfg_problem(self):
@@ -304,7 +306,7 @@ class CompiledMFGSystem:
             Nt=domain["nt"],
         )
 
-        # Attach compiled functions
+        # Attach compiled functions using setattr for dynamic attributes
         if "hamiltonian" in self.expressions:
             problem.hamiltonian = self.get_compiled_function("hamiltonian")
 
@@ -350,7 +352,7 @@ def congestion_mfg_system(
     )
 
 
-def network_mfg_system(network_structure: Dict[str, Any], transition_costs: Dict[str, str]) -> CompiledMFGSystem:
+def network_mfg_system(network_structure: dict[str, Any], transition_costs: dict[str, str]) -> CompiledMFGSystem:
     """Create network-based MFG system."""
     builder = MFGSystemBuilder()
 

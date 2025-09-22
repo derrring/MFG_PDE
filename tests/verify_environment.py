@@ -82,7 +82,7 @@ def verify_environment():
         print("✅ Variational solver creation: OK")
 
         # Test trapezoid usage in solver
-        initial_guess = solver.create_initial_guess('gaussian')
+        initial_guess = solver.create_initial_guess("gaussian")
         mass_error = solver.compute_mass_conservation_error(initial_guess)
         print(f"✅ Mass conservation test: {mass_error:.2e}")
 
@@ -95,19 +95,19 @@ def verify_environment():
     print("-" * 20)
 
     optional_packages = [
-        ('plotly', 'Interactive plotting'),
-        ('bokeh', 'Advanced visualizations'),
-        ('jax', 'Automatic differentiation'),
-        ('numba', 'JIT compilation'),
-        ('pandas', 'Data manipulation'),
-        ('polars', 'Fast data processing'),
-        ('jupyter', 'Notebook environment'),
+        ("plotly", "Interactive plotting"),
+        ("bokeh", "Advanced visualizations"),
+        ("jax", "Automatic differentiation"),
+        ("numba", "JIT compilation"),
+        ("pandas", "Data manipulation"),
+        ("polars", "Fast data processing"),
+        ("jupyter", "Notebook environment"),
     ]
 
     for package, description in optional_packages:
         try:
             module = __import__(package)
-            version = getattr(module, '__version__', 'unknown')
+            version = getattr(module, "__version__", "unknown")
             print(f"✅ {package}: {version} ({description})")
         except ImportError:
             print(f"⚪ {package}: Not installed ({description})")

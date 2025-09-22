@@ -17,26 +17,41 @@ The Lagrangian formulation provides:
 4. Primal-dual solution methods
 """
 
+from __future__ import annotations
+
 import logging
-from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
 
+if TYPE_CHECKING:
+    # For type checking only - these imports may not be available at runtime
+    try:
+        import jax.numpy as jnp
+        from jax import jit
+    except ImportError:
+        pass
+
+    try:
+        from scipy.optimize import minimize
+    except ImportError:
+        pass
+
 logger = logging.getLogger(__name__)
 
 try:
-    import jax.numpy as jnp
-    from jax import grad, jit, vmap
+    import jax.numpy as jnp  # noqa: F401
+    from jax import grad, jit, vmap  # noqa: F401
 
     JAX_AVAILABLE = True
 except ImportError:
     JAX_AVAILABLE = False
 
 try:
-    from scipy.optimize import minimize
+    from scipy.optimize import minimize  # noqa: F401
 
     SCIPY_AVAILABLE = True
 except ImportError:
@@ -58,34 +73,34 @@ class LagrangianComponents:
     """
 
     # Core Lagrangian function
-    lagrangian_func: Optional[Callable] = None  # L(t, x, v, m) -> float
+    lagrangian_func: Callable | None = None  # L(t, x, v, m) -> float
 
     # Derivatives for optimization (can be provided or computed numerically)
-    lagrangian_dx_func: Optional[Callable] = None  # ∂L/∂x
-    lagrangian_dv_func: Optional[Callable] = None  # ∂L/∂v (velocity)
-    lagrangian_dm_func: Optional[Callable] = None  # ∂L/∂m (population coupling)
+    lagrangian_dx_func: Callable | None = None  # ∂L/∂x
+    lagrangian_dv_func: Callable | None = None  # ∂L/∂v (velocity)
+    lagrangian_dm_func: Callable | None = None  # ∂L/∂m (population coupling)
 
     # Terminal cost
-    terminal_cost_func: Optional[Callable] = None  # g(x) -> float
-    terminal_cost_dx_func: Optional[Callable] = None  # ∂g/∂x
+    terminal_cost_func: Callable | None = None  # g(x) -> float
+    terminal_cost_dx_func: Callable | None = None  # ∂g/∂x
 
     # Running potential (time-varying external forces)
-    potential_func: Optional[Callable] = None  # V(t, x) -> float
-    potential_dx_func: Optional[Callable] = None  # ∂V/∂x
+    potential_func: Callable | None = None  # V(t, x) -> float
+    potential_dx_func: Callable | None = None  # ∂V/∂x
 
     # Initial conditions
-    initial_density_func: Optional[Callable] = None  # m₀(x) -> float
+    initial_density_func: Callable | None = None  # m₀(x) -> float
 
     # Constraints (optional)
-    state_constraints: Optional[List[Callable]] = None  # c(t, x) ≤ 0
-    velocity_constraints: Optional[List[Callable]] = None  # h(t, x, v) ≤ 0
-    integral_constraints: Optional[List[Callable]] = None  # ∫ψ(x,m)dx = constant
+    state_constraints: list[Callable] | None = None  # c(t, x) ≤ 0
+    velocity_constraints: list[Callable] | None = None  # h(t, x, v) ≤ 0
+    integral_constraints: list[Callable] | None = None  # ∫ψ(x,m)dx = constant
 
     # Problem parameters
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
     # Noise/stochasticity
-    noise_intensity: float = 0.0  # σ for stochastic differential equations
+    noise_intensity: float = 0.0  # sigma for stochastic differential equations
 
     # Metadata
     description: str = "Lagrangian MFG Problem"
@@ -115,7 +130,7 @@ class LagrangianMFGProblem:
         T: float = 1.0,
         Nt: int = 51,
         # Lagrangian components
-        components: Optional[LagrangianComponents] = None,
+        components: LagrangianComponents | None = None,
         # Standard MFG parameters (for compatibility)
         sigma: float = 1.0,
         **kwargs: Any,
@@ -209,18 +224,22 @@ class LagrangianMFGProblem:
             return
 
         # JAX-compiled versions of key functions
-        if self.components.lagrangian_func:
+        if self.components.lagrangian_func is not None:
 
             @jit
             def jax_lagrangian(t, x, v, m):
+                # Safe to call since we checked for None above
+                assert self.components.lagrangian_func is not None
                 return self.components.lagrangian_func(t, x, v, m)
 
             self._jax_lagrangian = jax_lagrangian
 
-        if self.components.terminal_cost_func:
+        if self.components.terminal_cost_func is not None:
 
             @jit
             def jax_terminal_cost(x):
+                # Safe to call since we checked for None above
+                assert self.components.terminal_cost_func is not None
                 return self.components.terminal_cost_func(x)
 
             self._jax_terminal_cost = jax_terminal_cost
@@ -228,10 +247,10 @@ class LagrangianMFGProblem:
     def evaluate_lagrangian(
         self,
         t: float,
-        x: Union[float, NDArray],
-        v: Union[float, NDArray],
-        m: Union[float, NDArray],
-    ) -> Union[float, NDArray]:
+        x: float | NDArray,
+        v: float | NDArray,
+        m: float | NDArray,
+    ) -> float | NDArray:
         """
         Evaluate Lagrangian function L(t,x,v,m).
 
@@ -251,7 +270,7 @@ class LagrangianMFGProblem:
         else:
             raise ValueError("No Lagrangian function defined")
 
-    def evaluate_terminal_cost(self, x: Union[float, NDArray]) -> Union[float, NDArray]:
+    def evaluate_terminal_cost(self, x: float | NDArray) -> float | NDArray:
         """
         Evaluate terminal cost g(x).
 
@@ -268,7 +287,7 @@ class LagrangianMFGProblem:
         else:
             return 0.0  # Default: no terminal cost
 
-    def compute_lagrangian_derivatives(self, t: float, x: float, v: float, m: float) -> Dict[str, float]:
+    def compute_lagrangian_derivatives(self, t: float, x: float, v: float, m: float) -> dict[str, float]:
         """
         Compute all partial derivatives of Lagrangian.
 
@@ -315,7 +334,7 @@ class LagrangianMFGProblem:
 
         return derivatives
 
-    def convert_to_hamiltonian(self) -> Dict[str, Callable]:
+    def convert_to_hamiltonian(self) -> dict[str, Callable]:
         """
         Convert Lagrangian formulation to Hamiltonian via Legendre transform.
 
@@ -343,8 +362,19 @@ class LagrangianMFGProblem:
                 total_cost_at_zero_velocity = self.evaluate_lagrangian(t, x, 0.0, m)
                 kinetic_at_zero = 0.0  # No kinetic energy at v=0
                 interaction_term = total_cost_at_zero_velocity - kinetic_at_zero
+                # Ensure scalar return for scalar inputs
 
-            return kinetic_hamiltonian + interaction_term
+                if hasattr(interaction_term, "ndim") and getattr(interaction_term, "ndim", None) == 0:
+                    interaction_term = float(interaction_term)
+
+            result = kinetic_hamiltonian + interaction_term
+            # Ensure scalar return for scalar inputs
+            if hasattr(result, "ndim"):
+                if getattr(result, "ndim", None) == 0:
+                    return float(result)
+                elif hasattr(result, "item"):
+                    return float(getattr(result, "item", lambda: result)())
+            return float(result)
 
         def hamiltonian_dp(x: float, p: float, m: float, t: float = 0.0) -> float:
             """∂H/∂p = p (for quadratic Hamiltonian)"""
@@ -383,7 +413,7 @@ class LagrangianMFGProblem:
 
         # Integrate running cost
         running_cost = 0.0
-        for i, (t, x, v) in enumerate(zip(self.t, trajectory, velocity)):
+        for i, (t, x, v) in enumerate(zip(self.t, trajectory, velocity, strict=False)):
             # Interpolate density at current position
             m_at_x = self._interpolate_density(density_evolution[i], x)
 
@@ -396,7 +426,13 @@ class LagrangianMFGProblem:
 
         total_action = running_cost + terminal_cost
 
-        return total_action
+        # Ensure scalar return
+        if hasattr(total_action, "ndim"):
+            if getattr(total_action, "ndim", None) == 0:
+                return float(total_action)
+            elif hasattr(total_action, "item"):
+                return float(getattr(total_action, "item", lambda: total_action)())
+        return float(total_action)
 
     def _interpolate_density(self, density_field: NDArray, x: float) -> float:
         """Interpolate density at position x from density field."""
@@ -439,7 +475,7 @@ class LagrangianMFGProblem:
         """
         residual = np.zeros(self.Nt)
 
-        for i, (t, x, v, a) in enumerate(zip(self.t, trajectory, velocity, acceleration)):
+        for i, (t, x, v, a) in enumerate(zip(self.t, trajectory, velocity, acceleration, strict=False)):
             # Interpolate density
             m_at_x = self._interpolate_density(density_evolution[i], x)
 
@@ -488,7 +524,7 @@ class LagrangianMFGProblem:
             components=mfg_components,
         )
 
-    def get_problem_info(self) -> Dict[str, Any]:
+    def get_problem_info(self) -> dict[str, Any]:
         """Get comprehensive problem information."""
         return {
             "formulation": "Lagrangian",

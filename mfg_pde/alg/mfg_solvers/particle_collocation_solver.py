@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -27,7 +29,7 @@ class ParticleCollocationSolver(MFGSolver):
 
     def __init__(
         self,
-        problem: "MFGProblem",
+        problem: MFGProblem,
         collocation_points: np.ndarray,
         num_particles: int = 5000,
         delta: float = 0.1,
@@ -38,8 +40,8 @@ class ParticleCollocationSolver(MFGSolver):
         newton_tolerance: float = 1e-6,
         kde_bandwidth: str = "scott",
         normalize_kde_output: bool = True,
-        boundary_indices: Optional[np.ndarray] = None,
-        boundary_conditions: Optional[Dict] = None,
+        boundary_indices: np.ndarray | None = None,
+        boundary_conditions: dict | None = None,
         use_monotone_constraints: bool = False,
     ):
         """
@@ -100,14 +102,14 @@ class ParticleCollocationSolver(MFGSolver):
 
     def solve(
         self,
-        max_iterations: int = None,
-        tolerance: float = None,
+        max_iterations: int | None = None,
+        tolerance: float | None = None,
         # Deprecated parameters for backward compatibility
-        Niter: int = None,
-        l2errBound: float = None,
+        Niter: int | None = None,
+        l2errBound: float | None = None,
         verbose: bool = True,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray, Dict]:
+    ) -> tuple[np.ndarray, np.ndarray, dict]:
         """
         Solve the MFG system using particle-collocation method.
 
@@ -149,7 +151,7 @@ class ParticleCollocationSolver(MFGSolver):
         else:
             final_tolerance = 1e-6  # Default
         if verbose:
-            print(f"Starting Particle-Collocation MFG solver:")
+            print("Starting Particle-Collocation MFG solver:")
             print(f"  - Particles: {self.num_particles}")
             print(f"  - Collocation points: {self.hjb_solver.n_points}")
             print(f"  - Max Picard iterations: {final_max_iterations}")
@@ -170,21 +172,18 @@ class ParticleCollocationSolver(MFGSolver):
             M_current = np.zeros((Nt, Nx))
 
         # Get terminal condition for U
-        if hasattr(self.problem, "get_terminal_condition"):
-            terminal_condition = self.problem.get_terminal_condition()
+        if hasattr(self.problem, "get_final_u"):
+            terminal_condition = self.problem.get_final_u()
         else:
             # Default terminal condition
             terminal_condition = np.zeros(Nx)
 
         # Get initial density for M
-        if hasattr(self.problem, "get_initial_density"):
-            initial_density = self.problem.get_initial_density()
+        if hasattr(self.problem, "get_initial_m"):
+            initial_density = self.problem.get_initial_m()
         else:
             # Default uniform initial density
-            if self.problem.Dx > 1e-14:
-                initial_density = np.ones(Nx) / self.problem.Lx
-            else:
-                initial_density = np.ones(Nx)
+            initial_density = np.ones(Nx) / self.problem.Lx if self.problem.Dx > 1e-14 else np.ones(Nx)
 
         # For cold start, initialize interior with boundary conditions
         if warm_start_init is None:
@@ -277,7 +276,7 @@ class ParticleCollocationSolver(MFGSolver):
         }
 
         if verbose:
-            print(f"Particle-Collocation solver completed:")
+            print("Particle-Collocation solver completed:")
             print(f"  - Converged: {final_convergence_info['converged']}")
             print(f"  - Final error: {final_convergence_info['final_error']:.2e}")
             print(f"  - Total iterations: {final_convergence_info['iterations']}")
@@ -289,7 +288,7 @@ class ParticleCollocationSolver(MFGSolver):
 
         return U_current, M_current, final_convergence_info
 
-    def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Get the computed U and M solutions.
 
@@ -301,7 +300,7 @@ class ParticleCollocationSolver(MFGSolver):
 
         return self.U_solution, self.M_solution
 
-    def get_particles_trajectory(self) -> Optional[np.ndarray]:
+    def get_particles_trajectory(self) -> np.ndarray | None:
         """
         Get the particle trajectory from the FP solver.
 
@@ -319,7 +318,7 @@ class ParticleCollocationSolver(MFGSolver):
         """
         return self.convergence_history
 
-    def get_collocation_info(self) -> Dict:
+    def get_collocation_info(self) -> dict:
         """
         Get information about the collocation structure.
 
@@ -350,7 +349,7 @@ class ParticleCollocationSolver(MFGSolver):
 
         return info
 
-    def get_solver_info(self) -> Dict:
+    def get_solver_info(self) -> dict:
         """
         Get comprehensive information about both solvers.
 

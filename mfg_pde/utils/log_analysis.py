@@ -8,12 +8,14 @@ logging system, providing insights into solver performance, errors, and
 research patterns.
 """
 
+from __future__ import annotations
+
 import json
 import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -54,7 +56,7 @@ class LogAnalyzer:
             r"(.*?)(?:\s+\[([^\]]+)\])?$"  # message and optional location
         )
 
-        with open(self.log_file_path, "r") as f:
+        with open(self.log_file_path) as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
@@ -84,7 +86,7 @@ class LogAnalyzer:
         self.parsed = True
         self.logger.info(f"Parsed {len(self.entries)} log entries")
 
-    def get_summary_statistics(self) -> Dict[str, Any]:
+    def get_summary_statistics(self) -> dict[str, Any]:
         """Get overall summary statistics from the log."""
         if not self.parsed:
             self.parse_log_file()
@@ -121,7 +123,7 @@ class LogAnalyzer:
             "recent_warnings": [e["message"] for e in warnings[-5:]],  # Last 5 warnings
         }
 
-    def analyze_solver_performance(self) -> Dict[str, Any]:
+    def analyze_solver_performance(self) -> dict[str, Any]:
         """Analyze solver performance from log entries."""
         if not self.parsed:
             self.parse_log_file()
@@ -193,7 +195,7 @@ class LogAnalyzer:
 
         return performance_data
 
-    def find_error_patterns(self) -> Dict[str, Any]:
+    def find_error_patterns(self) -> dict[str, Any]:
         """Identify common error patterns and their frequency."""
         if not self.parsed:
             self.parse_log_file()
@@ -222,7 +224,7 @@ class LogAnalyzer:
                     "first_occurrence": occurrences[0]["timestamp"],
                     "last_occurrence": occurrences[-1]["timestamp"],
                     "example_message": occurrences[0]["message"],
-                    "locations": list(set(e.get("location", "Unknown") for e in occurrences)),
+                    "locations": list({e.get("location", "Unknown") for e in occurrences}),
                 }
             )
 
@@ -247,7 +249,7 @@ class LogAnalyzer:
         report.append("=" * 80)
 
         # Summary section
-        report.append(f"\n SUMMARY")
+        report.append("\n SUMMARY")
         report.append("-" * 40)
         report.append(f"Log file: {self.log_file_path}")
         report.append(f"Analysis time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -256,20 +258,20 @@ class LogAnalyzer:
 
         # Level distribution
         if "level_counts" in summary:
-            report.append(f"\n LOG LEVEL DISTRIBUTION")
+            report.append("\n LOG LEVEL DISTRIBUTION")
             for level, count in sorted(summary["level_counts"].items()):
                 report.append(f"  {level}: {count} entries")
 
         # Logger activity
         if "logger_counts" in summary:
-            report.append(f"\n LOGGER ACTIVITY")
+            report.append("\n LOGGER ACTIVITY")
             for logger, count in sorted(summary["logger_counts"].items(), key=lambda x: x[1], reverse=True)[:10]:
                 report.append(f"  {logger}: {count} entries")
 
         # Solver performance
         solver_sessions = performance.get("solver_sessions", [])
         if solver_sessions:
-            report.append(f"\n SOLVER PERFORMANCE")
+            report.append("\n SOLVER PERFORMANCE")
             report.append("-" * 40)
             for session in solver_sessions[-5:]:  # Last 5 sessions
                 duration = session.get("duration", 0)
@@ -280,7 +282,7 @@ class LogAnalyzer:
 
         # Error analysis
         if errors["total_errors"] > 0:
-            report.append(f"\nERROR: ERROR ANALYSIS")
+            report.append("\nERROR: ERROR ANALYSIS")
             report.append("-" * 40)
             report.append(f"Total errors: {errors['total_errors']}")
 
@@ -290,7 +292,7 @@ class LogAnalyzer:
         # Recent warnings
         recent_warnings = summary.get("recent_warnings", [])
         if recent_warnings:
-            report.append(f"\nWARNING:  RECENT WARNINGS")
+            report.append("\nWARNING:  RECENT WARNINGS")
             report.append("-" * 40)
             for warning in recent_warnings:
                 report.append(f"  {warning[:70]}...")
@@ -298,7 +300,7 @@ class LogAnalyzer:
         # Performance timing
         timing_data = performance.get("timing_data", [])
         if timing_data:
-            report.append(f"\nPERFORMANCE TIMING")
+            report.append("\nPERFORMANCE TIMING")
             report.append("-" * 40)
             # Group by operation
             timing_by_op = defaultdict(list)
@@ -315,7 +317,7 @@ class LogAnalyzer:
 
         return "\n".join(report)
 
-    def export_analysis_json(self, output_path: str = None) -> str:
+    def export_analysis_json(self, output_path: str | None = None) -> str:
         """Export analysis results as JSON for automated processing."""
         if not self.parsed:
             self.parse_log_file()
@@ -354,7 +356,7 @@ class LogAnalyzer:
 
 
 # Convenience functions
-def analyze_log_file(log_file_path: str, generate_report: bool = True) -> Dict[str, Any]:
+def analyze_log_file(log_file_path: str, generate_report: bool = True) -> dict[str, Any]:
     """
     Analyze a log file and optionally generate a report.
 
@@ -378,7 +380,7 @@ def analyze_log_file(log_file_path: str, generate_report: bool = True) -> Dict[s
     }
 
 
-def analyze_recent_logs(log_directory: str = "logs", days_back: int = 7) -> Dict[str, Any]:
+def analyze_recent_logs(log_directory: str = "logs", days_back: int = 7) -> dict[str, Any]:
     """
     Analyze recent log files from a directory.
 
@@ -438,7 +440,7 @@ def analyze_recent_logs(log_directory: str = "logs", days_back: int = 7) -> Dict
     return combined_analysis
 
 
-def find_performance_bottlenecks(log_file_path: str, threshold_seconds: float = 1.0) -> List[Dict[str, Any]]:
+def find_performance_bottlenecks(log_file_path: str, threshold_seconds: float = 1.0) -> list[dict[str, Any]]:
     """
     Find performance bottlenecks in a log file.
 

@@ -16,14 +16,16 @@ where H is the Hamiltonian and the semi-Lagrangian scheme discretizes this as:
 where û^n is the value interpolated at the departure point of the characteristic.
 """
 
+from __future__ import annotations
+
 import logging
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 
-from .base_hjb import BaseHJBSolver, _calculate_p_values
+from .base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import jax.numpy as jnp
-    from jax import jit, vmap
+    from jax import jit
 
     JAX_AVAILABLE = True
 except ImportError:
@@ -56,11 +58,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
     def __init__(
         self,
-        problem: "MFGProblem",
+        problem: MFGProblem,
         interpolation_method: str = "linear",
         optimization_method: str = "brent",
         characteristic_solver: str = "explicit_euler",
-        use_jax: bool = None,
+        use_jax: bool | None = None,
         tolerance: float = 1e-8,
         max_char_iterations: int = 100,
     ):
@@ -317,7 +319,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         elif self.characteristic_solver == "rk2":
             # Second-order Runge-Kutta for better accuracy
             k1 = -p_optimal
-            x_mid = x_current + 0.5 * dt * k1
+            x_current + 0.5 * dt * k1
 
             # Need to re-evaluate p at midpoint (simplified)
             k2 = -p_optimal  # Assume constant for now
@@ -340,7 +342,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
     def _apply_boundary_conditions(self, x: float) -> float:
         """Apply boundary conditions to ensure x is in valid domain."""
         if hasattr(self.problem, "boundary_conditions"):
-            bc = self.problem.boundary_conditions
+            bc = getattr(self.problem, "boundary_conditions", None)
+            if bc is None:
+                return x
             if hasattr(bc, "type") and bc.type == "periodic":
                 # Periodic boundary conditions
                 length = self.problem.xmax - self.problem.xmin
@@ -381,7 +385,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     U_values,
                     kind="linear",
                     bounds_error=False,
-                    fill_value="extrapolate",
+                    fill_value="extrapolate",  # type: ignore[arg-type]
                 )
             elif self.interpolation_method == "cubic":
                 # Cubic interpolation for higher accuracy
@@ -390,7 +394,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     U_values,
                     kind="cubic",
                     bounds_error=False,
-                    fill_value="extrapolate",
+                    fill_value="extrapolate",  # type: ignore[arg-type]
                 )
             else:
                 # Default to linear
@@ -399,7 +403,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     U_values,
                     kind="linear",
                     bounds_error=False,
-                    fill_value="extrapolate",
+                    fill_value="extrapolate",  # type: ignore[arg-type]
                 )
 
             return float(interpolator(x_query))
@@ -432,8 +436,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if i == 0:
             # Forward difference at left boundary
             if hasattr(self.problem, "boundary_conditions"):
-                bc = self.problem.boundary_conditions
-                if hasattr(bc, "type") and bc.type == "periodic":
+                bc = getattr(self.problem, "boundary_conditions", None)
+                if bc is not None and hasattr(bc, "type") and bc.type == "periodic":
                     # Periodic boundary
                     laplacian = (U_values[1] - 2 * U_values[0] + U_values[-1]) / self.dx**2
                 else:
@@ -445,8 +449,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         elif i == Nx - 1:
             # Backward difference at right boundary
             if hasattr(self.problem, "boundary_conditions"):
-                bc = self.problem.boundary_conditions
-                if hasattr(bc, "type") and bc.type == "periodic":
+                bc = getattr(self.problem, "boundary_conditions", None)
+                if bc is not None and hasattr(bc, "type") and bc.type == "periodic":
                     # Periodic boundary
                     laplacian = (U_values[0] - 2 * U_values[-1] + U_values[-2]) / self.dx**2
                 else:
@@ -516,7 +520,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         return U_current
 
-    def get_solver_info(self) -> Dict[str, any]:
+    def get_solver_info(self) -> dict[str, Any]:
         """Return solver configuration information."""
         return {
             "method": "Semi-Lagrangian",

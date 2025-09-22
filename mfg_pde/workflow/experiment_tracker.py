@@ -6,19 +6,23 @@ including experiment creation, execution tracking, result storage,
 and comparative analysis capabilities.
 """
 
-import hashlib
+from __future__ import annotations
+
 import json
 import logging
 import pickle
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from .workflow_manager import Workflow
 
 
 class ExperimentStatus(Enum):
@@ -38,16 +42,16 @@ class ExperimentMetadata:
     id: str
     name: str
     description: str
-    tags: List[str] = field(default_factory=list)
-    created_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    started_time: Optional[datetime] = None
-    completed_time: Optional[datetime] = None
+    tags: list[str] = field(default_factory=list)
+    created_time: datetime = field(default_factory=lambda: datetime.now(datetime.UTC))
+    started_time: datetime | None = None
+    completed_time: datetime | None = None
     status: ExperimentStatus = ExperimentStatus.CREATED
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    environment: Dict[str, Any] = field(default_factory=dict)
-    git_commit: Optional[str] = None
+    parameters: dict[str, Any] = field(default_factory=dict)
+    environment: dict[str, Any] = field(default_factory=dict)
+    git_commit: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary for serialization."""
         return {
             "id": self.id,
@@ -71,10 +75,10 @@ class ExperimentResult:
     experiment_id: str
     name: str
     value: Any
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(datetime.UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for serialization."""
         return {
             "experiment_id": self.experiment_id,
@@ -113,8 +117,8 @@ class Experiment:
         self,
         name: str,
         description: str = "",
-        workspace_path: Optional[Path] = None,
-        tags: Optional[List[str]] = None,
+        workspace_path: Path | None = None,
+        tags: list[str] | None = None,
     ):
         """
         Initialize experiment.
@@ -133,13 +137,13 @@ class Experiment:
         self.experiment_dir.mkdir(parents=True, exist_ok=True)
 
         # Results storage
-        self.results: Dict[str, ExperimentResult] = {}
-        self.artifacts: Dict[str, Path] = {}
-        self.logs: List[Dict[str, Any]] = []
+        self.results: dict[str, ExperimentResult] = {}
+        self.artifacts: dict[str, Path] = {}
+        self.logs: list[dict[str, Any]] = []
 
         # Execution tracking
-        self.execution_time: Optional[float] = None
-        self.error_message: Optional[str] = None
+        self.execution_time: float | None = None
+        self.error_message: str | None = None
 
         # Setup logging
         self.logger = self._setup_logging()
@@ -151,14 +155,14 @@ class Experiment:
 
     def start(self):
         """Start experiment execution."""
-        self.metadata.started_time = datetime.now(timezone.utc)
+        self.metadata.started_time = datetime.now(datetime.UTC)
         self.metadata.status = ExperimentStatus.RUNNING
 
         self.logger.info(f"Started experiment '{self.metadata.name}'")
 
     def complete(self):
         """Mark experiment as completed."""
-        self.metadata.completed_time = datetime.now(timezone.utc)
+        self.metadata.completed_time = datetime.now(datetime.UTC)
         self.metadata.status = ExperimentStatus.COMPLETED
 
         if self.metadata.started_time:
@@ -172,7 +176,7 @@ class Experiment:
         self.error_message = error_message
 
         if self.metadata.started_time:
-            failed_time = datetime.now(timezone.utc)
+            failed_time = datetime.now(datetime.UTC)
             self.execution_time = (failed_time - self.metadata.started_time).total_seconds()
 
         self.logger.error(f"Experiment '{self.metadata.name}' failed: {error_message}")
@@ -187,12 +191,12 @@ class Experiment:
         self.metadata.parameters[name] = value
         self.logger.debug(f"Set parameter {name} = {value}")
 
-    def set_parameters(self, parameters: Dict[str, Any]):
+    def set_parameters(self, parameters: dict[str, Any]):
         """Set multiple experiment parameters."""
         self.metadata.parameters.update(parameters)
         self.logger.debug(f"Set parameters: {parameters}")
 
-    def add_result(self, name: str, value: Any, metadata: Optional[Dict[str, Any]] = None):
+    def add_result(self, name: str, value: Any, metadata: dict[str, Any] | None = None):
         """Add result to experiment."""
         result = ExperimentResult(
             experiment_id=self.metadata.id,
@@ -209,7 +213,7 @@ class Experiment:
 
         self.logger.debug(f"Added result '{name}'")
 
-    def get_result(self, name: str) -> Optional[Any]:
+    def get_result(self, name: str) -> Any | None:
         """Get result by name."""
         if name in self.results:
             result = self.results[name]
@@ -222,7 +226,7 @@ class Experiment:
 
         return None
 
-    def add_artifact(self, name: str, file_path: Union[str, Path]):
+    def add_artifact(self, name: str, file_path: str | Path):
         """Add file artifact to experiment."""
         file_path = Path(file_path)
 
@@ -243,7 +247,7 @@ class Experiment:
     def log_message(self, level: str, message: str, **kwargs):
         """Log message with experiment context."""
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(datetime.UTC).isoformat(),
             "level": level,
             "message": message,
             "data": kwargs,
@@ -294,7 +298,7 @@ class Experiment:
             # Load metadata
             metadata_file = experiment_dir / "metadata.json"
             if metadata_file.exists():
-                with open(metadata_file, "r") as f:
+                with open(metadata_file) as f:
                     metadata_dict = json.load(f)
 
                 self.metadata = ExperimentMetadata(
@@ -322,7 +326,7 @@ class Experiment:
             # Load results
             results_file = experiment_dir / "results.json"
             if results_file.exists():
-                with open(results_file, "r") as f:
+                with open(results_file) as f:
                     results_data = json.load(f)
 
                 for name, result_dict in results_data.items():
@@ -338,7 +342,7 @@ class Experiment:
             # Load logs
             logs_file = experiment_dir / "logs.json"
             if logs_file.exists():
-                with open(logs_file, "r") as f:
+                with open(logs_file) as f:
                     self.logs = json.load(f)
 
             # Load experiment state
@@ -360,7 +364,7 @@ class Experiment:
             self.logger.error(f"Failed to load experiment: {e}")
             raise
 
-    def compare_with(self, other: "Experiment") -> Dict[str, Any]:
+    def compare_with(self, other: Experiment) -> dict[str, Any]:
         """Compare this experiment with another."""
         comparison = {
             "experiments": {
@@ -411,19 +415,22 @@ class Experiment:
                         / max(abs(this_result), abs(other_result), 1e-10),
                     }
                 # Array comparison
-                elif isinstance(this_result, np.ndarray) and isinstance(other_result, np.ndarray):
-                    if this_result.shape == other_result.shape:
-                        comparison["result_differences"][result_name] = {
-                            "shape": this_result.shape,
-                            "max_absolute_difference": np.max(np.abs(this_result - other_result)),
-                            "mean_absolute_difference": np.mean(np.abs(this_result - other_result)),
-                            "relative_error": np.linalg.norm(this_result - other_result)
-                            / max(
-                                np.linalg.norm(this_result),
-                                np.linalg.norm(other_result),
-                                1e-10,
-                            ),
-                        }
+                elif (
+                    isinstance(this_result, np.ndarray)
+                    and isinstance(other_result, np.ndarray)
+                    and this_result.shape == other_result.shape
+                ):
+                    comparison["result_differences"][result_name] = {
+                        "shape": this_result.shape,
+                        "max_absolute_difference": np.max(np.abs(this_result - other_result)),
+                        "mean_absolute_difference": np.mean(np.abs(this_result - other_result)),
+                        "relative_error": np.linalg.norm(this_result - other_result)
+                        / max(
+                            np.linalg.norm(this_result),
+                            np.linalg.norm(other_result),
+                            1e-10,
+                        ),
+                    }
             elif this_result is None and other_result is not None:
                 comparison["result_differences"][result_name] = {"missing_in": "this"}
             elif this_result is not None and other_result is None:
@@ -446,7 +453,7 @@ class Experiment:
         array_file = array_dir / f"result_{name}.npy"
         np.save(array_file, array)
 
-    def _load_array_result(self, name: str) -> Optional[np.ndarray]:
+    def _load_array_result(self, name: str) -> np.ndarray | None:
         """Load numpy array result from file."""
         array_file = self.experiment_dir / "arrays" / f"result_{name}.npy"
 
@@ -483,7 +490,7 @@ class Experiment:
             )
             if result.returncode == 0:
                 self.metadata.git_commit = result.stdout.strip()
-        except:
+        except Exception:
             pass
 
     def _setup_logging(self) -> logging.Logger:
@@ -514,7 +521,7 @@ class ExperimentTracker:
     across research sessions and parameter studies.
     """
 
-    def __init__(self, workspace_path: Optional[Path] = None):
+    def __init__(self, workspace_path: Path | None = None):
         """
         Initialize experiment tracker.
 
@@ -524,7 +531,7 @@ class ExperimentTracker:
         self.workspace_path = workspace_path or Path.cwd() / ".mfg_experiments"
         self.workspace_path.mkdir(parents=True, exist_ok=True)
 
-        self.experiments: Dict[str, Experiment] = {}
+        self.experiments: dict[str, Experiment] = {}
         self.logger = self._setup_logging()
 
         # Load existing experiments
@@ -536,8 +543,8 @@ class ExperimentTracker:
         self,
         name: str,
         description: str = "",
-        tags: Optional[List[str]] = None,
-        workflow: Optional["Workflow"] = None,
+        tags: list[str] | None = None,
+        workflow: Workflow | None = None,
     ) -> Experiment:
         """Create a new experiment."""
         experiment = Experiment(name, description, self.workspace_path, tags)
@@ -552,15 +559,15 @@ class ExperimentTracker:
         self.logger.info(f"Created experiment '{name}' with ID {experiment.metadata.id}")
         return experiment
 
-    def get_experiment(self, experiment_id: str) -> Optional[Experiment]:
+    def get_experiment(self, experiment_id: str) -> Experiment | None:
         """Get experiment by ID."""
         return self.experiments.get(experiment_id)
 
     def list_experiments(
         self,
-        tags: Optional[List[str]] = None,
-        status: Optional[ExperimentStatus] = None,
-    ) -> List[Dict[str, Any]]:
+        tags: list[str] | None = None,
+        status: ExperimentStatus | None = None,
+    ) -> list[dict[str, Any]]:
         """List experiments with optional filtering."""
         experiments = []
 
@@ -609,7 +616,7 @@ class ExperimentTracker:
         self.logger.info(f"Deleted experiment {experiment_id}")
         return True
 
-    def compare_experiments(self, experiment_ids: List[str]) -> Dict[str, Any]:
+    def compare_experiments(self, experiment_ids: list[str]) -> dict[str, Any]:
         """Compare multiple experiments."""
         experiments = [self.get_experiment(exp_id) for exp_id in experiment_ids]
         experiments = [exp for exp in experiments if exp is not None]
@@ -634,7 +641,7 @@ class ExperimentTracker:
 
         # Pairwise comparisons
         for i, exp1 in enumerate(experiments):
-            for j, exp2 in enumerate(experiments[i + 1 :], i + 1):
+            for _, exp2 in enumerate(experiments[i + 1 :], i + 1):
                 key = f"{exp1.metadata.name}_vs_{exp2.metadata.name}"
                 comparison["pairwise_comparisons"][key] = exp1.compare_with(exp2)
 
@@ -643,7 +650,7 @@ class ExperimentTracker:
 
         return comparison
 
-    def find_similar_experiments(self, experiment_id: str, similarity_threshold: float = 0.8) -> List[Dict[str, Any]]:
+    def find_similar_experiments(self, experiment_id: str, similarity_threshold: float = 0.8) -> list[dict[str, Any]]:
         """Find experiments similar to the given one."""
         target_experiment = self.get_experiment(experiment_id)
         if target_experiment is None:
@@ -674,7 +681,7 @@ class ExperimentTracker:
 
         return similar_experiments
 
-    def export_experiments(self, experiment_ids: List[str], export_format: str = "json") -> str:
+    def export_experiments(self, experiment_ids: list[str], export_format: str = "json") -> str:
         """Export experiments to specified format."""
         experiments_data = []
 
@@ -739,7 +746,7 @@ class ExperimentTracker:
                 except Exception as e:
                     self.logger.warning(f"Could not load experiment from {experiment_dir}: {e}")
 
-    def _analyze_experiment_group(self, experiments: List[Experiment]) -> Dict[str, Any]:
+    def _analyze_experiment_group(self, experiments: list[Experiment]) -> dict[str, Any]:
         """Analyze a group of experiments for aggregate patterns."""
         analysis = {
             "execution_times": [],
@@ -774,7 +781,7 @@ class ExperimentTracker:
         for param_name, values in all_params.items():
             unique_values = set(values)
             if len(unique_values) == 1:
-                analysis["common_parameters"][param_name] = list(unique_values)[0]
+                analysis["common_parameters"][param_name] = next(iter(unique_values))
             else:
                 analysis["varying_parameters"][param_name] = {
                     "unique_values": list(unique_values),
@@ -832,8 +839,8 @@ class ExperimentTracker:
 # Export main classes
 __all__ = [
     "Experiment",
-    "ExperimentTracker",
-    "ExperimentResult",
     "ExperimentMetadata",
+    "ExperimentResult",
     "ExperimentStatus",
+    "ExperimentTracker",
 ]

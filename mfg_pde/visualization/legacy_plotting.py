@@ -9,12 +9,11 @@ Migrated from:
 - Basic plotting functions from utils/advanced_visualization.py
 """
 
+from __future__ import annotations
+
 import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from mpl_toolkits.mplot3d import Axes3D
-
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
@@ -53,7 +52,7 @@ def myplot3d(X, Y, Z, title="Surface Plot"):
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
     X, Y = np.meshgrid(X, Y)
-    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.get_cmap("coolwarm"), linewidth=0, antialiased=False)
     ax.zaxis.set_major_locator(LinearLocator(10))
     ax.zaxis.set_major_formatter(FormatStrFormatter("%.02f"))
     ax.set_xlabel("x")
@@ -147,7 +146,7 @@ def modern_plot_mfg_solution(
     Recommended alternative to legacy functions.
     """
     try:
-        from .interactive_plots import create_visualization_manager, quick_2d_plot
+        from .interactive_plots import create_visualization_manager
 
         viz_manager = create_visualization_manager()
 
@@ -156,21 +155,21 @@ def modern_plot_mfg_solution(
 
         # For 3D surface plots
         if hasattr(viz_manager, "create_3d_surface_plot"):
-            surface_plot = viz_manager.create_3d_surface_plot(x_grid, t_grid, M, "density", f"{title} - 3D Surface")
+            viz_manager.create_3d_surface_plot(x_grid, t_grid, M, "density", f"{title} - 3D Surface")
 
         return density_plot
 
     except ImportError:
-        warnings.warn("Modern visualization system not available, using legacy matplotlib")
+        warnings.warn("Modern visualization system not available, using legacy matplotlib", stacklevel=2)
         # Fall back to legacy plotting
         myplot3d(x_grid, t_grid, M, title)
 
 
 def modern_plot_convergence(
-    convergence_data: Dict[str, List[float]],
+    convergence_data: dict[str, list[float]],
     title: str = "Convergence History",
-    tolerances: Optional[Dict[str, float]] = None,
-    save_path: Optional[str] = None,
+    tolerances: dict[str, float] | None = None,
+    save_path: str | None = None,
     backend: str = "auto",
 ) -> Any:
     """
@@ -194,7 +193,13 @@ def modern_plot_convergence(
         viz_manager = create_visualization_manager(prefer_plotly=(backend != "matplotlib"))
 
         # Create a comprehensive convergence plot
-        if viz_manager.plotly_viz and backend != "matplotlib":
+        if (
+            viz_manager.plotly_viz
+            and backend != "matplotlib"
+            and PLOTLY_AVAILABLE
+            and go is not None
+            and px is not None
+        ):
             # Use Plotly for advanced interactive plotting
             fig = go.Figure()
 
@@ -208,8 +213,8 @@ def modern_plot_convergence(
                         y=values,
                         mode="lines+markers",
                         name=metric_name,
-                        line=dict(color=colors[i % len(colors)], width=2),
-                        marker=dict(size=4),
+                        line={"color": colors[i % len(colors)], "width": 2},
+                        marker={"size": 4},
                     )
                 )
 
@@ -238,14 +243,14 @@ def modern_plot_convergence(
             return fig
 
     except Exception as e:
-        warnings.warn(f"Modern visualization failed ({e}), using legacy matplotlib")
+        warnings.warn(f"Modern visualization failed ({e}), using legacy matplotlib", stacklevel=2)
 
     # Fall back to matplotlib-based plotting
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    colors = plt.cm.Set1(np.linspace(0, 1, len(convergence_data)))
+    colors = cm.get_cmap("Set1")(np.linspace(0, 1, len(convergence_data)))
 
     for i, (metric_name, values) in enumerate(convergence_data.items()):
         iterations = list(range(1, len(values) + 1))

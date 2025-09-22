@@ -5,6 +5,8 @@ This module provides different computational backends for MFG solving,
 including NumPy (default) and JAX (high-performance with GPU support).
 """
 
+from __future__ import annotations
+
 import warnings
 from typing import Any, Dict, Optional
 
@@ -18,7 +20,7 @@ def register_backend(name: str, backend_class):
     _BACKENDS[name] = backend_class
 
 
-def get_available_backends() -> Dict[str, bool]:
+def get_available_backends() -> dict[str, bool]:
     """Get list of available backends with their availability status."""
     backends = {"numpy": True}  # NumPy is always available
 
@@ -72,7 +74,7 @@ def create_backend(backend_name: str = "auto", **kwargs):
     return _BACKENDS[backend_name](**kwargs)
 
 
-def get_backend_info() -> Dict[str, Any]:
+def get_backend_info() -> dict[str, Any]:
     """Get information about available backends."""
     available = get_available_backends()
     info = {

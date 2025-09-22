@@ -8,7 +8,6 @@ used across the entire test suite.
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
 
 import pytest
 
@@ -143,10 +142,10 @@ def deterministic_arrays():
     """Deterministic arrays for reproducible tests."""
     np.random.seed(42)  # Fixed seed for reproducibility
     return {
-        'U_small': np.random.rand(6, 11),  # (Nt+1, Nx+1) for small problem
-        'M_small': np.random.rand(6, 11),
-        'U_medium': np.random.rand(13, 26),  # (Nt+1, Nx+1) for medium problem
-        'M_medium': np.random.rand(13, 26),
+        "U_small": np.random.rand(6, 11),  # (Nt+1, Nx+1) for small problem
+        "M_small": np.random.rand(6, 11),
+        "U_medium": np.random.rand(13, 26),  # (Nt+1, Nx+1) for medium problem
+        "M_medium": np.random.rand(13, 26),
     }
 
 
@@ -166,17 +165,17 @@ def valid_test_matrices():
     # Create value function matrix
     U = np.random.rand(11, 21) * 10 - 5  # Range [-5, 5]
 
-    return {'U': U, 'M': M}
+    return {"U": U, "M": M}
 
 
 @pytest.fixture
 def boundary_conditions():
     """Standard boundary condition configurations."""
     return {
-        'dirichlet': {'type': 'dirichlet', 'value': 0.0},
-        'neumann': {'type': 'neumann', 'derivative': 0.0},
-        'periodic': {'type': 'periodic'},
-        'mixed': {'type': 'mixed', 'left': 'dirichlet', 'right': 'neumann'},
+        "dirichlet": {"type": "dirichlet", "value": 0.0},
+        "neumann": {"type": "neumann", "derivative": 0.0},
+        "periodic": {"type": "periodic"},
+        "mixed": {"type": "mixed", "left": "dirichlet", "right": "neumann"},
     }
 
 
@@ -243,16 +242,16 @@ def solver_factory():
 @pytest.fixture
 def tolerance_levels():
     """Different tolerance levels for testing convergence."""
-    return {'strict': 1e-8, 'normal': 1e-6, 'relaxed': 1e-4, 'loose': 1e-2}
+    return {"strict": 1e-8, "normal": 1e-6, "relaxed": 1e-4, "loose": 1e-2}
 
 
 @pytest.fixture
 def convergence_criteria():
     """Different convergence criteria configurations."""
     return {
-        'standard': {'relative_tolerance': True, 'absolute_tolerance': False},
-        'absolute': {'relative_tolerance': False, 'absolute_tolerance': True},
-        'combined': {'relative_tolerance': True, 'absolute_tolerance': True},
+        "standard": {"relative_tolerance": True, "absolute_tolerance": False},
+        "absolute": {"relative_tolerance": False, "absolute_tolerance": True},
+        "combined": {"relative_tolerance": True, "absolute_tolerance": True},
     }
 
 
@@ -330,12 +329,12 @@ def memory_tracker():
 def mock_convergence_result():
     """Mock convergence result for testing."""
     return {
-        'converged': True,
-        'iterations': 15,
-        'final_error': 1e-7,
-        'error_history': [1e-1, 3e-2, 8e-3, 2e-3, 5e-4, 1e-4, 3e-5, 1e-5, 3e-6, 1e-6, 3e-7, 1e-7],
-        'convergence_rate': 0.3,
-        'execution_time': 2.5,
+        "converged": True,
+        "iterations": 15,
+        "final_error": 1e-7,
+        "error_history": [1e-1, 3e-2, 8e-3, 2e-3, 5e-4, 1e-4, 3e-5, 1e-5, 3e-6, 1e-6, 3e-7, 1e-7],
+        "convergence_rate": 0.3,
+        "execution_time": 2.5,
     }
 
 
@@ -343,13 +342,13 @@ def mock_convergence_result():
 def mock_failed_convergence():
     """Mock failed convergence result for testing error handling."""
     return {
-        'converged': False,
-        'iterations': 50,
-        'final_error': 1e-3,
-        'error_history': [1e-1, 5e-2, 2e-2, 1e-2, 5e-3, 2e-3, 1e-3],
-        'convergence_rate': None,
-        'execution_time': 10.0,
-        'failure_reason': 'Maximum iterations reached',
+        "converged": False,
+        "iterations": 50,
+        "final_error": 1e-3,
+        "error_history": [1e-1, 5e-2, 2e-2, 1e-2, 5e-3, 2e-3, 1e-3],
+        "convergence_rate": None,
+        "execution_time": 10.0,
+        "failure_reason": "Maximum iterations reached",
     }
 
 
@@ -372,9 +371,9 @@ def problem_dimensions(request):
 
 @pytest.fixture(
     params=[
-        {'max_iterations': 10, 'tolerance': 1e-4},
-        {'max_iterations': 20, 'tolerance': 1e-6},
-        {'max_iterations': 50, 'tolerance': 1e-8},
+        {"max_iterations": 10, "tolerance": 1e-4},
+        {"max_iterations": 20, "tolerance": 1e-6},
+        {"max_iterations": 50, "tolerance": 1e-8},
     ]
 )
 def newton_parameters(request):
@@ -399,9 +398,9 @@ def reference_solutions():
 def performance_baselines():
     """Performance baselines for regression testing."""
     return {
-        'small_problem_time': 1.0,  # seconds
-        'medium_problem_time': 5.0,  # seconds
-        'memory_per_dof': 1e-6,  # MB per degree of freedom
+        "small_problem_time": 1.0,  # seconds
+        "medium_problem_time": 5.0,  # seconds
+        "memory_per_dof": 1e-6,  # MB per degree of freedom
     }
 
 
@@ -463,4 +462,4 @@ def validate_mfg_solution(U, M, problem):
 
 
 # Export validation function for use in tests
-__all__ = ['validate_mfg_solution']
+__all__ = ["validate_mfg_solution"]

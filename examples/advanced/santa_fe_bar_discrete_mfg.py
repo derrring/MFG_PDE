@@ -34,7 +34,7 @@ Payoff Function:
 """
 
 import time
-from typing import Any, Callable, Dict, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -43,8 +43,8 @@ from scipy.integrate import solve_ivp
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure matplotlib to avoid font warnings
-plt.rcParams['font.family'] = 'DejaVu Sans'
-plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams["font.family"] = "DejaVu Sans"
+plt.rcParams["axes.unicode_minus"] = False
 
 
 class DiscreteSantaFeBarMFG:
@@ -116,7 +116,7 @@ class DiscreteSantaFeBarMFG:
         """
         return self.payoff_good if m < self.m_threshold else self.payoff_bad
 
-    def transition_probabilities(self, u0: float, u1: float) -> Tuple[float, float]:
+    def transition_probabilities(self, u0: float, u1: float) -> tuple[float, float]:
         """
         Calculate transition probabilities using logit model.
 
@@ -176,7 +176,7 @@ class DiscreteSantaFeBarMFG:
 
         return np.array([du0_dt, du1_dt, dm_dt])
 
-    def solve(self, nt: int = 1000) -> Dict[str, Any]:
+    def solve(self, nt: int = 1000) -> dict[str, Any]:
         """
         Solve the discrete MFG system.
 
@@ -204,7 +204,7 @@ class DiscreteSantaFeBarMFG:
         # Solve the ODE system
         try:
             solution = solve_ivp(
-                self.mfg_system, t_span, y0, t_eval=t_eval, method='RK45', rtol=1e-8, atol=1e-10, max_step=0.01
+                self.mfg_system, t_span, y0, t_eval=t_eval, method="RK45", rtol=1e-8, atol=1e-10, max_step=0.01
             )
 
             if not solution.success:
@@ -234,28 +234,28 @@ class DiscreteSantaFeBarMFG:
         self.logger.info(f"Final attendance: {m[-1]:.1%}, " f"Final values: u0={u0[-1]:.3f}, u1={u1[-1]:.3f}")
 
         return {
-            'time': t,
-            'u0': u0,
-            'u1': u1,
-            'attendance': m,
-            'P_0_to_1': P_0_to_1,
-            'P_1_to_0': P_1_to_0,
-            'payoffs': payoffs,
-            'solve_time': solve_time,
-            'converged': solution.success,
-            'final_attendance': m[-1],
-            'final_u0': u0[-1],
-            'final_u1': u1[-1],
+            "time": t,
+            "u0": u0,
+            "u1": u1,
+            "attendance": m,
+            "P_0_to_1": P_0_to_1,
+            "P_1_to_0": P_1_to_0,
+            "payoffs": payoffs,
+            "solve_time": solve_time,
+            "converged": solution.success,
+            "final_attendance": m[-1],
+            "final_u0": u0[-1],
+            "final_u1": u1[-1],
         }
 
-    def analyze_equilibrium(self, solution: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_equilibrium(self, solution: dict[str, Any]) -> dict[str, Any]:
         """
         Analyze the equilibrium properties of the solution.
         """
-        t = solution['time']
-        m = solution['attendance']
-        u0 = solution['u0']
-        u1 = solution['u1']
+        t = solution["time"]
+        m = solution["attendance"]
+        u0 = solution["u0"]
+        u1 = solution["u1"]
 
         # Steady-state analysis (last 10% of simulation)
         steady_idx = int(0.9 * len(t))
@@ -264,33 +264,33 @@ class DiscreteSantaFeBarMFG:
         steady_u1 = u1[steady_idx:]
 
         analysis = {
-            'steady_state_attendance': np.mean(steady_m),
-            'attendance_variance': np.var(steady_m),
-            'steady_state_u0': np.mean(steady_u0),
-            'steady_state_u1': np.mean(steady_u1),
-            'value_difference': np.mean(steady_u1 - steady_u0),
-            'overcrowding_fraction': np.mean(steady_m > self.m_threshold),
-            'efficiency': 1.0 - abs(np.mean(steady_m) - self.m_threshold) / self.m_threshold,
-            'convergence_achieved': np.var(steady_m) < 1e-6,
-            'oscillation_amplitude': np.max(steady_m) - np.min(steady_m),
+            "steady_state_attendance": np.mean(steady_m),
+            "attendance_variance": np.var(steady_m),
+            "steady_state_u0": np.mean(steady_u0),
+            "steady_state_u1": np.mean(steady_u1),
+            "value_difference": np.mean(steady_u1 - steady_u0),
+            "overcrowding_fraction": np.mean(steady_m > self.m_threshold),
+            "efficiency": 1.0 - abs(np.mean(steady_m) - self.m_threshold) / self.m_threshold,
+            "convergence_achieved": np.var(steady_m) < 1e-6,
+            "oscillation_amplitude": np.max(steady_m) - np.min(steady_m),
         }
 
         # Economic interpretation
-        if analysis['steady_state_attendance'] > self.m_threshold * 1.1:
-            analysis['regime'] = 'overcrowded'
-            analysis['interpretation'] = 'Bar is consistently overcrowded'
-        elif analysis['steady_state_attendance'] < self.m_threshold * 0.9:
-            analysis['regime'] = 'underutilized'
-            analysis['interpretation'] = 'Bar is underutilized due to over-caution'
+        if analysis["steady_state_attendance"] > self.m_threshold * 1.1:
+            analysis["regime"] = "overcrowded"
+            analysis["interpretation"] = "Bar is consistently overcrowded"
+        elif analysis["steady_state_attendance"] < self.m_threshold * 0.9:
+            analysis["regime"] = "underutilized"
+            analysis["interpretation"] = "Bar is underutilized due to over-caution"
         else:
-            analysis['regime'] = 'optimal'
-            analysis['interpretation'] = 'Near-optimal attendance achieved'
+            analysis["regime"] = "optimal"
+            analysis["interpretation"] = "Near-optimal attendance achieved"
 
         return analysis
 
 
 def create_santa_fe_visualizations(
-    solution: Dict[str, Any], analysis: Dict[str, Any], problem: DiscreteSantaFeBarMFG
+    solution: dict[str, Any], analysis: dict[str, Any], problem: DiscreteSantaFeBarMFG
 ) -> None:
     """
     Create comprehensive visualizations for the discrete Santa Fe Bar MFG.
@@ -299,97 +299,97 @@ def create_santa_fe_visualizations(
     logger = get_logger(__name__)
     logger.info(" Creating Santa Fe Bar visualizations...")
 
-    t = solution['time']
-    m = solution['attendance']
-    u0 = solution['u0']
-    u1 = solution['u1']
-    P_0_to_1 = solution['P_0_to_1']
-    P_1_to_0 = solution['P_1_to_0']
-    payoffs = solution['payoffs']
+    t = solution["time"]
+    m = solution["attendance"]
+    u0 = solution["u0"]
+    u1 = solution["u1"]
+    P_0_to_1 = solution["P_0_to_1"]
+    P_1_to_0 = solution["P_1_to_0"]
+    payoffs = solution["payoffs"]
 
     fig = plt.figure(figsize=(16, 12))
-    fig.suptitle('Santa Fe Bar Problem - Discrete State Mean Field Game', fontsize=16, fontweight='bold')
+    fig.suptitle("Santa Fe Bar Problem - Discrete State Mean Field Game", fontsize=16, fontweight="bold")
 
     # 1. Attendance Evolution
     ax1 = plt.subplot(2, 3, 1)
-    ax1.plot(t, m, 'b-', linewidth=3, label='Bar Attendance')
+    ax1.plot(t, m, "b-", linewidth=3, label="Bar Attendance")
     ax1.axhline(
-        y=problem.m_threshold, color='red', linestyle='--', linewidth=2, label=f'Threshold ({problem.m_threshold:.0%})'
+        y=problem.m_threshold, color="red", linestyle="--", linewidth=2, label=f"Threshold ({problem.m_threshold:.0%})"
     )
-    ax1.fill_between(t, m, alpha=0.3, color='blue')
-    ax1.set_xlabel('Time')
-    ax1.set_ylabel('Proportion at Bar')
-    ax1.set_title('Bar Attendance Over Time')
+    ax1.fill_between(t, m, alpha=0.3, color="blue")
+    ax1.set_xlabel("Time")
+    ax1.set_ylabel("Proportion at Bar")
+    ax1.set_title("Bar Attendance Over Time")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     ax1.set_ylim(0, 1)
 
     # Add efficiency annotation
-    efficiency = analysis['efficiency']
+    efficiency = analysis["efficiency"]
     ax1.text(
         0.05,
         0.95,
-        f'Efficiency: {efficiency:.1%}',
+        f"Efficiency: {efficiency:.1%}",
         transform=ax1.transAxes,
         fontsize=12,
-        fontweight='bold',
+        fontweight="bold",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.8),
     )
 
     # 2. Value Functions
     ax2 = plt.subplot(2, 3, 2)
-    ax2.plot(t, u0, 'g-', linewidth=2, label='u0 (Stay Home)')
-    ax2.plot(t, u1, 'r-', linewidth=2, label='u1 (Go to Bar)')
-    ax2.plot(t, u1 - u0, 'k--', linewidth=2, label='u1 - u0 (Value Diff)')
-    ax2.set_xlabel('Time')
-    ax2.set_ylabel('Value Function')
-    ax2.set_title('Value Functions Evolution')
+    ax2.plot(t, u0, "g-", linewidth=2, label="u0 (Stay Home)")
+    ax2.plot(t, u1, "r-", linewidth=2, label="u1 (Go to Bar)")
+    ax2.plot(t, u1 - u0, "k--", linewidth=2, label="u1 - u0 (Value Diff)")
+    ax2.set_xlabel("Time")
+    ax2.set_ylabel("Value Function")
+    ax2.set_title("Value Functions Evolution")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
     # 3. Transition Probabilities
     ax3 = plt.subplot(2, 3, 3)
-    ax3.plot(t, P_0_to_1, 'b-', linewidth=2, label='P(Home -> Bar)')
-    ax3.plot(t, P_1_to_0, 'r-', linewidth=2, label='P(Bar -> Home)')
-    ax3.axhline(y=0.5, color='black', linestyle=':', alpha=0.5, label='Neutral')
-    ax3.set_xlabel('Time')
-    ax3.set_ylabel('Transition Probability')
-    ax3.set_title('Transition Probabilities')
+    ax3.plot(t, P_0_to_1, "b-", linewidth=2, label="P(Home -> Bar)")
+    ax3.plot(t, P_1_to_0, "r-", linewidth=2, label="P(Bar -> Home)")
+    ax3.axhline(y=0.5, color="black", linestyle=":", alpha=0.5, label="Neutral")
+    ax3.set_xlabel("Time")
+    ax3.set_ylabel("Transition Probability")
+    ax3.set_title("Transition Probabilities")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
     ax3.set_ylim(0, 1)
 
     # 4. Payoff Function
     ax4 = plt.subplot(2, 3, 4)
-    ax4.plot(t, payoffs, 'purple', linewidth=3, label='Bar Payoff F(m)')
+    ax4.plot(t, payoffs, "purple", linewidth=3, label="Bar Payoff F(m)")
     ax4.axhline(
-        y=problem.payoff_good, color='green', linestyle='--', alpha=0.7, label=f'Good Payoff ({problem.payoff_good})'
+        y=problem.payoff_good, color="green", linestyle="--", alpha=0.7, label=f"Good Payoff ({problem.payoff_good})"
     )
     ax4.axhline(
-        y=problem.payoff_bad, color='red', linestyle='--', alpha=0.7, label=f'Bad Payoff ({problem.payoff_bad})'
+        y=problem.payoff_bad, color="red", linestyle="--", alpha=0.7, label=f"Bad Payoff ({problem.payoff_bad})"
     )
     ax4.axhline(
-        y=problem.payoff_home, color='gray', linestyle=':', alpha=0.7, label=f'Home Payoff ({problem.payoff_home})'
+        y=problem.payoff_home, color="gray", linestyle=":", alpha=0.7, label=f"Home Payoff ({problem.payoff_home})"
     )
-    ax4.set_xlabel('Time')
-    ax4.set_ylabel('Payoff')
-    ax4.set_title('Payoff Function Over Time')
+    ax4.set_xlabel("Time")
+    ax4.set_ylabel("Payoff")
+    ax4.set_title("Payoff Function Over Time")
     ax4.legend()
     ax4.grid(True, alpha=0.3)
 
     # 5. Phase Portrait (Attendance vs Value Difference)
     ax5 = plt.subplot(2, 3, 5)
     colors = plt.cm.viridis(np.linspace(0, 1, len(t)))
-    scatter = ax5.scatter(m, u1 - u0, c=t, cmap='viridis', s=30, alpha=0.7)
-    ax5.set_xlabel('Bar Attendance m(t)')
-    ax5.set_ylabel('Value Difference u₁ - u₀')
-    ax5.set_title('Phase Portrait: Attendance vs Value Difference')
+    scatter = ax5.scatter(m, u1 - u0, c=t, cmap="viridis", s=30, alpha=0.7)
+    ax5.set_xlabel("Bar Attendance m(t)")
+    ax5.set_ylabel("Value Difference u₁ - u₀")
+    ax5.set_title("Phase Portrait: Attendance vs Value Difference")
     ax5.grid(True, alpha=0.3)
-    plt.colorbar(scatter, ax=ax5, label='Time')
+    plt.colorbar(scatter, ax=ax5, label="Time")
 
     # 6. Summary Statistics
     ax6 = plt.subplot(2, 3, 6)
-    ax6.axis('off')
+    ax6.axis("off")
 
     summary_text = f"""
 Santa Fe Bar Problem Analysis
@@ -428,8 +428,8 @@ Mathematical Framework:
         summary_text,
         transform=ax6.transAxes,
         fontsize=9,
-        verticalalignment='top',
-        fontfamily='monospace',
+        verticalalignment="top",
+        fontfamily="monospace",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
     )
 
@@ -438,7 +438,7 @@ Mathematical Framework:
     # Save the figure
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     filename = f"santa_fe_discrete_mfg_{timestamp}.png"
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
     logger.info(f"📁 Visualization saved as {filename}")
 
     plt.show()
@@ -462,7 +462,7 @@ def compare_parameter_scenarios():
     results = {}
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    fig.suptitle('Santa Fe Bar Parameter Sensitivity Analysis', fontsize=14, fontweight='bold')
+    fig.suptitle("Santa Fe Bar Parameter Sensitivity Analysis", fontsize=14, fontweight="bold")
 
     for i, scenario in enumerate(scenarios):
         logger.info(f"  Solving: {scenario['name']}...")
@@ -470,8 +470,8 @@ def compare_parameter_scenarios():
         # Create and solve problem
         problem = DiscreteSantaFeBarMFG(
             T=20.0,
-            noise_level=scenario.get('noise_level', 1.0),
-            m_threshold=scenario.get('threshold', 0.6),
+            noise_level=scenario.get("noise_level", 1.0),
+            m_threshold=scenario.get("threshold", 0.6),
             payoff_good=10.0,
             payoff_bad=-5.0,
         )
@@ -479,36 +479,36 @@ def compare_parameter_scenarios():
         solution = problem.solve(nt=2000)
         analysis = problem.analyze_equilibrium(solution)
 
-        results[scenario['name']] = {'solution': solution, 'analysis': analysis, 'problem': problem}
+        results[scenario["name"]] = {"solution": solution, "analysis": analysis, "problem": problem}
 
         # Plot results
         ax = axes[i // 2, i % 2]
-        t = solution['time']
-        m = solution['attendance']
+        t = solution["time"]
+        m = solution["attendance"]
 
-        ax.plot(t, m, linewidth=2, label='Attendance')
+        ax.plot(t, m, linewidth=2, label="Attendance")
         ax.axhline(
             y=problem.m_threshold,
-            color='red',
-            linestyle='--',
+            color="red",
+            linestyle="--",
             alpha=0.7,
-            label=f'Threshold ({problem.m_threshold:.0%})',
+            label=f"Threshold ({problem.m_threshold:.0%})",
         )
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Bar Attendance')
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Bar Attendance")
         ax.set_title(f'{scenario["name"]}\n' f'(ν={problem.noise_level}, threshold={problem.m_threshold:.0%})')
         ax.legend()
         ax.grid(True, alpha=0.3)
         ax.set_ylim(0, 1)
 
         # Add efficiency text
-        efficiency = analysis['efficiency']
+        efficiency = analysis["efficiency"]
         ax.text(
             0.05,
             0.95,
-            f'Efficiency: {efficiency:.1%}',
+            f"Efficiency: {efficiency:.1%}",
             transform=ax.transAxes,
-            fontweight='bold',
+            fontweight="bold",
             bbox=dict(boxstyle="round,pad=0.2", facecolor="yellow", alpha=0.7),
         )
 
@@ -520,8 +520,8 @@ def compare_parameter_scenarios():
     print("Scenario        | Noise | Threshold | Final Attend. | Efficiency | Regime")
     print("-" * 75)
     for name, result in results.items():
-        analysis = result['analysis']
-        problem = result['problem']
+        analysis = result["analysis"]
+        problem = result["problem"]
         print(
             f"{name:<15} | {problem.noise_level:>5.1f} | {problem.m_threshold:>9.0%} | "
             f"{analysis['steady_state_attendance']:>12.1%} | {analysis['efficiency']:>9.1%} | "

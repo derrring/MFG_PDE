@@ -6,23 +6,39 @@ for Mean Field Games problems, with support for error-based refinement
 and JAX acceleration.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
+# JAX availability check and type-safe fallbacks
 try:
     import jax.numpy as jnp
     from jax import jit, vmap
 
     JAX_AVAILABLE = True
 except ImportError:
-    jnp = None
+    import numpy as np
+
+    jnp = np  # Use numpy as fallback
     JAX_AVAILABLE = False
 
+    # Type-safe fallback decorators that suppress specific parameter checking
+    from collections.abc import Callable
+    from typing import Any, TypeVar
+
+    F = TypeVar("F", bound=Callable[..., Any])
+
+    # Use Any to avoid parameter signature mismatches with actual JAX
+    jit: Any = lambda fun, /, **kwargs: fun
+    vmap: Any = lambda fun, **kwargs: fun
+
 from ..backends.base_backend import BaseBackend
+from ..types.internal import JAXArray
 
 
 @dataclass
@@ -71,11 +87,11 @@ class QuadTreeNode:
     x_max: float
     y_min: float
     y_max: float
-    parent: Optional["QuadTreeNode"] = None
-    children: Optional[List["QuadTreeNode"]] = None
+    parent: QuadTreeNode | None = None
+    children: list[QuadTreeNode] | None = None
     is_leaf: bool = True
-    cell_id: Optional[int] = None
-    solution_data: Optional[Dict[str, NDArray]] = None
+    cell_id: int | None = None
+    solution_data: dict[str, NDArray] | None = None
     error_estimate: float = 0.0
 
     def __post_init__(self):
@@ -111,7 +127,7 @@ class QuadTreeNode:
         """Check if point (x, y) is inside this cell"""
         return self.x_min <= x <= self.x_max and self.y_min <= y <= self.y_max
 
-    def subdivide(self) -> List["QuadTreeNode"]:
+    def subdivide(self) -> list[QuadTreeNode]:
         """
         Subdivide this cell into 4 children.
 
@@ -170,7 +186,7 @@ class BaseErrorEstimator(ABC):
     """Base class for error estimation algorithms"""
 
     @abstractmethod
-    def estimate_error(self, node: QuadTreeNode, solution_data: Dict[str, NDArray]) -> float:
+    def estimate_error(self, node: QuadTreeNode, solution_data: dict[str, NDArray]) -> float:
         """
         Estimate the local error in a mesh cell.
 
@@ -181,16 +197,15 @@ class BaseErrorEstimator(ABC):
         Returns:
             Error estimate for this cell
         """
-        pass
 
 
 class GradientErrorEstimator(BaseErrorEstimator):
     """Error estimator based on solution gradients"""
 
-    def __init__(self, backend: Optional[BaseBackend] = None):
+    def __init__(self, backend: BaseBackend | None = None):
         self.backend = backend
 
-    def estimate_error(self, node: QuadTreeNode, solution_data: Dict[str, NDArray]) -> float:
+    def estimate_error(self, node: QuadTreeNode, solution_data: dict[str, NDArray]) -> float:
         """
         Estimate error based on solution gradients.
 
@@ -223,7 +238,7 @@ class GradientErrorEstimator(BaseErrorEstimator):
 
         return max(grad_U, grad_M)
 
-    def _get_cell_indices(self, node: QuadTreeNode) -> Tuple[int, int]:
+    def _get_cell_indices(self, node: QuadTreeNode) -> tuple[int, int]:
         """
         Map cell center to grid indices.
 
@@ -244,11 +259,11 @@ class AdaptiveMesh:
 
     def __init__(
         self,
-        domain_bounds: Tuple[float, float, float, float],  # (x_min, x_max, y_min, y_max)
-        initial_resolution: Tuple[int, int] = (32, 32),
-        refinement_criteria: Optional[AMRRefinementCriteria] = None,
-        error_estimator: Optional[BaseErrorEstimator] = None,
-        backend: Optional[BaseBackend] = None,
+        domain_bounds: tuple[float, float, float, float],  # (x_min, x_max, y_min, y_max)
+        initial_resolution: tuple[int, int] = (32, 32),
+        refinement_criteria: AMRRefinementCriteria | None = None,
+        error_estimator: BaseErrorEstimator | None = None,
+        backend: BaseBackend | None = None,
     ):
         """
         Initialize adaptive mesh.
@@ -276,7 +291,7 @@ class AdaptiveMesh:
         )
 
         # Track all leaf nodes for efficient access
-        self.leaf_nodes: List[QuadTreeNode] = [self.root]
+        self.leaf_nodes: list[QuadTreeNode] = [self.root]
         self.total_cells = 1
         self.max_level = 0
 
@@ -293,7 +308,7 @@ class AdaptiveMesh:
         self._next_cell_id += 1
         return cell_id
 
-    def refine_mesh(self, solution_data: Dict[str, NDArray]) -> int:
+    def refine_mesh(self, solution_data: dict[str, NDArray]) -> int:
         """
         Perform one step of mesh refinement based on current solution.
 
@@ -339,7 +354,7 @@ class AdaptiveMesh:
 
         return refined_count
 
-    def coarsen_mesh(self, solution_data: Dict[str, NDArray]) -> int:
+    def coarsen_mesh(self, solution_data: dict[str, NDArray]) -> int:
         """
         Perform mesh coarsening where appropriate.
 
@@ -388,7 +403,7 @@ class AdaptiveMesh:
 
         return coarsened_count
 
-    def adapt_mesh(self, solution_data: Dict[str, NDArray], max_iterations: int = 5) -> Dict[str, int]:
+    def adapt_mesh(self, solution_data: dict[str, NDArray], max_iterations: int = 5) -> dict[str, int]:
         """
         Perform complete mesh adaptation (refinement + coarsening).
 
@@ -428,7 +443,7 @@ class AdaptiveMesh:
 
         return stats
 
-    def get_mesh_statistics(self) -> Dict[str, Any]:
+    def get_mesh_statistics(self) -> dict[str, Any]:
         """Get current mesh statistics"""
         level_counts = {}
         total_area = 0.0
@@ -456,8 +471,8 @@ class AdaptiveMesh:
         }
 
     def interpolate_solution(
-        self, coarse_solution: Dict[str, NDArray], target_grid: Tuple[int, int]
-    ) -> Dict[str, NDArray]:
+        self, coarse_solution: dict[str, NDArray], target_grid: tuple[int, int]
+    ) -> dict[str, NDArray]:
         """
         Interpolate solution from AMR mesh to uniform grid.
 
@@ -474,7 +489,7 @@ class AdaptiveMesh:
 
         # Initialize output arrays
         interpolated = {}
-        for key in coarse_solution.keys():
+        for key in coarse_solution:
             interpolated[key] = np.zeros((nx, ny))
 
         # For each point in target grid, find containing cell and interpolate
@@ -484,13 +499,13 @@ class AdaptiveMesh:
 
                 if containing_node is not None and containing_node.solution_data is not None:
                     # Simple piecewise constant interpolation for now
-                    for key in coarse_solution.keys():
+                    for key in coarse_solution:
                         if key in containing_node.solution_data:
                             interpolated[key][i, j] = containing_node.solution_data[key]
 
         return interpolated
 
-    def _find_containing_node(self, x: float, y: float) -> Optional[QuadTreeNode]:
+    def _find_containing_node(self, x: float, y: float) -> QuadTreeNode | None:
         """Find the leaf node containing point (x, y)"""
         current = self.root
 
@@ -521,7 +536,7 @@ class AdaptiveMesh:
 if JAX_AVAILABLE:
 
     @jit
-    def compute_gradient_error_jax(U: jnp.ndarray, M: jnp.ndarray, dx: float, dy: float) -> jnp.ndarray:
+    def compute_gradient_error_jax(U: JAXArray, M: JAXArray, dx: float, dy: float) -> JAXArray:
         """
         Compute gradient-based error estimate using JAX.
 
@@ -548,7 +563,7 @@ if JAX_AVAILABLE:
 
 
 def create_amr_mesh(
-    domain_bounds: Tuple[float, float, float, float],
+    domain_bounds: tuple[float, float, float, float],
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     backend: str = "auto",

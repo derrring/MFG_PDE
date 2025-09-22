@@ -6,15 +6,17 @@ Provides decorators to easily add professional logging to solver methods
 and other computational functions without modifying their core logic.
 """
 
+from __future__ import annotations
+
 import functools
 import time
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
 
 from .logging import LoggedOperation, get_logger, log_solver_completion, log_solver_start
 
 
 def logged_solver_method(
-    logger_name: Optional[str] = None,
+    logger_name: str | None = None,
     log_level: str = "INFO",
     log_config: bool = True,
     log_performance: bool = True,
@@ -70,7 +72,8 @@ def logged_solver_method(
                 # Log completion
                 if log_result:
                     # Try to extract result information
-                    iterations = getattr(result, "iterations", "N/A")
+                    iterations_raw = getattr(result, "iterations", 0)
+                    iterations = int(iterations_raw) if isinstance(iterations_raw, (int, float)) else 0
                     final_error = getattr(result, "final_error", 0.0)
                     converged = getattr(result, "converged", True)
 
@@ -89,7 +92,7 @@ def logged_solver_method(
 
             except Exception as e:
                 execution_time = time.time() - start_time
-                logger.error(f"{solver_name} failed after {execution_time:.3f}s: {str(e)}")
+                logger.error(f"{solver_name} failed after {execution_time:.3f}s: {e!s}")
                 raise
 
         return wrapper
@@ -98,8 +101,8 @@ def logged_solver_method(
 
 
 def logged_operation(
-    operation_name: Optional[str] = None,
-    logger_name: Optional[str] = None,
+    operation_name: str | None = None,
+    logger_name: str | None = None,
     log_level: str = "INFO",
     log_args: bool = False,
     log_result: bool = False,
@@ -119,10 +122,7 @@ def logged_operation(
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Get logger
-            if logger_name:
-                logger = get_logger(logger_name)
-            else:
-                logger = get_logger(func.__module__)
+            logger = get_logger(logger_name) if logger_name else get_logger(func.__module__)
 
             # Determine operation name
             op_name = operation_name or func.__name__
@@ -149,7 +149,7 @@ def logged_operation(
     return decorator
 
 
-def logged_validation(component_name: Optional[str] = None, logger_name: Optional[str] = None):
+def logged_validation(component_name: str | None = None, logger_name: str | None = None):
     """
     Decorator to add logging to validation functions.
 
@@ -162,10 +162,7 @@ def logged_validation(component_name: Optional[str] = None, logger_name: Optiona
         @functools.wraps(validation_func)
         def wrapper(*args, **kwargs):
             # Get logger
-            if logger_name:
-                logger = get_logger(logger_name)
-            else:
-                logger = get_logger("mfg_pde.validation")
+            logger = get_logger(logger_name) if logger_name else get_logger("mfg_pde.validation")
 
             component = component_name or validation_func.__name__
 
@@ -185,8 +182,8 @@ def logged_validation(component_name: Optional[str] = None, logger_name: Optiona
 
 
 def performance_logged(
-    operation_name: Optional[str] = None,
-    logger_name: Optional[str] = None,
+    operation_name: str | None = None,
+    logger_name: str | None = None,
     include_memory: bool = False,
 ):
     """
@@ -202,22 +199,22 @@ def performance_logged(
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Get logger
-            if logger_name:
-                logger = get_logger(logger_name)
-            else:
-                logger = get_logger("mfg_pde.performance")
+            logger = get_logger(logger_name) if logger_name else get_logger("mfg_pde.performance")
 
             op_name = operation_name or func.__name__
 
             # Memory tracking (if requested)
-            if include_memory:
+            memory_enabled = include_memory  # Capture closure variable
+            memory_before = 0.0
+            process = None
+            if memory_enabled:
                 try:
                     import psutil
 
                     process = psutil.Process()
                     memory_before = process.memory_info().rss / 1024 / 1024  # MB
                 except ImportError:
-                    include_memory = False
+                    memory_enabled = False
                     logger.warning("psutil not available for memory tracking")
 
             # Execute with timing
@@ -227,7 +224,7 @@ def performance_logged(
 
             # Collect metrics
             metrics = {}
-            if include_memory:
+            if memory_enabled and process is not None:
                 memory_after = process.memory_info().rss / 1024 / 1024  # MB
                 metrics["memory_delta"] = f"{memory_after - memory_before:.1f}MB"
                 metrics["memory_peak"] = f"{memory_after:.1f}MB"
@@ -295,7 +292,7 @@ class LoggingMixin:
 
 
 # Convenience function to add logging to existing classes
-def add_logging_to_class(cls, logger_name: Optional[str] = None):
+def add_logging_to_class(cls, logger_name: str | None = None):
     """
     Add logging capabilities to an existing class.
 
@@ -373,10 +370,10 @@ def demonstrate_logging_decorators():
 
     # Solver with logging
     solver = ExampleSolver()
-    result = solver.solve()
+    _ = solver.solve()
 
     # Operation with logging
-    matrix = compute_matrix(10, "random")
+    _ = compute_matrix(10, "random")
 
     # Validation with logging
     import numpy as np

@@ -20,7 +20,6 @@ import time
 import tracemalloc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
@@ -51,7 +50,7 @@ class MemoryAnalysisResult:
 
     problem_name: str
     solver_type: str
-    problem_size: Tuple[int, ...]
+    problem_size: tuple[int, ...]
 
     # Memory usage statistics
     initial_memory_mb: float
@@ -72,7 +71,7 @@ class MemoryAnalysisResult:
 
     # Memory allocation info
     num_allocations: int = 0
-    allocation_pattern: List[float] = None
+    allocation_pattern: list[float] = None
 
     # Solve statistics
     solve_time: float = 0.0
@@ -87,8 +86,8 @@ class AMRMemoryProfiler:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
 
-        self.results: List[MemoryAnalysisResult] = []
-        self.memory_snapshots: List[MemorySnapshot] = []
+        self.results: list[MemoryAnalysisResult] = []
+        self.memory_snapshots: list[MemorySnapshot] = []
 
         # Start memory tracking
         tracemalloc.start()
@@ -128,7 +127,7 @@ class AMRMemoryProfiler:
         return snapshot
 
     def estimate_theoretical_memory_requirements(
-        self, problem_size: Tuple[int, ...], amr_enabled: bool = False, max_refinement_levels: int = 5
+        self, problem_size: tuple[int, ...], amr_enabled: bool = False, max_refinement_levels: int = 5
     ) -> float:
         """Estimate theoretical minimum memory requirements."""
 
@@ -173,20 +172,20 @@ class AMRMemoryProfiler:
             # Test both uniform and AMR solvers
             solver_configs = [
                 {
-                    'name': f'Uniform-{size}',
-                    'create_solver': lambda p: create_solver(p, solver_type='fixed_point', preset='fast'),
-                    'amr_enabled': False,
+                    "name": f"Uniform-{size}",
+                    "create_solver": lambda p: create_solver(p, solver_type="fixed_point", preset="fast"),
+                    "amr_enabled": False,
                 },
                 {
-                    'name': f'AMR-{size}',
-                    'create_solver': lambda p: create_amr_solver(
+                    "name": f"AMR-{size}",
+                    "create_solver": lambda p: create_amr_solver(
                         p,
-                        base_solver_type='fixed_point',
+                        base_solver_type="fixed_point",
                         error_threshold=1e-4,
                         max_levels=4,
                         initial_intervals=size // 2,
                     ),
-                    'amr_enabled': True,
+                    "amr_enabled": True,
                 },
             ]
 
@@ -200,7 +199,7 @@ class AMRMemoryProfiler:
                 initial_snapshot = self.take_memory_snapshot("initial")
 
                 # Create solver
-                solver = config['create_solver'](problem)
+                solver = config["create_solver"](problem)
 
                 # Take snapshot after solver creation
                 solver_snapshot = self.take_memory_snapshot("solver_created")
@@ -223,8 +222,8 @@ class AMRMemoryProfiler:
 
                 # Extract solution info
                 if isinstance(result, dict):
-                    converged = result.get('converged', False)
-                    total_elements = result.get('mesh_statistics', {}).get('total_intervals', size)
+                    converged = result.get("converged", False)
+                    total_elements = result.get("mesh_statistics", {}).get("total_intervals", size)
                 else:
                     converged = True
                     total_elements = size
@@ -236,7 +235,7 @@ class AMRMemoryProfiler:
                 )
 
                 # Estimate theoretical minimum
-                theoretical_min = self.estimate_theoretical_memory_requirements((size,), config['amr_enabled'], 4)
+                theoretical_min = self.estimate_theoretical_memory_requirements((size,), config["amr_enabled"], 4)
 
                 # Calculate efficiency
                 memory_efficiency = theoretical_min / memory_increase if memory_increase > 0 else 0.0
@@ -245,7 +244,7 @@ class AMRMemoryProfiler:
                 # Store results
                 analysis_result = MemoryAnalysisResult(
                     problem_name=f"Scaling_Test_N{size}",
-                    solver_type=config['name'],
+                    solver_type=config["name"],
                     problem_size=(size,),
                     initial_memory_mb=initial_snapshot.process_memory_mb,
                     peak_memory_mb=peak_memory,
@@ -302,7 +301,7 @@ class AMRMemoryProfiler:
             before_snapshot = self.take_memory_snapshot()
 
             # Create and solve
-            solver = create_amr_solver(problem, base_solver_type='fixed_point', error_threshold=1e-4, max_levels=3)
+            solver = create_amr_solver(problem, base_solver_type="fixed_point", error_threshold=1e-4, max_levels=3)
 
             result = solver.solve(max_iterations=30, tolerance=1e-6, verbose=False)
 
@@ -311,10 +310,10 @@ class AMRMemoryProfiler:
 
             memory_progression.append(
                 {
-                    'iteration': i + 1,
-                    'before_mb': before_snapshot.process_memory_mb,
-                    'after_mb': after_snapshot.process_memory_mb,
-                    'increase_mb': after_snapshot.process_memory_mb - before_snapshot.process_memory_mb,
+                    "iteration": i + 1,
+                    "before_mb": before_snapshot.process_memory_mb,
+                    "after_mb": after_snapshot.process_memory_mb,
+                    "increase_mb": after_snapshot.process_memory_mb - before_snapshot.process_memory_mb,
                 }
             )
 
@@ -325,12 +324,12 @@ class AMRMemoryProfiler:
             print(f"    Memory: {before_snapshot.process_memory_mb:.1f} → {after_snapshot.process_memory_mb:.1f} MB")
 
         # Analyze memory leak pattern
-        memory_increases = [entry['increase_mb'] for entry in memory_progression]
+        memory_increases = [entry["increase_mb"] for entry in memory_progression]
         cumulative_increase = sum(memory_increases)
         average_increase = np.mean(memory_increases)
         trend_slope = np.polyfit(range(len(memory_increases)), memory_increases, 1)[0]
 
-        print(f"\nMemory Leak Analysis:")
+        print("\nMemory Leak Analysis:")
         print(f"  Total memory increase: {cumulative_increase:.1f} MB")
         print(f"  Average per iteration: {average_increase:.1f} MB")
         print(f"  Trend slope: {trend_slope:.3f} MB/iteration")
@@ -347,12 +346,12 @@ class AMRMemoryProfiler:
             problem_name="Memory_Leak_Test",
             solver_type="AMR_Repeated",
             problem_size=(128,),
-            initial_memory_mb=memory_progression[0]['before_mb'],
-            peak_memory_mb=max(entry['after_mb'] for entry in memory_progression),
-            final_memory_mb=memory_progression[-1]['after_mb'],
+            initial_memory_mb=memory_progression[0]["before_mb"],
+            peak_memory_mb=max(entry["after_mb"] for entry in memory_progression),
+            final_memory_mb=memory_progression[-1]["after_mb"],
             memory_increase_mb=cumulative_increase,
             max_memory_growth_rate=trend_slope,
-            allocation_pattern=[entry['after_mb'] for entry in memory_progression],
+            allocation_pattern=[entry["after_mb"] for entry in memory_progression],
             num_allocations=num_iterations,
         )
 
@@ -367,7 +366,13 @@ class AMRMemoryProfiler:
         # Create test problem
         domain = Domain1D(0.0, 1.0, periodic_bc())
         problem = ExampleMFGProblem(
-            T=0.5, xmin=0.0, xmax=1.0, Nx=256, Nt=20, sigma=0.05, coefCT=2.0  # Sharp features for AMR
+            T=0.5,
+            xmin=0.0,
+            xmax=1.0,
+            Nx=256,
+            Nt=20,
+            sigma=0.05,
+            coefCT=2.0,  # Sharp features for AMR
         )
         problem.domain = domain
         problem.dimension = 1
@@ -377,37 +382,37 @@ class AMRMemoryProfiler:
 
         # Baseline memory
         gc.collect()
-        checkpoints['baseline'] = self.take_memory_snapshot("baseline")
+        checkpoints["baseline"] = self.take_memory_snapshot("baseline")
 
         # Create problem
-        checkpoints['problem_created'] = self.take_memory_snapshot("problem_created")
+        checkpoints["problem_created"] = self.take_memory_snapshot("problem_created")
 
         # Create AMR solver
-        amr_solver = create_amr_solver(problem, base_solver_type='fixed_point', error_threshold=1e-4, max_levels=4)
-        checkpoints['solver_created'] = self.take_memory_snapshot("solver_created")
+        amr_solver = create_amr_solver(problem, base_solver_type="fixed_point", error_threshold=1e-4, max_levels=4)
+        checkpoints["solver_created"] = self.take_memory_snapshot("solver_created")
 
         # Solve (this will trigger AMR operations)
         result = amr_solver.solve(max_iterations=50, tolerance=1e-6, verbose=False)
-        checkpoints['solved'] = self.take_memory_snapshot("solved")
+        checkpoints["solved"] = self.take_memory_snapshot("solved")
 
         # Calculate component memory usage
-        problem_memory = checkpoints['problem_created'].process_memory_mb - checkpoints['baseline'].process_memory_mb
+        problem_memory = checkpoints["problem_created"].process_memory_mb - checkpoints["baseline"].process_memory_mb
         solver_memory = (
-            checkpoints['solver_created'].process_memory_mb - checkpoints['problem_created'].process_memory_mb
+            checkpoints["solver_created"].process_memory_mb - checkpoints["problem_created"].process_memory_mb
         )
-        solve_memory = checkpoints['solved'].process_memory_mb - checkpoints['solver_created'].process_memory_mb
+        solve_memory = checkpoints["solved"].process_memory_mb - checkpoints["solver_created"].process_memory_mb
 
-        print(f"Memory breakdown:")
+        print("Memory breakdown:")
         print(f"  Problem creation: {problem_memory:.1f} MB")
         print(f"  Solver initialization: {solver_memory:.1f} MB")
         print(f"  Solving (AMR operations): {solve_memory:.1f} MB")
 
         # Get AMR statistics
         if isinstance(result, dict):
-            mesh_stats = result.get('mesh_statistics', {})
-            total_elements = mesh_stats.get('total_intervals', 256)
-            max_level = mesh_stats.get('max_level', 0)
-            adaptations = result.get('total_adaptations', 0)
+            mesh_stats = result.get("mesh_statistics", {})
+            total_elements = mesh_stats.get("total_intervals", 256)
+            max_level = mesh_stats.get("max_level", 0)
+            adaptations = result.get("total_adaptations", 0)
         else:
             total_elements = 256
             max_level = 0
@@ -427,10 +432,10 @@ class AMRMemoryProfiler:
             problem_name="Component_Analysis",
             solver_type="AMR_Components",
             problem_size=(256,),
-            initial_memory_mb=checkpoints['baseline'].process_memory_mb,
-            peak_memory_mb=checkpoints['solved'].process_memory_mb,
-            final_memory_mb=checkpoints['solved'].process_memory_mb,
-            memory_increase_mb=checkpoints['solved'].process_memory_mb - checkpoints['baseline'].process_memory_mb,
+            initial_memory_mb=checkpoints["baseline"].process_memory_mb,
+            peak_memory_mb=checkpoints["solved"].process_memory_mb,
+            final_memory_mb=checkpoints["solved"].process_memory_mb,
+            memory_increase_mb=checkpoints["solved"].process_memory_mb - checkpoints["baseline"].process_memory_mb,
             mesh_memory_mb=solver_memory,
             solution_memory_mb=solve_memory,
             overhead_memory_mb=problem_memory,
@@ -446,30 +451,30 @@ class AMRMemoryProfiler:
 
         try:
             fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-            fig.suptitle('AMR Memory Usage Analysis', fontsize=16)
+            fig.suptitle("AMR Memory Usage Analysis", fontsize=16)
 
             # Plot 1: Memory scaling with problem size
             scaling_results = [r for r in self.results if "Scaling_Test" in r.problem_name]
 
             if scaling_results:
-                uniform_results = [r for r in scaling_results if 'Uniform' in r.solver_type]
-                amr_results = [r for r in scaling_results if 'AMR' in r.solver_type]
+                uniform_results = [r for r in scaling_results if "Uniform" in r.solver_type]
+                amr_results = [r for r in scaling_results if "AMR" in r.solver_type]
 
                 ax = axes[0, 0]
 
                 if uniform_results:
                     sizes = [r.problem_size[0] for r in uniform_results]
                     memory_usage = [r.memory_increase_mb for r in uniform_results]
-                    ax.loglog(sizes, memory_usage, 'b-o', label='Uniform Grid', markersize=6)
+                    ax.loglog(sizes, memory_usage, "b-o", label="Uniform Grid", markersize=6)
 
                 if amr_results:
                     sizes = [r.problem_size[0] for r in amr_results]
                     memory_usage = [r.memory_increase_mb for r in amr_results]
-                    ax.loglog(sizes, memory_usage, 'r-s', label='AMR', markersize=6)
+                    ax.loglog(sizes, memory_usage, "r-s", label="AMR", markersize=6)
 
-                ax.set_xlabel('Problem Size')
-                ax.set_ylabel('Memory Usage (MB)')
-                ax.set_title('Memory Scaling')
+                ax.set_xlabel("Problem Size")
+                ax.set_ylabel("Memory Usage (MB)")
+                ax.set_title("Memory Scaling")
                 ax.legend()
                 ax.grid(True, alpha=0.3)
 
@@ -485,9 +490,9 @@ class AMRMemoryProfiler:
 
                 for size in problem_sizes:
                     uniform_res = [
-                        r for r in scaling_results if r.problem_size[0] == size and 'Uniform' in r.solver_type
+                        r for r in scaling_results if r.problem_size[0] == size and "Uniform" in r.solver_type
                     ]
-                    amr_res = [r for r in scaling_results if r.problem_size[0] == size and 'AMR' in r.solver_type]
+                    amr_res = [r for r in scaling_results if r.problem_size[0] == size and "AMR" in r.solver_type]
 
                     if uniform_res:
                         uniform_efficiency.append(uniform_res[0].memory_efficiency)
@@ -498,16 +503,16 @@ class AMRMemoryProfiler:
                     ax.plot(
                         problem_sizes[: len(uniform_efficiency)],
                         uniform_efficiency,
-                        'b-o',
-                        label='Uniform',
+                        "b-o",
+                        label="Uniform",
                         markersize=6,
                     )
                 if amr_efficiency:
-                    ax.plot(problem_sizes[: len(amr_efficiency)], amr_efficiency, 'r-s', label='AMR', markersize=6)
+                    ax.plot(problem_sizes[: len(amr_efficiency)], amr_efficiency, "r-s", label="AMR", markersize=6)
 
-                ax.set_xlabel('Problem Size')
-                ax.set_ylabel('Memory Efficiency')
-                ax.set_title('Memory Efficiency vs Problem Size')
+                ax.set_xlabel("Problem Size")
+                ax.set_ylabel("Memory Efficiency")
+                ax.set_title("Memory Efficiency vs Problem Size")
                 ax.legend()
                 ax.grid(True, alpha=0.3)
 
@@ -519,17 +524,17 @@ class AMRMemoryProfiler:
                 pattern = leak_results[0].allocation_pattern
                 iterations = list(range(1, len(pattern) + 1))
 
-                ax.plot(iterations, pattern, 'g-o', markersize=6)
-                ax.set_xlabel('Iteration')
-                ax.set_ylabel('Memory Usage (MB)')
-                ax.set_title('Memory Leak Detection')
+                ax.plot(iterations, pattern, "g-o", markersize=6)
+                ax.set_xlabel("Iteration")
+                ax.set_ylabel("Memory Usage (MB)")
+                ax.set_title("Memory Leak Detection")
                 ax.grid(True, alpha=0.3)
 
                 # Add trend line
                 if len(pattern) > 1:
                     z = np.polyfit(iterations, pattern, 1)
                     p = np.poly1d(z)
-                    ax.plot(iterations, p(iterations), "r--", alpha=0.8, label=f'Trend: {z[0]:.2f} MB/iter')
+                    ax.plot(iterations, p(iterations), "r--", alpha=0.8, label=f"Trend: {z[0]:.2f} MB/iter")
                     ax.legend()
 
             # Plot 4: Memory components breakdown
@@ -539,27 +544,27 @@ class AMRMemoryProfiler:
                 result = component_results[0]
 
                 ax = axes[1, 1]
-                components = ['Mesh\nStructure', 'Solution\nData', 'Overhead']
+                components = ["Mesh\nStructure", "Solution\nData", "Overhead"]
                 memory_values = [result.mesh_memory_mb, result.solution_memory_mb, result.overhead_memory_mb]
 
-                colors = ['blue', 'red', 'green']
+                colors = ["blue", "red", "green"]
                 bars = ax.bar(components, memory_values, color=colors, alpha=0.7)
-                ax.set_ylabel('Memory Usage (MB)')
-                ax.set_title('Memory Components Breakdown')
+                ax.set_ylabel("Memory Usage (MB)")
+                ax.set_title("Memory Components Breakdown")
 
                 # Add value labels
-                for bar, value in zip(bars, memory_values):
+                for bar, value in zip(bars, memory_values, strict=False):
                     if value > 0:
                         ax.text(
                             bar.get_x() + bar.get_width() / 2,
                             bar.get_height() + 0.1,
-                            f'{value:.1f}MB',
-                            ha='center',
-                            va='bottom',
+                            f"{value:.1f}MB",
+                            ha="center",
+                            va="bottom",
                         )
 
             plt.tight_layout()
-            plt.savefig(self.output_dir / 'memory_analysis.png', dpi=150, bbox_inches='tight')
+            plt.savefig(self.output_dir / "memory_analysis.png", dpi=150, bbox_inches="tight")
             print(f"Memory plots saved to {self.output_dir / 'memory_analysis.png'}")
 
             # Show if possible
@@ -576,7 +581,7 @@ class AMRMemoryProfiler:
 
         report_file = self.output_dir / "memory_analysis_report.md"
 
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             f.write("# AMR Memory Usage Analysis Report\n\n")
             f.write(f"**Generated**: {time.strftime('%Y-%m-%d %H:%M:%S')}  \n\n")
 
@@ -602,8 +607,8 @@ class AMRMemoryProfiler:
                     )
 
                 # Calculate scaling factors
-                uniform_results = [r for r in scaling_results if 'Uniform' in r.solver_type]
-                amr_results = [r for r in scaling_results if 'AMR' in r.solver_type]
+                uniform_results = [r for r in scaling_results if "Uniform" in r.solver_type]
+                amr_results = [r for r in scaling_results if "AMR" in r.solver_type]
 
                 if len(uniform_results) >= 2:
                     largest_uniform = max(uniform_results, key=lambda x: x.problem_size[0])
@@ -696,37 +701,37 @@ class AMRMemoryProfiler:
         serializable_results = []
         for result in self.results:
             result_dict = {
-                'problem_name': result.problem_name,
-                'solver_type': result.solver_type,
-                'problem_size': list(result.problem_size),
-                'initial_memory_mb': result.initial_memory_mb,
-                'peak_memory_mb': result.peak_memory_mb,
-                'final_memory_mb': result.final_memory_mb,
-                'memory_increase_mb': result.memory_increase_mb,
-                'max_memory_growth_rate': result.max_memory_growth_rate,
-                'mesh_memory_mb': result.mesh_memory_mb,
-                'solution_memory_mb': result.solution_memory_mb,
-                'overhead_memory_mb': result.overhead_memory_mb,
-                'theoretical_minimum_mb': result.theoretical_minimum_mb,
-                'memory_efficiency': result.memory_efficiency,
-                'memory_overhead_ratio': result.memory_overhead_ratio,
-                'num_allocations': result.num_allocations,
-                'allocation_pattern': result.allocation_pattern,
-                'solve_time': result.solve_time,
-                'converged': result.converged,
-                'total_elements': result.total_elements,
+                "problem_name": result.problem_name,
+                "solver_type": result.solver_type,
+                "problem_size": list(result.problem_size),
+                "initial_memory_mb": result.initial_memory_mb,
+                "peak_memory_mb": result.peak_memory_mb,
+                "final_memory_mb": result.final_memory_mb,
+                "memory_increase_mb": result.memory_increase_mb,
+                "max_memory_growth_rate": result.max_memory_growth_rate,
+                "mesh_memory_mb": result.mesh_memory_mb,
+                "solution_memory_mb": result.solution_memory_mb,
+                "overhead_memory_mb": result.overhead_memory_mb,
+                "theoretical_minimum_mb": result.theoretical_minimum_mb,
+                "memory_efficiency": result.memory_efficiency,
+                "memory_overhead_ratio": result.memory_overhead_ratio,
+                "num_allocations": result.num_allocations,
+                "allocation_pattern": result.allocation_pattern,
+                "solve_time": result.solve_time,
+                "converged": result.converged,
+                "total_elements": result.total_elements,
             }
             serializable_results.append(result_dict)
 
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(
                 {
-                    'memory_analysis_metadata': {
-                        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-                        'system_memory_gb': psutil.virtual_memory().total / (1024**3),
-                        'total_analyses': len(self.results),
+                    "memory_analysis_metadata": {
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "system_memory_gb": psutil.virtual_memory().total / (1024**3),
+                        "total_analyses": len(self.results),
                     },
-                    'results': serializable_results,
+                    "results": serializable_results,
                 },
                 f,
                 indent=2,
@@ -754,7 +759,7 @@ class AMRMemoryProfiler:
         self.generate_memory_report()
         self.save_memory_results()
 
-        print(f"\n✅ Memory analysis complete!")
+        print("\n✅ Memory analysis complete!")
         print(f"Results saved to: {self.output_dir}")
 
         # Cleanup

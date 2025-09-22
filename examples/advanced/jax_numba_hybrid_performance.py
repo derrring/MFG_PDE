@@ -12,9 +12,7 @@ This example shows:
 """
 
 import time
-from typing import Dict, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 # JAX imports (with fallback)
@@ -207,7 +205,7 @@ if NUMBA_AVAILABLE:
     @numba_jit(nopython=True, cache=True)
     def collect_mesh_statistics_numba(
         cell_bounds: np.ndarray, cell_levels: np.ndarray, is_leaf: np.ndarray
-    ) -> Tuple[int, int, float, float]:
+    ) -> tuple[int, int, float, float]:
         """
         Numba-optimized statistics collection.
 
@@ -293,7 +291,7 @@ def find_cells_to_refine_python(
 # ============================================================================
 
 
-def create_test_data(size: int = 128) -> Tuple[np.ndarray, np.ndarray, Dict]:
+def create_test_data(size: int = 128) -> tuple[np.ndarray, np.ndarray, dict]:
     """Create test data for benchmarking."""
     # Create solution data with sharp features
     x = np.linspace(-2, 2, size)
@@ -318,11 +316,11 @@ def create_test_data(size: int = 128) -> Tuple[np.ndarray, np.ndarray, Dict]:
     is_leaf = np.random.choice([True, False], n_cells, p=[0.7, 0.3])
 
     mesh_data = {
-        'cell_bounds': cell_bounds,
-        'cell_levels': cell_levels,
-        'is_leaf': is_leaf,
-        'error_threshold': 1e-4,
-        'max_level': 5,
+        "cell_bounds": cell_bounds,
+        "cell_levels": cell_levels,
+        "is_leaf": is_leaf,
+        "error_threshold": 1e-4,
+        "max_level": 5,
     }
 
     return U, M, mesh_data
@@ -330,7 +328,7 @@ def create_test_data(size: int = 128) -> Tuple[np.ndarray, np.ndarray, Dict]:
 
 def benchmark_error_computation(
     U: np.ndarray, M: np.ndarray, dx: float, dy: float, n_runs: int = 10
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Benchmark error computation implementations."""
     results = {}
 
@@ -340,7 +338,7 @@ def benchmark_error_computation(
         start = time.time()
         error_np = compute_error_indicators_numpy(U, M, dx, dy)
         times.append(time.time() - start)
-    results['numpy'] = np.mean(times)
+    results["numpy"] = np.mean(times)
 
     # JAX implementation
     if JAX_AVAILABLE:
@@ -355,12 +353,12 @@ def benchmark_error_computation(
             # Force computation (JAX is lazy)
             _ = np.array(error_jax)
             times.append(time.time() - start)
-        results['jax'] = np.mean(times)
+        results["jax"] = np.mean(times)
 
     return results
 
 
-def benchmark_refinement_selection(mesh_data: Dict, error_indicators: np.ndarray, n_runs: int = 10) -> Dict[str, float]:
+def benchmark_refinement_selection(mesh_data: dict, error_indicators: np.ndarray, n_runs: int = 10) -> dict[str, float]:
     """Benchmark refinement candidate selection implementations."""
     results = {}
 
@@ -370,25 +368,25 @@ def benchmark_refinement_selection(mesh_data: Dict, error_indicators: np.ndarray
         start = time.time()
         candidates_py = find_cells_to_refine_python(
             error_indicators,
-            mesh_data['cell_bounds'],
-            mesh_data['cell_levels'],
-            mesh_data['is_leaf'],
-            mesh_data['error_threshold'],
-            mesh_data['max_level'],
+            mesh_data["cell_bounds"],
+            mesh_data["cell_levels"],
+            mesh_data["is_leaf"],
+            mesh_data["error_threshold"],
+            mesh_data["max_level"],
         )
         times.append(time.time() - start)
-    results['python'] = np.mean(times)
+    results["python"] = np.mean(times)
 
     # Numba implementation
     if NUMBA_AVAILABLE:
         # Warmup compilation
         _ = find_cells_to_refine_numba(
             error_indicators,
-            mesh_data['cell_bounds'],
-            mesh_data['cell_levels'],
-            mesh_data['is_leaf'],
-            mesh_data['error_threshold'],
-            mesh_data['max_level'],
+            mesh_data["cell_bounds"],
+            mesh_data["cell_levels"],
+            mesh_data["is_leaf"],
+            mesh_data["error_threshold"],
+            mesh_data["max_level"],
         )
 
         times = []
@@ -396,14 +394,14 @@ def benchmark_refinement_selection(mesh_data: Dict, error_indicators: np.ndarray
             start = time.time()
             candidates_numba = find_cells_to_refine_numba(
                 error_indicators,
-                mesh_data['cell_bounds'],
-                mesh_data['cell_levels'],
-                mesh_data['is_leaf'],
-                mesh_data['error_threshold'],
-                mesh_data['max_level'],
+                mesh_data["cell_bounds"],
+                mesh_data["cell_levels"],
+                mesh_data["is_leaf"],
+                mesh_data["error_threshold"],
+                mesh_data["max_level"],
             )
             times.append(time.time() - start)
-        results['numba'] = np.mean(times)
+        results["numba"] = np.mean(times)
 
     return results
 
@@ -434,8 +432,8 @@ def main():
         for method, time_taken in error_results.items():
             print(f"  {method:>8}: {time_taken*1000:.2f} ms")
 
-        if 'jax' in error_results and 'numpy' in error_results:
-            speedup = error_results['numpy'] / error_results['jax']
+        if "jax" in error_results and "numpy" in error_results:
+            speedup = error_results["numpy"] / error_results["jax"]
             print(f"  JAX speedup: {speedup:.1f}×")
 
         # Compute error indicators for refinement benchmark
@@ -443,10 +441,10 @@ def main():
             U_jax, M_jax = jnp.array(U), jnp.array(M)
             error_indicators = np.array(compute_error_indicators_jax(U_jax, M_jax, dx, dy))
             # Map to mesh cells (simplified)
-            error_indicators_cells = np.random.uniform(0, np.max(error_indicators), len(mesh_data['cell_bounds']))
+            error_indicators_cells = np.random.uniform(0, np.max(error_indicators), len(mesh_data["cell_bounds"]))
         else:
             error_indicators = compute_error_indicators_numpy(U, M, dx, dy)
-            error_indicators_cells = np.random.uniform(0, np.max(error_indicators), len(mesh_data['cell_bounds']))
+            error_indicators_cells = np.random.uniform(0, np.max(error_indicators), len(mesh_data["cell_bounds"]))
 
         # Benchmark refinement selection (Numba strength)
         print("\n3. Benchmarking Refinement Selection (Numba vs Python):")
@@ -455,8 +453,8 @@ def main():
         for method, time_taken in refinement_results.items():
             print(f"  {method:>8}: {time_taken*1000:.2f} ms")
 
-        if 'numba' in refinement_results and 'python' in refinement_results:
-            speedup = refinement_results['python'] / refinement_results['numba']
+        if "numba" in refinement_results and "python" in refinement_results:
+            speedup = refinement_results["python"] / refinement_results["numba"]
             print(f"  Numba speedup: {speedup:.1f}×")
 
     # Demonstrate hybrid workflow
@@ -479,11 +477,11 @@ def main():
         jax_start = time.time()
         U_jax, M_jax = jnp.array(U), jnp.array(M)
         error_field = compute_error_indicators_jax(U_jax, M_jax, dx, dy)
-        error_indicators_cells = np.random.uniform(0, np.max(error_field), len(mesh_data['cell_bounds']))
+        error_indicators_cells = np.random.uniform(0, np.max(error_field), len(mesh_data["cell_bounds"]))
         jax_time1 = time.time() - jax_start
         print(f"  JAX error computation: {jax_time1*1000:.2f} ms")
     else:
-        error_indicators_cells = np.random.uniform(0, 1, len(mesh_data['cell_bounds']))
+        error_indicators_cells = np.random.uniform(0, 1, len(mesh_data["cell_bounds"]))
         jax_time1 = 0
 
     # Step 2: Numba for refinement selection
@@ -491,11 +489,11 @@ def main():
         numba_start = time.time()
         candidates = find_cells_to_refine_numba(
             error_indicators_cells,
-            mesh_data['cell_bounds'],
-            mesh_data['cell_levels'],
-            mesh_data['is_leaf'],
-            mesh_data['error_threshold'],
-            mesh_data['max_level'],
+            mesh_data["cell_bounds"],
+            mesh_data["cell_levels"],
+            mesh_data["is_leaf"],
+            mesh_data["error_threshold"],
+            mesh_data["max_level"],
         )
         numba_time = time.time() - numba_start
         print(f"  Numba refinement selection: {numba_time*1000:.2f} ms")
@@ -544,13 +542,13 @@ def main():
     print("  • Clean separation of concerns")
 
     if JAX_AVAILABLE and NUMBA_AVAILABLE:
-        print(f"\n🚀 Expected speedups achieved!")
+        print("\n🚀 Expected speedups achieved!")
     elif JAX_AVAILABLE:
-        print(f"\n⚠️  Install Numba for imperative optimizations")
+        print("\n⚠️  Install Numba for imperative optimizations")
     elif NUMBA_AVAILABLE:
-        print(f"\n⚠️  Install JAX for functional optimizations")
+        print("\n⚠️  Install JAX for functional optimizations")
     else:
-        print(f"\n⚠️  Install JAX and Numba for optimal performance")
+        print("\n⚠️  Install JAX and Numba for optimal performance")
 
 
 if __name__ == "__main__":

@@ -16,15 +16,13 @@ Features:
 - Modular report sections
 """
 
-import json
-import os
+from __future__ import annotations
+
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
-
-from .integration import trapezoid
 
 try:
     import nbformat as nbf
@@ -35,9 +33,7 @@ except ImportError:
     NOTEBOOK_AVAILABLE = False
 
 try:
-    import plotly.graph_objects as go
     import plotly.io as pio
-    from plotly.subplots import make_subplots
 
     PLOTLY_AVAILABLE = True
 except ImportError:
@@ -50,7 +46,6 @@ from .logging import get_logger
 class NotebookReportError(Exception):
     """Exception for notebook reporting errors."""
 
-    pass
 
 
 class MFGNotebookReporter:
@@ -79,12 +74,12 @@ class MFGNotebookReporter:
         """
         if not NOTEBOOK_AVAILABLE:
             raise NotebookReportError(
-                "Jupyter notebook support not available. " "Install with: pip install nbformat jupyter"
+                "Jupyter notebook support not available. Install with: pip install nbformat jupyter"
             )
 
         if not PLOTLY_AVAILABLE:
             raise NotebookReportError(
-                "Plotly not available for interactive visualizations. " "Install with: pip install plotly"
+                "Plotly not available for interactive visualizations. Install with: pip install plotly"
             )
 
         self.output_dir = Path(output_dir)
@@ -98,19 +93,19 @@ class MFGNotebookReporter:
         pio.renderers.default = plotly_renderer
 
         # Initialize mathematical visualizer for consistency
-        self.visualizer = MFGMathematicalVisualizer(backend="plotly", enable_latex=enable_latex)
+        self.visualizer = MFGMathematicalVisualizer(backend="plotly")
 
-        self.logger.info(f"MFG Notebook Reporter initialized")
+        self.logger.info("MFG Notebook Reporter initialized")
         self.logger.info(f"Output directory: {self.output_dir}")
         self.logger.info(f"Plotly renderer: {plotly_renderer}")
 
     def create_research_report(
         self,
         title: str,
-        solver_results: Dict[str, Any],
-        problem_config: Dict[str, Any],
-        analysis_metadata: Optional[Dict[str, Any]] = None,
-        custom_sections: Optional[List[Dict[str, Any]]] = None,
+        solver_results: dict[str, Any],
+        problem_config: dict[str, Any],
+        analysis_metadata: dict[str, Any] | None = None,
+        custom_sections: list[dict[str, Any]] | None = None,
     ) -> str:
         """
         Create comprehensive research report notebook.
@@ -175,7 +170,7 @@ class MFGNotebookReporter:
         self.logger.info(f"Research report saved: {notebook_path}")
         return str(notebook_path)
 
-    def _add_title_section(self, nb: nbf.NotebookNode, title: str, metadata: Optional[Dict] = None):
+    def _add_title_section(self, nb: nbf.NotebookNode, title: str, metadata: dict | None = None):
         """Add title and metadata section."""
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -201,7 +196,7 @@ This interactive notebook presents a comprehensive analysis of Mean Field Games 
 
         nb.cells.append(new_markdown_cell(title_markdown))
 
-    def _add_problem_configuration_section(self, nb: nbf.NotebookNode, config: Dict[str, Any]):
+    def _add_problem_configuration_section(self, nb: nbf.NotebookNode, config: dict[str, Any]):
         """Add problem configuration section."""
         config_markdown = """## Problem Configuration
 
@@ -278,7 +273,7 @@ The system is solved using a **particle-collocation approach**:
 """
         nb.cells.append(new_markdown_cell(math_markdown))
 
-    def _add_solver_results_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
+    def _add_solver_results_section(self, nb: nbf.NotebookNode, results: dict[str, Any]):
         """Add solver results section with code to display results."""
         results_markdown = """## Solver Results
 
@@ -302,37 +297,38 @@ print("=" * 50)
 
         if "U" in results:
             results_code += f"""
-print(f"Value function U shape: {results['U'].shape if hasattr(results['U'], 'shape') else 'scalar'}")
+print(f"Value function U shape: {results["U"].shape if hasattr(results["U"], "shape") else "scalar"}")
 if hasattr(results['U'], 'shape'):
-    print(f"U range: [{np.min(results['U']):.6f}, {np.max(results['U']):.6f}]")
-    print(f"U mean: {np.mean(results['U']):.6f}")
+    print(f"U range: [{np.min(results["U"]):.6f}, {np.max(results["U"]):.6f}]")
+    print(f"U mean: {np.mean(results["U"]):.6f}")
 """
 
         if "M" in results:
             results_code += f"""
-print(f"Density M shape: {results['M'].shape if hasattr(results['M'], 'shape') else 'scalar'}")
+print(f"Density M shape: {results["M"].shape if hasattr(results["M"], "shape") else "scalar"}")
 if hasattr(results['M'], 'shape'):
-    print(f"M range: [{np.min(results['M']):.6f}, {np.max(results['M']):.6f}]")
-    print(f"M mean: {np.mean(results['M']):.6f}")
+    print(f"M range: [{{np.min(results['M']):.6f}}, {{np.max(results['M']):.6f}}]")
+    print(f"M mean: {{np.mean(results['M']):.6f}}")
 
     # Check mass conservation
     if len(results['M'].shape) == 2:
+        from numpy import trapezoid
         total_mass = trapezoid(results['M'][-1, :], dx=0.05)  # Approximate dx
         mass_error = abs(total_mass - 1.0)
-        print(f"Final total mass: {total_mass:.8f}")
-        print(f"Mass conservation error: {mass_error:.2e}")
+        print(f"Final total mass: {{total_mass:.8f}}")
+        print(f"Mass conservation error: {{mass_error:.2e}}")
 """
 
         # Store results in notebook variables
         for key, value in results.items():
             if isinstance(value, np.ndarray):
-                results_code += f"\n{key} = np.{repr(value)}"
+                results_code += f"\n{key} = np.{value!r}"
             elif isinstance(value, (dict, list)):
-                results_code += f"\n{key} = {repr(value)}"
+                results_code += f"\n{key} = {value!r}"
 
         nb.cells.append(new_code_cell(results_code))
 
-    def _add_visualization_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
+    def _add_visualization_section(self, nb: nbf.NotebookNode, results: dict[str, Any]):
         """Add interactive visualization section."""
         viz_markdown = """## Interactive Visualizations
 
@@ -526,7 +522,7 @@ if 'M' in locals():
 """
         nb.cells.append(new_code_cell(specialized_viz_code))
 
-    def _add_convergence_analysis_section(self, nb: nbf.NotebookNode, convergence_info: Dict[str, Any]):
+    def _add_convergence_analysis_section(self, nb: nbf.NotebookNode, convergence_info: dict[str, Any]):
         """Add detailed convergence analysis section."""
         conv_markdown = """## Convergence Analysis
 
@@ -543,11 +539,11 @@ print("Convergence Summary:")
 print("=" * 40)
 for key, value in convergence_info.items():
     if isinstance(value, (int, float, bool, str)):
-        print(f"{key}: {value}")
+        print(f"{{key}}: {{value}}")
     elif isinstance(value, list) and len(value) < 10:
-        print(f"{key}: {value}")
+        print(f"{{key}}: {{value}}")
     elif isinstance(value, list):
-        print(f"{key}: [list with {len(value)} elements]")
+        print(f"{{key}}: [list with {{len(value)}} elements]")
 
 # Analyze convergence rate if error history available
 if 'error_history' in convergence_info and len(convergence_info['error_history']) > 2:
@@ -557,12 +553,12 @@ if 'error_history' in convergence_info and len(convergence_info['error_history']
     avg_ratio = np.mean(ratios[ratios > 0])
 
     print(f"\\nConvergence Rate Analysis:")
-    print(f"Average error reduction ratio: {avg_ratio:.4f}")
-    print(f"Estimated convergence rate: {-np.log(avg_ratio):.4f}")
+    print(f"Average error reduction ratio: {{avg_ratio:.4f}}")
+    print(f"Estimated convergence rate: {{-np.log(avg_ratio):.4f}}")
 """
         nb.cells.append(new_code_cell(conv_code))
 
-    def _add_mass_conservation_section(self, nb: nbf.NotebookNode, results: Dict[str, Any]):
+    def _add_mass_conservation_section(self, nb: nbf.NotebookNode, results: dict[str, Any]):
         """Add mass conservation analysis section."""
         mass_markdown = """## Mass Conservation Analysis
 
@@ -617,7 +613,7 @@ else:
 """
         nb.cells.append(new_code_cell(mass_code))
 
-    def _add_custom_section(self, nb: nbf.NotebookNode, section: Dict[str, Any]):
+    def _add_custom_section(self, nb: nbf.NotebookNode, section: dict[str, Any]):
         """Add custom section to notebook."""
         if "title" in section:
             title_markdown = f"## {section['title']}\n\n"
@@ -699,7 +695,7 @@ print("- Vector format: fig.write_image('plot.pdf')")
 """
         nb.cells.append(new_code_cell(export_code))
 
-    def export_to_html(self, notebook_path: str, output_name: Optional[str] = None) -> str:
+    def export_to_html(self, notebook_path: str | Path, output_name: str | None = None) -> str:
         """
         Export notebook to HTML with embedded interactive plots.
 
@@ -717,10 +713,7 @@ print("- Vector format: fig.write_image('plot.pdf')")
             if not notebook_path.exists():
                 raise NotebookReportError(f"Notebook not found: {notebook_path}")
 
-            if output_name:
-                html_path = self.output_dir / f"{output_name}.html"
-            else:
-                html_path = notebook_path.with_suffix(".html")
+            html_path = self.output_dir / f"{output_name}.html" if output_name else notebook_path.with_suffix(".html")
 
             # Execute and convert to HTML
             cmd = [
@@ -743,14 +736,14 @@ print("- Vector format: fig.write_image('plot.pdf')")
             else:
                 raise NotebookReportError(f"HTML export failed: {result.stderr}")
 
-        except ImportError:
-            raise NotebookReportError("Jupyter nbconvert not available. Install with: pip install jupyter")
+        except ImportError as e:
+            raise NotebookReportError("Jupyter nbconvert not available. Install with: pip install jupyter") from e
         except Exception as e:
-            raise NotebookReportError(f"HTML export error: {e}")
+            raise NotebookReportError(f"HTML export error: {e}") from e
 
     def create_comparative_report(
         self,
-        results_dict: Dict[str, Dict[str, Any]],
+        results_dict: dict[str, dict[str, Any]],
         title: str = "Comparative MFG Analysis",
     ) -> str:
         """
@@ -772,7 +765,7 @@ print("- Vector format: fig.write_image('plot.pdf')")
 
 **Generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 **Type:** Comparative Analysis Report
-**Methods Compared:** {', '.join(results_dict.keys())}
+**Methods Compared:** {", ".join(results_dict.keys())}
 
 ---
 
@@ -827,7 +820,7 @@ for i, (method, results) in enumerate(results_dict.items()):
         # Final value function
         final_U = results['U'][-1, :] if len(results['U'].shape) > 1 else results['U']
         fig.add_trace(
-            go.Scatter(x=x_grid, y=final_U, name=f'{method} u(T,x)',
+            go.Scatter(x=x_grid, y=final_U, name=f'{{method}} u(T,x)',
                       line=dict(color=color, width=2)),
             row=1, col=1
         )
@@ -836,7 +829,7 @@ for i, (method, results) in enumerate(results_dict.items()):
         if 'M' in results:
             final_M = results['M'][-1, :] if len(results['M'].shape) > 1 else results['M']
             fig.add_trace(
-                go.Scatter(x=x_grid, y=final_M, name=f'{method} m(T,x)',
+                go.Scatter(x=x_grid, y=final_M, name=f'{{method}} m(T,x)',
                           line=dict(color=color, width=2, dash='dash')),
                 row=1, col=2
             )
@@ -845,7 +838,7 @@ for i, (method, results) in enumerate(results_dict.items()):
     if 'convergence_info' in results and 'error_history' in results['convergence_info']:
         errors = results['convergence_info']['error_history']
         fig.add_trace(
-            go.Scatter(y=errors, name=f'{method} convergence',
+            go.Scatter(y=errors, name=f'{{method}} convergence',
                       line=dict(color=color, width=2)),
             row=2, col=1
         )
@@ -857,15 +850,15 @@ fig.show()
 # Summary statistics
 print("\\nMethod Comparison Summary:")
 for method, results in results_dict.items():
-    print(f"\\n{method}:")
+    print(f"\\n{{method}}:")
     if 'convergence_info' in results:
         conv_info = results['convergence_info']
         if 'converged' in conv_info:
-            print(f"  Converged: {conv_info['converged']}")
+            print(f"  Converged: {{conv_info['converged']}}")
         if 'iterations' in conv_info:
-            print(f"  Iterations: {conv_info['iterations']}")
+            print(f"  Iterations: {{conv_info['iterations']}}")
         if 'final_error' in conv_info:
-            print(f"  Final error: {conv_info['final_error']:.2e}")
+            print(f"  Final error: {{conv_info['final_error']:.2e}}")
 """
 
         nb.cells.append(new_code_cell(comp_viz_code))
@@ -910,11 +903,11 @@ Based on the comparative analysis, recommendations for different use cases:
 # Convenience functions for easy usage
 def create_mfg_research_report(
     title: str,
-    solver_results: Dict[str, Any],
-    problem_config: Dict[str, Any],
+    solver_results: dict[str, Any],
+    problem_config: dict[str, Any],
     output_dir: str = "reports",
     export_html: bool = True,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Convenience function to create a complete MFG research report.
 
@@ -947,11 +940,11 @@ def create_mfg_research_report(
 
 
 def create_comparative_analysis(
-    results_dict: Dict[str, Dict[str, Any]],
+    results_dict: dict[str, dict[str, Any]],
     title: str = "MFG Method Comparison",
     output_dir: str = "reports",
     export_html: bool = True,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Convenience function to create comparative analysis report.
 

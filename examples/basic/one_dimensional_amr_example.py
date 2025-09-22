@@ -6,7 +6,6 @@ Demonstrates 1D AMR capabilities for MFG problems, completing the
 AMR architecture consistency across all dimensions.
 """
 
-from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +17,7 @@ from mfg_pde import ExampleMFGProblem
 from mfg_pde.factory import create_amr_solver
 
 # Import 1D domain and AMR components
-from mfg_pde.geometry import Domain1D, dirichlet_bc, periodic_bc
+from mfg_pde.geometry import Domain1D, periodic_bc
 from mfg_pde.geometry.one_dimensional_amr import OneDimensionalErrorEstimator, create_1d_amr_mesh
 
 
@@ -32,7 +31,7 @@ def create_1d_test_problem():
 
     # Create example problem
     problem = ExampleMFGProblem(
-        T=1.0, xmin=domain.xmin, xmax=domain.xmax, Nx=50, Nt=20, lam=1.0, sigma=0.1, boundary_condition='periodic'
+        T=1.0, xmin=domain.xmin, xmax=domain.xmax, Nx=50, Nt=20, lam=1.0, sigma=0.1, boundary_condition="periodic"
     )
 
     # Add domain reference for AMR
@@ -71,7 +70,7 @@ def create_test_solution_with_sharp_features(amr_mesh):
     print(f"  U range: [{np.min(U):.3f}, {np.max(U):.3f}]")
     print(f"  M range: [{np.min(M):.3f}, {np.max(M):.3f}]")
 
-    return {'U': U, 'M': M}
+    return {"U": U, "M": M}
 
 
 def demonstrate_1d_amr_directly():
@@ -111,14 +110,14 @@ def demonstrate_1d_amr_directly():
         print(f"    Max level: {stats['max_level']}")
 
         # Update solution for new mesh
-        if stats['total_refined'] > 0:
+        if stats["total_refined"] > 0:
             solution_data = create_test_solution_with_sharp_features(amr_mesh)
 
     # Step 5: Get final statistics
     print("Step 5: Final mesh analysis...")
     final_stats = amr_mesh.get_mesh_statistics()
 
-    print(f"  Final Statistics:")
+    print("  Final Statistics:")
     print(f"    Total intervals: {final_stats['total_intervals']}")
     print(f"    Leaf intervals: {final_stats['leaf_intervals']}")
     print(f"    Max refinement level: {final_stats['max_level']}")
@@ -173,7 +172,7 @@ def create_1d_amr_visualization(amr_mesh, solution_data, stats):
 
     try:
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-        fig.suptitle('1D Adaptive Mesh Refinement Results', fontsize=16)
+        fig.suptitle("1D Adaptive Mesh Refinement Results", fontsize=16)
 
         # Get grid data
         grid_points, interval_widths = amr_mesh.get_grid_points()
@@ -187,41 +186,41 @@ def create_1d_amr_visualization(amr_mesh, solution_data, stats):
             levels.append(interval.level)
             positions.append(interval.center)
 
-        scatter = ax1.scatter(positions, levels, c=levels, cmap='viridis', s=50, alpha=0.7, edgecolors='black')
-        ax1.set_xlabel('Position x')
-        ax1.set_ylabel('Refinement Level')
-        ax1.set_title('Adaptive Mesh Structure\n(colored by refinement level)')
+        scatter = ax1.scatter(positions, levels, c=levels, cmap="viridis", s=50, alpha=0.7, edgecolors="black")
+        ax1.set_xlabel("Position x")
+        ax1.set_ylabel("Refinement Level")
+        ax1.set_title("Adaptive Mesh Structure\n(colored by refinement level)")
         ax1.grid(True, alpha=0.3)
         plt.colorbar(scatter, ax=ax1)
 
         # Plot 2: Solution field U
         ax2 = axes[0, 1]
-        ax2.plot(grid_points, solution_data['U'], 'b-o', markersize=4, linewidth=2)
-        ax2.set_xlabel('Position x')
-        ax2.set_ylabel('Value Function U')
-        ax2.set_title('Value Function U\n(sharp features drive refinement)')
+        ax2.plot(grid_points, solution_data["U"], "b-o", markersize=4, linewidth=2)
+        ax2.set_xlabel("Position x")
+        ax2.set_ylabel("Value Function U")
+        ax2.set_title("Value Function U\n(sharp features drive refinement)")
         ax2.grid(True, alpha=0.3)
 
         # Plot 3: Solution field M
         ax3 = axes[1, 0]
-        ax3.plot(grid_points, solution_data['M'], 'r-o', markersize=4, linewidth=2)
-        ax3.set_xlabel('Position x')
-        ax3.set_ylabel('Density Function M')
-        ax3.set_title('Density Function M\n(different sharp feature location)')
+        ax3.plot(grid_points, solution_data["M"], "r-o", markersize=4, linewidth=2)
+        ax3.set_xlabel("Position x")
+        ax3.set_ylabel("Density Function M")
+        ax3.set_title("Density Function M\n(different sharp feature location)")
         ax3.grid(True, alpha=0.3)
 
         # Plot 4: Interval widths showing adaptation
         ax4 = axes[1, 1]
-        ax4.bar(grid_points, interval_widths, width=interval_widths * 0.8, alpha=0.7, color='skyblue', edgecolor='navy')
-        ax4.set_xlabel('Position x')
-        ax4.set_ylabel('Interval Width')
-        ax4.set_title('Interval Widths\n(smaller where refinement occurred)')
+        ax4.bar(grid_points, interval_widths, width=interval_widths * 0.8, alpha=0.7, color="skyblue", edgecolor="navy")
+        ax4.set_xlabel("Position x")
+        ax4.set_ylabel("Interval Width")
+        ax4.set_title("Interval Widths\n(smaller where refinement occurred)")
         ax4.grid(True, alpha=0.3)
 
         plt.tight_layout()
 
         # Save plot
-        plt.savefig('1d_amr_example.png', dpi=150, bbox_inches='tight')
+        plt.savefig("1d_amr_example.png", dpi=150, bbox_inches="tight")
         print("  Visualization saved to '1d_amr_example.png'")
 
         # Show if possible

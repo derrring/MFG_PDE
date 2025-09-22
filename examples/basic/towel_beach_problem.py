@@ -56,7 +56,7 @@ class TowelBeachProblem(ExampleMFGProblem):
         self.good_weather_bonus = good_weather_bonus
         self.crowding_penalty = crowding_penalty
 
-        logger.info(f"Created Towel Beach Problem:")
+        logger.info("Created Towel Beach Problem:")
         logger.info(f"  Beach capacity: {beach_capacity:.1%}")
         logger.info(f"  Good weather bonus: {good_weather_bonus}")
         logger.info(f"  Crowding penalty: {crowding_penalty}")
@@ -160,7 +160,7 @@ def solve_beach_problem_variants():
 
         # Create problem
         problem = TowelBeachProblem(
-            T=1.0, Nx=100, Nt=50, beach_capacity=scenario['capacity'], good_weather_bonus=1.0, crowding_penalty=3.0
+            T=1.0, Nx=100, Nt=50, beach_capacity=scenario["capacity"], good_weather_bonus=1.0, crowding_penalty=3.0
         )
 
         # Solve with fast solver
@@ -176,15 +176,15 @@ def solve_beach_problem_variants():
         # Calculate average satisfaction
         avg_satisfaction = -np.mean(U[-1, :])  # Higher value function = lower cost
 
-        results[scenario['name']] = {
-            'problem': problem,
-            'solution': (U, M),
-            'info': info,
-            'final_attendance': final_attendance,
-            'peak_attendance': peak_attendance,
-            'satisfaction': avg_satisfaction,
-            'capacity': scenario['capacity'],
-            'description': scenario['description'],
+        results[scenario["name"]] = {
+            "problem": problem,
+            "solution": (U, M),
+            "info": info,
+            "final_attendance": final_attendance,
+            "peak_attendance": peak_attendance,
+            "satisfaction": avg_satisfaction,
+            "capacity": scenario["capacity"],
+            "description": scenario["description"],
         }
 
         logger.info(f"  Final attendance: {final_attendance:.1%}")
@@ -200,20 +200,20 @@ def create_beach_visualization(results):
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     fig.suptitle(
-        'Towel on the Beach Problem: Coordination Dynamics with Different Beach Capacities',
+        "Towel on the Beach Problem: Coordination Dynamics with Different Beach Capacities",
         fontsize=16,
-        fontweight='bold',
+        fontweight="bold",
     )
 
     # Color scheme
-    colors = ['navy', 'darkgreen', 'darkred']
+    colors = ["navy", "darkgreen", "darkred"]
     scenario_names = list(results.keys())
 
     # Plot 1: Attendance Evolution Over Time
     ax1 = axes[0, 0]
     for i, (name, result) in enumerate(results.items()):
-        problem = result['problem']
-        U, M = result['solution']
+        problem = result["problem"]
+        U, M = result["solution"]
 
         # Calculate attendance over time
         attendance_over_time = [trapezoid(M[t, :], dx=problem.Dx) for t in range(problem.Nt)]
@@ -226,58 +226,58 @@ def create_beach_visualization(results):
             linewidth=2,
             label=f"{name} (Cap: {result['capacity']:.1%})",
         )
-        ax1.axhline(y=result['capacity'], color=colors[i], linestyle='--', alpha=0.7)
+        ax1.axhline(y=result["capacity"], color=colors[i], linestyle="--", alpha=0.7)
 
-    ax1.set_xlabel('Time')
-    ax1.set_ylabel('Beach Attendance (Fraction)')
-    ax1.set_title('Beach Attendance Evolution')
+    ax1.set_xlabel("Time")
+    ax1.set_ylabel("Beach Attendance (Fraction)")
+    ax1.set_title("Beach Attendance Evolution")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     # Plot 2: Final Population Distributions
     ax2 = axes[0, 1]
     for i, (name, result) in enumerate(results.items()):
-        problem = result['problem']
-        U, M = result['solution']
+        problem = result["problem"]
+        U, M = result["solution"]
 
         ax2.plot(problem.xSpace, M[-1, :], color=colors[i], linewidth=2, label=f"{name}")
 
-    ax2.set_xlabel('Decision Tendency (0=Stay, 1=Go)')
-    ax2.set_ylabel('Population Density')
-    ax2.set_title('Final Population Distribution')
+    ax2.set_xlabel("Decision Tendency (0=Stay, 1=Go)")
+    ax2.set_ylabel("Population Density")
+    ax2.set_title("Final Population Distribution")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
     # Plot 3: Value Functions
     ax3 = axes[0, 2]
     for i, (name, result) in enumerate(results.items()):
-        problem = result['problem']
-        U, M = result['solution']
+        problem = result["problem"]
+        U, M = result["solution"]
 
         # Negative value function represents cost-to-go
         ax3.plot(problem.xSpace, -U[-1, :], color=colors[i], linewidth=2, label=f"{name}")
 
-    ax3.set_xlabel('Decision Tendency (0=Stay, 1=Go)')
-    ax3.set_ylabel('Expected Satisfaction')
-    ax3.set_title('Final Value Functions (Satisfaction)')
+    ax3.set_xlabel("Decision Tendency (0=Stay, 1=Go)")
+    ax3.set_ylabel("Expected Satisfaction")
+    ax3.set_title("Final Value Functions (Satisfaction)")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
     # Plot 4: Capacity vs. Outcomes Bar Chart
     ax4 = axes[1, 0]
-    capacities = [result['capacity'] for result in results.values()]
-    final_attendances = [result['final_attendance'] for result in results.values()]
-    peak_attendances = [result['peak_attendance'] for result in results.values()]
+    capacities = [result["capacity"] for result in results.values()]
+    final_attendances = [result["final_attendance"] for result in results.values()]
+    peak_attendances = [result["peak_attendance"] for result in results.values()]
 
     x_pos = np.arange(len(scenario_names))
     width = 0.35
 
-    ax4.bar(x_pos - width / 2, capacities, width, label='Beach Capacity', color='lightblue', alpha=0.7)
-    ax4.bar(x_pos + width / 2, final_attendances, width, label='Final Attendance', color='orange', alpha=0.7)
+    ax4.bar(x_pos - width / 2, capacities, width, label="Beach Capacity", color="lightblue", alpha=0.7)
+    ax4.bar(x_pos + width / 2, final_attendances, width, label="Final Attendance", color="orange", alpha=0.7)
 
-    ax4.set_xlabel('Beach Scenario')
-    ax4.set_ylabel('Fraction of Population')
-    ax4.set_title('Capacity vs. Actual Attendance')
+    ax4.set_xlabel("Beach Scenario")
+    ax4.set_ylabel("Fraction of Population")
+    ax4.set_title("Capacity vs. Actual Attendance")
     ax4.set_xticks(x_pos)
     ax4.set_xticklabels(scenario_names)
     ax4.legend()
@@ -285,23 +285,23 @@ def create_beach_visualization(results):
 
     # Plot 5: Coordination Success Analysis
     ax5 = axes[1, 1]
-    satisfactions = [result['satisfaction'] for result in results.values()]
+    satisfactions = [result["satisfaction"] for result in results.values()]
     coordination_success = []
 
     for result in results.values():
         # Coordination success: how close final attendance is to capacity
-        success = 1 - abs(result['final_attendance'] - result['capacity'])
+        success = 1 - abs(result["final_attendance"] - result["capacity"])
         coordination_success.append(max(0, success))
 
-    ax5.bar(scenario_names, coordination_success, color=['lightcoral', 'lightgreen', 'lightsalmon'])
-    ax5.set_xlabel('Beach Scenario')
-    ax5.set_ylabel('Coordination Success (0-1)')
-    ax5.set_title('Coordination Effectiveness')
+    ax5.bar(scenario_names, coordination_success, color=["lightcoral", "lightgreen", "lightsalmon"])
+    ax5.set_xlabel("Beach Scenario")
+    ax5.set_ylabel("Coordination Success (0-1)")
+    ax5.set_title("Coordination Effectiveness")
     ax5.grid(True, alpha=0.3)
 
     # Plot 6: Problem Description and Key Insights
     ax6 = axes[1, 2]
-    ax6.axis('off')
+    ax6.axis("off")
 
     insights_text = """
 TOWEL ON THE BEACH PROBLEM
@@ -331,7 +331,7 @@ If everyone expects crowded beach → empty beach
         insights_text,
         transform=ax6.transAxes,
         fontsize=10,
-        verticalalignment='top',
+        verticalalignment="top",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgray", alpha=0.8),
     )
 
@@ -341,7 +341,7 @@ If everyone expects crowded beach → empty beach
     output_dir = Path("examples/basic/outputs")
     output_dir.mkdir(exist_ok=True)
     output_path = output_dir / "towel_beach_problem_analysis.png"
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     logger.info(f"Beach problem visualization saved to: {output_path}")
 
     return output_path
@@ -377,7 +377,7 @@ def main():
         print(f"  Peak Attendance: {result['peak_attendance']:.1%}")
 
         # Coordination analysis
-        capacity_match = abs(result['final_attendance'] - result['capacity'])
+        capacity_match = abs(result["final_attendance"] - result["capacity"])
         if capacity_match < 0.1:
             coordination = "Excellent"
         elif capacity_match < 0.2:

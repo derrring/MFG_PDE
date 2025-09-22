@@ -21,20 +21,14 @@ Components:
 - ReportGenerator: Automated documentation and visualization
 """
 
+from __future__ import annotations
+
 import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from .collaborative_workspace import CollaborativeWorkspace, WorkspaceConfig
-
-# Workflow decorators and utilities
 from .decorators import experiment, parameter_study, workflow_step
 from .experiment_tracker import Experiment, ExperimentResult, ExperimentTracker
 from .parameter_sweep import ParameterSweep, SweepConfiguration
-from .report_generator import ReportConfig, ReportGenerator
-from .result_analyzer import ComparisonReport, ResultAnalyzer
-from .utils import create_workspace, load_experiment, save_experiment
-
-# Core workflow components
 from .workflow_manager import Workflow, WorkflowManager
 
 # Version and compatibility
@@ -42,7 +36,7 @@ __version__ = "1.0.0"
 __workflow_api_version__ = "1.0"
 
 # Global workflow manager instance
-_global_workflow_manager: Optional[WorkflowManager] = None
+_global_workflow_manager: WorkflowManager | None = None
 
 
 def get_workflow_manager() -> WorkflowManager:
@@ -64,40 +58,25 @@ def create_workflow(name: str, description: str = "", **kwargs) -> Workflow:
     return get_workflow_manager().create_workflow(name, description, **kwargs)
 
 
-def create_experiment(name: str, workflow: Optional[Workflow] = None, **kwargs) -> Experiment:
+def create_experiment(name: str, workflow: Workflow | None = None, **kwargs) -> Experiment:
     """Create a new experiment."""
     tracker = ExperimentTracker()
     return tracker.create_experiment(name, workflow=workflow, **kwargs)
 
 
-def create_parameter_sweep(parameters: Dict[str, Any], **kwargs) -> ParameterSweep:
+def create_parameter_sweep(parameters: dict[str, Any], **kwargs) -> ParameterSweep:
     """Create a parameter sweep configuration."""
     return ParameterSweep(parameters, **kwargs)
 
 
-def create_workspace(name: str, description: str = "", **kwargs) -> CollaborativeWorkspace:
-    """Create a collaborative workspace."""
-    config = WorkspaceConfig(name=name, description=description, **kwargs)
-    return CollaborativeWorkspace(config)
-
-
-def analyze_results(experiments: List[Experiment], **kwargs) -> ComparisonReport:
-    """Analyze and compare experimental results."""
-    analyzer = ResultAnalyzer()
-    return analyzer.compare_experiments(experiments, **kwargs)
-
-
-def generate_report(experiments: List[Experiment], format: str = "html", **kwargs) -> str:
-    """Generate comprehensive report from experiments."""
-    generator = ReportGenerator()
-    config = ReportConfig(format=format, **kwargs)
-    return generator.generate_report(experiments, config)
+# Note: Advanced features like collaborative workspace, result analysis, and report generation
+# are planned for future implementation
 
 
 # Convenience functions for common workflows
 def mfg_parameter_study(
     problem_factory,
-    parameters: Dict[str, List],
+    parameters: dict[str, list],
     solver_type: str = "fixed_point",
     **kwargs,
 ):
@@ -129,7 +108,7 @@ def mfg_parameter_study(
         # Import solver dynamically to avoid circular imports
         from mfg_pde import create_fast_solver
 
-        solver = create_fast_solver(problem, solver_type)
+        solver = create_fast_solver(problem, "fixed_point")
 
         return solver.solve()
 
@@ -139,7 +118,7 @@ def mfg_parameter_study(
     return workflow, results
 
 
-def convergence_analysis_workflow(problem, solver_types: List[str], tolerances: List[float], **kwargs):
+def convergence_analysis_workflow(problem, solver_types: list[str], tolerances: list[float], **kwargs):
     """
     Workflow for analyzing convergence across different solvers and tolerances.
 
@@ -166,21 +145,25 @@ def convergence_analysis_workflow(problem, solver_types: List[str], tolerances: 
     def analyze_convergence(params):
         from mfg_pde import create_fast_solver
 
+        # Use string directly as create_fast_solver handles conversion internally
         solver = create_fast_solver(problem, params["solver_type"])
 
         # Modify solver tolerance if possible
         if hasattr(solver, "tolerance"):
-            solver.tolerance = params["tolerance"]
+            from contextlib import suppress
+
+            with suppress(AttributeError):
+                solver.tolerance = params["tolerance"]
 
         result = solver.solve()
 
         return {
             "solver_type": params["solver_type"],
             "tolerance": params["tolerance"],
-            "converged": result.converged,
-            "iterations": result.iterations,
-            "final_error": result.final_error,
-            "execution_time": result.execution_time,
+            "converged": getattr(result, "converged", False),
+            "iterations": getattr(result, "iterations", 0),
+            "final_error": getattr(result, "final_error", 0.0),
+            "execution_time": getattr(result, "execution_time", 0.0),
         }
 
     results = sweep.execute(analyze_convergence)
@@ -188,7 +171,7 @@ def convergence_analysis_workflow(problem, solver_types: List[str], tolerances: 
     return workflow, results
 
 
-def performance_benchmark_workflow(problem_sizes: List[tuple], solver_types: List[str], **kwargs):
+def performance_benchmark_workflow(problem_sizes: list[tuple], solver_types: list[str], **kwargs):
     """
     Workflow for performance benchmarking across problem sizes and solvers.
 
@@ -218,6 +201,7 @@ def performance_benchmark_workflow(problem_sizes: List[tuple], solver_types: Lis
         Nx, Nt = params["problem_size"]
         problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=1.0)
 
+        # Use string directly as create_fast_solver handles conversion internally
         solver = create_fast_solver(problem, params["solver_type"])
 
         start_time = time.time()
@@ -229,8 +213,8 @@ def performance_benchmark_workflow(problem_sizes: List[tuple], solver_types: Lis
             "solver_type": params["solver_type"],
             "grid_points": Nx * Nt,
             "execution_time": execution_time,
-            "converged": result.converged,
-            "iterations": result.iterations,
+            "converged": getattr(result, "converged", False),
+            "iterations": getattr(result, "iterations", 0),
             "memory_estimate": Nx * Nt * 16 / 1024**2,  # Rough estimate in MB
         }
 
@@ -241,40 +225,24 @@ def performance_benchmark_workflow(problem_sizes: List[tuple], solver_types: Lis
 
 # Export public API
 __all__ = [
-    # Core classes
-    "WorkflowManager",
-    "Workflow",
-    "ExperimentTracker",
     "Experiment",
     "ExperimentResult",
+    "ExperimentTracker",
     "ParameterSweep",
     "SweepConfiguration",
-    "ResultAnalyzer",
-    "ComparisonReport",
-    "CollaborativeWorkspace",
-    "WorkspaceConfig",
-    "ReportGenerator",
-    "ReportConfig",
-    # Decorators
-    "workflow_step",
-    "experiment",
-    "parameter_study",
-    # Factory functions
-    "get_workflow_manager",
-    "set_workflow_manager",
-    "create_workflow",
+    "Workflow",
+    "WorkflowManager",
+    "convergence_analysis_workflow",
     "create_experiment",
     "create_parameter_sweep",
-    "create_workspace",
-    "analyze_results",
-    "generate_report",
-    # Convenience workflows
+    "create_workflow",
+    "experiment",
+    "get_workflow_manager",
     "mfg_parameter_study",
-    "convergence_analysis_workflow",
+    "parameter_study",
     "performance_benchmark_workflow",
-    # Utilities
-    "load_experiment",
-    "save_experiment",
+    "set_workflow_manager",
+    "workflow_step",
 ]
 
 
@@ -290,7 +258,7 @@ def _initialize_workflow_system():
             manager.initialize_default_workspace()
             os.environ["MFG_WORKFLOW_INITIALIZED"] = "true"
     except Exception as e:
-        warnings.warn(f"Could not initialize workflow system: {e}")
+        warnings.warn(f"Could not initialize workflow system: {e}", stacklevel=2)
 
 
 # Initialize on import

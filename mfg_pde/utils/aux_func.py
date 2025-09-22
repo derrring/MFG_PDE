@@ -1,6 +1,6 @@
-# mfg_pde/utils/aux_func.py
-from typing import Union
+from __future__ import annotations
 
+# mfg_pde/utils/aux_func.py
 import numpy as np
 
 # Original definition was -np.minimum(x,0), which is equivalent to np.maximum(-x,0)
@@ -9,7 +9,7 @@ import numpy as np
 # If p_bwd = (U[i]-U[i-1])/Dx, then ppart(p_bwd) is for flow to the left if p_bwd > 0.
 
 
-def ppart(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def ppart(x: float | np.ndarray) -> float | np.ndarray:
     """
     Positive part of x.
     Works element-wise for NumPy arrays.
@@ -17,7 +17,7 @@ def ppart(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return np.maximum(x, 0.0)
 
 
-def npart(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def npart(x: float | np.ndarray) -> float | np.ndarray:
     """
     Negative part of x, defined as max(0, -x).
     This means (npart(x))^2 is equivalent to (x^-)^2 where x^- = min(0, x).

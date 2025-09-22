@@ -17,10 +17,10 @@ class MockMFGProblem:
 
     def H(self, x_idx, m_at_x, p_values, t_idx):
         """Simple quadratic Hamiltonian."""
-        if 'forward' in p_values:
-            p = p_values['forward']
-        elif 'x' in p_values:
-            p = p_values['x']
+        if "forward" in p_values:
+            p = p_values["forward"]
+        elif "x" in p_values:
+            p = p_values["x"]
         else:
             p = 0.0
         return 0.5 * p**2
@@ -70,13 +70,13 @@ class TestGFDMHJBSolver:
         for i in range(self.solver.n_points):
             assert i in self.solver.neighborhoods
             neighborhood = self.solver.neighborhoods[i]
-            assert 'indices' in neighborhood
-            assert 'points' in neighborhood
-            assert 'distances' in neighborhood
-            assert 'size' in neighborhood
-            assert neighborhood['size'] > 0
+            assert "indices" in neighborhood
+            assert "points" in neighborhood
+            assert "distances" in neighborhood
+            assert "size" in neighborhood
+            assert neighborhood["size"] > 0
             # Point should be in its own neighborhood
-            assert i in neighborhood['indices']
+            assert i in neighborhood["indices"]
 
     def test_multi_index_generation(self):
         """Test multi-index set generation."""
@@ -100,12 +100,12 @@ class TestGFDMHJBSolver:
         for i in range(self.solver.n_points):
             if self.solver.taylor_matrices[i] is not None:
                 taylor_data = self.solver.taylor_matrices[i]
-                assert 'A' in taylor_data
-                assert 'W' in taylor_data
-                assert 'AtW' in taylor_data
+                assert "A" in taylor_data
+                assert "W" in taylor_data
+                assert "AtW" in taylor_data
 
-                A = taylor_data['A']
-                W = taylor_data['W']
+                A = taylor_data["A"]
+                W = taylor_data["W"]
                 assert A.shape[1] == len(self.solver.multi_indices)
                 assert W.shape[0] == W.shape[1]  # Square diagonal matrix
                 break
@@ -133,7 +133,7 @@ class TestGFDMHJBSolver:
         """Test Dirichlet boundary conditions."""
         # Create solver with boundary conditions
         boundary_indices = np.array([0, 9])  # First and last points
-        boundary_conditions = {'type': 'dirichlet', 'value': 1.0}
+        boundary_conditions = {"type": "dirichlet", "value": 1.0}
 
         solver_with_bc = GFDMHJBSolver(
             problem=self.problem,

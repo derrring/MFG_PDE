@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from ..geometry import BoundaryConditions
 from .lagrangian_mfg_problem import (
     LagrangianComponents,

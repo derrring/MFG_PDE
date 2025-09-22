@@ -5,19 +5,38 @@ High-performance backend using JAX for GPU acceleration, automatic differentiati
 and JIT compilation.
 """
 
-try:
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # For type checking, always assume JAX is available
     import jax
     import jax.numpy as jnp
     from jax import device_get, device_put, grad, jit, vmap
     from jax.scipy.integrate import trapezoid as jax_trapezoid
 
     JAX_AVAILABLE = True
-except ImportError:
-    JAX_AVAILABLE = False
-    jax = None
-    jnp = None
+else:
+    # At runtime, handle optional JAX import
+    try:
+        import jax
+        import jax.numpy as jnp
+        from jax import device_get, device_put, grad, jit, vmap
+        from jax.scipy.integrate import trapezoid as jax_trapezoid
 
-from typing import Any, Optional, Tuple, Union
+        JAX_AVAILABLE = True
+    except ImportError:
+        JAX_AVAILABLE = False
+        jax = None  # type: ignore
+        jnp = None  # type: ignore
+        device_get = None  # type: ignore
+        device_put = None  # type: ignore
+        grad = None  # type: ignore
+        jit = None  # type: ignore
+        vmap = None  # type: ignore
+        jax_trapezoid = None  # type: ignore
+
 
 import numpy as np
 
@@ -293,7 +312,7 @@ class JAXBackend(BaseBackend):
             "available_devices": [str(d) for d in jax.devices()],
         }
 
-    def memory_usage(self) -> Optional[dict]:
+    def memory_usage(self) -> dict | None:
         """Get GPU memory usage if available."""
         try:
             if "gpu" in str(self.target_device).lower():

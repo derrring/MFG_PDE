@@ -36,7 +36,7 @@ Parameters:
 """
 
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -90,7 +90,13 @@ class ElFarolBarMFG(MFGProblem):
 
         # Initialize base MFG problem
         super().__init__(
-            xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=decision_volatility, **kwargs  # Decision uncertainty
+            xmin=xmin,
+            xmax=xmax,
+            Nx=Nx,
+            T=T,
+            Nt=Nt,
+            sigma=decision_volatility,
+            **kwargs,  # Decision uncertainty
         )
 
         # Store grid for use in H and dH_dm methods
@@ -212,8 +218,8 @@ class ElFarolBarMFG(MFGProblem):
         self,
         x_idx: int,
         m_at_x: float,
-        p_values: Dict[str, float],
-        t_idx: Optional[int] = None,
+        p_values: dict[str, float],
+        t_idx: int | None = None,
     ) -> float:
         """
         Hamiltonian function for El Farol Bar Problem.
@@ -239,7 +245,7 @@ class ElFarolBarMFG(MFGProblem):
         x_val = self.x_grid[x_idx]
 
         # Get derivative of value function (costate)
-        p_x = p_values.get('p_x', 0.0)
+        p_x = p_values.get("p_x", 0.0)
 
         # Optimal control: u* = -p_x (minimizing quadratic cost + linear coupling)
         u_optimal = -p_x
@@ -270,8 +276,8 @@ class ElFarolBarMFG(MFGProblem):
         self,
         x_idx: int,
         m_at_x: float,
-        p_values: Dict[str, float],
-        t_idx: Optional[int] = None,
+        p_values: dict[str, float],
+        t_idx: int | None = None,
     ) -> float:
         """
         Derivative of Hamiltonian with respect to population density.
@@ -312,7 +318,7 @@ class ElFarolBarMFG(MFGProblem):
 
         return crowd_derivative
 
-    def analyze_equilibrium(self, U: np.ndarray, M: np.ndarray) -> Dict[str, Any]:
+    def analyze_equilibrium(self, U: np.ndarray, M: np.ndarray) -> dict[str, Any]:
         """
         Analyze the equilibrium solution for economic insights.
 
@@ -341,29 +347,29 @@ class ElFarolBarMFG(MFGProblem):
             attendance = trapezoid(x_grid * M[t_idx, :], x_grid)
             attendance_rates.append(attendance)
 
-        analysis['attendance_evolution'] = attendance_rates
-        analysis['final_attendance'] = attendance_rates[-1]
-        analysis['capacity_utilization'] = attendance_rates[-1] / self.bar_capacity
+        analysis["attendance_evolution"] = attendance_rates
+        analysis["final_attendance"] = attendance_rates[-1]
+        analysis["capacity_utilization"] = attendance_rates[-1] / self.bar_capacity
 
         # Convergence to equilibrium
         attendance_variance = np.var(attendance_rates[-10:])  # Last 10 time steps
-        analysis['equilibrium_stability'] = attendance_variance
-        analysis['converged'] = attendance_variance < 1e-4
+        analysis["equilibrium_stability"] = attendance_variance
+        analysis["converged"] = attendance_variance < 1e-4
 
         # Spatial distribution analysis
         final_density = M[-1, :]
         peak_location = x_grid[np.argmax(final_density)]
-        analysis['peak_decision_tendency'] = peak_location
-        analysis['density_spread'] = np.std(final_density)
+        analysis["peak_decision_tendency"] = peak_location
+        analysis["density_spread"] = np.std(final_density)
 
         # Economic efficiency
         optimal_attendance = self.bar_capacity
         efficiency = 1.0 - abs(attendance_rates[-1] - optimal_attendance) / optimal_attendance
-        analysis['efficiency'] = efficiency
+        analysis["efficiency"] = efficiency
 
         # Herding behavior indicator
         final_mass_center = trapezoid(x_grid * final_density, x_grid)
-        analysis['herding_indicator'] = abs(final_mass_center - 0.5)  # Deviation from uniform
+        analysis["herding_indicator"] = abs(final_mass_center - 0.5)  # Deviation from uniform
 
         self.logger.info(
             f"Equilibrium Analysis: Attendance={attendance_rates[-1]:.3f}, "
@@ -375,7 +381,7 @@ class ElFarolBarMFG(MFGProblem):
 
 def solve_el_farol_bar_problem(
     bar_capacity: float = 0.6, crowd_aversion: float = 2.0, solver_type: str = "fixed_point", visualize: bool = True
-) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
     """
     Solve the El Farol Bar Problem using Mean Field Games.
 
@@ -428,8 +434,8 @@ def solve_el_farol_bar_problem(
 
     # Analyze the solution
     analysis = problem.analyze_equilibrium(U, M)
-    analysis['solve_time'] = solve_time
-    analysis['convergence_achieved'] = result.convergence_achieved
+    analysis["solve_time"] = solve_time
+    analysis["convergence_achieved"] = result.convergence_achieved
 
     # Create visualizations
     if visualize:
@@ -439,7 +445,7 @@ def solve_el_farol_bar_problem(
 
 
 def create_el_farol_visualizations(
-    problem: ElFarolBarMFG, U: np.ndarray, M: np.ndarray, analysis: Dict[str, Any]
+    problem: ElFarolBarMFG, U: np.ndarray, M: np.ndarray, analysis: dict[str, Any]
 ) -> None:
     """
     Create comprehensive visualizations for El Farol Bar Problem.
@@ -466,62 +472,62 @@ def create_el_farol_visualizations(
 
     # Create comprehensive figure
     fig = plt.figure(figsize=(16, 12))
-    fig.suptitle('El Farol Bar Problem - Mean Field Games Analysis', fontsize=16, fontweight='bold')
+    fig.suptitle("El Farol Bar Problem - Mean Field Games Analysis", fontsize=16, fontweight="bold")
 
     # 1. Population Density Evolution
     ax1 = plt.subplot(2, 3, 1)
-    contour = ax1.contourf(X, T, M, levels=20, cmap='viridis', alpha=0.8)
-    ax1.set_xlabel('Decision Tendency x')
-    ax1.set_ylabel('Time t')
-    ax1.set_title('Population Density m(t,x)')
-    plt.colorbar(contour, ax=ax1, label='Density')
+    contour = ax1.contourf(X, T, M, levels=20, cmap="viridis", alpha=0.8)
+    ax1.set_xlabel("Decision Tendency x")
+    ax1.set_ylabel("Time t")
+    ax1.set_title("Population Density m(t,x)")
+    plt.colorbar(contour, ax=ax1, label="Density")
 
     # Add capacity line
-    ax1.axvline(x=problem.bar_capacity, color='red', linestyle='--', label=f'Capacity ({problem.bar_capacity})')
+    ax1.axvline(x=problem.bar_capacity, color="red", linestyle="--", label=f"Capacity ({problem.bar_capacity})")
     ax1.legend()
 
     # 2. Value Function Evolution
     ax2 = plt.subplot(2, 3, 2)
-    contour2 = ax2.contourf(X, T, U, levels=20, cmap='plasma', alpha=0.8)
-    ax2.set_xlabel('Decision Tendency x')
-    ax2.set_ylabel('Time t')
-    ax2.set_title('Value Function U(t,x)')
-    plt.colorbar(contour2, ax=ax2, label='Value')
+    contour2 = ax2.contourf(X, T, U, levels=20, cmap="plasma", alpha=0.8)
+    ax2.set_xlabel("Decision Tendency x")
+    ax2.set_ylabel("Time t")
+    ax2.set_title("Value Function U(t,x)")
+    plt.colorbar(contour2, ax=ax2, label="Value")
 
     # 3. Attendance Evolution
     ax3 = plt.subplot(2, 3, 3)
-    attendance_rates = analysis['attendance_evolution']
-    ax3.plot(t_grid, attendance_rates, 'b-', linewidth=2, label='Actual Attendance')
-    ax3.axhline(y=problem.bar_capacity, color='red', linestyle='--', label=f'Optimal Capacity ({problem.bar_capacity})')
-    ax3.set_xlabel('Time t')
-    ax3.set_ylabel('Expected Attendance')
-    ax3.set_title('Attendance Rate Evolution')
+    attendance_rates = analysis["attendance_evolution"]
+    ax3.plot(t_grid, attendance_rates, "b-", linewidth=2, label="Actual Attendance")
+    ax3.axhline(y=problem.bar_capacity, color="red", linestyle="--", label=f"Optimal Capacity ({problem.bar_capacity})")
+    ax3.set_xlabel("Time t")
+    ax3.set_ylabel("Expected Attendance")
+    ax3.set_title("Attendance Rate Evolution")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
     # Add efficiency annotation
-    efficiency = analysis['efficiency']
+    efficiency = analysis["efficiency"]
     ax3.text(
         0.7 * problem.T,
         0.9 * max(attendance_rates),
-        f'Efficiency: {efficiency:.1%}',
+        f"Efficiency: {efficiency:.1%}",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.7),
     )
 
     # 4. Final Population Distribution
     ax4 = plt.subplot(2, 3, 4)
     final_density = M[-1, :]
-    ax4.plot(x_grid, final_density, 'g-', linewidth=2, label='Final Density')
-    ax4.axvline(x=problem.bar_capacity, color='red', linestyle='--', label=f'Capacity ({problem.bar_capacity})')
+    ax4.plot(x_grid, final_density, "g-", linewidth=2, label="Final Density")
+    ax4.axvline(x=problem.bar_capacity, color="red", linestyle="--", label=f"Capacity ({problem.bar_capacity})")
     ax4.axvline(
-        x=analysis['peak_decision_tendency'],
-        color='orange',
-        linestyle=':',
+        x=analysis["peak_decision_tendency"],
+        color="orange",
+        linestyle=":",
         label=f'Peak at {analysis["peak_decision_tendency"]:.2f}',
     )
-    ax4.set_xlabel('Decision Tendency x')
-    ax4.set_ylabel('Density')
-    ax4.set_title('Final Population Distribution')
+    ax4.set_xlabel("Decision Tendency x")
+    ax4.set_ylabel("Density")
+    ax4.set_title("Final Population Distribution")
     ax4.legend()
     ax4.grid(True, alpha=0.3)
 
@@ -532,17 +538,17 @@ def create_el_farol_visualizations(
     for point in key_points:
         idx = np.argmin(np.abs(x_grid - point))
         density_evolution = M[:, idx]
-        ax5.plot(t_grid, density_evolution, label=f'x = {point}')
+        ax5.plot(t_grid, density_evolution, label=f"x = {point}")
 
-    ax5.set_xlabel('Time t')
-    ax5.set_ylabel('Density')
-    ax5.set_title('Density Evolution at Key Points')
+    ax5.set_xlabel("Time t")
+    ax5.set_ylabel("Density")
+    ax5.set_title("Density Evolution at Key Points")
     ax5.legend()
     ax5.grid(True, alpha=0.3)
 
     # 6. Economic Analysis Summary
     ax6 = plt.subplot(2, 3, 6)
-    ax6.axis('off')
+    ax6.axis("off")
 
     # Create summary statistics
     summary_text = f"""
@@ -575,8 +581,8 @@ Solution Quality:
         summary_text,
         transform=ax6.transAxes,
         fontsize=10,
-        verticalalignment='top',
-        fontfamily='monospace',
+        verticalalignment="top",
+        fontfamily="monospace",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
     )
 
@@ -585,7 +591,7 @@ Solution Quality:
     # Save the figure
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     filename = f"el_farol_bar_analysis_{timestamp}.png"
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
     logger.info(f"📁 Visualization saved as {filename}")
 
     plt.show()
@@ -614,45 +620,45 @@ def compare_crowd_aversion_scenarios() -> None:
         # Plot attendance evolution
         plt.subplot(2, 2, 1)
         t_grid = np.linspace(0, 1.0, 50)
-        plt.plot(t_grid, analysis['attendance_evolution'], label=f'Aversion = {aversion}', linewidth=2)
+        plt.plot(t_grid, analysis["attendance_evolution"], label=f"Aversion = {aversion}", linewidth=2)
 
     # Finish attendance evolution plot
     plt.subplot(2, 2, 1)
-    plt.axhline(y=0.6, color='red', linestyle='--', label='Optimal Capacity')
-    plt.xlabel('Time')
-    plt.ylabel('Attendance Rate')
-    plt.title('Attendance Evolution by Crowd Aversion')
+    plt.axhline(y=0.6, color="red", linestyle="--", label="Optimal Capacity")
+    plt.xlabel("Time")
+    plt.ylabel("Attendance Rate")
+    plt.title("Attendance Evolution by Crowd Aversion")
     plt.legend()
     plt.grid(True, alpha=0.3)
 
     # Efficiency comparison
     plt.subplot(2, 2, 2)
-    efficiencies = [results[a]['efficiency'] for a in crowd_aversions]
-    plt.bar(range(len(crowd_aversions)), efficiencies, color=['lightblue', 'lightgreen', 'orange', 'lightcoral'])
-    plt.xlabel('Crowd Aversion Level')
-    plt.ylabel('Economic Efficiency')
-    plt.title('Efficiency vs Crowd Aversion')
-    plt.xticks(range(len(crowd_aversions)), [f'{a}' for a in crowd_aversions])
+    efficiencies = [results[a]["efficiency"] for a in crowd_aversions]
+    plt.bar(range(len(crowd_aversions)), efficiencies, color=["lightblue", "lightgreen", "orange", "lightcoral"])
+    plt.xlabel("Crowd Aversion Level")
+    plt.ylabel("Economic Efficiency")
+    plt.title("Efficiency vs Crowd Aversion")
+    plt.xticks(range(len(crowd_aversions)), [f"{a}" for a in crowd_aversions])
     plt.grid(True, alpha=0.3)
 
     # Final attendance comparison
     plt.subplot(2, 2, 3)
-    final_attendances = [results[a]['final_attendance'] for a in crowd_aversions]
-    plt.plot(crowd_aversions, final_attendances, 'o-', markersize=8, linewidth=2)
-    plt.axhline(y=0.6, color='red', linestyle='--', label='Optimal')
-    plt.xlabel('Crowd Aversion')
-    plt.ylabel('Final Attendance')
-    plt.title('Final Attendance vs Crowd Aversion')
+    final_attendances = [results[a]["final_attendance"] for a in crowd_aversions]
+    plt.plot(crowd_aversions, final_attendances, "o-", markersize=8, linewidth=2)
+    plt.axhline(y=0.6, color="red", linestyle="--", label="Optimal")
+    plt.xlabel("Crowd Aversion")
+    plt.ylabel("Final Attendance")
+    plt.title("Final Attendance vs Crowd Aversion")
     plt.legend()
     plt.grid(True, alpha=0.3)
 
     # Convergence comparison
     plt.subplot(2, 2, 4)
-    stabilities = [results[a]['equilibrium_stability'] for a in crowd_aversions]
-    plt.semilogy(crowd_aversions, stabilities, 's-', markersize=8, linewidth=2)
-    plt.xlabel('Crowd Aversion')
-    plt.ylabel('Equilibrium Stability (log scale)')
-    plt.title('Stability vs Crowd Aversion')
+    stabilities = [results[a]["equilibrium_stability"] for a in crowd_aversions]
+    plt.semilogy(crowd_aversions, stabilities, "s-", markersize=8, linewidth=2)
+    plt.xlabel("Crowd Aversion")
+    plt.ylabel("Equilibrium Stability (log scale)")
+    plt.title("Stability vs Crowd Aversion")
     plt.grid(True, alpha=0.3)
 
     plt.tight_layout()
@@ -660,7 +666,7 @@ def compare_crowd_aversion_scenarios() -> None:
     # Save comparison
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     filename = f"el_farol_comparison_{timestamp}.png"
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
     logger.info(f"📁 Comparison saved as {filename}")
 
     plt.show()

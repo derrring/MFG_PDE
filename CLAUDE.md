@@ -24,6 +24,109 @@ This file contains preferences and conventions for Claude Code when working with
 
 ## 📝 **Coding Standards**
 
+### **Type Checking Philosophy** ⚠️ **IMPORTANT**
+MFG_PDE follows a **pragmatic approach** to type checking optimized for research environments:
+
+**✅ Strict typing for:**
+- Public APIs and factory functions
+- Core mathematical algorithms
+- Configuration systems
+
+**⚠️ Relaxed typing for:**
+- Utility functions (logging, plotting)
+- Research examples and demos
+- Optional dependencies
+
+**IDE Configuration:**
+The repository includes `.vscode/settings.json` with balanced type checking that reduces noise while catching real errors.
+
+### **Modern Python Typing: Division of Responsibility** ⚠️ **CRITICAL**
+
+MFG_PDE follows modern Python typing best practices based on clear **division of responsibility** between library authors and users:
+
+#### **The Library Author's Responsibility**
+A mature library author strives to make type hints as precise as possible using **`@overload`** as the primary tool:
+
+```python
+# Library authors provide precise signatures
+from typing import overload
+
+@overload
+def solve_mfg(problem: ContinuousMFG, backend: str = "numpy") -> ContinuousSolution: ...
+@overload
+def solve_mfg(problem: NetworkMFG, backend: str = "igraph") -> NetworkSolution: ...
+
+def solve_mfg(problem, backend="auto"):
+    # Implementation handles multiple types
+    pass
+```
+
+#### **The Library User's Toolkit**
+Users rely on the author's annotations, but have tools for imperfect situations:
+
+**1. Runtime Type Checking with `isinstance()`** - For functions designed to return multiple types:
+```python
+# Safe logic branching
+result = solve_mfg(problem)
+if isinstance(result, ContinuousSolution):
+    return result.plot_density()
+elif isinstance(result, NetworkSolution):
+    return result.plot_network()
+```
+
+**2. Type Casting with `cast()`** - Last resort for imprecise library hints:
+```python
+from typing import cast
+from scipy.sparse import csr_matrix
+
+# When you know more than the type checker
+matrix = cast(csr_matrix, scipy_function_with_generic_return())
+```
+
+#### **Typing Tools Responsibility Matrix**
+
+| Tool | Primary User | Purpose | When to Use |
+|:-----|:-------------|:--------|:------------|
+| **`@overload`** | Library Author | Provide precise type signatures | Multiple return types for same function |
+| **`isinstance()`** | Both | Runtime type checking | Safe logic branching, type guards |
+| **`cast()`** | Library User | Override imprecise type hints | Library hints too generic for your use case |
+
+#### **MFG_PDE Implementation Examples**
+
+**As Library Authors** (when extending MFG_PDE):
+```python
+# Use @overload for solver factory functions
+@overload
+def create_solver(config: HJBConfig) -> HJBSolver: ...
+@overload
+def create_solver(config: FPConfig) -> FPSolver: ...
+
+# Use isinstance() for type guards
+def validate_backend(backend: Any) -> BackendProtocol:
+    if isinstance(backend, str):
+        return get_backend_by_name(backend)
+    elif isinstance(backend, BackendProtocol):
+        return backend
+    else:
+        raise TypeError(f"Invalid backend type: {type(backend)}")
+```
+
+**As Library Users** (when using MFG_PDE):
+```python
+# Use isinstance() for safe type branching
+geometry = create_geometry(config)
+if isinstance(geometry, Domain2D):
+    geometry.visualize_mesh()
+elif isinstance(geometry, NetworkGeometry):
+    geometry.plot_graph()
+
+# Use cast() sparingly for external library issues
+from scipy.sparse import csr_matrix
+adj_matrix = cast(csr_matrix, networkx.adjacency_matrix(graph))
+```
+
+**The Goal**: In an ideal, well-typed library, you see `@overload` in source code, `isinstance()` in application logic, and `cast()` rarely.
+
 ### **Import Style**
 ```python
 # Preferred imports for MFG_PDE
@@ -327,6 +430,17 @@ Establish consistent mathematical notation for all AI interactions and documenta
 - **Computational Excellence**: Algorithm complexity, numerical stability, performance validation
 - **Academic Communication**: Journal-quality exposition with proper context and references
 
+## 📜 **Solo Maintainer's Mechanism for Change**
+
+As the primary maintainer, this project uses a self-governance protocol to ensure disciplined and high-quality changes. All significant modifications should follow this process:
+
+1.  **Propose in an Issue**: Open a GitHub Issue to serve as a "decision log." Clearly articulate the proposed change and the reasoning behind it.
+2.  **Implement in a PR**: All work must be done in a feature branch and submitted via a Pull Request to leverage automated CI checks as a quality gate.
+3.  **Conduct AI-Assisted Review**: Before merging, perform a self-review that includes requesting a formal review from the AI assistant against the standards outlined in this document.
+4.  **Merge on Pass**: Merge the PR only after all automated checks and the AI-assisted review are successfully completed.
+
+A great way to enforce this process is to use GitHub's **branch protection rules** for your `main` branch, which can require that all changes come through a PR and that all CI checks must pass before merging.
+
 ## 🔍 **Quality Assurance**
 
 ### **Before Completing Tasks**
@@ -370,13 +484,15 @@ All completed features, closed issues, and finished development work must be cle
 
 ---
 
-**Last Updated**: 2025-08-03  
-**Repository Version**: Complete MFG framework with AI interaction design  
-**Claude Code**: Always reference this file for MFG_PDE conventions  
+**Last Updated**: 2025-09-21
+**Repository Version**: Complete MFG framework with modern typing standards
+**Claude Code**: Always reference this file for MFG_PDE conventions
 
 **Key Recent Updates**:
+- ✅ Modern Python typing principles with division of responsibility framework
+- ✅ Comprehensive typing tools matrix (@overload, isinstance, cast)
+- ✅ MFG_PDE-specific typing examples and best practices
 - ✅ Semi-Lagrangian HJB solver implementation
 - ✅ Complete Lagrangian MFG system with variational and primal-dual solvers
 - ✅ NumPy 2.0+ migration with native trapezoid support
 - ✅ AI interaction design framework for mathematical research collaboration
-- ✅ Comprehensive prompt templates for advanced MFG research

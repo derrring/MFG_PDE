@@ -5,7 +5,10 @@ This module implements 2D geometric domains using the Gmsh → Meshio → PyVist
 supporting rectangular domains, complex shapes, holes, and CAD import.
 """
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -18,8 +21,8 @@ class Domain2D(BaseGeometry):
     def __init__(
         self,
         domain_type: str = "rectangle",
-        bounds: Tuple[float, float, float, float] = (0.0, 1.0, 0.0, 1.0),
-        holes: Optional[List[Dict]] = None,
+        bounds: tuple[float, float, float, float] = (0.0, 1.0, 0.0, 1.0),
+        holes: list[dict] | None = None,
         mesh_size: float = 0.1,
         **kwargs,
     ):
@@ -27,9 +30,9 @@ class Domain2D(BaseGeometry):
         Initialize 2D domain.
 
         Args:
-            domain_type: "rectangle", "circle", "polygon", "custom", "cad_import"
+            domain_type: rectangle, "circle", "polygon", "custom", "cad_import"
             bounds: (xmin, xmax, ymin, ymax) for rectangular domains
-            holes: List of hole specifications [{"type": "circle", "center": (x,y), "radius": r}, ...]
+            holes: List of hole specifications [{"type": circle, "center": (x,y), "radius": r}, ...]
             mesh_size: Target mesh element size
             **kwargs: Additional domain-specific parameters
         """
@@ -186,6 +189,14 @@ class Domain2D(BaseGeometry):
 
     def _create_custom_gmsh(self):
         """Create custom domain using user-provided function."""
+        try:
+            import gmsh
+        except ImportError:
+            raise ImportError("gmsh is required for custom geometry creation")
+
+        if self.geometry_func is None:
+            raise RuntimeError("geometry_func is None")
+
         # User-provided geometry function should create Gmsh geometry
         # and set self.main_surface
         self.main_surface = self.geometry_func(gmsh)
@@ -268,7 +279,7 @@ class Domain2D(BaseGeometry):
             if result[0]:
                 self.main_surface = result[0][0][1]
 
-    def set_mesh_parameters(self, mesh_size: Optional[float] = None, algorithm: str = "delaunay", **kwargs) -> None:
+    def set_mesh_parameters(self, mesh_size: float | None = None, algorithm: str = "delaunay", **kwargs) -> None:
         """Set mesh generation parameters."""
         if mesh_size is not None:
             self.mesh_size = mesh_size
@@ -357,7 +368,7 @@ class Domain2D(BaseGeometry):
         return np.array(boundary_edges)
 
     @property
-    def bounds(self) -> Tuple[np.ndarray, np.ndarray]:
+    def bounds(self) -> tuple[np.ndarray, np.ndarray]:
         """Get 2D domain bounding box."""
         if self.domain_type == "rectangle":
             min_coords = np.array([self.xmin, self.ymin])
@@ -380,12 +391,17 @@ class Domain2D(BaseGeometry):
             # For custom domains, generate mesh first to get bounds
             if self.mesh_data is None:
                 self.generate_mesh()
+            if self.mesh_data is None:
+                raise RuntimeError("Failed to generate mesh data")
             return self.mesh_data.bounds
 
     def export_mesh(self, format: str, filename: str) -> None:
         """Export mesh in specified format using meshio."""
         if self.mesh_data is None:
             self.generate_mesh()
+
+        if self.mesh_data is None:
+            raise RuntimeError("Failed to generate mesh data")
 
         meshio_mesh = self.mesh_data.to_meshio()
         meshio_mesh.write(filename, file_format=format)
@@ -394,7 +410,7 @@ class Domain2D(BaseGeometry):
         self,
         refinement_factor: float = 0.5,
         adaptive: bool = False,
-        indicator_function: Optional[Callable] = None,
+        indicator_function: Callable | None = None,
     ) -> MeshData:
         """Refine mesh uniformly or adaptively."""
         if adaptive and indicator_function is None:
@@ -402,6 +418,8 @@ class Domain2D(BaseGeometry):
 
         if adaptive:
             # Adaptive refinement based on indicator function
+            if indicator_function is None:
+                raise RuntimeError("indicator_function is None")
             return self._refine_adaptive(indicator_function)
         else:
             # Uniform refinement

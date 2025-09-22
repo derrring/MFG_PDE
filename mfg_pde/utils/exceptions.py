@@ -5,7 +5,9 @@ This module provides specialized exception classes that give users clear,
 actionable error messages with suggested solutions.
 """
 
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 
@@ -24,10 +26,10 @@ class MFGSolverError(Exception):
     def __init__(
         self,
         message: str,
-        solver_name: Optional[str] = None,
-        suggested_action: Optional[str] = None,
-        error_code: Optional[str] = None,
-        diagnostic_data: Optional[Dict[str, Any]] = None,
+        solver_name: str | None = None,
+        suggested_action: str | None = None,
+        error_code: str | None = None,
+        diagnostic_data: dict[str, Any] | None = None,
     ):
         self.solver_name = solver_name or "Unknown Solver"
         self.suggested_action = suggested_action
@@ -60,8 +62,8 @@ class ConvergenceError(MFGSolverError):
         max_iterations: int,
         final_error: float,
         tolerance: float,
-        solver_name: Optional[str] = None,
-        convergence_history: Optional[List[float]] = None,
+        solver_name: str | None = None,
+        convergence_history: list[float] | None = None,
     ):
         diagnostic_data = {
             "iterations_used": iterations_used,
@@ -97,9 +99,9 @@ class ConfigurationError(MFGSolverError):
         self,
         parameter_name: str,
         provided_value: Any,
-        expected_type: Optional[type] = None,
-        valid_range: Optional[tuple] = None,
-        solver_name: Optional[str] = None,
+        expected_type: type | None = None,
+        valid_range: tuple | None = None,
+        solver_name: str | None = None,
     ):
         diagnostic_data = {
             "parameter": parameter_name,
@@ -135,8 +137,8 @@ class SolutionNotAvailableError(MFGSolverError):
     def __init__(
         self,
         operation_attempted: str,
-        solver_name: Optional[str] = None,
-        solver_state: Optional[str] = None,
+        solver_name: str | None = None,
+        solver_state: str | None = None,
     ):
         diagnostic_data = {
             "attempted_operation": operation_attempted,
@@ -164,8 +166,8 @@ class DimensionMismatchError(MFGSolverError):
         array_name: str,
         provided_shape: tuple,
         expected_shape: tuple,
-        solver_name: Optional[str] = None,
-        context: Optional[str] = None,
+        solver_name: str | None = None,
+        context: str | None = None,
     ):
         diagnostic_data = {
             "array_name": array_name,
@@ -196,9 +198,9 @@ class NumericalInstabilityError(MFGSolverError):
     def __init__(
         self,
         instability_type: str,
-        iteration_number: Optional[int] = None,
-        problematic_values: Optional[Dict[str, Any]] = None,
-        solver_name: Optional[str] = None,
+        iteration_number: int | None = None,
+        problematic_values: dict[str, Any] | None = None,
+        solver_name: str | None = None,
     ):
         diagnostic_data = {"instability_type": instability_type}
 
@@ -224,7 +226,7 @@ class NumericalInstabilityError(MFGSolverError):
 # Helper functions for generating specific suggestions
 
 
-def _analyze_convergence_trend(history: List[float]) -> str:
+def _analyze_convergence_trend(history: list[float]) -> str:
     """Analyze convergence history to determine trend."""
     if len(history) < 3:
         return "insufficient_data"
@@ -247,7 +249,7 @@ def _generate_convergence_suggestions(
     tolerance: float,
     iterations_used: int,
     max_iterations: int,
-    history: Optional[List[float]] = None,
+    history: list[float] | None = None,
 ) -> str:
     """Generate specific suggestions for convergence issues."""
 
@@ -275,8 +277,8 @@ def _generate_convergence_suggestions(
 def _generate_configuration_suggestions(
     parameter_name: str,
     provided_value: Any,
-    expected_type: Optional[type],
-    valid_range: Optional[tuple],
+    expected_type: type | None,
+    valid_range: tuple | None,
 ) -> str:
     """Generate specific suggestions for configuration errors."""
 
@@ -314,7 +316,7 @@ def _describe_dimension_mismatch(provided_shape: tuple, expected_shape: tuple) -
         return f"Wrong number of dimensions: got {len(provided_shape)}, expected {len(expected_shape)}"
 
     mismatches = []
-    for i, (provided, expected) in enumerate(zip(provided_shape, expected_shape)):
+    for i, (provided, expected) in enumerate(zip(provided_shape, expected_shape, strict=False)):
         if provided != expected:
             mismatches.append(f"axis {i}: got {provided}, expected {expected}")
 
@@ -335,7 +337,7 @@ def _generate_dimension_suggestions(array_name: str, provided_shape: tuple, expe
         return f"Reshape {array_name} to match problem grid: {expected_shape}"
 
 
-def _generate_stability_suggestions(instability_type: str, problematic_values: Optional[Dict[str, Any]]) -> str:
+def _generate_stability_suggestions(instability_type: str, problematic_values: dict[str, Any] | None) -> str:
     """Generate suggestions for numerical stability issues."""
 
     if "nan" in instability_type.lower():
@@ -362,7 +364,9 @@ def validate_solver_state(solver, operation_name: str):
         )
 
 
-def validate_array_dimensions(array: np.ndarray, expected_shape: tuple, array_name: str, solver_name: str = None):
+def validate_array_dimensions(
+    array: np.ndarray, expected_shape: tuple, array_name: str, solver_name: str | None = None
+):
     """Validate that array has expected dimensions."""
     if array.shape != expected_shape:
         raise DimensionMismatchError(
@@ -376,9 +380,9 @@ def validate_array_dimensions(array: np.ndarray, expected_shape: tuple, array_na
 def validate_parameter_value(
     value: Any,
     parameter_name: str,
-    expected_type: type = None,
-    valid_range: tuple = None,
-    solver_name: str = None,
+    expected_type: type | None = None,
+    valid_range: tuple | None = None,
+    solver_name: str | None = None,
 ):
     """Validate parameter value and type."""
     if expected_type and not isinstance(value, expected_type):
@@ -399,7 +403,9 @@ def validate_parameter_value(
             )
 
 
-def check_numerical_stability(array: np.ndarray, array_name: str, iteration: int = None, solver_name: str = None):
+def check_numerical_stability(
+    array: np.ndarray, array_name: str, iteration: int | None = None, solver_name: str | None = None
+):
     """Check array for numerical stability issues."""
     problematic_values = {}
 

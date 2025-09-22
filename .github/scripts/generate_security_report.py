@@ -6,10 +6,7 @@ Aggregates all security scan results into comprehensive reports.
 
 import json
 import os
-import sys
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 
 class SecurityReportGenerator:
@@ -61,7 +58,7 @@ class SecurityReportGenerator:
             for filename in config["files"]:
                 if os.path.exists(filename):
                     try:
-                        with open(filename, 'r') as f:
+                        with open(filename) as f:
                             data = json.load(f)
                             self.scan_results[scan_type]["data"].append({"source": filename, "data": data})
                             self.scan_results[scan_type]["files_found"].append(filename)
@@ -78,7 +75,7 @@ class SecurityReportGenerator:
             else:
                 self.summary["scans_failed"].append(scan_type)
 
-    def analyze_dependency_results(self) -> Dict:
+    def analyze_dependency_results(self) -> dict:
         """Analyze dependency scan results."""
         analysis = {
             "vulnerabilities": [],
@@ -123,7 +120,7 @@ class SecurityReportGenerator:
         analysis["vulnerable_packages"] = len(set(v["package"] for v in analysis["vulnerabilities"]))
         return analysis
 
-    def analyze_static_analysis_results(self) -> Dict:
+    def analyze_static_analysis_results(self) -> dict:
         """Analyze static analysis results."""
         analysis = {
             "issues": [],
@@ -186,7 +183,7 @@ class SecurityReportGenerator:
         analysis["total_issues"] = len(analysis["issues"])
         return analysis
 
-    def analyze_secrets_results(self) -> Dict:
+    def analyze_secrets_results(self) -> dict:
         """Analyze secrets scan results."""
         analysis = {
             "secrets": [],
@@ -363,7 +360,7 @@ class SecurityReportGenerator:
 
         lines.append("## Scan Status")
         lines.append(f"- **Completed**: {', '.join(self.summary['scans_completed'])}")
-        if self.summary['scans_failed']:
+        if self.summary["scans_failed"]:
             lines.append(f"- **Failed**: {', '.join(self.summary['scans_failed'])}")
         lines.append("")
 

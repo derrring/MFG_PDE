@@ -16,13 +16,12 @@ Mathematical Setup:
 """
 
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.mfg_solvers.network_mfg_solver import NetworkFlowMFGSolver, create_network_mfg_solver
+from mfg_pde.alg.mfg_solvers.network_mfg_solver import create_network_mfg_solver
 
 # MFG_PDE imports
 from mfg_pde.core.network_mfg_problem import NetworkMFGComponents, NetworkMFGProblem
@@ -31,9 +30,7 @@ from mfg_pde.geometry.network_geometry import (
     RandomNetwork,
     ScaleFreeNetwork,
     compute_network_statistics,
-    create_network,
 )
-from mfg_pde.visualization.network_plots import create_network_visualizer
 
 # Optional: use Plotly for interactive plots if available
 try:
@@ -72,7 +69,7 @@ class NetworkMFGBenchmark:
         self.network_data = {}
         self.solver_performance = {}
 
-    def create_benchmark_networks(self) -> Dict[str, Any]:
+    def create_benchmark_networks(self) -> dict[str, Any]:
         """
         Create different network topologies for comparison.
 
@@ -85,21 +82,21 @@ class NetworkMFGBenchmark:
 
         # 1. Grid network (5x5)
         grid_size = int(np.sqrt(self.num_nodes))
-        networks['grid'] = GridNetwork(grid_size, grid_size, periodic=False)
-        networks['grid'].create_network()
+        networks["grid"] = GridNetwork(grid_size, grid_size, periodic=False)
+        networks["grid"].create_network()
 
         # 2. Random network (Erdős–Rényi)
-        networks['random'] = RandomNetwork(self.num_nodes, connection_prob=0.15)
-        networks['random'].create_network(seed=42)
+        networks["random"] = RandomNetwork(self.num_nodes, connection_prob=0.15)
+        networks["random"].create_network(seed=42)
 
         # 3. Scale-free network (Barabási–Albert)
-        networks['scale_free'] = ScaleFreeNetwork(self.num_nodes, num_edges_per_node=3)
-        networks['scale_free'].create_network(seed=42)
+        networks["scale_free"] = ScaleFreeNetwork(self.num_nodes, num_edges_per_node=3)
+        networks["scale_free"].create_network(seed=42)
 
         # Store network statistics
         for name, network in networks.items():
             stats = compute_network_statistics(network.network_data)
-            self.network_data[name] = {'geometry': network, 'statistics': stats}
+            self.network_data[name] = {"geometry": network, "statistics": stats}
             print(f"  {name.capitalize()}: {stats['num_edges']} edges, " f"avg degree {stats['average_degree']:.2f}")
 
         print()
@@ -155,7 +152,7 @@ class NetworkMFGBenchmark:
 
         return problem
 
-    def run_solver_comparison(self, problem: NetworkMFGProblem, network_name: str) -> Dict[str, Any]:
+    def run_solver_comparison(self, problem: NetworkMFGProblem, network_name: str) -> dict[str, Any]:
         """
         Compare different solver types on the same problem.
 
@@ -167,29 +164,29 @@ class NetworkMFGBenchmark:
             Dictionary with solver comparison results
         """
         solver_configs = {
-            'explicit': {
-                'solver_type': 'fixed_point',
-                'hjb_solver_type': 'explicit',
-                'fp_solver_type': 'explicit',
-                'damping_factor': 0.5,
-                'hjb_kwargs': {'cfl_factor': 0.3},
-                'fp_kwargs': {'cfl_factor': 0.3},
+            "explicit": {
+                "solver_type": "fixed_point",
+                "hjb_solver_type": "explicit",
+                "fp_solver_type": "explicit",
+                "damping_factor": 0.5,
+                "hjb_kwargs": {"cfl_factor": 0.3},
+                "fp_kwargs": {"cfl_factor": 0.3},
             },
-            'implicit': {
-                'solver_type': 'fixed_point',
-                'hjb_solver_type': 'implicit',
-                'fp_solver_type': 'implicit',
-                'damping_factor': 0.7,
-                'hjb_kwargs': {'max_iterations': 50},
-                'fp_kwargs': {'max_iterations': 50},
+            "implicit": {
+                "solver_type": "fixed_point",
+                "hjb_solver_type": "implicit",
+                "fp_solver_type": "implicit",
+                "damping_factor": 0.7,
+                "hjb_kwargs": {"max_iterations": 50},
+                "fp_kwargs": {"max_iterations": 50},
             },
-            'flow': {
-                'solver_type': 'flow',
-                'hjb_solver_type': 'explicit',
-                'fp_solver_type': 'flow',
-                'damping_factor': 0.6,
-                'hjb_kwargs': {'cfl_factor': 0.3},
-                'fp_kwargs': {'enforce_mass_conservation': True},
+            "flow": {
+                "solver_type": "flow",
+                "hjb_solver_type": "explicit",
+                "fp_solver_type": "flow",
+                "damping_factor": 0.6,
+                "hjb_kwargs": {"cfl_factor": 0.3},
+                "fp_kwargs": {"enforce_mass_conservation": True},
             },
         }
 
@@ -212,14 +209,14 @@ class NetworkMFGBenchmark:
 
                 # Store results
                 comparison_results[solver_name] = {
-                    'convergence_info': convergence_info,
-                    'solve_time': solve_time,
-                    'solution_quality': solution_quality,
-                    'U': U,
-                    'M': M,
-                    'converged': convergence_info['converged'],
-                    'final_error': convergence_info['final_error'],
-                    'iterations': convergence_info['iterations'],
+                    "convergence_info": convergence_info,
+                    "solve_time": solve_time,
+                    "solution_quality": solution_quality,
+                    "U": U,
+                    "M": M,
+                    "converged": convergence_info["converged"],
+                    "final_error": convergence_info["final_error"],
+                    "iterations": convergence_info["iterations"],
                 }
 
                 print(
@@ -230,11 +227,11 @@ class NetworkMFGBenchmark:
 
             except Exception as e:
                 print(f"      Failed: {e}")
-                comparison_results[solver_name] = {'error': str(e), 'converged': False, 'solve_time': float('inf')}
+                comparison_results[solver_name] = {"error": str(e), "converged": False, "solve_time": float("inf")}
 
         return comparison_results
 
-    def _analyze_solution_quality(self, U: np.ndarray, M: np.ndarray, problem: NetworkMFGProblem) -> Dict[str, float]:
+    def _analyze_solution_quality(self, U: np.ndarray, M: np.ndarray, problem: NetworkMFGProblem) -> dict[str, float]:
         """Analyze quality metrics of the solution."""
         # Mass conservation
         mass_over_time = np.sum(M, axis=1)
@@ -248,11 +245,11 @@ class NetworkMFGBenchmark:
         late_density_var = np.var(M[-5:, :], axis=0).mean()
 
         return {
-            'mass_conservation': mass_conservation,
-            'final_density_variance': final_density_var,
-            'final_value_variance': final_value_var,
-            'temporal_stability': late_density_var,
-            'total_final_cost': self._compute_total_cost(U[-1, :], M[-1, :], problem),
+            "mass_conservation": mass_conservation,
+            "final_density_variance": final_density_var,
+            "final_value_variance": final_value_var,
+            "temporal_stability": late_density_var,
+            "total_final_cost": self._compute_total_cost(U[-1, :], M[-1, :], problem),
         }
 
     def _compute_total_cost(self, u: np.ndarray, m: np.ndarray, problem: NetworkMFGProblem) -> float:
@@ -268,7 +265,7 @@ class NetworkMFGBenchmark:
 
         return total_cost
 
-    def run_full_benchmark(self) -> Dict[str, Any]:
+    def run_full_benchmark(self) -> dict[str, Any]:
         """
         Run complete benchmark across all networks and solvers.
 
@@ -297,9 +294,9 @@ class NetworkMFGBenchmark:
             solver_results = self.run_solver_comparison(problem, network_name)
 
             all_results[network_name] = {
-                'problem': problem,
-                'solver_results': solver_results,
-                'network_stats': self.network_data[network_name]['statistics'],
+                "problem": problem,
+                "solver_results": solver_results,
+                "network_stats": self.network_data[network_name]["statistics"],
             }
 
             print()
@@ -329,7 +326,7 @@ class NetworkMFGBenchmark:
         """Create interactive benchmark report using Plotly."""
         # Prepare data for visualization
         network_names = list(self.results.keys())
-        solver_names = ['explicit', 'implicit', 'flow']
+        solver_names = ["explicit", "implicit", "flow"]
 
         # Extract performance metrics
         solve_times = {}
@@ -342,42 +339,42 @@ class NetworkMFGBenchmark:
             solution_qualities[network] = []
 
             for solver in solver_names:
-                result = self.results[network]['solver_results'].get(solver, {})
+                result = self.results[network]["solver_results"].get(solver, {})
 
-                solve_times[network].append(result.get('solve_time', float('inf')))
-                convergence_rates[network].append(1 if result.get('converged', False) else 0)
+                solve_times[network].append(result.get("solve_time", float("inf")))
+                convergence_rates[network].append(1 if result.get("converged", False) else 0)
 
-                quality = result.get('solution_quality', {})
-                solution_qualities[network].append(quality.get('mass_conservation', 1.0))
+                quality = result.get("solution_quality", {})
+                solution_qualities[network].append(quality.get("mass_conservation", 1.0))
 
         # Create subplots
         fig = make_subplots(
             rows=2,
             cols=2,
-            subplot_titles=['Network Properties', 'Solver Performance', 'Convergence Rates', 'Solution Quality'],
+            subplot_titles=["Network Properties", "Solver Performance", "Convergence Rates", "Solution Quality"],
             specs=[[{"type": "bar"}, {"type": "bar"}], [{"type": "bar"}, {"type": "scatter"}]],
         )
 
         # Network properties comparison
-        densities = [self.results[name]['network_stats']['density'] for name in network_names]
-        avg_degrees = [self.results[name]['network_stats']['average_degree'] for name in network_names]
+        densities = [self.results[name]["network_stats"]["density"] for name in network_names]
+        avg_degrees = [self.results[name]["network_stats"]["average_degree"] for name in network_names]
 
         fig.add_trace(
-            go.Bar(x=network_names, y=densities, name='Network Density', marker_color='lightblue'), row=1, col=1
+            go.Bar(x=network_names, y=densities, name="Network Density", marker_color="lightblue"), row=1, col=1
         )
 
         # Solver performance (solve times)
         for i, solver in enumerate(solver_names):
             times = [solve_times[network][i] for network in network_names]
             fig.add_trace(
-                go.Bar(x=network_names, y=times, name=f'{solver.capitalize()} Solver', offsetgroup=i), row=1, col=2
+                go.Bar(x=network_names, y=times, name=f"{solver.capitalize()} Solver", offsetgroup=i), row=1, col=2
             )
 
         # Convergence rates
         for i, solver in enumerate(solver_names):
             rates = [convergence_rates[network][i] for network in network_names]
             fig.add_trace(
-                go.Bar(x=network_names, y=rates, name=f'{solver.capitalize()} Convergence', offsetgroup=i), row=2, col=1
+                go.Bar(x=network_names, y=rates, name=f"{solver.capitalize()} Convergence", offsetgroup=i), row=2, col=1
             )
 
         # Solution quality scatter
@@ -385,7 +382,7 @@ class NetworkMFGBenchmark:
             qualities = solution_qualities[network]
             times = solve_times[network]
             fig.add_trace(
-                go.Scatter(x=times, y=qualities, mode='markers', name=f'{network.capitalize()}', marker=dict(size=10)),
+                go.Scatter(x=times, y=qualities, mode="markers", name=f"{network.capitalize()}", marker=dict(size=10)),
                 row=2,
                 col=2,
             )
@@ -410,19 +407,19 @@ class NetworkMFGBenchmark:
     def _create_matplotlib_report(self, save_path: str = None) -> plt.Figure:
         """Create benchmark report using matplotlib."""
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        fig.suptitle('Network MFG Benchmark Report', fontsize=16)
+        fig.suptitle("Network MFG Benchmark Report", fontsize=16)
 
         network_names = list(self.results.keys())
-        solver_names = ['explicit', 'implicit', 'flow']
-        colors = ['blue', 'orange', 'green']
+        solver_names = ["explicit", "implicit", "flow"]
+        colors = ["blue", "orange", "green"]
 
         # Network properties
         ax = axes[0, 0]
-        densities = [self.results[name]['network_stats']['density'] for name in network_names]
-        ax.bar(network_names, densities, color='lightblue', alpha=0.7)
-        ax.set_ylabel('Network Density')
-        ax.set_title('Network Properties')
-        ax.tick_params(axis='x', rotation=45)
+        densities = [self.results[name]["network_stats"]["density"] for name in network_names]
+        ax.bar(network_names, densities, color="lightblue", alpha=0.7)
+        ax.set_ylabel("Network Density")
+        ax.set_title("Network Properties")
+        ax.tick_params(axis="x", rotation=45)
 
         # Solver performance
         ax = axes[0, 1]
@@ -432,32 +429,32 @@ class NetworkMFGBenchmark:
         for i, solver in enumerate(solver_names):
             times = []
             for network in network_names:
-                result = self.results[network]['solver_results'].get(solver, {})
-                times.append(result.get('solve_time', float('inf')))
+                result = self.results[network]["solver_results"].get(solver, {})
+                times.append(result.get("solve_time", float("inf")))
 
             ax.bar(x_pos + i * width, times, width, label=solver.capitalize(), color=colors[i], alpha=0.7)
 
-        ax.set_xlabel('Network Type')
-        ax.set_ylabel('Solve Time (s)')
-        ax.set_title('Solver Performance')
+        ax.set_xlabel("Network Type")
+        ax.set_ylabel("Solve Time (s)")
+        ax.set_title("Solver Performance")
         ax.set_xticks(x_pos + width)
         ax.set_xticklabels(network_names)
         ax.legend()
-        ax.set_yscale('log')
+        ax.set_yscale("log")
 
         # Convergence rates
         ax = axes[1, 0]
         for i, solver in enumerate(solver_names):
             rates = []
             for network in network_names:
-                result = self.results[network]['solver_results'].get(solver, {})
-                rates.append(1 if result.get('converged', False) else 0)
+                result = self.results[network]["solver_results"].get(solver, {})
+                rates.append(1 if result.get("converged", False) else 0)
 
             ax.bar(x_pos + i * width, rates, width, label=solver.capitalize(), color=colors[i], alpha=0.7)
 
-        ax.set_xlabel('Network Type')
-        ax.set_ylabel('Convergence Rate')
-        ax.set_title('Convergence Success')
+        ax.set_xlabel("Network Type")
+        ax.set_ylabel("Convergence Rate")
+        ax.set_title("Convergence Success")
         ax.set_xticks(x_pos + width)
         ax.set_xticklabels(network_names)
         ax.legend()
@@ -467,26 +464,26 @@ class NetworkMFGBenchmark:
         for network in network_names:
             times, qualities = [], []
             for solver in solver_names:
-                result = self.results[network]['solver_results'].get(solver, {})
-                if result.get('converged', False):
-                    times.append(result.get('solve_time', float('inf')))
-                    quality = result.get('solution_quality', {})
-                    qualities.append(quality.get('mass_conservation', 1.0))
+                result = self.results[network]["solver_results"].get(solver, {})
+                if result.get("converged", False):
+                    times.append(result.get("solve_time", float("inf")))
+                    quality = result.get("solution_quality", {})
+                    qualities.append(quality.get("mass_conservation", 1.0))
 
             if times and qualities:
                 ax.scatter(times, qualities, label=network.capitalize(), s=50, alpha=0.7)
 
-        ax.set_xlabel('Solve Time (s)')
-        ax.set_ylabel('Mass Conservation Error')
-        ax.set_title('Quality vs Performance')
+        ax.set_xlabel("Solve Time (s)")
+        ax.set_ylabel("Mass Conservation Error")
+        ax.set_title("Quality vs Performance")
         ax.legend()
-        ax.set_xscale('log')
-        ax.set_yscale('log')
+        ax.set_xscale("log")
+        ax.set_yscale("log")
 
         plt.tight_layout()
 
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
 
         return fig
 
@@ -511,7 +508,7 @@ def main():
         print("Creating benchmark report...")
         report_fig = benchmark.create_benchmark_report()
 
-        if hasattr(report_fig, 'show'):
+        if hasattr(report_fig, "show"):
             report_fig.show()  # Plotly
         else:
             plt.show()  # Matplotlib
@@ -523,16 +520,16 @@ def main():
 
         for network_name, result in results.items():
             print(f"\n{network_name.upper()} NETWORK:")
-            stats = result['network_stats']
+            stats = result["network_stats"]
             print(f"  Edges: {stats['num_edges']}, Density: {stats['density']:.3f}")
             print(f"  Average degree: {stats['average_degree']:.2f}")
 
             print("  Solver Performance:")
-            for solver_name, solver_result in result['solver_results'].items():
-                if 'error' not in solver_result:
-                    converged = solver_result['converged']
-                    time_taken = solver_result['solve_time']
-                    error = solver_result['final_error']
+            for solver_name, solver_result in result["solver_results"].items():
+                if "error" not in solver_result:
+                    converged = solver_result["converged"]
+                    time_taken = solver_result["solve_time"]
+                    error = solver_result["final_error"]
                     print(
                         f"    {solver_name:10}: {'✓' if converged else '✗'} " f"({time_taken:.2f}s, error: {error:.2e})"
                     )

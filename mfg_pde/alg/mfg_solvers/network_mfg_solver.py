@@ -10,14 +10,16 @@ Key solver types:
 - NetworkPolicyMFGSolver: Policy iteration-based network MFG solver
 """
 
+from __future__ import annotations
+
 import time
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from ..base_mfg_solver import MFGSolver
-from ..fp_solvers.fp_network import NetworkFPSolver, create_network_fp_solver
-from ..hjb_solvers.hjb_network import NetworkHJBSolver, create_network_hjb_solver
+from ..fp_solvers.fp_network import create_network_fp_solver
+from ..hjb_solvers.hjb_network import create_network_hjb_solver
 
 if TYPE_CHECKING:
     from ...core.network_mfg_problem import NetworkMFGProblem
@@ -37,12 +39,12 @@ class NetworkFixedPointIterator(MFGSolver):
 
     def __init__(
         self,
-        problem: "NetworkMFGProblem",
+        problem: NetworkMFGProblem,
         hjb_solver_type: str = "explicit",
         fp_solver_type: str = "explicit",
         damping_factor: float = 0.5,
-        hjb_kwargs: Optional[Dict[str, Any]] = None,
-        fp_kwargs: Optional[Dict[str, Any]] = None,
+        hjb_kwargs: dict[str, Any] | None = None,
+        fp_kwargs: dict[str, Any] | None = None,
     ):
         """
         Initialize network fixed point iterator.
@@ -74,8 +76,8 @@ class NetworkFixedPointIterator(MFGSolver):
         self.T = problem.T
 
         # Solution storage
-        self.U: Optional[np.ndarray] = None
-        self.M: Optional[np.ndarray] = None
+        self.U: np.ndarray | None = None
+        self.M: np.ndarray | None = None
 
         # Convergence tracking
         self.convergence_history = []
@@ -90,7 +92,7 @@ class NetworkFixedPointIterator(MFGSolver):
         tolerance: float = 1e-5,
         verbose: bool = True,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+    ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """
         Solve network MFG system using fixed point iteration.
 
@@ -110,7 +112,12 @@ class NetworkFixedPointIterator(MFGSolver):
             print(f"\n{'='*80}")
             print(f"NETWORK MFG SOLVER: {self.name}")
             print(f"{'='*80}")
-            print(f"Network: {self.network_problem.network_data.network_type.value}")
+            network_type = (
+                self.network_problem.network_data.network_type.value
+                if self.network_problem.network_data is not None
+                else "Unknown"
+            )
+            print(f"Network: {network_type}")
             print(f"Nodes: {self.num_nodes}, Edges: {self.network_problem.num_edges}")
             print(f"Time: T={self.T}, Nt={self.Nt}")
             print(f"Max iterations: {max_iterations}, Tolerance: {tolerance:.2e}")
@@ -231,7 +238,7 @@ class NetworkFixedPointIterator(MFGSolver):
 
         return self.U, self.M, convergence_info
 
-    def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
         """Get computed U and M solutions."""
         if self.U is None or self.M is None:
             raise ValueError("No solution available. Call solve() first.")
@@ -241,7 +248,7 @@ class NetworkFixedPointIterator(MFGSolver):
         """Get convergence history."""
         return self.convergence_history
 
-    def get_network_flows(self, time_index: Optional[int] = None) -> Dict[str, np.ndarray]:
+    def get_network_flows(self, time_index: int | None = None) -> dict[str, int | np.ndarray | list]:
         """
         Compute network flows at specified time (or all times).
 
@@ -305,7 +312,7 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
     flow analysis capabilities.
     """
 
-    def __init__(self, problem: "NetworkMFGProblem", **kwargs):
+    def __init__(self, problem: NetworkMFGProblem, **kwargs):
         """Initialize flow-based network MFG solver."""
         # Force flow-based FP solver
         fp_kwargs = kwargs.pop("fp_kwargs", {})
@@ -313,7 +320,7 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
 
         self.name = f"NetworkFlowMFG_{self.hjb_solver.hjb_method_name}_{self.fp_solver.fp_method_name}"
 
-    def analyze_network_flows(self) -> Dict[str, Any]:
+    def analyze_network_flows(self) -> dict[str, Any]:
         """Comprehensive flow analysis for the network solution."""
         if self.U is None or self.M is None:
             raise ValueError("No solution available. Call solve() first.")
@@ -360,7 +367,7 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
 
 # Factory function for network MFG solvers
 def create_network_mfg_solver(
-    problem: "NetworkMFGProblem", solver_type: str = "fixed_point", **kwargs
+    problem: NetworkMFGProblem, solver_type: str = "fixed_point", **kwargs
 ) -> NetworkFixedPointIterator:
     """
     Create network MFG solver with specified type.

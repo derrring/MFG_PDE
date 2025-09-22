@@ -5,11 +5,8 @@ Checks dependencies for license compatibility and compliance.
 """
 
 import json
-import os
 import subprocess
 import sys
-from pathlib import Path
-from typing import Dict, List, Set
 
 
 class LicenseComplianceChecker:
@@ -57,7 +54,7 @@ class LicenseComplianceChecker:
     def __init__(self):
         self.results = {"approved": [], "review_required": [], "prohibited": [], "unknown": [], "summary": {}}
 
-    def run_license_check(self) -> Dict:
+    def run_license_check(self) -> dict:
         """Run pip-licenses and parse results."""
         try:
             result = subprocess.run(["pip-licenses", "--format=json"], capture_output=True, text=True, check=True)
@@ -103,7 +100,7 @@ class LicenseComplianceChecker:
 
             return "unknown"
 
-    def check_compliance(self) -> Dict:
+    def check_compliance(self) -> dict:
         """Check license compliance for all dependencies."""
         license_data = self.run_license_check()
 

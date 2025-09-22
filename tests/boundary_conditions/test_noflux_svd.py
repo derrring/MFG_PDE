@@ -32,21 +32,21 @@ def test_noflux_with_svd():
 
         # Create problem
         problem = ExampleMFGProblem(
-            xmin=0.0, xmax=1.0, Nx=case['Nx'], T=case['T'], Nt=case['Nt'], sigma=0.5, coefCT=0.1
+            xmin=0.0, xmax=1.0, Nx=case["Nx"], T=case["T"], Nt=case["Nt"], sigma=0.5, coefCT=0.1
         )
 
         # Create collocation points
-        num_collocation_points = case['n_colloc']
+        num_collocation_points = case["n_colloc"]
         collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
         boundary_indices = np.array([0, num_collocation_points - 1])
-        no_flux_bc = BoundaryConditions(type='no_flux')
+        no_flux_bc = BoundaryConditions(type="no_flux")
 
         try:
             # Create solver
             solver = ParticleCollocationSolver(
                 problem=problem,
                 collocation_points=collocation_points,
-                num_particles=case['particles'],
+                num_particles=case["particles"],
                 delta=0.8,  # Large delta for stability
                 taylor_order=1,  # First order for stability
                 weight_function="wendland",
@@ -62,7 +62,7 @@ def test_noflux_with_svd():
             hjb_solver = solver.hjb_solver
             decomp_info = hjb_solver.get_decomposition_info()
 
-            print(f"SVD Diagnostics:")
+            print("SVD Diagnostics:")
             print(
                 f"  SVD points: {decomp_info['svd_points']}/{decomp_info['total_points']} ({decomp_info['svd_percentage']:.1f}%)"
             )
@@ -70,12 +70,12 @@ def test_noflux_with_svd():
             print(f"  Rank range: [{decomp_info['min_rank']}, {decomp_info['max_rank']}]")
 
             # Run very limited Picard iterations
-            print(f"\nRunning 2 Picard iterations...")
+            print("\nRunning 2 Picard iterations...")
             U, M, info = solver.solve(Niter=2, l2errBound=1e-3, verbose=True)
 
             if M is not None:
                 mass_evolution = np.sum(M * problem.Dx, axis=1)
-                print(f"\nMass Analysis:")
+                print("\nMass Analysis:")
                 print(f"  Initial mass: {mass_evolution[0]:.6f}")
                 print(f"  Final mass: {mass_evolution[-1]:.6f}")
                 print(f"  Mass change: {mass_evolution[-1] - mass_evolution[0]:.6f}")
@@ -96,37 +96,37 @@ def test_noflux_with_svd():
                 print(f"  Max |U|: {max_U:.2e}")
 
                 if max_U > 1e10:
-                    print(f"  ❌ HJB: Extreme values")
+                    print("  ❌ HJB: Extreme values")
                 elif max_U > 1e3:
-                    print(f"  ⚠ HJB: Large values")
+                    print("  ⚠ HJB: Large values")
                 else:
-                    print(f"  ✓ HJB: Reasonable values")
+                    print("  ✓ HJB: Reasonable values")
 
-                results[case['name']] = {
-                    'status': status,
-                    'mass_change': mass_evolution[-1] - mass_evolution[0],
-                    'max_U': max_U,
-                    'svd_percentage': decomp_info['svd_percentage'],
-                    'condition_number': decomp_info['avg_condition_number'],
+                results[case["name"]] = {
+                    "status": status,
+                    "mass_change": mass_evolution[-1] - mass_evolution[0],
+                    "max_U": max_U,
+                    "svd_percentage": decomp_info["svd_percentage"],
+                    "condition_number": decomp_info["avg_condition_number"],
                 }
 
             else:
-                print(f"  ❌ STATUS: FAILED (M is None)")
-                results[case['name']] = {'status': 'FAILED'}
+                print("  ❌ STATUS: FAILED (M is None)")
+                results[case["name"]] = {"status": "FAILED"}
 
         except Exception as e:
             print(f"❌ ERROR: {e}")
-            results[case['name']] = {'status': 'ERROR', 'error': str(e)}
+            results[case["name"]] = {"status": "ERROR", "error": str(e)}
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'='*60}")
     print(f"{'Case':<10} {'Status':<10} {'Mass Change':<12} {'Max |U|':<10} {'SVD %':<8}")
     print(f"{'-'*10} {'-'*10} {'-'*12} {'-'*10} {'-'*8}")
 
     for name, result in results.items():
-        if result['status'] not in ['FAILED', 'ERROR']:
+        if result["status"] not in ["FAILED", "ERROR"]:
             mass_change = f"{result['mass_change']:.2e}"
             max_U = f"{result['max_U']:.1e}"
             svd_pct = f"{result['svd_percentage']:.0f}%"
@@ -138,11 +138,11 @@ def test_noflux_with_svd():
         print(f"{name:<10} {result['status']:<10} {mass_change:<12} {max_U:<10} {svd_pct:<8}")
 
     # Find the largest stable case
-    stable_cases = [name for name, result in results.items() if result.get('status') == 'STABLE']
+    stable_cases = [name for name, result in results.items() if result.get("status") == "STABLE"]
     if stable_cases:
         print(f"\n✓ Largest stable case: {stable_cases[-1]}")
     else:
-        print(f"\n❌ No stable cases found")
+        print("\n❌ No stable cases found")
 
 
 if __name__ == "__main__":

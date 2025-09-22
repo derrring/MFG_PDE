@@ -5,22 +5,24 @@ This module provides convenient decorators for creating workflows, experiments,
 and parameter studies with minimal boilerplate code.
 """
 
+from __future__ import annotations
+
 import functools
 import inspect
 import time
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
-from .experiment_tracker import Experiment, ExperimentTracker
+from .experiment_tracker import ExperimentTracker
 from .parameter_sweep import ParameterSweep
-from .workflow_manager import Workflow, WorkflowManager
+from .workflow_manager import Workflow
 
 
 def workflow_step(
-    workflow: Optional[Workflow] = None,
-    name: Optional[str] = None,
-    dependencies: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    workflow: Workflow | None = None,
+    name: str | None = None,
+    dependencies: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
 ):
     """
     Decorator to mark a function as a workflow step.
@@ -65,11 +67,11 @@ def workflow_step(
 
 
 def experiment(
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    tags: Optional[List[str]] = None,
+    name: str | None = None,
+    description: str | None = None,
+    tags: list[str] | None = None,
     auto_save: bool = True,
-    workspace_path: Optional[str] = None,
+    workspace_path: str | None = None,
 ):
     """
     Decorator to mark a function as an experiment.
@@ -91,12 +93,15 @@ def experiment(
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Create experiment tracker
-            tracker = ExperimentTracker(workspace_path=workspace_path)
+            from pathlib import Path
+
+            workspace_path_obj = Path(workspace_path) if workspace_path else None
+            tracker = ExperimentTracker(workspace_path=workspace_path_obj)
 
             # Create experiment
             exp = tracker.create_experiment(
                 name=experiment_name,
-                description=description or func.__doc__,
+                description=description or func.__doc__ or "",
                 tags=tags or [],
             )
 
@@ -136,11 +141,11 @@ def experiment(
 
 
 def parameter_study(
-    parameters: Dict[str, List[Any]],
+    parameters: dict[str, list[Any]],
     execution_mode: str = "sequential",
-    max_workers: Optional[int] = None,
+    max_workers: int | None = None,
     save_results: bool = True,
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
 ):
     """
     Decorator to convert a function into a parameter study.
@@ -160,14 +165,17 @@ def parameter_study(
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Create parameter sweep
+            from pathlib import Path
+
             from .parameter_sweep import SweepConfiguration
 
+            output_dir_obj = Path(output_dir) if output_dir else None
             config = SweepConfiguration(
                 parameters=parameters,
                 execution_mode=execution_mode,
                 max_workers=max_workers,
                 save_intermediate=save_results,
-                output_dir=output_dir,
+                output_dir=output_dir_obj,
             )
 
             sweep = ParameterSweep(parameters, config)
@@ -234,9 +242,9 @@ def timed(func: Callable) -> Callable:
 
 
 def cached(
-    cache_dir: Optional[str] = None,
-    cache_key: Optional[Callable] = None,
-    ttl_seconds: Optional[int] = None,
+    cache_dir: str | None = None,
+    cache_key: Callable | None = None,
+    ttl_seconds: int | None = None,
 ):
     """
     Decorator to cache function results.
@@ -257,10 +265,7 @@ def cached(
         from pathlib import Path
 
         # Set up cache directory
-        if cache_dir is None:
-            cache_path = Path.cwd() / ".mfg_cache" / func.__name__
-        else:
-            cache_path = Path(cache_dir) / func.__name__
+        cache_path = Path.cwd() / ".mfg_cache" / func.__name__ if cache_dir is None else Path(cache_dir) / func.__name__
 
         cache_path.mkdir(parents=True, exist_ok=True)
 
@@ -389,14 +394,17 @@ def retry(
                         print(f"ERROR: {func.__name__} failed after {max_attempts} attempts")
 
             # Re-raise the last exception
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            else:
+                raise RuntimeError(f"Function {func.__name__} failed but no exception was captured")
 
         return wrapper
 
     return decorator
 
 
-def validate_inputs(validation_rules: Dict[str, Callable]):
+def validate_inputs(validation_rules: dict[str, Callable]):
     """
     Decorator to validate function inputs.
 
@@ -425,7 +433,7 @@ def validate_inputs(validation_rules: Dict[str, Callable]):
                         if not validator(value):
                             raise ValueError(f"Validation failed for parameter '{param_name}': {value}")
                     except Exception as e:
-                        raise ValueError(f"Validation error for parameter '{param_name}': {e}")
+                        raise ValueError(f"Validation error for parameter '{param_name}': {e}") from e
 
             return func(*args, **kwargs)
 
@@ -435,7 +443,7 @@ def validate_inputs(validation_rules: Dict[str, Callable]):
 
 
 def log_execution(
-    logger_name: Optional[str] = None,
+    logger_name: str | None = None,
     log_inputs: bool = False,
     log_outputs: bool = False,
     log_performance: bool = True,
@@ -536,8 +544,8 @@ def mfg_solver(
 
 
 def convergence_study(
-    tolerances: List[float],
-    max_iterations: List[int],
+    tolerances: list[float],
+    max_iterations: list[int],
     execution_mode: str = "parallel_threads",
 ):
     """
@@ -563,14 +571,14 @@ def convergence_study(
 
 # Export all decorators
 __all__ = [
-    "workflow_step",
-    "experiment",
-    "parameter_study",
-    "timed",
     "cached",
-    "retry",
-    "validate_inputs",
+    "convergence_study",
+    "experiment",
     "log_execution",
     "mfg_solver",
-    "convergence_study",
+    "parameter_study",
+    "retry",
+    "timed",
+    "validate_inputs",
+    "workflow_step",
 ]

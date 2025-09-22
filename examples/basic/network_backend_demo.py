@@ -13,13 +13,12 @@ The system provides automatic fallbacks and performance optimization.
 """
 
 import time
-from typing import Any, Dict
 
 import numpy as np
 
 # MFG_PDE imports
 from mfg_pde.geometry.network_backend import NetworkBackendType, OperationType, get_backend_manager
-from mfg_pde.geometry.network_geometry import GridNetwork, NetworkType, RandomNetwork, ScaleFreeNetwork, create_network
+from mfg_pde.geometry.network_geometry import GridNetwork, RandomNetwork, ScaleFreeNetwork, create_network
 
 
 def demonstrate_backend_selection():
@@ -33,8 +32,8 @@ def demonstrate_backend_selection():
     # Show available backends
     info = manager.get_backend_info()
     print("Available Network Backends:")
-    for backend_name in info['available_backends']:
-        caps = info['backend_capabilities'][backend_name]
+    for backend_name in info["available_backends"]:
+        caps = info["backend_capabilities"][backend_name]
         print(f"  • {backend_name}:")
         print(f"    - Max recommended nodes: {caps['max_recommended_nodes']:,}")
         print(f"    - Speed rating: {caps['speed_rating']}/5")
@@ -65,7 +64,7 @@ def benchmark_backends():
     print("=" * 50)
 
     sizes = [100, 500, 1000]
-    network_types = ['grid', 'random', 'scale_free']
+    network_types = ["grid", "random", "scale_free"]
 
     for network_type in network_types:
         print(f"\n{network_type.upper()} Networks:")
@@ -77,14 +76,14 @@ def benchmark_backends():
             # Time network creation
             start_time = time.time()
 
-            if network_type == 'grid':
+            if network_type == "grid":
                 width = int(np.sqrt(size))
                 height = size // width
-                network = create_network('grid', size, width=width, height=height)
-            elif network_type == 'random':
-                network = create_network('random', size, connection_prob=0.1)
+                network = create_network("grid", size, width=width, height=height)
+            elif network_type == "random":
+                network = create_network("random", size, connection_prob=0.1)
             else:  # scale_free
-                network = create_network('scale_free', size, num_edges_per_node=3)
+                network = create_network("scale_free", size, num_edges_per_node=3)
 
             # Create the actual network
             network_data = network.create_network(seed=42)

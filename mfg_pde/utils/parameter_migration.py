@@ -6,11 +6,14 @@ equivalents while maintaining backward compatibility. It supports gradual
 migration with clear deprecation warnings and automatic parameter translation.
 """
 
+from __future__ import annotations
+
 import inspect
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 
 @dataclass
@@ -21,7 +24,7 @@ class ParameterMapping:
     new_name: str
     deprecation_version: str
     removal_version: str
-    transformation: Optional[callable] = None  # Optional value transformation
+    transformation: Callable | None = None  # Optional value transformation
     description: str = ""
 
     def __post_init__(self):
@@ -37,7 +40,7 @@ class MigrationStats:
     migrated_parameters: int = 0
     warnings_issued: int = 0
     errors_encountered: int = 0
-    migration_log: List[str] = field(default_factory=list)
+    migration_log: list[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
 
 
@@ -45,7 +48,7 @@ class ParameterMigrator:
     """Central system for managing parameter migrations across the codebase."""
 
     def __init__(self):
-        self.mappings: List[ParameterMapping] = []
+        self.mappings: list[ParameterMapping] = []
         self.migration_stats = MigrationStats()
         self._register_standard_mappings()
 
@@ -137,7 +140,7 @@ class ParameterMigrator:
         new_name: str,
         deprecation_version: str,
         removal_version: str,
-        transformation: Optional[callable] = None,
+        transformation: Callable | None = None,
         description: str = "",
     ) -> None:
         """
@@ -161,7 +164,7 @@ class ParameterMigrator:
         )
         self.mappings.append(mapping)
 
-    def migrate_parameters(self, kwargs: Dict[str, Any], calling_function: str = None) -> Dict[str, Any]:
+    def migrate_parameters(self, kwargs: dict[str, Any], calling_function: str | None = None) -> dict[str, Any]:
         """
         Migrate legacy parameter names to modern equivalents.
 
@@ -189,7 +192,7 @@ class ParameterMigrator:
 
         return migrated
 
-    def _process_mapping(self, kwargs: Dict[str, Any], mapping: ParameterMapping, calling_function: str) -> None:
+    def _process_mapping(self, kwargs: dict[str, Any], mapping: ParameterMapping, calling_function: str) -> None:
         """Process a single parameter mapping."""
         try:
             old_value = kwargs[mapping.old_name]
@@ -275,15 +278,15 @@ Migration Log:
 
         return report
 
-    def get_deprecated_parameters(self) -> Set[str]:
+    def get_deprecated_parameters(self) -> set[str]:
         """Get set of all deprecated parameter names."""
         return {mapping.old_name for mapping in self.mappings}
 
-    def get_modern_parameters(self) -> Set[str]:
+    def get_modern_parameters(self) -> set[str]:
         """Get set of all modern parameter names."""
         return {mapping.new_name for mapping in self.mappings}
 
-    def check_parameters(self, kwargs: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+    def check_parameters(self, kwargs: dict[str, Any]) -> tuple[list[str], list[str]]:
         """
         Check parameters for deprecated names without migrating.
 
@@ -311,7 +314,7 @@ Migration Log:
 
 
 # Decorator for automatic parameter migration
-def migrate_parameters(migrator: Optional[ParameterMigrator] = None):
+def migrate_parameters(migrator: ParameterMigrator | None = None):
     """
     Decorator to automatically migrate parameters in function calls.
 
@@ -350,18 +353,18 @@ global_parameter_migrator = ParameterMigrator()
 
 
 # Convenience functions
-def migrate_kwargs(kwargs: Dict[str, Any], calling_function: str = None) -> Dict[str, Any]:
+def migrate_kwargs(kwargs: dict[str, Any], calling_function: str | None = None) -> dict[str, Any]:
     """Convenience function to migrate parameters using global migrator."""
     return global_parameter_migrator.migrate_parameters(kwargs, calling_function)
 
 
-def check_deprecated_usage(kwargs: Dict[str, Any]) -> None:
+def check_deprecated_usage(kwargs: dict[str, Any]) -> None:
     """Check for deprecated parameter usage and print warnings."""
     deprecated, modern = global_parameter_migrator.check_parameters(kwargs)
 
     if deprecated:
         print("\nWARNING: Deprecated parameters detected:")
-        for old, new in zip(deprecated, modern):
+        for old, new in zip(deprecated, modern, strict=False):
             print(f"   '{old}' → use '{new}' instead")
         print("   Consider updating your code to use modern parameter names.\n")
 

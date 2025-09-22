@@ -6,19 +6,14 @@ Demonstrates how the new triangular AMR seamlessly integrates with
 the existing MFG_PDE geometry infrastructure (MeshData, Domain2D, etc.).
 """
 
-from typing import Any, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
-
 # Import existing geometry infrastructure
-from mfg_pde.geometry import Domain2D, MeshData, MeshManager, MeshPipeline
+from mfg_pde.geometry import Domain2D, MeshData
 
 # Import existing AMR infrastructure
-from mfg_pde.geometry.amr_mesh import AMRRefinementCriteria
-
 # Import new triangular AMR
 from mfg_pde.geometry.triangular_amr import TriangularMeshErrorEstimator, create_triangular_amr_mesh
 
@@ -62,14 +57,14 @@ def create_sample_triangular_mesh() -> MeshData:
         element_tags=np.array([1, 1, 1, 1]),  # All same material
         boundary_faces=np.array([[0, 1], [1, 2], [2, 3], [3, 0]]),  # Boundary edges
         dimension=2,
-        metadata={'created_by': 'manual_triangulation'},
+        metadata={"created_by": "manual_triangulation"},
     )
 
     print(f"  Created mesh with {mesh_data.num_vertices} vertices, {mesh_data.num_elements} triangles")
     return mesh_data
 
 
-def create_test_solution_data(triangular_amr_mesh) -> Dict[str, np.ndarray]:
+def create_test_solution_data(triangular_amr_mesh) -> dict[str, np.ndarray]:
     """Create test solution data with sharp features for AMR testing."""
 
     print("Creating test solution with sharp features...")
@@ -99,7 +94,7 @@ def create_test_solution_data(triangular_amr_mesh) -> Dict[str, np.ndarray]:
     print(f"  U range: [{np.min(U):.3f}, {np.max(U):.3f}]")
     print(f"  M range: [{np.min(M):.3f}, {np.max(M):.3f}]")
 
-    return {'U': U, 'M': M}
+    return {"U": U, "M": M}
 
 
 def demonstrate_triangular_amr():
@@ -148,14 +143,14 @@ def demonstrate_triangular_amr():
         print(f"    Max level: {stats['max_level']}")
 
         # Update solution data for new mesh (simplified)
-        if stats['total_refined'] > 0:
+        if stats["total_refined"] > 0:
             solution_data = create_test_solution_data(triangular_amr)
 
     # Step 6: Get final mesh statistics
     print("\nStep 6: Final mesh analysis...")
     final_stats = triangular_amr.get_mesh_statistics()
 
-    print(f"  Final Statistics:")
+    print("  Final Statistics:")
     print(f"    Total triangles: {final_stats['total_triangles']}")
     print(f"    Leaf triangles: {final_stats['leaf_triangles']}")
     print(f"    Max refinement level: {final_stats['max_level']}")
@@ -167,7 +162,7 @@ def demonstrate_triangular_amr():
     print("\nStep 7: Exporting adapted mesh...")
     adapted_mesh_data = triangular_amr.export_to_mesh_data()
 
-    print(f"  Exported MeshData:")
+    print("  Exported MeshData:")
     print(f"    Vertices: {adapted_mesh_data.num_vertices}")
     print(f"    Elements: {adapted_mesh_data.num_elements}")
     print(f"    Element type: {adapted_mesh_data.element_type}")
@@ -185,38 +180,38 @@ def create_triangular_amr_visualization(triangular_amr, solution_data, stats):
 
     try:
         fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-        fig.suptitle('Triangular AMR Integration Results', fontsize=16)
+        fig.suptitle("Triangular AMR Integration Results", fontsize=16)
 
         # Plot 1: Initial vs adapted mesh
         ax1 = axes[0, 0]
-        plot_triangular_mesh(triangular_amr, ax1, color_by='level')
-        ax1.set_title('Adaptive Triangular Mesh\n(colored by refinement level)')
-        ax1.set_xlabel('x')
-        ax1.set_ylabel('y')
+        plot_triangular_mesh(triangular_amr, ax1, color_by="level")
+        ax1.set_title("Adaptive Triangular Mesh\n(colored by refinement level)")
+        ax1.set_xlabel("x")
+        ax1.set_ylabel("y")
 
         # Plot 2: Solution field U
         ax2 = axes[0, 1]
-        plot_solution_field(triangular_amr, solution_data['U'], ax2)
-        ax2.set_title('Value Function U\n(sharp features drive refinement)')
-        ax2.set_xlabel('x')
-        ax2.set_ylabel('y')
+        plot_solution_field(triangular_amr, solution_data["U"], ax2)
+        ax2.set_title("Value Function U\n(sharp features drive refinement)")
+        ax2.set_xlabel("x")
+        ax2.set_ylabel("y")
 
         # Plot 3: Solution field M
         ax3 = axes[1, 0]
-        plot_solution_field(triangular_amr, solution_data['M'], ax3)
-        ax3.set_title('Density Function M\n(different sharp feature location)')
-        ax3.set_xlabel('x')
-        ax3.set_ylabel('y')
+        plot_solution_field(triangular_amr, solution_data["M"], ax3)
+        ax3.set_title("Density Function M\n(different sharp feature location)")
+        ax3.set_xlabel("x")
+        ax3.set_ylabel("y")
 
         # Plot 4: Refinement statistics
         ax4 = axes[1, 1]
         plot_refinement_statistics(stats, ax4)
-        ax4.set_title('Refinement Statistics')
+        ax4.set_title("Refinement Statistics")
 
         plt.tight_layout()
 
         # Save plot
-        plt.savefig('triangular_amr_integration.png', dpi=150, bbox_inches='tight')
+        plt.savefig("triangular_amr_integration.png", dpi=150, bbox_inches="tight")
         print("  Visualization saved to 'triangular_amr_integration.png'")
 
         # Show if possible
@@ -229,7 +224,7 @@ def create_triangular_amr_visualization(triangular_amr, solution_data, stats):
         print(f"  Visualization failed: {e}")
 
 
-def plot_triangular_mesh(triangular_amr, ax, color_by='level'):
+def plot_triangular_mesh(triangular_amr, ax, color_by="level"):
     """Plot triangular mesh with coloring options."""
 
     # Get leaf triangles
@@ -237,9 +232,9 @@ def plot_triangular_mesh(triangular_amr, ax, color_by='level'):
 
     colors = []
     for triangle in leaf_triangles:
-        if color_by == 'level':
+        if color_by == "level":
             colors.append(triangle.level)
-        elif color_by == 'aspect_ratio':
+        elif color_by == "aspect_ratio":
             colors.append(triangle.aspect_ratio)
         else:
             colors.append(1.0)
@@ -253,10 +248,10 @@ def plot_triangular_mesh(triangular_amr, ax, color_by='level'):
         color_val = colors[i]
         color = plt.cm.viridis(color_val / max(colors) if max(colors) > 0 else 0)
 
-        ax.plot(triangle_plot[:, 0], triangle_plot[:, 1], 'k-', linewidth=0.5)
+        ax.plot(triangle_plot[:, 0], triangle_plot[:, 1], "k-", linewidth=0.5)
         ax.fill(vertices[:, 0], vertices[:, 1], color=color, alpha=0.7)
 
-    ax.set_aspect('equal')
+    ax.set_aspect("equal")
     ax.grid(True, alpha=0.3)
 
 
@@ -273,9 +268,9 @@ def plot_solution_field(triangular_amr, solution_values, ax):
 
             vertices = triangle.vertices
             ax.fill(vertices[:, 0], vertices[:, 1], color=color, alpha=0.8)
-            ax.plot(vertices[[0, 1, 2, 0], 0], vertices[[0, 1, 2, 0], 1], 'k-', linewidth=0.3)
+            ax.plot(vertices[[0, 1, 2, 0], 0], vertices[[0, 1, 2, 0], 1], "k-", linewidth=0.3)
 
-    ax.set_aspect('equal')
+    ax.set_aspect("equal")
     ax.grid(True, alpha=0.3)
 
 
@@ -283,13 +278,13 @@ def plot_refinement_statistics(stats, ax):
     """Plot refinement statistics."""
 
     # Level distribution
-    levels = list(stats['level_distribution'].keys())
-    counts = list(stats['level_distribution'].values())
+    levels = list(stats["level_distribution"].keys())
+    counts = list(stats["level_distribution"].values())
 
-    ax.bar(levels, counts, alpha=0.7, color='skyblue', edgecolor='navy')
-    ax.set_xlabel('Refinement Level')
-    ax.set_ylabel('Number of Triangles')
-    ax.set_title('Triangles per Refinement Level')
+    ax.bar(levels, counts, alpha=0.7, color="skyblue", edgecolor="navy")
+    ax.set_xlabel("Refinement Level")
+    ax.set_ylabel("Number of Triangles")
+    ax.set_title("Triangles per Refinement Level")
     ax.grid(True, alpha=0.3)
 
     # Add statistics text
@@ -303,9 +298,9 @@ Aspect Ratio: {stats['min_aspect_ratio']:.2f} - {stats['max_aspect_ratio']:.2f}"
         0.98,
         text_stats,
         transform=ax.transAxes,
-        verticalalignment='top',
+        verticalalignment="top",
         fontsize=8,
-        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
     )
 
 

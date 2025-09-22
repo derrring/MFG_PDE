@@ -6,21 +6,26 @@ Provides elegant progress bars, timing, and performance monitoring for long-runn
 solver operations using modern tools like tqdm.
 """
 
+from __future__ import annotations
+
 import functools
 import time
 import warnings
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any
 
 try:
-    from tqdm import tqdm, trange
+    from tqdm import tqdm as _tqdm_real
+    from tqdm import trange as _trange_real
 
     TQDM_AVAILABLE = True
+    tqdm = _tqdm_real  # type: ignore
+    trange = _trange_real  # type: ignore
 except ImportError:
     TQDM_AVAILABLE = False
 
     # Fallback simple progress implementation
-    class tqdm:
+    class tqdm:  # noqa: N801
         def __init__(self, iterable=None, total=None, desc=None, disable=False, **kwargs):
             self.iterable = iterable or range(total or 0)
             self.total = total or (len(iterable) if iterable else 0)
@@ -38,7 +43,7 @@ except ImportError:
                 print(f"Starting {self.desc}..." if self.desc else "Starting...")
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: Any) -> None:
             if not self.disable:
                 print(f"Completed {self.desc}!" if self.desc else "Completed!")
 
@@ -49,10 +54,16 @@ except ImportError:
                 if self.n % max(1, self.total // 10) == 0:  # Update every 10%
                     print(f"Progress: {progress:.1f}% ({self.n}/{self.total})")
 
-        def set_postfix(self, **kwargs):
+        def set_postfix(self, **kwargs: Any) -> None:
             pass  # Simple fallback ignores postfix
 
-    def trange(n, **kwargs):
+        def close(self) -> None:
+            pass  # Simple fallback ignores close
+
+        def set_description(self, desc: str) -> None:
+            self.desc = desc
+
+    def trange(n: int, **kwargs: Any) -> tqdm:
         return tqdm(range(n), **kwargs)
 
 
@@ -76,7 +87,7 @@ class SolverTimer:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end_time = time.perf_counter()
-        self.duration = self.end_time - self.start_time
+        self.duration = self.end_time - (self.start_time or 0)
 
         if self.verbose:
             if exc_type is None:
@@ -90,7 +101,7 @@ class SolverTimer:
             return "Unknown"
 
         if self.duration < 1:
-            return f"{self.duration*1000:.1f}ms"
+            return f"{self.duration * 1000:.1f}ms"
         elif self.duration < 60:
             return f"{self.duration:.2f}s"
         elif self.duration < 3600:
@@ -155,14 +166,14 @@ class IterationProgress:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.pbar:
-            self.pbar.close()
+        if self.pbar and hasattr(self.pbar, "close"):
+            self.pbar.close()  # type: ignore
 
     def update(
         self,
         n: int = 1,
-        error: Optional[float] = None,
-        additional_info: Optional[Dict[str, Any]] = None,
+        error: float | None = None,
+        additional_info: dict[str, Any] | None = None,
     ):
         """
         Update progress with optional convergence information.
@@ -179,7 +190,6 @@ class IterationProgress:
 
         # Update every update_frequency iterations or on final iteration
         if self.current_iteration % self.update_frequency == 0 or self.current_iteration >= self.max_iterations:
-
             # Prepare postfix information
             postfix = {}
             if error is not None:
@@ -188,16 +198,16 @@ class IterationProgress:
                 postfix.update(additional_info)
 
             self.pbar.update(n)
-            if postfix:
-                self.pbar.set_postfix(postfix)
+            if postfix and hasattr(self.pbar, "set_postfix"):
+                self.pbar.set_postfix(postfix)  # type: ignore
 
     def set_description(self, desc: str):
         """Update the progress bar description."""
-        if self.pbar:
-            self.pbar.set_description(desc)
+        if self.pbar and hasattr(self.pbar, "set_description"):
+            self.pbar.set_description(desc)  # type: ignore
 
 
-def timed_operation(description: str = None, verbose: bool = True):
+def timed_operation(description: str | None = None, verbose: bool = True):
     """
     Decorator for timing function calls.
 
@@ -227,7 +237,7 @@ def timed_operation(description: str = None, verbose: bool = True):
 
 @contextmanager
 def progress_context(
-    iterable: Iterator,
+    iterable: Any,
     description: str = "Processing",
     show_rate: bool = True,
     disable: bool = False,
@@ -247,7 +257,7 @@ def progress_context(
     try:
         # Determine total if possible
         try:
-            total = len(iterable)
+            total = len(iterable) if hasattr(iterable, "__len__") else None
         except (TypeError, AttributeError):
             total = None
 

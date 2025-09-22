@@ -214,7 +214,9 @@ class TestBoundaryManager:
 
         # Add function Dirichlet BC
         boundary_manager.add_boundary_condition(
-            region_id=2, bc_type="dirichlet", value=lambda coords: coords[:, 0] + coords[:, 1]  # x + y
+            region_id=2,
+            bc_type="dirichlet",
+            value=lambda coords: coords[:, 0] + coords[:, 1],  # x + y
         )
 
         # Evaluate constant BC
@@ -249,7 +251,7 @@ class TestBoundaryManager:
 
 def test_geometry_package_import():
     """Test that the geometry package imports correctly."""
-    from mfg_pde.geometry import BaseGeometry, BoundaryManager, Domain2D, MeshData
+    from mfg_pde.geometry import BoundaryManager, Domain2D, MeshData
 
     # Test that classes are available
     assert BaseGeometry is not None
@@ -263,11 +265,11 @@ def test_main_package_geometry_import():
     import mfg_pde
 
     # Check that the flag is set correctly
-    if hasattr(mfg_pde, 'GEOMETRY_SYSTEM_AVAILABLE'):
+    if hasattr(mfg_pde, "GEOMETRY_SYSTEM_AVAILABLE"):
         # If geometry system is available, test imports
         if mfg_pde.GEOMETRY_SYSTEM_AVAILABLE:
-            assert hasattr(mfg_pde, 'Domain2D')
-            assert hasattr(mfg_pde, 'MeshData')
+            assert hasattr(mfg_pde, "Domain2D")
+            assert hasattr(mfg_pde, "MeshData")
         else:
             # If not available, that's okay too (missing optional dependencies)
             pass

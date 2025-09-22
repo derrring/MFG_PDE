@@ -5,8 +5,10 @@ This module provides structured result objects that replace tuple returns,
 improving code readability, IDE support, and API maintainability.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -38,8 +40,8 @@ class SolverResult:
     error_history_M: np.ndarray
     solver_name: str = "Unknown Solver"
     convergence_achieved: bool = False
-    execution_time: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    execution_time: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate result data after initialization."""
@@ -88,12 +90,12 @@ class SolverResult:
     @property
     def final_error_U(self) -> float:
         """Get the final convergence error for U."""
-        return self.error_history_U[-1] if len(self.error_history_U) > 0 else float("inf")
+        return float(self.error_history_U[-1]) if len(self.error_history_U) > 0 else float("inf")
 
     @property
     def final_error_M(self) -> float:
         """Get the final convergence error for M."""
-        return self.error_history_M[-1] if len(self.error_history_M) > 0 else float("inf")
+        return float(self.error_history_M[-1]) if len(self.error_history_M) > 0 else float("inf")
 
     @property
     def max_error(self) -> float:
@@ -101,11 +103,11 @@ class SolverResult:
         return max(self.final_error_U, self.final_error_M)
 
     @property
-    def solution_shape(self) -> Tuple[int, int]:
+    def solution_shape(self) -> tuple[int, int]:
         """Get the shape of the solution arrays."""
         return self.U.shape
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for serialization."""
         return {
             "U": self.U,
@@ -152,7 +154,7 @@ class ConvergenceResult:
     stagnation_detected: bool = False
     oscillation_detected: bool = False
     divergence_detected: bool = False
-    convergence_rate_estimate: Optional[float] = None
+    convergence_rate_estimate: float | None = None
 
     @property
     def convergence_trend(self) -> str:
@@ -172,7 +174,7 @@ class ConvergenceResult:
         else:
             return "oscillating"
 
-    def estimate_convergence_rate(self) -> Optional[float]:
+    def estimate_convergence_rate(self) -> float | None:
         """Estimate linear convergence rate if possible."""
         if len(self.error_history_U) < 3:
             return None
@@ -189,7 +191,7 @@ class ConvergenceResult:
             slope = np.polyfit(iterations, log_errors, 1)[0]
 
             # Convergence rate is the exponential decay rate
-            return -slope if slope < 0 else None
+            return float(-slope) if slope < 0 else None
 
         except (ValueError, TypeError):
             return None
@@ -203,8 +205,8 @@ def create_solver_result(
     error_history_M: np.ndarray,
     solver_name: str = "Unknown Solver",
     convergence_achieved: bool = False,
-    tolerance: Optional[float] = None,
-    execution_time: Optional[float] = None,
+    tolerance: float | None = None,
+    execution_time: float | None = None,
     **metadata,
 ) -> SolverResult:
     """

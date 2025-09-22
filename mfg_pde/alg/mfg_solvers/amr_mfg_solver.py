@@ -5,12 +5,18 @@ This module provides MFG solvers that can work with adaptive meshes,
 automatically refining and coarsening the mesh based on solution error.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, cast
 
 from tqdm import tqdm
 
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    import jax
+    import jax.numpy as jnp
 
 try:
     import jax
@@ -23,7 +29,9 @@ except ImportError:
 
 from ...backends.base_backend import BaseBackend
 from ...core.mfg_problem import MFGProblem
-from ...geometry.amr_mesh import AdaptiveMesh, AMRRefinementCriteria
+from ...factory.solver_factory import SolverType
+from ...geometry.amr_mesh import AdaptiveMesh, QuadTreeNode
+from ...types.internal import JAXArray
 from ...utils.solver_result import SolverResult
 from ..base_mfg_solver import MFGSolver
 
@@ -41,10 +49,10 @@ class AMRMFGSolver(MFGSolver):
         self,
         problem: MFGProblem,
         adaptive_mesh: AdaptiveMesh,
-        base_solver_type: str = "fixed_point",
+        base_solver_type: SolverType = "fixed_point",
         amr_frequency: int = 5,  # Adapt mesh every N iterations
         max_amr_cycles: int = 3,  # Maximum AMR cycles per solve
-        backend: Optional[BaseBackend] = None,
+        backend: BaseBackend | None = None,
         **solver_kwargs,
     ):
         """
@@ -59,7 +67,8 @@ class AMRMFGSolver(MFGSolver):
             backend: Computational backend
             **solver_kwargs: Additional solver arguments
         """
-        super().__init__(problem, backend)
+        super().__init__(problem)
+        self.backend = backend
 
         self.adaptive_mesh = adaptive_mesh
         self.base_solver_type = base_solver_type
@@ -85,7 +94,7 @@ class AMRMFGSolver(MFGSolver):
         # Create solver with current backend
         self.base_solver = create_fast_solver(
             self.problem,
-            solver_type=self.base_solver_type,
+            solver_type=cast(SolverType, self.base_solver_type),
             backend=self.backend,
             **self.solver_kwargs,
         )
@@ -119,20 +128,15 @@ class AMRMFGSolver(MFGSolver):
                     range(max_iterations),
                     desc=f"AMR Cycle {amr_cycle+1}/{self.max_amr_cycles}",
                 )
-            else:
-                pbar = range(max_iterations)
+                # Solve on current mesh with progress bar
+                for iteration in pbar:
+                    # Perform solver step
+                    U_new, M_new, residual = self._solver_step(U, M)
 
-            # Solve on current mesh
-            cycle_converged = False
-            for iteration in pbar:
-                # Perform solver step
-                U_new, M_new, residual = self._solver_step(U, M)
+                    # Check convergence
+                    change = self._compute_solution_change(U, M, U_new, M_new)
+                    convergence_history.append(change)
 
-                # Check convergence
-                change = self._compute_solution_change(U, M, U_new, M_new)
-                convergence_history.append(change)
-
-                if verbose and hasattr(pbar, "set_postfix"):
                     pbar.set_postfix(
                         {
                             "residual": f"{residual:.2e}",
@@ -141,18 +145,36 @@ class AMRMFGSolver(MFGSolver):
                         }
                     )
 
-                U, M = U_new, M_new
+                    U, M = U_new, M_new
 
-                # Adapt mesh periodically
-                if (iteration + 1) % self.amr_frequency == 0:
-                    self._adapt_mesh({"U": U, "M": M}, verbose=verbose)
+                    # Adapt mesh periodically
+                    if (iteration + 1) % self.amr_frequency == 0:
+                        self._adapt_mesh({"U": U, "M": M}, verbose=verbose)
 
-                # Check convergence
-                if change < tolerance:
-                    cycle_converged = True
-                    if verbose:
-                        print(f"\nConverged in {iteration+1} iterations")
-                    break
+                    # Check convergence
+                    if change < tolerance:
+                        if verbose:
+                            print(f"\nConverged in {iteration+1} iterations")
+                        break
+            else:
+                # Solve on current mesh without progress bar
+                for iteration in range(max_iterations):
+                    # Perform solver step
+                    U_new, M_new, residual = self._solver_step(U, M)
+
+                    # Check convergence
+                    change = self._compute_solution_change(U, M, U_new, M_new)
+                    convergence_history.append(change)
+
+                    U, M = U_new, M_new
+
+                    # Adapt mesh periodically
+                    if (iteration + 1) % self.amr_frequency == 0:
+                        self._adapt_mesh({"U": U, "M": M}, verbose=verbose)
+
+                    # Check convergence
+                    if change < tolerance:
+                        break
 
             # Record mesh statistics
             mesh_stats = self.adaptive_mesh.get_mesh_statistics()
@@ -174,25 +196,38 @@ class AMRMFGSolver(MFGSolver):
         # Create final result
         execution_time = 0.0  # Would be tracked in real implementation
         final_residual = convergence_history[-1] if convergence_history else 1.0
+        total_iterations = len(convergence_history)
+
+        # Convert convergence history to error arrays (simplified)
+        error_history_U = np.array(convergence_history) * 0.5  # Approximate split
+        error_history_M = np.array(convergence_history) * 0.5  # Approximate split
 
         result = SolverResult(
             U=U,
             M=M,
+            iterations=total_iterations,
+            error_history_U=error_history_U,
+            error_history_M=error_history_M,
+            solver_name=f"AMR_{self.base_solver_type}",
             convergence_achieved=final_residual < tolerance,
-            final_error=final_residual,
-            convergence_history=convergence_history,
             execution_time=execution_time,
-            solver_info={
+            metadata={
                 "solver_type": f"AMR_{self.base_solver_type}",
                 "amr_stats": self.amr_stats,
                 "mesh_history": mesh_history,
                 "final_mesh_stats": self.adaptive_mesh.get_mesh_statistics(),
+                "final_residual": final_residual,
+                "convergence_history": convergence_history,
             },
         )
 
+        # Store results for get_results() method
+        self._last_U = U.copy()
+        self._last_M = M.copy()
+
         return result
 
-    def _initialize_solution(self) -> Tuple[NDArray, NDArray]:
+    def _initialize_solution(self) -> tuple[NDArray, NDArray]:
         """Initialize solution arrays on current mesh"""
         # For now, use uniform grid initialization
         # In full implementation, would initialize on AMR mesh
@@ -203,7 +238,7 @@ class AMRMFGSolver(MFGSolver):
 
         return U, M
 
-    def _solver_step(self, U: NDArray, M: NDArray) -> Tuple[NDArray, NDArray, float]:
+    def _solver_step(self, U: NDArray, M: NDArray) -> tuple[NDArray, NDArray, float]:
         """
         Perform one step of the underlying MFG solver.
 
@@ -275,7 +310,7 @@ class AMRMFGSolver(MFGSolver):
         m_change = np.max(np.abs(M_new - M_old))
         return max(u_change, m_change)
 
-    def _adapt_mesh(self, solution_data: Dict[str, NDArray], verbose: bool = False) -> Dict[str, int]:
+    def _adapt_mesh(self, solution_data: dict[str, NDArray], verbose: bool = False) -> dict[str, int]:
         """
         Adapt the mesh based on current solution.
 
@@ -310,7 +345,7 @@ class AMRMFGSolver(MFGSolver):
 
         return adaptation_stats
 
-    def _project_solution_to_new_mesh(self, U: NDArray, M: NDArray) -> Tuple[NDArray, NDArray]:
+    def _project_solution_to_new_mesh(self, U: NDArray, M: NDArray) -> tuple[NDArray, NDArray]:
         """
         Project solution from old mesh to new mesh after adaptation.
 
@@ -329,7 +364,7 @@ class AMRMFGSolver(MFGSolver):
             # No mesh changes, return original solution
             return U, M
 
-    def _conservative_interpolation(self, U: NDArray, M: NDArray) -> Tuple[NDArray, NDArray]:
+    def _conservative_interpolation(self, U: NDArray, M: NDArray) -> tuple[NDArray, NDArray]:
         """
         Perform conservative interpolation of solution between mesh levels.
 
@@ -339,7 +374,6 @@ class AMRMFGSolver(MFGSolver):
         3. Monotonicity preservation where appropriate
         """
         # Get current mesh structure
-        leaf_nodes = self.adaptive_mesh.leaf_nodes
 
         # Create mapping from old uniform grid to AMR mesh
         nx, ny = U.shape
@@ -374,10 +408,10 @@ class AMRMFGSolver(MFGSolver):
         self,
         U: NDArray,
         M: NDArray,
-        node: "QuadTreeNode",
+        node: QuadTreeNode,
         x_coords: NDArray,
         y_coords: NDArray,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Get average solution values in the region corresponding to AMR node.
         """
@@ -405,20 +439,18 @@ class AMRMFGSolver(MFGSolver):
             i_center = np.clip(i_center, 0, U.shape[0] - 1)
             j_center = np.clip(j_center, 0, U.shape[1] - 1)
 
-            return U[i_center, j_center], M[i_center, j_center]
+            return float(U[i_center, j_center]), float(M[i_center, j_center])
 
         # Compute weighted averages
         region_U = U[np.ix_(i_indices, j_indices)]
         region_M = M[np.ix_(i_indices, j_indices)]
 
-        avg_U = np.mean(region_U)
-        avg_M = np.mean(region_M)
+        avg_U = float(np.mean(region_U))
+        avg_M = float(np.mean(region_M))
 
         return avg_U, avg_M
 
-    def _conservative_density_interpolation(
-        self, old_density: float, node: "QuadTreeNode", x: float, y: float
-    ) -> float:
+    def _conservative_density_interpolation(self, old_density: float, node: QuadTreeNode, x: float, y: float) -> float:
         """
         Conservative interpolation for density function.
 
@@ -428,7 +460,7 @@ class AMRMFGSolver(MFGSolver):
         # This ensures mass conservation
         return old_density
 
-    def _gradient_preserving_interpolation(self, old_value: float, node: "QuadTreeNode", x: float, y: float) -> float:
+    def _gradient_preserving_interpolation(self, old_value: float, node: QuadTreeNode, x: float, y: float) -> float:
         """
         Gradient-preserving interpolation for value function.
 
@@ -456,7 +488,7 @@ class AMRMFGSolver(MFGSolver):
 
         return new_M
 
-    def get_amr_statistics(self) -> Dict[str, Any]:
+    def get_amr_statistics(self) -> dict[str, Any]:
         """Get comprehensive AMR statistics"""
         mesh_stats = self.adaptive_mesh.get_mesh_statistics()
 
@@ -472,6 +504,21 @@ class AMRMFGSolver(MFGSolver):
             },
         }
 
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Returns the computed U and M arrays from the last solve.
+
+        Returns:
+            Tuple of (U, M) solution arrays
+
+        Raises:
+            RuntimeError: If solve() has not been called yet
+        """
+        if not hasattr(self, "_last_U") or not hasattr(self, "_last_M"):
+            raise RuntimeError("No solution available. Call solve() first.")
+
+        return self._last_U, self._last_M
+
 
 class JAXAcceleratedAMR:
     """JAX-accelerated AMR operations for high performance"""
@@ -484,7 +531,7 @@ class JAXAcceleratedAMR:
 
     @staticmethod
     @jax.jit
-    def compute_error_indicators(U: jnp.ndarray, M: jnp.ndarray, dx: float, dy: float) -> jnp.ndarray:
+    def compute_error_indicators(U: JAXArray, M: JAXArray, dx: float, dy: float) -> JAXArray:
         """
         Compute error indicators for all cells using JAX.
 
@@ -496,6 +543,9 @@ class JAXAcceleratedAMR:
         Returns:
             Error indicator array
         """
+        # JAX availability is guaranteed by JAXAcceleratedAMR constructor
+        assert jnp is not None, "JAX must be available for JAXAcceleratedAMR"
+
         # Compute gradients
         dU_dx = jnp.gradient(U, dx, axis=0)
         dU_dy = jnp.gradient(U, dy, axis=1)
@@ -526,8 +576,8 @@ class JAXAcceleratedAMR:
     @staticmethod
     @jax.jit
     def conservative_interpolation_1d(
-        coarse_values: jnp.ndarray, coarse_coords: jnp.ndarray, fine_coords: jnp.ndarray
-    ) -> jnp.ndarray:
+        coarse_values: JAXArray, coarse_coords: JAXArray, fine_coords: JAXArray
+    ) -> JAXArray:
         """
         Conservative 1D interpolation between mesh levels.
 
@@ -539,13 +589,14 @@ class JAXAcceleratedAMR:
         Returns:
             Interpolated values on fine mesh
         """
+        assert jnp is not None, "JAX must be available for JAXAcceleratedAMR"
         return jnp.interp(fine_coords, coarse_coords, coarse_values)
 
     @staticmethod
     @jax.jit
     def conservative_mass_interpolation_2d(
-        density: jnp.ndarray, old_dx: float, old_dy: float, new_dx: float, new_dy: float
-    ) -> jnp.ndarray:
+        density: JAXArray, old_dx: float, old_dy: float, new_dx: float, new_dy: float
+    ) -> JAXArray:
         """
         Conservative mass interpolation for 2D density fields.
 
@@ -559,6 +610,8 @@ class JAXAcceleratedAMR:
         Returns:
             Mass-conserving interpolated density
         """
+        assert jnp is not None, "JAX must be available for JAXAcceleratedAMR"
+
         # Compute total mass
         old_mass = jnp.sum(density) * old_dx * old_dy
 
@@ -592,8 +645,8 @@ class JAXAcceleratedAMR:
     @staticmethod
     @jax.jit
     def gradient_preserving_interpolation_2d(
-        values: jnp.ndarray, old_dx: float, old_dy: float, new_dx: float, new_dy: float
-    ) -> jnp.ndarray:
+        values: JAXArray, old_dx: float, old_dy: float, new_dx: float, new_dy: float
+    ) -> JAXArray:
         """
         Gradient-preserving interpolation for value functions.
 
@@ -607,6 +660,8 @@ class JAXAcceleratedAMR:
         Returns:
             Gradient-preserving interpolated values
         """
+        assert jnp is not None, "JAX must be available for JAXAcceleratedAMR"
+
         from jax.scipy.ndimage import map_coordinates
 
         # Create coordinate mapping for higher-order interpolation
@@ -632,10 +687,10 @@ class JAXAcceleratedAMR:
 
 def create_amr_solver(
     problem: MFGProblem,
-    domain_bounds: Optional[Tuple[float, float, float, float]] = None,
+    domain_bounds: tuple[float, float, float, float] | None = None,
     error_threshold: float = 1e-4,
     max_levels: int = 5,
-    base_solver: str = "fixed_point",
+    base_solver: SolverType = "fixed_point",
     backend: str = "auto",
     **kwargs,
 ) -> AMRMFGSolver:

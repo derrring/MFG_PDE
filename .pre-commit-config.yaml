@@ -41,7 +41,7 @@ repos:
       - id: mypy
         # Configuration read from pyproject.toml automatically
         files: ^mfg_pde/.*\.py$
-        additional_dependencies: [numpy, scipy, pydantic, types-tqdm]
+        additional_dependencies: [numpy, scipy, pydantic, types-tqdm, types-PyYAML]
 
 # Performance optimizations
 default_language_version:

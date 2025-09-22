@@ -5,14 +5,13 @@ This module provides Pydantic BaseModel configurations that replace the dataclas
 system with automatic validation, serialization, and advanced numerical stability checks.
 """
 
+from __future__ import annotations
+
 import warnings
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Tuple, Union
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
-import numpy as np
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class NewtonConfig(BaseModel):
@@ -52,21 +51,21 @@ class NewtonConfig(BaseModel):
         return v
 
     @classmethod
-    def fast(cls) -> "NewtonConfig":
+    def fast(cls) -> NewtonConfig:
         """Create configuration optimized for speed."""
-        return cls(max_iterations=10, tolerance=1e-4, damping_factor=0.8)
+        return cls(max_iterations=10, tolerance=1e-4, damping_factor=0.8, line_search=False, verbose=False)
 
     @classmethod
-    def accurate(cls) -> "NewtonConfig":
+    def accurate(cls) -> NewtonConfig:
         """Create configuration optimized for accuracy."""
-        return cls(max_iterations=50, tolerance=1e-8, damping_factor=1.0)
+        return cls(max_iterations=50, tolerance=1e-8, damping_factor=1.0, line_search=False, verbose=False)
 
     @classmethod
-    def research(cls) -> "NewtonConfig":
+    def research(cls) -> NewtonConfig:
         """Create configuration optimized for research with detailed logging."""
-        return cls(max_iterations=100, tolerance=1e-10, damping_factor=1.0, verbose=True)
+        return cls(max_iterations=100, tolerance=1e-10, damping_factor=1.0, line_search=True, verbose=True)
 
-    model_config = ConfigDict(env_prefix="MFG_NEWTON_", validate_assignment=True)
+    model_config = {"env_prefix": "MFG_NEWTON_", "validate_assignment": True}
 
 
 class PicardConfig(BaseModel):
@@ -96,16 +95,16 @@ class PicardConfig(BaseModel):
         return v
 
     @classmethod
-    def fast(cls) -> "PicardConfig":
+    def fast(cls) -> PicardConfig:
         """Create configuration optimized for speed."""
-        return cls(max_iterations=10, tolerance=1e-2, damping_factor=0.8)
+        return cls(max_iterations=10, tolerance=1e-2, damping_factor=0.8, adaptive_damping=False, verbose=False)
 
     @classmethod
-    def accurate(cls) -> "PicardConfig":
+    def accurate(cls) -> PicardConfig:
         """Create configuration optimized for accuracy."""
-        return cls(max_iterations=100, tolerance=1e-6, damping_factor=0.3)
+        return cls(max_iterations=100, tolerance=1e-6, damping_factor=0.3, adaptive_damping=True, verbose=False)
 
-    model_config = ConfigDict(env_prefix="MFG_PICARD_", validate_assignment=True)
+    model_config = {"env_prefix": "MFG_PICARD_", "validate_assignment": True}
 
 
 class GFDMConfig(BaseModel):
@@ -144,7 +143,7 @@ class GFDMConfig(BaseModel):
             warnings.warn(f"Large delta ({v:.3f}) may reduce accuracy", UserWarning)
         return v
 
-    model_config = ConfigDict(env_prefix="MFG_GFDM_", validate_assignment=True)
+    model_config = {"env_prefix": "MFG_GFDM_", "validate_assignment": True}
 
 
 class ParticleConfig(BaseModel):
@@ -189,7 +188,7 @@ class ParticleConfig(BaseModel):
             warnings.warn(f"Many particles ({v}) may be computationally expensive", UserWarning)
         return v
 
-    model_config = ConfigDict(env_prefix="MFG_PARTICLE_", validate_assignment=True)
+    model_config = {"env_prefix": "MFG_PARTICLE_", "validate_assignment": True}
 
 
 class HJBConfig(BaseModel):
@@ -200,8 +199,18 @@ class HJBConfig(BaseModel):
     compatibility and numerical stability.
     """
 
-    newton: NewtonConfig = Field(default_factory=NewtonConfig, description="Newton method configuration")
-    gfdm: GFDMConfig = Field(default_factory=GFDMConfig, description="GFDM configuration")
+    newton: NewtonConfig = Field(
+        default_factory=lambda: NewtonConfig(
+            max_iterations=30, tolerance=1e-6, damping_factor=1.0, line_search=False, verbose=False
+        ),
+        description="Newton method configuration",
+    )
+    gfdm: GFDMConfig = Field(
+        default_factory=lambda: GFDMConfig(
+            delta=0.1, weight_function="gaussian", use_qp_constraints=True, constraint_tolerance=1e-10, max_neighbors=20
+        ),
+        description="GFDM configuration",
+    )
     solver_type: str = Field("gfdm_qp", description="HJB solver type")
 
     @field_validator("solver_type")
@@ -229,7 +238,7 @@ class HJBConfig(BaseModel):
 
         return self
 
-    model_config = ConfigDict(env_prefix="MFG_HJB_", validate_assignment=True)
+    model_config = {"env_prefix": "MFG_HJB_", "validate_assignment": True}
 
 
 class FPConfig(BaseModel):
@@ -240,7 +249,16 @@ class FPConfig(BaseModel):
     and cross-validation for numerical stability.
     """
 
-    particle: ParticleConfig = Field(default_factory=ParticleConfig, description="Particle method configuration")
+    particle: ParticleConfig = Field(
+        default_factory=lambda: ParticleConfig(
+            num_particles=5000,
+            kde_bandwidth=0.01,
+            boundary_treatment="reflection",
+            resampling_method="systematic",
+            adaptive_particles=False,
+        ),
+        description="Particle method configuration",
+    )
     solver_type: str = Field("particle", description="FP solver type")
     time_integration: str = Field("euler", description="Time integration method")
 
@@ -262,7 +280,7 @@ class FPConfig(BaseModel):
             raise ValueError(f"Time integration must be one of {allowed_methods}")
         return v
 
-    model_config = ConfigDict(env_prefix="MFG_FP_", validate_assignment=True)
+    model_config = {"env_prefix": "MFG_FP_", "validate_assignment": True}
 
 
 class MFGSolverConfig(BaseModel):
@@ -274,10 +292,25 @@ class MFGSolverConfig(BaseModel):
     """
 
     # Core solver configurations
-    newton: NewtonConfig = Field(default_factory=NewtonConfig, description="Newton method configuration")
-    picard: PicardConfig = Field(default_factory=PicardConfig, description="Picard iteration configuration")
-    hjb: HJBConfig = Field(default_factory=HJBConfig, description="HJB solver configuration")
-    fp: FPConfig = Field(default_factory=FPConfig, description="FP solver configuration")
+    newton: NewtonConfig = Field(
+        default_factory=lambda: NewtonConfig(
+            max_iterations=30, tolerance=1e-6, damping_factor=1.0, line_search=False, verbose=False
+        ),
+        description="Newton method configuration",
+    )
+    picard: PicardConfig = Field(
+        default_factory=lambda: PicardConfig(
+            max_iterations=20, tolerance=1e-3, damping_factor=0.5, adaptive_damping=False, verbose=False
+        ),
+        description="Picard iteration configuration",
+    )
+    hjb: HJBConfig = Field(
+        default_factory=lambda: HJBConfig(solver_type="gfdm_qp"), description="HJB solver configuration"
+    )
+    fp: FPConfig = Field(
+        default_factory=lambda: FPConfig(solver_type="fdm", time_integration="implicit_euler"),
+        description="FP solver configuration",
+    )
 
     # Global solver settings
     return_structured: bool = Field(True, description="Whether to return structured result objects")
@@ -289,8 +322,8 @@ class MFGSolverConfig(BaseModel):
     )
 
     # Metadata and tracking
-    experiment_name: Optional[str] = Field(None, description="Name for experiment tracking")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    experiment_name: str | None = Field(None, description="Name for experiment tracking")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     created_at: datetime = Field(default_factory=datetime.now, description="Configuration creation timestamp")
 
     @model_validator(mode="after")
@@ -326,7 +359,7 @@ class MFGSolverConfig(BaseModel):
             )
         return v
 
-    def to_notebook_metadata(self) -> Dict[str, Any]:
+    def to_notebook_metadata(self) -> dict[str, Any]:
         """Convert configuration to notebook metadata format."""
         return {
             "experiment_name": self.experiment_name,
@@ -336,7 +369,7 @@ class MFGSolverConfig(BaseModel):
             "validation_passed": True,
         }
 
-    def to_legacy_dict(self) -> Dict[str, Any]:
+    def to_legacy_dict(self) -> dict[str, Any]:
         """Convert to legacy parameter format for backward compatibility."""
         return {
             # Newton parameters (new naming)
@@ -357,25 +390,33 @@ class MFGSolverConfig(BaseModel):
         }
 
     @classmethod
-    def fast(cls) -> "MFGSolverConfig":
+    def fast(cls) -> MFGSolverConfig:
         """Create configuration optimized for speed."""
         return cls(
             newton=NewtonConfig.fast(),
             picard=PicardConfig.fast(),
             convergence_tolerance=1e-3,
+            return_structured=True,
+            enable_warm_start=False,
+            strict_convergence_errors=False,
+            experiment_name="fast_config",
         )
 
     @classmethod
-    def accurate(cls) -> "MFGSolverConfig":
+    def accurate(cls) -> MFGSolverConfig:
         """Create configuration optimized for accuracy."""
         return cls(
             newton=NewtonConfig.accurate(),
             picard=PicardConfig.accurate(),
             convergence_tolerance=1e-7,
+            return_structured=True,
+            enable_warm_start=False,
+            strict_convergence_errors=True,
+            experiment_name="accurate_config",
         )
 
     @classmethod
-    def research(cls) -> "MFGSolverConfig":
+    def research(cls) -> MFGSolverConfig:
         """Create configuration optimized for research."""
         return cls(
             newton=NewtonConfig.research(),
@@ -383,9 +424,11 @@ class MFGSolverConfig(BaseModel):
             convergence_tolerance=1e-8,
             return_structured=True,
             enable_warm_start=True,
+            strict_convergence_errors=True,
+            experiment_name="research_config",
         )
 
-    model_config = ConfigDict(env_prefix="MFG_", validate_assignment=True)
+    model_config = {"env_prefix": "MFG_", "validate_assignment": True}
 
 
 # Convenience factory functions for backward compatibility
@@ -404,7 +447,7 @@ def create_research_config() -> MFGSolverConfig:
     return MFGSolverConfig.research()
 
 
-def extract_legacy_parameters(config: MFGSolverConfig, **kwargs) -> Dict[str, Any]:
+def extract_legacy_parameters(config: MFGSolverConfig, **kwargs) -> dict[str, Any]:
     """
     Extract legacy parameters from Pydantic config with automatic validation.
 

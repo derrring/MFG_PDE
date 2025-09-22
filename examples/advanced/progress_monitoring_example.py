@@ -13,7 +13,7 @@ import time
 import numpy as np
 
 # Add the parent directory to the path so we can import mfg_pde
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde import MFGProblem, create_fast_solver
 from mfg_pde.utils.progress import (
@@ -28,7 +28,6 @@ from mfg_pde.utils.solver_decorators import (
     enhanced_solver_method,
     format_solver_summary,
     update_solver_progress,
-    with_progress_monitoring,
 )
 
 
@@ -78,7 +77,7 @@ def demo_basic_timing():
     @timed_operation("Custom computation", verbose=True)
     def expensive_computation():
         time.sleep(0.05)
-        return {'result': 42, 'status': 'success'}
+        return {"result": 42, "status": "success"}
 
     result = expensive_computation()
     print(f"Decorated function result: {result}")
@@ -112,7 +111,7 @@ def demo_progress_bars():
             time.sleep(0.02)
             error = np.exp(-i * 0.2)  # Exponential decay
             residual = error * 0.1
-            additional_info = {'residual': f"{residual:.2e}", 'step': f"{i+1}/20"}
+            additional_info = {"residual": f"{residual:.2e}", "step": f"{i+1}/20"}
             progress.update(1, error=error, additional_info=additional_info)
     print()
 
@@ -161,7 +160,7 @@ def demo_solver_integration():
 
             # Update progress
             progress.update(
-                1, error=error, additional_info={'iteration': i + 1, 'converged': 'Yes' if converged else 'No'}
+                1, error=error, additional_info={"iteration": i + 1, "converged": "Yes" if converged else "No"}
             )
 
             if converged:
@@ -187,7 +186,7 @@ def demo_enhanced_solver_wrapper():
         def solve(self, verbose=True, **kwargs):
             """Mock solve method with progress enhancement."""
             # Extract progress tracker if provided
-            progress_tracker = kwargs.get('_progress_tracker')
+            progress_tracker = kwargs.get("_progress_tracker")
 
             results = []
             converged = False
@@ -213,10 +212,10 @@ def demo_enhanced_solver_wrapper():
                     break
 
             return {
-                'converged': converged,
-                'iterations': i + 1 if converged else self.max_iterations,
-                'final_error': error,
-                'error_history': results,
+                "converged": converged,
+                "iterations": i + 1 if converged else self.max_iterations,
+                "final_error": error,
+                "error_history": results,
             }
 
     # Test enhanced solver
@@ -230,7 +229,7 @@ def demo_enhanced_solver_wrapper():
     print(f"  Converged: {result['converged']}")
     print(f"  Iterations: {result['iterations']}")
     print(f"  Final error: {result['final_error']:.2e}")
-    if 'execution_time' in result:
+    if "execution_time" in result:
         print(f"  Execution time: {result['execution_time']:.3f}s")
     print()
 
@@ -275,25 +274,25 @@ def demo_summary_formatting():
     # Example solver results
     results = [
         {
-            'solver_name': 'FastParticleCollocationSolver',
-            'iterations': 15,
-            'final_error': 1.23e-6,
-            'execution_time': 2.5,
-            'converged': True,
+            "solver_name": "FastParticleCollocationSolver",
+            "iterations": 15,
+            "final_error": 1.23e-6,
+            "execution_time": 2.5,
+            "converged": True,
         },
         {
-            'solver_name': 'AccurateMonitoredSolver',
-            'iterations': 50,
-            'final_error': 3.45e-8,
-            'execution_time': 125.7,
-            'converged': True,
+            "solver_name": "AccurateMonitoredSolver",
+            "iterations": 50,
+            "final_error": 3.45e-8,
+            "execution_time": 125.7,
+            "converged": True,
         },
         {
-            'solver_name': 'TimeoutSolver',
-            'iterations': 100,
-            'final_error': 1.2e-3,
-            'execution_time': 0.15,
-            'converged': False,
+            "solver_name": "TimeoutSolver",
+            "iterations": 100,
+            "final_error": 1.2e-3,
+            "execution_time": 0.15,
+            "converged": False,
         },
     ]
 

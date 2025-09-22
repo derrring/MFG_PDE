@@ -13,12 +13,14 @@ Key features:
 - Integration with Plotly, NetworkX, and matplotlib
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
 
-import matplotlib.patches as patches
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
+from matplotlib.figure import Figure
 
 try:
     import plotly.express as px
@@ -30,7 +32,7 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 try:
-    import networkx as nx
+    import networkx as nx  # type: ignore[import-untyped]
 
     NETWORKX_AVAILABLE = True
 except ImportError:
@@ -50,8 +52,8 @@ class NetworkMFGVisualizer:
 
     def __init__(
         self,
-        problem: Optional[NetworkMFGProblem] = None,
-        network_data: Optional[NetworkData] = None,
+        problem: NetworkMFGProblem | None = None,
+        network_data: NetworkData | None = None,
     ):
         """
         Initialize network MFG visualizer.
@@ -79,13 +81,13 @@ class NetworkMFGVisualizer:
 
     def plot_network_topology(
         self,
-        node_values: Optional[np.ndarray] = None,
-        edge_values: Optional[np.ndarray] = None,
+        node_values: np.ndarray | None = None,
+        edge_values: np.ndarray | None = None,
         title: str = "Network Topology",
         node_size_scale: float = 1.0,
         edge_width_scale: float = 1.0,
         interactive: bool = True,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Plot network topology with optional node and edge coloring.
@@ -123,12 +125,12 @@ class NetworkMFGVisualizer:
 
     def _plot_network_plotly(
         self,
-        node_values: Optional[np.ndarray] = None,
-        edge_values: Optional[np.ndarray] = None,
+        node_values: np.ndarray | None = None,
+        edge_values: np.ndarray | None = None,
         title: str = "Network Topology",
         node_size_scale: float = 1.0,
         edge_width_scale: float = 1.0,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> go.Figure:
         """Create interactive network plot using Plotly."""
         fig = go.Figure()
@@ -137,7 +139,7 @@ class NetworkMFGVisualizer:
         edge_x, edge_y = [], []
         rows, cols = self.adjacency_matrix.nonzero()
 
-        for i, j in zip(rows, cols):
+        for i, j in zip(rows, cols, strict=False):
             if self.node_positions is not None:
                 x0, y0 = self.node_positions[i]
                 x1, y1 = self.node_positions[j]
@@ -157,7 +159,7 @@ class NetworkMFGVisualizer:
                 x=edge_x,
                 y=edge_y,
                 mode="lines",
-                line=dict(width=edge_width, color=edge_color),
+                line={"width": edge_width, "color": edge_color},
                 hoverinfo="none",
                 showlegend=False,
                 name="Edges",
@@ -185,7 +187,10 @@ class NetworkMFGVisualizer:
             colorscale = None
 
         # Node hover text
-        node_text = [f"Node {i}<br>Degree: {self.network_data.get_node_degree(i)}" for i in range(self.num_nodes)]
+        if self.network_data is not None:
+            node_text = [f"Node {i}<br>Degree: {self.network_data.get_node_degree(i)}" for i in range(self.num_nodes)]
+        else:
+            node_text = [f"Node {i}" for i in range(self.num_nodes)]
 
         if node_values is not None:
             node_text = [f"{text}<br>Value: {node_values[i]:.3f}" for i, text in enumerate(node_text)]
@@ -195,14 +200,14 @@ class NetworkMFGVisualizer:
                 x=node_x,
                 y=node_y,
                 mode="markers+text",
-                marker=dict(
-                    size=[node_size / 10] * self.num_nodes,  # Plotly uses different scaling
-                    color=node_color,
-                    colorscale=colorscale,
-                    showscale=True if node_values is not None else False,
-                    colorbar=(dict(title="Node Values") if node_values is not None else None),
-                    line=dict(width=2, color="black"),
-                ),
+                marker={
+                    "size": [node_size / 10] * self.num_nodes,  # Plotly uses different scaling
+                    "color": node_color,
+                    "colorscale": colorscale,
+                    "showscale": node_values is not None,
+                    "colorbar": ({"title": "Node Values"} if node_values is not None else None),
+                    "line": {"width": 2, "color": "black"},
+                },
                 text=[str(i) for i in range(self.num_nodes)],
                 textposition="middle center",
                 hovertext=node_text,
@@ -216,8 +221,8 @@ class NetworkMFGVisualizer:
             title=title,
             showlegend=False,
             hovermode="closest",
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
             plot_bgcolor="white",
         )
 
@@ -228,13 +233,13 @@ class NetworkMFGVisualizer:
 
     def _plot_network_matplotlib(
         self,
-        node_values: Optional[np.ndarray] = None,
-        edge_values: Optional[np.ndarray] = None,
+        node_values: np.ndarray | None = None,
+        edge_values: np.ndarray | None = None,
         title: str = "Network Topology",
         node_size_scale: float = 1.0,
         edge_width_scale: float = 1.0,
-        save_path: Optional[str] = None,
-    ) -> plt.Figure:
+        save_path: str | None = None,
+    ) -> Figure:
         """Create network plot using matplotlib."""
         fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -259,7 +264,7 @@ class NetworkMFGVisualizer:
                     G,
                     pos,
                     ax=ax,
-                    node_color=node_values,
+                    node_color=node_values,  # type: ignore[arg-type]
                     node_size=node_size,
                     cmap=self.default_colorscale,
                     vmin=np.min(node_values),
@@ -294,11 +299,11 @@ class NetworkMFGVisualizer:
     def plot_density_evolution(
         self,
         M: np.ndarray,
-        times: Optional[np.ndarray] = None,
-        selected_nodes: Optional[List[int]] = None,
+        times: np.ndarray | None = None,
+        selected_nodes: list[int] | None = None,
         title: str = "Density Evolution",
         interactive: bool = True,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Plot density evolution over time for selected nodes.
@@ -322,7 +327,10 @@ class NetworkMFGVisualizer:
         if selected_nodes is None:
             # Select nodes with highest average density
             avg_density = np.mean(M, axis=0)
-            selected_nodes = np.argsort(avg_density)[-min(10, num_nodes) :]
+            selected_nodes = np.argsort(avg_density)[-min(10, num_nodes) :].tolist()
+
+        # At this point selected_nodes is guaranteed to be a list
+        assert selected_nodes is not None
 
         if interactive and PLOTLY_AVAILABLE:
             return self._plot_density_evolution_plotly(M, times, selected_nodes, title, save_path)
@@ -333,9 +341,9 @@ class NetworkMFGVisualizer:
         self,
         M: np.ndarray,
         times: np.ndarray,
-        selected_nodes: List[int],
+        selected_nodes: list[int],
         title: str,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> go.Figure:
         """Plot density evolution using Plotly."""
         fig = go.Figure()
@@ -350,8 +358,8 @@ class NetworkMFGVisualizer:
                     y=M[:, node],
                     mode="lines+markers",
                     name=f"Node {node}",
-                    line=dict(color=color, width=2),
-                    marker=dict(size=4),
+                    line={"color": color, "width": 2},
+                    marker={"size": 4},
                 )
             )
 
@@ -372,10 +380,10 @@ class NetworkMFGVisualizer:
         self,
         M: np.ndarray,
         times: np.ndarray,
-        selected_nodes: List[int],
+        selected_nodes: list[int],
         title: str,
-        save_path: Optional[str] = None,
-    ) -> plt.Figure:
+        save_path: str | None = None,
+    ) -> Figure:
         """Plot density evolution using matplotlib."""
         fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -396,11 +404,11 @@ class NetworkMFGVisualizer:
     def plot_value_function_evolution(
         self,
         U: np.ndarray,
-        times: Optional[np.ndarray] = None,
-        selected_nodes: Optional[List[int]] = None,
+        times: np.ndarray | None = None,
+        selected_nodes: list[int] | None = None,
         title: str = "Value Function Evolution",
         interactive: bool = True,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Plot value function evolution over time.
@@ -414,9 +422,9 @@ class NetworkMFGVisualizer:
         self,
         U: np.ndarray,
         M: np.ndarray,
-        times: Optional[np.ndarray] = None,
+        times: np.ndarray | None = None,
         interval: int = 200,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> FuncAnimation:
         """
         Create animation of density and flow evolution on network.
@@ -434,7 +442,7 @@ class NetworkMFGVisualizer:
         if not NETWORKX_AVAILABLE:
             raise ImportError("NetworkX required for flow animation")
 
-        Nt, num_nodes = M.shape
+        Nt, _num_nodes = M.shape
 
         if times is None:
             times = np.linspace(0, 1, Nt)
@@ -469,7 +477,7 @@ class NetworkMFGVisualizer:
                 G,
                 pos,
                 ax=ax,
-                node_color=current_value,
+                node_color=current_value,  # type: ignore[arg-type]
                 node_size=node_sizes,
                 cmap="RdYlBu",
                 vmin=np.min(U),
@@ -488,6 +496,8 @@ class NetworkMFGVisualizer:
                 cbar = plt.colorbar(nodes, ax=ax, shrink=0.8)
                 cbar.set_label("Value Function")
 
+            return [nodes] if nodes else []
+
         # Create animation
         anim = FuncAnimation(fig, animate, frames=Nt, interval=interval, repeat=True)
 
@@ -498,8 +508,8 @@ class NetworkMFGVisualizer:
 
     def plot_network_statistics_dashboard(
         self,
-        convergence_info: Optional[Dict[str, Any]] = None,
-        save_path: Optional[str] = None,
+        convergence_info: dict[str, Any] | None = None,
+        save_path: str | None = None,
     ) -> Any:
         """
         Create comprehensive dashboard of network statistics and analysis.
@@ -518,8 +528,8 @@ class NetworkMFGVisualizer:
 
     def _create_plotly_dashboard(
         self,
-        convergence_info: Optional[Dict[str, Any]] = None,
-        save_path: Optional[str] = None,
+        convergence_info: dict[str, Any] | None = None,
+        save_path: str | None = None,
     ) -> go.Figure:
         """Create interactive dashboard using Plotly."""
         from ..geometry.network_geometry import compute_network_statistics
@@ -556,8 +566,8 @@ class NetworkMFGVisualizer:
 
         fig.add_trace(
             go.Table(
-                header=dict(values=["Property", "Value"]),
-                cells=dict(values=list(zip(*properties))),
+                header={"values": ["Property", "Value"]},
+                cells={"values": list(zip(*properties, strict=False))},
             ),
             row=1,
             col=1,
@@ -609,7 +619,7 @@ class NetworkMFGVisualizer:
             # Mass conservation
             if "mass_conservation" in history[0]:
                 times = list(range(len(history[0]["mass_conservation"])))
-                for i, h in enumerate(history[::5]):  # Sample every 5th iteration
+                for _i, h in enumerate(history[::5]):  # Sample every 5th iteration
                     fig.add_trace(
                         go.Scatter(
                             x=times,
@@ -634,9 +644,9 @@ class NetworkMFGVisualizer:
 
     def _create_matplotlib_dashboard(
         self,
-        convergence_info: Optional[Dict[str, Any]] = None,
-        save_path: Optional[str] = None,
-    ) -> plt.Figure:
+        convergence_info: dict[str, Any] | None = None,
+        save_path: str | None = None,
+    ) -> Figure:
         """Create dashboard using matplotlib."""
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         fig.suptitle("Network MFG Analysis Dashboard", fontsize=16)
@@ -710,11 +720,10 @@ class NetworkMFGVisualizer:
             and "convergence_history" in convergence_info
             and "mass_conservation" in convergence_info["convergence_history"][0]
         ):
-
             history = convergence_info["convergence_history"]
             times = list(range(len(history[0]["mass_conservation"])))
 
-            for i, h in enumerate(history[:: max(1, len(history) // 5)]):
+            for _i, h in enumerate(history[:: max(1, len(history) // 5)]):
                 ax.plot(
                     times,
                     h["mass_conservation"],
@@ -748,8 +757,8 @@ class NetworkMFGVisualizer:
 
 # Factory function for creating network visualizers
 def create_network_visualizer(
-    problem: Optional[NetworkMFGProblem] = None,
-    network_data: Optional[NetworkData] = None,
+    problem: NetworkMFGProblem | None = None,
+    network_data: NetworkData | None = None,
 ) -> NetworkMFGVisualizer:
     """
     Create network MFG visualizer.

@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import time
-from typing import TYPE_CHECKING, Tuple, Union  # Added Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ..base_mfg_solver import MFGSolver
 
 if TYPE_CHECKING:
+    from ...utils.solver_result import SolverResult
     from ..core.mfg_problem import MFGProblem
     from ..fp_solvers.base_fp import BaseFPSolver
     from ..hjb_solvers.base_hjb import BaseHJBSolver
@@ -36,9 +39,9 @@ if not TYPE_CHECKING:
 class FixedPointIterator(MFGSolver):
     def __init__(
         self,
-        problem: "MFGProblem",
-        hjb_solver: "BaseHJBSolver",
-        fp_solver: "BaseFPSolver",
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
         thetaUM: float = 0.5,
     ):
         super().__init__(problem)
@@ -61,18 +64,18 @@ class FixedPointIterator(MFGSolver):
 
     def solve(
         self,
-        max_iterations: int = None,
-        tolerance: float = None,
+        max_iterations: int | None = None,
+        tolerance: float | None = None,
         # Alias parameters for specific solver compatibility
-        max_picard_iterations: int = None,
-        picard_tolerance: float = None,
+        max_picard_iterations: int | None = None,
+        picard_tolerance: float | None = None,
         # Deprecated parameters for backward compatibility
-        Niter_max: int = None,
-        l2errBoundPicard: float = None,
+        Niter_max: int | None = None,
+        l2errBoundPicard: float | None = None,
         # New parameter for result format
         return_structured: bool = False,
         **kwargs,
-    ) -> Union[Tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray], "SolverResult"]:
+    ) -> tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray] | SolverResult:
         import warnings
 
         # Handle parameter precedence: standardized > specific > deprecated
@@ -230,7 +233,10 @@ class FixedPointIterator(MFGSolver):
 
             elapsed_time_iter = time.time() - start_time_iter
             print(
-                f"  Iter {iiter+1}: Rel Err U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}. Abs Err U={self.l2distu_abs[iiter]:.2e}, M={self.l2distm_abs[iiter]:.2e}. Time: {elapsed_time_iter:.2f}s"
+                f"  Iter {iiter+1}: Rel Err U={self.l2distu_rel[iiter]:.2e}, "
+                f"M={self.l2distm_rel[iiter]:.2e}. "
+                f"Abs Err U={self.l2distu_abs[iiter]:.2e}, M={self.l2distm_abs[iiter]:.2e}. "
+                f"Time: {elapsed_time_iter:.2f}s"
             )
 
             self.iterations_run = iiter + 1
@@ -249,8 +255,8 @@ class FixedPointIterator(MFGSolver):
 
             from ...utils.exceptions import ConvergenceError
 
-            # Check configuration for strict error handling mode
-            strict_mode = getattr(self.config, "strict_convergence_errors", False) if hasattr(self, "config") else True
+            # Use strict error handling mode by default (no config available)
+            strict_mode = True
 
             if strict_mode:
                 # Strict mode: Always raise convergence errors
@@ -281,7 +287,7 @@ class FixedPointIterator(MFGSolver):
                     self._convergence_warning = conv_error
                 except Exception as e:
                     # Fallback if error analysis fails
-                    print(f" Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
+                    print(" Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
                     print(f"WARNING:  Error analysis failed: {e}")
 
         self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
@@ -335,7 +341,7 @@ class FixedPointIterator(MFGSolver):
                 self.l2distm_rel,
             )
 
-    def get_results(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
         from ...utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_results")
@@ -343,7 +349,7 @@ class FixedPointIterator(MFGSolver):
 
     def get_convergence_data(
         self,
-    ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         from ...utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_convergence_data")

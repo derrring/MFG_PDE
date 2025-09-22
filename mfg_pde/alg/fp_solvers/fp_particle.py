@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -15,7 +17,7 @@ if TYPE_CHECKING:
 class FPParticleSolver(BaseFPSolver):
     def __init__(
         self,
-        problem: "MFGProblem",
+        problem: MFGProblem,
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
         normalize_kde_output: bool = True,
@@ -66,7 +68,7 @@ class FPParticleSolver(BaseFPSolver):
                 m_density_estimated[xSpace < xmin] = 0
                 m_density_estimated[xSpace > xmax] = 0
 
-            except Exception as e:
+            except Exception:
                 # print(f"Error during KDE: {e}. Defaulting to peak approximation.")
                 m_density_estimated = np.zeros(Nx)  # Fallback
                 if len(particles_at_time_t) > 0:
@@ -117,7 +119,7 @@ class FPParticleSolver(BaseFPSolver):
             m0_probs = m0_probs_unnormalized / np.sum(m0_probs_unnormalized)
             try:
                 initial_particle_positions = np.random.choice(x_grid, size=self.num_particles, p=m0_probs, replace=True)
-            except ValueError as e:
+            except ValueError:
                 initial_particle_positions = np.random.uniform(xmin, xmin + Lx, self.num_particles)
         else:
             initial_particle_positions = (
@@ -147,17 +149,14 @@ class FPParticleSolver(BaseFPSolver):
                         x_grid, dUdx_grid, kind="linear", fill_value="extrapolate"
                     )
                     dUdx_at_particles = interp_func_dUdx(current_M_particles_t[n_time_idx, :])
-                except ValueError as ve:
+                except ValueError:
                     dUdx_at_particles = np.zeros(self.num_particles)
             else:
                 dUdx_at_particles = np.zeros(self.num_particles)
 
             alpha_optimal_at_particles = -coefCT * dUdx_at_particles
 
-            if Dt > 1e-14:
-                dW = np.random.normal(0.0, np.sqrt(Dt), self.num_particles)
-            else:
-                dW = np.zeros(self.num_particles)
+            dW = np.random.normal(0.0, np.sqrt(Dt), self.num_particles) if Dt > 1e-14 else np.zeros(self.num_particles)
 
             current_M_particles_t[n_time_idx + 1, :] = (
                 current_M_particles_t[n_time_idx, :] + alpha_optimal_at_particles * Dt + sigma_sde * dW

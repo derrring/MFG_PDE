@@ -43,10 +43,10 @@ class ExampleMFGProblem:
         """
         # Extract gradient component
         if isinstance(p_values, dict):
-            if 'forward' in p_values:
-                p = p_values['forward']
-            elif 'x' in p_values:
-                p = p_values['x']
+            if "forward" in p_values:
+                p = p_values["forward"]
+            elif "x" in p_values:
+                p = p_values["x"]
             else:
                 p = 0.0
         else:
@@ -121,7 +121,7 @@ def example_particle_collocation_solver():
     try:
         U_solution, M_solution, convergence_info = solver.solve(Niter=15, l2errBound=1e-3, verbose=True)
 
-        print(f"\nSolution Results:")
+        print("\nSolution Results:")
         print(f"  Converged: {convergence_info['converged']}")
         print(f"  Final error: {convergence_info['final_error']:.2e}")
         print(f"  Iterations: {convergence_info['iterations']}")
@@ -137,53 +137,53 @@ def example_particle_collocation_solver():
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
         # Plot value function evolution
-        axes[0, 0].imshow(U_solution, aspect='auto', origin='lower', cmap='viridis')
-        axes[0, 0].set_title('Value Function U(t,x)')
-        axes[0, 0].set_xlabel('Space')
-        axes[0, 0].set_ylabel('Time')
+        axes[0, 0].imshow(U_solution, aspect="auto", origin="lower", cmap="viridis")
+        axes[0, 0].set_title("Value Function U(t,x)")
+        axes[0, 0].set_xlabel("Space")
+        axes[0, 0].set_ylabel("Time")
 
         # Plot density evolution
-        axes[0, 1].imshow(M_solution, aspect='auto', origin='lower', cmap='plasma')
-        axes[0, 1].set_title('Density M(t,x)')
-        axes[0, 1].set_xlabel('Space')
-        axes[0, 1].set_ylabel('Time')
+        axes[0, 1].imshow(M_solution, aspect="auto", origin="lower", cmap="plasma")
+        axes[0, 1].set_title("Density M(t,x)")
+        axes[0, 1].set_xlabel("Space")
+        axes[0, 1].set_ylabel("Time")
 
         # Plot final profiles
-        axes[1, 0].plot(problem.xSpace, U_solution[-1, :], 'b-', label='Final U')
-        axes[1, 0].plot(problem.xSpace, U_solution[0, :], 'b--', alpha=0.5, label='Initial U')
-        axes[1, 0].set_title('Value Function Profiles')
-        axes[1, 0].set_xlabel('x')
+        axes[1, 0].plot(problem.xSpace, U_solution[-1, :], "b-", label="Final U")
+        axes[1, 0].plot(problem.xSpace, U_solution[0, :], "b--", alpha=0.5, label="Initial U")
+        axes[1, 0].set_title("Value Function Profiles")
+        axes[1, 0].set_xlabel("x")
         axes[1, 0].legend()
         axes[1, 0].grid(True, alpha=0.3)
 
-        axes[1, 1].plot(problem.xSpace, M_solution[0, :], 'r-', label='Initial M')
-        axes[1, 1].plot(problem.xSpace, M_solution[-1, :], 'r--', alpha=0.5, label='Final M')
-        axes[1, 1].set_title('Density Profiles')
-        axes[1, 1].set_xlabel('x')
+        axes[1, 1].plot(problem.xSpace, M_solution[0, :], "r-", label="Initial M")
+        axes[1, 1].plot(problem.xSpace, M_solution[-1, :], "r--", alpha=0.5, label="Final M")
+        axes[1, 1].set_title("Density Profiles")
+        axes[1, 1].set_xlabel("x")
         axes[1, 1].legend()
         axes[1, 1].grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig('../output/particle_collocation_example.png', dpi=150, bbox_inches='tight')
+        plt.savefig("../output/particle_collocation_example.png", dpi=150, bbox_inches="tight")
         print("  Saved visualization as 'particle_collocation_example.png'")
 
         # Plot convergence history
-        if convergence_info['history']:
+        if convergence_info["history"]:
             plt.figure(figsize=(10, 6))
-            history = convergence_info['history']
-            iterations = [h['iteration'] for h in history]
-            u_errors = [h['U_error'] for h in history]
-            m_errors = [h['M_error'] for h in history]
+            history = convergence_info["history"]
+            iterations = [h["iteration"] for h in history]
+            u_errors = [h["U_error"] for h in history]
+            m_errors = [h["M_error"] for h in history]
 
-            plt.semilogy(iterations, u_errors, 'b-o', label='U error', markersize=4)
-            plt.semilogy(iterations, m_errors, 'r-s', label='M error', markersize=4)
-            plt.xlabel('Picard Iteration')
-            plt.ylabel('Relative Error')
-            plt.title('Convergence History')
+            plt.semilogy(iterations, u_errors, "b-o", label="U error", markersize=4)
+            plt.semilogy(iterations, m_errors, "r-s", label="M error", markersize=4)
+            plt.xlabel("Picard Iteration")
+            plt.ylabel("Relative Error")
+            plt.title("Convergence History")
             plt.legend()
             plt.grid(True, alpha=0.3)
             plt.tight_layout()
-            plt.savefig('../output/convergence_history.png', dpi=150, bbox_inches='tight')
+            plt.savefig("../output/convergence_history.png", dpi=150, bbox_inches="tight")
             print("  Saved convergence history as 'convergence_history.png'")
 
         return True
@@ -215,7 +215,7 @@ def example_gfdm_hjb_solver():
         l2errBoundNewton=1e-5,
     )
 
-    print(f"GFDM HJB Solver initialized:")
+    print("GFDM HJB Solver initialized:")
     print(f"  Method: {solver.hjb_method_name}")
     print(f"  Collocation points: {solver.n_points}")
     print(f"  Dimension: {solver.dimension}")
@@ -246,29 +246,29 @@ def example_gfdm_hjb_solver():
         plt.figure(figsize=(12, 4))
 
         plt.subplot(1, 3, 1)
-        plt.imshow(U_solution, aspect='auto', origin='lower', cmap='viridis')
-        plt.title('HJB Solution U(t,x)')
-        plt.xlabel('Space')
-        plt.ylabel('Time')
+        plt.imshow(U_solution, aspect="auto", origin="lower", cmap="viridis")
+        plt.title("HJB Solution U(t,x)")
+        plt.xlabel("Space")
+        plt.ylabel("Time")
         plt.colorbar()
 
         plt.subplot(1, 3, 2)
-        plt.imshow(M_density, aspect='auto', origin='lower', cmap='plasma')
-        plt.title('Given Density M(t,x)')
-        plt.xlabel('Space')
-        plt.ylabel('Time')
+        plt.imshow(M_density, aspect="auto", origin="lower", cmap="plasma")
+        plt.title("Given Density M(t,x)")
+        plt.xlabel("Space")
+        plt.ylabel("Time")
         plt.colorbar()
 
         plt.subplot(1, 3, 3)
-        plt.plot(problem.xSpace, U_solution[0, :], 'b-', label='Initial U')
-        plt.plot(problem.xSpace, U_solution[-1, :], 'r-', label='Final U')
-        plt.title('Value Function Profiles')
-        plt.xlabel('x')
+        plt.plot(problem.xSpace, U_solution[0, :], "b-", label="Initial U")
+        plt.plot(problem.xSpace, U_solution[-1, :], "r-", label="Final U")
+        plt.title("Value Function Profiles")
+        plt.xlabel("x")
         plt.legend()
         plt.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig('../output/gfdm_hjb_example.png', dpi=150, bbox_inches='tight')
+        plt.savefig("../output/gfdm_hjb_example.png", dpi=150, bbox_inches="tight")
         print("  Saved visualization as 'gfdm_hjb_example.png'")
 
         return True

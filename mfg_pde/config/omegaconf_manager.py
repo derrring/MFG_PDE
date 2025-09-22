@@ -6,13 +6,34 @@ complementing the existing Pydantic configurations with file-based configs,
 parameter interpolation, and hierarchical configuration composition.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, TypeAlias
+
+if TYPE_CHECKING:
+    # For type checking only
+    try:
+        from omegaconf import DictConfig, ListConfig, OmegaConf
+    except ImportError:
+        pass
+
+# Handle interpolation errors - use the correct exception name
+if TYPE_CHECKING:
+    try:
+        from omegaconf.errors import UnsupportedInterpolationType as UnsupportedInterpolation
+    except ImportError:
+        UnsupportedInterpolation = Exception
+else:
+    try:
+        from omegaconf.errors import UnsupportedInterpolationType as UnsupportedInterpolation
+    except ImportError:
+        UnsupportedInterpolation = Exception
 
 try:
     from omegaconf import DictConfig, ListConfig, OmegaConf
-    from omegaconf.errors import ConfigAttributeError, UnsupportedInterpolation
+    from omegaconf.errors import ConfigAttributeError
 
     OMEGACONF_AVAILABLE = True
 except ImportError:
@@ -24,9 +45,18 @@ except ImportError:
     ConfigAttributeError = AttributeError
     UnsupportedInterpolation = Exception
 
-from .pydantic_config import MFGSolverConfig, create_accurate_config, create_fast_config
+from .pydantic_config import MFGSolverConfig, create_fast_config
 
 logger = logging.getLogger(__name__)
+
+# Type aliases for better clarity
+if TYPE_CHECKING:
+    from omegaconf import DictConfig as _DictConfig
+
+    OmegaConfig: TypeAlias = _DictConfig
+else:
+    OmegaConfig: TypeAlias = Any
+"""Type alias for OmegaConf DictConfig objects"""
 
 
 class OmegaConfManager:
@@ -41,7 +71,7 @@ class OmegaConfManager:
     - Type validation and schema enforcement
     """
 
-    def __init__(self, config_dir: Optional[Union[str, Path]] = None):
+    def __init__(self, config_dir: str | Path | None = None):
         """
         Initialize OmegaConf configuration manager.
 
@@ -50,16 +80,18 @@ class OmegaConfManager:
         """
         # Re-check availability at runtime
         try:
+            from omegaconf import DictConfig as _DictConfig
             from omegaconf import OmegaConf as _OmegaConf
 
             self._OmegaConf = _OmegaConf
+            self._DictConfig = _DictConfig
             self._omegaconf_available = True
         except ImportError:
             raise ImportError("OmegaConf is not available. Install with: pip install omegaconf")
 
         self.config_dir = Path(config_dir) if config_dir else Path(__file__).parent / "configs"
         self.config_dir.mkdir(exist_ok=True)
-        self._schema_cache: Dict[str, DictConfig] = {}
+        self._schema_cache: dict[str, OmegaConfig] = {}
 
         # Initialize default configurations
         self._create_default_configs()
@@ -171,7 +203,7 @@ class OmegaConfManager:
                 self._OmegaConf.save(self._OmegaConf.create(config), config_path)
                 logger.info(f"Created default config: {config_path}")
 
-    def load_config(self, config_path: Union[str, Path], **overrides) -> DictConfig:
+    def load_config(self, config_path: str | Path, **overrides) -> OmegaConfig:
         """
         Load configuration from YAML file with optional overrides.
 
@@ -203,9 +235,12 @@ class OmegaConfManager:
         except (UnsupportedInterpolation, Exception) as e:
             logger.warning(f"Could not resolve all interpolations: {e}")
 
-        return config
+        # Cast to DictConfig for type consistency (our configs should be dictionaries)
+        from typing import cast
 
-    def compose_config(self, *config_paths: Union[str, Path], **overrides) -> DictConfig:
+        return cast(OmegaConfig, config)
+
+    def compose_config(self, *config_paths: str | Path, **overrides) -> OmegaConfig:
         """
         Compose configuration from multiple YAML files.
 
@@ -229,9 +264,12 @@ class OmegaConfManager:
             override_config = self._OmegaConf.create(overrides)
             composed_config = self._OmegaConf.merge(composed_config, override_config)
 
-        return composed_config
+        # Cast to DictConfig for type consistency
+        from typing import cast
 
-    def create_pydantic_config(self, omega_config: DictConfig) -> MFGSolverConfig:
+        return cast(OmegaConfig, composed_config)
+
+    def create_pydantic_config(self, omega_config: OmegaConfig) -> MFGSolverConfig:
         """
         Convert OmegaConf configuration to Pydantic MFGSolverConfig.
 
@@ -242,7 +280,18 @@ class OmegaConfManager:
             Pydantic MFGSolverConfig object
         """
         # Extract solver configuration
-        solver_dict = self._OmegaConf.to_python(omega_config.get("solver", {}))
+        solver_config = omega_config.get("solver", {})
+        # Convert OmegaConf to Python dict (use to_container for newer OmegaConf versions)
+        if hasattr(self._OmegaConf, "to_container"):
+            raw_dict = self._OmegaConf.to_container(solver_config, resolve=True)
+        else:
+            # Fallback for older OmegaConf versions
+            raw_dict = dict(solver_config) if hasattr(solver_config, "items") else {}
+
+        # Ensure we have a proper dictionary with string keys
+        from typing import cast
+
+        solver_dict: dict[str, Any] = cast(dict[str, Any], raw_dict if isinstance(raw_dict, dict) else {})
 
         # Map OmegaConf structure to Pydantic structure
         pydantic_dict = self._map_omega_to_pydantic(solver_dict)
@@ -254,7 +303,7 @@ class OmegaConfManager:
             # Fall back to default configuration
             return create_fast_config()
 
-    def _map_omega_to_pydantic(self, omega_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _map_omega_to_pydantic(self, omega_dict: dict[str, Any]) -> dict[str, Any]:
         """Map OmegaConf structure to Pydantic structure."""
         # This is a simplified mapping - extend as needed
         return {
@@ -264,7 +313,7 @@ class OmegaConfManager:
             # Add more mappings as needed
         }
 
-    def save_config(self, config: DictConfig, output_path: Union[str, Path]):
+    def save_config(self, config: OmegaConfig, output_path: str | Path):
         """
         Save configuration to YAML file.
 
@@ -278,7 +327,7 @@ class OmegaConfManager:
         self._OmegaConf.save(config, output_path)
         logger.info(f"Configuration saved to: {output_path}")
 
-    def create_parameter_sweep(self, base_config: DictConfig, sweep_params: Dict[str, List[Any]]) -> List[DictConfig]:
+    def create_parameter_sweep(self, base_config: OmegaConfig, sweep_params: dict[str, list[Any]]) -> list[OmegaConfig]:
         """
         Create parameter sweep configurations.
 
@@ -301,27 +350,40 @@ class OmegaConfManager:
             # Create configuration for this combination
             config = self._OmegaConf.create(base_config)
 
-            # Apply parameter values
-            for param_name, param_value in zip(param_names, combo):
-                # Use dot notation to set nested parameters
+            # Apply parameter values using OmegaConf dot notation
+            for param_name, param_value in zip(param_names, combo, strict=False):
+                # Use OmegaConf.select for navigation and direct assignment
+                # First ensure the nested structure exists
                 keys = param_name.split(".")
-                current = config
-                for key in keys[:-1]:
-                    if key not in current:
-                        current[key] = {}
-                    current = current[key]
-                current[keys[-1]] = param_value
+                for i in range(len(keys) - 1):
+                    partial_key = ".".join(keys[: i + 1])
+                    if self._OmegaConf.select(config, partial_key) is None:
+                        # Create the nested key by setting an empty dict
+                        parent_key = ".".join(keys[:i]) if i > 0 else None
+                        if parent_key:
+                            parent = self._OmegaConf.select(config, parent_key)
+                            setattr(parent, keys[i], {})
+                        else:
+                            setattr(config, keys[i], {})
+
+                # Now set the final value
+                if len(keys) == 1:
+                    setattr(config, keys[0], param_value)
+                else:
+                    parent_key = ".".join(keys[:-1])
+                    parent = self._OmegaConf.select(config, parent_key)
+                    setattr(parent, keys[-1], param_value)
 
             # Add metadata
             if "experiment" not in config:
                 config.experiment = {}
-            config.experiment.current_params = dict(zip(param_names, combo))
+            config.experiment["current_params"] = dict(zip(param_names, combo, strict=False))
 
             sweep_configs.append(config)
 
         return sweep_configs
 
-    def validate_config(self, config: DictConfig, schema_name: Optional[str] = None) -> bool:
+    def validate_config(self, config: OmegaConfig, schema_name: str | None = None) -> bool:
         """
         Validate configuration against schema.
 
@@ -356,7 +418,7 @@ class OmegaConfManager:
             logger.error(f"Configuration validation error: {e}")
             return False
 
-    def get_config_template(self, template_name: str) -> DictConfig:
+    def get_config_template(self, template_name: str) -> OmegaConfig:
         """
         Get configuration template by name.
 
@@ -379,7 +441,7 @@ class OmegaConfManager:
         return self.load_config(templates[template_name])
 
 
-def create_omega_manager(config_dir: Optional[Union[str, Path]] = None) -> OmegaConfManager:
+def create_omega_manager(config_dir: str | Path | None = None) -> OmegaConfManager:
     """
     Create OmegaConf configuration manager.
 
@@ -393,19 +455,19 @@ def create_omega_manager(config_dir: Optional[Union[str, Path]] = None) -> Omega
 
 
 # Convenience functions
-def load_beach_config(**overrides) -> DictConfig:
+def load_beach_config(**overrides) -> OmegaConfig:
     """Load Towel on Beach configuration with overrides."""
     manager = create_omega_manager()
     return manager.load_config("beach_problem.yaml", **overrides)
 
 
-def load_experiment_config(**overrides) -> DictConfig:
+def load_experiment_config(**overrides) -> OmegaConfig:
     """Load experiment configuration with overrides."""
     manager = create_omega_manager()
     return manager.load_config("experiment.yaml", **overrides)
 
 
-def create_parameter_sweep_configs(lambda_values: List[float], init_types: List[str]) -> List[DictConfig]:
+def create_parameter_sweep_configs(lambda_values: list[float], init_types: list[str]) -> list[OmegaConfig]:
     """Create parameter sweep configurations for beach problem."""
     manager = create_omega_manager()
     base_config = manager.load_config("beach_problem.yaml")

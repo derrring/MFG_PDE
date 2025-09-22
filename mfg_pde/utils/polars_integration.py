@@ -12,9 +12,11 @@ Features:
 - Integration with existing NumPy arrays
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -29,8 +31,28 @@ except ImportError:
     class MockPolars:
         DataFrame = type(None)
         Series = type(None)
+        Float64 = float
+        Float32 = float
+        Int64 = int
+        Int32 = int
 
-    pl = MockPolars()
+        @staticmethod
+        def col(name: str) -> Any:
+            return name
+
+        @staticmethod
+        def corr(*args: Any) -> Any:
+            return 0.0
+
+        @staticmethod
+        def read_parquet(path: Any) -> Any:
+            raise ImportError("Polars not available")
+
+        @staticmethod
+        def read_csv(path: Any) -> Any:
+            raise ImportError("Polars not available")
+
+    pl = MockPolars()  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +67,7 @@ class MFGDataFrame:
 
     def __init__(
         self,
-        data: Optional[Union[pl.DataFrame, Dict[str, Any], List[Dict[str, Any]], np.ndarray]] = None,
+        data: Any | None = None,
     ):
         """
         Initialize MFG DataFrame.
@@ -57,45 +79,53 @@ class MFGDataFrame:
             raise ImportError("Polars not available. Install with: pip install polars")
 
         if data is None:
-            self.df = pl.DataFrame()
-        elif isinstance(data, pl.DataFrame):
+            self.df = pl.DataFrame() if POLARS_AVAILABLE else None  # type: ignore
+        elif POLARS_AVAILABLE and hasattr(data, "shape"):
             self.df = data
         elif isinstance(data, dict):
-            self.df = pl.DataFrame(data)
+            self.df = pl.DataFrame(data)  # type: ignore
         elif isinstance(data, list):
             # Handle list of dictionaries
-            self.df = pl.DataFrame(data)
+            self.df = pl.DataFrame(data)  # type: ignore
         elif isinstance(data, np.ndarray):
             # Convert NumPy array to DataFrame with auto-generated column names
             if data.ndim == 1:
-                self.df = pl.DataFrame({"values": data})
+                self.df = pl.DataFrame({"values": data})  # type: ignore
             elif data.ndim == 2:
                 columns = [f"col_{i}" for i in range(data.shape[1])]
-                self.df = pl.DataFrame(data, schema=columns)
+                self.df = pl.DataFrame(data, schema=columns)  # type: ignore
             else:
                 raise ValueError("Only 1D and 2D NumPy arrays are supported")
         else:
             raise TypeError(f"Unsupported data type: {type(data)}")
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         """Get DataFrame shape."""
-        return self.df.shape
+        if self.df is not None:
+            return self.df.shape
+        return (0, 0)
 
     @property
-    def columns(self) -> List[str]:
+    def columns(self) -> list[str]:
         """Get column names."""
-        return self.df.columns
+        if self.df is not None:
+            return self.df.columns
+        return []
 
     def __len__(self) -> int:
         """Get number of rows."""
-        return len(self.df)
+        if self.df is not None:
+            return len(self.df)
+        return 0
 
-    def __getitem__(self, key: str) -> pl.Series:
+    def __getitem__(self, key: str) -> Any:
         """Get column by name."""
-        return self.df[key]
+        if self.df is not None:
+            return self.df[key]
+        return None
 
-    def to_numpy(self, column: Optional[str] = None) -> np.ndarray:
+    def to_numpy(self, column: str | None = None) -> np.ndarray:
         """
         Convert to NumPy array.
 
@@ -105,21 +135,29 @@ class MFGDataFrame:
         Returns:
             NumPy array
         """
-        if column:
-            return self.df[column].to_numpy()
-        return self.df.to_numpy()
+        if self.df is not None:
+            if column:
+                return self.df[column].to_numpy()
+            return self.df.to_numpy()
+        return np.array([])
 
-    def to_dict(self) -> Dict[str, List[Any]]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return self.df.to_dict()
+        if self.df is not None:
+            return self.df.to_dict()
+        return {}
 
-    def head(self, n: int = 5) -> pl.DataFrame:
+    def head(self, n: int = 5) -> Any:
         """Get first n rows."""
-        return self.df.head(n)
+        if self.df is not None:
+            return self.df.head(n)
+        return None
 
-    def describe(self) -> pl.DataFrame:
+    def describe(self) -> Any:
         """Generate descriptive statistics."""
-        return self.df.describe()
+        if self.df is not None:
+            return self.df.describe()
+        return None
 
 
 class MFGParameterSweepAnalyzer:
@@ -132,7 +170,7 @@ class MFGParameterSweepAnalyzer:
         if not POLARS_AVAILABLE:
             raise ImportError("Polars not available. Install with: pip install polars")
 
-    def create_sweep_dataframe(self, results: List[Dict[str, Any]]) -> MFGDataFrame:
+    def create_sweep_dataframe(self, results: list[dict[str, Any]]) -> MFGDataFrame:
         """
         Create DataFrame from parameter sweep results.
 
@@ -155,9 +193,10 @@ class MFGParameterSweepAnalyzer:
 
             # Flatten metrics
             for key, value in result.items():
-                if key not in ["parameters", "x_grid", "final_density", "M"]:
-                    if isinstance(value, (int, float, str, bool)):
-                        flattened[f"metric_{key}"] = value
+                if key not in ["parameters", "x_grid", "final_density", "M"] and isinstance(
+                    value, (int, float, str, bool)
+                ):
+                    flattened[f"metric_{key}"] = value
 
             # Handle array data separately
             if "final_density" in result:
@@ -174,9 +213,7 @@ class MFGParameterSweepAnalyzer:
 
         return MFGDataFrame(flattened_results)
 
-    def analyze_parameter_effects(
-        self, df: MFGDataFrame, parameter_cols: List[str], metric_cols: List[str]
-    ) -> pl.DataFrame:
+    def analyze_parameter_effects(self, df: MFGDataFrame, parameter_cols: list[str], metric_cols: list[str]) -> Any:
         """
         Analyze effects of parameters on metrics.
 
@@ -193,6 +230,8 @@ class MFGParameterSweepAnalyzer:
         for param in parameter_cols:
             for metric in metric_cols:
                 # Group by parameter and compute statistics
+                if df.df is None:
+                    continue
                 grouped = df.df.group_by(param).agg(
                     [
                         pl.col(metric).mean().alias(f"{metric}_mean"),
@@ -217,9 +256,9 @@ class MFGParameterSweepAnalyzer:
                     }
                     results.append(result)
 
-        return pl.DataFrame(results)
+        return pl.DataFrame(results) if POLARS_AVAILABLE else None  # type: ignore
 
-    def compute_correlation_matrix(self, df: MFGDataFrame, columns: Optional[List[str]] = None) -> pl.DataFrame:
+    def compute_correlation_matrix(self, df: MFGDataFrame, columns: list[str] | None = None) -> Any:
         """
         Compute correlation matrix between columns.
 
@@ -234,8 +273,18 @@ class MFGParameterSweepAnalyzer:
             # Get numeric columns
             numeric_cols = []
             for col in df.columns:
-                if df.df[col].dtype in [pl.Float64, pl.Float32, pl.Int64, pl.Int32]:
-                    numeric_cols.append(col)
+                if df.df is not None and POLARS_AVAILABLE:
+                    try:
+                        col_series = df.df[col]
+                        if hasattr(col_series, "dtype") and col_series.dtype in [
+                            pl.Float64,
+                            pl.Float32,
+                            pl.Int64,
+                            pl.Int32,
+                        ]:
+                            numeric_cols.append(col)
+                    except (AttributeError, KeyError, TypeError):
+                        continue
             columns = numeric_cols
 
         # Compute correlations
@@ -247,9 +296,9 @@ class MFGParameterSweepAnalyzer:
 
                     correlations.append({"column1": col1, "column2": col2, "correlation": corr})
 
-        return pl.DataFrame(correlations)
+        return pl.DataFrame(correlations) if POLARS_AVAILABLE else None  # type: ignore
 
-    def find_optimal_parameters(self, df: MFGDataFrame, objective_column: str, minimize: bool = True) -> Dict[str, Any]:
+    def find_optimal_parameters(self, df: MFGDataFrame, objective_column: str, minimize: bool = True) -> dict[str, Any]:
         """
         Find optimal parameter combination based on objective.
 
@@ -282,7 +331,7 @@ class MFGTimeSeriesAnalyzer:
         if not POLARS_AVAILABLE:
             raise ImportError("Polars not available. Install with: pip install polars")
 
-    def create_convergence_dataframe(self, convergence_history: List[Dict[str, Any]]) -> MFGDataFrame:
+    def create_convergence_dataframe(self, convergence_history: list[dict[str, Any]]) -> MFGDataFrame:
         """
         Create DataFrame from convergence history.
 
@@ -299,7 +348,7 @@ class MFGTimeSeriesAnalyzer:
 
         return MFGDataFrame(convergence_history)
 
-    def analyze_convergence_rate(self, df: MFGDataFrame, error_column: str = "error") -> Dict[str, float]:
+    def analyze_convergence_rate(self, df: MFGDataFrame, error_column: str = "error") -> dict[str, Any]:
         """
         Analyze convergence rate from error time series.
 
@@ -311,17 +360,23 @@ class MFGTimeSeriesAnalyzer:
             Dictionary with convergence statistics
         """
         # Compute convergence metrics
+        if df.df is None:
+            return {}
         error_series = df.df[error_column]
 
         # Linear convergence rate (log scale)
         log_errors = error_series.log()
-        iterations = pl.Series("iteration", range(len(error_series)))
+        if not POLARS_AVAILABLE:
+            return {}
+        iterations = pl.Series("iteration", range(len(error_series)))  # type: ignore
 
         # Fit linear regression to log(error) vs iteration
         # Using Polars operations for efficiency
         n = len(error_series)
         sum_x = iterations.sum()
         sum_y = log_errors.sum()
+        if iterations is None or log_errors is None:
+            return {}
         sum_xy = (iterations * log_errors).sum()
         sum_x2 = (iterations * iterations).sum()
 
@@ -355,7 +410,7 @@ class MFGTimeSeriesAnalyzer:
         error_column: str = "error",
         window_size: int = 10,
         plateau_threshold: float = 1e-8,
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         Detect when convergence reaches a plateau.
 
@@ -368,6 +423,8 @@ class MFGTimeSeriesAnalyzer:
         Returns:
             Iteration number where plateau starts, or None
         """
+        if df.df is None:
+            return None
         error_series = df.df[error_column]
 
         if len(error_series) < window_size:
@@ -381,7 +438,8 @@ class MFGTimeSeriesAnalyzer:
         plateau_indices = plateau_mask.arg_true()
 
         if len(plateau_indices) > 0:
-            return plateau_indices.first()
+            first_idx = plateau_indices.first()
+            return int(first_idx) if first_idx is not None else None
 
         return None
 
@@ -396,7 +454,7 @@ class MFGDataExporter:
         if not POLARS_AVAILABLE:
             raise ImportError("Polars not available. Install with: pip install polars")
 
-    def export_to_parquet(self, df: MFGDataFrame, filepath: Union[str, Path]) -> None:
+    def export_to_parquet(self, df: MFGDataFrame, filepath: str | Path) -> None:
         """
         Export DataFrame to Parquet format (highly efficient).
 
@@ -404,10 +462,13 @@ class MFGDataExporter:
             df: MFGDataFrame to export
             filepath: Output file path
         """
-        df.df.write_parquet(filepath)
-        logger.info(f"Data exported to Parquet: {filepath}")
+        if df.df is not None:
+            df.df.write_parquet(filepath)
+            logger.info(f"Data exported to Parquet: {filepath}")
+        else:
+            logger.warning("Cannot export: DataFrame is None")
 
-    def export_to_csv(self, df: MFGDataFrame, filepath: Union[str, Path]) -> None:
+    def export_to_csv(self, df: MFGDataFrame, filepath: str | Path) -> None:
         """
         Export DataFrame to CSV format.
 
@@ -415,10 +476,13 @@ class MFGDataExporter:
             df: MFGDataFrame to export
             filepath: Output file path
         """
-        df.df.write_csv(filepath)
+        if df.df is not None:
+            df.df.write_csv(filepath)
+        else:
+            logger.warning("Cannot export: DataFrame is None")
         logger.info(f"Data exported to CSV: {filepath}")
 
-    def export_to_json(self, df: MFGDataFrame, filepath: Union[str, Path]) -> None:
+    def export_to_json(self, df: MFGDataFrame, filepath: str | Path) -> None:
         """
         Export DataFrame to JSON format.
 
@@ -445,7 +509,7 @@ class MFGDataExporter:
             json.dump(serializable_data, f, indent=2)
         logger.info(f"Data exported to JSON: {filepath}")
 
-    def load_from_parquet(self, filepath: Union[str, Path]) -> MFGDataFrame:
+    def load_from_parquet(self, filepath: str | Path) -> MFGDataFrame:
         """
         Load DataFrame from Parquet format.
 
@@ -459,7 +523,7 @@ class MFGDataExporter:
         logger.info(f"Data loaded from Parquet: {filepath}")
         return MFGDataFrame(df)
 
-    def load_from_csv(self, filepath: Union[str, Path]) -> MFGDataFrame:
+    def load_from_csv(self, filepath: str | Path) -> MFGDataFrame:
         """
         Load DataFrame from CSV format.
 
@@ -474,7 +538,7 @@ class MFGDataExporter:
         return MFGDataFrame(df)
 
 
-def create_mfg_dataframe(data: Optional[Union[pl.DataFrame, Dict[str, Any], np.ndarray]] = None) -> MFGDataFrame:
+def create_mfg_dataframe(data: Any | None = None) -> MFGDataFrame:
     """
     Convenience function to create MFGDataFrame.
 
@@ -518,7 +582,7 @@ def create_data_exporter() -> MFGDataExporter:
 
 
 # Performance utilities
-def benchmark_polars_vs_pandas(data_size: int = 100000) -> Dict[str, float]:
+def benchmark_polars_vs_pandas(data_size: int = 100000) -> dict[str, Any]:
     """
     Benchmark Polars performance against pandas.
 
@@ -545,7 +609,9 @@ def benchmark_polars_vs_pandas(data_size: int = 100000) -> Dict[str, float]:
 
     # Polars performance
     start_time = time.time()
-    pl_df = pl.DataFrame(data)
+    if not POLARS_AVAILABLE:
+        return {"error": "Polars not available"}
+    pl_df = pl.DataFrame(data)  # type: ignore
     pl_result = pl_df.group_by("group").agg(
         [
             pl.col("x").mean().alias("x_mean"),
@@ -561,7 +627,7 @@ def benchmark_polars_vs_pandas(data_size: int = 100000) -> Dict[str, float]:
 
         start_time = time.time()
         pd_df = pd.DataFrame(data)
-        pd_result = pd_df.groupby("group").agg({"x": ["mean", "std"], "y": "sum"})
+        _ = pd_df.groupby("group").agg({"x": ["mean", "std"], "y": sum})
         results["pandas_time"] = time.time() - start_time
         results["speedup_factor"] = results["pandas_time"] / results["polars_time"]
     except ImportError:

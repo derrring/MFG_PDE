@@ -19,7 +19,6 @@ Problems solved:
 """
 
 import time
-from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +28,6 @@ from mfg_pde.alg.variational_solvers.variational_mfg_solver import VariationalMF
 from mfg_pde.core.lagrangian_mfg_problem import (
     LagrangianComponents,
     LagrangianMFGProblem,
-    create_obstacle_lagrangian_mfg,
 )
 from mfg_pde.utils.integration import trapezoid
 from mfg_pde.utils.logging import configure_research_logging, get_logger
@@ -149,7 +147,7 @@ def create_multi_constraint_problem() -> LagrangianMFGProblem:
     return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.4, Nt=20, sigma=0.1, components=components)
 
 
-def solve_with_penalty_method(problem: LagrangianMFGProblem) -> Dict:
+def solve_with_penalty_method(problem: LagrangianMFGProblem) -> dict:
     """Solve using standard penalty method for comparison."""
     logger.info("Solving with penalty method...")
 
@@ -157,7 +155,10 @@ def solve_with_penalty_method(problem: LagrangianMFGProblem) -> Dict:
 
     try:
         solver = VariationalMFGSolver(
-            problem, optimization_method="L-BFGS-B", penalty_weight=1000.0, use_jax=False  # High penalty weight
+            problem,
+            optimization_method="L-BFGS-B",
+            penalty_weight=1000.0,
+            use_jax=False,  # High penalty weight
         )
 
         result = solver.solve(max_iterations=40, tolerance=1e-4, verbose=True)
@@ -182,7 +183,7 @@ def solve_with_penalty_method(problem: LagrangianMFGProblem) -> Dict:
         }
 
 
-def solve_with_primal_dual(problem: LagrangianMFGProblem) -> Dict:
+def solve_with_primal_dual(problem: LagrangianMFGProblem) -> dict:
     """Solve using primal-dual method."""
     logger.info("Solving with primal-dual method...")
 
@@ -221,7 +222,7 @@ def solve_with_primal_dual(problem: LagrangianMFGProblem) -> Dict:
         }
 
 
-def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, solution: Dict) -> Dict:
+def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, solution: dict) -> dict:
     """Analyze how well constraints are satisfied."""
     if not solution["success"] or solution["result"] is None:
         return {"status": "no_solution"}
@@ -264,7 +265,7 @@ def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, solution: Dic
     return analysis
 
 
-def create_comparison_plots(penalty_solution: Dict, primal_dual_solution: Dict, problem: LagrangianMFGProblem):
+def create_comparison_plots(penalty_solution: dict, primal_dual_solution: dict, problem: LagrangianMFGProblem):
     """Create plots comparing penalty method vs primal-dual method."""
     logger.info("Creating comparison plots...")
 
@@ -287,7 +288,7 @@ def create_comparison_plots(penalty_solution: Dict, primal_dual_solution: Dict, 
         target_center = problem.components.parameters.get("target_center", 0.8)
 
         methods = []
-        colors = ['blue', 'red']
+        colors = ["blue", "red"]
 
         for i, solution in enumerate(successful_solutions):
             method_name = solution["method"]
@@ -303,28 +304,28 @@ def create_comparison_plots(penalty_solution: Dict, primal_dual_solution: Dict, 
             # Add constraint visualizations
             obstacle_left = obstacle_center - obstacle_radius
             obstacle_right = obstacle_center + obstacle_radius
-            ax1.axvspan(obstacle_left, obstacle_right, alpha=0.3, color='red', label='Obstacle')
-            ax1.axvspan(target_center - 0.1, target_center + 0.1, alpha=0.3, color='green', label='Target')
-            ax1.axhline(y=2.0, color='orange', linestyle='--', alpha=0.7, label='Capacity Limit')
+            ax1.axvspan(obstacle_left, obstacle_right, alpha=0.3, color="red", label="Obstacle")
+            ax1.axvspan(target_center - 0.1, target_center + 0.1, alpha=0.3, color="green", label="Target")
+            ax1.axhline(y=2.0, color="orange", linestyle="--", alpha=0.7, label="Capacity Limit")
 
-            ax1.set_xlabel('x')
-            ax1.set_ylabel('m(T, x)')
-            ax1.set_title(f'{method_name}\nFinal Density')
+            ax1.set_xlabel("x")
+            ax1.set_ylabel("m(T, x)")
+            ax1.set_title(f"{method_name}\nFinal Density")
             ax1.legend()
             ax1.grid(True, alpha=0.3)
 
             # Plot 2: Space-time evolution
             ax2 = axes[1, i]
             X, T = np.meshgrid(x_grid, t_grid)
-            im = ax2.contourf(X, T, density, levels=15, cmap='viridis')
+            im = ax2.contourf(X, T, density, levels=15, cmap="viridis")
 
             # Add obstacle overlay
             for t in t_grid:
-                ax2.plot([obstacle_left, obstacle_right], [t, t], 'r-', linewidth=2, alpha=0.8)
+                ax2.plot([obstacle_left, obstacle_right], [t, t], "r-", linewidth=2, alpha=0.8)
 
-            ax2.set_xlabel('x')
-            ax2.set_ylabel('t')
-            ax2.set_title(f'{method_name}\nDensity Evolution')
+            ax2.set_xlabel("x")
+            ax2.set_ylabel("t")
+            ax2.set_title(f"{method_name}\nDensity Evolution")
             plt.colorbar(im, ax=ax2, shrink=0.8)
 
         # Plot 3: Convergence comparison
@@ -334,7 +335,7 @@ def create_comparison_plots(penalty_solution: Dict, primal_dual_solution: Dict, 
             result = solution["result"]
             method_name = solution["method"]
 
-            if hasattr(result, 'cost_history') and result.cost_history:
+            if hasattr(result, "cost_history") and result.cost_history:
                 iterations = range(len(result.cost_history))
                 costs = result.cost_history
                 ax3.semilogy(
@@ -342,41 +343,41 @@ def create_comparison_plots(penalty_solution: Dict, primal_dual_solution: Dict, 
                     costs,
                     color=colors[i],
                     linewidth=2,
-                    marker='o',
+                    marker="o",
                     markersize=3,
-                    label=f'{method_name} Cost',
+                    label=f"{method_name} Cost",
                 )
 
             # For primal-dual, also plot constraint violations
-            if method_name == "Primal-Dual Method" and hasattr(result, 'solver_info'):
+            if method_name == "Primal-Dual Method" and hasattr(result, "solver_info"):
                 solver_info = result.solver_info
-                if 'constraint_violation_history' in solver_info:
-                    violations = solver_info['constraint_violation_history']
+                if "constraint_violation_history" in solver_info:
+                    violations = solver_info["constraint_violation_history"]
                     if violations:
                         ax3_twin = ax3.twinx()
                         iterations_pd = range(len(violations))
                         ax3_twin.semilogy(
                             iterations_pd,
                             violations,
-                            'g--',
+                            "g--",
                             linewidth=2,
-                            marker='s',
+                            marker="s",
                             markersize=3,
-                            label='Constraint Violations',
+                            label="Constraint Violations",
                         )
-                        ax3_twin.set_ylabel('Constraint Violation', color='g')
-                        ax3_twin.tick_params(axis='y', labelcolor='g')
+                        ax3_twin.set_ylabel("Constraint Violation", color="g")
+                        ax3_twin.tick_params(axis="y", labelcolor="g")
 
-        ax3.set_xlabel('Iteration')
-        ax3.set_ylabel('Cost')
-        ax3.set_title('Convergence Comparison')
+        ax3.set_xlabel("Iteration")
+        ax3.set_ylabel("Cost")
+        ax3.set_title("Convergence Comparison")
         ax3.legend()
         ax3.grid(True, alpha=0.3)
 
         # Plot 4: Constraint satisfaction comparison
         ax4 = axes[1, 2]
 
-        constraint_names = ['Obstacle\nViolation', 'Mass\nConservation', 'Capacity\nViolation', 'Target\nReaching']
+        constraint_names = ["Obstacle\nViolation", "Mass\nConservation", "Capacity\nViolation", "Target\nReaching"]
         method_names = [sol["method"] for sol in successful_solutions]
 
         violation_data = []
@@ -393,25 +394,25 @@ def create_comparison_plots(penalty_solution: Dict, primal_dual_solution: Dict, 
         x_pos = np.arange(len(constraint_names))
         width = 0.35
 
-        for i, (method_name, violations) in enumerate(zip(method_names, violation_data)):
+        for i, (method_name, violations) in enumerate(zip(method_names, violation_data, strict=False)):
             offset = (i - 0.5) * width
             bars = ax4.bar(x_pos + offset, violations, width, label=method_name, color=colors[i], alpha=0.7)
 
             # Add value labels on bars
-            for bar, value in zip(bars, violations):
+            for bar, value in zip(bars, violations, strict=False):
                 height = bar.get_height()
                 ax4.text(
                     bar.get_x() + bar.get_width() / 2.0,
                     height + max(violations) * 0.01,
-                    f'{value:.3f}',
-                    ha='center',
-                    va='bottom',
+                    f"{value:.3f}",
+                    ha="center",
+                    va="bottom",
                     fontsize=8,
                 )
 
-        ax4.set_xlabel('Constraint Type')
-        ax4.set_ylabel('Violation Measure')
-        ax4.set_title('Constraint Satisfaction Comparison')
+        ax4.set_xlabel("Constraint Type")
+        ax4.set_ylabel("Violation Measure")
+        ax4.set_title("Constraint Satisfaction Comparison")
         ax4.set_xticks(x_pos)
         ax4.set_xticklabels(constraint_names)
         ax4.legend()
@@ -421,7 +422,7 @@ def create_comparison_plots(penalty_solution: Dict, primal_dual_solution: Dict, 
 
         # Save plot
         plot_filename = "primal_dual_vs_penalty_comparison.png"
-        plt.savefig(plot_filename, dpi=150, bbox_inches='tight')
+        plt.savefig(plot_filename, dpi=150, bbox_inches="tight")
         logger.info(f"Comparison plots saved as: {plot_filename}")
 
         try:
@@ -444,10 +445,10 @@ def main():
         logger.info("Creating multi-constraint problem...")
         problem = create_multi_constraint_problem()
 
-        logger.info(f"Problem created:")
+        logger.info("Problem created:")
         logger.info(f"  Domain: [{problem.xmin}, {problem.xmax}] × [0, {problem.T}]")
         logger.info(f"  Grid: {problem.Nx+1} × {problem.Nt}")
-        logger.info(f"  Constraints: obstacle + velocity + budget + capacity")
+        logger.info("  Constraints: obstacle + velocity + budget + capacity")
 
         # Solve with both methods
         logger.info("\n" + "=" * 60 + " SOLVING " + "=" * 60)
@@ -478,7 +479,7 @@ def main():
             logger.info(f"\n{method_name}:")
 
             if solution["success"]:
-                logger.info(f"  ✓ Optimization: SUCCESS")
+                logger.info("  ✓ Optimization: SUCCESS")
                 logger.info(f"  ✓ Solve time: {solution['solve_time']:.2f}s")
 
                 if solution["result"]:
@@ -494,7 +495,7 @@ def main():
                     logger.info(f"  ✓ Mass in target: {analysis.get('mass_in_target', 0):.4f}")
 
             else:
-                logger.info(f"  ✗ Optimization: FAILED")
+                logger.info("  ✗ Optimization: FAILED")
                 if "error" in solution:
                     logger.info(f"     Error: {solution['error']}")
 
@@ -511,17 +512,17 @@ def main():
             # Compare constraint satisfaction
             penalty_violations = sum(
                 [
-                    penalty_analysis.get('obstacle_max_density', 0),
-                    penalty_analysis.get('mass_conservation_error', 0),
-                    penalty_analysis.get('max_density_violation', 0),
+                    penalty_analysis.get("obstacle_max_density", 0),
+                    penalty_analysis.get("mass_conservation_error", 0),
+                    penalty_analysis.get("max_density_violation", 0),
                 ]
             )
 
             primal_dual_violations = sum(
                 [
-                    primal_dual_analysis.get('obstacle_max_density', 0),
-                    primal_dual_analysis.get('mass_conservation_error', 0),
-                    primal_dual_analysis.get('max_density_violation', 0),
+                    primal_dual_analysis.get("obstacle_max_density", 0),
+                    primal_dual_analysis.get("mass_conservation_error", 0),
+                    primal_dual_analysis.get("max_density_violation", 0),
                 ]
             )
 

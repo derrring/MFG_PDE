@@ -5,10 +5,8 @@ Checks Docker configuration for security best practices.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 
 class ContainerSecurityChecker:
@@ -19,7 +17,7 @@ class ContainerSecurityChecker:
         self.dockerfile_path = Path("Dockerfile")
         self.compose_files = ["docker-compose.yml", "docker-compose.yaml"]
 
-    def check_dockerfile_security(self) -> List[Dict]:
+    def check_dockerfile_security(self) -> list[dict]:
         """Check Dockerfile for security issues."""
         findings = []
 
@@ -37,7 +35,7 @@ class ContainerSecurityChecker:
             return findings
 
         try:
-            with open(self.dockerfile_path, 'r') as f:
+            with open(self.dockerfile_path) as f:
                 dockerfile_content = f.read()
 
             lines = dockerfile_content.splitlines()
@@ -58,7 +56,7 @@ class ContainerSecurityChecker:
 
         return findings
 
-    def check_dockerfile_lines(self, lines: List[str]) -> List[Dict]:
+    def check_dockerfile_lines(self, lines: list[str]) -> list[dict]:
         """Check individual Dockerfile lines for security issues."""
         findings = []
 
@@ -71,11 +69,11 @@ class ContainerSecurityChecker:
             line = line.strip()
 
             # Skip comments and empty lines
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             # Check for latest tag usage
-            if line.startswith('FROM') and ':latest' in line:
+            if line.startswith("FROM") and ":latest" in line:
                 uses_latest_tag = True
                 findings.append(
                     {
@@ -89,18 +87,18 @@ class ContainerSecurityChecker:
                 )
 
             # Check for USER instruction
-            if line.startswith('USER'):
+            if line.startswith("USER"):
                 has_user = True
                 user = line.split()[1] if len(line.split()) > 1 else ""
-                if user not in ['root', '0']:
+                if user not in ["root", "0"]:
                     runs_as_root = False
 
             # Check for HEALTHCHECK
-            if line.startswith('HEALTHCHECK'):
+            if line.startswith("HEALTHCHECK"):
                 has_health_check = True
 
             # Check for ADD vs COPY
-            if line.startswith('ADD') and not line.startswith('ADD --'):
+            if line.startswith("ADD") and not line.startswith("ADD --"):
                 findings.append(
                     {
                         "type": "dockerfile",
@@ -113,7 +111,7 @@ class ContainerSecurityChecker:
                 )
 
             # Check for privileged operations
-            if 'sudo' in line.lower() or 'su -' in line:
+            if "sudo" in line.lower() or "su -" in line:
                 findings.append(
                     {
                         "type": "dockerfile",
@@ -126,8 +124,8 @@ class ContainerSecurityChecker:
                 )
 
             # Check for secrets in environment variables
-            if line.startswith('ENV') and any(
-                secret in line.upper() for secret in ['PASSWORD', 'SECRET', 'KEY', 'TOKEN']
+            if line.startswith("ENV") and any(
+                secret in line.upper() for secret in ["PASSWORD", "SECRET", "KEY", "TOKEN"]
             ):
                 findings.append(
                     {
@@ -176,7 +174,7 @@ class ContainerSecurityChecker:
 
         return findings
 
-    def check_docker_compose_security(self) -> List[Dict]:
+    def check_docker_compose_security(self) -> list[dict]:
         """Check docker-compose files for security issues."""
         findings = []
 
@@ -197,13 +195,13 @@ class ContainerSecurityChecker:
 
         return findings
 
-    def check_compose_file(self, compose_file: str) -> List[Dict]:
+    def check_compose_file(self, compose_file: str) -> list[dict]:
         """Check individual docker-compose file."""
         findings = []
 
         try:
             # Simple text-based analysis since we may not have PyYAML
-            with open(compose_file, 'r') as f:
+            with open(compose_file) as f:
                 content = f.read()
 
             lines = content.splitlines()
@@ -212,7 +210,7 @@ class ContainerSecurityChecker:
                 line = line.strip()
 
                 # Check for privileged mode
-                if 'privileged:' in line and 'true' in line:
+                if "privileged:" in line and "true" in line:
                     findings.append(
                         {
                             "type": "docker-compose",
@@ -225,7 +223,7 @@ class ContainerSecurityChecker:
                     )
 
                 # Check for host network mode
-                if 'network_mode:' in line and 'host' in line:
+                if "network_mode:" in line and "host" in line:
                     findings.append(
                         {
                             "type": "docker-compose",
@@ -238,7 +236,7 @@ class ContainerSecurityChecker:
                     )
 
                 # Check for volume mounts
-                if '/:' in line and ('rw' in line or line.endswith(':')):
+                if "/:" in line and ("rw" in line or line.endswith(":")):
                     findings.append(
                         {
                             "type": "docker-compose",
@@ -263,7 +261,7 @@ class ContainerSecurityChecker:
 
         return findings
 
-    def check_container_runtime_security(self) -> List[Dict]:
+    def check_container_runtime_security(self) -> list[dict]:
         """Check container runtime security recommendations."""
         findings = []
 
@@ -302,7 +300,7 @@ class ContainerSecurityChecker:
         findings.extend(recommendations)
         return findings
 
-    def generate_report(self) -> Dict:
+    def generate_report(self) -> dict:
         """Generate comprehensive container security report."""
         print("🔍 Checking container security configuration...")
 
@@ -355,18 +353,18 @@ class ContainerSecurityChecker:
         with open("container-summary.md", "w") as f:
             f.write(markdown_report)
 
-        print(f"Container security check completed.")
+        print("Container security check completed.")
         print(f"Total findings: {report['summary']['total_findings']}")
 
-        if report['summary']['high_severity'] > 0:
+        if report["summary"]["high_severity"] > 0:
             print(f"❌ Found {report['summary']['high_severity']} HIGH severity issues!")
             sys.exit(1)
-        elif report['summary']['medium_severity'] > 0:
+        elif report["summary"]["medium_severity"] > 0:
             print(f"⚠️ Found {report['summary']['medium_severity']} MEDIUM severity issues.")
 
         print("✅ Container security check completed.")
 
-    def generate_markdown_report(self, report: Dict) -> str:
+    def generate_markdown_report(self, report: dict) -> str:
         """Generate markdown report."""
         lines = []
         lines.append("# Container Security Check Report")

@@ -6,8 +6,10 @@ This module provides centralized validation functions to eliminate
 code duplication across different solver implementations.
 """
 
+from __future__ import annotations
+
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -15,7 +17,6 @@ import numpy as np
 class SolutionValidationError(Exception):
     """Exception raised when solution validation fails."""
 
-    pass
 
 
 def validate_solution_array(
@@ -23,8 +24,8 @@ def validate_solution_array(
     name: str,
     allow_nan: bool = False,
     allow_inf: bool = False,
-    min_value: Optional[float] = None,
-    max_value: Optional[float] = None,
+    min_value: float | None = None,
+    max_value: float | None = None,
 ) -> np.ndarray:
     """
     Validate a solution array for common numerical issues.
@@ -73,7 +74,7 @@ def validate_solution_array(
     return solution
 
 
-def validate_mfg_solution(U: np.ndarray, M: np.ndarray, strict: bool = True) -> Dict[str, Any]:
+def validate_mfg_solution(U: np.ndarray, M: np.ndarray, strict: bool = True) -> dict[str, Any]:
     """
     Validate a complete MFG solution (value function and distribution).
 
@@ -88,7 +89,7 @@ def validate_mfg_solution(U: np.ndarray, M: np.ndarray, strict: bool = True) -> 
     Raises:
         SolutionValidationError: If validation fails and strict=True
     """
-    validation_results = {
+    validation_results: dict[str, Any] = {
         "valid": True,
         "warnings": [],
         "errors": [],
@@ -181,7 +182,7 @@ def validate_convergence_parameters(max_iterations: int, tolerance: float, param
         warnings.warn(f"{parameter_name} tolerance {tolerance} is unusually large (>=1.0)")
 
 
-def safe_solution_return(U: np.ndarray, M: np.ndarray, info: Optional[Dict] = None) -> tuple:
+def safe_solution_return(U: np.ndarray, M: np.ndarray, info: dict | None = None) -> tuple:
     """
     Safely return MFG solution with validation.
 

@@ -11,20 +11,18 @@ Key concepts:
 - Graph Laplacians: Discrete operators for diffusion and gradient terms
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
-import scipy.sparse as sp
 from scipy.sparse import csr_matrix, diags
-from scipy.spatial.distance import pdist, squareform
 
 # Import unified backend system
 from .network_backend import (
-    BackendNotAvailableError,
-    NetworkBackendManager,
     NetworkBackendType,
     OperationType,
     get_backend_manager,
@@ -83,20 +81,20 @@ class NetworkData:
         metadata: Additional network properties
     """
 
-    adjacency_matrix: csr_matrix
+    adjacency_matrix: csr_matrix  # Required field, never None
     num_nodes: int
     num_edges: int
     network_type: NetworkType = NetworkType.CUSTOM
 
     # Optional geometric information
-    node_positions: Optional[np.ndarray] = None  # (N, d) coordinates
-    edge_weights: Optional[np.ndarray] = None  # Edge weights
-    node_weights: Optional[np.ndarray] = None  # Node weights/capacities
+    node_positions: np.ndarray | None = None  # (N, d) coordinates
+    edge_weights: np.ndarray | None = None  # Edge weights
+    node_weights: np.ndarray | None = None  # Node weights/capacities
 
     # Derived matrices (computed automatically)
-    laplacian_matrix: Optional[csr_matrix] = None
-    degree_matrix: Optional[csr_matrix] = None
-    incidence_matrix: Optional[csr_matrix] = None
+    laplacian_matrix: csr_matrix | None = None
+    degree_matrix: csr_matrix | None = None
+    incidence_matrix: csr_matrix | None = None
 
     # Network properties
     is_directed: bool = False
@@ -104,11 +102,11 @@ class NetworkData:
     is_connected: bool = True
 
     # Additional data
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Backend information
-    backend_type: Optional[NetworkBackendType] = None
-    backend_graph: Optional[Any] = None  # Original backend graph object
+    backend_type: NetworkBackendType | None = None
+    backend_graph: Any | None = None  # Original backend graph object
 
     def __post_init__(self):
         """Compute derived network properties and matrices."""
@@ -118,19 +116,27 @@ class NetworkData:
 
     def _validate_network_data(self):
         """Validate network data consistency."""
-        assert self.adjacency_matrix.shape[0] == self.adjacency_matrix.shape[1], "Adjacency matrix must be square"
+        # Validate adjacency matrix
+        adjacency = self.adjacency_matrix
+        assert adjacency.shape[0] == adjacency.shape[1], "Adjacency matrix must be square"
         assert (
-            self.adjacency_matrix.shape[0] == self.num_nodes
-        ), f"Adjacency matrix size {self.adjacency_matrix.shape[0]} != num_nodes {self.num_nodes}"
+            adjacency.shape[0] == self.num_nodes
+        ), f"Adjacency matrix size {adjacency.shape[0]} != num_nodes {self.num_nodes}"
 
-        if self.node_positions is not None:
-            assert self.node_positions.shape[0] == self.num_nodes, "Node positions must match number of nodes"
+        # Validate node positions with explicit type narrowing
+        node_positions = self.node_positions
+        if node_positions is not None:
+            assert node_positions.shape[0] == self.num_nodes, "Node positions must match number of nodes"
 
-        if self.edge_weights is not None:
-            assert len(self.edge_weights) == self.num_edges, "Edge weights must match number of edges"
+        # Validate edge weights with explicit type narrowing
+        edge_weights = self.edge_weights
+        if edge_weights is not None:
+            assert len(edge_weights) == self.num_edges, "Edge weights must match number of edges"
 
-        if self.node_weights is not None:
-            assert len(self.node_weights) == self.num_nodes, "Node weights must match number of nodes"
+        # Validate node weights with explicit type narrowing
+        node_weights = self.node_weights
+        if node_weights is not None:
+            assert len(node_weights) == self.num_nodes, "Node weights must match number of nodes"
 
     def _compute_derived_matrices(self):
         """Compute graph Laplacian and other derived matrices."""
@@ -146,7 +152,7 @@ class NetworkData:
 
         # Degree matrix
         degrees = np.array(A.sum(axis=1)).flatten()
-        self.degree_matrix = diags(degrees, format="csr")
+        self.degree_matrix = csr_matrix(diags(degrees, format="csr"))
 
         # Graph Laplacian (L = D - A)
         self.laplacian_matrix = self.degree_matrix - A
@@ -176,7 +182,7 @@ class NetworkData:
         A = self.adjacency_matrix
 
         # Check if directed
-        self.is_directed = not (A != A.T).nnz == 0
+        self.is_directed = (A != A.T).nnz != 0
 
         # Check if weighted
         self.is_weighted = not np.allclose(A.data, 1.0)
@@ -184,8 +190,9 @@ class NetworkData:
         # Check connectivity (simplified check)
         self.is_connected = self._check_connectivity()
 
-        # Store additional properties
-        self.metadata.update(
+        # Store additional properties with safe metadata access
+        metadata = getattr(self, "metadata", {})
+        metadata.update(
             {
                 "average_degree": np.mean(np.array(A.sum(axis=1)).flatten()),
                 "max_degree": np.max(np.array(A.sum(axis=1)).flatten()),
@@ -196,7 +203,7 @@ class NetworkData:
 
     def _check_connectivity(self) -> bool:
         """Check if network is connected (simplified version)."""
-        if not NETWORKX_AVAILABLE:
+        if not NETWORKX_AVAILABLE or nx is None:
             return True  # Assume connected if NetworkX not available
 
         # Convert to NetworkX for connectivity check
@@ -205,13 +212,13 @@ class NetworkData:
 
     def _compute_clustering_coefficient(self) -> float:
         """Compute average clustering coefficient."""
-        if not NETWORKX_AVAILABLE:
+        if not NETWORKX_AVAILABLE or nx is None:
             return 0.0
 
         G = nx.from_scipy_sparse_array(self.adjacency_matrix)
         return nx.average_clustering(G)
 
-    def get_neighbors(self, node_id: int) -> List[int]:
+    def get_neighbors(self, node_id: int) -> list[int]:
         """Get neighbors of a given node."""
         return self.adjacency_matrix.getrow(node_id).nonzero()[1].tolist()
 
@@ -240,19 +247,17 @@ class BaseNetworkGeometry(ABC):
     ):
         self.num_nodes = num_nodes
         self.network_type = network_type
-        self.network_data: Optional[NetworkData] = None
+        self.network_data: NetworkData | None = None
         self.backend_preference = backend_preference
         self.backend_manager = get_backend_manager(backend_preference)
 
     @abstractmethod
     def create_network(self, **kwargs) -> NetworkData:
         """Create network with specified parameters."""
-        pass
 
     @abstractmethod
     def compute_distance_matrix(self) -> np.ndarray:
         """Compute shortest path distances between all node pairs."""
-        pass
 
     def get_laplacian_operator(self, operator_type: str = "combinatorial") -> csr_matrix:
         """
@@ -267,19 +272,24 @@ class BaseNetworkGeometry(ABC):
         if self.network_data is None:
             raise ValueError("Network data not initialized. Call create_network() first.")
 
-        A = self.network_data.adjacency_matrix
-        D = self.network_data.degree_matrix
+        # Type-safe attribute access after null check
+        network_data = self.network_data
+        A = network_data.adjacency_matrix
+        D = network_data.degree_matrix
+
+        if D is None:
+            raise ValueError("Degree matrix is required for Laplacian computation")
 
         if operator_type == "combinatorial":
             return D - A
         elif operator_type == "normalized":
             # L_norm = D^(-1/2) * L * D^(-1/2)
-            D_inv_sqrt = diags(1.0 / np.sqrt(D.diagonal() + 1e-12), format="csr")
+            D_inv_sqrt = csr_matrix(diags(1.0 / np.sqrt(D.diagonal() + 1e-12), format="csr"))
             L = D - A
             return D_inv_sqrt @ L @ D_inv_sqrt
         elif operator_type == "random_walk":
             # L_rw = D^(-1) * L
-            D_inv = diags(1.0 / (D.diagonal() + 1e-12), format="csr")
+            D_inv = csr_matrix(diags(1.0 / (D.diagonal() + 1e-12), format="csr"))
             L = D - A
             return D_inv @ L
         else:
@@ -289,7 +299,7 @@ class BaseNetworkGeometry(ABC):
         self,
         backend_graph: Any,
         backend_type: NetworkBackendType,
-        node_positions: Optional[np.ndarray] = None,
+        node_positions: np.ndarray | None = None,
     ) -> NetworkData:
         """
         Convert backend graph to NetworkData format.
@@ -302,7 +312,9 @@ class BaseNetworkGeometry(ABC):
         Returns:
             NetworkData object with all matrices computed
         """
-        backend = self.backend_manager.get_backend(backend_type)
+        # Type-safe backend access
+        backend_manager = self.backend_manager
+        backend = backend_manager.get_backend(backend_type)
 
         # Get adjacency matrix
         adjacency_matrix = backend.get_adjacency_matrix(backend_graph)
@@ -312,7 +324,7 @@ class BaseNetworkGeometry(ABC):
             is_directed = backend_graph.is_directed()
         else:
             # Check if matrix is symmetric
-            is_directed = not (adjacency_matrix != adjacency_matrix.T).nnz == 0
+            is_directed = (adjacency_matrix != adjacency_matrix.T).nnz != 0
 
         num_edges = adjacency_matrix.nnz if is_directed else adjacency_matrix.nnz // 2
 
@@ -332,8 +344,8 @@ class BaseNetworkGeometry(ABC):
 
     def visualize_network(
         self,
-        node_values: Optional[np.ndarray] = None,
-        edge_values: Optional[np.ndarray] = None,
+        node_values: np.ndarray | None = None,
+        edge_values: np.ndarray | None = None,
         **kwargs,
     ) -> Any:
         """Visualize network structure with optional node/edge values."""
@@ -341,7 +353,6 @@ class BaseNetworkGeometry(ABC):
             raise ImportError("NetworkX required for network visualization")
 
         # Implementation will be in visualization module
-        pass
 
 
 class GridNetwork(BaseNetworkGeometry):
@@ -350,7 +361,7 @@ class GridNetwork(BaseNetworkGeometry):
     def __init__(
         self,
         width: int,
-        height: int = None,
+        height: int | None = None,
         periodic: bool = False,
         backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH,
     ):
@@ -364,10 +375,11 @@ class GridNetwork(BaseNetworkGeometry):
         nodes = self.width * self.height
 
         # Choose optimal backend for this size
-        backend_type = self.backend_manager.choose_backend(
+        backend_manager = self.backend_manager
+        backend_type = backend_manager.choose_backend(
             nodes, OperationType.GENERAL, force_backend=kwargs.get("force_backend")
         )
-        backend = self.backend_manager.get_backend(backend_type)
+        backend = backend_manager.get_backend(backend_type)
 
         # Create graph using chosen backend
         graph = backend.create_graph(nodes, directed=False)
@@ -397,7 +409,7 @@ class GridNetwork(BaseNetworkGeometry):
 
         return self.network_data
 
-    def _get_grid_neighbors(self, i: int, j: int) -> List[Tuple[int, int]]:
+    def _get_grid_neighbors(self, i: int, j: int) -> list[tuple[int, int]]:
         """Get grid neighbors with optional periodic boundary conditions."""
         neighbors = []
 
@@ -442,18 +454,19 @@ class RandomNetwork(BaseNetworkGeometry):
         self.connection_prob = connection_prob
         super().__init__(num_nodes, NetworkType.RANDOM, backend_preference)
 
-    def create_network(self, seed: Optional[int] = None, **kwargs) -> NetworkData:
+    def create_network(self, seed: int | None = None, **kwargs) -> NetworkData:
         """Create random network using optimal backend."""
         if seed is not None:
             np.random.seed(seed)
 
         # Choose optimal backend for this size
-        backend_type = self.backend_manager.choose_backend(
+        backend_manager = self.backend_manager
+        backend_type = backend_manager.choose_backend(
             self.num_nodes,
             OperationType.GENERAL,
             force_backend=kwargs.get("force_backend"),
         )
-        backend = self.backend_manager.get_backend(backend_type)
+        backend = backend_manager.get_backend(backend_type)
 
         # Create graph using chosen backend
         graph = backend.create_graph(self.num_nodes, directed=False)
@@ -479,11 +492,25 @@ class RandomNetwork(BaseNetworkGeometry):
 
     def compute_distance_matrix(self) -> np.ndarray:
         """Compute shortest path distances using BFS."""
-        if not NETWORKX_AVAILABLE:
+        if not NETWORKX_AVAILABLE or nx is None:
             raise ImportError("NetworkX required for shortest path computation")
 
+        if self.network_data is None:
+            raise ValueError("Network data not initialized. Call create_network() first.")
+
         G = nx.from_scipy_sparse_array(self.network_data.adjacency_matrix)
-        return np.array(nx.floyd_warshall_matrix(G))
+        # Use floyd_warshall_numpy for distance matrix computation
+        try:
+            return np.array(nx.floyd_warshall_numpy(G))
+        except AttributeError:
+            # Fallback for older NetworkX versions
+            paths = dict(nx.all_pairs_shortest_path_length(G))
+            n = len(G.nodes())
+            distance_matrix = np.full((n, n), np.inf)
+            for i, i_paths in paths.items():
+                for j, distance in i_paths.items():
+                    distance_matrix[i, j] = distance
+            return distance_matrix
 
 
 class ScaleFreeNetwork(BaseNetworkGeometry):
@@ -498,18 +525,19 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
         self.num_edges_per_node = num_edges_per_node
         super().__init__(num_nodes, NetworkType.SCALE_FREE, backend_preference)
 
-    def create_network(self, seed: Optional[int] = None, **kwargs) -> NetworkData:
+    def create_network(self, seed: int | None = None, **kwargs) -> NetworkData:
         """Create scale-free network using optimal backend."""
         if seed is not None:
             np.random.seed(seed)
 
         # Choose optimal backend for this size
-        backend_type = self.backend_manager.choose_backend(
+        backend_manager = self.backend_manager
+        backend_type = backend_manager.choose_backend(
             self.num_nodes,
             OperationType.GENERAL,
             force_backend=kwargs.get("force_backend"),
         )
-        backend = self.backend_manager.get_backend(backend_type)
+        backend = backend_manager.get_backend(backend_type)
 
         # Create graph using chosen backend
         graph = backend.create_graph(self.num_nodes, directed=False)
@@ -529,7 +557,7 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
 
         return self.network_data
 
-    def _generate_barabasi_albert_edges(self, seed: Optional[int] = None) -> List[Tuple[int, int]]:
+    def _generate_barabasi_albert_edges(self, seed: int | None = None) -> list[tuple[int, int]]:
         """Generate Barabási-Albert network edges using preferential attachment."""
         if seed is not None:
             np.random.seed(seed)
@@ -572,7 +600,7 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
 
         return edges
 
-    def _generate_spring_positions(self, seed: Optional[int] = None) -> np.ndarray:
+    def _generate_spring_positions(self, seed: int | None = None) -> np.ndarray:
         """Generate node positions using spring-like layout."""
         if seed is not None:
             np.random.seed(seed)
@@ -589,16 +617,30 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
 
     def compute_distance_matrix(self) -> np.ndarray:
         """Compute shortest path distances."""
-        if not NETWORKX_AVAILABLE:
+        if not NETWORKX_AVAILABLE or nx is None:
             raise ImportError("NetworkX required for shortest path computation")
 
+        if self.network_data is None:
+            raise ValueError("Network data not initialized. Call create_network() first.")
+
         G = nx.from_scipy_sparse_array(self.network_data.adjacency_matrix)
-        return np.array(nx.floyd_warshall_matrix(G))
+        # Use floyd_warshall_numpy for distance matrix computation
+        try:
+            return np.array(nx.floyd_warshall_numpy(G))
+        except AttributeError:
+            # Fallback for older NetworkX versions
+            paths = dict(nx.all_pairs_shortest_path_length(G))
+            n = len(G.nodes())
+            distance_matrix = np.full((n, n), np.inf)
+            for i, i_paths in paths.items():
+                for j, distance in i_paths.items():
+                    distance_matrix[i, j] = distance
+            return distance_matrix
 
 
 # Factory function for creating networks
 def create_network(
-    network_type: Union[str, NetworkType],
+    network_type: str | NetworkType,
     num_nodes: int,
     backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH,
     **kwargs,
@@ -637,7 +679,7 @@ def create_network(
 
 
 # Utility functions for network analysis
-def compute_network_statistics(network_data: NetworkData) -> Dict[str, float]:
+def compute_network_statistics(network_data: NetworkData) -> dict[str, float]:
     """Compute comprehensive network statistics."""
     A = network_data.adjacency_matrix
     stats = {
@@ -654,17 +696,18 @@ def compute_network_statistics(network_data: NetworkData) -> Dict[str, float]:
 
     # Add spectral properties if possible
     try:
-        L = network_data.laplacian_matrix.toarray()
-        eigenvals = np.linalg.eigvals(L)
-        eigenvals = np.sort(eigenvals)
+        if network_data.laplacian_matrix is not None:
+            L = network_data.laplacian_matrix.toarray()
+            eigenvals = np.linalg.eigvals(L)
+            eigenvals = np.sort(eigenvals)
 
-        stats.update(
-            {
-                "algebraic_connectivity": eigenvals[1] if len(eigenvals) > 1 else 0,
-                "spectral_gap": (eigenvals[1] - eigenvals[0] if len(eigenvals) > 1 else 0),
-                "largest_eigenvalue": eigenvals[-1],
-            }
-        )
+            stats.update(
+                {
+                    "algebraic_connectivity": eigenvals[1] if len(eigenvals) > 1 else 0,
+                    "spectral_gap": (eigenvals[1] - eigenvals[0] if len(eigenvals) > 1 else 0),
+                    "largest_eigenvalue": eigenvals[-1],
+                }
+            )
     except Exception:
         # Skip spectral analysis if it fails
         pass

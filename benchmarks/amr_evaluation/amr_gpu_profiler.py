@@ -19,7 +19,7 @@ import platform
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import psutil
 
@@ -39,7 +39,7 @@ try:
 
     # Check available devices
     JAX_DEVICES = jax.devices()
-    GPU_AVAILABLE = any(d.device_kind == 'gpu' for d in JAX_DEVICES)
+    GPU_AVAILABLE = any(d.device_kind == "gpu" for d in JAX_DEVICES)
 
 except ImportError:
     JAX_AVAILABLE = False
@@ -82,7 +82,7 @@ class ProfileResult:
     interpolation_time: float = 0.0
 
     # Device information
-    device_info: Dict[str, Any] = field(default_factory=dict)
+    device_info: dict[str, Any] = field(default_factory=dict)
 
 
 class AMRGPUProfiler:
@@ -92,7 +92,7 @@ class AMRGPUProfiler:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
 
-        self.results: List[ProfileResult] = []
+        self.results: list[ProfileResult] = []
         self.system_info = self._get_system_info()
 
         print("AMR GPU/CPU Performance Profiler")
@@ -111,31 +111,31 @@ class AMRGPUProfiler:
 
         print("=" * 50)
 
-    def _get_system_info(self) -> Dict[str, Any]:
+    def _get_system_info(self) -> dict[str, Any]:
         """Collect detailed system information."""
         info = {
-            'platform': platform.platform(),
-            'processor': platform.processor(),
-            'cpu_count': psutil.cpu_count(logical=False),
-            'memory_total_gb': psutil.virtual_memory().total / (1024**3),
-            'jax_available': JAX_AVAILABLE,
-            'gpu_available': GPU_AVAILABLE,
-            'devices': [],
+            "platform": platform.platform(),
+            "processor": platform.processor(),
+            "cpu_count": psutil.cpu_count(logical=False),
+            "memory_total_gb": psutil.virtual_memory().total / (1024**3),
+            "jax_available": JAX_AVAILABLE,
+            "gpu_available": GPU_AVAILABLE,
+            "devices": [],
         }
 
         if JAX_AVAILABLE:
             for device in JAX_DEVICES:
                 device_info = {
-                    'id': device.id,
-                    'kind': device.device_kind,
-                    'platform': device.platform,
-                    'string': str(device),
+                    "id": device.id,
+                    "kind": device.device_kind,
+                    "platform": device.platform,
+                    "string": str(device),
                 }
-                info['devices'].append(device_info)
+                info["devices"].append(device_info)
 
         return info
 
-    def profile_jax_compilation_overhead(self, problem_sizes: List[int]):
+    def profile_jax_compilation_overhead(self, problem_sizes: list[int]):
         """Profile JAX compilation overhead for different problem sizes."""
 
         if not JAX_AVAILABLE:
@@ -196,12 +196,12 @@ class AMRGPUProfiler:
                 compilation_time=compilation_overhead,
                 compute_time=second_call_time,
                 operations_per_second=size / second_call_time,
-                device_info={'device': str(jax.devices()[0])},
+                device_info={"device": str(jax.devices()[0])},
             )
 
             self.results.append(result)
 
-    def profile_backend_comparison(self, problem_sizes: List[int]):
+    def profile_backend_comparison(self, problem_sizes: list[int]):
         """Compare performance across different computational backends."""
 
         print("\n⚡ Backend Performance Comparison")
@@ -218,9 +218,9 @@ class AMRGPUProfiler:
             problem.dimension = 1
 
             # Test different backend configurations
-            backends_to_test = ['cpu']
+            backends_to_test = ["cpu"]
             if JAX_AVAILABLE and GPU_AVAILABLE:
-                backends_to_test.append('gpu')
+                backends_to_test.append("gpu")
 
             for backend in backends_to_test:
                 print(f"  Testing {backend.upper()} backend...")
@@ -231,7 +231,7 @@ class AMRGPUProfiler:
                 # Create AMR solver
                 solver = create_amr_solver(
                     problem,
-                    base_solver_type='fixed_point',
+                    base_solver_type="fixed_point",
                     error_threshold=1e-4,
                     max_levels=3,
                     initial_intervals=size // 2,
@@ -252,9 +252,9 @@ class AMRGPUProfiler:
 
                 # Extract metrics
                 if isinstance(result, dict):
-                    total_elements = result.get('mesh_statistics', {}).get('total_intervals', size)
-                    total_adaptations = result.get('total_adaptations', 0)
-                    converged = result.get('converged', False)
+                    total_elements = result.get("mesh_statistics", {}).get("total_intervals", size)
+                    total_adaptations = result.get("total_adaptations", 0)
+                    converged = result.get("converged", False)
                 else:
                     total_elements = size
                     total_adaptations = 0
@@ -275,10 +275,10 @@ class AMRGPUProfiler:
                     peak_memory_mb=memory_usage,
                     operations_per_second=ops_per_second,
                     device_info={
-                        'backend': backend,
-                        'converged': converged,
-                        'total_elements': total_elements,
-                        'adaptations': total_adaptations,
+                        "backend": backend,
+                        "converged": converged,
+                        "total_elements": total_elements,
+                        "adaptations": total_adaptations,
                     },
                 )
 
@@ -342,9 +342,9 @@ class AMRGPUProfiler:
                 memory_transfer_time=total_transfer_time,
                 memory_bandwidth_gb_s=transfer_bandwidth,
                 device_info={
-                    'data_size_mb': data_size_mb,
-                    'cpu_to_gpu_ms': cpu_to_gpu_time * 1000,
-                    'gpu_to_cpu_ms': gpu_to_cpu_time * 1000,
+                    "data_size_mb": data_size_mb,
+                    "cpu_to_gpu_ms": cpu_to_gpu_time * 1000,
+                    "gpu_to_cpu_ms": gpu_to_cpu_time * 1000,
                 },
             )
 
@@ -391,7 +391,7 @@ class AMRGPUProfiler:
         start_time = time.perf_counter()
         errors = error_estimation_op(u_vals, m_vals, dx).block_until_ready()
         error_time = time.perf_counter() - start_time
-        operations['error_estimation'] = error_time
+        operations["error_estimation"] = error_time
 
         print(f"Error estimation: {error_time*1000:.2f}ms")
 
@@ -403,7 +403,7 @@ class AMRGPUProfiler:
         start_time = time.perf_counter()
         refine_flags = refinement_decision_op(errors, 1e-4).block_until_ready()
         decision_time = time.perf_counter() - start_time
-        operations['refinement_decision'] = decision_time
+        operations["refinement_decision"] = decision_time
 
         print(f"Refinement decision: {decision_time*1000:.2f}ms")
 
@@ -417,7 +417,7 @@ class AMRGPUProfiler:
         start_time = time.perf_counter()
         interp_u = conservative_interpolation_op(u_vals, refine_flags).block_until_ready()
         interp_time = time.perf_counter() - start_time
-        operations['interpolation'] = interp_time
+        operations["interpolation"] = interp_time
 
         print(f"Conservative interpolation: {interp_time*1000:.2f}ms")
 
@@ -431,13 +431,13 @@ class AMRGPUProfiler:
             backend="gpu" if GPU_AVAILABLE else "cpu",
             problem_size=problem_size,
             total_time=total_time,
-            error_estimation_time=operations['error_estimation'],
-            mesh_adaptation_time=operations['refinement_decision'],
-            interpolation_time=operations['interpolation'],
+            error_estimation_time=operations["error_estimation"],
+            mesh_adaptation_time=operations["refinement_decision"],
+            interpolation_time=operations["interpolation"],
             operations_per_second=problem_size / total_time,
             device_info={
-                'num_refinements': int(jnp.sum(refine_flags)),
-                'refinement_ratio': float(jnp.mean(refine_flags)),
+                "num_refinements": int(jnp.sum(refine_flags)),
+                "refinement_ratio": float(jnp.mean(refine_flags)),
             },
         )
 
@@ -454,7 +454,7 @@ class AMRGPUProfiler:
 
         try:
             fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-            fig.suptitle('AMR GPU/CPU Performance Analysis', fontsize=16)
+            fig.suptitle("AMR GPU/CPU Performance Analysis", fontsize=16)
 
             # Plot 1: Compilation overhead vs problem size
             compilation_results = [r for r in self.results if r.operation_name == "JAX_Compilation"]
@@ -464,32 +464,32 @@ class AMRGPUProfiler:
                 compute_times = [r.compute_time * 1000 for r in compilation_results]  # ms
 
                 ax = axes[0, 0]
-                ax.loglog(sizes, comp_times, 'r-o', label='Compilation', markersize=6)
-                ax.loglog(sizes, compute_times, 'b-s', label='Computation', markersize=6)
-                ax.set_xlabel('Problem Size')
-                ax.set_ylabel('Time (ms)')
-                ax.set_title('JAX Compilation vs Computation Time')
+                ax.loglog(sizes, comp_times, "r-o", label="Compilation", markersize=6)
+                ax.loglog(sizes, compute_times, "b-s", label="Computation", markersize=6)
+                ax.set_xlabel("Problem Size")
+                ax.set_ylabel("Time (ms)")
+                ax.set_title("JAX Compilation vs Computation Time")
                 ax.legend()
                 ax.grid(True, alpha=0.3)
 
             # Plot 2: Backend comparison
-            cpu_results = [r for r in self.results if r.backend == 'cpu' and 'AMR_Solve' in r.operation_name]
-            gpu_results = [r for r in self.results if r.backend == 'gpu' and 'AMR_Solve' in r.operation_name]
+            cpu_results = [r for r in self.results if r.backend == "cpu" and "AMR_Solve" in r.operation_name]
+            gpu_results = [r for r in self.results if r.backend == "gpu" and "AMR_Solve" in r.operation_name]
 
             ax = axes[0, 1]
             if cpu_results:
                 sizes = [r.problem_size for r in cpu_results]
                 times = [r.total_time for r in cpu_results]
-                ax.loglog(sizes, times, 'b-o', label='CPU', markersize=6)
+                ax.loglog(sizes, times, "b-o", label="CPU", markersize=6)
 
             if gpu_results:
                 sizes = [r.problem_size for r in gpu_results]
                 times = [r.total_time for r in gpu_results]
-                ax.loglog(sizes, times, 'r-s', label='GPU', markersize=6)
+                ax.loglog(sizes, times, "r-s", label="GPU", markersize=6)
 
-            ax.set_xlabel('Problem Size')
-            ax.set_ylabel('Solve Time (s)')
-            ax.set_title('CPU vs GPU Performance')
+            ax.set_xlabel("Problem Size")
+            ax.set_ylabel("Solve Time (s)")
+            ax.set_title("CPU vs GPU Performance")
             ax.legend()
             ax.grid(True, alpha=0.3)
 
@@ -500,10 +500,10 @@ class AMRGPUProfiler:
                 bandwidths = [r.memory_bandwidth_gb_s for r in transfer_results]
 
                 ax = axes[1, 0]
-                ax.semilogx(sizes, bandwidths, 'g-o', markersize=6)
-                ax.set_xlabel('Data Size (elements)')
-                ax.set_ylabel('Transfer Bandwidth (GB/s)')
-                ax.set_title('Memory Transfer Performance')
+                ax.semilogx(sizes, bandwidths, "g-o", markersize=6)
+                ax.set_xlabel("Data Size (elements)")
+                ax.set_ylabel("Transfer Bandwidth (GB/s)")
+                ax.set_title("Memory Transfer Performance")
                 ax.grid(True, alpha=0.3)
 
             # Plot 4: Operations breakdown
@@ -511,7 +511,7 @@ class AMRGPUProfiler:
             if breakdown_results:
                 result = breakdown_results[0]  # Take first result
 
-                operations = ['Error\nEstimation', 'Mesh\nAdaptation', 'Interpolation']
+                operations = ["Error\nEstimation", "Mesh\nAdaptation", "Interpolation"]
                 times = [
                     result.error_estimation_time * 1000,
                     result.mesh_adaptation_time * 1000,
@@ -519,22 +519,22 @@ class AMRGPUProfiler:
                 ]
 
                 ax = axes[1, 1]
-                bars = ax.bar(operations, times, color=['red', 'blue', 'green'], alpha=0.7)
-                ax.set_ylabel('Time (ms)')
-                ax.set_title('AMR Operations Breakdown')
+                bars = ax.bar(operations, times, color=["red", "blue", "green"], alpha=0.7)
+                ax.set_ylabel("Time (ms)")
+                ax.set_title("AMR Operations Breakdown")
 
                 # Add value labels on bars
-                for bar, time_val in zip(bars, times):
+                for bar, time_val in zip(bars, times, strict=False):
                     ax.text(
                         bar.get_x() + bar.get_width() / 2,
                         bar.get_height() + 0.1,
-                        f'{time_val:.2f}ms',
-                        ha='center',
-                        va='bottom',
+                        f"{time_val:.2f}ms",
+                        ha="center",
+                        va="bottom",
                     )
 
             plt.tight_layout()
-            plt.savefig(self.output_dir / 'gpu_performance_analysis.png', dpi=150, bbox_inches='tight')
+            plt.savefig(self.output_dir / "gpu_performance_analysis.png", dpi=150, bbox_inches="tight")
             print(f"Performance plots saved to {self.output_dir / 'gpu_performance_analysis.png'}")
 
             # Show if possible
@@ -555,33 +555,33 @@ class AMRGPUProfiler:
         serializable_results = []
         for result in self.results:
             result_dict = {
-                'operation_name': result.operation_name,
-                'backend': result.backend,
-                'problem_size': result.problem_size,
-                'total_time': result.total_time,
-                'compilation_time': result.compilation_time,
-                'compute_time': result.compute_time,
-                'memory_transfer_time': result.memory_transfer_time,
-                'peak_memory_mb': result.peak_memory_mb,
-                'gpu_memory_mb': result.gpu_memory_mb,
-                'operations_per_second': result.operations_per_second,
-                'memory_bandwidth_gb_s': result.memory_bandwidth_gb_s,
-                'error_estimation_time': result.error_estimation_time,
-                'mesh_adaptation_time': result.mesh_adaptation_time,
-                'interpolation_time': result.interpolation_time,
-                'device_info': result.device_info,
+                "operation_name": result.operation_name,
+                "backend": result.backend,
+                "problem_size": result.problem_size,
+                "total_time": result.total_time,
+                "compilation_time": result.compilation_time,
+                "compute_time": result.compute_time,
+                "memory_transfer_time": result.memory_transfer_time,
+                "peak_memory_mb": result.peak_memory_mb,
+                "gpu_memory_mb": result.gpu_memory_mb,
+                "operations_per_second": result.operations_per_second,
+                "memory_bandwidth_gb_s": result.memory_bandwidth_gb_s,
+                "error_estimation_time": result.error_estimation_time,
+                "mesh_adaptation_time": result.mesh_adaptation_time,
+                "interpolation_time": result.interpolation_time,
+                "device_info": result.device_info,
             }
             serializable_results.append(result_dict)
 
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(
                 {
-                    'profiling_metadata': {
-                        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-                        'system_info': self.system_info,
-                        'total_profiles': len(self.results),
+                    "profiling_metadata": {
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "system_info": self.system_info,
+                        "total_profiles": len(self.results),
                     },
-                    'results': serializable_results,
+                    "results": serializable_results,
                 },
                 f,
                 indent=2,
@@ -615,7 +615,7 @@ class AMRGPUProfiler:
         self.generate_performance_plots()
         self.save_profiling_results()
 
-        print(f"\n✅ GPU/CPU profiling complete!")
+        print("\n✅ GPU/CPU profiling complete!")
         print(f"Results saved to: {self.output_dir}")
 
 

@@ -49,6 +49,29 @@ logger = get_logger(__name__)
 
 ## Development Workflow
 
+### Official Setup (Required)
+
+**Pre-commit hooks** are mandatory for all contributors. This ensures consistent code quality across all contributions.
+
+```bash
+# 1. Install pre-commit (one-time setup)
+pip install pre-commit
+
+# 2. Install the MFG_PDE hooks (from project root)
+pre-commit install
+
+# 3. Run on all files (optional - hooks run automatically on commit)
+pre-commit run --all-files
+```
+
+Our `.pre-commit-config.yaml` uses **modern Ruff tooling** (10-100x faster than legacy tools):
+- **Ruff Format**: Replaces Black for code formatting
+- **Ruff Lint**: Replaces Pylint + flake8 + isort for linting
+- **Mypy**: Type checking with pyproject.toml configuration
+- **Safety checks**: Prevents common errors and large files
+
+This configuration is **the only supported approach** - it matches our CI/CD pipeline and provides optimal performance.
+
 ### Adding New Features
 1. **Core functionality**: Add to appropriate `mfg_pde/` subdirectory
 2. **Examples**: Create in `examples/basic/` or `examples/advanced/`
@@ -105,12 +128,19 @@ logger = get_logger(__name__)
 
 ## Quality Assurance
 
-Before submitting:
-- Verify all imports work correctly
-- Check file placement follows conventions
-- Update relevant documentation
-- Test examples execute successfully
-- Run linting and type checking
+**Automated Quality Checks**: Our pre-commit hooks handle most quality assurance automatically. Every commit is automatically checked for:
+- Code formatting (Ruff Format)
+- Linting issues (Ruff Lint with auto-fix)
+- Type checking (Mypy)
+- Common errors and large files
+
+**Manual Verification Checklist**:
+- ✅ Pre-commit hooks installed and passing
+- ✅ All imports work correctly
+- ✅ File placement follows repository conventions
+- ✅ Documentation updated for new features
+- ✅ Examples execute successfully
+- ✅ Mathematical notation follows `u(t,x)`, `m(t,x)` standards
 
 ## Getting Help
 

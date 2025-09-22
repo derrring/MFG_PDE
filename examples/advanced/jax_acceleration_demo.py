@@ -39,7 +39,7 @@ class BarProblemJAX(ExampleMFGProblem):
     def f(self, x, u, m):
         """Running cost with congestion effects."""
         # Get total attendance by integrating density
-        if hasattr(self, '_backend') and self._backend:
+        if hasattr(self, "_backend") and self._backend:
             total_attendance = self._backend.trapezoid(m, dx=self.dx)
         else:
             total_attendance = trapezoid(m, dx=self.dx)
@@ -68,7 +68,7 @@ def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
     """
     logger.info(f"Starting backend benchmark with sizes {problem_sizes}")
 
-    results = {'problem_sizes': problem_sizes, 'numpy_times': [], 'jax_times': [], 'speedups': [], 'memory_usage': {}}
+    results = {"problem_sizes": problem_sizes, "numpy_times": [], "jax_times": [], "speedups": [], "memory_usage": {}}
 
     for Nx in problem_sizes:
         logger.info(f"Benchmarking problem size Nx={Nx}")
@@ -92,8 +92,8 @@ def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
 
                 # Simulate solver iterations
                 for _ in range(20):
-                    U = backend.hjb_step(U, M, 0.01, problem.dx, {'x_grid': x_grid, 'sigma_sq': 0.01})
-                    M = backend.fpk_step(M, U, 0.01, problem.dx, {'x_grid': x_grid, 'sigma_sq': 0.01})
+                    U = backend.hjb_step(U, M, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
+                    M = backend.fpk_step(M, U, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
 
                 end_time = time.perf_counter()
                 numpy_times.append(end_time - start_time)
@@ -101,11 +101,11 @@ def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
                 if run == 0:  # Get memory info on first run
                     mem_info = backend.memory_usage()
                     if mem_info:
-                        results['memory_usage'][f'numpy_{Nx}'] = mem_info
+                        results["memory_usage"][f"numpy_{Nx}"] = mem_info
 
             except Exception as e:
                 logger.warning(f"NumPy benchmark failed for Nx={Nx}: {e}")
-                numpy_times.append(float('inf'))
+                numpy_times.append(float("inf"))
 
         # Benchmark JAX backend
         jax_times = []
@@ -123,8 +123,8 @@ def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
 
                 # Simulate solver iterations (JIT compilation on first run)
                 for _ in range(20):
-                    U = backend.hjb_step(U, M, 0.01, problem.dx, {'x_grid': x_grid, 'sigma_sq': 0.01})
-                    M = backend.fpk_step(M, U, 0.01, problem.dx, {'x_grid': x_grid, 'sigma_sq': 0.01})
+                    U = backend.hjb_step(U, M, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
+                    M = backend.fpk_step(M, U, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
 
                 end_time = time.perf_counter()
                 jax_times.append(end_time - start_time)
@@ -132,23 +132,23 @@ def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
                 if run == 0:  # Get device info on first run
                     device_info = backend.get_device_info()
                     mem_info = backend.memory_usage()
-                    results['memory_usage'][f'jax_{Nx}'] = {'device_info': device_info, 'memory_info': mem_info}
+                    results["memory_usage"][f"jax_{Nx}"] = {"device_info": device_info, "memory_info": mem_info}
 
             except ImportError:
-                logger.warning(f"JAX not available for benchmark")
-                jax_times.append(float('inf'))
+                logger.warning("JAX not available for benchmark")
+                jax_times.append(float("inf"))
             except Exception as e:
                 logger.warning(f"JAX benchmark failed for Nx={Nx}: {e}")
-                jax_times.append(float('inf'))
+                jax_times.append(float("inf"))
 
         # Calculate averages and speedup
         avg_numpy_time = np.mean(numpy_times)
         avg_jax_time = np.mean(jax_times)
-        speedup = avg_numpy_time / avg_jax_time if avg_jax_time != float('inf') else 0
+        speedup = avg_numpy_time / avg_jax_time if avg_jax_time != float("inf") else 0
 
-        results['numpy_times'].append(avg_numpy_time)
-        results['jax_times'].append(avg_jax_time)
-        results['speedups'].append(speedup)
+        results["numpy_times"].append(avg_numpy_time)
+        results["jax_times"].append(avg_jax_time)
+        results["speedups"].append(speedup)
 
         logger.info(f"Nx={Nx}: NumPy={avg_numpy_time:.3f}s, JAX={avg_jax_time:.3f}s, " f"Speedup={speedup:.2f}x")
 
@@ -191,11 +191,11 @@ def demonstrate_jax_features():
         logger.info(f"Automatic differentiation error: {gradient_error:.2e}")
 
         return {
-            'x': x_np,
-            'function': f_np,
-            'gradient': grad_np,
-            'analytical_gradient': analytical_grad,
-            'error': gradient_error,
+            "x": x_np,
+            "function": f_np,
+            "gradient": grad_np,
+            "analytical_gradient": analytical_grad,
+            "error": gradient_error,
         }
 
     except ImportError:
@@ -211,60 +211,60 @@ def create_performance_plots(benchmark_results, jax_features=None):
     logger.info("Creating performance visualization plots")
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle('JAX vs NumPy Backend Performance Comparison', fontsize=16, fontweight='bold')
+    fig.suptitle("JAX vs NumPy Backend Performance Comparison", fontsize=16, fontweight="bold")
 
     # Plot 1: Execution time comparison
     ax1 = axes[0, 0]
-    x_pos = np.arange(len(benchmark_results['problem_sizes']))
+    x_pos = np.arange(len(benchmark_results["problem_sizes"]))
     width = 0.35
 
-    ax1.bar(x_pos - width / 2, benchmark_results['numpy_times'], width, label='NumPy', color='blue', alpha=0.7)
-    ax1.bar(x_pos + width / 2, benchmark_results['jax_times'], width, label='JAX', color='red', alpha=0.7)
+    ax1.bar(x_pos - width / 2, benchmark_results["numpy_times"], width, label="NumPy", color="blue", alpha=0.7)
+    ax1.bar(x_pos + width / 2, benchmark_results["jax_times"], width, label="JAX", color="red", alpha=0.7)
 
-    ax1.set_xlabel('Problem Size (Nx)')
-    ax1.set_ylabel('Execution Time (seconds)')
-    ax1.set_title('Execution Time Comparison')
+    ax1.set_xlabel("Problem Size (Nx)")
+    ax1.set_ylabel("Execution Time (seconds)")
+    ax1.set_title("Execution Time Comparison")
     ax1.set_xticks(x_pos)
-    ax1.set_xticklabels(benchmark_results['problem_sizes'])
+    ax1.set_xticklabels(benchmark_results["problem_sizes"])
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     # Plot 2: Speedup factor
     ax2 = axes[0, 1]
-    valid_speedups = [s if s != float('inf') and s > 0 else 0 for s in benchmark_results['speedups']]
-    ax2.plot(benchmark_results['problem_sizes'], valid_speedups, 'go-', linewidth=2, markersize=8)
-    ax2.set_xlabel('Problem Size (Nx)')
-    ax2.set_ylabel('Speedup Factor (NumPy/JAX)')
-    ax2.set_title('JAX Speedup vs Problem Size')
+    valid_speedups = [s if s != float("inf") and s > 0 else 0 for s in benchmark_results["speedups"]]
+    ax2.plot(benchmark_results["problem_sizes"], valid_speedups, "go-", linewidth=2, markersize=8)
+    ax2.set_xlabel("Problem Size (Nx)")
+    ax2.set_ylabel("Speedup Factor (NumPy/JAX)")
+    ax2.set_title("JAX Speedup vs Problem Size")
     ax2.grid(True, alpha=0.3)
-    ax2.axhline(y=1, color='red', linestyle='--', alpha=0.5, label='No speedup')
+    ax2.axhline(y=1, color="red", linestyle="--", alpha=0.5, label="No speedup")
     ax2.legend()
 
     # Plot 3: Scaling analysis
     ax3 = axes[1, 0]
-    ax3.loglog(benchmark_results['problem_sizes'], benchmark_results['numpy_times'], 'b-o', label='NumPy', linewidth=2)
-    ax3.loglog(benchmark_results['problem_sizes'], benchmark_results['jax_times'], 'r-s', label='JAX', linewidth=2)
-    ax3.set_xlabel('Problem Size (Nx)')
-    ax3.set_ylabel('Execution Time (seconds)')
-    ax3.set_title('Scaling Analysis (Log-Log)')
+    ax3.loglog(benchmark_results["problem_sizes"], benchmark_results["numpy_times"], "b-o", label="NumPy", linewidth=2)
+    ax3.loglog(benchmark_results["problem_sizes"], benchmark_results["jax_times"], "r-s", label="JAX", linewidth=2)
+    ax3.set_xlabel("Problem Size (Nx)")
+    ax3.set_ylabel("Execution Time (seconds)")
+    ax3.set_title("Scaling Analysis (Log-Log)")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
     # Plot 4: JAX automatic differentiation demo
     ax4 = axes[1, 1]
     if jax_features:
-        ax4.plot(jax_features['x'], jax_features['function'], 'b-', label='f(x) = x² + sin(x)', linewidth=2)
-        ax4.plot(jax_features['x'], jax_features['gradient'], 'r-', label="f'(x) (JAX autodiff)", linewidth=2)
+        ax4.plot(jax_features["x"], jax_features["function"], "b-", label="f(x) = x² + sin(x)", linewidth=2)
+        ax4.plot(jax_features["x"], jax_features["gradient"], "r-", label="f'(x) (JAX autodiff)", linewidth=2)
         ax4.plot(
-            jax_features['x'],
-            jax_features['analytical_gradient'],
-            'g--',
+            jax_features["x"],
+            jax_features["analytical_gradient"],
+            "g--",
             label="f'(x) (analytical)",
             linewidth=1,
             alpha=0.7,
         )
-        ax4.set_xlabel('x')
-        ax4.set_ylabel('Value')
+        ax4.set_xlabel("x")
+        ax4.set_ylabel("Value")
         ax4.set_title(f'Automatic Differentiation Demo\n(Error: {jax_features["error"]:.2e})')
         ax4.legend()
         ax4.grid(True, alpha=0.3)
@@ -272,14 +272,14 @@ def create_performance_plots(benchmark_results, jax_features=None):
         ax4.text(
             0.5,
             0.5,
-            'JAX not available\nfor autodiff demo',
-            ha='center',
-            va='center',
+            "JAX not available\nfor autodiff demo",
+            ha="center",
+            va="center",
             transform=ax4.transAxes,
             fontsize=12,
             bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"),
         )
-        ax4.set_title('Automatic Differentiation Demo')
+        ax4.set_title("Automatic Differentiation Demo")
 
     plt.tight_layout()
 
@@ -287,7 +287,7 @@ def create_performance_plots(benchmark_results, jax_features=None):
     output_dir = Path("examples/advanced/outputs")
     output_dir.mkdir(exist_ok=True)
     output_path = output_dir / "jax_acceleration_benchmark.png"
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     logger.info(f"Performance plots saved to: {output_path}")
 
     return output_path
@@ -311,18 +311,18 @@ def main():
     # Display results
     print("\n Benchmark Results:")
     print("-" * 30)
-    for i, size in enumerate(benchmark_results['problem_sizes']):
-        numpy_time = benchmark_results['numpy_times'][i]
-        jax_time = benchmark_results['jax_times'][i]
-        speedup = benchmark_results['speedups'][i]
+    for i, size in enumerate(benchmark_results["problem_sizes"]):
+        numpy_time = benchmark_results["numpy_times"][i]
+        jax_time = benchmark_results["jax_times"][i]
+        speedup = benchmark_results["speedups"][i]
 
         print(f"Problem size Nx={size:4d}:")
         print(f"  NumPy:   {numpy_time:8.3f}s")
         print(f"  JAX:     {jax_time:8.3f}s")
-        if speedup > 0 and speedup != float('inf'):
+        if speedup > 0 and speedup != float("inf"):
             print(f"  Speedup: {speedup:8.2f}x")
         else:
-            print(f"  Speedup: N/A")
+            print("  Speedup: N/A")
         print()
 
     # Demonstrate JAX features
@@ -331,7 +331,7 @@ def main():
     jax_features = demonstrate_jax_features()
 
     if jax_features:
-        print(f"SUCCESS: Automatic differentiation test passed")
+        print("SUCCESS: Automatic differentiation test passed")
         print(f"   Maximum gradient error: {jax_features['error']:.2e}")
     else:
         print("ERROR: JAX features not available")
@@ -346,7 +346,7 @@ def main():
     print("\n Summary and Recommendations:")
     print("=" * 50)
 
-    avg_speedup = np.mean([s for s in benchmark_results['speedups'] if s > 0 and s != float('inf')])
+    avg_speedup = np.mean([s for s in benchmark_results["speedups"] if s > 0 and s != float("inf")])
 
     if avg_speedup > 1.5:
         print(f"SUCCESS: JAX shows significant performance improvement (avg {avg_speedup:.2f}x speedup)")

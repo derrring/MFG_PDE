@@ -96,14 +96,14 @@ def analyze_el_farol_solution(problem, U, M):
     density_concentration = np.max(final_density) / np.mean(final_density)
 
     analysis = {
-        'attendance_evolution': attendance_rates,
-        'final_attendance': final_attendance,
-        'capacity_utilization': capacity_utilization,
-        'efficiency': efficiency,
-        'converged': converged,
-        'peak_tendency': peak_location,
-        'density_concentration': density_concentration,
-        'bar_capacity': problem.bar_capacity,
+        "attendance_evolution": attendance_rates,
+        "final_attendance": final_attendance,
+        "capacity_utilization": capacity_utilization,
+        "efficiency": efficiency,
+        "converged": converged,
+        "peak_tendency": peak_location,
+        "density_concentration": density_concentration,
+        "bar_capacity": problem.bar_capacity,
     }
 
     logger.info(
@@ -126,74 +126,74 @@ def visualize_el_farol_results(problem, U, M, analysis):
 
     fig = plt.figure(figsize=(15, 10))
     fig.suptitle(
-        'El Farol Bar Problem - MFG Analysis\n'
-        f'Capacity: {problem.bar_capacity:.0%}, Crowd Aversion: {problem.crowd_aversion}',
+        "El Farol Bar Problem - MFG Analysis\n"
+        f"Capacity: {problem.bar_capacity:.0%}, Crowd Aversion: {problem.crowd_aversion}",
         fontsize=14,
-        fontweight='bold',
+        fontweight="bold",
     )
 
     # 1. Population density evolution
     ax1 = plt.subplot(2, 3, 1)
-    contour = ax1.contourf(X, T, M, levels=20, cmap='viridis', alpha=0.8)
-    plt.colorbar(contour, ax=ax1, label='Population Density')
-    ax1.set_xlabel('Going Tendency')
-    ax1.set_ylabel('Time')
-    ax1.set_title('Population Distribution m(t,x)')
-    ax1.axvline(x=problem.bar_capacity, color='red', linestyle='--', alpha=0.7, label='Capacity')
+    contour = ax1.contourf(X, T, M, levels=20, cmap="viridis", alpha=0.8)
+    plt.colorbar(contour, ax=ax1, label="Population Density")
+    ax1.set_xlabel("Going Tendency")
+    ax1.set_ylabel("Time")
+    ax1.set_title("Population Distribution m(t,x)")
+    ax1.axvline(x=problem.bar_capacity, color="red", linestyle="--", alpha=0.7, label="Capacity")
     ax1.legend()
 
     # 2. Value function
     ax2 = plt.subplot(2, 3, 2)
-    contour2 = ax2.contourf(X, T, U, levels=20, cmap='plasma', alpha=0.8)
-    plt.colorbar(contour2, ax=ax2, label='Value Function')
-    ax2.set_xlabel('Going Tendency')
-    ax2.set_ylabel('Time')
-    ax2.set_title('Value Function U(t,x)')
+    contour2 = ax2.contourf(X, T, U, levels=20, cmap="plasma", alpha=0.8)
+    plt.colorbar(contour2, ax=ax2, label="Value Function")
+    ax2.set_xlabel("Going Tendency")
+    ax2.set_ylabel("Time")
+    ax2.set_title("Value Function U(t,x)")
 
     # 3. Attendance evolution
     ax3 = plt.subplot(2, 3, 3)
-    attendance = analysis['attendance_evolution']
-    ax3.plot(t_grid, attendance, 'b-', linewidth=3, label='Bar Attendance')
+    attendance = analysis["attendance_evolution"]
+    ax3.plot(t_grid, attendance, "b-", linewidth=3, label="Bar Attendance")
     ax3.axhline(
-        y=problem.bar_capacity, color='red', linestyle='--', linewidth=2, label=f'Optimal ({problem.bar_capacity:.0%})'
+        y=problem.bar_capacity, color="red", linestyle="--", linewidth=2, label=f"Optimal ({problem.bar_capacity:.0%})"
     )
     ax3.fill_between(t_grid, attendance, alpha=0.3)
-    ax3.set_xlabel('Time')
-    ax3.set_ylabel('Expected Attendance')
-    ax3.set_title('Bar Attendance Over Time')
+    ax3.set_xlabel("Time")
+    ax3.set_ylabel("Expected Attendance")
+    ax3.set_title("Bar Attendance Over Time")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
     # Add efficiency annotation
-    efficiency = analysis['efficiency']
+    efficiency = analysis["efficiency"]
     ax3.text(
         0.05,
         0.95,
-        f'Efficiency: {efficiency:.1%}',
+        f"Efficiency: {efficiency:.1%}",
         transform=ax3.transAxes,
         fontsize=12,
-        fontweight='bold',
+        fontweight="bold",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.8),
     )
 
     # 4. Final population distribution
     ax4 = plt.subplot(2, 3, 4)
     final_density = M[-1, :]
-    ax4.plot(x_grid, final_density, 'g-', linewidth=3, label='Final Density')
-    ax4.fill_between(x_grid, final_density, alpha=0.3, color='green')
+    ax4.plot(x_grid, final_density, "g-", linewidth=3, label="Final Density")
+    ax4.fill_between(x_grid, final_density, alpha=0.3, color="green")
     ax4.axvline(
-        x=problem.bar_capacity, color='red', linestyle='--', linewidth=2, label=f'Capacity ({problem.bar_capacity:.0%})'
+        x=problem.bar_capacity, color="red", linestyle="--", linewidth=2, label=f"Capacity ({problem.bar_capacity:.0%})"
     )
     ax4.axvline(
-        x=analysis['peak_tendency'],
-        color='orange',
-        linestyle=':',
+        x=analysis["peak_tendency"],
+        color="orange",
+        linestyle=":",
         linewidth=2,
         label=f'Peak ({analysis["peak_tendency"]:.2f})',
     )
-    ax4.set_xlabel('Going Tendency')
-    ax4.set_ylabel('Population Density')
-    ax4.set_title('Final Population Distribution')
+    ax4.set_xlabel("Going Tendency")
+    ax4.set_ylabel("Population Density")
+    ax4.set_title("Final Population Distribution")
     ax4.legend()
     ax4.grid(True, alpha=0.3)
 
@@ -201,32 +201,32 @@ def visualize_el_farol_results(problem, U, M, analysis):
     ax5 = plt.subplot(2, 3, 5)
 
     # Create bar chart of key metrics
-    metrics = ['Final\nAttendance', 'Capacity\nUtilization', 'Economic\nEfficiency']
-    values = [analysis['final_attendance'], analysis['capacity_utilization'], analysis['efficiency']]
-    colors = ['lightblue', 'lightgreen', 'orange']
+    metrics = ["Final\nAttendance", "Capacity\nUtilization", "Economic\nEfficiency"]
+    values = [analysis["final_attendance"], analysis["capacity_utilization"], analysis["efficiency"]]
+    colors = ["lightblue", "lightgreen", "orange"]
 
-    bars = ax5.bar(metrics, values, color=colors, alpha=0.7, edgecolor='black')
-    ax5.set_ylabel('Value')
-    ax5.set_title('Key Performance Metrics')
-    ax5.grid(True, alpha=0.3, axis='y')
+    bars = ax5.bar(metrics, values, color=colors, alpha=0.7, edgecolor="black")
+    ax5.set_ylabel("Value")
+    ax5.set_title("Key Performance Metrics")
+    ax5.grid(True, alpha=0.3, axis="y")
 
     # Add value labels on bars
-    for bar, value in zip(bars, values):
+    for bar, value in zip(bars, values, strict=False):
         height = bar.get_height()
         ax5.text(
             bar.get_x() + bar.get_width() / 2.0,
             height + 0.01,
-            f'{value:.1%}',
-            ha='center',
-            va='bottom',
-            fontweight='bold',
+            f"{value:.1%}",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
         )
 
     ax5.set_ylim(0, max(1.2, max(values) * 1.1))
 
     # 6. Economic interpretation
     ax6 = plt.subplot(2, 3, 6)
-    ax6.axis('off')
+    ax6.axis("off")
 
     # Economic insights text
     interpretation = f"""
@@ -250,9 +250,9 @@ El Farol Bar Economic Analysis
  Economic Interpretation:
 """
 
-    if analysis['final_attendance'] > problem.bar_capacity * 1.1:
+    if analysis["final_attendance"] > problem.bar_capacity * 1.1:
         interpretation += "• Overcrowding occurs\n• Agents over-coordinate to go\n• Efficiency loss from crowding"
-    elif analysis['final_attendance'] < problem.bar_capacity * 0.9:
+    elif analysis["final_attendance"] < problem.bar_capacity * 0.9:
         interpretation += "• Bar underutilized\n• Agents over-avoid due to fear\n• Efficiency loss from under-use"
     else:
         interpretation += "• Near-optimal attendance\n• Good coordination achieved\n• High economic efficiency"
@@ -263,8 +263,8 @@ El Farol Bar Economic Analysis
         interpretation,
         transform=ax6.transAxes,
         fontsize=10,
-        verticalalignment='top',
-        fontfamily='monospace',
+        verticalalignment="top",
+        fontfamily="monospace",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
     )
 
@@ -273,7 +273,7 @@ El Farol Bar Economic Analysis
     # Save the plot
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     filename = f"el_farol_analysis_{timestamp}.png"
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
     print(f"📁 Visualization saved as {filename}")
 
     plt.show()
@@ -302,8 +302,8 @@ def compare_scenarios():
 
         # Create and solve problem
         problem = create_el_farol_problem(
-            bar_capacity=scenario['bar_capacity'],
-            crowd_aversion=scenario['crowd_aversion'],
+            bar_capacity=scenario["bar_capacity"],
+            crowd_aversion=scenario["crowd_aversion"],
             Nx=30,
             Nt=30,  # Smaller for faster computation
         )
@@ -314,28 +314,28 @@ def compare_scenarios():
 
         # Analyze results
         analysis = analyze_el_farol_solution(problem, U, M)
-        analysis['scenario'] = scenario
+        analysis["scenario"] = scenario
         results.append(analysis)
 
         # Plot attendance evolution - use actual M shape
         plt.subplot(2, 4, i + 1)
         t_grid = np.linspace(0, 1, M.shape[0])
-        plt.plot(t_grid, analysis['attendance_evolution'], 'b-', linewidth=2)
-        plt.axhline(y=scenario['bar_capacity'], color='red', linestyle='--', alpha=0.7)
-        plt.title(scenario['name'], fontsize=10)
-        plt.xlabel('Time')
-        plt.ylabel('Attendance')
+        plt.plot(t_grid, analysis["attendance_evolution"], "b-", linewidth=2)
+        plt.axhline(y=scenario["bar_capacity"], color="red", linestyle="--", alpha=0.7)
+        plt.title(scenario["name"], fontsize=10)
+        plt.xlabel("Time")
+        plt.ylabel("Attendance")
         plt.grid(True, alpha=0.3)
 
         # Plot final density - use actual M shape
         plt.subplot(2, 4, i + 5)
         x_grid = np.linspace(0, 1, M.shape[1])
         final_density = M[-1, :]
-        plt.plot(x_grid, final_density, 'g-', linewidth=2)
-        plt.axvline(x=scenario['bar_capacity'], color='red', linestyle='--', alpha=0.7)
-        plt.title('Final Distribution', fontsize=10)
-        plt.xlabel('Going Tendency')
-        plt.ylabel('Density')
+        plt.plot(x_grid, final_density, "g-", linewidth=2)
+        plt.axvline(x=scenario["bar_capacity"], color="red", linestyle="--", alpha=0.7)
+        plt.title("Final Distribution", fontsize=10)
+        plt.xlabel("Going Tendency")
+        plt.ylabel("Density")
         plt.grid(True, alpha=0.3)
 
     plt.tight_layout()
@@ -346,11 +346,11 @@ def compare_scenarios():
     print("Scenario                    | Attendance | Efficiency | Converged")
     print("-" * 65)
     for result in results:
-        scenario = result['scenario']
-        name = scenario['name'][:26].ljust(26)
+        scenario = result["scenario"]
+        name = scenario["name"][:26].ljust(26)
         attendance = f"{result['final_attendance']:.1%}".rjust(10)
         efficiency = f"{result['efficiency']:.1%}".rjust(10)
-        converged = "Yes" if result['converged'] else "No"
+        converged = "Yes" if result["converged"] else "No"
         print(f"{name} | {attendance} | {efficiency} | {converged}")
 
     return results
@@ -372,7 +372,8 @@ def main():
         print("\n1. Solving basic El Farol Bar Problem...")
 
         problem = create_el_farol_problem(
-            bar_capacity=0.6, crowd_aversion=2.0  # 60% capacity optimal  # Moderate crowd aversion
+            bar_capacity=0.6,
+            crowd_aversion=2.0,  # 60% capacity optimal  # Moderate crowd aversion
         )
 
         solver = create_fast_solver(problem, solver_type="fixed_point")
@@ -387,23 +388,23 @@ def main():
         # Create visualizations
         visualize_el_farol_results(problem, U, M, analysis)
 
-        print(f"\n Key Results:")
+        print("\n Key Results:")
         print(f"  • Final attendance: {analysis['final_attendance']:.1%}")
         print(f"  • Economic efficiency: {analysis['efficiency']:.1%}")
         print(f"  • Capacity utilization: {analysis['capacity_utilization']:.1%}")
 
         # Economic interpretation
-        print(f"\n Economic Insights:")
-        if analysis['efficiency'] > 0.8:
+        print("\n Economic Insights:")
+        if analysis["efficiency"] > 0.8:
             print("  → High efficiency! Good coordination between agents.")
-        elif analysis['efficiency'] > 0.6:
+        elif analysis["efficiency"] > 0.6:
             print("  → Moderate efficiency. Some coordination issues.")
         else:
             print("  → Low efficiency. Poor coordination leading to suboptimal outcomes.")
 
-        if analysis['final_attendance'] > problem.bar_capacity * 1.1:
+        if analysis["final_attendance"] > problem.bar_capacity * 1.1:
             print("  → Bar is overcrowded. Agents failed to avoid peak times.")
-        elif analysis['final_attendance'] < problem.bar_capacity * 0.9:
+        elif analysis["final_attendance"] < problem.bar_capacity * 0.9:
             print("  → Bar is underutilized. Agents over-cautious about crowding.")
         else:
             print("  → Near-optimal attendance achieved!")

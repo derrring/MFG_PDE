@@ -5,8 +5,10 @@ This is an enhanced version of the FixedPointIterator that uses the new
 configuration system for improved parameter management and user experience.
 """
 
+from __future__ import annotations
+
 import time
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -39,10 +41,10 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
     def __init__(
         self,
-        problem: "MFGProblem",
-        hjb_solver: "BaseHJBSolver",
-        fp_solver: "BaseFPSolver",
-        config: Optional[MFGSolverConfig] = None,
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
+        config: MFGSolverConfig | None = None,
         thetaUM: float = 0.5,  # Legacy parameter for backward compatibility
     ):
         """
@@ -91,7 +93,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         self.l2distm_rel: np.ndarray
         self.iterations_run: int = 0
 
-    def solve(self, config: Optional[MFGSolverConfig] = None, **kwargs) -> Union[tuple, "SolverResult"]:
+    def solve(self, config: MFGSolverConfig | None = None, **kwargs) -> tuple | SolverResult:
         """
         Solve the MFG system using structured configuration.
 
@@ -116,7 +118,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             print(f"\n{'='*80}")
             print(f" {self.name}")
             print(f"{'='*80}")
-            print(f" Configuration:")
+            print(" Configuration:")
             print(f"   • Picard iterations: {solve_config.picard.max_iterations}")
             print(f"   • Picard tolerance: {solve_config.picard.tolerance:.2e}")
             print(f"   • Damping factor: {solve_config.picard.damping_factor}")
@@ -211,15 +213,14 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             self.iterations_run = iiter + 1
 
             # Check convergence
-            if (iiter + 1) % solve_config.picard.convergence_check_frequency == 0:
-                if (
-                    self.l2distu_rel[iiter] < solve_config.picard.tolerance
-                    and self.l2distm_rel[iiter] < solve_config.picard.tolerance
-                ):
-                    convergence_achieved = True
-                    if solve_config.picard.verbose:
-                        print(f"SUCCESS: Convergence achieved after {iiter + 1} iterations!")
-                    break
+            if (iiter + 1) % solve_config.picard.convergence_check_frequency == 0 and (
+                self.l2distu_rel[iiter] < solve_config.picard.tolerance
+                and self.l2distm_rel[iiter] < solve_config.picard.tolerance
+            ):
+                convergence_achieved = True
+                if solve_config.picard.verbose:
+                    print(f"SUCCESS: Convergence achieved after {iiter + 1} iterations!")
+                break
 
         if not convergence_achieved and solve_config.picard.verbose:
             print(f"WARNING:  Max iterations ({solve_config.picard.max_iterations}) reached")
@@ -337,10 +338,10 @@ class ConfigAwareFixedPointIterator(MFGSolver):
     @classmethod
     def create_fast(
         cls,
-        problem: "MFGProblem",
-        hjb_solver: "BaseHJBSolver",
-        fp_solver: "BaseFPSolver",
-    ) -> "ConfigAwareFixedPointIterator":
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
+    ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for speed."""
         from ..config import create_fast_config
 
@@ -349,10 +350,10 @@ class ConfigAwareFixedPointIterator(MFGSolver):
     @classmethod
     def create_accurate(
         cls,
-        problem: "MFGProblem",
-        hjb_solver: "BaseHJBSolver",
-        fp_solver: "BaseFPSolver",
-    ) -> "ConfigAwareFixedPointIterator":
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
+    ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for accuracy."""
         from ..config import create_accurate_config
 
@@ -361,10 +362,10 @@ class ConfigAwareFixedPointIterator(MFGSolver):
     @classmethod
     def create_research(
         cls,
-        problem: "MFGProblem",
-        hjb_solver: "BaseHJBSolver",
-        fp_solver: "BaseFPSolver",
-    ) -> "ConfigAwareFixedPointIterator":
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
+    ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for research with detailed monitoring."""
         from ..config.solver_config import create_research_config
 

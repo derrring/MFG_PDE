@@ -11,13 +11,13 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 from mfg_pde.alg.damped_fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.fp_solvers.fdm_fp import FdmFPSolver
 from mfg_pde.alg.fp_solvers.particle_fp import ParticleFPSolver
-from mfg_pde.alg.hjb_solvers import HJBGFDMTunedQPSolver
 from mfg_pde.alg.hjb_solvers.fdm_hjb import FdmHJBSolver
+from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.boundaries import BoundaryConditions
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
@@ -32,9 +32,9 @@ def comprehensive_three_method_evaluation():
     print("With Tuned Smart QP optimization achieving 3.7% QP usage rate")
 
     # Problem parameters for comprehensive evaluation
-    problem_params = {'xmin': 0.0, 'xmax': 1.0, 'Nx': 20, 'T': 1.0, 'Nt': 30, 'sigma': 0.12, 'coefCT': 0.02}
+    problem_params = {"xmin": 0.0, "xmax": 1.0, "Nx": 20, "T": 1.0, "Nt": 30, "sigma": 0.12, "coefCT": 0.02}
 
-    print(f"Problem Configuration:")
+    print("Problem Configuration:")
     print(f"  Domain: [{problem_params['xmin']}, {problem_params['xmax']}]")
     print(f"  Spatial discretization: Nx = {problem_params['Nx']}")
     print(f"  Time horizon: T = {problem_params['T']}")
@@ -45,7 +45,7 @@ def comprehensive_three_method_evaluation():
     results = {}
 
     # Calculate Dx for mass conservation (used by all methods)
-    Dx = (problem_params['xmax'] - problem_params['xmin']) / problem_params['Nx']
+    Dx = (problem_params["xmax"] - problem_params["xmin"]) / problem_params["Nx"]
 
     # Method 1: Pure FDM
     print(f"\n{'='*80}")
@@ -79,19 +79,19 @@ def comprehensive_three_method_evaluation():
         final_mass_fdm = np.sum(M_fdm[-1, :]) * Dx
         mass_error_fdm = abs(final_mass_fdm - initial_mass_fdm) / initial_mass_fdm * 100
 
-        results['fdm'] = {
-            'method': 'Pure FDM',
-            'success': True,
-            'time': fdm_time,
-            'mass_error': mass_error_fdm,
-            'converged': info_fdm.get('converged', False),
-            'iterations': info_fdm.get('iterations', 0),
-            'U': U_fdm,
-            'M': M_fdm,
-            'characteristics': {'type': 'Grid-based', 'particles': 0, 'qp_usage': 0.0, 'method_complexity': 'Low'},
+        results["fdm"] = {
+            "method": "Pure FDM",
+            "success": True,
+            "time": fdm_time,
+            "mass_error": mass_error_fdm,
+            "converged": info_fdm.get("converged", False),
+            "iterations": info_fdm.get("iterations", 0),
+            "U": U_fdm,
+            "M": M_fdm,
+            "characteristics": {"type": "Grid-based", "particles": 0, "qp_usage": 0.0, "method_complexity": "Low"},
         }
 
-        print(f"✓ Pure FDM completed:")
+        print("✓ Pure FDM completed:")
         print(f"  Time: {fdm_time:.1f} seconds")
         print(f"  Mass conservation error: {mass_error_fdm:.3f}%")
         print(f"  Converged: {info_fdm.get('converged', False)}")
@@ -99,11 +99,11 @@ def comprehensive_three_method_evaluation():
 
     except Exception as e:
         print(f"✗ Pure FDM failed: {e}")
-        results['fdm'] = {
-            'method': 'Pure FDM',
-            'success': False,
-            'error': str(e),
-            'characteristics': {'type': 'Grid-based', 'particles': 0},
+        results["fdm"] = {
+            "method": "Pure FDM",
+            "success": False,
+            "error": str(e),
+            "characteristics": {"type": "Grid-based", "particles": 0},
         }
 
     # Method 2: Hybrid Particle-FDM
@@ -142,24 +142,24 @@ def comprehensive_three_method_evaluation():
         final_mass_hybrid = np.sum(M_hybrid[-1, :]) * Dx
         mass_error_hybrid = abs(final_mass_hybrid - initial_mass_hybrid) / initial_mass_hybrid * 100
 
-        results['hybrid'] = {
-            'method': 'Hybrid Particle-FDM',
-            'success': True,
-            'time': hybrid_time,
-            'mass_error': mass_error_hybrid,
-            'converged': info_hybrid.get('converged', False),
-            'iterations': info_hybrid.get('iterations', 0),
-            'U': U_hybrid,
-            'M': M_hybrid,
-            'characteristics': {
-                'type': 'Hybrid',
-                'particles': num_particles_hybrid,
-                'qp_usage': 0.0,
-                'method_complexity': 'Medium',
+        results["hybrid"] = {
+            "method": "Hybrid Particle-FDM",
+            "success": True,
+            "time": hybrid_time,
+            "mass_error": mass_error_hybrid,
+            "converged": info_hybrid.get("converged", False),
+            "iterations": info_hybrid.get("iterations", 0),
+            "U": U_hybrid,
+            "M": M_hybrid,
+            "characteristics": {
+                "type": "Hybrid",
+                "particles": num_particles_hybrid,
+                "qp_usage": 0.0,
+                "method_complexity": "Medium",
             },
         }
 
-        print(f"✓ Hybrid Particle-FDM completed:")
+        print("✓ Hybrid Particle-FDM completed:")
         print(f"  Time: {hybrid_time:.1f} seconds")
         print(f"  Mass conservation error: {mass_error_hybrid:.3f}%")
         print(f"  Converged: {info_hybrid.get('converged', False)}")
@@ -167,11 +167,11 @@ def comprehensive_three_method_evaluation():
 
     except Exception as e:
         print(f"✗ Hybrid Particle-FDM failed: {e}")
-        results['hybrid'] = {
-            'method': 'Hybrid Particle-FDM',
-            'success': False,
-            'error': str(e),
-            'characteristics': {'type': 'Hybrid', 'particles': num_particles_hybrid},
+        results["hybrid"] = {
+            "method": "Hybrid Particle-FDM",
+            "success": False,
+            "error": str(e),
+            "characteristics": {"type": "Hybrid", "particles": num_particles_hybrid},
         }
 
     # Method 3: Optimized QP-Collocation (Tuned Smart QP)
@@ -190,18 +190,19 @@ def comprehensive_three_method_evaluation():
         collocation_points = np.linspace(problem.xmin, problem.xmax, num_collocation_points).reshape(-1, 1)
         boundary_indices = [0, num_collocation_points - 1]
 
-        # Create Tuned Smart QP HJB solver
-        tuned_hjb_solver = HJBGFDMTunedQPSolver(
+        # Create Tuned Smart QP HJB solver (now using consolidated GFDM solver)
+        tuned_hjb_solver = HJBGFDMSolver(
             problem=problem,
             collocation_points=collocation_points,
             delta=0.4,
             taylor_order=2,
             weight_function="wendland",
-            NiterNewton=4,
-            l2errBoundNewton=1e-3,
+            max_newton_iterations=4,
+            newton_tolerance=1e-3,
             boundary_indices=np.array(boundary_indices),
             boundary_conditions=no_flux_bc,
             use_monotone_constraints=True,
+            qp_optimization_level="tuned",
             qp_usage_target=0.1,  # Target 10% QP usage
         )
 
@@ -226,8 +227,8 @@ def comprehensive_three_method_evaluation():
         print("Running Optimized QP-Collocation solver...")
         print(f"  - Particle method for Fokker-Planck equation ({num_particles_qp} particles)")
         print(f"  - GFDM collocation for HJB equation ({num_collocation_points} points)")
-        print(f"  - Tuned Smart QP optimization (target: 10% QP usage)")
-        print(f"  - CVXPY/OSQP specialized QP solvers")
+        print("  - Tuned Smart QP optimization (target: 10% QP usage)")
+        print("  - CVXPY/OSQP specialized QP solvers")
 
         start_time = time.time()
         U_qp, M_qp, info_qp = qp_solver.solve(Niter=8, l2errBound=1e-3, verbose=True)
@@ -240,29 +241,29 @@ def comprehensive_three_method_evaluation():
 
         # Get QP optimization statistics
         qp_stats = tuned_hjb_solver.get_tuned_qp_report()
-        qp_usage_rate = qp_stats.get('qp_usage_rate', 1.0)
+        qp_usage_rate = qp_stats.get("qp_usage_rate", 1.0)
 
-        results['qp_collocation'] = {
-            'method': 'Optimized QP-Collocation',
-            'success': True,
-            'time': qp_time,
-            'mass_error': mass_error_qp,
-            'converged': info_qp.get('converged', False),
-            'iterations': info_qp.get('iterations', 0),
-            'U': U_qp,
-            'M': M_qp,
-            'qp_stats': qp_stats,
-            'characteristics': {
-                'type': 'Advanced Collocation',
-                'particles': num_particles_qp,
-                'collocation_points': num_collocation_points,
-                'qp_usage': qp_usage_rate,
-                'method_complexity': 'High',
-                'optimization_quality': qp_stats.get('optimization_quality', 'N/A'),
+        results["qp_collocation"] = {
+            "method": "Optimized QP-Collocation",
+            "success": True,
+            "time": qp_time,
+            "mass_error": mass_error_qp,
+            "converged": info_qp.get("converged", False),
+            "iterations": info_qp.get("iterations", 0),
+            "U": U_qp,
+            "M": M_qp,
+            "qp_stats": qp_stats,
+            "characteristics": {
+                "type": "Advanced Collocation",
+                "particles": num_particles_qp,
+                "collocation_points": num_collocation_points,
+                "qp_usage": qp_usage_rate,
+                "method_complexity": "High",
+                "optimization_quality": qp_stats.get("optimization_quality", "N/A"),
             },
         }
 
-        print(f"✓ Optimized QP-Collocation completed:")
+        print("✓ Optimized QP-Collocation completed:")
         print(f"  Time: {qp_time:.1f} seconds")
         print(f"  Mass conservation error: {mass_error_qp:.3f}%")
         print(f"  Converged: {info_qp.get('converged', False)}")
@@ -271,7 +272,7 @@ def comprehensive_three_method_evaluation():
         print(f"  Optimization Quality: {qp_stats.get('optimization_quality', 'N/A')}")
 
         # Print detailed QP summary
-        if hasattr(tuned_hjb_solver, 'print_tuned_qp_summary'):
+        if hasattr(tuned_hjb_solver, "print_tuned_qp_summary"):
             tuned_hjb_solver.print_tuned_qp_summary()
 
     except Exception as e:
@@ -279,11 +280,11 @@ def comprehensive_three_method_evaluation():
         import traceback
 
         traceback.print_exc()
-        results['qp_collocation'] = {
-            'method': 'Optimized QP-Collocation',
-            'success': False,
-            'error': str(e),
-            'characteristics': {'type': 'Advanced Collocation', 'particles': num_particles_qp},
+        results["qp_collocation"] = {
+            "method": "Optimized QP-Collocation",
+            "success": False,
+            "error": str(e),
+            "characteristics": {"type": "Advanced Collocation", "particles": num_particles_qp},
         }
 
     # Print comprehensive comparison summary
@@ -309,19 +310,19 @@ def print_comprehensive_comparison(results):
 
     # Results table
     for key, result in results.items():
-        if result['success']:
+        if result["success"]:
             success_str = "✓"
             time_str = f"{result['time']:.1f}"
             mass_str = f"{result['mass_error']:.3f}"
-            converged_str = "✓" if result.get('converged', False) else "✗"
-            iter_str = str(result.get('iterations', 0))
+            converged_str = "✓" if result.get("converged", False) else "✗"
+            iter_str = str(result.get("iterations", 0))
 
             # Characteristics summary
-            chars = result.get('characteristics', {})
+            chars = result.get("characteristics", {})
             char_summary = f"{chars.get('type', 'N/A')}"
-            if chars.get('particles', 0) > 0:
+            if chars.get("particles", 0) > 0:
                 char_summary += f", {chars.get('particles')} particles"
-            if chars.get('qp_usage', 0) > 0:
+            if chars.get("qp_usage", 0) > 0:
                 char_summary += f", {chars.get('qp_usage'):.1%} QP"
         else:
             success_str = "✗"
@@ -336,19 +337,19 @@ def print_comprehensive_comparison(results):
         )
 
     # Performance analysis
-    successful_results = {k: v for k, v in results.items() if v['success']}
+    successful_results = {k: v for k, v in results.items() if v["success"]}
 
     if len(successful_results) > 1:
-        print(f"\nPERFORMANCE ANALYSIS:")
+        print("\nPERFORMANCE ANALYSIS:")
         print("=" * 60)
 
         # Speed comparison
-        times = [(k, v['time']) for k, v in successful_results.items()]
+        times = [(k, v["time"]) for k, v in successful_results.items()]
         times.sort(key=lambda x: x[1])
 
-        print(f"Speed Ranking:")
+        print("Speed Ranking:")
         for i, (method, time_val) in enumerate(times, 1):
-            method_name = successful_results[method]['method']
+            method_name = successful_results[method]["method"]
             if i == 1:
                 print(f"  {i}. {method_name}: {time_val:.1f}s (fastest)")
             else:
@@ -356,24 +357,24 @@ def print_comprehensive_comparison(results):
                 print(f"  {i}. {method_name}: {time_val:.1f}s ({speedup:.1f}x slower)")
 
         # Accuracy comparison
-        print(f"\nAccuracy Ranking (Mass Conservation):")
-        mass_errors = [(k, v['mass_error']) for k, v in successful_results.items()]
+        print("\nAccuracy Ranking (Mass Conservation):")
+        mass_errors = [(k, v["mass_error"]) for k, v in successful_results.items()]
         mass_errors.sort(key=lambda x: x[1])
 
         for i, (method, error) in enumerate(mass_errors, 1):
-            method_name = successful_results[method]['method']
+            method_name = successful_results[method]["method"]
             if i == 1:
                 print(f"  {i}. {method_name}: {error:.3f}% (most accurate)")
             else:
                 print(f"  {i}. {method_name}: {error:.3f}%")
 
         # Method-specific analysis
-        print(f"\nMETHOD-SPECIFIC ANALYSIS:")
+        print("\nMETHOD-SPECIFIC ANALYSIS:")
         print("-" * 40)
 
         for key, result in successful_results.items():
             print(f"\n{result['method']}:")
-            chars = result.get('characteristics', {})
+            chars = result.get("characteristics", {})
 
             # Basic performance
             print(f"  ✓ Solve time: {result['time']:.1f}s")
@@ -381,79 +382,79 @@ def print_comprehensive_comparison(results):
             print(f"  ✓ Method complexity: {chars.get('method_complexity', 'N/A')}")
 
             # Method-specific metrics
-            if key == 'qp_collocation' and 'qp_stats' in result:
-                qp_stats = result['qp_stats']
-                qp_skip_rate = 1.0 - qp_stats.get('qp_usage_rate', 1.0)
+            if key == "qp_collocation" and "qp_stats" in result:
+                qp_stats = result["qp_stats"]
+                qp_skip_rate = 1.0 - qp_stats.get("qp_usage_rate", 1.0)
                 estimated_speedup = 1 / (1 - qp_skip_rate * 0.9) if qp_skip_rate > 0 else 1.0
                 print(f"  ✓ QP Usage Rate: {qp_stats.get('qp_usage_rate', 0):.1%}")
                 print(f"  ✓ Estimated Speedup vs Baseline QP: {estimated_speedup:.1f}x")
                 print(f"  ✓ Optimization Quality: {qp_stats.get('optimization_quality', 'N/A')}")
 
-            if chars.get('particles', 0) > 0:
+            if chars.get("particles", 0) > 0:
                 print(f"  ✓ Particle count: {chars.get('particles')}")
 
-            if chars.get('collocation_points', 0) > 0:
+            if chars.get("collocation_points", 0) > 0:
                 print(f"  ✓ Collocation points: {chars.get('collocation_points')}")
 
     # Overall recommendation
-    print(f"\nOVERALL ASSESSMENT AND RECOMMENDATIONS:")
+    print("\nOVERALL ASSESSMENT AND RECOMMENDATIONS:")
     print("=" * 50)
 
     if len(successful_results) == 3:
         # All methods successful
-        fastest_method = min(successful_results.items(), key=lambda x: x[1]['time'])
-        most_accurate = min(successful_results.items(), key=lambda x: x[1]['mass_error'])
+        fastest_method = min(successful_results.items(), key=lambda x: x[1]["time"])
+        most_accurate = min(successful_results.items(), key=lambda x: x[1]["mass_error"])
 
-        print(f"✅ All three methods completed successfully")
+        print("✅ All three methods completed successfully")
         print(f"🏃 Fastest: {fastest_method[1]['method']} ({fastest_method[1]['time']:.1f}s)")
         print(f"🎯 Most accurate: {most_accurate[1]['method']} ({most_accurate[1]['mass_error']:.3f}% error)")
 
         # Check if QP-Collocation achieved optimization target
-        if 'qp_collocation' in successful_results:
-            qp_result = successful_results['qp_collocation']
-            qp_usage = qp_result.get('characteristics', {}).get('qp_usage', 1.0)
+        if "qp_collocation" in successful_results:
+            qp_result = successful_results["qp_collocation"]
+            qp_usage = qp_result.get("characteristics", {}).get("qp_usage", 1.0)
 
             if qp_usage <= 0.12:  # Within 20% of 10% target
                 print(f"🎉 QP-Collocation optimization target achieved ({qp_usage:.1%} usage)")
-                print(f"📈 Recommended for production: Optimized QP-Collocation")
-                print(f"   - Combines accuracy with optimized performance")
-                print(f"   - Advanced features with smart QP optimization")
+                print("📈 Recommended for production: Optimized QP-Collocation")
+                print("   - Combines accuracy with optimized performance")
+                print("   - Advanced features with smart QP optimization")
             elif qp_usage <= 0.25:  # Good optimization
                 print(f"⚠️  QP-Collocation shows good optimization ({qp_usage:.1%} usage)")
-                print(f"📈 Recommended for advanced applications: Optimized QP-Collocation")
-                print(f"📈 Recommended for standard applications: Hybrid Particle-FDM")
+                print("📈 Recommended for advanced applications: Optimized QP-Collocation")
+                print("📈 Recommended for standard applications: Hybrid Particle-FDM")
             else:
-                print(f"📈 Recommended: Hybrid Particle-FDM (most reliable)")
-                print(f"   - Good balance of speed and accuracy")
-                print(f"   - QP-Collocation needs further optimization")
+                print("📈 Recommended: Hybrid Particle-FDM (most reliable)")
+                print("   - Good balance of speed and accuracy")
+                print("   - QP-Collocation needs further optimization")
 
         # Application-specific recommendations
-        print(f"\nApplication-Specific Recommendations:")
-        print(f"  🔬 Research/Prototyping: Pure FDM (simple, reliable)")
-        print(f"  🏢 Production Applications: Hybrid Particle-FDM (balanced)")
-        if 'qp_collocation' in successful_results:
-            qp_usage = successful_results['qp_collocation'].get('characteristics', {}).get('qp_usage', 1.0)
+        print("\nApplication-Specific Recommendations:")
+        print("  🔬 Research/Prototyping: Pure FDM (simple, reliable)")
+        print("  🏢 Production Applications: Hybrid Particle-FDM (balanced)")
+        if "qp_collocation" in successful_results:
+            qp_usage = successful_results["qp_collocation"].get("characteristics", {}).get("qp_usage", 1.0)
             if qp_usage <= 0.15:
-                print(f"  🚀 High-Performance Applications: Optimized QP-Collocation (advanced)")
+                print("  🚀 High-Performance Applications: Optimized QP-Collocation (advanced)")
 
     elif len(successful_results) == 2:
-        print(f"⚠️  Two methods completed successfully")
-        working_methods = [r['method'] for r in successful_results.values()]
+        print("⚠️  Two methods completed successfully")
+        working_methods = [r["method"] for r in successful_results.values()]
         print(f"   Working methods: {', '.join(working_methods)}")
-        print(f"📈 Recommended: Use the most suitable working method for your application")
+        print("📈 Recommended: Use the most suitable working method for your application")
 
     elif len(successful_results) == 1:
-        method_name = list(successful_results.values())[0]['method']
+        method_name = list(successful_results.values())[0]["method"]
         print(f"⚠️  Only one method completed successfully: {method_name}")
         print(f"📈 Recommended: Use {method_name} and investigate failures in other methods")
 
     else:
-        print(f"❌ All methods failed - check problem setup and solver configurations")
+        print("❌ All methods failed - check problem setup and solver configurations")
 
 
 def create_comprehensive_plots(results, problem_params):
     """Create comprehensive visualization of all three methods"""
-    successful_results = {k: v for k, v in results.items() if v['success']}
+    successful_results = {k: v for k, v in results.items() if v["success"]}
 
     if len(successful_results) == 0:
         print("No successful results to plot")
@@ -464,52 +465,52 @@ def create_comprehensive_plots(results, problem_params):
 
     # Plot 1: Performance Comparison
     ax1 = plt.subplot(3, 3, 1)
-    methods = [r['method'] for r in successful_results.values()]
-    times = [r['time'] for r in successful_results.values()]
-    colors = ['red', 'orange', 'blue'][: len(methods)]
+    methods = [r["method"] for r in successful_results.values()]
+    times = [r["time"] for r in successful_results.values()]
+    colors = ["red", "orange", "blue"][: len(methods)]
 
     bars1 = ax1.bar(methods, times, color=colors, alpha=0.7)
-    ax1.set_ylabel('Solve Time (seconds)')
-    ax1.set_title('Computational Performance Comparison')
-    ax1.tick_params(axis='x', rotation=45)
+    ax1.set_ylabel("Solve Time (seconds)")
+    ax1.set_title("Computational Performance Comparison")
+    ax1.tick_params(axis="x", rotation=45)
     ax1.grid(True, alpha=0.3)
 
     # Add time labels
-    for bar, time_val in zip(bars1, times):
+    for bar, time_val in zip(bars1, times, strict=False):
         height = bar.get_height()
         ax1.text(
             bar.get_x() + bar.get_width() / 2.0,
             height + 0.5,
-            f'{time_val:.1f}s',
-            ha='center',
-            va='bottom',
-            fontweight='bold',
+            f"{time_val:.1f}s",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
         )
 
     # Plot 2: Mass Conservation Accuracy
     ax2 = plt.subplot(3, 3, 2)
-    mass_errors = [r['mass_error'] for r in successful_results.values()]
+    mass_errors = [r["mass_error"] for r in successful_results.values()]
 
     bars2 = ax2.bar(methods, mass_errors, color=colors, alpha=0.7)
-    ax2.set_ylabel('Mass Conservation Error (%)')
-    ax2.set_title('Solution Accuracy Comparison')
-    ax2.tick_params(axis='x', rotation=45)
+    ax2.set_ylabel("Mass Conservation Error (%)")
+    ax2.set_title("Solution Accuracy Comparison")
+    ax2.tick_params(axis="x", rotation=45)
     ax2.grid(True, alpha=0.3)
-    ax2.set_yscale('log')
+    ax2.set_yscale("log")
 
     # Plot 3: Method Characteristics
     ax3 = plt.subplot(3, 3, 3)
-    ax3.axis('off')
+    ax3.axis("off")
 
     char_text = "METHOD CHARACTERISTICS\n\n"
     for i, (key, result) in enumerate(successful_results.items()):
-        chars = result.get('characteristics', {})
+        chars = result.get("characteristics", {})
         char_text += f"{result['method']}:\n"
         char_text += f"  Type: {chars.get('type', 'N/A')}\n"
         char_text += f"  Complexity: {chars.get('method_complexity', 'N/A')}\n"
-        if chars.get('particles', 0) > 0:
+        if chars.get("particles", 0) > 0:
             char_text += f"  Particles: {chars.get('particles')}\n"
-        if chars.get('qp_usage', 0) > 0:
+        if chars.get("qp_usage", 0) > 0:
             char_text += f"  QP Usage: {chars.get('qp_usage'):.1%}\n"
         char_text += "\n"
 
@@ -519,40 +520,40 @@ def create_comprehensive_plots(results, problem_params):
         char_text,
         transform=ax3.transAxes,
         fontsize=10,
-        verticalalignment='top',
-        fontfamily='monospace',
+        verticalalignment="top",
+        fontfamily="monospace",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgray", alpha=0.8),
     )
 
     # Plot 4-6: Solution profiles for each method
     x_grid = np.linspace(
-        problem_params['xmin'],
-        problem_params['xmax'],
-        successful_results[list(successful_results.keys())[0]]['M'].shape[1],
+        problem_params["xmin"],
+        problem_params["xmax"],
+        successful_results[list(successful_results.keys())[0]]["M"].shape[1],
     )
 
     plot_positions = [(3, 3, 4), (3, 3, 5), (3, 3, 6)]
     for i, (key, result) in enumerate(successful_results.items()):
         if i < 3:  # Only plot first 3 methods
             ax = plt.subplot(*plot_positions[i])
-            M = result['M']
-            U = result['U']
+            M = result["M"]
+            U = result["U"]
 
             # Plot density evolution
             for t_idx in [0, M.shape[0] // 2, -1]:
                 alpha = 0.5 if t_idx == M.shape[0] // 2 else 1.0
-                label = ['Initial', 'Mid', 'Final'][min(t_idx, 2)] if t_idx != M.shape[0] // 2 else 'Mid'
+                label = ["Initial", "Mid", "Final"][min(t_idx, 2)] if t_idx != M.shape[0] // 2 else "Mid"
                 ax.plot(
                     x_grid,
                     M[t_idx, :],
-                    label=f'{label} Density',
+                    label=f"{label} Density",
                     color=colors[i],
                     alpha=alpha,
                     linewidth=2 if alpha == 1.0 else 1,
                 )
 
-            ax.set_xlabel('x')
-            ax.set_ylabel('Density')
+            ax.set_xlabel("x")
+            ax.set_ylabel("Density")
             ax.set_title(f'{result["method"]} - Density Evolution')
             ax.legend()
             ax.grid(True, alpha=0.3)
@@ -561,79 +562,79 @@ def create_comprehensive_plots(results, problem_params):
     ax7 = plt.subplot(3, 3, 7)
 
     for i, (key, result) in enumerate(successful_results.items()):
-        ax7.scatter(result['time'], result['mass_error'], color=colors[i], s=150, alpha=0.7, label=result['method'])
+        ax7.scatter(result["time"], result["mass_error"], color=colors[i], s=150, alpha=0.7, label=result["method"])
         ax7.annotate(
-            result['method'],
-            (result['time'], result['mass_error']),
+            result["method"],
+            (result["time"], result["mass_error"]),
             xytext=(5, 5),
-            textcoords='offset points',
+            textcoords="offset points",
             fontsize=8,
         )
 
-    ax7.set_xlabel('Solve Time (seconds)')
-    ax7.set_ylabel('Mass Conservation Error (%)')
-    ax7.set_title('Performance vs Accuracy Trade-off')
-    ax7.set_yscale('log')
+    ax7.set_xlabel("Solve Time (seconds)")
+    ax7.set_ylabel("Mass Conservation Error (%)")
+    ax7.set_title("Performance vs Accuracy Trade-off")
+    ax7.set_yscale("log")
     ax7.grid(True, alpha=0.3)
     ax7.legend()
 
     # Plot 8: QP Optimization Analysis (if QP-Collocation succeeded)
     ax8 = plt.subplot(3, 3, 8)
 
-    if 'qp_collocation' in successful_results:
-        qp_result = successful_results['qp_collocation']
-        qp_stats = qp_result.get('qp_stats', {})
+    if "qp_collocation" in successful_results:
+        qp_result = successful_results["qp_collocation"]
+        qp_stats = qp_result.get("qp_stats", {})
 
         # QP usage visualization
-        qp_usage = qp_stats.get('qp_usage_rate', 0) * 100
+        qp_usage = qp_stats.get("qp_usage_rate", 0) * 100
         qp_skip = 100 - qp_usage
 
-        labels = ['QP Used', 'QP Skipped']
+        labels = ["QP Used", "QP Skipped"]
         sizes = [qp_usage, qp_skip]
-        colors_pie = ['red', 'green']
+        colors_pie = ["red", "green"]
 
-        ax8.pie(sizes, labels=labels, colors=colors_pie, autopct='%1.1f%%', startangle=90)
-        ax8.set_title('QP Usage Optimization\n(Tuned Smart QP)')
+        ax8.pie(sizes, labels=labels, colors=colors_pie, autopct="%1.1f%%", startangle=90)
+        ax8.set_title("QP Usage Optimization\n(Tuned Smart QP)")
 
         # Add optimization quality text
-        quality = qp_stats.get('optimization_quality', 'N/A')
+        quality = qp_stats.get("optimization_quality", "N/A")
         ax8.text(
             0,
             -1.3,
-            f'Quality: {quality}',
-            ha='center',
+            f"Quality: {quality}",
+            ha="center",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.7),
         )
     else:
         ax8.text(
             0.5,
             0.5,
-            'QP-Collocation\nNot Available',
-            ha='center',
-            va='center',
+            "QP-Collocation\nNot Available",
+            ha="center",
+            va="center",
             transform=ax8.transAxes,
             bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgray", alpha=0.8),
         )
-        ax8.set_title('QP Optimization Status')
+        ax8.set_title("QP Optimization Status")
 
     # Plot 9: Final Recommendations
     ax9 = plt.subplot(3, 3, 9)
-    ax9.axis('off')
+    ax9.axis("off")
 
     # Generate recommendations
     recommendations = "FINAL RECOMMENDATIONS\n\n"
 
     if len(successful_results) >= 3:
-        fastest = min(successful_results.items(), key=lambda x: x[1]['time'])
-        most_accurate = min(successful_results.items(), key=lambda x: x[1]['mass_error'])
+        fastest = min(successful_results.items(), key=lambda x: x[1]["time"])
+        most_accurate = min(successful_results.items(), key=lambda x: x[1]["mass_error"])
 
         recommendations += f"🏃 FASTEST:\n{fastest[1]['method']}\n({fastest[1]['time']:.1f}s)\n\n"
         recommendations += (
             f"🎯 MOST ACCURATE:\n{most_accurate[1]['method']}\n({most_accurate[1]['mass_error']:.3f}%)\n\n"
         )
 
-        if 'qp_collocation' in successful_results:
-            qp_usage = successful_results['qp_collocation'].get('characteristics', {}).get('qp_usage', 1.0)
+        if "qp_collocation" in successful_results:
+            qp_usage = successful_results["qp_collocation"].get("characteristics", {}).get("qp_usage", 1.0)
             if qp_usage <= 0.15:
                 recommendations += "🚀 RECOMMENDED:\nOptimized QP-Collocation\n(Advanced optimization achieved)\n\n"
             else:
@@ -644,7 +645,7 @@ def create_comprehensive_plots(results, problem_params):
         working_count = len(successful_results)
         recommendations += f"⚠️ {working_count} method(s) working\n\n"
         if working_count > 0:
-            best_method = list(successful_results.values())[0]['method']
+            best_method = list(successful_results.values())[0]["method"]
             recommendations += f"📈 USE: {best_method}\n"
             recommendations += "🔧 Debug failed methods\n"
         else:
@@ -657,16 +658,16 @@ def create_comprehensive_plots(results, problem_params):
         recommendations,
         transform=ax9.transAxes,
         fontsize=11,
-        verticalalignment='top',
-        fontweight='bold',
+        verticalalignment="top",
+        fontweight="bold",
         bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.8),
     )
 
     plt.tight_layout()
 
     # Save comprehensive results
-    filename = '/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/comprehensive_three_method_evaluation_results.png'
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    filename = "/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE/tests/method_comparisons/comprehensive_three_method_evaluation_results.png"
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
     print(f"\nComprehensive evaluation results saved to: {filename}")
     plt.show()
 

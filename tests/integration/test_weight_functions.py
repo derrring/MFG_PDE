@@ -19,7 +19,7 @@ def test_weight_functions():
     num_collocation_points = 5
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
     boundary_indices = np.array([0, num_collocation_points - 1])
-    no_flux_bc = BoundaryConditions(type='no_flux')
+    no_flux_bc = BoundaryConditions(type="no_flux")
 
     # Test data
     M_simple = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.5
@@ -55,17 +55,17 @@ def test_weight_functions():
             print(f"  Success: Max |U| = {max_val:.3f}")
 
             if np.any(np.isnan(U_solution)) or np.any(np.isinf(U_solution)):
-                print(f"  ERROR: Contains NaN or Inf")
+                print("  ERROR: Contains NaN or Inf")
             elif max_val > 1e6:
-                print(f"  WARNING: Extreme values")
+                print("  WARNING: Extreme values")
             else:
-                print(f"  OK: Reasonable values")
+                print("  OK: Reasonable values")
 
         except Exception as e:
             print(f"  FAILED: {e}")
             results[weight_func] = None
 
-    print(f"\n=== Weight Function Comparison ===")
+    print("\n=== Weight Function Comparison ===")
     print(f"{'Function':<15} {'Max |U|':<10} {'Status'}")
     print(f"{'-'*15} {'-'*10} {'-'*10}")
 

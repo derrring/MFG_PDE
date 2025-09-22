@@ -6,17 +6,20 @@ This module provides the abstract base class for all variational solvers
 that directly optimize the Lagrangian formulation of MFG problems.
 """
 
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy.typing import NDArray
 
-from ...utils.integration import trapezoid
+from mfg_pde.utils.integration import trapezoid
 
 if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
     from mfg_pde.core.lagrangian_mfg_problem import LagrangianMFGProblem
 
 logger = logging.getLogger(__name__)
@@ -32,24 +35,24 @@ class VariationalSolverResult:
     """
 
     # Optimal solution
-    optimal_flow: Optional[NDArray] = None  # m(t,x) population flow
-    representative_trajectory: Optional[NDArray] = None  # x(t) typical trajectory
-    representative_velocity: Optional[NDArray] = None  # ẋ(t) typical velocity
+    optimal_flow: NDArray | None = None  # m(t,x) population flow
+    representative_trajectory: NDArray | None = None  # x(t) typical trajectory
+    representative_velocity: NDArray | None = None  # ẋ(t) typical velocity
 
     # Cost and convergence information
     final_cost: float = np.inf  # J[x,m] final cost value
-    cost_history: Optional[list] = None  # Cost evolution during optimization
+    cost_history: list | None = None  # Cost evolution during optimization
     converged: bool = False  # Convergence flag
     num_iterations: int = 0  # Number of iterations
 
     # Constraint satisfaction
-    constraint_violations: Optional[Dict[str, float]] = None
+    constraint_violations: dict[str, float] | None = None
 
     # Timing and performance
     solve_time: float = 0.0  # Total solve time
 
     # Additional solver-specific information
-    solver_info: Dict[str, Any] = None
+    solver_info: dict[str, Any] | None = None
 
     def __post_init__(self):
         if self.solver_info is None:
@@ -71,7 +74,7 @@ class BaseVariationalSolver(ABC):
     ∂m/∂t + ∇·(m v) = σ²/2 Δm
     """
 
-    def __init__(self, problem: "LagrangianMFGProblem"):
+    def __init__(self, problem: LagrangianMFGProblem):
         """
         Initialize variational solver.
 
@@ -96,7 +99,7 @@ class BaseVariationalSolver(ABC):
     @abstractmethod
     def solve(
         self,
-        initial_guess: Optional[NDArray] = None,
+        initial_guess: NDArray | None = None,
         max_iterations: int = 100,
         tolerance: float = 1e-6,
         **kwargs,
@@ -113,9 +116,8 @@ class BaseVariationalSolver(ABC):
         Returns:
             VariationalSolverResult with optimal solution
         """
-        pass
 
-    def evaluate_cost_functional(self, density_evolution: NDArray, velocity_field: Optional[NDArray] = None) -> float:
+    def evaluate_cost_functional(self, density_evolution: NDArray, velocity_field: NDArray | None = None) -> float:
         """
         Evaluate the cost functional J[m,v].
 
@@ -292,7 +294,7 @@ class BaseVariationalSolver(ABC):
 
         return density_guess
 
-    def get_solver_info(self) -> Dict[str, Any]:
+    def get_solver_info(self) -> dict[str, Any]:
         """Return solver information."""
         return {
             "solver_type": "Variational",

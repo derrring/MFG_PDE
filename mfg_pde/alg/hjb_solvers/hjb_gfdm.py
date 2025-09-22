@@ -1,16 +1,29 @@
+from __future__ import annotations
+
+import importlib.util
 import math
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import scipy.sparse as sparse
 from scipy.linalg import lstsq
 from scipy.spatial.distance import cdist
 
 from .base_hjb import BaseHJBSolver
 
+# Optional QP solver imports (merged from tuned QP solver)
+try:
+    import cvxpy as cp
+
+    CVXPY_AVAILABLE = True
+except ImportError:
+    CVXPY_AVAILABLE = False
+
+OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
+
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
+    from mfg_pde.types.internal import DerivativeDict, GradientDict, MultiIndexTuple
 
 
 class HJBGFDMSolver(BaseHJBSolver):
@@ -22,24 +35,34 @@ class HJBGFDMSolver(BaseHJBSolver):
     2. Taylor expansion with weighted least squares for derivative approximation
     3. Newton iteration for nonlinear HJB equations
     4. Support for various boundary conditions
+    5. Enhanced QP optimization levels (smart/tuned) for performance optimization
+
+    QP Optimization Levels:
+    - "none": Basic GFDM without QP optimization
+    - "basic": Standard monotonicity constraints
+    - "smart": Moderate QP usage optimization with context awareness
+    - "tuned": Aggressive QP usage optimization targeting ~10% usage rate
     """
 
     def __init__(
         self,
-        problem: "MFGProblem",
+        problem: MFGProblem,
         collocation_points: np.ndarray,
         delta: float = 0.1,
         taylor_order: int = 2,
         weight_function: str = "wendland",
         weight_scale: float = 1.0,
-        max_newton_iterations: int = None,
-        newton_tolerance: float = None,
+        max_newton_iterations: int | None = None,
+        newton_tolerance: float | None = None,
         # Deprecated parameters for backward compatibility
-        NiterNewton: int = None,
-        l2errBoundNewton: float = None,
-        boundary_indices: Optional[np.ndarray] = None,
-        boundary_conditions: Optional[Union[Dict, "BoundaryConditions"]] = None,
+        NiterNewton: int | None = None,
+        l2errBoundNewton: float | None = None,
+        boundary_indices: np.ndarray | None = None,
+        boundary_conditions: dict | BoundaryConditions | None = None,
         use_monotone_constraints: bool = False,
+        # Enhanced QP options (merged from tuned QP solver)
+        qp_optimization_level: str = "none",  # "none", "basic", "smart", "tuned"
+        qp_usage_target: float = 0.1,
     ):
         """
         Initialize the GFDM HJB solver.
@@ -58,9 +81,25 @@ class HJBGFDMSolver(BaseHJBSolver):
             boundary_indices: Indices of boundary collocation points
             boundary_conditions: Dictionary or BoundaryConditions object specifying boundary conditions
             use_monotone_constraints: Enable constrained QP for monotonicity preservation
+            qp_optimization_level: QP optimization level ("none", "basic", "smart", "tuned")
+            qp_usage_target: Target QP usage rate for optimization (default 0.1 = 10%)
         """
         super().__init__(problem)
-        self.hjb_method_name = "GFDM"
+
+        # Store QP optimization level early for method naming
+        self.qp_optimization_level = qp_optimization_level
+
+        # Set method name based on QP optimization level
+        if qp_optimization_level == "none":
+            self.hjb_method_name = "GFDM"
+        elif qp_optimization_level == "basic":
+            self.hjb_method_name = "GFDM-Basic"
+        elif qp_optimization_level == "smart":
+            self.hjb_method_name = "GFDM-Smart-QP"
+        elif qp_optimization_level == "tuned":
+            self.hjb_method_name = "GFDM-Tuned-QP"
+        else:
+            self.hjb_method_name = f"GFDM-{qp_optimization_level}"
 
         import warnings
 
@@ -114,6 +153,18 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Monotonicity constraint option
         self.use_monotone_constraints = use_monotone_constraints
 
+        # Enhanced QP optimization features (merged from tuned QP solver)
+        self.qp_usage_target = qp_usage_target
+
+        # Initialize QP-related attributes based on optimization level
+        if qp_optimization_level in ["smart", "tuned"]:
+            self._init_enhanced_qp_features()
+        else:
+            self.enhanced_qp_stats = None
+            self._current_point_idx = 0
+            self._current_time_ratio = 0.0
+            self._current_newton_iter = 0
+
         # Pre-compute GFDM structure
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
@@ -151,7 +202,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             if (
                 is_boundary_point
                 and hasattr(self.boundary_conditions, "type")
-                and self.boundary_conditions.type == "no_flux"
+                and getattr(self.boundary_conditions, "type", None) == "no_flux"
             ):
                 # Add ghost particles for no-flux boundary conditions
                 current_point = self.collocation_points[i]
@@ -206,7 +257,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 "ghost_count": len(ghost_particles),
             }
 
-    def _get_multi_index_set(self, d: int, p: int) -> List[Tuple[int, ...]]:
+    def _get_multi_index_set(self, d: int, p: int) -> list[MultiIndexTuple]:
         """Generate multi-index set B(d,p) = {β ∈ N^d : 0 < |β| ≤ p} with lexicographical ordering."""
         multi_indices = []
 
@@ -217,7 +268,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 return
 
             for i in range(remaining_order + 1):
-                generate_indices(current_index + [i], remaining_dims - 1, remaining_order - i)
+                generate_indices([*current_index, i], remaining_dims - 1, remaining_order - i)
 
         generate_indices([], d, p)
 
@@ -278,7 +329,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
                 # Truncate small singular values for regularization
                 tolerance = 1e-12
-                rank = np.sum(S > tolerance)
+                rank = np.sum(tolerance < S)
 
                 self.taylor_matrices[i] = {
                     "A": A,
@@ -362,17 +413,20 @@ class HJBGFDMSolver(BaseHJBSolver):
                 f"Available options: 'gaussian', 'inverse_distance', 'uniform', 'wendland'"
             )
 
-    def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> Dict[Tuple[int, ...], float]:
+    def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> dict[tuple[int, ...], float]:
         """
         Approximate derivatives at collocation point using weighted least squares.
 
         Args:
-            u_values: Function values at all collocation points
+            u_values: Function values at collocation points
             point_idx: Index of the collocation point
 
         Returns:
-            Dictionary mapping multi-indices to derivative values
+            Dictionary mapping derivative multi-indices to approximated values
         """
+        # Inject context for enhanced QP features
+        if self.qp_optimization_level in ["smart", "tuned"]:
+            self._current_point_idx = point_idx
         if self.taylor_matrices[point_idx] is None:
             return {}
 
@@ -407,11 +461,18 @@ class HJBGFDMSolver(BaseHJBSolver):
             unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)
 
             # Check if unconstrained solution violates monotonicity
-            needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs)
+            # Use enhanced QP logic if available, otherwise use basic check
+            if self.qp_optimization_level in ["smart", "tuned"]:
+                needs_constraints = self._enhanced_check_monotonicity_violation(unconstrained_coeffs)
+            else:
+                needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs)
 
             if needs_constraints:
-                # Use constrained QP for monotonicity
-                derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
+                # Use constrained QP for monotonicity (enhanced version if available)
+                if self.qp_optimization_level in ["smart", "tuned"] and CVXPY_AVAILABLE:
+                    derivative_coeffs = self._enhanced_solve_monotone_constrained_qp(taylor_data, b, point_idx)
+                else:
+                    derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
             else:
                 # Use faster unconstrained solution
                 derivative_coeffs = unconstrained_coeffs
@@ -443,14 +504,24 @@ class HJBGFDMSolver(BaseHJBSolver):
                 derivative_coeffs = np.linalg.solve(R, QT_Wb)
             except np.linalg.LinAlgError:
                 # Fallback to least squares if R is singular
-                derivative_coeffs, _, _, _ = lstsq(taylor_data["A"], b)
+                A_matrix = taylor_data.get("A")
+                if A_matrix is not None:
+                    lstsq_result = lstsq(A_matrix, b)
+                    derivative_coeffs = lstsq_result[0] if lstsq_result is not None else np.zeros(len(b))
+                else:
+                    derivative_coeffs = np.zeros(len(b))
 
         elif taylor_data.get("AtWA_inv") is not None:
             # Use precomputed normal equations
             derivative_coeffs = taylor_data["AtWA_inv"] @ taylor_data["AtW"] @ b
         else:
             # Final fallback to direct least squares
-            derivative_coeffs, _, _, _ = lstsq(taylor_data["A"], b)
+            A_matrix = taylor_data.get("A")
+            if A_matrix is not None:
+                lstsq_result = lstsq(A_matrix, b)
+                derivative_coeffs = lstsq_result[0] if lstsq_result is not None else np.zeros(len(b))
+            else:
+                derivative_coeffs = np.zeros(len(b))
 
         # Map coefficients to multi-indices
         derivatives = {}
@@ -459,7 +530,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         return derivatives
 
-    def _solve_monotone_constrained_qp(self, taylor_data: Dict, b: np.ndarray, point_idx: int) -> np.ndarray:
+    def _solve_monotone_constrained_qp(self, taylor_data: dict, b: np.ndarray, point_idx: int) -> np.ndarray:
         """
         Solve constrained quadratic programming problem for monotone derivative approximation.
 
@@ -482,7 +553,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         A = taylor_data["A"]
         W = taylor_data["W"]
         sqrt_W = taylor_data["sqrt_W"]
-        n_neighbors, n_coeffs = A.shape
+        _n_neighbors, _n_coeffs = A.shape
 
         # Define objective function: ||W^(1/2) A x - W^(1/2) b||^2
         def objective(x):
@@ -520,7 +591,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # For each coefficient, determine appropriate bounds based on physics
         # Make bounds much more realistic for stable numerical computation
-        for k, beta in enumerate(self.multi_indices):
+        for _k, beta in enumerate(self.multi_indices):
             if sum(beta) == 0:  # Constant term - no physical constraint
                 bounds.append((None, None))
             elif sum(beta) == 1:  # First derivative terms - reasonable for MFG
@@ -601,7 +672,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             # Fallback to unconstrained if any error occurs
             return x0
 
-    def _solve_unconstrained_fallback(self, taylor_data: Dict, b: np.ndarray) -> np.ndarray:
+    def _solve_unconstrained_fallback(self, taylor_data: dict, b: np.ndarray) -> np.ndarray:
         """Fallback to unconstrained solution using SVD or normal equations."""
         if taylor_data.get("use_svd", False):
             sqrt_W = taylor_data["sqrt_W"]
@@ -619,7 +690,11 @@ class HJBGFDMSolver(BaseHJBSolver):
             A = taylor_data["A"]
             from scipy.linalg import lstsq
 
-            coeffs, _, _, _ = lstsq(A, b)
+            if A is not None and b is not None:
+                lstsq_result = lstsq(A, b)
+                coeffs = lstsq_result[0] if lstsq_result is not None else np.zeros(len(b))
+            else:
+                coeffs = np.zeros(len(b) if b is not None else 1)
             return coeffs
 
     def _build_monotonicity_constraints(
@@ -628,7 +703,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         neighbor_indices: np.ndarray,
         neighbor_points: np.ndarray,
         center_point: np.ndarray,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Build monotonicity constraints for finite difference weights.
 
@@ -708,7 +783,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         Returns:
             (Nt, Nx) solution array
         """
-        Nt, Nx = M_density_evolution_from_FP.shape
+        Nt, _Nx = M_density_evolution_from_FP.shape
 
         # For GFDM, we work directly with collocation points
         # Map grid data to collocation points
@@ -740,9 +815,17 @@ class HJBGFDMSolver(BaseHJBSolver):
         time_idx: int,
     ) -> np.ndarray:
         """Solve HJB at one time step using Newton iteration."""
+        # Inject temporal context for enhanced QP features
+        if self.qp_optimization_level in ["smart", "tuned"]:
+            total_time_steps = getattr(self.problem, "Nt", 50) + 1
+            self._current_time_ratio = time_idx / max(1, total_time_steps - 1)
+
         u_current = u_n_plus_1.copy()
 
         for newton_iter in range(self.max_newton_iterations):
+            # Inject Newton iteration context for enhanced QP features
+            if self.qp_optimization_level in ["smart", "tuned"]:
+                self._current_newton_iter = newton_iter
             # Compute residual
             residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
@@ -815,7 +898,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         return residual
 
-    def _extract_gradient(self, derivatives: Dict[Tuple[int, ...], float]) -> Dict[str, float]:
+    def _extract_gradient(self, derivatives: DerivativeDict) -> GradientDict:
         """Extract gradient components for Hamiltonian."""
         p_values = {}
 
@@ -925,7 +1008,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         return jacobian
 
-    def get_decomposition_info(self) -> Dict:
+    def get_decomposition_info(self) -> dict:
         """Get information about the decomposition methods used."""
         total_points = self.n_points
         svd_count = sum(
@@ -1003,7 +1086,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
     def _apply_boundary_conditions_to_system(
         self, jacobian: np.ndarray, residual: np.ndarray, time_idx: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Apply boundary conditions to system matrix and residual."""
         jacobian_modified = jacobian.copy()
         residual_modified = residual.copy()
@@ -1099,4 +1182,391 @@ class HJBGFDMSolver(BaseHJBSolver):
         distances = np.abs(grid_x - physical_x)
         grid_idx = np.argmin(distances)
 
-        return grid_idx
+        return int(grid_idx)
+
+    # Enhanced QP Features (merged from tuned QP solver)
+    def _init_enhanced_qp_features(self):
+        """Initialize enhanced QP features for smart/tuned optimization levels."""
+        self.enhanced_qp_stats = {
+            "total_qp_decisions": 0,
+            "qp_activated": 0,
+            "qp_skipped": 0,
+            "extreme_violations": 0,
+            "boundary_qp_activations": 0,
+            "interior_qp_activations": 0,
+            "early_time_qp_activations": 0,
+            "late_time_qp_activations": 0,
+            "threshold_adaptations": 0,
+            "total_solve_time": 0.0,
+        }
+
+        # Context tracking
+        self._current_point_idx = 0
+        self._current_time_ratio = 0.0
+        self._current_newton_iter = 0
+        self._problem_difficulty = self._assess_problem_difficulty()
+
+        # Boundary point identification
+        self.boundary_point_set = set(self.boundary_indices) if len(self.boundary_indices) > 0 else set()
+
+        # Compute thresholds based on optimization level
+        if self.qp_optimization_level == "tuned":
+            self._enhanced_thresholds = self._compute_tuned_thresholds()
+            self._decision_threshold = 15.0  # More aggressive for tuned
+        else:  # smart
+            self._enhanced_thresholds = self._compute_smart_thresholds()
+            self._decision_threshold = 5.0  # Less aggressive for smart
+
+        self._threshold_adaptation_rate = 0.02
+
+        print(f"Enhanced QP ({self.qp_optimization_level}) initialized:")
+        print(f"  Target QP usage rate: {self.qp_usage_target:.1%}")
+        print(f"  Decision threshold: {self._decision_threshold}")
+        print(f"  CVXPY available: {'YES' if CVXPY_AVAILABLE else 'NO'}")
+        print(f"  Boundary points: {len(self.boundary_point_set)}")
+        print(f"  Problem difficulty: {self._problem_difficulty:.2f}")
+
+    def _assess_problem_difficulty(self) -> float:
+        """Assess problem difficulty for QP threshold tuning."""
+        difficulty = 0.0
+
+        sigma = getattr(self.problem, "sigma", 0.1)
+        difficulty += min(1.0, sigma / 0.3)
+
+        T = getattr(self.problem, "T", 1.0)
+        difficulty += min(1.0, T / 3.0)
+
+        Nx = getattr(self.problem, "Nx", 50)
+        difficulty += min(1.0, (Nx - 20) / 80)
+
+        coefCT = getattr(self.problem, "coefCT", 0.02)
+        difficulty += min(1.0, coefCT / 0.1)
+
+        return min(2.0, difficulty)
+
+    def _compute_smart_thresholds(self) -> dict[str, float]:
+        """Compute smart QP thresholds (moderate restrictions)."""
+        base_threshold = 50.0
+        difficulty_multiplier = 1.0 + self._problem_difficulty
+
+        return {
+            "extreme_violation": base_threshold * difficulty_multiplier * 10,  # 500-1500
+            "severe_violation": base_threshold * difficulty_multiplier * 5,  # 250-750
+            "moderate_violation": base_threshold * difficulty_multiplier * 2,  # 100-300
+            "mild_violation": base_threshold * difficulty_multiplier * 1,  # 50-150
+            "gradient_threshold": base_threshold * difficulty_multiplier * 0.5,  # 25-75
+            "variation_threshold": base_threshold * difficulty_multiplier * 0.3,  # 15-45
+        }
+
+    def _compute_tuned_thresholds(self) -> dict[str, float]:
+        """Compute tuned QP thresholds (aggressive restrictions for ~10% usage)."""
+        base_threshold = 100.0
+        difficulty_multiplier = (1.0 + self._problem_difficulty) * 3.0
+
+        return {
+            "extreme_violation": base_threshold * difficulty_multiplier * 20,  # 6000-12000
+            "severe_violation": base_threshold * difficulty_multiplier * 10,  # 3000-6000
+            "moderate_violation": base_threshold * difficulty_multiplier * 5,  # 1500-3000
+            "mild_violation": base_threshold * difficulty_multiplier * 3,  # 900-1800
+            "gradient_threshold": base_threshold * difficulty_multiplier * 2,  # 600-1200
+            "variation_threshold": base_threshold * difficulty_multiplier * 1,  # 300-600
+        }
+
+    def _enhanced_check_monotonicity_violation(self, coeffs: np.ndarray) -> bool:
+        """Enhanced monotonicity violation check with smart/tuned QP logic."""
+        if self.qp_optimization_level not in ["smart", "tuned"] or self.enhanced_qp_stats is None:
+            # Fallback to basic check
+            return self._check_monotonicity_violation(coeffs)
+
+        self.enhanced_qp_stats["total_qp_decisions"] += 1
+
+        # Fast rejection for obviously valid solutions
+        if np.any(~np.isfinite(coeffs)):
+            self.enhanced_qp_stats["qp_activated"] += 1
+            self.enhanced_qp_stats["extreme_violations"] += 1
+            return True
+
+        # Get thresholds
+        if not hasattr(self, "_enhanced_thresholds") or self._enhanced_thresholds is None:
+            # Fallback to basic check if thresholds not available
+            return self._check_monotonicity_violation(coeffs)
+
+        thresholds = self._enhanced_thresholds
+
+        # Compute solution characteristics
+        max_coeff = np.max(np.abs(coeffs))
+        std_coeff = np.std(coeffs) if len(coeffs) > 1 else 0.0
+
+        # Violation scoring
+        violation_score = 0.0
+
+        # Score 1: Coefficient magnitude
+        if max_coeff > thresholds["extreme_violation"]:
+            violation_score += 20.0
+            self.enhanced_qp_stats["extreme_violations"] += 1
+        elif max_coeff > thresholds["severe_violation"]:
+            violation_score += 10.0
+        elif max_coeff > thresholds["moderate_violation"]:
+            violation_score += 3.0
+        elif max_coeff > thresholds["mild_violation"] and self.qp_optimization_level == "smart":
+            violation_score += 1.0  # Only for smart level
+
+        # Score 2: Higher-order derivatives
+        if len(coeffs) > 2:
+            higher_order_max = np.max(np.abs(coeffs[2:]))
+            if higher_order_max > thresholds["extreme_violation"]:
+                violation_score += 10.0
+            elif higher_order_max > thresholds["severe_violation"]:
+                violation_score += 5.0
+
+        # Score 3: Gradient magnitude
+        if len(coeffs) >= 2:
+            gradient_magnitude = np.linalg.norm(coeffs[:2])
+            if gradient_magnitude > thresholds["gradient_threshold"]:
+                violation_score += 5.0 if self.qp_optimization_level == "tuned" else 2.0
+
+        # Score 4: Coefficient variation
+        if std_coeff > thresholds["variation_threshold"]:
+            violation_score += 2.0 if self.qp_optimization_level == "tuned" else 1.0
+
+        # Context-based adjustments
+        if self._current_point_idx in self.boundary_point_set:
+            violation_score *= 1.2 if self.qp_optimization_level == "tuned" else 1.5
+        else:
+            violation_score *= 0.5 if self.qp_optimization_level == "tuned" else 0.7
+
+        # Temporal context
+        if self._current_time_ratio < 0.1:
+            violation_score *= 1.1 if self.qp_optimization_level == "tuned" else 1.3
+        elif self._current_time_ratio < 0.3:
+            violation_score *= 1.0
+        else:
+            violation_score *= 0.6 if self.qp_optimization_level == "tuned" else 0.8
+
+        # Newton iteration context
+        newton_factor = 0.8**self._current_newton_iter
+        violation_score *= newton_factor
+
+        # Adaptive threshold
+        if not hasattr(self, "_decision_threshold") or self._decision_threshold is None:
+            current_decision_threshold = 5.0  # Default threshold
+        else:
+            current_decision_threshold = self._decision_threshold
+
+        # Continuous threshold adaptation
+        if self.enhanced_qp_stats is not None and self.enhanced_qp_stats["total_qp_decisions"] > 50:
+            current_qp_rate = self.enhanced_qp_stats["qp_activated"] / self.enhanced_qp_stats["total_qp_decisions"]
+            target_rate = self.qp_usage_target
+
+            # Only adapt if attributes are available
+            if (
+                hasattr(self, "_decision_threshold")
+                and hasattr(self, "_threshold_adaptation_rate")
+                and self._decision_threshold is not None
+                and self._threshold_adaptation_rate is not None
+            ):
+                if current_qp_rate > target_rate * 1.2:
+                    self._decision_threshold *= 1.0 + self._threshold_adaptation_rate * 2
+                    self.enhanced_qp_stats["threshold_adaptations"] += 1
+                elif current_qp_rate > target_rate * 1.1:
+                    self._decision_threshold *= 1.0 + self._threshold_adaptation_rate
+                    self.enhanced_qp_stats["threshold_adaptations"] += 1
+                elif current_qp_rate < target_rate * 0.5:
+                    self._decision_threshold *= 1.0 - self._threshold_adaptation_rate
+                    self.enhanced_qp_stats["threshold_adaptations"] += 1
+
+                current_decision_threshold = self._decision_threshold
+
+        # Final decision
+        needs_qp = violation_score > current_decision_threshold
+
+        # Update statistics
+        if needs_qp:
+            self.enhanced_qp_stats["qp_activated"] += 1
+            if (
+                hasattr(self, "boundary_point_set")
+                and self.boundary_point_set is not None
+                and self._current_point_idx in self.boundary_point_set
+            ):
+                self.enhanced_qp_stats["boundary_qp_activations"] += 1
+            else:
+                self.enhanced_qp_stats["interior_qp_activations"] += 1
+
+            if self._current_time_ratio < 0.3:
+                self.enhanced_qp_stats["early_time_qp_activations"] += 1
+            elif self._current_time_ratio > 0.7:
+                self.enhanced_qp_stats["late_time_qp_activations"] += 1
+        else:
+            self.enhanced_qp_stats["qp_skipped"] += 1
+
+        return needs_qp
+
+    def _enhanced_solve_monotone_constrained_qp(self, taylor_data: dict, b: np.ndarray, point_idx: int) -> np.ndarray:
+        """Enhanced QP solve using CVXPY when available."""
+        if not CVXPY_AVAILABLE:
+            return self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
+
+        try:
+            A = taylor_data.get("A", np.eye(len(b)))
+            n_vars = A.shape[1]
+
+            x = cp.Variable(n_vars)
+
+            if "sqrt_W" in taylor_data:
+                sqrt_W = taylor_data["sqrt_W"]
+                objective = cp.Minimize(cp.sum_squares(sqrt_W @ A @ x - sqrt_W @ b))
+            else:
+                objective = cp.Minimize(cp.sum_squares(A @ x - b))
+
+            # Adaptive constraints based on problem difficulty
+            constraints = []
+
+            # Check if point is in boundary set
+            is_boundary = (
+                hasattr(self, "boundary_point_set")
+                and self.boundary_point_set is not None
+                and point_idx in self.boundary_point_set
+            )
+
+            # Get problem difficulty with fallback
+            problem_difficulty = getattr(self, "_problem_difficulty", 1.0)
+            if problem_difficulty is None:
+                problem_difficulty = 1.0
+
+            if is_boundary:
+                bound_scale = 5.0 * (1.0 + problem_difficulty)
+                constraints.extend([x >= -bound_scale, x <= bound_scale])
+            else:
+                bound_scale = 20.0 * (1.0 + problem_difficulty)
+                constraints.extend([x >= -bound_scale, x <= bound_scale])
+
+            problem = cp.Problem(objective, constraints)
+
+            if OSQP_AVAILABLE:
+                problem.solve(
+                    solver=cp.OSQP,
+                    verbose=False,
+                    eps_abs=1e-4,
+                    eps_rel=1e-4,
+                    max_iter=1000,
+                )
+            else:
+                problem.solve(solver=cp.ECOS, verbose=False, max_iters=1000)
+
+            if problem.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
+                return x.value if x.value is not None else np.zeros(n_vars)
+            else:
+                return self._solve_unconstrained_fallback(taylor_data, b)
+
+        except Exception:
+            return self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
+
+    def get_enhanced_qp_report(self) -> dict[str, Any]:
+        """Generate enhanced QP performance report."""
+        if self.enhanced_qp_stats is None:
+            return {"message": "Enhanced QP not enabled. Use qp_optimization_level='smart' or 'tuned'."}
+
+        stats = self.enhanced_qp_stats.copy()
+
+        # Calculate rates
+        total_decisions = stats["total_qp_decisions"]
+        if total_decisions > 0:
+            stats["qp_usage_rate"] = stats["qp_activated"] / total_decisions
+            stats["qp_skip_rate"] = stats["qp_skipped"] / total_decisions
+            stats["extreme_violation_rate"] = stats["extreme_violations"] / total_decisions
+        else:
+            stats["qp_usage_rate"] = 0.0
+            stats["qp_skip_rate"] = 0.0
+            stats["extreme_violation_rate"] = 0.0
+
+        # Context analysis
+        total_qp_activated = stats["qp_activated"]
+        if total_qp_activated > 0:
+            stats["boundary_qp_percentage"] = stats["boundary_qp_activations"] / total_qp_activated * 100
+            stats["interior_qp_percentage"] = stats["interior_qp_activations"] / total_qp_activated * 100
+            stats["early_time_percentage"] = stats["early_time_qp_activations"] / total_qp_activated * 100
+            stats["late_time_percentage"] = stats["late_time_qp_activations"] / total_qp_activated * 100
+        else:
+            stats["boundary_qp_percentage"] = 0.0
+            stats["interior_qp_percentage"] = 0.0
+            stats["early_time_percentage"] = 0.0
+            stats["late_time_percentage"] = 0.0
+
+        # Optimization assessment
+        target_rate = self.qp_usage_target
+        current_rate = stats["qp_usage_rate"]
+
+        if current_rate <= target_rate * 1.2:
+            stats["optimization_quality"] = "EXCELLENT"
+            stats["optimization_effectiveness"] = min(1.0, target_rate / max(0.01, current_rate))
+        elif current_rate <= target_rate * 2.0:
+            stats["optimization_quality"] = "GOOD"
+            stats["optimization_effectiveness"] = target_rate / current_rate
+        elif current_rate <= target_rate * 3.0:
+            stats["optimization_quality"] = "FAIR"
+            stats["optimization_effectiveness"] = target_rate / current_rate
+        else:
+            stats["optimization_quality"] = "POOR"
+            stats["optimization_effectiveness"] = target_rate / current_rate
+
+        # Add configuration info
+        stats["optimization_level"] = self.qp_optimization_level
+        stats["target_qp_rate"] = target_rate
+        stats["problem_difficulty"] = getattr(self, "_problem_difficulty", 0.0)
+        stats["final_decision_threshold"] = getattr(self, "_decision_threshold", 0.0)
+        stats["cvxpy_available"] = CVXPY_AVAILABLE
+
+        return stats
+
+    def print_enhanced_qp_summary(self):
+        """Print comprehensive enhanced QP performance summary."""
+        if self.enhanced_qp_stats is None:
+            print("Enhanced QP not enabled. Use qp_optimization_level='smart' or 'tuned'.")
+            return
+
+        stats = self.get_enhanced_qp_report()
+
+        print(f"\n{'='*70}")
+        print(f"ENHANCED QP ({self.qp_optimization_level.upper()}) PERFORMANCE SUMMARY")
+        print(f"{'='*70}")
+
+        print("Configuration:")
+        print(f"  Optimization Level: {stats['optimization_level']}")
+        print(f"  Target QP Usage Rate: {stats['target_qp_rate']:.1%}")
+        print(f"  Problem Difficulty: {stats['problem_difficulty']:.2f}")
+        print(f"  Final Decision Threshold: {stats['final_decision_threshold']:.1f}")
+        print(f"  Threshold Adaptations: {stats['threshold_adaptations']}")
+
+        print("\nQP Decision Statistics:")
+        print(f"  Total QP Decisions: {stats['total_qp_decisions']}")
+        print(f"  QP Activated: {stats['qp_activated']} ({stats['qp_usage_rate']:.1%})")
+        print(f"  QP Skipped: {stats['qp_skipped']} ({stats['qp_skip_rate']:.1%})")
+        print(f"  Extreme Violations: {stats['extreme_violations']} ({stats['extreme_violation_rate']:.1%})")
+
+        if stats["qp_activated"] > 0:
+            print("\nContext Analysis:")
+            print(f"  Boundary Point QP: {stats['boundary_qp_percentage']:.1f}%")
+            print(f"  Interior Point QP: {stats['interior_qp_percentage']:.1f}%")
+            print(f"  Early Time QP: {stats['early_time_percentage']:.1f}%")
+            print(f"  Late Time QP: {stats['late_time_percentage']:.1f}%")
+
+        print("\nOptimization Results:")
+        print(f"  Optimization Quality: {stats['optimization_quality']}")
+        print(f"  Optimization Effectiveness: {stats['optimization_effectiveness']:.1%}")
+
+        if stats["qp_skip_rate"] > 0:
+            estimated_speedup = 1 / (1 - stats["qp_skip_rate"] * 0.9)
+            print(f"  Estimated Speedup: {estimated_speedup:.1f}x")
+
+        # Target assessment
+        target_rate = stats["target_qp_rate"]
+        current_rate = stats["qp_usage_rate"]
+
+        if current_rate <= target_rate * 1.2:
+            print("  Status: TARGET ACHIEVED")
+        elif current_rate <= target_rate * 2.0:
+            print("  Status: CLOSE TO TARGET")
+        else:
+            print("  Status: NEEDS FURTHER TUNING")
+
+        print(f"{'='*70}")

@@ -17,7 +17,6 @@ Accuracy Metrics:
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +24,7 @@ import numpy as np
 # MFG_PDE imports
 from mfg_pde import ExampleMFGProblem
 from mfg_pde.factory import create_amr_solver, create_solver
-from mfg_pde.geometry import Domain1D, dirichlet_bc, periodic_bc
+from mfg_pde.geometry import Domain1D, periodic_bc
 
 
 @dataclass
@@ -34,14 +33,14 @@ class AccuracyResult:
 
     problem_name: str
     solver_name: str
-    grid_size: Tuple[int, ...]
+    grid_size: tuple[int, ...]
 
     # Error metrics
     l2_error_u: float
     l2_error_m: float
     max_error_u: float
     max_error_m: float
-    h1_error_u: float = None  # Gradient error
+    h1_error_u: float | None = None  # Gradient error
 
     # Mesh information
     total_elements: int
@@ -59,12 +58,12 @@ class AMRAccuracyBenchmark:
     def __init__(self, output_dir: str = "accuracy_benchmarks"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
-        self.results: List[AccuracyResult] = []
+        self.results: list[AccuracyResult] = []
 
         print("AMR Accuracy Benchmarking Suite")
         print("=" * 50)
 
-    def manufactured_solution_1d(self, x: np.ndarray, t: float) -> Tuple[np.ndarray, np.ndarray]:
+    def manufactured_solution_1d(self, x: np.ndarray, t: float) -> tuple[np.ndarray, np.ndarray]:
         """
         Manufactured solution for 1D MFG with known analytical form.
 
@@ -136,10 +135,10 @@ class AMRAccuracyBenchmark:
 
     def compute_solution_errors(
         self,
-        computed_solution: Tuple[np.ndarray, np.ndarray],
-        reference_solution: Tuple[np.ndarray, np.ndarray],
+        computed_solution: tuple[np.ndarray, np.ndarray],
+        reference_solution: tuple[np.ndarray, np.ndarray],
         x_grid: np.ndarray,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Compute comprehensive error metrics between solutions."""
 
         U_comp, M_comp = computed_solution
@@ -150,11 +149,11 @@ class AMRAccuracyBenchmark:
             print(f"Warning: Solution shapes don't match: {U_comp.shape} vs {U_ref.shape}")
             # For now, return NaN errors
             return {
-                'l2_error_u': np.nan,
-                'l2_error_m': np.nan,
-                'max_error_u': np.nan,
-                'max_error_m': np.nan,
-                'h1_error_u': np.nan,
+                "l2_error_u": np.nan,
+                "l2_error_m": np.nan,
+                "max_error_u": np.nan,
+                "max_error_m": np.nan,
+                "h1_error_u": np.nan,
             }
 
         # L2 errors
@@ -176,11 +175,11 @@ class AMRAccuracyBenchmark:
             h1_error_u = l2_error_u
 
         return {
-            'l2_error_u': l2_error_u,
-            'l2_error_m': l2_error_m,
-            'max_error_u': max_error_u,
-            'max_error_m': max_error_m,
-            'h1_error_u': h1_error_u,
+            "l2_error_u": l2_error_u,
+            "l2_error_m": l2_error_m,
+            "max_error_u": max_error_u,
+            "max_error_m": max_error_m,
+            "h1_error_u": h1_error_u,
         }
 
     def benchmark_manufactured_solution(self):
@@ -205,16 +204,16 @@ class AMRAccuracyBenchmark:
             # Test configurations
             configs = [
                 {
-                    'name': f'Uniform-{nx}',
-                    'create_solver': lambda p: create_solver(p, solver_type='fixed_point', preset='accurate'),
-                    'amr_enabled': False,
+                    "name": f"Uniform-{nx}",
+                    "create_solver": lambda p: create_solver(p, solver_type="fixed_point", preset="accurate"),
+                    "amr_enabled": False,
                 },
                 {
-                    'name': f'AMR-{nx}',
-                    'create_solver': lambda p: create_amr_solver(
-                        p, base_solver_type='fixed_point', error_threshold=1e-5, max_levels=4
+                    "name": f"AMR-{nx}",
+                    "create_solver": lambda p: create_amr_solver(
+                        p, base_solver_type="fixed_point", error_threshold=1e-5, max_levels=4
                     ),
-                    'amr_enabled': True,
+                    "amr_enabled": True,
                 },
             ]
 
@@ -222,7 +221,7 @@ class AMRAccuracyBenchmark:
                 print(f"  Testing {config['name']}...")
 
                 # Create solver and solve
-                solver = config['create_solver'](problem)
+                solver = config["create_solver"](problem)
 
                 start_time = time.perf_counter()
                 result = solver.solve(max_iterations=100, tolerance=1e-7, verbose=False)
@@ -230,10 +229,10 @@ class AMRAccuracyBenchmark:
 
                 # Extract solution
                 if isinstance(result, dict):
-                    U = result['U']
-                    M = result['M']
-                    total_elements = result.get('mesh_statistics', {}).get('total_intervals', nx)
-                    refinement_levels = result.get('mesh_statistics', {}).get('max_level', 0)
+                    U = result["U"]
+                    M = result["M"]
+                    total_elements = result.get("mesh_statistics", {}).get("total_intervals", nx)
+                    refinement_levels = result.get("mesh_statistics", {}).get("max_level", 0)
                 else:
                     U, M, info = result
                     total_elements = nx
@@ -251,13 +250,13 @@ class AMRAccuracyBenchmark:
                 # Store result
                 accuracy_result = AccuracyResult(
                     problem_name=f"Manufactured_1D_N{nx}",
-                    solver_name=config['name'],
+                    solver_name=config["name"],
                     grid_size=(nx,),
-                    l2_error_u=errors['l2_error_u'],
-                    l2_error_m=errors['l2_error_m'],
-                    max_error_u=errors['max_error_u'],
-                    max_error_m=errors['max_error_m'],
-                    h1_error_u=errors['h1_error_u'],
+                    l2_error_u=errors["l2_error_u"],
+                    l2_error_m=errors["l2_error_m"],
+                    max_error_u=errors["max_error_u"],
+                    max_error_m=errors["max_error_m"],
+                    h1_error_u=errors["h1_error_u"],
                     total_elements=total_elements,
                     effective_resolution=np.sqrt(total_elements),
                     refinement_levels=refinement_levels,
@@ -285,11 +284,11 @@ class AMRAccuracyBenchmark:
         # Compute high-resolution reference
         print("Computing high-resolution reference...")
         ref_problem = self.create_sharp_feature_problem_1d(512)  # Much finer grid
-        ref_solver = create_solver(ref_problem, solver_type='fixed_point', preset='accurate')
+        ref_solver = create_solver(ref_problem, solver_type="fixed_point", preset="accurate")
         ref_result = ref_solver.solve(max_iterations=150, tolerance=1e-8, verbose=False)
 
         if isinstance(ref_result, dict):
-            U_ref, M_ref = ref_result['U'], ref_result['M']
+            U_ref, M_ref = ref_result["U"], ref_result["M"]
         else:
             U_ref, M_ref = ref_result[0], ref_result[1]
 
@@ -300,37 +299,37 @@ class AMRAccuracyBenchmark:
         # Test different AMR aggressiveness levels
         configs = [
             {
-                'name': 'Uniform-64',
-                'create_solver': lambda p: create_solver(p, solver_type='fixed_point', preset='accurate'),
-                'amr_enabled': False,
+                "name": "Uniform-64",
+                "create_solver": lambda p: create_solver(p, solver_type="fixed_point", preset="accurate"),
+                "amr_enabled": False,
             },
             {
-                'name': 'AMR-Conservative',
-                'create_solver': lambda p: create_amr_solver(
-                    p, base_solver_type='fixed_point', error_threshold=1e-3, max_levels=3
+                "name": "AMR-Conservative",
+                "create_solver": lambda p: create_amr_solver(
+                    p, base_solver_type="fixed_point", error_threshold=1e-3, max_levels=3
                 ),
-                'amr_enabled': True,
+                "amr_enabled": True,
             },
             {
-                'name': 'AMR-Aggressive',
-                'create_solver': lambda p: create_amr_solver(
-                    p, base_solver_type='fixed_point', error_threshold=1e-4, max_levels=5
+                "name": "AMR-Aggressive",
+                "create_solver": lambda p: create_amr_solver(
+                    p, base_solver_type="fixed_point", error_threshold=1e-4, max_levels=5
                 ),
-                'amr_enabled': True,
+                "amr_enabled": True,
             },
             {
-                'name': 'AMR-VeryAggressive',
-                'create_solver': lambda p: create_amr_solver(
-                    p, base_solver_type='fixed_point', error_threshold=1e-5, max_levels=6
+                "name": "AMR-VeryAggressive",
+                "create_solver": lambda p: create_amr_solver(
+                    p, base_solver_type="fixed_point", error_threshold=1e-5, max_levels=6
                 ),
-                'amr_enabled': True,
+                "amr_enabled": True,
             },
         ]
 
         for config in configs:
             print(f"  Testing {config['name']}...")
 
-            solver = config['create_solver'](problem)
+            solver = config["create_solver"](problem)
 
             start_time = time.perf_counter()
             result = solver.solve(max_iterations=100, tolerance=1e-6, verbose=False)
@@ -338,10 +337,10 @@ class AMRAccuracyBenchmark:
 
             # Extract solution
             if isinstance(result, dict):
-                U = result['U']
-                M = result['M']
-                total_elements = result.get('mesh_statistics', {}).get('total_intervals', 64)
-                refinement_levels = result.get('mesh_statistics', {}).get('max_level', 0)
+                U = result["U"]
+                M = result["M"]
+                total_elements = result.get("mesh_statistics", {}).get("total_intervals", 64)
+                refinement_levels = result.get("mesh_statistics", {}).get("max_level", 0)
             else:
                 U, M, info = result
                 total_elements = 64
@@ -358,13 +357,13 @@ class AMRAccuracyBenchmark:
             # Store result
             accuracy_result = AccuracyResult(
                 problem_name="Sharp_Features_1D",
-                solver_name=config['name'],
+                solver_name=config["name"],
                 grid_size=(64,),
-                l2_error_u=errors['l2_error_u'],
-                l2_error_m=errors['l2_error_m'],
-                max_error_u=errors['max_error_u'],
-                max_error_m=errors['max_error_m'],
-                h1_error_u=errors['h1_error_u'],
+                l2_error_u=errors["l2_error_u"],
+                l2_error_m=errors["l2_error_m"],
+                max_error_u=errors["max_error_u"],
+                max_error_m=errors["max_error_m"],
+                h1_error_u=errors["h1_error_u"],
                 total_elements=total_elements,
                 effective_resolution=np.sqrt(total_elements),
                 refinement_levels=refinement_levels,
@@ -398,23 +397,23 @@ class AMRAccuracyBenchmark:
                 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
                 # Separate uniform and AMR results
-                uniform_results = [r for r in manufactured_results if not r.solver_name.startswith('AMR')]
-                amr_results = [r for r in manufactured_results if r.solver_name.startswith('AMR')]
+                uniform_results = [r for r in manufactured_results if not r.solver_name.startswith("AMR")]
+                amr_results = [r for r in manufactured_results if r.solver_name.startswith("AMR")]
 
                 # Plot L2 error vs effective resolution
                 if uniform_results:
                     resolutions = [r.effective_resolution for r in uniform_results]
                     errors_u = [r.l2_error_u for r in uniform_results]
-                    ax1.loglog(resolutions, errors_u, 'b-o', label='Uniform Grid', markersize=6)
+                    ax1.loglog(resolutions, errors_u, "b-o", label="Uniform Grid", markersize=6)
 
                 if amr_results:
                     resolutions = [r.effective_resolution for r in amr_results]
                     errors_u = [r.l2_error_u for r in amr_results]
-                    ax1.loglog(resolutions, errors_u, 'r-s', label='AMR', markersize=6)
+                    ax1.loglog(resolutions, errors_u, "r-s", label="AMR", markersize=6)
 
-                ax1.set_xlabel('Effective Resolution (√elements)')
-                ax1.set_ylabel('L2 Error in U')
-                ax1.set_title('Convergence Rate - Value Function')
+                ax1.set_xlabel("Effective Resolution (√elements)")
+                ax1.set_ylabel("L2 Error in U")
+                ax1.set_title("Convergence Rate - Value Function")
                 ax1.grid(True, alpha=0.3)
                 ax1.legend()
 
@@ -422,21 +421,21 @@ class AMRAccuracyBenchmark:
                 if uniform_results:
                     times = [r.solve_time for r in uniform_results]
                     errors_u = [r.l2_error_u for r in uniform_results]
-                    ax2.loglog(times, errors_u, 'b-o', label='Uniform Grid', markersize=6)
+                    ax2.loglog(times, errors_u, "b-o", label="Uniform Grid", markersize=6)
 
                 if amr_results:
                     times = [r.solve_time for r in amr_results]
                     errors_u = [r.l2_error_u for r in amr_results]
-                    ax2.loglog(times, errors_u, 'r-s', label='AMR', markersize=6)
+                    ax2.loglog(times, errors_u, "r-s", label="AMR", markersize=6)
 
-                ax2.set_xlabel('Solve Time (s)')
-                ax2.set_ylabel('L2 Error in U')
-                ax2.set_title('Computational Efficiency')
+                ax2.set_xlabel("Solve Time (s)")
+                ax2.set_ylabel("L2 Error in U")
+                ax2.set_title("Computational Efficiency")
                 ax2.grid(True, alpha=0.3)
                 ax2.legend()
 
                 plt.tight_layout()
-                plt.savefig(self.output_dir / 'convergence_analysis.png', dpi=150, bbox_inches='tight')
+                plt.savefig(self.output_dir / "convergence_analysis.png", dpi=150, bbox_inches="tight")
                 print(f"Convergence plots saved to {self.output_dir / 'convergence_analysis.png'}")
 
                 # Show plot if possible
@@ -453,7 +452,7 @@ class AMRAccuracyBenchmark:
 
         report_file = self.output_dir / "accuracy_report.md"
 
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             f.write("# AMR Accuracy Benchmark Report\n\n")
             f.write(f"**Generated**: {time.strftime('%Y-%m-%d %H:%M:%S')}  \n\n")
 
@@ -499,8 +498,8 @@ class AMRAccuracyBenchmark:
                 f.write("\n")
 
             # AMR effectiveness summary
-            amr_results = [r for r in self.results if 'AMR' in r.solver_name]
-            uniform_results = [r for r in self.results if 'Uniform' in r.solver_name]
+            amr_results = [r for r in self.results if "AMR" in r.solver_name]
+            uniform_results = [r for r in self.results if "Uniform" in r.solver_name]
 
             if amr_results and uniform_results:
                 f.write("## AMR Effectiveness Summary\n\n")
@@ -551,15 +550,15 @@ class AMRAccuracyBenchmark:
         self.generate_convergence_plots()
         self.generate_accuracy_report()
 
-        print(f"\n✅ Accuracy benchmarking complete!")
+        print("\n✅ Accuracy benchmarking complete!")
         print(f"Results saved to: {self.output_dir}")
 
         # Print summary
         if self.results:
-            print(f"\nSummary:")
+            print("\nSummary:")
             print(f"  Total benchmarks: {len(self.results)}")
 
-            amr_results = [r for r in self.results if 'AMR' in r.solver_name]
+            amr_results = [r for r in self.results if "AMR" in r.solver_name]
             if amr_results:
                 avg_elements = np.mean([r.total_elements for r in amr_results])
                 avg_levels = np.mean([r.refinement_levels for r in amr_results])

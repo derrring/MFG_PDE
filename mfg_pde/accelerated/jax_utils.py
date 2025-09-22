@@ -5,12 +5,19 @@ This module provides common utilities for JAX-based implementations,
 including numerical operations, device management, and optimization helpers.
 """
 
-import warnings
-from typing import Any, Callable, Optional, Tuple, Union
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from . import DEFAULT_DEVICE, HAS_GPU, HAS_JAX
+
+if TYPE_CHECKING:
+    from mfg_pde.types.internal import JAXArray
+else:
+    from mfg_pde.types.internal import JAXArray
 
 if HAS_JAX:
     import optax
@@ -24,6 +31,14 @@ else:
     jax = None
     jnp = np
     device_put = lambda x, device=None: x
+    grad = lambda f: lambda x: x
+    jacfwd = lambda f: lambda x: x
+    jacrev = lambda f: lambda x: x
+    jit = lambda f: f  # Identity decorator when JAX not available
+    vmap = lambda f: f
+    cond = lambda pred, true_fn, false_fn, operand: true_fn(operand) if pred else false_fn(operand)
+    scan = lambda f, init, xs: (init, xs)
+    optax = None
 
 
 def ensure_jax_available():
@@ -32,7 +47,7 @@ def ensure_jax_available():
         raise ImportError("JAX is required for accelerated solvers. " "Install with: pip install jax jaxlib")
 
 
-def to_device(array: Union[np.ndarray, Any], device: Optional[Any] = None) -> Any:
+def to_device(array: np.ndarray | Any, device: Any | None = None) -> Any:
     """Move array to specified device."""
     ensure_jax_available()
 
@@ -52,7 +67,7 @@ def from_device(array: Any) -> np.ndarray:
 
 
 @jit
-def finite_difference_1d(u: jnp.ndarray, dx: float, order: int = 2) -> jnp.ndarray:
+def finite_difference_1d(u: JAXArray, dx: float, order: int = 2) -> JAXArray:
     """
     Compute first derivative using finite differences.
 
@@ -91,7 +106,7 @@ def finite_difference_1d(u: jnp.ndarray, dx: float, order: int = 2) -> jnp.ndarr
 
 
 @jit
-def finite_difference_2d(u: jnp.ndarray, dx: float, order: int = 2) -> jnp.ndarray:
+def finite_difference_2d(u: JAXArray, dx: float, order: int = 2) -> JAXArray:
     """
     Compute second derivative using finite differences.
 
@@ -132,8 +147,7 @@ def finite_difference_2d(u: jnp.ndarray, dx: float, order: int = 2) -> jnp.ndarr
         raise ValueError(f"Unsupported order: {order}")
 
 
-@jit
-def apply_boundary_conditions(u: jnp.ndarray, bc_type: str = "neumann", bc_value: float = 0.0) -> jnp.ndarray:
+def apply_boundary_conditions(u: JAXArray, bc_type: str = "neumann", bc_value: float = 0.0) -> JAXArray:
     """
     Apply boundary conditions to array.
 
@@ -145,26 +159,48 @@ def apply_boundary_conditions(u: jnp.ndarray, bc_type: str = "neumann", bc_value
     Returns:
         Array with boundary conditions applied
     """
-    if bc_type == "dirichlet":
-        # Set boundary values
-        u = u.at[0].set(bc_value)
-        u = u.at[-1].set(bc_value)
-
-    elif bc_type == "neumann":
-        # Zero derivative at boundaries (copy interior values)
-        u = u.at[0].set(u[1])
-        u = u.at[-1].set(u[-2])
-
-    elif bc_type == "periodic":
-        # Periodic boundary conditions
-        u = u.at[0].set(u[-2])
-        u = u.at[-1].set(u[1])
+    # Handle both JAX and numpy arrays
+    if HAS_JAX and hasattr(u, "at"):
+        # JAX array - use immutable updates with type-safe access
+        try:
+            if bc_type == "dirichlet":
+                u = u.at[0].set(bc_value)
+                u = u.at[-1].set(bc_value)
+            elif bc_type == "neumann":
+                u = u.at[0].set(u[1])
+                u = u.at[-1].set(u[-2])
+            elif bc_type == "periodic":
+                u = u.at[0].set(u[-2])
+                u = u.at[-1].set(u[1])
+        except AttributeError:
+            # Fallback to numpy path if .at access fails
+            u = u.copy()
+            if bc_type == "dirichlet":
+                u[0] = bc_value
+                u[-1] = bc_value
+            elif bc_type == "neumann":
+                u[0] = u[1]
+                u[-1] = u[-2]
+            elif bc_type == "periodic":
+                u[0] = u[-2]
+                u[-1] = u[1]
+    else:
+        # Numpy array - use mutable updates
+        u = u.copy()  # Make a copy to avoid modifying input
+        if bc_type == "dirichlet":
+            u[0] = bc_value
+            u[-1] = bc_value
+        elif bc_type == "neumann":
+            u[0] = u[1]
+            u[-1] = u[-2]
+        elif bc_type == "periodic":
+            u[0] = u[-2]
+            u[-1] = u[1]
 
     return u
 
 
-@jit
-def tridiagonal_solve(a: jnp.ndarray, b: jnp.ndarray, c: jnp.ndarray, d: jnp.ndarray) -> jnp.ndarray:
+def tridiagonal_solve(a: JAXArray, b: JAXArray, c: JAXArray, d: JAXArray) -> JAXArray:
     """
     Solve tridiagonal system using Thomas algorithm.
 
@@ -177,6 +213,17 @@ def tridiagonal_solve(a: jnp.ndarray, b: jnp.ndarray, c: jnp.ndarray, d: jnp.nda
     Returns:
         Solution vector
     """
+    if HAS_JAX and hasattr(a, "at"):
+        # JAX implementation with scan and immutable updates
+        return _tridiagonal_solve_jax(a, b, c, d)
+    else:
+        # Numpy implementation with simple loops
+        return _tridiagonal_solve_numpy(a, b, c, d)
+
+
+@jit
+def _tridiagonal_solve_jax(a: JAXArray, b: JAXArray, c: JAXArray, d: JAXArray) -> JAXArray:
+    """JAX-specific tridiagonal solver using scan."""
     n = len(b)
 
     # Pad arrays to same size for vectorization
@@ -209,8 +256,33 @@ def tridiagonal_solve(a: jnp.ndarray, b: jnp.ndarray, c: jnp.ndarray, d: jnp.nda
     return x
 
 
+def _tridiagonal_solve_numpy(a: JAXArray, b: JAXArray, c: JAXArray, d: JAXArray) -> JAXArray:
+    """Numpy-compatible tridiagonal solver using simple loops."""
+    n = len(b)
+
+    # Convert to numpy arrays and make copies
+    a = np.asarray(a)
+    b = np.asarray(b).copy()
+    c = np.asarray(c).copy()
+    d = np.asarray(d).copy()
+
+    # Forward elimination
+    for i in range(1, n):
+        w = a[i - 1] / b[i - 1]
+        b[i] = b[i] - w * c[i - 1]
+        d[i] = d[i] - w * d[i - 1]
+
+    # Back substitution
+    x = np.zeros(n)
+    x[n - 1] = d[n - 1] / b[n - 1]
+    for i in range(n - 2, -1, -1):
+        x[i] = (d[i] - c[i] * x[i + 1]) / b[i]
+
+    return x
+
+
 @jit
-def compute_hamiltonian(u_x: jnp.ndarray, m: jnp.ndarray, sigma: float) -> jnp.ndarray:
+def compute_hamiltonian(u_x: JAXArray, m: JAXArray, sigma: float) -> JAXArray:
     """
     Compute Hamiltonian for HJB equation.
 
@@ -232,7 +304,7 @@ def compute_hamiltonian(u_x: jnp.ndarray, m: jnp.ndarray, sigma: float) -> jnp.n
 
 
 @jit
-def compute_optimal_control(u_x: jnp.ndarray) -> jnp.ndarray:
+def compute_optimal_control(u_x: JAXArray) -> JAXArray:
     """
     Compute optimal control from value function gradient.
 
@@ -246,7 +318,7 @@ def compute_optimal_control(u_x: jnp.ndarray) -> jnp.ndarray:
 
 
 @jit
-def compute_drift(u_x: jnp.ndarray, sigma: float) -> jnp.ndarray:
+def compute_drift(u_x: JAXArray, sigma: float) -> JAXArray:
     """
     Compute drift term for Fokker-Planck equation.
 
@@ -261,7 +333,7 @@ def compute_drift(u_x: jnp.ndarray, sigma: float) -> jnp.ndarray:
 
 
 @jit
-def mass_conservation_constraint(m: jnp.ndarray, dx: float) -> float:
+def mass_conservation_constraint(m: JAXArray, dx: float) -> float:
     """
     Compute mass conservation constraint.
 
@@ -273,7 +345,7 @@ def mass_conservation_constraint(m: jnp.ndarray, dx: float) -> float:
         Mass conservation error
     """
     total_mass = jnp.sum(m) * dx
-    return jnp.abs(total_mass - 1.0)
+    return float(jnp.abs(total_mass - 1.0))
 
 
 def create_optimization_schedule(learning_rate: float = 1e-3, decay_steps: int = 1000, decay_rate: float = 0.9) -> Any:
@@ -290,13 +362,16 @@ def create_optimization_schedule(learning_rate: float = 1e-3, decay_steps: int =
     """
     ensure_jax_available()
 
+    if optax is None:
+        raise ImportError("Optimization schedules require optax. Install with: pip install optax")
+
     schedule = optax.exponential_decay(init_value=learning_rate, transition_steps=decay_steps, decay_rate=decay_rate)
 
     return optax.adam(schedule)
 
 
 @jit
-def compute_convergence_error(u_new: jnp.ndarray, u_old: jnp.ndarray, m_new: jnp.ndarray, m_old: jnp.ndarray) -> float:
+def compute_convergence_error(u_new: JAXArray, u_old: JAXArray, m_new: JAXArray, m_old: JAXArray) -> float:
     """
     Compute convergence error for MFG system.
 
@@ -312,7 +387,7 @@ def compute_convergence_error(u_new: jnp.ndarray, u_old: jnp.ndarray, m_new: jnp
     u_error = jnp.linalg.norm(u_new - u_old) / (jnp.linalg.norm(u_old) + 1e-8)
     m_error = jnp.linalg.norm(m_new - m_old) / (jnp.linalg.norm(m_old) + 1e-8)
 
-    return u_error + m_error
+    return float(u_error + m_error)
 
 
 @jit
@@ -344,10 +419,10 @@ def adaptive_time_step(
         factor = safety_factor * jnp.power(tolerance / error, 0.2)
 
     factor = jnp.clip(factor, min_factor, max_factor)
-    return dt * factor
+    return float(dt * factor)
 
 
-def vectorized_solve(solve_func: Callable, problems: list, batch_size: Optional[int] = None) -> list:
+def vectorized_solve(solve_func: Callable, problems: list, batch_size: int | None = None) -> list:
     """
     Solve multiple problems in vectorized batches.
 
@@ -448,7 +523,7 @@ def memory_usage_tracker():
             self.current_memory = 0
 
         def update(self):
-            if HAS_GPU:
+            if HAS_GPU and jax is not None:
                 try:
                     # Get GPU memory usage
                     for device in jax.devices("gpu"):

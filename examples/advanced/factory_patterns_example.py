@@ -12,7 +12,7 @@ import sys
 import numpy as np
 
 # Add the parent directory to the path so we can import mfg_pde
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde import (
     MFGProblem,
@@ -204,7 +204,7 @@ def demonstrate_solver_comparison():
         print(f"   HJB newton tolerance: {solver.hjb_solver.newton_tolerance}")
         print(f"   Has convergence monitor: {hasattr(solver, 'convergence_monitor')}")
 
-        if hasattr(solver, 'convergence_monitor'):
+        if hasattr(solver, "convergence_monitor"):
             monitor = solver.convergence_monitor
             print(f"   Wasserstein tolerance: {getattr(monitor, 'wasserstein_tol', 'N/A')}")
 

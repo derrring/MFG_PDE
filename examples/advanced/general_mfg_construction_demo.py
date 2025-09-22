@@ -14,7 +14,7 @@ import numpy as np
 # Add MFG_PDE to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from mfg_pde.core.mfg_problem import VALUE_BEFORE_SQUARE_LIMIT, MFGComponents, MFGProblem, MFGProblemBuilder
+from mfg_pde.core.mfg_problem import VALUE_BEFORE_SQUARE_LIMIT, MFGProblemBuilder
 from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.aux_func import npart, ppart
 from mfg_pde.utils.logging import configure_research_logging, get_logger
@@ -249,7 +249,7 @@ def example_3_nonlocal_coupling():
             nonlocal_term = 0.0
 
             # Access current density (this is a simplified approach)
-            if hasattr(problem, '_current_density') and problem._current_density is not None:
+            if hasattr(problem, "_current_density") and problem._current_density is not None:
                 for j in range(len(problem.xSpace)):
                     y_j = problem.xSpace[j]
                     kernel_value = np.exp(-abs(x_position - y_j) / sigma_kernel)
@@ -457,7 +457,7 @@ def main():
             )
             logger.info(f"   Advanced features: Jacobian={info['has_jacobian']}, Coupling={info['has_coupling']}")
 
-        logger.info(f"\n🔬 All problems are ready for solving with any MFG_PDE solver!")
+        logger.info("\n🔬 All problems are ready for solving with any MFG_PDE solver!")
         logger.info("   Usage: solver = create_fast_solver(); result = solver.solve(problem)")
 
     except Exception as e:

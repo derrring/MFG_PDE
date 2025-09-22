@@ -40,22 +40,22 @@ def main():
     # Solve the MFG problem with automatic mesh adaptation
     result = amr_solver.solve(max_iterations=100, tolerance=1e-6, verbose=True)
 
-    print(f"AMR Solution completed!")
+    print("AMR Solution completed!")
     print(f"- Convergence: {'Yes' if result.convergence_achieved else 'No'}")
     print(f"- Final error: {result.final_error:.2e}")
     print(f"- Execution time: {result.execution_time:.2f}s")
 
     # Display AMR statistics
-    if 'amr_stats' in result.solver_info:
-        amr_stats = result.solver_info['amr_stats']
-        print(f"\nAMR Statistics:")
+    if "amr_stats" in result.solver_info:
+        amr_stats = result.solver_info["amr_stats"]
+        print("\nAMR Statistics:")
         print(f"- Total refinements: {amr_stats['total_refinements']}")
         print(f"- Total coarsenings: {amr_stats['total_coarsenings']}")
         print(f"- Adaptation cycles: {amr_stats['adaptation_cycles']}")
 
-    if 'final_mesh_stats' in result.solver_info:
-        mesh_stats = result.solver_info['final_mesh_stats']
-        print(f"\nFinal Mesh Statistics:")
+    if "final_mesh_stats" in result.solver_info:
+        mesh_stats = result.solver_info["final_mesh_stats"]
+        print("\nFinal Mesh Statistics:")
         print(f"- Total cells: {mesh_stats['total_cells']}")
         print(f"- Leaf cells: {mesh_stats['leaf_cells']}")
         print(f"- Maximum level: {mesh_stats['max_level']}")
@@ -71,7 +71,7 @@ def create_amr_plots(result, problem):
     """Create visualization plots for AMR results."""
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle('AMR MFG Solver Results', fontsize=16)
+    fig.suptitle("AMR MFG Solver Results", fontsize=16)
 
     # Solution arrays
     U = result.U
@@ -82,42 +82,42 @@ def create_amr_plots(result, problem):
     X, Y = np.meshgrid(x, x)
 
     # Plot value function U
-    im1 = axes[0, 0].contourf(X, Y, U.T, levels=20, cmap='viridis')
-    axes[0, 0].set_title('Value Function U(x)')
-    axes[0, 0].set_xlabel('x')
-    axes[0, 0].set_ylabel('y')
+    im1 = axes[0, 0].contourf(X, Y, U.T, levels=20, cmap="viridis")
+    axes[0, 0].set_title("Value Function U(x)")
+    axes[0, 0].set_xlabel("x")
+    axes[0, 0].set_ylabel("y")
     plt.colorbar(im1, ax=axes[0, 0])
 
     # Plot density function M
-    im2 = axes[0, 1].contourf(X, Y, M.T, levels=20, cmap='plasma')
-    axes[0, 1].set_title('Density Function M(x)')
-    axes[0, 1].set_xlabel('x')
-    axes[0, 1].set_ylabel('y')
+    im2 = axes[0, 1].contourf(X, Y, M.T, levels=20, cmap="plasma")
+    axes[0, 1].set_title("Density Function M(x)")
+    axes[0, 1].set_xlabel("x")
+    axes[0, 1].set_ylabel("y")
     plt.colorbar(im2, ax=axes[0, 1])
 
     # Plot convergence history
     if result.convergence_history:
         axes[1, 0].semilogy(result.convergence_history)
-        axes[1, 0].set_title('Convergence History')
-        axes[1, 0].set_xlabel('Iteration')
-        axes[1, 0].set_ylabel('Error')
+        axes[1, 0].set_title("Convergence History")
+        axes[1, 0].set_xlabel("Iteration")
+        axes[1, 0].set_ylabel("Error")
         axes[1, 0].grid(True)
 
     # Plot mesh efficiency (if available)
-    if 'amr_stats' in result.solver_info:
-        amr_stats = result.solver_info['amr_stats']
-        if amr_stats['mesh_efficiency']:
-            axes[1, 1].plot(amr_stats['mesh_efficiency'], 'o-')
-            axes[1, 1].set_title('Mesh Efficiency Evolution')
-            axes[1, 1].set_xlabel('AMR Cycle')
-            axes[1, 1].set_ylabel('Cells per Unit Area')
+    if "amr_stats" in result.solver_info:
+        amr_stats = result.solver_info["amr_stats"]
+        if amr_stats["mesh_efficiency"]:
+            axes[1, 1].plot(amr_stats["mesh_efficiency"], "o-")
+            axes[1, 1].set_title("Mesh Efficiency Evolution")
+            axes[1, 1].set_xlabel("AMR Cycle")
+            axes[1, 1].set_ylabel("Cells per Unit Area")
             axes[1, 1].grid(True)
 
     plt.tight_layout()
 
     # Try to save the plot
     try:
-        plt.savefig('amr_results.png', dpi=150, bbox_inches='tight')
+        plt.savefig("amr_results.png", dpi=150, bbox_inches="tight")
         print("Results saved to 'amr_results.png'")
     except Exception as e:
         print(f"Could not save plot: {e}")

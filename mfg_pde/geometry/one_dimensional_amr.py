@@ -7,19 +7,27 @@ completing the geometry module architecture by providing consistent AMR
 support across all dimensions (1D, 2D structured, 2D triangular).
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from ..backends.base_backend import BaseBackend
+from ..types.internal import JAXArray
 from .amr_mesh import AMRRefinementCriteria, BaseErrorEstimator
 from .base_geometry import MeshData
-from .domain_1d import BoundaryConditions, Domain1D
+from .domain_1d import Domain1D
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    import jax.numpy as jnp
+    from jax import jit
+
+# Always define JAX_AVAILABLE at module level
 try:
     import jax.numpy as jnp
     from jax import jit
@@ -48,11 +56,11 @@ class Interval1D:
     level: int = 0
 
     # AMR hierarchy
-    parent_id: Optional[int] = None
-    children_ids: Optional[List[int]] = None
+    parent_id: int | None = None
+    children_ids: list[int] | None = None
 
     # Solution and error data
-    solution_data: Optional[Dict[str, float]] = None
+    solution_data: dict[str, float] | None = None
     error_estimate: float = 0.0
 
     def __post_init__(self):
@@ -79,7 +87,7 @@ class Interval1D:
         """Check if point is inside interval."""
         return self.x_min <= x <= self.x_max
 
-    def subdivide(self) -> Tuple["Interval1D", "Interval1D"]:
+    def subdivide(self) -> tuple[Interval1D, Interval1D]:
         """Split interval into 2 children."""
         mid = self.center
 
@@ -115,8 +123,8 @@ class OneDimensionalAMRMesh:
         self,
         domain_1d: Domain1D,
         initial_num_intervals: int = 10,
-        refinement_criteria: Optional[AMRRefinementCriteria] = None,
-        backend: Optional[BaseBackend] = None,
+        refinement_criteria: AMRRefinementCriteria | None = None,
+        backend: BaseBackend | None = None,
     ):
         """
         Initialize 1D AMR mesh from Domain1D.
@@ -133,8 +141,8 @@ class OneDimensionalAMRMesh:
         self.backend = backend
 
         # Interval hierarchy
-        self.intervals: Dict[int, Interval1D] = {}
-        self.leaf_intervals: List[int] = []
+        self.intervals: dict[int, Interval1D] = {}
+        self.leaf_intervals: list[int] = []
         self._next_interval_id = 0
 
         self._build_initial_intervals()
@@ -170,33 +178,37 @@ class OneDimensionalAMRMesh:
             return
 
         @jit
-        def compute_1d_gradient_error(u_vals: jnp.ndarray, x_coords: jnp.ndarray) -> jnp.ndarray:
+        def compute_1d_gradient_error(u_vals: JAXArray, x_coords: JAXArray) -> JAXArray:
             """JAX-accelerated gradient-based error estimation for 1D."""
+            # Ensure arrays are properly typed for JAX operations
+            u_array = jnp.asarray(u_vals)
+            x_array = jnp.asarray(x_coords)
+
             # First derivative using central differences
-            du_dx = jnp.gradient(u_vals, x_coords)
+            du_dx = jnp.gradient(u_array, x_array)
 
             # Second derivative for curvature term
-            d2u_dx2 = jnp.gradient(du_dx, x_coords)
+            d2u_dx2 = jnp.gradient(du_dx, x_array)
 
             # Error indicator: |du/dx| * h + |d²u/dx²| * h²
-            h = jnp.diff(x_coords).mean()
+            h = jnp.diff(x_array).mean()
             error_vals = jnp.abs(du_dx) * h + jnp.abs(d2u_dx2) * h**2
 
             return error_vals
 
         @jit
         def conservative_interpolation_1d(
-            parent_vals: jnp.ndarray,
-            child_coords: jnp.ndarray,
-            parent_coords: jnp.ndarray,
-        ) -> jnp.ndarray:
+            parent_vals: JAXArray,
+            child_coords: JAXArray,
+            parent_coords: JAXArray,
+        ) -> JAXArray:
             """JAX-accelerated conservative interpolation for 1D refinement."""
             return jnp.interp(child_coords, parent_coords, parent_vals)
 
         self._jax_gradient_error = compute_1d_gradient_error
         self._jax_conservative_interp = conservative_interpolation_1d
 
-    def refine_interval(self, interval_id: int) -> List[int]:
+    def refine_interval(self, interval_id: int) -> list[int]:
         """
         Refine a 1D interval into 2 children.
 
@@ -241,8 +253,8 @@ class OneDimensionalAMRMesh:
         return [left_id, right_id]
 
     def adapt_mesh_1d(
-        self, solution_data: Dict[str, np.ndarray], error_estimator: BaseErrorEstimator
-    ) -> Dict[str, int]:
+        self, solution_data: dict[str, np.ndarray], error_estimator: BaseErrorEstimator
+    ) -> dict[str, int]:
         """
         Adapt 1D mesh based on error estimates.
 
@@ -296,7 +308,7 @@ class OneDimensionalAMRMesh:
     def _estimate_interval_error(
         self,
         interval: Interval1D,
-        solution_data: Dict[str, np.ndarray],
+        solution_data: dict[str, np.ndarray],
         error_estimator: BaseErrorEstimator,
     ) -> float:
         """
@@ -316,10 +328,10 @@ class OneDimensionalAMRMesh:
 
         pseudo_node = PseudoNode(interval)
 
-        # Use existing error estimator
-        return error_estimator.estimate_error(pseudo_node, solution_data)
+        # Use existing error estimator - cast to expected type
+        return error_estimator.estimate_error(pseudo_node, solution_data)  # type: ignore[arg-type]
 
-    def get_mesh_statistics(self) -> Dict[str, Any]:
+    def get_mesh_statistics(self) -> dict[str, Any]:
         """Get comprehensive 1D mesh statistics."""
         # Level distribution
         level_counts = {}
@@ -352,7 +364,7 @@ class OneDimensionalAMRMesh:
             "refinement_history": self.refinement_history,
         }
 
-    def get_grid_points(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_grid_points(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Get 1D grid points and spacing for current adaptive mesh.
 
@@ -434,11 +446,11 @@ class OneDimensionalAMRMesh:
 class OneDimensionalErrorEstimator(BaseErrorEstimator):
     """Error estimator specifically designed for 1D intervals."""
 
-    def __init__(self, backend: Optional[BaseBackend] = None):
+    def __init__(self, backend: BaseBackend | None = None):
         self.backend = backend
         self.use_jax = JAX_AVAILABLE and (backend is None or getattr(backend, "name", "") == "jax")
 
-    def estimate_error(self, node, solution_data: Dict[str, np.ndarray]) -> float:
+    def estimate_error(self, node, solution_data: dict[str, np.ndarray]) -> float:
         """
         Estimate error for 1D interval using gradient-based indicators.
 
@@ -478,7 +490,7 @@ class OneDimensionalErrorEstimator(BaseErrorEstimator):
 
         else:
             # Fallback for insufficient data
-            return dx * (np.mean(np.abs(U)) + np.mean(np.abs(M)))
+            return float(dx * (np.mean(np.abs(U)) + np.mean(np.abs(M))))
 
 
 # Factory function for 1D AMR
@@ -487,7 +499,7 @@ def create_1d_amr_mesh(
     initial_intervals: int = 10,
     error_threshold: float = 1e-4,
     max_levels: int = 5,
-    backend: Optional[BaseBackend] = None,
+    backend: BaseBackend | None = None,
 ) -> OneDimensionalAMRMesh:
     """
     Create 1D AMR mesh from Domain1D.
