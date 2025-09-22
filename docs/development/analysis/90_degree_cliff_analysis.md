@@ -290,6 +290,6 @@ eigenvals = np.clip(eigenvals, -0.99, 0.99)
 ---
 
 **Document Status**: Complete  
-**Last Updated**: 2025-01-20  
+**Last Updated**: 2025-09-23  
 **Analysis Based On**: Systematic numerical experiments and theoretical investigation  
 **Severity**: High - Affects long-time simulation reliability
