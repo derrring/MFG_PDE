@@ -297,13 +297,43 @@ temp-branch
 
 **Implementation**: All future branches must follow this convention. No exceptions for temporary or experimental branches.
 
+### **GitHub Issue and PR Management** ⚠️ **MANDATORY**
+**Every issue MUST be properly labeled before work begins:**
+
+**Required Labels (All 4 categories)**:
+1. **Priority**: `priority: high/medium/low`
+2. **Area**: `area: algorithms/geometry/performance/config/visualization`
+3. **Size**: `size: small/medium/large` (effort estimation)
+4. **Type**: `bug/enhancement/documentation/type-checking`
+
+**Optional Labels**:
+- `status: blocked/in-review` (workflow tracking)
+- `good first issue/help wanted` (community)
+
+**Label Application Workflow**:
+```bash
+# ✅ GOOD - Creating properly labeled issue
+gh issue create --title "Add semi-Lagrangian HJB solver" \
+  --label "priority: medium,area: algorithms,size: large,enhancement"
+
+# ✅ GOOD - Adding labels to existing issue
+gh issue edit 42 --add-label "priority: high,area: performance,size: small,bug"
+```
+
+**Pull Request Labeling**:
+- Inherit labels from linked issues
+- Add `status: in-review` when ready
+- Use area labels for reviewer assignment
+
 ### **When Adding New Features**
-1. **Create branch**: `git checkout -b feature/descriptive-name`
-2. **Core code**: Add to appropriate `mfg_pde/` subdirectory
-3. **Examples**: Create in `examples/basic/` or `examples/advanced/`
-4. **Tests**: Add unit tests to `tests/unit/` or `tests/integration/`
-5. **Documentation**: Update relevant `docs/` category
-6. **Benchmarks**: Add performance analysis to `benchmarks/` if applicable
+1. **Create/verify issue**: Ensure proper labeling before starting work
+2. **Create branch**: `git checkout -b feature/descriptive-name`
+3. **Core code**: Add to appropriate `mfg_pde/` subdirectory
+4. **Examples**: Create in `examples/basic/` or `examples/advanced/`
+5. **Tests**: Add unit tests to `tests/unit/` or `tests/integration/`
+6. **Documentation**: Update relevant `docs/` category
+7. **Benchmarks**: Add performance analysis to `benchmarks/` if applicable
+8. **Label PR**: Apply appropriate labels matching the linked issue
 
 ### **Code Quality Expectations**
 - Follow `docs/development/CONSISTENCY_GUIDE.md`
@@ -400,11 +430,39 @@ Use explicit preservation overrides for important directories:
 - **Remove completely**: Generated files, temporary scripts, and duplicate experiments should be removed
 - **Focus on quality**: Better to have fewer, high-quality examples than many obsolete ones
 
+### **GitHub Workflow Integration** ⚠️ **ROUTINE CHECKLIST**
+**For every task/feature I work on**:
+
+```bash
+# 1. ALWAYS check if GitHub issue exists and is properly labeled
+gh issue view [issue_number]
+
+# 2. If issue missing labels, apply them BEFORE starting work
+gh issue edit [issue_number] --add-label "priority: medium,area: algorithms,size: small,enhancement"
+
+# 3. Create properly named branch linked to issue
+git checkout -b feature/descriptive-name  # or chore/fix/docs/refactor
+
+# 4. When creating PR, inherit issue labels and add status
+gh pr create --title "Title" --body "Fixes #[issue_number]" \
+  --label "priority: medium,area: algorithms,size: small,enhancement,status: in-review"
+
+# 5. Reference in commits and documentation
+# "Implements feature X as requested in Issue #[number]"
+```
+
+**Label System Reference**:
+- **Priority**: `high` (urgent) | `medium` (planned) | `low` (future)
+- **Area**: `algorithms` | `geometry` | `performance` | `config` | `visualization`
+- **Size**: `small` (hours-1day) | `medium` (1-3days) | `large` (1+ weeks)
+- **Type**: `bug` | `enhancement` | `documentation` | `type-checking`
+
 ### **Communication Style**
 - Be concise and direct
 - Focus on practical solutions
 - Provide working examples
 - Use professional documentation standards
+- **Always reference GitHub issues** when discussing features or fixes
 
 ## 🤖 **AI Interaction Design Framework**
 
