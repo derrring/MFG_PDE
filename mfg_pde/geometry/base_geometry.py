@@ -280,7 +280,7 @@ class BaseGeometry(ABC):
             e3 = np.linalg.norm(v0 - v2)
 
             # Aspect ratio = (longest edge) / (shortest edge)
-            aspect_ratios.append(max(e1, e2, e3) / min(e1, e2, e3))
+            aspect_ratios.append(max(float(e1), float(e2), float(e3)) / min(float(e1), float(e2), float(e3)))
 
         return {
             "min_area": float(np.min(areas)),
