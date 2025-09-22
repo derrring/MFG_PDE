@@ -268,12 +268,42 @@ pbar = tqdm(total=total_steps, desc="Convergence",
 
 ## 🔧 **Development Workflow**
 
+### **Branch Naming Convention** ⚠️ **MANDATORY**
+**Always use `<type>/<short-description>` format for all branches:**
+
+**Branch Types**:
+- `feature/` - New functionality or capabilities
+- `fix/` - Bug fixes and corrections
+- `chore/` - Maintenance, tooling, dependencies, infrastructure
+- `docs/` - Documentation updates and improvements
+- `refactor/` - Code restructuring without functional changes
+- `test/` - Adding or updating tests
+
+**Examples**:
+```bash
+# ✅ GOOD - Clear type and purpose
+feature/semi-lagrangian-solver
+chore/expand-mypy-coverage
+fix/convergence-criteria-bug
+docs/update-api-reference
+refactor/factory-pattern-cleanup
+
+# ❌ BAD - Generic or unclear names
+dev
+main-work
+updates
+temp-branch
+```
+
+**Implementation**: All future branches must follow this convention. No exceptions for temporary or experimental branches.
+
 ### **When Adding New Features**
-1. **Core code**: Add to appropriate `mfg_pde/` subdirectory
-2. **Examples**: Create in `examples/basic/` or `examples/advanced/`
-3. **Tests**: Add unit tests to `tests/unit/` or `tests/integration/`
-4. **Documentation**: Update relevant `docs/` category
-5. **Benchmarks**: Add performance analysis to `benchmarks/` if applicable
+1. **Create branch**: `git checkout -b feature/descriptive-name`
+2. **Core code**: Add to appropriate `mfg_pde/` subdirectory
+3. **Examples**: Create in `examples/basic/` or `examples/advanced/`
+4. **Tests**: Add unit tests to `tests/unit/` or `tests/integration/`
+5. **Documentation**: Update relevant `docs/` category
+6. **Benchmarks**: Add performance analysis to `benchmarks/` if applicable
 
 ### **Code Quality Expectations**
 - Follow `docs/development/CONSISTENCY_GUIDE.md`
