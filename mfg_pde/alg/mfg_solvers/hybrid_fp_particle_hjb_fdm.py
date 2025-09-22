@@ -45,7 +45,7 @@ class HybridFPParticleHJBFDM:
         kde_bandwidth: str | float = "scott",
         hjb_newton_iterations: int = 30,
         hjb_newton_tolerance: float = 1e-7,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the hybrid FP-Particle + HJB-FDM solver.
@@ -80,16 +80,12 @@ class HybridFPParticleHJBFDM:
         """Initialize the component solvers for FP and HJB."""
         # HJB solver using finite differences
         self.hjb_solver = HJBFDMSolver(
-            self.mfg_problem,
-            NiterNewton=self.hjb_newton_iterations,
-            l2errBoundNewton=self.hjb_newton_tolerance
+            self.mfg_problem, NiterNewton=self.hjb_newton_iterations, l2errBoundNewton=self.hjb_newton_tolerance
         )
 
         # FP solver using particles
         self.fp_solver = FPParticleSolver(
-            self.mfg_problem,
-            num_particles=self.num_particles,
-            kde_bandwidth=self.kde_bandwidth
+            self.mfg_problem, num_particles=self.num_particles, kde_bandwidth=self.kde_bandwidth
         )
 
         logger.debug("Component solvers initialized successfully")
@@ -101,7 +97,7 @@ class HybridFPParticleHJBFDM:
         damping_factor: float = 0.5,
         config: MFGSolverConfig | None = None,
         return_structured: bool = True,
-        **kwargs
+        **kwargs,
     ) -> dict[str, Any]:
         """
         Solve the MFG problem using hybrid FP-Particle + HJB-FDM approach.
@@ -124,27 +120,21 @@ class HybridFPParticleHJBFDM:
 
         # Create fixed point iterator with hybrid solvers
         fixed_point_solver = FixedPointIterator(
-            self.mfg_problem,
-            hjb_solver=self.hjb_solver,
-            fp_solver=self.fp_solver,
-            thetaUM=damping_factor
+            self.mfg_problem, hjb_solver=self.hjb_solver, fp_solver=self.fp_solver, thetaUM=damping_factor
         )
 
         # Solve using fixed point iteration
         try:
             result = fixed_point_solver.solve(
-                max_iterations=max_iterations,
-                tolerance=tolerance,
-                return_structured=return_structured,
-                **kwargs
+                max_iterations=max_iterations, tolerance=tolerance, return_structured=return_structured, **kwargs
             )
             solve_time = time.time() - start_time
 
             # Extract convergence information based on result type
             if isinstance(result, dict):
-                converged = result.get('success', False)
-                iterations = result.get('iterations', 0)
-                final_residual = result.get('final_residual', float('inf'))
+                converged = result.get("success", False)
+                iterations = result.get("iterations", 0)
+                final_residual = result.get("final_residual", float("inf"))
             elif isinstance(result, tuple) and len(result) >= 3:
                 # Traditional tuple format: (U, M, iterations, l2distu_abs, l2distm_abs)
                 U, M, iterations = result[:3]
@@ -152,37 +142,40 @@ class HybridFPParticleHJBFDM:
                 final_residual = result[3][-1] if len(result) > 3 and len(result[3]) > 0 else 0.0
                 # Convert to dict format for consistency
                 result = {
-                    'U': U, 'M': M, 'iterations': iterations,
-                    'success': True, 'converged': True,
-                    'final_residual': final_residual
+                    "U": U,
+                    "M": M,
+                    "iterations": iterations,
+                    "success": True,
+                    "converged": True,
+                    "final_residual": final_residual,
                 }
             else:
                 # Unknown format
                 converged = False
                 iterations = 0
-                final_residual = float('inf')
+                final_residual = float("inf")
 
             # Store timing and convergence info
             self.timing_info = {
-                'total_solve_time': solve_time,
-                'iterations': iterations,
-                'time_per_iteration': solve_time / max(iterations, 1)
+                "total_solve_time": solve_time,
+                "iterations": iterations,
+                "time_per_iteration": solve_time / max(iterations, 1),
             }
 
             # Enhanced result dictionary
             enhanced_result = {
-                'success': converged,
-                'converged': converged,
-                'iterations': iterations,
-                'final_residual': final_residual,
-                'solve_time': solve_time,
-                'solver_type': 'hybrid_fp_particle_hjb_fdm',
-                'num_particles': self.num_particles,
-                'kde_bandwidth': self.kde_bandwidth,
-                'hjb_method': 'fdm',
-                'fp_method': 'particle',
-                'damping_factor': damping_factor,
-                'timing_info': self.timing_info
+                "success": converged,
+                "converged": converged,
+                "iterations": iterations,
+                "final_residual": final_residual,
+                "solve_time": solve_time,
+                "solver_type": "hybrid_fp_particle_hjb_fdm",
+                "num_particles": self.num_particles,
+                "kde_bandwidth": self.kde_bandwidth,
+                "hjb_method": "fdm",
+                "fp_method": "particle",
+                "damping_factor": damping_factor,
+                "timing_info": self.timing_info,
             }
 
             # Include original result data
@@ -203,39 +196,39 @@ class HybridFPParticleHJBFDM:
             logger.error(f"❌ Hybrid solver failed after {solve_time:.2f}s: {e}")
 
             return {
-                'success': False,
-                'converged': False,
-                'error': str(e),
-                'solver_type': 'hybrid_fp_particle_hjb_fdm',
-                'solve_time': solve_time,
-                'iterations': 0,
-                'final_residual': float('inf')
+                "success": False,
+                "converged": False,
+                "error": str(e),
+                "solver_type": "hybrid_fp_particle_hjb_fdm",
+                "solve_time": solve_time,
+                "iterations": 0,
+                "final_residual": float("inf"),
             }
 
     def get_solver_info(self) -> dict[str, Any]:
         """Get information about the hybrid solver configuration."""
         return {
-            'solver_name': 'Hybrid FP-Particle + HJB-FDM',
-            'solver_type': 'hybrid_fp_particle_hjb_fdm',
-            'fp_method': 'particle',
-            'hjb_method': 'fdm',
-            'num_particles': self.num_particles,
-            'kde_bandwidth': self.kde_bandwidth,
-            'hjb_newton_iterations': self.hjb_newton_iterations,
-            'hjb_newton_tolerance': self.hjb_newton_tolerance,
-            'description': 'Hybrid solver combining particle-based FP with FDM-based HJB',
-            'advantages': [
-                'Natural mass conservation from particles',
-                'Stable HJB solution with FDM',
-                'Good performance on complex geometries',
-                'Flexible particle distribution'
+            "solver_name": "Hybrid FP-Particle + HJB-FDM",
+            "solver_type": "hybrid_fp_particle_hjb_fdm",
+            "fp_method": "particle",
+            "hjb_method": "fdm",
+            "num_particles": self.num_particles,
+            "kde_bandwidth": self.kde_bandwidth,
+            "hjb_newton_iterations": self.hjb_newton_iterations,
+            "hjb_newton_tolerance": self.hjb_newton_tolerance,
+            "description": "Hybrid solver combining particle-based FP with FDM-based HJB",
+            "advantages": [
+                "Natural mass conservation from particles",
+                "Stable HJB solution with FDM",
+                "Good performance on complex geometries",
+                "Flexible particle distribution",
             ],
-            'use_cases': [
-                'Complex domain geometries',
-                'Problems requiring mass conservation',
-                'Medium to large scale problems',
-                'Research applications'
-            ]
+            "use_cases": [
+                "Complex domain geometries",
+                "Problems requiring mass conservation",
+                "Medium to large scale problems",
+                "Research applications",
+            ],
         }
 
     def update_particle_count(self, num_particles: int):
@@ -250,9 +243,7 @@ class HybridFPParticleHJBFDM:
 
         # Reinitialize FP solver with new particle count
         self.fp_solver = FPParticleSolver(
-            self.mfg_problem,
-            num_particles=self.num_particles,
-            kde_bandwidth=self.kde_bandwidth
+            self.mfg_problem, num_particles=self.num_particles, kde_bandwidth=self.kde_bandwidth
         )
 
     def update_hjb_newton_config(self, max_iterations: int, tolerance: float):
@@ -269,16 +260,11 @@ class HybridFPParticleHJBFDM:
 
         # Reinitialize HJB solver with new configuration
         self.hjb_solver = HJBFDMSolver(
-            self.mfg_problem,
-            NiterNewton=self.hjb_newton_iterations,
-            l2errBoundNewton=self.hjb_newton_tolerance
+            self.mfg_problem, NiterNewton=self.hjb_newton_iterations, l2errBoundNewton=self.hjb_newton_tolerance
         )
 
     def benchmark_particle_scaling(
-        self,
-        particle_counts: list[int] | None = None,
-        max_iterations: int = 20,
-        tolerance: float = 1e-3
+        self, particle_counts: list[int] | None = None, max_iterations: int = 20, tolerance: float = 1e-3
     ) -> dict[str, Any]:
         """
         Benchmark solver performance across different particle counts.
@@ -311,40 +297,39 @@ class HybridFPParticleHJBFDM:
                 result = self.solve(
                     max_iterations=max_iterations,
                     tolerance=tolerance,
-                    return_structured=False  # Faster for benchmarking
+                    return_structured=False,  # Faster for benchmarking
                 )
                 solve_time = time.time() - start_time
 
                 # Store results
                 benchmark_result = {
-                    'num_particles': count,
-                    'converged': result.get('converged', False),
-                    'iterations': result.get('iterations', 0),
-                    'solve_time': solve_time,
-                    'final_residual': result.get('final_residual', float('inf')),
-                    'particles_per_second': count / solve_time if solve_time > 0 else 0
+                    "num_particles": count,
+                    "converged": result.get("converged", False),
+                    "iterations": result.get("iterations", 0),
+                    "solve_time": solve_time,
+                    "final_residual": result.get("final_residual", float("inf")),
+                    "particles_per_second": count / solve_time if solve_time > 0 else 0,
                 }
 
                 results.append(benchmark_result)
-                logger.info(f"  Result: {'✅' if benchmark_result['converged'] else '❌'} "
-                          f"{benchmark_result['iterations']} iter, {solve_time:.2f}s")
+                logger.info(
+                    f"  Result: {'✅' if benchmark_result['converged'] else '❌'} "
+                    f"{benchmark_result['iterations']} iter, {solve_time:.2f}s"
+                )
 
             except Exception as e:
                 logger.error(f"  Benchmark failed for {count} particles: {e}")
-                results.append({
-                    'num_particles': count,
-                    'converged': False,
-                    'error': str(e),
-                    'solve_time': float('inf')
-                })
+                results.append(
+                    {"num_particles": count, "converged": False, "error": str(e), "solve_time": float("inf")}
+                )
 
         # Restore original configuration
         self.update_particle_count(original_particles)
 
         benchmark_summary = {
-            'results': results,
-            'optimal_particle_count': self._find_optimal_particle_count(results),
-            'scaling_analysis': self._analyze_particle_scaling(results)
+            "results": results,
+            "optimal_particle_count": self._find_optimal_particle_count(results),
+            "scaling_analysis": self._analyze_particle_scaling(results),
         }
 
         logger.info("Particle scaling benchmark completed")
@@ -352,28 +337,27 @@ class HybridFPParticleHJBFDM:
 
     def _find_optimal_particle_count(self, results: list) -> int | None:
         """Find optimal particle count based on convergence and performance."""
-        converged_results = [r for r in results if r.get('converged', False)]
+        converged_results = [r for r in results if r.get("converged", False)]
 
         if not converged_results:
             return None
 
         # Find best trade-off between speed and particle count
         # Prefer fewer particles if convergence is similar
-        best_result = min(converged_results,
-                         key=lambda r: (r['solve_time'], r['num_particles']))
+        best_result = min(converged_results, key=lambda r: (r["solve_time"], r["num_particles"]))
 
-        return best_result['num_particles']
+        return best_result["num_particles"]
 
     def _analyze_particle_scaling(self, results: list) -> dict[str, Any]:
         """Analyze scaling behavior of particle count vs performance."""
-        converged_results = [r for r in results if r.get('converged', False)]
+        converged_results = [r for r in results if r.get("converged", False)]
 
         if len(converged_results) < 2:
-            return {'scaling_coefficient': None, 'efficiency_trend': 'insufficient_data'}
+            return {"scaling_coefficient": None, "efficiency_trend": "insufficient_data"}
 
         # Analyze time scaling with particle count
-        particle_counts = [r['num_particles'] for r in converged_results]
-        solve_times = [r['solve_time'] for r in converged_results]
+        particle_counts = [r["num_particles"] for r in converged_results]
+        solve_times = [r["solve_time"] for r in converged_results]
 
         if len(particle_counts) > 2:
             # Fit power law: time ~ particles^alpha
@@ -384,11 +368,11 @@ class HybridFPParticleHJBFDM:
             scaling_coeff = None
 
         return {
-            'scaling_coefficient': scaling_coeff,
-            'efficiency_trend': 'linear' if scaling_coeff and scaling_coeff < 1.2 else 'super_linear',
-            'min_particles_converged': min(particle_counts),
-            'max_particles_tested': max(particle_counts),
-            'convergence_rate': len(converged_results) / len(results)
+            "scaling_coefficient": scaling_coeff,
+            "efficiency_trend": "linear" if scaling_coeff and scaling_coeff < 1.2 else "super_linear",
+            "min_particles_converged": min(particle_counts),
+            "max_particles_tested": max(particle_counts),
+            "convergence_rate": len(converged_results) / len(results),
         }
 
 
@@ -399,7 +383,7 @@ def create_hybrid_fp_particle_hjb_fdm_solver(
     kde_bandwidth: str | float = "scott",
     hjb_newton_iterations: int = 30,
     hjb_newton_tolerance: float = 1e-7,
-    **kwargs
+    **kwargs,
 ) -> HybridFPParticleHJBFDM:
     """
     Factory function to create Hybrid FP-Particle + HJB-FDM solver.
@@ -421,7 +405,7 @@ def create_hybrid_fp_particle_hjb_fdm_solver(
         kde_bandwidth=kde_bandwidth,
         hjb_newton_iterations=hjb_newton_iterations,
         hjb_newton_tolerance=hjb_newton_tolerance,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -433,22 +417,14 @@ class HybridSolverPresets:
     def fast_hybrid(mfg_problem: MFGProblem) -> HybridFPParticleHJBFDM:
         """Fast configuration optimized for speed."""
         return create_hybrid_fp_particle_hjb_fdm_solver(
-            mfg_problem,
-            num_particles=2000,
-            kde_bandwidth=0.05,
-            hjb_newton_iterations=15,
-            hjb_newton_tolerance=1e-5
+            mfg_problem, num_particles=2000, kde_bandwidth=0.05, hjb_newton_iterations=15, hjb_newton_tolerance=1e-5
         )
 
     @staticmethod
     def accurate_hybrid(mfg_problem: MFGProblem) -> HybridFPParticleHJBFDM:
         """Accurate configuration optimized for precision."""
         return create_hybrid_fp_particle_hjb_fdm_solver(
-            mfg_problem,
-            num_particles=10000,
-            kde_bandwidth="scott",
-            hjb_newton_iterations=50,
-            hjb_newton_tolerance=1e-8
+            mfg_problem, num_particles=10000, kde_bandwidth="scott", hjb_newton_iterations=50, hjb_newton_tolerance=1e-8
         )
 
     @staticmethod
@@ -459,7 +435,7 @@ class HybridSolverPresets:
             num_particles=15000,
             kde_bandwidth="scott",
             hjb_newton_iterations=100,
-            hjb_newton_tolerance=1e-10
+            hjb_newton_tolerance=1e-10,
         )
 
 

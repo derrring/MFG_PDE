@@ -6,13 +6,13 @@ Utilities for combining multiple hooks into complex behaviors.
 
 from __future__ import annotations
 
-
-from typing import TYPE_CHECKING
 from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 from .base import SolverHooks
 
 if TYPE_CHECKING:
-    from ..types import SpatialTemporalState, MFGResult
+    from ..types import MFGResult, SpatialTemporalState
 
 
 class MultiHook(SolverHooks):
@@ -111,7 +111,7 @@ class ConditionalHook(SolverHooks):
         )
     """
 
-    def __init__(self, hook: SolverHooks, condition: Callable[["SpatialTemporalState"], bool]):
+    def __init__(self, hook: SolverHooks, condition: Callable[[SpatialTemporalState], bool]):
         """
         Initialize conditional hook.
 
@@ -145,9 +145,9 @@ class ConditionalHook(SolverHooks):
         # Otherwise, we always execute (conservative approach)
         try:
             # Try to get final state information for condition checking
-            if hasattr(result, 'final_state'):
-                final_state = getattr(result, 'final_state', None)
-                if final_state is not None and hasattr(final_state, 'iteration'):
+            if hasattr(result, "final_state"):
+                final_state = getattr(result, "final_state", None)
+                if final_state is not None and hasattr(final_state, "iteration"):
                     if self.condition(final_state):
                         return self.hook.on_solve_end(result)
                     else:
@@ -236,27 +236,27 @@ class FilterHook(SolverHooks):
         self._convergence_check_filter: Callable | None = None
         self._solve_end_filter: Callable | None = None
 
-    def filter_solve_start(self, condition: Callable[["SpatialTemporalState"], bool]) -> FilterHook:
+    def filter_solve_start(self, condition: Callable[[SpatialTemporalState], bool]) -> FilterHook:
         """Set condition for on_solve_start calls."""
         self._solve_start_filter = condition
         return self
 
-    def filter_iteration_start(self, condition: Callable[["SpatialTemporalState"], bool]) -> FilterHook:
+    def filter_iteration_start(self, condition: Callable[[SpatialTemporalState], bool]) -> FilterHook:
         """Set condition for on_iteration_start calls."""
         self._iteration_start_filter = condition
         return self
 
-    def filter_iteration_end(self, condition: Callable[["SpatialTemporalState"], bool]) -> FilterHook:
+    def filter_iteration_end(self, condition: Callable[[SpatialTemporalState], bool]) -> FilterHook:
         """Set condition for on_iteration_end calls."""
         self._iteration_end_filter = condition
         return self
 
-    def filter_convergence_check(self, condition: Callable[["SpatialTemporalState"], bool]) -> FilterHook:
+    def filter_convergence_check(self, condition: Callable[[SpatialTemporalState], bool]) -> FilterHook:
         """Set condition for on_convergence_check calls."""
         self._convergence_check_filter = condition
         return self
 
-    def filter_solve_end(self, condition: Callable[["MFGResult"], bool]) -> FilterHook:
+    def filter_solve_end(self, condition: Callable[[MFGResult], bool]) -> FilterHook:
         """Set condition for on_solve_end calls."""
         self._solve_end_filter = condition
         return self
@@ -302,10 +302,12 @@ class TransformHook(SolverHooks):
         )
     """
 
-    def __init__(self,
-                 hook: SolverHooks,
-                 state_transform: Callable[["SpatialTemporalState"], "SpatialTemporalState"] | None = None,
-                 result_transform: Callable[["MFGResult"], "MFGResult"] | None = None):
+    def __init__(
+        self,
+        hook: SolverHooks,
+        state_transform: Callable[[SpatialTemporalState], SpatialTemporalState] | None = None,
+        result_transform: Callable[[MFGResult], MFGResult] | None = None,
+    ):
         self.hook = hook
         self.state_transform = state_transform
         self.result_transform = result_transform

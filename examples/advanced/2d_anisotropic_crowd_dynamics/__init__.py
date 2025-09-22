@@ -25,16 +25,15 @@ Usage:
 
 from .anisotropic_2d_problem import (
     AnisotropicMFGProblem2D,
-    create_anisotropic_problem,
     CircularBarrier,
     LinearBarrier,
-    RectangularBarrier
+    RectangularBarrier,
+    create_anisotropic_problem,
 )
-
 from .solver_config import (
     create_anisotropic_solver_config,
     create_experiment_solver,
-    create_performance_optimized_config
+    create_performance_optimized_config,
 )
 
 __version__ = "1.0.0"
@@ -43,21 +42,18 @@ __description__ = "2D Anisotropic Crowd Dynamics with Barriers"
 
 __all__ = [
     # Main classes
-    'AnisotropicMFGProblem2D',
-    'create_anisotropic_problem',
-
+    "AnisotropicMFGProblem2D",
+    "create_anisotropic_problem",
     # Barrier types
-    'CircularBarrier',
-    'LinearBarrier',
-    'RectangularBarrier',
-
+    "CircularBarrier",
+    "LinearBarrier",
+    "RectangularBarrier",
     # Solver configuration
-    'create_anisotropic_solver_config',
-    'create_experiment_solver',
-    'create_performance_optimized_config',
-
+    "create_anisotropic_solver_config",
+    "create_experiment_solver",
+    "create_performance_optimized_config",
     # Package info
-    '__version__',
-    '__author__',
-    '__description__'
+    "__version__",
+    "__author__",
+    "__description__",
 ]

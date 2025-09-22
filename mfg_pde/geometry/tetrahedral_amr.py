@@ -7,9 +7,9 @@ enabling efficient solution of MFG problems with localized features or singulari
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 
 import numpy as np
-from dataclasses import dataclass
 
 from .base_geometry import MeshData
 
@@ -31,6 +31,7 @@ class TetrahedronElement:
         marked_for_coarsening: Flag for coarsening
         error_estimate: Local error estimate
     """
+
     vertices: np.ndarray
     center: np.ndarray
     volume: float
@@ -177,7 +178,7 @@ class TetrahedralErrorEstimator:
 
     def _compute_element_size(self, elem_idx: int) -> float:
         """Compute characteristic size of tetrahedral element."""
-        return self._compute_element_volume(elem_idx) ** (1/3)
+        return self._compute_element_volume(elem_idx) ** (1 / 3)
 
 
 class TetrahedralAMRMesh:
@@ -220,21 +221,15 @@ class TetrahedralAMRMesh:
             volume = self._compute_tetrahedron_volume(coords)
             quality = self._compute_tetrahedron_quality(coords)
 
-            element = TetrahedronElement(
-                vertices=elem_vertices,
-                center=center,
-                volume=volume,
-                quality=quality,
-                level=0
-            )
+            element = TetrahedronElement(vertices=elem_vertices, center=center, volume=volume, quality=quality, level=0)
 
             self.elements_list.append(element)
             self.active_elements.append(self.element_count)
             self.element_count += 1
 
-    def refine_mesh(self, solution: np.ndarray,
-                   refinement_fraction: float = 0.3,
-                   error_method: str = "gradient_recovery") -> bool:
+    def refine_mesh(
+        self, solution: np.ndarray, refinement_fraction: float = 0.3, error_method: str = "gradient_recovery"
+    ) -> bool:
         """
         Perform one step of adaptive mesh refinement.
 
@@ -261,8 +256,7 @@ class TetrahedralAMRMesh:
         for i, elem_idx in enumerate(self.active_elements):
             element = self.elements_list[elem_idx]
 
-            if (error_estimates[i] >= refinement_threshold and
-                element.level < self.max_refinement_level):
+            if error_estimates[i] >= refinement_threshold and element.level < self.max_refinement_level:
                 element.marked_for_refinement = True
                 elements_refined += 1
 
@@ -273,12 +267,14 @@ class TetrahedralAMRMesh:
         self._execute_refinement()
 
         # Record refinement history
-        self.refinement_history.append({
-            'elements_refined': elements_refined,
-            'total_active_elements': len(self.active_elements),
-            'max_error': np.max(error_estimates),
-            'mean_error': np.mean(error_estimates)
-        })
+        self.refinement_history.append(
+            {
+                "elements_refined": elements_refined,
+                "total_active_elements": len(self.active_elements),
+                "max_error": np.max(error_estimates),
+                "mean_error": np.mean(error_estimates),
+            }
+        )
 
         return True
 
@@ -320,9 +316,7 @@ class TetrahedralAMRMesh:
 
         # Create new vertices at edge midpoints and face centers
         edge_midpoints = {}
-        edges = [
-            (0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)
-        ]
+        edges = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
 
         # Add edge midpoints
         for edge in edges:
@@ -341,16 +335,15 @@ class TetrahedralAMRMesh:
         # Create sub-tetrahedra using various combinations of original and new vertices
         sub_tetrahedra = [
             # Corner tetrahedra
-            [parent_vertices[0], edge_midpoints[(0,1)], edge_midpoints[(0,2)], edge_midpoints[(0,3)]],
-            [parent_vertices[1], edge_midpoints[(0,1)], edge_midpoints[(1,2)], edge_midpoints[(1,3)]],
-            [parent_vertices[2], edge_midpoints[(0,2)], edge_midpoints[(1,2)], edge_midpoints[(2,3)]],
-            [parent_vertices[3], edge_midpoints[(0,3)], edge_midpoints[(1,3)], edge_midpoints[(2,3)]],
-
+            [parent_vertices[0], edge_midpoints[(0, 1)], edge_midpoints[(0, 2)], edge_midpoints[(0, 3)]],
+            [parent_vertices[1], edge_midpoints[(0, 1)], edge_midpoints[(1, 2)], edge_midpoints[(1, 3)]],
+            [parent_vertices[2], edge_midpoints[(0, 2)], edge_midpoints[(1, 2)], edge_midpoints[(2, 3)]],
+            [parent_vertices[3], edge_midpoints[(0, 3)], edge_midpoints[(1, 3)], edge_midpoints[(2, 3)]],
             # Central tetrahedra (simplified)
-            [edge_midpoints[(0,1)], edge_midpoints[(0,2)], edge_midpoints[(1,2)], edge_midpoints[(0,3)]],
-            [edge_midpoints[(0,1)], edge_midpoints[(1,2)], edge_midpoints[(1,3)], edge_midpoints[(0,3)]],
-            [edge_midpoints[(0,2)], edge_midpoints[(1,2)], edge_midpoints[(2,3)], edge_midpoints[(0,3)]],
-            [edge_midpoints[(1,2)], edge_midpoints[(1,3)], edge_midpoints[(2,3)], edge_midpoints[(0,3)]],
+            [edge_midpoints[(0, 1)], edge_midpoints[(0, 2)], edge_midpoints[(1, 2)], edge_midpoints[(0, 3)]],
+            [edge_midpoints[(0, 1)], edge_midpoints[(1, 2)], edge_midpoints[(1, 3)], edge_midpoints[(0, 3)]],
+            [edge_midpoints[(0, 2)], edge_midpoints[(1, 2)], edge_midpoints[(2, 3)], edge_midpoints[(0, 3)]],
+            [edge_midpoints[(1, 2)], edge_midpoints[(1, 3)], edge_midpoints[(2, 3)], edge_midpoints[(0, 3)]],
         ]
 
         for sub_tet_vertices in sub_tetrahedra:
@@ -365,7 +358,7 @@ class TetrahedralAMRMesh:
                 volume=volume,
                 quality=quality,
                 level=parent_element.level + 1,
-                parent=elem_idx
+                parent=elem_idx,
             )
 
             self.elements_list.append(child_element)
@@ -404,7 +397,7 @@ class TetrahedralAMRMesh:
             boundary_tags=boundary_tags,
             element_tags=element_tags,
             boundary_faces=boundary_faces,
-            dimension=3
+            dimension=3,
         )
 
         # Compute quality metrics
@@ -420,7 +413,7 @@ class TetrahedralAMRMesh:
             "mean_quality": float(np.mean(qualities)),
             "num_active_elements": len(self.active_elements),
             "num_total_elements": self.element_count,
-            "refinement_levels": [self.elements_list[idx].level for idx in self.active_elements]
+            "refinement_levels": [self.elements_list[idx].level for idx in self.active_elements],
         }
 
         return mesh_data
@@ -441,14 +434,14 @@ class TetrahedralAMRMesh:
             np.linalg.norm(coords[3] - coords[0]),
             np.linalg.norm(coords[2] - coords[1]),
             np.linalg.norm(coords[3] - coords[1]),
-            np.linalg.norm(coords[3] - coords[2])
+            np.linalg.norm(coords[3] - coords[2]),
         ]
 
         volume = self._compute_tetrahedron_volume(coords)
         max_edge = max(edges)
 
         if max_edge > 0:
-            return float(volume / (max_edge ** 3))
+            return float(volume / (max_edge**3))
         else:
             return 0.0
 
@@ -472,7 +465,7 @@ class TetrahedralAMRMesh:
             "min_quality": np.min(qualities),
             "mean_volume": np.mean(volumes),
             "min_volume": np.min(volumes),
-            "refinement_history": self.refinement_history
+            "refinement_history": self.refinement_history,
         }
 
     def compute_quality_metrics(self) -> dict[str, float]:

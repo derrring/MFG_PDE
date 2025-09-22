@@ -7,13 +7,12 @@ clean interface design with hooks pattern support.
 
 from __future__ import annotations
 
-
+import time
 from abc import ABC, abstractmethod
 from typing import Any
-import time
 
-from ..types import MFGProblem, MFGResult, SpatialTemporalState, ConvergenceInfo
 from ..hooks import SolverHooks
+from ..types import ConvergenceInfo, MFGProblem, MFGResult, SpatialTemporalState
 
 
 class BaseSolver(ABC):
@@ -35,10 +34,7 @@ class BaseSolver(ABC):
                 return updated_state
     """
 
-    def __init__(self,
-                 max_iterations: int = 100,
-                 tolerance: float = 1e-6,
-                 **config):
+    def __init__(self, max_iterations: int = 100, tolerance: float = 1e-6, **config):
         """
         Initialize base solver.
 
@@ -55,11 +51,13 @@ class BaseSolver(ABC):
         self._start_time = None
         self._iteration_times = []
 
-    def solve(self,
-              problem: MFGProblem,
-              hooks: SolverHooks | None = None,
-              max_iterations: int | None = None,
-              tolerance: float | None = None) -> MFGResult:
+    def solve(
+        self,
+        problem: MFGProblem,
+        hooks: SolverHooks | None = None,
+        max_iterations: int | None = None,
+        tolerance: float | None = None,
+    ) -> MFGResult:
         """
         Solve the MFG problem with optional hooks.
 
@@ -150,15 +148,14 @@ class BaseSolver(ABC):
 
         # Create convergence info
         total_time = time.time() - self._start_time
-        avg_iteration_time = (total_time / len(self._iteration_times)
-                             if self._iteration_times else 0.0)
+        avg_iteration_time = total_time / len(self._iteration_times) if self._iteration_times else 0.0
 
         convergence_info = ConvergenceInfo(
             converged=converged,
             iterations=state.iteration + 1,
             final_residual=state.residual,
             residual_history=residual_history,
-            convergence_reason=convergence_reason
+            convergence_reason=convergence_reason,
         )
 
         # Create result
@@ -181,7 +178,6 @@ class BaseSolver(ABC):
         Returns:
             Initial solver state
         """
-        pass
 
     @abstractmethod
     def _iteration_step(self, state: SpatialTemporalState, problem: MFGProblem) -> SpatialTemporalState:
@@ -195,7 +191,6 @@ class BaseSolver(ABC):
         Returns:
             Updated solver state
         """
-        pass
 
     def _check_convergence(self, state: SpatialTemporalState, tolerance: float) -> bool:
         """
@@ -214,12 +209,14 @@ class BaseSolver(ABC):
         return state.residual < tolerance
 
     @abstractmethod
-    def _create_result(self,
-                      state: SpatialTemporalState,
-                      problem: MFGProblem,
-                      convergence_info: ConvergenceInfo,
-                      total_time: float,
-                      avg_iteration_time: float) -> MFGResult:
+    def _create_result(
+        self,
+        state: SpatialTemporalState,
+        problem: MFGProblem,
+        convergence_info: ConvergenceInfo,
+        total_time: float,
+        avg_iteration_time: float,
+    ) -> MFGResult:
         """
         Create final result object.
 
@@ -233,13 +230,12 @@ class BaseSolver(ABC):
         Returns:
             Final result object
         """
-        pass
 
     def get_solver_info(self) -> dict[str, Any]:
         """Get information about this solver."""
         return {
-            'solver_type': self.__class__.__name__,
-            'max_iterations': self.max_iterations,
-            'tolerance': self.tolerance,
-            'config': self.config.copy()
+            "solver_type": self.__class__.__name__,
+            "max_iterations": self.max_iterations,
+            "tolerance": self.tolerance,
+            "config": self.config.copy(),
         }

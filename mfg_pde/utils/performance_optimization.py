@@ -7,20 +7,22 @@ including memory management, sparse operations, and parallel processing support.
 
 from __future__ import annotations
 
-
 import time
-import psutil
-from typing import Any
-from collections.abc import Callable
-from dataclasses import dataclass
-from contextlib import contextmanager
 import warnings
+from collections.abc import Callable
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Any
+
+import psutil
 
 import numpy as np
-from scipy.sparse import csr_matrix, csc_matrix, lil_matrix, linalg as sp_linalg
+from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
+from scipy.sparse import linalg as sp_linalg
 
 try:
     import numba
+
     NUMBA_AVAILABLE = True
 except ImportError:
     NUMBA_AVAILABLE = False
@@ -28,6 +30,7 @@ except ImportError:
 try:
     import jax
     import jax.numpy as jnp
+
     JAX_AVAILABLE = True
 except ImportError:
     JAX_AVAILABLE = False
@@ -36,6 +39,7 @@ except ImportError:
 @dataclass
 class PerformanceMetrics:
     """Container for performance monitoring data."""
+
     operation_name: str
     start_time: float
     end_time: float
@@ -98,7 +102,7 @@ class PerformanceMonitor:
                 memory_after=memory_after,
                 memory_peak=peak_memory,
                 cpu_percent=(cpu_before + cpu_after) / 2,
-                additional_metrics=additional_metrics
+                additional_metrics=additional_metrics,
             )
 
             self.metrics_history.append(metrics)
@@ -123,13 +127,9 @@ class PerformanceMonitor:
             "total_memory_used": total_memory,
             "peak_memory": peak_memory,
             "operations": [
-                {
-                    "name": m.operation_name,
-                    "duration": m.duration,
-                    "memory_used": m.memory_used
-                }
+                {"name": m.operation_name, "duration": m.duration, "memory_used": m.memory_used}
                 for m in self.metrics_history
-            ]
+            ],
         }
 
     def clear_history(self):
@@ -141,8 +141,7 @@ class SparseMatrixOptimizer:
     """Sparse matrix operations optimized for MFG problems."""
 
     @staticmethod
-    def create_laplacian_3d(nx: int, ny: int, nz: int,
-                           dx: float, dy: float, dz: float) -> csr_matrix:
+    def create_laplacian_3d(nx: int, ny: int, nz: int, dx: float, dy: float, dz: float) -> csr_matrix:
         """
         Create 3D discrete Laplacian operator using sparse matrices.
 
@@ -171,56 +170,56 @@ class SparseMatrixOptimizer:
                     center_idx = index_3d(i, j, k)
 
                     # Center point coefficient
-                    center_coeff = -2.0 * (1.0/dx**2 + 1.0/dy**2 + 1.0/dz**2)
+                    center_coeff = -2.0 * (1.0 / dx**2 + 1.0 / dy**2 + 1.0 / dz**2)
                     row_indices.append(center_idx)
                     col_indices.append(center_idx)
                     data.append(center_coeff)
 
                     # x-direction neighbors
                     if i > 0:
-                        neighbor_idx = index_3d(i-1, j, k)
+                        neighbor_idx = index_3d(i - 1, j, k)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
-                        data.append(1.0/dx**2)
+                        data.append(1.0 / dx**2)
 
-                    if i < nx-1:
-                        neighbor_idx = index_3d(i+1, j, k)
+                    if i < nx - 1:
+                        neighbor_idx = index_3d(i + 1, j, k)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
-                        data.append(1.0/dx**2)
+                        data.append(1.0 / dx**2)
 
                     # y-direction neighbors
                     if j > 0:
-                        neighbor_idx = index_3d(i, j-1, k)
+                        neighbor_idx = index_3d(i, j - 1, k)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
-                        data.append(1.0/dy**2)
+                        data.append(1.0 / dy**2)
 
-                    if j < ny-1:
-                        neighbor_idx = index_3d(i, j+1, k)
+                    if j < ny - 1:
+                        neighbor_idx = index_3d(i, j + 1, k)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
-                        data.append(1.0/dy**2)
+                        data.append(1.0 / dy**2)
 
                     # z-direction neighbors
                     if k > 0:
-                        neighbor_idx = index_3d(i, j, k-1)
+                        neighbor_idx = index_3d(i, j, k - 1)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
-                        data.append(1.0/dz**2)
+                        data.append(1.0 / dz**2)
 
-                    if k < nz-1:
-                        neighbor_idx = index_3d(i, j, k+1)
+                    if k < nz - 1:
+                        neighbor_idx = index_3d(i, j, k + 1)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
-                        data.append(1.0/dz**2)
+                        data.append(1.0 / dz**2)
 
-        return csr_matrix((data, (row_indices, col_indices)),
-                         shape=(total_points, total_points))
+        return csr_matrix((data, (row_indices, col_indices)), shape=(total_points, total_points))
 
     @staticmethod
-    def create_gradient_operators_3d(nx: int, ny: int, nz: int,
-                                   dx: float, dy: float, dz: float) -> tuple[csr_matrix, csr_matrix, csr_matrix]:
+    def create_gradient_operators_3d(
+        nx: int, ny: int, nz: int, dx: float, dy: float, dz: float
+    ) -> tuple[csr_matrix, csr_matrix, csr_matrix]:
         """
         Create 3D discrete gradient operators.
 
@@ -241,16 +240,16 @@ class SparseMatrixOptimizer:
 
                     if i == 0:  # Forward difference
                         row_x.extend([center_idx, center_idx])
-                        col_x.extend([center_idx, index_3d(i+1, j, k)])
-                        data_x.extend([-1.0/dx, 1.0/dx])
-                    elif i == nx-1:  # Backward difference
+                        col_x.extend([center_idx, index_3d(i + 1, j, k)])
+                        data_x.extend([-1.0 / dx, 1.0 / dx])
+                    elif i == nx - 1:  # Backward difference
                         row_x.extend([center_idx, center_idx])
-                        col_x.extend([index_3d(i-1, j, k), center_idx])
-                        data_x.extend([-1.0/dx, 1.0/dx])
+                        col_x.extend([index_3d(i - 1, j, k), center_idx])
+                        data_x.extend([-1.0 / dx, 1.0 / dx])
                     else:  # Central difference
                         row_x.extend([center_idx, center_idx])
-                        col_x.extend([index_3d(i-1, j, k), index_3d(i+1, j, k)])
-                        data_x.extend([-1.0/(2*dx), 1.0/(2*dx)])
+                        col_x.extend([index_3d(i - 1, j, k), index_3d(i + 1, j, k)])
+                        data_x.extend([-1.0 / (2 * dx), 1.0 / (2 * dx)])
 
         grad_x = csr_matrix((data_x, (row_x, col_x)), shape=(total_points, total_points))
 
@@ -262,8 +261,7 @@ class SparseMatrixOptimizer:
         return grad_x, grad_y, grad_z
 
     @staticmethod
-    def solve_sparse_system(A: csr_matrix, b: np.ndarray,
-                          method: str = "spsolve", **kwargs) -> np.ndarray:
+    def solve_sparse_system(A: csr_matrix, b: np.ndarray, method: str = "spsolve", **kwargs) -> np.ndarray:
         """
         Solve sparse linear system Ax = b with optimized methods.
 
@@ -291,8 +289,7 @@ class SparseMatrixOptimizer:
             raise ValueError(f"Unknown solver method: {method}")
 
     @staticmethod
-    def optimize_matrix_structure(matrix: csr_matrix,
-                                 reorder_method: str = "rcm") -> csr_matrix:
+    def optimize_matrix_structure(matrix: csr_matrix, reorder_method: str = "rcm") -> csr_matrix:
         """
         Optimize sparse matrix structure for better performance.
 
@@ -318,8 +315,7 @@ class SparseMatrixOptimizer:
             return matrix
 
     @staticmethod
-    def create_block_diagonal_preconditioner(matrix: csr_matrix,
-                                           block_size: int) -> csr_matrix:
+    def create_block_diagonal_preconditioner(matrix: csr_matrix, block_size: int) -> csr_matrix:
         """
         Create block diagonal preconditioner for iterative solvers.
 
@@ -358,8 +354,9 @@ class SparseMatrixOptimizer:
         return csr_matrix((precond_data, (precond_rows, precond_cols)), shape=(n, n))
 
     @staticmethod
-    def adaptive_matrix_format(matrix: csr_matrix | csc_matrix | lil_matrix,
-                             operation_type: str) -> csr_matrix | csc_matrix:
+    def adaptive_matrix_format(
+        matrix: csr_matrix | csc_matrix | lil_matrix, operation_type: str
+    ) -> csr_matrix | csc_matrix:
         """
         Convert matrix to optimal format for specific operations.
 
@@ -380,8 +377,7 @@ class SparseMatrixOptimizer:
             return matrix.tocsr()  # Default to CSR
 
     @staticmethod
-    def estimate_solve_complexity(matrix: csr_matrix,
-                                method: str = "spsolve") -> dict[str, int | float]:
+    def estimate_solve_complexity(matrix: csr_matrix, method: str = "spsolve") -> dict[str, int | float]:
         """
         Estimate computational complexity of solving linear system.
 
@@ -400,7 +396,7 @@ class SparseMatrixOptimizer:
             "nonzeros": nnz,
             "fill_factor": nnz / (n * n),
             "estimated_memory_mb": 0.0,
-            "estimated_time_seconds": 0.0
+            "estimated_time_seconds": 0.0,
         }
 
         if method == "spsolve":
@@ -433,7 +429,8 @@ class AdvancedSparseOperations:
             Kronecker product A ⊗ B
         """
         from scipy.sparse import kron
-        return kron(A, B, format='csr')
+
+        return kron(A, B, format="csr")
 
     @staticmethod
     def tensor_product_operator(operators: list[csr_matrix]) -> csr_matrix:
@@ -464,10 +461,9 @@ class AdvancedSparseOperations:
         return result
 
     @staticmethod
-    def create_multiscale_operator(fine_matrix: csr_matrix,
-                                 coarse_matrix: csr_matrix,
-                                 restriction: csr_matrix,
-                                 prolongation: csr_matrix) -> dict[str, csr_matrix]:
+    def create_multiscale_operator(
+        fine_matrix: csr_matrix, coarse_matrix: csr_matrix, restriction: csr_matrix, prolongation: csr_matrix
+    ) -> dict[str, csr_matrix]:
         """
         Create multiscale operator system for multigrid methods.
 
@@ -494,12 +490,11 @@ class AdvancedSparseOperations:
             "restriction": restriction,
             "prolongation": prolongation,
             "pre_smoother": pre_smoother,
-            "post_smoother": post_smoother
+            "post_smoother": post_smoother,
         }
 
     @staticmethod
-    def fast_matrix_powers(matrix: csr_matrix, power: int,
-                         method: str = "repeated_squaring") -> csr_matrix:
+    def fast_matrix_powers(matrix: csr_matrix, power: int, method: str = "repeated_squaring") -> csr_matrix:
         """
         Compute matrix powers efficiently for sparse matrices.
 
@@ -538,8 +533,7 @@ class AdvancedSparseOperations:
             raise ValueError(f"Unknown method: {method}")
 
     @staticmethod
-    def matrix_exponential_sparse(matrix: csr_matrix, time_step: float,
-                                method: str = "pade") -> csr_matrix:
+    def matrix_exponential_sparse(matrix: csr_matrix, time_step: float, method: str = "pade") -> csr_matrix:
         """
         Compute matrix exponential for sparse matrices (time integration).
 
@@ -593,8 +587,7 @@ class ParallelSparseOperations:
     """Parallel sparse matrix operations for multi-core systems."""
 
     @staticmethod
-    def parallel_matvec(matrix: csr_matrix, vectors: np.ndarray,
-                       num_threads: int | None = None) -> np.ndarray:
+    def parallel_matvec(matrix: csr_matrix, vectors: np.ndarray, num_threads: int | None = None) -> np.ndarray:
         """
         Parallel matrix-vector multiplication for multiple vectors.
 
@@ -624,8 +617,7 @@ class ParallelSparseOperations:
         return np.array([matrix @ v for v in vectors])
 
     @staticmethod
-    def chunk_based_operations(matrix: csr_matrix, operation: Callable,
-                             chunk_size: int = 1000) -> Any:
+    def chunk_based_operations(matrix: csr_matrix, operation: Callable, chunk_size: int = 1000) -> Any:
         """
         Process large sparse matrices in chunks to manage memory.
 
@@ -657,8 +649,7 @@ class MemoryOptimizer:
     """Memory optimization utilities for large-scale problems."""
 
     @staticmethod
-    def estimate_memory_requirements(problem_size: tuple[int, ...],
-                                   data_type: str = "float64") -> dict[str, float]:
+    def estimate_memory_requirements(problem_size: tuple[int, ...], data_type: str = "float64") -> dict[str, float]:
         """
         Estimate memory requirements for MFG problem.
 
@@ -672,12 +663,7 @@ class MemoryOptimizer:
         spatial_points, time_steps = problem_size[:2]
 
         # Bytes per element
-        bytes_per_element = {
-            "float32": 4,
-            "float64": 8,
-            "complex64": 8,
-            "complex128": 16
-        }.get(data_type, 8)
+        bytes_per_element = {"float32": 4, "float64": 8, "complex64": 8, "complex128": 16}.get(data_type, 8)
 
         estimates = {
             "density_field": spatial_points * time_steps * bytes_per_element / 1024**2,
@@ -711,10 +697,9 @@ class MemoryOptimizer:
             return array
 
     @staticmethod
-    def chunk_computation(computation_func: Callable,
-                         data: np.ndarray,
-                         chunk_size: int = 1000,
-                         axis: int = 0) -> np.ndarray:
+    def chunk_computation(
+        computation_func: Callable, data: np.ndarray, chunk_size: int = 1000, axis: int = 0
+    ) -> np.ndarray:
         """
         Break large computation into chunks to manage memory.
 
@@ -727,9 +712,7 @@ class MemoryOptimizer:
         Returns:
             Concatenated results
         """
-        chunks = np.array_split(data,
-                               max(1, data.shape[axis] // chunk_size),
-                               axis=axis)
+        chunks = np.array_split(data, max(1, data.shape[axis] // chunk_size), axis=axis)
 
         results = []
         for chunk in chunks:
@@ -779,7 +762,7 @@ class AccelerationBackend:
         return {
             "current_backend": self.current_backend,
             "available_backends": self.available_backends,
-            "recommendations": self._get_recommendations()
+            "recommendations": self._get_recommendations(),
         }
 
     def _get_recommendations(self) -> list[str]:
@@ -824,9 +807,7 @@ class ParallelizationHelper:
     """Helper class for parallel computation strategies."""
 
     @staticmethod
-    def estimate_optimal_chunks(total_size: int,
-                              memory_limit_mb: float = 1000,
-                              element_size_bytes: int = 8) -> int:
+    def estimate_optimal_chunks(total_size: int, memory_limit_mb: float = 1000, element_size_bytes: int = 8) -> int:
         """
         Estimate optimal chunk size for parallel processing.
 
@@ -847,8 +828,7 @@ class ParallelizationHelper:
         return max(1, optimal_chunk_size)
 
     @staticmethod
-    def create_load_balanced_chunks(data_sizes: list[int],
-                                  num_workers: int) -> list[list[int]]:
+    def create_load_balanced_chunks(data_sizes: list[int], num_workers: int) -> list[list[int]]:
         """
         Create load-balanced work distribution.
 
@@ -889,11 +869,12 @@ def create_performance_optimizer() -> dict[str, Any]:
         "sparse_optimizer": SparseMatrixOptimizer(),
         "memory_optimizer": MemoryOptimizer(),
         "acceleration_backend": AccelerationBackend(),
-        "parallelization_helper": ParallelizationHelper()
+        "parallelization_helper": ParallelizationHelper(),
     }
 
 
 # High-level optimization functions
+
 
 def optimize_mfg_problem_performance(problem_params: dict[str, Any]) -> dict[str, Any]:
     """
@@ -915,9 +896,7 @@ def optimize_mfg_problem_performance(problem_params: dict[str, Any]) -> dict[str
     backend = optimizer_suite["acceleration_backend"]
 
     # Memory analysis
-    memory_est = memory_optimizer.estimate_memory_requirements(
-        (spatial_points, time_steps)
-    )
+    memory_est = memory_optimizer.estimate_memory_requirements((spatial_points, time_steps))
 
     # Performance recommendations
     recommendations = []
@@ -938,5 +917,5 @@ def optimize_mfg_problem_performance(problem_params: dict[str, Any]) -> dict[str
         "memory_estimates": memory_est,
         "backend_info": backend.get_backend_info(),
         "recommendations": recommendations,
-        "optimization_suite": optimizer_suite
+        "optimization_suite": optimizer_suite,
     }

@@ -8,13 +8,14 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import ClassVar
 
 
 class CustomSecretsScanner:
     """Custom scanner for secrets and sensitive information."""
 
     # Patterns for different types of secrets
-    SECRET_PATTERNS = {
+    SECRET_PATTERNS: ClassVar[dict[str, list[str]]] = {
         "api_key": [
             r"(?i)api[_-]?key['\"\s]*[:=]['\"\s]*[a-zA-Z0-9]{20,}",
             r"(?i)apikey['\"\s]*[:=]['\"\s]*[a-zA-Z0-9]{20,}",
@@ -65,7 +66,7 @@ class CustomSecretsScanner:
     }
 
     # File extensions to scan
-    SCAN_EXTENSIONS = {
+    SCAN_EXTENSIONS: ClassVar[set[str]] = {
         ".py",
         ".js",
         ".ts",
@@ -91,7 +92,7 @@ class CustomSecretsScanner:
     }
 
     # Directories to exclude
-    EXCLUDE_DIRS = {
+    EXCLUDE_DIRS: ClassVar[set[str]] = {
         ".git",
         "__pycache__",
         ".pytest_cache",

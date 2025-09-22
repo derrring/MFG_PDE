@@ -14,8 +14,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mfg_pde import MFGComponents
-from mfg_pde.geometry import Domain3D
 from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem, HybridMFGSolver
+from mfg_pde.geometry import Domain3D
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -31,32 +31,29 @@ class CrowdEvacuation3D(HighDimMFGProblem):
     with congestion effects and collision avoidance.
     """
 
-    def __init__(self,
-                 box_size: float = 2.0,
-                 obstacles: list = None,
-                 mesh_size: float = 0.2,
-                 time_horizon: float = 2.0,
-                 num_timesteps: int = 50):
-
+    def __init__(
+        self,
+        box_size: float = 2.0,
+        obstacles: list = None,
+        mesh_size: float = 0.2,
+        time_horizon: float = 2.0,
+        num_timesteps: int = 50,
+    ):
         # Create 3D box geometry with potential obstacles
         geometry = Domain3D(
             domain_type="box",
             bounds=(0.0, box_size, 0.0, box_size, 0.0, box_size),
             holes=obstacles or [],
-            mesh_size=mesh_size
+            mesh_size=mesh_size,
         )
 
         # Problem parameters
         self.box_size = box_size
-        self.exit_center = np.array([box_size/2, box_size/2, box_size])  # Top center exit
+        self.exit_center = np.array([box_size / 2, box_size / 2, box_size])  # Top center exit
         self.congestion_strength = 0.1
         self.exit_radius = 0.5
 
-        super().__init__(
-            geometry=geometry,
-            time_domain=(time_horizon, num_timesteps),
-            diffusion_coeff=0.05
-        )
+        super().__init__(geometry=geometry, time_domain=(time_horizon, num_timesteps), diffusion_coeff=0.05)
 
         logger.info(f"Created 3D evacuation problem: {box_size}×{box_size}×{box_size} box")
         logger.info(f"Mesh: {self.mesh_data.num_vertices} vertices, {self.mesh_data.num_elements} tetrahedra")
@@ -146,7 +143,7 @@ class CrowdEvacuation3D(HighDimMFGProblem):
                 density = 0.0
                 for source in sources:
                     distance = np.linalg.norm(coords - source)
-                    density += 2.0 * np.exp(-distance**2 / (2 * 0.1**2))
+                    density += 2.0 * np.exp(-(distance**2) / (2 * 0.1**2))
 
                 return max(density, 1e-10)
 
@@ -178,13 +175,9 @@ class CrowdEvacuation3D(HighDimMFGProblem):
             hamiltonian_dm_func=hamiltonian_dm,
             initial_density_func=initial_crowd_density,
             final_value_func=terminal_cost,
-            parameters={
-                'dimension': 3,
-                'congestion_strength': self.congestion_strength,
-                'box_size': self.box_size
-            },
+            parameters={"dimension": 3, "congestion_strength": self.congestion_strength, "box_size": self.box_size},
             description="3D Crowd Evacuation MFG",
-            problem_type="crowd_evacuation_3d"
+            problem_type="crowd_evacuation_3d",
         )
 
     def initial_density(self, x: np.ndarray) -> np.ndarray:
@@ -215,13 +208,9 @@ def run_3d_box_demonstration():
         obstacles = [
             {
                 "type": "box",
-                "bounds": (0.8, 1.2, 0.8, 1.2, 0.0, 1.0)  # Central pillar
+                "bounds": (0.8, 1.2, 0.8, 1.2, 0.0, 1.0),  # Central pillar
             },
-            {
-                "type": "sphere",
-                "center": (0.5, 1.5, 0.5),
-                "radius": 0.2
-            }
+            {"type": "sphere", "center": (0.5, 1.5, 0.5), "radius": 0.2},
         ]
 
         problem = CrowdEvacuation3D(
@@ -229,32 +218,28 @@ def run_3d_box_demonstration():
             obstacles=obstacles,
             mesh_size=0.3,  # Coarse mesh for demonstration
             time_horizon=1.5,
-            num_timesteps=30
+            num_timesteps=30,
         )
 
-        logger.info(f"Problem setup complete:")
+        logger.info("Problem setup complete:")
         logger.info(f"  Domain: 2×2×2 box with {len(obstacles)} obstacles")
         logger.info(f"  Mesh: {problem.mesh_data.num_vertices} vertices")
         logger.info(f"  Quality: min={problem.mesh_data.quality_metrics.get('min_quality', 0):.3f}")
 
         # Method 1: Damped Fixed Point (fastest)
-        logger.info("\n" + "="*40)
+        logger.info("\n" + "=" * 40)
         logger.info("Method 1: Damped Fixed Point Solver")
-        logger.info("="*40)
+        logger.info("=" * 40)
 
-        result_fp = problem.solve_with_damped_fixed_point(
-            damping_factor=0.6,
-            max_iterations=20,
-            tolerance=1e-3
-        )
+        result_fp = problem.solve_with_damped_fixed_point(damping_factor=0.6, max_iterations=20, tolerance=1e-3)
 
-        if result_fp['success']:
+        if result_fp["success"]:
             logger.info("✅ Damped fixed point solver succeeded!")
             logger.info(f"   Method: {result_fp['solver_info']['method']}")
             logger.info(f"   Dimension: {result_fp['solver_info']['dimension']}")
 
             # Basic analysis
-            final_density = result_fp['solution']['final_density']
+            final_density = result_fp["solution"]["final_density"]
             logger.info(f"   Final mass: {np.sum(final_density):.4f}")
             logger.info(f"   Peak density: {np.max(final_density):.4f}")
 
@@ -263,25 +248,21 @@ def run_3d_box_demonstration():
             logger.error(f"   Error: {result_fp.get('error', 'Unknown')}")
 
         # Method 2: Hybrid Solver (most robust)
-        logger.info("\n" + "="*40)
+        logger.info("\n" + "=" * 40)
         logger.info("Method 2: Hybrid Multi-Strategy Solver")
-        logger.info("="*40)
+        logger.info("=" * 40)
 
         hybrid_solver = HybridMFGSolver(problem)
-        result_hybrid = hybrid_solver.solve(
-            max_total_iterations=40,
-            tolerance=1e-4,
-            strategy="adaptive"
-        )
+        result_hybrid = hybrid_solver.solve(max_total_iterations=40, tolerance=1e-4, strategy="adaptive")
 
-        if result_hybrid['success']:
+        if result_hybrid["success"]:
             logger.info("✅ Hybrid solver succeeded!")
             logger.info(f"   Method: {result_hybrid['solver_info']['method']}")
             logger.info(f"   Phases: {result_hybrid['solver_info'].get('phases', 'N/A')}")
 
             # Analysis of evacuation efficiency
-            final_density = result_hybrid['solution']['final_density']
-            coords = result_hybrid['solution']['coordinates']
+            final_density = result_hybrid["solution"]["final_density"]
+            coords = result_hybrid["solution"]["coordinates"]
 
             # Compute evacuation progress
             distances_to_exit = np.linalg.norm(coords - problem.exit_center, axis=1)
@@ -295,14 +276,14 @@ def run_3d_box_demonstration():
             logger.error(f"   Error: {result_hybrid.get('error', 'Unknown')}")
 
         # Visualization (if available)
-        logger.info("\n" + "="*40)
+        logger.info("\n" + "=" * 40)
         logger.info("Visualization")
-        logger.info("="*40)
+        logger.info("=" * 40)
 
         try:
-            if result_hybrid['success']:
+            if result_hybrid["success"]:
                 logger.info("Creating 3D visualization...")
-                problem.visualize_solution(result_hybrid, time_index=-1, field_type='density')
+                problem.visualize_solution(result_hybrid, time_index=-1, field_type="density")
                 logger.info("✅ 3D visualization complete!")
             else:
                 logger.warning("No successful solution to visualize")
@@ -313,42 +294,39 @@ def run_3d_box_demonstration():
             logger.warning(f"Visualization failed: {e}")
 
         # Performance summary
-        logger.info("\n" + "="*50)
+        logger.info("\n" + "=" * 50)
         logger.info("3D MFG Demonstration Summary")
-        logger.info("="*50)
+        logger.info("=" * 50)
 
-        if result_fp['success']:
+        if result_fp["success"]:
             logger.info("✅ Damped Fixed Point: SUCCESS (recommended for testing)")
         else:
             logger.info("❌ Damped Fixed Point: FAILED")
 
-        if result_hybrid['success']:
+        if result_hybrid["success"]:
             logger.info("✅ Hybrid Solver: SUCCESS (recommended for production)")
         else:
             logger.info("❌ Hybrid Solver: FAILED")
 
-        logger.info(f"\n📊 Problem Statistics:")
-        logger.info(f"   Spatial dimension: 3D")
+        logger.info("\n📊 Problem Statistics:")
+        logger.info("   Spatial dimension: 3D")
         logger.info(f"   Mesh vertices: {problem.mesh_data.num_vertices}")
         logger.info(f"   Time steps: {problem.Nt}")
         logger.info(f"   Total DOF: {problem.mesh_data.num_vertices * problem.Nt}")
 
-        logger.info(f"\n🎯 High-Dimensional MFG Infrastructure:")
-        logger.info(f"   ✅ Domain3D geometry")
-        logger.info(f"   ✅ Tetrahedral mesh generation")
-        logger.info(f"   ✅ Multi-dimensional solver integration")
-        logger.info(f"   ✅ Hybrid solver strategies")
-        logger.info(f"   ✅ 3D visualization capabilities")
+        logger.info("\n🎯 High-Dimensional MFG Infrastructure:")
+        logger.info("   ✅ Domain3D geometry")
+        logger.info("   ✅ Tetrahedral mesh generation")
+        logger.info("   ✅ Multi-dimensional solver integration")
+        logger.info("   ✅ Hybrid solver strategies")
+        logger.info("   ✅ 3D visualization capabilities")
 
-        return {
-            'damped_fixed_point': result_fp,
-            'hybrid_solver': result_hybrid,
-            'problem': problem
-        }
+        return {"damped_fixed_point": result_fp, "hybrid_solver": result_hybrid, "problem": problem}
 
     except Exception as e:
         logger.error(f"Demonstration failed: {e}")
         import traceback
+
         traceback.print_exc()
         return None
 
@@ -357,9 +335,9 @@ if __name__ == "__main__":
     results = run_3d_box_demonstration()
 
     if results:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🎉 3D MFG High-Dimensional Extension: DEMONSTRATION COMPLETE!")
-        print("="*60)
+        print("=" * 60)
         print("The MFG_PDE package now supports:")
         print("  • 3D domain geometry with complex shapes")
         print("  • Multi-dimensional damped fixed point solvers")

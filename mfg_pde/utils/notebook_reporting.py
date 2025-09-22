@@ -47,7 +47,6 @@ class NotebookReportError(Exception):
     """Exception for notebook reporting errors."""
 
 
-
 class MFGNotebookReporter:
     """
     Comprehensive notebook reporting system for Mean Field Games research.

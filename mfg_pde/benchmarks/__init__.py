@@ -7,12 +7,12 @@ various problem dimensions and sizes.
 """
 
 from .highdim_benchmark_suite import (
-    HighDimMFGBenchmark,
     BenchmarkResult,
     BenchmarkSuite,
-    create_quick_benchmark_suite,
+    HighDimMFGBenchmark,
     create_comprehensive_benchmark_suite,
-    run_standard_benchmarks
+    create_quick_benchmark_suite,
+    run_standard_benchmarks,
 )
 
 __all__ = [
@@ -21,5 +21,5 @@ __all__ = [
     "BenchmarkSuite",
     "create_quick_benchmark_suite",
     "create_comprehensive_benchmark_suite",
-    "run_standard_benchmarks"
+    "run_standard_benchmarks",
 ]

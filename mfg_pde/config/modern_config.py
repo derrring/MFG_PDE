@@ -7,11 +7,10 @@ that complements the existing configuration system.
 
 from __future__ import annotations
 
-
-from typing import Any
 import copy
+from typing import Any
 
-from .pydantic_config import MFGSolverConfig, create_fast_config, create_accurate_config, create_research_config
+from .pydantic_config import MFGSolverConfig, create_accurate_config, create_fast_config, create_research_config
 
 
 class SolverConfig:
@@ -46,25 +45,25 @@ class SolverConfig:
         """Set convergence tolerance."""
         new_config = copy.deepcopy(self._config)
         # Update the relevant tolerance fields
-        if hasattr(new_config, 'picard') and new_config.picard:
+        if hasattr(new_config, "picard") and new_config.picard:
             new_config.picard.tolerance = tolerance
-        if hasattr(new_config, 'newton') and new_config.newton:
+        if hasattr(new_config, "newton") and new_config.newton:
             new_config.newton.tolerance = tolerance
         return SolverConfig(new_config)
 
     def with_max_iterations(self, max_iterations: int) -> SolverConfig:
         """Set maximum iterations."""
         new_config = copy.deepcopy(self._config)
-        if hasattr(new_config, 'picard') and new_config.picard:
+        if hasattr(new_config, "picard") and new_config.picard:
             new_config.picard.max_iterations = max_iterations
-        if hasattr(new_config, 'newton') and new_config.newton:
+        if hasattr(new_config, "newton") and new_config.newton:
             new_config.newton.max_iterations = max_iterations
         return SolverConfig(new_config)
 
     def with_damping(self, damping_factor: float) -> SolverConfig:
         """Set damping factor."""
         new_config = copy.deepcopy(self._config)
-        if hasattr(new_config, 'picard') and new_config.picard:
+        if hasattr(new_config, "picard") and new_config.picard:
             new_config.picard.damping_factor = damping_factor
         return SolverConfig(new_config)
 
@@ -72,9 +71,9 @@ class SolverConfig:
         """Enable/disable verbose output."""
         new_config = copy.deepcopy(self._config)
         # Set verbose on all components that support it
-        for component_name in ['picard', 'newton', 'hjb', 'fp']:
+        for component_name in ["picard", "newton", "hjb", "fp"]:
             component = getattr(new_config, component_name, None)
-            if component and hasattr(component, 'verbose'):
+            if component and hasattr(component, "verbose"):
                 component.verbose = verbose
         return SolverConfig(new_config)
 
@@ -97,14 +96,14 @@ class SolverConfig:
         new_config = copy.deepcopy(self._config)
         # Store custom parameters in the SolverConfig wrapper instead
         new_solver_config = SolverConfig(new_config)
-        if not hasattr(new_solver_config, '_custom_parameters'):
+        if not hasattr(new_solver_config, "_custom_parameters"):
             new_solver_config._custom_parameters = {}
         new_solver_config._custom_parameters[name] = value
         return new_solver_config
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return self._config.dict() if hasattr(self._config, 'dict') else vars(self._config)
+        return self._config.dict() if hasattr(self._config, "dict") else vars(self._config)
 
     def get_underlying_config(self) -> MFGSolverConfig:
         """Get the underlying Pydantic configuration."""
@@ -113,7 +112,7 @@ class SolverConfig:
     def get_parameter(self, name: str, default: Any = None) -> Any:
         """Get a parameter value."""
         # First check custom parameters stored in wrapper
-        if hasattr(self, '_custom_parameters') and name in self._custom_parameters:
+        if hasattr(self, "_custom_parameters") and name in self._custom_parameters:
             return self._custom_parameters[name]
 
         # Then check standard parameters
@@ -122,14 +121,14 @@ class SolverConfig:
     @property
     def max_iterations(self) -> int:
         """Get max iterations."""
-        if hasattr(self._config, 'picard') and self._config.picard:
+        if hasattr(self._config, "picard") and self._config.picard:
             return self._config.picard.max_iterations
         return 100  # Default
 
     @property
     def tolerance(self) -> float:
         """Get tolerance."""
-        if hasattr(self._config, 'picard') and self._config.picard:
+        if hasattr(self._config, "picard") and self._config.picard:
             return self._config.picard.tolerance
         return 1e-6  # Default
 
@@ -157,10 +156,7 @@ class PresetConfig:
         - Verbose output for debugging
         """
         base = create_research_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-4)
-                .with_max_iterations(50)
-                .with_verbose(True))
+        return SolverConfig(base).with_tolerance(1e-4).with_max_iterations(50).with_verbose(True)
 
     @staticmethod
     def for_production_quality() -> SolverConfig:
@@ -172,10 +168,7 @@ class PresetConfig:
         - Error checking enabled
         """
         base = create_accurate_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-8)
-                .with_max_iterations(1000)
-                .with_verbose(False))
+        return SolverConfig(base).with_tolerance(1e-8).with_max_iterations(1000).with_verbose(False)
 
     @staticmethod
     def for_high_performance() -> SolverConfig:
@@ -187,10 +180,7 @@ class PresetConfig:
         - Optimized for large problems
         """
         base = create_fast_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-5)
-                .with_max_iterations(200)
-                .with_verbose(False))
+        return SolverConfig(base).with_tolerance(1e-5).with_max_iterations(200).with_verbose(False)
 
     @staticmethod
     def for_educational() -> SolverConfig:
@@ -202,12 +192,14 @@ class PresetConfig:
         - Moderate accuracy
         """
         base = create_research_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-4)
-                .with_max_iterations(100)
-                .with_verbose(True)
-                .with_custom_parameter('show_steps', True)
-                .with_custom_parameter('plot_convergence', True))
+        return (
+            SolverConfig(base)
+            .with_tolerance(1e-4)
+            .with_max_iterations(100)
+            .with_verbose(True)
+            .with_custom_parameter("show_steps", True)
+            .with_custom_parameter("plot_convergence", True)
+        )
 
     @staticmethod
     def for_high_accuracy() -> SolverConfig:
@@ -219,11 +211,13 @@ class PresetConfig:
         - Conservative algorithms
         """
         base = create_accurate_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-10)
-                .with_max_iterations(2000)
-                .with_damping(0.5)  # More conservative
-                .with_verbose(False))
+        return (
+            SolverConfig(base)
+            .with_tolerance(1e-10)
+            .with_max_iterations(2000)
+            .with_damping(0.5)  # More conservative
+            .with_verbose(False)
+        )
 
     @staticmethod
     def for_large_problems() -> SolverConfig:
@@ -235,11 +229,13 @@ class PresetConfig:
         - Scalable methods
         """
         base = create_fast_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-4)
-                .with_max_iterations(100)
-                .with_custom_parameter('memory_efficient', True)
-                .with_custom_parameter('use_sparse', True))
+        return (
+            SolverConfig(base)
+            .with_tolerance(1e-4)
+            .with_max_iterations(100)
+            .with_custom_parameter("memory_efficient", True)
+            .with_custom_parameter("use_sparse", True)
+        )
 
     @staticmethod
     def for_crowd_dynamics() -> SolverConfig:
@@ -251,11 +247,13 @@ class PresetConfig:
         - Good balance of speed and stability
         """
         base = create_fast_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-5)
-                .with_max_iterations(200)
-                .with_damping(0.9)
-                .with_custom_parameter('adaptive_grid', True))
+        return (
+            SolverConfig(base)
+            .with_tolerance(1e-5)
+            .with_max_iterations(200)
+            .with_damping(0.9)
+            .with_custom_parameter("adaptive_grid", True)
+        )
 
     @staticmethod
     def for_financial_problems() -> SolverConfig:
@@ -267,11 +265,13 @@ class PresetConfig:
         - Conservative convergence criteria
         """
         base = create_accurate_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-7)
-                .with_max_iterations(500)
-                .with_damping(0.8)
-                .with_custom_parameter('enforce_bounds', True))
+        return (
+            SolverConfig(base)
+            .with_tolerance(1e-7)
+            .with_max_iterations(500)
+            .with_damping(0.8)
+            .with_custom_parameter("enforce_bounds", True)
+        )
 
     @staticmethod
     def for_epidemic_models() -> SolverConfig:
@@ -283,11 +283,13 @@ class PresetConfig:
         - Conservative time stepping
         """
         base = create_research_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-6)
-                .with_max_iterations(300)
-                .with_damping(0.7)
-                .with_custom_parameter('adaptive_timestep', True))
+        return (
+            SolverConfig(base)
+            .with_tolerance(1e-6)
+            .with_max_iterations(300)
+            .with_damping(0.7)
+            .with_custom_parameter("adaptive_timestep", True)
+        )
 
     @staticmethod
     def for_traffic_flow() -> SolverConfig:
@@ -299,11 +301,13 @@ class PresetConfig:
         - Good performance for steady-state problems
         """
         base = create_fast_config()
-        return (SolverConfig(base)
-                .with_tolerance(1e-5)
-                .with_max_iterations(150)
-                .with_custom_parameter('use_upwind', True)
-                .with_custom_parameter('steady_state_acceleration', True))
+        return (
+            SolverConfig(base)
+            .with_tolerance(1e-5)
+            .with_max_iterations(150)
+            .with_custom_parameter("use_upwind", True)
+            .with_custom_parameter("steady_state_acceleration", True)
+        )
 
 
 # Convenience aliases for common usage patterns
@@ -311,41 +315,51 @@ def create_config() -> SolverConfig:
     """Create a default configuration."""
     return SolverConfig()
 
+
 def research_config() -> SolverConfig:
     """Create configuration for research."""
     return PresetConfig.for_research_prototype()
+
 
 def production_config() -> SolverConfig:
     """Create configuration for production."""
     return PresetConfig.for_production_quality()
 
+
 def fast_config() -> SolverConfig:
     """Create configuration for speed."""
     return PresetConfig.for_high_performance()
+
 
 def accurate_config() -> SolverConfig:
     """Create configuration for accuracy."""
     return PresetConfig.for_high_accuracy()
 
+
 def educational_config() -> SolverConfig:
     """Create configuration for education."""
     return PresetConfig.for_educational()
+
 
 def crowd_dynamics_config() -> SolverConfig:
     """Create configuration optimized for crowd dynamics."""
     return PresetConfig.for_crowd_dynamics()
 
+
 def financial_config() -> SolverConfig:
     """Create configuration optimized for financial problems."""
     return PresetConfig.for_financial_problems()
+
 
 def epidemic_config() -> SolverConfig:
     """Create configuration optimized for epidemic models."""
     return PresetConfig.for_epidemic_models()
 
+
 def traffic_config() -> SolverConfig:
     """Create configuration optimized for traffic flow."""
     return PresetConfig.for_traffic_flow()
+
 
 def large_scale_config() -> SolverConfig:
     """Create configuration optimized for large-scale problems."""

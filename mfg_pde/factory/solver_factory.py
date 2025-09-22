@@ -78,7 +78,12 @@ class SolverFactory:
         enable_amr: bool = False,
         amr_config: dict[str, Any] | None = None,
         **kwargs,
-    ) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
+    ) -> (
+        ConfigAwareFixedPointIterator
+        | MonitoredParticleCollocationSolver
+        | AdaptiveParticleCollocationSolver
+        | AMREnhancedSolver
+    ):
         """
         Create an MFG solver with optimized configuration.
 
@@ -359,7 +364,12 @@ def create_solver(
     solver_type: SolverType = "fixed_point",
     preset: str = "balanced",
     **kwargs,
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+    | AMREnhancedSolver
+):
     """
     Create an MFG solver with specified type and preset.
 
@@ -377,7 +387,12 @@ def create_solver(
 
 def create_fast_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+    | AMREnhancedSolver
+):
     """
     Create a fast MFG solver optimized for speed.
 
@@ -391,7 +406,6 @@ def create_fast_solver(
     """
     # For fixed_point solvers, create default HJB and FP solvers if not provided
     if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
-
         from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
         from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
 
@@ -485,7 +499,12 @@ def create_semi_lagrangian_solver(
 
 def create_accurate_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+    | AMREnhancedSolver
+):
     """
     Create an accurate MFG solver optimized for precision.
 
@@ -502,7 +521,12 @@ def create_accurate_solver(
 
 def create_research_solver(
     problem: MFGProblem, solver_type: SolverType = "monitored_particle", **kwargs
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver | AMREnhancedSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+    | AMREnhancedSolver
+):
     """
     Create a research MFG solver with comprehensive monitoring.
 

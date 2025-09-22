@@ -6,7 +6,6 @@ Demonstrates how the new triangular AMR seamlessly integrates with
 the existing MFG_PDE geometry infrastructure (MeshData, Domain2D, etc.).
 """
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 

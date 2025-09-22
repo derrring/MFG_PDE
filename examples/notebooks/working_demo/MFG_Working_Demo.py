@@ -12,7 +12,6 @@
 # In[1]:
 
 
-
 import matplotlib.pyplot as plt
 
 # Essential imports with error handling

@@ -27,6 +27,7 @@ solver = HJBSemiLagrangianSolver(
 # SOLUTION: Smart defaults based on problem characteristics
 # =============================================================================
 
+
 def auto_configure_solver(problem, performance_target="balanced"):
     """
     Automatically configure solver based on problem characteristics.
@@ -47,28 +48,28 @@ def auto_configure_solver(problem, performance_target="balanced"):
     # Smart defaults based on analysis
     if problem_size < 1000 and performance_target == "accurate":
         config = {
-            "method": "spectral",           # High accuracy for small problems
+            "method": "spectral",  # High accuracy for small problems
             "tolerance": 1e-10,
-            "interpolation": "cubic_spline"
+            "interpolation": "cubic_spline",
         }
     elif problem_size > 100000 or performance_target == "fast":
         config = {
             "method": "particle_collocation",  # Fast for large problems
             "tolerance": 1e-4,
-            "use_jax": True,               # GPU acceleration
-            "adaptive_mesh": True
+            "use_jax": True,  # GPU acceleration
+            "adaptive_mesh": True,
         }
     elif has_discontinuities:
         config = {
             "method": "finite_difference",  # Robust for discontinuities
             "shock_capturing": True,
-            "adaptive_refinement": True
+            "adaptive_refinement": True,
         }
     else:
         config = {
-            "method": "semi_lagrangian",   # Good general purpose
+            "method": "semi_lagrangian",  # Good general purpose
             "tolerance": 1e-6,
-            "interpolation": "linear"
+            "interpolation": "linear",
         }
 
     # Memory management
@@ -78,9 +79,11 @@ def auto_configure_solver(problem, performance_target="balanced"):
 
     return create_configured_solver(problem, config)
 
+
 # =============================================================================
 # USER EXPERIENCE: Just specify what you care about
 # =============================================================================
+
 
 def simple_user_interface():
     """Examples of user-friendly interface."""
@@ -95,10 +98,8 @@ def simple_user_interface():
     result = solve_mfg("traffic_flow", memory_efficient=True)
 
     # Scenario 4: "I want to experiment"
-    result = solve_mfg("custom",
-                      hamiltonian=my_hamiltonian,
-                      domain=(0, 10),
-                      quick_prototype=True)
+    result = solve_mfg("custom", hamiltonian=my_hamiltonian, domain=(0, 10), quick_prototype=True)
+
 
 # =============================================================================
 # PRESET CONFIGURATIONS: Common use cases
@@ -110,31 +111,19 @@ PRESET_CONFIGS = {
         "max_iterations": 50,
         "verbose": True,
         "save_intermediate": True,
-        "method": "auto"
+        "method": "auto",
     },
-
     "production_quality": {
         "tolerance": 1e-8,
         "max_iterations": 1000,
         "error_checking": True,
         "convergence_analysis": True,
-        "method": "most_accurate"
+        "method": "most_accurate",
     },
-
-    "high_performance": {
-        "use_gpu": True,
-        "parallel": True,
-        "memory_efficient": True,
-        "method": "fastest"
-    },
-
-    "educational": {
-        "verbose": True,
-        "plot_convergence": True,
-        "explain_steps": True,
-        "method": "most_interpretable"
-    }
+    "high_performance": {"use_gpu": True, "parallel": True, "memory_efficient": True, "method": "fastest"},
+    "educational": {"verbose": True, "plot_convergence": True, "explain_steps": True, "method": "most_interpretable"},
 }
+
 
 def solve_with_preset(problem_type, preset="research_prototype", **overrides):
     """Use preset configuration with optional overrides."""
@@ -142,6 +131,7 @@ def solve_with_preset(problem_type, preset="research_prototype", **overrides):
     config.update(overrides)  # User can override any setting
 
     return solve_mfg_with_config(problem_type, config)
+
 
 # =============================================================================
 # IMPLEMENTATION STRATEGY

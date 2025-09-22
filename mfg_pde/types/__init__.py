@@ -17,17 +17,17 @@ Internal Types (use with caution):
 """
 
 # Re-export the most commonly needed types
-from .protocols import MFGProblem, MFGResult, MFGSolver, SolverConfig, SolutionArray
-from .state import SpatialTemporalState, ConvergenceInfo
+from .protocols import MFGProblem, MFGResult, MFGSolver, SolutionArray, SolverConfig
+from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
-    'MFGProblem',
-    'MFGResult',
-    'MFGSolver',
-    'SolverConfig',
-    'SolutionArray',
-    'SpatialTemporalState',
-    'ConvergenceInfo'
+    "MFGProblem",
+    "MFGResult",
+    "MFGSolver",
+    "SolverConfig",
+    "SolutionArray",
+    "SpatialTemporalState",
+    "ConvergenceInfo",
 ]
 
 # Internal types available via explicit import:

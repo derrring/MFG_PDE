@@ -7,13 +7,12 @@ to customize solver behavior without complex inheritance.
 
 from __future__ import annotations
 
-
-from typing import TYPE_CHECKING
 from abc import ABC
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # Avoid circular imports - only import types when type checking
-    from ..types import SpatialTemporalState, MFGResult
+    from ..types import MFGResult, SpatialTemporalState
 
 
 class SolverHooks(ABC):
@@ -43,7 +42,6 @@ class SolverHooks(ABC):
         Args:
             initial_state: Initial solution state with u, m, and metadata
         """
-        pass
 
     def on_iteration_start(self, state: SpatialTemporalState) -> None:
         """
@@ -57,7 +55,6 @@ class SolverHooks(ABC):
         Args:
             state: Current solution state before iteration
         """
-        pass
 
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None:
         """
@@ -78,7 +75,6 @@ class SolverHooks(ABC):
             - "stop": Stop iteration early
             - "restart": Restart with modified conditions
         """
-        pass
 
     def on_convergence_check(self, state: SpatialTemporalState) -> bool | None:
         """
@@ -97,7 +93,6 @@ class SolverHooks(ABC):
             - True: Force convergence (stop iteration)
             - False: Force non-convergence (continue iteration)
         """
-        pass
 
     def on_solve_end(self, result: MFGResult) -> MFGResult:
         """

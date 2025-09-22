@@ -8,9 +8,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.alg.mfg_solvers.hybrid_fp_particle_hjb_fdm import HybridSolverPresets
+from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.factory.solver_factory import create_solver
+
 
 def main():
     print("🚀 Quick Hybrid FP-Particle + HJB-FDM Solver Demo")
@@ -26,16 +27,16 @@ def main():
 
     result = hybrid_solver.solve(
         max_iterations=15,  # Reduced for quick demo
-        tolerance=1e-3,     # Relaxed tolerance
-        damping_factor=0.6
+        tolerance=1e-3,  # Relaxed tolerance
+        damping_factor=0.6,
     )
 
-    if result['converged']:
+    if result["converged"]:
         print(f"✅ Direct solver: CONVERGED in {result['iterations']} iterations")
         print(f"   Time: {result['solve_time']:.2f}s")
         print(f"   Residual: {result['final_residual']:.2e}")
     else:
-        print(f"⚠️ Direct solver: Did not converge")
+        print("⚠️ Direct solver: Did not converge")
 
     # Test 2: Factory integration
     print("\n--- Test 2: Factory Integration ---")
@@ -44,20 +45,16 @@ def main():
             problem=problem,
             solver_type="hybrid_fp_particle_hjb_fdm",
             preset="fast",
-            num_particles=2000  # Reduced for speed
+            num_particles=2000,  # Reduced for speed
         )
 
-        result2 = factory_solver.solve(
-            max_iterations=15,
-            tolerance=1e-3,
-            damping_factor=0.6
-        )
+        result2 = factory_solver.solve(max_iterations=15, tolerance=1e-3, damping_factor=0.6)
 
-        if result2['converged']:
+        if result2["converged"]:
             print(f"✅ Factory solver: CONVERGED in {result2['iterations']} iterations")
             print(f"   Time: {result2['solve_time']:.2f}s")
         else:
-            print(f"⚠️ Factory solver: Did not converge")
+            print("⚠️ Factory solver: Did not converge")
 
     except Exception as e:
         print(f"❌ Factory test failed: {e}")
@@ -67,6 +64,7 @@ def main():
     print("   • FP equation: Solved with PARTICLES (mass conservation)")
     print("   • HJB equation: Solved with FDM (stability & accuracy)")
     print("   • Integration: Complete with factory patterns")
+
 
 if __name__ == "__main__":
     main()

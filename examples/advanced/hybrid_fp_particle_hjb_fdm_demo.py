@@ -17,16 +17,13 @@ from pathlib import Path
 # Add the package to the path for local development
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import numpy as np
-import matplotlib.pyplot as plt
 
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.alg.mfg_solvers.hybrid_fp_particle_hjb_fdm import (
-    HybridFPParticleHJBFDM,
     HybridSolverPresets,
-    create_hybrid_fp_particle_hjb_fdm_solver
+    create_hybrid_fp_particle_hjb_fdm_solver,
 )
-from mfg_pde.factory.solver_factory import create_solver, SolverFactory
+from mfg_pde.core.mfg_problem import ExampleMFGProblem
+from mfg_pde.factory.solver_factory import create_solver
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -62,7 +59,7 @@ def demo_basic_hybrid_solver():
         num_particles=5000,
         kde_bandwidth="scott",
         hjb_newton_iterations=30,
-        hjb_newton_tolerance=1e-7
+        hjb_newton_tolerance=1e-7,
     )
 
     # Get solver info
@@ -74,22 +71,18 @@ def demo_basic_hybrid_solver():
 
     # Solve the problem
     start_time = time.time()
-    result = hybrid_solver.solve(
-        max_iterations=30,
-        tolerance=1e-4,
-        damping_factor=0.5
-    )
+    result = hybrid_solver.solve(max_iterations=30, tolerance=1e-4, damping_factor=0.5)
     solve_time = time.time() - start_time
 
     # Display results
-    if result['converged']:
-        logger.info(f"✅ Hybrid solver converged!")
+    if result["converged"]:
+        logger.info("✅ Hybrid solver converged!")
         logger.info(f"   Iterations: {result['iterations']}")
         logger.info(f"   Solve time: {solve_time:.2f}s")
         logger.info(f"   Final residual: {result['final_residual']:.2e}")
         logger.info(f"   Time per iteration: {solve_time/result['iterations']:.2f}s")
     else:
-        logger.warning(f"⚠️ Hybrid solver did not converge")
+        logger.warning("⚠️ Hybrid solver did not converge")
         logger.warning(f"   Final residual: {result['final_residual']:.2e}")
 
     return result
@@ -105,7 +98,7 @@ def demo_hybrid_solver_presets():
     presets = {
         "fast": HybridSolverPresets.fast_hybrid,
         "accurate": HybridSolverPresets.accurate_hybrid,
-        "research": HybridSolverPresets.research_hybrid
+        "research": HybridSolverPresets.research_hybrid,
     }
 
     results = {}
@@ -125,34 +118,36 @@ def demo_hybrid_solver_presets():
             start_time = time.time()
             result = solver.solve(
                 max_iterations=20,  # Reduced for demo
-                tolerance=1e-3,     # Relaxed for demo
-                damping_factor=0.5
+                tolerance=1e-3,  # Relaxed for demo
+                damping_factor=0.5,
             )
             solve_time = time.time() - start_time
 
             results[preset_name] = {
-                'converged': result['converged'],
-                'iterations': result.get('iterations', 0),
-                'solve_time': solve_time,
-                'final_residual': result.get('final_residual', float('inf')),
-                'num_particles': solver_info['num_particles']
+                "converged": result["converged"],
+                "iterations": result.get("iterations", 0),
+                "solve_time": solve_time,
+                "final_residual": result.get("final_residual", float("inf")),
+                "num_particles": solver_info["num_particles"],
             }
 
-            status = "✅" if result['converged'] else "❌"
+            status = "✅" if result["converged"] else "❌"
             logger.info(f"  {status} Result: {result['iterations']} iter, {solve_time:.2f}s")
 
         except Exception as e:
             logger.error(f"  ❌ {preset_name} preset failed: {e}")
-            results[preset_name] = {'error': str(e)}
+            results[preset_name] = {"error": str(e)}
 
     # Summary
     logger.info("\n--- Preset Comparison Summary ---")
     for preset_name, result in results.items():
-        if 'error' not in result:
-            logger.info(f"{preset_name:8}: {result['converged']!s:5} | "
-                       f"{result['iterations']:2d} iter | "
-                       f"{result['solve_time']:5.2f}s | "
-                       f"{result['num_particles']:5d} particles")
+        if "error" not in result:
+            logger.info(
+                f"{preset_name:8}: {result['converged']!s:5} | "
+                f"{result['iterations']:2d} iter | "
+                f"{result['solve_time']:5.2f}s | "
+                f"{result['num_particles']:5d} particles"
+            )
 
     return results
 
@@ -169,22 +164,18 @@ def demo_factory_integration():
             problem=problem,
             solver_type="hybrid_fp_particle_hjb_fdm",
             preset="balanced",
-            num_particles=3000  # Custom parameter
+            num_particles=3000,  # Custom parameter
         )
 
         logger.info("✅ Successfully created hybrid solver via factory")
 
         # Solve using factory-created solver
-        result = hybrid_solver.solve(
-            max_iterations=25,
-            tolerance=1e-4,
-            damping_factor=0.6
-        )
+        result = hybrid_solver.solve(max_iterations=25, tolerance=1e-4, damping_factor=0.6)
 
-        if result['converged']:
+        if result["converged"]:
             logger.info(f"✅ Factory solver converged in {result['iterations']} iterations")
         else:
-            logger.warning(f"⚠️ Factory solver did not converge")
+            logger.warning("⚠️ Factory solver did not converge")
 
         return result
 
@@ -210,7 +201,7 @@ def demo_particle_scaling_benchmark():
         benchmark_results = hybrid_solver.benchmark_particle_scaling(
             particle_counts=particle_counts,
             max_iterations=15,  # Reduced for demo
-            tolerance=1e-3      # Relaxed for demo
+            tolerance=1e-3,  # Relaxed for demo
         )
 
         # Display results
@@ -218,27 +209,29 @@ def demo_particle_scaling_benchmark():
         logger.info("Particles | Converged | Iterations | Time (s) | Particles/s")
         logger.info("-" * 60)
 
-        for result in benchmark_results['results']:
-            if 'error' not in result:
-                particles_per_sec = result.get('particles_per_second', 0)
-                logger.info(f"{result['num_particles']:8d} | "
-                           f"{result['converged']!s:9} | "
-                           f"{result['iterations']:9d} | "
-                           f"{result['solve_time']:7.2f} | "
-                           f"{particles_per_sec:10.0f}")
+        for result in benchmark_results["results"]:
+            if "error" not in result:
+                particles_per_sec = result.get("particles_per_second", 0)
+                logger.info(
+                    f"{result['num_particles']:8d} | "
+                    f"{result['converged']!s:9} | "
+                    f"{result['iterations']:9d} | "
+                    f"{result['solve_time']:7.2f} | "
+                    f"{particles_per_sec:10.0f}"
+                )
             else:
                 logger.info(f"{result['num_particles']:8d} | ERROR: {result['error']}")
 
         # Analysis
-        analysis = benchmark_results['scaling_analysis']
-        optimal_count = benchmark_results['optimal_particle_count']
+        analysis = benchmark_results["scaling_analysis"]
+        optimal_count = benchmark_results["optimal_particle_count"]
 
-        logger.info(f"\n--- Analysis ---")
+        logger.info("\n--- Analysis ---")
         logger.info(f"Optimal particle count: {optimal_count}")
         logger.info(f"Convergence rate: {analysis['convergence_rate']:.1%}")
         logger.info(f"Efficiency trend: {analysis['efficiency_trend']}")
 
-        if analysis['scaling_coefficient']:
+        if analysis["scaling_coefficient"]:
             logger.info(f"Scaling coefficient: {analysis['scaling_coefficient']:.2f}")
 
         return benchmark_results
@@ -263,59 +256,47 @@ def demo_solver_comparison():
         hybrid_solver = HybridSolverPresets.fast_hybrid(problem)
 
         start_time = time.time()
-        hybrid_result = hybrid_solver.solve(
-            max_iterations=25,
-            tolerance=1e-4,
-            damping_factor=0.5
-        )
+        hybrid_result = hybrid_solver.solve(max_iterations=25, tolerance=1e-4, damping_factor=0.5)
         hybrid_time = time.time() - start_time
 
-        comparison_results['hybrid'] = {
-            'converged': hybrid_result['converged'],
-            'iterations': hybrid_result.get('iterations', 0),
-            'solve_time': hybrid_time,
-            'final_residual': hybrid_result.get('final_residual', float('inf')),
-            'solver_type': 'Hybrid FP-Particle + HJB-FDM'
+        comparison_results["hybrid"] = {
+            "converged": hybrid_result["converged"],
+            "iterations": hybrid_result.get("iterations", 0),
+            "solve_time": hybrid_time,
+            "final_residual": hybrid_result.get("final_residual", float("inf")),
+            "solver_type": "Hybrid FP-Particle + HJB-FDM",
         }
 
-        status = "✅" if hybrid_result['converged'] else "❌"
+        status = "✅" if hybrid_result["converged"] else "❌"
         logger.info(f"  {status} Hybrid: {hybrid_result['iterations']} iter, {hybrid_time:.2f}s")
 
     except Exception as e:
         logger.error(f"  ❌ Hybrid solver failed: {e}")
-        comparison_results['hybrid'] = {'error': str(e)}
+        comparison_results["hybrid"] = {"error": str(e)}
 
     # Test standard fixed point solver for comparison
     logger.info("Testing standard Fixed Point solver...")
     try:
-        standard_solver = create_solver(
-            problem=problem,
-            solver_type="fixed_point",
-            preset="fast"
-        )
+        standard_solver = create_solver(problem=problem, solver_type="fixed_point", preset="fast")
 
         start_time = time.time()
-        standard_result = standard_solver.solve(
-            max_iterations=25,
-            tolerance=1e-4,
-            damping_factor=0.5
-        )
+        standard_result = standard_solver.solve(max_iterations=25, tolerance=1e-4, damping_factor=0.5)
         standard_time = time.time() - start_time
 
-        comparison_results['standard'] = {
-            'converged': standard_result['converged'],
-            'iterations': standard_result.get('iterations', 0),
-            'solve_time': standard_time,
-            'final_residual': standard_result.get('final_residual', float('inf')),
-            'solver_type': 'Standard Fixed Point'
+        comparison_results["standard"] = {
+            "converged": standard_result["converged"],
+            "iterations": standard_result.get("iterations", 0),
+            "solve_time": standard_time,
+            "final_residual": standard_result.get("final_residual", float("inf")),
+            "solver_type": "Standard Fixed Point",
         }
 
-        status = "✅" if standard_result['converged'] else "❌"
+        status = "✅" if standard_result["converged"] else "❌"
         logger.info(f"  {status} Standard: {standard_result['iterations']} iter, {standard_time:.2f}s")
 
     except Exception as e:
         logger.error(f"  ❌ Standard solver failed: {e}")
-        comparison_results['standard'] = {'error': str(e)}
+        comparison_results["standard"] = {"error": str(e)}
 
     # Summary comparison
     logger.info("\n--- Solver Comparison Summary ---")
@@ -323,12 +304,14 @@ def demo_solver_comparison():
     logger.info("-" * 80)
 
     for solver_name, result in comparison_results.items():
-        if 'error' not in result:
-            logger.info(f"{result['solver_type']:30} | "
-                       f"{result['converged']!s:9} | "
-                       f"{result['iterations']:9d} | "
-                       f"{result['solve_time']:7.2f} | "
-                       f"{result['final_residual']:.2e}")
+        if "error" not in result:
+            logger.info(
+                f"{result['solver_type']:30} | "
+                f"{result['converged']!s:9} | "
+                f"{result['iterations']:9d} | "
+                f"{result['solve_time']:7.2f} | "
+                f"{result['final_residual']:.2e}"
+            )
         else:
             logger.info(f"{solver_name:30} | ERROR: {result['error']}")
 
@@ -344,11 +327,11 @@ def main():
 
     # Run demonstrations
     try:
-        results['basic'] = demo_basic_hybrid_solver()
-        results['presets'] = demo_hybrid_solver_presets()
-        results['factory'] = demo_factory_integration()
-        results['scaling'] = demo_particle_scaling_benchmark()
-        results['comparison'] = demo_solver_comparison()
+        results["basic"] = demo_basic_hybrid_solver()
+        results["presets"] = demo_hybrid_solver_presets()
+        results["factory"] = demo_factory_integration()
+        results["scaling"] = demo_particle_scaling_benchmark()
+        results["comparison"] = demo_solver_comparison()
 
     except Exception as e:
         logger.error(f"❌ Demo failed: {e}")
@@ -359,11 +342,11 @@ def main():
     logger.info("=" * 80)
 
     demos = [
-        ("Basic Hybrid Solver", results.get('basic')),
-        ("Preset Configurations", results.get('presets')),
-        ("Factory Integration", results.get('factory')),
-        ("Particle Scaling", results.get('scaling')),
-        ("Solver Comparison", results.get('comparison'))
+        ("Basic Hybrid Solver", results.get("basic")),
+        ("Preset Configurations", results.get("presets")),
+        ("Factory Integration", results.get("factory")),
+        ("Particle Scaling", results.get("scaling")),
+        ("Solver Comparison", results.get("comparison")),
     ]
 
     successful_demos = 0
@@ -371,10 +354,10 @@ def main():
 
     for demo_name, demo_result in demos:
         if demo_result is not None:
-            if isinstance(demo_result, dict) and demo_result.get('converged', True):
+            if isinstance(demo_result, dict) and demo_result.get("converged", True):
                 status = "✅ SUCCESS"
                 successful_demos += 1
-            elif isinstance(demo_result, dict) and not demo_result.get('converged', False):
+            elif isinstance(demo_result, dict) and not demo_result.get("converged", False):
                 status = "⚠️ NO CONVERGENCE"
                 successful_demos += 1  # Still successful execution
             else:

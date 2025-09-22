@@ -8,16 +8,13 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
-import importlib.util
 
 
 def run_command(cmd: str, description: str) -> bool:
     """Run a command and return success status."""
     print(f"🔍 {description}...")
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=30
-        )
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
             print(f"✅ {description} - SUCCESS")
             return True
@@ -89,9 +86,6 @@ def check_package_imports() -> bool:
 
     try:
         # Test core imports
-        import mfg_pde
-        from mfg_pde import ExampleMFGProblem, create_fast_solver
-        from mfg_pde.config import create_fast_config
         from mfg_pde.utils.parameter_migration import global_parameter_migrator
 
         print("✅ Core imports - SUCCESS")

@@ -15,14 +15,15 @@ This creates directional movement preferences based on local architecture.
 
 import sys
 from pathlib import Path
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Add MFG_PDE to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 from mfg_pde import MFGComponents
+from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 configure_research_logging("anisotropic_movement", level="INFO")
@@ -35,14 +36,14 @@ class AnisotropicMovementMFG(GridBasedMFGProblem):
     def __init__(self):
         super().__init__(
             domain_bounds=(0.0, 1.0, 0.0, 1.0),  # Unit square
-            grid_resolution=(16, 16),             # Moderate resolution
-            time_domain=(0.8, 20),                # Sufficient time
-            diffusion_coeff=0.02                  # Moderate diffusion
+            grid_resolution=(16, 16),  # Moderate resolution
+            time_domain=(0.8, 20),  # Sufficient time
+            diffusion_coeff=0.02,  # Moderate diffusion
         )
 
         self.gamma = 0.1  # Congestion strength
         self.start = np.array([0.2, 0.8])  # Start at top-left
-        self.target = np.array([0.8, 0.2]) # Target at bottom-right
+        self.target = np.array([0.8, 0.2])  # Target at bottom-right
 
         logger.info(f"Anisotropic movement: {self.start} → {self.target}")
 
@@ -68,7 +69,7 @@ class AnisotropicMovementMFG(GridBasedMFGProblem):
         rho = self.anisotropy_function(coords)
 
         # Anisotropic quadratic form: ½[p₁² + 2ρp₁p₂ + p₂²]
-        anisotropic_energy = 0.5 * (p1**2 + 2*rho*p1*p2 + p2**2)
+        anisotropic_energy = 0.5 * (p1**2 + 2 * rho * p1 * p2 + p2**2)
 
         # Congestion term: γm|p|²
         p_magnitude_sq = p1**2 + p2**2
@@ -118,7 +119,7 @@ class AnisotropicMovementMFG(GridBasedMFGProblem):
                 # Numerical stability
                 return min(total, 1e3) if not (np.isnan(total) or np.isinf(total)) else 0.0
 
-            except Exception as e:
+            except Exception:
                 return 0.0
 
         def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -126,7 +127,7 @@ class AnisotropicMovementMFG(GridBasedMFGProblem):
             try:
                 p_forward = p_values.get("forward", 0.0)
                 p_backward = p_values.get("backward", 0.0)
-                p_magnitude_sq = (p_forward - p_backward)**2
+                p_magnitude_sq = (p_forward - p_backward) ** 2
 
                 result = self.gamma * p_magnitude_sq
                 return min(result, 1e3) if not (np.isnan(result) or np.isinf(result)) else 0.0
@@ -145,7 +146,7 @@ class AnisotropicMovementMFG(GridBasedMFGProblem):
                 dist = np.linalg.norm(coords - self.start)
 
                 # Tight Gaussian at start
-                density = np.exp(-dist**2 / (2 * 0.03**2))
+                density = np.exp(-(dist**2) / (2 * 0.03**2))
                 return max(density, 1e-10)
 
             except Exception:
@@ -171,19 +172,15 @@ class AnisotropicMovementMFG(GridBasedMFGProblem):
             hamiltonian_dm_func=hamiltonian_dm,
             initial_density_func=initial_density,
             final_value_func=terminal_cost,
-            parameters={
-                'anisotropy': 'checkerboard',
-                'gamma': self.gamma,
-                'movement_type': 'anisotropic_tensor'
-            },
+            parameters={"anisotropy": "checkerboard", "gamma": self.gamma, "movement_type": "anisotropic_tensor"},
             description="2D Anisotropic Movement with Tensor Structure",
-            problem_type="anisotropic_2d"
+            problem_type="anisotropic_2d",
         )
 
     # Required abstract methods
     def initial_density(self, x: np.ndarray) -> np.ndarray:
         distances = np.linalg.norm(x - self.start, axis=1)
-        return np.exp(-distances**2 / (2 * 0.03**2))
+        return np.exp(-(distances**2) / (2 * 0.03**2))
 
     def terminal_cost(self, x: np.ndarray) -> np.ndarray:
         distances = np.linalg.norm(x - self.target, axis=1)
@@ -229,14 +226,14 @@ def run_anisotropic_demo():
     # Solve with appropriate parameters
     print("Solving anisotropic MFG...")
     result = problem.solve_with_damped_fixed_point(
-        damping_factor=0.6,   # Moderate damping
-        max_iterations=20,    # More iterations for anisotropic case
-        tolerance=1e-3        # Good accuracy
+        damping_factor=0.6,  # Moderate damping
+        max_iterations=20,  # More iterations for anisotropic case
+        tolerance=1e-3,  # Good accuracy
     )
 
-    if result['success']:
+    if result["success"]:
         print("✅ Solved successfully!")
-        solution = result['solution']
+        solution = result["solution"]
 
         # Visualize with anisotropy field
         visualize_anisotropic_movement(problem, solution)
@@ -251,8 +248,8 @@ def run_anisotropic_demo():
 def visualize_anisotropic_movement(problem, solution):
     """Enhanced visualization showing anisotropic movement and field."""
     try:
-        density_history = solution['density_history']
-        coordinates = solution.get('coordinates', problem.mesh_data.vertices)
+        density_history = solution["density_history"]
+        coordinates = solution.get("coordinates", problem.mesh_data.vertices)
 
         # Create 4-panel figure
         fig = plt.figure(figsize=(16, 12))
@@ -265,36 +262,36 @@ def visualize_anisotropic_movement(problem, solution):
         # Compute anisotropy values
         rho_values = np.array([problem.anisotropy_function(coord) for coord in coordinates])
 
-        scatter = ax1.scatter(x_coords, y_coords, c=rho_values, cmap='RdBu', s=40)
-        ax1.set_title('Anisotropy Field ρ(x)')
-        ax1.set_xlabel('x₁')
-        ax1.set_ylabel('x₂')
+        scatter = ax1.scatter(x_coords, y_coords, c=rho_values, cmap="RdBu", s=40)
+        ax1.set_title("Anisotropy Field ρ(x)")
+        ax1.set_xlabel("x₁")
+        ax1.set_ylabel("x₂")
         ax1.grid(True, alpha=0.3)
-        ax1.set_aspect('equal')
-        plt.colorbar(scatter, ax=ax1, label='ρ(x)')
+        ax1.set_aspect("equal")
+        plt.colorbar(scatter, ax=ax1, label="ρ(x)")
 
         # Panel 2: Initial density
         ax2 = plt.subplot(2, 2, 2)
         initial_density = density_history[0, :]
-        scatter2 = ax2.scatter(x_coords, y_coords, c=initial_density, cmap='Blues', s=40)
-        ax2.plot(problem.start[0], problem.start[1], 'bo', markersize=8, label='Start')
-        ax2.plot(problem.target[0], problem.target[1], 'ro', markersize=8, label='Target')
-        ax2.set_title('Initial Density')
+        scatter2 = ax2.scatter(x_coords, y_coords, c=initial_density, cmap="Blues", s=40)
+        ax2.plot(problem.start[0], problem.start[1], "bo", markersize=8, label="Start")
+        ax2.plot(problem.target[0], problem.target[1], "ro", markersize=8, label="Target")
+        ax2.set_title("Initial Density")
         ax2.legend()
         ax2.grid(True, alpha=0.3)
-        ax2.set_aspect('equal')
+        ax2.set_aspect("equal")
         plt.colorbar(scatter2, ax=ax2)
 
         # Panel 3: Final density
         ax3 = plt.subplot(2, 2, 3)
         final_density = density_history[-1, :]
-        scatter3 = ax3.scatter(x_coords, y_coords, c=final_density, cmap='Reds', s=40)
-        ax3.plot(problem.start[0], problem.start[1], 'bo', markersize=8, label='Start')
-        ax3.plot(problem.target[0], problem.target[1], 'ro', markersize=8, label='Target')
-        ax3.set_title('Final Density')
+        scatter3 = ax3.scatter(x_coords, y_coords, c=final_density, cmap="Reds", s=40)
+        ax3.plot(problem.start[0], problem.start[1], "bo", markersize=8, label="Start")
+        ax3.plot(problem.target[0], problem.target[1], "ro", markersize=8, label="Target")
+        ax3.set_title("Final Density")
         ax3.legend()
         ax3.grid(True, alpha=0.3)
-        ax3.set_aspect('equal')
+        ax3.set_aspect("equal")
         plt.colorbar(scatter3, ax=ax3)
 
         # Panel 4: Center of mass trajectory
@@ -312,22 +309,22 @@ def visualize_anisotropic_movement(problem, solution):
                 com_trajectory[t, 1] = np.sum(density * y_coords) / total_mass
 
         # Plot trajectory
-        ax4.plot(com_trajectory[:, 0], com_trajectory[:, 1], 'g-', linewidth=2, label='Trajectory')
-        ax4.plot(problem.start[0], problem.start[1], 'bo', markersize=8, label='Start')
-        ax4.plot(problem.target[0], problem.target[1], 'ro', markersize=8, label='Target')
+        ax4.plot(com_trajectory[:, 0], com_trajectory[:, 1], "g-", linewidth=2, label="Trajectory")
+        ax4.plot(problem.start[0], problem.start[1], "bo", markersize=8, label="Start")
+        ax4.plot(problem.target[0], problem.target[1], "ro", markersize=8, label="Target")
 
         # Show anisotropy field as background
-        ax4.scatter(x_coords, y_coords, c=rho_values, cmap='RdBu', s=20, alpha=0.3)
+        ax4.scatter(x_coords, y_coords, c=rho_values, cmap="RdBu", s=20, alpha=0.3)
 
-        ax4.set_title('Center of Mass Trajectory')
-        ax4.set_xlabel('x₁')
-        ax4.set_ylabel('x₂')
+        ax4.set_title("Center of Mass Trajectory")
+        ax4.set_xlabel("x₁")
+        ax4.set_ylabel("x₂")
         ax4.legend()
         ax4.grid(True, alpha=0.3)
-        ax4.set_aspect('equal')
+        ax4.set_aspect("equal")
 
         plt.tight_layout()
-        plt.savefig('anisotropic_movement_demo.png', dpi=150, bbox_inches='tight')
+        plt.savefig("anisotropic_movement_demo.png", dpi=150, bbox_inches="tight")
         print("📊 Anisotropic visualization saved as 'anisotropic_movement_demo.png'")
         plt.show()
 
@@ -346,6 +343,7 @@ def visualize_anisotropic_movement(problem, solution):
     except Exception as e:
         print(f"Visualization failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

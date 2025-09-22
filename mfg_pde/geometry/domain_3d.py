@@ -7,7 +7,6 @@ supporting box domains, spheres, cylinders, complex shapes, and CAD import.
 
 from __future__ import annotations
 
-
 from typing import Any
 
 import numpy as np
@@ -122,10 +121,7 @@ class Domain3D(BaseGeometry):
 
         # Create box
         box_tag = gmsh.model.occ.addBox(
-            self.xmin, self.ymin, self.zmin,
-            self.xmax - self.xmin,
-            self.ymax - self.ymin,
-            self.zmax - self.zmin
+            self.xmin, self.ymin, self.zmin, self.xmax - self.xmin, self.ymax - self.ymin, self.zmax - self.zmin
         )
 
         gmsh.model.occ.synchronize()
@@ -148,9 +144,7 @@ class Domain3D(BaseGeometry):
         import gmsh
 
         # Create sphere
-        sphere_tag = gmsh.model.occ.addSphere(
-            self.center[0], self.center[1], self.center[2], self.radius
-        )
+        sphere_tag = gmsh.model.occ.addSphere(self.center[0], self.center[1], self.center[2], self.radius)
 
         gmsh.model.occ.synchronize()
 
@@ -171,21 +165,33 @@ class Domain3D(BaseGeometry):
         # Create cylinder based on axis
         if self.axis == "z":
             cylinder_tag = gmsh.model.occ.addCylinder(
-                self.center[0], self.center[1], 0.0,  # center at z=0
-                0.0, 0.0, self.height,  # height along z
-                self.radius
+                self.center[0],
+                self.center[1],
+                0.0,  # center at z=0
+                0.0,
+                0.0,
+                self.height,  # height along z
+                self.radius,
             )
         elif self.axis == "y":
             cylinder_tag = gmsh.model.occ.addCylinder(
-                self.center[0], 0.0, self.center[1],  # center at y=0
-                0.0, self.height, 0.0,  # height along y
-                self.radius
+                self.center[0],
+                0.0,
+                self.center[1],  # center at y=0
+                0.0,
+                self.height,
+                0.0,  # height along y
+                self.radius,
             )
         elif self.axis == "x":
             cylinder_tag = gmsh.model.occ.addCylinder(
-                0.0, self.center[0], self.center[1],  # center at x=0
-                self.height, 0.0, 0.0,  # height along x
-                self.radius
+                0.0,
+                self.center[0],
+                self.center[1],  # center at x=0
+                self.height,
+                0.0,
+                0.0,  # height along x
+                self.radius,
             )
         else:
             raise ValueError(f"Invalid cylinder axis: {self.axis}")
@@ -221,9 +227,7 @@ class Domain3D(BaseGeometry):
                 # Create lines
                 line_tags = []
                 for i in range(3):
-                    line_tag = gmsh.model.occ.addLine(
-                        point_tags[face[i]], point_tags[face[(i + 1) % 3]]
-                    )
+                    line_tag = gmsh.model.occ.addLine(point_tags[face[i]], point_tags[face[(i + 1) % 3]])
                     line_tags.append(line_tag)
 
                 # Create curve loop and surface
@@ -290,10 +294,12 @@ class Domain3D(BaseGeometry):
             elif hole["type"] == "box":
                 bounds = hole["bounds"]  # (xmin, xmax, ymin, ymax, zmin, zmax)
                 hole_tag = gmsh.model.occ.addBox(
-                    bounds[0], bounds[2], bounds[4],  # x, y, z min
+                    bounds[0],
+                    bounds[2],
+                    bounds[4],  # x, y, z min
                     bounds[1] - bounds[0],  # width
                     bounds[3] - bounds[2],  # height
-                    bounds[5] - bounds[4]   # depth
+                    bounds[5] - bounds[4],  # depth
                 )
                 hole_tags.append(hole_tag)
 
@@ -304,17 +310,11 @@ class Domain3D(BaseGeometry):
                 axis = hole.get("axis", "z")
 
                 if axis == "z":
-                    hole_tag = gmsh.model.occ.addCylinder(
-                        center[0], center[1], 0.0, 0.0, 0.0, height, radius
-                    )
+                    hole_tag = gmsh.model.occ.addCylinder(center[0], center[1], 0.0, 0.0, 0.0, height, radius)
                 elif axis == "y":
-                    hole_tag = gmsh.model.occ.addCylinder(
-                        center[0], 0.0, center[1], 0.0, height, 0.0, radius
-                    )
+                    hole_tag = gmsh.model.occ.addCylinder(center[0], 0.0, center[1], 0.0, height, 0.0, radius)
                 elif axis == "x":
-                    hole_tag = gmsh.model.occ.addCylinder(
-                        0.0, center[0], center[1], height, 0.0, 0.0, radius
-                    )
+                    hole_tag = gmsh.model.occ.addCylinder(0.0, center[0], center[1], height, 0.0, 0.0, radius)
                 hole_tags.append(hole_tag)
 
         if hole_tags:
@@ -357,7 +357,7 @@ class Domain3D(BaseGeometry):
 
         # Process tetrahedral elements (type 4 in Gmsh)
         tetrahedra = None
-        for elem_type, tags, connectivity in zip(element_types, element_tags, element_connectivity):
+        for elem_type, tags, connectivity in zip(element_types, element_tags, element_connectivity, strict=False):
             if elem_type == 4:  # Tetrahedron
                 tetrahedra = connectivity.reshape(-1, 4) - 1  # Convert to 0-based indexing
                 break
@@ -371,7 +371,7 @@ class Domain3D(BaseGeometry):
 
         for dim in [2]:  # Surface elements
             elem_types, elem_tags, elem_connectivity = gmsh.model.mesh.getElements(dim)
-            for elem_type, tags, connectivity in zip(elem_types, elem_tags, elem_connectivity):
+            for elem_type, tags, connectivity in zip(elem_types, elem_tags, elem_connectivity, strict=False):
                 if elem_type == 2:  # Triangle
                     faces = connectivity.reshape(-1, 3) - 1
                     boundary_faces.extend(faces)
@@ -401,14 +401,12 @@ class Domain3D(BaseGeometry):
             boundary_tags=np.array(boundary_tags) if boundary_tags else np.array([]),
             element_tags=element_physical_tags,
             boundary_faces=np.array(boundary_faces) if boundary_faces else np.array([]).reshape(0, 3),
-            dimension=3
+            dimension=3,
         )
 
         # Compute quality metrics
         mesh_data.quality_metrics = self.compute_mesh_quality_3d(mesh_data)
-        mesh_data.element_volumes = self._compute_tetrahedron_volumes(
-            mesh_data.vertices, mesh_data.elements
-        )
+        mesh_data.element_volumes = self._compute_tetrahedron_volumes(mesh_data.vertices, mesh_data.elements)
 
         return mesh_data
 
@@ -442,7 +440,7 @@ class Domain3D(BaseGeometry):
             "min_quality": float(np.min(quality_ratios)),
             "mean_quality": float(np.mean(quality_ratios)),
             "num_poor_elements": int(np.sum(quality_ratios < 0.1)),
-            "quality_histogram": np.histogram(quality_ratios, bins=10)[0].tolist()
+            "quality_histogram": np.histogram(quality_ratios, bins=10)[0].tolist(),
         }
 
     def _compute_tetrahedron_volumes(self, vertices: np.ndarray, elements: np.ndarray) -> np.ndarray:
@@ -488,7 +486,7 @@ class Domain3D(BaseGeometry):
             [coords[0], coords[1], coords[2]],
             [coords[0], coords[1], coords[3]],
             [coords[0], coords[2], coords[3]],
-            [coords[1], coords[2], coords[3]]
+            [coords[1], coords[2], coords[3]],
         ]
 
         surface_area = 0.0
@@ -507,7 +505,7 @@ class Domain3D(BaseGeometry):
 
     def export_mesh(self, format_type: str, filename: str):
         """Export mesh in specified format."""
-        if not hasattr(self, '_mesh_data') or self._mesh_data is None:
+        if not hasattr(self, "_mesh_data") or self._mesh_data is None:
             self._mesh_data = self.generate_mesh()
 
         try:
@@ -519,9 +517,7 @@ class Domain3D(BaseGeometry):
         cells = [("tetra", self._mesh_data.elements)]
 
         mesh = meshio.Mesh(
-            points=self._mesh_data.vertices,
-            cells=cells,
-            cell_data={"physical": [self._mesh_data.element_tags]}
+            points=self._mesh_data.vertices, cells=cells, cell_data={"physical": [self._mesh_data.element_tags]}
         )
 
         # Write mesh
@@ -534,14 +530,16 @@ class Domain3D(BaseGeometry):
         except ImportError:
             raise ImportError("pyvista required for interactive visualization")
 
-        if not hasattr(self, '_mesh_data') or self._mesh_data is None:
+        if not hasattr(self, "_mesh_data") or self._mesh_data is None:
             self._mesh_data = self.generate_mesh()
 
         # Create PyVista mesh
-        cells = np.hstack([
-            np.full((len(self._mesh_data.elements), 1), 4),  # Tetrahedron cell type
-            self._mesh_data.elements
-        ])
+        cells = np.hstack(
+            [
+                np.full((len(self._mesh_data.elements), 1), 4),  # Tetrahedron cell type
+                self._mesh_data.elements,
+            ]
+        )
 
         mesh = pv.UnstructuredGrid(cells, np.full(len(self._mesh_data.elements), 10), self._mesh_data.vertices)
 
@@ -551,7 +549,9 @@ class Domain3D(BaseGeometry):
 
         if show_quality and self._mesh_data.quality_metrics:
             # Add quality visualization
-            quality_data = np.array([self._mesh_data.quality_metrics.get("min_quality", 0.5)] * len(self._mesh_data.elements))
+            quality_data = np.array(
+                [self._mesh_data.quality_metrics.get("min_quality", 0.5)] * len(self._mesh_data.elements)
+            )
             mesh["quality"] = quality_data
             plotter.add_mesh(mesh, scalars="quality", cmap="coolwarm")
 

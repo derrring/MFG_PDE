@@ -17,10 +17,7 @@ Advanced Usage with Hooks:
     result = solver.solve(problem, hooks=DebugHook())
 """
 
-from .fixed_point import FixedPointSolver
 from .base import BaseSolver
+from .fixed_point import FixedPointSolver
 
-__all__ = [
-    'FixedPointSolver',
-    'BaseSolver'
-]
+__all__ = ["FixedPointSolver", "BaseSolver"]

@@ -6,7 +6,6 @@ Demonstrates 1D AMR capabilities for MFG problems, completing the
 AMR architecture consistency across all dimensions.
 """
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 

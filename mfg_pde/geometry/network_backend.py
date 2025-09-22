@@ -65,10 +65,8 @@ class NetworkBackendError(Exception):
     """Base exception for network backend issues."""
 
 
-
 class BackendNotAvailableError(NetworkBackendError):
     """Raised when requested backend is not available."""
-
 
 
 class AbstractNetworkBackend(ABC):

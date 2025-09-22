@@ -5,10 +5,12 @@ This implementation uses more stable numerical schemes and demonstrates
 the anisotropic effects without numerical instabilities.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-import time
 import os
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 class StableAnisotropicMFG:
     """
@@ -60,7 +62,7 @@ class StableAnisotropicMFG:
     def initial_density(self):
         """Initial Gaussian blob in lower-left corner with mass normalization."""
         sigma_init = 0.15
-        density = np.exp(-((self.X - 0.2)**2 + (self.Y - 0.2)**2) / sigma_init**2)
+        density = np.exp(-((self.X - 0.2) ** 2 + (self.Y - 0.2) ** 2) / sigma_init**2)
 
         # Normalize to reasonable total mass
         total_mass = np.sum(density) * self.dx * self.dy
@@ -70,7 +72,7 @@ class StableAnisotropicMFG:
 
     def terminal_condition(self):
         """Terminal value function - smooth distance to exit."""
-        return 0.5 * ((self.X - 0.5)**2 + (self.Y - 1.0)**2)
+        return 0.5 * ((self.X - 0.5) ** 2 + (self.Y - 1.0) ** 2)
 
     def compute_gradients(self, u):
         """Compute gradients with proper boundary handling."""
@@ -101,7 +103,7 @@ class StableAnisotropicMFG:
         dudx_reg = np.clip(dudx, -10, 10)
         dudy_reg = np.clip(dudy, -10, 10)
 
-        kinetic = 0.5 * (dudx_reg**2 + 2*rho*dudx_reg*dudy_reg + dudy_reg**2)
+        kinetic = 0.5 * (dudx_reg**2 + 2 * rho * dudx_reg * dudy_reg + dudy_reg**2)
 
         # Regularized density-dependent friction
         m_reg = np.clip(m, 0, 10)  # Prevent excessive density
@@ -117,8 +119,8 @@ class StableAnisotropicMFG:
         m_reg = np.clip(m, 0, 5)
 
         # Velocity with regularization
-        vx = -(dudx_reg + rho*dudy_reg + 2*self.gamma*m_reg*dudx_reg)
-        vy = -(rho*dudx_reg + dudy_reg + 2*self.gamma*m_reg*dudy_reg)
+        vx = -(dudx_reg + rho * dudy_reg + 2 * self.gamma * m_reg * dudx_reg)
+        vy = -(rho * dudx_reg + dudy_reg + 2 * self.gamma * m_reg * dudy_reg)
 
         # Clip velocities to prevent instability
         vx = np.clip(vx, -2, 2)
@@ -131,10 +133,9 @@ class StableAnisotropicMFG:
         lapl = np.zeros_like(f)
 
         # Interior points
-        lapl[1:-1, 1:-1] = (
-            (f[1:-1, 2:] + f[1:-1, :-2] - 2*f[1:-1, 1:-1]) / self.dx**2 +
-            (f[2:, 1:-1] + f[:-2, 1:-1] - 2*f[1:-1, 1:-1]) / self.dy**2
-        )
+        lapl[1:-1, 1:-1] = (f[1:-1, 2:] + f[1:-1, :-2] - 2 * f[1:-1, 1:-1]) / self.dx**2 + (
+            f[2:, 1:-1] + f[:-2, 1:-1] - 2 * f[1:-1, 1:-1]
+        ) / self.dy**2
 
         return lapl
 
@@ -143,9 +144,8 @@ class StableAnisotropicMFG:
         div = np.zeros_like(fx)
 
         # Interior points
-        div[1:-1, 1:-1] = (
-            (fx[1:-1, 2:] - fx[1:-1, :-2]) / (2 * self.dx) +
-            (fy[2:, 1:-1] - fy[:-2, 1:-1]) / (2 * self.dy)
+        div[1:-1, 1:-1] = (fx[1:-1, 2:] - fx[1:-1, :-2]) / (2 * self.dx) + (fy[2:, 1:-1] - fy[:-2, 1:-1]) / (
+            2 * self.dy
         )
 
         return div
@@ -154,17 +154,17 @@ class StableAnisotropicMFG:
         """Apply boundary conditions carefully."""
         # Value function boundary conditions
         # No-flux on three walls (Neumann)
-        u[0, :] = u[1, :]    # Bottom wall: ∂u/∂y = 0
-        u[:, 0] = u[:, 1]    # Left wall: ∂u/∂x = 0
+        u[0, :] = u[1, :]  # Bottom wall: ∂u/∂y = 0
+        u[:, 0] = u[:, 1]  # Left wall: ∂u/∂x = 0
         u[:, -1] = u[:, -2]  # Right wall: ∂u/∂x = 0
 
         # Dirichlet at exit (top wall)
-        u[-1, :] = 0.0       # Exit condition: u = 0
+        u[-1, :] = 0.0  # Exit condition: u = 0
 
         # Density boundary conditions
         # No-flux on walls
-        m[0, :] = m[1, :]    # Bottom
-        m[:, 0] = m[:, 1]    # Left
+        m[0, :] = m[1, :]  # Bottom
+        m[:, 0] = m[:, 1]  # Left
         m[:, -1] = m[:, -2]  # Right
 
         # Natural outflow at exit (top boundary)
@@ -205,6 +205,7 @@ class StableAnisotropicMFG:
                 print(f"Warning: Large gradients detected at step {n}, max_grad = {max_grad:.2f}")
                 # Apply smoothing
                 from scipy.ndimage import gaussian_filter
+
                 u = gaussian_filter(u, sigma=1.0)
                 dudx, dudy = self.compute_gradients(u)
 
@@ -224,20 +225,20 @@ class StableAnisotropicMFG:
             div_flux = np.zeros_like(m)
 
             # x-direction flux
-            for i in range(1, self.nx-1):
+            for i in range(1, self.nx - 1):
                 for j in range(self.ny):
                     if vx[i, j] > 0:
-                        div_flux[i, j] += vx[i, j] * (m[i, j] - m[i-1, j]) / self.dx
+                        div_flux[i, j] += vx[i, j] * (m[i, j] - m[i - 1, j]) / self.dx
                     else:
-                        div_flux[i, j] += vx[i, j] * (m[i+1, j] - m[i, j]) / self.dx
+                        div_flux[i, j] += vx[i, j] * (m[i + 1, j] - m[i, j]) / self.dx
 
             # y-direction flux
             for i in range(self.nx):
-                for j in range(1, self.ny-1):
+                for j in range(1, self.ny - 1):
                     if vy[i, j] > 0:
-                        div_flux[i, j] += vy[i, j] * (m[i, j] - m[i, j-1]) / self.dy
+                        div_flux[i, j] += vy[i, j] * (m[i, j] - m[i, j - 1]) / self.dy
                     else:
-                        div_flux[i, j] += vy[i, j] * (m[i, j+1] - m[i, j]) / self.dy
+                        div_flux[i, j] += vy[i, j] * (m[i, j + 1] - m[i, j]) / self.dy
 
             # Implicit diffusion for stability
             diffusion = self.sigma * self.laplacian(m)
@@ -275,8 +276,10 @@ class StableAnisotropicMFG:
                 total_mass = np.sum(m) * self.dx * self.dy
                 max_velocity = np.sqrt(np.max(vx**2 + vy**2))
                 max_density = np.max(m)
-                print(f"Step {n}/{self.nt-1}, t={n*self.dt:.3f}, mass={total_mass:.4f}, "
-                      f"max_vel={max_velocity:.3f}, max_dens={max_density:.3f}")
+                print(
+                    f"Step {n}/{self.nt-1}, t={n*self.dt:.3f}, mass={total_mass:.4f}, "
+                    f"max_vel={max_velocity:.3f}, max_dens={max_density:.3f}"
+                )
 
         solve_time = time.time() - start_time
         print(f"Stable solution completed in {solve_time:.2f} seconds ({stable_steps} stable steps)")
@@ -287,7 +290,7 @@ class StableAnisotropicMFG:
                 self.density_history = m_history
                 self.value_history = u_history
                 self.total_mass_history = total_mass_history
-                self.time_indices = list(range(0, len(m_history)*10, 10))
+                self.time_indices = list(range(0, len(m_history) * 10, 10))
                 self.anisotropy = rho
                 self.solve_time = solve_time
                 self.stable_steps = stable_steps
@@ -305,58 +308,58 @@ class StableAnisotropicMFG:
 
         # Anisotropy pattern
         plt.subplot(2, 3, 1)
-        im1 = plt.contourf(self.X, self.Y, result.anisotropy, levels=15, cmap='RdBu_r')
-        plt.colorbar(im1, label='ρ(x)')
-        plt.title('Anisotropy Function ρ(x)')
-        plt.xlabel('x₁')
-        plt.ylabel('x₂')
+        im1 = plt.contourf(self.X, self.Y, result.anisotropy, levels=15, cmap="RdBu_r")
+        plt.colorbar(im1, label="ρ(x)")
+        plt.title("Anisotropy Function ρ(x)")
+        plt.xlabel("x₁")
+        plt.ylabel("x₂")
 
         # Initial density
         plt.subplot(2, 3, 2)
-        im2 = plt.contourf(self.X, self.Y, result.density_history[0], levels=15, cmap='viridis')
-        plt.colorbar(im2, label='Density')
-        plt.title('Initial Density')
-        plt.xlabel('x₁')
-        plt.ylabel('x₂')
+        im2 = plt.contourf(self.X, self.Y, result.density_history[0], levels=15, cmap="viridis")
+        plt.colorbar(im2, label="Density")
+        plt.title("Initial Density")
+        plt.xlabel("x₁")
+        plt.ylabel("x₂")
 
         # Final density
         plt.subplot(2, 3, 3)
-        im3 = plt.contourf(self.X, self.Y, result.density_history[-1], levels=15, cmap='viridis')
-        plt.colorbar(im3, label='Density')
-        plt.title('Final Density')
-        plt.xlabel('x₁')
-        plt.ylabel('x₂')
+        im3 = plt.contourf(self.X, self.Y, result.density_history[-1], levels=15, cmap="viridis")
+        plt.colorbar(im3, label="Density")
+        plt.title("Final Density")
+        plt.xlabel("x₁")
+        plt.ylabel("x₂")
 
         # Mass evolution
         plt.subplot(2, 3, 4)
         time_points = np.array(result.time_indices) * self.dt
-        plt.plot(time_points, result.total_mass_history, 'b-', linewidth=2)
-        plt.title('Total Mass Over Time')
-        plt.xlabel('Time')
-        plt.ylabel('Total Mass')
+        plt.plot(time_points, result.total_mass_history, "b-", linewidth=2)
+        plt.title("Total Mass Over Time")
+        plt.xlabel("Time")
+        plt.ylabel("Total Mass")
         plt.grid(True, alpha=0.3)
 
         # Density evolution
         plt.subplot(2, 3, 5)
         max_densities = [np.max(m) for m in result.density_history]
-        plt.plot(time_points, max_densities, 'r-', linewidth=2)
-        plt.title('Peak Density Over Time')
-        plt.xlabel('Time')
-        plt.ylabel('Peak Density')
+        plt.plot(time_points, max_densities, "r-", linewidth=2)
+        plt.title("Peak Density Over Time")
+        plt.xlabel("Time")
+        plt.ylabel("Peak Density")
         plt.grid(True, alpha=0.3)
 
         # Evacuation progress
         plt.subplot(2, 3, 6)
         initial_mass = result.total_mass_history[0]
         evacuation_pct = [(initial_mass - mass) / initial_mass * 100 for mass in result.total_mass_history]
-        plt.plot(time_points, evacuation_pct, 'g-', linewidth=2)
-        plt.title('Evacuation Progress')
-        plt.xlabel('Time')
-        plt.ylabel('Evacuated (%)')
+        plt.plot(time_points, evacuation_pct, "g-", linewidth=2)
+        plt.title("Evacuation Progress")
+        plt.xlabel("Time")
+        plt.ylabel("Evacuated (%)")
         plt.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(f"{output_dir}stable_anisotropic_analysis.png", dpi=300, bbox_inches='tight')
+        plt.savefig(f"{output_dir}stable_anisotropic_analysis.png", dpi=300, bbox_inches="tight")
         plt.show()
 
         # 2. Flow analysis
@@ -371,7 +374,7 @@ class StableAnisotropicMFG:
 
         # Density with flow vectors
         plt.subplot(1, 3, 1)
-        plt.contourf(self.X, self.Y, final_m, levels=15, cmap='viridis', alpha=0.8)
+        plt.contourf(self.X, self.Y, final_m, levels=15, cmap="viridis", alpha=0.8)
 
         # Subsample for cleaner quiver plot
         skip = 2
@@ -380,43 +383,43 @@ class StableAnisotropicMFG:
         vx_sub = vx[::skip, ::skip]
         vy_sub = vy[::skip, ::skip]
 
-        plt.quiver(X_sub, Y_sub, vx_sub, vy_sub, color='white', alpha=0.8, scale=20)
-        plt.title('Final Density + Velocity Vectors')
-        plt.xlabel('x₁')
-        plt.ylabel('x₂')
-        plt.colorbar(label='Density')
+        plt.quiver(X_sub, Y_sub, vx_sub, vy_sub, color="white", alpha=0.8, scale=20)
+        plt.title("Final Density + Velocity Vectors")
+        plt.xlabel("x₁")
+        plt.ylabel("x₂")
+        plt.colorbar(label="Density")
 
         # Velocity magnitude
         plt.subplot(1, 3, 2)
         vel_magnitude = np.sqrt(vx**2 + vy**2)
-        im = plt.contourf(self.X, self.Y, vel_magnitude, levels=15, cmap='plasma')
-        plt.colorbar(im, label='Speed')
-        plt.title('Velocity Magnitude')
-        plt.xlabel('x₁')
-        plt.ylabel('x₂')
+        im = plt.contourf(self.X, self.Y, vel_magnitude, levels=15, cmap="plasma")
+        plt.colorbar(im, label="Speed")
+        plt.title("Velocity Magnitude")
+        plt.xlabel("x₁")
+        plt.ylabel("x₂")
 
         # Anisotropic effect
         plt.subplot(1, 3, 3)
         # Show diagonal flow preference
         diagonal_flow = vx * vy  # Positive indicates (1,1) or (-1,-1) flow
-        im = plt.contourf(self.X, self.Y, diagonal_flow, levels=15, cmap='RdBu_r')
-        plt.colorbar(im, label='vₓ·vᵧ')
-        plt.title('Diagonal Flow Preference')
-        plt.xlabel('x₁')
-        plt.ylabel('x₂')
+        im = plt.contourf(self.X, self.Y, diagonal_flow, levels=15, cmap="RdBu_r")
+        plt.colorbar(im, label="vₓ·vᵧ")
+        plt.title("Diagonal Flow Preference")
+        plt.xlabel("x₁")
+        plt.ylabel("x₂")
 
         plt.tight_layout()
-        plt.savefig(f"{output_dir}stable_flow_analysis.png", dpi=300, bbox_inches='tight')
+        plt.savefig(f"{output_dir}stable_flow_analysis.png", dpi=300, bbox_inches="tight")
         plt.show()
 
         print(f"Visualizations saved to {output_dir}")
 
         return {
-            'final_evacuation_percentage': (1 - result.total_mass_history[-1] / result.total_mass_history[0]) * 100,
-            'peak_density': max([np.max(m) for m in result.density_history]),
-            'max_velocity': np.max(np.sqrt(vx**2 + vy**2)),
-            'solve_time': result.solve_time,
-            'stable_steps': result.stable_steps
+            "final_evacuation_percentage": (1 - result.total_mass_history[-1] / result.total_mass_history[0]) * 100,
+            "peak_density": max([np.max(m) for m in result.density_history]),
+            "max_velocity": np.max(np.sqrt(vx**2 + vy**2)),
+            "solve_time": result.solve_time,
+            "stable_steps": result.stable_steps,
         }
 
 
@@ -428,15 +431,16 @@ def run_stable_no_barrier_experiment():
 
     # Create problem with conservative parameters
     mfg = StableAnisotropicMFG(
-        nx=32, ny=32,
-        T=0.5,         # Shorter time for stability
-        gamma=0.05,    # Reduced coupling
-        sigma=0.02,    # Increased diffusion
-        rho_amplitude=0.3  # Reduced anisotropy
+        nx=32,
+        ny=32,
+        T=0.5,  # Shorter time for stability
+        gamma=0.05,  # Reduced coupling
+        sigma=0.02,  # Increased diffusion
+        rho_amplitude=0.3,  # Reduced anisotropy
     )
 
-    print(f"Problem parameters:")
-    print(f"  Domain: [0,1]²")
+    print("Problem parameters:")
+    print("  Domain: [0,1]²")
     print(f"  Grid: {mfg.nx}×{mfg.ny}")
     print(f"  Time horizon: {mfg.T}")
     print(f"  Density coupling (γ): {mfg.gamma}")

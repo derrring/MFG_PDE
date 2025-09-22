@@ -7,9 +7,9 @@ core algorithmic components while maintaining the clean solver interface.
 
 from __future__ import annotations
 
-
-from typing import Any, TYPE_CHECKING
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
 from .base import SolverHooks
 
 if TYPE_CHECKING:
@@ -65,12 +65,11 @@ class CustomHJBHook(AlgorithmExtensionHook):
     def __init__(self, hjb_implementation: Callable | None = None):
         super().__init__()
         if hjb_implementation:
-            self.register_extension('hjb_step', hjb_implementation)
+            self.register_extension("hjb_step", hjb_implementation)
 
     def on_iteration_start(self, state: SpatialTemporalState) -> None:
         """Provide HJB customization before iteration begins."""
         # This would be called by a solver that supports HJB extensions
-        pass
 
 
 class CustomFPHook(AlgorithmExtensionHook):
@@ -90,7 +89,7 @@ class CustomFPHook(AlgorithmExtensionHook):
     def __init__(self, fp_implementation: Callable | None = None):
         super().__init__()
         if fp_implementation:
-            self.register_extension('fp_step', fp_implementation)
+            self.register_extension("fp_step", fp_implementation)
 
 
 class CustomConvergenceHook(AlgorithmExtensionHook):
@@ -109,17 +108,16 @@ class CustomConvergenceHook(AlgorithmExtensionHook):
     def __init__(self, convergence_implementation: Callable | None = None):
         super().__init__()
         if convergence_implementation:
-            self.register_extension('convergence_check', convergence_implementation)
+            self.register_extension("convergence_check", convergence_implementation)
 
     def on_convergence_check(self, state: SpatialTemporalState) -> bool | None:
         """Apply custom convergence check if available."""
-        convergence_impl = self.get_extension('convergence_check')
+        convergence_impl = self.get_extension("convergence_check")
         if convergence_impl:
             try:
                 # Call custom convergence check
                 # Note: This would need to be integrated with solver state
-                return convergence_impl(state, getattr(self, 'tolerance', 1e-6),
-                                      getattr(self, 'history', []))
+                return convergence_impl(state, getattr(self, "tolerance", 1e-6), getattr(self, "history", []))
             except Exception as e:
                 print(f"Custom convergence check failed: {e}")
                 return None
@@ -218,10 +216,7 @@ class CustomResidualHook(SolverHooks):
         """Calculate custom residual if function provided."""
         if self.residual_func and self.previous_state:
             try:
-                custom_residual = self.residual_func(
-                    state.u, state.m,
-                    self.previous_state.u, self.previous_state.m
-                )
+                custom_residual = self.residual_func(state.u, state.m, self.previous_state.u, self.previous_state.m)
                 print(f"Custom residual at iteration {state.iteration}: {custom_residual:.6e}")
                 # Note: In a full implementation, this would update the state's residual
             except Exception as e:
@@ -268,12 +263,7 @@ class AdaptiveParameterHook(SolverHooks):
         for param_name, adaptation_func in self.parameter_rules.items():
             try:
                 current_value = self.parameter_history[param_name][-1] if self.parameter_history[param_name] else 1.0
-                new_value = adaptation_func(
-                    state.iteration,
-                    state.residual,
-                    current_value,
-                    self.residual_history
-                )
+                new_value = adaptation_func(state.iteration, state.residual, current_value, self.residual_history)
                 self.parameter_history[param_name].append(new_value)
                 print(f"Adapted {param_name}: {current_value:.6f} -> {new_value:.6f}")
 
@@ -307,25 +297,20 @@ class MethodSwitchingHook(SolverHooks):
         self.current_method = "default"
         self.method_history: list[str] = []
 
-    def add_switch_rule(self,
-                       condition: Callable[["SpatialTemporalState"], bool],
-                       new_method: str,
-                       reason: str = "Method switch"):
+    def add_switch_rule(
+        self, condition: Callable[[SpatialTemporalState], bool], new_method: str, reason: str = "Method switch"
+    ):
         """Add a rule for method switching."""
-        self.switch_rules.append({
-            'condition': condition,
-            'new_method': new_method,
-            'reason': reason
-        })
+        self.switch_rules.append({"condition": condition, "new_method": new_method, "reason": reason})
 
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None:
         """Check method switching conditions."""
         for rule in self.switch_rules:
-            if rule['condition'](state) and self.current_method != rule['new_method']:
+            if rule["condition"](state) and self.current_method != rule["new_method"]:
                 print(f"Switching method: {self.current_method} -> {rule['new_method']}")
                 print(f"Reason: {rule['reason']}")
 
-                self.current_method = rule['new_method']
+                self.current_method = rule["new_method"]
                 self.method_history.append(self.current_method)
 
                 # Note: In a full implementation, this would trigger actual method switching

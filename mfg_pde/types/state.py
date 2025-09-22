@@ -7,9 +7,9 @@ through the hooks system for advanced customization.
 
 from __future__ import annotations
 
-
-from typing import NamedTuple, Any
 from collections.abc import Callable
+from typing import Any, NamedTuple
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -28,11 +28,12 @@ class SpatialTemporalState(NamedTuple):
         residual: Current residual/error measure
         metadata: Additional solver-specific data
     """
-    u: NDArray           # Value function u(t,x)
-    m: NDArray           # Density function m(t,x)
-    iteration: int                   # Current iteration number
-    residual: float                  # Current residual/error
-    metadata: dict[str, Any]         # Additional solver-specific data
+
+    u: NDArray  # Value function u(t,x)
+    m: NDArray  # Density function m(t,x)
+    iteration: int  # Current iteration number
+    residual: float  # Current residual/error
+    metadata: dict[str, Any]  # Additional solver-specific data
 
     def copy_with_updates(self, **kwargs) -> SpatialTemporalState:
         """Create a copy with updated fields."""
@@ -51,13 +52,16 @@ class SpatialTemporalState(NamedTuple):
         return float(np.sqrt(np.sum(self.u**2) + np.sum(self.m**2)))
 
     def __str__(self) -> str:
-        return (f"SpatialTemporalState(iteration={self.iteration}, "
-                f"residual={self.residual:.2e}, "
-                f"shape={self.u.shape})")
+        return (
+            f"SpatialTemporalState(iteration={self.iteration}, "
+            f"residual={self.residual:.2e}, "
+            f"shape={self.u.shape})"
+        )
 
 
 class ConvergenceInfo(NamedTuple):
     """Information about solver convergence."""
+
     converged: bool
     iterations: int
     final_residual: float
@@ -68,11 +72,12 @@ class ConvergenceInfo(NamedTuple):
         """Plot convergence history."""
         try:
             import matplotlib.pyplot as plt
+
             plt.figure(figsize=(8, 6))
             plt.semilogy(self.residual_history)
-            plt.xlabel('Iteration')
-            plt.ylabel('Residual')
-            plt.title('Convergence History')
+            plt.xlabel("Iteration")
+            plt.ylabel("Residual")
+            plt.title("Convergence History")
             plt.grid(True)
             plt.show()
         except ImportError:
@@ -81,14 +86,16 @@ class ConvergenceInfo(NamedTuple):
 
 class SolverStatistics(NamedTuple):
     """Statistics collected during solving."""
+
     total_time: float
     average_iteration_time: float
     memory_usage_mb: float | None
     cpu_usage_percent: float | None
 
     def __str__(self) -> str:
-        return (f"SolverStatistics(total_time={self.total_time:.2f}s, "
-                f"avg_iter_time={self.average_iteration_time:.3f}s)")
+        return (
+            f"SolverStatistics(total_time={self.total_time:.2f}s, " f"avg_iter_time={self.average_iteration_time:.3f}s)"
+        )
 
 
 # Additional type aliases for internal use

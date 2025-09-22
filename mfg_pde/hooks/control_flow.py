@@ -7,10 +7,10 @@ allowing for complex adaptive behavior during solving.
 
 from __future__ import annotations
 
-
-from typing import Any, TYPE_CHECKING
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
 from .base import SolverHooks
 
 if TYPE_CHECKING:
@@ -24,6 +24,7 @@ class ControlState:
 
     This provides more information than simple string control signals.
     """
+
     action: str  # "continue", "stop", "restart", "pause", "adjust"
     reason: str  # Human-readable reason for the action
     metadata: dict[str, Any]  # Additional control data
@@ -61,53 +62,45 @@ class AdaptiveControlHook(SolverHooks):
         self.restart_count = 0
         self.max_restarts = 3
 
-    def add_convergence_rule(self,
-                           condition: Callable[["SpatialTemporalState"], bool],
-                           action: str,
-                           reason: str = "",
-                           adjustment: Callable | None = None):
+    def add_convergence_rule(
+        self,
+        condition: Callable[[SpatialTemporalState], bool],
+        action: str,
+        reason: str = "",
+        adjustment: Callable | None = None,
+    ):
         """Add a rule for convergence control."""
-        self.convergence_rules.append({
-            'condition': condition,
-            'action': action,
-            'reason': reason,
-            'adjustment': adjustment
-        })
+        self.convergence_rules.append(
+            {"condition": condition, "action": action, "reason": reason, "adjustment": adjustment}
+        )
 
-    def add_stop_rule(self,
-                     condition: Callable[["SpatialTemporalState"], bool],
-                     reason: str = "Stop condition met"):
+    def add_stop_rule(self, condition: Callable[[SpatialTemporalState], bool], reason: str = "Stop condition met"):
         """Add a rule for early stopping."""
-        self.stop_rules.append({
-            'condition': condition,
-            'reason': reason
-        })
+        self.stop_rules.append({"condition": condition, "reason": reason})
 
-    def add_adjustment_rule(self,
-                          condition: Callable[["SpatialTemporalState"], bool],
-                          adjustment: Callable,
-                          reason: str = "Parameter adjustment"):
+    def add_adjustment_rule(
+        self,
+        condition: Callable[[SpatialTemporalState], bool],
+        adjustment: Callable,
+        reason: str = "Parameter adjustment",
+    ):
         """Add a rule for parameter adjustment."""
-        self.adjustment_rules.append({
-            'condition': condition,
-            'adjustment': adjustment,
-            'reason': reason
-        })
+        self.adjustment_rules.append({"condition": condition, "adjustment": adjustment, "reason": reason})
 
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None:
         """Apply adaptive control rules."""
 
         # Check stop rules first
         for rule in self.stop_rules:
-            if rule['condition'](state):
+            if rule["condition"](state):
                 print(f"Stopping early: {rule['reason']}")
                 return "stop"
 
         # Check convergence override rules
         for rule in self.convergence_rules:
-            if rule['condition'](state):
-                action = rule['action']
-                reason = rule['reason'] or f"Convergence rule triggered"
+            if rule["condition"](state):
+                action = rule["action"]
+                reason = rule["reason"] or "Convergence rule triggered"
 
                 if action == "restart" and self.restart_count < self.max_restarts:
                     self.restart_count += 1
@@ -124,8 +117,8 @@ class AdaptiveControlHook(SolverHooks):
 
         # Check if any convergence rules should override default behavior
         for rule in self.convergence_rules:
-            if rule['condition'](state):
-                action = rule['action']
+            if rule["condition"](state):
+                action = rule["action"]
                 if action == "force_converge":
                     return True
                 elif action == "force_continue":
@@ -244,14 +237,14 @@ class WatchdogHook(SolverHooks):
     def _check_for_nans(self, state: SpatialTemporalState) -> bool:
         """Check if state contains NaN values."""
         import numpy as np
-        return bool(np.isnan(state.u).any() or
-                   np.isnan(state.m).any() or
-                   np.isnan(state.residual))
+
+        return bool(np.isnan(state.u).any() or np.isnan(state.m).any() or np.isnan(state.residual))
 
     def _check_memory_usage(self) -> float:
         """Check current memory usage in GB."""
         try:
             import psutil
+
             process = psutil.Process()
             return process.memory_info().rss / (1024**3)  # Convert to GB
         except ImportError:
@@ -303,23 +296,18 @@ class ConditionalStopHook(SolverHooks):
     def __init__(self):
         self.conditions: list[dict[str, Any]] = []
 
-    def add_condition(self,
-                     condition: Callable[["SpatialTemporalState"], bool],
-                     reason: str = "Stop condition met",
-                     priority: int = 0):
+    def add_condition(
+        self, condition: Callable[[SpatialTemporalState], bool], reason: str = "Stop condition met", priority: int = 0
+    ):
         """Add a stopping condition."""
-        self.conditions.append({
-            'condition': condition,
-            'reason': reason,
-            'priority': priority
-        })
+        self.conditions.append({"condition": condition, "reason": reason, "priority": priority})
         # Sort by priority (higher priority first)
-        self.conditions.sort(key=lambda x: x['priority'], reverse=True)
+        self.conditions.sort(key=lambda x: x["priority"], reverse=True)
 
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None:
         """Check all stopping conditions."""
         for cond in self.conditions:
-            if cond['condition'](state):
+            if cond["condition"](state):
                 print(f"Stopping: {cond['reason']}")
                 return "stop"
         return None

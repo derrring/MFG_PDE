@@ -7,7 +7,6 @@ suitable for regular domain problems and testing.
 
 from __future__ import annotations
 
-
 import numpy as np
 
 from .base_geometry import BaseGeometry, MeshData
@@ -16,9 +15,9 @@ from .base_geometry import BaseGeometry, MeshData
 class SimpleGrid2D(BaseGeometry):
     """Simple 2D rectangular grid without external mesh dependencies."""
 
-    def __init__(self,
-                 bounds: tuple[float, float, float, float] = (0.0, 1.0, 0.0, 1.0),
-                 resolution: tuple[int, int] = (32, 32)):
+    def __init__(
+        self, bounds: tuple[float, float, float, float] = (0.0, 1.0, 0.0, 1.0), resolution: tuple[int, int] = (32, 32)
+    ):
         """
         Initialize 2D grid.
 
@@ -43,17 +42,16 @@ class SimpleGrid2D(BaseGeometry):
 
     def set_mesh_parameters(self, **kwargs):
         """Set mesh parameters (no-op for simple grid)."""
-        pass
 
     def export_mesh(self, format_type: str, filename: str):
         """Export mesh in basic format."""
-        if not hasattr(self, '_mesh_data') or self._mesh_data is None:
+        if not hasattr(self, "_mesh_data") or self._mesh_data is None:
             self._mesh_data = self.generate_mesh()
 
-        if format_type.lower() in ['txt', 'numpy']:
+        if format_type.lower() in ["txt", "numpy"]:
             # Simple text export
             np.savetxt(f"{filename}_vertices.txt", self._mesh_data.vertices)
-            np.savetxt(f"{filename}_elements.txt", self._mesh_data.elements, fmt='%d')
+            np.savetxt(f"{filename}_elements.txt", self._mesh_data.elements, fmt="%d")
         else:
             raise NotImplementedError(f"Export format {format_type} not supported by SimpleGrid2D")
 
@@ -64,7 +62,7 @@ class SimpleGrid2D(BaseGeometry):
         y = np.linspace(self.ymin, self.ymax, self.ny + 1)
 
         # Create mesh grid
-        X, Y = np.meshgrid(x, y, indexing='ij')
+        X, Y = np.meshgrid(x, y, indexing="ij")
 
         # Flatten to get vertices
         vertices = np.column_stack([X.ravel(), Y.ravel()])
@@ -135,7 +133,7 @@ class SimpleGrid2D(BaseGeometry):
             boundary_tags=boundary_tags,
             element_tags=element_tags,
             boundary_faces=boundary_faces,
-            dimension=2
+            dimension=2,
         )
 
         # Compute quality metrics
@@ -168,16 +166,18 @@ class SimpleGrid2D(BaseGeometry):
             "mean_area": float(np.mean(areas)),
             "area_ratio": float(np.max(areas) / np.min(areas)) if np.min(areas) > 0 else np.inf,
             "num_elements": len(mesh_data.elements),
-            "num_vertices": len(mesh_data.vertices)
+            "num_vertices": len(mesh_data.vertices),
         }
 
 
 class SimpleGrid3D(BaseGeometry):
     """Simple 3D rectangular grid without external mesh dependencies."""
 
-    def __init__(self,
-                 bounds: tuple[float, float, float, float, float, float] = (0.0, 1.0, 0.0, 1.0, 0.0, 1.0),
-                 resolution: tuple[int, int, int] = (16, 16, 16)):
+    def __init__(
+        self,
+        bounds: tuple[float, float, float, float, float, float] = (0.0, 1.0, 0.0, 1.0, 0.0, 1.0),
+        resolution: tuple[int, int, int] = (16, 16, 16),
+    ):
         """
         Initialize 3D grid.
 
@@ -202,17 +202,16 @@ class SimpleGrid3D(BaseGeometry):
 
     def set_mesh_parameters(self, **kwargs):
         """Set mesh parameters (no-op for simple grid)."""
-        pass
 
     def export_mesh(self, format_type: str, filename: str):
         """Export mesh in basic format."""
-        if not hasattr(self, '_mesh_data') or self._mesh_data is None:
+        if not hasattr(self, "_mesh_data") or self._mesh_data is None:
             self._mesh_data = self.generate_mesh()
 
-        if format_type.lower() in ['txt', 'numpy']:
+        if format_type.lower() in ["txt", "numpy"]:
             # Simple text export
             np.savetxt(f"{filename}_vertices.txt", self._mesh_data.vertices)
-            np.savetxt(f"{filename}_elements.txt", self._mesh_data.elements, fmt='%d')
+            np.savetxt(f"{filename}_elements.txt", self._mesh_data.elements, fmt="%d")
         else:
             raise NotImplementedError(f"Export format {format_type} not supported by SimpleGrid3D")
 
@@ -224,7 +223,7 @@ class SimpleGrid3D(BaseGeometry):
         z = np.linspace(self.zmin, self.zmax, self.nz + 1)
 
         # Create mesh grid
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+        X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
         # Flatten to get vertices
         vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
@@ -251,7 +250,7 @@ class SimpleGrid3D(BaseGeometry):
                         [v000, v010, v110, v111],
                         [v000, v110, v100, v111],
                         [v000, v100, v101, v111],
-                        [v000, v101, v001, v111]
+                        [v000, v101, v001, v111],
                     ]
 
                     elements.extend(tetrahedra)
@@ -273,7 +272,7 @@ class SimpleGrid3D(BaseGeometry):
             boundary_tags=boundary_tags,
             element_tags=element_tags,
             boundary_faces=boundary_faces,
-            dimension=3
+            dimension=3,
         )
 
         # Compute quality metrics
@@ -308,5 +307,5 @@ class SimpleGrid3D(BaseGeometry):
             "mean_volume": float(np.mean(volumes)),
             "volume_ratio": float(np.max(volumes) / np.min(volumes)) if np.min(volumes) > 0 else np.inf,
             "num_elements": len(mesh_data.elements),
-            "num_vertices": len(mesh_data.vertices)
+            "num_vertices": len(mesh_data.vertices),
         }

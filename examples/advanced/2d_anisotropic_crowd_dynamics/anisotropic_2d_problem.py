@@ -15,19 +15,18 @@ while optional barriers add realistic architectural constraints.
 """
 
 import sys
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Union, Tuple
+from abc import abstractmethod
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Add MFG_PDE to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from mfg_pde import MFGProblem, MFGComponents, BoundaryConditions
-from mfg_pde.factory import create_research_solver
+from mfg_pde import BoundaryConditions, MFGComponents, MFGProblem
 from mfg_pde.config import create_research_config
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
@@ -43,13 +42,13 @@ class BarrierConfig:
     @abstractmethod
     def compute_distance(self, x: np.ndarray) -> np.ndarray:
         """Compute signed distance to barrier boundary."""
-        pass
 
 
 @dataclass
 class CircularBarrier(BarrierConfig):
     """Circular barrier configuration."""
-    center: Tuple[float, float]
+
+    center: tuple[float, float]
     radius: float
 
     def compute_distance(self, x: np.ndarray) -> np.ndarray:
@@ -62,8 +61,9 @@ class CircularBarrier(BarrierConfig):
 @dataclass
 class LinearBarrier(BarrierConfig):
     """Linear barrier configuration."""
-    start: Tuple[float, float]
-    end: Tuple[float, float]
+
+    start: tuple[float, float]
+    end: tuple[float, float]
     thickness: float = 0.05
 
     def compute_distance(self, x: np.ndarray) -> np.ndarray:
@@ -89,7 +89,8 @@ class LinearBarrier(BarrierConfig):
 @dataclass
 class RectangularBarrier(BarrierConfig):
     """Rectangular barrier configuration."""
-    bounds: List[Tuple[float, float]]  # [(x_min, x_max), (y_min, y_max)]
+
+    bounds: list[tuple[float, float]]  # [(x_min, x_max), (y_min, y_max)]
 
     def compute_distance(self, x: np.ndarray) -> np.ndarray:
         """Compute signed distance to rectangular barrier."""
@@ -106,8 +107,7 @@ class RectangularBarrier(BarrierConfig):
         # Inside distance (negative)
         inside_mask = (x[:, 0] >= x_min) & (x[:, 0] <= x_max) & (x[:, 1] >= y_min) & (x[:, 1] <= y_max)
         inside_dist = np.minimum(
-            np.minimum(x[:, 0] - x_min, x_max - x[:, 0]),
-            np.minimum(x[:, 1] - y_min, y_max - x[:, 1])
+            np.minimum(x[:, 0] - x_min, x_max - x[:, 0]), np.minimum(x[:, 1] - y_min, y_max - x[:, 1])
         )
 
         return np.where(inside_mask, -inside_dist, outside_dist)
@@ -128,7 +128,7 @@ class GridBased2DAdapter:
         # Create 2D grids
         self.x1_grid = np.linspace(self.x1_min, self.x1_max, nx1 + 1)
         self.x2_grid = np.linspace(self.x2_min, self.x2_max, nx2 + 1)
-        self.X1, self.X2 = np.meshgrid(self.x1_grid, self.x2_grid, indexing='ij')
+        self.X1, self.X2 = np.meshgrid(self.x1_grid, self.x2_grid, indexing="ij")
 
         # Grid spacing
         self.dx1 = (self.x1_max - self.x1_min) / nx1
@@ -223,15 +223,16 @@ class AnisotropicMFGProblem2D:
     using the MFGComponents system with proper barrier support and custom Hamiltonians.
     """
 
-    def __init__(self,
-                 domain_bounds=(0.0, 1.0, 0.0, 1.0),  # (x1_min, x1_max, x2_min, x2_max)
-                 grid_size=(32, 32),                   # (Nx1, Nx2)
-                 time_domain=(0.5, 500),               # (T, Nt)
-                 sigma=0.02,                           # Diffusion
-                 gamma=0.05,                           # Density coupling
-                 rho_amplitude=0.3,                    # Anisotropy strength
-                 barrier_configuration='none'):        # Barrier configuration
-
+    def __init__(
+        self,
+        domain_bounds=(0.0, 1.0, 0.0, 1.0),  # (x1_min, x1_max, x2_min, x2_max)
+        grid_size=(32, 32),  # (Nx1, Nx2)
+        time_domain=(0.5, 500),  # (T, Nt)
+        sigma=0.02,  # Diffusion
+        gamma=0.05,  # Density coupling
+        rho_amplitude=0.3,  # Anisotropy strength
+        barrier_configuration="none",
+    ):  # Barrier configuration
         self.domain_bounds = domain_bounds
         self.Nx1, self.Nx2 = grid_size
         self.T, self.Nt = time_domain
@@ -267,7 +268,7 @@ class AnisotropicMFGProblem2D:
             T=self.T,
             Nt=self.Nt,
             sigma=self.sigma,
-            components=self.components
+            components=self.components,
         )
 
         logger.info(f"Created 2D anisotropic MFG problem: {self.Nx1+1}×{self.Nx2+1} grid")
@@ -275,19 +276,19 @@ class AnisotropicMFGProblem2D:
         if self.barriers:
             logger.info(f"Using barrier configuration: {barrier_configuration} with {len(self.barriers)} barriers")
 
-    def _setup_barriers(self, configuration: str) -> List[BarrierConfig]:
+    def _setup_barriers(self, configuration: str) -> list[BarrierConfig]:
         """Configure internal barriers within domain."""
-        if configuration == 'central_obstacle':
+        if configuration == "central_obstacle":
             barriers = [CircularBarrier(center=(0.5, 0.4), radius=0.15)]
-        elif configuration == 'anisotropy_aligned':
+        elif configuration == "anisotropy_aligned":
             barriers = [
                 LinearBarrier(start=(0.1, 0.1), end=(0.4, 0.4)),  # Region A alignment
-                LinearBarrier(start=(0.9, 0.1), end=(0.6, 0.4))   # Region B alignment
+                LinearBarrier(start=(0.9, 0.1), end=(0.6, 0.4)),  # Region B alignment
             ]
-        elif configuration == 'corridor_system':
+        elif configuration == "corridor_system":
             barriers = [
                 RectangularBarrier(bounds=[(0.3, 0.4), (0.3, 0.7)]),
-                RectangularBarrier(bounds=[(0.6, 0.7), (0.3, 0.7)])
+                RectangularBarrier(bounds=[(0.6, 0.7), (0.3, 0.7)]),
             ]
         else:
             barriers = []  # No barriers
@@ -346,11 +347,11 @@ class AnisotropicMFGProblem2D:
 
                 # Anisotropic kinetic energy: 0.5 * [p1, p2] * A * [p1; p2]
                 # A * p = [p1 + rho*p2, rho*p1 + p2]
-                kinetic = 0.5 * (p1*p1 + 2*rho*p1*p2 + p2*p2)
+                kinetic = 0.5 * (p1 * p1 + 2 * rho * p1 * p2 + p2 * p2)
 
                 # Density-dependent friction (congestion)
                 if m_at_x > 1e-10:
-                    friction = self.gamma * m_at_x * (p1*p1 + p2*p2)
+                    friction = self.gamma * m_at_x * (p1 * p1 + p2 * p2)
                 else:
                     friction = 0.0
 
@@ -383,7 +384,7 @@ class AnisotropicMFGProblem2D:
                 p2 = 0.1 * p1  # Simplified
 
                 # dH/dm = gamma * |p|^2
-                result = self.gamma * (p1*p1 + p2*p2)
+                result = self.gamma * (p1 * p1 + p2 * p2)
 
                 if np.isnan(result) or np.isinf(result):
                     return 0.0
@@ -407,7 +408,7 @@ class AnisotropicMFGProblem2D:
                 center_x1, center_x2 = 0.2, 0.2
                 width = 0.1
 
-                density = np.exp(-((x1 - center_x1)**2 + (x2 - center_x2)**2) / (2 * width**2))
+                density = np.exp(-((x1 - center_x1) ** 2 + (x2 - center_x2) ** 2) / (2 * width**2))
 
                 return max(density, 1e-10)
 
@@ -427,7 +428,7 @@ class AnisotropicMFGProblem2D:
                 # Target exit at (0.5, 1.0)
                 target_x1, target_x2 = 0.5, 1.0
 
-                distance_cost = (x1 - target_x1)**2 + (x2 - target_x2)**2
+                distance_cost = (x1 - target_x1) ** 2 + (x2 - target_x2) ** 2
 
                 return distance_cost
 
@@ -442,13 +443,13 @@ class AnisotropicMFGProblem2D:
             initial_density_func=initial_density_2d,
             final_value_func=final_value_2d,
             parameters={
-                'gamma': self.gamma,
-                'rho_amplitude': self.rho_amplitude,
-                'dimension': 2,
-                'grid_shape': (self.Nx1 + 1, self.Nx2 + 1)
+                "gamma": self.gamma,
+                "rho_amplitude": self.rho_amplitude,
+                "dimension": 2,
+                "grid_shape": (self.Nx1 + 1, self.Nx2 + 1),
             },
             description="2D Anisotropic Crowd Dynamics",
-            problem_type="anisotropic_mfg_2d"
+            problem_type="anisotropic_mfg_2d",
         )
 
         return components
@@ -457,38 +458,34 @@ class AnisotropicMFGProblem2D:
         """Configure mixed boundary conditions for evacuation scenario."""
         # No-flux boundary conditions on walls
         no_flux_boundaries = [
-            ('left', {'type': 'no_flux'}),    # x₁ = 0
-            ('right', {'type': 'no_flux'}),   # x₁ = 1
-            ('bottom', {'type': 'no_flux'})   # x₂ = 0
+            ("left", {"type": "no_flux"}),  # x₁ = 0
+            ("right", {"type": "no_flux"}),  # x₁ = 1
+            ("bottom", {"type": "no_flux"}),  # x₂ = 0
         ]
 
         # Dirichlet condition at exit
-        exit_boundary = ('top', {
-            'type': 'dirichlet',
-            'value': lambda x, t: 0.0  # u = 0 at exit
-        })
+        exit_boundary = (
+            "top",
+            {
+                "type": "dirichlet",
+                "value": lambda x, t: 0.0,  # u = 0 at exit
+            },
+        )
 
-        return BoundaryConditions([
-            *no_flux_boundaries,
-            exit_boundary
-        ])
+        return BoundaryConditions([*no_flux_boundaries, exit_boundary])
 
-    def get_problem_info(self) -> Dict[str, Any]:
+    def get_problem_info(self) -> dict[str, Any]:
         """Return problem configuration information."""
         return {
-            'problem_type': '2D Anisotropic Crowd Dynamics',
-            'domain': self.domain_bounds,
-            'time_horizon': self.T,
-            'grid_size': (self.Nx1, self.Nx2),
-            'parameters': {
-                'gamma': self.gamma,
-                'sigma': self.sigma,
-                'rho_amplitude': self.rho_amplitude
-            },
-            'barrier_configuration': self.barrier_configuration,
-            'num_barriers': len(self.barriers),
-            'hamiltonian_type': 'non-separable',
-            'anisotropy_pattern': 'checkerboard'
+            "problem_type": "2D Anisotropic Crowd Dynamics",
+            "domain": self.domain_bounds,
+            "time_horizon": self.T,
+            "grid_size": (self.Nx1, self.Nx2),
+            "parameters": {"gamma": self.gamma, "sigma": self.sigma, "rho_amplitude": self.rho_amplitude},
+            "barrier_configuration": self.barrier_configuration,
+            "num_barriers": len(self.barriers),
+            "hamiltonian_type": "non-separable",
+            "anisotropy_pattern": "checkerboard",
         }
 
     def solve(self):
@@ -501,16 +498,17 @@ class AnisotropicMFGProblem2D:
 
             # Adjust configuration for stability
             config.newton.max_iterations = 50  # Conservative iteration count
-            config.newton.tolerance = 1e-4     # Relaxed tolerance
+            config.newton.tolerance = 1e-4  # Relaxed tolerance
             config.picard.max_iterations = 20  # Fewer Picard iterations
             config.convergence_tolerance = 1e-4  # Relaxed global tolerance
 
             # Create solver using factory with hybrid solver for better integration
             from mfg_pde.factory import create_solver
+
             solver = create_solver(
                 problem=self.mfg_problem,
-                solver_type='hybrid_fp_particle_hjb_fdm',  # Use hybrid solver
-                preset='fast'  # Fast preset for quick demo
+                solver_type="hybrid_fp_particle_hjb_fdm",  # Use hybrid solver
+                preset="fast",  # Fast preset for quick demo
             )
 
             # Solve the problem
@@ -527,6 +525,7 @@ class AnisotropicMFGProblem2D:
         except Exception as e:
             logger.error(f"Solver failed with error: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -541,12 +540,11 @@ class AnisotropicMFGProblem2D:
                 rho_grid[i1, i2] = self._anisotropy_function(x1, x2)
 
         plt.figure(figsize=(10, 8))
-        plt.contourf(self.grid_adapter.X1, self.grid_adapter.X2, rho_grid,
-                    levels=20, cmap='RdBu_r')
-        plt.colorbar(label=r'$\rho(x_1, x_2)$')
-        plt.title('Anisotropy Function: Checkerboard Pattern')
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
+        plt.contourf(self.grid_adapter.X1, self.grid_adapter.X2, rho_grid, levels=20, cmap="RdBu_r")
+        plt.colorbar(label=r"$\rho(x_1, x_2)$")
+        plt.title("Anisotropy Function: Checkerboard Pattern")
+        plt.xlabel(r"$x_1$")
+        plt.ylabel(r"$x_2$")
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
 
@@ -560,7 +558,7 @@ class AnisotropicMFGProblem2D:
 
         try:
             # Check available solution components
-            if hasattr(solution, 'm_history') and solution.m_history is not None:
+            if hasattr(solution, "m_history") and solution.m_history is not None:
                 # Convert density history to 2D
                 density_2d = self.grid_adapter.convert_to_2d_array(solution.m_history)
 
@@ -568,19 +566,21 @@ class AnisotropicMFGProblem2D:
                 fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 
                 # Initial density
-                im1 = axes[0].contourf(self.grid_adapter.X1, self.grid_adapter.X2,
-                                     density_2d[0], levels=20, cmap='viridis')
-                axes[0].set_title('Initial Density')
-                axes[0].set_xlabel(r'$x_1$')
-                axes[0].set_ylabel(r'$x_2$')
+                im1 = axes[0].contourf(
+                    self.grid_adapter.X1, self.grid_adapter.X2, density_2d[0], levels=20, cmap="viridis"
+                )
+                axes[0].set_title("Initial Density")
+                axes[0].set_xlabel(r"$x_1$")
+                axes[0].set_ylabel(r"$x_2$")
                 plt.colorbar(im1, ax=axes[0])
 
                 # Final density
-                im2 = axes[1].contourf(self.grid_adapter.X1, self.grid_adapter.X2,
-                                     density_2d[-1], levels=20, cmap='viridis')
-                axes[1].set_title('Final Density')
-                axes[1].set_xlabel(r'$x_1$')
-                axes[1].set_ylabel(r'$x_2$')
+                im2 = axes[1].contourf(
+                    self.grid_adapter.X1, self.grid_adapter.X2, density_2d[-1], levels=20, cmap="viridis"
+                )
+                axes[1].set_title("Final Density")
+                axes[1].set_xlabel(r"$x_1$")
+                axes[1].set_ylabel(r"$x_2$")
                 plt.colorbar(im2, ax=axes[1])
 
                 plt.tight_layout()
@@ -590,7 +590,9 @@ class AnisotropicMFGProblem2D:
                 final_mass = np.sum(density_2d[-1]) * self.grid_adapter.dx1 * self.grid_adapter.dx2
 
                 logger.info(f"Mass: initial = {initial_mass:.4f}, final = {final_mass:.4f}")
-                logger.info(f"Peak density: initial = {np.max(density_2d[0]):.4f}, final = {np.max(density_2d[-1]):.4f}")
+                logger.info(
+                    f"Peak density: initial = {np.max(density_2d[0]):.4f}, final = {np.max(density_2d[-1]):.4f}"
+                )
 
                 return density_2d
             else:
@@ -599,6 +601,7 @@ class AnisotropicMFGProblem2D:
         except Exception as e:
             logger.error(f"Visualization failed: {e}")
             import traceback
+
             traceback.print_exc()
 
 
@@ -610,11 +613,11 @@ def run_experiment():
         # Create problem with conservative parameters
         problem = AnisotropicMFGProblem2D(
             domain_bounds=(0.0, 1.0, 0.0, 1.0),
-            grid_size=(16, 16),         # Small grid for testing
-            time_domain=(0.2, 50),      # Short time, fewer steps
-            sigma=0.05,                 # Higher diffusion for stability
-            gamma=0.02,                 # Lower coupling
-            rho_amplitude=0.2           # Moderate anisotropy
+            grid_size=(16, 16),  # Small grid for testing
+            time_domain=(0.2, 50),  # Short time, fewer steps
+            sigma=0.05,  # Higher diffusion for stability
+            gamma=0.02,  # Lower coupling
+            rho_amplitude=0.2,  # Moderate anisotropy
         )
 
         # Visualize anisotropy pattern
@@ -640,18 +643,19 @@ def run_experiment():
     except Exception as e:
         logger.error(f"Experiment failed: {e}")
         import traceback
+
         traceback.print_exc()
         return None, None
 
 
 def create_anisotropic_problem(
-    barrier_config: str = 'none',
+    barrier_config: str = "none",
     gamma: float = 0.05,
     sigma: float = 0.02,
     rho_amplitude: float = 0.3,
     domain_bounds: tuple = (0.0, 1.0, 0.0, 1.0),
     grid_size: tuple = (32, 32),
-    time_domain: tuple = (0.5, 500)
+    time_domain: tuple = (0.5, 500),
 ) -> AnisotropicMFGProblem2D:
     """
     Factory function to create 2D anisotropic crowd dynamics problem.
@@ -675,7 +679,7 @@ def create_anisotropic_problem(
         sigma=sigma,
         gamma=gamma,
         rho_amplitude=rho_amplitude,
-        barrier_configuration=barrier_config
+        barrier_configuration=barrier_config,
     )
 
 

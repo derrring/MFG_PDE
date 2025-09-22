@@ -74,7 +74,6 @@ class ContainerSecurityChecker:
 
             # Check for latest tag usage
             if line.startswith("FROM") and ":latest" in line:
-                uses_latest_tag = True
                 findings.append(
                     {
                         "type": "dockerfile",

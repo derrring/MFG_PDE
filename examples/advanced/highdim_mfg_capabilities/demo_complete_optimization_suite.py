@@ -15,19 +15,19 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 import numpy as np
-from mfg_pde.utils.logging import configure_research_logging, get_logger
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem, HighDimMFGProblem
+
 from mfg_pde import MFGComponents
-from mfg_pde.geometry.domain_3d import Domain3D
-from mfg_pde.geometry.boundary_conditions_3d import (
-    BoundaryConditionManager3D, DirichletBC3D, NeumannBC3D,
-    create_box_boundary_conditions
-)
-from mfg_pde.geometry.tetrahedral_amr import TetrahedralAMRMesh
-from mfg_pde.utils.performance_optimization import (
-    PerformanceMonitor, SparseMatrixOptimizer, AdvancedSparseOperations
-)
 from mfg_pde.benchmarks import HighDimMFGBenchmark
+from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde.geometry.boundary_conditions_3d import (
+    BoundaryConditionManager3D,
+    DirichletBC3D,
+    NeumannBC3D,
+)
+from mfg_pde.geometry.domain_3d import Domain3D
+from mfg_pde.geometry.tetrahedral_amr import TetrahedralAMRMesh
+from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.performance_optimization import AdvancedSparseOperations, PerformanceMonitor, SparseMatrixOptimizer
 
 # Configure logging
 configure_research_logging("complete_optimization_demo", level="INFO")
@@ -41,20 +41,14 @@ def demo_3d_geometry_with_boundary_conditions():
     try:
         # Create 3D domain (fallback to simple grid if Gmsh not available)
         try:
-            domain = Domain3D(
-                domain_type="box",
-                bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0),
-                mesh_size=0.2
-            )
+            domain = Domain3D(domain_type="box", bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.2)
             mesh_data = domain.generate_mesh()
             logger.info(f"✅ Created 3D domain with {len(mesh_data.vertices)} vertices")
         except Exception as e:
             logger.warning(f"Gmsh not available, using simple grid: {e}")
             from mfg_pde.geometry.simple_grid import SimpleGrid3D
-            domain = SimpleGrid3D(
-                bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0),
-                resolution=(16, 16, 16)
-            )
+
+            domain = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(16, 16, 16))
             mesh_data = domain.generate_mesh()
             logger.info(f"✅ Created simple 3D grid with {len(mesh_data.vertices)} vertices")
 
@@ -64,7 +58,7 @@ def demo_3d_geometry_with_boundary_conditions():
         # Add mixed boundary conditions
         bc_manager.add_condition(DirichletBC3D(0.0, "Zero BC"), 0)  # x_min face
         bc_manager.add_condition(DirichletBC3D(1.0, "Unit BC"), 1)  # x_max face
-        bc_manager.add_condition(NeumannBC3D(0.0, "No Flux"), 2)   # y_min face
+        bc_manager.add_condition(NeumannBC3D(0.0, "No Flux"), 2)  # y_min face
 
         logger.info("✅ Created boundary condition manager with mixed conditions")
 
@@ -86,10 +80,8 @@ def demo_adaptive_mesh_refinement():
     try:
         # Create initial coarse mesh
         from mfg_pde.geometry.simple_grid import SimpleGrid3D
-        domain = SimpleGrid3D(
-            bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0),
-            resolution=(8, 8, 8)
-        )
+
+        domain = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(8, 8, 8))
         mesh_data = domain.generate_mesh()
 
         logger.info(f"Initial mesh: {len(mesh_data.vertices)} vertices")
@@ -107,7 +99,7 @@ def demo_adaptive_mesh_refinement():
         refined = amr_mesh.refine_mesh(solution, refinement_fraction=0.3)
 
         if refined:
-            logger.info(f"✅ AMR refinement successful")
+            logger.info("✅ AMR refinement successful")
             logger.info(f"Quality metrics: {amr_mesh.compute_quality_metrics()}")
         else:
             logger.info("✅ AMR completed (no refinement needed)")
@@ -129,7 +121,7 @@ def demo_performance_optimization():
         # Demonstrate sparse matrix operations
         with monitor.monitor_operation("sparse_matrix_creation") as m:
             laplacian = SparseMatrixOptimizer.create_laplacian_3d(
-                nx=16, ny=16, nz=16, dx=1.0/15, dy=1.0/15, dz=1.0/15
+                nx=16, ny=16, nz=16, dx=1.0 / 15, dy=1.0 / 15, dz=1.0 / 15
             )
 
         creation_metrics = monitor.metrics_history[-1]
@@ -146,7 +138,7 @@ def demo_performance_optimization():
         # Test advanced sparse operations
         try:
             # Create smaller operators for Kronecker product demo
-            op_1d = SparseMatrixOptimizer.create_laplacian_3d(8, 1, 1, 1.0/7, 1.0, 1.0)
+            op_1d = SparseMatrixOptimizer.create_laplacian_3d(8, 1, 1, 1.0 / 7, 1.0, 1.0)
             operators = [op_1d, op_1d, op_1d]
 
             with monitor.monitor_operation("tensor_product") as m:
@@ -171,10 +163,7 @@ class SimpleMFGProblem(GridBasedMFGProblem):
 
     def __init__(self, domain_bounds, grid_resolution, time_domain=(1.0, 11)):
         super().__init__(
-            domain_bounds=domain_bounds,
-            grid_resolution=grid_resolution,
-            time_domain=time_domain,
-            diffusion_coeff=0.1
+            domain_bounds=domain_bounds, grid_resolution=grid_resolution, time_domain=time_domain, diffusion_coeff=0.1
         )
         self.dimension = len(grid_resolution)
 
@@ -211,7 +200,7 @@ class SimpleMFGProblem(GridBasedMFGProblem):
                 coords = self.mesh_data.vertices[x_idx]
                 center = np.array([0.5] * self.dimension)
                 distance = np.linalg.norm(coords - center)
-                density = np.exp(-distance**2 / (2 * 0.2**2))
+                density = np.exp(-(distance**2) / (2 * 0.2**2))
                 return max(density, 1e-10)
             except Exception:
                 return 1e-10
@@ -235,7 +224,7 @@ class SimpleMFGProblem(GridBasedMFGProblem):
             hamiltonian_func=simple_hamiltonian,
             hamiltonian_dm_func=hamiltonian_dm,
             initial_density_func=initial_density_grid,
-            final_value_func=terminal_cost_grid
+            final_value_func=terminal_cost_grid,
         )
 
     def hamiltonian(self, x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -260,7 +249,7 @@ class SimpleMFGProblem(GridBasedMFGProblem):
             coords = self.mesh_data.vertices[x_idx]
             center = np.array([0.5] * self.dimension)
             distance = np.linalg.norm(coords - center)
-            density = np.exp(-distance**2 / (2 * 0.2**2))
+            density = np.exp(-(distance**2) / (2 * 0.2**2))
             return max(density, 1e-10)
         except Exception:
             return 1e-10
@@ -292,7 +281,7 @@ def demo_high_dimensional_solving():
         problem = SimpleMFGProblem(
             domain_bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0),
             grid_resolution=(12, 12, 12),
-            time_domain=(1.0, 11)  # Smaller problem for demo
+            time_domain=(1.0, 11),  # Smaller problem for demo
         )
 
         logger.info(f"Created 3D MFG problem: {12**3} vertices")
@@ -301,11 +290,7 @@ def demo_high_dimensional_solving():
         monitor = PerformanceMonitor()
 
         with monitor.monitor_operation("mfg_solve_3d") as m:
-            result = problem.solve_with_damped_fixed_point(
-                damping_factor=0.5,
-                max_iterations=20,
-                tolerance=1e-3
-            )
+            result = problem.solve_with_damped_fixed_point(damping_factor=0.5, max_iterations=20, tolerance=1e-3)
 
         solve_metrics = monitor.metrics_history[-1]
 
@@ -315,7 +300,7 @@ def demo_high_dimensional_solving():
             logger.info(f"   Memory used: {solve_metrics.memory_used:.1f}MB")
             logger.info(f"   Final residual: {result.get('final_residual', 'N/A'):.2e}")
         else:
-            logger.warning(f"⚠️ 3D MFG solution did not converge")
+            logger.warning("⚠️ 3D MFG solution did not converge")
 
         return result, solve_metrics
 
@@ -336,10 +321,7 @@ def demo_comprehensive_benchmarking():
         quick_grids = [(8, 8), (12, 12), (6, 6, 6)]
 
         logger.info("Running quick benchmark suite...")
-        results = benchmark.run_convergence_benchmark(
-            grid_sizes=quick_grids,
-            solver_methods=["damped_fixed_point"]
-        )
+        results = benchmark.run_convergence_benchmark(grid_sizes=quick_grids, solver_methods=["damped_fixed_point"])
 
         logger.info(f"✅ Completed {len(results)} benchmark tests")
 
@@ -348,7 +330,7 @@ def demo_comprehensive_benchmarking():
 
         if analysis:
             summary = analysis.get("summary", {})
-            logger.info(f"✅ Benchmark analysis completed:")
+            logger.info("✅ Benchmark analysis completed:")
             logger.info(f"   Success rate: {summary.get('success_rate', 0):.1%}")
             logger.info(f"   Average solve time: {summary.get('average_solve_time', 0):.3f}s")
             logger.info(f"   Dimensions tested: {summary.get('dimensions_tested', [])}")
@@ -395,7 +377,7 @@ def main():
         ("Adaptive Mesh Refinement", amr_mesh is not None),
         ("Performance Optimization", perf_monitor is not None),
         ("High-Dimensional MFG Solving", mfg_result is not None),
-        ("Comprehensive Benchmarking", benchmark_analysis is not None)
+        ("Comprehensive Benchmarking", benchmark_analysis is not None),
     ]
 
     successful_demos = sum(1 for _, success in demos if success)

@@ -8,7 +8,8 @@ regardless of inheritance.
 
 from __future__ import annotations
 
-from typing import Protocol, Any, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
+
 from numpy.typing import NDArray
 
 
@@ -126,5 +127,5 @@ class SolverConfig(Protocol):
 
 # Type aliases for commonly used types (simple, memorable names)
 SolutionArray = NDArray  # For u(t,x) and m(t,x) arrays
-SpatialGrid = NDArray   # For x-coordinates
-TimeGrid = NDArray      # For t-coordinates
+SpatialGrid = NDArray  # For x-coordinates
+TimeGrid = NDArray  # For t-coordinates

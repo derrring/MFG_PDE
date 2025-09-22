@@ -10,8 +10,9 @@ Internal Types for Advanced Users
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeAlias, Protocol, Any
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -38,14 +39,19 @@ TemporalArray: TypeAlias = NDArray
 SolutionArray: TypeAlias = NDArray
 """2D spatio-temporal solution array, typically shape (Nt+1, Nx+1)"""
 
+
 # Solver component type aliases
 class NewtonSolver(Protocol):
     """Protocol for Newton-type solvers."""
+
     def solve_step(self, u_current: SolutionArray, rhs: SolutionArray) -> SolutionArray: ...
+
 
 class LinearSolver(Protocol):
     """Protocol for linear system solvers."""
+
     def solve(self, A: NDArray, b: NDArray) -> NDArray: ...
+
 
 # Configuration type aliases
 ParameterDict: TypeAlias = dict[str, float | int | str | bool]
@@ -56,17 +62,17 @@ SolverOptions: TypeAlias = dict[str, float | int | str | bool | None]
 
 # Complex internal types (for maintainers)
 ComplexSolverState: TypeAlias = (
-    tuple[SolutionArray, SolutionArray] |  # Simple (u, m) state
-    dict[str, SolutionArray | float | int] |  # Complex state with metadata
-    object  # Completely custom state objects
+    tuple[SolutionArray, SolutionArray]  # Simple (u, m) state
+    | dict[str, SolutionArray | float | int]  # Complex state with metadata
+    | object  # Completely custom state objects
 )
 """Internal solver state - can be simple arrays or complex objects"""
 
 FlexibleInput: TypeAlias = (
-    HamiltonianFunction |
-    str |  # String identifier for preset Hamiltonians
-    dict[str, float | Callable] |  # Configuration dictionary
-    object  # Custom problem objects
+    HamiltonianFunction
+    | str  # String identifier for preset Hamiltonians
+    | dict[str, float | Callable]  # Configuration dictionary
+    | object  # Custom problem objects
 )
 """Flexible input type that accepts multiple input formats"""
 
@@ -99,6 +105,7 @@ ErrorCallback: TypeAlias = Callable[[Exception], None] | None
 try:
     if TYPE_CHECKING:
         from jax import Array
+
         JAXArray: TypeAlias = Array | np.ndarray | Any
     else:
         # At runtime, don't import JAX to avoid dependency issues
@@ -108,15 +115,15 @@ except ImportError:
     if not TYPE_CHECKING:
         JAXArray: TypeAlias = np.ndarray | Any
 
+
 # Error handling types
 class SolverError(Exception):
     """Base exception for solver errors."""
-    pass
+
 
 class ConvergenceError(SolverError):
     """Raised when solver fails to converge."""
-    pass
+
 
 class ConfigurationError(SolverError):
     """Raised when solver configuration is invalid."""
-    pass

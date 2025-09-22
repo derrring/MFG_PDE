@@ -7,15 +7,16 @@ and analyzing solver behavior during execution.
 
 from __future__ import annotations
 
-
 import time
-from typing import TextIO, TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING, TextIO
+
 import numpy as np
+
 from .base import SolverHooks
 
 if TYPE_CHECKING:
-    from ..types import SpatialTemporalState, MFGResult
+    from ..types import MFGResult, SpatialTemporalState
 
 
 class DebugHook(SolverHooks):
@@ -43,13 +44,13 @@ class DebugHook(SolverHooks):
 
         if output_file:
             self.output_file = Path(output_file)
-            self.file_handle = open(self.output_file, 'w')
+            self.file_handle = open(self.output_file, "w")
 
     def _write(self, message: str):
         """Write message to console and/or file."""
         print(message)
         if self.file_handle:
-            self.file_handle.write(message + '\n')
+            self.file_handle.write(message + "\n")
             self.file_handle.flush()
 
     def on_solve_start(self, initial_state: SpatialTemporalState) -> None:
@@ -64,7 +65,7 @@ class DebugHook(SolverHooks):
 
         if self.level in ["verbose", "detailed"]:
             self._write(f"Initial state shape: u={initial_state.u.shape}, m={initial_state.m.shape}")
-            if hasattr(initial_state, 'metadata'):
+            if hasattr(initial_state, "metadata"):
                 self._write(f"Metadata: {initial_state.metadata}")
 
     def on_iteration_start(self, state: SpatialTemporalState) -> None:
@@ -87,8 +88,10 @@ class DebugHook(SolverHooks):
                 self._write(f"Iteration {state.iteration:4d}: residual = {state.residual:.6e}")
         elif self.level in ["verbose", "detailed"]:
             avg_time = sum(self.iteration_times) / len(self.iteration_times) if self.iteration_times else 0
-            self._write(f"Iteration {state.iteration:4d}: residual = {state.residual:.6e}, "
-                       f"time = {iteration_time:.3f}s, avg = {avg_time:.3f}s")
+            self._write(
+                f"Iteration {state.iteration:4d}: residual = {state.residual:.6e}, "
+                f"time = {iteration_time:.3f}s, avg = {avg_time:.3f}s"
+            )
 
         return None
 
@@ -102,10 +105,10 @@ class DebugHook(SolverHooks):
         self._write(f"Total iterations: {result.iterations}")
         self._write(f"Total time: {total_time:.3f}s")
 
-        if hasattr(result, 'convergence_info'):
-            convergence_info = getattr(result, 'convergence_info', None)
-            if convergence_info is not None and hasattr(convergence_info, 'final_residual'):
-                final_residual = getattr(convergence_info, 'final_residual')
+        if hasattr(result, "convergence_info"):
+            convergence_info = getattr(result, "convergence_info", None)
+            if convergence_info is not None and hasattr(convergence_info, "final_residual"):
+                final_residual = convergence_info.final_residual
                 if final_residual is not None:
                     self._write(f"Final residual: {final_residual:.6e}")
 
@@ -147,6 +150,7 @@ class PerformanceHook(SolverHooks):
         if track_memory:
             try:
                 import psutil
+
                 self.psutil = psutil
                 self.psutil_available = True
             except ImportError:
@@ -210,8 +214,7 @@ class PerformanceHook(SolverHooks):
             print(f"Iteration timing - Avg: {avg_time:.3f}s, Min: {min_time:.3f}s, Max: {max_time:.3f}s")
 
         if self.track_memory and self.memory_usage:
-            print(f"Memory usage - Peak: {self.peak_memory_mb:.1f} MB, "
-                  f"Final: {self.memory_usage[-1]:.1f} MB")
+            print(f"Memory usage - Peak: {self.peak_memory_mb:.1f} MB, " f"Final: {self.memory_usage[-1]:.1f} MB")
 
         if len(self.convergence_rate_history) > 5:
             recent_rates = self.convergence_rate_history[-5:]
@@ -244,12 +247,12 @@ class ConvergenceAnalysisHook(SolverHooks):
         if len(self.residual_history) < self.analysis_window:
             return False
 
-        recent = self.residual_history[-self.analysis_window:]
+        recent = self.residual_history[-self.analysis_window :]
         # Check for alternating increase/decrease pattern
         direction_changes = 0
         for i in range(1, len(recent) - 1):
-            prev_direction = 1 if recent[i] > recent[i-1] else -1
-            curr_direction = 1 if recent[i+1] > recent[i] else -1
+            prev_direction = 1 if recent[i] > recent[i - 1] else -1
+            curr_direction = 1 if recent[i + 1] > recent[i] else -1
             if prev_direction != curr_direction:
                 direction_changes += 1
 
@@ -261,7 +264,7 @@ class ConvergenceAnalysisHook(SolverHooks):
         if len(self.residual_history) < self.analysis_window:
             return False
 
-        recent = self.residual_history[-self.analysis_window:]
+        recent = self.residual_history[-self.analysis_window :]
         if recent[0] <= 0:
             return False
 
@@ -276,7 +279,7 @@ class ConvergenceAnalysisHook(SolverHooks):
 
         recent = self.residual_history[-5:]
         # Check if residual is consistently increasing
-        return all(recent[i] > recent[i-1] for i in range(1, len(recent)))
+        return all(recent[i] > recent[i - 1] for i in range(1, len(recent)))
 
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None:
         """Analyze convergence behavior."""
@@ -311,11 +314,13 @@ class StateInspectionHook(SolverHooks):
         result = solver.solve(problem, hooks=inspector)
     """
 
-    def __init__(self,
-                 check_nan: bool = True,
-                 check_mass_conservation: bool = True,
-                 check_bounds: bool = True,
-                 mass_tolerance: float = 1e-6):
+    def __init__(
+        self,
+        check_nan: bool = True,
+        check_mass_conservation: bool = True,
+        check_bounds: bool = True,
+        mass_tolerance: float = 1e-6,
+    ):
         self.check_nan = check_nan
         self.check_mass_conservation = check_mass_conservation
         self.check_bounds = check_bounds
@@ -338,8 +343,8 @@ class StateInspectionHook(SolverHooks):
         issues = []
         try:
             # Assuming m is density function - check if it integrates to approximately 1
-            if hasattr(state, 'metadata') and 'x_grid' in state.metadata:
-                x_grid = state.metadata['x_grid']
+            if hasattr(state, "metadata") and "x_grid" in state.metadata:
+                x_grid = state.metadata["x_grid"]
                 for t_idx in range(state.m.shape[0]):
                     mass = np.trapz(state.m[t_idx, :], x_grid)
                     mass_error = float(abs(float(mass) - 1.0))

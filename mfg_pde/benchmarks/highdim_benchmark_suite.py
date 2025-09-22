@@ -7,21 +7,21 @@ different solvers, geometries, and optimization strategies across problem dimens
 
 from __future__ import annotations
 
-
-import time
 import json
-import psutil
+import time
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
-from dataclasses import dataclass, asdict
-from datetime import datetime
 
-import numpy as np
+import psutil
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 from ..core.highdim_mfg_problem import GridBasedMFGProblem
-from ..utils.performance_optimization import PerformanceMonitor
 from ..utils.logging import get_logger
+from ..utils.performance_optimization import PerformanceMonitor
 
 logger = get_logger(__name__)
 
@@ -29,6 +29,7 @@ logger = get_logger(__name__)
 @dataclass
 class BenchmarkResult:
     """Container for individual benchmark results."""
+
     test_name: str
     dimension: int
     grid_size: tuple[int, ...]
@@ -52,6 +53,7 @@ class BenchmarkResult:
 @dataclass
 class BenchmarkSuite:
     """Configuration for benchmark test suite."""
+
     name: str
     test_problems: list[dict[str, Any]]
     solver_methods: list[str]
@@ -77,8 +79,9 @@ class HighDimMFGBenchmark:
         self.monitor = PerformanceMonitor()
         self.results: list[BenchmarkResult] = []
 
-    def run_convergence_benchmark(self, grid_sizes: list[tuple[int, ...]],
-                                solver_methods: list[str] | None = None) -> list[BenchmarkResult]:
+    def run_convergence_benchmark(
+        self, grid_sizes: list[tuple[int, ...]], solver_methods: list[str] | None = None
+    ) -> list[BenchmarkResult]:
         """
         Run convergence analysis across different grid sizes.
 
@@ -103,9 +106,11 @@ class HighDimMFGBenchmark:
             # Create test problem
             if dimension == 2:
                 from typing import cast
+
                 problem = self._create_2d_test_problem(cast(tuple[int, int], grid_size))
             elif dimension == 3:
                 from typing import cast
+
                 problem = self._create_3d_test_problem(cast(tuple[int, int, int], grid_size))
             else:
                 logger.warning(f"Unsupported dimension {dimension}, skipping")
@@ -113,9 +118,7 @@ class HighDimMFGBenchmark:
 
             for method in solver_methods:
                 try:
-                    result = self._run_single_benchmark(
-                        problem, method, f"convergence_{dimension}d", grid_size
-                    )
+                    result = self._run_single_benchmark(problem, method, f"convergence_{dimension}d", grid_size)
                     results.append(result)
                     self.results.append(result)
 
@@ -124,8 +127,9 @@ class HighDimMFGBenchmark:
 
         return results
 
-    def run_solver_comparison(self, grid_size: tuple[int, ...],
-                            solver_configs: list[dict[str, Any]]) -> list[BenchmarkResult]:
+    def run_solver_comparison(
+        self, grid_size: tuple[int, ...], solver_configs: list[dict[str, Any]]
+    ) -> list[BenchmarkResult]:
         """
         Compare different solver configurations on the same problem.
 
@@ -142,9 +146,11 @@ class HighDimMFGBenchmark:
         # Create test problem once
         if dimension == 2:
             from typing import cast
+
             problem = self._create_2d_test_problem(cast(tuple[int, int], grid_size))
         elif dimension == 3:
             from typing import cast
+
             problem = self._create_3d_test_problem(cast(tuple[int, int, int], grid_size))
         else:
             raise ValueError(f"Unsupported dimension {dimension}")
@@ -165,8 +171,7 @@ class HighDimMFGBenchmark:
 
         return results
 
-    def run_scaling_analysis(self, base_grid: tuple[int, ...],
-                           scaling_factors: list[float]) -> list[BenchmarkResult]:
+    def run_scaling_analysis(self, base_grid: tuple[int, ...], scaling_factors: list[float]) -> list[BenchmarkResult]:
         """
         Analyze computational scaling with problem size.
 
@@ -188,17 +193,17 @@ class HighDimMFGBenchmark:
 
             if dimension == 2:
                 from typing import cast
+
                 problem = self._create_2d_test_problem(cast(tuple[int, int], scaled_grid))
             elif dimension == 3:
                 from typing import cast
+
                 problem = self._create_3d_test_problem(cast(tuple[int, int, int], scaled_grid))
             else:
                 continue
 
             try:
-                result = self._run_single_benchmark(
-                    problem, "damped_fixed_point", f"scaling_{dimension}d", scaled_grid
-                )
+                result = self._run_single_benchmark(problem, "damped_fixed_point", f"scaling_{dimension}d", scaled_grid)
                 result.additional_metrics = result.additional_metrics or {}
                 result.additional_metrics["scaling_factor"] = factor
                 results.append(result)
@@ -231,9 +236,11 @@ class HighDimMFGBenchmark:
             with self.monitor.monitor_operation(f"create_problem_{dimension}d") as monitor:
                 if dimension == 2:
                     from typing import cast
+
                     problem = self._create_2d_test_problem(cast(tuple[int, int], grid_size))
                 elif dimension == 3:
                     from typing import cast
+
                     problem = self._create_3d_test_problem(cast(tuple[int, int, int], grid_size))
                 else:
                     continue
@@ -248,11 +255,13 @@ class HighDimMFGBenchmark:
 
                 # Add creation metrics to results
                 result.additional_metrics = result.additional_metrics or {}
-                result.additional_metrics.update({
-                    "creation_time": creation_metrics.duration,
-                    "creation_memory_mb": creation_metrics.memory_used,
-                    "creation_peak_mb": creation_metrics.memory_peak_delta
-                })
+                result.additional_metrics.update(
+                    {
+                        "creation_time": creation_metrics.duration,
+                        "creation_memory_mb": creation_metrics.memory_used,
+                        "creation_peak_mb": creation_metrics.memory_peak_delta,
+                    }
+                )
 
                 results.append(result)
                 self.results.append(result)
@@ -264,13 +273,17 @@ class HighDimMFGBenchmark:
 
     def _create_2d_test_problem(self, grid_size: tuple[int, int]):
         """Create standardized 2D test problem."""
-        from ..core.highdim_mfg_problem import GridBasedMFGProblem
         from .. import MFGComponents
+        from ..core.highdim_mfg_problem import GridBasedMFGProblem
 
         class SimpleBenchmarkProblem(GridBasedMFGProblem):
             def __init__(self, domain_bounds, grid_resolution, time_domain):
-                super().__init__(domain_bounds=domain_bounds, grid_resolution=grid_resolution,
-                               time_domain=time_domain, diffusion_coeff=0.1)
+                super().__init__(
+                    domain_bounds=domain_bounds,
+                    grid_resolution=grid_resolution,
+                    time_domain=time_domain,
+                    diffusion_coeff=0.1,
+                )
                 self.dimension = len(grid_resolution)
 
             def setup_components(self):
@@ -300,7 +313,7 @@ class HighDimMFGBenchmark:
                         coords = self.mesh_data.vertices[x_idx]
                         center = np.array([0.5] * self.dimension)
                         distance = np.linalg.norm(coords - center)
-                        return max(np.exp(-distance**2 / (2 * 0.2**2)), 1e-10)
+                        return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
                     except:
                         return 1e-10
 
@@ -323,7 +336,7 @@ class HighDimMFGBenchmark:
                     hamiltonian_func=simple_hamiltonian,
                     hamiltonian_dm_func=hamiltonian_dm,
                     initial_density_func=initial_density_grid,
-                    final_value_func=terminal_cost_grid
+                    final_value_func=terminal_cost_grid,
                 )
 
             def hamiltonian(self, x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -343,7 +356,7 @@ class HighDimMFGBenchmark:
                     coords = self.mesh_data.vertices[x_idx]
                     center = np.array([0.5] * self.dimension)
                     distance = np.linalg.norm(coords - center)
-                    return max(np.exp(-distance**2 / (2 * 0.2**2)), 1e-10)
+                    return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
                 except:
                     return 1e-10
 
@@ -363,20 +376,22 @@ class HighDimMFGBenchmark:
                 return 0.01
 
         return SimpleBenchmarkProblem(
-            domain_bounds=(0.0, 1.0, 0.0, 1.0),
-            grid_resolution=grid_size,
-            time_domain=(1.0, 21)
+            domain_bounds=(0.0, 1.0, 0.0, 1.0), grid_resolution=grid_size, time_domain=(1.0, 21)
         )
 
     def _create_3d_test_problem(self, grid_size: tuple[int, int, int]):
         """Create standardized 3D test problem."""
-        from ..core.highdim_mfg_problem import GridBasedMFGProblem
         from .. import MFGComponents
+        from ..core.highdim_mfg_problem import GridBasedMFGProblem
 
         class SimpleBenchmarkProblem(GridBasedMFGProblem):
             def __init__(self, domain_bounds, grid_resolution, time_domain):
-                super().__init__(domain_bounds=domain_bounds, grid_resolution=grid_resolution,
-                               time_domain=time_domain, diffusion_coeff=0.1)
+                super().__init__(
+                    domain_bounds=domain_bounds,
+                    grid_resolution=grid_resolution,
+                    time_domain=time_domain,
+                    diffusion_coeff=0.1,
+                )
                 self.dimension = len(grid_resolution)
 
             def setup_components(self):
@@ -406,7 +421,7 @@ class HighDimMFGBenchmark:
                         coords = self.mesh_data.vertices[x_idx]
                         center = np.array([0.5] * self.dimension)
                         distance = np.linalg.norm(coords - center)
-                        return max(np.exp(-distance**2 / (2 * 0.2**2)), 1e-10)
+                        return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
                     except:
                         return 1e-10
 
@@ -429,7 +444,7 @@ class HighDimMFGBenchmark:
                     hamiltonian_func=simple_hamiltonian,
                     hamiltonian_dm_func=hamiltonian_dm,
                     initial_density_func=initial_density_grid,
-                    final_value_func=terminal_cost_grid
+                    final_value_func=terminal_cost_grid,
                 )
 
             def hamiltonian(self, x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -449,7 +464,7 @@ class HighDimMFGBenchmark:
                     coords = self.mesh_data.vertices[x_idx]
                     center = np.array([0.5] * self.dimension)
                     distance = np.linalg.norm(coords - center)
-                    return max(np.exp(-distance**2 / (2 * 0.2**2)), 1e-10)
+                    return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
                 except:
                     return 1e-10
 
@@ -469,25 +484,23 @@ class HighDimMFGBenchmark:
                 return 0.01
 
         return SimpleBenchmarkProblem(
-            domain_bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0),
-            grid_resolution=grid_size,
-            time_domain=(1.0, 21)
+            domain_bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), grid_resolution=grid_size, time_domain=(1.0, 21)
         )
 
-    def _run_single_benchmark(self, problem: GridBasedMFGProblem,
-                            method: str, test_name: str,
-                            grid_size: tuple[int, ...],
-                            config: dict[str, Any] | None = None) -> BenchmarkResult:
+    def _run_single_benchmark(
+        self,
+        problem: GridBasedMFGProblem,
+        method: str,
+        test_name: str,
+        grid_size: tuple[int, ...],
+        config: dict[str, Any] | None = None,
+    ) -> BenchmarkResult:
         """Run a single benchmark test with comprehensive monitoring."""
         dimension = len(grid_size)
         total_vertices = np.prod(grid_size)
 
         # Default solver parameters
-        default_params = {
-            "damping_factor": 0.5,
-            "max_iterations": 50,
-            "tolerance": 1e-4
-        }
+        default_params = {"damping_factor": 0.5, "max_iterations": 50, "tolerance": 1e-4}
 
         if config:
             default_params.update(config)
@@ -499,7 +512,7 @@ class HighDimMFGBenchmark:
         start_time = time.time()
         converged = False
         iterations = 0
-        final_residual = float('inf')
+        final_residual = float("inf")
 
         try:
             if method == "damped_fixed_point":
@@ -512,7 +525,7 @@ class HighDimMFGBenchmark:
             # Extract convergence information
             converged = result.get("converged", False)
             iterations = result.get("iterations", 0)
-            final_residual = result.get("final_residual", float('inf'))
+            final_residual = result.get("final_residual", float("inf"))
 
         except Exception as e:
             logger.error(f"Solver failed: {e}")
@@ -546,8 +559,8 @@ class HighDimMFGBenchmark:
             additional_metrics={
                 "memory_used_mb": memory_after - memory_before,
                 "vertices_per_second": total_vertices / solve_time if solve_time > 0 else 0,
-                "solver_config": default_params
-            }
+                "solver_config": default_params,
+            },
         )
 
     def generate_benchmark_report(self, save_plots: bool = True) -> dict[str, Any]:
@@ -578,7 +591,7 @@ class HighDimMFGBenchmark:
             "convergence_analysis": self._analyze_convergence_behavior(),
             "performance_analysis": self._analyze_performance_scaling(),
             "memory_analysis": self._analyze_memory_usage(),
-            "solver_comparison": self._compare_solver_methods()
+            "solver_comparison": self._compare_solver_methods(),
         }
 
         # Generate plots if requested
@@ -608,7 +621,7 @@ class HighDimMFGBenchmark:
             "average_memory_mb": np.mean([r.memory_peak_mb for r in successful_results]),
             "dimensions_tested": list({r.dimension for r in self.results}),
             "max_vertices_tested": max(r.total_vertices for r in self.results),
-            "solver_methods": list({r.solver_method for r in self.results})
+            "solver_methods": list({r.solver_method for r in self.results}),
         }
 
     def _analyze_convergence_behavior(self) -> dict[str, Any]:
@@ -634,7 +647,7 @@ class HighDimMFGBenchmark:
                     "convergence_rate": len(successful) / len(results),
                     "avg_iterations": np.mean([r.iterations for r in successful]),
                     "avg_solve_time": np.mean([r.solve_time for r in successful]),
-                    "scaling_exponent": self._estimate_scaling_exponent(successful)
+                    "scaling_exponent": self._estimate_scaling_exponent(successful),
                 }
 
         return analysis
@@ -666,7 +679,7 @@ class HighDimMFGBenchmark:
             "max_vertices": max(vertices),
             "min_time": min(times),
             "max_time": max(times),
-            "efficiency_trend": "improving" if alpha and alpha < 2 else "degrading"
+            "efficiency_trend": "improving" if alpha and alpha < 2 else "degrading",
         }
 
     def _analyze_memory_usage(self) -> dict[str, Any]:
@@ -689,9 +702,9 @@ class HighDimMFGBenchmark:
 
         return {
             "memory_scaling_exponent": memory_scaling,
-            "avg_memory_per_vertex_kb": np.mean([m/v * 1024 for m, v in zip(memory, vertices)]),
+            "avg_memory_per_vertex_kb": np.mean([m / v * 1024 for m, v in zip(memory, vertices, strict=False)]),
             "max_memory_mb": max(memory),
-            "memory_efficiency": "good" if memory_scaling and memory_scaling < 2 else "needs_improvement"
+            "memory_efficiency": "good" if memory_scaling and memory_scaling < 2 else "needs_improvement",
         }
 
     def _compare_solver_methods(self) -> dict[str, Any]:
@@ -712,7 +725,7 @@ class HighDimMFGBenchmark:
                     "avg_solve_time": np.mean([r.solve_time for r in successful]),
                     "avg_iterations": np.mean([r.iterations for r in successful]),
                     "avg_memory_mb": np.mean([r.memory_peak_mb for r in successful]),
-                    "total_tests": len(results)
+                    "total_tests": len(results),
                 }
 
         return comparison
@@ -743,11 +756,11 @@ class HighDimMFGBenchmark:
             if results:
                 vertices = [r.total_vertices for r in results]
                 times = [r.solve_time for r in results]
-                ax1.loglog(vertices, times, 'o-', label=f'{dim}D')
+                ax1.loglog(vertices, times, "o-", label=f"{dim}D")
 
-        ax1.set_xlabel('Total Vertices')
-        ax1.set_ylabel('Solve Time (s)')
-        ax1.set_title('Computational Scaling')
+        ax1.set_xlabel("Total Vertices")
+        ax1.set_ylabel("Solve Time (s)")
+        ax1.set_title("Computational Scaling")
         ax1.legend()
         ax1.grid(True)
 
@@ -757,11 +770,11 @@ class HighDimMFGBenchmark:
             if results:
                 vertices = [r.total_vertices for r in results]
                 memory = [r.memory_peak_mb for r in results]
-                ax2.loglog(vertices, memory, 's-', label=f'{dim}D')
+                ax2.loglog(vertices, memory, "s-", label=f"{dim}D")
 
-        ax2.set_xlabel('Total Vertices')
-        ax2.set_ylabel('Peak Memory (MB)')
-        ax2.set_title('Memory Scaling')
+        ax2.set_xlabel("Total Vertices")
+        ax2.set_ylabel("Peak Memory (MB)")
+        ax2.set_title("Memory Scaling")
         ax2.legend()
         ax2.grid(True)
 
@@ -771,11 +784,11 @@ class HighDimMFGBenchmark:
             if results:
                 vertices = [r.total_vertices for r in results]
                 iterations = [r.iterations for r in results]
-                ax3.semilogx(vertices, iterations, 'v-', label=method)
+                ax3.semilogx(vertices, iterations, "v-", label=method)
 
-        ax3.set_xlabel('Total Vertices')
-        ax3.set_ylabel('Iterations to Convergence')
-        ax3.set_title('Convergence Behavior')
+        ax3.set_xlabel("Total Vertices")
+        ax3.set_ylabel("Iterations to Convergence")
+        ax3.set_title("Convergence Behavior")
         ax3.legend()
         ax3.grid(True)
 
@@ -790,12 +803,12 @@ class HighDimMFGBenchmark:
                 avg_times.append(0)
 
         ax4.bar(methods, avg_times)
-        ax4.set_ylabel('Average Solve Time (s)')
-        ax4.set_title('Solver Method Comparison')
-        ax4.tick_params(axis='x', rotation=45)
+        ax4.set_ylabel("Average Solve Time (s)")
+        ax4.set_title("Solver Method Comparison")
+        ax4.tick_params(axis="x", rotation=45)
 
         plt.tight_layout()
-        plt.savefig(self.output_dir / "benchmark_analysis.png", dpi=300, bbox_inches='tight')
+        plt.savefig(self.output_dir / "benchmark_analysis.png", dpi=300, bbox_inches="tight")
         plt.close()
 
         logger.info(f"Benchmark plots saved to {self.output_dir}")
@@ -807,12 +820,12 @@ class HighDimMFGBenchmark:
         # Save raw results
         results_data = [asdict(result) for result in self.results]
         results_file = self.output_dir / f"benchmark_results_{timestamp}.json"
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(results_data, f, indent=2, default=str)
 
         # Save analysis
         analysis_file = self.output_dir / f"benchmark_analysis_{timestamp}.json"
-        with open(analysis_file, 'w') as f:
+        with open(analysis_file, "w") as f:
             json.dump(analysis, f, indent=2, default=str)
 
         logger.info(f"Benchmark data saved to {self.output_dir}")
@@ -827,7 +840,7 @@ def create_quick_benchmark_suite() -> BenchmarkSuite:
         solver_methods=["damped_fixed_point"],
         grid_sizes=[(8, 8), (16, 16), (8, 8, 8)],
         repetitions=1,
-        timeout_seconds=120.0
+        timeout_seconds=120.0,
     )
 
 
@@ -839,15 +852,19 @@ def create_comprehensive_benchmark_suite() -> BenchmarkSuite:
             {"type": "convergence"},
             {"type": "solver_comparison"},
             {"type": "scaling"},
-            {"type": "memory_profiling"}
+            {"type": "memory_profiling"},
         ],
         solver_methods=["damped_fixed_point", "particle_collocation"],
         grid_sizes=[
-            (16, 16), (32, 32), (64, 64),  # 2D tests
-            (8, 8, 8), (16, 16, 16), (32, 32, 32)  # 3D tests
+            (16, 16),
+            (32, 32),
+            (64, 64),  # 2D tests
+            (8, 8, 8),
+            (16, 16, 16),
+            (32, 32, 32),  # 3D tests
         ],
         repetitions=3,
-        timeout_seconds=600.0
+        timeout_seconds=600.0,
     )
 
 

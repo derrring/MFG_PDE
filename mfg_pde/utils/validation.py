@@ -18,7 +18,6 @@ class SolutionValidationError(Exception):
     """Exception raised when solution validation fails."""
 
 
-
 def validate_solution_array(
     solution: np.ndarray,
     name: str,

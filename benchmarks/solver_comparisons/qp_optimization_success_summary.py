@@ -4,7 +4,6 @@ QP Optimization Success Summary
 Demonstrates the successful QP optimization achievement
 """
 
-
 import matplotlib.pyplot as plt
 
 

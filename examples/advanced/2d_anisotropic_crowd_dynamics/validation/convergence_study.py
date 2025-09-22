@@ -5,19 +5,21 @@ This module implements comprehensive convergence analysis including
 grid refinement studies, temporal convergence, and barrier-specific validation.
 """
 
-import numpy as np
-import time
-from typing import Dict, List, Tuple, Any, Optional
-from dataclasses import dataclass
 import json
-
-from mfg_pde.utils.logging import get_logger, configure_research_logging
 
 # Local imports
 import sys
-sys.path.append('..')
-from anisotropic_2d_problem import AnisotropicMFGProblem2D, create_anisotropic_problem
-from solver_config import create_experiment_solver, get_convergence_study_configs
+import time
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
+
+from mfg_pde.utils.logging import configure_research_logging, get_logger
+
+sys.path.append("..")
+from anisotropic_2d_problem import create_anisotropic_problem
+from solver_config import create_experiment_solver
 
 logger = get_logger(__name__)
 
@@ -25,12 +27,13 @@ logger = get_logger(__name__)
 @dataclass
 class ConvergenceResult:
     """Container for convergence analysis results."""
-    grid_sizes: List[int]
-    errors: List[float]
-    convergence_rates: List[float]
-    solver_times: List[float]
-    memory_usage: List[float]
-    problem_config: Dict[str, Any]
+
+    grid_sizes: list[int]
+    errors: list[float]
+    convergence_rates: list[float]
+    solver_times: list[float]
+    memory_usage: list[float]
+    problem_config: dict[str, Any]
 
 
 class ConvergenceStudy:
@@ -57,9 +60,7 @@ class ConvergenceStudy:
         logger.info(f"Initialized convergence study: base_grid={base_grid}, refinements={max_refinements}")
 
     def run_spatial_convergence_study(
-        self,
-        barrier_config: str = 'anisotropy_aligned',
-        reference_grid: Optional[int] = None
+        self, barrier_config: str = "anisotropy_aligned", reference_grid: int | None = None
     ) -> ConvergenceResult:
         """
         Run spatial convergence analysis with grid refinement.
@@ -105,7 +106,7 @@ class ConvergenceStudy:
 
         # Compute errors and convergence rates
         errors = []
-        for i, (grid_size, solution) in enumerate(zip(grid_sizes, solutions)):
+        for i, (grid_size, solution) in enumerate(zip(grid_sizes, solutions, strict=False)):
             error = self._compute_solution_error(solution, reference_solution, grid_size, reference_grid)
             errors.append(error)
             logger.info(f"Grid {grid_size}: L2 error = {error:.6e}")
@@ -113,8 +114,8 @@ class ConvergenceStudy:
         # Estimate convergence rates
         convergence_rates = []
         for i in range(1, len(errors)):
-            h_ratio = grid_sizes[i-1] / grid_sizes[i]  # Ratio of grid spacings
-            error_ratio = errors[i-1] / errors[i]
+            h_ratio = grid_sizes[i - 1] / grid_sizes[i]  # Ratio of grid spacings
+            error_ratio = errors[i - 1] / errors[i]
             rate = np.log(error_ratio) / np.log(h_ratio)
             convergence_rates.append(rate)
             logger.info(f"Convergence rate {grid_sizes[i-1]} -> {grid_sizes[i]}: {rate:.2f}")
@@ -127,19 +128,17 @@ class ConvergenceStudy:
             solver_times=solver_times,
             memory_usage=memory_usage,
             problem_config={
-                'barrier_config': barrier_config,
-                'reference_grid': reference_grid,
-                'study_type': 'spatial_convergence'
-            }
+                "barrier_config": barrier_config,
+                "reference_grid": reference_grid,
+                "study_type": "spatial_convergence",
+            },
         )
 
-        self.results[f'spatial_{barrier_config}'] = result
+        self.results[f"spatial_{barrier_config}"] = result
         return result
 
     def run_temporal_convergence_study(
-        self,
-        grid_size: int = 64,
-        barrier_config: str = 'anisotropy_aligned'
+        self, grid_size: int = 64, barrier_config: str = "anisotropy_aligned"
     ) -> ConvergenceResult:
         """
         Run temporal convergence analysis with time step refinement.
@@ -182,7 +181,7 @@ class ConvergenceStudy:
 
         # Compute temporal errors
         errors = []
-        for i, (dt, solution) in enumerate(zip(dt_values, solutions)):
+        for i, (dt, solution) in enumerate(zip(dt_values, solutions, strict=False)):
             error = self._compute_temporal_error(solution, reference_solution)
             errors.append(error)
             logger.info(f"dt = {dt:.6f}: temporal error = {error:.6e}")
@@ -190,31 +189,31 @@ class ConvergenceStudy:
         # Estimate temporal convergence rates
         convergence_rates = []
         for i in range(1, len(errors)):
-            dt_ratio = dt_values[i-1] / dt_values[i]
-            error_ratio = errors[i-1] / errors[i]
+            dt_ratio = dt_values[i - 1] / dt_values[i]
+            error_ratio = errors[i - 1] / errors[i]
             rate = np.log(error_ratio) / np.log(dt_ratio)
             convergence_rates.append(rate)
             logger.info(f"Temporal rate {dt_values[i-1]:.6f} -> {dt_values[i]:.6f}: {rate:.2f}")
 
         # Create result object
         result = ConvergenceResult(
-            grid_sizes=[1/dt for dt in dt_values],  # Use 1/dt as "grid size" for temporal
+            grid_sizes=[1 / dt for dt in dt_values],  # Use 1/dt as "grid size" for temporal
             errors=errors,
             convergence_rates=convergence_rates,
             solver_times=solver_times,
             memory_usage=[self._estimate_memory_usage(grid_size)] * len(dt_values),
             problem_config={
-                'barrier_config': barrier_config,
-                'grid_size': grid_size,
-                'dt_values': dt_values,
-                'study_type': 'temporal_convergence'
-            }
+                "barrier_config": barrier_config,
+                "grid_size": grid_size,
+                "dt_values": dt_values,
+                "study_type": "temporal_convergence",
+            },
         )
 
-        self.results[f'temporal_{barrier_config}'] = result
+        self.results[f"temporal_{barrier_config}"] = result
         return result
 
-    def run_barrier_convergence_study(self) -> Dict[str, ConvergenceResult]:
+    def run_barrier_convergence_study(self) -> dict[str, ConvergenceResult]:
         """
         Compare convergence across different barrier configurations.
 
@@ -223,7 +222,7 @@ class ConvergenceStudy:
         """
         logger.info("Starting barrier convergence comparison study")
 
-        barrier_configs = ['none', 'central_obstacle', 'anisotropy_aligned', 'corridor_system']
+        barrier_configs = ["none", "central_obstacle", "anisotropy_aligned", "corridor_system"]
         results = {}
 
         for config in barrier_configs:
@@ -231,15 +230,10 @@ class ConvergenceStudy:
             result = self.run_spatial_convergence_study(barrier_config=config)
             results[config] = result
 
-        self.results.update({f'barrier_study_{k}': v for k, v in results.items()})
+        self.results.update({f"barrier_study_{k}": v for k, v in results.items()})
         return results
 
-    def _solve_problem(
-        self,
-        barrier_config: str,
-        grid_size: int,
-        dt: Optional[float] = None
-    ) -> Any:
+    def _solve_problem(self, barrier_config: str, grid_size: int, dt: float | None = None) -> Any:
         """
         Solve MFG problem with specified configuration.
 
@@ -252,12 +246,7 @@ class ConvergenceStudy:
             Solution object
         """
         # Create problem
-        problem = create_anisotropic_problem(
-            barrier_config=barrier_config,
-            gamma=0.1,
-            sigma=0.01,
-            rho_amplitude=0.5
-        )
+        problem = create_anisotropic_problem(barrier_config=barrier_config, gamma=0.1, sigma=0.01, rho_amplitude=0.5)
         problem.grid_size = (grid_size, grid_size)
 
         # Create solver with appropriate configuration
@@ -265,8 +254,8 @@ class ConvergenceStudy:
 
         # Override time step if specified
         if dt is not None:
-            solver.config['fixed_time_step'] = dt
-            solver.config['adaptive_time_stepping'] = False
+            solver.config["fixed_time_step"] = dt
+            solver.config["adaptive_time_stepping"] = False
 
         # Solve
         solution = solver.solve(problem)
@@ -274,11 +263,7 @@ class ConvergenceStudy:
         return solution
 
     def _compute_solution_error(
-        self,
-        solution: Any,
-        reference_solution: Any,
-        grid_size: int,
-        reference_grid: int
+        self, solution: Any, reference_solution: Any, grid_size: int, reference_grid: int
     ) -> float:
         """
         Compute L2 error between solution and reference.
@@ -309,8 +294,8 @@ class ConvergenceStudy:
 
         # Compute L2 errors
         h = 1.0 / grid_size  # Grid spacing
-        error_m = np.sqrt(h**2 * np.sum((m_test - m_ref_interp)**2))
-        error_u = np.sqrt(h**2 * np.sum((u_test - u_ref_interp)**2))
+        error_m = np.sqrt(h**2 * np.sum((m_test - m_ref_interp) ** 2))
+        error_u = np.sqrt(h**2 * np.sum((u_test - u_ref_interp) ** 2))
 
         # Combined error
         total_error = np.sqrt(error_m**2 + error_u**2)
@@ -332,12 +317,7 @@ class ConvergenceStudy:
 
         return np.sqrt(error_m**2 + error_u**2)
 
-    def _interpolate_solution(
-        self,
-        solution: np.ndarray,
-        from_grid: int,
-        to_grid: int
-    ) -> np.ndarray:
+    def _interpolate_solution(self, solution: np.ndarray, from_grid: int, to_grid: int) -> np.ndarray:
         """
         Interpolate solution between different grid sizes.
 
@@ -360,11 +340,7 @@ class ConvergenceStudy:
 
         # Create interpolator
         interpolator = RegularGridInterpolator(
-            (x_from, y_from),
-            solution,
-            method='linear',
-            bounds_error=False,
-            fill_value=0.0
+            (x_from, y_from), solution, method="linear", bounds_error=False, fill_value=0.0
         )
 
         # Create target grid
@@ -396,7 +372,7 @@ class ConvergenceStudy:
 
         return memory_mb
 
-    def analyze_convergence_rates(self, result: ConvergenceResult) -> Dict[str, Any]:
+    def analyze_convergence_rates(self, result: ConvergenceResult) -> dict[str, Any]:
         """
         Analyze convergence rates and provide theoretical comparison.
 
@@ -409,17 +385,19 @@ class ConvergenceStudy:
         rates = result.convergence_rates
 
         analysis = {
-            'mean_rate': np.mean(rates),
-            'std_rate': np.std(rates),
-            'min_rate': np.min(rates),
-            'max_rate': np.max(rates),
-            'theoretical_rate': 2.0,  # Expected for second-order methods
-            'rate_efficiency': np.mean(rates) / 2.0,  # Efficiency relative to theoretical
-            'convergence_achieved': np.mean(rates) > 1.5  # Reasonable convergence threshold
+            "mean_rate": np.mean(rates),
+            "std_rate": np.std(rates),
+            "min_rate": np.min(rates),
+            "max_rate": np.max(rates),
+            "theoretical_rate": 2.0,  # Expected for second-order methods
+            "rate_efficiency": np.mean(rates) / 2.0,  # Efficiency relative to theoretical
+            "convergence_achieved": np.mean(rates) > 1.5,  # Reasonable convergence threshold
         }
 
-        logger.info(f"Convergence analysis: mean_rate={analysis['mean_rate']:.2f}, "
-                   f"efficiency={analysis['rate_efficiency']:.2f}")
+        logger.info(
+            f"Convergence analysis: mean_rate={analysis['mean_rate']:.2f}, "
+            f"efficiency={analysis['rate_efficiency']:.2f}"
+        )
 
         return analysis
 
@@ -430,15 +408,15 @@ class ConvergenceStudy:
 
         for key, result in self.results.items():
             serializable_results[key] = {
-                'grid_sizes': result.grid_sizes,
-                'errors': result.errors,
-                'convergence_rates': result.convergence_rates,
-                'solver_times': result.solver_times,
-                'memory_usage': result.memory_usage,
-                'problem_config': result.problem_config
+                "grid_sizes": result.grid_sizes,
+                "errors": result.errors,
+                "convergence_rates": result.convergence_rates,
+                "solver_times": result.solver_times,
+                "memory_usage": result.memory_usage,
+                "problem_config": result.problem_config,
             }
 
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             json.dump(serializable_results, f, indent=2)
 
         logger.info(f"Convergence results saved to {filename}")
@@ -448,14 +426,16 @@ class ConvergenceStudy:
         report_lines = ["# Convergence Study Report", ""]
 
         for key, result in self.results.items():
-            report_lines.extend([
-                f"## {key.replace('_', ' ').title()}",
-                f"- Grid sizes: {result.grid_sizes}",
-                f"- Final error: {result.errors[-1]:.2e}",
-                f"- Mean convergence rate: {np.mean(result.convergence_rates):.2f}",
-                f"- Total solver time: {sum(result.solver_times):.1f}s",
-                ""
-            ])
+            report_lines.extend(
+                [
+                    f"## {key.replace('_', ' ').title()}",
+                    f"- Grid sizes: {result.grid_sizes}",
+                    f"- Final error: {result.errors[-1]:.2e}",
+                    f"- Mean convergence rate: {np.mean(result.convergence_rates):.2f}",
+                    f"- Total solver time: {sum(result.solver_times):.1f}s",
+                    "",
+                ]
+            )
 
         return "\n".join(report_lines)
 
@@ -482,7 +462,7 @@ def run_full_convergence_study():
 
     # Generate report
     report = study.generate_convergence_report()
-    with open("../results/convergence_report.md", 'w') as f:
+    with open("../results/convergence_report.md", "w") as f:
         f.write(report)
 
     logger.info("Full convergence study completed")

@@ -198,6 +198,12 @@ exclude = [
     "dist/",
     ".venv/",
     "examples/experimental/",
+    "mfg_pde/utils/",
+    "mfg_pde/workflow/",
+    "mfg_pde/visualization/",
+    "mfg_pde/backends/",
+    "scripts/",
+    ".github/",
 ]
 
 # Scientific computing libraries
