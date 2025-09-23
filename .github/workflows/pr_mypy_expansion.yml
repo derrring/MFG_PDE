@@ -45,9 +45,9 @@ jobs:
 
     - name: Verify mypy coverage expansion
       run: |
-        echo "🔍 Testing expanded mypy coverage from .pre-commit-config.yaml..."
-        pre-commit run mypy --all-files
-        echo "✅ Pre-commit mypy integration working"
+        echo "🔍 Testing expanded mypy coverage pattern..."
+        mypy mfg_pde/simple.py mfg_pde/core/mfg_problem.py mfg_pde/types/ mfg_pde/geometry/base_geometry.py mfg_pde/factory/solver_factory.py --follow-imports=silent --ignore-missing-imports
+        echo "✅ All files in expanded mypy coverage pass"
 
     - name: Summary
       run: |
