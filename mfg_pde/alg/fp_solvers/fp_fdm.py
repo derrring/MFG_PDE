@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import scipy.sparse as sparse
 
@@ -10,7 +12,7 @@ from .base_fp import BaseFPSolver
 
 
 class FPFDMSolver(BaseFPSolver):
-    def __init__(self, problem, boundary_conditions=None):
+    def __init__(self, problem: Any, boundary_conditions: BoundaryConditions | None = None) -> None:
         super().__init__(problem)
         self.fp_method_name = "FDM"
         # Default to no-flux boundaries for mass conservation testing
@@ -19,7 +21,7 @@ class FPFDMSolver(BaseFPSolver):
         else:
             self.boundary_conditions = boundary_conditions
 
-    def solve_fp_system(self, m_initial_condition, U_solution_for_drift):
+    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         Nx = self.problem.Nx + 1
         Nt = self.problem.Nt + 1
         Dx = self.problem.Dx
@@ -48,9 +50,9 @@ class FPFDMSolver(BaseFPSolver):
             m[0, -1] = self.boundary_conditions.right_value
 
         # Pre-allocate lists for COO format, then convert to CSR
-        row_indices = []
-        col_indices = []
-        data_values = []
+        row_indices: list[int] = []
+        col_indices: list[int] = []
+        data_values: list[float] = []
 
         for k_idx_fp in range(Nt - 1):
             if Dt < 1e-14:
@@ -77,7 +79,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Advection part of diagonal (outflow from cell i)
                         ip1 = (i + 1) % Nx
                         im1 = (i - 1 + Nx) % Nx
-                        val_A_ii += (
+                        val_A_ii += float(
                             coefCT * (npart(u_at_tk[ip1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[im1])) / Dx**2
                         )
 
@@ -89,7 +91,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Lower diagonal term
                         im1 = (i - 1 + Nx) % Nx  # Previous cell index (periodic)
                         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_im1 += -coefCT * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2
+                        val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(im1)
                         data_values.append(val_A_i_im1)
@@ -97,7 +99,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Upper diagonal term
                         ip1 = (i + 1) % Nx  # Next cell index (periodic)
                         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_ip1 += -coefCT * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2
+                        val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(ip1)
                         data_values.append(val_A_i_ip1)
@@ -117,7 +119,7 @@ class FPFDMSolver(BaseFPSolver):
                             val_A_ii += sigma**2 / Dx**2
                             # Advection part (no wrapping for interior points)
                             if i > 0 and i < Nx - 1:
-                                val_A_ii += (
+                                val_A_ii += float(
                                     coefCT
                                     * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1]))
                                     / Dx**2
@@ -130,7 +132,7 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1 and i > 0:
                             # Lower diagonal term (flux from left)
                             val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                            val_A_i_im1 += -coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2
+                            val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i - 1)
                             data_values.append(val_A_i_im1)
@@ -138,7 +140,7 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1 and i < Nx - 1:
                             # Upper diagonal term (flux from right)
                             val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                            val_A_i_ip1 += -coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2
+                            val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i + 1)
                             data_values.append(val_A_i_ip1)
@@ -184,7 +186,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Interior points: standard FDM discretization
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
-                        val_A_ii += (
+                        val_A_ii += float(
                             coefCT * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1])) / Dx**2
                         )
 
@@ -194,14 +196,14 @@ class FPFDMSolver(BaseFPSolver):
 
                         # Lower diagonal term
                         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_im1 += -coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2
+                        val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i - 1)
                         data_values.append(val_A_i_im1)
 
                         # Upper diagonal term
                         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_ip1 += -coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2
+                        val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i + 1)
                         data_values.append(val_A_i_ip1)
@@ -220,17 +222,18 @@ class FPFDMSolver(BaseFPSolver):
                 # The no-flux condition is enforced through the matrix coefficients
                 pass
 
-            m_next_step_raw = np.zeros(Nx)
+            m_next_step_raw = np.zeros(Nx, dtype=np.float64)
             try:
                 if not A_matrix.nnz > 0 and Nx > 0:
-                    m_next_step_raw = m[k_idx_fp, :]
+                    m_next_step_raw[:] = m[k_idx_fp, :]
                 else:
-                    m_next_step_raw = sparse.linalg.spsolve(A_matrix, b_rhs)
+                    solution = sparse.linalg.spsolve(A_matrix, b_rhs)
+                    m_next_step_raw[:] = solution
 
                 if np.any(np.isnan(m_next_step_raw)) or np.any(np.isinf(m_next_step_raw)):
-                    m_next_step_raw = m[k_idx_fp, :]
+                    m_next_step_raw[:] = m[k_idx_fp, :]
             except Exception:
-                m_next_step_raw = m[k_idx_fp, :]
+                m_next_step_raw[:] = m[k_idx_fp, :]
 
             m[k_idx_fp + 1, :] = m_next_step_raw
 
