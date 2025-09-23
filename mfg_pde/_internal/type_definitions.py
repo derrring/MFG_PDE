@@ -23,9 +23,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
-    from mfg_pde.core.variational_mfg_problem import VariationalMFGProblem
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.core.variational_mfg_problem import VariationalMFGProblem
     from mfg_pde.geometry import BoundaryConditions
     from mfg_pde.geometry.base_geometry import BaseGeometry
     from mfg_pde.types.protocols import MFGResult

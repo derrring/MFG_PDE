@@ -35,6 +35,7 @@ except ImportError:
     # Use Any to avoid parameter signature mismatches with actual JAX
     def jit(fun, /, **kwargs):
         return fun
+
     def vmap(fun, **kwargs):
         return fun
 

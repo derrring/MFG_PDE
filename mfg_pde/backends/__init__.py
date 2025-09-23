@@ -61,7 +61,9 @@ def create_backend(backend_name: str = "auto", **kwargs):
 
                 register_backend("jax", JAXBackend)
             except ImportError:
-                raise ImportError("JAX backend requested but not available. Install with: pip install 'mfg_pde[jax]'") from None
+                raise ImportError(
+                    "JAX backend requested but not available. Install with: pip install 'mfg_pde[jax]'"
+                ) from None
         elif backend_name == "numpy":
             from .numpy_backend import NumPyBackend
 
