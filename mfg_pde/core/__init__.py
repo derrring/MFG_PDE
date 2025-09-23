@@ -1,11 +1,5 @@
 from mfg_pde.geometry import BoundaryConditions
 
-from .variational_mfg_problem import (
-    VariationalMFGComponents,
-    VariationalMFGProblem,
-    create_obstacle_variational_mfg,
-    create_quadratic_variational_mfg,
-)
 from .mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem
 from .network_mfg_problem import (
     NetworkMFGComponents,
@@ -13,6 +7,12 @@ from .network_mfg_problem import (
     create_grid_mfg_problem,
     create_random_mfg_problem,
     create_scale_free_mfg_problem,
+)
+from .variational_mfg_problem import (
+    VariationalMFGComponents,
+    VariationalMFGProblem,
+    create_obstacle_variational_mfg,
+    create_quadratic_variational_mfg,
 )
 
 __all__ = [
