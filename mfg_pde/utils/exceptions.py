@@ -205,7 +205,7 @@ class NumericalInstabilityError(MFGSolverError):
         diagnostic_data = {"instability_type": instability_type}
 
         if iteration_number is not None:
-            diagnostic_data["iteration"] = iteration_number
+            diagnostic_data["iteration"] = str(iteration_number)
 
         if problematic_values:
             diagnostic_data.update(problematic_values)
@@ -287,20 +287,20 @@ def _generate_configuration_suggestions(
     if expected_type and not isinstance(provided_value, expected_type):
         suggestions.append(f"Convert {parameter_name} to {expected_type.__name__}")
 
-    if valid_range and isinstance(provided_value, (int, float)):
+    if valid_range and isinstance(provided_value, int | float):
         if provided_value < valid_range[0]:
             suggestions.append(f"Increase {parameter_name} to at least {valid_range[0]}")
         elif provided_value > valid_range[1]:
             suggestions.append(f"Decrease {parameter_name} to at most {valid_range[1]}")
 
     # Common parameter-specific suggestions
-    if "tolerance" in parameter_name.lower() and isinstance(provided_value, (int, float)):
+    if "tolerance" in parameter_name.lower() and isinstance(provided_value, int | float):
         if provided_value <= 0:
             suggestions.append("Tolerance must be positive")
         elif provided_value > 1e-2:
             suggestions.append("Consider smaller tolerance for better accuracy")
 
-    if "iteration" in parameter_name.lower() and isinstance(provided_value, (int, float)):
+    if "iteration" in parameter_name.lower() and isinstance(provided_value, int | float):
         if provided_value <= 0:
             suggestions.append("Number of iterations must be positive")
         elif provided_value < 5:
@@ -393,7 +393,7 @@ def validate_parameter_value(
             solver_name=solver_name,
         )
 
-    if valid_range and isinstance(value, (int, float)):
+    if valid_range and isinstance(value, int | float):
         if not (valid_range[0] <= value <= valid_range[1]):
             raise ConfigurationError(
                 parameter_name=parameter_name,

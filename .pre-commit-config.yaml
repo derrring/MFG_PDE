@@ -39,7 +39,7 @@ repos:
     rev: v1.11.2
     hooks:
       - id: mypy
-        files: ^mfg_pde/(simple\.py|core/mfg_problem\.py|types/.*\.py|geometry/base_geometry\.py|factory/solver_factory\.py|config/.*\.py|alg/__init__\.py|alg/base_mfg_solver\.py|alg/hjb_solvers/__init__\.py|alg/hjb_solvers/base_hjb\.py|alg/variational_solvers/__init__\.py|alg/variational_solvers/base_variational\.py)$
+        files: ^mfg_pde/(simple\.py|core/mfg_problem\.py|types/.*\.py|geometry/base_geometry\.py|factory/solver_factory\.py|config/.*\.py|alg/__init__\.py|alg/base_mfg_solver\.py|alg/hjb_solvers/__init__\.py|alg/hjb_solvers/base_hjb\.py|alg/variational_solvers/__init__\.py|alg/variational_solvers/base_variational\.py|utils/__init__\.py|utils/validation\.py|utils/solver_result\.py|utils/exceptions\.py|utils/integration\.py)$
         args: [--follow-imports=silent, --ignore-missing-imports]
         additional_dependencies: [numpy, scipy, pydantic, types-tqdm, types-PyYAML, types-setuptools]
 

@@ -12,7 +12,7 @@ from .numpy_compat import get_numpy_info, trapezoid
 
 
 # Re-export for backward compatibility
-def get_integration_info() -> dict:
+def get_integration_info() -> dict[str, str]:
     """Get information about available integration methods."""
     return get_numpy_info()
 

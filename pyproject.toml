@@ -342,8 +342,10 @@ select = [
 ignore = [
     "E501",   # Line too long (handled by formatter)
     "E722",   # Do not use bare `except` (allow in research code for robustness)
+    "N802",   # Function name should be lowercase (mathematical notation: final_error_U, etc.)
     "N803",   # Argument should be lowercase (mathematical notation: allow u, m, U, M, etc.)
     "N806",   # Variable should be lowercase (mathematical notation: allow U, M, etc.)
+    "N815",   # Variable in class scope should not be mixedCase (mathematical notation: error_history_U)
     "N816",   # Mixed case variable in global scope (mathematical notation)
     "A003",   # Builtin shadowing (common in scientific code for 'id', 'type', etc.)
     "B008",   # Do not perform function calls in argument defaults (common pattern in factories)

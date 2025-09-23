@@ -9,9 +9,12 @@ code duplication across different solver implementations.
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 class SolutionValidationError(Exception):
@@ -19,13 +22,13 @@ class SolutionValidationError(Exception):
 
 
 def validate_solution_array(
-    solution: np.ndarray,
+    solution: NDArray[np.floating],
     name: str,
     allow_nan: bool = False,
     allow_inf: bool = False,
     min_value: float | None = None,
     max_value: float | None = None,
-) -> np.ndarray:
+) -> NDArray[np.floating]:
     """
     Validate a solution array for common numerical issues.
 
@@ -73,7 +76,7 @@ def validate_solution_array(
     return solution
 
 
-def validate_mfg_solution(U: np.ndarray, M: np.ndarray, strict: bool = True) -> dict[str, Any]:
+def validate_mfg_solution(U: NDArray[np.floating], M: NDArray[np.floating], strict: bool = True) -> dict[str, Any]:
     """
     Validate a complete MFG solution (value function and distribution).
 
@@ -174,14 +177,14 @@ def validate_convergence_parameters(max_iterations: int, tolerance: float, param
     if not isinstance(max_iterations, int) or max_iterations <= 0:
         raise ValueError(f"{parameter_name} max_iterations must be a positive integer, got {max_iterations}")
 
-    if not isinstance(tolerance, (int, float)) or tolerance <= 0:
+    if not isinstance(tolerance, int | float) or tolerance <= 0:
         raise ValueError(f"{parameter_name} tolerance must be a positive number, got {tolerance}")
 
     if tolerance >= 1.0:
         warnings.warn(f"{parameter_name} tolerance {tolerance} is unusually large (>=1.0)")
 
 
-def safe_solution_return(U: np.ndarray, M: np.ndarray, info: dict | None = None) -> tuple:
+def safe_solution_return(U: NDArray[np.floating], M: NDArray[np.floating], info: dict | None = None) -> tuple:
     """
     Safely return MFG solution with validation.
 
@@ -221,7 +224,7 @@ def safe_solution_return(U: np.ndarray, M: np.ndarray, info: dict | None = None)
 
 
 # Backward compatibility aliases
-def validate_solution(solution: np.ndarray, name: str) -> bool:
+def validate_solution(solution: NDArray[np.floating], name: str) -> bool:
     """
     Legacy validation function for backward compatibility.
 
