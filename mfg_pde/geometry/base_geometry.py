@@ -118,8 +118,8 @@ class MeshData:
         """Convert to meshio format for I/O operations."""
         try:
             import meshio
-        except ImportError:
-            raise ImportError("meshio is required for mesh I/O operations")
+        except ImportError as err:
+            raise ImportError("meshio is required for mesh I/O operations") from err
 
         cells = [(self.element_type, self.elements)]
 
@@ -142,8 +142,8 @@ class MeshData:
         """Convert to PyVista format for visualization."""
         try:
             import pyvista as pv
-        except ImportError:
-            raise ImportError("pyvista is required for mesh visualization")
+        except ImportError as err:
+            raise ImportError("pyvista is required for mesh visualization") from err
 
         if self.element_type == "triangle":
             # Create PyVista PolyData for 2D triangular mesh
@@ -214,8 +214,8 @@ class BaseGeometry(ABC):
         """Get geometry bounding box. Must be implemented by subclasses."""
 
     @abstractmethod
-    def export_mesh(self, format: str, filename: str) -> None:
-        """Export mesh in specified format. Must be implemented by subclasses."""
+    def export_mesh(self, file_format: str, filename: str) -> None:
+        """Export mesh in specified file_format. Must be implemented by subclasses."""
 
     def visualize_mesh(self, show_edges: bool = True, show_quality: bool = False):
         """Visualize mesh using PyVista."""
@@ -224,8 +224,8 @@ class BaseGeometry(ABC):
 
         try:
             import pyvista as pv
-        except ImportError:
-            raise ImportError("pyvista is required for mesh visualization")
+        except ImportError as err:
+            raise ImportError("pyvista is required for mesh visualization") from err
 
         if self.mesh_data is None:
             raise RuntimeError("Mesh data is None")
@@ -271,7 +271,7 @@ class BaseGeometry(ABC):
 
         # Compute aspect ratios
         aspect_ratios = []
-        for i, element in enumerate(self.mesh_data.elements):
+        for _i, element in enumerate(self.mesh_data.elements):
             v0, v1, v2 = self.mesh_data.vertices[element]
 
             # Edge lengths
@@ -280,7 +280,7 @@ class BaseGeometry(ABC):
             e3 = np.linalg.norm(v0 - v2)
 
             # Aspect ratio = (longest edge) / (shortest edge)
-            aspect_ratios.append(max(e1, e2, e3) / min(e1, e2, e3))
+            aspect_ratios.append(max(float(e1), float(e2), float(e3)) / min(float(e1), float(e2), float(e3)))
 
         return {
             "min_area": float(np.min(areas)),
