@@ -106,7 +106,7 @@ class SolverResult:
         return max(self.final_error_U, self.final_error_M)
 
     @property
-    def solution_shape(self) -> tuple[int, int]:
+    def solution_shape(self) -> tuple[int, ...]:
         """Get the shape of the solution arrays."""
         return self.U.shape
 
