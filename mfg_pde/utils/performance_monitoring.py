@@ -12,11 +12,13 @@ import functools
 import json
 import time
 import warnings
-from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 import psutil
 
@@ -367,17 +369,19 @@ Storage: {self.storage_path}
 
     def export_performance_data(self, output_file: Path) -> None:
         """Export all performance data to JSON file."""
-        export_data = {
+        export_data: dict[str, Any] = {
             "baselines": {name: asdict(baseline) for name, baseline in self.baselines.items()},
             "metrics_history": {name: [m.to_dict() for m in metrics] for name, metrics in self.metrics_history.items()},
             "export_timestamp": datetime.now().isoformat(),
         }
 
         # Convert datetime objects to ISO format for baselines
-        for baseline_data in export_data["baselines"].values():
-            if "last_updated" in baseline_data:
-                if isinstance(baseline_data["last_updated"], datetime):
-                    baseline_data["last_updated"] = baseline_data["last_updated"].isoformat()
+        baselines_dict = export_data["baselines"]
+        if isinstance(baselines_dict, dict):
+            for baseline_data in baselines_dict.values():
+                if "last_updated" in baseline_data:
+                    if isinstance(baseline_data["last_updated"], datetime):
+                        baseline_data["last_updated"] = baseline_data["last_updated"].isoformat()
 
         with open(output_file, "w") as f:
             json.dump(export_data, f, indent=2)
@@ -424,7 +428,7 @@ def benchmark_solver(
     Returns:
         Benchmarking results dictionary
     """
-    results = {
+    results: dict[str, Any] = {
         "solver_class": solver_class.__name__,
         "problem_size": {
             "Nx": getattr(problem, "Nx", 0),
@@ -434,7 +438,7 @@ def benchmark_solver(
     }
 
     for i, config in enumerate(config_variations):
-        config_results = {
+        config_results: dict[str, Any] = {
             "config_id": i,
             "config": config,
             "runs": [],
@@ -452,7 +456,7 @@ def benchmark_solver(
 
             try:
                 solver = solver_class(problem, **config)
-                result = solver.solve()
+                solver.solve()
 
                 execution_time = time.time() - start_time
                 end_memory = process.memory_info().rss / 1024 / 1024
