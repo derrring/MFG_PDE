@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     # For type checking only
     import contextlib
+
     with contextlib.suppress(ImportError):
         from omegaconf import DictConfig, ListConfig, OmegaConf
 

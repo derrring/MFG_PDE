@@ -31,22 +31,31 @@ else:
     # Dummy implementations for graceful fallback
     jax = None
     jnp = np
+
     def device_put(x, device=None):
         return x
+
     def grad(f):
         return lambda x: x
+
     def jacfwd(f):
         return lambda x: x
+
     def jacrev(f):
         return lambda x: x
+
     def jit(f):
         return f  # Identity decorator when JAX not available
+
     def vmap(f):
         return f
+
     def cond(pred, true_fn, false_fn, operand):
         return true_fn(operand) if pred else false_fn(operand)
+
     def scan(f, init, xs):
         return (init, xs)
+
     optax = None
 
 

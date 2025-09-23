@@ -12,19 +12,25 @@ from .utils.numpy_compat import ensure_numpy_compatibility
 _numpy_info = ensure_numpy_compatibility()
 
 from .config import MFGSolverConfig, create_accurate_config, create_fast_config, create_research_config  # noqa: E402
-from .core.variational_mfg_problem import (  # noqa: E402
-    VariationalMFGComponents,
-    VariationalMFGProblem,
-    create_obstacle_variational_mfg,
-    create_quadratic_variational_mfg,
+from .core.mfg_problem import (  # noqa: E402
+    ExampleMFGProblem,
+    MFGComponents,
+    MFGProblem,
+    MFGProblemBuilder,
+    create_mfg_problem,
 )
-from .core.mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem  # noqa: E402
 from .core.network_mfg_problem import (  # noqa: E402
     NetworkMFGComponents,
     NetworkMFGProblem,
     create_grid_mfg_problem,
     create_random_mfg_problem,
     create_scale_free_mfg_problem,
+)
+from .core.variational_mfg_problem import (  # noqa: E402
+    VariationalMFGComponents,
+    VariationalMFGProblem,
+    create_obstacle_variational_mfg,
+    create_quadratic_variational_mfg,
 )
 from .factory import (  # noqa: E402
     SolverFactory,
@@ -34,9 +40,18 @@ from .factory import (  # noqa: E402
     create_research_solver,
     create_solver,
 )
-from .factory.general_mfg_factory import GeneralMFGFactory, create_general_mfg_problem, get_general_factory  # noqa: E402
+from .factory.general_mfg_factory import (  # noqa: E402
+    GeneralMFGFactory,
+    create_general_mfg_problem,
+    get_general_factory,
+)
 from .geometry import BoundaryConditions  # noqa: E402
-from .geometry.network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend  # noqa: E402
+from .geometry.network_backend import (  # noqa: E402
+    NetworkBackendType,
+    OperationType,
+    get_backend_manager,
+    set_preferred_backend,
+)
 from .geometry.network_geometry import (  # noqa: E402
     GridNetwork,
     NetworkData,
@@ -78,7 +93,11 @@ except ImportError:
 
 # Interactive research reporting (optional dependency)
 try:
-    from .utils.notebook_reporting import MFGNotebookReporter, create_comparative_analysis, create_mfg_research_report  # noqa: F401
+    from .utils.notebook_reporting import (  # noqa: F401
+        MFGNotebookReporter,
+        create_comparative_analysis,
+        create_mfg_research_report,
+    )
 
     NOTEBOOK_REPORTING_AVAILABLE = True
 except ImportError:
@@ -139,27 +158,33 @@ __all__ = [
 
 # Add conditionally available imports to __all__ when available
 if GEOMETRY_SYSTEM_AVAILABLE:
-    __all__.extend([
-        "BaseGeometry",
-        "BoundaryManager",
-        "Domain2D",
-        "Domain3D",
-        "GeometricBoundaryCondition",
-        "MeshData",
-        "MeshManager",
-        "MeshPipeline",
-    ])
+    __all__.extend(
+        [
+            "BaseGeometry",
+            "BoundaryManager",
+            "Domain2D",
+            "Domain3D",
+            "GeometricBoundaryCondition",
+            "MeshData",
+            "MeshManager",
+            "MeshPipeline",
+        ]
+    )
 
 if HIGHDIM_MFG_AVAILABLE:
-    __all__.extend([
-        "GridBasedMFGProblem",
-        "HighDimMFGProblem",
-        "HybridMFGSolver",
-    ])
+    __all__.extend(
+        [
+            "GridBasedMFGProblem",
+            "HighDimMFGProblem",
+            "HybridMFGSolver",
+        ]
+    )
 
 if NOTEBOOK_REPORTING_AVAILABLE:
-    __all__.extend([
-        "MFGNotebookReporter",
-        "create_comparative_analysis",
-        "create_mfg_research_report",
-    ])
+    __all__.extend(
+        [
+            "MFGNotebookReporter",
+            "create_comparative_analysis",
+            "create_mfg_research_report",
+        ]
+    )

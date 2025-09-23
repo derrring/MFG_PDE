@@ -10,7 +10,7 @@ For visualization, use:
 """
 
 # Core utility functions (non-plotting)
-from .aux_func import *
+from .aux_func import npart, ppart
 from .convergence import (
     AdaptiveConvergenceWrapper,
     AdvancedConvergenceMonitor,
@@ -55,7 +55,6 @@ from .logging_decorators import (
     logged_validation,
     performance_logged,
 )
-from .math_utils import *
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .validation import (
     safe_solution_return,
@@ -66,7 +65,11 @@ from .validation import (
 
 # Optional modules with graceful handling
 try:
-    from .notebook_reporting import MFGNotebookReporter, create_comparative_analysis, create_mfg_research_report  # noqa: F401
+    from .notebook_reporting import (  # noqa: F401
+        MFGNotebookReporter,
+        create_comparative_analysis,
+        create_mfg_research_report,
+    )
 
     NOTEBOOK_REPORTING_AVAILABLE = True
 except ImportError:
@@ -153,6 +156,9 @@ __all__ = [
     "create_default_monitor",
     "test_particle_detection",
     "wrap_solver_with_adaptive_convergence",
+    # Auxiliary functions
+    "npart",
+    "ppart",
     # Exception handling
     "ConfigurationError",
     "ConvergenceError",
@@ -207,48 +213,60 @@ __all__ = [
 
 # Add optional modules to public API if available
 if NOTEBOOK_REPORTING_AVAILABLE:
-    __all__.extend([
-        "MFGNotebookReporter",
-        "create_comparative_analysis",
-        "create_mfg_research_report",
-    ])
+    __all__.extend(
+        [
+            "MFGNotebookReporter",
+            "create_comparative_analysis",
+            "create_mfg_research_report",
+        ]
+    )
 
 if POLARS_AVAILABLE:
-    __all__.extend([
-        "MFGDataFrame",
-        "benchmark_polars_vs_pandas",
-        "create_data_exporter",
-        "create_mfg_dataframe",
-        "create_parameter_sweep_analyzer",
-        "create_time_series_analyzer",
-    ])
+    __all__.extend(
+        [
+            "MFGDataFrame",
+            "benchmark_polars_vs_pandas",
+            "create_data_exporter",
+            "create_mfg_dataframe",
+            "create_parameter_sweep_analyzer",
+            "create_time_series_analyzer",
+        ]
+    )
 
 if CLI_AVAILABLE:
-    __all__.extend([
-        "cli_main",
-    ])
+    __all__.extend(
+        [
+            "cli_main",
+        ]
+    )
 
 if EXPERIMENT_MANAGER_AVAILABLE:
-    __all__.extend([
-        "load_experiment_data",
-        "load_experiments_from_dir",
-        "plot_comparison_final_m",
-        "plot_comparison_total_mass",
-        "save_experiment_data",
-    ])
+    __all__.extend(
+        [
+            "load_experiment_data",
+            "load_experiments_from_dir",
+            "plot_comparison_final_m",
+            "plot_comparison_total_mass",
+            "save_experiment_data",
+        ]
+    )
 
 if MEMORY_MANAGEMENT_AVAILABLE:
-    __all__.extend([
-        "MemoryMonitor",
-        "check_system_memory_availability",
-        "estimate_problem_memory_requirements",
-        "memory_usage_report",
-    ])
+    __all__.extend(
+        [
+            "MemoryMonitor",
+            "check_system_memory_availability",
+            "estimate_problem_memory_requirements",
+            "memory_usage_report",
+        ]
+    )
 
 if PERFORMANCE_MONITORING_AVAILABLE:
-    __all__.extend([
-        "PerformanceMonitor",
-        "benchmark_solver",
-        "get_performance_report",
-        "performance_tracked",
-    ])
+    __all__.extend(
+        [
+            "PerformanceMonitor",
+            "benchmark_solver",
+            "get_performance_report",
+            "performance_tracked",
+        ]
+    )
