@@ -322,7 +322,7 @@ class BoundaryManager:
 
     def get_summary(self) -> dict[str, Any]:
         """Get summary of boundary condition setup."""
-        summary = {"num_regions": len(self.boundary_conditions), "regions": {}}
+        summary: dict[str, Any] = {"num_regions": len(self.boundary_conditions), "regions": {}}
 
         for region_id, bc in self.boundary_conditions.items():
             num_nodes = len(self.get_boundary_nodes(region_id))

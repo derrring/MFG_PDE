@@ -13,7 +13,7 @@ import traceback
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -120,7 +120,7 @@ class WorkflowResult:
                     json.dumps(value)  # Test if JSON serializable
                     serialized[key] = value
                 except Exception:
-                    serialized[key] = str(value)
+                    serialized[key] = str(value)  # type: ignore[assignment]
         return serialized
 
 
@@ -144,7 +144,7 @@ class Workflow:
         self.id = str(uuid.uuid4())
         self.name = name
         self.description = description
-        self.created_time = datetime.now(datetime.UTC)
+        self.created_time = datetime.now(UTC)
         self.modified_time = self.created_time
 
         # Workflow structure
@@ -202,7 +202,7 @@ class Workflow:
 
         self.steps[step_id] = step
         self.step_order.append(step_id)
-        self.modified_time = datetime.now(datetime.UTC)
+        self.modified_time = datetime.now(UTC)
 
         self.logger.info(f"Added step '{name}' with ID {step_id}")
         return step_id
@@ -213,7 +213,7 @@ class Workflow:
             raise ValueError(f"Step {step_id} not found")
 
         self.steps[step_id].inputs[input_name] = value
-        self.modified_time = datetime.now(datetime.UTC)
+        self.modified_time = datetime.now(UTC)
 
         self.logger.debug(f"Set input '{input_name}' for step {step_id}")
 
@@ -244,7 +244,7 @@ class Workflow:
         """
         self.logger.info(f"Starting execution of workflow '{self.name}'")
 
-        start_time = datetime.now(datetime.UTC)
+        start_time = datetime.now(UTC)
         self.status = WorkflowStatus.RUNNING
 
         result = WorkflowResult(workflow_id=self.id, status=WorkflowStatus.RUNNING, start_time=start_time)
@@ -283,7 +283,7 @@ class Workflow:
             self.logger.debug(traceback.format_exc())
 
         finally:
-            end_time = datetime.now(datetime.UTC)
+            end_time = datetime.now(UTC)
             result.end_time = end_time
             result.execution_time = (end_time - start_time).total_seconds()
 
@@ -301,7 +301,7 @@ class Workflow:
         self.logger.info(f"Executing step '{step.name}' ({step_id})")
 
         step.status = StepStatus.RUNNING
-        step.start_time = datetime.now(datetime.UTC)
+        step.start_time = datetime.now(UTC)
 
         try:
             # Prepare inputs
@@ -329,7 +329,7 @@ class Workflow:
                 step.outputs = {"result": result}
 
             step.status = StepStatus.COMPLETED
-            step.end_time = datetime.now(datetime.UTC)
+            step.end_time = datetime.now(UTC)
 
             execution_time = (step.end_time - step.start_time).total_seconds()
             self.logger.info(f"Step '{step.name}' completed in {execution_time:.2f}s")
@@ -342,7 +342,7 @@ class Workflow:
 
         except Exception as e:
             step.status = StepStatus.FAILED
-            step.end_time = datetime.now(datetime.UTC)
+            step.end_time = datetime.now(UTC)
             step.error_message = str(e)
 
             self.logger.error(f"Step '{step.name}' failed: {e}")

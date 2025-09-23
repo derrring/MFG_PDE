@@ -349,7 +349,7 @@ class Domain2D(BaseGeometry):
     def _extract_boundary_edges(self, triangles: np.ndarray) -> np.ndarray:
         """Extract boundary edges from triangular mesh."""
         # Create edge dictionary to find boundary edges
-        edge_count = {}
+        edge_count: dict[tuple[int, int], int] = {}
 
         # Count each edge
         for triangle in triangles:
