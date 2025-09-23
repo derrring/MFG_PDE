@@ -40,7 +40,7 @@ jobs:
     - name: Check changed Python files with mypy
       run: |
         echo "🔍 Checking only PR-modified files with mypy..."
-        mypy mfg_pde/factory/solver_factory.py mfg_pde/geometry/base_geometry.py --ignore-missing-imports
+        mypy mfg_pde/factory/solver_factory.py mfg_pde/geometry/base_geometry.py --follow-imports=silent --ignore-missing-imports
         echo "✅ All changed files pass mypy checks"
 
     - name: Verify mypy coverage expansion
