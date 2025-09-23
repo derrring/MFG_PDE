@@ -1,10 +1,12 @@
 # MFG_PDE: Advanced Mean Field Games Framework
 
-A modern Python framework for solving Mean Field Games with GPU acceleration, simple APIs, and advanced numerical methods.
+A modern Python framework for solving Mean Field Games with modular solver architecture, GPU acceleration, and state-of-the-art numerical methods.
 
 **🎯 Simple API**: One-line solving for common problems
+**🧩 Modular Design**: Mix & match FP + HJB solvers freely
+**⭐ WENO5 Solver**: Fifth-order accuracy + non-oscillatory properties
 **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
-**🔧 Multiple Solvers**: Traditional PDE and modern particle methods
+**🔧 Multiple Solvers**: Traditional PDE, particles, and hybrid methods
 **🌐 Network Support**: Also works on graphs and networks
 
 ## 🚀 Quick Start
@@ -32,6 +34,63 @@ from mfg_pde import solve_mfg
 result = solve_mfg("crowd_dynamics")
 print("✅ MFG_PDE is working!")
 ```
+
+## 🏗️ **Modular Solver Architecture**
+
+### **🧩 Mix & Match: FP + HJB Solver Combinations**
+
+MFG_PDE solves the coupled Mean Field Games system by combining **any Fokker-Planck (FP) solver** with **any Hamilton-Jacobi-Bellman (HJB) solver**:
+
+```python
+from mfg_pde.alg.fp_solvers import FPParticleSolver
+from mfg_pde.alg.hjb_solvers import HJBWeno5Solver  # ✨ NEW: Fifth-order WENO
+from mfg_pde.alg.mfg_solvers import FixedPointIterator
+
+# Create any combination you want
+problem = ExampleMFGProblem(Nx=128, Nt=64, T=1.0)
+
+# High-order combination: Particles + WENO5
+fp_solver = FPParticleSolver(problem, num_particles=5000)
+hjb_solver = HJBWeno5Solver(problem, cfl_number=0.3)  # Fifth-order accuracy!
+mfg_solver = FixedPointIterator(problem, hjb_solver, fp_solver)
+
+result = mfg_solver.solve(max_iterations=50, tolerance=1e-6)
+print(f"✅ Converged with {result.picard_iterations} iterations")
+```
+
+### **🎯 Available Solver Combinations**
+
+| FP Method | HJB Method | Best For | Example |
+|-----------|------------|----------|---------|
+| **Particles** | **WENO5** ✨ | High accuracy + non-oscillatory | Academic benchmarking |
+| **Particles** | **Standard FDM** | Robust + conservation | Production applications |
+| **Standard FDM** | **WENO5** ✨ | High-order everywhere | Smooth problems |
+| **Network/Graph** | **Network** | Complex geometries | Urban dynamics |
+
+### **⭐ WENO5 HJB Solver - NEW!**
+
+Our latest **fifth-order WENO solver** provides state-of-the-art accuracy:
+
+```python
+from mfg_pde.alg.hjb_solvers import HJBWeno5Solver
+
+# Fifth-order spatial accuracy + TVD-RK3 time integration
+weno_solver = HJBWeno5Solver(
+    problem=problem,
+    cfl_number=0.3,                    # Stability control
+    time_integration="tvd_rk3",        # High-order time stepping
+    weno_epsilon=1e-6                  # Non-oscillatory parameter
+)
+
+# Run benchmarking demo
+python examples/advanced/weno5_simple_demo.py
+```
+
+**WENO5 Features:**
+- ✅ **Fifth-order spatial accuracy** in smooth regions
+- ✅ **Non-oscillatory** behavior near discontinuities
+- ✅ **Explicit time integration** (complementary to implicit methods)
+- ✅ **Academic publication ready** with comprehensive benchmarking
 
 ## Usage Examples
 
@@ -80,11 +139,14 @@ result = solver.solve()
 ## Features
 
 - **🎯 Simple API**: One-line `solve_mfg()` for common problems with smart defaults
+- **🧩 Modular Architecture**: Mix & match any FP solver + any HJB solver
+- **⭐ WENO5 Solver**: Fifth-order accuracy with non-oscillatory properties
 - **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
-- **🔧 Multiple Solvers**: Fixed-point, particle-collocation, adaptive methods
+- **🔧 Multiple Solvers**: Fixed-point, particle-collocation, hybrid methods
 - **📊 Interactive Plots**: Built-in visualization with Plotly and Matplotlib
 - **🚀 Performance**: Optimized for both small examples and large-scale problems
 - **🌐 Network Support**: Also solves MFG problems on graphs and networks
+- **📚 Academic Ready**: Publication-quality benchmarking and documentation
 
 ## Requirements
 
@@ -107,8 +169,12 @@ result = solver.solve()
 ## Examples
 
 - **[examples/basic/](examples/basic/)** - Simple getting started examples
-- **[examples/advanced/](examples/advanced/)** - Complex workflows and GPU acceleration
+- **[examples/advanced/](examples/advanced/)** - Complex workflows, GPU acceleration, and WENO5 benchmarking
 - **[examples/notebooks/](examples/notebooks/)** - Jupyter notebook tutorials
+
+**🆕 Latest Examples:**
+- `examples/advanced/weno5_simple_demo.py` - WENO5 solver benchmarking and comparison
+- See **[Issue #17](../../issues/17)** for roadmap: PINNs, DGM, and hybrid methods
 
 ## Testing
 
