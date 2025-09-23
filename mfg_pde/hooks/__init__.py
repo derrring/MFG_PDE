@@ -23,35 +23,35 @@ from .composition import ChainHook, ConditionalHook, FilterHook, MultiHook, Prio
 # Control flow hooks are imported separately to avoid heavy dependencies
 try:
     from .control_flow import (
-        AdaptiveControlHook,
-        ConditionalStopHook,
-        ControlState,
-        PerformanceControlHook,
-        WatchdogHook,
+        AdaptiveControlHook,  # noqa: F401
+        ConditionalStopHook,  # noqa: F401
+        ControlState,  # noqa: F401
+        PerformanceControlHook,  # noqa: F401
+        WatchdogHook,  # noqa: F401
     )
 
     _CONTROL_FLOW_AVAILABLE = True
 except ImportError:
     _CONTROL_FLOW_AVAILABLE = False
 
-__all__ = ["SolverHooks", "MultiHook", "ConditionalHook", "PriorityHook", "FilterHook", "TransformHook", "ChainHook"]
+__all__ = ["ChainHook", "ConditionalHook", "FilterHook", "MultiHook", "PriorityHook", "SolverHooks", "TransformHook"]
 
 # Add control flow exports if available
 if _CONTROL_FLOW_AVAILABLE:
     __all__.extend(
-        ["ControlState", "AdaptiveControlHook", "PerformanceControlHook", "WatchdogHook", "ConditionalStopHook"]
+        ["AdaptiveControlHook", "ConditionalStopHook", "ControlState", "PerformanceControlHook", "WatchdogHook"]
     )
 
 # Import debugging and visualization hooks with optional dependencies
 try:
-    from .debug import ConvergenceAnalysisHook, DebugHook, PerformanceHook, StateInspectionHook
+    from .debug import ConvergenceAnalysisHook, DebugHook, PerformanceHook, StateInspectionHook  # noqa: F401
 
     _DEBUG_AVAILABLE = True
 except ImportError:
     _DEBUG_AVAILABLE = False
 
 try:
-    from .visualization import AnimationHook, LoggingHook, PlottingHook, ProgressBarHook
+    from .visualization import AnimationHook, LoggingHook, PlottingHook, ProgressBarHook  # noqa: F401
 
     _VISUALIZATION_AVAILABLE = True
 except ImportError:
@@ -59,25 +59,25 @@ except ImportError:
 
 # Add debugging exports if available
 if _DEBUG_AVAILABLE:
-    __all__.extend(["DebugHook", "PerformanceHook", "ConvergenceAnalysisHook", "StateInspectionHook"])
+    __all__.extend(["ConvergenceAnalysisHook", "DebugHook", "PerformanceHook", "StateInspectionHook"])
 
 # Add visualization exports if available
 if _VISUALIZATION_AVAILABLE:
-    __all__.extend(["PlottingHook", "AnimationHook", "LoggingHook", "ProgressBarHook"])
+    __all__.extend(["AnimationHook", "LoggingHook", "PlottingHook", "ProgressBarHook"])
 
 # Import extension points
 try:
     from .extensions import (
-        AdaptiveParameterHook,
-        AlgorithmExtensionHook,
-        CustomConvergenceHook,
-        CustomFPHook,
-        CustomHJBHook,
-        CustomInitializationHook,
-        CustomResidualHook,
-        MethodSwitchingHook,
-        PostprocessingHook,
-        PreprocessingHook,
+        AdaptiveParameterHook,  # noqa: F401
+        AlgorithmExtensionHook,  # noqa: F401
+        CustomConvergenceHook,  # noqa: F401
+        CustomFPHook,  # noqa: F401
+        CustomHJBHook,  # noqa: F401
+        CustomInitializationHook,  # noqa: F401
+        CustomResidualHook,  # noqa: F401
+        MethodSwitchingHook,  # noqa: F401
+        PostprocessingHook,  # noqa: F401
+        PreprocessingHook,  # noqa: F401
     )
 
     _EXTENSIONS_AVAILABLE = True
@@ -88,15 +88,15 @@ except ImportError:
 if _EXTENSIONS_AVAILABLE:
     __all__.extend(
         [
-            "AlgorithmExtensionHook",
-            "CustomHJBHook",
-            "CustomFPHook",
-            "CustomConvergenceHook",
-            "PreprocessingHook",
-            "PostprocessingHook",
-            "CustomResidualHook",
             "AdaptiveParameterHook",
-            "MethodSwitchingHook",
+            "AlgorithmExtensionHook",
+            "CustomConvergenceHook",
+            "CustomFPHook",
+            "CustomHJBHook",
             "CustomInitializationHook",
+            "CustomResidualHook",
+            "MethodSwitchingHook",
+            "PostprocessingHook",
+            "PreprocessingHook",
         ]
     )

@@ -314,7 +314,7 @@ class PerformanceMonitor:
         report = f"""
 Performance Monitoring Report
 ============================
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Storage: {self.storage_path}
 
 """

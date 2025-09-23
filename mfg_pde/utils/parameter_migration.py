@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import inspect
 import warnings
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -261,7 +263,7 @@ class ParameterMigrator:
         report = f"""
 Parameter Migration Report
 =========================
-Timestamp: {stats.timestamp.strftime('%Y-%m-%d %H:%M:%S')}
+Timestamp: {stats.timestamp.strftime("%Y-%m-%d %H:%M:%S")}
 Total Parameters: {stats.total_parameters}
 Migrated Parameters: {stats.migrated_parameters}
 Warnings Issued: {stats.warnings_issued}

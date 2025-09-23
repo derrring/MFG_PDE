@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...config.solver_config import MFGSolverConfig, extract_legacy_parameters
-from ..base_mfg_solver import MFGSolver
+from mfg_pde.alg.base_mfg_solver import MFGSolver
+from mfg_pde.config.solver_config import MFGSolverConfig, extract_legacy_parameters
 
 if TYPE_CHECKING:
-    from ...core.mfg_problem import MFGProblem
-    from ...utils.solver_result import SolverResult
-    from ..fp_solvers.base_fp import BaseFPSolver
-    from ..hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.alg.fp_solvers.base_fp import BaseFPSolver
+    from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.utils.solver_result import SolverResult
 
 
 class ConfigAwareFixedPointIterator(MFGSolver):
@@ -246,7 +246,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
         # Return appropriate format
         if solve_config.return_structured:
-            from ...utils.solver_result import create_solver_result
+            from mfg_pde.utils.solver_result import create_solver_result
 
             return create_solver_result(
                 U=self.U,
@@ -299,14 +299,14 @@ class ConfigAwareFixedPointIterator(MFGSolver):
 
     def get_results(self) -> tuple:
         """Get computed U and M solutions."""
-        from ...utils.exceptions import validate_solver_state
+        from mfg_pde.utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_results")
         return self.U, self.M
 
     def get_convergence_data(self) -> tuple:
         """Get convergence information."""
-        from ...utils.exceptions import validate_solver_state
+        from mfg_pde.utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_convergence_data")
         return (
@@ -343,7 +343,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for speed."""
-        from ..config import create_fast_config
+        from mfg_pde.alg.config import create_fast_config
 
         return cls(problem, hjb_solver, fp_solver, create_fast_config())
 
@@ -355,7 +355,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for accuracy."""
-        from ..config import create_accurate_config
+        from mfg_pde.alg.config import create_accurate_config
 
         return cls(problem, hjb_solver, fp_solver, create_accurate_config())
 
@@ -367,6 +367,6 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for research with detailed monitoring."""
-        from ..config.solver_config import create_research_config
+        from mfg_pde.alg.config.solver_config import create_research_config
 
         return cls(problem, hjb_solver, fp_solver, create_research_config())

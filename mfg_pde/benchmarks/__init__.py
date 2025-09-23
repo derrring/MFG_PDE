@@ -16,10 +16,10 @@ from .highdim_benchmark_suite import (
 )
 
 __all__ = [
-    "HighDimMFGBenchmark",
     "BenchmarkResult",
     "BenchmarkSuite",
-    "create_quick_benchmark_suite",
+    "HighDimMFGBenchmark",
     "create_comprehensive_benchmark_suite",
+    "create_quick_benchmark_suite",
     "run_standard_benchmarks",
 ]

@@ -13,13 +13,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import Any
 
 import numpy as np
-
-if TYPE_CHECKING:
-    # For type checking only - these imports may not be available at runtime
-    import numpy as np
 
 
 class VariableType(Enum):
@@ -424,22 +420,22 @@ Consistency Rules
 # === Type Aliases for Consistency ===
 
 # Standard array types with clear mathematical meaning
-SpatialArray: TypeAlias = np.ndarray  # Shape: (Nx+1,) - spatial discretization
-TemporalArray: TypeAlias = np.ndarray  # Shape: (Nt+1,) - temporal discretization
-SolutionArray: TypeAlias = np.ndarray  # Shape: (Nt+1, Nx+1) - spatio-temporal solutions
-ParameterDict: TypeAlias = dict[str, Any]  # Mathematical and numerical parameters
-ConfigDict: TypeAlias = dict[str, Any]  # Solver configuration parameters
+type SpatialArray = np.ndarray  # Shape: (Nx+1,) - spatial discretization
+type TemporalArray = np.ndarray  # Shape: (Nt+1,) - temporal discretization
+type SolutionArray = np.ndarray  # Shape: (Nt+1, Nx+1) - spatio-temporal solutions
+type ParameterDict = dict[str, Any]  # Mathematical and numerical parameters
+type ConfigDict = dict[str, Any]  # Solver configuration parameters
 
 # Coordinate and grid types
-SpatialCoordinate: TypeAlias = float  # Single spatial point x ∈ [xmin, xmax]
-TemporalCoordinate: TypeAlias = float  # Single time point t ∈ [0, T]
-SpatialGrid: TypeAlias = np.ndarray  # Full spatial grid array
-TemporalGrid: TypeAlias = np.ndarray  # Full temporal grid array
+type SpatialCoordinate = float  # Single spatial point x ∈ [xmin, xmax]
+type TemporalCoordinate = float  # Single time point t ∈ [0, T]
+type SpatialGrid = np.ndarray  # Full spatial grid array
+type TemporalGrid = np.ndarray  # Full temporal grid array
 
 # Mathematical function types
-HamiltonianFunction: TypeAlias = float  # H(x, p, m) → ℝ
-GradientArray: TypeAlias = np.ndarray  # ∇u computed on grid
-PotentialFunction: TypeAlias = float  # V(x) → ℝ
+type HamiltonianFunction = float  # H(x, p, m) → ℝ
+type GradientArray = np.ndarray  # ∇u computed on grid
+type PotentialFunction = float  # V(x) → ℝ
 
 
 # === Utility Functions ===
@@ -501,15 +497,15 @@ Mathematical Solution Summary
 ============================
 
 Problem Configuration:
-  Spatial domain: x ∈ [0, {problem_params.get('Lx', 1.0)}]
-  Temporal domain: t ∈ [0, {problem_params.get('T', 1.0)}]
+  Spatial domain: x ∈ [0, {problem_params.get("Lx", 1.0)}]
+  Temporal domain: t ∈ [0, {problem_params.get("T", 1.0)}]
   Grid resolution: {Nx} × {Nt} points
-  Spatial step: Δx = {problem_params.get('Dx', 0.0):.6f}
-  Temporal step: Δt = {problem_params.get('Dt', 0.0):.6f}
+  Spatial step: Δx = {problem_params.get("Dx", 0.0):.6f}
+  Temporal step: Δt = {problem_params.get("Dt", 0.0):.6f}
 
 Physical Parameters:
-  Diffusion coefficient: σ = {problem_params.get('sigma', 1.0):.3f}
-  Coupling strength: λ = {problem_params.get('coupling_coefficient', 0.5):.3f}
+  Diffusion coefficient: σ = {problem_params.get("sigma", 1.0):.3f}
+  Coupling strength: λ = {problem_params.get("coupling_coefficient", 0.5):.3f}
 
 Solution Statistics:
   Value function u(t,x):
@@ -518,8 +514,8 @@ Solution Statistics:
 
   Density function m(t,x):
     Range: [{np.min(M):.6f}, {np.max(M):.6f}]
-    Total mass: {np.sum(M) * problem_params.get('Dx', 1.0) * problem_params.get('Dt', 1.0):.6f}
-    Conservation check: {'PASS' if abs(np.sum(M[0, :]) - np.sum(M[-1, :])) < 1e-6 else 'FAIL'}
+    Total mass: {np.sum(M) * problem_params.get("Dx", 1.0) * problem_params.get("Dt", 1.0):.6f}
+    Conservation check: {"PASS" if abs(np.sum(M[0, :]) - np.sum(M[-1, :])) < 1e-6 else "FAIL"}
 """
 
     return summary

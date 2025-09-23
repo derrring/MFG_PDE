@@ -200,7 +200,7 @@ class Domain1D:
 
     def __repr__(self) -> str:
         """Detailed representation of domain."""
-        return f"Domain1D(xmin={self.xmin}, xmax={self.xmax}, " f"length={self.length}, bc={self.boundary_conditions})"
+        return f"Domain1D(xmin={self.xmin}, xmax={self.xmax}, length={self.length}, bc={self.boundary_conditions})"
 
 
 # Convenience functions for common boundary condition types

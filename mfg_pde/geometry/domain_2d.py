@@ -7,12 +7,14 @@ supporting rectangular domains, complex shapes, holes, and CAD import.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from .base_geometry import BaseGeometry, MeshData
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Domain2D(BaseGeometry):
@@ -76,7 +78,7 @@ class Domain2D(BaseGeometry):
         try:
             import gmsh
         except ImportError:
-            raise ImportError("gmsh is required for mesh generation")
+            raise ImportError("gmsh is required for mesh generation") from None
 
         gmsh.initialize()
         gmsh.clear()
@@ -291,7 +293,7 @@ class Domain2D(BaseGeometry):
         """Generate 2D triangular mesh using Gmsh → Meshio pipeline."""
         try:
             import gmsh
-            import meshio
+            import meshio  # noqa: F401
         except ImportError:
             raise ImportError("gmsh and meshio are required for mesh generation")
 
@@ -302,8 +304,8 @@ class Domain2D(BaseGeometry):
         gmsh.model.mesh.generate(2)  # 2D mesh
 
         # Extract mesh data
-        node_tags, node_coords, _ = gmsh.model.mesh.getNodes()
-        element_types, element_tags, element_connectivity = gmsh.model.mesh.getElements()
+        _node_tags, node_coords, _ = gmsh.model.mesh.getNodes()
+        element_types, _element_tags, element_connectivity = gmsh.model.mesh.getElements()
 
         # Process vertices
         vertices = node_coords.reshape(-1, 3)[:, :2]  # Remove z-coordinate for 2D

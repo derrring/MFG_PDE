@@ -20,13 +20,12 @@ Dependencies:
 from __future__ import annotations
 
 import warnings
-from typing import Any, Optional
 
 # Check JAX availability
 try:
     import jax
     import jax.numpy as jnp
-    from jax import grad, jacfwd, jacrev, jit, vmap
+    from jax import grad, jit, vmap
     from jax.config import config
 
     HAS_JAX = True
@@ -52,17 +51,21 @@ except ImportError:
     class DummyJAX:
         def __getattr__(self, name):
             def dummy_func(*args, **kwargs):
-                raise ImportError(
-                    "JAX is required for GPU-accelerated solvers. " "Install with: pip install jax jaxlib"
-                )
+                raise ImportError("JAX is required for GPU-accelerated solvers. Install with: pip install jax jaxlib")
 
             return dummy_func
 
     jax = DummyJAX()
     jnp = DummyJAX()
-    jit = lambda f: f  # No-op decorator
-    vmap = lambda f, *args, **kwargs: f  # No-op decorator
-    grad = lambda f: f  # No-op decorator
+
+    def jit(f):  # No-op decorator
+        return f
+
+    def vmap(f, *args, **kwargs):  # No-op decorator
+        return f
+
+    def grad(f):  # No-op decorator
+        return f
 
 
 def check_jax_availability() -> bool:
@@ -157,30 +160,31 @@ configure_jax_for_scientific_computing()
 
 # Export key components
 __all__ = [
-    "HAS_JAX",
-    "HAS_GPU",
     "DEFAULT_DEVICE",
-    "check_jax_availability",
+    "HAS_GPU",
+    "HAS_JAX",
     "check_gpu_availability",
+    "check_jax_availability",
     "get_device_info",
-    "print_acceleration_info",
-    "jax",
-    "jnp",
-    "jit",
-    "vmap",
     "grad",
+    "jax",
+    "jit",
+    "jnp",
+    "print_acceleration_info",
+    "vmap",
 ]
 
 # Conditional imports for JAX-based solvers
 if HAS_JAX:
     try:
-        from .jax_fp_solver import JAXFokkerPlanckSolver
-        from .jax_hjb_solver import JAXHJBSolver
-        from .jax_mfg_solver import JAXMFGSolver
-        from .jax_solvers import *
-        from .jax_utils import *
+        # Individual imports for explicit exports
+        from .jax_fp_solver import JAXFokkerPlanckSolver  # noqa: F401
+        from .jax_hjb_solver import JAXHJBSolver  # noqa: F401
+        from .jax_mfg_solver import JAXMFGSolver  # noqa: F401
+        from .jax_solvers import *  # noqa: F403
+        from .jax_utils import *  # noqa: F403
 
-        __all__.extend(["JAXHJBSolver", "JAXFokkerPlanckSolver", "JAXMFGSolver"])
+        __all__.extend(["JAXFokkerPlanckSolver", "JAXHJBSolver", "JAXMFGSolver"])
 
     except ImportError as e:
         warnings.warn(f"Could not import JAX solvers: {e}")

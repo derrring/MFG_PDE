@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from .base_geometry import MeshData
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .base_geometry import MeshData
 
 
 class BoundaryCondition3D(ABC):
@@ -196,7 +199,7 @@ class RobinBC3D(BoundaryCondition3D):
         for i, idx in enumerate(boundary_indices):
             x, y, z = boundary_vertices[i]
             alpha_val = self.alpha(x, y, z, 0.0)  # Time-independent for matrix
-            beta_val = self.beta(x, y, z, 0.0)
+            self.beta(x, y, z, 0.0)
 
             # Modify diagonal entry for α·u term
             matrix_mod[idx, idx] += alpha_val

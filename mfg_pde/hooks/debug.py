@@ -16,7 +16,7 @@ import numpy as np
 from .base import SolverHooks
 
 if TYPE_CHECKING:
-    from ..types import MFGResult, SpatialTemporalState
+    from mfg_pde.types import MFGResult, SpatialTemporalState
 
 
 class DebugHook(SolverHooks):
@@ -214,7 +214,7 @@ class PerformanceHook(SolverHooks):
             print(f"Iteration timing - Avg: {avg_time:.3f}s, Min: {min_time:.3f}s, Max: {max_time:.3f}s")
 
         if self.track_memory and self.memory_usage:
-            print(f"Memory usage - Peak: {self.peak_memory_mb:.1f} MB, " f"Final: {self.memory_usage[-1]:.1f} MB")
+            print(f"Memory usage - Peak: {self.peak_memory_mb:.1f} MB, Final: {self.memory_usage[-1]:.1f} MB")
 
         if len(self.convergence_rate_history) > 5:
             recent_rates = self.convergence_rate_history[-5:]

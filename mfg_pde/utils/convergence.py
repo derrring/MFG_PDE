@@ -396,7 +396,7 @@ class AdvancedConvergenceMonitor:
 
         # Try to use modern visualization system first
         try:
-            from ..visualization import create_visualization_manager, modern_plot_convergence
+            from mfg_pde.visualization import create_visualization_manager, modern_plot_convergence
 
             # Extract data for modern plotting
             iterations = [d["iteration"] for d in self.convergence_history]
@@ -412,7 +412,7 @@ class AdvancedConvergenceMonitor:
                 convergence_data["Wasserstein_Distance"] = valid_wasserstein
 
             # Use modern convergence plotting
-            viz_manager = create_visualization_manager(prefer_plotly=False)
+            create_visualization_manager(prefer_plotly=False)
             fig = modern_plot_convergence(
                 convergence_data,
                 title="Advanced Convergence History",
@@ -785,8 +785,6 @@ class AdaptiveConvergenceWrapper:
         x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx)
 
         # Initialize solution tracking
-        converged = False
-        iteration_info = []
 
         # Call original solve method but with modified iteration logic
         # We need to intercept the iteration loop
@@ -832,7 +830,7 @@ class AdaptiveConvergenceWrapper:
         """
         # Analyze final time step convergence properties
         if U.ndim >= 2 and M.ndim >= 2:
-            final_u = U[-1, :]  # Terminal value function
+            U[-1, :]  # Terminal value function
             final_m = M[-1, :]  # Final distribution
 
             # Compute distribution properties
@@ -955,7 +953,7 @@ def wrap_solver_with_adaptive_convergence(solver: MFGSolver, **kwargs) -> MFGSol
         adaptive_solver = wrap_solver_with_adaptive_convergence(solver)
         U, M, info = adaptive_solver.solve(...)
     """
-    wrapper = AdaptiveConvergenceWrapper(solver, **kwargs)
+    AdaptiveConvergenceWrapper(solver, **kwargs)
     return solver  # The solver is modified in-place by the wrapper
 
 

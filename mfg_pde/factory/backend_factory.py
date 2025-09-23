@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from ..backends.base_backend import BaseBackend
+    from mfg_pde.backends.base_backend import BaseBackend
 
-from ..backends import create_backend, get_available_backends, get_backend_info
-from ..core.mfg_problem import MFGProblem
+from mfg_pde.backends import create_backend, get_available_backends, get_backend_info
+from mfg_pde.core.mfg_problem import MFGProblem
 
 
 class BackendFactory:
@@ -96,7 +96,7 @@ class BackendFactory:
                 # Test basic operations
                 for _ in range(10):
                     U_grad = backend.diff(U)
-                    integral = backend.trapezoid(M, x=x_grid)
+                    backend.trapezoid(M, x=x_grid)
                     U = U + 0.01 * U_grad[:-1]  # Simple update
 
                 end_time = time.perf_counter()
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     print_backend_info()
 
     # Create a test problem
-    from ..core.mfg_problem import ExampleMFGProblem
+    from mfg_pde.core.mfg_problem import ExampleMFGProblem
 
     problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=50)
 

@@ -7,7 +7,6 @@ including numerical operations, device management, and optimization helpers.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -15,9 +14,11 @@ import numpy as np
 from . import DEFAULT_DEVICE, HAS_GPU, HAS_JAX
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mfg_pde.types.internal import JAXArray
 else:
-    from mfg_pde.types.internal import JAXArray
+    pass
 
 if HAS_JAX:
     import optax
@@ -30,21 +31,29 @@ else:
     # Dummy implementations for graceful fallback
     jax = None
     jnp = np
-    device_put = lambda x, device=None: x
-    grad = lambda f: lambda x: x
-    jacfwd = lambda f: lambda x: x
-    jacrev = lambda f: lambda x: x
-    jit = lambda f: f  # Identity decorator when JAX not available
-    vmap = lambda f: f
-    cond = lambda pred, true_fn, false_fn, operand: true_fn(operand) if pred else false_fn(operand)
-    scan = lambda f, init, xs: (init, xs)
+    def device_put(x, device=None):
+        return x
+    def grad(f):
+        return lambda x: x
+    def jacfwd(f):
+        return lambda x: x
+    def jacrev(f):
+        return lambda x: x
+    def jit(f):
+        return f  # Identity decorator when JAX not available
+    def vmap(f):
+        return f
+    def cond(pred, true_fn, false_fn, operand):
+        return true_fn(operand) if pred else false_fn(operand)
+    def scan(f, init, xs):
+        return (init, xs)
     optax = None
 
 
 def ensure_jax_available():
     """Ensure JAX is available, raise error if not."""
     if not HAS_JAX:
-        raise ImportError("JAX is required for accelerated solvers. " "Install with: pip install jax jaxlib")
+        raise ImportError("JAX is required for accelerated solvers. Install with: pip install jax jaxlib")
 
 
 def to_device(array: np.ndarray | Any, device: Any | None = None) -> Any:
@@ -544,21 +553,21 @@ def memory_usage_tracker():
 
 # Export utility functions
 __all__ = [
-    "ensure_jax_available",
-    "to_device",
-    "from_device",
-    "finite_difference_1d",
-    "finite_difference_2d",
+    "adaptive_time_step",
     "apply_boundary_conditions",
-    "tridiagonal_solve",
+    "compute_convergence_error",
+    "compute_drift",
     "compute_hamiltonian",
     "compute_optimal_control",
-    "compute_drift",
-    "mass_conservation_constraint",
     "create_optimization_schedule",
-    "compute_convergence_error",
-    "adaptive_time_step",
-    "vectorized_solve",
-    "profile_jax_function",
+    "ensure_jax_available",
+    "finite_difference_1d",
+    "finite_difference_2d",
+    "from_device",
+    "mass_conservation_constraint",
     "memory_usage_tracker",
+    "profile_jax_function",
+    "to_device",
+    "tridiagonal_solve",
+    "vectorized_solve",
 ]

@@ -126,7 +126,7 @@ def enhanced_solver_method(monitor_convergence: bool = True, auto_progress: bool
         @functools.wraps(solve_method)
         def wrapper(self, *args, **kwargs):
             # Get solver configuration
-            verbose = kwargs.get("verbose", True)
+            kwargs.get("verbose", True)
 
             # Apply progress monitoring if enabled
             if auto_progress:
@@ -256,9 +256,9 @@ def format_solver_summary(
     """
     status = "SUCCESS: Converged" if converged else "WARNING:  Max iterations reached"
 
-    summary = f"\n{'='*60}\n"
+    summary = f"\n{'=' * 60}\n"
     summary += f"{solver_name} Summary\n"
-    summary += f"{'='*60}\n"
+    summary += f"{'=' * 60}\n"
     summary += f"{status} in {iterations} iterations\n"
 
     if final_error is not None:
@@ -266,7 +266,7 @@ def format_solver_summary(
 
     if execution_time is not None:
         if execution_time < 1:
-            summary += f"Execution time: {execution_time*1000:.1f}ms\n"
+            summary += f"Execution time: {execution_time * 1000:.1f}ms\n"
         elif execution_time < 60:
             summary += f"Execution time: {execution_time:.2f}s\n"
         else:
@@ -274,6 +274,6 @@ def format_solver_summary(
             seconds = execution_time % 60
             summary += f"Execution time: {minutes}m {seconds:.1f}s\n"
 
-    summary += f"{'='*60}\n"
+    summary += f"{'=' * 60}\n"
 
     return summary

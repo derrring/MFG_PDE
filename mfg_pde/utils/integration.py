@@ -18,4 +18,4 @@ def get_integration_info() -> dict[str, str]:
 
 
 # Export the main functions
-__all__ = ["trapezoid", "get_integration_info"]
+__all__ = ["get_integration_info", "trapezoid"]

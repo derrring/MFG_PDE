@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from ..alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+    from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 
 import numpy as np
 
@@ -21,10 +21,10 @@ try:
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
-from ..alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
-from ..alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
-from ..alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
-from ..config.pydantic_config import (
+from mfg_pde.alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
+from mfg_pde.alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from mfg_pde.alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
+from mfg_pde.config.pydantic_config import (
     MFGSolverConfig,
     create_accurate_config,
     create_fast_config,
@@ -32,9 +32,9 @@ from ..config.pydantic_config import (
 )
 
 if TYPE_CHECKING:
-    from ..core.mfg_problem import MFGProblem
+    from mfg_pde.core.mfg_problem import MFGProblem
 
-from ..utils.logging import get_logger
+from mfg_pde.utils.logging import get_logger
 
 SolverType = Literal["fixed_point", "particle_collocation", "adaptive_particle", "monitored_particle"]
 
@@ -212,8 +212,8 @@ class PydanticSolverFactory:
         """Create validated fixed point iterator solver."""
         try:
             # Create HJB and FP solvers (simplified for now)
-            from ..alg.fp_solvers.fp_particle import FPParticleSolver
-            from ..alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+            from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
+            from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
@@ -249,7 +249,7 @@ class PydanticSolverFactory:
     ) -> ParticleCollocationSolver:
         """Create validated particle collocation solver."""
         try:
-            from ..alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+            from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)

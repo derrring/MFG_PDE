@@ -17,13 +17,13 @@ If you need type annotations for advanced usage, use:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
-    from mfg_pde.core.lagrangian_mfg_problem import LagrangianMFGProblem
+    from mfg_pde.core.variational_mfg_problem import VariationalMFGProblem
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
     from mfg_pde.geometry import BoundaryConditions
@@ -33,22 +33,22 @@ if TYPE_CHECKING:
 # === Complex Union Types (previously causing user confusion) ===
 
 # Flexible parameter inputs
-FlexibleFloat: TypeAlias = float | int | np.floating | np.integer
-FlexibleArray: TypeAlias = NDArray | list[float] | tuple[float, ...]
-FlexibleCallable: TypeAlias = Callable | str | None
+type FlexibleFloat = float | int | np.floating | np.integer
+type FlexibleArray = NDArray | list[float] | tuple[float, ...]
+type FlexibleCallable = Callable | str | None
 
 # Solver input flexibility
-SolverInput: TypeAlias = (
+type SolverInput = (
     "MFGProblem"
     | dict[str, Any]  # Configuration dict
     | str  # Problem type string
     | object  # Any custom problem object
 )
 
-ConfigValue: TypeAlias = float | int | str | bool | None | list[float | int | str] | dict[str, Any] | Callable | NDArray
+type ConfigValue = float | int | str | bool | None | list[float | int | str] | dict[str, Any] | Callable | NDArray
 
 # Complex function signatures (internal use only)
-HamiltonianLike: TypeAlias = (
+type HamiltonianLike = (
     Callable[[float, float, float, float], float]  # Standard H(x,p,m,t)
     | Callable[[float, float, float], float]  # H(x,p,m) - time-independent
     | Callable[[float, float], float]  # H(x,p) - no coupling
@@ -56,7 +56,7 @@ HamiltonianLike: TypeAlias = (
     | None  # Use default
 )
 
-LagrangianLike: TypeAlias = (
+type LagrangianLike = (
     Callable[[float, float, float, float], float]  # Standard L(x,v,m,t)
     | Callable[[float, float, float], float]  # L(x,v,m) - time-independent
     | Callable[[float, float], float]  # L(x,v) - no coupling
@@ -64,10 +64,10 @@ LagrangianLike: TypeAlias = (
     | None  # Use default
 )
 
-BoundaryConditionLike: TypeAlias = "BoundaryConditions | str | dict[str, Any] | None"
+type BoundaryConditionLike = "BoundaryConditions | str | dict[str, Any] | None"
 
 # Solver return types (internal flexibility)
-SolverReturnType: TypeAlias = (
+type SolverReturnType = (
     tuple[NDArray, NDArray, dict[str, Any]]  # Legacy (U, M, info) format
     | dict[str, Any]  # New dict format
     | "MFGResult"  # Protocol-compliant result
@@ -75,10 +75,10 @@ SolverReturnType: TypeAlias = (
 )
 
 # Network/geometry flexibility
-GeometryLike: TypeAlias = "BaseGeometry | str | dict[str, Any] | tuple[float, float] | float"
+type GeometryLike = "BaseGeometry | str | dict[str, Any] | tuple[float, float] | float"
 
 # Backend/implementation flexibility
-BackendType: TypeAlias = (
+type BackendType = (
     str  # Backend name like "numpy", "jax", "scipy"
     | object  # Backend object/module
     | None  # Use default
@@ -87,14 +87,14 @@ BackendType: TypeAlias = (
 # === Deprecated Type Aliases (for backward compatibility) ===
 
 # These were used in the old codebase and should be gradually phased out
-LegacyMFGProblem: TypeAlias = "MFGProblem | LagrangianMFGProblem | NetworkMFGProblem"
-LegacySolverType: TypeAlias = str | object | Callable
-LegacyConfigType: TypeAlias = dict[str, Any] | object | None
+type LegacyMFGProblem = "MFGProblem | VariationalMFGProblem | NetworkMFGProblem"
+type LegacySolverType = str | object | Callable
+type LegacyConfigType = dict[str, Any] | object | None
 
 # === Internal Solver State Types ===
 
 # Complex state representations that solvers might use internally
-InternalSolverState: TypeAlias = (
+type InternalSolverState = (
     # Simple state
     tuple[NDArray, NDArray]  # (u, m)
     |
@@ -109,7 +109,7 @@ InternalSolverState: TypeAlias = (
 )
 
 # Intermediate computation results
-IntermediateResult: TypeAlias = (
+type IntermediateResult = (
     NDArray  # Simple array result
     | tuple[NDArray, ...]  # Multiple arrays
     | dict[str, NDArray]  # Named array collection
@@ -119,8 +119,8 @@ IntermediateResult: TypeAlias = (
 # === Error and Exception Types ===
 
 # Types for error handling and validation
-ValidationResult: TypeAlias = bool | str | Exception | None
-ErrorCallback: TypeAlias = Callable[[Exception], None] | None
+type ValidationResult = bool | str | Exception | None
+type ErrorCallback = Callable[[Exception], None] | None
 
 # === Migration Helpers ===
 

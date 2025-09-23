@@ -8,15 +8,17 @@ through configuration files and programmatic function definitions.
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..config.omegaconf_manager import OmegaConfManager
-from ..core.mfg_problem import MFGProblem, MFGProblemBuilder
-from ..geometry import BoundaryConditions
-from ..utils.logging import get_logger
+from mfg_pde.config.omegaconf_manager import OmegaConfManager
+from mfg_pde.core.mfg_problem import MFGProblem, MFGProblemBuilder
+from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.utils.logging import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = get_logger(__name__)
 

@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import functools
 import time
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from .logging import LoggedOperation, get_logger, log_solver_completion, log_solver_start
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def logged_solver_method(

@@ -9,16 +9,18 @@ from __future__ import annotations
 
 import time
 import warnings
-from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psutil
 
 import numpy as np
 from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
 from scipy.sparse import linalg as sp_linalg
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 try:
     import numba
@@ -29,7 +31,7 @@ except ImportError:
 
 try:
     import jax
-    import jax.numpy as jnp
+    import jax.numpy as jnp  # noqa: F401
 
     JAX_AVAILABLE = True
 except ImportError:

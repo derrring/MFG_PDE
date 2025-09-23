@@ -6,13 +6,14 @@ Utilities for combining multiple hooks into complex behaviors.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from .base import SolverHooks
 
 if TYPE_CHECKING:
-    from ..types import MFGResult, SpatialTemporalState
+    from collections.abc import Callable
+
+    from mfg_pde.types import MFGResult, SpatialTemporalState
 
 
 class MultiHook(SolverHooks):

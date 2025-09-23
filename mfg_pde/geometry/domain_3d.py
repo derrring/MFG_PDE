@@ -334,19 +334,19 @@ class Domain3D(BaseGeometry):
         """Generate 3D tetrahedral mesh."""
         try:
             import gmsh
-            import meshio
+            import meshio  # noqa: F401
         except ImportError:
             raise ImportError("gmsh and meshio are required for mesh generation")
 
         # Create geometry
-        model = self.create_gmsh_geometry()
+        self.create_gmsh_geometry()
 
         # Generate 3D mesh
         gmsh.model.mesh.generate(3)
         gmsh.model.mesh.optimize("Netgen")
 
         # Extract mesh data
-        node_tags, coord, _ = gmsh.model.mesh.getNodes()
+        _node_tags, coord, _ = gmsh.model.mesh.getNodes()
         vertices = coord.reshape(-1, 3)
 
         # Get tetrahedral elements

@@ -19,15 +19,19 @@ Key differences from continuous MFG:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.sparse import csr_matrix
 
-from ..geometry.network_geometry import BaseNetworkGeometry
 from .mfg_problem import MFGProblem
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from scipy.sparse import csr_matrix
+
+    from mfg_pde.geometry.network_geometry import BaseNetworkGeometry
 
 
 @dataclass
@@ -501,7 +505,7 @@ class NetworkMFGProblem(MFGProblem):
 
     def get_network_statistics(self) -> dict[str, Any]:
         """Get comprehensive network statistics."""
-        from ..geometry.network_geometry import compute_network_statistics
+        from mfg_pde.geometry.network_geometry import compute_network_statistics
 
         if self.network_data is None:
             raise ValueError("Network data not initialized")
@@ -554,7 +558,7 @@ def create_grid_mfg_problem(
     **kwargs,
 ) -> NetworkMFGProblem:
     """Create MFG problem on grid network."""
-    from ..geometry.network_geometry import GridNetwork
+    from mfg_pde.geometry.network_geometry import GridNetwork
 
     height = height or width
     network = GridNetwork(width, height, periodic)
@@ -580,7 +584,7 @@ def create_random_mfg_problem(
     **kwargs,
 ) -> NetworkMFGProblem:
     """Create MFG problem on random network."""
-    from ..geometry.network_geometry import RandomNetwork
+    from mfg_pde.geometry.network_geometry import RandomNetwork
 
     network = RandomNetwork(num_nodes, connection_prob)
     network.create_network(seed=seed)
@@ -605,7 +609,7 @@ def create_scale_free_mfg_problem(
     **kwargs,
 ) -> NetworkMFGProblem:
     """Create MFG problem on scale-free network."""
-    from ..geometry.network_geometry import ScaleFreeNetwork
+    from mfg_pde.geometry.network_geometry import ScaleFreeNetwork
 
     network = ScaleFreeNetwork(num_nodes, num_edges_per_node)
     network.create_network(seed=seed)

@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..hooks import SolverHooks
-from ..types import ConvergenceInfo, MFGProblem, MFGResult, SpatialTemporalState
+from mfg_pde.types import ConvergenceInfo, MFGProblem, MFGResult, SpatialTemporalState
+
+if TYPE_CHECKING:
+    from mfg_pde.hooks import SolverHooks
 
 
 class BaseSolver(ABC):

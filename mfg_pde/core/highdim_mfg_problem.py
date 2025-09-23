@@ -9,11 +9,14 @@ advanced geometry handling.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ..geometry.base_geometry import BaseGeometry
 from .mfg_problem import MFGComponents, MFGProblem
+
+if TYPE_CHECKING:
+    from mfg_pde.geometry.base_geometry import BaseGeometry
 
 
 class HighDimMFGProblem(ABC):
@@ -116,8 +119,8 @@ class HighDimMFGProblem(ABC):
         """
         Solve using damped fixed point iteration optimized for high dimensions.
         """
-        from ..config import create_fast_config
-        from ..factory import create_fast_solver
+        from mfg_pde.config import create_fast_config
+        from mfg_pde.factory import create_fast_solver
 
         # Create 1D adapter problem
         adapter_problem = self.create_1d_adapter_problem()
@@ -171,7 +174,7 @@ class HighDimMFGProblem(ABC):
         """
         Solve using particle-collocation method for high dimensions.
         """
-        from ..factory import create_research_solver
+        from mfg_pde.factory import create_research_solver
 
         # Create 1D adapter problem
         adapter_problem = self.create_1d_adapter_problem()
@@ -288,7 +291,7 @@ class HighDimMFGProblem(ABC):
             triangles = triangulation.simplices
 
         # Plot
-        fig, ax = plt.subplots(figsize=(10, 8))
+        _fig, ax = plt.subplots(figsize=(10, 8))
 
         # Contour plot
         triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
@@ -380,7 +383,7 @@ class GridBasedMFGProblem(HighDimMFGProblem):
         # Create appropriate geometry (prefer simple grid for regular domains)
         try:
             if dimension == 2:
-                from ..geometry.simple_grid import SimpleGrid2D
+                from mfg_pde.geometry.simple_grid import SimpleGrid2D
 
                 if isinstance(grid_resolution, int):
                     res = (grid_resolution, grid_resolution)
@@ -392,7 +395,7 @@ class GridBasedMFGProblem(HighDimMFGProblem):
                     res = tuple(grid_resolution[:2])  # Ensure exactly 2 elements
                 geometry = SimpleGrid2D(bounds=domain_bounds, resolution=res)
             elif dimension == 3:
-                from ..geometry.simple_grid import SimpleGrid3D
+                from mfg_pde.geometry.simple_grid import SimpleGrid3D
 
                 if isinstance(grid_resolution, int):
                     res = (grid_resolution, grid_resolution, grid_resolution)
@@ -409,7 +412,7 @@ class GridBasedMFGProblem(HighDimMFGProblem):
         except ImportError:
             # Fallback to Domain2D/Domain3D if simple grid not available
             if dimension == 2:
-                from ..geometry.domain_2d import Domain2D
+                from mfg_pde.geometry.domain_2d import Domain2D
 
                 geometry = Domain2D(
                     domain_type="rectangle",

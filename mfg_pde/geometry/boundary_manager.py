@@ -8,14 +8,17 @@ and advanced boundary condition types.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .base_geometry import MeshData
 from .domain_1d import BoundaryConditions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .base_geometry import MeshData
 
 
 @dataclass
@@ -134,7 +137,7 @@ class BoundaryManager:
         self,
         region_id: int,
         bc_type: str,
-        value: float | Callable = None,
+        value: float | Callable | None = None,
         **kwargs,
     ) -> GeometricBoundaryCondition:
         """

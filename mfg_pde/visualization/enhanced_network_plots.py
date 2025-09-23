@@ -18,8 +18,6 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 
 try:
     import plotly.graph_objects as go
@@ -35,9 +33,16 @@ try:
 except ImportError:
     NETWORKX_AVAILABLE = False
 
-from ..core.network_mfg_problem import NetworkMFGProblem
-from ..geometry.network_geometry import NetworkData
+from typing import TYPE_CHECKING
+
 from .network_plots import NetworkMFGVisualizer
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
+    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.geometry.network_geometry import NetworkData
 
 
 class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
@@ -129,8 +134,8 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                     mode="lines+markers",
                     line={"width": 3, "color": color},
                     marker={"size": 8, "color": color, "symbol": "circle"},
-                    name=f"Trajectory {i+1}",
-                    hovertemplate=f"Trajectory {i+1}<br>Step: %{{pointNumber}}<br>Node: %{{customdata}}<extra></extra>",
+                    name=f"Trajectory {i + 1}",
+                    hovertemplate=f"Trajectory {i + 1}<br>Step: %{{pointNumber}}<br>Node: %{{customdata}}<extra></extra>",
                     customdata=trajectory,
                 )
             )
@@ -144,9 +149,9 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                         y=[traj_y[0]],
                         mode="markers",
                         marker={"size": 12, "color": "green", "symbol": "star"},
-                        name=f"Start {i+1}",
+                        name=f"Start {i + 1}",
                         showlegend=False,
-                        hovertemplate=f"Start of Trajectory {i+1}<br>Node: {trajectory[0]}<extra></extra>",
+                        hovertemplate=f"Start of Trajectory {i + 1}<br>Node: {trajectory[0]}<extra></extra>",
                     )
                 )
 
@@ -157,9 +162,9 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                         y=[traj_y[-1]],
                         mode="markers",
                         marker={"size": 12, "color": "red", "symbol": "square"},
-                        name=f"End {i+1}",
+                        name=f"End {i + 1}",
                         showlegend=False,
-                        hovertemplate=f"End of Trajectory {i+1}<br>Node: {trajectory[-1]}<extra></extra>",
+                        hovertemplate=f"End of Trajectory {i + 1}<br>Node: {trajectory[-1]}<extra></extra>",
                     )
                 )
 
@@ -216,7 +221,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
                     color=color,
                     linewidth=3,
                     markersize=6,
-                    label=f"Trajectory {i+1}",
+                    label=f"Trajectory {i + 1}",
                     alpha=0.8,
                 )
 

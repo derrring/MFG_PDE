@@ -14,15 +14,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import numpy as np  # Runtime usage in factory functions
-
-from mfg_pde.geometry import BoundaryConditions  # Runtime usage in constructor
 from mfg_pde.utils.convergence import adaptive_convergence
 
 from .particle_collocation_solver import ParticleCollocationSolver
 
 if TYPE_CHECKING:
+    import numpy as np
+
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry import BoundaryConditions
 
 
 class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):

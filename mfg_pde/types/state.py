@@ -8,10 +8,12 @@ through the hooks system for advanced customization.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
-from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 class SpatialTemporalState(NamedTuple):
@@ -52,11 +54,7 @@ class SpatialTemporalState(NamedTuple):
         return float(np.sqrt(np.sum(self.u**2) + np.sum(self.m**2)))
 
     def __str__(self) -> str:
-        return (
-            f"SpatialTemporalState(iteration={self.iteration}, "
-            f"residual={self.residual:.2e}, "
-            f"shape={self.u.shape})"
-        )
+        return f"SpatialTemporalState(iteration={self.iteration}, residual={self.residual:.2e}, shape={self.u.shape})"
 
 
 class ConvergenceInfo(NamedTuple):
@@ -93,9 +91,7 @@ class SolverStatistics(NamedTuple):
     cpu_usage_percent: float | None
 
     def __str__(self) -> str:
-        return (
-            f"SolverStatistics(total_time={self.total_time:.2f}s, " f"avg_iter_time={self.average_iteration_time:.3f}s)"
-        )
+        return f"SolverStatistics(total_time={self.total_time:.2f}s, avg_iter_time={self.average_iteration_time:.3f}s)"
 
 
 # Additional type aliases for internal use

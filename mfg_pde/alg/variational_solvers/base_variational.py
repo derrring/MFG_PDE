@@ -20,7 +20,7 @@ from mfg_pde.utils.integration import trapezoid
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from mfg_pde.core.lagrangian_mfg_problem import LagrangianMFGProblem
+    from mfg_pde.core.variational_mfg_problem import VariationalMFGProblem
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class BaseVariationalSolver(ABC):
     ∂m/∂t + ∇·(m v) = σ²/2 Δm
     """
 
-    def __init__(self, problem: LagrangianMFGProblem) -> None:
+    def __init__(self, problem: VariationalMFGProblem) -> None:
         """
         Initialize variational solver.
 

@@ -11,7 +11,8 @@ from typing import Any
 
 import numpy as np
 
-from ..types import ConvergenceInfo, MFGProblem, SolutionArray, SpatialTemporalState
+from mfg_pde.types import ConvergenceInfo, MFGProblem, SolutionArray, SpatialTemporalState
+
 from .base import BaseSolver
 
 
@@ -154,7 +155,7 @@ class FixedPointSolver(BaseSolver):
 
         # Simple update rule (placeholder)
         dt = t_grid[1] - t_grid[0] if len(t_grid) > 1 else 0.01
-        dx = x_grid[1] - x_grid[0] if len(x_grid) > 1 else 0.01
+        x_grid[1] - x_grid[0] if len(x_grid) > 1 else 0.01
 
         # Backward time iteration
         for n in range(len(t_grid) - 2, -1, -1):
@@ -187,8 +188,8 @@ class FixedPointSolver(BaseSolver):
         m_new = m_current.copy()
 
         # Simple update rule (placeholder)
-        dt = t_grid[1] - t_grid[0] if len(t_grid) > 1 else 0.01
-        dx = x_grid[1] - x_grid[0] if len(x_grid) > 1 else 0.01
+        t_grid[1] - t_grid[0] if len(t_grid) > 1 else 0.01
+        x_grid[1] - x_grid[0] if len(x_grid) > 1 else 0.01
 
         # Forward time iteration
         for n in range(len(t_grid) - 1):
@@ -284,7 +285,7 @@ class FixedPointResult:
         try:
             import matplotlib.pyplot as plt
 
-            fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+            _fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
             # Value function
             im1 = axes[0, 0].imshow(self._u, aspect="auto", cmap="viridis", **kwargs)

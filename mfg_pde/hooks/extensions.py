@@ -7,13 +7,14 @@ core algorithmic components while maintaining the clean solver interface.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from .base import SolverHooks
 
 if TYPE_CHECKING:
-    from ..types import SpatialTemporalState
+    from collections.abc import Callable
+
+    from mfg_pde.types import SpatialTemporalState
 
 
 class AlgorithmExtensionHook(SolverHooks):
@@ -151,7 +152,7 @@ class PreprocessingHook(SolverHooks):
         if self.preprocessing_func:
             try:
                 # Note: This would require solver integration to actually modify state
-                processed_state = self.preprocessing_func(state)
+                self.preprocessing_func(state)
                 # The solver would need to support state modification
                 print(f"Preprocessing applied at iteration {state.iteration}")
             except Exception as e:
@@ -185,7 +186,7 @@ class PostprocessingHook(SolverHooks):
         """Apply postprocessing to solution state."""
         if self.postprocessing_func:
             try:
-                processed_state = self.postprocessing_func(state)
+                self.postprocessing_func(state)
                 print(f"Postprocessing applied at iteration {state.iteration}")
             except Exception as e:
                 print(f"Postprocessing failed: {e}")

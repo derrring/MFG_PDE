@@ -39,7 +39,8 @@ try:
 except ImportError:
     PLOTLY_AVAILABLE = False
 
-from ..visualization import MFGMathematicalVisualizer
+from mfg_pde.visualization import MFGMathematicalVisualizer
+
 from .logging import get_logger
 
 

@@ -681,7 +681,6 @@ def create_network(
 # Utility functions for network analysis
 def compute_network_statistics(network_data: NetworkData) -> dict[str, float]:
     """Compute comprehensive network statistics."""
-    A = network_data.adjacency_matrix
     stats = {
         "num_nodes": network_data.num_nodes,
         "num_edges": network_data.num_edges,

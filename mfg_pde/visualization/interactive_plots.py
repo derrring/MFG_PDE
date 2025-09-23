@@ -52,7 +52,7 @@ except ImportError:
 
 # Optional Polars integration
 try:
-    from ..utils.polars_integration import POLARS_AVAILABLE, MFGDataFrame
+    from mfg_pde.utils.polars_integration import POLARS_AVAILABLE, MFGDataFrame
 except ImportError:
     POLARS_AVAILABLE = False
     MFGDataFrame = None
@@ -733,7 +733,7 @@ class MFGBokehVisualizer:
 
         from typing import cast
 
-        plots: list[list[Any]] = cast(list[list[Any]], [[p1, p2]])
+        plots: list[list[Any]] = cast("list[list[Any]]", [[p1, p2]])
 
         # Add convergence plot if data provided
         if convergence_data:

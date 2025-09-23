@@ -8,7 +8,7 @@ including NumPy (default) and JAX (high-performance with GPU support).
 from __future__ import annotations
 
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Backend registry
 _BACKENDS = {}
@@ -26,7 +26,7 @@ def get_available_backends() -> dict[str, bool]:
 
     # Check JAX availability
     try:
-        import jax
+        import jax  # noqa: F401
 
         backends["jax"] = True
     except ImportError:
@@ -61,9 +61,7 @@ def create_backend(backend_name: str = "auto", **kwargs):
 
                 register_backend("jax", JAXBackend)
             except ImportError:
-                raise ImportError(
-                    "JAX backend requested but not available. " "Install with: pip install 'mfg_pde[jax]'"
-                )
+                raise ImportError("JAX backend requested but not available. Install with: pip install 'mfg_pde[jax]'") from None
         elif backend_name == "numpy":
             from .numpy_backend import NumPyBackend
 

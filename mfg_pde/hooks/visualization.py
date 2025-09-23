@@ -15,7 +15,7 @@ import numpy as np
 from .base import SolverHooks
 
 if TYPE_CHECKING:
-    from ..types import MFGResult, SpatialTemporalState
+    from mfg_pde.types import MFGResult, SpatialTemporalState
 
 
 class PlottingHook(SolverHooks):
@@ -253,13 +253,13 @@ class AnimationHook(SolverHooks):
         ax1.set_title("Value Function u(t,x)")
         ax1.set_xlabel("Space")
         ax1.set_ylabel("Time")
-        cbar1 = self.plt.colorbar(im1, ax=ax1)
+        self.plt.colorbar(im1, ax=ax1)
 
         im2 = ax2.imshow(self.frames_m[0], aspect="auto", cmap="plasma", origin="lower")
         ax2.set_title("Density m(t,x)")
         ax2.set_xlabel("Space")
         ax2.set_ylabel("Time")
-        cbar2 = self.plt.colorbar(im2, ax=ax2)
+        self.plt.colorbar(im2, ax=ax2)
 
         def animate(frame_idx):
             iteration = self.frame_iterations[frame_idx]

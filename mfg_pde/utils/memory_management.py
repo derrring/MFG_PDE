@@ -10,15 +10,17 @@ from __future__ import annotations
 
 import gc
 import warnings
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psutil
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -73,13 +75,13 @@ class MemoryMonitor:
 
         if current_memory > warning_threshold_gb:
             warning_msg = (
-                f"Memory usage ({current_memory:.2f} GB) exceeds warning threshold " f"({warning_threshold_gb:.2f} GB)"
+                f"Memory usage ({current_memory:.2f} GB) exceeds warning threshold ({warning_threshold_gb:.2f} GB)"
             )
             current_warnings.append(warning_msg)
             self.memory_warnings.append(warning_msg)
 
         if current_memory > self.max_memory_gb:
-            critical_msg = f"Memory usage ({current_memory:.2f} GB) exceeds limit " f"({self.max_memory_gb} GB)"
+            critical_msg = f"Memory usage ({current_memory:.2f} GB) exceeds limit ({self.max_memory_gb} GB)"
             current_warnings.append(critical_msg)
             self.memory_warnings.append(critical_msg)
 
@@ -195,7 +197,7 @@ def memory_monitored(
             self._memory_monitor = monitor
 
             # Initial memory check
-            initial_stats = monitor.check_memory_usage()
+            monitor.check_memory_usage()
 
             try:
                 result = func(self, *args, **kwargs)
@@ -352,9 +354,9 @@ Memory Limit:  {stats.memory_limit_gb:.2f} GB
 Utilization:   {(stats.current_memory_gb / stats.memory_limit_gb) * 100:.1f}%
 
 System Memory:
-  Total:     {system_info['total_gb']:.2f} GB
-  Available: {system_info['available_gb']:.2f} GB
-  Used:      {system_info['percent_used']:.1f}%
+  Total:     {system_info["total_gb"]:.2f} GB
+  Available: {system_info["available_gb"]:.2f} GB
+  Used:      {system_info["percent_used"]:.1f}%
 
 Warnings: {len(stats.warnings)}
 """

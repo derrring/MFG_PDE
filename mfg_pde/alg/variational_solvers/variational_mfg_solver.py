@@ -17,14 +17,15 @@ subject to:
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy.typing import NDArray
 
-from ...utils.integration import trapezoid
+from mfg_pde.utils.integration import trapezoid
+
 from .base_variational import BaseVariationalSolver, VariationalSolverResult
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,8 @@ try:
 except ImportError:
     SCIPY_AVAILABLE = False
 
-import importlib.util
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 JAX_AVAILABLE = importlib.util.find_spec("jax") is not None
 
@@ -67,7 +69,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
         Initialize variational MFG solver.
 
         Args:
-            problem: LagrangianMFGProblem instance
+            problem: VariationalMFGProblem instance
             optimization_method: Scipy optimization method ('L-BFGS-B', 'CG', 'SLSQP')
             penalty_weight: Weight for constraint penalty terms
             use_jax: Use JAX for automatic differentiation (auto-detect if None)

@@ -10,11 +10,13 @@ manipulated, optimized, and compiled to different backends (NumPy, JAX, Numba).
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -108,7 +110,7 @@ class MathematicalExpression:
 
             # For Numba, we need to create actual function, not lambda
             func_code = f"""
-def compiled_func({', '.join(self.variables)}):
+def compiled_func({", ".join(self.variables)}):
     return {self.expression}
 """
 
@@ -293,7 +295,7 @@ class CompiledMFGSystem:
 
     def to_mfg_problem(self):
         """Convert to standard MFGProblem instance."""
-        from ..core.mfg_problem import MFGProblem
+        from mfg_pde.core.mfg_problem import MFGProblem
 
         # Extract domain parameters
         domain = self.domain_info

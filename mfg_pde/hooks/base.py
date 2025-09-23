@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # Avoid circular imports - only import types when type checking
-    from ..types import MFGResult, SpatialTemporalState
+    from mfg_pde.types import MFGResult, SpatialTemporalState
 
 
 class SolverHooks(ABC):

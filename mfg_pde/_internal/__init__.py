@@ -22,6 +22,5 @@ from __future__ import annotations
 
 # Explicitly empty - internal modules should be imported directly
 # This prevents accidental import of internal APIs
-from typing import List
 
 __all__: list[str] = []

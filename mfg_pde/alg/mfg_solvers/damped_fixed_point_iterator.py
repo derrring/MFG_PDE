@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ..base_mfg_solver import MFGSolver
+from mfg_pde.alg.base_mfg_solver import MFGSolver
 
 if TYPE_CHECKING:
-    from ...utils.solver_result import SolverResult
-    from ..core.mfg_problem import MFGProblem
-    from ..fp_solvers.base_fp import BaseFPSolver
-    from ..hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.alg.core.mfg_problem import MFGProblem
+    from mfg_pde.alg.fp_solvers.base_fp import BaseFPSolver
+    from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.utils.solver_result import SolverResult
 
 
 # Dummy base classes for standalone checking if imports are tricky
@@ -115,7 +115,7 @@ class FixedPointIterator(MFGSolver):
             final_tolerance = 1e-5  # Default
 
         # Validate parameters with enhanced error messages
-        from ...utils.exceptions import validate_parameter_value
+        from mfg_pde.utils.exceptions import validate_parameter_value
 
         validate_parameter_value(
             final_max_iterations,
@@ -253,7 +253,7 @@ class FixedPointIterator(MFGSolver):
                 self.l2distm_rel[: self.iterations_run]
             )
 
-            from ...utils.exceptions import ConvergenceError
+            from mfg_pde.utils.exceptions import ConvergenceError
 
             # Use strict error handling mode by default (no config available)
             strict_mode = True
@@ -303,7 +303,7 @@ class FixedPointIterator(MFGSolver):
 
         # Return structured result if requested, otherwise maintain backward compatibility
         if return_structured:
-            from ...utils.solver_result import create_solver_result
+            from mfg_pde.utils.solver_result import create_solver_result
 
             return create_solver_result(
                 U=self.U,
@@ -342,7 +342,7 @@ class FixedPointIterator(MFGSolver):
             )
 
     def get_results(self) -> tuple[np.ndarray, np.ndarray]:
-        from ...utils.exceptions import validate_solver_state
+        from mfg_pde.utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_results")
         return self.U, self.M
@@ -350,7 +350,7 @@ class FixedPointIterator(MFGSolver):
     def get_convergence_data(
         self,
     ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        from ...utils.exceptions import validate_solver_state
+        from mfg_pde.utils.exceptions import validate_solver_state
 
         validate_solver_state(self, "get_convergence_data")
         return (

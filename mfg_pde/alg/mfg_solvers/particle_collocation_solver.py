@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ..base_mfg_solver import MFGSolver
-from ..fp_solvers.fp_particle import FPParticleSolver
-from ..hjb_solvers.hjb_gfdm import HJBGFDMSolver
+from mfg_pde.alg.base_mfg_solver import MFGSolver
+from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
+from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem

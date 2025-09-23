@@ -11,11 +11,7 @@ import numpy as np
 
 # Modern visualization system
 try:
-    from ..visualization import (
-        create_visualization_manager,
-        modern_plot_convergence,
-        plot_convergence,  # Legacy compatibility
-    )
+    from mfg_pde.visualization import create_visualization_manager, modern_plot_convergence, plot_convergence  # noqa: F401
 
     VISUALIZATION_AVAILABLE = True
 except ImportError:

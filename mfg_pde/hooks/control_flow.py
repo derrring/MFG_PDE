@@ -7,14 +7,15 @@ allowing for complex adaptive behavior during solving.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from .base import SolverHooks
 
 if TYPE_CHECKING:
-    from ..types import SpatialTemporalState
+    from collections.abc import Callable
+
+    from mfg_pde.types import SpatialTemporalState
 
 
 @dataclass

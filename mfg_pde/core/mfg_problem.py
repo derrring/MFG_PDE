@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy.typing import NDArray
+
+from mfg_pde.geometry import BoundaryConditions
 
 # Import npart and ppart from the utils module
 from mfg_pde.utils.aux_func import npart, ppart
 
-from ..geometry import BoundaryConditions
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
 
 # Define a limit for values before squaring to prevent overflow within H
 VALUE_BEFORE_SQUARE_LIMIT = 1e150

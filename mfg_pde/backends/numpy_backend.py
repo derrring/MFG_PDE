@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..utils.integration import trapezoid
+from mfg_pde.utils.integration import trapezoid
+
 from .base_backend import BaseBackend
 
 
@@ -60,7 +61,7 @@ class NumPyBackend(BaseBackend):
     def meshgrid(self, *arrays, indexing="xy"):
         from typing import Literal, cast
 
-        valid_indexing = cast(Literal["xy", "ij"], indexing)
+        valid_indexing = cast("Literal['xy', 'ij']", indexing)
         return np.meshgrid(*arrays, indexing=valid_indexing)
 
     # Mathematical Operations

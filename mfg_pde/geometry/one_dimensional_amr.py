@@ -15,17 +15,19 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..backends.base_backend import BaseBackend
-from ..types.internal import JAXArray
 from .amr_mesh import AMRRefinementCriteria, BaseErrorEstimator
 from .base_geometry import MeshData
-from .domain_1d import Domain1D
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import jax.numpy as jnp
     from jax import jit
+
+    from mfg_pde.backends.base_backend import BaseBackend
+    from mfg_pde.types.internal import JAXArray
+
+    from .domain_1d import Domain1D
 
 # Always define JAX_AVAILABLE at module level
 try:
@@ -37,8 +39,8 @@ except ImportError:
     JAX_AVAILABLE = False
 
 try:
-    import numba
-    from numba import jit as numba_jit
+    import numba  # noqa: F401
+    from numba import jit as numba_jit  # noqa: F401
 
     NUMBA_AVAILABLE = True
 except ImportError:
@@ -429,7 +431,7 @@ class OneDimensionalAMRMesh:
             elements=np.array(unique_elements),
             element_type="line",  # 1D elements are line segments
             boundary_tags=np.array([0, 1]),  # Left and right boundaries
-            element_tags=np.array([iid for iid in self.leaf_intervals]),
+            element_tags=np.array(list(self.leaf_intervals)),
             boundary_faces=np.array([[0], [len(unique_vertices) - 1]]),  # Endpoints
             dimension=1,
             metadata={
@@ -464,7 +466,7 @@ class OneDimensionalErrorEstimator(BaseErrorEstimator):
 
         # Get interval properties
         dx = getattr(node, "dx", 1.0)
-        center_x = getattr(node, "center_x", 0.0)
+        getattr(node, "center_x", 0.0)
 
         # For 1D, estimate local gradients using neighboring information
         # In practice, this would use solution values from neighboring intervals

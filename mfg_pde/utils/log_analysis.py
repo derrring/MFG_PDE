@@ -182,7 +182,7 @@ class LogAnalyzer:
             match = convergence_pattern.search(message)
             if match and current_solver:
                 iteration = int(match.group(1))
-                max_iter = int(match.group(2))
+                int(match.group(2))
                 error = float(match.group(3))
 
                 current_solver["iterations"].append(
@@ -277,7 +277,7 @@ class LogAnalyzer:
                 duration = session.get("duration", 0)
                 iterations = len(session.get("iterations", []))
                 report.append(
-                    f"  {session['solver_name']}: {session['status']} " f"in {duration:.2f}s ({iterations} iterations)"
+                    f"  {session['solver_name']}: {session['status']} in {duration:.2f}s ({iterations} iterations)"
                 )
 
         # Error analysis
@@ -311,7 +311,7 @@ class LogAnalyzer:
                 avg_time = np.mean(durations)
                 total_time = sum(durations)
                 count = len(durations)
-                report.append(f"  {operation}: {avg_time:.3f}s avg " f"({total_time:.3f}s total, {count} calls)")
+                report.append(f"  {operation}: {avg_time:.3f}s avg ({total_time:.3f}s total, {count} calls)")
 
         report.append("\n" + "=" * 80)
 

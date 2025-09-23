@@ -350,8 +350,8 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
 
     try:
         # Import here to avoid circular imports
-        from .. import MFGProblem
-        from ..factory import create_solver
+        from mfg_pde import MFGProblem
+        from mfg_pde.factory import create_solver
 
         # Create problem instance
         # This is a simplified example - in practice, you'd load from problem_file

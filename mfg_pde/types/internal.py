@@ -11,32 +11,32 @@ Internal Types for Advanced Users
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
+from typing import TYPE_CHECKING, Any, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
 
 # Functional type aliases for mathematical objects
-HamiltonianFunction: TypeAlias = Callable[[float, float, float, float], float]
+type HamiltonianFunction = Callable[[float, float, float, float], float]
 """Hamiltonian function H(x, p, m, t) -> float"""
 
-LagrangianFunction: TypeAlias = Callable[[float, float, float, float], float]
+type LagrangianFunction = Callable[[float, float, float, float], float]
 """Lagrangian function L(x, v, m, t) -> float"""
 
-DensityFunction: TypeAlias = Callable[[float], float]
+type DensityFunction = Callable[[float], float]
 """Density function ρ(x) -> float"""
 
-ValueFunction: TypeAlias = Callable[[float], float]
+type ValueFunction = Callable[[float], float]
 """Value function g(x) -> float"""
 
 # Array type aliases for solver internals
-SpatialArray: TypeAlias = NDArray
+type SpatialArray = NDArray
 """1D spatial array, typically shape (Nx+1,)"""
 
-TemporalArray: TypeAlias = NDArray
+type TemporalArray = NDArray
 """1D temporal array, typically shape (Nt+1,)"""
 
-SolutionArray: TypeAlias = NDArray
+type SolutionArray = NDArray
 """2D spatio-temporal solution array, typically shape (Nt+1, Nx+1)"""
 
 
@@ -54,21 +54,21 @@ class LinearSolver(Protocol):
 
 
 # Configuration type aliases
-ParameterDict: TypeAlias = dict[str, float | int | str | bool]
+type ParameterDict = dict[str, float | int | str | bool]
 """Dictionary of solver parameters"""
 
-SolverOptions: TypeAlias = dict[str, float | int | str | bool | None]
+type SolverOptions = dict[str, float | int | str | bool | None]
 """Dictionary of optional solver settings"""
 
 # Complex internal types (for maintainers)
-ComplexSolverState: TypeAlias = (
+type ComplexSolverState = (
     tuple[SolutionArray, SolutionArray]  # Simple (u, m) state
     | dict[str, SolutionArray | float | int]  # Complex state with metadata
     | object  # Completely custom state objects
 )
 """Internal solver state - can be simple arrays or complex objects"""
 
-FlexibleInput: TypeAlias = (
+type FlexibleInput = (
     HamiltonianFunction
     | str  # String identifier for preset Hamiltonians
     | dict[str, float | Callable]  # Configuration dictionary
@@ -77,28 +77,28 @@ FlexibleInput: TypeAlias = (
 """Flexible input type that accepts multiple input formats"""
 
 # Complex solver return types that appear frequently
-SolverReturnTuple: TypeAlias = tuple[np.ndarray, np.ndarray, dict[str, Any]]
+type SolverReturnTuple = tuple[np.ndarray, np.ndarray, dict[str, Any]]
 """Standard solver return type: (U, M, convergence_info)"""
 
-JAXSolverReturn: TypeAlias = tuple[Any, Any, bool, int, float]
+type JAXSolverReturn = tuple[Any, Any, bool, int, float]
 """JAX solver return type: (U_jax, M_jax, converged, iterations, residual)"""
 
-MultiIndexTuple: TypeAlias = tuple[int, ...]
+type MultiIndexTuple = tuple[int, ...]
 """Multi-index for GFDM operations"""
 
-DerivativeDict: TypeAlias = dict[tuple[int, ...], float]
+type DerivativeDict = dict[tuple[int, ...], float]
 """Dictionary mapping multi-indices to derivative values"""
 
-GradientDict: TypeAlias = dict[str, float]
+type GradientDict = dict[str, float]
 """Dictionary for gradient components: {'dx': value, 'dy': value, ...}"""
 
-StencilResult: TypeAlias = list[tuple[np.ndarray, bool]]
+type StencilResult = list[tuple[np.ndarray, bool]]
 """Stencil computation result: list of (stencil_array, success_flag)"""
 
-MetadataDict: TypeAlias = dict[str, float | int | str | bool | np.ndarray]
+type MetadataDict = dict[str, float | int | str | bool | np.ndarray]
 """Flexible metadata dictionary for solver state and results"""
 
-ErrorCallback: TypeAlias = Callable[[Exception], None] | None
+type ErrorCallback = Callable[[Exception], None] | None
 """Optional error handling callback function"""
 
 # JAX-specific type aliases (with fallbacks)
@@ -106,14 +106,14 @@ try:
     if TYPE_CHECKING:
         from jax import Array
 
-        JAXArray: TypeAlias = Array | np.ndarray | Any
+        type JAXArray = Array | np.ndarray | Any
     else:
         # At runtime, don't import JAX to avoid dependency issues
-        JAXArray: TypeAlias = Any
+        type JAXArray = Any
 except ImportError:
     # JAX not available - use numpy arrays and Any as fallback
     if not TYPE_CHECKING:
-        JAXArray: TypeAlias = np.ndarray | Any
+        type JAXArray = np.ndarray | Any
 
 
 # Error handling types

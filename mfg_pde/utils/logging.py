@@ -369,7 +369,7 @@ def log_solver_completion(
     """Log solver completion with summary."""
     status = "CONVERGED" if converged else "MAX_ITERATIONS_REACHED"
     logger.info(f"{solver_name} completed - Status: {status}")
-    logger.info(f"Final results: {iterations} iterations, error: {final_error:.2e}, " f"time: {execution_time:.3f}s")
+    logger.info(f"Final results: {iterations} iterations, error: {final_error:.2e}, time: {execution_time:.3f}s")
 
 
 def log_validation_error(logger: logging.Logger, component: str, error_msg: str, suggestion: str | None = None):

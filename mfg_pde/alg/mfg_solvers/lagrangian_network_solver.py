@@ -25,7 +25,7 @@ from .network_mfg_solver import NetworkFixedPointIterator
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ...core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
 
 
 class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):

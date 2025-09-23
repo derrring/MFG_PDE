@@ -42,11 +42,11 @@ from .solver_config import create_research_config as create_research_config_data
 # OmegaConf-based configuration management (if available)
 try:
     from .omegaconf_manager import (
-        OmegaConfManager,
-        create_omega_manager,
-        create_parameter_sweep_configs,
-        load_beach_config,
-        load_experiment_config,
+        OmegaConfManager,  # noqa: F401
+        create_omega_manager,  # noqa: F401
+        create_parameter_sweep_configs,  # noqa: F401
+        load_beach_config,  # noqa: F401
+        load_experiment_config,  # noqa: F401
     )
 
     OMEGACONF_AVAILABLE = True
@@ -72,50 +72,50 @@ from .modern_config import (
 
 # Default to Pydantic configurations for new code
 __all__ = [
-    # Modern builder API (recommended for new code)
-    "SolverConfig",
-    "PresetConfig",
-    "create_config",
-    "research_config",
-    "production_config",
-    "fast_config",
-    "accurate_config",
-    "educational_config",
-    "crowd_dynamics_config",
-    "financial_config",
-    "epidemic_config",
-    "traffic_config",
-    "large_scale_config",
-    # Pydantic configurations (recommended)
-    "NewtonConfig",
-    "PicardConfig",
-    "GFDMConfig",
-    "ParticleConfig",
-    "HJBConfig",
-    "FPConfig",
-    "MFGSolverConfig",
-    "create_fast_config",
-    "create_accurate_config",
-    "create_research_config",
-    "extract_legacy_parameters",
     # Array validation
     "ArrayValidationConfig",
-    "MFGGridConfig",
-    "MFGArrays",
     "CollocationConfig",
-    "ExperimentConfig",
+    "DataclassFPConfig",
+    "DataclassGFDMConfig",
+    "DataclassHJBConfig",
+    "DataclassMFGSolverConfig",
     # Dataclass configurations (backward compatibility)
     "DataclassNewtonConfig",
-    "DataclassPicardConfig",
-    "DataclassGFDMConfig",
     "DataclassParticleConfig",
-    "DataclassHJBConfig",
-    "DataclassFPConfig",
-    "DataclassMFGSolverConfig",
-    "create_default_config_dataclass",
-    "create_fast_config_dataclass",
+    "DataclassPicardConfig",
+    "ExperimentConfig",
+    "FPConfig",
+    "GFDMConfig",
+    "HJBConfig",
+    "MFGArrays",
+    "MFGGridConfig",
+    "MFGSolverConfig",
+    # Pydantic configurations (recommended)
+    "NewtonConfig",
+    "ParticleConfig",
+    "PicardConfig",
+    "PresetConfig",
+    # Modern builder API (recommended for new code)
+    "SolverConfig",
+    "accurate_config",
+    "create_accurate_config",
     "create_accurate_config_dataclass",
+    "create_config",
+    "create_default_config_dataclass",
+    "create_fast_config",
+    "create_fast_config_dataclass",
+    "create_research_config",
     "create_research_config_dataclass",
+    "crowd_dynamics_config",
+    "educational_config",
+    "epidemic_config",
+    "extract_legacy_parameters",
+    "fast_config",
+    "financial_config",
+    "large_scale_config",
+    "production_config",
+    "research_config",
+    "traffic_config",
 ]
 
 # Add OmegaConf functionality if available
@@ -124,8 +124,8 @@ if OMEGACONF_AVAILABLE:
         [
             "OmegaConfManager",
             "create_omega_manager",
+            "create_parameter_sweep_configs",
             "load_beach_config",
             "load_experiment_config",
-            "create_parameter_sweep_configs",
         ]
     )

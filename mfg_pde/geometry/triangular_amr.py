@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..backends.base_backend import BaseBackend
 from .amr_mesh import AMRRefinementCriteria, BaseErrorEstimator
 from .base_geometry import MeshData
 
@@ -24,18 +23,20 @@ if TYPE_CHECKING:
     import jax.numpy as jnp
     from jax import jit
 
+    from mfg_pde.backends.base_backend import BaseBackend
+
 # Always define JAX_AVAILABLE at module level
 try:
-    import jax.numpy as jnp
-    from jax import jit
+    import jax.numpy as jnp  # noqa: F401
+    from jax import jit  # noqa: F401
 
     JAX_AVAILABLE = True
 except ImportError:
     JAX_AVAILABLE = False
 
 try:
-    import numba
-    from numba import jit as numba_jit
+    import numba  # noqa: F401
+    from numba import jit as numba_jit  # noqa: F401
 
     NUMBA_AVAILABLE = True
 except ImportError:
@@ -494,7 +495,7 @@ class TriangularAMRMesh:
             elements=np.array(elements),
             element_type="triangle",
             boundary_tags=np.array([]),  # Would need boundary identification
-            element_tags=np.array([tid for tid in self.leaf_triangles]),
+            element_tags=np.array(list(self.leaf_triangles)),
             boundary_faces=np.array([]),  # Would need boundary face extraction
             dimension=2,
             metadata={
@@ -531,8 +532,8 @@ class TriangularMeshErrorEstimator(BaseErrorEstimator):
 
         # Sample solution at element center
         # In practice, would interpolate from surrounding elements
-        center_x = getattr(node, "center_x", 0.0)
-        center_y = getattr(node, "center_y", 0.0)
+        getattr(node, "center_x", 0.0)
+        getattr(node, "center_y", 0.0)
 
         # Estimate local gradients (simplified)
         h = getattr(node, "dx", 1.0)

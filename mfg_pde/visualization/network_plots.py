@@ -15,12 +15,11 @@ Key features:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
-from matplotlib.figure import Figure
 
 try:
     import plotly.express as px
@@ -38,8 +37,12 @@ try:
 except ImportError:
     NETWORKX_AVAILABLE = False
 
-from ..core.network_mfg_problem import NetworkMFGProblem
-from ..geometry.network_geometry import NetworkData
+
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+
+    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.geometry.network_geometry import NetworkData
 
 
 class NetworkMFGVisualizer:
@@ -532,7 +535,7 @@ class NetworkMFGVisualizer:
         save_path: str | None = None,
     ) -> go.Figure:
         """Create interactive dashboard using Plotly."""
-        from ..geometry.network_geometry import compute_network_statistics
+        from mfg_pde.geometry.network_geometry import compute_network_statistics
 
         # Network statistics
         stats = compute_network_statistics(self.network_data)
@@ -625,7 +628,7 @@ class NetworkMFGVisualizer:
                             x=times,
                             y=h["mass_conservation"],
                             mode="lines",
-                            name=f'Iter {h["iteration"]}',
+                            name=f"Iter {h['iteration']}",
                             opacity=0.7,
                         ),
                         row=2,
@@ -653,18 +656,18 @@ class NetworkMFGVisualizer:
 
         # Network properties (top-left)
         ax = axes[0, 0]
-        from ..geometry.network_geometry import compute_network_statistics
+        from mfg_pde.geometry.network_geometry import compute_network_statistics
 
         stats = compute_network_statistics(self.network_data)
 
         properties_text = f"""
-        Nodes: {stats['num_nodes']}
-        Edges: {stats['num_edges']}
-        Density: {stats['density']:.3f}
-        Avg Degree: {stats['average_degree']:.2f}
-        Max Degree: {stats['max_degree']}
-        Connected: {'Yes' if stats['is_connected'] else 'No'}
-        Clustering: {stats['clustering_coefficient']:.3f}
+        Nodes: {stats["num_nodes"]}
+        Edges: {stats["num_edges"]}
+        Density: {stats["density"]:.3f}
+        Avg Degree: {stats["average_degree"]:.2f}
+        Max Degree: {stats["max_degree"]}
+        Connected: {"Yes" if stats["is_connected"] else "No"}
+        Clustering: {stats["clustering_coefficient"]:.3f}
         """
 
         ax.text(
@@ -728,7 +731,7 @@ class NetworkMFGVisualizer:
                     times,
                     h["mass_conservation"],
                     alpha=0.7,
-                    label=f'Iter {h["iteration"]}',
+                    label=f"Iter {h['iteration']}",
                 )
 
             ax.set_xlabel("Time Step")

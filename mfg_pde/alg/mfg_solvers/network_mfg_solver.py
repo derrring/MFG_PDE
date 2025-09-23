@@ -17,12 +17,12 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..base_mfg_solver import MFGSolver
-from ..fp_solvers.fp_network import create_network_fp_solver
-from ..hjb_solvers.hjb_network import create_network_hjb_solver
+from mfg_pde.alg.base_mfg_solver import MFGSolver
+from mfg_pde.alg.fp_solvers.fp_network import create_network_fp_solver
+from mfg_pde.alg.hjb_solvers.hjb_network import create_network_hjb_solver
 
 if TYPE_CHECKING:
-    from ...core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
 
 
 class NetworkFixedPointIterator(MFGSolver):

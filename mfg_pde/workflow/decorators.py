@@ -10,12 +10,15 @@ from __future__ import annotations
 import functools
 import inspect
 import time
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .experiment_tracker import ExperimentTracker
 from .parameter_sweep import ParameterSweep
-from .workflow_manager import Workflow
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .workflow_manager import Workflow
 
 
 def workflow_step(

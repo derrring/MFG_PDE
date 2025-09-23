@@ -23,7 +23,7 @@ from .notebook_reporting import MFGNotebookReporter, NotebookReportError
 
 # Import Pydantic configurations if available
 if PYDANTIC_AVAILABLE:
-    from ..config.array_validation import ExperimentConfig, MFGArrays
+    from mfg_pde.config.array_validation import ExperimentConfig, MFGArrays
 
 
 class PydanticNotebookReporter(MFGNotebookReporter):
@@ -226,7 +226,7 @@ This report uses **Pydantic-validated configurations** ensuring:
 - SUCCESS: Cross-field consistency verification
 - SUCCESS: Professional serialization support
 
-**Tags**: {', '.join(experiment_config.tags) if experiment_config.tags else 'None'}
+**Tags**: {", ".join(experiment_config.tags) if experiment_config.tags else "None"}
 """
 
     def _create_validation_report_section(self, experiment_config: ExperimentConfig) -> str:
@@ -239,7 +239,7 @@ This report uses **Pydantic-validated configurations** ensuring:
 - **Spatial Grid**: {grid_config.Nx} points, domain [{grid_config.xmin:.2f}, {grid_config.xmax:.2f}]
 - **Time Grid**: {grid_config.Nt} points, final time T = {grid_config.T:.2f}
 - **Grid Spacing**: dx = {grid_config.dx:.6f}, dt = {grid_config.dt:.6f}
-- **CFL Number**: {grid_config.cfl_number:.4f} {'SUCCESS: Stable' if grid_config.cfl_number <= 0.5 else 'WARNING: May be unstable'}
+- **CFL Number**: {grid_config.cfl_number:.4f} {"SUCCESS: Stable" if grid_config.cfl_number <= 0.5 else "WARNING: May be unstable"}
 - **Diffusion**: σ = {grid_config.sigma:.3f}
 
 ### Numerical Stability Analysis
@@ -263,12 +263,12 @@ SUCCESS: **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.c
 
             validation_report += f"""
 ### Array Validation Results
-- **U Solution**: Shape {stats['U']['shape']}, range [{stats['U']['min']:.3e}, {stats['U']['max']:.3e}]
-- **M Solution**: Shape {stats['M']['shape']}, range [{stats['M']['min']:.3e}, {stats['M']['max']:.3e}]
+- **U Solution**: Shape {stats["U"]["shape"]}, range [{stats["U"]["min"]:.3e}, {stats["U"]["max"]:.3e}]
+- **M Solution**: Shape {stats["M"]["shape"]}, range [{stats["M"]["min"]:.3e}, {stats["M"]["max"]:.3e}]
 - **Mass Conservation**:
-  - Initial: {mass_stats['initial_mass']:.6f}
-  - Final: {mass_stats['final_mass']:.6f}
-  - Drift: {mass_stats['mass_drift']:.2e} {'SUCCESS: Conserved' if abs(mass_stats['mass_drift']) < 1e-3 else 'WARNING: Not conserved'}
+  - Initial: {mass_stats["initial_mass"]:.6f}
+  - Final: {mass_stats["final_mass"]:.6f}
+  - Drift: {mass_stats["mass_drift"]:.2e} {"SUCCESS: Conserved" if abs(mass_stats["mass_drift"]) < 1e-3 else "WARNING: Not conserved"}
 """
 
         return validation_report
@@ -315,12 +315,12 @@ $$\\text{{CFL}} = \\frac{{\\sigma^2 \\Delta t}}{{(\\Delta x)^2}} \\leq 0.5$$
 
 **Current CFL number**: {grid_config.cfl_number:.4f}
 
-{'SUCCESS: **Stable**: The discretization satisfies the CFL condition.' if grid_config.cfl_number <= 0.5 else 'WARNING: **Potentially Unstable**: CFL > 0.5 may cause numerical instability.'}
+{"SUCCESS: **Stable**: The discretization satisfies the CFL condition." if grid_config.cfl_number <= 0.5 else "WARNING: **Potentially Unstable**: CFL > 0.5 may cause numerical instability."}
 
 ### Diffusion Time Scale
-Characteristic diffusion time: $\\tau_{{\\text{{diff}}}} = \\frac{{L^2}}{{\\sigma^2}} = {(grid_config.xmax - grid_config.xmin)**2 / grid_config.sigma**2:.3f}$
+Characteristic diffusion time: $\\tau_{{\\text{{diff}}}} = \\frac{{L^2}}{{\\sigma^2}} = {(grid_config.xmax - grid_config.xmin) ** 2 / grid_config.sigma**2:.3f}$
 
-Time steps per diffusion time: ${grid_config.T / ((grid_config.xmax - grid_config.xmin)**2 / grid_config.sigma**2) * grid_config.Nt:.1f}$
+Time steps per diffusion time: ${grid_config.T / ((grid_config.xmax - grid_config.xmin) ** 2 / grid_config.sigma**2) * grid_config.Nt:.1f}$
 """
 
     def _create_enhanced_visualization_code(
@@ -430,32 +430,32 @@ if 'validation_stats' in locals():
 ### Solution Array Properties
 
 **HJB Solution U(t,x)**:
-- Shape: {stats['U']['shape']}
-- Data type: {stats['U']['dtype']}
-- Value range: [{stats['U']['min']:.3e}, {stats['U']['max']:.3e}]
-- Mean: {stats['U']['mean']:.3e}, Std: {stats['U']['std']:.3e}
+- Shape: {stats["U"]["shape"]}
+- Data type: {stats["U"]["dtype"]}
+- Value range: [{stats["U"]["min"]:.3e}, {stats["U"]["max"]:.3e}]
+- Mean: {stats["U"]["mean"]:.3e}, Std: {stats["U"]["std"]:.3e}
 
 **FP Density M(t,x)**:
-- Shape: {stats['M']['shape']}
-- Data type: {stats['M']['dtype']}
-- Value range: [{stats['M']['min']:.3e}, {stats['M']['max']:.3e}]
-- Mean: {stats['M']['mean']:.3e}, Std: {stats['M']['std']:.3e}
+- Shape: {stats["M"]["shape"]}
+- Data type: {stats["M"]["dtype"]}
+- Value range: [{stats["M"]["min"]:.3e}, {stats["M"]["max"]:.3e}]
+- Mean: {stats["M"]["mean"]:.3e}, Std: {stats["M"]["std"]:.3e}
 
 ### Physical Constraint Validation
 
 **Mass Conservation Analysis**:
-- Initial mass: {stats['mass_conservation']['initial_mass']:.6f}
-- Final mass: {stats['mass_conservation']['final_mass']:.6f}
-- Mass drift: {stats['mass_conservation']['mass_drift']:.2e}
-- Conservation quality: {'SUCCESS: Excellent' if abs(stats['mass_conservation']['mass_drift']) < 1e-4 else 'WARNING: Acceptable' if abs(stats['mass_conservation']['mass_drift']) < 1e-3 else 'ERROR: Poor'}
+- Initial mass: {stats["mass_conservation"]["initial_mass"]:.6f}
+- Final mass: {stats["mass_conservation"]["final_mass"]:.6f}
+- Mass drift: {stats["mass_conservation"]["mass_drift"]:.2e}
+- Conservation quality: {"SUCCESS: Excellent" if abs(stats["mass_conservation"]["mass_drift"]) < 1e-4 else "WARNING: Acceptable" if abs(stats["mass_conservation"]["mass_drift"]) < 1e-3 else "ERROR: Poor"}
 
 **Numerical Stability**:
-- CFL number: {stats['numerical_stability']['cfl_number']:.4f}
-- Grid spacing: dx = {stats['numerical_stability']['dx']:.6f}, dt = {stats['numerical_stability']['dt']:.6f}
-- Diffusion coefficient: σ = {stats['numerical_stability']['sigma']:.3f}
+- CFL number: {stats["numerical_stability"]["cfl_number"]:.4f}
+- Grid spacing: dx = {stats["numerical_stability"]["dx"]:.6f}, dt = {stats["numerical_stability"]["dt"]:.6f}
+- Diffusion coefficient: σ = {stats["numerical_stability"]["sigma"]:.3f}
 
 ### Validation Status
-{'SUCCESS: **All validations passed** - Arrays satisfy physical constraints and numerical stability requirements.' if abs(stats['mass_conservation']['mass_drift']) < 1e-3 and stats['numerical_stability']['cfl_number'] <= 0.5 else 'WARNING: **Some validations failed** - Check mass conservation and stability conditions.'}
+{"SUCCESS: **All validations passed** - Arrays satisfy physical constraints and numerical stability requirements." if abs(stats["mass_conservation"]["mass_drift"]) < 1e-3 and stats["numerical_stability"]["cfl_number"] <= 0.5 else "WARNING: **Some validations failed** - Check mass conservation and stability conditions."}
 """
 
     def _create_enhanced_conclusions_section(
@@ -468,11 +468,11 @@ if 'validation_stats' in locals():
 - **Experiment**: {experiment_config.experiment_name}
 - **Configuration**: Pydantic-validated with comprehensive checks
 - **Grid**: {experiment_config.grid_config.Nx}×{experiment_config.grid_config.Nt}  points
-- **Validation**: {'SUCCESS: Passed' if experiment_config.arrays else 'WARNING: Partial (no arrays)'}
+- **Validation**: {"SUCCESS: Passed" if experiment_config.arrays else "WARNING: Partial (no arrays)"}
 
 ### Key Findings
-1. **Numerical Stability**: {'Satisfied' if experiment_config.grid_config.cfl_number <= 0.5 else 'Marginal'}
-2. **Mass Conservation**: {'Excellent' if experiment_config.arrays and abs(experiment_config.arrays.get_solution_statistics()['mass_conservation']['mass_drift']) < 1e-4 else 'Not evaluated'}
+1. **Numerical Stability**: {"Satisfied" if experiment_config.grid_config.cfl_number <= 0.5 else "Marginal"}
+2. **Mass Conservation**: {"Excellent" if experiment_config.arrays and abs(experiment_config.arrays.get_solution_statistics()["mass_conservation"]["mass_drift"]) < 1e-4 else "Not evaluated"}
 3. **Configuration Quality**: Professional-grade with automatic validation
 
 ### Reproducibility Information

@@ -10,14 +10,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     # For type checking only
-    try:
+    import contextlib
+    with contextlib.suppress(ImportError):
         from omegaconf import DictConfig, ListConfig, OmegaConf
-    except ImportError:
-        pass
 
 try:
     from omegaconf import DictConfig, ListConfig, OmegaConf
@@ -46,9 +45,9 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from omegaconf import DictConfig as _DictConfig
 
-    OmegaConfig: TypeAlias = _DictConfig
+    type OmegaConfig = _DictConfig
 else:
-    OmegaConfig: TypeAlias = Any
+    type OmegaConfig = Any
 """Type alias for OmegaConf DictConfig objects"""
 
 
@@ -231,7 +230,7 @@ class OmegaConfManager:
         # Cast to DictConfig for type consistency (our configs should be dictionaries)
         from typing import cast
 
-        return cast(OmegaConfig, config)
+        return cast("OmegaConfig", config)
 
     def compose_config(self, *config_paths: str | Path, **overrides: Any) -> OmegaConfig:
         """
@@ -260,7 +259,7 @@ class OmegaConfManager:
         # Cast to DictConfig for type consistency
         from typing import cast
 
-        return cast(OmegaConfig, composed_config)
+        return cast("OmegaConfig", composed_config)
 
     def create_pydantic_config(self, omega_config: OmegaConfig) -> MFGSolverConfig:
         """
@@ -284,7 +283,7 @@ class OmegaConfManager:
         # Ensure we have a proper dictionary with string keys
         from typing import cast
 
-        solver_dict: dict[str, Any] = cast(dict[str, Any], raw_dict if isinstance(raw_dict, dict) else {})
+        solver_dict: dict[str, Any] = cast("dict[str, Any]", raw_dict if isinstance(raw_dict, dict) else {})
 
         # Map OmegaConf structure to Pydantic structure
         pydantic_dict = self._map_omega_to_pydantic(solver_dict)

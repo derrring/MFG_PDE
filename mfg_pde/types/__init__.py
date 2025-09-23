@@ -21,13 +21,13 @@ from .protocols import MFGProblem, MFGResult, MFGSolver, SolutionArray, SolverCo
 from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
+    "ConvergenceInfo",
     "MFGProblem",
     "MFGResult",
     "MFGSolver",
-    "SolverConfig",
     "SolutionArray",
+    "SolverConfig",
     "SpatialTemporalState",
-    "ConvergenceInfo",
 ]
 
 # Internal types available via explicit import:

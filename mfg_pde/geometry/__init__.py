@@ -40,47 +40,47 @@ from .one_dimensional_amr import Interval1D, OneDimensionalAMRMesh, OneDimension
 from .triangular_amr import TriangleElement, TriangularAMRMesh, TriangularMeshErrorEstimator, create_triangular_amr_mesh
 
 __all__ = [
-    # 1D domain components
-    "BoundaryConditions",
-    "Domain1D",
-    "periodic_bc",
-    "dirichlet_bc",
-    "neumann_bc",
-    "no_flux_bc",
-    "robin_bc",
     # Multi-dimensional geometry components
     "BaseGeometry",
-    "MeshData",
+    "BaseNetworkGeometry",
+    # 1D domain components
+    "BoundaryConditions",
+    "BoundaryManager",
+    "Domain1D",
     "Domain2D",
     "Domain3D",
+    "GeometricBoundaryCondition",
+    "GridNetwork",
+    "Interval1D",
+    "MeshData",
     "MeshManager",
     "MeshPipeline",
-    "BoundaryManager",
-    "GeometricBoundaryCondition",
+    # Network backend components
+    "NetworkBackendType",
     # Network geometry components
     "NetworkData",
     "NetworkType",
-    "BaseNetworkGeometry",
-    "GridNetwork",
-    "RandomNetwork",
-    "ScaleFreeNetwork",
-    "create_network",
-    "compute_network_statistics",
-    # Network backend components
-    "NetworkBackendType",
-    "OperationType",
-    "get_backend_manager",
-    "set_preferred_backend",
-    # Triangular AMR components
-    "TriangularAMRMesh",
-    "TriangleElement",
-    "TriangularMeshErrorEstimator",
-    "create_triangular_amr_mesh",
     # 1D AMR components
     "OneDimensionalAMRMesh",
-    "Interval1D",
     "OneDimensionalErrorEstimator",
+    "OperationType",
+    "RandomNetwork",
+    "ScaleFreeNetwork",
+    "TriangleElement",
+    # Triangular AMR components
+    "TriangularAMRMesh",
+    "TriangularMeshErrorEstimator",
+    "compute_network_statistics",
     "create_1d_amr_mesh",
+    "create_network",
+    "create_triangular_amr_mesh",
+    "dirichlet_bc",
+    "get_backend_manager",
+    "neumann_bc",
+    "no_flux_bc",
+    "periodic_bc",
+    "robin_bc",
+    "set_preferred_backend",
 ]
 
 # Version information

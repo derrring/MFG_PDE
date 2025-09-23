@@ -14,15 +14,17 @@ import logging
 import multiprocessing as mp
 import pickle
 import time
-from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -152,7 +154,7 @@ class ParameterSweep:
     def _execute_sequential(self, function: Callable, **kwargs) -> list[dict[str, Any]]:
         """Execute parameter sweep sequentially."""
         for i, params in enumerate(self.parameter_combinations):
-            self.logger.info(f"Executing combination {i+1}/{self.total_combinations}: {params}")
+            self.logger.info(f"Executing combination {i + 1}/{self.total_combinations}: {params}")
 
             result = self._execute_single(function, params, run_id=i, **kwargs)
 

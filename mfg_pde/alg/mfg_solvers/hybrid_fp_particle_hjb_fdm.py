@@ -14,16 +14,19 @@ This hybrid approach leverages the strengths of both methods:
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ...config.solver_config import MFGSolverConfig
-from ...core.mfg_problem import MFGProblem
-from ...utils.logging import get_logger
-from ..fp_solvers.fp_particle import FPParticleSolver
-from ..hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
+from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.utils.logging import get_logger
+
 from .damped_fixed_point_iterator import FixedPointIterator
+
+if TYPE_CHECKING:
+    from mfg_pde.config.solver_config import MFGSolverConfig
+    from mfg_pde.core.mfg_problem import MFGProblem
 
 logger = get_logger(__name__)
 

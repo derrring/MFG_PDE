@@ -13,11 +13,13 @@ from __future__ import annotations
 import functools
 import inspect
 import time
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -155,7 +157,7 @@ class OptimizationCompiler:
         """Apply JAX-specific optimizations."""
         try:
             import jax
-            import jax.numpy as jnp
+            import jax.numpy as jnp  # noqa: F401
 
             # Determine JIT settings
             jit_kwargs = hints.jax_hints.copy()
@@ -239,7 +241,7 @@ class OptimizationCompiler:
 
         for _ in range(num_runs):
             start_time = time.perf_counter()
-            result = func(*args, **kwargs)
+            func(*args, **kwargs)
             end_time = time.perf_counter()
             times.append(end_time - start_time)
 

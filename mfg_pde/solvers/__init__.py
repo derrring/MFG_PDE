@@ -20,4 +20,4 @@ Advanced Usage with Hooks:
 from .base import BaseSolver
 from .fixed_point import FixedPointSolver
 
-__all__ = ["FixedPointSolver", "BaseSolver"]
+__all__ = ["BaseSolver", "FixedPointSolver"]

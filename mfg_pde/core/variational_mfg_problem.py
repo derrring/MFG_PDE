@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Lagrangian Mean Field Games Problem Formulation
+Variational Mean Field Games Problem Formulation
 
-This module implements the Lagrangian perspective of Mean Field Games, providing
-a complementary formulation to the Hamiltonian-based HJB-FP system.
+This module implements the variational (direct optimization) perspective of Mean Field Games,
+providing a complementary formulation to the traditional Hamilton-Jacobi-Bellman approach.
 
 Mathematical Framework:
 - Individual agents solve: min∫[L(x,ẋ,m,t) + V(x,t)]dt + g(x(T))
 - Collective behavior: consistency between individual optimization and population flow
 - Variational principle: Minimize total social cost over all admissible flows
 
-The Lagrangian formulation provides:
+The variational formulation provides:
 1. Direct optimization perspective
 2. Natural constraint handling
 3. Economic interpretation via cost functionals
@@ -20,25 +20,25 @@ The Lagrangian formulation provides:
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     # For type checking only - these imports may not be available at runtime
+    import contextlib
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
     try:
         import jax.numpy as jnp
         from jax import jit
     except ImportError:
         pass
 
-    try:
+    with contextlib.suppress(ImportError):
         from scipy.optimize import minimize
-    except ImportError:
-        pass
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ except ImportError:
 
 
 @dataclass
-class LagrangianComponents:
+class VariationalMFGComponents:
     """
     Container for all components defining a Lagrangian MFG problem.
 
@@ -107,7 +107,7 @@ class LagrangianComponents:
     problem_type: str = "lagrangian_mfg"
 
 
-class LagrangianMFGProblem:
+class VariationalMFGProblem:
     """
     Lagrangian formulation of Mean Field Games.
 
@@ -130,7 +130,7 @@ class LagrangianMFGProblem:
         T: float = 1.0,
         Nt: int = 51,
         # Lagrangian components
-        components: LagrangianComponents | None = None,
+        components: VariationalMFGComponents | None = None,
         # Standard MFG parameters (for compatibility)
         sigma: float = 1.0,
         **kwargs: Any,
@@ -177,7 +177,7 @@ class LagrangianMFGProblem:
         logger.info(f"Created Lagrangian MFG problem: domain=[{xmin},{xmax}], T={T}")
         logger.info(f"  Grid: Nx={Nx}, Nt={Nt}, σ={sigma}")
 
-    def _create_default_components(self) -> LagrangianComponents:
+    def _create_default_components(self) -> VariationalMFGComponents:
         """Create default Lagrangian components for standard MFG problem."""
 
         def default_lagrangian(t: float, x: float, v: float, m: float) -> float:
@@ -208,7 +208,7 @@ class LagrangianMFGProblem:
             """Default initial density: uniform distribution"""
             return 1.0 / (self.xmax - self.xmin)
 
-        return LagrangianComponents(
+        return VariationalMFGComponents(
             lagrangian_func=default_lagrangian,
             lagrangian_dv_func=default_lagrangian_dv,
             lagrangian_dm_func=default_lagrangian_dm,
@@ -552,7 +552,7 @@ class LagrangianMFGProblem:
 # Utility functions for common Lagrangian formulations
 
 
-def create_quadratic_lagrangian_mfg(
+def create_quadratic_variational_mfg(
     xmin: float = 0.0,
     xmax: float = 1.0,
     Nx: int = 51,
@@ -561,7 +561,7 @@ def create_quadratic_lagrangian_mfg(
     kinetic_coefficient: float = 0.5,
     congestion_coefficient: float = 0.5,
     sigma: float = 1.0,
-) -> LagrangianMFGProblem:
+) -> VariationalMFGProblem:
     """
     Create standard quadratic Lagrangian MFG problem.
 
@@ -574,7 +574,7 @@ def create_quadratic_lagrangian_mfg(
         sigma: Noise intensity
 
     Returns:
-        LagrangianMFGProblem with quadratic structure
+        VariationalMFGProblem with quadratic structure
     """
 
     def quadratic_lagrangian(t: float, x: float, v: float, m: float) -> float:
@@ -586,7 +586,7 @@ def create_quadratic_lagrangian_mfg(
     def lagrangian_dm(t: float, x: float, v: float, m: float) -> float:
         return congestion_coefficient
 
-    components = LagrangianComponents(
+    components = VariationalMFGComponents(
         lagrangian_func=quadratic_lagrangian,
         lagrangian_dv_func=lagrangian_dv,
         lagrangian_dm_func=lagrangian_dm,
@@ -600,10 +600,10 @@ def create_quadratic_lagrangian_mfg(
         description="Quadratic Lagrangian MFG",
     )
 
-    return LagrangianMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)
+    return VariationalMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)
 
 
-def create_obstacle_lagrangian_mfg(
+def create_obstacle_variational_mfg(
     xmin: float = 0.0,
     xmax: float = 1.0,
     Nx: int = 51,
@@ -613,7 +613,7 @@ def create_obstacle_lagrangian_mfg(
     obstacle_radius: float = 0.1,
     obstacle_penalty: float = 100.0,
     sigma: float = 1.0,
-) -> LagrangianMFGProblem:
+) -> VariationalMFGProblem:
     """
     Create Lagrangian MFG with obstacle avoidance.
 
@@ -627,7 +627,7 @@ def create_obstacle_lagrangian_mfg(
         sigma: Noise intensity
 
     Returns:
-        LagrangianMFGProblem with obstacle constraints
+        VariationalMFGProblem with obstacle constraints
     """
 
     def obstacle_lagrangian(t: float, x: float, v: float, m: float) -> float:
@@ -648,7 +648,7 @@ def create_obstacle_lagrangian_mfg(
         """Constraint: distance from obstacle center >= obstacle_radius"""
         return abs(x - obstacle_center) - obstacle_radius
 
-    components = LagrangianComponents(
+    components = VariationalMFGComponents(
         lagrangian_func=obstacle_lagrangian,
         lagrangian_dv_func=lambda t, x, v, m: v,
         lagrangian_dm_func=lambda t, x, v, m: 0.5,
@@ -664,4 +664,4 @@ def create_obstacle_lagrangian_mfg(
         description="Obstacle Avoidance Lagrangian MFG",
     )
 
-    return LagrangianMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)
+    return VariationalMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)

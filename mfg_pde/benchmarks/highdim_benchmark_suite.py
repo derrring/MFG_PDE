@@ -12,16 +12,18 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psutil
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..core.highdim_mfg_problem import GridBasedMFGProblem
-from ..utils.logging import get_logger
-from ..utils.performance_optimization import PerformanceMonitor
+from mfg_pde.utils.logging import get_logger
+from mfg_pde.utils.performance_optimization import PerformanceMonitor
+
+if TYPE_CHECKING:
+    from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 
 logger = get_logger(__name__)
 
@@ -107,11 +109,11 @@ class HighDimMFGBenchmark:
             if dimension == 2:
                 from typing import cast
 
-                problem = self._create_2d_test_problem(cast(tuple[int, int], grid_size))
+                problem = self._create_2d_test_problem(cast("tuple[int, int]", grid_size))
             elif dimension == 3:
                 from typing import cast
 
-                problem = self._create_3d_test_problem(cast(tuple[int, int, int], grid_size))
+                problem = self._create_3d_test_problem(cast("tuple[int, int, int]", grid_size))
             else:
                 logger.warning(f"Unsupported dimension {dimension}, skipping")
                 continue
@@ -147,11 +149,11 @@ class HighDimMFGBenchmark:
         if dimension == 2:
             from typing import cast
 
-            problem = self._create_2d_test_problem(cast(tuple[int, int], grid_size))
+            problem = self._create_2d_test_problem(cast("tuple[int, int]", grid_size))
         elif dimension == 3:
             from typing import cast
 
-            problem = self._create_3d_test_problem(cast(tuple[int, int, int], grid_size))
+            problem = self._create_3d_test_problem(cast("tuple[int, int, int]", grid_size))
         else:
             raise ValueError(f"Unsupported dimension {dimension}")
 
@@ -194,11 +196,11 @@ class HighDimMFGBenchmark:
             if dimension == 2:
                 from typing import cast
 
-                problem = self._create_2d_test_problem(cast(tuple[int, int], scaled_grid))
+                problem = self._create_2d_test_problem(cast("tuple[int, int]", scaled_grid))
             elif dimension == 3:
                 from typing import cast
 
-                problem = self._create_3d_test_problem(cast(tuple[int, int, int], scaled_grid))
+                problem = self._create_3d_test_problem(cast("tuple[int, int, int]", scaled_grid))
             else:
                 continue
 
@@ -233,15 +235,15 @@ class HighDimMFGBenchmark:
             logger.info(f"Memory profiling {dimension}D grid {grid_size} ({total_vertices} vertices)")
 
             # Monitor memory during problem creation
-            with self.monitor.monitor_operation(f"create_problem_{dimension}d") as monitor:
+            with self.monitor.monitor_operation(f"create_problem_{dimension}d"):
                 if dimension == 2:
                     from typing import cast
 
-                    problem = self._create_2d_test_problem(cast(tuple[int, int], grid_size))
+                    problem = self._create_2d_test_problem(cast("tuple[int, int]", grid_size))
                 elif dimension == 3:
                     from typing import cast
 
-                    problem = self._create_3d_test_problem(cast(tuple[int, int, int], grid_size))
+                    problem = self._create_3d_test_problem(cast("tuple[int, int, int]", grid_size))
                 else:
                     continue
 
@@ -273,8 +275,8 @@ class HighDimMFGBenchmark:
 
     def _create_2d_test_problem(self, grid_size: tuple[int, int]):
         """Create standardized 2D test problem."""
-        from .. import MFGComponents
-        from ..core.highdim_mfg_problem import GridBasedMFGProblem
+        from mfg_pde import MFGComponents
+        from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 
         class SimpleBenchmarkProblem(GridBasedMFGProblem):
             def __init__(self, domain_bounds, grid_resolution, time_domain):
@@ -381,8 +383,8 @@ class HighDimMFGBenchmark:
 
     def _create_3d_test_problem(self, grid_size: tuple[int, int, int]):
         """Create standardized 3D test problem."""
-        from .. import MFGComponents
-        from ..core.highdim_mfg_problem import GridBasedMFGProblem
+        from mfg_pde import MFGComponents
+        from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 
         class SimpleBenchmarkProblem(GridBasedMFGProblem):
             def __init__(self, domain_bounds, grid_resolution, time_domain):
@@ -684,7 +686,7 @@ class HighDimMFGBenchmark:
 
     def _analyze_memory_usage(self) -> dict[str, Any]:
         """Analyze memory usage patterns."""
-        memory_results = [r for r in self.results]
+        memory_results = list(self.results)
 
         if not memory_results:
             return {}
@@ -748,7 +750,7 @@ class HighDimMFGBenchmark:
     def _generate_benchmark_plots(self):
         """Generate visualization plots for benchmark results."""
         # Scaling plot
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+        _fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
         # Plot 1: Solve time vs problem size
         for dim in [2, 3]:

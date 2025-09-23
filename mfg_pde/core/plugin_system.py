@@ -22,11 +22,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pkg_resources
 
-from ..config.pydantic_config import MFGSolverConfig
+if TYPE_CHECKING:
+    from mfg_pde.config.pydantic_config import MFGSolverConfig
+    from mfg_pde.factory.solver_factory import SolverType
 
 logger = logging.getLogger(__name__)
 
@@ -528,10 +530,9 @@ class PluginManager:
         # Import here to avoid circular imports
         from typing import cast
 
-        from ..factory import create_solver
-        from ..factory.solver_factory import SolverType
+        from mfg_pde.factory import create_solver
 
-        return create_solver(problem, cast(SolverType, solver_type), config=config, **kwargs)
+        return create_solver(problem, cast("SolverType", solver_type), config=config, **kwargs)
 
     def _get_default_plugin_paths(self) -> list[Path]:
         """Get default plugin search paths."""
@@ -614,10 +615,7 @@ class PluginManager:
         if metadata.min_mfg_version and current_version < metadata.min_mfg_version:
             return False
 
-        if metadata.max_mfg_version and current_version > metadata.max_mfg_version:
-            return False
-
-        return True
+        return not (metadata.max_mfg_version and current_version > metadata.max_mfg_version)
 
     def _check_dependencies(self, metadata: PluginMetadata) -> bool:
         """Check if plugin dependencies are available."""

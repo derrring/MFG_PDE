@@ -70,7 +70,7 @@ class ConvergenceError(MFGSolverError):
             "max_iterations": max_iterations,
             "final_error": f"{final_error:.2e}",
             "required_tolerance": f"{tolerance:.2e}",
-            "error_ratio": f"{final_error/tolerance:.1f}x too large",
+            "error_ratio": f"{final_error / tolerance:.1f}x too large",
         }
 
         if convergence_history:

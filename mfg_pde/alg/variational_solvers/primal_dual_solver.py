@@ -72,7 +72,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         Initialize primal-dual MFG solver.
 
         Args:
-            problem: LagrangianMFGProblem instance
+            problem: VariationalMFGProblem instance
             primal_solver: Optimization method for primal subproblem
             dual_update_method: Method for dual variable updates
             augmented_penalty: Initial penalty parameter ρ

@@ -12,11 +12,17 @@ from typing import TYPE_CHECKING, Any, cast
 from tqdm import tqdm
 
 import numpy as np
-from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     import jax
     import jax.numpy as jnp
+    from numpy.typing import NDArray
+
+    from mfg_pde.backends.base_backend import BaseBackend
+    from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.factory.solver_factory import SolverType
+    from mfg_pde.geometry.amr_mesh import AdaptiveMesh, QuadTreeNode
+    from mfg_pde.types.internal import JAXArray
 
 try:
     import jax
@@ -27,13 +33,8 @@ except ImportError:
     jnp = None
     JAX_AVAILABLE = False
 
-from ...backends.base_backend import BaseBackend
-from ...core.mfg_problem import MFGProblem
-from ...factory.solver_factory import SolverType
-from ...geometry.amr_mesh import AdaptiveMesh, QuadTreeNode
-from ...types.internal import JAXArray
-from ...utils.solver_result import SolverResult
-from ..base_mfg_solver import MFGSolver
+from mfg_pde.alg.base_mfg_solver import MFGSolver
+from mfg_pde.utils.solver_result import SolverResult
 
 
 class AMRMFGSolver(MFGSolver):
@@ -89,12 +90,12 @@ class AMRMFGSolver(MFGSolver):
 
     def _initialize_base_solver(self):
         """Initialize the underlying MFG solver"""
-        from ...factory import create_fast_solver
+        from mfg_pde.factory import create_fast_solver
 
         # Create solver with current backend
         self.base_solver = create_fast_solver(
             self.problem,
-            solver_type=cast(SolverType, self.base_solver_type),
+            solver_type=cast("SolverType", self.base_solver_type),
             backend=self.backend,
             **self.solver_kwargs,
         )
@@ -709,8 +710,8 @@ def create_amr_solver(
     Returns:
         Configured AMRMFGSolver
     """
-    from ...backends import create_backend
-    from ...geometry.amr_mesh import create_amr_mesh
+    from mfg_pde.backends import create_backend
+    from mfg_pde.geometry.amr_mesh import create_amr_mesh
 
     # Default domain bounds from problem
     if domain_bounds is None:

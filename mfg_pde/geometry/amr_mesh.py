@@ -10,10 +10,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy.typing import NDArray
 
 # JAX availability check and type-safe fallbacks
 try:
@@ -34,11 +33,17 @@ except ImportError:
     F = TypeVar("F", bound=Callable[..., Any])
 
     # Use Any to avoid parameter signature mismatches with actual JAX
-    jit: Any = lambda fun, /, **kwargs: fun
-    vmap: Any = lambda fun, **kwargs: fun
+    def jit(fun, /, **kwargs):
+        return fun
+    def vmap(fun, **kwargs):
+        return fun
 
-from ..backends.base_backend import BaseBackend
-from ..types.internal import JAXArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from mfg_pde.backends.base_backend import BaseBackend
+    from mfg_pde.types.internal import JAXArray
 
 
 @dataclass
@@ -422,7 +427,7 @@ class AdaptiveMesh:
             "max_level": 0,
         }
 
-        for iteration in range(max_iterations):
+        for _iteration in range(max_iterations):
             refined = self.refine_mesh(solution_data)
             coarsened = self.coarsen_mesh(solution_data)
 
@@ -580,7 +585,7 @@ def create_amr_mesh(
     Returns:
         Configured AdaptiveMesh instance
     """
-    from ..backends import create_backend
+    from mfg_pde.backends import create_backend
 
     # Create backend
     backend_instance = create_backend(backend)

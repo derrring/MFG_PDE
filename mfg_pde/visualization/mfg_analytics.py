@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 
-from ..utils.integration import trapezoid
+from mfg_pde.utils.integration import trapezoid
 
 # Import MFG components
 try:
@@ -32,7 +32,7 @@ except ImportError:
     MFGVisualizationManager = None
 
 try:
-    from ..utils.polars_integration import (
+    from mfg_pde.utils.polars_integration import (
         POLARS_AVAILABLE,
         MFGDataFrame,
         create_data_exporter,
@@ -432,7 +432,7 @@ class MFGAnalyticsEngine:
         solution_data.append(metadata)
 
         # Create DataFrame for export
-        from ..utils.polars_integration import create_mfg_dataframe
+        from mfg_pde.utils.polars_integration import create_mfg_dataframe
 
         solution_df = create_mfg_dataframe(solution_data)
 
@@ -486,7 +486,7 @@ class MFGAnalyticsEngine:
         # Add each analysis
         for i, analysis in enumerate(analyses, 1):
             html += f"""
-    <h2>Analysis {i}: {analysis.get('title', 'Untitled')}</h2>
+    <h2>Analysis {i}: {analysis.get("title", "Untitled")}</h2>
 
     <h3>Key Statistics</h3>
     <div class="statistics">
@@ -499,23 +499,23 @@ class MFGAnalyticsEngine:
                     density_stats = summary["density"]
                     html += f"""
         <div class="metric">
-            <strong>Final Density Mean:</strong> {density_stats.get('final_mean', 'N/A'):.4f}
+            <strong>Final Density Mean:</strong> {density_stats.get("final_mean", "N/A"):.4f}
         </div>
         <div class="metric">
-            <strong>Peak Location:</strong> {density_stats.get('peak_location', 'N/A'):.3f}
+            <strong>Peak Location:</strong> {density_stats.get("peak_location", "N/A"):.3f}
         </div>
         <div class="metric">
-            <strong>Mass Conservation:</strong> {density_stats.get('mass_conservation', 'N/A'):.4f}
+            <strong>Mass Conservation:</strong> {density_stats.get("mass_conservation", "N/A"):.4f}
         </div>
 """
 
             if "n_sweeps" in analysis:
                 html += f"""
         <div class="metric">
-            <strong>Parameter Sweeps:</strong> {analysis['n_sweeps']}
+            <strong>Parameter Sweeps:</strong> {analysis["n_sweeps"]}
         </div>
         <div class="metric">
-            <strong>Parameter:</strong> {analysis.get('parameter_name', 'N/A')}
+            <strong>Parameter:</strong> {analysis.get("parameter_name", "N/A")}
         </div>
 """
 

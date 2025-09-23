@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 
 class MathematicalSpace(Enum):
@@ -82,10 +82,7 @@ class MFGType:
         if method == NumericalMethod.SPECTRAL and self.state_space != MathematicalSpace.TORUS:
             return False
 
-        if method == NumericalMethod.PARTICLE and self.density_space != MathematicalSpace.PROBABILITY_MEASURES:
-            return False
-
-        return True
+        return not (method == NumericalMethod.PARTICLE and self.density_space != MathematicalSpace.PROBABILITY_MEASURES)
 
     def get_stability_constraint(self, parameter: str) -> Any | None:
         """Get stability constraint for given parameter."""
@@ -99,7 +96,7 @@ ProblemType = TypeVar("ProblemType")
 SolverType = TypeVar("SolverType")
 
 
-class TypedMFGProblem(Generic[T]):
+class TypedMFGProblem[T]:
     """
     MFG problem with mathematical type information.
 
@@ -442,7 +439,7 @@ def dispatch_solver(problem: TypedMFGProblem, method_preference: NumericalMethod
 # Example usage
 if __name__ == "__main__":
     # Create a typed problem
-    from ..core.mfg_problem import MFGProblem
+    from mfg_pde.core.mfg_problem import MFGProblem
 
     problem = MFGProblem(xmin=0, xmax=1, T=1.0, Nx=100, Nt=50)
     typed_problem = create_typed_problem(problem, QUADRATIC_MFG_TYPE)

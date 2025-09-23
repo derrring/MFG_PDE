@@ -19,8 +19,7 @@ Advanced Usage:
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -38,7 +37,11 @@ from .config import (
 )
 from .hooks import SolverHooks
 from .solvers import FixedPointSolver
-from .types import MFGResult
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .types import MFGResult
 
 
 def solve_mfg(

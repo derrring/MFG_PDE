@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .base_geometry import BaseGeometry, MeshData
 from .domain_2d import Domain2D
+
+if TYPE_CHECKING:
+    from .base_geometry import BaseGeometry, MeshData
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +132,7 @@ class MeshPipeline:
             mesh_data = self.geometry.generate_mesh()
 
             logger.info(
-                f"SUCCESS: Mesh generated: {mesh_data.num_vertices} vertices, " f"{mesh_data.num_elements} elements"
+                f"SUCCESS: Mesh generated: {mesh_data.num_vertices} vertices, {mesh_data.num_elements} elements"
             )
 
             return mesh_data

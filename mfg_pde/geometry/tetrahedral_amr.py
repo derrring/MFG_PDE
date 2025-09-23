@@ -312,7 +312,7 @@ class TetrahedralAMRMesh:
         """
         parent_element = self.elements_list[elem_idx]
         parent_vertices = parent_element.vertices
-        parent_coords = self.vertices[parent_vertices]
+        self.vertices[parent_vertices]
 
         # Create new vertices at edge midpoints and face centers
         edge_midpoints = {}
