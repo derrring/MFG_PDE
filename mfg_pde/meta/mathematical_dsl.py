@@ -75,7 +75,7 @@ class MathematicalExpression:
         try:
             return eval(func_str, {"__builtins__": {}}, safe_dict)
         except Exception as e:
-            raise ValueError(f"Failed to compile expression '{self.expression}': {e}")
+            raise ValueError(f"Failed to compile expression '{self.expression}': {e}") from e
 
     def _compile_jax(self) -> Callable:
         """Compile to JAX function with automatic differentiation."""
@@ -101,7 +101,7 @@ class MathematicalExpression:
             return jax.jit(func)
 
         except ImportError:
-            raise ValueError("JAX not available for compilation")
+            raise ValueError("JAX not available for compilation") from None
 
     def _compile_numba(self) -> Callable:
         """Compile to Numba JIT function."""
@@ -121,7 +121,7 @@ def compiled_func({", ".join(self.variables)}):
             return numba.jit(namespace["compiled_func"])
 
         except ImportError:
-            raise ValueError("Numba not available for compilation")
+            raise ValueError("Numba not available for compilation") from None
 
     def differentiate(self, var: str) -> MathematicalExpression:
         """Symbolic differentiation (simplified implementation)."""

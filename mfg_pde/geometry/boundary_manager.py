@@ -294,7 +294,7 @@ class BoundaryManager:
         try:
             import pyvista as pv
         except ImportError:
-            raise ImportError("pyvista is required for boundary visualization")
+            raise ImportError("pyvista is required for boundary visualization") from None
 
         # Create PyVista mesh
         mesh = self.mesh_data.to_pyvista()
@@ -302,7 +302,7 @@ class BoundaryManager:
         # Add boundary condition information
         bc_data = np.zeros(self.mesh_data.num_vertices)
 
-        for region_id, bc in self.boundary_conditions.items():
+        for region_id, _bc in self.boundary_conditions.items():
             boundary_nodes = self.get_boundary_nodes(region_id)
             bc_data[boundary_nodes] = region_id
 

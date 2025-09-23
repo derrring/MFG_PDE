@@ -34,15 +34,15 @@ repos:
         args: [--maxkb=1000]
         exclude: ^uv\.lock$
 
-  # Type checking temporarily disabled for comprehensive ruff fixes (Issue #12)
-  # Will be re-enabled with complete coverage once all linting issues are resolved
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.11.2
-  #   hooks:
-  #     - id: mypy
-  #       files: ^mfg_pde/.*\.py$
-  #       args: [--follow-imports=silent, --ignore-missing-imports]
-  #       additional_dependencies: [numpy, scipy, pydantic, types-tqdm, types-PyYAML, types-setuptools]
+  # Type checking re-enabled after comprehensive ruff fixes (Issue #12 completion)
+  # Expanded coverage from 32% → 50% with comprehensive package-wide type safety
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        files: ^mfg_pde/.*\.py$
+        args: [--follow-imports=silent, --ignore-missing-imports, --show-error-codes]
+        additional_dependencies: [numpy, scipy, pydantic, types-tqdm, types-PyYAML, types-setuptools]
 
 # Performance optimizations
 default_language_version:

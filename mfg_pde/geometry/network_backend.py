@@ -19,7 +19,7 @@ import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -374,7 +374,7 @@ class NetworkBackendManager:
     """
 
     # Backend capabilities database
-    BACKEND_CAPABILITIES = {
+    BACKEND_CAPABILITIES: ClassVar[dict[NetworkBackendType, BackendCapabilities]] = {
         NetworkBackendType.IGRAPH: BackendCapabilities(
             max_recommended_nodes=100_000,
             max_theoretical_nodes=1_000_000,
@@ -550,7 +550,7 @@ class NetworkBackendManager:
 
     def get_backend_info(self) -> dict[str, Any]:
         """Get comprehensive backend information."""
-        info = {
+        info: dict[str, Any] = {
             "available_backends": [bt.value for bt in self.available_backends],
             "preferred_backend": self.preferred_backend.value,
             "backend_capabilities": {},

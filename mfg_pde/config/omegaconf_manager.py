@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     with contextlib.suppress(ImportError):
         from omegaconf import DictConfig, ListConfig, OmegaConf
+        from omegaconf.errors import ConfigAttributeError, UnsupportedInterpolationType
 
 try:
     from omegaconf import DictConfig, ListConfig, OmegaConf
@@ -26,15 +27,19 @@ try:
     try:
         from omegaconf.errors import UnsupportedInterpolationType
     except ImportError:
-        UnsupportedInterpolationType = Exception
+        # Fallback for older versions
+        class UnsupportedInterpolationError(Exception):
+            pass
+
+        UnsupportedInterpolationType = UnsupportedInterpolationError
 
     OMEGACONF_AVAILABLE = True
 except ImportError:
     OMEGACONF_AVAILABLE = False
-    # Fallback types for when OmegaConf is not available
+    # Create fallback types
     DictConfig = dict
     ListConfig = list
-    OmegaConf = None
+    OmegaConf = type(None)
     ConfigAttributeError = AttributeError
     UnsupportedInterpolationType = Exception
 
@@ -44,11 +49,9 @@ logger = logging.getLogger(__name__)
 
 # Type aliases for better clarity
 if TYPE_CHECKING:
-    from omegaconf import DictConfig as _DictConfig
-
-    type OmegaConfig = _DictConfig
+    from omegaconf import DictConfig as OmegaConfig
 else:
-    type OmegaConfig = Any
+    OmegaConfig = Any
 """Type alias for OmegaConf DictConfig objects"""
 
 

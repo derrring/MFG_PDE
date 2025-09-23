@@ -81,7 +81,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
             enhanced_problem_config = {
                 **validated_config["grid_config"],
                 "validation_passed": True,
-                "config_type": pydantic_enhanced,
+                "config_type": "pydantic_enhanced",
                 "created_at": datetime.now().isoformat(),
             }
 
@@ -124,10 +124,10 @@ class PydanticNotebookReporter(MFGNotebookReporter):
 
         except ValidationError as e:
             self.logger.error(f"Pydantic validation error: {e}")
-            raise NotebookReportError(f"Configuration validation failed: {e}")
+            raise NotebookReportError(f"Configuration validation failed: {e}") from e
         except Exception as e:
             self.logger.error(f"Enhanced notebook generation failed: {e}")
-            raise NotebookReportError(f"Enhanced notebook generation failed: {e}")
+            raise NotebookReportError(f"Enhanced notebook generation failed: {e}") from e
 
     def _create_enhanced_notebook_content(
         self,
@@ -159,7 +159,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
         # Enhanced configuration summary
         cells.append(
             {
-                "cell_type": code,
+                "cell_type": "code",
                 "source": self._create_enhanced_config_code_section(experiment_config),
             }
         )
@@ -176,7 +176,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
         if experiment_config.arrays:
             cells.append(
                 {
-                    "cell_type": code,
+                    "cell_type": "code",
                     "source": self._create_enhanced_visualization_code(experiment_config, solver_results),
                 }
             )
@@ -416,9 +416,9 @@ if 'validation_stats' in locals():
     print("\\n Array Validation Statistics:")
     for key, stats in validation_stats.items():
         if isinstance(stats, dict):
-            print(f"\\n{key.upper()}:")
+            print(f"\\n{{key.upper()}}:")
             for stat_name, value in stats.items():
-                print(f"  {stat_name}: {value}")
+                print(f"  {{stat_name}}: {{value}}")
 """
 
     def _create_array_validation_section(self, arrays: MFGArrays) -> str:

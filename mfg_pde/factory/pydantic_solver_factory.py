@@ -112,10 +112,10 @@ class PydanticSolverFactory:
 
         except ValidationError as e:
             self.logger.error(f"Configuration validation failed: {e}")
-            raise ValidationError(f"Solver configuration validation failed: {e}")
+            raise ValidationError(f"Solver configuration validation failed: {e}") from e
         except Exception as e:
             self.logger.error(f"Solver creation failed: {e}")
-            raise RuntimeError(f"Failed to create solver: {e}")
+            raise RuntimeError(f"Failed to create solver: {e}") from e
 
     def _create_preset_config(self, preset: str, **kwargs: Any) -> MFGSolverConfig:
         """Create configuration from preset with validation."""
@@ -242,7 +242,7 @@ class PydanticSolverFactory:
 
         except Exception as e:
             self.logger.error(f"Failed to create fixed point solver: {e}")
-            raise RuntimeError(f"Fixed point solver creation failed: {e}")
+            raise RuntimeError(f"Fixed point solver creation failed: {e}") from e
 
     def _create_validated_particle_collocation_solver(
         self, problem: MFGProblem, config: MFGSolverConfig
@@ -269,7 +269,7 @@ class PydanticSolverFactory:
 
         except Exception as e:
             self.logger.error(f"Failed to create particle collocation solver: {e}")
-            raise RuntimeError(f"Particle collocation solver creation failed: {e}")
+            raise RuntimeError(f"Particle collocation solver creation failed: {e}") from e
 
     def _create_validated_adaptive_particle_solver(
         self, problem: MFGProblem, config: MFGSolverConfig
@@ -295,7 +295,7 @@ class PydanticSolverFactory:
 
         except Exception as e:
             self.logger.error(f"Failed to create adaptive particle solver: {e}")
-            raise RuntimeError(f"Adaptive particle solver creation failed: {e}")
+            raise RuntimeError(f"Adaptive particle solver creation failed: {e}") from e
 
     def _create_validated_monitored_particle_solver(
         self, problem: MFGProblem, config: MFGSolverConfig
@@ -320,7 +320,7 @@ class PydanticSolverFactory:
 
         except Exception as e:
             self.logger.error(f"Failed to create monitored particle solver: {e}")
-            raise RuntimeError(f"Monitored particle solver creation failed: {e}")
+            raise RuntimeError(f"Monitored particle solver creation failed: {e}") from e
 
 
 # Global factory instance
