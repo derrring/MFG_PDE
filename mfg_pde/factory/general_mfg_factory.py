@@ -32,23 +32,23 @@ class GeneralMFGFactory:
     - Symbolic mathematical expressions (future extension)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize general MFG factory."""
-        self.function_registry = {}
+        self.function_registry: dict[str, Callable[..., Any]] = {}
 
-    def register_functions(self, functions: dict[str, Callable]):
+    def register_functions(self, functions: dict[str, Callable[..., Any]]) -> None:
         """Register named functions for use in configurations."""
         self.function_registry.update(functions)
         logger.info(f"Registered {len(functions)} functions: {list(functions.keys())}")
 
     def create_from_functions(
         self,
-        hamiltonian_func: Callable,
-        hamiltonian_dm_func: Callable,
+        hamiltonian_func: Callable[..., Any],
+        hamiltonian_dm_func: Callable[..., Any],
         domain_config: dict[str, Any],
         time_config: dict[str, Any],
         solver_config: dict[str, Any] | None = None,
-        **optional_components,
+        **optional_components: Any,
     ) -> MFGProblem:
         """
         Create MFG problem from function objects.
@@ -245,7 +245,7 @@ class GeneralMFGFactory:
         logger.warning(f"Could not resolve function specification: '{func_spec}'")
         return None
 
-    def create_template_config(self, filename: str):
+    def create_template_config(self, filename: str) -> None:
         """Create a template configuration file."""
 
         template = {
@@ -271,7 +271,7 @@ class GeneralMFGFactory:
     def validate_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """Validate configuration for general MFG problem."""
 
-        validation = {"valid": True, "errors": [], "warnings": []}
+        validation: dict[str, Any] = {"valid": True, "errors": [], "warnings": []}
 
         # Check required sections
         required_sections = ["functions", "domain", "time"]
@@ -322,7 +322,9 @@ def get_general_factory() -> GeneralMFGFactory:
     return _global_general_factory
 
 
-def create_general_mfg_problem(hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs) -> MFGProblem:
+def create_general_mfg_problem(
+    hamiltonian_func: Callable[..., Any], hamiltonian_dm_func: Callable[..., Any], **kwargs: Any
+) -> MFGProblem:
     """Convenience function to create general MFG problem."""
     factory = get_general_factory()
 

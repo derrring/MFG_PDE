@@ -11,6 +11,7 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 ### **For New Users**
 - **[User Documentation](user/)** - Tutorials, guides, and usage patterns
 - **[Network MFG Tutorial](user/tutorials/network_mfg_tutorial.md)** - Complete network MFG guide
+- **[AMR Tutorial](user/tutorials/advanced/amr_tutorial.md)** - Advanced mesh refinement guide
 - **[Basic Examples](../examples/basic/)** - Simple problem setup and solving
 
 ### **For Researchers**

@@ -16,6 +16,9 @@
 /benchmark_results/
 /demo_benchmark_results/
 
+# Workflow runtime data and workspace
+/.mfg_workflows/
+
 #===============UV PACKAGE MANAGER (OPTIONAL)==============
 # UV files are optional - repository supports both pip and UV
 # Keep uv.lock tracked for reproducible research environments

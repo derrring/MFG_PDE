@@ -6,7 +6,10 @@ Factory methods for creating computational backends with appropriate configurati
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..backends.base_backend import BaseBackend
 
 from ..backends import create_backend, get_available_backends, get_backend_info
 from ..core.mfg_problem import MFGProblem
@@ -16,7 +19,7 @@ class BackendFactory:
     """Factory for creating and managing computational backends."""
 
     @staticmethod
-    def create_backend(backend_name: str = "auto", **kwargs):
+    def create_backend(backend_name: str = "auto", **kwargs: Any) -> BaseBackend:
         """
         Create a computational backend.
 
@@ -30,7 +33,7 @@ class BackendFactory:
         return create_backend(backend_name, **kwargs)
 
     @staticmethod
-    def create_optimal_backend(problem: MFGProblem, prefer_gpu: bool = True, precision: str = "float64") -> Any:
+    def create_optimal_backend(problem: MFGProblem, prefer_gpu: bool = True, precision: str = "float64") -> BaseBackend:
         """
         Create optimal backend based on problem characteristics.
 
@@ -128,7 +131,7 @@ class BackendFactory:
         total_size = problem.Nx * problem.Nt
         available = get_available_backends()
 
-        recommendations = {
+        recommendations: dict[str, Any] = {
             "problem_size": total_size,
             "size_category": ("small" if total_size < 10000 else "medium" if total_size < 100000 else "large"),
             "available_backends": available,
@@ -187,7 +190,7 @@ class BackendFactory:
         return recommendations
 
 
-def create_backend_for_problem(problem: MFGProblem, backend: str = "auto", **kwargs) -> Any:
+def create_backend_for_problem(problem: MFGProblem, backend: str = "auto", **kwargs: Any) -> BaseBackend:
     """
     Convenience function to create backend for a specific problem.
 
@@ -205,7 +208,7 @@ def create_backend_for_problem(problem: MFGProblem, backend: str = "auto", **kwa
         return BackendFactory.create_backend(backend, **kwargs)
 
 
-def print_backend_info():
+def print_backend_info() -> None:
     """Print information about available backends."""
     info = get_backend_info()
 

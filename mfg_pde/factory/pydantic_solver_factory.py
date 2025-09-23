@@ -44,7 +44,7 @@ class PydanticSolverFactory:
     serialization support, and enhanced error checking for research workflows.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = get_logger(__name__)
 
         if not PYDANTIC_AVAILABLE:

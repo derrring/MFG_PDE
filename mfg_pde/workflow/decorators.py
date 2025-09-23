@@ -37,11 +37,11 @@ def workflow_step(
         Decorated function
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         step_name = name or func.__name__
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             # If workflow is provided, add as step and return step ID
             if workflow is not None:
                 step_id = workflow.add_step(
@@ -56,10 +56,10 @@ def workflow_step(
                 return func(*args, **kwargs)
 
         # Store workflow metadata on function
-        wrapper._workflow_step = True
-        wrapper._step_name = step_name
-        wrapper._dependencies = dependencies or []
-        wrapper._metadata = metadata or {}
+        wrapper._workflow_step = True  # type: ignore[attr-defined]
+        wrapper._step_name = step_name  # type: ignore[attr-defined]
+        wrapper._dependencies = dependencies or []  # type: ignore[attr-defined]
+        wrapper._metadata = metadata or {}  # type: ignore[attr-defined]
 
         return wrapper
 
@@ -130,10 +130,10 @@ def experiment(
                 raise
 
         # Store experiment metadata
-        wrapper._experiment = True
-        wrapper._experiment_name = experiment_name
-        wrapper._description = description
-        wrapper._tags = tags or []
+        wrapper._experiment = True  # type: ignore[attr-defined]
+        wrapper._experiment_name = experiment_name  # type: ignore[attr-defined]
+        wrapper._description = description  # type: ignore[attr-defined]
+        wrapper._tags = tags or []  # type: ignore[attr-defined]
 
         return wrapper
 
@@ -197,9 +197,9 @@ def parameter_study(
             }
 
         # Store parameter study metadata
-        wrapper._parameter_study = True
-        wrapper._parameters = parameters
-        wrapper._execution_mode = execution_mode
+        wrapper._parameter_study = True  # type: ignore[attr-defined]
+        wrapper._parameters = parameters  # type: ignore[attr-defined]
+        wrapper._execution_mode = execution_mode  # type: ignore[attr-defined]
 
         return wrapper
 
@@ -343,8 +343,8 @@ def cached(
                 "cache_dir": str(cache_path),
             }
 
-        wrapper.clear_cache = clear_cache
-        wrapper.cache_info = cache_info
+        wrapper.clear_cache = clear_cache  # type: ignore[attr-defined]
+        wrapper.cache_info = cache_info  # type: ignore[attr-defined]
 
         return wrapper
 
@@ -559,7 +559,7 @@ def convergence_study(
     Returns:
         Decorated function for convergence study
     """
-    parameters = {"tolerance": tolerances, "max_iterations": max_iterations}
+    parameters: dict[str, list[Any]] = {"tolerance": tolerances, "max_iterations": max_iterations}
 
     return parameter_study(
         parameters=parameters,
