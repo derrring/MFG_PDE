@@ -1,311 +1,131 @@
 # MFG_PDE: Advanced Mean Field Games Framework
 
-A state-of-the-art Python framework for solving Mean Field Games with GPU acceleration, network support, advanced numerical methods, and professional research tools.
+A modern Python framework for solving Mean Field Games with GPU acceleration, simple APIs, and advanced numerical methods.
 
-**🎯 Quality Status**: A+ Grade (96+/100) - Enterprise-ready with comprehensive CI/CD pipeline  
-**🌐 Network MFG**: Complete discrete MFG implementation on graph structures  
+**🎯 Simple API**: One-line solving for common problems
 **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
+**🔧 Multiple Solvers**: Traditional PDE and modern particle methods
+**🌐 Network Support**: Also works on graphs and networks
 
 ## 🚀 Quick Start
 
-### Installation Options
+### Installation
 
-#### **For Users (Learning/Research)**
 ```bash
+# Clone and install
 git clone https://github.com/derrring/MFG_PDE.git
 cd MFG_PDE
-pip install -e .           # Installs MFG_PDE + core scientific dependencies
+pip install -e .
 
-# Run examples and explore
+# Try it out
 python examples/basic/semi_lagrangian_example.py
-jupyter lab examples/notebooks/
 ```
 
-#### **For Contributors/Developers**
+**For developers**: Add `[dev]` to install development tools:
 ```bash
-git clone https://github.com/derrring/MFG_PDE.git
-cd MFG_PDE
-pip install -e ".[dev]"    # Adds development tools (pytest, ruff, mypy)
-
-# Run tests and contribute
-python examples/basic/semi_lagrangian_example.py
-pytest tests/unit/ -v
-pre-commit install
-```
-
-#### **UV Installation (Power Users - 10x Faster)**
-For researchers doing intensive development with frequent dependency changes:
-```bash
-# Install uv (modern, fast package manager)
-pip install uv
-
-# One-command setup with exact reproducible environment
-git clone https://github.com/derrring/MFG_PDE.git
-cd MFG_PDE
-uv sync --extra dev        # Creates .venv with exact dependency resolution
-
-# Run examples and tests
-uv run python examples/basic/semi_lagrangian_example.py
-uv run pytest tests/unit/ -v
+pip install -e ".[dev]"
 ```
 
 ### Verify Installation
 ```python
-# Check backend availability  
-from mfg_pde.backends import get_backend_info
-info = get_backend_info()
-print(f"Available backends: {info['available_backends']}")
-# Expected: {'numpy': True, 'jax': False/True}
+from mfg_pde import solve_mfg
+result = solve_mfg("crowd_dynamics")
+print("✅ MFG_PDE is working!")
 ```
 
-### 🌐 Network Mean Field Games (NEW)
+## Usage Examples
+
+### 🎯 **Simple API - Start Here**
+
+```python
+from mfg_pde import solve_mfg
+
+# One-line solving for common problems
+result = solve_mfg("crowd_dynamics", domain_size=2.0, accuracy="high")
+result.plot()  # Interactive visualization
+
+# Portfolio optimization
+result = solve_mfg("portfolio_optimization", risk_aversion=0.3)
+print(f"Converged: {result.convergence_achieved}")
+
+# Parameter validation with suggestions
+from mfg_pde import validate_problem_parameters
+validation = validate_problem_parameters("epidemic", infection_rate=1.5)
+if not validation["valid"]:
+    print("Issues:", validation["suggestions"])
+```
+
+### ⚡ **GPU Acceleration**
+
+```python
+from mfg_pde import ExampleMFGProblem, create_fast_solver
+
+# Traditional MFG with automatic GPU acceleration
+problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=100, T=1.0, Nt=50)
+solver = create_fast_solver(problem, backend="jax")  # Uses GPU if available
+result = solver.solve()
+```
+
+### 🌐 **Network MFG**
 
 ```python
 from mfg_pde import create_grid_mfg_problem, create_fast_solver
 
-# Create a network MFG problem on a 10x10 grid
+# Also supports MFG on networks and graphs
 problem = create_grid_mfg_problem(10, 10, T=1.0, Nt=50)
-
-# Automatic backend selection (GPU when available)
 solver = create_fast_solver(problem, backend="auto")
 result = solver.solve()
-
-print(f"Network nodes: {problem.num_nodes}")
-print(f"Converged: {result.convergence_achieved}")
-```
-
-### ⚡ GPU-Accelerated Traditional MFG
-
-```python
-from mfg_pde import ExampleMFGProblem, create_fast_solver
-from mfg_pde.backends import create_backend
-
-# Create traditional MFG problem
-problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=100, T=1.0, Nt=50)
-
-# GPU acceleration with JAX (when available)
-jax_backend = create_backend("jax", device="gpu", jit_compile=True)
-solver = create_fast_solver(problem, backend=jax_backend)
-result = solver.solve()
-
-print(f"Backend: {solver.backend.name} | Device: {solver.backend.device}")
-print(f"Speedup: ~{result.performance_metrics.get('speedup_factor', 1)}x")
-```
-
-### 🔧 Factory Pattern with Auto-Configuration
-
-```python
-from mfg_pde import ExampleMFGProblem, create_fast_solver
-
-# Automatic optimal configuration
-problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=1.0, Nt=30)
-solver = create_fast_solver(problem, solver_type="adaptive_particle")
-result = solver.solve()
-
-print(f"Execution time: {result.execution_time:.2f}s")
-print(f"Memory used: {result.memory_peak_mb:.1f} MB")
-```
-
-### Direct Class Usage (Alternative)
-
-```python
-from mfg_pde import ExampleMFGProblem, BoundaryConditions
-from mfg_pde.alg import SilentAdaptiveParticleCollocationSolver
-import numpy as np
-
-# Create an MFG problem
-problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=1.0, Nt=30, 
-                           sigma=0.1, coefCT=0.02)
-
-# Direct class instantiation
-boundary_conditions = BoundaryConditions(type="no_flux")
-collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
-
-solver = SilentAdaptiveParticleCollocationSolver(
-    problem=problem,
-    collocation_points=collocation_points,
-    boundary_conditions=boundary_conditions,
-    num_particles=1000  # Reduced for stability
-)
-
-# Solve with modern parameter names
-U, M, info = solver.solve(max_picard_iterations=15, verbose=True)
 ```
 
 ## Features
 
-### 🌐 **Network Mean Field Games (2025)**
-- **Discrete MFG on Graphs**: Complete implementation for grid, random, and scale-free networks
-- **Lagrangian Formulation**: Velocity-based network MFG with trajectory measures
-- **High-Order Schemes**: Advanced upwind, Lax-Friedrichs, and Godunov discretization
-- **Network Backends**: Automatic igraph/networkit/networkx selection with 10-50× speedup
-- **Enhanced Visualization**: Network trajectory tracking, velocity fields, 3D plots
+- **🎯 Simple API**: One-line `solve_mfg()` for common problems with smart defaults
+- **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
+- **🔧 Multiple Solvers**: Fixed-point, particle-collocation, adaptive methods
+- **📊 Interactive Plots**: Built-in visualization with Plotly and Matplotlib
+- **🚀 Performance**: Optimized for both small examples and large-scale problems
+- **🌐 Network Support**: Also solves MFG problems on graphs and networks
 
-### ⚡ **GPU Acceleration & Backends**
-- **JAX Integration**: GPU acceleration with 10-100× speedup potential
-- **Automatic Backend Selection**: NumPy (CPU) or JAX (GPU) based on problem size
-- **JIT Compilation**: Just-in-time compilation for maximum performance
-- **Memory Optimization**: Efficient tensor operations and automatic memory management
-- **Cross-Platform**: CPU and GPU support on Linux, macOS, and Windows
+## Requirements
 
-### 🚀 **Core Solver Capabilities**
-- **Multiple Solver Types**: Fixed-point, particle-collocation, monitored, and adaptive methods
-- **Factory Pattern API**: One-line solver creation with intelligent defaults
-- **NumPy 2.0+ Ready**: Full forward compatibility - upgrade to NumPy 2.0+ with zero code changes
-- **Parameter Migration**: Automatic legacy parameter conversion with deprecation warnings
-- **Professional Configuration**: Pydantic-based validation and type safety
+- **Python**: 3.12+
+- **NumPy**: 2.0+ (for best performance)
+- **SciPy**, **Matplotlib** (core scientific stack)
 
-### 🎯 **Enterprise Quality & Reliability**
-- **A+ Code Quality**: 96+/100 grade with comprehensive linting and formatting
-- **100% CI/CD Success**: Automated testing across Python 3.9, 3.10, 3.11
-- **Mathematical Notation**: Standardized u(t,x), m(t,x) conventions throughout
-- **Professional Standards**: ASCII-only program output, UTF-8 math symbols in docstrings
-- **Mass Conservation**: Excellent conservation properties with < 0.1% error
-
-## Installation
-
-```bash
-pip install -e .
-```
-
-### Requirements
-
-**Core Dependencies:**
-- **Python**: >=3.8
-- **NumPy**: >=1.21 (NumPy 2.0+ fully supported for optimal performance)
-- **SciPy**: >=1.7
-- **Matplotlib**: >=3.4
-
-**GPU Acceleration (Optional):**
-- **JAX**: >=0.4.0 for GPU acceleration
-- **CUDA**: Compatible GPU and drivers for JAX GPU backend
-
-**Network MFG (Optional):**
-- **igraph**: >=0.10.0 (primary network backend)
-- **networkit**: >=10.0 (high-performance alternative)
-- **networkx**: >=2.8 (fallback option)
-
-**Advanced Features (Optional):**
-- **Plotly**: >=5.0 for interactive visualizations
-- **Jupyter**: >=1.0 for notebook integration
-
-Check your installation:
-```python
-from mfg_pde.backends import get_backend_info
-info = get_backend_info()
-print(f"Available backends: {info['available_backends']}")
-print(f"JAX GPU support: {info.get('jax_info', {}).get('has_gpu', False)}")
-```
+**Optional but recommended:**
+- **JAX**: GPU acceleration
+- **igraph/networkit**: Fast network backends
+- **Plotly**: Interactive visualizations
 
 ## Documentation
 
-### 📚 **User Documentation**
-- **[User Guides](docs/user/)** - Complete tutorials and usage patterns
-- **[Network MFG Tutorial](docs/user/tutorials/network_mfg_tutorial.md)** - Hands-on network MFG guide
-- **[Notebook Execution Guide](docs/user/notebook_execution_guide.md)** - Jupyter integration
+- **[examples/](examples/)** - Working examples and tutorials
+- **[docs/user/](docs/user/)** - User guides and tutorials
+- **[docs/theory/](docs/theory/)** - Mathematical background
+- **[mfg_pde/](mfg_pde/)** - API reference in source code
 
-### 🔬 **Technical Documentation**
-- **[Mathematical Background](docs/theory/mathematical_background.md)** - MFG theory and formulations
-- **[Network MFG Theory](docs/theory/network_mfg_mathematical_formulation.md)** - Discrete MFG foundations
-- **[Package Reference](mfg_pde/)** - Complete function and class documentation in source
+## Examples
 
-### 🛠️ **Development Documentation**
-- **[Consolidated Roadmap](docs/development/CONSOLIDATED_ROADMAP_2025.md)** - Strategic development plan
-- **[Architecture Documentation](docs/development/architecture/)** - System design and implementation
-- **[Technical Analysis](docs/development/analysis/)** - Performance studies and algorithm analysis
-
-## Solver Architecture
-
-### 🌐 **Network MFG Solvers**
-- **NetworkMFGSolver**: Complete discrete MFG system for graph structures
-- **LagrangianNetworkSolver**: Velocity-based formulation with trajectory tracking
-- **HighOrderNetworkHJBSolver**: Advanced discretization schemes for network HJB equations
-
-### ⚡ **High-Performance Traditional Solvers**
-- **JAX-Accelerated Solvers**: GPU-optimized with automatic differentiation
-- **Adaptive Particle-Collocation**: Intelligent constraint detection with 3-8× speedup
-- **Enhanced Fixed-Point**: Stable convergence with professional configuration management
-
-### 🔧 **Backend System**
-- **Automatic Selection**: NumPy (CPU) or JAX (GPU) based on problem characteristics
-- **Network Backends**: igraph → networkit → networkx fallback with performance optimization
-- **Memory Management**: Intelligent memory allocation and cleanup
-
-## Performance Metrics
-
-### **Network MFG Performance**
-- **Backend Speedup**: 10-50× with igraph/networkit vs networkx
-- **Scalability**: Linear scaling up to 10,000+ nodes
-- **Memory Efficiency**: Sparse matrix operations with <2GB for standard problems
-
-### **Traditional MFG Performance**
-- **GPU Acceleration**: 10-100× speedup with JAX backend on compatible hardware
-- **CPU Optimization**: 3-8× faster than baseline with intelligent QP usage reduction
-- **Mass Conservation**: <0.1% error across all solver types
-- **Robustness**: 100% success rate across 50+ diverse test configurations
+- **[examples/basic/](examples/basic/)** - Simple getting started examples
+- **[examples/advanced/](examples/advanced/)** - Complex workflows and GPU acceleration
+- **[examples/notebooks/](examples/notebooks/)** - Jupyter notebook tutorials
 
 ## Testing
 
-### 🧪 **Quality Assurance**
-
-#### **UV Workflow (Recommended)**
 ```bash
-# Fast testing with exact reproducible environment
-uv run pytest tests/                    # All tests
-uv run pytest tests/unit/ -v           # Unit tests with verbose output  
-uv run pytest tests/integration/       # Integration tests
-uv run pytest --cov=mfg_pde            # Coverage testing
+# Run tests
+pytest tests/
 
-# Development workflow
-uv run ruff format mfg_pde/            # Auto-format code (10x faster than Black)
-uv run ruff check --fix mfg_pde/       # Lint and auto-fix (replaces Pylint+isort)
-uv run mypy mfg_pde/core/              # Type checking (core modules)
-uv run python examples/basic/semi_lagrangian_example.py  # Run examples
+# For developers
+pytest tests/ -v
+pre-commit run --all-files
 ```
-
-#### **Traditional Workflow**
-```bash
-# Standard testing
-python -m pytest tests/                # All tests
-python -m pytest tests/property_based/ # Property-based tests  
-python -m pytest tests/unit/           # Unit tests
-python -m pytest tests/integration/    # Integration tests
-```
-
-### 📊 **CI/CD Pipeline**
-```bash
-# Check code quality (locally)
-ruff format --check mfg_pde/           # Check formatting
-ruff check mfg_pde/                    # Check linting
-
-# Run memory and performance tests
-python -c "from mfg_pde import ExampleMFGProblem, create_fast_solver; ..."
-```
-
-## Examples & Getting Started
-
-### 🌐 **Network MFG Examples**
-- **[Network MFG Example](examples/basic/network_mfg_example.py)** - Basic network MFG demonstration
-- **[Network Comparison](examples/advanced/network_mfg_comparison.py)** - Performance comparison across backends
-- **[Enhanced Network Visualization](examples/advanced/enhanced_network_visualization_demo.py)** - 3D network plots and trajectory tracking
-
-### 🚀 **Traditional MFG Examples**
-- **[Basic Examples](examples/basic/)** - Simple demonstrations and getting started
-- **[JAX Acceleration Demo](examples/advanced/jax_acceleration_demo.py)** - GPU performance benchmarking
-- **[Interactive Notebooks](examples/notebooks/working_demo/)** - Jupyter integration with advanced graphics
-
-### 📊 **Research & Analysis**
-- **[Advanced Examples](examples/advanced/)** - Complex workflows and research tools
-- **[Performance Analysis](examples/advanced/progress_monitoring_example.py)** - Comprehensive performance tracking
-- **[Method Comparisons](benchmarks/)** - Detailed solver evaluations and benchmarks
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines, coding standards, and submission requirements.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Citation
-
-If you use this library in your research, please cite:
 
 ```bibtex
 @software{mfg_pde2025,

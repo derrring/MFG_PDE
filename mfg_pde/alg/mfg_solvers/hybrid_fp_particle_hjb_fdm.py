@@ -184,7 +184,7 @@ class HybridFPParticleHJBFDM:
             if converged:
                 logger.info(f"✅ Hybrid solver converged in {iterations} iterations ({solve_time:.2f}s)")
                 logger.info(f"   Final residual: {final_residual:.2e}")
-                logger.info(f"   Average time per iteration: {solve_time/max(iterations,1):.2f}s")
+                logger.info(f"   Average time per iteration: {solve_time / max(iterations, 1):.2f}s")
             else:
                 logger.warning(f"⚠️ Hybrid solver did not converge after {iterations} iterations")
                 logger.warning(f"   Final residual: {final_residual:.2e}")

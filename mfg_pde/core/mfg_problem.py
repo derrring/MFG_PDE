@@ -207,7 +207,7 @@ class MFGProblem:
             ["x_idx", "m_at_x", "p_values", "t_idx"],
         )
 
-    def _validate_function_signature(self, func: Callable, name: str, expected_params: list):
+    def _validate_function_signature(self, func: Callable, name: str, expected_params: list) -> None:
         """Validate function signature has expected parameters."""
         sig = inspect.signature(func)
         params = list(sig.parameters.keys())
@@ -312,8 +312,8 @@ class MFGProblem:
         ):
             return np.nan
 
-        npart_val_fwd = npart(p_forward)
-        ppart_val_bwd = ppart(p_backward)
+        npart_val_fwd = float(npart(p_forward))
+        ppart_val_bwd = float(ppart(p_backward))
 
         if abs(npart_val_fwd) > VALUE_BEFORE_SQUARE_LIMIT or abs(ppart_val_bwd) > VALUE_BEFORE_SQUARE_LIMIT:
             return np.nan
@@ -644,7 +644,7 @@ class MFGProblemBuilder:
         self.solver_params.update({"sigma": sigma, "coefCT": coefCT})
         return self
 
-    def parameters(self, **params) -> MFGProblemBuilder:
+    def parameters(self, **params: Any) -> MFGProblemBuilder:
         """Set additional problem parameters."""
         self.components.parameters.update(params)
         return self
@@ -683,7 +683,7 @@ class MFGProblemBuilder:
 # ============================================================================
 
 
-def ExampleMFGProblem(**kwargs) -> MFGProblem:
+def ExampleMFGProblem(**kwargs: Any) -> MFGProblem:
     """
     Create an MFG problem with default Hamiltonian (backward compatibility).
 
@@ -693,7 +693,7 @@ def ExampleMFGProblem(**kwargs) -> MFGProblem:
     return MFGProblem(**kwargs)
 
 
-def create_mfg_problem(hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs) -> MFGProblem:
+def create_mfg_problem(hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs: Any) -> MFGProblem:
     """
     Convenience function to create custom MFG problem.
 

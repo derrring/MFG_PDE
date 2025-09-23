@@ -74,7 +74,7 @@ class BaseVariationalSolver(ABC):
     ∂m/∂t + ∇·(m v) = σ²/2 Δm
     """
 
-    def __init__(self, problem: LagrangianMFGProblem):
+    def __init__(self, problem: LagrangianMFGProblem) -> None:
         """
         Initialize variational solver.
 
@@ -94,7 +94,7 @@ class BaseVariationalSolver(ABC):
 
         logger.info(f"Initialized {self.solver_name} solver")
         logger.info(f"  Problem: {problem.components.description}")
-        logger.info(f"  Grid: {self.Nx+1} × {self.Nt} (space × time)")
+        logger.info(f"  Grid: {self.Nx + 1} × {self.Nt} (space × time)")
 
     @abstractmethod
     def solve(
@@ -102,7 +102,7 @@ class BaseVariationalSolver(ABC):
         initial_guess: NDArray | None = None,
         max_iterations: int = 100,
         tolerance: float = 1e-6,
-        **kwargs,
+        **kwargs: Any,
     ) -> VariationalSolverResult:
         """
         Solve the variational MFG problem.

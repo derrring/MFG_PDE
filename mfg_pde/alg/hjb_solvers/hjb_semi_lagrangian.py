@@ -160,7 +160,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         # Solve backward in time using semi-Lagrangian method
         for n in range(Nt - 2, -1, -1):
             if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Solving time step {n}/{Nt-2}")
+                logger.debug(f"Solving time step {n}/{Nt - 2}")
 
             U_solution[n, :] = self._solve_timestep_semi_lagrangian(
                 U_solution[n + 1, :],  # u^{n+1}

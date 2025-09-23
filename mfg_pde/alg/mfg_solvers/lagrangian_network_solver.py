@@ -101,9 +101,9 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             (U, M, convergence_info) with Lagrangian-based solution
         """
         if verbose:
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print("LAGRANGIAN NETWORK MFG SOLVER")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             print(f"Velocity discretization: {self.velocity_discretization}")
             print(f"Trajectory length: {self.trajectory_length}")
             print(f"Relaxed equilibria: {self.use_relaxed_equilibria}")

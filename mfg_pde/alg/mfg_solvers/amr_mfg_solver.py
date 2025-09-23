@@ -126,7 +126,7 @@ class AMRMFGSolver(MFGSolver):
             if verbose:
                 pbar = tqdm(
                     range(max_iterations),
-                    desc=f"AMR Cycle {amr_cycle+1}/{self.max_amr_cycles}",
+                    desc=f"AMR Cycle {amr_cycle + 1}/{self.max_amr_cycles}",
                 )
                 # Solve on current mesh with progress bar
                 for iteration in pbar:
@@ -154,7 +154,7 @@ class AMRMFGSolver(MFGSolver):
                     # Check convergence
                     if change < tolerance:
                         if verbose:
-                            print(f"\nConverged in {iteration+1} iterations")
+                            print(f"\nConverged in {iteration + 1} iterations")
                         break
             else:
                 # Solve on current mesh without progress bar

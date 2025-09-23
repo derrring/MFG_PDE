@@ -115,9 +115,9 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         solve_config.picard.__post_init__()  # Trigger validation
 
         if solve_config.picard.verbose:
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print(f" {self.name}")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             print(" Configuration:")
             print(f"   • Picard iterations: {solve_config.picard.max_iterations}")
             print(f"   • Picard tolerance: {solve_config.picard.tolerance:.2e}")

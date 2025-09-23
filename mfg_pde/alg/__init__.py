@@ -15,6 +15,8 @@ Architecture:
 - All solvers support the unified problem interface
 """
 
+from typing import Any
+
 # Base abstract solver
 from .base_mfg_solver import MFGSolver
 from .fp_solvers import BaseFPSolver, FPFDMSolver, FPParticleSolver
@@ -35,12 +37,12 @@ from .mfg_solvers import (  # Fixed Point Iterators; Particle Collocation Solver
 )
 
 
-def create_adaptive_particle_solver(**kwargs):
+def create_adaptive_particle_solver(**kwargs: Any) -> AdaptiveParticleCollocationSolver:
     """Create adaptive particle solver with backward compatibility."""
     return AdaptiveParticleCollocationSolver(**kwargs)
 
 
-def create_enhanced_solver(**kwargs):
+def create_enhanced_solver(**kwargs: Any) -> MonitoredParticleCollocationSolver:
     """Create enhanced particle solver with backward compatibility."""
     return MonitoredParticleCollocationSolver(**kwargs)
 

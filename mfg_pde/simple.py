@@ -19,6 +19,7 @@ Advanced Usage:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -223,7 +224,7 @@ def _explain_config_choice(problem_type: str, config, **kwargs) -> str:
     return base_explanation
 
 
-def validate_problem_parameters(problem_type: str, **kwargs) -> dict[str, Any]:
+def validate_problem_parameters(problem_type: str, **kwargs: Any) -> dict[str, Any]:
     """
     Validate problem parameters and suggest corrections.
 
@@ -324,7 +325,21 @@ def load_example(example_name: str) -> MFGResult:
         raise ValueError(f"Unknown example '{example_name}'. Available: {available}")
 
     problem_type, params = examples[example_name]
-    return solve_mfg(problem_type, accuracy="balanced", verbose=True, **params)
+    # Extract known parameters and pass others as kwargs
+    domain_size: float = params.get("domain_size", 1.0)
+    time_horizon: float = params.get("time_horizon", 1.0)
+    # Filter out known parameters to avoid conflicts with function signature
+    extra_kwargs: dict[str, Any] = {
+        k: v for k, v in params.items() if k not in {"domain_size", "time_horizon", "accuracy", "fast", "verbose"}
+    }
+    return solve_mfg(
+        problem_type,
+        domain_size=domain_size,
+        time_horizon=time_horizon,
+        accuracy="balanced",
+        verbose=True,
+        **extra_kwargs,
+    )
 
 
 def solve_mfg_smart(
@@ -418,8 +433,8 @@ def get_available_problems() -> dict[str, dict[str, Any]]:
             },
             "typical_domain_size": 1.0,
             "typical_time_horizon": 1.0,
-            "complexity": high,
-            "recommended_accuracy": high,
+            "complexity": "high",
+            "recommended_accuracy": "high",
         },
         "traffic_flow": {
             "description": "Traffic dynamics with congestion",
@@ -429,8 +444,8 @@ def get_available_problems() -> dict[str, dict[str, Any]]:
             },
             "typical_domain_size": 1.0,
             "typical_time_horizon": 2.0,
-            "complexity": low,
-            "recommended_accuracy": fast,
+            "complexity": "low",
+            "recommended_accuracy": "fast",
         },
         "epidemic": {
             "description": "Epidemic spreading with control",
@@ -526,9 +541,9 @@ class SimpleMFGProblem:
         problem_type: str,
         domain_bounds: tuple,
         time_horizon: float,
-        hamiltonian_func: callable,
-        initial_density_func: callable,
-        terminal_value_func: callable,
+        hamiltonian_func: Callable,
+        initial_density_func: Callable,
+        terminal_value_func: Callable,
         **metadata,
     ):
         self.problem_type = problem_type
