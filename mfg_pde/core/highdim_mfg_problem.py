@@ -9,7 +9,7 @@ advanced geometry handling.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -210,7 +210,7 @@ class HighDimMFGProblem(ABC):
             # Fallback to damped fixed point if particle collocation fails
             return self.solve_with_damped_fixed_point(max_iterations=max_iterations, tolerance=tolerance)
 
-    def _convert_solution_to_highdim(self, solution_1d) -> dict:
+    def _convert_solution_to_highdim(self, solution_1d: Any) -> dict:
         """Convert 1D solver solution back to high-dimensional arrays."""
         # Extract solution components
         if hasattr(solution_1d, "m_history") and solution_1d.m_history is not None:
@@ -246,7 +246,9 @@ class HighDimMFGProblem(ABC):
             # Multiple time steps
             return field_1d[:, : self.num_spatial_points]
 
-    def visualize_solution(self, solution: dict, time_index: int = -1, field_type: str = "density", **kwargs):
+    def visualize_solution(
+        self, solution: dict, time_index: int = -1, field_type: str = "density", **kwargs: Any
+    ) -> None:
         """Visualize solution at specified time index."""
         if not solution.get("success", False):
             print("No solution to visualize")
@@ -259,7 +261,7 @@ class HighDimMFGProblem(ABC):
         else:
             print(f"Visualization not implemented for {self.dimension}D")
 
-    def _visualize_2d(self, solution: dict, time_index: int, field_type: str, **kwargs):
+    def _visualize_2d(self, solution: dict, time_index: int, field_type: str, **kwargs: Any) -> None:
         """2D visualization using matplotlib."""
         try:
             import matplotlib.pyplot as plt
@@ -306,7 +308,7 @@ class HighDimMFGProblem(ABC):
         plt.tight_layout()
         plt.show()
 
-    def _visualize_3d(self, solution: dict, time_index: int, field_type: str, **kwargs):
+    def _visualize_3d(self, solution: dict, time_index: int, field_type: str, **kwargs: Any) -> None:
         """3D visualization using PyVista."""
         try:
             import pyvista as pv
@@ -423,9 +425,9 @@ class GridBasedMFGProblem(HighDimMFGProblem):
                 # Domain3D is not fully implemented yet - abstract class cannot be instantiated
                 raise NotImplementedError(
                     "3D grid-based problems are not yet supported. Domain3D is an abstract class that requires concrete implementation."
-                )
+                ) from None
             else:
-                raise ValueError(f"Grid-based problems only support 2D and 3D, got {dimension}D")
+                raise ValueError(f"Grid-based problems only support 2D and 3D, got {dimension}D") from None
 
         super().__init__(geometry, time_domain, diffusion_coeff, dimension)
 
@@ -445,7 +447,7 @@ class HybridMFGSolver:
 
     def __init__(self, problem: HighDimMFGProblem):
         self.problem = problem
-        self.solution_history = []
+        self.solution_history: list[dict] = []
 
     def solve(self, max_total_iterations: int = 100, tolerance: float = 1e-6, strategy: str = "adaptive") -> dict:
         """

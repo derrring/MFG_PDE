@@ -130,8 +130,9 @@ elif HAS_SCIPY_TRAPEZOID:
     # Fallback to scipy
     numpy_trapezoid = scipy_trapezoid
 elif HAS_TRAPZ:
-    # Legacy fallback
-    numpy_trapezoid = np.trapz
+    # Legacy fallback - wrap overloaded function
+    def numpy_trapezoid(*args: Any, **kwargs: Any) -> Any:
+        return np.trapz(*args, **kwargs)
 else:
     # No integration available
     def numpy_trapezoid(*args: Any, **kwargs: Any) -> Any:

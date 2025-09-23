@@ -576,7 +576,7 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
         # Add remaining nodes with preferential attachment
         for new_node in range(initial_nodes, self.num_nodes):
             # Select m existing nodes to connect to based on their degrees
-            targets = []
+            targets: list[int] = []
             total_degree = np.sum(node_degrees[:new_node])
 
             if total_degree > 0:
@@ -587,10 +587,12 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
                     size=min(self.num_edges_per_node, new_node),
                     replace=False,
                     p=probabilities,
-                )
+                ).tolist()
             else:
                 # Fallback: random attachment
-                targets = np.random.choice(new_node, size=min(self.num_edges_per_node, new_node), replace=False)
+                targets = np.random.choice(
+                    new_node, size=min(self.num_edges_per_node, new_node), replace=False
+                ).tolist()
 
             # Add edges
             for target in targets:
