@@ -19,8 +19,8 @@ try:
     from tqdm import trange as _trange_real
 
     TQDM_AVAILABLE = True
-    tqdm = _tqdm_real  # type: ignore
-    trange = _trange_real  # type: ignore
+    tqdm = _tqdm_real
+    trange = _trange_real
 except ImportError:
     TQDM_AVAILABLE = False
 
@@ -63,7 +63,7 @@ except ImportError:
         def set_description(self, desc: str) -> None:
             self.desc = desc
 
-    def trange(n: int, **kwargs: Any) -> tqdm:
+    def trange(n: int, **kwargs: Any) -> tqdm:  # type: ignore[name-defined]
         return tqdm(range(n), **kwargs)
 
 
@@ -167,7 +167,7 @@ class IterationProgress:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.pbar and hasattr(self.pbar, "close"):
-            self.pbar.close()  # type: ignore
+            self.pbar.close()
 
     def update(
         self,
@@ -199,12 +199,12 @@ class IterationProgress:
 
             self.pbar.update(n)
             if postfix and hasattr(self.pbar, "set_postfix"):
-                self.pbar.set_postfix(postfix)  # type: ignore
+                self.pbar.set_postfix(postfix)
 
     def set_description(self, desc: str):
         """Update the progress bar description."""
         if self.pbar and hasattr(self.pbar, "set_description"):
-            self.pbar.set_description(desc)  # type: ignore
+            self.pbar.set_description(desc)
 
 
 def timed_operation(description: str | None = None, verbose: bool = True):

@@ -301,7 +301,7 @@ class ParameterSweep:
             # Retry if configured
             if self.config.retry_failed:
                 if not hasattr(self, "_retry_count"):
-                    self._retry_count = {}
+                    self._retry_count: dict[int, int] = {}
                 if self._retry_count.get(run_id, 0) < self.config.max_retries:
                     self._retry_count[run_id] = self._retry_count.get(run_id, 0) + 1
                     self.logger.warning(f"Retrying run {run_id} (attempt {self._retry_count[run_id]})")
@@ -548,10 +548,10 @@ def create_random_sweep(parameters: dict[str, tuple], n_samples: int = 100) -> P
     for param_name, (min_val, max_val) in parameters.items():
         if isinstance(min_val, int) and isinstance(max_val, int):
             # Integer parameters
-            random_params[param_name] = np.random.randint(min_val, max_val + 1, size=n_samples)
+            random_params[param_name] = np.random.randint(min_val, max_val + 1, size=n_samples).tolist()
         else:
             # Float parameters
-            random_params[param_name] = np.random.uniform(min_val, max_val, size=n_samples)
+            random_params[param_name] = np.random.uniform(min_val, max_val, size=n_samples).tolist()
 
     return ParameterSweep(random_params)
 
