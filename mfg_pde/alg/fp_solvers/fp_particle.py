@@ -21,14 +21,14 @@ class FPParticleSolver(BaseFPSolver):
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
         normalize_kde_output: bool = True,
-        boundary_conditions=None,
-    ):
+        boundary_conditions: BoundaryConditions | None = None,
+    ) -> None:
         super().__init__(problem)
         self.fp_method_name = "Particle"
         self.num_particles = num_particles
         self.kde_bandwidth = kde_bandwidth
         self.normalize_kde_output = normalize_kde_output  # New flag
-        self.M_particles_trajectory = None
+        self.M_particles_trajectory: np.ndarray | None = None
 
         # Default to periodic boundaries for backward compatibility
         if boundary_conditions is None:

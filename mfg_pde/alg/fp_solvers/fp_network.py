@@ -23,7 +23,7 @@ Key algorithms:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import scipy.sparse as sp
@@ -32,7 +32,7 @@ from scipy.sparse.linalg import spsolve
 from .base_fp import BaseFPSolver
 
 if TYPE_CHECKING:
-    from ...core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
 
 
 class NetworkFPSolver(BaseFPSolver):
@@ -348,7 +348,7 @@ class NetworkFlowFPSolver(NetworkFPSolver):
     providing better conservation properties and physical interpretation.
     """
 
-    def __init__(self, problem: NetworkMFGProblem, **kwargs):
+    def __init__(self, problem: NetworkMFGProblem, **kwargs: Any) -> None:
         """Initialize flow-based network FP solver."""
         super().__init__(problem, **kwargs)
 
@@ -373,7 +373,7 @@ class NetworkFlowFPSolver(NetworkFPSolver):
 
     def _build_node_edge_mapping(self) -> dict[int, list[int]]:
         """Build mapping from nodes to incident edges."""
-        node_edges = {i: [] for i in range(self.num_nodes)}
+        node_edges: dict[int, list[int]] = {i: [] for i in range(self.num_nodes)}
 
         for edge_idx, (i, j) in enumerate(self.edge_list):
             node_edges[i].append(edge_idx)
@@ -462,7 +462,9 @@ class NetworkFlowFPSolver(NetworkFPSolver):
 
 
 # Factory function for network FP solvers
-def create_network_fp_solver(problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs) -> NetworkFPSolver:
+def create_network_fp_solver(
+    problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs: Any
+) -> NetworkFPSolver:
     """
     Create network FP solver with specified type.
 
