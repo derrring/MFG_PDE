@@ -11,7 +11,7 @@ import warnings
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class NewtonConfig(BaseModel):
@@ -30,7 +30,7 @@ class NewtonConfig(BaseModel):
 
     @field_validator("tolerance")
     @classmethod
-    def validate_numerical_stability(cls, v):
+    def validate_numerical_stability(cls, v: float) -> float:
         """Validate tolerance for numerical stability."""
         if v < 1e-12:
             warnings.warn(
@@ -41,7 +41,7 @@ class NewtonConfig(BaseModel):
 
     @field_validator("damping_factor")
     @classmethod
-    def validate_damping_convergence(cls, v):
+    def validate_damping_convergence(cls, v: float) -> float:
         """Validate damping factor for convergence properties."""
         if v < 0.1:
             warnings.warn(
@@ -65,7 +65,7 @@ class NewtonConfig(BaseModel):
         """Create configuration optimized for research with detailed logging."""
         return cls(max_iterations=100, tolerance=1e-10, damping_factor=1.0, line_search=True, verbose=True)
 
-    model_config = {"env_prefix": "MFG_NEWTON_", "validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class PicardConfig(BaseModel):
@@ -84,7 +84,7 @@ class PicardConfig(BaseModel):
 
     @field_validator("tolerance")
     @classmethod
-    def validate_convergence_feasibility(cls, v, info):
+    def validate_convergence_feasibility(cls, v: float, info: Any) -> float:
         """Validate tolerance is achievable within iteration limits."""
         max_iter = info.data.get("max_iterations", 20) if info.data else 20
         if v < 1e-8 and max_iter < 50:
@@ -104,7 +104,7 @@ class PicardConfig(BaseModel):
         """Create configuration optimized for accuracy."""
         return cls(max_iterations=100, tolerance=1e-6, damping_factor=0.3, adaptive_damping=True, verbose=False)
 
-    model_config = {"env_prefix": "MFG_PICARD_", "validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class GFDMConfig(BaseModel):
@@ -123,7 +123,7 @@ class GFDMConfig(BaseModel):
 
     @field_validator("weight_function")
     @classmethod
-    def validate_weight_function(cls, v):
+    def validate_weight_function(cls, v: str) -> str:
         """Validate weight function type."""
         allowed_functions = {"gaussian", "linear", "cubic", "quintic"}
         if v not in allowed_functions:
@@ -132,7 +132,7 @@ class GFDMConfig(BaseModel):
 
     @field_validator("delta")
     @classmethod
-    def validate_delta_stability(cls, v):
+    def validate_delta_stability(cls, v: float) -> float:
         """Validate delta parameter for stability."""
         if v < 0.01:
             warnings.warn(
@@ -143,7 +143,7 @@ class GFDMConfig(BaseModel):
             warnings.warn(f"Large delta ({v:.3f}) may reduce accuracy", UserWarning)
         return v
 
-    model_config = {"env_prefix": "MFG_GFDM_", "validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class ParticleConfig(BaseModel):
@@ -162,7 +162,7 @@ class ParticleConfig(BaseModel):
 
     @field_validator("boundary_treatment")
     @classmethod
-    def validate_boundary_treatment(cls, v):
+    def validate_boundary_treatment(cls, v: str) -> str:
         """Validate boundary treatment method."""
         allowed_treatments = {"reflection", "absorption", "periodic"}
         if v not in allowed_treatments:
@@ -171,7 +171,7 @@ class ParticleConfig(BaseModel):
 
     @field_validator("resampling_method")
     @classmethod
-    def validate_resampling_method(cls, v):
+    def validate_resampling_method(cls, v: str) -> str:
         """Validate resampling method."""
         allowed_methods = {"systematic", "multinomial", "residual", "stratified"}
         if v not in allowed_methods:
@@ -180,7 +180,7 @@ class ParticleConfig(BaseModel):
 
     @field_validator("num_particles")
     @classmethod
-    def validate_particle_count(cls, v):
+    def validate_particle_count(cls, v: int) -> int:
         """Validate particle count for computational efficiency."""
         if v < 1000:
             warnings.warn(f"Few particles ({v}) may give poor density approximation", UserWarning)
@@ -188,7 +188,7 @@ class ParticleConfig(BaseModel):
             warnings.warn(f"Many particles ({v}) may be computationally expensive", UserWarning)
         return v
 
-    model_config = {"env_prefix": "MFG_PARTICLE_", "validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class HJBConfig(BaseModel):
@@ -215,7 +215,7 @@ class HJBConfig(BaseModel):
 
     @field_validator("solver_type")
     @classmethod
-    def validate_solver_type(cls, v):
+    def validate_solver_type(cls, v: str) -> str:
         """Validate HJB solver type."""
         allowed_types = {"gfdm_qp", "gfdm_tuned", "fdm", "semi_lagrangian"}
         if v not in allowed_types:
@@ -223,7 +223,7 @@ class HJBConfig(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_newton_gfdm_compatibility(self):
+    def validate_newton_gfdm_compatibility(self) -> HJBConfig:
         """Validate compatibility between Newton and GFDM configurations."""
         newton_config = self.newton
         gfdm_config = self.gfdm
@@ -238,7 +238,7 @@ class HJBConfig(BaseModel):
 
         return self
 
-    model_config = {"env_prefix": "MFG_HJB_", "validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class FPConfig(BaseModel):
@@ -264,7 +264,7 @@ class FPConfig(BaseModel):
 
     @field_validator("solver_type")
     @classmethod
-    def validate_solver_type(cls, v):
+    def validate_solver_type(cls, v: str) -> str:
         """Validate FP solver type."""
         allowed_types = {"particle", "fdm", "hybrid"}
         if v not in allowed_types:
@@ -273,14 +273,14 @@ class FPConfig(BaseModel):
 
     @field_validator("time_integration")
     @classmethod
-    def validate_time_integration(cls, v):
+    def validate_time_integration(cls, v: str) -> str:
         """Validate time integration method."""
         allowed_methods = {"euler", "rk4", "implicit_euler", "crank_nicolson"}
         if v not in allowed_methods:
             raise ValueError(f"Time integration must be one of {allowed_methods}")
         return v
 
-    model_config = {"env_prefix": "MFG_FP_", "validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class MFGSolverConfig(BaseModel):
@@ -327,7 +327,7 @@ class MFGSolverConfig(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now, description="Configuration creation timestamp")
 
     @model_validator(mode="after")
-    def validate_tolerance_hierarchy(self):
+    def validate_tolerance_hierarchy(self) -> MFGSolverConfig:
         """Validate tolerance hierarchy across all methods."""
         newton_tol = self.newton.tolerance
         picard_tol = self.picard.tolerance
@@ -350,7 +350,7 @@ class MFGSolverConfig(BaseModel):
 
     @field_validator("convergence_tolerance")
     @classmethod
-    def validate_global_convergence(cls, v):
+    def validate_global_convergence(cls, v: float) -> float:
         """Validate global convergence tolerance is reasonable."""
         if v < 1e-10:
             warnings.warn(
@@ -428,7 +428,7 @@ class MFGSolverConfig(BaseModel):
             experiment_name="research_config",
         )
 
-    model_config = {"env_prefix": "MFG_", "validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 # Convenience factory functions for backward compatibility
@@ -447,7 +447,7 @@ def create_research_config() -> MFGSolverConfig:
     return MFGSolverConfig.research()
 
 
-def extract_legacy_parameters(config: MFGSolverConfig, **kwargs) -> dict[str, Any]:
+def extract_legacy_parameters(config: MFGSolverConfig, **kwargs: Any) -> dict[str, Any]:
     """
     Extract legacy parameters from Pydantic config with automatic validation.
 

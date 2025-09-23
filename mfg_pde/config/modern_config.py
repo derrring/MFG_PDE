@@ -97,8 +97,8 @@ class SolverConfig:
         # Store custom parameters in the SolverConfig wrapper instead
         new_solver_config = SolverConfig(new_config)
         if not hasattr(new_solver_config, "_custom_parameters"):
-            new_solver_config._custom_parameters = {}
-        new_solver_config._custom_parameters[name] = value
+            new_solver_config._custom_parameters = {}  # type: ignore
+        new_solver_config._custom_parameters[name] = value  # type: ignore
         return new_solver_config
 
     def to_dict(self) -> dict[str, Any]:

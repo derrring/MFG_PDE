@@ -8,13 +8,15 @@ numerical properties, and physical constraints specific to MFG problems.
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 import numpy as np
+from mfg_pde.utils.integration import trapezoid
 
-from ..utils.integration import trapezoid
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 class ArrayValidationConfig(BaseModel):
@@ -24,7 +26,7 @@ class ArrayValidationConfig(BaseModel):
     smoothness_threshold: float = Field(1e3, gt=0.0, description="Threshold for smoothness checking")
     cfl_max: float = Field(0.5, gt=0.0, le=1.0, description="Maximum CFL number allowed")
 
-    model_config = {"validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class MFGGridConfig(BaseModel):
@@ -44,7 +46,7 @@ class MFGGridConfig(BaseModel):
 
     @field_validator("xmax")
     @classmethod
-    def validate_domain(cls, v, info):
+    def validate_domain(cls, v: float, info: Any) -> float:
         """Validate spatial domain is well-defined."""
         if info.data and "xmin" in info.data:
             xmin = info.data["xmin"]
@@ -74,7 +76,7 @@ class MFGGridConfig(BaseModel):
 
     @field_validator("sigma")
     @classmethod
-    def validate_cfl_stability(cls, v, info):
+    def validate_cfl_stability(cls, v: float, info: Any) -> float:
         """Validate CFL condition for numerical stability."""
         if info.data:
             Nx = info.data.get("Nx")
@@ -93,7 +95,7 @@ class MFGGridConfig(BaseModel):
 
         return v
 
-    model_config = {"validate_assignment": True}
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class MFGArrays(BaseModel):
@@ -104,8 +106,8 @@ class MFGArrays(BaseModel):
     physical constraints, and numerical properties.
     """
 
-    U_solution: np.ndarray = Field(..., description="HJB solution array")
-    M_solution: np.ndarray = Field(..., description="FP density array")
+    U_solution: "NDArray[np.floating]" = Field(..., description="HJB solution array")
+    M_solution: "NDArray[np.floating]" = Field(..., description="FP density array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
     validation_config: ArrayValidationConfig = Field(
         default_factory=lambda: ArrayValidationConfig(
@@ -116,7 +118,7 @@ class MFGArrays(BaseModel):
 
     @field_validator("U_solution")
     @classmethod
-    def validate_U_solution(cls, v, info):
+    def validate_U_solution(cls, v: "NDArray[np.floating]", info: Any) -> "NDArray[np.floating]":
         """Validate HJB solution array properties."""
         grid_config = info.data.get("grid_config") if info.data else None
 
@@ -161,7 +163,7 @@ class MFGArrays(BaseModel):
 
     @field_validator("M_solution")
     @classmethod
-    def validate_M_solution(cls, v, info):
+    def validate_M_solution(cls, v: "NDArray[np.floating]", info: Any) -> "NDArray[np.floating]":
         """Validate FP density array properties."""
         if info.data:
             grid_config = info.data.get("grid_config")
@@ -222,7 +224,7 @@ class MFGArrays(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_solution_consistency(self):
+    def validate_solution_consistency(self) -> MFGArrays:
         """Validate consistency between U and M solutions."""
         U_solution = self.U_solution
         M_solution = self.M_solution
@@ -294,12 +296,12 @@ class CollocationConfig(BaseModel):
     and compatibility with grid configuration.
     """
 
-    points: np.ndarray = Field(..., description="Collocation points array")
+    points: "NDArray[np.floating]" = Field(..., description="Collocation points array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
 
     @field_validator("points")
     @classmethod
-    def validate_collocation_points(cls, v, info):
+    def validate_collocation_points(cls, v: "NDArray[np.floating]", info: Any) -> "NDArray[np.floating]":
         """Validate collocation points properties."""
         # Shape validation
         if v.ndim != 2 or v.shape[1] != 1:
@@ -376,7 +378,7 @@ class ExperimentConfig(BaseModel):
 
     @field_validator("experiment_name")
     @classmethod
-    def validate_experiment_name(cls, v):
+    def validate_experiment_name(cls, v: str) -> str:
         """Validate experiment name is filesystem-safe."""
         import re
 
@@ -385,7 +387,7 @@ class ExperimentConfig(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_experiment_consistency(self):
+    def validate_experiment_consistency(self) -> ExperimentConfig:
         """Validate consistency between all configurations."""
         grid_config = self.grid_config
         arrays = self.arrays
@@ -409,7 +411,7 @@ class ExperimentConfig(BaseModel):
 
     def to_notebook_metadata(self) -> dict[str, Any]:
         """Convert to metadata suitable for notebook reporting."""
-        metadata = {
+        metadata: dict[str, Any] = {
             "experiment_name": self.experiment_name,
             "description": self.description,
             "researcher": self.researcher,
@@ -425,4 +427,4 @@ class ExperimentConfig(BaseModel):
 
         return metadata
 
-    model_config = {"arbitrary_types_allowed": True, "validate_assignment": True}
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)

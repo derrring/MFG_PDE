@@ -39,7 +39,7 @@ repos:
     rev: v1.11.2
     hooks:
       - id: mypy
-        files: ^mfg_pde/(simple\.py|core/mfg_problem\.py|types/.*\.py|geometry/base_geometry\.py|factory/solver_factory\.py)$
+        files: ^mfg_pde/(simple\.py|core/mfg_problem\.py|types/.*\.py|geometry/base_geometry\.py|factory/solver_factory\.py|config/.*\.py)$
         args: [--follow-imports=silent, --ignore-missing-imports]
         additional_dependencies: [numpy, scipy, pydantic, types-tqdm, types-PyYAML, types-setuptools]
 

@@ -1,0 +1,33 @@
+# MFG_PDE Code Owners
+#
+# This file defines code ownership for automatic review assignment.
+# When a PR is created, GitHub will automatically request reviews from relevant owners.
+#
+# Global ownership
+* @derrring
+
+# Core mathematical modules - require specialized review
+/mfg_pde/core/ @derrring
+/mfg_pde/alg/ @derrring
+/mfg_pde/geometry/ @derrring
+
+# Configuration and factory systems
+/mfg_pde/config/ @derrring
+/mfg_pde/factory/ @derrring
+
+# Type system and infrastructure
+/mfg_pde/types/ @derrring
+*.py @derrring
+
+# Documentation - allow broader contribution
+/docs/ @derrring
+/examples/ @derrring
+/README.md @derrring
+
+# Infrastructure and workflows
+/.github/ @derrring
+/.pre-commit-config*.yaml @derrring
+/pyproject.toml @derrring
+
+# CI/CD and automation
+/.github/workflows/ @derrring
