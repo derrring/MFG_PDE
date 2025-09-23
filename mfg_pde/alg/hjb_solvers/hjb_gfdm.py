@@ -1526,9 +1526,9 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         stats = self.get_enhanced_qp_report()
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"ENHANCED QP ({self.qp_optimization_level.upper()}) PERFORMANCE SUMMARY")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
         print("Configuration:")
         print(f"  Optimization Level: {stats['optimization_level']}")
@@ -1569,4 +1569,4 @@ class HJBGFDMSolver(BaseHJBSolver):
         else:
             print("  Status: NEEDS FURTHER TUNING")
 
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")

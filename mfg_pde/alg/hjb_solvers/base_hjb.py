@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import scipy.sparse as sparse
@@ -16,7 +16,7 @@ P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
 
 
 class BaseHJBSolver(ABC):
-    def __init__(self, problem: MFGProblem):
+    def __init__(self, problem: MFGProblem) -> None:
         self.problem = problem
         self.hjb_method_name = "BaseHJB"
 
@@ -118,7 +118,7 @@ def compute_hjb_residual(
 
     # For m-coupling term, original notebook passed gradUkn, gradUknim1 (from prev Picard iter)
     # but mdmH_withM itself didn't use them. We'll pass an empty dict for now.
-    U_n_derivatives_for_m_coupling = {}  # Not used by ExampleMFGProblem's term
+    U_n_derivatives_for_m_coupling: dict[str, Any] = {}  # Not used by ExampleMFGProblem's term
 
     for i in range(Nx):
         if np.isnan(Phi_U[i]):

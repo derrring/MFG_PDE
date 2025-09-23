@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 import numpy as np
+
 from mfg_pde.utils.integration import trapezoid
 
 if TYPE_CHECKING:
@@ -106,8 +107,8 @@ class MFGArrays(BaseModel):
     physical constraints, and numerical properties.
     """
 
-    U_solution: "NDArray[np.floating]" = Field(..., description="HJB solution array")
-    M_solution: "NDArray[np.floating]" = Field(..., description="FP density array")
+    U_solution: NDArray[np.floating] = Field(..., description="HJB solution array")
+    M_solution: NDArray[np.floating] = Field(..., description="FP density array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
     validation_config: ArrayValidationConfig = Field(
         default_factory=lambda: ArrayValidationConfig(
@@ -118,7 +119,7 @@ class MFGArrays(BaseModel):
 
     @field_validator("U_solution")
     @classmethod
-    def validate_U_solution(cls, v: "NDArray[np.floating]", info: Any) -> "NDArray[np.floating]":
+    def validate_U_solution(cls, v: NDArray[np.floating], info: Any) -> NDArray[np.floating]:
         """Validate HJB solution array properties."""
         grid_config = info.data.get("grid_config") if info.data else None
 
@@ -163,7 +164,7 @@ class MFGArrays(BaseModel):
 
     @field_validator("M_solution")
     @classmethod
-    def validate_M_solution(cls, v: "NDArray[np.floating]", info: Any) -> "NDArray[np.floating]":
+    def validate_M_solution(cls, v: NDArray[np.floating], info: Any) -> NDArray[np.floating]:
         """Validate FP density array properties."""
         if info.data:
             grid_config = info.data.get("grid_config")
@@ -296,12 +297,12 @@ class CollocationConfig(BaseModel):
     and compatibility with grid configuration.
     """
 
-    points: "NDArray[np.floating]" = Field(..., description="Collocation points array")
+    points: NDArray[np.floating] = Field(..., description="Collocation points array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
 
     @field_validator("points")
     @classmethod
-    def validate_collocation_points(cls, v: "NDArray[np.floating]", info: Any) -> "NDArray[np.floating]":
+    def validate_collocation_points(cls, v: NDArray[np.floating], info: Any) -> NDArray[np.floating]:
         """Validate collocation points properties."""
         # Shape validation
         if v.ndim != 2 or v.shape[1] != 1:
@@ -343,7 +344,7 @@ class CollocationConfig(BaseModel):
 
             if max_spacing / min_spacing > 10:
                 warnings.warn(
-                    f"Irregular collocation point distribution (spacing ratio: {max_spacing/min_spacing:.1f})",
+                    f"Irregular collocation point distribution (spacing ratio: {max_spacing / min_spacing:.1f})",
                     UserWarning,
                 )
 

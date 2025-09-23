@@ -109,9 +109,9 @@ class NetworkFixedPointIterator(MFGSolver):
             - convergence_info: Dictionary with convergence data
         """
         if verbose:
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print(f"NETWORK MFG SOLVER: {self.name}")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             network_type = (
                 self.network_problem.network_data.network_type.value
                 if self.network_problem.network_data is not None
@@ -219,7 +219,7 @@ class NetworkFixedPointIterator(MFGSolver):
 
         if verbose:
             print(f"\n🏁 Total execution time: {execution_time:.2f}s")
-            print(f"Average time per iteration: {execution_time/self.iterations_run:.2f}s")
+            print(f"Average time per iteration: {execution_time / self.iterations_run:.2f}s")
 
         # Prepare convergence info
         convergence_info = {

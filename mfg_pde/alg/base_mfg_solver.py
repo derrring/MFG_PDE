@@ -17,7 +17,7 @@ class MFGSolver(ABC):
         self._solution_computed: bool = False
 
     @abstractmethod
-    def solve(self, max_iterations: int, tolerance: float = 1e-5, **kwargs) -> SolverReturnTuple:
+    def solve(self, max_iterations: int, tolerance: float = 1e-5, **kwargs: Any) -> SolverReturnTuple:
         """
         Solves the MFG system and returns U, M, and convergence info.
 
@@ -74,7 +74,7 @@ class MFGSolver(ABC):
         """Check if warm start data is available."""
         return self.warm_start_data is not None
 
-    def clear_warm_start_data(self):
+    def clear_warm_start_data(self) -> None:
         """Clear warm start data."""
         self.warm_start_data = None
 

@@ -233,7 +233,7 @@ class FixedPointIterator(MFGSolver):
 
             elapsed_time_iter = time.time() - start_time_iter
             print(
-                f"  Iter {iiter+1}: Rel Err U={self.l2distu_rel[iiter]:.2e}, "
+                f"  Iter {iiter + 1}: Rel Err U={self.l2distu_rel[iiter]:.2e}, "
                 f"M={self.l2distm_rel[iiter]:.2e}. "
                 f"Abs Err U={self.l2distu_abs[iiter]:.2e}, M={self.l2distm_abs[iiter]:.2e}. "
                 f"Time: {elapsed_time_iter:.2f}s"

@@ -76,7 +76,7 @@ class SolverFactory:
         config_preset: str = "balanced",
         hjb_solver: BaseHJBSolver | None = None,
         fp_solver: BaseFPSolver | None = None,
-        collocation_points: "NDArray[np.floating]" | None = None,
+        collocation_points: NDArray[np.floating] | None = None,
         custom_config: MFGSolverConfig | None = None,
         enable_amr: bool = False,
         amr_config: dict[str, Any] | None = None,
@@ -270,7 +270,7 @@ class SolverFactory:
     def _create_particle_collocation_solver(
         problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: "NDArray[np.floating]" | None,
+        collocation_points: NDArray[np.floating] | None,
         **kwargs: Any,
     ) -> MonitoredParticleCollocationSolver:
         """Create a particle collocation solver."""
@@ -314,7 +314,7 @@ class SolverFactory:
     def _create_monitored_particle_solver(
         problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: "NDArray[np.floating]" | None,
+        collocation_points: NDArray[np.floating] | None,
         **kwargs: Any,
     ) -> MonitoredParticleCollocationSolver:
         """Create a monitored particle collocation solver with enhanced convergence."""
@@ -325,7 +325,7 @@ class SolverFactory:
     def _create_adaptive_particle_solver(
         problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: "NDArray[np.floating]" | None,
+        collocation_points: NDArray[np.floating] | None,
         **kwargs: Any,
     ) -> AdaptiveParticleCollocationSolver:
         """Create an adaptive particle collocation solver."""
@@ -549,7 +549,7 @@ def create_research_solver(
 
 
 def create_monitored_solver(
-    problem: MFGProblem, collocation_points: "NDArray[np.floating]" | None = None, **kwargs: Any
+    problem: MFGProblem, collocation_points: NDArray[np.floating] | None = None, **kwargs: Any
 ) -> MonitoredParticleCollocationSolver:
     """
     Create a monitored particle collocation solver with enhanced convergence analysis.
