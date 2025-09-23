@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
 from mfg_pde.alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from mfg_pde.alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from mfg_pde.alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
@@ -73,7 +76,7 @@ class SolverFactory:
         config_preset: str = "balanced",
         hjb_solver: BaseHJBSolver | None = None,
         fp_solver: BaseFPSolver | None = None,
-        collocation_points: np.ndarray | None = None,
+        collocation_points: "NDArray[np.floating]" | None = None,
         custom_config: MFGSolverConfig | None = None,
         enable_amr: bool = False,
         amr_config: dict[str, Any] | None = None,
@@ -267,7 +270,7 @@ class SolverFactory:
     def _create_particle_collocation_solver(
         problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: np.ndarray | None,
+        collocation_points: "NDArray[np.floating]" | None,
         **kwargs: Any,
     ) -> MonitoredParticleCollocationSolver:
         """Create a particle collocation solver."""
@@ -311,7 +314,7 @@ class SolverFactory:
     def _create_monitored_particle_solver(
         problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: np.ndarray | None,
+        collocation_points: "NDArray[np.floating]" | None,
         **kwargs: Any,
     ) -> MonitoredParticleCollocationSolver:
         """Create a monitored particle collocation solver with enhanced convergence."""
@@ -322,7 +325,7 @@ class SolverFactory:
     def _create_adaptive_particle_solver(
         problem: MFGProblem,
         config: MFGSolverConfig,
-        collocation_points: np.ndarray | None,
+        collocation_points: "NDArray[np.floating]" | None,
         **kwargs: Any,
     ) -> AdaptiveParticleCollocationSolver:
         """Create an adaptive particle collocation solver."""
@@ -546,7 +549,7 @@ def create_research_solver(
 
 
 def create_monitored_solver(
-    problem: MFGProblem, collocation_points: np.ndarray | None = None, **kwargs: Any
+    problem: MFGProblem, collocation_points: "NDArray[np.floating]" | None = None, **kwargs: Any
 ) -> MonitoredParticleCollocationSolver:
     """
     Create a monitored particle collocation solver with enhanced convergence analysis.

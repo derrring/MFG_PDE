@@ -19,21 +19,14 @@ if TYPE_CHECKING:
     except ImportError:
         pass
 
-# Handle interpolation errors - use the correct exception name
-if TYPE_CHECKING:
-    try:
-        from omegaconf.errors import UnsupportedInterpolationType as UnsupportedInterpolation
-    except ImportError:
-        UnsupportedInterpolation = Exception
-else:
-    try:
-        from omegaconf.errors import UnsupportedInterpolationType as UnsupportedInterpolation
-    except ImportError:
-        UnsupportedInterpolation = Exception
-
 try:
     from omegaconf import DictConfig, ListConfig, OmegaConf
     from omegaconf.errors import ConfigAttributeError
+
+    try:
+        from omegaconf.errors import UnsupportedInterpolationType
+    except ImportError:
+        UnsupportedInterpolationType = Exception
 
     OMEGACONF_AVAILABLE = True
 except ImportError:
@@ -43,7 +36,7 @@ except ImportError:
     ListConfig = list
     OmegaConf = None
     ConfigAttributeError = AttributeError
-    UnsupportedInterpolation = Exception
+    UnsupportedInterpolationType = Exception
 
 from .pydantic_config import MFGSolverConfig, create_fast_config
 
@@ -86,8 +79,8 @@ class OmegaConfManager:
             self._OmegaConf = _OmegaConf
             self._DictConfig = _DictConfig
             self._omegaconf_available = True
-        except ImportError:
-            raise ImportError("OmegaConf is not available. Install with: pip install omegaconf")
+        except ImportError as err:
+            raise ImportError("OmegaConf is not available. Install with: pip install omegaconf") from err
 
         self.config_dir = Path(config_dir) if config_dir else Path(__file__).parent / "configs"
         self.config_dir.mkdir(exist_ok=True)
@@ -96,7 +89,7 @@ class OmegaConfManager:
         # Initialize default configurations
         self._create_default_configs()
 
-    def _create_default_configs(self):
+    def _create_default_configs(self) -> None:
         """Create default configuration files if they don't exist."""
 
         # Base MFG problem configuration
@@ -203,7 +196,7 @@ class OmegaConfManager:
                 self._OmegaConf.save(self._OmegaConf.create(config), config_path)
                 logger.info(f"Created default config: {config_path}")
 
-    def load_config(self, config_path: str | Path, **overrides) -> OmegaConfig:
+    def load_config(self, config_path: str | Path, **overrides: Any) -> OmegaConfig:
         """
         Load configuration from YAML file with optional overrides.
 
@@ -232,7 +225,7 @@ class OmegaConfManager:
         # Resolve interpolations (modifies config in place)
         try:
             self._OmegaConf.resolve(config)
-        except (UnsupportedInterpolation, Exception) as e:
+        except (UnsupportedInterpolationType, Exception) as e:
             logger.warning(f"Could not resolve all interpolations: {e}")
 
         # Cast to DictConfig for type consistency (our configs should be dictionaries)
@@ -240,7 +233,7 @@ class OmegaConfManager:
 
         return cast(OmegaConfig, config)
 
-    def compose_config(self, *config_paths: str | Path, **overrides) -> OmegaConfig:
+    def compose_config(self, *config_paths: str | Path, **overrides: Any) -> OmegaConfig:
         """
         Compose configuration from multiple YAML files.
 
@@ -313,7 +306,7 @@ class OmegaConfManager:
             # Add more mappings as needed
         }
 
-    def save_config(self, config: OmegaConfig, output_path: str | Path):
+    def save_config(self, config: OmegaConfig, output_path: str | Path) -> None:
         """
         Save configuration to YAML file.
 
@@ -403,7 +396,7 @@ class OmegaConfManager:
                     return False
 
             # Type validation
-            if not isinstance(config.problem.T, (int, float)):
+            if not isinstance(config.problem.T, int | float):
                 logger.error("problem.T must be numeric")
                 return False
 
@@ -455,13 +448,13 @@ def create_omega_manager(config_dir: str | Path | None = None) -> OmegaConfManag
 
 
 # Convenience functions
-def load_beach_config(**overrides) -> OmegaConfig:
+def load_beach_config(**overrides: Any) -> OmegaConfig:
     """Load Towel on Beach configuration with overrides."""
     manager = create_omega_manager()
     return manager.load_config("beach_problem.yaml", **overrides)
 
 
-def load_experiment_config(**overrides) -> OmegaConfig:
+def load_experiment_config(**overrides: Any) -> OmegaConfig:
     """Load experiment configuration with overrides."""
     manager = create_omega_manager()
     return manager.load_config("experiment.yaml", **overrides)
@@ -477,4 +470,4 @@ def create_parameter_sweep_configs(lambda_values: list[float], init_types: list[
         "problem.initial_condition.type": init_types,
     }
 
-    return manager.create_parameter_sweep(base_config, sweep_params)
+    return manager.create_parameter_sweep(base_config, sweep_params)  # type: ignore

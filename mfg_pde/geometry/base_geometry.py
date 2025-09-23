@@ -9,9 +9,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -35,15 +38,15 @@ class MeshData:
         metadata: Additional mesh information and parameters
     """
 
-    vertices: np.ndarray  # (N_vertices, dim) coordinates
-    elements: np.ndarray  # Element connectivity
+    vertices: "NDArray[np.floating]"  # (N_vertices, dim) coordinates
+    elements: "NDArray[np.integer]"  # Element connectivity
     element_type: str  # "triangle", "tetrahedron", etc.
-    boundary_tags: np.ndarray  # Boundary region IDs
-    element_tags: np.ndarray  # Element region IDs
-    boundary_faces: np.ndarray  # Boundary connectivity
+    boundary_tags: "NDArray[np.integer]"  # Boundary region IDs
+    element_tags: "NDArray[np.integer]"  # Element region IDs
+    boundary_faces: "NDArray[np.integer]"  # Boundary connectivity
     dimension: int  # 2 or 3
     quality_metrics: dict[str, Any] | None = None
-    element_volumes: np.ndarray | None = None
+    element_volumes: "NDArray[np.floating]" | None = None
     metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
@@ -74,11 +77,11 @@ class MeshData:
         return self.elements.shape[0]
 
     @property
-    def bounds(self) -> tuple[np.ndarray, np.ndarray]:
+    def bounds(self) -> tuple["NDArray[np.floating]", "NDArray[np.floating]"]:
         """Bounding box of the mesh: (min_coords, max_coords)."""
         return np.min(self.vertices, axis=0), np.max(self.vertices, axis=0)
 
-    def compute_element_volumes(self) -> np.ndarray:
+    def compute_element_volumes(self) -> "NDArray[np.floating]":
         """Compute element areas (2D) or volumes (3D)."""
         if self.element_volumes is not None:
             return self.element_volumes
@@ -94,7 +97,7 @@ class MeshData:
 
         return self.element_volumes
 
-    def _compute_triangle_areas(self) -> np.ndarray:
+    def _compute_triangle_areas(self) -> "NDArray[np.floating]":
         """Compute areas of triangular elements."""
         areas = np.zeros(self.num_elements)
         for i, element in enumerate(self.elements):
@@ -104,7 +107,7 @@ class MeshData:
             areas[i] = 0.5 * abs(cross)
         return areas
 
-    def _compute_tetrahedron_volumes(self) -> np.ndarray:
+    def _compute_tetrahedron_volumes(self) -> "NDArray[np.floating]":
         """Compute volumes of tetrahedral elements."""
         volumes = np.zeros(self.num_elements)
         for i, element in enumerate(self.elements):
@@ -210,7 +213,7 @@ class BaseGeometry(ABC):
 
     @property
     @abstractmethod
-    def bounds(self) -> tuple[np.ndarray, np.ndarray]:
+    def bounds(self) -> tuple["NDArray[np.floating]", "NDArray[np.floating]"]:
         """Get geometry bounding box. Must be implemented by subclasses."""
 
     @abstractmethod
