@@ -8,9 +8,12 @@ improving code readability, IDE support, and API maintainability.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -33,11 +36,11 @@ class SolverResult:
         metadata: Additional solver-specific information
     """
 
-    U: np.ndarray
-    M: np.ndarray
+    U: NDArray[np.floating]
+    M: NDArray[np.floating]
     iterations: int
-    error_history_U: np.ndarray
-    error_history_M: np.ndarray
+    error_history_U: NDArray[np.floating]
+    error_history_M: NDArray[np.floating]
     solver_name: str = "Unknown Solver"
     convergence_achieved: bool = False
     execution_time: float | None = None
@@ -145,8 +148,8 @@ class ConvergenceResult:
     This class provides extended convergence analysis beyond basic error tracking.
     """
 
-    error_history_U: np.ndarray
-    error_history_M: np.ndarray
+    error_history_U: NDArray[np.floating]
+    error_history_M: NDArray[np.floating]
     iterations_performed: int
     convergence_achieved: bool
     final_tolerance: float
@@ -198,11 +201,11 @@ class ConvergenceResult:
 
 
 def create_solver_result(
-    U: np.ndarray,
-    M: np.ndarray,
+    U: NDArray[np.floating],
+    M: NDArray[np.floating],
     iterations: int,
-    error_history_U: np.ndarray,
-    error_history_M: np.ndarray,
+    error_history_U: NDArray[np.floating],
+    error_history_M: NDArray[np.floating],
     solver_name: str = "Unknown Solver",
     convergence_achieved: bool = False,
     tolerance: float | None = None,
