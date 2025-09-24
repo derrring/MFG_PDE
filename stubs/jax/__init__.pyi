@@ -4,8 +4,6 @@
 from collections.abc import Callable
 from typing import Any
 
-import numpy as np
-
 # JAX Array type - simple compatibility
 Array = Any
 
