@@ -252,7 +252,7 @@ class AdvancedConvergenceMonitor:
 
         # History tracking
         self.iteration_count = 0
-        self.convergence_history = []
+        self.convergence_history: list[dict[str, Any]] = []
         self.previous_m = None
         self.previous_m_moments = None
         self.x_grid = None

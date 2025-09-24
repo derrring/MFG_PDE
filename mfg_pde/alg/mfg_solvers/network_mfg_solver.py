@@ -80,7 +80,7 @@ class NetworkFixedPointIterator(MFGSolver):
         self.M: np.ndarray | None = None
 
         # Convergence tracking
-        self.convergence_history = []
+        self.convergence_history: list[dict[str, Any]] = []
         self.iterations_run = 0
 
         # Solver identification

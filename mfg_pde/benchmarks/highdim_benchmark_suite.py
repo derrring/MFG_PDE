@@ -580,7 +580,7 @@ class HighDimMFGBenchmark:
             return {}
 
         # Organize results by test type and dimension
-        results_by_test = {}
+        results_by_test: dict[str, list[BenchmarkResult]] = {}
         for result in self.results:
             test_key = f"{result.test_name}_{result.dimension}d"
             if test_key not in results_by_test:
@@ -634,7 +634,7 @@ class HighDimMFGBenchmark:
             return {}
 
         # Group by dimension
-        by_dimension = {}
+        by_dimension: dict[int, list[BenchmarkResult]] = {}
         for result in convergence_results:
             dim = result.dimension
             if dim not in by_dimension:
@@ -711,7 +711,7 @@ class HighDimMFGBenchmark:
 
     def _compare_solver_methods(self) -> dict[str, Any]:
         """Compare performance of different solver methods."""
-        by_method = {}
+        by_method: dict[str, list[BenchmarkResult]] = {}
         for result in self.results:
             method = result.solver_method
             if method not in by_method:

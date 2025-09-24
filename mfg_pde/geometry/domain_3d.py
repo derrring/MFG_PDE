@@ -417,7 +417,7 @@ class Domain3D(BaseGeometry):
             volumes = self._compute_tetrahedron_volumes(mesh_data.vertices, mesh_data.elements)
 
         # Radius ratio quality measure for tetrahedra
-        quality_ratios = []
+        quality_ratios: list[float] = []
         for elem in mesh_data.elements:
             coords = mesh_data.vertices[elem]
 

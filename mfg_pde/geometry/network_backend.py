@@ -297,7 +297,7 @@ class NetworkXBackend(AbstractNetworkBackend):
             raise BackendNotAvailableError("networkx not available")
 
         if directed:
-            graph = self.nx.DiGraph()
+            graph: Any = self.nx.DiGraph()
         else:
             graph = self.nx.Graph()
 

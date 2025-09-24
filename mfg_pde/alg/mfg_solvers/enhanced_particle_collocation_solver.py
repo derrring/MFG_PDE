@@ -85,7 +85,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
             self.convergence_monitor = create_default_monitor(**convergence_kwargs)
 
         # Enhanced convergence tracking
-        self.detailed_convergence_history = []
+        self.detailed_convergence_history: list[dict[str, Any]] = []
         self.use_advanced_convergence = True
 
     def solve(

@@ -8,6 +8,7 @@ suitable for regular domain problems and testing.
 from __future__ import annotations
 
 from typing import cast
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -70,7 +71,7 @@ class SimpleGrid2D(BaseGeometry):
         vertices = np.column_stack([X.ravel(), Y.ravel()])
 
         # Create triangular elements (2 triangles per grid cell)
-        elements = []
+        elements: list[list[int]] = []
         for i in range(self.nx):
             for j in range(self.ny):
                 # Grid indices
@@ -86,8 +87,8 @@ class SimpleGrid2D(BaseGeometry):
         elements = np.array(elements, dtype=np.int32)
 
         # Boundary faces (edges for 2D)
-        boundary_faces = []
-        boundary_tags = []
+        boundary_faces: list[list[int]] = []
+        boundary_tags: list[int] = []
 
         # Bottom boundary (y = ymin)
         for i in range(self.nx):

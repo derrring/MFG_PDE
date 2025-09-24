@@ -186,7 +186,7 @@ class MFGParameterSweepAnalyzer:
         flattened_results = []
 
         for i, result in enumerate(results):
-            flattened = {"run_id": i}
+            flattened: dict[str, Any] = {"run_id": i}
 
             # Flatten parameters
             if "parameters" in result:
@@ -196,7 +196,7 @@ class MFGParameterSweepAnalyzer:
             # Flatten metrics
             for key, value in result.items():
                 if key not in ["parameters", "x_grid", "final_density", "M"] and isinstance(
-                    value, (int, float, str, bool)
+                    value, int | float | str | bool
                 ):
                     flattened[f"metric_{key}"] = value
 
@@ -625,7 +625,7 @@ def benchmark_polars_vs_pandas(data_size: int = 100000) -> dict[str, Any]:
 
     # Try pandas comparison if available
     try:
-        import pandas as pd  # type: ignore[import-untyped]
+        import pandas as pd
 
         start_time = time.time()
         pd_df = pd.DataFrame(data)

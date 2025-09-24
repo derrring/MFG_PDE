@@ -169,7 +169,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
 
-    def _get_boundary_condition_property(self, property_name: str, default=None):
+    def _get_boundary_condition_property(self, property_name: str, default=None) -> Any:
         """Helper method to get boundary condition properties from either dict or dataclass."""
         if hasattr(self.boundary_conditions, property_name):
             # BoundaryConditions dataclass
