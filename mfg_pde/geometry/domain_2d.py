@@ -76,7 +76,7 @@ class Domain2D(BaseGeometry):
     def create_gmsh_geometry(self) -> Any:
         """Create 2D geometry using Gmsh API."""
         try:
-            import gmsh  # type: ignore[import-not-found]  # type: ignore[import-not-found]
+            import gmsh  # type: ignore[import-not-found]
         except ImportError:
             raise ImportError("gmsh is required for mesh generation") from None
 
@@ -109,7 +109,7 @@ class Domain2D(BaseGeometry):
 
     def _create_rectangle_gmsh(self):
         """Create rectangular domain in Gmsh."""
-        import gmsh  # type: ignore[import-not-found]
+        import gmsh
 
         # Create corner points
         p1 = gmsh.model.geo.addPoint(self.xmin, self.ymin, 0.0)
@@ -137,7 +137,7 @@ class Domain2D(BaseGeometry):
 
     def _create_circle_gmsh(self):
         """Create circular domain in Gmsh."""
-        import gmsh  # type: ignore[import-not-found]
+        import gmsh
 
         center_x, center_y = self.center
 
@@ -167,7 +167,7 @@ class Domain2D(BaseGeometry):
 
     def _create_polygon_gmsh(self):
         """Create polygonal domain in Gmsh."""
-        import gmsh  # type: ignore[import-not-found]
+        import gmsh
 
         # Create points
         points = []
@@ -192,7 +192,7 @@ class Domain2D(BaseGeometry):
     def _create_custom_gmsh(self):
         """Create custom domain using user-provided function."""
         try:
-            import gmsh  # type: ignore[import-not-found]  # type: ignore[import-not-found]
+            import gmsh
         except ImportError:
             raise ImportError("gmsh is required for custom geometry creation")
 
@@ -205,7 +205,7 @@ class Domain2D(BaseGeometry):
 
     def _import_cad_gmsh(self):
         """Import CAD geometry into Gmsh."""
-        import gmsh  # type: ignore[import-not-found]
+        import gmsh
 
         # Import CAD file
         gmsh.model.occ.importShapes(self.cad_file)
@@ -222,7 +222,7 @@ class Domain2D(BaseGeometry):
         if not self.holes:
             return
 
-        import gmsh  # type: ignore[import-not-found]
+        import gmsh
 
         hole_surfaces = []
 
@@ -292,8 +292,8 @@ class Domain2D(BaseGeometry):
     def generate_mesh(self) -> MeshData:
         """Generate 2D triangular mesh using Gmsh → Meshio pipeline."""
         try:
-            import gmsh  # type: ignore[import-not-found]  # type: ignore[import-not-found]
-            import meshio  # type: ignore[import-untyped]  # noqa: F401
+            import gmsh
+            import meshio  # noqa: F401
         except ImportError:
             raise ImportError("gmsh and meshio are required for mesh generation")
 
