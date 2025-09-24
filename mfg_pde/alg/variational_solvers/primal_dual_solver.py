@@ -99,8 +99,8 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         self._initialize_dual_variables()
 
         # Algorithm state
-        self.primal_dual_history = []
-        self.constraint_violation_history = []
+        self.primal_dual_history: list[dict[str, float]] = []
+        self.constraint_violation_history: list[float] = []
         self.penalty_history = [augmented_penalty]
 
         logger.info(f"Created {self.solver_name} solver")

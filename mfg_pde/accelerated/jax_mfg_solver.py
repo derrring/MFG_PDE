@@ -10,19 +10,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    from mfg_pde.types.internal import JAXSolverReturn
-
-# JAXArray is used at runtime for type annotations
-try:
-    from mfg_pde.types.internal import JAXArray
-except ImportError:
-    from typing import Any
-
-    JAXArray = Any
-
 import numpy as np
 
+# Runtime imports needed for both contexts
 from . import DEFAULT_DEVICE, HAS_GPU, HAS_JAX
 from .jax_utils import (
     apply_boundary_conditions,
@@ -37,40 +27,60 @@ from .jax_utils import (
     to_device,
 )
 
-if HAS_JAX:
-    import optax
+# Apply TYPE_CHECKING isolation principle for JAX (systematic methodology)
+if TYPE_CHECKING:
+    # Static typing world - simple definitions
+    from mfg_pde.types.internal import JAXSolverReturn
 
-    import jax
-    import jax.numpy as jnp
-    from jax import grad, jacfwd, jit, vmap
-    from jax.lax import while_loop
+    jnp = np  # Type alias for static analysis
+    jax = Any
+    JAXArray = Any
+
+    def jit(fun, **kwargs): ...
+    def grad(fun, **kwargs): ...
+    def jacfwd(fun, **kwargs): ...
+    def vmap(fun, **kwargs): ...
+    def while_loop(cond, body, init): ...
+
+    optax = Any
 else:
-    # Fallbacks when JAX not available
-    jax = None
-    jnp = np
+    # Runtime world - actual imports with fallbacks
+    # JAXArray runtime import with fallback
+    try:
+        from mfg_pde.types.internal import JAXArray
+    except ImportError:
+        JAXArray = Any
 
-    def jit(f):
-        return f
+    if HAS_JAX:
+        import optax
+        import jax
+        import jax.numpy as jnp
+        from jax import grad, jacfwd, jit, vmap
+        from jax.lax import while_loop
+    else:
+        # Fallbacks when JAX not available
+        jax = None  # type: ignore[misc]
+        jnp = np  # type: ignore[misc]
+        optax = None
 
-    def grad(f):
-        def dummy_grad(x):
-            return x
+        def jit(f):
+            return f
 
-        return dummy_grad
+        def grad(f):
+            def dummy_grad(x):
+                return x
+            return dummy_grad
 
-    def jacfwd(f):
-        def dummy_jacobian(x):
-            return x
+        def jacfwd(f):
+            def dummy_jacobian(x):
+                return x
+            return dummy_jacobian
 
-        return dummy_jacobian
+        def vmap(f):
+            return f
 
-    def vmap(f):
-        return f
-
-    def while_loop(cond, body, init):
-        return init
-
-    optax = None
+        def while_loop(cond, body, init):
+            return init
 
 
 class JAXMFGSolver:

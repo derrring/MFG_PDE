@@ -273,7 +273,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         self.hjb_method_name = "NetworkHJB_PolicyIteration"
 
         # Current policy (action for each node)
-        self.current_policy = {}
+        self.current_policy: dict[int, int] = {}
 
     def solve_hjb_system(
         self,

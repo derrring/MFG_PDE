@@ -278,7 +278,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
     def _build_taylor_matrices(self):
         """Pre-compute Taylor expansion matrices A for all collocation points."""
-        self.taylor_matrices = {}
+        self.taylor_matrices: dict[int, np.ndarray] = {}
         self.multi_indices = self._get_multi_index_set(self.dimension, self.taylor_order)
         self.n_derivatives = len(self.multi_indices)
 
