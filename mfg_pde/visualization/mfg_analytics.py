@@ -401,7 +401,7 @@ class MFGAnalyticsEngine:
         title: str,
     ) -> dict[str, str]:
         """Export solution data in multiple formats."""
-        data_files = {}
+        data_files: dict[str, str] = {}
 
         if not self.data_exporter:
             return data_files

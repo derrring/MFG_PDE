@@ -186,7 +186,7 @@ class TriangularAMRMesh:
         # AMR statistics
         self.total_triangles = len(self.triangles)
         self.max_level = 0
-        self.refinement_history = []
+        self.refinement_history: list[dict[str, Any]] = []
 
     def _build_initial_triangles(self):
         """Build triangle elements from MeshData."""
@@ -431,7 +431,7 @@ class TriangularAMRMesh:
     def get_mesh_statistics(self) -> dict[str, Any]:
         """Get comprehensive mesh statistics."""
         # Level distribution
-        level_counts = {}
+        level_counts: dict[int, int] = {}
         total_area = 0.0
         min_aspect_ratio = np.inf
         max_aspect_ratio = 0.0

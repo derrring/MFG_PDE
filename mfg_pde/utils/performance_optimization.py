@@ -846,7 +846,7 @@ class ParallelizationHelper:
         indexed_sizes.sort(key=lambda x: x[1], reverse=True)
 
         # Initialize worker loads
-        workers = [[] for _ in range(num_workers)]
+        workers: list[list[int]] = [[] for _ in range(num_workers)]
         worker_loads = [0] * num_workers
 
         # Assign work using greedy algorithm

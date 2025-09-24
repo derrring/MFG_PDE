@@ -625,7 +625,7 @@ def benchmark_polars_vs_pandas(data_size: int = 100000) -> dict[str, Any]:
 
     # Try pandas comparison if available
     try:
-        import pandas as pd
+        import pandas as pd  # type: ignore[import-untyped]
 
         start_time = time.time()
         pd_df = pd.DataFrame(data)

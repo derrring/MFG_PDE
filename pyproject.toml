@@ -192,6 +192,9 @@ namespace_packages = true
 explicit_package_bases = true
 cache_dir = ".mypy_cache"
 sqlite_cache = true
+plugins = [
+    "pydantic.mypy",
+]
 exclude = [
     "archive/",
     "build/",

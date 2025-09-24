@@ -298,7 +298,7 @@ class MFGPlotlyVisualizer:
         )
 
         # Equilibrium type distribution
-        eq_counts = {}
+        eq_counts: dict[str, int] = {}
         for eq_type in equilibrium_types:
             eq_counts[eq_type] = eq_counts.get(eq_type, 0) + 1
 

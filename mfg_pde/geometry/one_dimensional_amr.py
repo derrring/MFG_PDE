@@ -152,7 +152,7 @@ class OneDimensionalAMRMesh:
         # AMR statistics
         self.total_intervals = len(self.intervals)
         self.max_level = 0
-        self.refinement_history = []
+        self.refinement_history: list[dict[str, Any]] = []
 
         # JAX backend integration
         self.use_jax = JAX_AVAILABLE and (backend is None or getattr(backend, "name", "") == "jax")
@@ -336,7 +336,7 @@ class OneDimensionalAMRMesh:
     def get_mesh_statistics(self) -> dict[str, Any]:
         """Get comprehensive 1D mesh statistics."""
         # Level distribution
-        level_counts = {}
+        level_counts: dict[int, int] = {}
         total_length = 0.0
         min_width = np.inf
         max_width = 0.0

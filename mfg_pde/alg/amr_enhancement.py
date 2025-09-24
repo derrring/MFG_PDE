@@ -66,7 +66,7 @@ class AMREnhancedSolver:
         self.amr_config = {**default_config, **(amr_config or {})}
 
         # AMR state
-        self.adaptation_history = []
+        self.adaptation_history: list[dict[str, Any]] = []
         self.total_adaptations = 0
         self.current_mesh_generation = 0
 
