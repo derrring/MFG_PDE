@@ -35,9 +35,11 @@ class SimpleGrid2D(BaseGeometry):
         self._bounds = bounds
 
     @property
-    def bounds(self) -> tuple[float, float, float, float]:
+    def bounds(self) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Get domain bounds."""
-        return self._bounds
+        min_coords = np.array([self.xmin, self.ymin])
+        max_coords = np.array([self.xmax, self.ymax])
+        return min_coords, max_coords
 
     def create_gmsh_geometry(self):
         """Not implemented for simple grid - raises NotImplementedError."""
@@ -71,7 +73,7 @@ class SimpleGrid2D(BaseGeometry):
         vertices = np.column_stack([X.ravel(), Y.ravel()])
 
         # Create triangular elements (2 triangles per grid cell)
-        elements: list[list[int]] = []
+        elements_list: list[list[int]] = []
         for i in range(self.nx):
             for j in range(self.ny):
                 # Grid indices
@@ -81,49 +83,49 @@ class SimpleGrid2D(BaseGeometry):
                 top_right = (i + 1) * (self.ny + 1) + j + 1
 
                 # Two triangles per cell
-                elements.append([bottom_left, bottom_right, top_left])
-                elements.append([bottom_right, top_right, top_left])
+                elements_list.append([bottom_left, bottom_right, top_left])
+                elements_list.append([bottom_right, top_right, top_left])
 
-        elements = np.array(elements, dtype=np.int32)
+        elements = np.array(elements_list, dtype=np.int32)
 
         # Boundary faces (edges for 2D)
-        boundary_faces: list[list[int]] = []
-        boundary_tags: list[int] = []
+        boundary_faces_list: list[list[int]] = []
+        boundary_tags_list: list[int] = []
 
         # Bottom boundary (y = ymin)
         for i in range(self.nx):
             j = 0
             bottom_left = i * (self.ny + 1) + j
             bottom_right = (i + 1) * (self.ny + 1) + j
-            boundary_faces.append([bottom_left, bottom_right])
-            boundary_tags.append(1)  # Bottom = 1
+            boundary_faces_list.append([bottom_left, bottom_right])
+            boundary_tags_list.append(1)  # Bottom = 1
 
         # Right boundary (x = xmax)
         for j in range(self.ny):
             i = self.nx
             bottom_right = i * (self.ny + 1) + j
             top_right = i * (self.ny + 1) + j + 1
-            boundary_faces.append([bottom_right, top_right])
-            boundary_tags.append(2)  # Right = 2
+            boundary_faces_list.append([bottom_right, top_right])
+            boundary_tags_list.append(2)  # Right = 2
 
         # Top boundary (y = ymax)
         for i in range(self.nx):
             j = self.ny
             top_left = i * (self.ny + 1) + j
             top_right = (i + 1) * (self.ny + 1) + j
-            boundary_faces.append([top_left, top_right])
-            boundary_tags.append(3)  # Top = 3
+            boundary_faces_list.append([top_left, top_right])
+            boundary_tags_list.append(3)  # Top = 3
 
         # Left boundary (x = xmin)
         for j in range(self.ny):
             i = 0
             bottom_left = i * (self.ny + 1) + j
             top_left = i * (self.ny + 1) + j + 1
-            boundary_faces.append([bottom_left, top_left])
-            boundary_tags.append(4)  # Left = 4
+            boundary_faces_list.append([bottom_left, top_left])
+            boundary_tags_list.append(4)  # Left = 4
 
-        boundary_faces = np.array(boundary_faces, dtype=np.int32)
-        boundary_tags = np.array(boundary_tags, dtype=np.int32)
+        boundary_faces = np.array(boundary_faces_list, dtype=np.int32)
+        boundary_tags = np.array(boundary_tags_list, dtype=np.int32)
 
         # Element tags (all interior)
         element_tags = np.ones(len(elements), dtype=int)
@@ -195,9 +197,11 @@ class SimpleGrid3D(BaseGeometry):
         self._bounds = bounds
 
     @property
-    def bounds(self) -> tuple[float, float, float, float, float, float]:
+    def bounds(self) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Get domain bounds."""
-        return self._bounds
+        min_coords = np.array([self.xmin, self.ymin, self.zmin])
+        max_coords = np.array([self.xmax, self.ymax, self.zmax])
+        return min_coords, max_coords
 
     def create_gmsh_geometry(self):
         """Not implemented for simple grid - raises NotImplementedError."""
@@ -232,7 +236,7 @@ class SimpleGrid3D(BaseGeometry):
         vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
 
         # Create tetrahedral elements (6 tetrahedra per grid cell)
-        elements = []
+        elements_list: list[list[int]] = []
         for i in range(self.nx):
             for j in range(self.ny):
                 for k in range(self.nz):
@@ -256,9 +260,9 @@ class SimpleGrid3D(BaseGeometry):
                         [v000, v101, v001, v111],
                     ]
 
-                    elements.extend(tetrahedra)
+                    elements_list.extend(tetrahedra)
 
-        elements = np.array(elements, dtype=np.int32)
+        elements = np.array(elements_list, dtype=np.int32)
 
         # Simplified boundary faces (just mark boundary vertices)
         boundary_faces = np.array([], dtype=np.int32).reshape(0, 3)  # Empty for simplicity
