@@ -19,6 +19,34 @@
 # Workflow runtime data and workspace
 /.mfg_workflows/
 
+#===============CONTRIBUTOR WORKFLOW ISOLATION============
+# IDE-specific configuration (avoid forcing contributor preferences on new files)
+.vscode/settings.json.local
+.idea/workspace.xml
+*.code-workspace.local
+
+# Temporary analysis files and development scripts (not permanent docs)
+*_analysis_temp.py
+*_temp_analysis.md
+progressive_api_design_temp.py
+smart_defaults_temp.py
+type_system_temp.py
+
+# Claude-specific temporary cache and configuration
+.claude/temp/
+.claude/cache/
+
+# Individual developer pre-commit configurations
+.pre-commit-config-personal.yaml
+.pre-commit-config-local.yaml
+
+# Temporary development demonstration scripts
+/demo_temp_*.py
+/temp_demo_*.py
+
+# Note: Core files like CLAUDE.md, .github/, and .vscode/ remain tracked
+# This section only hides temporary/personal workflow files
+
 #===============UV PACKAGE MANAGER (OPTIONAL)==============
 # UV files are optional - repository supports both pip and UV
 # Keep uv.lock tracked for reproducible research environments
