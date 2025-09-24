@@ -5,6 +5,20 @@ This module provides YAML-based configuration management using OmegaConf's
 structured configs pattern, solving the common type checking issues by
 providing static type information that mypy can understand.
 
+⚠️ IMPORTANT NOTE - Issue #28 Solution ⚠️
+====================================
+This module implements the COMPLETE solution for OmegaConf type checking problems.
+If you encounter mypy errors like:
+  - "DictConfig has no attribute 'problem'"
+  - "Cannot assign to a type [misc]"
+  - "Name already defined (possibly by an import) [no-redef]"
+
+DO NOT modify the import section! Instead:
+1. Use the structured config methods: load_structured_mfg_config(), load_mfg_config()
+2. Import proper types: from .structured_schemas import MFGConfig, TypedMFGConfig
+3. Reference Issue #28 for complete implementation details
+4. The current import pattern with try/except and stub classes is CORRECT
+
 Features:
 - Type-safe configuration schemas using dataclasses
 - YAML-based configuration with interpolation

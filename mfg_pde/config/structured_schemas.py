@@ -5,6 +5,23 @@ This module provides type-safe configuration schemas using dataclasses,
 solving the common problem of OmegaConf failing type checking by providing
 static type information that mypy can understand.
 
+⚠️ CRITICAL - Issue #28 Type Safety Solution ⚠️
+=============================================
+These dataclass schemas are the CORE solution for OmegaConf type checking errors.
+
+BEFORE (Type errors):
+    conf: DictConfig = OmegaConf.load("config.yaml")
+    print(conf.problem.T)  # ❌ Mypy error: "DictConfig has no attribute 'problem'"
+
+AFTER (Type safe):
+    schema = OmegaConf.structured(MFGConfig)
+    file_conf = OmegaConf.load("config.yaml")
+    conf: MFGConfig = OmegaConf.merge(schema, file_conf)
+    print(conf.problem.T)  # ✅ Type safe, autocompletes!
+
+DO NOT modify these schemas without understanding the full typing implications.
+Reference Issue #28 for complete implementation context.
+
 Inspired by the structured configs pattern recommended for type-safe OmegaConf usage.
 """
 
