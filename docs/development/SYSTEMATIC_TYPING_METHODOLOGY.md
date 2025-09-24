@@ -42,16 +42,29 @@ plugins = [
 **Results**: Foundation for better type inference
 
 ### **Phase 3: Stub Generation**
+
+**Approach A: Generated Stubs (High Impact)**
 ```bash
-# Generate comprehensive stubs
+# Generate comprehensive stubs (external validation)
 stubgen -p polars -o stubs
-stubgen -p pandas -o stubs
 
 # Configure mypy to use stubs
 mypy_path = "stubs"
 ```
+**Results**: 411 → 24 errors (-94% impact, but may have syntax issues)
 
-**Results**: 411 → 24 errors (-94% from polars stubs alone!)
+**Approach B: Minimal Manual Stubs (Production Ready)**
+```python
+# Create minimal, syntax-safe stubs
+# stubs/polars/__init__.pyi
+class DataFrame:
+    def select(self, *args, **kwargs) -> DataFrame: ...
+    def filter(self, *args, **kwargs) -> DataFrame: ...
+    # ... essential methods only
+
+def __getattr__(name: str) -> Any: ...  # Catch-all
+```
+**Results**: 424 → 389 errors (-8% impact, but ruff/pre-commit compatible)
 
 ### **Phase 4: TYPE_CHECKING Isolation Pattern**
 
@@ -179,12 +192,18 @@ Create reusable pattern for complex dynamic libraries
 # Error analysis
 mypy mfg_pde/ --show-error-codes | tail -3
 
-# Stub generation
-stubgen -p library_name -o stubs
+# Stub generation (two approaches)
+stubgen -p library_name -o stubs  # Auto-generated (high impact, syntax issues)
+# OR create minimal manual stubs   # Production-ready (moderate impact, clean)
 
 # Plugin testing
 mypy --help | grep plugins
 ```
+
+### **Stub Generation Strategy Decision Tree**
+1. **Research/External Validation**: Use `stubgen` for maximum error reduction
+2. **Production/CI Environment**: Use minimal manual stubs for clean syntax
+3. **Hybrid Approach**: Generate stubs, then create minimal versions for problematic files
 
 ### **Configuration Template**
 ```toml
