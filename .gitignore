@@ -19,6 +19,54 @@
 # Workflow runtime data and workspace
 /.mfg_workflows/
 
+#===============CONTRIBUTOR WORKFLOW ISOLATION============
+# IDE-specific configuration (avoid forcing contributor preferences)
+.vscode/settings.json.local
+.vscode/launch.json.local
+.idea/workspace.xml
+.idea/personal/
+*.code-workspace.local
+.dev-settings/
+
+# AI interaction guidelines (highly personal to each contributor)
+CLAUDE.md.personal
+CLAUDE-*.md
+AI-GUIDELINES-*.md
+*-ai-config.md
+.ai-settings/
+.claude-personal/
+
+# Individual developer configurations
+.pre-commit-config-personal.yaml
+.pre-commit-config-local.yaml
+.dev-environment/
+.personal-setup/
+
+# Temporary analysis files and development scripts
+*_analysis_temp.py
+*_temp_analysis.md
+*_personal_notes.md
+progressive_api_design_temp.py
+smart_defaults_temp.py
+type_system_temp.py
+
+# Personal development artifacts
+/demo_temp_*.py
+/temp_demo_*.py
+/personal_*.py
+.dev-notes/
+.contributor-workspace/
+
+# Claude and AI-specific temporary/personal files
+.claude/temp/
+.claude/cache/
+.claude/personal/
+.ai-cache/
+
+# Note: This allows contributors to maintain personal AI guidelines,
+# IDE settings, and development preferences without forcing them on others.
+# The original CLAUDE.md remains tracked as a reference/starting point.
+
 #===============UV PACKAGE MANAGER (OPTIONAL)==============
 # UV files are optional - repository supports both pip and UV
 # Keep uv.lock tracked for reproducible research environments
