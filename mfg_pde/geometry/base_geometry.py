@@ -120,7 +120,7 @@ class MeshData:
     def to_meshio(self):
         """Convert to meshio format for I/O operations."""
         try:
-            import meshio
+            import meshio  # type: ignore[import-untyped]
         except ImportError as err:
             raise ImportError("meshio is required for mesh I/O operations") from err
 

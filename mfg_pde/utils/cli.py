@@ -14,10 +14,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 try:
-    import yaml
+    import yaml  # type: ignore[import-untyped]
 
     YAML_AVAILABLE = True
 except ImportError:

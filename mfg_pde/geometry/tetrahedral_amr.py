@@ -447,7 +447,7 @@ class TetrahedralAMRMesh:
 
     def get_refinement_statistics(self) -> dict:
         """Get comprehensive refinement statistics."""
-        level_counts = {}
+        level_counts: dict[int, int] = {}
         for elem_idx in self.active_elements:
             level = self.elements_list[elem_idx].level
             level_counts[level] = level_counts.get(level, 0) + 1

@@ -82,7 +82,7 @@ class Domain3D(BaseGeometry):
     def create_gmsh_geometry(self) -> Any:
         """Create 3D geometry using Gmsh API."""
         try:
-            import gmsh
+            import gmsh  # type: ignore[import-not-found]
         except ImportError:
             raise ImportError("gmsh is required for mesh generation")
 
@@ -333,8 +333,8 @@ class Domain3D(BaseGeometry):
     def generate_mesh(self) -> MeshData:
         """Generate 3D tetrahedral mesh."""
         try:
-            import gmsh
-            import meshio  # noqa: F401
+            import gmsh  # type: ignore[import-not-found]
+            import meshio  # type: ignore[import-untyped]  # noqa: F401
         except ImportError:
             raise ImportError("gmsh and meshio are required for mesh generation")
 
@@ -509,7 +509,7 @@ class Domain3D(BaseGeometry):
             self._mesh_data = self.generate_mesh()
 
         try:
-            import meshio
+            import meshio  # type: ignore[import-untyped]
         except ImportError:
             raise ImportError("meshio required for mesh export")
 

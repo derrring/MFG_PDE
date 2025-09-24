@@ -224,7 +224,7 @@ class JAXMFGSolver:
         print(f" Starting JAX-accelerated MFG solve on {self.device}")
         solve_start = time.time()
 
-        convergence_history = []
+        convergence_history: list[float] = []
 
         # Choose solution method
         if self.method == "fixed_point":

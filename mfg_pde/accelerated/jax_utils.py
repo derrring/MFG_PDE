@@ -21,7 +21,7 @@ else:
     pass
 
 if HAS_JAX:
-    import optax
+    import optax  # type: ignore[import-not-found]
 
     import jax
     import jax.numpy as jnp
@@ -29,8 +29,8 @@ if HAS_JAX:
     from jax.lax import cond, scan
 else:
     # Dummy implementations for graceful fallback
-    jax = None
-    jnp = np
+    jax = None  # type: ignore[misc]
+    jnp = np  # type: ignore[misc]
 
     def device_put(x, device=None):
         return x

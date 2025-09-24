@@ -14,30 +14,35 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-# JAX availability check and type-safe fallbacks
-try:
-    import jax.numpy as jnp
-    from jax import jit, vmap
-
-    JAX_AVAILABLE = True
-except ImportError:
+# Apply TYPE_CHECKING isolation principle for JAX (same as OmegaConf pattern)
+if TYPE_CHECKING:
+    # Static typing world - simple definitions
     import numpy as np
 
-    jnp = np  # Use numpy as fallback
-    JAX_AVAILABLE = False
+    jnp = np  # Type alias for static analysis
 
-    # Type-safe fallback decorators that suppress specific parameter checking
-    from collections.abc import Callable
-    from typing import Any, TypeVar
+    def jit(fun, **kwargs): ...
+    def vmap(fun, **kwargs): ...
 
-    F = TypeVar("F", bound=Callable[..., Any])
+    JAX_AVAILABLE = True
+else:
+    # Runtime world - actual imports with fallbacks
+    try:
+        import jax.numpy as jnp
+        from jax import jit, vmap
 
-    # Use Any to avoid parameter signature mismatches with actual JAX
-    def jit(fun, /, **kwargs):
-        return fun
+        JAX_AVAILABLE = True
+    except ImportError:
+        # Runtime fallback to numpy
+        jnp = np  # type: ignore[misc]
+        JAX_AVAILABLE = False
 
-    def vmap(fun, **kwargs):
-        return fun
+        # Fallback implementations
+        def jit(fun, **kwargs):
+            return fun
+
+        def vmap(fun, **kwargs):
+            return fun
 
 
 if TYPE_CHECKING:
@@ -374,7 +379,7 @@ class AdaptiveMesh:
         coarsening_threshold = self.criteria.error_threshold * self.criteria.coarsening_threshold
 
         # Group leaf nodes by parent
-        parent_groups = {}
+        parent_groups: dict[Any, list[Any]] = {}
         for node in self.leaf_nodes:
             if node.parent is not None:
                 parent = node.parent
@@ -451,7 +456,7 @@ class AdaptiveMesh:
 
     def get_mesh_statistics(self) -> dict[str, Any]:
         """Get current mesh statistics"""
-        level_counts = {}
+        level_counts: dict[int, int] = {}
         total_area = 0.0
         min_cell_size = float("inf")
         max_cell_size = 0.0
