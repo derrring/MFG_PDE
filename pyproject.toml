@@ -64,6 +64,7 @@ dependencies = [
 dev = [
     "pytest>=7.0",          # Testing framework
     "pytest-benchmark",     # Performance testing
+    "pytest-mypy-plugins",  # MyPy plugin testing support
     "ruff>=0.6.0",          # Fast unified linting and formatting
     "mypy>=1.5",            # Type checking
     "pre-commit>=2.0",      # Pre-commit hooks
@@ -395,3 +396,9 @@ scientific = ["numpy", "scipy", "matplotlib", "plotly", "jax", "jaxlib"]
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+
+# Pydantic plugin configuration
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
