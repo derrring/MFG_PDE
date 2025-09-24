@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -74,7 +74,7 @@ class FixedPointIterator(MFGSolver):
         l2errBoundPicard: float | None = None,
         # New parameter for result format
         return_structured: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray] | SolverResult:
         import warnings
 

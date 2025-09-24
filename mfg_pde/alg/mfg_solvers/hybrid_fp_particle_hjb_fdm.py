@@ -71,8 +71,8 @@ class HybridFPParticleHJBFDM:
         self._setup_component_solvers()
 
         # Solver state
-        self.convergence_history = []
-        self.timing_info = {}
+        self.convergence_history: list[dict[str, Any]] = []
+        self.timing_info: dict[str, Any] = {}
 
         logger.info("Initialized Hybrid FP-Particle + HJB-FDM solver")
         logger.info(f"  Particles: {num_particles}")

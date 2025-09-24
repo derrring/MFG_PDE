@@ -160,7 +160,7 @@ def load_experiments_from_dir(directory_path: str) -> list[dict[str, Any]]:
     """
     Loads all .npz experiment files from a given directory.
     """
-    loaded_experiments = []
+    loaded_experiments: list[dict[str, Any]] = []
     if not os.path.isdir(directory_path):
         print(f"Directory not found: {directory_path}")
         return loaded_experiments

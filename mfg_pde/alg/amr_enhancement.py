@@ -78,7 +78,7 @@ class AMREnhancedSolver:
         max_iterations: int = 100,
         tolerance: float = 1e-6,
         verbose: bool | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Solve MFG problem with adaptive mesh refinement.
@@ -147,7 +147,7 @@ class AMREnhancedSolver:
 
         return final_result
 
-    def _solve_on_current_mesh(self, max_iterations: int, tolerance: float, verbose: bool, **kwargs) -> dict[str, Any]:
+    def _solve_on_current_mesh(self, max_iterations: int, tolerance: float, verbose: bool, **kwargs: Any) -> dict[str, Any]:
         """Solve using base solver on current mesh."""
         if verbose:
             current_mesh_size = self._get_current_mesh_size()

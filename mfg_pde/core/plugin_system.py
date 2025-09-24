@@ -89,11 +89,11 @@ class SolverPlugin(ABC):
     @abstractmethod
     def create_solver(
         self,
-        problem,
+        problem: Any,
         solver_type: str,
         config: MFGSolverConfig | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         """Create solver instance for the specified type.
 
         Args:
@@ -159,7 +159,7 @@ class AnalysisPlugin(ABC):
         """Return list of analysis types this plugin provides."""
 
     @abstractmethod
-    def run_analysis(self, result, analysis_type: str, **kwargs):
+    def run_analysis(self, result: Any, analysis_type: str, **kwargs: Any) -> Any:
         """Run analysis on solver result.
 
         Args:
@@ -376,11 +376,11 @@ class PluginManager:
 
     def create_solver(
         self,
-        problem,
+        problem: Any,
         solver_type: str,
         config: MFGSolverConfig | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         """Create solver instance using registered plugins or core solvers.
 
         Args:
@@ -572,7 +572,7 @@ class PluginManager:
 
     def _discover_path_plugins(self, path: Path) -> list[str]:
         """Discover plugins in a filesystem path."""
-        discovered = []
+        discovered: list[str] = []
 
         if not path.exists() or not path.is_dir():
             return discovered

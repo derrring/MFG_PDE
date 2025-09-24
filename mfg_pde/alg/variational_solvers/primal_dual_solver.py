@@ -95,7 +95,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         self.constraint_tolerance = constraint_tolerance
 
         # Dual variables (Lagrange multipliers)
-        self.dual_vars = {}
+        self.dual_vars: dict[str, Any] = {}
         self._initialize_dual_variables()
 
         # Algorithm state
