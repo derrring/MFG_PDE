@@ -250,21 +250,21 @@ def create_adaptive_particle_solver(
 
 # Convenience factory functions for common precision levels
 def create_fast_adaptive_solver(
-    problem: MFGProblem, collocation_points: np.ndarray, **kwargs
+    problem: MFGProblem, collocation_points: np.ndarray, **kwargs: Any
 ) -> AdaptiveParticleCollocationSolver:
     """Create adaptive solver optimized for speed."""
     return AdaptiveParticleCollocationSolver(problem, collocation_points, precision="fast", verbose=False, **kwargs)
 
 
 def create_accurate_adaptive_solver(
-    problem: MFGProblem, collocation_points: np.ndarray, **kwargs
+    problem: MFGProblem, collocation_points: np.ndarray, **kwargs: Any
 ) -> AdaptiveParticleCollocationSolver:
     """Create adaptive solver optimized for accuracy."""
     return AdaptiveParticleCollocationSolver(problem, collocation_points, precision="high", verbose=True, **kwargs)
 
 
 def create_silent_adaptive_solver(
-    problem: MFGProblem, collocation_points: np.ndarray, **kwargs
+    problem: MFGProblem, collocation_points: np.ndarray, **kwargs: Any
 ) -> AdaptiveParticleCollocationSolver:
     """Create adaptive solver with minimal output."""
     return AdaptiveParticleCollocationSolver(problem, collocation_points, verbose=False, **kwargs)

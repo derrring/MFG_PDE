@@ -51,7 +51,7 @@ def solve_mfg(
     accuracy: str = "balanced",
     fast: bool = False,
     verbose: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> MFGResult:
     """
     One-line MFG solver for common problems.
@@ -129,7 +129,7 @@ def solve_mfg(
 
 
 def create_mfg_problem(
-    problem_type: str, domain: tuple = (0.0, 1.0), time_horizon: float = 1.0, **kwargs
+    problem_type: str, domain: tuple = (0.0, 1.0), time_horizon: float = 1.0, **kwargs: Any
 ) -> SimpleMFGProblem:
     """
     Create an MFG problem with simple parameters.
@@ -203,7 +203,7 @@ def get_config_recommendation(problem_type: str, **kwargs) -> dict[str, Any]:
     return recommendation
 
 
-def _explain_config_choice(problem_type: str, config, **kwargs) -> str:
+def _explain_config_choice(problem_type: str, config: Any, **kwargs: Any) -> str:
     """Generate explanation for configuration choice."""
     explanations = {
         "crowd_dynamics": "Crowd dynamics problems require stable numerics for high-density regions",
@@ -346,7 +346,7 @@ def load_example(example_name: str) -> MFGResult:
 
 
 def solve_mfg_smart(
-    problem_type: str, domain_size: float = 1.0, time_horizon: float = 1.0, validate: bool = True, **kwargs
+    problem_type: str, domain_size: float = 1.0, time_horizon: float = 1.0, validate: bool = True, **kwargs: Any
 ) -> MFGResult:
     """
     Solve MFG problem with smart defaults, validation, and automatic optimization.
@@ -513,7 +513,7 @@ def suggest_problem_setup(problem_type: str) -> dict[str, Any]:
 
 
 def _create_problem_from_string(
-    problem_type: str, domain_size: float, time_horizon: float, **kwargs
+    problem_type: str, domain_size: float, time_horizon: float, **kwargs: Any
 ) -> SimpleMFGProblem:
     """Create a problem instance from string specification."""
     if problem_type == "crowd_dynamics":
@@ -588,7 +588,7 @@ class SimpleMFGProblem:
         return f"SimpleMFGProblem({self.problem_type}, domain={self._domain_bounds}, T={self._time_horizon})"
 
 
-def _create_crowd_dynamics_problem(domain_size: float, time_horizon: float, **kwargs) -> SimpleMFGProblem:
+def _create_crowd_dynamics_problem(domain_size: float, time_horizon: float, **kwargs: Any) -> SimpleMFGProblem:
     """Create a crowd dynamics problem."""
     crowd_size = kwargs.get("crowd_size", 100)
     exit_attraction = kwargs.get("exit_attraction", 1.0)
@@ -622,7 +622,7 @@ def _create_crowd_dynamics_problem(domain_size: float, time_horizon: float, **kw
     )
 
 
-def _create_portfolio_problem(domain_size: float, time_horizon: float, **kwargs) -> SimpleMFGProblem:
+def _create_portfolio_problem(domain_size: float, time_horizon: float, **kwargs: Any) -> SimpleMFGProblem:
     """Create a portfolio optimization problem."""
     risk_aversion = kwargs.get("risk_aversion", 0.5)
     drift = kwargs.get("drift", 0.05)
@@ -653,7 +653,7 @@ def _create_portfolio_problem(domain_size: float, time_horizon: float, **kwargs)
     )
 
 
-def _create_traffic_problem(domain_size: float, time_horizon: float, **kwargs) -> SimpleMFGProblem:
+def _create_traffic_problem(domain_size: float, time_horizon: float, **kwargs: Any) -> SimpleMFGProblem:
     """Create a traffic flow problem."""
     speed_limit = kwargs.get("speed_limit", 1.0)
     congestion_factor = kwargs.get("congestion_factor", 0.5)
@@ -684,7 +684,7 @@ def _create_traffic_problem(domain_size: float, time_horizon: float, **kwargs) -
     )
 
 
-def _create_epidemic_problem(domain_size: float, time_horizon: float, **kwargs) -> SimpleMFGProblem:
+def _create_epidemic_problem(domain_size: float, time_horizon: float, **kwargs: Any) -> SimpleMFGProblem:
     """Create an epidemic spreading problem."""
     infection_rate = kwargs.get("infection_rate", 0.3)
     recovery_rate = kwargs.get("recovery_rate", 0.1)
@@ -715,7 +715,7 @@ def _create_epidemic_problem(domain_size: float, time_horizon: float, **kwargs) 
     )
 
 
-def _create_custom_problem(domain_size: float, time_horizon: float, **kwargs) -> SimpleMFGProblem:
+def _create_custom_problem(domain_size: float, time_horizon: float, **kwargs: Any) -> SimpleMFGProblem:
     """Create a custom problem from user-provided functions."""
     hamiltonian = kwargs.get("hamiltonian")
     initial_density = kwargs.get("initial_density")
@@ -750,7 +750,7 @@ def _create_simple_debug_hook() -> SolverHooks:
     return SimpleDebugHook()
 
 
-def auto_config(problem_type: str, domain_size: float, time_horizon: float, **kwargs):
+def auto_config(problem_type: str, domain_size: float, time_horizon: float, **kwargs: Any) -> Any:
     """
     Automatically select the best configuration based on problem characteristics.
 
@@ -825,7 +825,7 @@ def auto_config(problem_type: str, domain_size: float, time_horizon: float, **kw
 
 
 def solve_mfg_auto(
-    problem_type: str, domain_size: float = 1.0, time_horizon: float = 1.0, verbose: bool = False, **kwargs
+    problem_type: str, domain_size: float = 1.0, time_horizon: float = 1.0, verbose: bool = False, **kwargs: Any
 ) -> MFGResult:
     """
     Solve MFG problem with automatic configuration selection.
