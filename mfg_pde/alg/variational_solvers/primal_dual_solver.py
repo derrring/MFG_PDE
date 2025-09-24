@@ -60,14 +60,14 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
 
     def __init__(
         self,
-        problem,
+        problem: Any,
         primal_solver: str = "L-BFGS-B",
         dual_update_method: str = "gradient_ascent",
         augmented_penalty: float = 10.0,
         dual_step_size: float = 0.1,
         use_adaptive_penalty: bool = True,
         constraint_tolerance: float = 1e-6,
-    ):
+    ) -> None:
         """
         Initialize primal-dual MFG solver.
 

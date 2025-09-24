@@ -273,7 +273,7 @@ class AMREnhancedSolver:
 
         return final_result
 
-    def _print_final_summary(self, result: dict[str, Any]):
+    def _print_final_summary(self, result: dict[str, Any]) -> None:
         """Print final AMR enhancement summary."""
         print("\nAMR Enhancement Summary:")
         print(f"  Base solver: {result['base_solver_type']}")

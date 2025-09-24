@@ -22,7 +22,7 @@ Key algorithms:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import scipy.sparse as sp
@@ -255,8 +255,8 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         problem: NetworkMFGProblem,
         max_policy_iterations: int = 50,
         policy_tolerance: float = 1e-6,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize policy iteration HJB solver.
 
@@ -325,7 +325,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
         return u_current
 
-    def _initialize_policy(self, u: np.ndarray, m: np.ndarray, t: float):
+    def _initialize_policy(self, u: np.ndarray, m: np.ndarray, t: float) -> None:
         """Initialize policy greedily."""
         for i in range(self.num_nodes):
             neighbors = self.gradient_ops[i]
@@ -374,7 +374,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
         return np.asarray(u_evaluated)
 
-    def _policy_improvement(self, u: np.ndarray, m: np.ndarray, t: float):
+    def _policy_improvement(self, u: np.ndarray, m: np.ndarray, t: float) -> None:
         """Improve policy greedily."""
         for i in range(self.num_nodes):
             neighbors = self.gradient_ops[i] + [i]  # Include staying at node
@@ -409,7 +409,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
 
 # Factory function for network HJB solvers
-def create_network_hjb_solver(problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs) -> NetworkHJBSolver:
+def create_network_hjb_solver(problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs: Any) -> NetworkHJBSolver:
     """
     Create network HJB solver with specified type.
 
