@@ -1,9 +1,17 @@
 """
-OmegaConf-based configuration management for MFG_PDE.
+OmegaConf-based configuration management for MFG_PDE with Structured Configs.
 
-This module provides YAML-based configuration management using OmegaConf,
-complementing the existing Pydantic configurations with file-based configs,
-parameter interpolation, and hierarchical configuration composition.
+This module provides YAML-based configuration management using OmegaConf's
+structured configs pattern, solving the common type checking issues by
+providing static type information that mypy can understand.
+
+Features:
+- Type-safe configuration schemas using dataclasses
+- YAML-based configuration with interpolation
+- Configuration composition and inheritance
+- Integration with existing Pydantic configs
+- Parameter sweeps and experiment management
+- Full mypy compatibility via structured configs
 """
 
 from __future__ import annotations
@@ -44,15 +52,24 @@ except ImportError:
     UnsupportedInterpolationType = Exception
 
 from .pydantic_config import MFGSolverConfig, create_fast_config
+from .structured_schemas import (
+    BeachProblemConfig,
+    MFGConfig,
+)
 
 logger = logging.getLogger(__name__)
 
-# Type aliases for better clarity
+# Type aliases for structured configs
 if TYPE_CHECKING:
     from omegaconf import DictConfig as OmegaConfig
+
+    # Use structured schemas for type safety
+    TypedMFGConfig = MFGConfig
+    TypedBeachConfig = BeachProblemConfig
 else:
     OmegaConfig = Any
-"""Type alias for OmegaConf DictConfig objects"""
+    TypedMFGConfig = Any
+    TypedBeachConfig = Any
 
 
 class OmegaConfManager:
@@ -436,6 +453,128 @@ class OmegaConfManager:
 
         return self.load_config(templates[template_name])
 
+    # === STRUCTURED CONFIG METHODS (Type-Safe) ===
+
+    def load_structured_config(
+        self, config_path: str | Path, schema_cls: type = MFGConfig, **overrides: Any
+    ) -> TypedMFGConfig:
+        """
+        Load configuration using structured schema for full type safety.
+
+        This method solves the common OmegaConf type checking problem by using
+        structured configs that provide static type information to mypy.
+
+        Args:
+            config_path: Path to configuration file
+            schema_cls: Structured schema class (dataclass)
+            **overrides: Configuration overrides
+
+        Returns:
+            Fully typed configuration object with autocompletion support
+
+        Example:
+            >>> manager = OmegaConfManager()
+            >>> config = manager.load_structured_config("config.yaml")
+            >>> print(config.problem.T)  # ✅ Type safe, autocompletes
+        """
+        # Create structured schema with defaults
+        schema = self._OmegaConf.structured(schema_cls)
+
+        # Load file configuration
+        config_path = Path(config_path)
+        if not config_path.is_absolute():
+            config_path = self.config_dir / config_path
+
+        if config_path.exists():
+            file_config = self._OmegaConf.load(config_path)
+        else:
+            logger.warning(f"Config file not found: {config_path}, using schema defaults")
+            file_config = self._OmegaConf.create({})
+
+        # Apply overrides
+        if overrides:
+            override_config = self._OmegaConf.create(overrides)
+            file_config = self._OmegaConf.merge(file_config, override_config)
+
+        # Merge schema with file config (file config takes precedence)
+        config = self._OmegaConf.merge(schema, file_config)
+
+        # Resolve interpolations
+        try:
+            self._OmegaConf.resolve(config)
+        except (UnsupportedInterpolationType, Exception) as e:
+            logger.warning(f"Could not resolve all interpolations: {e}")
+
+        return config
+
+    def load_mfg_config(self, config_path: str | Path = "config.yaml", **overrides: Any) -> TypedMFGConfig:
+        """
+        Load complete MFG configuration with full type safety.
+
+        Args:
+            config_path: Path to configuration file
+            **overrides: Configuration overrides
+
+        Returns:
+            Fully typed MFG configuration object
+        """
+        return self.load_structured_config(config_path, MFGConfig, **overrides)
+
+    def load_beach_config_structured(
+        self, config_path: str | Path = "beach_problem.yaml", **overrides: Any
+    ) -> TypedBeachConfig:
+        """
+        Load Beach problem configuration with full type safety.
+
+        Args:
+            config_path: Path to configuration file
+            **overrides: Configuration overrides
+
+        Returns:
+            Fully typed Beach problem configuration object
+        """
+        return self.load_structured_config(config_path, BeachProblemConfig, **overrides)  # type: ignore[return-value]
+
+    def create_default_mfg_config(self) -> TypedMFGConfig:
+        """
+        Create default MFG configuration using structured schema.
+
+        Returns:
+            Default MFG configuration with full type safety
+        """
+        return self._OmegaConf.structured(MFGConfig)
+
+    def validate_structured_config(self, config: TypedMFGConfig) -> bool:
+        """
+        Validate structured configuration against schema.
+
+        Args:
+            config: Structured configuration object
+
+        Returns:
+            True if valid, False otherwise
+        """
+        try:
+            # Basic validation - structured configs provide automatic validation
+            if not hasattr(config, "problem") or not hasattr(config, "solver"):
+                logger.error("Missing required configuration sections")
+                return False
+
+            # Type validation is automatic with structured configs
+            if not isinstance(config.problem.T, int | float):
+                logger.error("problem.T must be numeric")
+                return False
+
+            if not isinstance(config.problem.Nx, int):
+                logger.error("problem.Nx must be integer")
+                return False
+
+            return True
+
+        except (AttributeError, Exception) as e:
+            logger.error(f"Configuration validation error: {e}")
+            return False
+
 
 def create_omega_manager(config_dir: str | Path | None = None) -> OmegaConfManager:
     """
@@ -474,3 +613,55 @@ def create_parameter_sweep_configs(lambda_values: list[float], init_types: list[
     }
 
     return manager.create_parameter_sweep(base_config, sweep_params)  # type: ignore
+
+
+# === NEW STRUCTURED CONFIG CONVENIENCE FUNCTIONS (Type-Safe) ===
+
+
+def load_structured_mfg_config(config_path: str | Path = "config.yaml", **overrides: Any) -> TypedMFGConfig:
+    """
+    Load MFG configuration with full type safety.
+
+    This function provides the new type-safe way to load configurations,
+    solving the common OmegaConf type checking issues.
+
+    Args:
+        config_path: Path to configuration file
+        **overrides: Configuration overrides
+
+    Returns:
+        Fully typed MFG configuration with autocompletion support
+
+    Example:
+        >>> config = load_structured_mfg_config("my_config.yaml")
+        >>> print(config.problem.T)  # ✅ Type safe, autocompletes
+        >>> print(config.solver.max_iterations)  # ✅ Full IDE support
+    """
+    manager = create_omega_manager()
+    return manager.load_mfg_config(config_path, **overrides)
+
+
+def load_structured_beach_config(config_path: str | Path = "beach_problem.yaml", **overrides: Any) -> TypedBeachConfig:
+    """
+    Load Beach problem configuration with full type safety.
+
+    Args:
+        config_path: Path to configuration file
+        **overrides: Configuration overrides
+
+    Returns:
+        Fully typed Beach problem configuration
+    """
+    manager = create_omega_manager()
+    return manager.load_beach_config_structured(config_path, **overrides)
+
+
+def create_default_structured_config() -> TypedMFGConfig:
+    """
+    Create default MFG configuration using structured schema.
+
+    Returns:
+        Default configuration with full type safety
+    """
+    manager = create_omega_manager()
+    return manager.create_default_mfg_config()
