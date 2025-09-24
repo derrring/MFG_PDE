@@ -467,7 +467,7 @@ class NetworkMFGProblem(MFGProblem):
         return self._Nx
 
     @Nx.setter
-    def Nx(self, value: int):
+    def Nx(self, value: int) -> None:
         """Set number of spatial points."""
         self._Nx = value
 
@@ -477,7 +477,7 @@ class NetworkMFGProblem(MFGProblem):
         return self._xmin
 
     @xmin.setter
-    def xmin(self, value: float):
+    def xmin(self, value: float) -> None:
         """Set minimum spatial coordinate."""
         self._xmin = value
 
@@ -487,7 +487,7 @@ class NetworkMFGProblem(MFGProblem):
         return self._xmax
 
     @xmax.setter
-    def xmax(self, value: float):
+    def xmax(self, value: float) -> None:
         """Set maximum spatial coordinate."""
         self._xmax = value
 
@@ -497,7 +497,7 @@ class NetworkMFGProblem(MFGProblem):
         return getattr(self, "_Dx", 1.0)
 
     @Dx.setter
-    def Dx(self, value: float):
+    def Dx(self, value: float) -> None:
         """Set spatial step size."""
         self._Dx = value
 
@@ -555,7 +555,7 @@ def create_grid_mfg_problem(
     T: float = 1.0,
     Nt: int = 100,
     periodic: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> NetworkMFGProblem:
     """Create MFG problem on grid network."""
     from mfg_pde.geometry.network_geometry import GridNetwork
@@ -581,7 +581,7 @@ def create_random_mfg_problem(
     T: float = 1.0,
     Nt: int = 100,
     seed: int | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> NetworkMFGProblem:
     """Create MFG problem on random network."""
     from mfg_pde.geometry.network_geometry import RandomNetwork
@@ -606,7 +606,7 @@ def create_scale_free_mfg_problem(
     T: float = 1.0,
     Nt: int = 100,
     seed: int | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> NetworkMFGProblem:
     """Create MFG problem on scale-free network."""
     from mfg_pde.geometry.network_geometry import ScaleFreeNetwork
