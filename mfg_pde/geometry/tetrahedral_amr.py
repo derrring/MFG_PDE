@@ -8,8 +8,10 @@ enabling efficient solution of MFG problems with localized features or singulari
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .base_geometry import MeshData
 
@@ -383,20 +385,20 @@ class TetrahedralAMRMesh:
             element = self.elements_list[elem_idx]
             active_elements.append(element.vertices)
 
-        active_elements = np.array(active_elements)
+        active_elements = np.array(active_elements, dtype=np.int32)
 
         # Create boundary information (simplified)
-        boundary_faces = np.array([]).reshape(0, 3)
-        boundary_tags = np.array([])
+        boundary_faces = np.array([], dtype=np.int32).reshape(0, 3)
+        boundary_tags = np.array([], dtype=np.int32)
         element_tags = np.ones(len(active_elements), dtype=int)
 
         mesh_data = MeshData(
             vertices=self.vertices,
-            elements=active_elements,
+            elements=cast(NDArray[np.integer], active_elements),
             element_type="tetrahedron",
-            boundary_tags=boundary_tags,
+            boundary_tags=cast(NDArray[np.integer], boundary_tags),
             element_tags=element_tags,
-            boundary_faces=boundary_faces,
+            boundary_faces=cast(NDArray[np.integer], boundary_faces),
             dimension=3,
         )
 

@@ -266,7 +266,7 @@ class OmegaConfManager:
         for filename, config in configs.items():
             config_path = self.config_dir / filename
             if not config_path.exists():
-                self._OmegaConf.save(self._OmegaConf.create(config), config_path)  # type: ignore[call-overload]
+                self._OmegaConf.save(self._OmegaConf.create(config), config_path)
                 logger.info(f"Created default config: {config_path}")
 
     def load_config(self, config_path: str | Path, **overrides: Any) -> OmegaConfig:
@@ -558,7 +558,7 @@ class OmegaConfManager:
         except (UnsupportedInterpolationType, Exception) as e:
             logger.warning(f"Could not resolve all interpolations: {e}")
 
-        return config  # type: ignore[return-value]
+        return config
 
     def load_mfg_config(self, config_path: str | Path = "config.yaml", **overrides: Any) -> TypedMFGConfig:
         """

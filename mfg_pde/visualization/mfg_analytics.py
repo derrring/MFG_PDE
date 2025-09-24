@@ -318,6 +318,9 @@ class MFGAnalyticsEngine:
         title: str,
     ) -> dict[str, str]:
         """Create comprehensive solution visualizations."""
+        if self.viz_manager is None:
+            raise RuntimeError("Visualization manager not initialized")
+
         viz_files = {}
 
         # 2D density evolution

@@ -7,7 +7,9 @@ suitable for regular domain problems and testing.
 
 from __future__ import annotations
 
+from typing import cast
 import numpy as np
+from numpy.typing import NDArray
 
 from .base_geometry import BaseGeometry, MeshData
 
@@ -81,7 +83,7 @@ class SimpleGrid2D(BaseGeometry):
                 elements.append([bottom_left, bottom_right, top_left])
                 elements.append([bottom_right, top_right, top_left])
 
-        elements = np.array(elements)
+        elements = np.array(elements, dtype=np.int32)
 
         # Boundary faces (edges for 2D)
         boundary_faces = []
@@ -119,8 +121,8 @@ class SimpleGrid2D(BaseGeometry):
             boundary_faces.append([bottom_left, top_left])
             boundary_tags.append(4)  # Left = 4
 
-        boundary_faces = np.array(boundary_faces)
-        boundary_tags = np.array(boundary_tags)
+        boundary_faces = np.array(boundary_faces, dtype=np.int32)
+        boundary_tags = np.array(boundary_tags, dtype=np.int32)
 
         # Element tags (all interior)
         element_tags = np.ones(len(elements), dtype=int)
@@ -128,11 +130,11 @@ class SimpleGrid2D(BaseGeometry):
         # Create mesh data
         mesh_data = MeshData(
             vertices=vertices,
-            elements=elements,
+            elements=cast(NDArray[np.integer], elements),
             element_type="triangle",
-            boundary_tags=boundary_tags,
+            boundary_tags=cast(NDArray[np.integer], boundary_tags),
             element_tags=element_tags,
-            boundary_faces=boundary_faces,
+            boundary_faces=cast(NDArray[np.integer], boundary_faces),
             dimension=2,
         )
 
@@ -255,11 +257,11 @@ class SimpleGrid3D(BaseGeometry):
 
                     elements.extend(tetrahedra)
 
-        elements = np.array(elements)
+        elements = np.array(elements, dtype=np.int32)
 
         # Simplified boundary faces (just mark boundary vertices)
-        boundary_faces = np.array([]).reshape(0, 3)  # Empty for simplicity
-        boundary_tags = np.array([])
+        boundary_faces = np.array([], dtype=np.int32).reshape(0, 3)  # Empty for simplicity
+        boundary_tags = np.array([], dtype=np.int32)
 
         # Element tags (all interior)
         element_tags = np.ones(len(elements), dtype=int)
@@ -267,11 +269,11 @@ class SimpleGrid3D(BaseGeometry):
         # Create mesh data
         mesh_data = MeshData(
             vertices=vertices,
-            elements=elements,
+            elements=cast(NDArray[np.integer], elements),
             element_type="tetrahedron",
-            boundary_tags=boundary_tags,
+            boundary_tags=cast(NDArray[np.integer], boundary_tags),
             element_tags=element_tags,
-            boundary_faces=boundary_faces,
+            boundary_faces=cast(NDArray[np.integer], boundary_faces),
             dimension=3,
         )
 

@@ -81,7 +81,7 @@ class MFGDataFrame:
             raise ImportError("Polars not available. Install with: pip install polars")
 
         if data is None:
-            self.df = pl.DataFrame() if POLARS_AVAILABLE else None  # type: ignore
+            self.df = pl.DataFrame() if POLARS_AVAILABLE else None
         elif POLARS_AVAILABLE and hasattr(data, "shape"):
             self.df = data
         elif isinstance(data, dict):
