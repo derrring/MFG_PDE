@@ -44,18 +44,22 @@ try:
     BOKEH_AVAILABLE = True
 except ImportError:
     BOKEH_AVAILABLE = False
-    figure = save = output_file = HoverTool = ColorBar = LinearColorMapper = None
-    PanTool = WheelZoomTool = BoxZoomTool = ResetTool = SaveTool = None
-    Viridis256 = Plasma256 = Inferno256 = None
+    # Functions
+    figure = save = output_file = None
     gridplot = column = row = curdoc = push_notebook = show = transform = None
-    ColumnDataSource = None
+    # Classes set to None
+    HoverTool = ColorBar = LinearColorMapper = None  # type: ignore[misc]
+    PanTool = WheelZoomTool = BoxZoomTool = ResetTool = SaveTool = None  # type: ignore[misc]
+    ColumnDataSource = None  # type: ignore[misc]
+    # Palettes
+    Viridis256 = Plasma256 = Inferno256 = None
 
 # Optional Polars integration
 try:
     from mfg_pde.utils.polars_integration import POLARS_AVAILABLE, MFGDataFrame
 except ImportError:
     POLARS_AVAILABLE = False
-    MFGDataFrame = None
+    MFGDataFrame = None  # type: ignore[misc]
 
 logger = logging.getLogger(__name__)
 

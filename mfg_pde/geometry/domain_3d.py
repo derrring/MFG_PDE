@@ -82,7 +82,7 @@ class Domain3D(BaseGeometry):
     def create_gmsh_geometry(self) -> Any:
         """Create 3D geometry using Gmsh API."""
         try:
-            import gmsh  # type: ignore[import-not-found]
+            import gmsh
         except ImportError:
             raise ImportError("gmsh is required for mesh generation")
 
@@ -333,8 +333,8 @@ class Domain3D(BaseGeometry):
     def generate_mesh(self) -> MeshData:
         """Generate 3D tetrahedral mesh."""
         try:
-            import gmsh  # type: ignore[import-not-found]
-            import meshio  # type: ignore[import-untyped]  # noqa: F401
+            import gmsh
+            import meshio  # noqa: F401
         except ImportError:
             raise ImportError("gmsh and meshio are required for mesh generation")
 
@@ -430,17 +430,17 @@ class Domain3D(BaseGeometry):
             else:
                 quality_ratios.append(0.0)
 
-        quality_ratios = np.array(quality_ratios)
+        quality_ratios_array = np.array(quality_ratios)
 
         return {
             "min_volume": float(np.min(volumes)),
             "max_volume": float(np.max(volumes)),
             "mean_volume": float(np.mean(volumes)),
             "volume_ratio": float(np.max(volumes) / np.min(volumes)) if np.min(volumes) > 0 else np.inf,
-            "min_quality": float(np.min(quality_ratios)),
-            "mean_quality": float(np.mean(quality_ratios)),
-            "num_poor_elements": int(np.sum(quality_ratios < 0.1)),
-            "quality_histogram": np.histogram(quality_ratios, bins=10)[0].tolist(),
+            "min_quality": float(np.min(quality_ratios_array)),
+            "mean_quality": float(np.mean(quality_ratios_array)),
+            "num_poor_elements": int(np.sum(quality_ratios_array < 0.1)),
+            "quality_histogram": np.histogram(quality_ratios_array, bins=10)[0].tolist(),
         }
 
     def _compute_tetrahedron_volumes(self, vertices: np.ndarray, elements: np.ndarray) -> np.ndarray:
@@ -509,7 +509,7 @@ class Domain3D(BaseGeometry):
             self._mesh_data = self.generate_mesh()
 
         try:
-            import meshio  # type: ignore[import-untyped]
+            import meshio
         except ImportError:
             raise ImportError("meshio required for mesh export")
 
