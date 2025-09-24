@@ -380,10 +380,38 @@ Use explicit preservation overrides for important directories:
 
 ## 🎯 **Working Preferences**
 
+### **GitHub Issue and Label Management** ⚠️ **IMPORTANT**
+
+**Abstract Labeling Principle:**
+Labels should form a **hierarchical taxonomy** that scales with project growth, following these core principles:
+
+#### **Label Categories (Use Prefixes)**
+- **`area:`** - Functional domains (algorithms, config, omegaconf, documentation, geometry, performance)
+- **`type:`** - Work nature (infrastructure, enhancement, bug, research)
+- **`priority:`** - Urgency level (high, medium, low)
+- **`size:`** - Effort estimate (small, medium, large)
+- **`status:`** - Workflow state (blocked, in-review, needs-testing)
+- **`resolution:`** - Completion type (merged, superseded, wontfix)
+
+#### **Color Coding Philosophy**
+- **Red tones** (#d93f0b) - High priority, urgent items
+- **Blue tones** (#0052cc) - Technical work, infrastructure, algorithms
+- **Green tones** (#28a745) - Completed, successful resolution
+- **Purple tones** (#8e7cc3) - Special categories (OmegaConf, superseded)
+- **Yellow tones** (#fbca04) - Medium priority, needs attention
+
+#### **Scaling Strategy**
+As the project grows, **subdivide areas** before creating new label types:
+- `area: algorithms` → `area: algorithms-hjb`, `area: algorithms-fp`
+- `area: config` → `area: config-omegaconf`, `area: config-pydantic`
+
+This prevents label explosion while maintaining clear categorization.
+
 ### **Task Management**
 - Use TodoWrite tool for multi-step tasks
 - Track progress and mark completion
 - Create summary documents for major changes
+- Apply consistent GitHub labels following the hierarchical taxonomy
 
 ### **File Organization**
 - Keep root directory clean (only essential directories)
