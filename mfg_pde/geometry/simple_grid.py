@@ -7,10 +7,12 @@ suitable for regular domain problems and testing.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 from .base_geometry import BaseGeometry, MeshData
 
@@ -134,11 +136,11 @@ class SimpleGrid2D(BaseGeometry):
         # Create mesh data
         mesh_data = MeshData(
             vertices=vertices,
-            elements=cast(NDArray[np.integer], elements),
+            elements=cast("NDArray[np.integer]", elements),
             element_type="triangle",
-            boundary_tags=cast(NDArray[np.integer], boundary_tags),
+            boundary_tags=cast("NDArray[np.integer]", boundary_tags),
             element_tags=element_tags,
-            boundary_faces=cast(NDArray[np.integer], boundary_faces),
+            boundary_faces=cast("NDArray[np.integer]", boundary_faces),
             dimension=2,
         )
 
@@ -276,11 +278,11 @@ class SimpleGrid3D(BaseGeometry):
         # Create mesh data
         mesh_data = MeshData(
             vertices=vertices,
-            elements=cast(NDArray[np.integer], elements),
+            elements=cast("NDArray[np.integer]", elements),
             element_type="tetrahedron",
-            boundary_tags=cast(NDArray[np.integer], boundary_tags),
+            boundary_tags=cast("NDArray[np.integer]", boundary_tags),
             element_tags=element_tags,
-            boundary_faces=cast(NDArray[np.integer], boundary_faces),
+            boundary_faces=cast("NDArray[np.integer]", boundary_faces),
             dimension=3,
         )
 

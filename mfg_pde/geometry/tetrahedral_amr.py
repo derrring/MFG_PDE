@@ -8,10 +8,12 @@ enabling efficient solution of MFG problems with localized features or singulari
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 from .base_geometry import MeshData
 
@@ -394,11 +396,11 @@ class TetrahedralAMRMesh:
 
         mesh_data = MeshData(
             vertices=self.vertices,
-            elements=cast(NDArray[np.integer], active_elements),
+            elements=cast("NDArray[np.integer]", active_elements),
             element_type="tetrahedron",
-            boundary_tags=cast(NDArray[np.integer], boundary_tags),
+            boundary_tags=cast("NDArray[np.integer]", boundary_tags),
             element_tags=element_tags,
-            boundary_faces=cast(NDArray[np.integer], boundary_faces),
+            boundary_faces=cast("NDArray[np.integer]", boundary_faces),
             dimension=3,
         )
 
