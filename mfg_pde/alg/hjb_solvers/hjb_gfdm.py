@@ -169,7 +169,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
 
-    def _get_boundary_condition_property(self, property_name: str, default=None) -> Any:
+    def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
         """Helper method to get boundary condition properties from either dict or dataclass."""
         if hasattr(self.boundary_conditions, property_name):
             # BoundaryConditions dataclass
@@ -284,7 +284,8 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         for i in range(self.n_points):
             neighborhood = self.neighborhoods[i]
-            n_neighbors = neighborhood["size"]
+            n_neighbors_raw = neighborhood["size"]
+            n_neighbors = int(n_neighbors_raw) if isinstance(n_neighbors_raw, int | float) else 0
 
             if n_neighbors < self.n_derivatives:
                 self.taylor_matrices[i] = None
@@ -295,7 +296,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             center_point = self.collocation_points[i]
             neighbor_points = neighborhood["points"]
 
-            for j, neighbor_point in enumerate(neighbor_points):
+            for j, neighbor_point in enumerate(neighbor_points):  # type: ignore[var-annotated,arg-type]
                 delta_x = neighbor_point - center_point
 
                 for k, beta in enumerate(self.multi_indices):
@@ -311,7 +312,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     A[j, k] = term / factorial
 
             # Compute weights and store matrices
-            weights = self._compute_weights(neighborhood["distances"])
+            weights = self._compute_weights(np.asarray(neighborhood["distances"]))
             W = np.diag(weights)
 
             # Use SVD or QR decomposition to avoid condition number amplification
@@ -331,7 +332,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 tolerance = 1e-12
                 rank = np.sum(tolerance < S)
 
-                self.taylor_matrices[i] = {
+                self.taylor_matrices[i] = {  # type: ignore[assignment]
                     "A": A,
                     "W": W,
                     "sqrt_W": sqrt_W,
@@ -349,7 +350,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 try:
                     # QR decomposition: WA = Q @ R
                     Q, R = np.linalg.qr(WA)
-                    self.taylor_matrices[i] = {
+                    self.taylor_matrices[i] = {  # type: ignore[assignment]
                         "A": A,
                         "W": W,
                         "sqrt_W": sqrt_W,
@@ -360,7 +361,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     }
                 except:
                     # Final fallback to normal equations
-                    self.taylor_matrices[i] = {
+                    self.taylor_matrices[i] = {  # type: ignore[assignment]
                         "A": A,
                         "W": W,
                         "AtW": A.T @ W,
@@ -439,7 +440,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Handle ghost particles for no-flux boundary conditions
         u_neighbors = []
-        for idx in neighbor_indices:
+        for idx in neighbor_indices:  # type: ignore[attr-defined]
             if idx >= 0:
                 # Regular neighbor
                 u_neighbors.append(u_values[idx])
@@ -447,7 +448,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 # Ghost particle: enforce no-flux condition u_ghost = u_center
                 u_neighbors.append(u_center)
 
-        u_neighbors = np.array(u_neighbors)
+        u_neighbors = np.array(u_neighbors)  # type: ignore[assignment]
 
         # Right-hand side: u(x_center) - u(x_neighbor) following equation (6) in the mathematical framework
         # For ghost particles, this becomes u_center - u_center = 0, enforcing ∂u/∂n = 0
@@ -458,7 +459,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         if use_monotone_qp:
             # First try unconstrained solution to check if constraints are needed
-            unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)
+            unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)  # type: ignore[arg-type]
 
             # Check if unconstrained solution violates monotonicity
             # Use enhanced QP logic if available, otherwise use basic check
@@ -470,13 +471,13 @@ class HJBGFDMSolver(BaseHJBSolver):
             if needs_constraints:
                 # Use constrained QP for monotonicity (enhanced version if available)
                 if self.qp_optimization_level in ["smart", "tuned"] and CVXPY_AVAILABLE:
-                    derivative_coeffs = self._enhanced_solve_monotone_constrained_qp(taylor_data, b, point_idx)
+                    derivative_coeffs = self._enhanced_solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
                 else:
-                    derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
+                    derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
             else:
                 # Use faster unconstrained solution
                 derivative_coeffs = unconstrained_coeffs
-        elif taylor_data.get("use_svd", False):
+        elif taylor_data.get("use_svd", False):  # type: ignore[attr-defined]
             # Use SVD: solve using pseudoinverse with truncated SVD
             sqrt_W = taylor_data["sqrt_W"]
             U = taylor_data["U"]
@@ -976,7 +977,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     if (self.dimension == 1 and beta == (2,)) or (self.dimension == 2 and beta in [(2, 0), (0, 2)]):
                         # Check bounds for derivative_matrix access
                         if k < derivative_matrix.shape[0]:
-                            for j_local, j_global in enumerate(neighbor_indices):
+                            for j_local, j_global in enumerate(neighbor_indices):  # type: ignore[var-annotated]
                                 if j_local < derivative_matrix.shape[1] and j_global >= 0:
                                     # Only apply to real particles (ghost particles have negative indices)
                                     coeff = derivative_matrix[k, j_local]

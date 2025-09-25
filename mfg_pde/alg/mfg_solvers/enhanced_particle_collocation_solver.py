@@ -88,7 +88,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
         self.detailed_convergence_history: list[dict[str, Any]] = []
         self.use_advanced_convergence = True
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         Niter: int = 20,
         l2errBound: float = 1e-3,
@@ -309,7 +309,9 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
 
 # Convenience function for creating enhanced solver
 def create_enhanced_solver(
-    problem: MFGProblem, collocation_points: np.ndarray, **kwargs
+    problem: MFGProblem,
+    collocation_points: np.ndarray,
+    **kwargs: Any,  # type: ignore[no-untyped-def]
 ) -> MonitoredParticleCollocationSolver:
     """
     Create enhanced particle collocation solver with optimized defaults.
@@ -335,7 +337,7 @@ def create_enhanced_solver(
     }
     defaults.update(kwargs)
 
-    return MonitoredParticleCollocationSolver(problem, collocation_points, **defaults)
+    return MonitoredParticleCollocationSolver(problem, collocation_points, **defaults)  # type: ignore[arg-type]
 
 
 # Backward compatibility alias

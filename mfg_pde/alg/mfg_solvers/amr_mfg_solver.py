@@ -500,7 +500,7 @@ class AMRMFGSolver(MFGSolver):
                 "cells_per_level": mesh_stats["level_distribution"],
                 "refinement_ratio": mesh_stats["refinement_ratio"],
                 "average_efficiency": (
-                    np.mean(self.amr_stats["mesh_efficiency"]) if self.amr_stats["mesh_efficiency"] else 0.0
+                    np.mean(np.asarray(self.amr_stats["mesh_efficiency"])) if self.amr_stats["mesh_efficiency"] else 0.0
                 ),
             },
         }

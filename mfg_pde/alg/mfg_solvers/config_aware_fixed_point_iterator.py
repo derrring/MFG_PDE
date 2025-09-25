@@ -8,7 +8,7 @@ configuration system for improved parameter management and user experience.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -93,7 +93,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         self.l2distm_rel: np.ndarray
         self.iterations_run: int = 0
 
-    def solve(self, config: MFGSolverConfig | None = None, **kwargs) -> tuple | SolverResult:
+    def solve(self, config: MFGSolverConfig | None = None, **kwargs: Any) -> tuple | SolverResult:  # type: ignore[override]
         """
         Solve the MFG system using structured configuration.
 
@@ -279,7 +279,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
                 self.l2distm_rel,
             )
 
-    def _cold_start_initialization(self, Nt: int, Nx: int):
+    def _cold_start_initialization(self, Nt: int, Nx: int) -> None:
         """Initialize with cold start (default initialization)."""
         self.U = np.zeros((Nt, Nx))
         self.M = np.zeros((Nt, Nx))
@@ -321,7 +321,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         """Get current configuration."""
         return self.config
 
-    def update_config(self, **kwargs) -> None:
+    def update_config(self, **kwargs: Any) -> None:  # type: ignore[no-untyped-def]
         """Update configuration parameters."""
         for key, value in kwargs.items():
             if hasattr(self.config, key):
@@ -367,6 +367,6 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for research with detailed monitoring."""
-        from mfg_pde.alg.config.solver_config import create_research_config
+        from mfg_pde.config.solver_config import create_research_config  # type: ignore[import-not-found]
 
         return cls(problem, hjb_solver, fp_solver, create_research_config())

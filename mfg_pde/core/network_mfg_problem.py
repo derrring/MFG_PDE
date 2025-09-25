@@ -134,7 +134,7 @@ class NetworkMFGProblem(MFGProblem):
         # Initialize with dummy spatial parameters (networks are discrete)
         super().__init__(T=T, Nt=Nt, xmin=self._xmin, xmax=self._xmax, Nx=self._Nx)
 
-        self.components = components or NetworkMFGComponents()
+        self.components = components or NetworkMFGComponents()  # type: ignore[assignment]
         self.problem_name = problem_name
 
         # Override spatial properties for network
@@ -236,8 +236,8 @@ class NetworkMFGProblem(MFGProblem):
         Returns:
             Lagrangian value L(node, velocity, m, t)
         """
-        if self.components.lagrangian_func is not None:
-            return self.components.lagrangian_func(node, velocity, m, t)
+        if self.components.lagrangian_func is not None:  # type: ignore[attr-defined]
+            return self.components.lagrangian_func(node, velocity, m, t)  # type: ignore[attr-defined]
 
         # Default Lagrangian: kinetic energy + potential + interaction
         kinetic_energy = 0.5 * np.linalg.norm(velocity) ** 2
@@ -265,8 +265,8 @@ class NetworkMFGProblem(MFGProblem):
         Returns:
             Total trajectory cost
         """
-        if self.components.trajectory_cost_func is not None:
-            return self.components.trajectory_cost_func(trajectory, velocities, m_evolution, times)
+        if self.components.trajectory_cost_func is not None:  # type: ignore[attr-defined]
+            return self.components.trajectory_cost_func(trajectory, velocities, m_evolution, times)  # type: ignore[attr-defined]
 
         # Default: integrate Lagrangian along trajectory
         total_cost = 0.0
@@ -322,14 +322,14 @@ class NetworkMFGProblem(MFGProblem):
 
     def node_potential(self, node: int, t: float) -> float:
         """Potential function at network nodes."""
-        if self.components.node_potential_func is not None:
-            return self.components.node_potential_func(node, t)
+        if self.components.node_potential_func is not None:  # type: ignore[attr-defined]
+            return self.components.node_potential_func(node, t)  # type: ignore[attr-defined]
         return 0.0
 
     def density_coupling(self, node: int, m: np.ndarray, t: float) -> float:
         """Density coupling/interaction at nodes."""
-        if self.components.node_interaction_func is not None:
-            return self.components.node_interaction_func(node, m, t)
+        if self.components.node_interaction_func is not None:  # type: ignore[attr-defined]
+            return self.components.node_interaction_func(node, m, t)  # type: ignore[attr-defined]
 
         # Default: quadratic congestion at nodes
         return 0.5 * m[node] ** 2
@@ -340,8 +340,8 @@ class NetworkMFGProblem(MFGProblem):
 
     def edge_cost(self, node_from: int, node_to: int, t: float) -> float:
         """Cost of moving along network edges."""
-        if self.components.edge_cost_func is not None:
-            return self.components.edge_cost_func(node_from, node_to, t)
+        if self.components.edge_cost_func is not None:  # type: ignore[attr-defined]
+            return self.components.edge_cost_func(node_from, node_to, t)  # type: ignore[attr-defined]
 
         # Default: unit cost weighted by edge weight
         if self.network_data is None:
@@ -353,8 +353,8 @@ class NetworkMFGProblem(MFGProblem):
 
     def get_initial_density(self) -> np.ndarray:
         """Initial density distribution on network nodes."""
-        if self.components.initial_node_density_func is not None:
-            return np.array([self.components.initial_node_density_func(i) for i in range(self.num_nodes)])
+        if self.components.initial_node_density_func is not None:  # type: ignore[attr-defined]
+            return np.array([self.components.initial_node_density_func(i) for i in range(self.num_nodes)])  # type: ignore[attr-defined]
 
         # Default: uniform distribution
         initial_density = np.ones(self.num_nodes) / self.num_nodes
@@ -362,8 +362,8 @@ class NetworkMFGProblem(MFGProblem):
 
     def get_terminal_value(self) -> np.ndarray:
         """Terminal value function on network nodes."""
-        if self.components.terminal_node_value_func is not None:
-            return np.array([self.components.terminal_node_value_func(i) for i in range(self.num_nodes)])
+        if self.components.terminal_node_value_func is not None:  # type: ignore[attr-defined]
+            return np.array([self.components.terminal_node_value_func(i) for i in range(self.num_nodes)])  # type: ignore[attr-defined]
 
         # Default: zero terminal values
         return np.zeros(self.num_nodes)
@@ -441,10 +441,10 @@ class NetworkMFGProblem(MFGProblem):
         """Apply boundary conditions to network nodes."""
         u_bc = u.copy()
 
-        if self.components.boundary_nodes is not None:
-            for node in self.components.boundary_nodes:
-                if self.components.boundary_values_func is not None:
-                    u_bc[node] = self.components.boundary_values_func(node, t)
+        if self.components.boundary_nodes is not None:  # type: ignore[attr-defined]
+            for node in self.components.boundary_nodes:  # type: ignore[attr-defined]
+                if self.components.boundary_values_func is not None:  # type: ignore[attr-defined]
+                    u_bc[node] = self.components.boundary_values_func(node, t)  # type: ignore[attr-defined]
                 else:
                     # Default: zero boundary values
                     u_bc[node] = 0.0

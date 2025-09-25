@@ -70,7 +70,7 @@ class PerformanceMetrics:
 class PerformanceMonitor:
     """Performance monitoring and profiling for MFG computations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.metrics_history: list[PerformanceMetrics] = []
         self.process = psutil.Process()
 

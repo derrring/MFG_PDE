@@ -109,14 +109,14 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         logger.info(f"  Initial penalty: {augmented_penalty}")
         logger.info(f"  Adaptive penalty: {use_adaptive_penalty}")
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         initial_guess: NDArray | None = None,
         max_outer_iterations: int = 20,
         max_inner_iterations: int = 50,
         tolerance: float = 1e-6,
         verbose: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> VariationalSolverResult:
         """
         Solve using primal-dual method.
@@ -195,7 +195,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
                 "dual_vars": {k: np.linalg.norm(v) for k, v in self.dual_vars.items()},
                 "primal_change": np.linalg.norm(current_density - prev_density),
             }
-            self.primal_dual_history.append(iteration_info)
+            self.primal_dual_history.append(iteration_info)  # type: ignore[arg-type]
             self.constraint_violation_history.append(max_violation)
 
             if verbose:
@@ -204,7 +204,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
                 logger.info(f"  Current penalty: {self.augmented_penalty:.1f}")
 
             # Convergence check
-            if max_violation < self.constraint_tolerance and iteration_info["primal_change"] < tolerance:
+            if max_violation < self.constraint_tolerance and float(iteration_info["primal_change"]) < tolerance:  # type: ignore[arg-type]
                 converged = True
                 if verbose:
                     logger.info(f"  ✓ Converged at iteration {outer_iteration + 1}")
@@ -424,7 +424,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
 
         return constraints
 
-    def _update_dual_variables(self, constraint_violations: dict[str, float]):
+    def _update_dual_variables(self, constraint_violations: dict[str, float]) -> None:
         """Update dual variables based on constraint violations."""
         if self.dual_update_method == "gradient_ascent":
             # Gradient ascent: λ ← λ + α * constraints
@@ -454,7 +454,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             # This would require more sophisticated implementation
             pass
 
-    def _update_penalty_parameter(self, constraint_violations: dict[str, float]):
+    def _update_penalty_parameter(self, constraint_violations: dict[str, float]) -> None:
         """Adapt penalty parameter based on constraint violation progress."""
         if not self.use_adaptive_penalty:
             return

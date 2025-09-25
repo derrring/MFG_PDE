@@ -27,7 +27,7 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 try:
-    import networkx as nx  # type: ignore[import-untyped] # noqa: F401
+    import networkx as nx  # noqa: F401
 
     NETWORKX_AVAILABLE = True
 except ImportError:
@@ -474,7 +474,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             colorscale = "Viridis"
         else:
             node_z = np.zeros(self.num_nodes)
-            node_color = "lightblue"
+            node_color = "lightblue"  # type: ignore[assignment]
             colorscale = None
 
         # Add 3D edges

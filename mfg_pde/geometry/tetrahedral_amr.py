@@ -380,12 +380,12 @@ class TetrahedralAMRMesh:
     def current_mesh_data(self) -> MeshData:
         """Get current mesh as MeshData object."""
         # Extract active elements
-        active_elements = []
+        active_elements_list = []
         for elem_idx in self.active_elements:
             element = self.elements_list[elem_idx]
-            active_elements.append(element.vertices)
+            active_elements_list.append(element.vertices)
 
-        active_elements = np.array(active_elements, dtype=np.int32)
+        active_elements = np.array(active_elements_list, dtype=np.int32)
 
         # Create boundary information (simplified)
         boundary_faces = np.array([], dtype=np.int32).reshape(0, 3)
@@ -440,7 +440,7 @@ class TetrahedralAMRMesh:
         ]
 
         volume = self._compute_tetrahedron_volume(coords)
-        max_edge = max(edges)
+        max_edge = max(edges)  # type: ignore[type-var]
 
         if max_edge > 0:
             return float(volume / (max_edge**3))

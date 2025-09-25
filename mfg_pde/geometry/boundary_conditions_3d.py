@@ -276,12 +276,12 @@ class BoundaryConditionManager3D:
     across various regions of the computational domain.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize boundary condition manager."""
         self.conditions: list[BoundaryCondition3D] = []
         self.region_map: dict[int, list[BoundaryCondition3D]] = {}
 
-    def add_condition(self, condition: BoundaryCondition3D, boundary_region: int | str | np.ndarray):
+    def add_condition(self, condition: BoundaryCondition3D, boundary_region: int | str | np.ndarray) -> None:
         """
         Add boundary condition for specific region.
 
@@ -357,8 +357,9 @@ class BoundaryConditionManager3D:
         # Apply conditions by region
         for region_id, conditions in self.region_map.items():
             # Get boundary vertices for this region
-            if region_id in boundary_mapping:
-                boundary_indices = boundary_mapping[region_id]
+            region_key = str(region_id)
+            if region_key in boundary_mapping:
+                boundary_indices = boundary_mapping[region_key]
             else:
                 # Try to find region in standard face names
                 region_names = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
@@ -498,7 +499,7 @@ def create_box_boundary_conditions(
     if condition_type == "dirichlet_zero":
         # Zero Dirichlet on all faces
         for i in range(6):  # 6 faces of box
-            condition = DirichletBC3D(0.0, f"Face_{i}")
+            condition: DirichletBC3D | NeumannBC3D = DirichletBC3D(0.0, f"Face_{i}")
             manager.add_condition(condition, i)
 
     elif condition_type == "neumann_zero":
@@ -539,7 +540,7 @@ def create_sphere_boundary_conditions(
         return np.abs(dist - radius) < 1e-10
 
     if condition_type == "dirichlet_zero":
-        condition = DirichletBC3D(0.0, "Sphere_Surface")
+        condition: DirichletBC3D | NeumannBC3D = DirichletBC3D(0.0, "Sphere_Surface")
     elif condition_type == "neumann_zero":
         condition = NeumannBC3D(0.0, "Sphere_Surface")
     else:

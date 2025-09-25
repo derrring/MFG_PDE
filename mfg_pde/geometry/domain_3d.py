@@ -42,6 +42,7 @@ class Domain3D(BaseGeometry):
         self.holes = holes or []
         self.mesh_size = mesh_size
         self.kwargs = kwargs
+        self._mesh_data: MeshData | None = None
 
         # Domain-specific parameters
         self._setup_domain_parameters()
@@ -465,10 +466,10 @@ class Domain3D(BaseGeometry):
         """Compute circumradius of tetrahedron."""
         # Simplified calculation for demonstration
         # In practice, would use more robust geometric computation
-        edges = []
+        edges: list[float] = []
         for i in range(4):
             for j in range(i + 1, 4):
-                edge_length = np.linalg.norm(coords[i] - coords[j])
+                edge_length = float(np.linalg.norm(coords[i] - coords[j]))
                 edges.append(edge_length)
 
         return max(edges) / 2.0  # Approximation
@@ -495,7 +496,7 @@ class Domain3D(BaseGeometry):
             edge1 = face[1] - face[0]
             edge2 = face[2] - face[0]
             area = 0.5 * np.linalg.norm(np.cross(edge1, edge2))
-            surface_area += area
+            surface_area += float(area)
 
         # Inradius = 3 * Volume / Surface_area
         if surface_area > 0:
@@ -552,7 +553,7 @@ class Domain3D(BaseGeometry):
             quality_data = np.array(
                 [self._mesh_data.quality_metrics.get("min_quality", 0.5)] * len(self._mesh_data.elements)
             )
-            mesh["quality"] = quality_data
+            mesh.cell_data["quality"] = quality_data  # type: ignore[attr-defined]
             plotter.add_mesh(mesh, scalars="quality", cmap="coolwarm")
 
         plotter.show_grid()

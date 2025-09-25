@@ -174,7 +174,7 @@ class PriorityHook(SolverHooks):
         # Execution order: Debug -> Plotting -> Cleanup
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._hooks_by_priority: list[tuple[int, SolverHooks]] = []
 
     def add_hook(self, hook: SolverHooks, priority: int = 0) -> None:

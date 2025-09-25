@@ -159,7 +159,7 @@ class OscillationDetector:
             history_length: Number of recent values to analyze
         """
         self.history_length = history_length
-        self.error_history = deque(maxlen=history_length)
+        self.error_history: deque[float] = deque(maxlen=history_length)
 
     def add_sample(self, error: float):
         """Add new error sample to history."""
@@ -276,14 +276,14 @@ class AdvancedConvergenceMonitor:
             Dictionary with convergence diagnostics
         """
         self.iteration_count += 1
-        self.x_grid = x_grid
+        self.x_grid = x_grid  # type: ignore[assignment]
 
         # Compute L2 error for value function
         u_l2_error = float(np.linalg.norm(u_current - u_previous))
         self.oscillation_detector.add_sample(u_l2_error)
 
         # Initialize diagnostics
-        diagnostics = {
+        diagnostics: dict[str, Any] = {
             "iteration": self.iteration_count,
             "u_l2_error": u_l2_error,
             "converged": False,
@@ -346,7 +346,7 @@ class AdvancedConvergenceMonitor:
 
         # Store in history
         self.convergence_history.append(diagnostics)
-        self.previous_m = m_current.copy()
+        self.previous_m = m_current.copy()  # type: ignore[assignment]
 
         return diagnostics
 
@@ -524,11 +524,11 @@ class ParticleMethodDetector:
         for attr in particle_attributes:
             if hasattr(solver, attr):
                 found_attributes.append(attr)
-                detection_info["particle_components"].append(f"attribute:{attr}")
+                detection_info["particle_components"].append(f"attribute:{attr}")  # type: ignore[attr-defined]
 
         if found_attributes:
-            detection_info["detection_methods"].append("attribute_scan")
-            detection_info["confidence"] += 0.3
+            detection_info["detection_methods"].append("attribute_scan")  # type: ignore[attr-defined]
+            detection_info["confidence"] = float(detection_info["confidence"]) + 0.3  # type: ignore[arg-type]
 
         # Check 2: Inspect solver components for particle classes
         particle_class_names = [
@@ -544,16 +544,16 @@ class ParticleMethodDetector:
         if fp_solver is not None:
             fp_class_name = fp_solver.__class__.__name__
             if any(particle_name in fp_class_name for particle_name in particle_class_names):
-                detection_info["particle_components"].append(f"fp_solver:{fp_class_name}")
-                detection_info["detection_methods"].append("component_class_inspection")
-                detection_info["confidence"] += 0.5
+                detection_info["particle_components"].append(f"fp_solver:{fp_class_name}")  # type: ignore[attr-defined]
+                detection_info["detection_methods"].append("component_class_inspection")  # type: ignore[attr-defined]
+                detection_info["confidence"] = float(detection_info["confidence"]) + 0.5  # type: ignore[arg-type]
 
         # Check solver's own class name
         solver_class_name = solver.__class__.__name__
         if any(particle_name in solver_class_name for particle_name in particle_class_names):
-            detection_info["particle_components"].append(f"solver:{solver_class_name}")
-            detection_info["detection_methods"].append("solver_class_inspection")
-            detection_info["confidence"] += 0.4
+            detection_info["particle_components"].append(f"solver:{solver_class_name}")  # type: ignore[attr-defined]
+            detection_info["detection_methods"].append("solver_class_inspection")  # type: ignore[attr-defined]
+            detection_info["confidence"] = float(detection_info["confidence"]) + 0.4  # type: ignore[arg-type]
 
         # Check 3: Look for particle-specific methods
         particle_methods = [
@@ -568,11 +568,11 @@ class ParticleMethodDetector:
         for method in particle_methods:
             if hasattr(solver, method) and callable(getattr(solver, method)):
                 found_methods.append(method)
-                detection_info["particle_components"].append(f"method:{method}")
+                detection_info["particle_components"].append(f"method:{method}")  # type: ignore[attr-defined]
 
         if found_methods:
-            detection_info["detection_methods"].append("method_inspection")
-            detection_info["confidence"] += 0.2
+            detection_info["detection_methods"].append("method_inspection")  # type: ignore[attr-defined]
+            detection_info["confidence"] = float(detection_info["confidence"]) + 0.2  # type: ignore[arg-type]
 
         # Check 4: Analyze solve method signature for particle-related parameters
         if hasattr(solver, "solve"):
@@ -586,17 +586,17 @@ class ParticleMethodDetector:
                 found_params = [p for p in particle_params if p in sig.parameters]
                 if found_params:
                     detection_info["particle_components"].extend([f"param:{p}" for p in found_params])
-                    detection_info["detection_methods"].append("parameter_inspection")
-                    detection_info["confidence"] += 0.1
+                    detection_info["detection_methods"].append("parameter_inspection")  # type: ignore[attr-defined]
+                    detection_info["confidence"] = float(detection_info["confidence"]) + 0.1  # type: ignore[arg-type]
             except Exception:
                 pass  # Ignore signature inspection errors
 
         # Final decision based on confidence
-        has_particles = detection_info["confidence"] > 0.3
+        has_particles = float(detection_info["confidence"]) > 0.3  # type: ignore[arg-type]
 
         # Boost confidence if multiple detection methods agree
         if len(detection_info["detection_methods"]) >= 2:
-            detection_info["confidence"] = min(1.0, detection_info["confidence"] * 1.2)
+            detection_info["confidence"] = min(1.0, float(detection_info["confidence"]) * 1.2)  # type: ignore[arg-type]
             has_particles = True
 
         return has_particles, detection_info
@@ -679,7 +679,7 @@ class AdaptiveConvergenceWrapper:
             self._particle_mode = self.force_particle_mode
             self._detection_info = {"forced": True, "mode": self.force_particle_mode}
         else:
-            self._particle_mode, self._detection_info = ParticleMethodDetector.detect_particle_methods(solver)
+            self._particle_mode, self._detection_info = ParticleMethodDetector.detect_particle_methods(solver)  # type: ignore[assignment]
 
         # Set up convergence monitoring
         if self._particle_mode:
