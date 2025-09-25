@@ -114,7 +114,7 @@ def save_experiment_data(
             total_mass_vs_time=total_mass_vs_time,
             tSpace=problem.tSpace,
             xSpace=problem.xSpace,
-            problem_params=problem_params_dict,
+            problem_params=problem_params_dict,  # type: ignore[arg-type]
             solver_name=solver_name,
             timestamp=timestamp,
             iterations_run=iterations_run,

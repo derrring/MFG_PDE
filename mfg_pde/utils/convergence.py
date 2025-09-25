@@ -585,7 +585,7 @@ class ParticleMethodDetector:
                 ]
                 found_params = [p for p in particle_params if p in sig.parameters]
                 if found_params:
-                    detection_info["particle_components"].extend([f"param:{p}" for p in found_params])
+                    detection_info["particle_components"].extend([f"param:{p}" for p in found_params])  # type: ignore[attr-defined]
                     detection_info["detection_methods"].append("parameter_inspection")  # type: ignore[attr-defined]
                     detection_info["confidence"] = float(detection_info["confidence"]) + 0.1  # type: ignore[arg-type]
             except Exception:
@@ -595,7 +595,7 @@ class ParticleMethodDetector:
         has_particles = float(detection_info["confidence"]) > 0.3  # type: ignore[arg-type]
 
         # Boost confidence if multiple detection methods agree
-        if len(detection_info["detection_methods"]) >= 2:
+        if len(detection_info["detection_methods"]) >= 2:  # type: ignore[arg-type]
             detection_info["confidence"] = min(1.0, float(detection_info["confidence"]) * 1.2)  # type: ignore[arg-type]
             has_particles = True
 
@@ -676,8 +676,8 @@ class AdaptiveConvergenceWrapper:
 
         # Detect particle methods
         if self.force_particle_mode is not None:
-            self._particle_mode = self.force_particle_mode
-            self._detection_info = {"forced": True, "mode": self.force_particle_mode}
+            self._particle_mode = self.force_particle_mode  # type: ignore[assignment]
+            self._detection_info = {"forced": True, "mode": self.force_particle_mode}  # type: ignore[assignment]
         else:
             self._particle_mode, self._detection_info = ParticleMethodDetector.detect_particle_methods(solver)  # type: ignore[assignment]
 
@@ -687,11 +687,11 @@ class AdaptiveConvergenceWrapper:
 
         # Wrap the solve method
         if hasattr(solver, "solve") and callable(solver.solve):
-            self._original_solve = solver.solve
-            solver.solve = self._adaptive_solve
+            self._original_solve = solver.solve  # type: ignore[assignment]
+            solver.solve = self._adaptive_solve  # type: ignore[method-assign]
 
         # Store reference to wrapper in solver for debugging
-        solver._adaptive_convergence_wrapper = self
+        solver._adaptive_convergence_wrapper = self  # type: ignore[attr-defined]
 
         if self.verbose:
             self._print_convergence_mode()
@@ -779,7 +779,7 @@ class AdaptiveConvergenceWrapper:
             return self._classical_solve(Niter, l2errBound, verbose, **kwargs)
 
         # Initialize convergence monitoring
-        self._convergence_monitor = create_default_monitor(**self.advanced_convergence_kwargs)
+        self._convergence_monitor = create_default_monitor(**self.advanced_convergence_kwargs)  # type: ignore[assignment]
 
         # Extract spatial grid for convergence analysis
         x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx)
@@ -902,7 +902,7 @@ def create_default_monitor(**kwargs) -> AdvancedConvergenceMonitor:
     }
     defaults.update(kwargs)
 
-    return AdvancedConvergenceMonitor(**defaults)
+    return AdvancedConvergenceMonitor(**defaults)  # type: ignore[arg-type]
 
 
 def adaptive_convergence(

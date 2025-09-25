@@ -341,7 +341,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             print("Solving using relaxed equilibria (trajectory measures)...")
 
         # Initialize trajectory measures
-        self.trajectory_measures = [self._create_initial_trajectory_measure() for _ in range(self.num_nodes)]
+        self.trajectory_measures = [self._create_initial_trajectory_measure() for _ in range(self.num_nodes)]  # type: ignore[misc]
 
         # Compute relaxed equilibrium
         U, M = self.network_problem.compute_relaxed_equilibrium(self.trajectory_measures)

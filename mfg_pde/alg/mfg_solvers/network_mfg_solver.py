@@ -336,14 +336,14 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
         for t in range(self.Nt + 1):
             flows = self._compute_flows_at_time(self.U[t, :], self.M[t, :])
 
-            flow_analysis["total_flow_over_time"].append(np.sum(np.abs(flows)))  # type: ignore[attr-defined]
-            flow_analysis["max_flow_over_time"].append(np.max(np.abs(flows)))  # type: ignore[attr-defined]
+            flow_analysis["total_flow_over_time"].append(np.sum(np.abs(flows)))
+            flow_analysis["max_flow_over_time"].append(np.max(np.abs(flows)))
 
             # Flow concentration (Gini-like coefficient)
             sorted_flows = np.sort(np.abs(flows))
             n = len(sorted_flows)
             gini = (2 * np.sum((np.arange(n) + 1) * sorted_flows)) / (n * np.sum(sorted_flows)) - (n + 1) / n
-            flow_analysis["flow_concentration"].append(gini)  # type: ignore[attr-defined]
+            flow_analysis["flow_concentration"].append(gini)
 
         # Identify dominant flow patterns
         avg_flows = np.mean(
