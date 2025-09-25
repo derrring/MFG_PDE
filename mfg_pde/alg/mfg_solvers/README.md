@@ -32,11 +32,11 @@ for iteration in range(max_picard_iterations):
 ```python
 from mfg_pde.alg.mfg_solvers import FixedPointIterator
 from mfg_pde.alg.fp_solvers import FPParticleSolver
-from mfg_pde.alg.hjb_solvers import HJBWeno5Solver
+from mfg_pde.alg.hjb_solvers import HJBWenoSolver
 
 # Mix any FP solver + any HJB solver
 fp_solver = FPParticleSolver(problem, num_particles=5000)
-hjb_solver = HJBWeno5Solver(problem, cfl_number=0.3)
+hjb_solver = HJBWenoSolver(problem, weno_variant="weno5", cfl_number=0.3)
 
 mfg_solver = FixedPointIterator(
     problem=problem,
@@ -100,7 +100,7 @@ solver = HybridFPParticleHJBFDM(
 ```python
 from mfg_pde import ExampleMFGProblem
 from mfg_pde.alg.fp_solvers import FPParticleSolver
-from mfg_pde.alg.hjb_solvers import HJBWeno5Solver
+from mfg_pde.alg.hjb_solvers import HJBWenoSolver
 from mfg_pde.alg.mfg_solvers import FixedPointIterator
 
 # Create problem
@@ -108,7 +108,7 @@ problem = ExampleMFGProblem(Nx=128, Nt=64, T=1.0)
 
 # High-accuracy combination
 fp_solver = FPParticleSolver(problem, num_particles=10000)
-hjb_solver = HJBWeno5Solver(problem, cfl_number=0.3)  # Fifth-order!
+hjb_solver = HJBWenoSolver(problem, weno_variant="weno5", cfl_number=0.3)  # Fifth-order!
 
 mfg_solver = FixedPointIterator(
     problem=problem,
@@ -179,10 +179,11 @@ result = solver.solve(max_iterations=40, tolerance=1e-5)
 - Adaptive refinement capabilities
 
 ### **For High-Order Accuracy**
-✅ **Use**: `FixedPointIterator` with `HJBWeno5Solver`
-- Fifth-order spatial accuracy
-- Non-oscillatory properties
-- Ideal for smooth problems
+✅ **Use**: `FixedPointIterator` with `HJBWenoSolver` family
+- Choose from WENO5, WENO-Z, WENO-M, WENO-JS variants
+- Fifth-order spatial accuracy with enhanced properties
+- Non-oscillatory reconstruction
+- Ideal for smooth problems and discontinuous solutions
 
 ## 🔧 **Common Solver Combinations**
 
@@ -190,9 +191,9 @@ result = solver.solve(max_iterations=40, tolerance=1e-5)
 ```python
 combinations = {
     "standard": (FPFDMSolver, HJBFDMSolver),
-    "high_order": (FPFDMSolver, HJBWeno5Solver),
+    "high_order": (FPFDMSolver, HJBWenoSolver),
     "particle_robust": (FPParticleSolver, HJBFDMSolver),
-    "particle_accurate": (FPParticleSolver, HJBWeno5Solver),
+    "particle_accurate": (FPParticleSolver, HJBWenoSolver),
     "meshfree": (FPParticleSolver, HJBGFDMSolver)
 }
 ```
@@ -200,11 +201,11 @@ combinations = {
 ### **Problem-Specific Recommendations**
 | Problem Type | Recommended Combination | Reason |
 |--------------|-------------------------|--------|
-| **Smooth solutions** | FP: Standard FDM + HJB: WENO5 | High-order accuracy |
-| **Discontinuous solutions** | FP: Particles + HJB: WENO5 | Non-oscillatory handling |
+| **Smooth solutions** | FP: Standard FDM + HJB: WENO Family | High-order accuracy with variant selection |
+| **Discontinuous solutions** | FP: Particles + HJB: WENO-Z/WENO-M | Enhanced non-oscillatory handling |
 | **Complex geometry** | FP: Particles + HJB: GFDM | Meshfree flexibility |
 | **Large scale** | FP: Standard FDM + HJB: Standard FDM | Computational efficiency |
-| **High precision** | FP: Particles + HJB: WENO5 | Maximum accuracy |
+| **High precision** | FP: Particles + HJB: WENO Family | Maximum accuracy with optimal variant |
 
 ## 📊 **Performance Considerations**
 
@@ -213,14 +214,14 @@ combinations = {
 |-------------|-----------------|--------------|-----------------|
 | **FDM + FDM** | O(N log N) | O(N) | Excellent |
 | **Particle + FDM** | O(P + N log N) | O(P + N) | Good |
-| **Particle + WENO5** | O(P + N) | O(P + N) | Excellent |
+| **Particle + WENO Family** | O(P + N) | O(P + N) | Excellent |
 | **Particle + GFDM** | O(P × M) | O(P + M) | Moderate |
 
 Where: N = grid points, P = particles, M = collocation points
 
 ### **Convergence Properties**
 - **Standard FDM**: Robust, predictable convergence
-- **WENO5**: Fast convergence for smooth problems
+- **WENO Family**: Adaptive convergence with variant-specific optimizations
 - **Particle methods**: Excellent mass conservation
 - **Hybrid approaches**: Best of both worlds
 

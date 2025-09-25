@@ -19,7 +19,7 @@ import pytest
 import numpy as np
 
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBWenoFamilySolver
+from mfg_pde.alg.hjb_solvers import HJBWenoSolver
 
 
 class TestWenoFamilySolver:
@@ -42,43 +42,43 @@ class TestWenoFamilySolver:
         variants = ["weno5", "weno-z", "weno-m", "weno-js"]
 
         for variant in variants:
-            solver = HJBWenoFamilySolver(problem=simple_problem, weno_variant=variant)
+            solver = HJBWenoSolver(problem=simple_problem, weno_variant=variant)
             assert solver.weno_variant == variant
             assert variant.upper() in solver.hjb_method_name
 
     def test_invalid_variant_raises_error(self, simple_problem):
         """Test that invalid WENO variant raises ValueError."""
         with pytest.raises(ValueError, match="Unknown WENO variant"):
-            HJBWenoFamilySolver(problem=simple_problem, weno_variant="invalid_variant")
+            HJBWenoSolver(problem=simple_problem, weno_variant="invalid_variant")
 
     def test_parameter_validation(self, simple_problem):
         """Test parameter validation for all solver parameters."""
 
         # Test invalid CFL number
         with pytest.raises(ValueError, match="CFL number must be in"):
-            HJBWenoFamilySolver(simple_problem, cfl_number=0.0)
+            HJBWenoSolver(simple_problem, cfl_number=0.0)
 
         with pytest.raises(ValueError, match="CFL number must be in"):
-            HJBWenoFamilySolver(simple_problem, cfl_number=1.5)
+            HJBWenoSolver(simple_problem, cfl_number=1.5)
 
         # Test invalid diffusion stability factor
         with pytest.raises(ValueError, match="Diffusion stability factor"):
-            HJBWenoFamilySolver(simple_problem, diffusion_stability_factor=0.0)
+            HJBWenoSolver(simple_problem, diffusion_stability_factor=0.0)
 
         with pytest.raises(ValueError, match="Diffusion stability factor"):
-            HJBWenoFamilySolver(simple_problem, diffusion_stability_factor=0.6)
+            HJBWenoSolver(simple_problem, diffusion_stability_factor=0.6)
 
         # Test invalid WENO epsilon
         with pytest.raises(ValueError, match="WENO epsilon must be positive"):
-            HJBWenoFamilySolver(simple_problem, weno_epsilon=0.0)
+            HJBWenoSolver(simple_problem, weno_epsilon=0.0)
 
         # Test invalid WENO-Z parameter
         with pytest.raises(ValueError, match="WENO-Z parameter"):
-            HJBWenoFamilySolver(simple_problem, weno_z_parameter=0.0)
+            HJBWenoSolver(simple_problem, weno_z_parameter=0.0)
 
     def test_weno_coefficients_setup(self, simple_problem):
         """Test that WENO coefficients are properly initialized."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno5")
+        solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         # Check linear weights
         assert hasattr(solver, "d_plus")
@@ -94,7 +94,7 @@ class TestWenoFamilySolver:
 
     def test_smoothness_indicators_computation(self, simple_problem, test_values):
         """Test smoothness indicator computation for polynomial data."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno5")
+        solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         # For quadratic polynomial u = x^2, should have specific smoothness properties
         u_stencil = test_values[8:13]  # 5-point stencil
@@ -110,7 +110,7 @@ class TestWenoFamilySolver:
 
     def test_tau_indicator_computation(self, simple_problem, test_values):
         """Test global smoothness indicator τ for WENO-Z."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno-z")
+        solver = HJBWenoSolver(simple_problem, weno_variant="weno-z")
 
         u_stencil = test_values[8:13]  # 5-point stencil
         tau = solver._compute_tau_indicator(u_stencil)
@@ -124,7 +124,7 @@ class TestWenoFamilySolver:
         variants = ["weno5", "weno-z", "weno-m", "weno-js"]
 
         for variant in variants:
-            solver = HJBWenoFamilySolver(simple_problem, weno_variant=variant)
+            solver = HJBWenoSolver(simple_problem, weno_variant=variant)
 
             w_plus, w_minus = solver._compute_weno_weights(test_values, 10)
 
@@ -142,7 +142,7 @@ class TestWenoFamilySolver:
 
     def test_weno_reconstruction(self, simple_problem, test_values):
         """Test WENO reconstruction produces reasonable results."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno5")
+        solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         # Test reconstruction at interior point
         u_left, u_right = solver._weno_reconstruction(test_values, 10)
@@ -157,7 +157,7 @@ class TestWenoFamilySolver:
 
     def test_hjb_step_execution(self, simple_problem):
         """Test that HJB time step executes without errors."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno5")
+        solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         # Create test data
         x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
@@ -177,7 +177,7 @@ class TestWenoFamilySolver:
         methods = ["tvd_rk3", "explicit_euler"]
 
         for method in methods:
-            solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno5", time_integration=method)
+            solver = HJBWenoSolver(simple_problem, weno_variant="weno5", time_integration=method)
 
             x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
             u_current = np.sin(2 * np.pi * x)
@@ -193,7 +193,7 @@ class TestWenoFamilySolver:
         variants = ["weno5", "weno-z", "weno-m", "weno-js"]
 
         for variant in variants:
-            solver = HJBWenoFamilySolver(simple_problem, weno_variant=variant)
+            solver = HJBWenoSolver(simple_problem, weno_variant=variant)
             info = solver.get_variant_info()
 
             # Should contain required keys
@@ -205,7 +205,7 @@ class TestWenoFamilySolver:
 
     def test_stability_time_step_computation(self, simple_problem):
         """Test stable time step computation."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno5")
+        solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
         u_test = np.sin(2 * np.pi * x)
@@ -222,7 +222,7 @@ class TestWenoFamilySolver:
 
     def test_boundary_handling(self, simple_problem):
         """Test that boundary points are handled correctly."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant="weno5")
+        solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         # Create data with boundary features
         x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
@@ -247,7 +247,7 @@ class TestWenoFamilySolver:
 
         results = {}
         for variant in variants:
-            solver = HJBWenoFamilySolver(simple_problem, weno_variant=variant)
+            solver = HJBWenoSolver(simple_problem, weno_variant=variant)
             u_result = solver.solve_hjb_step(u_initial, m_initial, dt)
             results[variant] = u_result
 
@@ -263,7 +263,7 @@ class TestWenoFamilySolver:
     @pytest.mark.parametrize("variant", ["weno5", "weno-z", "weno-m", "weno-js"])
     def test_individual_variant_functionality(self, simple_problem, variant):
         """Test each WENO variant individually."""
-        solver = HJBWenoFamilySolver(simple_problem, weno_variant=variant)
+        solver = HJBWenoSolver(simple_problem, weno_variant=variant)
 
         # Basic functionality test
         x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)

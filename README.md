@@ -4,7 +4,7 @@ A modern Python framework for solving Mean Field Games with modular solver archi
 
 **🎯 Simple API**: One-line solving for common problems
 **🧩 Modular Design**: Mix & match FP + HJB solvers freely
-**⭐ WENO5 Solver**: Fifth-order accuracy + non-oscillatory properties
+**⭐ WENO Family Solvers**: Unified WENO variants (WENO5, WENO-Z, WENO-M, WENO-JS) + non-oscillatory properties
 **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
 **🔧 Multiple Solvers**: Traditional PDE, particles, and hybrid methods
 **🌐 Network Support**: Also works on graphs and networks
@@ -85,12 +85,12 @@ print(f"✅ Converged with {result.picard_iterations} iterations")
 
 | FP Method | HJB Method | Best For | Example |
 |-----------|------------|----------|---------|
-| **Particles** | **WENO5** ✨ | High accuracy + non-oscillatory | Academic benchmarking |
+| **Particles** | **WENO Family** ✨ | High accuracy + non-oscillatory | Academic benchmarking |
 | **Particles** | **Standard FDM** | Robust + conservation | Production applications |
-| **Standard FDM** | **WENO5** ✨ | High-order everywhere | Smooth problems |
+| **Standard FDM** | **WENO Family** ✨ | High-order everywhere | Smooth problems |
 | **Network/Graph** | **Network** | Complex geometries | Urban dynamics |
 
-### **⭐ WENO5 HJB Solver - NEW!**
+### **⭐ WENO Family HJB Solvers - ENHANCED!**
 
 Our latest **fifth-order WENO solver** provides state-of-the-art accuracy:
 
@@ -109,7 +109,7 @@ weno_solver = HJBWeno5Solver(
 python examples/advanced/weno5_simple_demo.py
 ```
 
-**WENO5 Features:**
+**WENO Family Features:**
 - ✅ **Fifth-order spatial accuracy** in smooth regions
 - ✅ **Non-oscillatory** behavior near discontinuities
 - ✅ **Explicit time integration** (complementary to implicit methods)

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-Simple WENO5 HJB Solver Demo
+WENO5 HJB Solver Demo (Legacy Compatibility)
 
-This demonstration showcases the newly implemented WENO5 HJB solver
+This demonstration showcases the WENO5 variant of the unified WENO family solver
 with direct testing and basic benchmarking capabilities.
 
+Note: This example shows legacy compatibility. For comprehensive WENO family
+comparison, use examples/advanced/weno_solver_demo.py
+
 Academic Context:
-- Fifth-order WENO spatial discretization
+- Fifth-order WENO spatial discretization (via unified HJBWenoSolver)
 - TVD-RK3 time integration
 - Non-oscillatory behavior for discontinuous solutions
 - Comparison with standard finite difference methods
@@ -18,7 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBFDMSolver, HJBWeno5Solver
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver, HJBWenoSolver
 
 
 def create_test_problem(Nx: int = 64, Nt: int = 32) -> ExampleMFGProblem:
@@ -91,8 +94,8 @@ def compare_solvers():
         # Test solvers
         solvers = [
             (HJBFDMSolver, "Standard FDM", {}),
-            (HJBWeno5Solver, "WENO5 (CFL=0.3)", {"cfl_number": 0.3}),
-            (HJBWeno5Solver, "WENO5 (CFL=0.1)", {"cfl_number": 0.1}),
+            (lambda p, **kw: HJBWenoSolver(p, weno_variant="weno5", **kw), "WENO5 (CFL=0.3)", {"cfl_number": 0.3}),
+            (lambda p, **kw: HJBWenoSolver(p, weno_variant="weno5", **kw), "WENO5 (CFL=0.1)", {"cfl_number": 0.1}),
         ]
 
         for solver_class, name, kwargs in solvers:
@@ -155,8 +158,8 @@ def solution_visualization():
     # Create test problem
     problem = create_test_problem(Nx=128, Nt=64)
 
-    # Test WENO5 solver
-    solver = HJBWeno5Solver(problem, cfl_number=0.3)
+    # Test WENO5 solver (using unified interface)
+    solver = HJBWenoSolver(problem, weno_variant="weno5", cfl_number=0.3)
     result = test_hjb_solver(problem, solver, "WENO5")
 
     if result["success"]:
@@ -192,8 +195,12 @@ def solution_visualization():
         axes[1, 0].set_title("Solution Surface U(t,x)")
         plt.colorbar(contour, ax=axes[1, 0])
 
-        # Derivative visualization (WENO5 reconstruction quality)
-        u_x_plus, u_x_minus = solver._compute_weno5_derivatives(U_solution[-1, :])
+        # Derivative visualization (WENO reconstruction quality)
+        # Note: Using basic finite difference for visualization since internal WENO derivatives
+        # are not exposed in the unified interface
+        dx = (2.0 * np.pi) / len(x)
+        u_x_plus = np.gradient(U_solution[-1, :], dx)
+        u_x_minus = np.gradient(U_solution[-1, :], dx)
         axes[1, 1].plot(x, u_x_plus, "g-", label="Forward", linewidth=2)
         axes[1, 1].plot(x, u_x_minus, "orange", linestyle="--", label="Backward", linewidth=2)
         axes[1, 1].set_xlabel("x")

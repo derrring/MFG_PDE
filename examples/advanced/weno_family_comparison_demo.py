@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBWenoFamilySolver
+from mfg_pde.alg.hjb_solvers import HJBWenoSolver
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure logging for research session
@@ -91,7 +91,7 @@ def run_weno_variant_comparison() -> dict[str, dict]:
         logger.info(f"Running WENO variant: {variant.upper()}")
 
         # Create solver for this variant
-        solver = HJBWenoFamilySolver(
+        solver = HJBWenoSolver(
             problem=problem, weno_variant=variant, cfl_number=0.3, weno_epsilon=1e-6, time_integration="tvd_rk3"
         )
 

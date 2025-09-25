@@ -1,13 +1,24 @@
-# WENO5 HJB Solver Implementation ✅ COMPLETED
+# WENO Family HJB Solver Implementation ✅ ENHANCED
 
-**Date**: 2025-01-21
-**Status**: ✅ COMPLETED - Ready for Academic Benchmarking
-**Implementation**: `mfg_pde/alg/hjb_solvers/hjb_weno5.py`
-**Demo**: `examples/advanced/weno5_hjb_benchmarking_demo.py`
+**Date**: 2025-01-21 (Original) → 2025-01-26 (Enhanced)
+**Status**: ✅ ENHANCED - Unified WENO Family Architecture
+**Implementation**: `mfg_pde/alg/hjb_solvers/hjb_weno.py` (formerly hjb_weno5.py)
+**Unified Demo**: `examples/advanced/weno_solver_demo.py`
+**Family Comparison**: `examples/advanced/weno_family_comparison_demo.py`
+**Legacy Compatibility**: `examples/advanced/weno5_simple_demo.py`, `examples/advanced/weno5_hjb_benchmarking_demo.py`
 
 ## 🎯 **Implementation Overview**
 
-Successfully implemented a **fifth-order WENO (Weighted Essentially Non-Oscillatory) HJB solver** with **TVD-RK3 time integration** for Mean Field Games, providing a state-of-the-art numerical method for academic benchmarking against particle-collocation approaches.
+Successfully implemented a **unified WENO family HJB solver** supporting **WENO5, WENO-Z, WENO-M, and WENO-JS variants** with **TVD-RK3 time integration** for Mean Field Games. This consolidated architecture provides state-of-the-art numerical methods with easy variant switching for academic benchmarking against particle-collocation approaches.
+
+## ✨ **Enhanced Unified Architecture (2025-01-26)**
+
+Original WENO5 implementation has been **enhanced and consolidated** into a unified WENO family solver:
+
+- **Class**: `HJBWenoSolver` (replaces `HJBWeno5Solver`)
+- **Variants**: WENO5, WENO-Z, WENO-M, WENO-JS in single interface
+- **Legacy Compatibility**: Full backward compatibility maintained
+- **Enhanced Features**: Improved weight calculations and variant-specific optimizations
 
 ### **Mathematical Foundation**
 
@@ -27,7 +38,7 @@ The HJB equation in MFG:
 
 #### **1. WENO5 Reconstruction Engine**
 ```python
-class HJBWeno5Solver(BaseHJBSolver):
+class HJBWenoSolver(BaseHJBSolver):
     def _compute_weno5_weights(self, values, i):
         """Compute adaptive weights for 5th-order reconstruction"""
 
