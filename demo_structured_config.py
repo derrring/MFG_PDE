@@ -16,10 +16,11 @@ import tempfile
 from pathlib import Path
 
 # Import our new structured config schemas
-from mfg_pde.config.structured_schemas import MFGConfig, BeachProblemConfig
+from mfg_pde.config.structured_schemas import BeachProblemConfig, MFGConfig
 
 try:
     from omegaconf import OmegaConf
+
     OMEGACONF_AVAILABLE = True
 except ImportError:
     OMEGACONF_AVAILABLE = False
@@ -77,7 +78,7 @@ experiment:
   description: "Demonstrating type-safe configuration"
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_yaml = Path(f.name)
 

@@ -94,7 +94,7 @@ experiment:
   description: "Test experiment for structured configs"
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_yaml = Path(f.name)
 
@@ -162,7 +162,7 @@ problem:
     crowd_aversion: 2.0
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_yaml = Path(f.name)
 
@@ -249,7 +249,7 @@ experiment:
     level: "DEBUG"
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_yaml = Path(f.name)
 

@@ -2,6 +2,7 @@
 # Focus on functions actually used in geometry modules
 
 from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 

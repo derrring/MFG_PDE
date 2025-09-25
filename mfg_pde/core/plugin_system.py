@@ -654,7 +654,9 @@ def discover_and_load_plugins(
     return manager.load_all_plugins()
 
 
-def create_solver_with_plugins(problem: Any, solver_type: str, config: MFGSolverConfig | None = None, **kwargs: Any) -> Any:
+def create_solver_with_plugins(
+    problem: Any, solver_type: str, config: MFGSolverConfig | None = None, **kwargs: Any
+) -> Any:
     """Create solver with plugin support."""
     return get_plugin_manager().create_solver(problem, solver_type, config, **kwargs)
 

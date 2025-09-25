@@ -2,6 +2,7 @@
 # Focus on classes and functions actually used in MFG_PDE
 
 from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 

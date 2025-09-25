@@ -8,9 +8,9 @@ import numpy as np
 from mfg_pde.alg.base_mfg_solver import MFGSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.alg.fp_solvers.base_fp import BaseFPSolver
     from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.utils.solver_result import SolverResult
 
 

@@ -100,7 +100,9 @@ class AMRMFGSolver(MFGSolver):
             **self.solver_kwargs,
         )
 
-    def solve(self, max_iterations: int = 100, tolerance: float = 1e-5, verbose: bool = True, **kwargs: Any) -> SolverReturnTuple:
+    def solve(
+        self, max_iterations: int = 100, tolerance: float = 1e-5, verbose: bool = True, **kwargs: Any
+    ) -> SolverReturnTuple:
         """
         Solve MFG problem with adaptive mesh refinement.
 

@@ -583,7 +583,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         if self.dimension == 1:
             # For 1D, we can analyze the finite difference stencil more precisely
             monotonicity_constraints = self._build_monotonicity_constraints(
-                A, neighbor_indices, neighbor_points, center_point  # type: ignore[arg-type]
+                A,
+                neighbor_indices,
+                neighbor_points,
+                center_point,  # type: ignore[arg-type]
             )
             constraints.extend(monotonicity_constraints)
 

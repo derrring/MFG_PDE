@@ -100,7 +100,7 @@ experiment:
     print(yaml_content)
 
     # Create temporary YAML file
-    with NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(yaml_content)
         temp_yaml_path = Path(f.name)
 

@@ -409,7 +409,9 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
 
 # Factory function for network HJB solvers
-def create_network_hjb_solver(problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs: Any) -> NetworkHJBSolver:
+def create_network_hjb_solver(
+    problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs: Any
+) -> NetworkHJBSolver:
     """
     Create network HJB solver with specified type.
 
