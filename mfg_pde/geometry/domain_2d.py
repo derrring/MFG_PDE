@@ -45,6 +45,7 @@ class Domain2D(BaseGeometry):
         self.holes = holes or []
         self.mesh_size = mesh_size
         self.kwargs = kwargs
+        self._gmsh_model: Any = None
 
         # Domain-specific parameters
         self._setup_domain_parameters()

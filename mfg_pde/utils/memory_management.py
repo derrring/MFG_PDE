@@ -242,7 +242,7 @@ class MemoryProfiler:
     def __init__(self) -> None:
         self.profiles: dict[str, list[MemoryStats]] = {}
 
-    def start_profiling(self, profile_name: str, max_memory_gb: float = 8.0) -> None:
+    def start_profiling(self, profile_name: str, max_memory_gb: float = 8.0) -> MemoryMonitor:
         """Start profiling a new computation."""
         monitor = MemoryMonitor(max_memory_gb)
         if profile_name not in self.profiles:
