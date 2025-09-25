@@ -596,15 +596,15 @@ class HJBGFDMSolver(BaseHJBSolver):
             if sum(beta) == 0:  # Constant term - no physical constraint
                 bounds.append((None, None))
             elif sum(beta) == 1:  # First derivative terms - reasonable for MFG
-                bounds.append((-20.0, 20.0))  # Realistic gradient bounds
+                bounds.append((-20.0, 20.0))  # type: ignore[arg-type]  # Realistic gradient bounds
             elif sum(beta) == 2:  # Second derivative terms - key for monotonicity
                 if self.dimension == 1 and beta == (2,):
                     # For 1D Laplacian: moderate diffusion bounds
-                    bounds.append((-100.0, 100.0))  # Realistic diffusion bounds
+                    bounds.append((-100.0, 100.0))  # type: ignore[arg-type]  # Realistic diffusion bounds
                 else:
-                    bounds.append((-50.0, 50.0))  # Conservative cross-derivative bounds
+                    bounds.append((-50.0, 50.0))  # type: ignore[arg-type]  # Conservative cross-derivative bounds
             else:
-                bounds.append((-2.0, 2.0))  # Tight bounds for higher order terms
+                bounds.append((-2.0, 2.0))  # type: ignore[arg-type]  # Tight bounds for higher order terms
 
         # Only add monotonicity constraints when they are really needed
         # Check if this point is near boundaries or critical regions

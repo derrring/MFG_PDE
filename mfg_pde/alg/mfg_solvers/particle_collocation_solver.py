@@ -259,13 +259,13 @@ class ParticleCollocationSolver(MFGSolver):
                 break
 
         # Store results
-        self.U_solution = U_current
-        self.M_solution = M_current
+        self.U_solution = U_current  # type: ignore[assignment]
+        self.M_solution = M_current  # type: ignore[assignment]
         self.convergence_history = convergence_history
 
         # Store particle trajectory if available
         if hasattr(self.fp_solver, "M_particles_trajectory"):
-            self.particles_trajectory = self.fp_solver.M_particles_trajectory
+            self.particles_trajectory = self.fp_solver.M_particles_trajectory  # type: ignore[assignment]
 
         # Prepare convergence info
         final_convergence_info = {
@@ -282,8 +282,8 @@ class ParticleCollocationSolver(MFGSolver):
             print(f"  - Total iterations: {final_convergence_info['iterations']}")
 
         # Store solutions and mark as computed for warm start capability
-        self.U_solution = U_current
-        self.M_solution = M_current
+        self.U_solution = U_current  # type: ignore[assignment]
+        self.M_solution = M_current  # type: ignore[assignment]
         self._solution_computed = True
 
         return U_current, M_current, final_convergence_info

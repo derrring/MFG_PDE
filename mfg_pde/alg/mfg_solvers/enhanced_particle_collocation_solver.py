@@ -52,7 +52,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
         boundary_conditions: BoundaryConditions | None = None,
         use_monotone_constraints: bool = False,
         convergence_monitor: AdvancedConvergenceMonitor | None = None,
-        **convergence_kwargs,
+        **convergence_kwargs: Any,
     ):
         """
         Initialize enhanced particle collocation solver.
