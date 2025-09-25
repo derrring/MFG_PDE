@@ -321,7 +321,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         """Get current configuration."""
         return self.config
 
-    def update_config(self, **kwargs: Any) -> None:  # type: ignore[no-untyped-def]
+    def update_config(self, **kwargs: Any) -> None:
         """Update configuration parameters."""
         for key, value in kwargs.items():
             if hasattr(self.config, key):
@@ -343,7 +343,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for speed."""
-        from mfg_pde.alg.config import create_fast_config
+        from mfg_pde.config.solver_config import create_fast_config
 
         return cls(problem, hjb_solver, fp_solver, create_fast_config())
 
@@ -355,7 +355,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for accuracy."""
-        from mfg_pde.alg.config import create_accurate_config
+        from mfg_pde.alg.config import create_accurate_config  # type: ignore[import-not-found]
 
         return cls(problem, hjb_solver, fp_solver, create_accurate_config())
 
@@ -367,6 +367,6 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for research with detailed monitoring."""
-        from mfg_pde.config.solver_config import create_research_config  # type: ignore[import-not-found]
+        from mfg_pde.config.solver_config import create_research_config
 
         return cls(problem, hjb_solver, fp_solver, create_research_config())

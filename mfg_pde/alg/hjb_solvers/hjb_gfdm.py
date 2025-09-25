@@ -492,7 +492,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             S_inv_UT_Wb = UT_Wb / S  # Element-wise division
             derivative_coeffs = Vt.T @ S_inv_UT_Wb
 
-        elif taylor_data.get("use_qr", False):
+        elif taylor_data.get("use_qr", False):  # type: ignore[attr-defined]
             # Use QR decomposition: solve R @ x = Q^T @ sqrt(W) @ b
             sqrt_W = taylor_data["sqrt_W"]
             Q = taylor_data["Q"]
@@ -505,19 +505,19 @@ class HJBGFDMSolver(BaseHJBSolver):
                 derivative_coeffs = np.linalg.solve(R, QT_Wb)
             except np.linalg.LinAlgError:
                 # Fallback to least squares if R is singular
-                A_matrix = taylor_data.get("A")
+                A_matrix = taylor_data.get("A")  # type: ignore[attr-defined]
                 if A_matrix is not None:
                     lstsq_result = lstsq(A_matrix, b)
                     derivative_coeffs = lstsq_result[0] if lstsq_result is not None else np.zeros(len(b))
                 else:
                     derivative_coeffs = np.zeros(len(b))
 
-        elif taylor_data.get("AtWA_inv") is not None:
+        elif taylor_data.get("AtWA_inv") is not None:  # type: ignore[attr-defined]
             # Use precomputed normal equations
             derivative_coeffs = taylor_data["AtWA_inv"] @ taylor_data["AtW"] @ b
         else:
             # Final fallback to direct least squares
-            A_matrix = taylor_data.get("A")
+            A_matrix = taylor_data.get("A")  # type: ignore[attr-defined]
             if A_matrix is not None:
                 lstsq_result = lstsq(A_matrix, b)
                 derivative_coeffs = lstsq_result[0] if lstsq_result is not None else np.zeros(len(b))
@@ -942,7 +942,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
             # Diffusion term contribution
             # Compute derivative matrix using SVD, QR or normal equations
-            if taylor_data.get("use_svd", False):
+            if taylor_data.get("use_svd", False):  # type: ignore[attr-defined]
                 # For SVD approach: derivative matrix = V @ S^{-1} @ U^T @ sqrt(W)
                 try:
                     U = taylor_data["U"]
@@ -955,7 +955,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     derivative_matrix = Vt.T @ S_inv_UT @ sqrt_W
                 except:
                     derivative_matrix = None
-            elif taylor_data.get("use_qr", False):
+            elif taylor_data.get("use_qr", False):  # type: ignore[attr-defined]
                 # For QR approach: derivative matrix = R^{-1} @ Q^T @ sqrt(W)
                 try:
                     Q = taylor_data["Q"]
@@ -966,7 +966,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     derivative_matrix = R_inv @ Q.T @ sqrt_W
                 except:
                     derivative_matrix = None
-            elif taylor_data.get("AtWA_inv") is not None:
+            elif taylor_data.get("AtWA_inv") is not None:  # type: ignore[attr-defined]
                 derivative_matrix = taylor_data["AtWA_inv"] @ taylor_data["AtW"]
             else:
                 derivative_matrix = None
@@ -977,7 +977,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     if (self.dimension == 1 and beta == (2,)) or (self.dimension == 2 and beta in [(2, 0), (0, 2)]):
                         # Check bounds for derivative_matrix access
                         if k < derivative_matrix.shape[0]:
-                            for j_local, j_global in enumerate(neighbor_indices):  # type: ignore[var-annotated]
+                            for j_local, j_global in enumerate(neighbor_indices):  # type: ignore[var-annotated,arg-type]
                                 if j_local < derivative_matrix.shape[1] and j_global >= 0:
                                     # Only apply to real particles (ghost particles have negative indices)
                                     coeff = derivative_matrix[k, j_local]
@@ -1015,12 +1015,12 @@ class HJBGFDMSolver(BaseHJBSolver):
         svd_count = sum(
             1
             for i in range(total_points)
-            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_svd", False)
+            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_svd", False)  # type: ignore[attr-defined]
         )
         qr_count = sum(
             1
             for i in range(total_points)
-            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_qr", False)
+            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_qr", False)  # type: ignore[attr-defined]
         )
         normal_count = total_points - svd_count - qr_count
 
@@ -1028,9 +1028,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         condition_numbers = []
         ranks = []
         for i in range(total_points):
-            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_svd", False):
-                condition_numbers.append(self.taylor_matrices[i].get("condition_number", np.inf))
-                ranks.append(self.taylor_matrices[i].get("rank", 0))
+            if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_svd", False):  # type: ignore[attr-defined]
+                condition_numbers.append(self.taylor_matrices[i].get("condition_number", np.inf))  # type: ignore[attr-defined]
+                ranks.append(self.taylor_matrices[i].get("rank", 0))  # type: ignore[attr-defined]
 
         info = {
             "total_points": total_points,
@@ -1188,7 +1188,7 @@ class HJBGFDMSolver(BaseHJBSolver):
     # Enhanced QP Features (merged from tuned QP solver)
     def _init_enhanced_qp_features(self):
         """Initialize enhanced QP features for smart/tuned optimization levels."""
-        self.enhanced_qp_stats = {
+        self.enhanced_qp_stats = {  # type: ignore[assignment]
             "total_qp_decisions": 0,
             "qp_activated": 0,
             "qp_skipped": 0,

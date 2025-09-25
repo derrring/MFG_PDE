@@ -43,7 +43,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         velocity_discretization: int = 10,
         trajectory_length: int | None = None,
         use_relaxed_equilibria: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize Lagrangian network MFG solver.
@@ -92,7 +92,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         max_iterations: int = 50,
         tolerance: float = 1e-5,
         verbose: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """
         Solve network MFG using Lagrangian formulation.
@@ -115,7 +115,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             return self._solve_lagrangian_fixed_point(max_iterations, tolerance, verbose, **kwargs)
 
     def _solve_lagrangian_fixed_point(
-        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs
+        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs: Any
     ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """Solve using Lagrangian fixed point iteration."""
         solve_start_time = time.time()

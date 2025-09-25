@@ -76,7 +76,7 @@ class ParticleCollocationSolver(MFGSolver):
             num_particles=num_particles,
             kde_bandwidth=kde_bandwidth,
             normalize_kde_output=normalize_kde_output,
-            boundary_conditions=boundary_conditions,
+            boundary_conditions=boundary_conditions,  # type: ignore[arg-type]
         )
 
         # Initialize HJB solver (GFDM collocation)
@@ -97,7 +97,7 @@ class ParticleCollocationSolver(MFGSolver):
         # Storage for results
         self.U_solution = None
         self.M_solution = None
-        self.convergence_history = []
+        self.convergence_history: list[dict[str, float]] = []
         self.particles_trajectory = None
 
     def solve(
