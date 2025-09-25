@@ -553,7 +553,7 @@ class Domain3D(BaseGeometry):
             quality_data = np.array(
                 [self._mesh_data.quality_metrics.get("min_quality", 0.5)] * len(self._mesh_data.elements)
             )
-            mesh["quality"] = quality_data
+            mesh.cell_data["quality"] = quality_data  # type: ignore[attr-defined]
             plotter.add_mesh(mesh, scalars="quality", cmap="coolwarm")
 
         plotter.show_grid()

@@ -174,9 +174,9 @@ class NetworkFixedPointIterator(MFGSolver):
             self.M = self.damping_factor * M_new + (1 - self.damping_factor) * M_old
 
             # Compute convergence metrics
-            u_error = np.linalg.norm(self.U - U_old) / max(np.linalg.norm(self.U), 1e-12)
-            m_error = np.linalg.norm(self.M - M_old) / max(np.linalg.norm(self.M), 1e-12)
-            total_error = max(u_error, m_error)
+            u_error = np.linalg.norm(self.U - U_old) / max(float(np.linalg.norm(self.U)), 1e-12)
+            m_error = np.linalg.norm(self.M - M_old) / max(float(np.linalg.norm(self.M)), 1e-12)
+            total_error = max(float(u_error), float(m_error))
 
             iter_time = time.time() - iter_start_time
 

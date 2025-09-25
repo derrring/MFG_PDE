@@ -834,8 +834,8 @@ class MFGVisualizationManager:
             prefer_plotly: Whether to prefer Plotly over Bokeh when both available
         """
         self.prefer_plotly = prefer_plotly
-        self.plotly_viz = None
-        self.bokeh_viz = None
+        self.plotly_viz: MFGPlotlyVisualizer | None = None
+        self.bokeh_viz: Any = None
 
         # Initialize available visualizers
         if PLOTLY_AVAILABLE:

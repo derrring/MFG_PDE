@@ -211,7 +211,7 @@ class CustomResidualHook(SolverHooks):
 
     def __init__(self, residual_func: Callable | None = None):
         self.residual_func = residual_func
-        self.previous_state = None
+        self.previous_state: SpatialTemporalState | None = None
 
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None:
         """Calculate custom residual if function provided."""

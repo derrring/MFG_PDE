@@ -235,9 +235,9 @@ class ParticleCollocationSolver(MFGSolver):
             M_current = M_new
 
             # Compute convergence metrics
-            U_error = np.linalg.norm(U_current - U_prev) / max(np.linalg.norm(U_prev), 1e-10)
-            M_error = np.linalg.norm(M_current - M_prev) / max(np.linalg.norm(M_prev), 1e-10)
-            total_error = max(U_error, M_error)
+            U_error = np.linalg.norm(U_current - U_prev) / max(float(np.linalg.norm(U_prev)), 1e-10)
+            M_error = np.linalg.norm(M_current - M_prev) / max(float(np.linalg.norm(M_prev)), 1e-10)
+            total_error = max(float(U_error), float(M_error))
 
             convergence_info = {
                 "iteration": picard_iter,

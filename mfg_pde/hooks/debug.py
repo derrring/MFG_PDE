@@ -39,7 +39,7 @@ class DebugHook(SolverHooks):
         self.level = level
         self.output_file = None
         self.file_handle: TextIO | None = None
-        self.start_time = None
+        self.start_time: float | None = None
         self.iteration_times: list[float] = []
 
         if output_file:
@@ -139,7 +139,7 @@ class PerformanceHook(SolverHooks):
         self.track_detailed_timing = track_detailed_timing
 
         # Performance metrics
-        self.start_time = None
+        self.start_time: float | None = None
         self.iteration_times: list[float] = []
         self.memory_usage: list[float] = []
         self.peak_memory_mb = 0.0

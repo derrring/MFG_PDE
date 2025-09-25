@@ -236,8 +236,8 @@ class NetworkMFGProblem(MFGProblem):
         Returns:
             Lagrangian value L(node, velocity, m, t)
         """
-        if self.components.lagrangian_func is not None:
-            return self.components.lagrangian_func(node, velocity, m, t)
+        if self.components.lagrangian_func is not None:  # type: ignore[attr-defined]
+            return self.components.lagrangian_func(node, velocity, m, t)  # type: ignore[attr-defined]
 
         # Default Lagrangian: kinetic energy + potential + interaction
         kinetic_energy = 0.5 * np.linalg.norm(velocity) ** 2
@@ -265,8 +265,8 @@ class NetworkMFGProblem(MFGProblem):
         Returns:
             Total trajectory cost
         """
-        if self.components.trajectory_cost_func is not None:
-            return self.components.trajectory_cost_func(trajectory, velocities, m_evolution, times)
+        if self.components.trajectory_cost_func is not None:  # type: ignore[attr-defined]
+            return self.components.trajectory_cost_func(trajectory, velocities, m_evolution, times)  # type: ignore[attr-defined]
 
         # Default: integrate Lagrangian along trajectory
         total_cost = 0.0
@@ -322,14 +322,14 @@ class NetworkMFGProblem(MFGProblem):
 
     def node_potential(self, node: int, t: float) -> float:
         """Potential function at network nodes."""
-        if self.components.node_potential_func is not None:
-            return self.components.node_potential_func(node, t)
+        if self.components.node_potential_func is not None:  # type: ignore[attr-defined]
+            return self.components.node_potential_func(node, t)  # type: ignore[attr-defined]
         return 0.0
 
     def density_coupling(self, node: int, m: np.ndarray, t: float) -> float:
         """Density coupling/interaction at nodes."""
-        if self.components.node_interaction_func is not None:
-            return self.components.node_interaction_func(node, m, t)
+        if self.components.node_interaction_func is not None:  # type: ignore[attr-defined]
+            return self.components.node_interaction_func(node, m, t)  # type: ignore[attr-defined]
 
         # Default: quadratic congestion at nodes
         return 0.5 * m[node] ** 2
@@ -340,8 +340,8 @@ class NetworkMFGProblem(MFGProblem):
 
     def edge_cost(self, node_from: int, node_to: int, t: float) -> float:
         """Cost of moving along network edges."""
-        if self.components.edge_cost_func is not None:
-            return self.components.edge_cost_func(node_from, node_to, t)
+        if self.components.edge_cost_func is not None:  # type: ignore[attr-defined]
+            return self.components.edge_cost_func(node_from, node_to, t)  # type: ignore[attr-defined]
 
         # Default: unit cost weighted by edge weight
         if self.network_data is None:

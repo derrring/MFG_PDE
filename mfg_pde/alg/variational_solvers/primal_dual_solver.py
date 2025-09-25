@@ -116,7 +116,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         max_inner_iterations: int = 50,
         tolerance: float = 1e-6,
         verbose: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> VariationalSolverResult:
         """
         Solve using primal-dual method.
@@ -204,7 +204,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
                 logger.info(f"  Current penalty: {self.augmented_penalty:.1f}")
 
             # Convergence check
-            if max_violation < self.constraint_tolerance and iteration_info["primal_change"] < tolerance:
+            if max_violation < self.constraint_tolerance and float(iteration_info["primal_change"]) < tolerance:
                 converged = True
                 if verbose:
                     logger.info(f"  ✓ Converged at iteration {outer_iteration + 1}")
@@ -424,7 +424,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
 
         return constraints
 
-    def _update_dual_variables(self, constraint_violations: dict[str, float]):
+    def _update_dual_variables(self, constraint_violations: dict[str, float]) -> None:
         """Update dual variables based on constraint violations."""
         if self.dual_update_method == "gradient_ascent":
             # Gradient ascent: λ ← λ + α * constraints

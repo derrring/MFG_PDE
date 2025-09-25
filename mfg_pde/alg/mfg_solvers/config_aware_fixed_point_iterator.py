@@ -279,7 +279,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
                 self.l2distm_rel,
             )
 
-    def _cold_start_initialization(self, Nt: int, Nx: int):
+    def _cold_start_initialization(self, Nt: int, Nx: int) -> None:
         """Initialize with cold start (default initialization)."""
         self.U = np.zeros((Nt, Nx))
         self.M = np.zeros((Nt, Nx))

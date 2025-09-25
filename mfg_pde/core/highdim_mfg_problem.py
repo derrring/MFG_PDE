@@ -343,7 +343,7 @@ class HighDimMFGProblem(ABC):
             mesh = pv.PolyData(coords)
 
         # Add field data
-        mesh[field_type] = field_data
+        mesh[field_type] = field_data  # type: ignore[index]
 
         # Plot
         plotter = pv.Plotter()

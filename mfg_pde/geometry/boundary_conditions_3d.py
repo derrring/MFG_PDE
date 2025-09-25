@@ -499,7 +499,7 @@ def create_box_boundary_conditions(
     if condition_type == "dirichlet_zero":
         # Zero Dirichlet on all faces
         for i in range(6):  # 6 faces of box
-            condition = DirichletBC3D(0.0, f"Face_{i}")
+            condition: DirichletBC3D | NeumannBC3D = DirichletBC3D(0.0, f"Face_{i}")
             manager.add_condition(condition, i)
 
     elif condition_type == "neumann_zero":
@@ -540,7 +540,7 @@ def create_sphere_boundary_conditions(
         return np.abs(dist - radius) < 1e-10
 
     if condition_type == "dirichlet_zero":
-        condition = DirichletBC3D(0.0, "Sphere_Surface")
+        condition: DirichletBC3D | NeumannBC3D = DirichletBC3D(0.0, "Sphere_Surface")
     elif condition_type == "neumann_zero":
         condition = NeumannBC3D(0.0, "Sphere_Surface")
     else:
