@@ -134,7 +134,7 @@ class NetworkMFGProblem(MFGProblem):
         # Initialize with dummy spatial parameters (networks are discrete)
         super().__init__(T=T, Nt=Nt, xmin=self._xmin, xmax=self._xmax, Nx=self._Nx)
 
-        self.components = components or NetworkMFGComponents()
+        self.components = components or NetworkMFGComponents()  # type: ignore[assignment]
         self.problem_name = problem_name
 
         # Override spatial properties for network
@@ -353,8 +353,8 @@ class NetworkMFGProblem(MFGProblem):
 
     def get_initial_density(self) -> np.ndarray:
         """Initial density distribution on network nodes."""
-        if self.components.initial_node_density_func is not None:
-            return np.array([self.components.initial_node_density_func(i) for i in range(self.num_nodes)])
+        if self.components.initial_node_density_func is not None:  # type: ignore[attr-defined]
+            return np.array([self.components.initial_node_density_func(i) for i in range(self.num_nodes)])  # type: ignore[attr-defined]
 
         # Default: uniform distribution
         initial_density = np.ones(self.num_nodes) / self.num_nodes
@@ -362,8 +362,8 @@ class NetworkMFGProblem(MFGProblem):
 
     def get_terminal_value(self) -> np.ndarray:
         """Terminal value function on network nodes."""
-        if self.components.terminal_node_value_func is not None:
-            return np.array([self.components.terminal_node_value_func(i) for i in range(self.num_nodes)])
+        if self.components.terminal_node_value_func is not None:  # type: ignore[attr-defined]
+            return np.array([self.components.terminal_node_value_func(i) for i in range(self.num_nodes)])  # type: ignore[attr-defined]
 
         # Default: zero terminal values
         return np.zeros(self.num_nodes)
@@ -441,10 +441,10 @@ class NetworkMFGProblem(MFGProblem):
         """Apply boundary conditions to network nodes."""
         u_bc = u.copy()
 
-        if self.components.boundary_nodes is not None:
-            for node in self.components.boundary_nodes:
-                if self.components.boundary_values_func is not None:
-                    u_bc[node] = self.components.boundary_values_func(node, t)
+        if self.components.boundary_nodes is not None:  # type: ignore[attr-defined]
+            for node in self.components.boundary_nodes:  # type: ignore[attr-defined]
+                if self.components.boundary_values_func is not None:  # type: ignore[attr-defined]
+                    u_bc[node] = self.components.boundary_values_func(node, t)  # type: ignore[attr-defined]
                 else:
                     # Default: zero boundary values
                     u_bc[node] = 0.0

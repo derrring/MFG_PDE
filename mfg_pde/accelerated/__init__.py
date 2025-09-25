@@ -55,7 +55,7 @@ except ImportError:
 
             return dummy_func
 
-    jax = DummyJAX()
+    jax = DummyJAX()  # type: ignore[assignment]
     jnp = DummyJAX()
 
     def jit(f):  # type: ignore[misc]  # No-op decorator

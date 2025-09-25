@@ -275,7 +275,7 @@ class TriangularAMRMesh:
             # Create child triangle
             child = TriangleElement(
                 element_id=child_id,
-                vertices=vertices,  # type: ignore[arg-type]
+                vertices=vertices,
                 vertex_ids=np.array([-1, -1, -1]),  # Virtual vertices
                 level=parent.level + 1,
                 parent_id=parent.element_id,
@@ -312,8 +312,8 @@ class TriangularAMRMesh:
             child2_vertices = np.array([midpoint, v1, v2])
 
         children_ids = []
-        for i, vertices_list in enumerate([child1_vertices, child2_vertices]):
-            vertices = np.asarray(vertices_list)  # Ensure numpy array type
+        for i, vertices_arr in enumerate([child1_vertices, child2_vertices]):
+            vertices = vertices_arr  # type: ignore[assignment]
             child_id = self._next_element_id
             self._next_element_id += 1
 
@@ -379,7 +379,7 @@ class TriangularAMRMesh:
                 if triangle.edge_lengths is not None:
                     longest_edge = np.argmax(triangle.edge_lengths)
                 else:
-                    longest_edge = 0
+                    longest_edge = np.int64(0)
                 self.refine_triangle(triangle_id, f"green{longest_edge}")
                 green_refinements += 1
 

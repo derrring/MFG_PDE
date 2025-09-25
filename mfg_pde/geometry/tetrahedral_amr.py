@@ -440,7 +440,7 @@ class TetrahedralAMRMesh:
         ]
 
         volume = self._compute_tetrahedron_volume(coords)
-        max_edge = max(edges)
+        max_edge = max(edges)  # type: ignore[type-var]
 
         if max_edge > 0:
             return float(volume / (max_edge**3))

@@ -29,7 +29,7 @@ try:
 except ImportError:
     VISUALIZATION_AVAILABLE = False
     create_visualization_manager = None
-    MFGVisualizationManager = None
+    MFGVisualizationManager = None  # type: ignore[misc]
 
 try:
     from mfg_pde.utils.polars_integration import (
@@ -44,7 +44,7 @@ except ImportError:
     create_parameter_sweep_analyzer = None
     create_time_series_analyzer = None
     create_data_exporter = None
-    MFGDataFrame = None
+    MFGDataFrame = None  # type: ignore[misc]
 
 logger = logging.getLogger(__name__)
 
