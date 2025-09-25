@@ -16,9 +16,6 @@ import numpy as np
 
 # Apply TYPE_CHECKING isolation principle for JAX (same as OmegaConf pattern)
 if TYPE_CHECKING:
-    # Static typing world - simple definitions
-    import numpy as np
-
     jnp = np  # Type alias for static analysis
 
     def jit(fun, **kwargs): ...
@@ -514,7 +511,7 @@ class AdaptiveMesh:
                         if key in containing_node.solution_data:
                             interpolated[key][i, j] = containing_node.solution_data[key]
 
-        return interpolated  # type: ignore[return-value]
+            return interpolated  # type: ignore[return-value]
 
     def _find_containing_node(self, x: float, y: float) -> QuadTreeNode | None:
         """Find the leaf node containing point (x, y)"""
