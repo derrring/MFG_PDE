@@ -20,6 +20,28 @@ Key Components:
 from __future__ import annotations
 
 from .base_geometry import BaseGeometry, MeshData
+from .boundary_conditions_2d import (
+    BoundaryCondition2D,
+    BoundaryConditionManager2D,
+    DirichletBC2D,
+    MFGBoundaryHandler2D,
+    NeumannBC2D,
+    PeriodicBC2D,
+    RobinBC2D,
+    create_circle_boundary_conditions,
+    create_rectangle_boundary_conditions,
+)
+from .boundary_conditions_3d import (
+    BoundaryCondition3D,
+    BoundaryConditionManager3D,
+    DirichletBC3D,
+    MFGBoundaryHandler3D,
+    NeumannBC3D,
+    PeriodicBC3D,
+    RobinBC3D,
+    create_box_boundary_conditions,
+    create_sphere_boundary_conditions,
+)
 from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
 from .domain_1d import BoundaryConditions, Domain1D, dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
 from .domain_2d import Domain2D
@@ -43,9 +65,30 @@ __all__ = [
     # Multi-dimensional geometry components
     "BaseGeometry",
     "BaseNetworkGeometry",
-    # 1D domain components
+    # Boundary condition components
+    "BoundaryCondition2D",
+    "BoundaryCondition3D",
+    "BoundaryConditionManager2D",
+    "BoundaryConditionManager3D",
     "BoundaryConditions",
     "BoundaryManager",
+    # Specific boundary condition types
+    "DirichletBC2D",
+    "DirichletBC3D",
+    "MFGBoundaryHandler2D",
+    "MFGBoundaryHandler3D",
+    "NeumannBC2D",
+    "NeumannBC3D",
+    "PeriodicBC2D",
+    "PeriodicBC3D",
+    "RobinBC2D",
+    "RobinBC3D",
+    # Boundary condition factory functions
+    "create_box_boundary_conditions",
+    "create_circle_boundary_conditions",
+    "create_rectangle_boundary_conditions",
+    "create_sphere_boundary_conditions",
+    # Domain components
     "Domain1D",
     "Domain2D",
     "Domain3D",
