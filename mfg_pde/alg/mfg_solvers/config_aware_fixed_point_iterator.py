@@ -355,7 +355,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for accuracy."""
-        from mfg_pde.alg.config import create_accurate_config  # type: ignore[import-not-found]
+        from mfg_pde.alg.config import create_accurate_config
 
         return cls(problem, hjb_solver, fp_solver, create_accurate_config())
 

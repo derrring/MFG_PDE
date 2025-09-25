@@ -21,7 +21,7 @@ else:
     pass
 
 if HAS_JAX:
-    import optax  # type: ignore[import-not-found]
+    import optax
 
     import jax
     import jax.numpy as jnp
