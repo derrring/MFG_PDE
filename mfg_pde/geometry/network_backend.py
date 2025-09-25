@@ -72,7 +72,7 @@ class BackendNotAvailableError(NetworkBackendError):
 class AbstractNetworkBackend(ABC):
     """Abstract base class for network backends."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize backend."""
         self.available: bool = False
 
