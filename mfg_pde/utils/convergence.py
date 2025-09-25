@@ -283,7 +283,7 @@ class AdvancedConvergenceMonitor:
         self.oscillation_detector.add_sample(u_l2_error)
 
         # Initialize diagnostics
-        diagnostics = {
+        diagnostics: dict[str, Any] = {
             "iteration": self.iteration_count,
             "u_l2_error": u_l2_error,
             "converged": False,
@@ -528,7 +528,7 @@ class ParticleMethodDetector:
 
         if found_attributes:
             detection_info["detection_methods"].append("attribute_scan")
-            detection_info["confidence"] += 0.3
+            detection_info["confidence"] = float(detection_info["confidence"]) + 0.3
 
         # Check 2: Inspect solver components for particle classes
         particle_class_names = [
@@ -546,14 +546,14 @@ class ParticleMethodDetector:
             if any(particle_name in fp_class_name for particle_name in particle_class_names):
                 detection_info["particle_components"].append(f"fp_solver:{fp_class_name}")
                 detection_info["detection_methods"].append("component_class_inspection")
-                detection_info["confidence"] += 0.5
+                detection_info["confidence"] = float(detection_info["confidence"]) + 0.5
 
         # Check solver's own class name
         solver_class_name = solver.__class__.__name__
         if any(particle_name in solver_class_name for particle_name in particle_class_names):
             detection_info["particle_components"].append(f"solver:{solver_class_name}")
             detection_info["detection_methods"].append("solver_class_inspection")
-            detection_info["confidence"] += 0.4
+            detection_info["confidence"] = float(detection_info["confidence"]) + 0.4
 
         # Check 3: Look for particle-specific methods
         particle_methods = [
@@ -572,7 +572,7 @@ class ParticleMethodDetector:
 
         if found_methods:
             detection_info["detection_methods"].append("method_inspection")
-            detection_info["confidence"] += 0.2
+            detection_info["confidence"] = float(detection_info["confidence"]) + 0.2
 
         # Check 4: Analyze solve method signature for particle-related parameters
         if hasattr(solver, "solve"):
@@ -587,16 +587,16 @@ class ParticleMethodDetector:
                 if found_params:
                     detection_info["particle_components"].extend([f"param:{p}" for p in found_params])
                     detection_info["detection_methods"].append("parameter_inspection")
-                    detection_info["confidence"] += 0.1
+                    detection_info["confidence"] = float(detection_info["confidence"]) + 0.1
             except Exception:
                 pass  # Ignore signature inspection errors
 
         # Final decision based on confidence
-        has_particles = detection_info["confidence"] > 0.3
+        has_particles = float(detection_info["confidence"]) > 0.3
 
         # Boost confidence if multiple detection methods agree
         if len(detection_info["detection_methods"]) >= 2:
-            detection_info["confidence"] = min(1.0, detection_info["confidence"] * 1.2)
+            detection_info["confidence"] = min(1.0, float(detection_info["confidence"]) * 1.2)
             has_particles = True
 
         return has_particles, detection_info

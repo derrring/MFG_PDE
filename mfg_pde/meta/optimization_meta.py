@@ -261,7 +261,7 @@ class JITSolverFactory:
     based on problem characteristics.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.compiler = OptimizationCompiler()
         self.solver_cache: dict[str, type] = {}
 

@@ -53,6 +53,7 @@ else:
 
     if HAS_JAX:
         import optax
+
         import jax
         import jax.numpy as jnp
         from jax import grad, jacfwd, jit, vmap
@@ -69,11 +70,13 @@ else:
         def grad(f):
             def dummy_grad(x):
                 return x
+
             return dummy_grad
 
         def jacfwd(f):
             def dummy_jacobian(x):
                 return x
+
             return dummy_jacobian
 
         def vmap(f):
@@ -168,8 +171,8 @@ class JAXMFGSolver:
         try:
             # Try JAX array operations first
             if HAS_JAX:
-                self.M_solution = self.M_solution.at[0, :].set(self.m_init)
-                self.U_solution = self.U_solution.at[-1, :].set(self.g_final)
+                self.M_solution = self.M_solution.at[0, :].set(self.m_init)  # type: ignore[attr-defined]
+                self.U_solution = self.U_solution.at[-1, :].set(self.g_final)  # type: ignore[attr-defined]
             else:
                 raise AttributeError("JAX not available")
         except (AttributeError, TypeError):

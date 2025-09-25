@@ -145,7 +145,7 @@ class MFGSystemBuilder:
                  .build())
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.expressions: dict[str, MathematicalExpression] = {}
         self.constraints: list[MathematicalExpression] = []
         self.parameters: dict[str, Any] = {}

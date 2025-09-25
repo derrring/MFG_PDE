@@ -169,7 +169,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
 
-    def _get_boundary_condition_property(self, property_name: str, default=None) -> Any:
+    def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
         """Helper method to get boundary condition properties from either dict or dataclass."""
         if hasattr(self.boundary_conditions, property_name):
             # BoundaryConditions dataclass
@@ -284,7 +284,8 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         for i in range(self.n_points):
             neighborhood = self.neighborhoods[i]
-            n_neighbors = neighborhood["size"]
+            n_neighbors_raw = neighborhood["size"]
+            n_neighbors = int(n_neighbors_raw) if isinstance(n_neighbors_raw, int | float) else 0
 
             if n_neighbors < self.n_derivatives:
                 self.taylor_matrices[i] = None
@@ -311,7 +312,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     A[j, k] = term / factorial
 
             # Compute weights and store matrices
-            weights = self._compute_weights(neighborhood["distances"])
+            weights = self._compute_weights(np.asarray(neighborhood["distances"]))
             W = np.diag(weights)
 
             # Use SVD or QR decomposition to avoid condition number amplification
@@ -458,7 +459,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         if use_monotone_qp:
             # First try unconstrained solution to check if constraints are needed
-            unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)
+            unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)  # type: ignore[arg-type]
 
             # Check if unconstrained solution violates monotonicity
             # Use enhanced QP logic if available, otherwise use basic check

@@ -50,7 +50,7 @@ class BaseSolver(ABC):
         self.config = config
 
         # Statistics tracking
-        self._start_time = None
+        self._start_time: float | None = None
         self._iteration_times: list[float] = []
 
     def solve(

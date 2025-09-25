@@ -27,7 +27,7 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 try:
-    import networkx as nx  # type: ignore[import-untyped] # noqa: F401
+    import networkx as nx  # noqa: F401
 
     NETWORKX_AVAILABLE = True
 except ImportError:

@@ -21,7 +21,7 @@ else:
     pass
 
 if HAS_JAX:
-    import optax  # type: ignore[import-not-found]
+    import optax
 
     import jax
     import jax.numpy as jnp
@@ -29,31 +29,31 @@ if HAS_JAX:
     from jax.lax import cond, scan
 else:
     # Dummy implementations for graceful fallback
-    jax = None  # type: ignore[misc]
+    jax = None
     jnp = np  # type: ignore[misc]
 
-    def device_put(x, device=None):
+    def device_put(x: Any, device: Any = None) -> Any:
         return x
 
-    def grad(f):
+    def grad(f: Any) -> Any:  # type: ignore[misc]
         return lambda x: x
 
-    def jacfwd(f):
+    def jacfwd(f: Any) -> Any:  # type: ignore[misc]
         return lambda x: x
 
-    def jacrev(f):
+    def jacrev(f: Any) -> Any:
         return lambda x: x
 
-    def jit(f):
+    def jit(f: Any) -> Any:  # type: ignore[misc]
         return f  # Identity decorator when JAX not available
 
-    def vmap(f):
+    def vmap(f: Any) -> Any:  # type: ignore[misc]
         return f
 
-    def cond(pred, true_fn, false_fn, operand):
+    def cond(pred: Any, true_fn: Any, false_fn: Any, operand: Any) -> Any:  # type: ignore[misc]
         return true_fn(operand) if pred else false_fn(operand)
 
-    def scan(f, init, xs):
+    def scan(f: Any, init: Any, xs: Any) -> Any:  # type: ignore[misc]
         return (init, xs)
 
     optax = None
@@ -432,7 +432,7 @@ def adaptive_time_step(
         New time step
     """
     if error == 0:
-        factor = max_factor
+        factor: Any = max_factor
     else:
         factor = safety_factor * jnp.power(tolerance / error, 0.2)
 

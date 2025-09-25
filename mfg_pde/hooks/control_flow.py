@@ -56,7 +56,7 @@ class AdaptiveControlHook(SolverHooks):
         )
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.convergence_rules: list[dict[str, Any]] = []
         self.stop_rules: list[dict[str, Any]] = []
         self.adjustment_rules: list[dict[str, Any]] = []
@@ -141,7 +141,7 @@ class PerformanceControlHook(SolverHooks):
         perf_control.set_slow_progress_threshold(0.1)  # Switch to faster method if slow
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.residual_history: list[float] = []
         self.stagnation_limit = 20
         self.slow_progress_threshold = 0.01
@@ -294,7 +294,7 @@ class ConditionalStopHook(SolverHooks):
         )
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.conditions: list[dict[str, Any]] = []
 
     def add_condition(

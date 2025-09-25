@@ -58,13 +58,13 @@ except ImportError:
     jax = DummyJAX()
     jnp = DummyJAX()
 
-    def jit(f):  # No-op decorator
+    def jit(f):  # type: ignore[misc]  # No-op decorator
         return f
 
-    def vmap(f, *args, **kwargs):  # No-op decorator
+    def vmap(f, *args, **kwargs):  # type: ignore[misc]  # No-op decorator
         return f
 
-    def grad(f):  # No-op decorator
+    def grad(f):  # type: ignore[misc]  # No-op decorator
         return f
 
 
@@ -178,8 +178,8 @@ __all__ = [
 if HAS_JAX:
     try:
         # Individual imports for explicit exports
-        from .jax_fp_solver import JAXFokkerPlanckSolver  # type: ignore[import-not-found]  # noqa: F401
-        from .jax_hjb_solver import JAXHJBSolver  # type: ignore[import-not-found]  # noqa: F401
+        from .jax_fp_solver import JAXFokkerPlanckSolver  # noqa: F401
+        from .jax_hjb_solver import JAXHJBSolver  # noqa: F401
         from .jax_mfg_solver import JAXMFGSolver  # noqa: F401
         from .jax_solvers import *  # noqa: F403
         from .jax_utils import *  # noqa: F403

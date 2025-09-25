@@ -75,7 +75,7 @@ class MFGAnalyticsEngine:
         self.output_dir.mkdir(exist_ok=True)
 
         # Initialize components
-        self.viz_manager = None
+        self.viz_manager: MFGVisualizationManager | None = None
         self.sweep_analyzer = None
         self.ts_analyzer = None
         self.data_exporter = None
@@ -137,7 +137,7 @@ class MFGAnalyticsEngine:
         Returns:
             Dictionary containing analysis results and visualization paths
         """
-        results = {
+        results: dict[str, Any] = {
             "title": title,
             "analysis_summary": {},
             "visualizations": {},
@@ -190,7 +190,7 @@ class MFGAnalyticsEngine:
         Returns:
             Analysis results with visualizations and statistics
         """
-        results = {
+        results: dict[str, Any] = {
             "title": title,
             "parameter_name": parameter_name,
             "n_sweeps": len(sweep_results),
@@ -273,7 +273,7 @@ class MFGAnalyticsEngine:
         value_history: np.ndarray,
     ) -> dict[str, Any]:
         """Analyze statistical properties of MFG solution."""
-        stats = {}
+        stats: dict[str, Any] = {}
 
         # Density statistics
         final_density = density_history[-1, :]

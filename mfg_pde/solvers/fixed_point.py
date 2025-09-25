@@ -194,7 +194,7 @@ class FixedPointSolver(BaseSolver):
         # Forward time iteration
         for n in range(len(t_grid) - 1):
             # Simple conservation of mass constraint
-            total_mass = np.trapz(m_new[n, :], x_grid)
+            total_mass = float(np.trapz(m_new[n, :], x_grid))
             if total_mass > 0:
                 m_new[n, :] /= total_mass
 

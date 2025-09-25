@@ -45,6 +45,7 @@ class Domain2D(BaseGeometry):
         self.holes = holes or []
         self.mesh_size = mesh_size
         self.kwargs = kwargs
+        self._gmsh_model: Any = None
 
         # Domain-specific parameters
         self._setup_domain_parameters()
@@ -76,7 +77,7 @@ class Domain2D(BaseGeometry):
     def create_gmsh_geometry(self) -> Any:
         """Create 2D geometry using Gmsh API."""
         try:
-            import gmsh  # type: ignore[import-not-found]
+            import gmsh
         except ImportError:
             raise ImportError("gmsh is required for mesh generation") from None
 
@@ -194,7 +195,7 @@ class Domain2D(BaseGeometry):
         try:
             import gmsh
         except ImportError:
-            raise ImportError("gmsh is required for custom geometry creation")
+            raise ImportError("gmsh is required for custom geometry creation") from None
 
         if self.geometry_func is None:
             raise RuntimeError("geometry_func is None")
@@ -295,7 +296,7 @@ class Domain2D(BaseGeometry):
             import gmsh
             import meshio  # noqa: F401
         except ImportError:
-            raise ImportError("gmsh and meshio are required for mesh generation")
+            raise ImportError("gmsh and meshio are required for mesh generation") from None
 
         # Create geometry
         self.create_gmsh_geometry()
@@ -397,7 +398,7 @@ class Domain2D(BaseGeometry):
                 raise RuntimeError("Failed to generate mesh data")
             return self.mesh_data.bounds
 
-    def export_mesh(self, format: str, filename: str) -> None:
+    def export_mesh(self, file_format: str, filename: str) -> None:
         """Export mesh in specified format using meshio."""
         if self.mesh_data is None:
             self.generate_mesh()
@@ -406,7 +407,7 @@ class Domain2D(BaseGeometry):
             raise RuntimeError("Failed to generate mesh data")
 
         meshio_mesh = self.mesh_data.to_meshio()
-        meshio_mesh.write(filename, file_format=format)
+        meshio_mesh.write(filename, file_format=file_format)
 
     def refine_mesh(
         self,
