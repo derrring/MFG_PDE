@@ -471,7 +471,7 @@ class Domain3D(BaseGeometry):
                 edge_length = np.linalg.norm(coords[i] - coords[j])
                 edges.append(edge_length)
 
-        return max(edges) / 2.0  # Approximation
+        return float(max(edges) / 2.0)  # Approximation
 
     def _compute_inradius(self, coords: np.ndarray) -> float:
         """Compute inradius of tetrahedron."""
@@ -495,7 +495,7 @@ class Domain3D(BaseGeometry):
             edge1 = face[1] - face[0]
             edge2 = face[2] - face[0]
             area = 0.5 * np.linalg.norm(np.cross(edge1, edge2))
-            surface_area += area
+            surface_area += float(area)
 
         # Inradius = 3 * Volume / Surface_area
         if surface_area > 0:

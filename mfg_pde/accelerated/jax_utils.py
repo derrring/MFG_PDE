@@ -29,7 +29,7 @@ if HAS_JAX:
     from jax.lax import cond, scan
 else:
     # Dummy implementations for graceful fallback
-    jax = None  # type: ignore[misc]
+    jax = None
     jnp = np  # type: ignore[misc]
 
     def device_put(x, device=None):

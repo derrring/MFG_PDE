@@ -76,7 +76,7 @@ class Domain2D(BaseGeometry):
     def create_gmsh_geometry(self) -> Any:
         """Create 2D geometry using Gmsh API."""
         try:
-            import gmsh  # type: ignore[import-not-found]
+            import gmsh
         except ImportError:
             raise ImportError("gmsh is required for mesh generation") from None
 
