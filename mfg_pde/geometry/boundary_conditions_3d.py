@@ -357,8 +357,9 @@ class BoundaryConditionManager3D:
         # Apply conditions by region
         for region_id, conditions in self.region_map.items():
             # Get boundary vertices for this region
-            if region_id in boundary_mapping:
-                boundary_indices = boundary_mapping[region_id]
+            region_key = str(region_id)
+            if region_key in boundary_mapping:
+                boundary_indices = boundary_mapping[region_key]
             else:
                 # Try to find region in standard face names
                 region_names = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]

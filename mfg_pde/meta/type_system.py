@@ -317,7 +317,7 @@ class DynamicSolver(metaclass=SolverMetaclass):
     method_type: NumericalMethod | None = None
     compatible_types: list[MFGType] = []
 
-    def __init__(self, config=None):
+    def __init__(self, config=None) -> None:
         self.config = config
         self.problem_type: MFGType | None = None
 
