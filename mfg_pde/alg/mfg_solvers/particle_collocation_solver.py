@@ -108,7 +108,7 @@ class ParticleCollocationSolver(MFGSolver):
         Niter: int | None = None,
         l2errBound: float | None = None,
         verbose: bool = True,
-        **kwargs,
+        **kwargs: Any,  # type: ignore[no-untyped-def]
     ) -> tuple[np.ndarray, np.ndarray, dict]:
         """
         Solve the MFG system using particle-collocation method.

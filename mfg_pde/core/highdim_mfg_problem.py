@@ -91,7 +91,7 @@ class HighDimMFGProblem(ABC):
         that can be used with the existing MFG_PDE solver infrastructure.
         """
         if self.components is None:
-            self.components = self.setup_components()
+            self.components = self.setup_components()  # type: ignore[assignment]
 
         # Create 1D problem using linearized indexing of spatial points
         adapter_problem = MFGProblem(
@@ -232,7 +232,7 @@ class HighDimMFGProblem(ABC):
 
         # Add spatial coordinates for visualization
         result["coordinates"] = self.mesh_data.vertices
-        result["mesh_data"] = self.mesh_data
+        result["mesh_data"] = self.mesh_data  # type: ignore[assignment]
         result["time_grid"] = self.time_grid
 
         return result
@@ -340,7 +340,7 @@ class HighDimMFGProblem(ABC):
             mesh = pv.UnstructuredGrid(cells, np.full(len(elements), 10), coords)
         else:
             # Create point cloud
-            mesh = pv.PolyData(coords)
+            mesh = pv.PolyData(coords)  # type: ignore[assignment]
 
         # Add field data
         mesh[field_type] = field_data  # type: ignore[index]
@@ -394,20 +394,20 @@ class GridBasedMFGProblem(HighDimMFGProblem):
                         raise ValueError(
                             f"For 2D problems, grid_resolution must be int or 2-tuple, got {len(grid_resolution)}-tuple"
                         )
-                    res = tuple(grid_resolution[:2])  # Ensure exactly 2 elements
+                    res = tuple(grid_resolution[:2])  # Ensure exactly 2 elements  # type: ignore[assignment]
                 geometry = SimpleGrid2D(bounds=domain_bounds, resolution=res)
             elif dimension == 3:
                 from mfg_pde.geometry.simple_grid import SimpleGrid3D
 
                 if isinstance(grid_resolution, int):
-                    res = (grid_resolution, grid_resolution, grid_resolution)
+                    res = (grid_resolution, grid_resolution, grid_resolution)  # type: ignore[assignment]
                 else:
                     if len(grid_resolution) != 3:
                         raise ValueError(
                             f"For 3D problems, grid_resolution must be int or 3-tuple, got {len(grid_resolution)}-tuple"
                         )
-                    res = tuple(grid_resolution[:3])  # Ensure exactly 3 elements
-                geometry = SimpleGrid3D(bounds=domain_bounds, resolution=res)
+                    res = tuple(grid_resolution[:3])  # Ensure exactly 3 elements  # type: ignore[assignment]
+                geometry = SimpleGrid3D(bounds=domain_bounds, resolution=res)  # type: ignore[arg-type]
             else:
                 raise ValueError(f"Grid-based problems only support 2D and 3D, got {dimension}D")
 

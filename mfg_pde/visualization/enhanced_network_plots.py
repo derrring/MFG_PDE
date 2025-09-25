@@ -474,7 +474,7 @@ class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):
             colorscale = "Viridis"
         else:
             node_z = np.zeros(self.num_nodes)
-            node_color = "lightblue"
+            node_color = "lightblue"  # type: ignore[assignment]
             colorscale = None
 
         # Add 3D edges

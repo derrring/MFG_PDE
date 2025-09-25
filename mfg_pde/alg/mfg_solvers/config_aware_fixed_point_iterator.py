@@ -93,7 +93,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         self.l2distm_rel: np.ndarray
         self.iterations_run: int = 0
 
-    def solve(self, config: MFGSolverConfig | None = None, **kwargs: Any) -> tuple | SolverResult:  # type: ignore[no-untyped-def,override]
+    def solve(self, config: MFGSolverConfig | None = None, **kwargs: Any) -> tuple | SolverResult:  # type: ignore[override]
         """
         Solve the MFG system using structured configuration.
 

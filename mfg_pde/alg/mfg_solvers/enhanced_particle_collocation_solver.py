@@ -309,7 +309,9 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
 
 # Convenience function for creating enhanced solver
 def create_enhanced_solver(
-    problem: MFGProblem, collocation_points: np.ndarray, **kwargs
+    problem: MFGProblem,
+    collocation_points: np.ndarray,
+    **kwargs: Any,  # type: ignore[no-untyped-def]
 ) -> MonitoredParticleCollocationSolver:
     """
     Create enhanced particle collocation solver with optimized defaults.
