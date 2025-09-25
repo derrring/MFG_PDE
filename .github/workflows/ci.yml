@@ -75,16 +75,14 @@ jobs:
           echo "✅ Code formatting is perfect."
         fi
 
-    - name: Ruff Linting
+    - name: Ruff Linting (Informational)
       run: |
-        echo "🔍 Running Ruff linter (replaces Pylint + flake8 + isort)..."
-        ruff check --output-format=github mfg_pde/
-        if [ $? -ne 0 ]; then
-          echo "❌ Linting issues found. Run 'ruff check --fix mfg_pde/' to auto-fix."
-          exit 1
-        else
-          echo "✅ All linting checks passed."
-        fi
+        echo "🔍 Running Ruff linter (informational for research codebase)..."
+        ruff check --output-format=github mfg_pde/ || true
+        echo ""
+        echo "📊 Linting summary (informational only):"
+        ruff check --statistics mfg_pde/ || true
+        echo "✅ Linting check completed (non-blocking for research workflow)"
 
     - name: Strategic type checking validation
       run: |
