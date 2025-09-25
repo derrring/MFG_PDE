@@ -440,7 +440,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Handle ghost particles for no-flux boundary conditions
         u_neighbors = []
-        for idx in neighbor_indices:
+        for idx in neighbor_indices:  # type: ignore[attr-defined]
             if idx >= 0:
                 # Regular neighbor
                 u_neighbors.append(u_values[idx])
@@ -448,7 +448,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 # Ghost particle: enforce no-flux condition u_ghost = u_center
                 u_neighbors.append(u_center)
 
-        u_neighbors = np.array(u_neighbors)
+        u_neighbors = np.array(u_neighbors)  # type: ignore[assignment]
 
         # Right-hand side: u(x_center) - u(x_neighbor) following equation (6) in the mathematical framework
         # For ghost particles, this becomes u_center - u_center = 0, enforcing ∂u/∂n = 0
@@ -471,13 +471,13 @@ class HJBGFDMSolver(BaseHJBSolver):
             if needs_constraints:
                 # Use constrained QP for monotonicity (enhanced version if available)
                 if self.qp_optimization_level in ["smart", "tuned"] and CVXPY_AVAILABLE:
-                    derivative_coeffs = self._enhanced_solve_monotone_constrained_qp(taylor_data, b, point_idx)
+                    derivative_coeffs = self._enhanced_solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
                 else:
-                    derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)
+                    derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
             else:
                 # Use faster unconstrained solution
                 derivative_coeffs = unconstrained_coeffs
-        elif taylor_data.get("use_svd", False):
+        elif taylor_data.get("use_svd", False):  # type: ignore[attr-defined]
             # Use SVD: solve using pseudoinverse with truncated SVD
             sqrt_W = taylor_data["sqrt_W"]
             U = taylor_data["U"]

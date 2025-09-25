@@ -454,7 +454,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             # This would require more sophisticated implementation
             pass
 
-    def _update_penalty_parameter(self, constraint_violations: dict[str, float]):
+    def _update_penalty_parameter(self, constraint_violations: dict[str, float]) -> None:  # type: ignore[no-untyped-def]
         """Adapt penalty parameter based on constraint violation progress."""
         if not self.use_adaptive_penalty:
             return
