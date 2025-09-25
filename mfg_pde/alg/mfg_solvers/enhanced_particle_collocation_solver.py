@@ -74,7 +74,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
             kde_bandwidth=kde_bandwidth,
             normalize_kde_output=normalize_kde_output,
             boundary_indices=boundary_indices,
-            boundary_conditions=boundary_conditions,
+            boundary_conditions=boundary_conditions,  # type: ignore[arg-type]
             use_monotone_constraints=use_monotone_constraints,
         )
 

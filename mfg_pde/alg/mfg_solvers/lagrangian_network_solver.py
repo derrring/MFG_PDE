@@ -66,7 +66,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         self.times = np.linspace(0, problem.T, problem.Nt + 1)
 
         # Velocity space setup
-        self.velocity_dim = problem.components.velocity_space_dim
+        self.velocity_dim = problem.components.velocity_space_dim  # type: ignore[attr-defined]
         self.velocity_grid = self._setup_velocity_grid()
 
         # Trajectory storage

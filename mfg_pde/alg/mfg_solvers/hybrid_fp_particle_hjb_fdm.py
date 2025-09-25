@@ -48,7 +48,7 @@ class HybridFPParticleHJBFDM:
         kde_bandwidth: str | float = "scott",
         hjb_newton_iterations: int = 30,
         hjb_newton_tolerance: float = 1e-7,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize the hybrid FP-Particle + HJB-FDM solver.
@@ -100,7 +100,7 @@ class HybridFPParticleHJBFDM:
         damping_factor: float = 0.5,
         config: MFGSolverConfig | None = None,
         return_structured: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Solve the MFG problem using hybrid FP-Particle + HJB-FDM approach.
@@ -234,7 +234,7 @@ class HybridFPParticleHJBFDM:
             ],
         }
 
-    def update_particle_count(self, num_particles: int):
+    def update_particle_count(self, num_particles: int) -> None:
         """
         Update the number of particles and reinitialize FP solver.
 
@@ -249,7 +249,7 @@ class HybridFPParticleHJBFDM:
             self.mfg_problem, num_particles=self.num_particles, kde_bandwidth=self.kde_bandwidth
         )
 
-    def update_hjb_newton_config(self, max_iterations: int, tolerance: float):
+    def update_hjb_newton_config(self, max_iterations: int, tolerance: float) -> None:
         """
         Update HJB Newton solver configuration.
 
@@ -386,7 +386,7 @@ def create_hybrid_fp_particle_hjb_fdm_solver(
     kde_bandwidth: str | float = "scott",
     hjb_newton_iterations: int = 30,
     hjb_newton_tolerance: float = 1e-7,
-    **kwargs,
+    **kwargs: Any,
 ) -> HybridFPParticleHJBFDM:
     """
     Factory function to create Hybrid FP-Particle + HJB-FDM solver.

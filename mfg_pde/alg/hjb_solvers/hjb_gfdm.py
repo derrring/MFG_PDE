@@ -583,7 +583,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         if self.dimension == 1:
             # For 1D, we can analyze the finite difference stencil more precisely
             monotonicity_constraints = self._build_monotonicity_constraints(
-                A, neighbor_indices, neighbor_points, center_point
+                A, neighbor_indices, neighbor_points, center_point  # type: ignore[arg-type]
             )
             constraints.extend(monotonicity_constraints)
 
@@ -984,7 +984,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                                     jacobian[i, j_global] -= (sigma**2 / 2.0) * coeff
 
             # Hamiltonian Jacobian (numerical)
-            for j in neighbor_indices:
+            for j in neighbor_indices:  # type: ignore[attr-defined]
                 # Skip ghost particles (negative indices)
                 if j < 0:
                     continue
@@ -1013,12 +1013,12 @@ class HJBGFDMSolver(BaseHJBSolver):
         """Get information about the decomposition methods used."""
         total_points = self.n_points
         svd_count = sum(
-            1
+            1  # type: ignore[misc]
             for i in range(total_points)
             if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_svd", False)  # type: ignore[attr-defined]
         )
         qr_count = sum(
-            1
+            1  # type: ignore[misc]
             for i in range(total_points)
             if self.taylor_matrices[i] is not None and self.taylor_matrices[i].get("use_qr", False)  # type: ignore[attr-defined]
         )

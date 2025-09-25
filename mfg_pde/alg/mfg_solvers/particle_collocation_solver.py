@@ -261,7 +261,7 @@ class ParticleCollocationSolver(MFGSolver):
         # Store results
         self.U_solution = U_current  # type: ignore[assignment]
         self.M_solution = M_current  # type: ignore[assignment]
-        self.convergence_history = convergence_history
+        self.convergence_history = convergence_history  # type: ignore[assignment]
 
         # Store particle trajectory if available
         if hasattr(self.fp_solver, "M_particles_trajectory"):
@@ -340,9 +340,9 @@ class ParticleCollocationSolver(MFGSolver):
             "taylor_order": hjb_solver.taylor_order,
             "weight_function": hjb_solver.weight_function,
             "valid_taylor_matrices": valid_matrices,
-            "min_neighborhood_size": min(neighborhood_sizes),
-            "max_neighborhood_size": max(neighborhood_sizes),
-            "avg_neighborhood_size": np.mean(neighborhood_sizes),
+            "min_neighborhood_size": min(neighborhood_sizes),  # type: ignore[type-var]
+            "max_neighborhood_size": max(neighborhood_sizes),  # type: ignore[type-var]
+            "avg_neighborhood_size": np.mean(neighborhood_sizes),  # type: ignore[arg-type]
             "multi_indices": hjb_solver.multi_indices,
             "n_derivatives": hjb_solver.n_derivatives,
         }
