@@ -119,9 +119,9 @@ class NetworkData:
         # Validate adjacency matrix
         adjacency = self.adjacency_matrix
         assert adjacency.shape[0] == adjacency.shape[1], "Adjacency matrix must be square"
-        assert adjacency.shape[0] == self.num_nodes, (
-            f"Adjacency matrix size {adjacency.shape[0]} != num_nodes {self.num_nodes}"
-        )
+        assert (
+            adjacency.shape[0] == self.num_nodes
+        ), f"Adjacency matrix size {adjacency.shape[0]} != num_nodes {self.num_nodes}"
 
         # Validate node positions with explicit type narrowing
         node_positions = self.node_positions
