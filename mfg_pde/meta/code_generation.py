@@ -61,7 +61,7 @@ class CodeGenerator:
 
         # Apply optimizations
         for opt in self.optimizations:
-            tree = self._apply_optimization(tree, opt)
+            tree = self._apply_optimization(tree, opt)  # type: ignore[assignment]
 
         # Convert back to code
         return ast.unparse(tree)

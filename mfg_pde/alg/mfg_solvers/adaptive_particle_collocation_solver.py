@@ -245,7 +245,7 @@ def create_adaptive_particle_solver(
     }
     defaults.update(kwargs)
 
-    return AdaptiveParticleCollocationSolver(problem, collocation_points, **defaults)
+    return AdaptiveParticleCollocationSolver(problem, collocation_points, **defaults)  # type: ignore[arg-type]
 
 
 # Convenience factory functions for common precision levels

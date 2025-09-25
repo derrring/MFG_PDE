@@ -184,7 +184,7 @@ class NetworkMFGVisualizer:
         node_size = self.default_node_size * node_size_scale
 
         if node_values is not None:
-            node_color = node_values
+            node_color = node_values  # type: ignore[assignment]
             colorscale = self.default_colorscale
         else:
             colorscale = None

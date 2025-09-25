@@ -335,7 +335,7 @@ def create_enhanced_solver(
     }
     defaults.update(kwargs)
 
-    return MonitoredParticleCollocationSolver(problem, collocation_points, **defaults)
+    return MonitoredParticleCollocationSolver(problem, collocation_points, **defaults)  # type: ignore[arg-type]
 
 
 # Backward compatibility alias

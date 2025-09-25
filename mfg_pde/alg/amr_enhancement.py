@@ -147,7 +147,9 @@ class AMREnhancedSolver:
 
         return final_result
 
-    def _solve_on_current_mesh(self, max_iterations: int, tolerance: float, verbose: bool, **kwargs: Any) -> dict[str, Any]:
+    def _solve_on_current_mesh(
+        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs: Any
+    ) -> dict[str, Any]:
         """Solve using base solver on current mesh."""
         if verbose:
             current_mesh_size = self._get_current_mesh_size()
@@ -347,11 +349,11 @@ def create_amr_enhanced_solver(
         ymin = getattr(problem, "ymin", 0.0)
         ymax = getattr(problem, "ymax", 1.0)
 
-        amr_mesh = AdaptiveMesh(
+        amr_mesh = AdaptiveMesh(  # type: ignore[assignment]
             domain_bounds=(xmin, xmax, ymin, ymax),
             initial_resolution=(20, 20),
         )
-        error_estimator = GradientErrorEstimator()
+        error_estimator = GradientErrorEstimator()  # type: ignore[assignment]
 
     else:
         raise ValueError(f"AMR not supported for {dimension}D problems")
