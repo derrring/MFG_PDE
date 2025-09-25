@@ -42,6 +42,7 @@ class Domain3D(BaseGeometry):
         self.holes = holes or []
         self.mesh_size = mesh_size
         self.kwargs = kwargs
+        self._mesh_data: MeshData | None = None
 
         # Domain-specific parameters
         self._setup_domain_parameters()
@@ -465,13 +466,13 @@ class Domain3D(BaseGeometry):
         """Compute circumradius of tetrahedron."""
         # Simplified calculation for demonstration
         # In practice, would use more robust geometric computation
-        edges = []
+        edges: list[float] = []
         for i in range(4):
             for j in range(i + 1, 4):
-                edge_length = np.linalg.norm(coords[i] - coords[j])
+                edge_length = float(np.linalg.norm(coords[i] - coords[j]))
                 edges.append(edge_length)
 
-        return float(max(edges) / 2.0)  # Approximation
+        return max(edges) / 2.0  # Approximation
 
     def _compute_inradius(self, coords: np.ndarray) -> float:
         """Compute inradius of tetrahedron."""

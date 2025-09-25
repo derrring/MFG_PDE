@@ -33,6 +33,7 @@ class SimpleGrid2D(BaseGeometry):
         self.xmin, self.xmax, self.ymin, self.ymax = bounds
         self.nx, self.ny = resolution
         self._bounds = bounds
+        self._mesh_data: MeshData | None = None
 
     @property
     def bounds(self) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
@@ -195,6 +196,7 @@ class SimpleGrid3D(BaseGeometry):
         self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = bounds
         self.nx, self.ny, self.nz = resolution
         self._bounds = bounds
+        self._mesh_data: MeshData | None = None
 
     @property
     def bounds(self) -> tuple[NDArray[np.floating], NDArray[np.floating]]:

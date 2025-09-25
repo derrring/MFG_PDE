@@ -276,12 +276,12 @@ class BoundaryConditionManager3D:
     across various regions of the computational domain.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize boundary condition manager."""
         self.conditions: list[BoundaryCondition3D] = []
         self.region_map: dict[int, list[BoundaryCondition3D]] = {}
 
-    def add_condition(self, condition: BoundaryCondition3D, boundary_region: int | str | np.ndarray):
+    def add_condition(self, condition: BoundaryCondition3D, boundary_region: int | str | np.ndarray) -> None:
         """
         Add boundary condition for specific region.
 
