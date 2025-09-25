@@ -95,7 +95,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
         # Optimization state
         self.iteration_count = 0
         self.cost_history: list[float] = []
-        self.constraint_violation_history = []
+        self.constraint_violation_history: list[float] = []
 
         logger.info(f"Created {self.solver_name} solver")
         logger.info(f"  Optimization method: {optimization_method}")
@@ -108,7 +108,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
         max_iterations: int = 100,
         tolerance: float = 1e-6,
         verbose: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> VariationalSolverResult:
         """
         Solve the variational MFG problem using direct optimization.
@@ -381,7 +381,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
 
         return trajectory
 
-    def _optimization_callback(self, x: NDArray):
+    def _optimization_callback(self, x: NDArray) -> None:
         """
         Callback function called during optimization.
 

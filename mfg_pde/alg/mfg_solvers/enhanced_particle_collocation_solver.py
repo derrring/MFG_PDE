@@ -52,7 +52,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
         boundary_conditions: BoundaryConditions | None = None,
         use_monotone_constraints: bool = False,
         convergence_monitor: AdvancedConvergenceMonitor | None = None,
-        **convergence_kwargs,
+        **convergence_kwargs: Any,
     ):
         """
         Initialize enhanced particle collocation solver.
@@ -74,7 +74,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
             kde_bandwidth=kde_bandwidth,
             normalize_kde_output=normalize_kde_output,
             boundary_indices=boundary_indices,
-            boundary_conditions=boundary_conditions,
+            boundary_conditions=boundary_conditions,  # type: ignore[arg-type]
             use_monotone_constraints=use_monotone_constraints,
         )
 
@@ -311,7 +311,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
 def create_enhanced_solver(
     problem: MFGProblem,
     collocation_points: np.ndarray,
-    **kwargs: Any,  # type: ignore[no-untyped-def]
+    **kwargs: Any,
 ) -> MonitoredParticleCollocationSolver:
     """
     Create enhanced particle collocation solver with optimized defaults.

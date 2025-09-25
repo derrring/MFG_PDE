@@ -43,7 +43,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         velocity_discretization: int = 10,
         trajectory_length: int | None = None,
         use_relaxed_equilibria: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize Lagrangian network MFG solver.
@@ -66,12 +66,12 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         self.times = np.linspace(0, problem.T, problem.Nt + 1)
 
         # Velocity space setup
-        self.velocity_dim = problem.components.velocity_space_dim
+        self.velocity_dim = problem.components.velocity_space_dim  # type: ignore[attr-defined]
         self.velocity_grid = self._setup_velocity_grid()
 
         # Trajectory storage
-        self.trajectory_measures = []
-        self.optimal_trajectories = {}
+        self.trajectory_measures: list[dict[str, Any]] = []
+        self.optimal_trajectories: dict[str, np.ndarray] = {}
 
         self.name = f"LagrangianNetworkMFG_{self.hjb_solver.hjb_method_name}"
 
@@ -92,7 +92,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         max_iterations: int = 50,
         tolerance: float = 1e-5,
         verbose: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """
         Solve network MFG using Lagrangian formulation.
@@ -115,7 +115,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
             return self._solve_lagrangian_fixed_point(max_iterations, tolerance, verbose, **kwargs)
 
     def _solve_lagrangian_fixed_point(
-        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs
+        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs: Any
     ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """Solve using Lagrangian fixed point iteration."""
         solve_start_time = time.time()
@@ -334,17 +334,17 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
         return total_cost
 
     def _solve_relaxed_equilibria(
-        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs
+        self, max_iterations: int, tolerance: float, verbose: bool, **kwargs: Any
     ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """Solve using relaxed equilibria formulation."""
         if verbose:
             print("Solving using relaxed equilibria (trajectory measures)...")
 
         # Initialize trajectory measures
-        self.trajectory_measures = [self._create_initial_trajectory_measure() for _ in range(self.num_nodes)]
+        self.trajectory_measures = [self._create_initial_trajectory_measure() for _ in range(self.num_nodes)]  # type: ignore[misc]
 
         # Compute relaxed equilibrium
-        U, M = self.network_problem.compute_relaxed_equilibrium(self.trajectory_measures)
+        U, M = self.network_problem.compute_relaxed_equilibrium(self.trajectory_measures)  # type: ignore[arg-type]
 
         # Simple convergence info for relaxed case
         convergence_info = {
@@ -425,7 +425,7 @@ class LagrangianNetworkMFGSolver(NetworkFixedPointIterator):
 
 # Factory function for Lagrangian network MFG solvers
 def create_lagrangian_network_solver(
-    problem: NetworkMFGProblem, solver_type: str = "lagrangian", **kwargs
+    problem: NetworkMFGProblem, solver_type: str = "lagrangian", **kwargs: Any
 ) -> LagrangianNetworkMFGSolver:
     """
     Create Lagrangian network MFG solver.

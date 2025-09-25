@@ -76,7 +76,7 @@ class ParticleCollocationSolver(MFGSolver):
             num_particles=num_particles,
             kde_bandwidth=kde_bandwidth,
             normalize_kde_output=normalize_kde_output,
-            boundary_conditions=boundary_conditions,
+            boundary_conditions=boundary_conditions,  # type: ignore[arg-type]
         )
 
         # Initialize HJB solver (GFDM collocation)
@@ -97,7 +97,7 @@ class ParticleCollocationSolver(MFGSolver):
         # Storage for results
         self.U_solution = None
         self.M_solution = None
-        self.convergence_history = []
+        self.convergence_history: list[dict[str, float]] = []
         self.particles_trajectory = None
 
     def solve(
@@ -259,13 +259,13 @@ class ParticleCollocationSolver(MFGSolver):
                 break
 
         # Store results
-        self.U_solution = U_current
-        self.M_solution = M_current
-        self.convergence_history = convergence_history
+        self.U_solution = U_current  # type: ignore[assignment]
+        self.M_solution = M_current  # type: ignore[assignment]
+        self.convergence_history = convergence_history  # type: ignore[assignment]
 
         # Store particle trajectory if available
         if hasattr(self.fp_solver, "M_particles_trajectory"):
-            self.particles_trajectory = self.fp_solver.M_particles_trajectory
+            self.particles_trajectory = self.fp_solver.M_particles_trajectory  # type: ignore[assignment]
 
         # Prepare convergence info
         final_convergence_info = {
@@ -282,8 +282,8 @@ class ParticleCollocationSolver(MFGSolver):
             print(f"  - Total iterations: {final_convergence_info['iterations']}")
 
         # Store solutions and mark as computed for warm start capability
-        self.U_solution = U_current
-        self.M_solution = M_current
+        self.U_solution = U_current  # type: ignore[assignment]
+        self.M_solution = M_current  # type: ignore[assignment]
         self._solution_computed = True
 
         return U_current, M_current, final_convergence_info
@@ -340,9 +340,9 @@ class ParticleCollocationSolver(MFGSolver):
             "taylor_order": hjb_solver.taylor_order,
             "weight_function": hjb_solver.weight_function,
             "valid_taylor_matrices": valid_matrices,
-            "min_neighborhood_size": min(neighborhood_sizes),
-            "max_neighborhood_size": max(neighborhood_sizes),
-            "avg_neighborhood_size": np.mean(neighborhood_sizes),
+            "min_neighborhood_size": min(neighborhood_sizes),  # type: ignore[type-var]
+            "max_neighborhood_size": max(neighborhood_sizes),  # type: ignore[type-var]
+            "avg_neighborhood_size": np.mean(neighborhood_sizes),  # type: ignore[arg-type]
             "multi_indices": hjb_solver.multi_indices,
             "n_derivatives": hjb_solver.n_derivatives,
         }

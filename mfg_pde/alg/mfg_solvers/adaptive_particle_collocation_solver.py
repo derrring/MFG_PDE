@@ -124,7 +124,7 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
 
                 _convergence_monitor = None
 
-            self._adaptive_convergence_wrapper = MinimalWrapper()  # type: ignore[assignment]
+            self._adaptive_convergence_wrapper = MinimalWrapper()
 
         self.precision_level = precision
 
@@ -224,7 +224,7 @@ def create_adaptive_particle_solver(
     problem: MFGProblem,
     collocation_points: np.ndarray,
     precision: str = "standard",
-    **kwargs: Any,  # type: ignore[no-untyped-def]
+    **kwargs: Any,
 ) -> AdaptiveParticleCollocationSolver:
     """
     Create adaptive particle collocation solver with optimized defaults.

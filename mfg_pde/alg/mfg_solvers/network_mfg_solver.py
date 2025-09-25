@@ -91,7 +91,7 @@ class NetworkFixedPointIterator(MFGSolver):
         max_iterations: int = 50,
         tolerance: float = 1e-5,
         verbose: bool = True,
-        **kwargs: Any,  # type: ignore[no-untyped-def]
+        **kwargs: Any,
     ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
         """
         Solve network MFG system using fixed point iteration.
@@ -312,7 +312,7 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
     flow analysis capabilities.
     """
 
-    def __init__(self, problem: NetworkMFGProblem, **kwargs: Any):  # type: ignore[no-untyped-def]
+    def __init__(self, problem: NetworkMFGProblem, **kwargs: Any):
         """Initialize flow-based network MFG solver."""
         # Force flow-based FP solver
         fp_kwargs = kwargs.pop("fp_kwargs", {})
@@ -326,7 +326,7 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
             raise ValueError("No solution available. Call solve() first.")
 
         # Compute various flow metrics
-        flow_analysis = {
+        flow_analysis: dict[str, Any] = {
             "total_flow_over_time": [],
             "max_flow_over_time": [],
             "flow_concentration": [],
@@ -367,7 +367,7 @@ class NetworkFlowMFGSolver(NetworkFixedPointIterator):
 
 # Factory function for network MFG solvers
 def create_network_mfg_solver(
-    problem: NetworkMFGProblem, solver_type: str = "fixed_point", **kwargs
+    problem: NetworkMFGProblem, solver_type: str = "fixed_point", **kwargs: Any
 ) -> NetworkFixedPointIterator:
     """
     Create network MFG solver with specified type.
