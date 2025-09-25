@@ -421,7 +421,7 @@ class OneDimensionalAMRMesh:
 
         # Update elements to use unique vertex indices
         unique_elements = []
-        for i, interval in enumerate(sorted_intervals):
+        for _i, interval in enumerate(sorted_intervals):
             left_idx = vertex_map[interval.x_min]
             right_idx = vertex_map[interval.x_max]
             unique_elements.append([left_idx, right_idx])

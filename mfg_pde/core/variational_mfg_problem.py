@@ -362,7 +362,7 @@ class VariationalMFGProblem:
                 # Extract interaction part by evaluating at v=0
                 total_cost_at_zero_velocity = self.evaluate_lagrangian(t, x, 0.0, m)
                 kinetic_at_zero = 0.0  # No kinetic energy at v=0
-                interaction_term = total_cost_at_zero_velocity - kinetic_at_zero
+                interaction_term = float(total_cost_at_zero_velocity - kinetic_at_zero)
                 # Ensure scalar return for scalar inputs
 
                 if hasattr(interaction_term, "ndim") and getattr(interaction_term, "ndim", None) == 0:
@@ -420,7 +420,7 @@ class VariationalMFGProblem:
 
             # Add running cost
             cost_contribution = self.evaluate_lagrangian(t, x, v, m_at_x)
-            running_cost += cost_contribution * self.Dt
+            running_cost += float(cost_contribution * self.Dt)
 
         # Add terminal cost
         terminal_cost = self.evaluate_terminal_cost(trajectory[-1])

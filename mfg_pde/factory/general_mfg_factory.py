@@ -267,7 +267,7 @@ class GeneralMFGFactory:
         }
 
         config_manager = OmegaConfManager()
-        config_manager.save_config(template, filename)
+        config_manager.save_config(template, filename)  # type: ignore[arg-type]
         logger.info(f"Created template configuration: {filename}")
 
     def validate_config(self, config: dict[str, Any]) -> dict[str, Any]:
