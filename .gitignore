@@ -36,6 +36,12 @@ AI-GUIDELINES-*.md
 .ai-settings/
 .claude-personal/
 
+# Strategic typing excellence tracking (temporary analysis)
+/strategic_typing_progress.md
+/type_error_tracking.md
+/mypy_error_analysis.md
+/ci_cd_strategic_analysis.md
+
 # Individual developer configurations
 .pre-commit-config-personal.yaml
 .pre-commit-config-local.yaml
@@ -353,6 +359,15 @@ dmypy.json
 
 # pytype static type analyzer
 .pytype/
+
+# Ruff cache
+.ruff_cache/
+
+# Strategic typing development artifacts
+type_analysis_temp/
+strategic_typing_temp/
+mypy_reports/
+ruff_reports/
 
 # Cython debug symbols
 cython_debug/
