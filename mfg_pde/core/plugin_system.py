@@ -415,7 +415,7 @@ class PluginManager:
 
         raise ValueError(f"Unknown solver type: {solver_type}")
 
-    def run_analysis(self, result, analysis_type: str, **kwargs):
+    def run_analysis(self, result: Any, analysis_type: str, **kwargs: Any) -> Any:
         """Run analysis using registered analysis plugins.
 
         Args:
@@ -521,11 +521,11 @@ class PluginManager:
 
     def _create_core_solver(
         self,
-        problem,
+        problem: Any,
         solver_type: str,
         config: MFGSolverConfig | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         """Create core solver instance."""
         # Import here to avoid circular imports
         from typing import cast
@@ -654,7 +654,7 @@ def discover_and_load_plugins(
     return manager.load_all_plugins()
 
 
-def create_solver_with_plugins(problem, solver_type: str, config: MFGSolverConfig | None = None, **kwargs):
+def create_solver_with_plugins(problem: Any, solver_type: str, config: MFGSolverConfig | None = None, **kwargs: Any) -> Any:
     """Create solver with plugin support."""
     return get_plugin_manager().create_solver(problem, solver_type, config, **kwargs)
 

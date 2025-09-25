@@ -7,7 +7,7 @@ automatically refining and coarsening the mesh based on solution error.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from tqdm import tqdm
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.factory.solver_factory import SolverType
     from mfg_pde.geometry.amr_mesh import AdaptiveMesh, QuadTreeNode
-    from mfg_pde.types.internal import JAXArray
+    from mfg_pde.types.internal import JAXArray, SolverReturnTuple
 
 try:
     import jax
@@ -54,8 +54,8 @@ class AMRMFGSolver(MFGSolver):
         amr_frequency: int = 5,  # Adapt mesh every N iterations
         max_amr_cycles: int = 3,  # Maximum AMR cycles per solve
         backend: BaseBackend | None = None,
-        **solver_kwargs,
-    ):
+        **solver_kwargs: Any,
+    ) -> None:
         """
         Initialize AMR MFG solver.
 
@@ -95,12 +95,12 @@ class AMRMFGSolver(MFGSolver):
         # Create solver with current backend
         self.base_solver = create_fast_solver(
             self.problem,
-            solver_type=cast("SolverType", self.base_solver_type),
+            solver_type=self.base_solver_type,
             backend=self.backend,
             **self.solver_kwargs,
         )
 
-    def solve(self, max_iterations: int = 100, tolerance: float = 1e-6, verbose: bool = True) -> SolverResult:
+    def solve(self, max_iterations: int = 100, tolerance: float = 1e-5, verbose: bool = True, **kwargs: Any) -> SolverReturnTuple:
         """
         Solve MFG problem with adaptive mesh refinement.
 
@@ -226,7 +226,7 @@ class AMRMFGSolver(MFGSolver):
         self._last_U = U.copy()
         self._last_M = M.copy()
 
-        return result
+        return U, M, result["convergence_info"]
 
     def _initialize_solution(self) -> tuple[NDArray, NDArray]:
         """Initialize solution arrays on current mesh"""
@@ -329,14 +329,14 @@ class AMRMFGSolver(MFGSolver):
         adaptation_stats = self.adaptive_mesh.adapt_mesh(solution_data)
 
         # Update tracking statistics
-        self.amr_stats["total_refinements"] += adaptation_stats["total_refined"]
-        self.amr_stats["total_coarsenings"] += adaptation_stats["total_coarsened"]
-        self.amr_stats["adaptation_cycles"] += 1
+        self.amr_stats["total_refinements"] += adaptation_stats["total_refined"]  # type: ignore[operator]
+        self.amr_stats["total_coarsenings"] += adaptation_stats["total_coarsened"]  # type: ignore[operator]
+        self.amr_stats["adaptation_cycles"] += 1  # type: ignore[operator]
 
         # Compute mesh efficiency (cells per unit area with high error)
         mesh_stats = self.adaptive_mesh.get_mesh_statistics()
         efficiency = mesh_stats["total_cells"] / mesh_stats["total_area"]
-        self.amr_stats["mesh_efficiency"].append(efficiency)
+        self.amr_stats["mesh_efficiency"].append(efficiency)  # type: ignore[attr-defined]
 
         if verbose and (adaptation_stats["total_refined"] > 0 or adaptation_stats["total_coarsened"] > 0):
             print(f"  Refined: {adaptation_stats['total_refined']} cells")
@@ -555,20 +555,20 @@ class JAXAcceleratedAMR:
         dM_dy = jnp.gradient(M, dy, axis=1)
 
         # Gradient magnitudes
-        grad_U = jnp.sqrt(dU_dx**2 + dU_dy**2)
-        grad_M = jnp.sqrt(dM_dx**2 + dM_dy**2)
+        grad_U = jnp.sqrt(dU_dx**2 + dU_dy**2)  # type: ignore[operator]
+        grad_M = jnp.sqrt(dM_dx**2 + dM_dy**2)  # type: ignore[operator]
 
         # Combined error indicator
         error_indicator = jnp.maximum(grad_U, grad_M)
 
         # Add curvature-based indicator
-        d2U_dx2 = jnp.gradient(dU_dx, dx, axis=0)
-        d2U_dy2 = jnp.gradient(dU_dy, dy, axis=1)
-        curvature_U = jnp.abs(d2U_dx2) + jnp.abs(d2U_dy2)
+        d2U_dx2 = jnp.gradient(dU_dx, dx, axis=0)  # type: ignore[arg-type]
+        d2U_dy2 = jnp.gradient(dU_dy, dy, axis=1)  # type: ignore[arg-type]
+        curvature_U = jnp.abs(d2U_dx2) + jnp.abs(d2U_dy2)  # type: ignore[arg-type]
 
-        d2M_dx2 = jnp.gradient(dM_dx, dx, axis=0)
-        d2M_dy2 = jnp.gradient(dM_dy, dy, axis=1)
-        curvature_M = jnp.abs(d2M_dx2) + jnp.abs(d2M_dy2)
+        d2M_dx2 = jnp.gradient(dM_dx, dx, axis=0)  # type: ignore[arg-type]
+        d2M_dy2 = jnp.gradient(dM_dy, dy, axis=1)  # type: ignore[arg-type]
+        curvature_M = jnp.abs(d2M_dx2) + jnp.abs(d2M_dy2)  # type: ignore[arg-type]
 
         curvature_indicator = jnp.maximum(curvature_U, curvature_M)
 
@@ -634,7 +634,7 @@ class JAXAcceleratedAMR:
         coords = jnp.stack([X_new.ravel(), Y_new.ravel()])
 
         # Interpolate
-        density_interp = map_coordinates(density, coords, order=1, mode="nearest")
+        density_interp = map_coordinates(density, coords, order=1, mode="nearest")  # type: ignore[arg-type]
         density_interp = density_interp.reshape(new_shape)
 
         # Enforce mass conservation
@@ -680,7 +680,7 @@ class JAXAcceleratedAMR:
         coords = jnp.stack([X_new.ravel(), Y_new.ravel()])
 
         # Use cubic interpolation for better gradient preservation
-        values_interp = map_coordinates(values, coords, order=3, mode="nearest")
+        values_interp = map_coordinates(values, coords, order=3, mode="nearest")  # type: ignore[arg-type]
         values_interp = values_interp.reshape(new_shape)
 
         return values_interp
@@ -693,7 +693,7 @@ def create_amr_solver(
     max_levels: int = 5,
     base_solver: SolverType = "fixed_point",
     backend: str = "auto",
-    **kwargs,
+    **kwargs: Any,
 ) -> AMRMFGSolver:
     """
     Factory function to create an AMR MFG solver.

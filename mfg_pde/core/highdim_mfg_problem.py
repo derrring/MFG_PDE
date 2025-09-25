@@ -394,7 +394,7 @@ class GridBasedMFGProblem(HighDimMFGProblem):
                         raise ValueError(
                             f"For 2D problems, grid_resolution must be int or 2-tuple, got {len(grid_resolution)}-tuple"
                         )
-                    res = tuple(grid_resolution[:2])  # Ensure exactly 2 elements  # type: ignore[assignment]
+                    res = tuple(grid_resolution[:2])  # type: ignore[assignment]  # Ensure exactly 2 elements
                 geometry = SimpleGrid2D(bounds=domain_bounds, resolution=res)
             elif dimension == 3:
                 from mfg_pde.geometry.simple_grid import SimpleGrid3D
@@ -406,8 +406,8 @@ class GridBasedMFGProblem(HighDimMFGProblem):
                         raise ValueError(
                             f"For 3D problems, grid_resolution must be int or 3-tuple, got {len(grid_resolution)}-tuple"
                         )
-                    res = tuple(grid_resolution[:3])  # Ensure exactly 3 elements  # type: ignore[assignment]
-                geometry = SimpleGrid3D(bounds=domain_bounds, resolution=res)  # type: ignore[arg-type]
+                    res = tuple(grid_resolution[:3])  # type: ignore[assignment]  # Ensure exactly 3 elements
+                geometry = SimpleGrid3D(bounds=domain_bounds, resolution=res)  # type: ignore[assignment,arg-type]
             else:
                 raise ValueError(f"Grid-based problems only support 2D and 3D, got {dimension}D")
 

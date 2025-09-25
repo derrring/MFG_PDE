@@ -144,7 +144,7 @@ class HybridFPParticleHJBFDM:
                 converged = True  # Assume convergence if no error
                 final_residual = result[3][-1] if len(result) > 3 and len(result[3]) > 0 else 0.0
                 # Convert to dict format for consistency
-                result = {
+                result = {  # type: ignore[assignment]
                     "U": U,
                     "M": M,
                     "iterations": iterations,
@@ -182,7 +182,7 @@ class HybridFPParticleHJBFDM:
             }
 
             # Include original result data
-            enhanced_result.update(result)
+            enhanced_result.update(result)  # type: ignore[arg-type]
 
             if converged:
                 logger.info(f"✅ Hybrid solver converged in {iterations} iterations ({solve_time:.2f}s)")

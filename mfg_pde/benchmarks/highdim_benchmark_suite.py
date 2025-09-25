@@ -518,9 +518,9 @@ class HighDimMFGBenchmark:
 
         try:
             if method == "damped_fixed_point":
-                result = problem.solve_with_damped_fixed_point(**default_params)
+                result = problem.solve_with_damped_fixed_point(**default_params)  # type: ignore[arg-type]
             elif method == "particle_collocation":
-                result = problem.solve_with_particle_collocation(**default_params)
+                result = problem.solve_with_particle_collocation(**default_params)  # type: ignore[arg-type]
             else:
                 raise ValueError(f"Unknown method: {method}")
 
