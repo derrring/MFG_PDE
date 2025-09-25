@@ -8,7 +8,7 @@ configuration system for improved parameter management and user experience.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 

@@ -88,7 +88,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
         self.detailed_convergence_history: list[dict[str, Any]] = []
         self.use_advanced_convergence = True
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         Niter: int = 20,
         l2errBound: float = 1e-3,

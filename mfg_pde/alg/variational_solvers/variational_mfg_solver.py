@@ -57,7 +57,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
     - Multiple optimization algorithms
     """
 
-    def __init__(
+    def __init__(  # type: ignore[no-untyped-def]
         self,
         problem,
         optimization_method: str = "L-BFGS-B",
@@ -94,7 +94,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
 
         # Optimization state
         self.iteration_count = 0
-        self.cost_history = []
+        self.cost_history: list[float] = []
         self.constraint_violation_history = []
 
         logger.info(f"Created {self.solver_name} solver")

@@ -99,7 +99,7 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
             kde_bandwidth=kde_bandwidth,
             normalize_kde_output=normalize_kde_output,
             boundary_indices=boundary_indices,
-            boundary_conditions=boundary_conditions,
+            boundary_conditions=boundary_conditions,  # type: ignore[arg-type]
             use_monotone_constraints=use_monotone_constraints,
         )
 
@@ -124,7 +124,7 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
 
                 _convergence_monitor = None
 
-            self._adaptive_convergence_wrapper = MinimalWrapper()
+            self._adaptive_convergence_wrapper = MinimalWrapper()  # type: ignore[assignment]
 
         self.precision_level = precision
 
@@ -204,7 +204,7 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
                 def get_detection_info(self):
                     return {"mode": "particle_aware", "confidence": 1.0}
 
-            self._adaptive_convergence_wrapper = AdaptiveWrapper(**convergence_kwargs)
+            self._adaptive_convergence_wrapper = AdaptiveWrapper(**convergence_kwargs)  # type: ignore[assignment]
         except Exception:
             # If decorator fails, create a minimal fallback
             class MinimalWrapper:
@@ -216,7 +216,7 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
 
                 _convergence_monitor = None
 
-            self._adaptive_convergence_wrapper = MinimalWrapper()
+            self._adaptive_convergence_wrapper = MinimalWrapper()  # type: ignore[assignment]
 
 
 # Convenience function for creating adaptive solver

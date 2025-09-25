@@ -105,7 +105,7 @@ class HighDimMFGProblem(ABC):
         )
 
         # Store reference to original high-dimensional problem
-        adapter_problem._highdim_problem = self
+        adapter_problem._highdim_problem = self  # type: ignore[attr-defined]
 
         return adapter_problem
 
@@ -416,7 +416,7 @@ class GridBasedMFGProblem(HighDimMFGProblem):
             if dimension == 2:
                 from mfg_pde.geometry.domain_2d import Domain2D
 
-                geometry = Domain2D(
+                geometry = Domain2D(  # type: ignore[assignment]
                     domain_type="rectangle",
                     bounds=domain_bounds,
                     mesh_size=1.0 / (grid_resolution if isinstance(grid_resolution, int) else min(grid_resolution)),

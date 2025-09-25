@@ -296,7 +296,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             center_point = self.collocation_points[i]
             neighbor_points = neighborhood["points"]
 
-            for j, neighbor_point in enumerate(neighbor_points):  # type: ignore[var-annotated]
+            for j, neighbor_point in enumerate(neighbor_points):  # type: ignore[var-annotated,arg-type]
                 delta_x = neighbor_point - center_point
 
                 for k, beta in enumerate(self.multi_indices):

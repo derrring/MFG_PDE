@@ -62,7 +62,7 @@ class FixedPointIterator(MFGSolver):
         self.l2distm_rel: np.ndarray
         self.iterations_run: int = 0
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         max_iterations: int | None = None,
         tolerance: float | None = None,

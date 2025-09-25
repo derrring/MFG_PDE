@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -108,7 +108,7 @@ class ParticleCollocationSolver(MFGSolver):
         Niter: int | None = None,
         l2errBound: float | None = None,
         verbose: bool = True,
-        **kwargs: Any,  # type: ignore[no-untyped-def]
+        **kwargs: Any,
     ) -> tuple[np.ndarray, np.ndarray, dict]:
         """
         Solve the MFG system using particle-collocation method.

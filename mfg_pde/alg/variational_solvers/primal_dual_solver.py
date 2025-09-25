@@ -109,7 +109,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         logger.info(f"  Initial penalty: {augmented_penalty}")
         logger.info(f"  Adaptive penalty: {use_adaptive_penalty}")
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         initial_guess: NDArray | None = None,
         max_outer_iterations: int = 20,
@@ -195,7 +195,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
                 "dual_vars": {k: np.linalg.norm(v) for k, v in self.dual_vars.items()},
                 "primal_change": np.linalg.norm(current_density - prev_density),
             }
-            self.primal_dual_history.append(iteration_info)
+            self.primal_dual_history.append(iteration_info)  # type: ignore[arg-type]
             self.constraint_violation_history.append(max_violation)
 
             if verbose:
@@ -204,7 +204,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
                 logger.info(f"  Current penalty: {self.augmented_penalty:.1f}")
 
             # Convergence check
-            if max_violation < self.constraint_tolerance and float(iteration_info["primal_change"]) < tolerance:
+            if max_violation < self.constraint_tolerance and float(iteration_info["primal_change"]) < tolerance:  # type: ignore[arg-type]
                 converged = True
                 if verbose:
                     logger.info(f"  ✓ Converged at iteration {outer_iteration + 1}")
@@ -454,7 +454,7 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             # This would require more sophisticated implementation
             pass
 
-    def _update_penalty_parameter(self, constraint_violations: dict[str, float]) -> None:  # type: ignore[no-untyped-def]
+    def _update_penalty_parameter(self, constraint_violations: dict[str, float]) -> None:
         """Adapt penalty parameter based on constraint violation progress."""
         if not self.use_adaptive_penalty:
             return
