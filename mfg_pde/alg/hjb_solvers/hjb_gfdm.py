@@ -296,7 +296,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             center_point = self.collocation_points[i]
             neighbor_points = neighborhood["points"]
 
-            for j, neighbor_point in enumerate(neighbor_points):
+            for j, neighbor_point in enumerate(neighbor_points):  # type: ignore[var-annotated]
                 delta_x = neighbor_point - center_point
 
                 for k, beta in enumerate(self.multi_indices):
@@ -332,7 +332,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 tolerance = 1e-12
                 rank = np.sum(tolerance < S)
 
-                self.taylor_matrices[i] = {
+                self.taylor_matrices[i] = {  # type: ignore[assignment]
                     "A": A,
                     "W": W,
                     "sqrt_W": sqrt_W,
@@ -350,7 +350,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 try:
                     # QR decomposition: WA = Q @ R
                     Q, R = np.linalg.qr(WA)
-                    self.taylor_matrices[i] = {
+                    self.taylor_matrices[i] = {  # type: ignore[assignment]
                         "A": A,
                         "W": W,
                         "sqrt_W": sqrt_W,
@@ -361,7 +361,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     }
                 except:
                     # Final fallback to normal equations
-                    self.taylor_matrices[i] = {
+                    self.taylor_matrices[i] = {  # type: ignore[assignment]
                         "A": A,
                         "W": W,
                         "AtW": A.T @ W,
@@ -977,7 +977,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     if (self.dimension == 1 and beta == (2,)) or (self.dimension == 2 and beta in [(2, 0), (0, 2)]):
                         # Check bounds for derivative_matrix access
                         if k < derivative_matrix.shape[0]:
-                            for j_local, j_global in enumerate(neighbor_indices):
+                            for j_local, j_global in enumerate(neighbor_indices):  # type: ignore[var-annotated]
                                 if j_local < derivative_matrix.shape[1] and j_global >= 0:
                                     # Only apply to real particles (ghost particles have negative indices)
                                     coeff = derivative_matrix[k, j_local]

@@ -56,7 +56,7 @@ except ImportError:
             return dummy_func
 
     jax = DummyJAX()  # type: ignore[assignment]
-    jnp = DummyJAX()
+    jnp = DummyJAX()  # type: ignore[assignment]
 
     def jit(f):  # type: ignore[misc]  # No-op decorator
         return f
@@ -178,11 +178,11 @@ __all__ = [
 if HAS_JAX:
     try:
         # Individual imports for explicit exports
-        from .jax_fp_solver import JAXFokkerPlanckSolver  # noqa: F401
-        from .jax_hjb_solver import JAXHJBSolver  # noqa: F401
-        from .jax_mfg_solver import JAXMFGSolver  # noqa: F401
-        from .jax_solvers import *  # noqa: F403
-        from .jax_utils import *  # noqa: F403
+        from .jax_fp_solver import JAXFokkerPlanckSolver  # noqa: F401  # type: ignore[import-not-found]
+        from .jax_hjb_solver import JAXHJBSolver  # noqa: F401  # type: ignore[import-not-found]
+        from .jax_mfg_solver import JAXMFGSolver  # noqa: F401  # type: ignore[import-not-found]
+        from .jax_solvers import *  # noqa: F403  # type: ignore[import-not-found]
+        from .jax_utils import *  # noqa: F403  # type: ignore[import-not-found]
 
         __all__.extend(["JAXFokkerPlanckSolver", "JAXHJBSolver", "JAXMFGSolver"])
 

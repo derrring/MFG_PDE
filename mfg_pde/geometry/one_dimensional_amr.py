@@ -190,11 +190,11 @@ class OneDimensionalAMRMesh:
             du_dx = jnp.gradient(u_array, x_array)
 
             # Second derivative for curvature term
-            d2u_dx2 = jnp.gradient(du_dx, x_array)
+            d2u_dx2 = jnp.gradient(du_dx, x_array)  # type: ignore[arg-type]
 
             # Error indicator: |du/dx| * h + |d²u/dx²| * h²
             h = jnp.diff(x_array).mean()
-            error_vals = jnp.abs(du_dx) * h + jnp.abs(d2u_dx2) * h**2
+            error_vals = jnp.abs(du_dx) * h + jnp.abs(d2u_dx2) * h**2  # type: ignore[arg-type]
 
             return error_vals
 
