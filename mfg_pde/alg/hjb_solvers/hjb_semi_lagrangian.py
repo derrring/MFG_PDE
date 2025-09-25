@@ -385,7 +385,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     U_values,
                     kind="linear",
                     bounds_error=False,
-                    fill_value="extrapolate",  # type: ignore[arg-type]
+                    fill_value="extrapolate",
                 )
             elif self.interpolation_method == "cubic":
                 # Cubic interpolation for higher accuracy
@@ -394,7 +394,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     U_values,
                     kind="cubic",
                     bounds_error=False,
-                    fill_value="extrapolate",  # type: ignore[arg-type]
+                    fill_value="extrapolate",
                 )
             else:
                 # Default to linear
@@ -403,7 +403,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     U_values,
                     kind="linear",
                     bounds_error=False,
-                    fill_value="extrapolate",  # type: ignore[arg-type]
+                    fill_value="extrapolate",
                 )
 
             return float(interpolator(x_query))

@@ -33,7 +33,7 @@ class AlgorithmExtensionHook(SolverHooks):
         solver.solve(problem, hooks=CustomHJBHook())
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.extensions: dict[str, Callable] = {}
 
     def register_extension(self, extension_point: str, implementation: Callable) -> None:
@@ -247,12 +247,12 @@ class AdaptiveParameterHook(SolverHooks):
         result = solver.solve(problem, hooks=adaptive)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.parameter_rules: dict[str, Callable] = {}
         self.parameter_history: dict[str, list[float]] = {}
         self.residual_history: list[float] = []
 
-    def add_parameter_rule(self, parameter_name: str, adaptation_func: Callable):
+    def add_parameter_rule(self, parameter_name: str, adaptation_func: Callable) -> None:
         """Add an adaptation rule for a parameter."""
         self.parameter_rules[parameter_name] = adaptation_func
         self.parameter_history[parameter_name] = []
@@ -293,14 +293,14 @@ class MethodSwitchingHook(SolverHooks):
         result = solver.solve(problem, hooks=switcher)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.switch_rules: list[dict[str, Any]] = []
         self.current_method = "default"
         self.method_history: list[str] = []
 
     def add_switch_rule(
         self, condition: Callable[[SpatialTemporalState], bool], new_method: str, reason: str = "Method switch"
-    ):
+    ) -> None:
         """Add a rule for method switching."""
         self.switch_rules.append({"condition": condition, "new_method": new_method, "reason": reason})
 

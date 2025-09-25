@@ -31,7 +31,7 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 try:
-    import networkx as nx  # type: ignore[import-untyped]
+    import networkx as nx
 
     NETWORKX_AVAILABLE = True
 except ImportError:
@@ -267,7 +267,7 @@ class NetworkMFGVisualizer:
                     G,
                     pos,
                     ax=ax,
-                    node_color=node_values,  # type: ignore[arg-type]
+                    node_color=node_values,
                     node_size=node_size,
                     cmap=self.default_colorscale,
                     vmin=np.min(node_values),
@@ -480,7 +480,7 @@ class NetworkMFGVisualizer:
                 G,
                 pos,
                 ax=ax,
-                node_color=current_value,  # type: ignore[arg-type]
+                node_color=current_value,
                 node_size=node_sizes,
                 cmap="RdYlBu",
                 vmin=np.min(U),
