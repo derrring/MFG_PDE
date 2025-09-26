@@ -138,15 +138,21 @@ if not validation["valid"]:
     print("Issues:", validation["suggestions"])
 ```
 
-### ⚡ **GPU Acceleration**
+### ⚡ **Multi-Backend Acceleration System**
 
 ```python
 from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfg_pde.backends import create_backend
 
-# Traditional MFG with automatic GPU acceleration
+# Automatic optimal backend selection
 problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=100, T=1.0, Nt=50)
-solver = create_fast_solver(problem, backend="jax")  # Uses GPU if available
+solver = create_fast_solver(problem, backend="auto")  # Chooses best available
 result = solver.solve()
+
+# Manual backend selection
+torch_backend = create_backend("torch_mps")   # Apple Silicon
+jax_backend = create_backend("jax_gpu")       # NVIDIA CUDA
+numba_backend = create_backend("numba")       # CPU optimization
 ```
 
 ### 🌐 **Network MFG**
@@ -165,7 +171,7 @@ result = solver.solve()
 - **🎯 Simple API**: One-line `solve_mfg()` for common problems with smart defaults
 - **🧩 Modular Architecture**: Mix & match any FP solver + any HJB solver
 - **⭐ WENO5 Solver**: Fifth-order accuracy with non-oscillatory properties
-- **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
+- **⚡ Multi-Backend System**: PyTorch (neural), JAX (math), Numba (CPU) + auto-selection
 - **🔧 Multiple Solvers**: Fixed-point, particle-collocation, hybrid methods
 - **📊 Interactive Plots**: Built-in visualization with Plotly and Matplotlib
 - **🚀 Performance**: Optimized for both small examples and large-scale problems
