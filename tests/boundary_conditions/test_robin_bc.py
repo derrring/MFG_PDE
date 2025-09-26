@@ -146,8 +146,10 @@ class TestRobin3D:
 
     def test_robin_3d_rhs_application(self, simple_mesh_3d):
         """Test Robin BC application to RHS vector."""
+
         def value_func(x, y, z, t):
             return x + y + z  # Simple linear function
+
         bc = RobinBC3D(alpha=1.0, beta=0.5, value_function=value_func)
 
         # Create test RHS vector
@@ -199,6 +201,7 @@ class TestGeometricRobinBC:
 
     def test_geometric_robin_function_coefficients(self):
         """Test Robin BC with function coefficients."""
+
         def alpha_func(coords):
             return coords[:, 0] + coords[:, 1]  # x + y
 
