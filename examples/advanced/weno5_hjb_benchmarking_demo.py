@@ -1,8 +1,11 @@
 """
-WENO5 HJB Solver Benchmarking Demo
+WENO5 HJB Solver Benchmarking Demo (Legacy Compatibility)
 
-This demonstration showcases the newly implemented WENO5 HJB solver
+This demonstration showcases the WENO5 variant of the unified WENO family solver
 and provides benchmarking capabilities against other MFG solvers.
+
+Note: This example shows legacy WENO5 compatibility. For comprehensive WENO
+family benchmarking, use examples/advanced/weno_family_comparison_demo.py
 
 Academic Context:
 This implementation provides a high-order finite difference method
@@ -36,7 +39,7 @@ import numpy as np
 
 # MFG_PDE imports
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBFDMSolver, HJBWeno5Solver
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver, HJBWenoSolver
 from mfg_pde.alg.mfg_solvers import FixedPointIterator
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
@@ -78,8 +81,8 @@ def benchmark_solver_accuracy(problem: ExampleMFGProblem, solver_class, solver_n
     logger.info(f"Benchmarking {solver_name} solver...")
 
     # Create solver instance
-    if solver_class == HJBWeno5Solver:
-        solver = solver_class(problem, **solver_kwargs)
+    if solver_class == HJBWenoSolver:
+        solver = solver_class(problem, weno_variant="weno5", **solver_kwargs)
     else:
         solver = solver_class(problem, **solver_kwargs)
 
@@ -136,8 +139,8 @@ def convergence_study():
     grid_sizes = [32, 64, 128]
     solvers_to_test = [
         (HJBFDMSolver, "Standard FDM", {}),
-        (HJBWeno5Solver, "WENO5 (CFL=0.3)", {"cfl_number": 0.3}),
-        (HJBWeno5Solver, "WENO5 (CFL=0.1)", {"cfl_number": 0.1}),
+        (HJBWenoSolver, "WENO5 (CFL=0.3)", {"cfl_number": 0.3}),
+        (HJBWenoSolver, "WENO5 (CFL=0.1)", {"cfl_number": 0.1}),
     ]
 
     convergence_data = {}
@@ -254,7 +257,7 @@ def detailed_comparison_demo():
     # Solvers to compare
     solvers_to_test = [
         (HJBFDMSolver, "Standard FDM", {}),
-        (HJBWeno5Solver, "WENO5", {"cfl_number": 0.3, "time_integration": "tvd_rk3"}),
+        (HJBWenoSolver, "WENO5", {"cfl_number": 0.3, "time_integration": "tvd_rk3"}),
     ]
 
     results = {}

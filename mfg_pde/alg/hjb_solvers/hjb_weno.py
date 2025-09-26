@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 WenoVariant = Literal["weno5", "weno-z", "weno-m", "weno-js"]
 
 
-class HJBWenoFamilySolver(BaseHJBSolver):
+class HJBWenoSolver(BaseHJBSolver):
     """
     Unified WENO family solver for Hamilton-Jacobi-Bellman equations.
 
