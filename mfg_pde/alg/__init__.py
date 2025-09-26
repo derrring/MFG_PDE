@@ -8,6 +8,7 @@ Organization:
 - mfg_solvers/: Complete MFG solvers (HJB + FP combined)
 - hjb_solvers/: Specialized Hamilton-Jacobi-Bellman solvers
 - fp_solvers/: Specialized Fokker-Planck solvers
+- neural_solvers/: Physics-Informed Neural Networks (PINNs)
 
 Architecture:
 - MFG solvers inherit from BaseMFGSolver and combine HJB + FP solvers
@@ -35,6 +36,29 @@ from .mfg_solvers import (  # Fixed Point Iterators; Particle Collocation Solver
     MonitoredParticleCollocationSolver,
     ParticleCollocationSolver,
 )
+
+# Neural network solvers (Physics-Informed Neural Networks)
+try:
+    from .neural_solvers import (
+        TORCH_AVAILABLE,
+        FPPINNSolver,
+        HJBPINNSolver,
+        MFGPINNSolver,
+        PINNConfig,
+    )
+
+    NEURAL_SOLVERS_AVAILABLE = True
+except ImportError:
+    NEURAL_SOLVERS_AVAILABLE = False
+
+    # Provide placeholder for graceful fallback
+    class PINNConfig:
+        pass
+
+    MFGPINNSolver = None
+    HJBPINNSolver = None
+    FPPINNSolver = None
+    TORCH_AVAILABLE = False
 
 
 def create_adaptive_particle_solver(**kwargs: Any) -> AdaptiveParticleCollocationSolver:
@@ -64,10 +88,18 @@ __all__ = [
     "HJBFDMSolver",
     "HJBGFDMSolver",
     "HJBSemiLagrangianSolver",
+    # Neural network solvers
+    "MFGPINNSolver",
+    "HJBPINNSolver",
+    "FPPINNSolver",
+    "PINNConfig",
     # Base class
     "MFGSolver",
     "MonitoredParticleCollocationSolver",
     "ParticleCollocationSolver",
+    # Availability flags
+    "NEURAL_SOLVERS_AVAILABLE",
+    "TORCH_AVAILABLE",
     # Utilities
     "create_adaptive_particle_solver",
     "create_enhanced_solver",
