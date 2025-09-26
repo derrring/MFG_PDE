@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.alg.base_mfg_solver import BaseMFGSolver
+from mfg_pde.alg.base_mfg_solver import MFGSolver
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -151,7 +151,7 @@ class PINNConfig:
             warnings.warn("Batch size larger than number of interior points")
 
 
-class PINNBase(BaseMFGSolver, ABC):
+class PINNBase(MFGSolver, ABC):
     """
     Abstract base class for Physics-Informed Neural Networks.
 

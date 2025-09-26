@@ -35,91 +35,18 @@ PINN Loss = PDE Residual + Boundary Conditions + Initial Conditions + Data Term
 
 from __future__ import annotations
 
-# Core PINN components
-from .base_pinn import PINNBase, PINNConfig
-from .fp_pinn_solver import FPPINNSolver
-from .hjb_pinn_solver import HJBPINNSolver
-
-# Loss functions
-from .loss_functions import (
-    BoundaryLoss,
-    DataLoss,
-    MFGLossFunction,
-    PhysicsLoss,
-    PINNLossFunction,
-)
-from .mfg_pinn_solver import MFGPINNSolver
-
-# Network architectures
-from .networks import (
-    FeedForwardNetwork,
-    ModifiedMLP,
-    NetworkArchitecture,
-    ResidualNetwork,
-    create_mfg_networks,
-)
-
-# Training and optimization
-from .training import (
-    AdaptiveSampling,
-    CurriculumLearning,
-    OptimizationScheduler,
-    TrainingManager,
-)
-
-# Utilities
-from .utils import (
-    auto_differentiation,
-    compute_gradients,
-    neural_network_utils,
-    sample_points,
-)
-
-__all__ = [
-    "AdaptiveSampling",
-    "BoundaryLoss",
-    "CurriculumLearning",
-    "DataLoss",
-    "FPPINNSolver",
-    "FeedForwardNetwork",
-    "HJBPINNSolver",
-    "MFGLossFunction",
-    "MFGPINNSolver",
-    "ModifiedMLP",
-    "NetworkArchitecture",
-    "OptimizationScheduler",
-    "PINNBase",
-    "PINNConfig",
-    "PINNLossFunction",
-    "PhysicsLoss",
-    "ResidualNetwork",
-    "TrainingManager",
-    "auto_differentiation",
-    "compute_gradients",
-    "create_mfg_networks",
-    "neural_network_utils",
-    "sample_points",
-]
-
-# Version information
-__version__ = "1.0.0"
+import warnings
 
 # PyTorch availability check
 try:
     import torch
+    import torch.cuda
 
     TORCH_AVAILABLE = True
     TORCH_VERSION = torch.__version__
-
-    # Check for CUDA availability
     CUDA_AVAILABLE = torch.cuda.is_available()
-    if CUDA_AVAILABLE:
-        CUDA_VERSION = torch.version.cuda
-        GPU_COUNT = torch.cuda.device_count()
-    else:
-        CUDA_VERSION = None
-        GPU_COUNT = 0
-
+    CUDA_VERSION = torch.version.cuda if CUDA_AVAILABLE else None
+    GPU_COUNT = torch.cuda.device_count() if CUDA_AVAILABLE else 0
 except ImportError:
     TORCH_AVAILABLE = False
     TORCH_VERSION = None
@@ -127,6 +54,77 @@ except ImportError:
     CUDA_VERSION = None
     GPU_COUNT = 0
 
+
+# Conditional imports - only import if PyTorch is available
+if TORCH_AVAILABLE:
+    # Core PINN components
+    from .base_pinn import PINNBase, PINNConfig
+    from .fp_pinn_solver import FPPINNSolver
+    from .hjb_pinn_solver import HJBPINNSolver
+
+    # Loss functions
+    from .loss_functions import (
+        BoundaryLoss,
+        DataLoss,
+        MFGLossFunction,
+        PhysicsLoss,
+        PINNLossFunction,
+    )
+    from .mfg_pinn_solver import MFGPINNSolver
+
+    # Network architectures
+    from .networks import (
+        FeedForwardNetwork,
+        ModifiedMLP,
+        NetworkArchitecture,
+        ResidualNetwork,
+        create_mfg_networks,
+    )
+
+    # Training components
+    from .training import (
+        AdaptiveSampling,
+        CurriculumLearning,
+        OptimizationScheduler,
+        TrainingManager,
+    )
+
+    # Utilities
+    from .utils import (
+        auto_differentiation,
+        compute_gradients,
+        neural_network_utils,
+        sample_points,
+    )
+
+    __all__ = [
+        "AdaptiveSampling",
+        "BoundaryLoss",
+        "CurriculumLearning",
+        "DataLoss",
+        "FPPINNSolver",
+        "FeedForwardNetwork",
+        "HJBPINNSolver",
+        "MFGLossFunction",
+        "MFGPINNSolver",
+        "ModifiedMLP",
+        "NetworkArchitecture",
+        "OptimizationScheduler",
+        "PINNBase",
+        "PINNConfig",
+        "PINNLossFunction",
+        "PhysicsLoss",
+        "ResidualNetwork",
+        "TrainingManager",
+        "auto_differentiation",
+        "compute_gradients",
+        "create_mfg_networks",
+        "neural_network_utils",
+        "sample_points",
+    ]
+
+else:
+    # PyTorch not available - provide warning
     import warnings
 
     warnings.warn(
@@ -134,7 +132,9 @@ except ImportError:
         ImportWarning,
     )
 
-# Export availability information
+    __all__ = []
+
+# Export availability information regardless of PyTorch availability
 __all__.extend(["CUDA_AVAILABLE", "CUDA_VERSION", "GPU_COUNT", "TORCH_AVAILABLE", "TORCH_VERSION"])
 
 
@@ -148,28 +148,28 @@ def get_system_info() -> dict:
         "gpu_count": GPU_COUNT,
     }
 
-    if TORCH_AVAILABLE and CUDA_AVAILABLE:
-        info["gpu_names"] = [torch.cuda.get_device_name(i) for i in range(GPU_COUNT)]
-        info["gpu_memory"] = [
-            f"{torch.cuda.get_device_properties(i).total_memory / 1024**3:.1f} GB" for i in range(GPU_COUNT)
-        ]
-
     return info
 
 
-def print_system_info():
-    """Print neural network solver system information."""
+def print_system_info() -> None:
+    """Print system information for neural network solvers."""
     info = get_system_info()
 
-    print("Neural Network Solver System Information:")
-    print(f"  PyTorch Available: {info['torch_available']}")
+    print("=== Neural Network Solver System Information ===")
+    print(f"PyTorch Available: {info['torch_available']}")
     if info["torch_available"]:
-        print(f"  PyTorch Version: {info['torch_version']}")
-        print(f"  CUDA Available: {info['cuda_available']}")
+        print(f"PyTorch Version: {info['torch_version']}")
+        print(f"CUDA Available: {info['cuda_available']}")
         if info["cuda_available"]:
-            print(f"  CUDA Version: {info['cuda_version']}")
-            print(f"  GPU Count: {info['gpu_count']}")
-            if "gpu_names" in info:
-                for i, (name, memory) in enumerate(zip(info["gpu_names"], info["gpu_memory"], strict=False)):
-                    print(f"    GPU {i}: {name} ({memory})")
-    print()
+            print(f"CUDA Version: {info['cuda_version']}")
+            print(f"GPU Count: {info['gpu_count']}")
+    else:
+        print("Install PyTorch: pip install torch torchvision")
+    print("=" * 50)
+
+
+# Version information
+__version__ = "1.0.0"
+
+# Ensure these utility functions are always available
+__all__.extend(["get_system_info", "print_system_info", "__version__"])
