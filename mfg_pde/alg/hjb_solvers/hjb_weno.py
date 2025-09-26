@@ -155,16 +155,16 @@ class HJBWenoSolver(BaseHJBSolver):
     def _detect_problem_dimension(self) -> int:
         """Detect the spatial dimension of the MFG problem."""
         # Check if it's a high-dimensional problem
-        if hasattr(self.problem, 'dimension'):
+        if hasattr(self.problem, "dimension"):
             return self.problem.dimension
 
         # Check if it has multi-dimensional geometry
-        if hasattr(self.problem, 'geometry') and hasattr(self.problem.geometry, 'dimension'):
+        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "dimension"):
             return self.problem.geometry.dimension
 
         # Legacy: check for 2D/3D grid properties
-        if hasattr(self.problem, 'Ny') or hasattr(self.problem, 'ny'):
-            if hasattr(self.problem, 'Nz') or hasattr(self.problem, 'nz'):
+        if hasattr(self.problem, "Ny") or hasattr(self.problem, "ny"):
+            if hasattr(self.problem, "Nz") or hasattr(self.problem, "nz"):
                 return 3  # 3D problem
             return 2  # 2D problem
 
@@ -193,35 +193,35 @@ class HJBWenoSolver(BaseHJBSolver):
         """Setup grid information based on problem dimension."""
         if self.dimension == 1:
             # 1D case - existing logic
-            if hasattr(self.problem, 'Nx'):
+            if hasattr(self.problem, "Nx"):
                 self.Nx = self.problem.Nx
                 self.Dx = self.problem.Dx
             else:
-                self.Nx = getattr(self.problem, 'nx', 64)
-                self.Dx = getattr(self.problem, 'dx', 1.0 / (self.Nx - 1))
+                self.Nx = getattr(self.problem, "nx", 64)
+                self.Dx = getattr(self.problem, "dx", 1.0 / (self.Nx - 1))
 
         elif self.dimension == 2:
             # 2D case
-            if hasattr(self.problem, 'geometry') and hasattr(self.problem.geometry, 'get_computational_grid'):
+            if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "get_computational_grid"):
                 grid = self.problem.geometry.get_computational_grid()
-                self.Nx, self.Ny = grid['nx'], grid['ny']
-                self.Dx, self.Dy = grid['dx'], grid['dy']
-                self.X, self.Y = grid['X'], grid['Y']
+                self.Nx, self.Ny = grid["nx"], grid["ny"]
+                self.Dx, self.Dy = grid["dx"], grid["dy"]
+                self.X, self.Y = grid["X"], grid["Y"]
             else:
                 # Fallback for 2D
-                self.Nx = getattr(self.problem, 'Nx', getattr(self.problem, 'nx', 64))
-                self.Ny = getattr(self.problem, 'Ny', getattr(self.problem, 'ny', 64))
-                self.Dx = getattr(self.problem, 'Dx', getattr(self.problem, 'dx', 1.0 / (self.Nx - 1)))
-                self.Dy = getattr(self.problem, 'Dy', getattr(self.problem, 'dy', 1.0 / (self.Ny - 1)))
+                self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 64))
+                self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 64))
+                self.Dx = getattr(self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.Nx - 1)))
+                self.Dy = getattr(self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.Ny - 1)))
 
         elif self.dimension == 3:
             # 3D case
-            self.Nx = getattr(self.problem, 'Nx', getattr(self.problem, 'nx', 32))
-            self.Ny = getattr(self.problem, 'Ny', getattr(self.problem, 'ny', 32))
-            self.Nz = getattr(self.problem, 'Nz', getattr(self.problem, 'nz', 32))
-            self.Dx = getattr(self.problem, 'Dx', getattr(self.problem, 'dx', 1.0 / (self.Nx - 1)))
-            self.Dy = getattr(self.problem, 'Dy', getattr(self.problem, 'dy', 1.0 / (self.Ny - 1)))
-            self.Dz = getattr(self.problem, 'Dz', getattr(self.problem, 'dz', 1.0 / (self.Nz - 1)))
+            self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 32))
+            self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 32))
+            self.Nz = getattr(self.problem, "Nz", getattr(self.problem, "nz", 32))
+            self.Dx = getattr(self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.Nx - 1)))
+            self.Dy = getattr(self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.Ny - 1)))
+            self.Dz = getattr(self.problem, "Dz", getattr(self.problem, "dz", 1.0 / (self.Nz - 1)))
 
     def _setup_weno_coefficients(self) -> None:
         """Setup WENO reconstruction coefficients (shared across variants)."""
@@ -516,7 +516,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
     def _compute_dt_stable_1d(self, u: np.ndarray, m: np.ndarray) -> float:
         """Compute stable time step based on CFL and diffusion stability."""
-        dx = getattr(self.problem, 'Dx', self.Dx)
+        dx = getattr(self.problem, "Dx", self.Dx)
 
         # CFL condition for advection terms
         max_speed = np.max(np.abs(np.gradient(u, dx))) + 1e-10
@@ -722,11 +722,13 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # Stage 3
         L3 = self._compute_spatial_operator_y_adapted(u2, m_current)
-        u_new = (1.0/3.0) * u_current + (2.0/3.0) * u2 + (2.0/3.0) * dt * L3
+        u_new = (1.0 / 3.0) * u_current + (2.0 / 3.0) * u2 + (2.0 / 3.0) * dt * L3
 
         return u_new
 
-    def _solve_hjb_explicit_euler_y_adapted(self, u_current: np.ndarray, m_current: np.ndarray, dt: float) -> np.ndarray:
+    def _solve_hjb_explicit_euler_y_adapted(
+        self, u_current: np.ndarray, m_current: np.ndarray, dt: float
+    ) -> np.ndarray:
         """Explicit Euler time stepping adapted for Y-direction."""
         L = self._compute_spatial_operator_y_adapted(u_current, m_current)
         return u_current + dt * L
@@ -743,7 +745,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # Second derivative (central differences with Y spacing)
         u_yy = np.zeros(n)
-        u_yy[1:-1] = (u[:-2] - 2*u[1:-1] + u[2:]) / (self.Dy**2)
+        u_yy[1:-1] = (u[:-2] - 2 * u[1:-1] + u[2:]) / (self.Dy**2)
         u_yy[0] = u_yy[1]
         u_yy[-1] = u_yy[-2]
 
