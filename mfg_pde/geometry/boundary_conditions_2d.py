@@ -1,8 +1,8 @@
 """
-Advanced 3D boundary condition handling for Mean Field Games.
+2D boundary condition handling for Mean Field Games.
 
-This module provides comprehensive boundary condition support for 3D MFG problems,
-including complex geometries, Robin conditions, and flux constraints.
+This module provides comprehensive boundary condition support for 2D MFG problems,
+bridging the gap between 1D and 3D implementations with specialized 2D features.
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ if TYPE_CHECKING:
     from .base_geometry import MeshData
 
 
-class BoundaryCondition3D(ABC):
+class BoundaryCondition2D(ABC):
     """
-    Abstract base class for 3D boundary conditions.
+    Abstract base class for 2D boundary conditions.
 
     Provides the interface for implementing various boundary condition types
-    including Dirichlet, Neumann, Robin, and flux constraints.
+    including Dirichlet, Neumann, Robin, and periodic conditions in 2D.
     """
 
     def __init__(self, name: str, region_id: int | None = None):
@@ -38,7 +38,6 @@ class BoundaryCondition3D(ABC):
         """
         self.name = name
         self.region_id = region_id
-        # For direct vertex specification
         self._direct_vertices: np.ndarray | None = None
 
     @abstractmethod
@@ -56,9 +55,9 @@ class BoundaryCondition3D(ABC):
         """Validate that boundary condition is compatible with mesh."""
 
 
-class DirichletBC3D(BoundaryCondition3D):
+class DirichletBC2D(BoundaryCondition2D):
     """
-    Dirichlet boundary condition: u = g(x,y,z,t) on boundary.
+    Dirichlet boundary condition: u = g(x,y,t) on boundary.
 
     Enforces fixed values on the boundary, commonly used for
     specifying known solution values at domain boundaries.
@@ -69,7 +68,7 @@ class DirichletBC3D(BoundaryCondition3D):
         Initialize Dirichlet boundary condition.
 
         Args:
-            value_function: Either constant value or function(x,y,z,t) -> float
+            value_function: Either constant value or function(x,y,t) -> float
             name: Human-readable name
             region_id: Optional region identifier
         """
@@ -77,7 +76,7 @@ class DirichletBC3D(BoundaryCondition3D):
         if callable(value_function):
             self.value_function = value_function
         else:
-            self.value_function = lambda x, y, z, t: float(value_function)
+            self.value_function = lambda x, y, t: float(value_function)
 
     def apply_to_matrix(self, matrix: csr_matrix, mesh: MeshData, boundary_indices: np.ndarray) -> csr_matrix:
         """Apply Dirichlet condition by setting diagonal entries to 1."""
@@ -98,8 +97,8 @@ class DirichletBC3D(BoundaryCondition3D):
 
         boundary_vertices = mesh.vertices[boundary_indices]
         for i, idx in enumerate(boundary_indices):
-            x, y, z = boundary_vertices[i]
-            rhs_mod[idx] = self.value_function(x, y, z, time)
+            x, y = boundary_vertices[i, :2]  # Take first 2 coordinates for 2D
+            rhs_mod[idx] = self.value_function(x, y, time)
 
         return rhs_mod
 
@@ -108,9 +107,9 @@ class DirichletBC3D(BoundaryCondition3D):
         return hasattr(mesh, "boundary_markers") or hasattr(mesh, "vertex_markers")
 
 
-class NeumannBC3D(BoundaryCondition3D):
+class NeumannBC2D(BoundaryCondition2D):
     """
-    Neumann boundary condition: ∇u·n = g(x,y,z,t) on boundary.
+    Neumann boundary condition: ∇u·n = g(x,y,t) on boundary.
 
     Enforces flux conditions on the boundary, commonly used for
     no-flux conditions or specified gradient conditions.
@@ -121,7 +120,7 @@ class NeumannBC3D(BoundaryCondition3D):
         Initialize Neumann boundary condition.
 
         Args:
-            flux_function: Either constant flux or function(x,y,z,t) -> float
+            flux_function: Either constant flux or function(x,y,t) -> float
             name: Human-readable name
             region_id: Optional region identifier
         """
@@ -129,7 +128,7 @@ class NeumannBC3D(BoundaryCondition3D):
         if callable(flux_function):
             self.flux_function = flux_function
         else:
-            self.flux_function = lambda x, y, z, t: float(flux_function)
+            self.flux_function = lambda x, y, t: float(flux_function)
 
     def apply_to_matrix(self, matrix: csr_matrix, mesh: MeshData, boundary_indices: np.ndarray) -> csr_matrix:
         """Apply Neumann condition using ghost point method."""
@@ -144,22 +143,22 @@ class NeumannBC3D(BoundaryCondition3D):
         rhs_mod = rhs.copy()
 
         boundary_vertices = mesh.vertices[boundary_indices]
-        # This is a simplified implementation - would need proper surface integration
+        # This is a simplified implementation - would need proper boundary integration
         for i, idx in enumerate(boundary_indices):
-            x, y, z = boundary_vertices[i]
-            # Add flux contribution (needs proper scaling by surface area)
-            rhs_mod[idx] += self.flux_function(x, y, z, time)
+            x, y = boundary_vertices[i, :2]
+            # Add flux contribution (needs proper scaling by boundary length)
+            rhs_mod[idx] += self.flux_function(x, y, time)
 
         return rhs_mod
 
     def validate_mesh_compatibility(self, mesh: MeshData) -> bool:
         """Validate mesh has surface normal information."""
-        return hasattr(mesh, "boundary_normals") or hasattr(mesh, "face_normals")
+        return hasattr(mesh, "boundary_normals") or hasattr(mesh, "edge_normals")
 
 
-class RobinBC3D(BoundaryCondition3D):
+class RobinBC2D(BoundaryCondition2D):
     """
-    Robin boundary condition: α·u + β·∇u·n = g(x,y,z,t) on boundary.
+    Robin boundary condition: α·u + β·∇u·n = g(x,y,t) on boundary.
 
     Mixed boundary condition combining Dirichlet and Neumann terms,
     commonly used for radiation or convection conditions.
@@ -179,16 +178,16 @@ class RobinBC3D(BoundaryCondition3D):
         Args:
             alpha: Coefficient for u term
             beta: Coefficient for ∇u·n term
-            value_function: RHS function g(x,y,z,t)
+            value_function: RHS function g(x,y,t)
             name: Human-readable name
             region_id: Optional region identifier
         """
         super().__init__(name, region_id)
 
         # Convert to functions if constants
-        self.alpha = alpha if callable(alpha) else lambda x, y, z, t: float(alpha)
-        self.beta = beta if callable(beta) else lambda x, y, z, t: float(beta)
-        self.value_function = value_function if callable(value_function) else lambda x, y, z, t: float(value_function)
+        self.alpha = alpha if callable(alpha) else lambda x, y, t: float(alpha)
+        self.beta = beta if callable(beta) else lambda x, y, t: float(beta)
+        self.value_function = value_function if callable(value_function) else lambda x, y, t: float(value_function)
 
     def apply_to_matrix(self, matrix: csr_matrix, mesh: MeshData, boundary_indices: np.ndarray) -> csr_matrix:
         """Apply Robin condition to matrix."""
@@ -197,9 +196,9 @@ class RobinBC3D(BoundaryCondition3D):
         boundary_vertices = mesh.vertices[boundary_indices]
 
         for i, idx in enumerate(boundary_indices):
-            x, y, z = boundary_vertices[i]
-            alpha_val = self.alpha(x, y, z, 0.0)  # Time-independent for matrix
-            self.beta(x, y, z, 0.0)
+            x, y = boundary_vertices[i, :2]
+            alpha_val = self.alpha(x, y, 0.0)  # Time-independent for matrix
+            self.beta(x, y, 0.0)
 
             # Modify diagonal entry for α·u term
             matrix_mod[idx, idx] += alpha_val
@@ -217,8 +216,8 @@ class RobinBC3D(BoundaryCondition3D):
 
         boundary_vertices = mesh.vertices[boundary_indices]
         for i, idx in enumerate(boundary_indices):
-            x, y, z = boundary_vertices[i]
-            rhs_mod[idx] += self.value_function(x, y, z, time)
+            x, y = boundary_vertices[i, :2]
+            rhs_mod[idx] += self.value_function(x, y, time)
 
         return rhs_mod
 
@@ -227,11 +226,11 @@ class RobinBC3D(BoundaryCondition3D):
         return True  # Robin conditions are generally compatible
 
 
-class PeriodicBC3D(BoundaryCondition3D):
+class PeriodicBC2D(BoundaryCondition2D):
     """
-    Periodic boundary condition: u(x1,y,z) = u(x2,y,z) for paired boundaries.
+    Periodic boundary condition: u(x1,y) = u(x2,y) for paired boundaries.
 
-    Enforces periodicity across opposite faces of the domain,
+    Enforces periodicity across opposite edges of the domain,
     commonly used for modeling infinite or repeating domains.
     """
 
@@ -260,8 +259,8 @@ class PeriodicBC3D(BoundaryCondition3D):
             boundary1_vertices = boundary_mapping.get(boundary1_id, np.array([]))
             boundary2_vertices = boundary_mapping.get(boundary2_id, np.array([]))
 
-            # Find corresponding vertex pairs (closest matching)
-            vertex_pairs = self._find_corresponding_vertices(
+            # Find corresponding vertex pairs
+            vertex_pairs = self._find_corresponding_vertices_2d(
                 mesh.vertices[boundary1_vertices],
                 mesh.vertices[boundary2_vertices],
                 boundary1_vertices,
@@ -270,8 +269,7 @@ class PeriodicBC3D(BoundaryCondition3D):
 
             # Apply periodic coupling: u(vertex1) = u(vertex2)
             for vertex1_idx, vertex2_idx in vertex_pairs:
-                # Method 1: Master-slave approach
-                # Set row for slave vertex (vertex2) to enforce u2 = u1
+                # Master-slave approach: vertex2 = vertex1
                 matrix_mod[vertex2_idx, :] = 0
                 matrix_mod[vertex2_idx, vertex1_idx] = 1.0
                 matrix_mod[vertex2_idx, vertex2_idx] = -1.0
@@ -292,7 +290,7 @@ class PeriodicBC3D(BoundaryCondition3D):
         self, mesh: MeshData, tolerance: float = 1e-10
     ) -> dict[int, np.ndarray]:
         """
-        Identify boundary vertices for periodic pairing.
+        Identify boundary vertices for periodic pairing in 2D.
 
         Args:
             mesh: Mesh data
@@ -301,22 +299,20 @@ class PeriodicBC3D(BoundaryCondition3D):
         Returns:
             Dictionary mapping boundary IDs to vertex indices
         """
-        vertices = mesh.vertices
-        bounds = self._compute_bounding_box(vertices)
+        vertices = mesh.vertices[:, :2]  # Take only x,y coordinates
+        bounds = self._compute_bounding_box_2d(vertices)
 
         boundary_mapping = {}
 
-        # Standard face identification for box domains
-        boundary_mapping[0] = np.where(np.abs(vertices[:, 0] - bounds[0]) < tolerance)[0]  # x_min
-        boundary_mapping[1] = np.where(np.abs(vertices[:, 0] - bounds[1]) < tolerance)[0]  # x_max
-        boundary_mapping[2] = np.where(np.abs(vertices[:, 1] - bounds[2]) < tolerance)[0]  # y_min
-        boundary_mapping[3] = np.where(np.abs(vertices[:, 1] - bounds[3]) < tolerance)[0]  # y_max
-        boundary_mapping[4] = np.where(np.abs(vertices[:, 2] - bounds[4]) < tolerance)[0]  # z_min
-        boundary_mapping[5] = np.where(np.abs(vertices[:, 2] - bounds[5]) < tolerance)[0]  # z_max
+        # Standard edge identification for rectangular domains
+        boundary_mapping[0] = np.where(np.abs(vertices[:, 0] - bounds[0]) < tolerance)[0]  # x_min (left)
+        boundary_mapping[1] = np.where(np.abs(vertices[:, 0] - bounds[1]) < tolerance)[0]  # x_max (right)
+        boundary_mapping[2] = np.where(np.abs(vertices[:, 1] - bounds[2]) < tolerance)[0]  # y_min (bottom)
+        boundary_mapping[3] = np.where(np.abs(vertices[:, 1] - bounds[3]) < tolerance)[0]  # y_max (top)
 
         return boundary_mapping
 
-    def _find_corresponding_vertices(
+    def _find_corresponding_vertices_2d(
         self,
         boundary1_coords: np.ndarray,
         boundary2_coords: np.ndarray,
@@ -325,7 +321,7 @@ class PeriodicBC3D(BoundaryCondition3D):
         tolerance: float = 1e-8,
     ) -> list[tuple[int, int]]:
         """
-        Find corresponding vertex pairs between periodic boundaries.
+        Find corresponding vertex pairs between periodic boundaries in 2D.
 
         Args:
             boundary1_coords: Coordinates of vertices on first boundary
@@ -339,44 +335,44 @@ class PeriodicBC3D(BoundaryCondition3D):
         """
         vertex_pairs = []
 
-        # For box domains, opposite faces should have corresponding vertices
+        # For rectangular domains, opposite edges should have corresponding vertices
         # that differ only in one coordinate
-        for i, coord1 in enumerate(boundary1_coords):
-            for j, coord2 in enumerate(boundary2_coords):
-                # Check if vertices correspond (same in 2 coordinates, different in 1)
+        for i, coord1 in enumerate(boundary1_coords[:, :2]):  # Take x,y only
+            for j, coord2 in enumerate(boundary2_coords[:, :2]):
+                # Check if vertices correspond (same in 1 coordinate, different in other)
                 diff = np.abs(coord1 - coord2)
 
                 # Count how many coordinates are approximately equal
                 equal_coords = np.sum(diff < tolerance)
 
-                # For periodic boundaries, exactly 2 coordinates should match
-                if equal_coords == 2:
+                # For 2D periodic boundaries, exactly 1 coordinate should match
+                if equal_coords == 1:
                     vertex_pairs.append((boundary1_indices[i], boundary2_indices[j]))
                     break  # Each vertex on boundary1 should match exactly one on boundary2
 
         return vertex_pairs
 
-    def _compute_bounding_box(self, vertices: np.ndarray) -> tuple[float, ...]:
-        """Compute bounding box of vertices."""
+    def _compute_bounding_box_2d(self, vertices: np.ndarray) -> tuple[float, float, float, float]:
+        """Compute 2D bounding box of vertices."""
         min_coords = np.min(vertices, axis=0)
         max_coords = np.max(vertices, axis=0)
-        return (min_coords[0], max_coords[0], min_coords[1], max_coords[1], min_coords[2], max_coords[2])
+        return (min_coords[0], max_coords[0], min_coords[1], max_coords[1])
 
 
-class BoundaryConditionManager3D:
+class BoundaryConditionManager2D:
     """
-    Manager for applying multiple boundary conditions to 3D MFG problems.
+    Manager for applying multiple boundary conditions to 2D MFG problems.
 
     Coordinates the application of different boundary condition types
-    across various regions of the computational domain.
+    across various regions of the 2D computational domain.
     """
 
     def __init__(self) -> None:
         """Initialize boundary condition manager."""
-        self.conditions: list[BoundaryCondition3D] = []
-        self.region_map: dict[int, list[BoundaryCondition3D]] = {}
+        self.conditions: list[BoundaryCondition2D] = []
+        self.region_map: dict[int, list[BoundaryCondition2D]] = {}
 
-    def add_condition(self, condition: BoundaryCondition3D, boundary_region: int | str | np.ndarray) -> None:
+    def add_condition(self, condition: BoundaryCondition2D, boundary_region: int | str | np.ndarray) -> None:
         """
         Add boundary condition for specific region.
 
@@ -391,7 +387,7 @@ class BoundaryConditionManager3D:
                 self.region_map[boundary_region] = []
             self.region_map[boundary_region].append(condition)
         elif isinstance(boundary_region, str):
-            # Handle named regions (would need mesh metadata)
+            # Handle named regions
             warnings.warn("Named region support not fully implemented", UserWarning)
         elif isinstance(boundary_region, np.ndarray):
             # Handle direct vertex specification
@@ -399,7 +395,7 @@ class BoundaryConditionManager3D:
 
     def identify_boundary_vertices(self, mesh: MeshData, tolerance: float = 1e-10) -> dict[str, np.ndarray]:
         """
-        Identify boundary vertices for common 3D geometries.
+        Identify boundary vertices for common 2D geometries.
 
         Args:
             mesh: Mesh data
@@ -408,23 +404,21 @@ class BoundaryConditionManager3D:
         Returns:
             Dictionary mapping boundary names to vertex indices
         """
-        vertices = mesh.vertices
-        bounds = self._compute_bounding_box(vertices)
+        vertices = mesh.vertices[:, :2]  # Take x,y coordinates
+        bounds = self._compute_bounding_box_2d(vertices)
 
         boundary_vertices = {}
 
-        # Identify face boundaries for box domains
+        # Identify edge boundaries for rectangular domains
         boundary_vertices["x_min"] = np.where(np.abs(vertices[:, 0] - bounds[0]) < tolerance)[0]
         boundary_vertices["x_max"] = np.where(np.abs(vertices[:, 0] - bounds[1]) < tolerance)[0]
         boundary_vertices["y_min"] = np.where(np.abs(vertices[:, 1] - bounds[2]) < tolerance)[0]
         boundary_vertices["y_max"] = np.where(np.abs(vertices[:, 1] - bounds[3]) < tolerance)[0]
-        boundary_vertices["z_min"] = np.where(np.abs(vertices[:, 2] - bounds[4]) < tolerance)[0]
-        boundary_vertices["z_max"] = np.where(np.abs(vertices[:, 2] - bounds[5]) < tolerance)[0]
 
-        # For non-box geometries, use surface detection from boundary_faces
-        if hasattr(mesh, "boundary_faces") and mesh.boundary_faces is not None:
-            surface_vertices = self._detect_surface_vertices_from_boundary_faces(mesh)
-            boundary_vertices["surface"] = surface_vertices
+        # For non-rectangular geometries, use boundary detection from edges
+        if hasattr(mesh, "boundary_edges") and mesh.boundary_edges is not None:
+            edge_vertices = self._detect_edge_vertices_from_boundary_edges(mesh)
+            boundary_vertices["boundary"] = edge_vertices
 
         return boundary_vertices
 
@@ -456,8 +450,8 @@ class BoundaryConditionManager3D:
             if region_key in boundary_mapping:
                 boundary_indices = boundary_mapping[region_key]
             else:
-                # Try to find region in standard face names
-                region_names = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+                # Try to find region in standard edge names
+                region_names = ["x_min", "x_max", "y_min", "y_max"]
                 if region_id < len(region_names):
                     boundary_indices = boundary_mapping.get(region_names[region_id], np.array([]))
                 else:
@@ -466,7 +460,7 @@ class BoundaryConditionManager3D:
             # Apply each condition for this region
             for condition in conditions:
                 # Check for directly specified vertices
-                if hasattr(condition, "_direct_vertices"):
+                if hasattr(condition, "_direct_vertices") and condition._direct_vertices is not None:
                     boundary_indices = condition._direct_vertices
 
                 matrix_mod = condition.apply_to_matrix(matrix_mod, mesh, boundary_indices)
@@ -491,29 +485,29 @@ class BoundaryConditionManager3D:
 
         return True
 
-    def _compute_bounding_box(self, vertices: np.ndarray) -> tuple[float, ...]:
-        """Compute bounding box of vertices."""
+    def _compute_bounding_box_2d(self, vertices: np.ndarray) -> tuple[float, float, float, float]:
+        """Compute 2D bounding box of vertices."""
         min_coords = np.min(vertices, axis=0)
         max_coords = np.max(vertices, axis=0)
-        return (min_coords[0], max_coords[0], min_coords[1], max_coords[1], min_coords[2], max_coords[2])
+        return (min_coords[0], max_coords[0], min_coords[1], max_coords[1])
 
-    def _detect_surface_vertices_from_boundary_faces(self, mesh: MeshData) -> np.ndarray:
-        """Detect surface vertices from boundary faces."""
-        if not hasattr(mesh, "boundary_faces") or mesh.boundary_faces is None:
+    def _detect_edge_vertices_from_boundary_edges(self, mesh: MeshData) -> np.ndarray:
+        """Detect boundary vertices from boundary edges."""
+        if not hasattr(mesh, "boundary_edges") or mesh.boundary_edges is None:
             return np.array([])
 
-        # Collect all vertices that appear in boundary faces
-        surface_vertices = set()
-        for face in mesh.boundary_faces:
-            for vertex_idx in face:
-                surface_vertices.add(vertex_idx)
+        # Collect all vertices that appear in boundary edges
+        boundary_vertices = set()
+        for edge in mesh.boundary_edges:
+            for vertex_idx in edge:
+                boundary_vertices.add(vertex_idx)
 
-        return np.array(list(surface_vertices))
+        return np.array(list(boundary_vertices))
 
 
-class MFGBoundaryHandler3D:
+class MFGBoundaryHandler2D:
     """
-    Specialized boundary condition handler for Mean Field Games in 3D.
+    Specialized boundary condition handler for Mean Field Games in 2D.
 
     Provides MFG-specific boundary conditions including state constraints,
     flux conservation, and optimal control boundary conditions.
@@ -521,8 +515,8 @@ class MFGBoundaryHandler3D:
 
     def __init__(self):
         """Initialize MFG boundary handler."""
-        self.hjb_manager = BoundaryConditionManager3D()
-        self.fp_manager = BoundaryConditionManager3D()
+        self.hjb_manager = BoundaryConditionManager2D()
+        self.fp_manager = BoundaryConditionManager2D()
 
     def add_state_constraint(self, region: int | str, constraint_function: Callable):
         """
@@ -532,7 +526,7 @@ class MFGBoundaryHandler3D:
             region: Boundary region identifier
             constraint_function: Function defining state constraint
         """
-        condition = DirichletBC3D(constraint_function, "State Constraint")
+        condition = DirichletBC2D(constraint_function, "State Constraint")
         self.hjb_manager.add_condition(condition, region)
 
     def add_no_flux_condition(self, region: int | str):
@@ -542,19 +536,20 @@ class MFGBoundaryHandler3D:
         Args:
             region: Boundary region identifier
         """
-        condition = NeumannBC3D(0.0, "No Flux")
+        condition = NeumannBC2D(0.0, "No Flux")
         self.fp_manager.add_condition(condition, region)
 
-    def add_mass_conservation(self, region: int | str, inflow_rate: float | Callable):
+    def add_periodic_boundary_pair(self, region1: int, region2: int):
         """
-        Add mass conservation boundary condition.
+        Add periodic boundary condition between two regions.
 
         Args:
-            region: Boundary region identifier
-            inflow_rate: Mass inflow rate function
+            region1: First boundary region
+            region2: Second boundary region (paired with first)
         """
-        condition = NeumannBC3D(inflow_rate, "Mass Conservation")
-        self.fp_manager.add_condition(condition, region)
+        condition = PeriodicBC2D([(region1, region2)], "Periodic Pair")
+        self.hjb_manager.add_condition(condition, region1)
+        self.fp_manager.add_condition(condition, region1)
 
     def apply_hjb_conditions(
         self, matrix: csr_matrix, rhs: np.ndarray, mesh: MeshData, time: float = 0.0
@@ -575,72 +570,86 @@ class MFGBoundaryHandler3D:
         return hjb_valid and fp_valid
 
 
-# Factory functions for common boundary condition scenarios
-def create_box_boundary_conditions(
-    domain_bounds: tuple[float, float, float, float, float, float], condition_type: str = "dirichlet_zero"
-) -> BoundaryConditionManager3D:
+# Factory functions for common 2D boundary condition scenarios
+def create_rectangle_boundary_conditions(
+    domain_bounds: tuple[float, float, float, float], condition_type: str = "dirichlet_zero"
+) -> BoundaryConditionManager2D:
     """
-    Create standard boundary conditions for box domains.
+    Create standard boundary conditions for rectangular domains.
 
     Args:
-        domain_bounds: (x_min, x_max, y_min, y_max, z_min, z_max)
+        domain_bounds: (x_min, x_max, y_min, y_max)
         condition_type: Type of boundary condition to apply
 
     Returns:
         Configured boundary condition manager
     """
-    manager = BoundaryConditionManager3D()
+    manager = BoundaryConditionManager2D()
 
     if condition_type == "dirichlet_zero":
-        # Zero Dirichlet on all faces
-        for i in range(6):  # 6 faces of box
-            condition: DirichletBC3D | NeumannBC3D = DirichletBC3D(0.0, f"Face_{i}")
+        # Zero Dirichlet on all edges
+        for i in range(4):  # 4 edges of rectangle
+            condition: DirichletBC2D | NeumannBC2D = DirichletBC2D(0.0, f"Edge_{i}")
             manager.add_condition(condition, i)
 
     elif condition_type == "neumann_zero":
-        # Zero Neumann (no flux) on all faces
-        for i in range(6):
-            condition = NeumannBC3D(0.0, f"NoFlux_{i}")
+        # Zero Neumann (no flux) on all edges
+        for i in range(4):
+            condition = NeumannBC2D(0.0, f"NoFlux_{i}")
             manager.add_condition(condition, i)
 
-    elif condition_type == "mixed":
-        # Mixed conditions: Dirichlet on x-faces, Neumann on y,z-faces
-        manager.add_condition(DirichletBC3D(0.0, "X_Min"), 0)  # x_min
-        manager.add_condition(DirichletBC3D(0.0, "X_Max"), 1)  # x_max
-        for i in range(2, 6):  # y and z faces
-            manager.add_condition(NeumannBC3D(0.0, f"NoFlux_{i}"), i)
+    elif condition_type == "periodic_x":
+        # Periodic in x-direction, zero Neumann in y-direction
+        periodic_condition = PeriodicBC2D([(0, 1)], "Periodic_X")  # Left-right pair
+        manager.add_condition(periodic_condition, 0)
+        manager.add_condition(NeumannBC2D(0.0, "NoFlux_Bottom"), 2)
+        manager.add_condition(NeumannBC2D(0.0, "NoFlux_Top"), 3)
+
+    elif condition_type == "periodic_y":
+        # Periodic in y-direction, zero Neumann in x-direction
+        manager.add_condition(NeumannBC2D(0.0, "NoFlux_Left"), 0)
+        manager.add_condition(NeumannBC2D(0.0, "NoFlux_Right"), 1)
+        periodic_condition = PeriodicBC2D([(2, 3)], "Periodic_Y")  # Bottom-top pair
+        manager.add_condition(periodic_condition, 2)
+
+    elif condition_type == "periodic_both":
+        # Periodic in both directions
+        periodic_x = PeriodicBC2D([(0, 1)], "Periodic_X")
+        periodic_y = PeriodicBC2D([(2, 3)], "Periodic_Y")
+        manager.add_condition(periodic_x, 0)
+        manager.add_condition(periodic_y, 2)
 
     return manager
 
 
-def create_sphere_boundary_conditions(
-    center: tuple[float, float, float], radius: float, condition_type: str = "dirichlet_zero"
-) -> BoundaryConditionManager3D:
+def create_circle_boundary_conditions(
+    center: tuple[float, float], radius: float, condition_type: str = "dirichlet_zero"
+) -> BoundaryConditionManager2D:
     """
-    Create boundary conditions for spherical domains.
+    Create boundary conditions for circular domains.
 
     Args:
-        center: Sphere center coordinates
-        radius: Sphere radius
+        center: Circle center coordinates
+        radius: Circle radius
         condition_type: Type of boundary condition
 
     Returns:
         Configured boundary condition manager
     """
-    manager = BoundaryConditionManager3D()
+    manager = BoundaryConditionManager2D()
 
-    def is_on_sphere(x, y, z, t=0.0):
-        """Check if point is on sphere boundary."""
-        dist = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2 + (z - center[2]) ** 2)
+    def is_on_circle(x, y, t=0.0):
+        """Check if point is on circle boundary."""
+        dist = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
         return np.abs(dist - radius) < 1e-10
 
     if condition_type == "dirichlet_zero":
-        condition: DirichletBC3D | NeumannBC3D = DirichletBC3D(0.0, "Sphere_Surface")
+        condition: DirichletBC2D | NeumannBC2D = DirichletBC2D(0.0, "Circle_Boundary")
     elif condition_type == "neumann_zero":
-        condition = NeumannBC3D(0.0, "Sphere_Surface")
+        condition = NeumannBC2D(0.0, "Circle_Boundary")
     else:
-        condition = DirichletBC3D(0.0, "Sphere_Surface")
+        condition = DirichletBC2D(0.0, "Circle_Boundary")
 
-    manager.add_condition(condition, "surface")
+    manager.add_condition(condition, "boundary")
 
     return manager
