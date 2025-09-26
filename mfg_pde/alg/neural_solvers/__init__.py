@@ -182,3 +182,21 @@ __version__ = "1.0.0"
 
 # Ensure these utility functions are always available
 __all__.extend(["get_system_info", "print_system_info", "__version__"])
+
+
+# Backward compatibility aliases
+def get_cuda_info():
+    """Legacy function for backward compatibility."""
+    import warnings
+
+    warnings.warn("get_cuda_info is deprecated. Use get_system_info() instead.", DeprecationWarning, stacklevel=2)
+    info = get_system_info()
+    return {
+        "cuda_available": info.get("cuda_available", False),
+        "cuda_version": info.get("cuda_version", None),
+        "gpu_count": info.get("gpu_count", 0),
+    }
+
+
+# Ensure these compatibility functions are exported
+__all__.extend(["get_cuda_info"])

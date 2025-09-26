@@ -183,3 +183,28 @@ try:
     register_backend("jax", JAXBackend)
 except ImportError:
     pass  # JAX is optional
+
+
+# Backward compatibility functions for legacy code
+def get_legacy_backend_list():
+    """Legacy function for backward compatibility."""
+    warnings.warn(
+        "get_legacy_backend_list is deprecated. Use get_available_backends() instead.", DeprecationWarning, stacklevel=2
+    )
+    return get_available_backends()
+
+
+# Ensure essential backends are always available for compatibility
+def ensure_numpy_backend():
+    """Ensure NumPy backend is always available for compatibility."""
+    if "numpy" not in _BACKENDS:
+        try:
+            from .numpy_backend import NumPyBackend
+
+            register_backend("numpy", NumPyBackend)
+        except ImportError as e:
+            raise ImportError("NumPy backend is required for MFG_PDE compatibility") from e
+
+
+# Auto-initialize on import
+ensure_numpy_backend()
