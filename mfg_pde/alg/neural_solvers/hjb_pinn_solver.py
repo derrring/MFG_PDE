@@ -501,3 +501,36 @@ class HJBPINNSolver(PINNBase):
             print(f"Plot saved to {save_path}")
 
         plt.show()
+
+    def get_results(self) -> dict:
+        """
+        Get solver results in standard MFG_PDE format.
+
+        Returns:
+            Dictionary containing solution data, convergence info, and metadata
+        """
+        if not hasattr(self, 'training_history') or not self.training_history:
+            raise RuntimeError("No training results available. Run solve() first.")
+
+        # Generate solution for return
+        solution = self._generate_hjb_solution()
+
+        results = {
+            # Solution data
+            'u': solution['u'],
+            'x_grid': solution['x_grid'],
+            't_grid': solution['t_grid'],
+
+            # Training information
+            'training_history': self.training_history,
+            'converged': len(self.training_history.get('total_loss', [])) > 0,
+            'final_loss': self.training_history.get('total_loss', [float('inf')])[-1] if self.training_history.get('total_loss') else float('inf'),
+            'epochs_trained': len(self.training_history.get('total_loss', [])),
+
+            # Solver metadata
+            'solver_type': 'HJB_PINN',
+            'device': str(self.device),
+            'config': self.config,
+        }
+
+        return results

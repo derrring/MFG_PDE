@@ -619,3 +619,40 @@ class FPPINNSolver(PINNBase):
         print("Mass Conservation Metrics:")
         for key, value in mass_metrics.items():
             print(f"  {key}: {value:.6f}")
+
+    def get_results(self) -> dict:
+        """
+        Get solver results in standard MFG_PDE format.
+
+        Returns:
+            Dictionary containing solution data, convergence info, and metadata
+        """
+        if not hasattr(self, 'training_history') or not self.training_history:
+            raise RuntimeError("No training results available. Run solve() first.")
+
+        # Generate solution for return
+        solution = self._generate_fp_solution()
+        mass_metrics = self._compute_mass_metrics(solution)
+
+        results = {
+            # Solution data
+            'm': solution['m'],
+            'x_grid': solution['x_grid'],
+            't_grid': solution['t_grid'],
+
+            # Training information
+            'training_history': self.training_history,
+            'converged': len(self.training_history.get('total_loss', [])) > 0,
+            'final_loss': self.training_history.get('total_loss', [float('inf')])[-1] if self.training_history.get('total_loss') else float('inf'),
+            'epochs_trained': len(self.training_history.get('total_loss', [])),
+
+            # Mass conservation metrics
+            'mass_metrics': mass_metrics,
+
+            # Solver metadata
+            'solver_type': 'FP_PINN',
+            'device': str(self.device),
+            'config': self.config,
+        }
+
+        return results

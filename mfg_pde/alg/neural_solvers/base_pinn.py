@@ -284,7 +284,6 @@ class PINNBase(MFGSolver, ABC):
                         optimizer,
                         patience=self.config.scheduler_patience,
                         factor=self.config.scheduler_factor,
-                        verbose=True,
                     )
                 elif self.config.scheduler_type == "cosine":
                     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.config.max_epochs)
