@@ -754,7 +754,7 @@ class MFGPINNSolver(PINNBase):
         Returns:
             Dictionary containing solution data, convergence info, and metadata
         """
-        if not hasattr(self, 'training_history') or not self.training_history:
+        if not hasattr(self, "training_history") or not self.training_history:
             raise RuntimeError("No training results available. Run solve() first.")
 
         # Generate solution for return
@@ -762,27 +762,28 @@ class MFGPINNSolver(PINNBase):
 
         results = {
             # Solution data
-            'u': solution['u'],
-            'm': solution['m'],
-            'x_grid': solution['x_grid'],
-            't_grid': solution['t_grid'],
-
+            "u": solution["u"],
+            "m": solution["m"],
+            "x_grid": solution["x_grid"],
+            "t_grid": solution["t_grid"],
             # Training information
-            'training_history': self.training_history,
-            'converged': len(self.training_history.get('total_loss', [])) > 0,
-            'final_loss': self.training_history.get('total_loss', [float('inf')])[-1] if self.training_history.get('total_loss') else float('inf'),
-            'epochs_trained': len(self.training_history.get('total_loss', [])),
-
+            "training_history": self.training_history,
+            "converged": len(self.training_history.get("total_loss", [])) > 0,
+            "final_loss": self.training_history.get("total_loss", [float("inf")])[-1]
+            if self.training_history.get("total_loss")
+            else float("inf"),
+            "epochs_trained": len(self.training_history.get("total_loss", [])),
             # MFG-specific metrics
-            'hjb_loss': self.training_history.get('hjb_loss', [])[-1] if self.training_history.get('hjb_loss') else 0.0,
-            'fp_loss': self.training_history.get('fp_loss', [])[-1] if self.training_history.get('fp_loss') else 0.0,
-            'coupling_loss': self.training_history.get('coupling_loss', [])[-1] if self.training_history.get('coupling_loss') else 0.0,
-
+            "hjb_loss": self.training_history.get("hjb_loss", [])[-1] if self.training_history.get("hjb_loss") else 0.0,
+            "fp_loss": self.training_history.get("fp_loss", [])[-1] if self.training_history.get("fp_loss") else 0.0,
+            "coupling_loss": self.training_history.get("coupling_loss", [])[-1]
+            if self.training_history.get("coupling_loss")
+            else 0.0,
             # Solver metadata
-            'solver_type': 'MFG_PINN',
-            'device': str(self.device),
-            'config': self.config,
-            'training_strategy': self.config.training_strategy,
+            "solver_type": "MFG_PINN",
+            "device": str(self.device),
+            "config": self.config,
+            "training_strategy": self.config.training_strategy,
         }
 
         return results
