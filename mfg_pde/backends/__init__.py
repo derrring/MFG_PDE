@@ -4,9 +4,10 @@ MFG_PDE Computation Backends
 This module provides different computational backends for MFG solving:
 - PyTorch: CUDA/MPS acceleration with neural network support
 - JAX: XLA compilation with GPU/TPU support
+- Numba: CPU JIT compilation for imperative algorithms
 - NumPy: CPU baseline for compatibility
 
-Device priority: CUDA > MPS > JAX > NumPy
+Device priority: CUDA > MPS > JAX GPU > Numba > NumPy
 """
 
 from __future__ import annotations
@@ -50,6 +51,15 @@ def get_available_backends() -> dict[str, bool]:
         backends["jax"] = False
         backends["jax_gpu"] = False
 
+    # Check Numba availability
+    try:
+        import importlib.util
+
+        numba_spec = importlib.util.find_spec("numba")
+        backends["numba"] = numba_spec is not None
+    except ImportError:
+        backends["numba"] = False
+
     return backends
 
 
@@ -58,7 +68,7 @@ def create_backend(backend_name: str = "auto", **kwargs):
     Create a computational backend instance.
 
     Args:
-        backend_name: Backend to use ("torch", "jax", "numpy", or "auto")
+        backend_name: Backend to use ("torch", "jax", "numba", "numpy", or "auto")
         **kwargs: Backend-specific configuration
 
     Returns:
@@ -67,7 +77,7 @@ def create_backend(backend_name: str = "auto", **kwargs):
     if backend_name == "auto":
         available = get_available_backends()
 
-        # Priority: CUDA > MPS > JAX GPU > JAX CPU > NumPy
+        # Priority: CUDA > MPS > JAX GPU > JAX CPU > Numba > NumPy
         if available.get("torch_cuda", False):
             backend_name = "torch"
             kwargs.setdefault("device", "cuda")
@@ -79,6 +89,8 @@ def create_backend(backend_name: str = "auto", **kwargs):
             kwargs.setdefault("device", "gpu")
         elif available.get("jax", False):
             backend_name = "jax"
+        elif available.get("numba", False):
+            backend_name = "numba"
         else:
             backend_name = "numpy"
 
@@ -102,6 +114,16 @@ def create_backend(backend_name: str = "auto", **kwargs):
             except ImportError:
                 raise ImportError(
                     "JAX backend requested but not available. Install with: pip install 'mfg_pde[jax]'"
+                ) from None
+        elif backend_name == "numba":
+            # Try to register Numba backend
+            try:
+                from .numba_backend import NumbaBackend
+
+                register_backend("numba", NumbaBackend)
+            except ImportError:
+                raise ImportError(
+                    "Numba backend requested but not available. Install with: pip install numba"
                 ) from None
         elif backend_name == "numpy":
             from .numpy_backend import NumPyBackend
