@@ -22,6 +22,14 @@ from .enhanced_particle_collocation_solver import MonitoredParticleCollocationSo
 from .hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 from .particle_collocation_solver import ParticleCollocationSolver
 
+# JAX-accelerated solver (optional)
+try:
+    from .jax_mfg_solver import JAXMFGSolver  # noqa: F401
+
+    JAX_MFG_AVAILABLE = True
+except ImportError:
+    JAX_MFG_AVAILABLE = False
+
 __all__ = [
     # Particle Collocation Solvers
     "AdaptiveParticleCollocationSolver",
@@ -33,6 +41,10 @@ __all__ = [
     "MonitoredParticleCollocationSolver",
     "ParticleCollocationSolver",
 ]
+
+# Add JAX solver if available
+if JAX_MFG_AVAILABLE:
+    __all__.append("JAXMFGSolver")
 
 # Solver categories for factory selection
 FIXED_POINT_SOLVERS = [
@@ -51,4 +63,9 @@ HYBRID_SOLVERS = [
     "HybridFPParticleHJBFDM",
 ]
 
-ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + PARTICLE_SOLVERS + HYBRID_SOLVERS
+# JAX-accelerated solvers (optional)
+JAX_SOLVERS = []
+if JAX_MFG_AVAILABLE:
+    JAX_SOLVERS.append("JAXMFGSolver")
+
+ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + PARTICLE_SOLVERS + HYBRID_SOLVERS + JAX_SOLVERS

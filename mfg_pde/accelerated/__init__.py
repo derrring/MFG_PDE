@@ -1,197 +1,79 @@
 """
 GPU-accelerated solvers for MFG_PDE using JAX.
 
-This module provides high-performance implementations of MFG solvers
-using JAX for automatic differentiation, vectorization, and GPU acceleration.
+⚠️  DEPRECATED: This module has been reorganized for better structure.
 
-Features:
-- Automatic differentiation for sensitivity analysis
-- GPU acceleration with CUDA/ROCm support
-- Vectorized operations for batch processing
-- Just-in-time compilation for optimal performance
-- Memory-efficient implementations for large problems
+NEW LOCATIONS:
+- JAX utilities: mfg_pde.utils.acceleration.jax_utils
+- JAX MFG solver: mfg_pde.alg.mfg_solvers.JAXMFGSolver
 
-Dependencies:
-- jax: For automatic differentiation and GPU acceleration
-- jaxlib: JAX backend library
-- optax: JAX-based optimization library (optional)
+This module provides backward compatibility but will be removed in a future version.
+Please update your imports to use the new locations.
+
+MIGRATION GUIDE:
+  # OLD (deprecated)
+  from mfg_pde.accelerated import JAXMFGSolver
+  from mfg_pde.accelerated.jax_utils import compute_hamiltonian
+
+  # NEW (recommended)
+  from mfg_pde.alg.mfg_solvers import JAXMFGSolver
+  from mfg_pde.utils.acceleration.jax_utils import compute_hamiltonian
 """
 
 from __future__ import annotations
 
 import warnings
 
-# Check JAX availability
+# Issue deprecation warning
+warnings.warn(
+    "mfg_pde.accelerated is deprecated and will be removed in a future version. "
+    "Use mfg_pde.utils.acceleration for utilities and mfg_pde.alg.mfg_solvers for solvers.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Backward compatibility imports
 try:
-    import jax
-    import jax.numpy as jnp
-    from jax import grad, jit, vmap
-    from jax.config import config
+    # Re-export JAX utilities from new location
+    # Re-export JAX MFG solver from new location
+    from mfg_pde.alg.mfg_solvers import JAXMFGSolver  # noqa: F401
+    from mfg_pde.utils.acceleration import *  # noqa: F403
+    from mfg_pde.utils.acceleration.jax_utils import *  # noqa: F403
 
-    HAS_JAX = True
+    # Legacy compatibility
+    JAX_AVAILABLE = True
 
-    # Configure JAX for 64-bit precision (important for scientific computing)
-    config.update("jax_enable_x64", True)
+    # Re-export key components with deprecation
+    def _deprecated_import_wrapper(new_location, old_name):
+        def wrapper(*args, **kwargs):
+            warnings.warn(
+                f"Importing {old_name} from mfg_pde.accelerated is deprecated. " f"Use {new_location} instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return new_location(*args, **kwargs)
 
-    # Check GPU availability
-    try:
-        gpu_devices = jax.devices("gpu")
-        HAS_GPU = len(gpu_devices) > 0
-        DEFAULT_DEVICE = gpu_devices[0] if HAS_GPU else jax.devices("cpu")[0]
-    except:
-        HAS_GPU = False
-        DEFAULT_DEVICE = jax.devices("cpu")[0]
+        return wrapper
 
 except ImportError:
-    HAS_JAX = False
-    HAS_GPU = False
-    DEFAULT_DEVICE = None
+    JAX_AVAILABLE = False
 
-    # Create dummy JAX objects for graceful fallback
-    class DummyJAX:
-        def __getattr__(self, name):
-            def dummy_func(*args, **kwargs):
-                raise ImportError("JAX is required for GPU-accelerated solvers. Install with: pip install jax jaxlib")
+    warnings.warn(
+        "JAX components not available. Install JAX for GPU acceleration: pip install jax jaxlib", ImportWarning
+    )
 
-            return dummy_func
+# Export availability status
+__all__ = ["JAX_AVAILABLE"]
 
-    jax = DummyJAX()  # type: ignore[assignment]
-    jnp = DummyJAX()  # type: ignore[assignment]
-
-    def jit(f):  # type: ignore[misc]  # No-op decorator
-        return f
-
-    def vmap(f, *args, **kwargs):  # type: ignore[misc]  # No-op decorator
-        return f
-
-    def grad(f):  # type: ignore[misc]  # No-op decorator
-        return f
-
-
-def check_jax_availability() -> bool:
-    """Check if JAX is available for GPU acceleration."""
-    return HAS_JAX
-
-
-def check_gpu_availability() -> bool:
-    """Check if GPU devices are available."""
-    return HAS_GPU
-
-
-def get_device_info() -> dict:
-    """Get information about available compute devices."""
-    if not HAS_JAX:
-        return {"jax_available": False, "gpu_available": False}
-
-    info = {
-        "jax_available": True,
-        "gpu_available": HAS_GPU,
-        "default_device": str(DEFAULT_DEVICE),
-        "all_devices": [str(device) for device in jax.devices()],
-        "jax_version": jax.__version__,
-    }
-
-    if HAS_GPU:
-        info["gpu_devices"] = [str(device) for device in jax.devices("gpu")]
-        info["gpu_memory"] = []
-
-        try:
-            # Get GPU memory info if available
-            for device in jax.devices("gpu"):
-                memory_info = device.memory_stats() if hasattr(device, "memory_stats") else {}
-                info["gpu_memory"].append({"device": str(device), "memory_info": memory_info})
-        except:
-            pass
-
-    return info
-
-
-def configure_jax_for_scientific_computing():
-    """Configure JAX settings optimized for scientific computing."""
-    if not HAS_JAX:
-        warnings.warn("JAX not available, skipping configuration")
-        return
-
-    # Enable 64-bit precision for numerical accuracy
-    jax.config.update("jax_enable_x64", True)
-
-    # Configure memory management
-    if HAS_GPU:
-        # Pre-allocate GPU memory to avoid fragmentation
-        jax.config.update("jax_cuda_visible_devices", "0")
-
-        # Enable memory debugging if needed
-        # jax.config.update("jax_debug_nans", True)
-        # jax.config.update("jax_debug_infs", True)
-
-
-def print_acceleration_info():
-    """Print information about acceleration capabilities."""
-    print("MFG_PDE Acceleration Status")
-    print("=" * 40)
-
-    info = get_device_info()
-
-    if info["jax_available"]:
-        print(f"JAX Version: {info['jax_version']}")
-        print(f"Default Device: {info['default_device']}")
-        print(f"All Devices: {len(info['all_devices'])} available")
-
-        for device in info["all_devices"]:
-            device_type = "GPU" if "gpu" in device.lower() else "CPU"
-            print(f"   {device_type}: {device}")
-
-        if info["gpu_available"]:
-            print(f"GPU Acceleration: Enabled ({len(info['gpu_devices'])} GPU(s))")
-        else:
-            print("GPU Acceleration: Not available (using CPU)")
-
-    else:
-        print("JAX: Not installed")
-        print("GPU Acceleration: Not available")
-        print("To enable GPU acceleration, install JAX:")
-        print("   pip install jax jaxlib  # CPU version")
-        print("   pip install jax[cuda]  # CUDA version")
-        print("   pip install jax[cuda12_pip]  # CUDA 12 version")
-
-
-# Configure JAX on import
-configure_jax_for_scientific_computing()
-
-# Export key components
-__all__ = [
-    "DEFAULT_DEVICE",
-    "HAS_GPU",
-    "HAS_JAX",
-    "check_gpu_availability",
-    "check_jax_availability",
-    "get_device_info",
-    "grad",
-    "jax",
-    "jit",
-    "jnp",
-    "print_acceleration_info",
-    "vmap",
-]
-
-# Conditional imports for JAX-based solvers
-if HAS_JAX:
+# Add conditionally available exports
+if JAX_AVAILABLE:
     try:
-        # Individual imports for explicit exports
-        from .jax_fp_solver import JAXFokkerPlanckSolver  # noqa: F401
-        from .jax_hjb_solver import JAXHJBSolver  # noqa: F401
-        from .jax_mfg_solver import JAXMFGSolver  # noqa: F401
-        from .jax_solvers import *  # noqa: F403
-        from .jax_utils import *  # noqa: F403
+        from mfg_pde.utils.acceleration import __all__ as utils_all
+        from mfg_pde.utils.acceleration.jax_utils import __all__ as jax_utils_all
 
-        __all__.extend(["JAXFokkerPlanckSolver", "JAXHJBSolver", "JAXMFGSolver"])
+        __all__.extend(utils_all)
+        __all__.extend(jax_utils_all)
+        __all__.append("JAXMFGSolver")
 
-    except ImportError as e:
-        warnings.warn(f"Could not import JAX solvers: {e}")
-
-# Show acceleration status on import
-if __name__ != "__main__":
-    import os
-
-    if os.getenv("MFG_PDE_SHOW_ACCELERATION_INFO", "false").lower() == "true":
-        print_acceleration_info()
+    except (ImportError, AttributeError):
+        pass
