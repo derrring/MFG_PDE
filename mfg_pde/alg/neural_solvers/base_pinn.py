@@ -102,7 +102,7 @@ class PINNConfig:
     gradient_clipping: float = 1.0
 
     # Device and precision
-    device: str = "auto"  # "auto", "cpu", "cuda", "cuda:0", etc.
+    device: str = "auto"  # "auto", "cpu", "cuda", "mps", "cuda:0", etc.
     dtype: str = "float32"  # "float32", "float64"
 
     # Advanced training strategies
@@ -237,20 +237,40 @@ class PINNBase(MFGSolver, ABC):
             ValueError: If specified device is not available
         """
         if self.config.device == "auto":
+            # Automatic device selection with priority: CUDA > MPS > CPU
             if torch.cuda.is_available():
                 device = torch.device("cuda")
                 gpu_name = torch.cuda.get_device_name()
                 memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                print(f"Auto-selected GPU: {gpu_name} ({memory_gb:.1f} GB)")
+                print(f"Auto-selected CUDA GPU: {gpu_name} ({memory_gb:.1f} GB)")
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                device = torch.device("mps")
+                print("Auto-selected Apple Silicon MPS (Metal Performance Shaders)")
             else:
                 device = torch.device("cpu")
-                print("Auto-selected CPU (CUDA not available)")
+                print("Auto-selected CPU (no GPU acceleration available)")
         else:
             try:
                 device = torch.device(self.config.device)
+
+                # Validate device availability
                 if device.type == "cuda" and not torch.cuda.is_available():
                     raise ValueError("CUDA device requested but CUDA is not available")
-                print(f"Using specified device: {device}")
+                elif device.type == "mps" and not (
+                    hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+                ):
+                    raise ValueError("MPS device requested but MPS is not available")
+
+                # Device-specific messaging
+                if device.type == "cuda":
+                    gpu_name = torch.cuda.get_device_name(device)
+                    memory_gb = torch.cuda.get_device_properties(device).total_memory / 1024**3
+                    print(f"Using CUDA GPU: {gpu_name} ({memory_gb:.1f} GB)")
+                elif device.type == "mps":
+                    print("Using Apple Silicon MPS acceleration")
+                else:
+                    print(f"Using device: {device}")
+
             except Exception as e:
                 raise ValueError(f"Invalid device specification: {self.config.device}") from e
 

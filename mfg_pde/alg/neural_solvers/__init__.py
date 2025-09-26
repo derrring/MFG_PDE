@@ -47,12 +47,17 @@ try:
     CUDA_AVAILABLE = torch.cuda.is_available()
     CUDA_VERSION = torch.version.cuda if CUDA_AVAILABLE else None
     GPU_COUNT = torch.cuda.device_count() if CUDA_AVAILABLE else 0
+
+    # Apple Silicon MPS support
+    MPS_AVAILABLE = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+
 except ImportError:
     TORCH_AVAILABLE = False
     TORCH_VERSION = None
     CUDA_AVAILABLE = False
     CUDA_VERSION = None
     GPU_COUNT = 0
+    MPS_AVAILABLE = False
 
 
 # Conditional imports - only import if PyTorch is available
@@ -135,7 +140,7 @@ else:
     __all__ = []
 
 # Export availability information regardless of PyTorch availability
-__all__.extend(["CUDA_AVAILABLE", "CUDA_VERSION", "GPU_COUNT", "TORCH_AVAILABLE", "TORCH_VERSION"])
+__all__.extend(["CUDA_AVAILABLE", "CUDA_VERSION", "GPU_COUNT", "MPS_AVAILABLE", "TORCH_AVAILABLE", "TORCH_VERSION"])
 
 
 def get_system_info() -> dict:
@@ -146,6 +151,7 @@ def get_system_info() -> dict:
         "cuda_available": CUDA_AVAILABLE,
         "cuda_version": CUDA_VERSION,
         "gpu_count": GPU_COUNT,
+        "mps_available": MPS_AVAILABLE,
     }
 
     return info
@@ -160,9 +166,12 @@ def print_system_info() -> None:
     if info["torch_available"]:
         print(f"PyTorch Version: {info['torch_version']}")
         print(f"CUDA Available: {info['cuda_available']}")
+        print(f"MPS Available: {info['mps_available']}")
         if info["cuda_available"]:
             print(f"CUDA Version: {info['cuda_version']}")
             print(f"GPU Count: {info['gpu_count']}")
+        elif info["mps_available"]:
+            print("Apple Silicon MPS acceleration enabled")
     else:
         print("Install PyTorch: pip install torch torchvision")
     print("=" * 50)
