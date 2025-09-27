@@ -1,8 +1,8 @@
-# Core Objects Guide - Intermediate API
+# Core Objects Guide - Research API
 
-**For users who need more control over the solution process**
+**For MFG research with custom mathematical formulations**
 
-When the simple `solve_mfg()` function isn't enough, the core objects API provides clean interfaces with full customization power.
+This is the primary API tier for research users who need to define custom Hamiltonians, geometries, boundary conditions, or cost functionals. Since MFG users typically understand PDE systems and variational formulations, this tier provides the mathematical flexibility needed for research problems.
 
 ## Architecture Overview
 

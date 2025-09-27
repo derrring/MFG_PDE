@@ -18,8 +18,8 @@ result.plot()  # Interactive visualization!
 
 MFG_PDE provides three levels of API access designed for different user needs:
 
-### **🟢 Level 1: Simple API (90% of users)**
-**Perfect for: Research prototyping, quick experiments, teaching**
+### **🟢 Level 1: Simple API (60% of users)**
+**Perfect for: Teaching, initial prototyping, benchmarking with standard problems**
 
 - **[Quick Start Guide](quickstart.md)** - Get solving in 5 minutes
 - Dead-simple `solve_mfg()` function
@@ -32,8 +32,8 @@ result = solve_mfg("crowd_dynamics", crowd_size=500, accuracy="high")
 result.plot()
 ```
 
-### **🟡 Level 2: Core Objects (8% of users)**
-**Perfect for: Custom problems, method comparison, performance tuning**
+### **🟡 Level 2: Core Objects (35% of users)**
+**Perfect for: Custom mathematical formulations, research problems, method comparison**
 
 - **[Core Objects Guide](core_objects.md)** - Clean OOP interfaces
 - `MFGProblem` → `FixedPointSolver` → `MFGResult` pipeline
@@ -49,8 +49,8 @@ solver = FixedPointSolver().with_tolerance(1e-7).with_backend("torch")
 result = solver.solve(problem)
 ```
 
-### **🔴 Level 3: Advanced Hooks (2% of users)**
-**Perfect for: Algorithm research, custom methods, deep customization**
+### **🔴 Level 3: Advanced Hooks (5% of users)**
+**Perfect for: Algorithm research, custom numerical methods, solver development**
 
 - **[Advanced Hooks Guide](advanced_hooks.md)** - Full algorithm control
 - 20+ hook points for algorithm customization
@@ -100,20 +100,42 @@ Already using MFG_PDE? The new API is designed for smooth migration:
 
 ## 🎯 **Choose Your Starting Point**
 
-### **Just want to solve problems?**
-→ Start with [Quick Start Guide](quickstart.md)
+### **Teaching or using standard problems?**
+→ Start with [Quick Start Guide](quickstart.md) (**Tier 1**)
 
-### **Need more control over solving?**
-→ Check out [Core Objects Guide](core_objects.md)
+### **Custom mathematical formulations?**
+→ You need [Core Objects Guide](core_objects.md) (**Tier 2 minimum**)
+- Custom Hamiltonians: H(x,p,m,t)
+- Custom geometries and boundary conditions
+- Custom initial/terminal conditions
+- Custom cost functionals
+- Non-standard problem formulations
 
-### **Developing new algorithms?**
-→ Explore [Advanced Hooks Guide](advanced_hooks.md)
+### **Custom numerical algorithms?**
+→ Explore [Advanced Hooks Guide](advanced_hooks.md) (**Tier 3**)
+- New solver methods
+- Custom convergence criteria
+- Algorithm performance research
 
 ### **Upgrading from old API?**
 → Follow the [Migration Guide](migration.md)
 
-### **Teaching or learning MFG theory?**
+### **Mathematical background needed?**
 → Browse [Theory Guide](../theory/) and [Notebooks](../examples/notebooks/)
+
+## 📋 **Tier Requirements for Common Tasks**
+
+| **Task** | **Minimum Tier** | **Reason** |
+|----------|------------------|------------|
+| Built-in problems (crowd, portfolio, traffic) | **Tier 1** | Pre-configured |
+| Custom Hamiltonian H(x,p,m,t) | **Tier 2** | Mathematical definition |
+| Custom domain geometry | **Tier 2** | Boundary conditions |
+| Custom initial density m₀(x) | **Tier 2** | Problem specification |
+| Custom terminal cost g(x) | **Tier 2** | Variational formulation |
+| Parameter studies | **Tier 1-2** | Depends on problem type |
+| Performance optimization | **Tier 2** | Solver configuration |
+| New numerical methods | **Tier 3** | Algorithm hooks |
+| Convergence analysis | **Tier 3** | Solver internals |
 
 ## 💡 **Key Features**
 

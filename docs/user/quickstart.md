@@ -2,6 +2,8 @@
 
 **Get started with MFG_PDE in under 5 minutes**
 
+This guide covers the simple API for built-in problem types. For custom mathematical formulations (Hamiltonians, geometries, costs), you'll need the [Core Objects Guide](core_objects.md).
+
 ## Installation
 
 ```bash
@@ -170,10 +172,21 @@ for name, info in problems.items():
 
 ## What's Next?
 
-- **Need more control?** → Check out [Core Objects Guide](core_objects.md)
-- **Want to customize algorithms?** → See [Advanced Hooks Guide](advanced_hooks.md)
-- **Migrating from old API?** → Read [Migration Guide](migration.md)
-- **More examples?** → Browse [Examples Gallery](../examples/)
+### **Ready for research problems?**
+Most MFG users need custom mathematical formulations:
+
+- **Custom Hamiltonians** H(x,p,m,t) → [Core Objects Guide](core_objects.md)
+- **Custom geometries** and boundary conditions → [Core Objects Guide](core_objects.md)
+- **Custom costs** and terminal conditions → [Core Objects Guide](core_objects.md)
+- **Non-standard problem types** → [Core Objects Guide](core_objects.md)
+
+### **Advanced users:**
+- **Algorithm development** → [Advanced Hooks Guide](advanced_hooks.md)
+- **Migrating from old API** → [Migration Guide](migration.md)
+- **More examples** → [Examples Gallery](../examples/)
+
+### **Remember:**
+The simple API covers ~60% of use cases (teaching, benchmarking, standard problems). For research with custom mathematical components, Tier 2 (Core Objects) is your starting point.
 
 ## Complete Example
 
