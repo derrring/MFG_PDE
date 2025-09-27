@@ -56,9 +56,9 @@ def main():
         ax = axes[i // 2, i % 2]
 
         # Plot density and value function
-        x_grid = result.spatial_grid
-        density = result.density
-        value = result.value_function
+        x_grid = result.x_grid
+        density = result.m
+        value = result.u
 
         # Density plot
         line1 = ax.plot(x_grid, density, "b-", linewidth=2, label=r"$m(T,x)$ (density)")
@@ -99,9 +99,9 @@ def main():
     print("\n3. Creating detailed crowd dynamics visualization...")
 
     crowd_result = results["Crowd Evacuation"]
-    x = crowd_result.spatial_grid
-    m = crowd_result.density
-    u = crowd_result.value_function
+    x = crowd_result.x_grid
+    m = crowd_result.m
+    u = crowd_result.u
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle("Crowd Dynamics: Detailed Mathematical Analysis", fontsize=16, fontweight="bold")
@@ -164,8 +164,8 @@ def main():
     # Summary statistics
     print("\n4. Mathematical analysis summary:")
     for name, result in results.items():
-        x_grid = result.spatial_grid
-        density = result.density
+        x_grid = result.x_grid
+        density = result.m
 
         # Calculate statistical measures
         mean_pos = np.trapz(x_grid * density, x_grid)

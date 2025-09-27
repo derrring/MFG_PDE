@@ -38,8 +38,8 @@ def main():
 
     # Analyze the beach attendance equilibrium
     print("\n2. Beach attendance analysis:")
-    final_density = result.density
-    x_grid = result.spatial_grid
+    final_density = result.m
+    x_grid = result.x_grid
 
     # Calculate expected beach attendance
     expected_beachgoers = np.trapz(x_grid * final_density, x_grid) * 200
@@ -70,7 +70,7 @@ def main():
     ax1.legend()
 
     # Value function (cost of different preferences)
-    value_function = result.value_function
+    value_function = result.u
     ax2.plot(x_grid, value_function, "orange", linewidth=3, label="Expected cost")
     ax2.set_xlabel("Beach preference")
     ax2.set_ylabel("Expected cost")
@@ -92,7 +92,7 @@ def main():
     for i, (weather, crowd_size) in enumerate(zip(weather_conditions, crowd_sizes, strict=False)):
         result = solve_mfg("crowd_dynamics", domain_size=1.0, crowd_size=crowd_size, time_horizon=1.0, accuracy="fast")
 
-        beach_rate = np.trapz(result.spatial_grid * result.density, result.spatial_grid)
+        beach_rate = np.trapz(result.x_grid * result.m, result.x_grid)
         actual_attendance = beach_rate * crowd_size
         attendance_by_weather.append(actual_attendance)
 

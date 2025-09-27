@@ -37,16 +37,16 @@ def main():
 
     # Analyze the equilibrium
     print("\n2. Economic analysis:")
-    final_density = result.density
-    x_grid = result.spatial_grid
+    final_density = result.m  # Population density
+    x_grid = result.x_grid  # Spatial grid
 
     # Expected attendance rate
-    expected_attendance = np.trapz(x_grid * final_density, x_grid)
+    expected_attendance = float(np.trapezoid(x_grid * final_density, x_grid))
     print(f"📈 Expected attendance rate: {expected_attendance:.2%}")
 
     # Distribution analysis
-    home_bias = np.trapz(final_density[x_grid < 0.5], x_grid[x_grid < 0.5])
-    bar_bias = np.trapz(final_density[x_grid >= 0.5], x_grid[x_grid >= 0.5])
+    home_bias = float(np.trapezoid(final_density[x_grid < 0.5], x_grid[x_grid < 0.5]))
+    bar_bias = float(np.trapezoid(final_density[x_grid >= 0.5], x_grid[x_grid >= 0.5]))
 
     print(f"🏠 Home-biased agents: {home_bias:.1%}")
     print(f"🍺 Bar-biased agents: {bar_bias:.1%}")
@@ -66,7 +66,7 @@ def main():
     ax1.legend()
 
     # Value function
-    value_function = result.value_function
+    value_function = result.u
     ax2.plot(x_grid, value_function, "r-", linewidth=2, label="Value function")
     ax2.set_xlabel("Attendance tendency")
     ax2.set_ylabel("Expected cost")
@@ -93,7 +93,7 @@ def main():
     for crowd_size in crowd_sizes:
         result = solve_mfg("crowd_dynamics", domain_size=1.0, crowd_size=crowd_size, time_horizon=1.0, accuracy="fast")
 
-        attendance = np.trapz(result.spatial_grid * result.density, result.spatial_grid)
+        attendance = float(np.trapezoid(result.x_grid * result.m, result.x_grid))
         attendance_rates.append(attendance)
         print(f"   • {crowd_size} agents → {attendance:.1%} attendance")
 
