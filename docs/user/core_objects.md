@@ -398,10 +398,10 @@ sweep.plot_parameter_space()
 
 ```bash
 # Complete Tier 2 API demonstration
-python examples/advanced/new_api_core_objects_demo.py
+python examples/advanced/new_api_core_objects_example.py
 
 # Physics-informed neural networks for MFG
-python examples/advanced/pinn_mfg_demo.py
+python examples/advanced/pinn_mfg_example.py
 
 # Constrained optimization with primal-dual methods
 python examples/advanced/primal_dual_constrained_example.py

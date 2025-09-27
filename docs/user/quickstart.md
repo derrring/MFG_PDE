@@ -167,8 +167,8 @@ result.plot()  # Interactive visualization
 - `examples/basic/el_farol_bar_example.py` - Economic coordination example
 - `examples/basic/towel_beach_example.py` - User-friendly MFG scenario
 - `examples/basic/visualization_example.py` - Mathematical plotting demo
-- `examples/advanced/new_api_core_objects_demo.py` - Tier 2 API showcase
-- `examples/advanced/new_api_hooks_demo.py` - Tier 3 API showcase
+- `examples/advanced/new_api_core_objects_example.py` - Tier 2 API showcase
+- `examples/advanced/new_api_hooks_example.py` - Tier 3 API showcase
 
 **🎯 All Basic Examples Updated:**
 - All `examples/basic/` files now use current API (Tier 1)

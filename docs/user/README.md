@@ -186,8 +186,8 @@ result = solve_mfg("epidemic", infection_rate=0.7)
 ### **Tier 2: Working Research Examples**
 ```python
 # These examples demonstrate custom mathematical formulations:
-# examples/advanced/new_api_core_objects_demo.py - Complete Tier 2 showcase
-# examples/advanced/pinn_mfg_demo.py - Physics-informed neural networks
+# examples/advanced/new_api_core_objects_example.py - Complete Tier 2 showcase
+# examples/advanced/pinn_mfg_example.py - Physics-informed neural networks
 # examples/advanced/primal_dual_constrained_example.py - Constrained optimization
 ```
 
