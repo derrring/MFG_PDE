@@ -339,8 +339,8 @@ def load_example(example_name: str) -> MFGResult:
         problem_type,
         domain_size=domain_size,
         time_horizon=time_horizon,
-        accuracy="balanced",
-        verbose=True,
+        accuracy="fast",
+        verbose=False,  # Less verbose for examples
         **extra_kwargs,
     )
 

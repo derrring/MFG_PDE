@@ -143,19 +143,34 @@ print(f"Suggested domain size: {setup['domain_size']}")
 print(f"Suggested parameters: {setup['parameters']}")
 ```
 
-## Examples
+## Working Examples
 
-Load and run predefined examples:
+### **Built-in Examples (Tier 1)**
 
 ```python
 from mfg_pde import load_example
 
-# Load and solve built-in examples
-result = load_example("simple_crowd")
-result = load_example("portfolio_basic")
-result = load_example("traffic_light")
-result = load_example("epidemic_basic")
+# These examples work immediately with current API:
+result = load_example("simple_crowd")       # ✅ Small crowd evacuation
+result = load_example("portfolio_basic")    # ✅ Basic portfolio optimization
+result = load_example("traffic_light")      # ✅ Traffic light problem
+result = load_example("epidemic_basic")     # ✅ Simple epidemic model
+
+# All return MFGResult objects with .plot() method
+result.plot()  # Interactive visualization
 ```
+
+### **Available Example Files**
+
+**✅ Currently Working:**
+- `examples/basic/new_api_simple_demo.py` - Tier 1 API showcase
+- `examples/advanced/new_api_core_objects_demo.py` - Tier 2 API showcase
+- `examples/advanced/new_api_hooks_demo.py` - Tier 3 API showcase
+
+**⚠️ May Need Updates (Legacy Syntax):**
+- Most examples in `examples/basic/` use older API patterns
+- Check import statements before running legacy examples
+- Many use `ExampleMFGProblem` and `create_fast_solver` (older patterns)
 
 ## Getting Help
 

@@ -166,24 +166,33 @@ Already using MFG_PDE? The new API is designed for smooth migration:
 
 ## ⚡ **Quick Examples**
 
+### **Tier 1: Built-in Examples**
 ```python
-# Crowd evacuation with custom parameters
-result = solve_mfg("crowd_dynamics",
-                   domain_size=5.0, crowd_size=300,
-                   time_horizon=2.0, accuracy="high")
+from mfg_pde import load_example, solve_mfg
 
-# Portfolio optimization
-result = solve_mfg("portfolio_optimization",
-                   risk_aversion=0.3, time_horizon=1.5)
+# Pre-configured examples that work immediately
+result = load_example("simple_crowd")       # Small crowd evacuation
+result = load_example("portfolio_basic")    # Basic portfolio optimization
+result = load_example("traffic_light")      # Traffic light problem
+result = load_example("epidemic_basic")     # Simple epidemic model
 
-# Traffic flow simulation
-result = solve_mfg("traffic_flow",
-                   domain_size=10.0, speed_limit=2.0)
+# Custom parameters with built-in problem types
+result = solve_mfg("crowd_dynamics", crowd_size=300, accuracy="balanced")
+result = solve_mfg("portfolio_optimization", risk_aversion=0.3)
+result = solve_mfg("traffic_flow", domain_size=10.0)
+result = solve_mfg("epidemic", infection_rate=0.7)
+```
 
-# Epidemic modeling
-result = solve_mfg("epidemic",
-                   infection_rate=0.7, time_horizon=5.0)
+### **Tier 2: Working Research Examples**
+```python
+# These examples demonstrate custom mathematical formulations:
+# examples/advanced/new_api_core_objects_demo.py - Complete Tier 2 showcase
+# examples/advanced/pinn_mfg_demo.py - Physics-informed neural networks
+# examples/advanced/primal_dual_constrained_example.py - Constrained optimization
+```
 
+### **Results Interface**
+```python
 # All results have the same interface
 result.plot()                    # Interactive visualization
 print(f"Converged: {result.converged}")

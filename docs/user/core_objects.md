@@ -392,6 +392,37 @@ results = sweep.execute()
 sweep.plot_parameter_space()
 ```
 
+## Working Examples for Tier 2
+
+### **Ready-to-Run Tier 2 Examples:**
+
+```bash
+# Complete Tier 2 API demonstration
+python examples/advanced/new_api_core_objects_demo.py
+
+# Physics-informed neural networks for MFG
+python examples/advanced/pinn_mfg_demo.py
+
+# Constrained optimization with primal-dual methods
+python examples/advanced/primal_dual_constrained_example.py
+```
+
+### **Quick Tier 2 Test:**
+
+```python
+from mfg_pde import create_mfg_problem
+from mfg_pde.solvers import FixedPointSolver
+
+# Test Tier 2 API quickly
+problem = create_mfg_problem("crowd_dynamics", domain=(0, 3), crowd_size=150)
+solver = FixedPointSolver().with_tolerance(1e-5).with_max_iterations(100)
+result = solver.solve(problem)
+
+print(f"Tier 2 test: {result.converged}, {result.iterations} iterations")
+```
+
+**Note:** Many examples in `examples/basic/` use legacy API patterns and may need import updates.
+
 ## What's Next?
 
 - **Need algorithm-level control?** → See [Advanced Hooks Guide](advanced_hooks.md)
