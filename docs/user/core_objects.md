@@ -421,7 +421,7 @@ result = solver.solve(problem)
 print(f"Tier 2 test: {result.converged}, {result.iterations} iterations")
 ```
 
-**Note:** Many examples in `examples/basic/` use legacy API patterns and may need import updates.
+**Note:** All `examples/basic/` files now use current API. For legacy patterns, check `examples/advanced/` for older files.
 
 ## What's Next?
 

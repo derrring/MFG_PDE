@@ -163,14 +163,17 @@ result.plot()  # Interactive visualization
 ### **Available Example Files**
 
 **✅ Currently Working:**
-- `examples/basic/new_api_simple_demo.py` - Tier 1 API showcase
+- `examples/basic/simple_api_example.py` - Tier 1 API showcase
+- `examples/basic/el_farol_bar_example.py` - Economic coordination example
+- `examples/basic/towel_beach_example.py` - User-friendly MFG scenario
+- `examples/basic/visualization_example.py` - Mathematical plotting demo
 - `examples/advanced/new_api_core_objects_demo.py` - Tier 2 API showcase
 - `examples/advanced/new_api_hooks_demo.py` - Tier 3 API showcase
 
-**⚠️ May Need Updates (Legacy Syntax):**
-- Most examples in `examples/basic/` use older API patterns
-- Check import statements before running legacy examples
-- Many use `ExampleMFGProblem` and `create_fast_solver` (older patterns)
+**🎯 All Basic Examples Updated:**
+- All `examples/basic/` files now use current API (Tier 1)
+- Ready to run immediately with `python filename.py`
+- Follow three-tier progressive disclosure design
 
 ## Getting Help
 
