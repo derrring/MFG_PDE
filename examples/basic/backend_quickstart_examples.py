@@ -59,13 +59,14 @@ def main():
 
             # Show specific device selection
             if available_backends.get("torch_mps", False):
-                mps_backend = create_backend("torch_mps")
+                mps_backend = create_backend("torch", device="mps")
                 print(f"✅ Apple Silicon MPS: {mps_backend.name}")
             elif available_backends.get("torch_cuda", False):
-                cuda_backend = create_backend("torch_cuda")
+                cuda_backend = create_backend("torch", device="cuda")
                 print(f"✅ NVIDIA CUDA: {cuda_backend.name}")
             else:
-                print("ℹ️  Using CPU backend (no GPU acceleration detected)")
+                cpu_backend = create_backend("torch", device="cpu")
+                print(f"ℹ️  CPU backend: {cpu_backend.name}")
 
         except Exception as e:
             print(f"❌ PyTorch backend failed: {e}")
@@ -130,9 +131,13 @@ def main():
             # Optimize with Numba
             optimized_func = acceleration.optimize_function(simple_finite_difference)
 
-            # Test performance
+            # Test performance with warm-up
             test_array = np.sin(np.linspace(0, 2 * np.pi, 1000))
             dx = 2 * np.pi / 999
+
+            # Warm-up run for Numba compilation
+            print("   Warming up Numba compilation...")
+            _ = optimized_func(test_array, dx)
 
             # Time original
             import time
@@ -142,7 +147,7 @@ def main():
                 result_orig = simple_finite_difference(test_array, dx)
             time_orig = time.time() - start
 
-            # Time optimized
+            # Time optimized (after warm-up)
             start = time.time()
             for _ in range(100):
                 result_opt = optimized_func(test_array, dx)
@@ -150,7 +155,11 @@ def main():
 
             print(f"   ⏱️  Original: {time_orig:.3f}s")
             print(f"   ⚡ Numba:    {time_opt:.3f}s")
-            print(f"   🚀 Speedup:  {time_orig/time_opt:.1f}x")
+            if time_opt > 0:
+                speedup = time_orig / time_opt
+                print(f"   🚀 Speedup:  {speedup:.1f}x")
+            else:
+                print("   🚀 Speedup:  >100x (too fast to measure)")
 
             # Verify results are identical
             error = np.max(np.abs(result_orig - result_opt))
