@@ -162,18 +162,22 @@ result.plot()  # Interactive visualization
 
 ### **Available Example Files**
 
-**✅ Currently Working:**
-- `examples/basic/simple_api_example.py` - Tier 1 API showcase
-- `examples/basic/el_farol_bar_example.py` - Economic coordination example
-- `examples/basic/towel_beach_example.py` - User-friendly MFG scenario
-- `examples/basic/visualization_example.py` - Mathematical plotting demo
-- `examples/advanced/new_api_core_objects_example.py` - Tier 2 API showcase
-- `examples/advanced/new_api_hooks_example.py` - Tier 3 API showcase
+**✅ Tier 1 Examples (`examples/basic/` - Simple API):**
+- `simple_api_example.py` - Complete Tier 1 API showcase
+- `el_farol_bar_example.py` - Economic coordination problem
+- `towel_beach_example.py` - User-friendly beach scenario
+- `visualization_example.py` - Mathematical plotting demonstration
 
-**🎯 All Basic Examples Updated:**
-- All `examples/basic/` files now use current API (Tier 1)
-- Ready to run immediately with `python filename.py`
-- Follow three-tier progressive disclosure design
+**✅ Tier 2 & 3 Examples (`examples/advanced/` - Advanced APIs):**
+- `new_api_core_objects_example.py` - Tier 2 Core Objects showcase
+- `new_api_hooks_example.py` - Tier 3 Advanced Hooks showcase
+- `pinn_mfg_example.py` - Physics-informed neural networks
+- Plus 8+ other advanced research examples
+
+**🎯 Directory Structure:**
+- **`examples/basic/`** = **Tier 1 only** (`solve_mfg()` function)
+- **`examples/advanced/`** = **Tier 2 & 3** (Core Objects + Hooks)
+- All examples ready to run with `python filename.py`
 
 ## Getting Help
 

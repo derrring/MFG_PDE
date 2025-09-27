@@ -18,6 +18,12 @@ result.plot()  # Interactive visualization!
 
 MFG_PDE provides three levels of API access designed for different user needs:
 
+| **API Tier** | **Examples Location** | **Target Users** |
+|--------------|----------------------|------------------|
+| **Tier 1: Simple API** | `examples/basic/` | 60% - Teaching, prototyping |
+| **Tier 2: Core Objects** | `examples/advanced/` | 35% - Research, custom problems |
+| **Tier 3: Advanced Hooks** | `examples/advanced/` | 5% - Algorithm development |
+
 ### **🟢 Level 1: Simple API (60% of users)**
 **Perfect for: Teaching, initial prototyping, benchmarking with standard problems**
 
