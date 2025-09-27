@@ -126,8 +126,7 @@ class TorchBackend(BaseBackend):
         # Handle MPS float64 limitation
         if self.device_type == "mps" and self.precision == "float64":
             warnings.warn(
-                "MPS does not support float64, using float32 instead. "
-                "Set precision='float32' to suppress this warning."
+                "MPS does not support float64, using float32 instead. Set precision='float32' to suppress this warning."
             )
             self.torch_dtype = torch.float32
             self.precision = "float32"

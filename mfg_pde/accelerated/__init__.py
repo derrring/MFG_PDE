@@ -47,7 +47,7 @@ try:
     def _deprecated_import_wrapper(new_location, old_name):
         def wrapper(*args, **kwargs):
             warnings.warn(
-                f"Importing {old_name} from mfg_pde.accelerated is deprecated. " f"Use {new_location} instead.",
+                f"Importing {old_name} from mfg_pde.accelerated is deprecated. Use {new_location} instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )

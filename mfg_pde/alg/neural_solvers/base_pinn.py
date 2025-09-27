@@ -129,9 +129,7 @@ class PINNConfig:
     def __post_init__(self):
         """Validate configuration parameters."""
         if not TORCH_AVAILABLE:
-            raise ImportError(
-                "PyTorch is required for PINN functionality. " "Install with: pip install torch torchvision"
-            )
+            raise ImportError("PyTorch is required for PINN functionality. Install with: pip install torch torchvision")
 
         # Validation checks
         if self.learning_rate <= 0:
@@ -179,9 +177,7 @@ class PINNBase(MFGSolver, ABC):
             ValueError: If configuration is invalid
         """
         if not TORCH_AVAILABLE:
-            raise ImportError(
-                "PyTorch is required for PINN functionality. " "Install with: pip install torch torchvision"
-            )
+            raise ImportError("PyTorch is required for PINN functionality. Install with: pip install torch torchvision")
 
         # Initialize base solver
         super().__init__(problem)

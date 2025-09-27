@@ -19,7 +19,7 @@ import warnings
 from mfg_pde.alg.mfg_solvers.jax_mfg_solver import JAXMFGSolver
 
 warnings.warn(
-    "mfg_pde.accelerated.jax_mfg_solver is deprecated. " "Import JAXMFGSolver from mfg_pde.alg.mfg_solvers instead.",
+    "mfg_pde.accelerated.jax_mfg_solver is deprecated. Import JAXMFGSolver from mfg_pde.alg.mfg_solvers instead.",
     DeprecationWarning,
     stacklevel=2,
 )

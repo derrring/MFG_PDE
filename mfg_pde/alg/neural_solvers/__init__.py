@@ -133,7 +133,7 @@ else:
     import warnings
 
     warnings.warn(
-        "PyTorch is required for neural network solvers. " "Install with: pip install torch torchvision",
+        "PyTorch is required for neural network solvers. Install with: pip install torch torchvision",
         ImportWarning,
     )
 

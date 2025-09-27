@@ -586,7 +586,7 @@ class FPPINNSolver(PINNBase):
         ax2.plot(solution["t_grid"], solution["m"][center_idx, :])
         ax2.set_xlabel("Time t")
         ax2.set_ylabel("m(t, x_center)")
-        ax2.set_title(f'Time Evolution at x = {solution["x_grid"][center_idx]:.2f}')
+        ax2.set_title(f"Time Evolution at x = {solution['x_grid'][center_idx]:.2f}")
         ax2.grid(True)
 
         # Mass conservation

@@ -53,7 +53,7 @@ def get_acceleration_info():
 def _warn_deprecated_import():
     """Warn about deprecated import paths."""
     warnings.warn(
-        "Importing from mfg_pde.accelerated is deprecated. " "Use mfg_pde.utils.acceleration instead.",
+        "Importing from mfg_pde.accelerated is deprecated. Use mfg_pde.utils.acceleration instead.",
         DeprecationWarning,
         stacklevel=3,
     )
