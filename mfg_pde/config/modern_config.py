@@ -168,7 +168,7 @@ class PresetConfig:
         - Error checking enabled
         """
         base = create_accurate_config()
-        return SolverConfig(base).with_tolerance(1e-8).with_max_iterations(1000).with_verbose(False)
+        return SolverConfig(base).with_tolerance(1e-8).with_max_iterations(500).with_verbose(False)
 
     @staticmethod
     def for_high_performance() -> SolverConfig:
@@ -214,7 +214,7 @@ class PresetConfig:
         return (
             SolverConfig(base)
             .with_tolerance(1e-10)
-            .with_max_iterations(2000)
+            .with_max_iterations(500)
             .with_damping(0.5)  # More conservative
             .with_verbose(False)
         )

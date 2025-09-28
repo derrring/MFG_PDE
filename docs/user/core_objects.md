@@ -194,38 +194,32 @@ final_result = state.to_result()
 result = solver.solve(problem)
 
 # Solution data
-u = result.value_function       # u(t,x)
-m = result.density             # m(t,x)
-t_grid = result.time_grid      # Time points
-x_grid = result.spatial_grid   # Spatial points
+u = result.u                   # u(t,x) - value function
+m = result.m                   # m(t,x) - population density
+t_grid = result.t_grid         # Time points
+x_grid = result.x_grid         # Spatial points
 
 # Convergence information
 print(f"Converged: {result.converged}")
 print(f"Iterations: {result.iterations}")
-print(f"Final residual: {result.final_residual}")
-print(f"Solve time: {result.solve_time:.2f}s")
+print(f"Total time: {result.total_time:.2f}s")
 
-# Physical quantities
-print(f"Total mass: {result.total_mass}")
-print(f"Mass conservation error: {result.mass_conservation_error}")
-print(f"Energy: {result.total_energy}")
+# Additional information
+print(f"Convergence info: {result.convergence_info}")
+print(f"Solver info: {result.solver_info}")
 ```
 
 ### Advanced Analysis
 
 ```python
-# Compute derived quantities
-velocity_field = result.compute_velocity_field()
-optimal_trajectory = result.compute_optimal_trajectory(x_start=0.0)
-hamiltonian_values = result.evaluate_hamiltonian()
-
-# Sensitivity analysis
-sensitivity = result.compute_parameter_sensitivity(['crowd_size', 'exit_attraction'])
-
 # Export data
-result.export_to_csv("results.csv")
-result.export_to_hdf5("results.h5")
-result.export_to_matlab("results.mat")
+result.export_data("results")
+
+# Get solution at specific time
+solution_at_t = result.get_solution_at_time(t=1.0)
+
+# Visualization
+result.plot_solution()
 ```
 
 ### Comparison and Benchmarking

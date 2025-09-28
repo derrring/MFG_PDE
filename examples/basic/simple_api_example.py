@@ -25,7 +25,7 @@ def main():
     print(f"✅ Solved! Converged in {result.iterations} iterations")
 
     # Built-in visualization
-    result.plot()
+    result.plot_solution()
 
     # 2. CUSTOM PARAMETERS
     print("\n2. Custom parameters:")
@@ -38,8 +38,12 @@ def main():
         verbose=True,
     )  # Show progress
 
-    print(f"📊 Evacuation efficiency: {result.evacuation_efficiency:.1%}")
-    print(f"🎯 Final mass: {result.total_mass:.3f}")
+    # Calculate derived metrics from available data
+    import numpy as np
+
+    final_mass = np.trapezoid(result.m[-1, :], result.x_grid)
+    print(f"🎯 Final mass: {final_mass:.3f}")
+    print(f"📊 Converged: {result.converged}")
 
     # 3. DIFFERENT PROBLEM TYPES
     print("\n3. Different problem types:")
@@ -57,15 +61,15 @@ def main():
 
     # Fast (for prototyping)
     fast_result = solve_mfg("crowd_dynamics", accuracy="fast")
-    print(f"⚡ Fast: {fast_result.iterations} iterations, {fast_result.solve_time:.2f}s")
+    print(f"⚡ Fast: {fast_result.iterations} iterations, {fast_result.total_time:.2f}s")
 
     # Balanced (default)
     balanced_result = solve_mfg("crowd_dynamics", accuracy="balanced")
-    print(f"⚖️ Balanced: {balanced_result.iterations} iterations, {balanced_result.solve_time:.2f}s")
+    print(f"⚖️ Balanced: {balanced_result.iterations} iterations, {balanced_result.total_time:.2f}s")
 
     # High accuracy (for research)
     high_result = solve_mfg("crowd_dynamics", accuracy="high")
-    print(f"🎯 High: {high_result.iterations} iterations, {high_result.solve_time:.2f}s")
+    print(f"🎯 High: {high_result.iterations} iterations, {high_result.total_time:.2f}s")
 
     # 5. PREDEFINED EXAMPLES
     print("\n5. Load predefined examples:")

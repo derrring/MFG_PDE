@@ -19,7 +19,7 @@ from mfg_pde import solve_mfg
 
 # Crowd dynamics simulation
 result = solve_mfg("crowd_dynamics")
-result.plot()
+result.plot_solution()
 ```
 
 That's it! You've solved a crowd evacuation problem and visualized the results.
@@ -91,19 +91,18 @@ All results have the same simple interface:
 result = solve_mfg("crowd_dynamics")
 
 # Visualize the solution
-result.plot()                    # Interactive plot
-result.plot_density()           # Density evolution
-result.plot_value_function()    # Value function
+result.plot_solution()           # Interactive plot
 
 # Access numerical data
-density = result.density         # Final density m(T,x)
-value = result.value_function    # Value function u(T,x)
-time_series = result.time_evolution  # Full evolution
+density = result.m               # Final density m(T,x)
+value = result.u                 # Value function u(T,x)
+x_grid = result.x_grid           # Spatial grid
+t_grid = result.t_grid           # Time grid
 
 # Check solution quality
 print(f"Converged: {result.converged}")
 print(f"Iterations: {result.iterations}")
-print(f"Final error: {result.final_residual}")
+print(f"Total time: {result.total_time:.2f}s")
 ```
 
 ## Accuracy Levels
@@ -156,8 +155,8 @@ result = load_example("portfolio_basic")    # ✅ Basic portfolio optimization
 result = load_example("traffic_light")      # ✅ Traffic light problem
 result = load_example("epidemic_basic")     # ✅ Simple epidemic model
 
-# All return MFGResult objects with .plot() method
-result.plot()  # Interactive visualization
+# All return MFGResult objects with .plot_solution() method
+result.plot_solution()  # Interactive visualization
 ```
 
 ### **Available Example Files**
@@ -224,12 +223,12 @@ result = solve_mfg("crowd_dynamics",
                    verbose=True)         # Show progress
 
 # Visualize results
-result.plot()
+result.plot_solution()
 
 # Check solution quality
 print(f"✅ Converged in {result.iterations} iterations")
-print(f"📊 Final density mass: {result.total_mass:.3f}")
-print(f"🎯 Evacuation efficiency: {result.evacuation_efficiency:.1%}")
+print(f"📊 Convergence status: {result.converged}")
+print(f"⏱️ Total solve time: {result.total_time:.2f}s")
 ```
 
 **That's it!** You're now solving sophisticated Mean Field Games with just a few lines of code.
