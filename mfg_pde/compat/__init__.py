@@ -22,7 +22,7 @@ def deprecated(reason: str, removal_version: str = "2.0"):
     def decorator(func):
         def wrapper(*args, **kwargs):
             warnings.warn(
-                f"{func.__name__} is deprecated and will be removed in v{removal_version}. " f"{reason}",
+                f"{func.__name__} is deprecated and will be removed in v{removal_version}. {reason}",
                 DeprecationWarning,
                 stacklevel=2,
             )
