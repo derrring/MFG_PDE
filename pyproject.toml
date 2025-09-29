@@ -70,6 +70,46 @@ dev = [
     "pre-commit>=2.0",      # Pre-commit hooks
 ]
 
+# ==================== PARADIGM-SPECIFIC DEPENDENCIES ====================
+# Algorithm paradigm-specific dependencies for new structure
+
+# Classical numerical methods
+numerical = [
+    "scipy>=1.13",          # Advanced numerical algorithms
+    "scikit-sparse",        # Sparse matrix operations
+    "scikit-umfpack",       # UMFPACK sparse solver
+]
+
+# Neural network approaches
+neural = [
+    "torch>=2.0",           # PyTorch for neural networks
+    "optax>=0.1.5",         # JAX optimization library
+    "tensorboard>=2.13",    # Training visualization
+    "torchvision",          # Vision utilities
+]
+
+# Reinforcement learning methods
+reinforcement = [
+    "gymnasium>=0.29",      # RL environments (successor to gym)
+    "stable-baselines3>=2.0", # RL algorithms
+    "tensorboard>=2.13",    # Training logs
+    "wandb",                # Experiment tracking
+]
+
+# Optimization approaches
+optimization = [
+    "cvxpy>=1.4",           # Convex optimization
+    "mosek",                # Commercial solver (optional)
+    "osqp>=0.6",            # OSQP solver
+    "clarabel>=0.5",        # Conic optimization
+]
+
+# Configuration management
+config = [
+    "hydra-core>=1.3",      # Configuration management
+    "omegaconf>=2.3",       # Configuration files
+]
+
 # Documentation
 docs = [
     "sphinx>=7.0",          # Documentation generation
