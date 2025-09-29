@@ -7,9 +7,18 @@ This module contains classical numerical analysis approaches:
 - mfg_solvers: Coupled system numerical methods
 
 All methods are based on discretization and convergence analysis.
+Note: FP solvers maintain backward compatibility with original interfaces.
 """
 
 from mfg_pde.alg.base_solver import BaseNumericalSolver
+
+# Import FP solvers
+from .fp_solvers import (
+    BaseFPSolver,
+    FPFDMSolver,
+    FPNetworkSolver,
+    FPParticleSolver,
+)
 
 # Import HJB solvers
 from .hjb_solvers import (
@@ -28,4 +37,9 @@ __all__ = [
     "HJBGFDMSolver",
     "HJBSemiLagrangianSolver",
     "HJBWenoSolver",
+    # FP Solvers
+    "BaseFPSolver",
+    "FPFDMSolver",
+    "FPNetworkSolver",
+    "FPParticleSolver",
 ]
