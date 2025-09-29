@@ -11,4 +11,21 @@ All methods are based on discretization and convergence analysis.
 
 from mfg_pde.alg.base_solver import BaseNumericalSolver
 
-__all__ = ["BaseNumericalSolver"]
+# Import HJB solvers
+from .hjb_solvers import (
+    BaseHJBSolver,
+    HJBFDMSolver,
+    HJBGFDMSolver,
+    HJBSemiLagrangianSolver,
+    HJBWenoSolver,
+)
+
+__all__ = [
+    "BaseNumericalSolver",
+    # HJB Solvers
+    "BaseHJBSolver",
+    "HJBFDMSolver",
+    "HJBGFDMSolver",
+    "HJBSemiLagrangianSolver",
+    "HJBWenoSolver",
+]
