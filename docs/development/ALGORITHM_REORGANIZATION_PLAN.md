@@ -382,9 +382,140 @@ pip install mfg_pde[neural,rl]      # ML approaches
 pip install mfg_pde[all]           # Everything
 ```
 
+## Package Scope & Risk Analysis
+
+### Current Package Features (Analysis: 2025-09-29)
+MFG_PDE is a **highly sophisticated, production-ready framework** with extensive interdependencies:
+
+**Scale**:
+- **39 algorithm files** in `alg_old/` requiring migration
+- **120+ framework files** (backends, config, geometry, factories)
+- **43 example files** demonstrating algorithm usage
+- **25 test files** validating algorithm behavior
+- **Multi-paradigm ecosystem**: Numerical, neural, variational, with acceleration backends
+
+**Architecture Complexity**:
+- **Factory system**: Dynamic algorithm creation by string name
+- **Multi-config system**: Pydantic, OmegaConf, structured schemas
+- **Backend integration**: JAX, NumPy, Torch acceleration
+- **Visualization pipeline**: Algorithm result analysis and plotting
+- **Workflow system**: Experiment tracking and parameter sweeps
+
+### Risk Assessment by Component
+
+#### 🔴 **CRITICAL RISK (Breaking Change Potential)**
+
+**1. Factory System Dependencies**
+```python
+# High-risk files requiring string reference updates:
+mfg_pde/factory/solver_factory.py         # Creates algorithms by name
+mfg_pde/factory/pydantic_solver_factory.py # Type-safe algorithm creation
+mfg_pde/factory/general_mfg_factory.py     # High-level problem construction
+```
+**Risk**: Dynamic imports by string name will break with path changes.
+
+**2. Examples Ecosystem (43 files)**
+```python
+# All examples import algorithms directly:
+from mfg_pde.alg.hjb_solvers import HJBFDMSolver
+from mfg_pde.alg.neural_solvers import MFGPINNSolver
+```
+**Risk**: Every example needs import path updates + validation.
+
+**3. Configuration System Integration**
+```python
+# Config schemas reference algorithm classes:
+mfg_pde/config/structured_schemas.py      # Pydantic algorithm schemas
+mfg_pde/config/solver_config.py          # Algorithm-specific configs
+mfg_pde/config/omegaconf_manager.py       # YAML configuration loading
+```
+**Risk**: Config validation and schema generation depends on algorithm imports.
+
+**4. Test Suite (25 files)**
+**Risk**: Tests validate specific algorithm behaviors, imports, and interfaces.
+
+#### 🟡 **MODERATE RISK (Compatibility Issues)**
+
+**5. Visualization Integration**
+```python
+# Visualization assumes algorithm result formats:
+mfg_pde/visualization/mfg_analytics.py    # Algorithm performance analysis
+mfg_pde/visualization/interactive_plots.py # Result-specific plotting
+```
+**Risk**: May require interface updates for new algorithm structure.
+
+**6. Backend Acceleration**
+```python
+# Acceleration backends integrate with specific algorithms:
+mfg_pde/backends/jax_backend.py           # JAX acceleration
+mfg_pde/accelerated/jax_mfg_solver.py      # Accelerated implementations
+```
+**Risk**: Backend integration may need updates for new algorithm hierarchy.
+
+**7. Workflow & Experiment Management**
+```python
+# Workflow systems track algorithm performance:
+mfg_pde/workflow/experiment_tracker.py    # Algorithm experiment tracking
+mfg_pde/benchmarks/highdim_benchmark_suite.py # Algorithm benchmarking
+```
+**Risk**: Experiment tracking needs algorithm reference updates.
+
+#### 🟢 **LOW RISK (Structural Updates Only)**
+
+**8. Documentation & Type System**
+- Import path updates in documentation
+- Protocol definitions in `mfg_pde/types/`
+- Mathematical notation system
+
+### Migration Strategy by Risk Priority
+
+#### **Phase 2A: Core Algorithm Migration (Highest Risk First)**
+```python
+# Migration priority by usage frequency and risk:
+1. numerical/hjb_solvers/    # Most foundational, highest example usage
+2. numerical/fp_solvers/     # Core component, many dependencies
+3. numerical/mfg_solvers/    # Coupled systems, factory integration
+4. neural/physics_informed/  # Complex dependencies, acceleration backends
+5. optimization/variational_methods/  # Specialized usage, moderate risk
+```
+
+#### **Phase 2B: Infrastructure Update (Critical Dependencies)**
+```python
+# Update in dependency order:
+1. mfg_pde/factory/          # Must work before examples
+2. mfg_pde/config/           # Required for algorithm instantiation
+3. examples/ (batch updates)  # User-facing validation
+4. tests/                    # Comprehensive validation
+5. mfg_pde/visualization/    # Algorithm result integration
+```
+
+### Safety Measures & Validation Protocol
+
+**Incremental Validation**:
+1. **Per-Algorithm Testing**: Each migrated solver tested immediately
+2. **Factory Verification**: Algorithm creation by name validated
+3. **Example Batch Testing**: Groups of examples tested together
+4. **Compatibility Verification**: Old import paths work via compatibility layer
+5. **Performance Regression Testing**: Benchmark before/after each migration
+
+**Critical Checkpoints**:
+- [ ] All factory string references updated and tested
+- [ ] All 43 examples run successfully with new imports
+- [ ] All 25 tests pass with new algorithm structure
+- [ ] Configuration systems load and validate correctly
+- [ ] Backend acceleration works with new hierarchy
+- [ ] Zero performance regression (< 1% acceptable)
+
+**Rollback Strategy**:
+- Each phase committed separately for easy rollback
+- Compatibility layer maintains old functionality throughout
+- Migration can be paused/resumed at any phase boundary
+
+This analysis reveals MFG_PDE is a **sophisticated production system** requiring methodical, risk-aware migration rather than simple directory restructuring.
+
 ## Implementation Timeline
 
-### Phase 1: Foundation (Weeks 1-3)
+### Phase 1: Foundation ✅ COMPLETED (Weeks 1-3)
 - **Week 1**: Refined directory structure + configuration system design
 - **Week 2**: Dependency management setup + base class hierarchies
 - **Week 3**: Backward compatibility layer + migration tools

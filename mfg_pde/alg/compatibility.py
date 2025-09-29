@@ -24,7 +24,7 @@ def _issue_deprecation_warning(old_path: str, new_path: str) -> None:
     """Issue a deprecation warning for old import paths."""
     warnings.warn(
         f"Importing from '{old_path}' is deprecated and will be removed in v0.3.0. "
-        f"Use 'mfg_pde.alg_new.{new_path}' instead. "
+        f"Use 'mfg_pde.alg.{new_path}' instead. "
         f"See the Algorithm Reorganization Guide for migration details.",
         DeprecationWarning,
         stacklevel=3,
@@ -43,7 +43,7 @@ def _import_from_new_structure(module_name: str) -> Any:
     import importlib
 
     try:
-        return importlib.import_module(f"mfg_pde.alg_new.{new_path}")
+        return importlib.import_module(f"mfg_pde.alg.{new_path}")
     except ImportError as e:
         raise ImportError(
             f"Failed to import '{new_path}' from new algorithm structure. "
@@ -76,9 +76,9 @@ class LegacyAlgorithmModule:
         """Try to import a solver from the old structure."""
         import importlib
 
-        # Try importing from the original alg module
+        # Try importing from the old alg module
         try:
-            original_module = importlib.import_module("mfg_pde.alg")
+            original_module = importlib.import_module("mfg_pde.alg_old")
             if hasattr(original_module, solver_name):
                 _issue_deprecation_warning(
                     f"mfg_pde.alg.{solver_name}",
@@ -102,16 +102,16 @@ def get_migration_guide() -> str:
 Algorithm Reorganization Migration Guide:
 
 Old Structure → New Structure:
-- mfg_pde.alg.hjb_solvers → mfg_pde.alg_new.numerical.hjb_solvers
-- mfg_pde.alg.fp_solvers → mfg_pde.alg_new.numerical.fp_solvers
-- mfg_pde.alg.mfg_solvers → mfg_pde.alg_new.numerical.mfg_solvers
-- mfg_pde.alg.variational_solvers → mfg_pde.alg_new.optimization.variational_methods
-- mfg_pde.alg.neural_solvers → mfg_pde.alg_new.neural.physics_informed
+- mfg_pde.alg_old.hjb_solvers → mfg_pde.alg.numerical.hjb_solvers
+- mfg_pde.alg_old.fp_solvers → mfg_pde.alg.numerical.fp_solvers
+- mfg_pde.alg_old.mfg_solvers → mfg_pde.alg.numerical.mfg_solvers
+- mfg_pde.alg_old.variational_solvers → mfg_pde.alg.optimization.variational_methods
+- mfg_pde.alg_old.neural_solvers → mfg_pde.alg.neural.physics_informed
 
 New Paradigms Available:
-- mfg_pde.alg_new.optimization.optimal_transport
-- mfg_pde.alg_new.neural.operator_learning
-- mfg_pde.alg_new.reinforcement (coming soon)
+- mfg_pde.alg.optimization.optimal_transport
+- mfg_pde.alg.neural.operator_learning
+- mfg_pde.alg.reinforcement (coming soon)
 
 For detailed migration instructions, see:
 docs/development/ALGORITHM_REORGANIZATION_PLAN.md
@@ -130,7 +130,7 @@ def check_deprecated_imports() -> list[str]:
     deprecated = []
 
     for module_name in sys.modules:
-        if module_name.startswith("mfg_pde.alg.") and not module_name.startswith("mfg_pde.alg_new."):
+        if module_name.startswith("mfg_pde.alg_old."):
             # Check if it's one of the reorganized modules
             submodule = module_name.replace("mfg_pde.alg.", "")
             if submodule.split(".")[0] in _LEGACY_IMPORT_MAP:

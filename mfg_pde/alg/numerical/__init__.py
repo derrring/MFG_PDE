@@ -9,6 +9,6 @@ This module contains classical numerical analysis approaches:
 All methods are based on discretization and convergence analysis.
 """
 
-from mfg_pde.alg_new.base_solver import BaseNumericalSolver
+from mfg_pde.alg.base_solver import BaseNumericalSolver
 
 __all__ = ["BaseNumericalSolver"]
