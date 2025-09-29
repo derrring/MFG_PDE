@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
-from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.alg_old.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.utils.logging import get_logger
 
 from .damped_fixed_point_iterator import FixedPointIterator

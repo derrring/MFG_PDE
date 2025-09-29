@@ -30,8 +30,9 @@ Production-ready frameworks for complex scientific computing projects:
 - **[CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md](CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md)** - Diagnostic scripts and emergency recovery procedures
 
 ### **📊 Development Planning & Strategy**
-- **[CONSOLIDATED_ROADMAP_2025.md](CONSOLIDATED_ROADMAP_2025.md)** - Primary strategic development plan
+- **[STRATEGIC_DEVELOPMENT_ROADMAP_2026.md](STRATEGIC_DEVELOPMENT_ROADMAP_2026.md)** - Current strategic development plan (2026-2027)
 - **[CONSISTENCY_GUIDE.md](CONSISTENCY_GUIDE.md)** - Master reference for maintaining consistency across all aspects
+- **[../archive/completed_development_docs/[ARCHIVED]_CONSOLIDATED_ROADMAP_2025.md](../archive/completed_development_docs/[ARCHIVED]_CONSOLIDATED_ROADMAP_2025.md)** - Archived 2025 roadmap (achievements completed)
 
 ### **🔧 Historical Development Logs**
 - **v1.0_repository_reorganization.md** - Major repository cleanup and restructuring

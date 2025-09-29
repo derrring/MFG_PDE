@@ -1,18 +1,23 @@
+"""
+Particle-Collocation solver for Mean Field Games.
+
+This solver combines particle methods for Fokker-Planck equations with
+generalized finite difference (GFDM) collocation for Hamilton-Jacobi-Bellman equations.
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.alg.base_mfg_solver import MFGSolver
-from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
-from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+from .base_mfg import BaseMFGSolver
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-class ParticleCollocationSolver(MFGSolver):
+class ParticleCollocationSolver(BaseMFGSolver):
     """
     Particle-Collocation solver for Mean Field Games.
 
@@ -71,6 +76,8 @@ class ParticleCollocationSolver(MFGSolver):
 
         # Initialize FP solver (Particle method)
         # Use same boundary conditions for particles as for HJB
+        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+
         self.fp_solver = FPParticleSolver(
             problem=problem,
             num_particles=num_particles,
@@ -80,6 +87,8 @@ class ParticleCollocationSolver(MFGSolver):
         )
 
         # Initialize HJB solver (GFDM collocation)
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+
         self.hjb_solver = HJBGFDMSolver(
             problem=problem,
             collocation_points=collocation_points,
@@ -100,7 +109,7 @@ class ParticleCollocationSolver(MFGSolver):
         self.convergence_history: list[dict[str, float]] = []
         self.particles_trajectory = None
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         max_iterations: int | None = None,
         tolerance: float | None = None,
@@ -287,6 +296,10 @@ class ParticleCollocationSolver(MFGSolver):
         self._solution_computed = True
 
         return U_current, M_current, final_convergence_info
+
+    def _get_warm_start_initialization(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """Get warm start initialization data."""
+        return self.get_warm_start_data()
 
     def get_results(self) -> tuple[np.ndarray, np.ndarray]:
         """

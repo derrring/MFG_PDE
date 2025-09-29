@@ -12,17 +12,18 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.alg.base_mfg_solver import MFGSolver
 from mfg_pde.config.solver_config import MFGSolverConfig, extract_legacy_parameters
 
+from .base_mfg import BaseMFGSolver
+
 if TYPE_CHECKING:
-    from mfg_pde.alg.fp_solvers.base_fp import BaseFPSolver
-    from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.utils.solver_result import SolverResult
 
 
-class ConfigAwareFixedPointIterator(MFGSolver):
+class ConfigAwareFixedPointIterator(BaseMFGSolver):
     """
     Fixed Point Iterator with structured configuration support.
 
@@ -37,6 +38,9 @@ class ConfigAwareFixedPointIterator(MFGSolver):
     - Enhanced error handling and convergence analysis
     - Structured result objects with rich metadata
     - Full backward compatibility with legacy parameter names
+
+    Note: This class maintains backward compatibility with the original interface
+    while being part of the new numerical methods paradigm.
     """
 
     def __init__(
@@ -135,7 +139,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         Dt = self.problem.Dt if abs(self.problem.Dt) > 1e-12 else 1.0
 
         # Initialize solution arrays
-        if solve_config.warm_start and self.has_warm_start_data():
+        if solve_config.warm_start and self.has_warm_start_data:
             warm_start_init = self._get_warm_start_initialization()
             if warm_start_init is not None:
                 self.U, self.M = warm_start_init
@@ -297,7 +301,11 @@ class ConfigAwareFixedPointIterator(MFGSolver):
             for t in range(Nt - 1):
                 self.U[t, :] = final_u_cost
 
-    def get_results(self) -> tuple:
+    def _get_warm_start_initialization(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """Get warm start initialization data."""
+        return self.get_warm_start_data()
+
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
         """Get computed U and M solutions."""
         from mfg_pde.utils.exceptions import validate_solver_state
 
@@ -355,7 +363,7 @@ class ConfigAwareFixedPointIterator(MFGSolver):
         fp_solver: BaseFPSolver,
     ) -> ConfigAwareFixedPointIterator:
         """Create iterator optimized for accuracy."""
-        from mfg_pde.alg.config import create_accurate_config
+        from mfg_pde.config.solver_config import create_accurate_config
 
         return cls(problem, hjb_solver, fp_solver, create_accurate_config())
 

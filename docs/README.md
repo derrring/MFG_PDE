@@ -19,9 +19,9 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 - **[Advanced Examples](../examples/advanced/)** - Research-grade demonstrations
 - **[Interactive Notebooks](../examples/notebooks/)** - Jupyter-based exploration
 
-### **For Developers** 
+### **For Developers**
 - **[Development Documentation](development/)** - Complete technical documentation
-- **[Consolidated Roadmap](development/CONSOLIDATED_ROADMAP_2025.md)** - Strategic development plan
+- **[Strategic Development Roadmap](development/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md)** - Current strategic development plan (2026-2027)
 - **[Source Reference](../mfg_pde/)** - Complete function and class documentation in source
 
 ## 🚀 **Major Achievements (2025)**
@@ -61,7 +61,7 @@ docs/
 │   ├── adaptive_mesh_refinement_mfg.md # AMR theoretical framework
 │   └── [Applications and case studies] # Various MFG applications
 ├── development/                       # Complete developer documentation
-│   ├── CONSOLIDATED_ROADMAP_2025.md   # 🎯 PRIMARY strategic plan
+│   ├── STRATEGIC_DEVELOPMENT_ROADMAP_2026.md   # 🎯 PRIMARY strategic plan
 │   ├── CONSISTENCY_GUIDE.md           # Code standards and practices
 │   ├── strategy/                      # Strategic planning documents
 │   │   ├── project_summary.md         # High-level project overview

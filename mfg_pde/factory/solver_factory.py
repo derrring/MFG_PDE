@@ -16,9 +16,9 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-from mfg_pde.alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
-from mfg_pde.alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
-from mfg_pde.alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
+from mfg_pde.alg_old.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
+from mfg_pde.alg.numerical.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from mfg_pde.alg_old.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
 from mfg_pde.config.solver_config import (
     FPConfig,
     GFDMConfig,
@@ -33,9 +33,9 @@ from mfg_pde.config.solver_config import (
 )
 
 if TYPE_CHECKING:
-    from mfg_pde.alg.amr_enhancement import AMREnhancedSolver
-    from mfg_pde.alg.fp_solvers.base_fp import BaseFPSolver
-    from mfg_pde.alg.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+    from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.alg_old.amr_enhancement import AMREnhancedSolver
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
@@ -154,7 +154,7 @@ class SolverFactory:
 
         # Enhance with AMR if requested
         if enable_amr:
-            from mfg_pde.alg.amr_enhancement import create_amr_enhanced_solver
+            from mfg_pde.alg_old.amr_enhancement import create_amr_enhanced_solver
 
             return create_amr_enhanced_solver(
                 base_solver=base_solver,
@@ -413,8 +413,8 @@ def create_fast_solver(
     """
     # For fixed_point solvers, create default HJB and FP solvers if not provided
     if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
-        from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
-        from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         # Create stable default solvers using FDM (more stable than particle methods)
         hjb_solver = HJBFDMSolver(problem=problem)
@@ -466,7 +466,7 @@ def create_semi_lagrangian_solver(
         ... )
         >>> result = solver.solve()
     """
-    from mfg_pde.alg.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
+    from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
 
     # Create semi-Lagrangian HJB solver
     hjb_solver = HJBSemiLagrangianSolver(
@@ -479,8 +479,8 @@ def create_semi_lagrangian_solver(
     )
 
     # Create appropriate FP solver
-    from mfg_pde.alg.fp_solvers.fp_fdm import FPFDMSolver
-    from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
+    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+    from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 
     fp_solver: FPFDMSolver | FPParticleSolver
     if fp_solver_type == "fdm":
