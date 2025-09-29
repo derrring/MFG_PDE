@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 from mfg_pde.alg_old.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
-from mfg_pde.alg_old.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from mfg_pde.alg.numerical.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 from mfg_pde.alg_old.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
 from mfg_pde.config.solver_config import (
     FPConfig,
