@@ -29,6 +29,17 @@ from .hjb_solvers import (
     HJBWenoSolver,
 )
 
+# Import MFG solvers (coupled system solvers)
+from .mfg_solvers import (
+    AdaptiveParticleCollocationSolver,
+    BaseMFGSolver,
+    ConfigAwareFixedPointIterator,
+    FixedPointIterator,
+    HybridFPParticleHJBFDM,
+    MonitoredParticleCollocationSolver,
+    ParticleCollocationSolver,
+)
+
 __all__ = [
     "BaseNumericalSolver",
     # HJB Solvers
@@ -42,4 +53,12 @@ __all__ = [
     "FPFDMSolver",
     "FPNetworkSolver",
     "FPParticleSolver",
+    # MFG Solvers (coupled system solvers)
+    "BaseMFGSolver",
+    "ConfigAwareFixedPointIterator",
+    "FixedPointIterator",
+    "ParticleCollocationSolver",
+    "AdaptiveParticleCollocationSolver",
+    "MonitoredParticleCollocationSolver",
+    "HybridFPParticleHJBFDM",
 ]
