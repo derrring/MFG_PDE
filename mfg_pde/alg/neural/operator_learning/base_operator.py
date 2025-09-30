@@ -24,8 +24,10 @@ from __future__ import annotations
 import abc
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import numpy as np
 
@@ -301,7 +303,7 @@ if TORCH_AVAILABLE:
                 # Progress logging
                 if (epoch + 1) % 100 == 0:
                     self.logger.info(
-                        f"Epoch {epoch + 1}: Train Loss = {train_loss:.6e}, " f"Val Loss = {val_loss:.6e}"
+                        f"Epoch {epoch + 1}: Train Loss = {train_loss:.6e}, Val Loss = {val_loss:.6e}"
                         if val_loader
                         else ""
                     )
