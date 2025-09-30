@@ -183,9 +183,9 @@ class AMRGPUProfiler:
 
             compilation_overhead = first_call_time - second_call_time
 
-            print(f"  First call: {first_call_time*1000:.2f}ms")
-            print(f"  Second call: {second_call_time*1000:.2f}ms")
-            print(f"  Compilation overhead: {compilation_overhead*1000:.2f}ms")
+            print(f"  First call: {first_call_time * 1000:.2f}ms")
+            print(f"  Second call: {second_call_time * 1000:.2f}ms")
+            print(f"  Compilation overhead: {compilation_overhead * 1000:.2f}ms")
 
             # Store result
             result = ProfileResult(
@@ -302,7 +302,7 @@ class AMRGPUProfiler:
         data_sizes = [1000, 10000, 100000, 1000000]  # Number of elements
 
         for size in data_sizes:
-            print(f"Data size: {size} elements ({size*8/1024/1024:.2f} MB)")
+            print(f"Data size: {size} elements ({size * 8 / 1024 / 1024:.2f} MB)")
 
             # Generate test data on CPU
             cpu_data = np.random.randn(size).astype(np.float64)
@@ -320,16 +320,16 @@ class AMRGPUProfiler:
 
             # GPU → CPU transfer
             start_time = time.perf_counter()
-            cpu_result = device_get(gpu_result)
+            device_get(gpu_result)
             gpu_to_cpu_time = time.perf_counter() - start_time
 
             total_transfer_time = cpu_to_gpu_time + gpu_to_cpu_time
             data_size_mb = size * 8 / (1024 * 1024)  # 8 bytes per float64
             transfer_bandwidth = (2 * data_size_mb) / total_transfer_time  # GB/s
 
-            print(f"  CPU→GPU: {cpu_to_gpu_time*1000:.2f}ms")
-            print(f"  GPU compute: {gpu_compute_time*1000:.2f}ms")
-            print(f"  GPU→CPU: {gpu_to_cpu_time*1000:.2f}ms")
+            print(f"  CPU→GPU: {cpu_to_gpu_time * 1000:.2f}ms")
+            print(f"  GPU compute: {gpu_compute_time * 1000:.2f}ms")
+            print(f"  GPU→CPU: {gpu_to_cpu_time * 1000:.2f}ms")
             print(f"  Transfer bandwidth: {transfer_bandwidth:.2f} GB/s")
 
             # Store result
@@ -393,7 +393,7 @@ class AMRGPUProfiler:
         error_time = time.perf_counter() - start_time
         operations["error_estimation"] = error_time
 
-        print(f"Error estimation: {error_time*1000:.2f}ms")
+        print(f"Error estimation: {error_time * 1000:.2f}ms")
 
         # 2. Refinement Decision
         @jax.jit
@@ -405,7 +405,7 @@ class AMRGPUProfiler:
         decision_time = time.perf_counter() - start_time
         operations["refinement_decision"] = decision_time
 
-        print(f"Refinement decision: {decision_time*1000:.2f}ms")
+        print(f"Refinement decision: {decision_time * 1000:.2f}ms")
 
         # 3. Conservative Interpolation (mock)
         @jax.jit
@@ -415,15 +415,15 @@ class AMRGPUProfiler:
             return refined_values[: len(values)]  # Truncate to original size
 
         start_time = time.perf_counter()
-        interp_u = conservative_interpolation_op(u_vals, refine_flags).block_until_ready()
+        conservative_interpolation_op(u_vals, refine_flags).block_until_ready()
         interp_time = time.perf_counter() - start_time
         operations["interpolation"] = interp_time
 
-        print(f"Conservative interpolation: {interp_time*1000:.2f}ms")
+        print(f"Conservative interpolation: {interp_time * 1000:.2f}ms")
 
         # Total time
         total_time = sum(operations.values())
-        print(f"Total AMR operations: {total_time*1000:.2f}ms")
+        print(f"Total AMR operations: {total_time * 1000:.2f}ms")
 
         # Store detailed breakdown
         result = ProfileResult(

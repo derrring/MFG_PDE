@@ -99,7 +99,6 @@ class StableAnisotropicMFG:
     def compute_hamiltonian(self, dudx, dudy, m, rho):
         """Compute regularized anisotropic Hamiltonian."""
         # Regularized kinetic energy with clipping
-        eps = 1e-6
         dudx_reg = np.clip(dudx, -10, 10)
         dudy_reg = np.clip(dudy, -10, 10)
 
@@ -218,8 +217,8 @@ class StableAnisotropicMFG:
             u_new = u - self.dt * dudt
 
             # Update density (FP equation) with upwind scheme for stability
-            flux_x = m * vx
-            flux_y = m * vy
+            m * vx
+            m * vy
 
             # Upwind differences for transport
             div_flux = np.zeros_like(m)
@@ -277,7 +276,7 @@ class StableAnisotropicMFG:
                 max_velocity = np.sqrt(np.max(vx**2 + vy**2))
                 max_density = np.max(m)
                 print(
-                    f"Step {n}/{self.nt-1}, t={n*self.dt:.3f}, mass={total_mass:.4f}, "
+                    f"Step {n}/{self.nt - 1}, t={n * self.dt:.3f}, mass={total_mass:.4f}, "
                     f"max_vel={max_velocity:.3f}, max_dens={max_density:.3f}"
                 )
 

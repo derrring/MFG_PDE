@@ -47,7 +47,7 @@ def fix_pep695_type_aliases(content: str) -> str:
         lines = content.split("\n")
         import_index = 0
         for i, line in enumerate(lines):
-            if line.startswith("from typing") or line.startswith("import"):
+            if line.startswith(("from typing", "import")):
                 import_index = i + 1
             elif line.strip() == "":
                 continue

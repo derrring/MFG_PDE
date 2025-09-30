@@ -431,7 +431,7 @@ class CustomSecurityChecker:
         snippet_lines = []
         for i in range(start, end):
             marker = ">>>" if i == line_num - 1 else "   "
-            snippet_lines.append(f"{marker} {i+1:3d}: {lines[i]}")
+            snippet_lines.append(f"{marker} {i + 1:3d}: {lines[i]}")
 
         return "\n".join(snippet_lines)
 
@@ -454,7 +454,7 @@ class CustomSecurityChecker:
             "total_findings": len(self.findings),
             "by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0},
             "by_type": {},
-            "files_with_issues": len(set(f["file"] for f in self.findings)),
+            "files_with_issues": len({f["file"] for f in self.findings}),
         }
 
         for finding in self.findings:
@@ -478,7 +478,7 @@ class CustomSecurityChecker:
             return recommendations
 
         # Type-specific recommendations
-        types_found = set(f.get("type", "unknown") for f in self.findings)
+        types_found = {f.get("type", "unknown") for f in self.findings}
 
         if "numerical_stability" in types_found:
             recommendations.append("🔢 Add input validation for numerical functions (range checks, NaN/Inf handling)")

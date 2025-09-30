@@ -61,7 +61,6 @@ class ContainerSecurityChecker:
         findings = []
 
         has_user = False
-        uses_latest_tag = False
         runs_as_root = True
         has_health_check = False
 

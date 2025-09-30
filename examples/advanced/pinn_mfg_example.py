@@ -29,7 +29,7 @@ import numpy as np
 package_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(package_root))
 
-from mfg_pde.alg.neural_solvers import (  # noqa: E402
+from mfg_pde.alg.neural.pinn_solvers import (  # noqa: E402
     FPPINNSolver,
     HJBPINNSolver,
     MFGPINNSolver,

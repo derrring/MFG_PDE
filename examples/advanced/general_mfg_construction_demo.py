@@ -355,7 +355,7 @@ def example_4_portfolio_optimization():
 
             # Market drift and volatility
             drift = problem.components.parameters.get("drift", 0.05)
-            volatility = problem.components.parameters.get("volatility", 0.2)
+            problem.components.parameters.get("volatility", 0.2)
 
             # Position-dependent cost (away from optimal)
             optimal_position = problem.components.parameters.get("optimal_position", 0.0)

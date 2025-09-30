@@ -57,7 +57,7 @@ def main():
     # Create visualization
     print("\n3. Creating beach attendance visualization...")
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
     # Population density over beach preference
     ax1.plot(x_grid, final_density, "skyblue", linewidth=3, label="Population density")

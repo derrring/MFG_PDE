@@ -29,11 +29,9 @@ import time as timer
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.hjb_solvers import HJBWenoSolver
-from mfg_pde.alg.hjb_solvers.hjb_weno import WenoVariant
+from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
+from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import WenoVariant
 from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem
-
-# MFG_PDE imports
 from mfg_pde.geometry import Domain2D
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 

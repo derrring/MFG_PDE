@@ -42,7 +42,6 @@ def auto_configure_solver(problem, performance_target="balanced"):
     # Analyze problem characteristics
     problem_size = estimate_problem_size(problem)
     has_discontinuities = check_discontinuities(problem)
-    is_high_dimensional = problem.dimension > 2
     available_memory = get_available_memory()
 
     # Smart defaults based on analysis
@@ -89,16 +88,16 @@ def simple_user_interface():
     """Examples of user-friendly interface."""
 
     # Scenario 1: "I just want a solution"
-    result = solve_mfg("crowd_dynamics", fast=True)
+    solve_mfg("crowd_dynamics", fast=True)
 
     # Scenario 2: "I need high accuracy"
-    result = solve_mfg("portfolio_optimization", accurate=True, tolerance=1e-10)
+    solve_mfg("portfolio_optimization", accurate=True, tolerance=1e-10)
 
     # Scenario 3: "I have limited memory"
-    result = solve_mfg("traffic_flow", memory_efficient=True)
+    solve_mfg("traffic_flow", memory_efficient=True)
 
     # Scenario 4: "I want to experiment"
-    result = solve_mfg("custom", hamiltonian=my_hamiltonian, domain=(0, 10), quick_prototype=True)
+    solve_mfg("custom", hamiltonian=my_hamiltonian, domain=(0, 10), quick_prototype=True)
 
 
 # =============================================================================

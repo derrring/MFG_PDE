@@ -48,9 +48,9 @@ def comprehensive_three_method_evaluation():
     Dx = (problem_params["xmax"] - problem_params["xmin"]) / problem_params["Nx"]
 
     # Method 1: Pure FDM
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("METHOD 1: PURE FINITE DIFFERENCE METHOD (FDM)")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     try:
         problem = ExampleMFGProblem(**problem_params)
@@ -107,9 +107,9 @@ def comprehensive_three_method_evaluation():
         }
 
     # Method 2: Hybrid Particle-FDM
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("METHOD 2: HYBRID PARTICLE-FDM")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     try:
         problem = ExampleMFGProblem(**problem_params)
@@ -175,9 +175,9 @@ def comprehensive_three_method_evaluation():
         }
 
     # Method 3: Optimized QP-Collocation (Tuned Smart QP)
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("METHOD 3: OPTIMIZED QP-COLLOCATION (TUNED SMART QP)")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     try:
         problem = ExampleMFGProblem(**problem_params)
@@ -298,9 +298,9 @@ def comprehensive_three_method_evaluation():
 
 def print_comprehensive_comparison(results):
     """Print comprehensive method comparison"""
-    print(f"\n{'='*120}")
+    print(f"\n{'=' * 120}")
     print("COMPREHENSIVE THREE-METHOD COMPARISON SUMMARY")
-    print(f"{'='*120}")
+    print(f"{'=' * 120}")
 
     # Header
     print(
@@ -444,7 +444,7 @@ def print_comprehensive_comparison(results):
         print("📈 Recommended: Use the most suitable working method for your application")
 
     elif len(successful_results) == 1:
-        method_name = list(successful_results.values())[0]["method"]
+        method_name = next(iter(successful_results.values()))["method"]
         print(f"⚠️  Only one method completed successfully: {method_name}")
         print(f"📈 Recommended: Use {method_name} and investigate failures in other methods")
 
@@ -461,7 +461,7 @@ def create_comprehensive_plots(results, problem_params):
         return
 
     # Create large comprehensive figure
-    fig = plt.figure(figsize=(20, 16))
+    plt.figure(figsize=(20, 16))
 
     # Plot 1: Performance Comparison
     ax1 = plt.subplot(3, 3, 1)
@@ -491,7 +491,7 @@ def create_comprehensive_plots(results, problem_params):
     ax2 = plt.subplot(3, 3, 2)
     mass_errors = [r["mass_error"] for r in successful_results.values()]
 
-    bars2 = ax2.bar(methods, mass_errors, color=colors, alpha=0.7)
+    ax2.bar(methods, mass_errors, color=colors, alpha=0.7)
     ax2.set_ylabel("Mass Conservation Error (%)")
     ax2.set_title("Solution Accuracy Comparison")
     ax2.tick_params(axis="x", rotation=45)
@@ -503,7 +503,7 @@ def create_comprehensive_plots(results, problem_params):
     ax3.axis("off")
 
     char_text = "METHOD CHARACTERISTICS\n\n"
-    for i, (key, result) in enumerate(successful_results.items()):
+    for i, (_key, result) in enumerate(successful_results.items()):
         chars = result.get("characteristics", {})
         char_text += f"{result['method']}:\n"
         char_text += f"  Type: {chars.get('type', 'N/A')}\n"
@@ -522,22 +522,22 @@ def create_comprehensive_plots(results, problem_params):
         fontsize=10,
         verticalalignment="top",
         fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgray", alpha=0.8),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightgray", "alpha": 0.8},
     )
 
     # Plot 4-6: Solution profiles for each method
     x_grid = np.linspace(
         problem_params["xmin"],
         problem_params["xmax"],
-        successful_results[list(successful_results.keys())[0]]["M"].shape[1],
+        successful_results[next(iter(successful_results.keys()))]["M"].shape[1],
     )
 
     plot_positions = [(3, 3, 4), (3, 3, 5), (3, 3, 6)]
-    for i, (key, result) in enumerate(successful_results.items()):
+    for i, (_key, result) in enumerate(successful_results.items()):
         if i < 3:  # Only plot first 3 methods
             ax = plt.subplot(*plot_positions[i])
             M = result["M"]
-            U = result["U"]
+            result["U"]
 
             # Plot density evolution
             for t_idx in [0, M.shape[0] // 2, -1]:
@@ -554,14 +554,14 @@ def create_comprehensive_plots(results, problem_params):
 
             ax.set_xlabel("x")
             ax.set_ylabel("Density")
-            ax.set_title(f'{result["method"]} - Density Evolution')
+            ax.set_title(f"{result['method']} - Density Evolution")
             ax.legend()
             ax.grid(True, alpha=0.3)
 
     # Plot 7: Performance vs Accuracy Trade-off
     ax7 = plt.subplot(3, 3, 7)
 
-    for i, (key, result) in enumerate(successful_results.items()):
+    for i, (_key, result) in enumerate(successful_results.items()):
         ax7.scatter(result["time"], result["mass_error"], color=colors[i], s=150, alpha=0.7, label=result["method"])
         ax7.annotate(
             result["method"],
@@ -603,7 +603,7 @@ def create_comprehensive_plots(results, problem_params):
             -1.3,
             f"Quality: {quality}",
             ha="center",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.7),
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": "yellow", "alpha": 0.7},
         )
     else:
         ax8.text(
@@ -613,7 +613,7 @@ def create_comprehensive_plots(results, problem_params):
             ha="center",
             va="center",
             transform=ax8.transAxes,
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgray", alpha=0.8),
+            bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightgray", "alpha": 0.8},
         )
         ax8.set_title("QP Optimization Status")
 
@@ -645,7 +645,7 @@ def create_comprehensive_plots(results, problem_params):
         working_count = len(successful_results)
         recommendations += f"⚠️ {working_count} method(s) working\n\n"
         if working_count > 0:
-            best_method = list(successful_results.values())[0]["method"]
+            best_method = next(iter(successful_results.values()))["method"]
             recommendations += f"📈 USE: {best_method}\n"
             recommendations += "🔧 Debug failed methods\n"
         else:
@@ -660,7 +660,7 @@ def create_comprehensive_plots(results, problem_params):
         fontsize=11,
         verticalalignment="top",
         fontweight="bold",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.8),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightgreen", "alpha": 0.8},
     )
 
     plt.tight_layout()
@@ -681,9 +681,9 @@ def main():
     try:
         results = comprehensive_three_method_evaluation()
 
-        print(f"\n{'='*120}")
+        print(f"\n{'=' * 120}")
         print("COMPREHENSIVE THREE-METHOD EVALUATION COMPLETED")
-        print(f"{'='*120}")
+        print(f"{'=' * 120}")
         print("Check the comprehensive summary above and generated visualization for complete results.")
 
         return results

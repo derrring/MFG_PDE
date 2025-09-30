@@ -58,26 +58,26 @@ if TORCH_AVAILABLE:
     )
 
     __all__ = [
-        # Loss functions
-        "BoundaryLoss",
-        "DataLoss",
-        "MFGLossFunction",
-        "PINNLossFunction",
-        "PhysicsLoss",
-        # Network architectures
-        "FeedForwardNetwork",
-        "ModifiedMLP",
-        "NetworkArchitecture",
-        "ResidualNetwork",
-        "create_mfg_networks",
         # Training components
         "AdaptiveSampling",
+        # Loss functions
+        "BoundaryLoss",
         "CurriculumLearning",
+        "DataLoss",
+        # Network architectures
+        "FeedForwardNetwork",
+        "MFGLossFunction",
+        "ModifiedMLP",
+        "NetworkArchitecture",
         "OptimizationScheduler",
+        "PINNLossFunction",
+        "PhysicsLoss",
+        "ResidualNetwork",
         "TrainingManager",
         # Utilities
         "auto_differentiation",
         "compute_gradients",
+        "create_mfg_networks",
         "neural_network_utils",
         "sample_points",
     ]

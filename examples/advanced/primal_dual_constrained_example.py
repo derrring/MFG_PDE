@@ -23,8 +23,8 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.variational_solvers.primal_dual_solver import PrimalDualMFGSolver
-from mfg_pde.alg.variational_solvers.variational_mfg_solver import VariationalMFGSolver
+from mfg_pde.alg.optimization.variational_solvers.primal_dual_solver import PrimalDualMFGSolver
+from mfg_pde.alg.optimization.variational_solvers.variational_mfg_solver import VariationalMFGSolver
 from mfg_pde.core.lagrangian_mfg_problem import (
     LagrangianComponents,
     LagrangianMFGProblem,
@@ -447,7 +447,7 @@ def main():
 
         logger.info("Problem created:")
         logger.info(f"  Domain: [{problem.xmin}, {problem.xmax}] × [0, {problem.T}]")
-        logger.info(f"  Grid: {problem.Nx+1} × {problem.Nt}")
+        logger.info(f"  Grid: {problem.Nx + 1} × {problem.Nt}")
         logger.info("  Constraints: obstacle + velocity + budget + capacity")
 
         # Solve with both methods

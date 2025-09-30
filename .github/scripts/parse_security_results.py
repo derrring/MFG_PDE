@@ -749,14 +749,14 @@ class SecurityResultsParser:
         content = f"""# Dependency Security Scan Summary
 
 **Scan Date:** {self.timestamp}
-**Tools Used:** {', '.join(summary['tools_used'])}
+**Tools Used:** {", ".join(summary["tools_used"])}
 
 ## Summary
-- **Total Vulnerabilities:** {summary['total_vulnerabilities']}
-- **Critical:** {summary['critical_count']}
-- **High:** {summary['high_count']}
-- **Medium:** {summary['medium_count']}
-- **Low:** {summary['low_count']}
+- **Total Vulnerabilities:** {summary["total_vulnerabilities"]}
+- **Critical:** {summary["critical_count"]}
+- **High:** {summary["high_count"]}
+- **Medium:** {summary["medium_count"]}
+- **Low:** {summary["low_count"]}
 
 ## Recommendations
 """
@@ -779,13 +779,13 @@ class SecurityResultsParser:
         content = f"""# Static Analysis Security Summary
 
 **Scan Date:** {self.timestamp}
-**Tools Used:** {', '.join(summary['tools_used'])}
+**Tools Used:** {", ".join(summary["tools_used"])}
 
 ## Summary
-- **Total Issues:** {summary['total_issues']}
-- **High Confidence:** {summary['high_confidence']}
-- **Medium Confidence:** {summary['medium_confidence']}
-- **Low Confidence:** {summary['low_confidence']}
+- **Total Issues:** {summary["total_issues"]}
+- **High Confidence:** {summary["high_confidence"]}
+- **Medium Confidence:** {summary["medium_confidence"]}
+- **Low Confidence:** {summary["low_confidence"]}
 
 ## Recommendations
 """
@@ -803,12 +803,12 @@ class SecurityResultsParser:
         content = f"""# Secrets Scan Summary
 
 **Scan Date:** {self.timestamp}
-**Tools Used:** {', '.join(summary['tools_used'])}
+**Tools Used:** {", ".join(summary["tools_used"])}
 
 ## Summary
-- **Total Secrets Found:** {summary['total_secrets']}
-- **High Entropy:** {summary['high_entropy']}
-- **Potential Keys:** {summary['potential_keys']}
+- **Total Secrets Found:** {summary["total_secrets"]}
+- **High Entropy:** {summary["high_entropy"]}
+- **Potential Keys:** {summary["potential_keys"]}
 
 ## Recommendations
 """
@@ -826,15 +826,15 @@ class SecurityResultsParser:
         content = f"""# Container Security Summary
 
 **Scan Date:** {self.timestamp}
-**Tools Used:** {', '.join(summary['tools_used'])}
+**Tools Used:** {", ".join(summary["tools_used"])}
 
 ## Summary
-- **Container Vulnerabilities:** {summary['total_vulnerabilities']}
-- **Critical:** {summary['critical_count']}
-- **High:** {summary['high_count']}
-- **Medium:** {summary['medium_count']}
-- **Low:** {summary['low_count']}
-- **Dockerfile Issues:** {summary['dockerfile_issues']}
+- **Container Vulnerabilities:** {summary["total_vulnerabilities"]}
+- **Critical:** {summary["critical_count"]}
+- **High:** {summary["high_count"]}
+- **Medium:** {summary["medium_count"]}
+- **Low:** {summary["low_count"]}
+- **Dockerfile Issues:** {summary["dockerfile_issues"]}
 
 ## Recommendations
 """
@@ -852,13 +852,13 @@ class SecurityResultsParser:
         content = f"""# License Compliance Summary
 
 **Scan Date:** {self.timestamp}
-**Tools Used:** {', '.join(summary['tools_used'])}
+**Tools Used:** {", ".join(summary["tools_used"])}
 
 ## Summary
-- **Total Packages:** {summary['total_packages']}
-- **Compliant Licenses:** {summary['compliant_licenses']}
-- **Non-compliant Licenses:** {summary['non_compliant_licenses']}
-- **Unknown Licenses:** {summary['unknown_licenses']}
+- **Total Packages:** {summary["total_packages"]}
+- **Compliant Licenses:** {summary["compliant_licenses"]}
+- **Non-compliant Licenses:** {summary["non_compliant_licenses"]}
+- **Unknown Licenses:** {summary["unknown_licenses"]}
 
 ## Recommendations
 """

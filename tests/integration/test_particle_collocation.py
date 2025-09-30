@@ -16,8 +16,8 @@ import numpy as np
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
-from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
+from mfg_pde.alg.numerical.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 
 
 class ExampleMFGProblem:
@@ -134,7 +134,7 @@ def example_particle_collocation_solver():
         # Simple visualization
         print("\nCreating visualization...")
 
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        _fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
         # Plot value function evolution
         axes[0, 0].imshow(U_solution, aspect="auto", origin="lower", cmap="viridis")

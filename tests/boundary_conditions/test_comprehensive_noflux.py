@@ -5,7 +5,7 @@ Comprehensive test of ghost particle no-flux implementation
 
 import numpy as np
 
-from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.numerical.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
@@ -25,10 +25,10 @@ def test_comprehensive_noflux():
     results = {}
 
     for i, case in enumerate(test_cases):
-        print(f"\n{'='*60}")
-        print(f"TEST {i+1}: {case['name']}")
+        print(f"\n{'=' * 60}")
+        print(f"TEST {i + 1}: {case['name']}")
         print(f"Nx={case['Nx']}, T={case['T']}, Nt={case['Nt']}, Colloc={case['n_colloc']}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Create problem
         problem = ExampleMFGProblem(
@@ -146,11 +146,11 @@ def test_comprehensive_noflux():
             results[case["name"]] = {"status": "❌ ERROR", "score": 0}
 
     # Summary
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("COMPREHENSIVE RESULTS SUMMARY")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"{'Case':<10} {'Status':<12} {'Mass Δ':<10} {'Max |U|':<8} {'SVD%':<6} {'Score'}")
-    print(f"{'-'*10} {'-'*12} {'-'*10} {'-'*8} {'-'*6} {'-'*5}")
+    print(f"{'-' * 10} {'-' * 12} {'-' * 10} {'-' * 8} {'-' * 6} {'-' * 5}")
 
     total_score = 0
     max_score = 0
@@ -175,9 +175,9 @@ def test_comprehensive_noflux():
     # Overall assessment
     success_rate = total_score / max_score * 100 if max_score > 0 else 0
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("OVERALL ASSESSMENT")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"Success Rate: {success_rate:.1f}% ({total_score}/{max_score})")
 
     if success_rate >= 80:

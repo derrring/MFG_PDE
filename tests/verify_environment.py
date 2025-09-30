@@ -72,7 +72,7 @@ def verify_environment():
         print(f"✅ MFG_PDE version: {mfg_pde.__version__}")
 
         # Test core functionality
-        from mfg_pde.alg.variational_solvers import VariationalMFGSolver
+        from mfg_pde.alg.optimization.variational_solvers import VariationalMFGSolver
         from mfg_pde.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
 
         problem = create_quadratic_lagrangian_mfg(xmin=0, xmax=1, Nx=10, T=0.1, Nt=5)

@@ -39,9 +39,9 @@ def test_method_comparison():
     results = {}
 
     # Method 1: Pure FDM
-    print(f"\n{'-'*60}")
+    print(f"\n{'-' * 60}")
     print("TESTING PURE FDM METHOD")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
 
     try:
         problem = ExampleMFGProblem(**problem_params)
@@ -87,9 +87,9 @@ def test_method_comparison():
         results["fdm"] = {"method": "Pure FDM", "success": False, "error": str(e)}
 
     # Method 2: Hybrid Particle-FDM
-    print(f"\n{'-'*60}")
+    print(f"\n{'-' * 60}")
     print("TESTING HYBRID PARTICLE-FDM METHOD")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
 
     try:
         problem = ExampleMFGProblem(**problem_params)
@@ -143,9 +143,9 @@ def test_method_comparison():
         results["hybrid"] = {"method": "Hybrid Particle-FDM", "success": False, "error": str(e)}
 
     # Method 3: Improved QP-Collocation
-    print(f"\n{'-'*60}")
+    print(f"\n{'-' * 60}")
     print("TESTING IMPROVED QP-COLLOCATION METHOD")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
 
     try:
         problem = ExampleMFGProblem(**problem_params)
@@ -245,9 +245,9 @@ def test_method_comparison():
         results["qp"] = {"method": "Improved QP-Collocation", "success": False, "error": str(e)}
 
     # Print summary
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("COMPARISON SUMMARY")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     print(f"\n{'Method':<25} {'Success':<8} {'Time(s)':<10} {'Mass Error %':<12} {'Converged':<10} {'Iterations':<10}")
     print("-" * 85)
@@ -321,7 +321,7 @@ def create_comparison_plots(results, problem_params):
         print("No successful results to plot")
         return
 
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+    _fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
     # Plot 1: Solve Time Comparison
     methods = [r["method"] for r in successful_results.values()]
@@ -358,10 +358,10 @@ def create_comparison_plots(results, problem_params):
     x_grid = np.linspace(
         problem_params["xmin"],
         problem_params["xmax"],
-        successful_results[list(successful_results.keys())[0]]["M"].shape[1],
+        successful_results[next(iter(successful_results.keys()))]["M"].shape[1],
     )
 
-    for i, (key, result) in enumerate(successful_results.items()):
+    for i, (_key, result) in enumerate(successful_results.items()):
         M = result["M"]
         ax3.plot(x_grid, M[-1, :], label=f"{result['method']} (final)", color=colors[i], linewidth=2)
         ax3.plot(
@@ -411,7 +411,7 @@ def create_comparison_plots(results, problem_params):
                 f"Estimated Speedup: {estimated_speedup:.1f}x",
                 transform=ax4.transAxes,
                 ha="center",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.5),
+                bbox={"boxstyle": "round,pad=0.3", "facecolor": "yellow", "alpha": 0.5},
             )
     else:
         ax4.text(
@@ -445,9 +445,9 @@ def main():
     try:
         results = test_method_comparison()
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("FIXED METHOD COMPARISON COMPLETED")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print("Check the summary above and generated plots for detailed comparison.")
 
         return results

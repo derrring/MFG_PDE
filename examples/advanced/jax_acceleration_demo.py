@@ -55,7 +55,7 @@ class BarProblemJAX(ExampleMFGProblem):
         return np.exp(-20 * (x - 0.3) ** 2)
 
 
-def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
+def benchmark_backends(problem_sizes=None, num_runs=3):
     """
     Benchmark NumPy vs JAX backends across different problem sizes.
 
@@ -66,6 +66,8 @@ def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
     Returns:
         Dictionary with benchmark results
     """
+    if problem_sizes is None:
+        problem_sizes = [100, 500, 1000]
     logger.info(f"Starting backend benchmark with sizes {problem_sizes}")
 
     results = {"problem_sizes": problem_sizes, "numpy_times": [], "jax_times": [], "speedups": [], "memory_usage": {}}
@@ -150,7 +152,7 @@ def benchmark_backends(problem_sizes=[100, 500, 1000], num_runs=3):
         results["jax_times"].append(avg_jax_time)
         results["speedups"].append(speedup)
 
-        logger.info(f"Nx={Nx}: NumPy={avg_numpy_time:.3f}s, JAX={avg_jax_time:.3f}s, " f"Speedup={speedup:.2f}x")
+        logger.info(f"Nx={Nx}: NumPy={avg_numpy_time:.3f}s, JAX={avg_jax_time:.3f}s, Speedup={speedup:.2f}x")
 
     return results
 
@@ -265,7 +267,7 @@ def create_performance_plots(benchmark_results, jax_features=None):
         )
         ax4.set_xlabel("x")
         ax4.set_ylabel("Value")
-        ax4.set_title(f'Automatic Differentiation Demo\n(Error: {jax_features["error"]:.2e})')
+        ax4.set_title(f"Automatic Differentiation Demo\n(Error: {jax_features['error']:.2e})")
         ax4.legend()
         ax4.grid(True, alpha=0.3)
     else:
@@ -277,7 +279,7 @@ def create_performance_plots(benchmark_results, jax_features=None):
             va="center",
             transform=ax4.transAxes,
             fontsize=12,
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"),
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightgray"},
         )
         ax4.set_title("Automatic Differentiation Demo")
 

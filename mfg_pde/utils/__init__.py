@@ -146,69 +146,69 @@ AVAILABLE_MODULES = {
 
 # Public API - Core utilities always available
 __all__ = [
+    # Availability flags
+    "AVAILABLE_MODULES",
+    "CLI_AVAILABLE",
+    "EXPERIMENT_MANAGER_AVAILABLE",
+    "MEMORY_MANAGEMENT_AVAILABLE",
+    "NOTEBOOK_REPORTING_AVAILABLE",
+    "PERFORMANCE_MONITORING_AVAILABLE",
+    "POLARS_AVAILABLE",
     # Convergence monitoring
     "AdaptiveConvergenceWrapper",
     "AdvancedConvergenceMonitor",
-    "DistributionComparator",
-    "OscillationDetector",
-    "ParticleMethodDetector",
-    "adaptive_convergence",
-    "create_default_monitor",
-    "test_particle_detection",
-    "wrap_solver_with_adaptive_convergence",
-    # Auxiliary functions
-    "npart",
-    "ppart",
     # Exception handling
     "ConfigurationError",
     "ConvergenceError",
+    # Solver results
+    "ConvergenceResult",
     "DimensionMismatchError",
-    "MFGSolverError",
-    "NumericalInstabilityError",
-    "SolutionNotAvailableError",
-    "check_numerical_stability",
-    "validate_array_dimensions",
-    "validate_parameter_value",
-    "validate_solver_state",
-    # Integration utilities
-    "get_integration_info",
-    "trapezoid",
+    "DistributionComparator",
     # Logging
     "LoggedOperation",
+    # Logging decorators
+    "LoggingMixin",
     "MFGLogger",
+    "MFGSolverError",
+    "MFGSolverResult",
+    "NumericalInstabilityError",
+    "OscillationDetector",
+    "ParticleMethodDetector",
+    "SolutionNotAvailableError",
+    "SolverResult",
+    "adaptive_convergence",
+    "add_logging_to_class",
+    "check_numerical_stability",
     "configure_logging",
     "configure_research_logging",
+    "create_default_monitor",
+    "create_solver_result",
+    # Integration utilities
+    "get_integration_info",
     "get_logger",
     "log_performance_metric",
     "log_solver_completion",
     "log_solver_progress",
     "log_solver_start",
     "log_validation_error",
-    # Logging decorators
-    "LoggingMixin",
-    "add_logging_to_class",
     "logged_operation",
     "logged_solver_method",
     "logged_validation",
+    # Auxiliary functions
+    "npart",
     "performance_logged",
-    # Solver results
-    "ConvergenceResult",
-    "MFGSolverResult",
-    "SolverResult",
-    "create_solver_result",
+    "ppart",
     # Validation
     "safe_solution_return",
+    "test_particle_detection",
+    "trapezoid",
+    "validate_array_dimensions",
     "validate_convergence_parameters",
     "validate_mfg_solution",
+    "validate_parameter_value",
     "validate_solution_array",
-    # Availability flags
-    "AVAILABLE_MODULES",
-    "NOTEBOOK_REPORTING_AVAILABLE",
-    "POLARS_AVAILABLE",
-    "CLI_AVAILABLE",
-    "EXPERIMENT_MANAGER_AVAILABLE",
-    "MEMORY_MANAGEMENT_AVAILABLE",
-    "PERFORMANCE_MONITORING_AVAILABLE",
+    "validate_solver_state",
+    "wrap_solver_with_adaptive_convergence",
 ]
 
 # Add optional modules to public API if available

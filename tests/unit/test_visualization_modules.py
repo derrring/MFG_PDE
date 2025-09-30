@@ -38,13 +38,13 @@ def test_advanced_visualization():
     logger = get_logger(__name__)
     logger.info("Testing advanced visualization module")
 
-    U, M, x_grid, t_grid = create_test_data()
+    _U, M, x_grid, t_grid = create_test_data()
     output_dir = Path("test_output")
     output_dir.mkdir(exist_ok=True)
 
     try:
         # Test MFG solution plot
-        fig = create_mfg_solution_plot(x_grid, t_grid, M, title="Test MFG Solution")
+        create_mfg_solution_plot(x_grid, t_grid, M, title="Test MFG Solution")
 
         logger.info("Advanced visualization test successful")
         return True
@@ -59,7 +59,7 @@ def test_mathematical_visualization():
     logger = get_logger(__name__)
     logger.info("Testing mathematical visualization module")
 
-    U, M, x_grid, t_grid = create_test_data()
+    U, _M, x_grid, _t_grid = create_test_data()
     output_dir = Path("test_output")
     output_dir.mkdir(exist_ok=True)
 
@@ -67,7 +67,7 @@ def test_mathematical_visualization():
         # Test HJB analysis
         visualizer = create_mathematical_visualizer()
         du_dx = np.gradient(U, x_grid, axis=0)
-        fig = visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Test HJB Analysis")
+        visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Test HJB Analysis")
 
         logger.info("Mathematical visualization test successful")
         return True
@@ -83,16 +83,16 @@ def test_quick_functions():
     logger.info("Testing quick visualization functions")
 
     U, M, x_grid, t_grid = create_test_data()
-    output_dir = Path("test_output")
+    Path("test_output")
 
     try:
         # Test quick plot solution
-        fig1 = create_mfg_solution_plot(x_grid, t_grid, M, title="Quick Solution")
+        create_mfg_solution_plot(x_grid, t_grid, M, title="Quick Solution")
 
         # Test quick HJB analysis
         visualizer = create_mathematical_visualizer()
         du_dx = np.gradient(U, x_grid, axis=0)
-        fig2 = visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Quick HJB")
+        visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Quick HJB")
 
         logger.info("Quick functions test successful")
         return True

@@ -112,8 +112,8 @@ def demonstrate_log_analysis():
     # Generate various log entries for analysis
     for i in range(5):
         logger.info("Initializing HJBSolver")
-        logger.info(f"Performance - Matrix assembly: {0.1 + i*0.05:.3f}s")
-        logger.info(f"Iteration {i+1}/10 (10.0%) - Error: {1e-3/(i+1):.2e}")
+        logger.info(f"Performance - Matrix assembly: {0.1 + i * 0.05:.3f}s")
+        logger.info(f"Iteration {i + 1}/10 (10.0%) - Error: {1e-3 / (i + 1):.2e}")
         if i == 2:
             logger.error("Convergence issue detected - reducing time step")
         logger.info("HJBSolver completed - Status: CONVERGED")

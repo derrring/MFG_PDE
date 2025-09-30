@@ -103,7 +103,7 @@ class ComprehensiveAMRBenchmark:
                 print("Performance Summary:")
                 print(f"  Average AMR time: {avg_amr_time:.3f}s")
                 print(f"  Average uniform time: {avg_uniform_time:.3f}s")
-                print(f"  Speedup ratio: {avg_uniform_time/avg_amr_time:.2f}x")
+                print(f"  Speedup ratio: {avg_uniform_time / avg_amr_time:.2f}x")
                 print(f"  Average mesh efficiency: {avg_efficiency:.3f}")
 
     def run_accuracy_benchmarks(self):
@@ -133,7 +133,7 @@ class ComprehensiveAMRBenchmark:
                 print("Accuracy Summary:")
                 print(f"  Average AMR L2 error: {avg_amr_error:.2e}")
                 print(f"  Average uniform L2 error: {avg_uniform_error:.2e}")
-                print(f"  Accuracy improvement: {avg_uniform_error/avg_amr_error:.2f}x better")
+                print(f"  Accuracy improvement: {avg_uniform_error / avg_amr_error:.2f}x better")
 
     def run_gpu_profiling(self):
         """Run GPU/CPU performance profiling."""
@@ -163,7 +163,7 @@ class ComprehensiveAMRBenchmark:
                 print("GPU Profiling Summary:")
                 print(f"  Average compilation time: {avg_compilation_time:.2f}ms")
                 print(f"  Average compute time: {avg_compute_time:.2f}ms")
-                print(f"  Compilation overhead: {avg_compilation_time/avg_compute_time:.2f}x")
+                print(f"  Compilation overhead: {avg_compilation_time / avg_compute_time:.2f}x")
 
     def run_memory_analysis(self):
         """Run memory usage analysis."""
@@ -256,7 +256,7 @@ class ComprehensiveAMRBenchmark:
 
                 print(f"  Uniform: {uniform_time:.3f}s ({'✓' if uniform_converged else '✗'})")
                 print(f"  AMR: {amr_time:.3f}s ({'✓' if amr_converged else '✗'})")
-                print(f"  Speedup: {uniform_time/amr_time:.2f}x")
+                print(f"  Speedup: {uniform_time / amr_time:.2f}x")
                 print(f"  Efficiency: {efficiency:.3f} ({total_elements}/{problem.Nx} elements)")
 
             except Exception as e:
@@ -305,7 +305,7 @@ class ComprehensiveAMRBenchmark:
                 f.write("### Performance Results\n")
                 f.write(f"- **Average Speedup**: {perf.get('speedup_ratio', 0):.2f}x over uniform grids\n")
                 f.write(f"- **Mesh Efficiency**: {perf.get('avg_mesh_efficiency', 0):.3f} ")
-                f.write(f"({100*(1-perf.get('avg_mesh_efficiency', 1)):.1f}% element reduction)\n")
+                f.write(f"({100 * (1 - perf.get('avg_mesh_efficiency', 1)):.1f}% element reduction)\n")
                 f.write(f"- **Total Benchmarks**: {perf.get('total_benchmarks', 0)}\n\n")
 
             # Accuracy Summary

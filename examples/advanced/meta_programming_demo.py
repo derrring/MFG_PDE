@@ -154,7 +154,7 @@ def demo_automatic_code_generation():
     print("   Generated solver class (first 20 lines):")
     lines = solver_code.split("\n")
     for i, line in enumerate(lines[:20]):
-        print(f"   {i+1:2d}: {line}")
+        print(f"   {i + 1:2d}: {line}")
 
     if len(lines) > 20:
         print(f"   ... ({len(lines) - 20} more lines)")
@@ -221,7 +221,7 @@ def demo_performance_optimization():
         problem = MFGProblem(xmin=0, xmax=1, T=1.0, Nx=nx, Nt=nt)
 
         # Create standard solver
-        standard_solver = create_fast_solver(problem)
+        create_fast_solver(problem)
 
         # Create performance profile
         profile = PerformanceProfile(
@@ -333,7 +333,7 @@ def demo_decorators_and_jit():
 
     # Test HJB step
     start_time = time.perf_counter()
-    u_new = solver.solve_hjb_step(u, m)
+    solver.solve_hjb_step(u, m)
     hjb_time = time.perf_counter() - start_time
     print(f"   HJB step: {hjb_time:.6f}s")
 
@@ -436,10 +436,10 @@ def main():
 
     try:
         # 1. Mathematical DSL
-        systems = demo_mathematical_dsl()
+        demo_mathematical_dsl()
 
         # 2. Code generation
-        solver_code = demo_automatic_code_generation()
+        demo_automatic_code_generation()
 
         # 3. Type-driven dispatch
         demo_type_driven_dispatch()

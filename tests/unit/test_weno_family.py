@@ -19,7 +19,7 @@ import pytest
 import numpy as np
 
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBWenoSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 
 
 class TestWenoFamilySolver:

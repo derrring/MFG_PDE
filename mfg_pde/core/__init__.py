@@ -23,16 +23,16 @@ __all__ = [
     "MFGComponents",
     "MFGProblem",
     "MFGProblemBuilder",
-    "create_mfg_problem",
-    # Variational MFG
-    "VariationalMFGComponents",
-    "VariationalMFGProblem",
-    "create_obstacle_variational_mfg",
-    "create_quadratic_variational_mfg",
     # Network MFG
     "NetworkMFGComponents",
     "NetworkMFGProblem",
+    # Variational MFG
+    "VariationalMFGComponents",
+    "VariationalMFGProblem",
     "create_grid_mfg_problem",
+    "create_mfg_problem",
+    "create_obstacle_variational_mfg",
+    "create_quadratic_variational_mfg",
     "create_random_mfg_problem",
     "create_scale_free_mfg_problem",
 ]

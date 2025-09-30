@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
-from mfg_pde.alg.mfg_solvers.hybrid_fp_particle_hjb_fdm import (
+from mfg_pde.alg.numerical.mfg_solvers.hybrid_fp_particle_hjb_fdm import (
     HybridSolverPresets,
     create_hybrid_fp_particle_hjb_fdm_solver,
 )
@@ -80,7 +80,7 @@ def demo_basic_hybrid_solver():
         logger.info(f"   Iterations: {result['iterations']}")
         logger.info(f"   Solve time: {solve_time:.2f}s")
         logger.info(f"   Final residual: {result['final_residual']:.2e}")
-        logger.info(f"   Time per iteration: {solve_time/result['iterations']:.2f}s")
+        logger.info(f"   Time per iteration: {solve_time / result['iterations']:.2f}s")
     else:
         logger.warning("⚠️ Hybrid solver did not converge")
         logger.warning(f"   Final residual: {result['final_residual']:.2e}")

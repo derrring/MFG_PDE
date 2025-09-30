@@ -43,17 +43,17 @@ __description__ = "2D Anisotropic Crowd Dynamics with Barriers"
 __all__ = [
     # Main classes
     "AnisotropicMFGProblem2D",
-    "create_anisotropic_problem",
     # Barrier types
     "CircularBarrier",
     "LinearBarrier",
     "RectangularBarrier",
+    "__author__",
+    "__description__",
+    # Package info
+    "__version__",
+    "create_anisotropic_problem",
     # Solver configuration
     "create_anisotropic_solver_config",
     "create_experiment_solver",
     "create_performance_optimized_config",
-    # Package info
-    "__version__",
-    "__author__",
-    "__description__",
 ]

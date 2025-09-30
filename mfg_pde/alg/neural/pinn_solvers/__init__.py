@@ -69,7 +69,7 @@ else:
     import warnings
 
     warnings.warn(
-        "PyTorch is required for PINN solvers. " "Install with: pip install mfg_pde[neural] or pip install torch",
+        "PyTorch is required for PINN solvers. Install with: pip install mfg_pde[neural] or pip install torch",
         ImportWarning,
     )
 
