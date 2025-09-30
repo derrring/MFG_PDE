@@ -46,29 +46,42 @@ if TORCH_AVAILABLE:
         neural_network_utils,
         sample_points,
     )
-    from .pinn_solvers import (
-        FPPINNSolver,
-        HJBPINNSolver,
-        MFGPINNSolver,
-        PINNBase,
-        PINNConfig,
-    )
+    # PINN solvers temporarily disabled during development
+    try:
+        from .pinn_solvers import (
+            FPPINNSolver,
+            HJBPINNSolver,
+            MFGPINNSolver,
+            PINNBase,
+            PINNConfig,
+        )
+    except ImportError:
+        # PINN solvers not available, set empty classes for compatibility
+        FPPINNSolver = None
+        HJBPINNSolver = None
+        MFGPINNSolver = None
+        PINNBase = None
+        PINNConfig = None
+
+    pinn_exports = []
+    if FPPINNSolver is not None:
+        pinn_exports = [
+            "FPPINNSolver",
+            "HJBPINNSolver",
+            "MFGPINNSolver",
+            "PINNBase",
+            "PINNConfig",
+        ]
 
     __all__ = [
         "BaseNeuralSolver",
         # Core Neural Components
         "BoundaryLoss",
         "DataLoss",
-        # PINN Solvers
-        "FPPINNSolver",
         "FeedForwardNetwork",
-        "HJBPINNSolver",
         "MFGLossFunction",
-        "MFGPINNSolver",
         "ModifiedMLP",
         "NetworkArchitecture",
-        "PINNBase",
-        "PINNConfig",
         "PINNLossFunction",
         "PhysicsLoss",
         "ResidualNetwork",
@@ -78,7 +91,7 @@ if TORCH_AVAILABLE:
         "create_mfg_networks",
         "neural_network_utils",
         "sample_points",
-    ]
+    ] + pinn_exports
 else:
     import warnings
 

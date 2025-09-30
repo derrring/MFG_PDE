@@ -22,30 +22,19 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from .base_pinn import PINNBase, PINNConfig
-    from .fp_pinn_solver import FPPINNSolver
-    from .hjb_pinn_solver import HJBPINNSolver
-    from .mfg_pinn_solver import MFGPINNSolver
+    # PINN solvers temporarily disabled due to missing networks module
+    # TODO: Complete neural paradigm implementation
+    import warnings
+    warnings.warn(
+        "PINN solvers are currently under development in the neural paradigm. "
+        "Use numerical or optimization paradigms for now.",
+        UserWarning
+    )
 
-    __all__ = [
-        "FPPINNSolver",
-        "HJBPINNSolver",
-        "MFGPINNSolver",
-        "PINNBase",
-        "PINNConfig",
-    ]
-
-    # Solver categories for factory selection
-    INDIVIDUAL_PINN_SOLVERS = [
-        "HJBPINNSolver",  # HJB equation PINN solver
-        "FPPINNSolver",  # Fokker-Planck equation PINN solver
-    ]
-
-    COUPLED_PINN_SOLVERS = [
-        "MFGPINNSolver",  # Complete MFG system PINN solver
-    ]
-
-    ALL_PINN_SOLVERS = INDIVIDUAL_PINN_SOLVERS + COUPLED_PINN_SOLVERS
+    __all__ = []
+    INDIVIDUAL_PINN_SOLVERS = []
+    COUPLED_PINN_SOLVERS = []
+    ALL_PINN_SOLVERS = []
 
 else:
     import warnings
