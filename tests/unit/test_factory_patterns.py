@@ -27,8 +27,8 @@ from mfg_pde.alg import (
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
 )
-from mfg_pde.alg.fp_solvers import FPParticleSolver
-from mfg_pde.alg.hjb_solvers import HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 from mfg_pde.config import create_research_config
 
 

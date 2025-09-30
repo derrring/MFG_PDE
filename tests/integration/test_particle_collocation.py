@@ -16,8 +16,8 @@ import numpy as np
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
-from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
+from mfg_pde.alg.numerical.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 
 
 class ExampleMFGProblem:

@@ -24,7 +24,7 @@ import numpy as np
 # Add the parent directory to the path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mfg_pde.alg.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.numerical.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.boundaries import BoundaryConditions
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.utils.integration import trapezoid

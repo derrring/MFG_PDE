@@ -21,7 +21,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.mfg_solvers.network_mfg_solver import create_network_mfg_solver
+from mfg_pde.alg.numerical.mfg_solvers.network_mfg_solver import create_network_mfg_solver
 
 # MFG_PDE imports
 from mfg_pde.core.network_mfg_problem import NetworkMFGComponents, NetworkMFGProblem

@@ -24,7 +24,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.variational_solvers.variational_mfg_solver import VariationalMFGSolver
+from mfg_pde.alg.optimization.variational_solvers.variational_mfg_solver import VariationalMFGSolver
 from mfg_pde.core.lagrangian_mfg_problem import (
     LagrangianComponents,
     LagrangianMFGProblem,

@@ -222,7 +222,7 @@ def demonstrate_neural_solver_integration():
     print("=" * 50)
 
     try:
-        from mfg_pde.alg.neural_solvers import (
+        from mfg_pde.alg.neural.pinn_solvers import (
             CUDA_AVAILABLE,
             MPS_AVAILABLE,
             TORCH_AVAILABLE,

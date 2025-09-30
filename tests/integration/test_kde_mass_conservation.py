@@ -5,7 +5,7 @@ Test to verify KDE mass conservation issue
 
 import numpy as np
 
-from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver as ParticleFPSolver
+from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver as ParticleFPSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
