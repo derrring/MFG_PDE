@@ -2,12 +2,19 @@
 Neural paradigm for MFG problems.
 
 This module contains neural network-based approaches for solving Mean Field Games:
-- pinn_solvers: Physics-Informed Neural Networks for MFG systems
+- nn: Neural network architectures (shared by all neural methods)
+- pinn_solvers: Physics-Informed Neural Networks (HJB, FP, MFG solvers)
+- operator_learning: Neural operator methods (FNO, DeepONet) for parameter-to-solution mapping
 - core: Shared neural network infrastructure and utilities
 
-Neural methods use automatic differentiation and optimization to parameterize
-PDE solutions as neural networks, providing flexible approaches for complex
-geometries and high-dimensional problems.
+Key Neural Methods:
+- PINN Solvers: Individual HJBPINNSolver, FPPINNSolver, and coupled MFGPINNSolver
+- Neural Operators: FourierNeuralOperator and DeepONet for fast parameter-to-solution mapping
+- Training Infrastructure: Comprehensive training managers and data handling
+
+The 'nn' module follows PyTorch convention and contains architectures suitable
+for both PINN methods and operator learning approaches, avoiding confusion
+with network-based (graph) MFG problems.
 
 Note: Neural solvers require PyTorch installation.
 """
@@ -27,7 +34,9 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    # Import PINN solvers
+    # Import neural network architectures (shared by all neural methods)
+    from . import nn
+
     # Import core neural components
     from .core import (
         BoundaryLoss,
@@ -47,12 +56,29 @@ if TORCH_AVAILABLE:
         sample_points,
     )
 
-    # PINN solvers temporarily disabled during development
+    # Neural operator methods for parameter-to-solution mapping
+    from .operator_learning import (
+        BaseNeuralOperator,
+        DeepONet,
+        DeepONetConfig,
+        FNOConfig,
+        FourierNeuralOperator,
+        OperatorConfig,
+        OperatorDataset,
+        OperatorTrainingManager,
+        TrainingConfig,
+        create_mfg_operator,
+    )
+
+    # PINN solvers: Individual equation and coupled system solvers
     try:
         from .pinn_solvers import (
+            AdaptiveTrainingConfig,
+            AdaptiveTrainingStrategy,
             FPPINNSolver,
             HJBPINNSolver,
             MFGPINNSolver,
+            PhysicsGuidedSampler,
             PINNBase,
             PINNConfig,
         )
@@ -76,6 +102,28 @@ if TORCH_AVAILABLE:
 
     __all__ = [
         "BaseNeuralSolver",
+        # Neural Network Architectures Module
+        "nn",
+        # Neural Operator Methods
+        "BaseNeuralOperator",
+        "create_mfg_operator",
+        "DeepONet",
+        "DeepONetConfig",
+        "FourierNeuralOperator",
+        "FNOConfig",
+        "OperatorConfig",
+        "OperatorDataset",
+        "OperatorTrainingManager",
+        "TrainingConfig",
+        # PINN Solvers
+        "AdaptiveTrainingConfig",
+        "AdaptiveTrainingStrategy",
+        "FPPINNSolver",
+        "HJBPINNSolver",
+        "MFGPINNSolver",
+        "PhysicsGuidedSampler",
+        "PINNBase",
+        "PINNConfig",
         # Core Neural Components
         "BoundaryLoss",
         "DataLoss",
@@ -92,7 +140,8 @@ if TORCH_AVAILABLE:
         "create_mfg_networks",
         "neural_network_utils",
         "sample_points",
-    ] + pinn_exports
+    ]
+    __all__.extend(pinn_exports)
 else:
     import warnings
 

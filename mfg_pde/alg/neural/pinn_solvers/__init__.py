@@ -22,20 +22,52 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    # PINN solvers temporarily disabled due to missing networks module
-    # TODO: Complete neural paradigm implementation
-    import warnings
+    # Import PINN solver implementations
+    try:
+        from .adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingStrategy, PhysicsGuidedSampler
+        from .base_pinn import PINNBase, PINNConfig
+        from .fp_pinn_solver import FPPINNSolver
+        from .hjb_pinn_solver import HJBPINNSolver
+        from .mfg_pinn_solver import MFGPINNSolver
 
-    warnings.warn(
-        "PINN solvers are currently under development in the neural paradigm. "
-        "Use numerical or optimization paradigms for now.",
-        UserWarning,
-    )
+        # Individual equation solvers
+        INDIVIDUAL_PINN_SOLVERS = [
+            "HJBPINNSolver",
+            "FPPINNSolver",
+        ]
 
-    __all__ = []
-    INDIVIDUAL_PINN_SOLVERS = []
-    COUPLED_PINN_SOLVERS = []
-    ALL_PINN_SOLVERS = []
+        # Coupled system solvers
+        COUPLED_PINN_SOLVERS = [
+            "MFGPINNSolver",
+        ]
+
+        # All PINN solvers
+        ALL_PINN_SOLVERS = INDIVIDUAL_PINN_SOLVERS + COUPLED_PINN_SOLVERS
+
+        __all__ = [
+            "AdaptiveTrainingConfig",
+            "AdaptiveTrainingStrategy",
+            "FPPINNSolver",
+            "HJBPINNSolver",
+            "MFGPINNSolver",
+            "PINNBase",
+            "PINNConfig",
+            "PhysicsGuidedSampler",
+        ]
+
+    except ImportError as e:
+        # PINN solvers not fully implemented yet
+        import warnings
+
+        warnings.warn(
+            f"PINN solvers are currently under development: {e}. Use numerical or optimization paradigms for now.",
+            UserWarning,
+        )
+
+        __all__ = []
+        INDIVIDUAL_PINN_SOLVERS = []
+        COUPLED_PINN_SOLVERS = []
+        ALL_PINN_SOLVERS = []
 
 else:
     import warnings

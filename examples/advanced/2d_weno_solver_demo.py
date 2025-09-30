@@ -420,7 +420,7 @@ def demonstrate_2d_boundary_conditions():
     # This would integrate with the 2D boundary condition framework
     # created in the previous work
 
-    setup_2d_demo_domain()
+    _ = setup_2d_demo_domain()  # Domain setup for reference
 
     # Example: Periodic boundary conditions in both directions
     from mfg_pde.geometry.boundary_conditions_2d import create_rectangle_boundary_conditions

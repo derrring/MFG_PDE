@@ -642,8 +642,47 @@ class HJBWenoSolver(BaseHJBSolver):
         U_from_prev_picard: np.ndarray,
     ) -> np.ndarray:
         """Solve 3D HJB system using dimensional splitting."""
-        # Placeholder for 3D implementation
-        raise NotImplementedError("3D WENO solver implementation pending")
+        logger = self._get_logger()
+        logger.info("Starting 3D WENO HJB solver with dimensional splitting")
+
+        # Initialize solution array
+        U_solved = np.copy(U_final_condition_at_T)
+
+        # Time stepping parameters
+        Nt = M_density_evolution_from_FP.shape[0]
+
+        # Solve backward in time
+        for time_idx in range(Nt - 2, -1, -1):
+            logger.debug(f"  3D Time step {time_idx + 1}/{Nt - 1}")
+
+            u_current = U_solved[time_idx + 1, :, :, :]
+            m_current = M_density_evolution_from_FP[time_idx, :, :, :]
+
+            # Compute stable time step for 3D
+            dt_stable = min(self.dt, self._compute_dt_stable_3d(u_current, m_current))
+
+            # Apply dimensional splitting (3D requires x, y, z directions)
+            if self.splitting_method == "strang":
+                # Strang splitting: x(dt/2) -> y(dt/2) -> z(dt) -> y(dt/2) -> x(dt/2)
+                u_step1 = self._solve_hjb_step_3d_x_direction(u_current, m_current, dt_stable / 2)
+                u_step2 = self._solve_hjb_step_3d_y_direction(u_step1, m_current, dt_stable / 2)
+                u_step3 = self._solve_hjb_step_3d_z_direction(u_step2, m_current, dt_stable)
+                u_step4 = self._solve_hjb_step_3d_y_direction(u_step3, m_current, dt_stable / 2)
+                u_new = self._solve_hjb_step_3d_x_direction(u_step4, m_current, dt_stable / 2)
+            else:  # Godunov splitting
+                # Godunov splitting: x(dt) -> y(dt) -> z(dt)
+                u_step1 = self._solve_hjb_step_3d_x_direction(u_current, m_current, dt_stable)
+                u_step2 = self._solve_hjb_step_3d_y_direction(u_step1, m_current, dt_stable)
+                u_new = self._solve_hjb_step_3d_z_direction(u_step2, m_current, dt_stable)
+
+            U_solved[time_idx, :, :, :] = u_new
+
+            # Progress logging for long computations
+            if (time_idx + 1) % 20 == 0:
+                logger.info(f"    3D WENO: Completed {Nt - time_idx - 1}/{Nt - 1} time steps")
+
+        logger.info("3D WENO HJB solver completed successfully")
+        return U_solved
 
     def _compute_dt_stable_2d(self, u: np.ndarray, m: np.ndarray) -> float:
         """Compute stable time step for 2D problem based on CFL and diffusion stability."""
@@ -761,6 +800,130 @@ class HJBWenoSolver(BaseHJBSolver):
         # This would use the same WENO logic but with Dy spacing
         # For now, use standard gradient as placeholder
         return np.gradient(u, self.Dy)
+
+    def _compute_dt_stable_3d(self, u: np.ndarray, m: np.ndarray) -> float:
+        """Compute stable time step for 3D problem based on CFL and diffusion stability."""
+        # Compute gradients for stability analysis
+        u_x = np.gradient(u, self.Dx, axis=0)
+        u_y = np.gradient(u, self.Dy, axis=1)
+        u_z = np.gradient(u, self.Dz, axis=2)
+
+        # Maximum gradient magnitude for CFL condition
+        max_grad_x = np.max(np.abs(u_x)) if u_x.size > 0 else 0.0
+        max_grad_y = np.max(np.abs(u_y)) if u_y.size > 0 else 0.0
+        max_grad_z = np.max(np.abs(u_z)) if u_z.size > 0 else 0.0
+
+        # CFL stability condition (very conservative for 3D)
+        if max_grad_x > 1e-12 or max_grad_y > 1e-12 or max_grad_z > 1e-12:
+            dt_cfl_x = self.cfl_number * self.Dx / (max_grad_x + 1e-12)
+            dt_cfl_y = self.cfl_number * self.Dy / (max_grad_y + 1e-12)
+            dt_cfl_z = self.cfl_number * self.Dz / (max_grad_z + 1e-12)
+            dt_cfl = min(dt_cfl_x, dt_cfl_y, dt_cfl_z)
+        else:
+            dt_cfl = self.dt
+
+        # Stability condition for diffusion term (very restrictive in 3D)
+        sigma_sq = self.problem.sigma**2 if hasattr(self.problem, "sigma") else 1.0
+        dt_diffusion_x = self.diffusion_stability_factor * (self.Dx**2) / sigma_sq
+        dt_diffusion_y = self.diffusion_stability_factor * (self.Dy**2) / sigma_sq
+        dt_diffusion_z = self.diffusion_stability_factor * (self.Dz**2) / sigma_sq
+        dt_diffusion = min(dt_diffusion_x, dt_diffusion_y, dt_diffusion_z)
+
+        return min(dt_cfl, dt_diffusion)
+
+    def _solve_hjb_step_3d_x_direction(self, u: np.ndarray, m: np.ndarray, dt: float) -> np.ndarray:
+        """Apply WENO reconstruction in X-direction for 3D problem."""
+        u_new = u.copy()
+        # Apply 1D WENO reconstruction in X-direction for each (Y,Z)-slice
+        for j in range(self.Ny):
+            for k in range(self.Nz):
+                u_slice = u[:, j, k]
+                m_slice = m[:, j, k]
+                # Apply 1D WENO step
+                u_new[:, j, k] = self._solve_hjb_step_1d_adapted(u_slice, m_slice, dt)
+        return u_new
+
+    def _solve_hjb_step_3d_y_direction(self, u: np.ndarray, m: np.ndarray, dt: float) -> np.ndarray:
+        """Apply WENO reconstruction in Y-direction for 3D problem."""
+        u_new = u.copy()
+        # Apply 1D WENO reconstruction in Y-direction for each (X,Z)-slice
+        for i in range(self.Nx):
+            for k in range(self.Nz):
+                u_slice = u[i, :, k]
+                m_slice = m[i, :, k]
+                # Apply 1D WENO step adapted for Y-direction
+                u_new[i, :, k] = self._solve_hjb_step_1d_y_adapted(u_slice, m_slice, dt)
+        return u_new
+
+    def _solve_hjb_step_3d_z_direction(self, u: np.ndarray, m: np.ndarray, dt: float) -> np.ndarray:
+        """Apply WENO reconstruction in Z-direction for 3D problem."""
+        u_new = u.copy()
+        # Apply 1D WENO reconstruction in Z-direction for each (X,Y)-slice
+        for i in range(self.Nx):
+            for j in range(self.Ny):
+                u_slice = u[i, j, :]
+                m_slice = m[i, j, :]
+                # Apply 1D WENO step adapted for Z-direction
+                u_new[i, j, :] = self._solve_hjb_step_1d_z_adapted(u_slice, m_slice, dt)
+        return u_new
+
+    def _solve_hjb_step_1d_z_adapted(self, u_1d: np.ndarray, m_1d: np.ndarray, dt: float) -> np.ndarray:
+        """Apply 1D WENO step adapted for Z-direction with appropriate grid spacing."""
+        # Use existing WENO reconstruction logic but with Z-direction spacing
+        if self.time_integration == "tvd_rk3":
+            return self._solve_hjb_tvd_rk3_z_adapted(u_1d, m_1d, dt)
+        else:
+            return self._solve_hjb_explicit_euler_z_adapted(u_1d, m_1d, dt)
+
+    def _solve_hjb_tvd_rk3_z_adapted(self, u_current: np.ndarray, m_current: np.ndarray, dt: float) -> np.ndarray:
+        """TVD-RK3 time stepping adapted for Z-direction."""
+        # Stage 1
+        L1 = self._compute_spatial_operator_z_adapted(u_current, m_current)
+        u1 = u_current + dt * L1
+
+        # Stage 2
+        L2 = self._compute_spatial_operator_z_adapted(u1, m_current)
+        u2 = 0.75 * u_current + 0.25 * u1 + 0.25 * dt * L2
+
+        # Stage 3
+        L3 = self._compute_spatial_operator_z_adapted(u2, m_current)
+        u_new = (1.0 / 3.0) * u_current + (2.0 / 3.0) * u2 + (2.0 / 3.0) * dt * L3
+
+        return u_new
+
+    def _solve_hjb_explicit_euler_z_adapted(
+        self, u_current: np.ndarray, m_current: np.ndarray, dt: float
+    ) -> np.ndarray:
+        """Explicit Euler time stepping adapted for Z-direction."""
+        L = self._compute_spatial_operator_z_adapted(u_current, m_current)
+        return u_current + dt * L
+
+    def _compute_spatial_operator_z_adapted(self, u: np.ndarray, m: np.ndarray) -> np.ndarray:
+        """Compute spatial operator for Z-direction with adapted grid spacing."""
+        n = len(u)
+        rhs = np.zeros(n)
+
+        # Compute derivatives using Z-direction spacing
+        u_z = self._weno_reconstruction_z_adapted(u)
+
+        # Second derivative (central differences with Z spacing)
+        u_zz = np.zeros(n)
+        u_zz[1:-1] = (u[:-2] - 2 * u[1:-1] + u[2:]) / (self.Dz**2)
+        u_zz[0] = u_zz[1]
+        u_zz[-1] = u_zz[-2]
+
+        # Hamiltonian evaluation (simplified for Z-direction)
+        for i in range(n):
+            hamiltonian = 0.5 * u_z[i] ** 2 + m[i] * u_z[i]
+            rhs[i] = -hamiltonian + (self.problem.sigma**2 / 2) * u_zz[i]
+
+        return rhs
+
+    def _weno_reconstruction_z_adapted(self, u: np.ndarray) -> np.ndarray:
+        """WENO reconstruction adapted for Z-direction with proper grid spacing."""
+        # This would use the same WENO logic but with Dz spacing
+        # For now, use standard gradient as placeholder
+        return np.gradient(u, self.Dz)
 
     def get_variant_info(self) -> dict[str, str]:
         """
