@@ -2,12 +2,13 @@
 Neural paradigm for MFG problems.
 
 This module contains neural network-based approaches for solving Mean Field Games:
+- nn: Neural network architectures (shared by all neural methods)
 - pinn_solvers: Physics-Informed Neural Networks for MFG systems
 - core: Shared neural network infrastructure and utilities
 
-Neural methods use automatic differentiation and optimization to parameterize
-PDE solutions as neural networks, providing flexible approaches for complex
-geometries and high-dimensional problems.
+The 'nn' module follows PyTorch convention and contains architectures suitable
+for both PINN methods and future operator learning approaches, avoiding confusion
+with network-based (graph) MFG problems.
 
 Note: Neural solvers require PyTorch installation.
 """
@@ -27,7 +28,9 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    # Import PINN solvers
+    # Import neural network architectures (shared by all neural methods)
+    from . import nn
+
     # Import core neural components
     from .core import (
         BoundaryLoss,
@@ -56,6 +59,8 @@ if TORCH_AVAILABLE:
 
     __all__ = [
         "BaseNeuralSolver",
+        # Neural Network Architectures Module
+        "nn",
         # PINN Solvers
         "FPPINNSolver",
         "HJBPINNSolver",

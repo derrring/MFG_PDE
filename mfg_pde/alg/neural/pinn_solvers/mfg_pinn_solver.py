@@ -28,8 +28,8 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+from ..nn import create_mfg_networks
 from .base_pinn import PINNBase, PINNConfig
-from .networks import create_mfg_networks
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
