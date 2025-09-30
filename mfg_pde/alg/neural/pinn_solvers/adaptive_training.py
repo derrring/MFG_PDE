@@ -28,9 +28,11 @@ Applications:
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 import numpy as np
 
@@ -40,7 +42,6 @@ if TYPE_CHECKING:
 # Import with availability checking
 try:
     import torch
-    import torch.nn as nn
 
     TORCH_AVAILABLE = True
 except ImportError:

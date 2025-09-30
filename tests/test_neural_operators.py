@@ -18,17 +18,14 @@ pytorch_available = True
 try:
     import torch
     import torch.nn as nn
-    from torch.utils.data import TensorDataset
 
     from mfg_pde.alg.neural.operator_learning import (
-        BaseNeuralOperator,
         DeepONet,
         DeepONetConfig,
         FNOConfig,
         FourierNeuralOperator,
         OperatorConfig,
         OperatorDataset,
-        OperatorResult,
         OperatorTrainingManager,
         TrainingConfig,
     )

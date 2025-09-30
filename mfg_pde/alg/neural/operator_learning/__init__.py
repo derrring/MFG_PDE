@@ -29,10 +29,7 @@ from typing import Any
 
 # Import with availability checking
 try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as functional
-    from torch.fft import fft, ifft, irfft, rfft
+    import torch  # noqa: F401
 
     TORCH_AVAILABLE = True
 except ImportError:
