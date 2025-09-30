@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 try:
     import torch
     import torch.nn as nn
-    import torch.nn.functional as F
+    import torch.nn.functional as functional
 
     TORCH_AVAILABLE = True
 except ImportError:
@@ -74,7 +74,7 @@ class ModifiedMLP(nn.Module):
         self.skip_projections = nn.ModuleList()
 
         # Track dimensions for skip connections
-        self.layer_dims = [input_dim] + hidden_layers
+        self.layer_dims = [input_dim, *hidden_layers]
 
         # Hidden layers
         for i, (in_dim, out_dim) in enumerate(zip(self.layer_dims[:-1], self.layer_dims[1:], strict=False)):
@@ -100,10 +100,10 @@ class ModifiedMLP(nn.Module):
         """Get activation function by name."""
         activations = {
             "tanh": torch.tanh,
-            "relu": F.relu,
+            "relu": functional.relu,
             "sigmoid": torch.sigmoid,
-            "swish": F.silu,  # SiLU is the same as Swish
-            "elu": F.elu,
+            "swish": functional.silu,  # SiLU is the same as Swish
+            "elu": functional.elu,
         }
 
         if activation not in activations:

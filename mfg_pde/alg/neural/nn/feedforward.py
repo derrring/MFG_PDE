@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 try:
     import torch
     import torch.nn as nn
-    import torch.nn.functional as F
+    import torch.nn.functional as functional
 
     TORCH_AVAILABLE = True
 except ImportError:
@@ -99,9 +99,9 @@ class FeedForwardNetwork(nn.Module):
         """Get activation function by name."""
         activations = {
             "tanh": torch.tanh,
-            "relu": F.relu,
+            "relu": functional.relu,
             "sigmoid": torch.sigmoid,
-            "elu": F.elu,
+            "elu": functional.elu,
         }
 
         if activation not in activations:

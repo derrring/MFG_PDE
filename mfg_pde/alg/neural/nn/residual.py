@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 try:
     import torch
     import torch.nn as nn
-    import torch.nn.functional as F
+    import torch.nn.functional as functional
 
     TORCH_AVAILABLE = True
 except ImportError:
@@ -55,8 +55,8 @@ class ResidualBlock(nn.Module):
         # Activation function
         activations = {
             "tanh": torch.tanh,
-            "relu": F.relu,
-            "swish": F.silu,
+            "relu": functional.relu,
+            "swish": functional.silu,
         }
         self.activation = activations[activation]
 
@@ -167,8 +167,8 @@ class ResidualNetwork(nn.Module):
         # Activation function
         activations = {
             "tanh": torch.tanh,
-            "relu": F.relu,
-            "swish": F.silu,
+            "relu": functional.relu,
+            "swish": functional.silu,
         }
         self.activation = activations[activation]
 
@@ -276,7 +276,7 @@ class ResidualNetwork(nn.Module):
 
         # Gradient norms at each layer (for analysis)
         gradient_norms = []
-        for i, feature in enumerate(features):
+        for _i, feature in enumerate(features):
             if feature.requires_grad:
                 feature_grad = torch.autograd.grad(
                     outputs=output,

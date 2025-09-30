@@ -125,7 +125,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
             self.ot = ot
         except ImportError as e:
             raise ImportError(
-                f"Sinkhorn solver requires POT library: {e}. " "Install with: pip install mfg_pde[optimization]"
+                f"Sinkhorn solver requires POT library: {e}. Install with: pip install mfg_pde[optimization]"
             ) from e
 
     def _setup_discretization(self) -> None:
@@ -295,7 +295,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         u = np.zeros_like(a)
         v = np.zeros_like(b)
 
-        for iteration in range(self.config.max_sinkhorn_iterations):
+        for _iteration in range(self.config.max_sinkhorn_iterations):
             u_old = u.copy()
 
             # Sinkhorn updates in log domain
@@ -310,21 +310,21 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
                 break
 
             # Stabilization
-            if iteration % 10 == 0 and np.max(np.abs(u)) > self.config.stabilization_threshold:
+            if _iteration % 10 == 0 and np.max(np.abs(u)) > self.config.stabilization_threshold:
                 u -= np.mean(u)
                 v -= np.mean(v)
 
         # Compute transport matrix
         transport_matrix = np.exp(u[:, np.newaxis] + self.log_kernel + v[np.newaxis, :])
 
-        return transport_matrix, iteration + 1
+        return transport_matrix, _iteration + 1
 
     def _sinkhorn_standard(self, a: NDArray, b: NDArray) -> tuple[NDArray, int]:
         """Standard Sinkhorn algorithm."""
         u = np.ones_like(a)
         v = np.ones_like(b)
 
-        for iteration in range(self.config.max_sinkhorn_iterations):
+        for _iteration in range(self.config.max_sinkhorn_iterations):
             u_old = u.copy()
 
             # Sinkhorn updates
@@ -338,7 +338,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         # Transport matrix
         transport_matrix = np.diag(u) @ self.kernel @ np.diag(v)
 
-        return transport_matrix, iteration + 1
+        return transport_matrix, _iteration + 1
 
     def _log_sum_exp(self, x: NDArray, axis: int) -> NDArray:
         """Numerically stable log-sum-exp computation."""
@@ -379,7 +379,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         cost = 0.0
 
         # Transport cost
-        for t, transport in enumerate(transport_matrices):
+        for _t, transport in enumerate(transport_matrices):
             cost += np.sum(transport * self.cost_matrix) * self.dt
 
         # Entropic cost

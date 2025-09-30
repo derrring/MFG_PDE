@@ -653,7 +653,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # Solve backward in time
         for time_idx in range(Nt - 2, -1, -1):
-            logger.debug(f"  3D Time step {time_idx+1}/{Nt-1}")
+            logger.debug(f"  3D Time step {time_idx + 1}/{Nt - 1}")
 
             u_current = U_solved[time_idx + 1, :, :, :]
             m_current = M_density_evolution_from_FP[time_idx, :, :, :]
@@ -679,7 +679,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
             # Progress logging for long computations
             if (time_idx + 1) % 20 == 0:
-                logger.info(f"    3D WENO: Completed {Nt - time_idx - 1}/{Nt-1} time steps")
+                logger.info(f"    3D WENO: Completed {Nt - time_idx - 1}/{Nt - 1} time steps")
 
         logger.info("3D WENO HJB solver completed successfully")
         return U_solved

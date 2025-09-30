@@ -126,7 +126,7 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
             self.scipy_opt = scipy.optimize
         except ImportError as e:
             raise ImportError(
-                f"Wasserstein solver requires POT and scipy: {e}. " "Install with: pip install mfg_pde[optimization]"
+                f"Wasserstein solver requires POT and scipy: {e}. Install with: pip install mfg_pde[optimization]"
             ) from e
 
     def _setup_discretization(self) -> None:

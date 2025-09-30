@@ -45,22 +45,22 @@ if CORE_DEPENDENCIES_AVAILABLE:
     )
 
     __all__ = [
-        "BaseRLSolver",
         # Base MFRL Components
         "BaseMFRLSolver",
-        "RLSolverConfig",
-        "RLSolverResult",
+        "BaseRLSolver",
+        "ContinuousMFGEnv",
         # Environment Components
         "MFGEnvironment",
-        "ContinuousMFGEnv",
+        # Training Infrastructure
+        "MFRLTrainingLoop",
         "NetworkMFGEnv",
+        "PopulationMetrics",
         # Population State Management
         "PopulationState",
         "PopulationTracker",
-        "PopulationMetrics",
-        # Training Infrastructure
-        "MFRLTrainingLoop",
         "PopulationTrainingManager",
+        "RLSolverConfig",
+        "RLSolverResult",
     ]
 
     # Component categories
@@ -73,7 +73,7 @@ else:
     import warnings
 
     warnings.warn(
-        "RL core infrastructure requires gymnasium and numpy. " "Install with: pip install mfg_pde[rl]",
+        "RL core infrastructure requires gymnasium and numpy. Install with: pip install mfg_pde[rl]",
         ImportWarning,
     )
 

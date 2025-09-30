@@ -41,14 +41,14 @@ if SCIPY_AVAILABLE and POT_AVAILABLE:
 
     __all__ = [
         "BaseOptimizationSolver",
-        # Wasserstein Methods
-        "WassersteinMFGSolver",
-        "WassersteinSolverConfig",
-        "WassersteinSolverResult",
         # Sinkhorn Methods
         "SinkhornMFGSolver",
         "SinkhornSolverConfig",
         "SinkhornSolverResult",
+        # Wasserstein Methods
+        "WassersteinMFGSolver",
+        "WassersteinSolverConfig",
+        "WassersteinSolverResult",
     ]
 
     # Solver categories for factory selection

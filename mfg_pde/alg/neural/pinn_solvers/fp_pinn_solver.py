@@ -28,7 +28,8 @@ if TYPE_CHECKING:
 
 import numpy as np
 
-from ..nn import create_mfg_networks
+from mfg_pde.alg.neural.nn import create_mfg_networks
+
 from .base_pinn import PINNBase, PINNConfig
 
 if TYPE_CHECKING:
@@ -195,7 +196,7 @@ class FPPINNSolver(PINNBase):
         # Enforce positivity constraint: m(t,x) ≥ 0
         # Use softplus or exponential to ensure positivity
         m = torch.exp(m_raw)  # Always positive, can handle large/small values
-        # Alternative: m = F.softplus(m_raw) + 1e-8
+        # Alternative: m = functional.softplus(m_raw) + 1e-8
 
         return m
 

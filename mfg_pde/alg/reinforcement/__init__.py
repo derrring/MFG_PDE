@@ -56,9 +56,9 @@ if RL_DEPENDENCIES_AVAILABLE:
 
     # Base exports (always available with dependencies)
     __all__ = [
-        "BaseRLSolver",
         # Core Infrastructure
         "BaseMFRLSolver",
+        "BaseRLSolver",
         "MFGEnvironment",
         "PopulationState",
         "RLSolverConfig",
@@ -69,9 +69,9 @@ if RL_DEPENDENCIES_AVAILABLE:
     if ALGORITHMS_AVAILABLE:
         __all__.extend(
             [
+                "MeanFieldActorCritic",
                 # RL Algorithms for MFG
                 "MeanFieldQLearning",
-                "MeanFieldActorCritic",
                 "PopulationPPO",
             ]
         )

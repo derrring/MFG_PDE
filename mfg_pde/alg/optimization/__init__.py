@@ -40,15 +40,15 @@ try:
             # Variational Solvers
             "BaseVariationalSolver",
             "PrimalDualMFGSolver",
+            "SinkhornMFGSolver",
+            "SinkhornSolverConfig",
+            "SinkhornSolverResult",
             "VariationalMFGSolver",
             "VariationalSolverResult",
             # Optimal Transport Solvers
             "WassersteinMFGSolver",
             "WassersteinSolverConfig",
             "WassersteinSolverResult",
-            "SinkhornMFGSolver",
-            "SinkhornSolverConfig",
-            "SinkhornSolverResult",
         ]
     else:
         __all__ = [
