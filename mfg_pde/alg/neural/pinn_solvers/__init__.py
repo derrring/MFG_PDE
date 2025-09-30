@@ -25,10 +25,11 @@ if TORCH_AVAILABLE:
     # PINN solvers temporarily disabled due to missing networks module
     # TODO: Complete neural paradigm implementation
     import warnings
+
     warnings.warn(
         "PINN solvers are currently under development in the neural paradigm. "
         "Use numerical or optimization paradigms for now.",
-        UserWarning
+        UserWarning,
     )
 
     __all__ = []
