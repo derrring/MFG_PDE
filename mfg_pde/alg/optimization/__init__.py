@@ -3,6 +3,7 @@ Optimization paradigm for MFG problems.
 
 This module contains direct optimization approaches for solving Mean Field Games:
 - variational_solvers: Lagrangian formulation and variational methods
+- optimal_transport: Wasserstein distance and optimal transport methods
 
 All methods are based on direct optimization of cost functionals,
 providing alternatives to the classical HJB-FP system approach.
@@ -18,11 +19,58 @@ from .variational_solvers import (
     VariationalSolverResult,
 )
 
-__all__ = [
-    "BaseOptimizationSolver",
-    # Variational Solvers
-    "BaseVariationalSolver",
-    "PrimalDualMFGSolver",
-    "VariationalMFGSolver",
-    "VariationalSolverResult",
-]
+# Import optimal transport solvers (conditional on dependencies)
+try:
+    from .optimal_transport import (
+        POT_AVAILABLE,
+        SCIPY_AVAILABLE,
+        SinkhornMFGSolver,
+        SinkhornSolverConfig,
+        SinkhornSolverResult,
+        WassersteinMFGSolver,
+        WassersteinSolverConfig,
+        WassersteinSolverResult,
+    )
+
+    OT_IMPORTS_AVAILABLE = SCIPY_AVAILABLE and POT_AVAILABLE
+
+    if OT_IMPORTS_AVAILABLE:
+        __all__ = [
+            "BaseOptimizationSolver",
+            # Variational Solvers
+            "BaseVariationalSolver",
+            "PrimalDualMFGSolver",
+            "VariationalMFGSolver",
+            "VariationalSolverResult",
+            # Optimal Transport Solvers
+            "WassersteinMFGSolver",
+            "WassersteinSolverConfig",
+            "WassersteinSolverResult",
+            "SinkhornMFGSolver",
+            "SinkhornSolverConfig",
+            "SinkhornSolverResult",
+        ]
+    else:
+        __all__ = [
+            "BaseOptimizationSolver",
+            # Variational Solvers
+            "BaseVariationalSolver",
+            "PrimalDualMFGSolver",
+            "VariationalMFGSolver",
+            "VariationalSolverResult",
+        ]
+
+except ImportError:
+    # Optimal transport not available
+    OT_IMPORTS_AVAILABLE = False
+    __all__ = [
+        "BaseOptimizationSolver",
+        # Variational Solvers
+        "BaseVariationalSolver",
+        "PrimalDualMFGSolver",
+        "VariationalMFGSolver",
+        "VariationalSolverResult",
+    ]
+
+# Always export availability info
+__all__.extend(["OT_IMPORTS_AVAILABLE"])

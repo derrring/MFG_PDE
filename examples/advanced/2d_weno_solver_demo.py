@@ -24,17 +24,18 @@ This demonstration shows the power of extending 1D WENO methods to
 multi-dimensional Mean Field Games using dimensional splitting.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Optional
 import time as timer
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from mfg_pde.alg.hjb_solvers import HJBWenoSolver
+from mfg_pde.alg.hjb_solvers.hjb_weno import WenoVariant
+from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem
 
 # MFG_PDE imports
 from mfg_pde.geometry import Domain2D
-from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBWenoSolver
-from mfg_pde.alg.hjb_solvers.hjb_weno import WenoVariant
-from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 
 class Demo2DMFGProblem(HighDimMFGProblem):
@@ -316,7 +317,7 @@ def _analyze_2d_weno_results(results: dict, u0: np.ndarray, rho0: np.ndarray, do
         plt.subplot(3, 4, plot_idx)
         final_solution = result['final_solution']
         plt.contourf(X, Y, final_solution, levels=20, cmap='viridis')
-        plt.colorbar(label=f'u(T,x,y)')
+        plt.colorbar(label='u(T,x,y)')
         plt.title(f'2D {variant.upper()} Final Solution')
         plt.xlabel('x')
         plt.ylabel('y')
@@ -433,9 +434,7 @@ def demonstrate_2d_boundary_conditions():
     domain = setup_2d_demo_domain()
 
     # Example: Periodic boundary conditions in both directions
-    from mfg_pde.geometry.boundary_conditions_2d import (
-        create_rectangle_boundary_conditions
-    )
+    from mfg_pde.geometry.boundary_conditions_2d import create_rectangle_boundary_conditions
 
     bc_manager = create_rectangle_boundary_conditions(
         domain_bounds=(0.0, 1.0, 0.0, 1.0),

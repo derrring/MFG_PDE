@@ -181,7 +181,7 @@ def print_system_info() -> None:
 __version__ = "1.0.0"
 
 # Ensure these utility functions are always available
-__all__.extend(["get_system_info", "print_system_info", "__version__"])
+__all__.extend(["__version__", "get_system_info", "print_system_info"])
 
 
 # Backward compatibility aliases

@@ -15,8 +15,8 @@ import numpy as np
 from .base_mfg import BaseMFGSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+    from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.utils.solver_result import SolverResult
 

@@ -17,8 +17,8 @@ from __future__ import annotations
 from . import neural, numerical, optimization, reinforcement
 
 __all__ = [
+    "neural",
     "numerical",
     "optimization",
-    "neural",
     "reinforcement",
 ]

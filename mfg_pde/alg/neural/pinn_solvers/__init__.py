@@ -44,11 +44,11 @@ if TORCH_AVAILABLE:
         ALL_PINN_SOLVERS = INDIVIDUAL_PINN_SOLVERS + COUPLED_PINN_SOLVERS
 
         __all__ = [
-            "PINNBase",
-            "PINNConfig",
             "FPPINNSolver",
             "HJBPINNSolver",
             "MFGPINNSolver",
+            "PINNBase",
+            "PINNConfig",
         ]
 
     except ImportError as e:
