@@ -121,7 +121,7 @@ class TestMassConservation:
         relative_error = mass_error / initial_mass if initial_mass > 0 else mass_error
 
         assert relative_error < 0.02, (  # 2% relative error
-            f"Mass conservation poor for problem size {problem_size}: " f"relative_error={relative_error:.4f}"
+            f"Mass conservation poor for problem size {problem_size}: relative_error={relative_error:.4f}"
         )
 
     @pytest.mark.mathematical
@@ -151,9 +151,9 @@ class TestMassConservation:
             # Simple trend check: last 3 errors shouldn't all be increasing
             last_three = mass_errors[-3:]
             is_consistently_increasing = last_three[1] > last_three[0] and last_three[2] > last_three[1]
-            assert not is_consistently_increasing, (
-                "Mass conservation errors are consistently increasing, " "indicating potential numerical instability"
-            )
+            assert (
+                not is_consistently_increasing
+            ), "Mass conservation errors are consistently increasing, indicating potential numerical instability"
 
 
 class TestPhysicalProperties:
@@ -169,9 +169,9 @@ class TestPhysicalProperties:
             total_probability = np.sum(result.M_solution[t_idx, :]) * small_problem.Dx
 
             # Should integrate to approximately 1
-            assert abs(total_probability - 1.0) < 0.02, (
-                f"Density not normalized at t_idx={t_idx}: " f"integral={total_probability:.6f}"
-            )
+            assert (
+                abs(total_probability - 1.0) < 0.02
+            ), f"Density not normalized at t_idx={t_idx}: integral={total_probability:.6f}"
 
     @pytest.mark.mathematical
     def test_energy_bounds(self, small_problem):

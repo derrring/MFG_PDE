@@ -192,7 +192,7 @@ class LicenseComplianceChecker:
 def main():
     """Main entry point."""
     checker = LicenseComplianceChecker()
-    results = checker.check_compliance()
+    checker.check_compliance()
     checker.save_results()
 
 

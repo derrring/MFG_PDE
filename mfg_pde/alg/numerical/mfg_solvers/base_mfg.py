@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.types.internal import SolverReturnTuple
 else:
-    import numpy as np
+    pass
 
 
 class BaseMFGSolver(ABC):

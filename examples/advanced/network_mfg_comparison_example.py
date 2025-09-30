@@ -97,7 +97,7 @@ class NetworkMFGBenchmark:
         for name, network in networks.items():
             stats = compute_network_statistics(network.network_data)
             self.network_data[name] = {"geometry": network, "statistics": stats}
-            print(f"  {name.capitalize()}: {stats['num_edges']} edges, " f"avg degree {stats['average_degree']:.2f}")
+            print(f"  {name.capitalize()}: {stats['num_edges']} edges, avg degree {stats['average_degree']:.2f}")
 
         print()
         return networks
@@ -304,7 +304,7 @@ class NetworkMFGBenchmark:
         self.results = all_results
         return all_results
 
-    def create_benchmark_report(self, save_path: str = None) -> Any:
+    def create_benchmark_report(self, save_path: str | None = None) -> Any:
         """
         Create comprehensive benchmark report with visualizations.
 
@@ -322,7 +322,7 @@ class NetworkMFGBenchmark:
         else:
             return self._create_matplotlib_report(save_path)
 
-    def _create_plotly_report(self, save_path: str = None) -> go.Figure:
+    def _create_plotly_report(self, save_path: str | None = None) -> go.Figure:
         """Create interactive benchmark report using Plotly."""
         # Prepare data for visualization
         network_names = list(self.results.keys())
@@ -357,7 +357,7 @@ class NetworkMFGBenchmark:
 
         # Network properties comparison
         densities = [self.results[name]["network_stats"]["density"] for name in network_names]
-        avg_degrees = [self.results[name]["network_stats"]["average_degree"] for name in network_names]
+        [self.results[name]["network_stats"]["average_degree"] for name in network_names]
 
         fig.add_trace(
             go.Bar(x=network_names, y=densities, name="Network Density", marker_color="lightblue"), row=1, col=1
@@ -382,7 +382,7 @@ class NetworkMFGBenchmark:
             qualities = solution_qualities[network]
             times = solve_times[network]
             fig.add_trace(
-                go.Scatter(x=times, y=qualities, mode="markers", name=f"{network.capitalize()}", marker=dict(size=10)),
+                go.Scatter(x=times, y=qualities, mode="markers", name=f"{network.capitalize()}", marker={"size": 10}),
                 row=2,
                 col=2,
             )
@@ -404,7 +404,7 @@ class NetworkMFGBenchmark:
 
         return fig
 
-    def _create_matplotlib_report(self, save_path: str = None) -> plt.Figure:
+    def _create_matplotlib_report(self, save_path: str | None = None) -> plt.Figure:
         """Create benchmark report using matplotlib."""
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         fig.suptitle("Network MFG Benchmark Report", fontsize=16)
@@ -530,9 +530,7 @@ def main():
                     converged = solver_result["converged"]
                     time_taken = solver_result["solve_time"]
                     error = solver_result["final_error"]
-                    print(
-                        f"    {solver_name:10}: {'✓' if converged else '✗'} " f"({time_taken:.2f}s, error: {error:.2e})"
-                    )
+                    print(f"    {solver_name:10}: {'✓' if converged else '✗'} ({time_taken:.2f}s, error: {error:.2e})")
                 else:
                     print(f"    {solver_name:10}: Failed - {solver_result['error']}")
 

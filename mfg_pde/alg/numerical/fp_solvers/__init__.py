@@ -16,6 +16,6 @@ from .fp_particle import FPParticleSolver
 __all__ = [
     "BaseFPSolver",
     "FPFDMSolver",
-    "FPParticleSolver",
     "FPNetworkSolver",
+    "FPParticleSolver",
 ]

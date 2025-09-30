@@ -67,7 +67,7 @@ def test_weight_functions():
 
     print("\n=== Weight Function Comparison ===")
     print(f"{'Function':<15} {'Max |U|':<10} {'Status'}")
-    print(f"{'-'*15} {'-'*10} {'-'*10}")
+    print(f"{'-' * 15} {'-' * 10} {'-' * 10}")
 
     for func, max_val in results.items():
         if max_val is not None:

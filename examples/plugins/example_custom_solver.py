@@ -95,7 +95,7 @@ class GradientDescentMFGSolver:
         # Simplified HJB equation gradient (this is educational, not mathematically rigorous)
         for t in range(self.problem.Nt - 1, -1, -1):
             for x_idx in range(1, self.problem.Nx):
-                x = self.problem.x_values[x_idx]
+                self.problem.x_values[x_idx]
 
                 # Simplified gradient computation
                 if t < self.problem.Nt:
@@ -124,7 +124,7 @@ class GradientDescentMFGSolver:
                 time_derivative = (self.M_solution[t, x_idx] - self.M_solution[t - 1, x_idx]) / self.problem.Dt
 
                 # Spatial derivatives
-                m_x = (self.M_solution[t, x_idx + 1] - self.M_solution[t, x_idx - 1]) / (2 * self.problem.Dx)
+                (self.M_solution[t, x_idx + 1] - self.M_solution[t, x_idx - 1]) / (2 * self.problem.Dx)
                 m_xx = (
                     self.M_solution[t, x_idx + 1] - 2 * self.M_solution[t, x_idx] + self.M_solution[t, x_idx - 1]
                 ) / (self.problem.Dx**2)
@@ -162,7 +162,7 @@ class SimplifiedNewtonMFGSolver:
 
     def solve(self) -> SolverResult:
         """Solve using simplified Newton method."""
-        start_time = time.time()
+        time.time()
 
         # For this example, we'll use the reference solver with modified parameters
         # In a real implementation, this would contain the actual Newton method logic

@@ -39,11 +39,11 @@ def test_original_params_with_svd():
     print(f"Initial mass: {np.sum(problem.m_init * problem.Dx):.6f}")
 
     for i, settings in enumerate(conservative_settings):
-        print(f"\n{'='*60}")
-        print(f"TEST {i+1}: {settings['name']}")
+        print(f"\n{'=' * 60}")
+        print(f"TEST {i + 1}: {settings['name']}")
         print(f"Collocation: {settings['n_colloc']}, Particles: {settings['particles']}")
         print(f"Delta: {settings['delta']}, Taylor Order: {settings['taylor_order']}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Create collocation points
         num_collocation_points = settings["n_colloc"]
@@ -79,7 +79,7 @@ def test_original_params_with_svd():
 
             # Run with limited iterations first
             print("\nRunning 5 Picard iterations...")
-            start_time = time.time() if "time" in dir() else 0
+            time.time() if "time" in dir() else 0
 
             U, M, info = solver.solve(Niter=5, l2errBound=1e-4, verbose=False)
 
@@ -133,9 +133,9 @@ def test_original_params_with_svd():
 
             traceback.print_exc()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("ORIGINAL PARAMETERS TEST COMPLETE")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

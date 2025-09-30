@@ -134,7 +134,7 @@ def example_particle_collocation_solver():
         # Simple visualization
         print("\nCreating visualization...")
 
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        _fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
         # Plot value function evolution
         axes[0, 0].imshow(U_solution, aspect="auto", origin="lower", cmap="viridis")

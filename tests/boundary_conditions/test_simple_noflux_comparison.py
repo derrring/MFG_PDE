@@ -24,9 +24,9 @@ def test_simple_noflux_comparison():
     print(f"Initial mass: {np.sum(problem.m_init * problem.Dx):.6f}")
 
     # Test 1: Current ghost particle implementation
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("TEST 1: Current Ghost Particle Implementation")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     no_flux_bc = BoundaryConditions(type="no_flux")
 
@@ -58,7 +58,7 @@ def test_simple_noflux_comparison():
         print(f"Boundary point 4: {neighborhood4['ghost_count']} ghosts, {neighborhood4['size']} total")
 
         # Run solver
-        U1, M1, info1 = solver1.solve(Niter=2, l2errBound=1e-3, verbose=False)
+        U1, M1, _info1 = solver1.solve(Niter=2, l2errBound=1e-3, verbose=False)
 
         if M1 is not None:
             mass1 = np.sum(M1 * problem.Dx, axis=1)
@@ -85,9 +85,9 @@ def test_simple_noflux_comparison():
         status1 = "❌ ERROR"
 
     # Test 2: Dirichlet BC for comparison (should work)
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("TEST 2: Dirichlet BC (Reference)")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     dirichlet_bc = {"type": "dirichlet", "value": 0.0}
 
@@ -107,7 +107,7 @@ def test_simple_noflux_comparison():
             boundary_conditions=dirichlet_bc,
         )
 
-        U2, M2, info2 = solver2.solve(Niter=2, l2errBound=1e-3, verbose=False)
+        U2, M2, _info2 = solver2.solve(Niter=2, l2errBound=1e-3, verbose=False)
 
         if M2 is not None:
             mass2 = np.sum(M2 * problem.Dx, axis=1)
@@ -134,11 +134,11 @@ def test_simple_noflux_comparison():
         status2 = "❌ ERROR"
 
     # Summary
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("COMPARISON SUMMARY")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"{'Method':<25} {'Status'}")
-    print(f"{'-'*25} {'-'*15}")
+    print(f"{'-' * 25} {'-' * 15}")
     print(f"{'Ghost Particle No-Flux':<25} {status1}")
     print(f"{'Dirichlet (Reference)':<25} {status2}")
 

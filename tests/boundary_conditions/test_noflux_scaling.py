@@ -14,7 +14,6 @@ def test_scaling_noflux():
     print("=== Testing Scaling of No-Flux BC with SVD ===")
 
     # Known stable case: Medium from previous test
-    base_case = {"Nx": 20, "T": 0.1, "Nt": 10, "n_colloc": 8, "particles": 200}
 
     # Scaling test cases - gradually increase complexity
     scaling_tests = [
@@ -25,10 +24,10 @@ def test_scaling_noflux():
     ]
 
     for i, case in enumerate(scaling_tests):
-        print(f"\n{'='*50}")
-        print(f"SCALING TEST {i+1}: {case['name']}")
+        print(f"\n{'=' * 50}")
+        print(f"SCALING TEST {i + 1}: {case['name']}")
         print(f"Nx={case['Nx']}, T={case['T']}, Nt={case['Nt']}, Colloc={case['n_colloc']}")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
 
         # Create problem
         problem = ExampleMFGProblem(
@@ -93,9 +92,9 @@ def test_scaling_noflux():
         except Exception as e:
             print(f"❌ ERROR: {e}")
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("SCALING ANALYSIS COMPLETE")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
 
 if __name__ == "__main__":

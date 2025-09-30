@@ -336,7 +336,7 @@ class ElFarolBarMFG(MFGProblem):
         """
 
         x_grid = np.linspace(self.xmin, self.xmax, self.Nx)
-        t_grid = np.linspace(0, self.T, self.Nt)
+        np.linspace(0, self.T, self.Nt)
 
         analysis = {}
 
@@ -430,7 +430,7 @@ def solve_el_farol_bar_problem(
     U, M = result.U, result.M
 
     logger.info(f"SUCCESS: Solution completed in {solve_time:.2f} seconds")
-    logger.info(f"Convergence: {result.convergence_achieved}, " f"Iterations: {getattr(result, 'iterations', 'N/A')}")
+    logger.info(f"Convergence: {result.convergence_achieved}, Iterations: {getattr(result, 'iterations', 'N/A')}")
 
     # Analyze the solution
     analysis = problem.analyze_equilibrium(U, M)
@@ -511,7 +511,7 @@ def create_el_farol_visualizations(
         0.7 * problem.T,
         0.9 * max(attendance_rates),
         f"Efficiency: {efficiency:.1%}",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.7),
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "yellow", "alpha": 0.7},
     )
 
     # 4. Final Population Distribution
@@ -523,7 +523,7 @@ def create_el_farol_visualizations(
         x=analysis["peak_decision_tendency"],
         color="orange",
         linestyle=":",
-        label=f'Peak at {analysis["peak_decision_tendency"]:.2f}',
+        label=f"Peak at {analysis['peak_decision_tendency']:.2f}",
     )
     ax4.set_xlabel("Decision Tendency x")
     ax4.set_ylabel("Density")
@@ -560,19 +560,19 @@ Problem Parameters:
 • Decision Volatility: {problem.decision_volatility:.2f}
 
 Equilibrium Results:
-• Final Attendance: {analysis['final_attendance']:.3f}
-• Capacity Utilization: {analysis['capacity_utilization']:.1%}
-• Economic Efficiency: {analysis['efficiency']:.1%}
-• Equilibrium Stability: {analysis['equilibrium_stability']:.2e}
+• Final Attendance: {analysis["final_attendance"]:.3f}
+• Capacity Utilization: {analysis["capacity_utilization"]:.1%}
+• Economic Efficiency: {analysis["efficiency"]:.1%}
+• Equilibrium Stability: {analysis["equilibrium_stability"]:.2e}
 
 Behavioral Insights:
-• Peak Decision Tendency: {analysis['peak_decision_tendency']:.3f}
-• Herding Indicator: {analysis['herding_indicator']:.3f}
-• Converged: {'Yes' if analysis['converged'] else 'No'}
+• Peak Decision Tendency: {analysis["peak_decision_tendency"]:.3f}
+• Herding Indicator: {analysis["herding_indicator"]:.3f}
+• Converged: {"Yes" if analysis["converged"] else "No"}
 
 Solution Quality:
-• Solve Time: {analysis['solve_time']:.2f}s
-• Convergence: {'Yes' if analysis['convergence_achieved'] else 'No'}
+• Solve Time: {analysis["solve_time"]:.2f}s
+• Convergence: {"Yes" if analysis["convergence_achieved"] else "No"}
     """
 
     ax6.text(
@@ -583,7 +583,7 @@ Solution Quality:
         fontsize=10,
         verticalalignment="top",
         fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightblue", "alpha": 0.8},
     )
 
     plt.tight_layout()
@@ -613,7 +613,7 @@ def compare_crowd_aversion_scenarios() -> None:
     for i, aversion in enumerate(crowd_aversions):
         logger.info(f"Solving for crowd aversion = {aversion}")
 
-        U, M, analysis = solve_el_farol_bar_problem(crowd_aversion=aversion, visualize=False)
+        _U, _M, analysis = solve_el_farol_bar_problem(crowd_aversion=aversion, visualize=False)
 
         results[aversion] = analysis
 
@@ -696,7 +696,7 @@ def main():
     try:
         # Basic problem solution
         logger.info("1. Solving basic El Farol Bar Problem...")
-        U, M, analysis = solve_el_farol_bar_problem(
+        _U, _M, analysis = solve_el_farol_bar_problem(
             bar_capacity=0.6, crowd_aversion=2.0, solver_type="fixed_point", visualize=True
         )
 

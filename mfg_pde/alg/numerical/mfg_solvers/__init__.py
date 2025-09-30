@@ -20,15 +20,15 @@ from .monitored_particle_collocation_solver import MonitoredParticleCollocationS
 from .particle_collocation_solver import ParticleCollocationSolver
 
 __all__ = [
+    "AdaptiveParticleCollocationSolver",
     "BaseMFGSolver",
     # Fixed Point Iterators
     "ConfigAwareFixedPointIterator",
     # Additional solvers will be added as they are migrated
     "FixedPointIterator",
-    "ParticleCollocationSolver",
-    "AdaptiveParticleCollocationSolver",
-    "MonitoredParticleCollocationSolver",
     "HybridFPParticleHJBFDM",
+    "MonitoredParticleCollocationSolver",
+    "ParticleCollocationSolver",
 ]
 
 # Solver categories for factory selection

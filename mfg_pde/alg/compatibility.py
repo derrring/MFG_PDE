@@ -140,7 +140,7 @@ def check_deprecated_imports() -> list[str]:
 
 
 __all__ = [
-    "legacy_module",
-    "get_migration_guide",
     "check_deprecated_imports",
+    "get_migration_guide",
+    "legacy_module",
 ]

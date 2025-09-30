@@ -96,7 +96,7 @@ class AnisotropicVisualizer:
                         colorscale="Viridis",
                         zmin=0,
                         zmax=np.max([np.max(m) for m in self.solution.density_history]),
-                        colorbar=dict(title="Density"),
+                        colorbar={"title": "Density"},
                     )
                 ],
                 name=f"t={t:.3f}",
@@ -108,7 +108,7 @@ class AnisotropicVisualizer:
 
         fig = go.Figure(
             data=[
-                go.Heatmap(x=self.x, y=self.y, z=initial_density, colorscale="Viridis", colorbar=dict(title="Density"))
+                go.Heatmap(x=self.x, y=self.y, z=initial_density, colorscale="Viridis", colorbar={"title": "Density"})
             ],
             frames=frames,
         )
@@ -189,7 +189,7 @@ class AnisotropicVisualizer:
         vy = velocity[:, 1].reshape(self.Y.shape)
 
         # Create plot
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
         # Density plot
         im1 = ax1.contourf(self.X, self.Y, m, levels=20, cmap="viridis")
@@ -250,7 +250,7 @@ class AnisotropicVisualizer:
         rho = self.problem.compute_anisotropy(grid_points).reshape(self.X.shape)
 
         # Create subplots
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        _fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
         # Anisotropy function
         im1 = axes[0, 0].contourf(self.X, self.Y, rho, levels=20, cmap="RdBu_r")
@@ -323,7 +323,7 @@ class AnisotropicVisualizer:
         circulation = np.gradient(vy, axis=1) - np.gradient(vx, axis=0)
 
         # Create visualization
-        fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+        _fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
         # Density with streamlines
         axes[0].contourf(self.X, self.Y, m_final, levels=20, cmap="viridis", alpha=0.7)
@@ -394,7 +394,7 @@ class AnisotropicVisualizer:
 
         # Peak density over time
         fig.add_trace(
-            go.Scatter(x=time_grid, y=peak_density, mode="lines", name="Peak Density", line=dict(color="red")),
+            go.Scatter(x=time_grid, y=peak_density, mode="lines", name="Peak Density", line={"color": "red"}),
             row=1,
             col=2,
         )
@@ -402,7 +402,7 @@ class AnisotropicVisualizer:
         # Evacuation progress
         fig.add_trace(
             go.Scatter(
-                x=time_grid, y=evacuation_percentage, mode="lines", name="Evacuated %", line=dict(color="green")
+                x=time_grid, y=evacuation_percentage, mode="lines", name="Evacuated %", line={"color": "green"}
             ),
             row=2,
             col=1,
@@ -469,7 +469,7 @@ class AnisotropicVisualizer:
                     y=evacuation_percentage,
                     mode="lines",
                     name=label,
-                    line=dict(color=colors[i % len(colors)]),
+                    line={"color": colors[i % len(colors)]},
                 ),
                 row=2,
                 col=i + 1,
@@ -485,7 +485,7 @@ class AnisotropicVisualizer:
         if time_indices is None:
             time_indices = [0, len(self.solution.density_history) // 3, 2 * len(self.solution.density_history) // 3, -1]
 
-        fig, axes = plt.subplots(1, len(time_indices), figsize=(4 * len(time_indices), 4))
+        _fig, axes = plt.subplots(1, len(time_indices), figsize=(4 * len(time_indices), 4))
         if len(time_indices) == 1:
             axes = [axes]
 
@@ -513,7 +513,7 @@ class AnisotropicVisualizer:
         total_mass = [np.sum(m) for m in self.solution.density_history]
         peak_density = [np.max(m) for m in self.solution.density_history]
 
-        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+        _fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
         axes[0].plot(time_grid, total_mass)
         axes[0].set_title("Total Mass Over Time")
@@ -542,7 +542,7 @@ class AnisotropicVisualizer:
                     y1=barrier.center[1] + barrier.radius,
                     fillcolor="gray",
                     opacity=0.8,
-                    line=dict(color="black", width=2),
+                    line={"color": "black", "width": 2},
                 )
 
     def _add_barriers_to_matplotlib_axes(self, axes):

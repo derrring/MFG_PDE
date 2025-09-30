@@ -271,7 +271,7 @@ class AnisotropicMFGProblem2D:
             components=self.components,
         )
 
-        logger.info(f"Created 2D anisotropic MFG problem: {self.Nx1+1}×{self.Nx2+1} grid")
+        logger.info(f"Created 2D anisotropic MFG problem: {self.Nx1 + 1}×{self.Nx2 + 1} grid")
         logger.info(f"Parameters: γ={gamma}, σ={sigma}, ρ_amp={rho_amplitude}")
         if self.barriers:
             logger.info(f"Using barrier configuration: {barrier_configuration} with {len(self.barriers)} barriers")
@@ -563,7 +563,7 @@ class AnisotropicMFGProblem2D:
                 density_2d = self.grid_adapter.convert_to_2d_array(solution.m_history)
 
                 # Plot initial and final density
-                fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+                _fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 
                 # Initial density
                 im1 = axes[0].contourf(
@@ -622,7 +622,7 @@ def run_experiment():
 
         # Visualize anisotropy pattern
         logger.info("Visualizing anisotropy pattern...")
-        rho_grid = problem.visualize_anisotropy()
+        problem.visualize_anisotropy()
 
         # Solve the problem
         solution = problem.solve()
@@ -631,7 +631,7 @@ def run_experiment():
             logger.info("SUCCESS: 2D anisotropic MFG experiment completed!")
 
             # Visualize solution
-            density_2d = problem.visualize_solution(solution)
+            problem.visualize_solution(solution)
 
             plt.show()
 

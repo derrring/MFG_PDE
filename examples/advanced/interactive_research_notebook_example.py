@@ -149,13 +149,6 @@ def demonstrate_single_report():
     # Generate sample data
     solver_results, problem_config = generate_sample_data()
 
-    analysis_metadata = {
-        "researcher": "MFG_PDE User",
-        "institution": "Research Institution",
-        "project": "Mean Field Games Analysis",
-        "experiment_id": "MFG_001",
-        "notes": "Demonstration of interactive notebook reporting",
-    }
 
     # Create the research report
     print("\nGenerating interactive research notebook...")
@@ -190,7 +183,7 @@ def demonstrate_comparative_report():
     print("=" * 60)
 
     # Generate sample data for multiple methods
-    solver_results_1, problem_config = generate_sample_data()
+    solver_results_1, _problem_config = generate_sample_data()
 
     # Create variations for comparison (simulated different methods)
     solver_results_2 = solver_results_1.copy()

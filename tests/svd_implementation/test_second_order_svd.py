@@ -25,9 +25,9 @@ def test_second_order_svd():
     delta_values = [0.9, 0.8, 0.7, 0.6]
 
     for delta in delta_values:
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print(f"Testing Second-Order with delta = {delta}")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
 
         try:
             solver = ParticleCollocationSolver(
@@ -75,19 +75,14 @@ def test_second_order_svd():
                 # Stability assessment
                 if abs(mass_change) < 1e-10 and max_U < 1e3:
                     status = "✓ EXCELLENT"
-                    stability_score = 5
                 elif abs(mass_change) < 1e-6 and max_U < 1e6:
                     status = "✓ GOOD"
-                    stability_score = 4
                 elif abs(mass_change) < 0.01 and max_U < 1e8:
                     status = "⚠ ACCEPTABLE"
-                    stability_score = 3
                 elif abs(mass_change) < 0.1 and max_U < 1e10:
                     status = "⚠ POOR"
-                    stability_score = 2
                 else:
                     status = "❌ UNSTABLE"
-                    stability_score = 1
 
                 print(f"  Status: {status}")
 
@@ -113,9 +108,9 @@ def test_second_order_svd():
             print(f"❌ ERROR: {e}")
             status = "❌ ERROR"
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("SECOND-ORDER ANALYSIS COMPLETE")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print("Recommendation: Use delta >= 0.8 for second-order Taylor with SVD")
 
 

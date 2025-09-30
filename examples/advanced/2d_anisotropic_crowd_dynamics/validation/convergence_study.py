@@ -118,7 +118,7 @@ class ConvergenceStudy:
             error_ratio = errors[i - 1] / errors[i]
             rate = np.log(error_ratio) / np.log(h_ratio)
             convergence_rates.append(rate)
-            logger.info(f"Convergence rate {grid_sizes[i-1]} -> {grid_sizes[i]}: {rate:.2f}")
+            logger.info(f"Convergence rate {grid_sizes[i - 1]} -> {grid_sizes[i]}: {rate:.2f}")
 
         # Create result object
         result = ConvergenceResult(
@@ -193,7 +193,7 @@ class ConvergenceStudy:
             error_ratio = errors[i - 1] / errors[i]
             rate = np.log(error_ratio) / np.log(dt_ratio)
             convergence_rates.append(rate)
-            logger.info(f"Temporal rate {dt_values[i-1]:.6f} -> {dt_values[i]:.6f}: {rate:.2f}")
+            logger.info(f"Temporal rate {dt_values[i - 1]:.6f} -> {dt_values[i]:.6f}: {rate:.2f}")
 
         # Create result object
         result = ConvergenceResult(
@@ -395,8 +395,7 @@ class ConvergenceStudy:
         }
 
         logger.info(
-            f"Convergence analysis: mean_rate={analysis['mean_rate']:.2f}, "
-            f"efficiency={analysis['rate_efficiency']:.2f}"
+            f"Convergence analysis: mean_rate={analysis['mean_rate']:.2f}, efficiency={analysis['rate_efficiency']:.2f}"
         )
 
         return analysis
@@ -450,7 +449,7 @@ def run_full_convergence_study():
     spatial_results = study.run_barrier_convergence_study()
 
     # Temporal convergence
-    temporal_result = study.run_temporal_convergence_study()
+    study.run_temporal_convergence_study()
 
     # Analyze results
     for config, result in spatial_results.items():

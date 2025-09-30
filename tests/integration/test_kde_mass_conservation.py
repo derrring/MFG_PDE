@@ -32,7 +32,7 @@ def test_kde_normalization():
     mass1 = np.sum(M_result1 * problem.Dx, axis=1)
     print(f"  Initial mass: {mass1[0]:.6f}")
     print(f"  Final mass: {mass1[-1]:.6f}")
-    print(f"  Mass loss: {mass1[0] - mass1[-1]:.6f} ({(mass1[0] - mass1[-1])/mass1[0]*100:.2f}%)")
+    print(f"  Mass loss: {mass1[0] - mass1[-1]:.6f} ({(mass1[0] - mass1[-1]) / mass1[0] * 100:.2f}%)")
 
     print("\nTest 2: With normalize_kde_output=True (should be better)")
     solver2 = ParticleFPSolver(
@@ -48,7 +48,7 @@ def test_kde_normalization():
     mass2 = np.sum(M_result2 * problem.Dx, axis=1)
     print(f"  Initial mass: {mass2[0]:.6f}")
     print(f"  Final mass: {mass2[-1]:.6f}")
-    print(f"  Mass loss: {mass2[0] - mass2[-1]:.6f} ({(mass2[0] - mass2[-1])/mass2[0]*100:.2f}%)")
+    print(f"  Mass loss: {mass2[0] - mass2[-1]:.6f} ({(mass2[0] - mass2[-1]) / mass2[0] * 100:.2f}%)")
 
     print("\nTest 3: Different bandwidth")
     solver3 = ParticleFPSolver(
@@ -64,7 +64,7 @@ def test_kde_normalization():
     mass3 = np.sum(M_result3 * problem.Dx, axis=1)
     print(f"  Initial mass: {mass3[0]:.6f}")
     print(f"  Final mass: {mass3[-1]:.6f}")
-    print(f"  Mass loss: {mass3[0] - mass3[-1]:.6f} ({(mass3[0] - mass3[-1])/mass3[0]*100:.2f}%)")
+    print(f"  Mass loss: {mass3[0] - mass3[-1]:.6f} ({(mass3[0] - mass3[-1]) / mass3[0] * 100:.2f}%)")
 
 
 if __name__ == "__main__":

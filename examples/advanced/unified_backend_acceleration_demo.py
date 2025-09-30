@@ -316,13 +316,13 @@ def demonstrate_mfg_specific_operations(backend):
         start_time = time.time()
         H = backend.compute_hamiltonian(x, p, m, problem_params)
         elapsed = time.time() - start_time
-        print(f"✅ Hamiltonian computation: {elapsed*1000:.2f}ms")
+        print(f"✅ Hamiltonian computation: {elapsed * 1000:.2f}ms")
 
         # Optimal control computation
         start_time = time.time()
         _ = backend.compute_optimal_control(x, p, m, problem_params)
         elapsed = time.time() - start_time
-        print(f"✅ Optimal control computation: {elapsed*1000:.2f}ms")
+        print(f"✅ Optimal control computation: {elapsed * 1000:.2f}ms")
 
         # Time stepping operations
         dt = 0.01
@@ -330,12 +330,12 @@ def demonstrate_mfg_specific_operations(backend):
         start_time = time.time()
         _ = backend.hjb_step(U, m, dt, dx, problem_params)
         elapsed = time.time() - start_time
-        print(f"✅ HJB time step: {elapsed*1000:.2f}ms")
+        print(f"✅ HJB time step: {elapsed * 1000:.2f}ms")
 
         start_time = time.time()
         m_new = backend.fpk_step(m, U, dt, dx, problem_params)
         elapsed = time.time() - start_time
-        print(f"✅ Fokker-Planck time step: {elapsed*1000:.2f}ms")
+        print(f"✅ Fokker-Planck time step: {elapsed * 1000:.2f}ms")
 
         print("\n📊 Results summary:")
         print(f"• Final mass conservation: {backend.trapezoid(m_new, dx=dx):.6f}")

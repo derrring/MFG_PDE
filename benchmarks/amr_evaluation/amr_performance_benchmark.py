@@ -164,7 +164,7 @@ class AMRBenchmarkSuite:
         # Benchmark each solver configuration
         problem_results = []
         for i, config in enumerate(solver_configs):
-            print(f"\nConfig {i+1}/{len(solver_configs)}: {config.get('name', 'Unnamed')}")
+            print(f"\nConfig {i + 1}/{len(solver_configs)}: {config.get('name', 'Unnamed')}")
 
             result = self._benchmark_single_config(problem, problem_name, config, reference_solution)
 
@@ -497,7 +497,7 @@ class AMRBenchmarkSuite:
                         f.write(f"- **Memory**: {memory_ratio:.2f}x {'more' if memory_ratio > 1 else 'less'}\n")
                         f.write(
                             f"- **Mesh Efficiency**: {amr_result.mesh_efficiency_ratio:.3f} "
-                            f"({100*(1-amr_result.mesh_efficiency_ratio):.1f}% reduction)\n"
+                            f"({100 * (1 - amr_result.mesh_efficiency_ratio):.1f}% reduction)\n"
                         )
                         f.write(f"- **Max Refinement Level**: {amr_result.max_refinement_level}\n")
                         f.write(f"- **Total Adaptations**: {amr_result.total_adaptations}\n\n")
@@ -511,7 +511,7 @@ class AMRBenchmarkSuite:
                 if avg_efficiency < 0.7:
                     f.write(
                         "✅ **AMR Effective**: Average mesh reduction of "
-                        f"{100*(1-avg_efficiency):.1f}% demonstrates significant efficiency gains.\n\n"
+                        f"{100 * (1 - avg_efficiency):.1f}% demonstrates significant efficiency gains.\n\n"
                     )
                 else:
                     f.write(

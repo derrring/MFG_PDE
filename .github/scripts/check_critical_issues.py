@@ -108,7 +108,7 @@ class CriticalIssuesChecker:
                     {
                         "type": "dependency",
                         "severity": "high",
-                        "message": f'Found {high_count} high severity vulnerabilities (max allowed: {self.critical_criteria["dependency"]["high_vulns"]})',
+                        "message": f"Found {high_count} high severity vulnerabilities (max allowed: {self.critical_criteria['dependency']['high_vulns']})",
                         "details": [f for f in findings if f.get("severity") == "high"][:5],  # Top 5
                     }
                 )
@@ -123,7 +123,7 @@ class CriticalIssuesChecker:
                             {
                                 "type": "dependency",
                                 "severity": "critical",
-                                "message": f'High-risk package {package} has {finding.get("severity")} vulnerability',
+                                "message": f"High-risk package {package} has {finding.get('severity')} vulnerability",
                                 "details": [finding],
                             }
                         )
@@ -176,7 +176,7 @@ class CriticalIssuesChecker:
                     {
                         "type": "static_analysis",
                         "severity": "high",
-                        "message": f'Found {len(high_confidence_issues)} high confidence issues (max allowed: {self.critical_criteria["static_analysis"]["total_high_confidence"]})',
+                        "message": f"Found {len(high_confidence_issues)} high confidence issues (max allowed: {self.critical_criteria['static_analysis']['total_high_confidence']})",
                         "details": high_confidence_issues[:5],  # Top 5
                     }
                 )
@@ -231,7 +231,7 @@ class CriticalIssuesChecker:
                     {
                         "type": "secrets",
                         "severity": "high",
-                        "message": f'Found {total_secrets} potential secrets (max allowed: {self.critical_criteria["secrets"]["total_secrets"]})',
+                        "message": f"Found {total_secrets} potential secrets (max allowed: {self.critical_criteria['secrets']['total_secrets']})",
                         "details": findings[:3],  # Top 3
                     }
                 )
@@ -288,7 +288,7 @@ class CriticalIssuesChecker:
                     {
                         "type": "container",
                         "severity": "high",
-                        "message": f'Found {high_count} high severity container vulnerabilities (max allowed: {self.critical_criteria["container"]["high_vulns"]})',
+                        "message": f"Found {high_count} high severity container vulnerabilities (max allowed: {self.critical_criteria['container']['high_vulns']})",
                         "details": [f for f in findings if f.get("severity") == "high"][:3],
                     }
                 )

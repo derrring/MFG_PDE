@@ -402,7 +402,7 @@ def run_comprehensive_test():
                 passed_tests += 1
         else:
             # Multiple test results
-            for test_key, result in results.items():
+            for _test_key, result in results.items():
                 total_tests += 1
                 if result.get("success", False):
                     passed_tests += 1

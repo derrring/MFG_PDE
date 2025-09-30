@@ -36,7 +36,7 @@ def create_anisotropic_solver_config(
         Solver configuration dictionary
     """
     # Base configuration for non-separable 2D problem
-    config_obj = create_fast_config()
+    create_fast_config()
 
     # Convert to dictionary for backwards compatibility
     config = {

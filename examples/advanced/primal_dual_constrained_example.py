@@ -447,7 +447,7 @@ def main():
 
         logger.info("Problem created:")
         logger.info(f"  Domain: [{problem.xmin}, {problem.xmax}] × [0, {problem.T}]")
-        logger.info(f"  Grid: {problem.Nx+1} × {problem.Nt}")
+        logger.info(f"  Grid: {problem.Nx + 1} × {problem.Nt}")
         logger.info("  Constraints: obstacle + velocity + budget + capacity")
 
         # Solve with both methods

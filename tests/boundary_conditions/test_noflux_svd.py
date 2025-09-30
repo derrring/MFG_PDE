@@ -23,12 +23,12 @@ def test_noflux_with_svd():
     results = {}
 
     for i, case in enumerate(test_cases):
-        print(f"\n{'='*60}")
-        print(f"TEST CASE {i+1}: {case['name']}")
+        print(f"\n{'=' * 60}")
+        print(f"TEST CASE {i + 1}: {case['name']}")
         print(
             f"Nx={case['Nx']}, T={case['T']}, Nt={case['Nt']}, Colloc={case['n_colloc']}, Particles={case['particles']}"
         )
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Create problem
         problem = ExampleMFGProblem(
@@ -71,7 +71,7 @@ def test_noflux_with_svd():
 
             # Run very limited Picard iterations
             print("\nRunning 2 Picard iterations...")
-            U, M, info = solver.solve(Niter=2, l2errBound=1e-3, verbose=True)
+            U, M, _info = solver.solve(Niter=2, l2errBound=1e-3, verbose=True)
 
             if M is not None:
                 mass_evolution = np.sum(M * problem.Dx, axis=1)
@@ -119,11 +119,11 @@ def test_noflux_with_svd():
             results[case["name"]] = {"status": "ERROR", "error": str(e)}
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"{'Case':<10} {'Status':<10} {'Mass Change':<12} {'Max |U|':<10} {'SVD %':<8}")
-    print(f"{'-'*10} {'-'*10} {'-'*12} {'-'*10} {'-'*8}")
+    print(f"{'-' * 10} {'-' * 10} {'-' * 12} {'-' * 10} {'-' * 8}")
 
     for name, result in results.items():
         if result["status"] not in ["FAILED", "ERROR"]:

@@ -54,7 +54,7 @@ def main():
     # Visualize the results
     print("\n3. Creating visualization...")
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
     # Density distribution
     ax1.plot(x_grid, final_density, "b-", linewidth=2, label="Agent density")

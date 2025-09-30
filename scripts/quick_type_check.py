@@ -64,7 +64,7 @@ def main():
     start_total = time.time()
 
     # Run mypy check
-    mypy_success, error_count, mypy_output = run_quick_mypy()
+    mypy_success, error_count, _mypy_output = run_quick_mypy()
 
     # Run Ruff check if available
     ruff_available = subprocess.run(["which", "ruff"], capture_output=True).returncode == 0
@@ -77,9 +77,9 @@ def main():
 
     # Summary
     total_time = time.time() - start_total
-    print(f"\n{'='*40}")
+    print(f"\n{'=' * 40}")
     print(f"📊 SUMMARY (completed in {total_time:.1f}s)")
-    print(f"{'='*40}")
+    print(f"{'=' * 40}")
 
     if mypy_success and ruff_success:
         print("🎉 All checks passed!")

@@ -287,10 +287,10 @@ def plot_refinement_statistics(stats, ax):
     ax.grid(True, alpha=0.3)
 
     # Add statistics text
-    text_stats = f"""Total Triangles: {stats['total_triangles']}
-Leaf Triangles: {stats['leaf_triangles']}
-Max Level: {stats['max_level']}
-Aspect Ratio: {stats['min_aspect_ratio']:.2f} - {stats['max_aspect_ratio']:.2f}"""
+    text_stats = f"""Total Triangles: {stats["total_triangles"]}
+Leaf Triangles: {stats["leaf_triangles"]}
+Max Level: {stats["max_level"]}
+Aspect Ratio: {stats["min_aspect_ratio"]:.2f} - {stats["max_aspect_ratio"]:.2f}"""
 
     ax.text(
         0.02,
@@ -299,7 +299,7 @@ Aspect Ratio: {stats['min_aspect_ratio']:.2f} - {stats['max_aspect_ratio']:.2f}"
         transform=ax.transAxes,
         verticalalignment="top",
         fontsize=8,
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.8},
     )
 
 

@@ -121,9 +121,6 @@ __all__ = [
     "GeneralMFGFactory",
     # Network geometry
     "GridNetwork",
-    # Variational MFG
-    "VariationalMFGComponents",
-    "VariationalMFGProblem",
     "MFGComponents",
     "MFGProblem",
     "MFGProblemBuilder",
@@ -141,6 +138,9 @@ __all__ = [
     "ScaleFreeNetwork",
     # Factory methods
     "SolverFactory",
+    # Variational MFG
+    "VariationalMFGComponents",
+    "VariationalMFGProblem",
     "compute_network_statistics",
     "create_accurate_config",
     "create_accurate_solver",
