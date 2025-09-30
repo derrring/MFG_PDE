@@ -24,6 +24,7 @@ except ImportError:
 if TORCH_AVAILABLE:
     # Import PINN solver implementations
     try:
+        from .adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingStrategy, PhysicsGuidedSampler
         from .base_pinn import PINNBase, PINNConfig
         from .fp_pinn_solver import FPPINNSolver
         from .hjb_pinn_solver import HJBPINNSolver
@@ -44,11 +45,14 @@ if TORCH_AVAILABLE:
         ALL_PINN_SOLVERS = INDIVIDUAL_PINN_SOLVERS + COUPLED_PINN_SOLVERS
 
         __all__ = [
+            "AdaptiveTrainingConfig",
+            "AdaptiveTrainingStrategy",
             "FPPINNSolver",
             "HJBPINNSolver",
             "MFGPINNSolver",
             "PINNBase",
             "PINNConfig",
+            "PhysicsGuidedSampler",
         ]
 
     except ImportError as e:

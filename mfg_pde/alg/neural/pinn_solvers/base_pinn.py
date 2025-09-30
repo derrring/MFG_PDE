@@ -42,6 +42,14 @@ try:
     from torch.utils.data import DataLoader, TensorDataset
 
     TORCH_AVAILABLE = True
+
+    # Import adaptive training components conditionally
+    try:
+        from .adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingStrategy
+
+        ADAPTIVE_AVAILABLE = True
+    except ImportError:
+        ADAPTIVE_AVAILABLE = False
 except ImportError:
     TORCH_AVAILABLE = False
 
@@ -117,7 +125,11 @@ class PINNConfig:
     curriculum_start_weight: float = 0.1
     curriculum_end_epoch: int = 1000
 
-    # Adaptive sampling
+    # Advanced adaptive training
+    enable_advanced_adaptive: bool = False  # Enable sophisticated adaptive strategies
+    adaptive_config: dict = field(default_factory=dict)  # Configuration for AdaptiveTrainingStrategy
+
+    # Basic adaptive sampling (legacy)
     resample_frequency: int = 100
     residual_threshold: float = 0.01
 
@@ -220,7 +232,14 @@ class PINNBase(BaseNeuralSolver, ABC):
         self.current_points = None
         self.residual_history = []
 
-        print(f"Initialized PINN solver on {self.device}")
+        # Initialize advanced adaptive training if enabled
+        self.adaptive_strategy = None
+        if self.config.enable_advanced_adaptive and ADAPTIVE_AVAILABLE:
+            adaptive_config = AdaptiveTrainingConfig(**self.config.adaptive_config)
+            self.adaptive_strategy = AdaptiveTrainingStrategy(adaptive_config)
+            print(f"Initialized PINN solver on {self.device} with advanced adaptive training")
+        else:
+            print(f"Initialized PINN solver on {self.device}")
 
     def _setup_device(self) -> torch.device:
         """
@@ -654,6 +673,23 @@ class PINNBase(BaseNeuralSolver, ABC):
             if epoch % self.config.resample_frequency == 0 or self.current_points is None:
                 self.current_points = self.sample_points()
 
+            # Apply adaptive training strategy if enabled
+            adaptive_updates = {}
+            if self.adaptive_strategy is not None:
+                # Prepare data for adaptive strategy
+                physics_points = self.current_points["interior"]
+                physics_residuals = self.compute_physics_residual(physics_points)
+
+                domain_bounds = self.get_domain_bounds()
+
+                adaptive_updates = self.adaptive_strategy.step(
+                    epoch=epoch, current_points=physics_points, residuals=physics_residuals, domain_bounds=domain_bounds
+                )
+
+                # Update sampling points if provided
+                if "physics_points" in adaptive_updates:
+                    self.current_points["interior"] = adaptive_updates["physics_points"]
+
             # Perform training step
             losses = self.train_step(
                 self.current_points["interior"],
@@ -661,6 +697,24 @@ class PINNBase(BaseNeuralSolver, ABC):
                 self.current_points["initial"],
                 data_points,
             )
+
+            # Update adaptive training with loss information
+            if self.adaptive_strategy is not None:
+                # Provide additional loss information for adaptive strategy
+                additional_updates = self.adaptive_strategy.step(
+                    epoch=epoch,
+                    physics_loss=torch.tensor(losses.get("pde_loss", 0.0)),
+                    boundary_loss=torch.tensor(losses.get("boundary_loss", 0.0)),
+                    initial_loss=torch.tensor(losses.get("initial_loss", 0.0)),
+                    total_loss=losses["total_loss"],
+                )
+
+                # Update loss weights if provided
+                if "loss_weights" in additional_updates:
+                    physics_weight, boundary_weight, initial_weight = additional_updates["loss_weights"]
+                    self.config.pde_weight = physics_weight
+                    self.config.boundary_weight = boundary_weight
+                    self.config.initial_weight = initial_weight
 
             # Record training history
             for loss_name, loss_value in losses.items():
@@ -753,6 +807,80 @@ class PINNBase(BaseNeuralSolver, ABC):
         solution["X_grid"] = X_eval
 
         return solution
+
+    def compute_physics_residual(self, points: torch.Tensor) -> torch.Tensor:
+        """
+        Compute physics residuals at given points for adaptive training.
+
+        Args:
+            points: Evaluation points [n_points, dim]
+
+        Returns:
+            Physics residuals [n_points]
+        """
+        # This is a simplified version - each PINN subclass should override
+        # with their specific physics residual computation
+
+        if points.shape[1] == 2:  # [t, x] format
+            t, x = points[:, 0:1], points[:, 1:2]
+        else:
+            # For higher dimensions, assume first is time
+            t, x = points[:, 0:1], points[:, 1:]
+
+        # Get network predictions
+        predictions = self.forward(t, x)
+
+        # Compute simple residual (subclasses should override with proper physics)
+        if isinstance(predictions, dict):
+            residuals = []
+            for pred in predictions.values():
+                # Compute gradients for residual computation
+                pred_sum = pred.sum()  # For gradient computation
+                grad_t = (
+                    torch.autograd.grad(pred_sum, t, create_graph=True)[0] if t.requires_grad else torch.zeros_like(t)
+                )
+                grad_x = (
+                    torch.autograd.grad(pred_sum, x, create_graph=True)[0] if x.requires_grad else torch.zeros_like(x)
+                )
+
+                # Simple residual: du/dt + du/dx (placeholder)
+                residual = torch.abs(grad_t + grad_x.sum(dim=1, keepdim=True))
+                residuals.append(residual.squeeze())
+
+            return torch.stack(residuals).mean(dim=0)
+        else:
+            # Single prediction
+            pred_sum = predictions.sum()
+            grad_t = torch.autograd.grad(pred_sum, t, create_graph=True)[0] if t.requires_grad else torch.zeros_like(t)
+            grad_x = torch.autograd.grad(pred_sum, x, create_graph=True)[0] if x.requires_grad else torch.zeros_like(x)
+
+            residual = torch.abs(grad_t + grad_x.sum(dim=1, keepdim=True))
+            return residual.squeeze()
+
+    def get_domain_bounds(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Get domain bounds for adaptive sampling.
+
+        Returns:
+            (lower_bounds, upper_bounds) as torch tensors
+        """
+        # Default domain bounds - subclasses should override
+        # Assuming 2D domain [t, x] with t ∈ [0, 1], x ∈ [0, 1]
+
+        lower_bounds = torch.tensor([0.0, 0.0], device=self.device, dtype=self.dtype)
+        upper_bounds = torch.tensor([1.0, 1.0], device=self.device, dtype=self.dtype)
+
+        # Try to get bounds from problem if available
+        if hasattr(self.problem, "domain") and hasattr(self.problem.domain, "bounds"):
+            try:
+                bounds = self.problem.domain.bounds
+                if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+                    lower_bounds = torch.tensor(bounds[0], device=self.device, dtype=self.dtype)
+                    upper_bounds = torch.tensor(bounds[1], device=self.device, dtype=self.dtype)
+            except:
+                pass  # Use default bounds
+
+        return lower_bounds, upper_bounds
 
     def predict(
         self, t: torch.Tensor | np.ndarray, x: torch.Tensor | np.ndarray
