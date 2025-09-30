@@ -68,27 +68,27 @@ class Demo2DMFGProblem(HighDimMFGProblem):
             (u0, rho0): Initial value function and density
         """
         # Get 2D grid from domain
-        if hasattr(self.domain_2d, 'get_computational_grid'):
+        if hasattr(self.domain_2d, "get_computational_grid"):
             grid = self.domain_2d.get_computational_grid()
-            X, Y = grid['X'], grid['Y']
+            X, Y = grid["X"], grid["Y"]
         else:
             # Fallback: create regular grid
             xmin, xmax, ymin, ymax = self.domain_2d.bounds_rect
             x = np.linspace(xmin, xmax, 64)
             y = np.linspace(ymin, ymax, 64)
-            X, Y = np.meshgrid(x, y, indexing='ij')
+            X, Y = np.meshgrid(x, y, indexing="ij")
 
         # Initial value function: smooth Gaussian-like function
         # u0(x,y) = exp(-α((x-x_c)² + (y-y_c)²))
         x_center, y_center = 0.3, 0.7
         alpha = 10.0
-        u0 = np.exp(-alpha * ((X - x_center)**2 + (Y - y_center)**2))
+        u0 = np.exp(-alpha * ((X - x_center) ** 2 + (Y - y_center) ** 2))
 
         # Initial density: different center to create interesting dynamics
         # rho0(x,y) = normalized Gaussian
         rho_center_x, rho_center_y = 0.7, 0.3
         beta = 8.0
-        rho0 = np.exp(-beta * ((X - rho_center_x)**2 + (Y - rho_center_y)**2))
+        rho0 = np.exp(-beta * ((X - rho_center_x) ** 2 + (Y - rho_center_y) ** 2))
 
         # Normalize density
         dx = X[1, 0] - X[0, 0]
@@ -148,24 +148,20 @@ def setup_2d_demo_domain() -> Domain2D:
     )
 
     # Add computational grid method if not present
-    if not hasattr(domain, 'get_computational_grid'):
+    if not hasattr(domain, "get_computational_grid"):
+
         def get_computational_grid():
             xmin, xmax, ymin, ymax = domain.bounds_rect
             nx, ny = 64, 64  # High resolution for WENO
 
             x_coords = np.linspace(xmin, xmax, nx)
             y_coords = np.linspace(ymin, ymax, ny)
-            X, Y = np.meshgrid(x_coords, y_coords, indexing='ij')
+            X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
 
             dx = x_coords[1] - x_coords[0]
             dy = y_coords[1] - y_coords[0]
 
-            return {
-                'nx': nx, 'ny': ny,
-                'dx': dx, 'dy': dy,
-                'x_coords': x_coords, 'y_coords': y_coords,
-                'X': X, 'Y': Y
-            }
+            return {"nx": nx, "ny": ny, "dx": dx, "dy": dy, "x_coords": x_coords, "y_coords": y_coords, "X": X, "Y": Y}
 
         # Attach method to domain
         domain.get_computational_grid = get_computational_grid
@@ -189,7 +185,7 @@ def run_2d_weno_variants_comparison():
         domain=domain,
         time_domain=(0.5, 50),  # Shorter time for demonstration
         diffusion_coeff=0.05,
-        interaction_strength=0.5
+        interaction_strength=0.5,
     )
 
     # Create initial conditions
@@ -210,33 +206,28 @@ def run_2d_weno_variants_comparison():
             # Create solver with variant-specific parameters
             solver_params = _get_variant_parameters(variant)
 
-            solver = HJBWenoSolver(
-                problem=problem,
-                weno_variant=variant,
-                **solver_params
-            )
+            solver = HJBWenoSolver(problem=problem, weno_variant=variant, **solver_params)
 
             # Solve and time the computation
             start_time = timer.time()
             solution = solver.solve_hjb_system(
-                u_initial=u0,
-                rho_trajectory=rho_trajectory,
-                max_iterations=problem.Nt,
-                tolerance=1e-8
+                u_initial=u0, rho_trajectory=rho_trajectory, max_iterations=problem.Nt, tolerance=1e-8
             )
             solve_time = timer.time() - start_time
 
             # Store results
             results[variant] = {
-                'solution': solution,
-                'solve_time': solve_time,
-                'final_solution': solution[-1],
-                'solver': solver
+                "solution": solution,
+                "solve_time": solve_time,
+                "final_solution": solution[-1],
+                "solver": solver,
             }
 
-            logger.info(f"2D {variant.upper()}: {solve_time:.2f}s, "
-                       f"final max: {np.max(solution[-1]):.4f}, "
-                       f"final min: {np.min(solution[-1]):.4f}")
+            logger.info(
+                f"2D {variant.upper()}: {solve_time:.2f}s, "
+                f"final max: {np.max(solution[-1]):.4f}, "
+                f"final min: {np.min(solution[-1]):.4f}"
+            )
 
         except Exception as e:
             logger.error(f"Error with 2D {variant}: {e}")
@@ -255,26 +246,26 @@ def run_2d_weno_variants_comparison():
 def _get_variant_parameters(variant: WenoVariant) -> dict:
     """Get optimal parameters for each WENO variant in 2D."""
     base_params = {
-        'cfl_number': 0.2,  # Conservative for 2D
-        'diffusion_stability_factor': 0.1,  # Conservative for 2D
-        'weno_epsilon': 1e-6,
-        'time_integration': 'tvd_rk3',
-        'splitting_method': 'strang'
+        "cfl_number": 0.2,  # Conservative for 2D
+        "diffusion_stability_factor": 0.1,  # Conservative for 2D
+        "weno_epsilon": 1e-6,
+        "time_integration": "tvd_rk3",
+        "splitting_method": "strang",
     }
 
     variant_specific = {
-        'weno5': {},  # Use base parameters
-        'weno-z': {
-            'weno_z_parameter': 2.0,  # Enhanced resolution
-            'cfl_number': 0.15  # Slightly more conservative
+        "weno5": {},  # Use base parameters
+        "weno-z": {
+            "weno_z_parameter": 2.0,  # Enhanced resolution
+            "cfl_number": 0.15,  # Slightly more conservative
         },
-        'weno-m': {
-            'weno_m_parameter': 1.5,  # Better critical point handling
-            'cfl_number': 0.25  # Can be slightly less conservative
+        "weno-m": {
+            "weno_m_parameter": 1.5,  # Better critical point handling
+            "cfl_number": 0.25,  # Can be slightly less conservative
         },
-        'weno-js': {
-            'cfl_number': 0.1,  # Most conservative for stability
-        }
+        "weno-js": {
+            "cfl_number": 0.1,  # Most conservative for stability
+        },
     }
 
     params = base_params.copy()
@@ -288,25 +279,25 @@ def _analyze_2d_weno_results(results: dict, u0: np.ndarray, rho0: np.ndarray, do
 
     # Get grid for plotting
     grid = domain.get_computational_grid()
-    X, Y = grid['X'], grid['Y']
+    X, Y = grid["X"], grid["Y"]
 
     # Create comprehensive comparison plots
-    fig = plt.figure(figsize=(16, 12))
+    plt.figure(figsize=(16, 12))
 
     # 1. Initial conditions
     plt.subplot(3, 4, 1)
-    plt.contourf(X, Y, u0, levels=20, cmap='viridis')
-    plt.colorbar(label='u₀(x,y)')
-    plt.title('Initial Value Function')
-    plt.xlabel('x')
-    plt.ylabel('y')
+    plt.contourf(X, Y, u0, levels=20, cmap="viridis")
+    plt.colorbar(label="u₀(x,y)")
+    plt.title("Initial Value Function")
+    plt.xlabel("x")
+    plt.ylabel("y")
 
     plt.subplot(3, 4, 2)
-    plt.contourf(X, Y, rho0, levels=20, cmap='plasma')
-    plt.colorbar(label='ρ₀(x,y)')
-    plt.title('Initial Density')
-    plt.xlabel('x')
-    plt.ylabel('y')
+    plt.contourf(X, Y, rho0, levels=20, cmap="plasma")
+    plt.colorbar(label="ρ₀(x,y)")
+    plt.title("Initial Density")
+    plt.xlabel("x")
+    plt.ylabel("y")
 
     # 2. Final solutions for each variant
     plot_idx = 3
@@ -315,84 +306,82 @@ def _analyze_2d_weno_results(results: dict, u0: np.ndarray, rho0: np.ndarray, do
             break
 
         plt.subplot(3, 4, plot_idx)
-        final_solution = result['final_solution']
-        plt.contourf(X, Y, final_solution, levels=20, cmap='viridis')
-        plt.colorbar(label='u(T,x,y)')
-        plt.title(f'2D {variant.upper()} Final Solution')
-        plt.xlabel('x')
-        plt.ylabel('y')
+        final_solution = result["final_solution"]
+        plt.contourf(X, Y, final_solution, levels=20, cmap="viridis")
+        plt.colorbar(label="u(T,x,y)")
+        plt.title(f"2D {variant.upper()} Final Solution")
+        plt.xlabel("x")
+        plt.ylabel("y")
         plot_idx += 1
 
     # 3. Cross-sectional comparison at y = 0.5
     plt.subplot(3, 4, 7)
-    y_idx = len(grid['y_coords']) // 2  # Middle y-slice
-    x_coords = grid['x_coords']
+    y_idx = len(grid["y_coords"]) // 2  # Middle y-slice
+    x_coords = grid["x_coords"]
 
-    plt.plot(x_coords, u0[:, y_idx], 'k--', label='Initial', alpha=0.7)
+    plt.plot(x_coords, u0[:, y_idx], "k--", label="Initial", alpha=0.7)
     for variant, result in results.items():
-        final_solution = result['final_solution']
-        plt.plot(x_coords, final_solution[:, y_idx],
-                label=f'2D {variant.upper()}', linewidth=2)
+        final_solution = result["final_solution"]
+        plt.plot(x_coords, final_solution[:, y_idx], label=f"2D {variant.upper()}", linewidth=2)
 
-    plt.xlabel('x')
-    plt.ylabel('u(T, x, 0.5)')
-    plt.title('Cross-section at y=0.5')
+    plt.xlabel("x")
+    plt.ylabel("u(T, x, 0.5)")
+    plt.title("Cross-section at y=0.5")
     plt.legend()
     plt.grid(True, alpha=0.3)
 
     # 4. Cross-sectional comparison at x = 0.5
     plt.subplot(3, 4, 8)
-    x_idx = len(grid['x_coords']) // 2  # Middle x-slice
-    y_coords = grid['y_coords']
+    x_idx = len(grid["x_coords"]) // 2  # Middle x-slice
+    y_coords = grid["y_coords"]
 
-    plt.plot(y_coords, u0[x_idx, :], 'k--', label='Initial', alpha=0.7)
+    plt.plot(y_coords, u0[x_idx, :], "k--", label="Initial", alpha=0.7)
     for variant, result in results.items():
-        final_solution = result['final_solution']
-        plt.plot(y_coords, final_solution[x_idx, :],
-                label=f'2D {variant.upper()}', linewidth=2)
+        final_solution = result["final_solution"]
+        plt.plot(y_coords, final_solution[x_idx, :], label=f"2D {variant.upper()}", linewidth=2)
 
-    plt.xlabel('y')
-    plt.ylabel('u(T, 0.5, y)')
-    plt.title('Cross-section at x=0.5')
+    plt.xlabel("y")
+    plt.ylabel("u(T, 0.5, y)")
+    plt.title("Cross-section at x=0.5")
     plt.legend()
     plt.grid(True, alpha=0.3)
 
     # 5. Performance comparison
     plt.subplot(3, 4, 9)
     variants = list(results.keys())
-    solve_times = [results[v]['solve_time'] for v in variants]
+    solve_times = [results[v]["solve_time"] for v in variants]
 
-    plt.bar(variants, solve_times, alpha=0.7, color=['blue', 'green', 'red', 'orange'][:len(variants)])
-    plt.ylabel('Solve Time (s)')
-    plt.title('2D WENO Performance Comparison')
+    plt.bar(variants, solve_times, alpha=0.7, color=["blue", "green", "red", "orange"][: len(variants)])
+    plt.ylabel("Solve Time (s)")
+    plt.title("2D WENO Performance Comparison")
     plt.xticks(rotation=45)
 
     # 6. Solution statistics
     plt.subplot(3, 4, 10)
-    max_values = [np.max(results[v]['final_solution']) for v in variants]
-    min_values = [np.min(results[v]['final_solution']) for v in variants]
+    max_values = [np.max(results[v]["final_solution"]) for v in variants]
+    min_values = [np.min(results[v]["final_solution"]) for v in variants]
 
     x_pos = np.arange(len(variants))
-    plt.bar(x_pos - 0.2, max_values, 0.4, label='Max', alpha=0.7)
-    plt.bar(x_pos + 0.2, min_values, 0.4, label='Min', alpha=0.7)
+    plt.bar(x_pos - 0.2, max_values, 0.4, label="Max", alpha=0.7)
+    plt.bar(x_pos + 0.2, min_values, 0.4, label="Min", alpha=0.7)
     plt.xticks(x_pos, variants, rotation=45)
-    plt.ylabel('Solution Value')
-    plt.title('Final Solution Statistics')
+    plt.ylabel("Solution Value")
+    plt.title("Final Solution Statistics")
     plt.legend()
 
     # 7. L2 norm comparison (relative to first variant)
     plt.subplot(3, 4, 11)
-    reference_solution = list(results.values())[0]['final_solution']
+    reference_solution = next(iter(results.values()))["final_solution"]
     l2_diffs = []
 
     for variant in variants:
-        solution = results[variant]['final_solution']
-        l2_diff = np.sqrt(np.sum((solution - reference_solution)**2))
+        solution = results[variant]["final_solution"]
+        l2_diff = np.sqrt(np.sum((solution - reference_solution) ** 2))
         l2_diffs.append(l2_diff)
 
     plt.bar(variants, l2_diffs, alpha=0.7)
-    plt.ylabel('L2 Difference from Reference')
-    plt.title(f'Solution Differences (ref: {variants[0].upper()})')
+    plt.ylabel("L2 Difference from Reference")
+    plt.title(f"Solution Differences (ref: {variants[0].upper()})")
     plt.xticks(rotation=45)
 
     # 8. Conservation properties
@@ -401,26 +390,28 @@ def _analyze_2d_weno_results(results: dict, u0: np.ndarray, rho0: np.ndarray, do
     conservation_scores = []
     for variant in variants:
         # Placeholder conservation metric
-        solution = results[variant]['final_solution']
+        solution = results[variant]["final_solution"]
         conservation_scores.append(np.sum(solution))
 
     plt.bar(variants, conservation_scores, alpha=0.7)
-    plt.ylabel('Conservation Score')
-    plt.title('Conservation Properties')
+    plt.ylabel("Conservation Score")
+    plt.title("Conservation Properties")
     plt.xticks(rotation=45)
 
     plt.tight_layout()
-    plt.savefig('2d_weno_comparison.png', dpi=150, bbox_inches='tight')
+    plt.savefig("2d_weno_comparison.png", dpi=150, bbox_inches="tight")
     plt.show()
 
     # Print summary
     logger.info("\n2D WENO Variants Performance Summary:")
     logger.info("=" * 50)
     for variant, result in results.items():
-        solution = result['final_solution']
-        logger.info(f"{variant.upper():>8}: {result['solve_time']:6.2f}s | "
-                   f"Range: [{np.min(solution):8.4f}, {np.max(solution):8.4f}] | "
-                   f"Mean: {np.mean(solution):8.4f}")
+        solution = result["final_solution"]
+        logger.info(
+            f"{variant.upper():>8}: {result['solve_time']:6.2f}s | "
+            f"Range: [{np.min(solution):8.4f}, {np.max(solution):8.4f}] | "
+            f"Mean: {np.mean(solution):8.4f}"
+        )
 
 
 def demonstrate_2d_boundary_conditions():
@@ -431,14 +422,13 @@ def demonstrate_2d_boundary_conditions():
     # This would integrate with the 2D boundary condition framework
     # created in the previous work
 
-    domain = setup_2d_demo_domain()
+    _ = setup_2d_demo_domain()  # Domain setup for reference
 
     # Example: Periodic boundary conditions in both directions
     from mfg_pde.geometry.boundary_conditions_2d import create_rectangle_boundary_conditions
 
     bc_manager = create_rectangle_boundary_conditions(
-        domain_bounds=(0.0, 1.0, 0.0, 1.0),
-        condition_type="periodic_both"
+        domain_bounds=(0.0, 1.0, 0.0, 1.0), condition_type="periodic_both"
     )
 
     logger.info(f"Created 2D boundary condition manager with {len(bc_manager.conditions)} conditions")

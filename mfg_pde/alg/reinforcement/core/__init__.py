@@ -15,9 +15,9 @@ from mfg_pde.alg.base_solver import BaseRLSolver
 
 # Check for RL dependencies at core level
 try:
-    import gymnasium as gym
+    import gymnasium as gym  # noqa: F401
 
-    import numpy as np
+    import numpy as np  # noqa: F401
 
     CORE_DEPENDENCIES_AVAILABLE = True
 except ImportError:
