@@ -5,7 +5,7 @@ Compare the current no-flux implementation with a simple approach
 
 import numpy as np
 
-from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+from mfg_pde.alg.numerical.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.geometry import BoundaryConditions
 

@@ -2,7 +2,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
+from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 
 
 class MockMFGProblem:
