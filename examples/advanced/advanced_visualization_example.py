@@ -117,7 +117,7 @@ def demo_basic_visualization():
             visualizer = MFGVisualizer(backend=backend, theme="default")
 
             # Plot complete MFG solution
-            fig1 = visualizer.plot_mfg_solution(
+            visualizer.plot_mfg_solution(
                 U,
                 M,
                 x_grid,
@@ -129,7 +129,7 @@ def demo_basic_visualization():
 
             # Plot solution snapshots at specific times
             t_indices = [0, len(t_grid) // 4, len(t_grid) // 2, 3 * len(t_grid) // 4, -1]
-            fig2 = visualizer.plot_solution_snapshots(
+            visualizer.plot_solution_snapshots(
                 U,
                 M,
                 x_grid,
@@ -173,7 +173,7 @@ def demo_convergence_visualization():
 
         if PLOTLY_AVAILABLE:
             visualizer_plotly = MFGVisualizer(backend="plotly")
-            fig_plotly = visualizer_plotly.plot_convergence_history(
+            visualizer_plotly.plot_convergence_history(
                 convergence_data,
                 title="Convergence History (Interactive)",
                 log_scale=True,
@@ -184,7 +184,7 @@ def demo_convergence_visualization():
 
         if MATPLOTLIB_AVAILABLE:
             visualizer_mpl = MFGVisualizer(backend="matplotlib")
-            fig_mpl = visualizer_mpl.plot_convergence_history(
+            visualizer_mpl.plot_convergence_history(
                 convergence_data,
                 title="Convergence History (Publication Quality)",
                 log_scale=True,
@@ -194,7 +194,7 @@ def demo_convergence_visualization():
             logger.info("Created publication-quality convergence plot")
 
         # Quick plot function
-        quick_fig = quick_plot_convergence(
+        quick_plot_convergence(
             convergence_data, backend="auto", save_path=output_dir / "convergence_quick.html"
         )
         logger.info("Created quick convergence plot")
@@ -251,7 +251,7 @@ def demo_monitoring_dashboard():
 
         # Create dashboard
         output_dir = Path("visualization_output")
-        dashboard_fig = dashboard.create_dashboard(save_path=output_dir / "monitoring_dashboard.html", show=False)
+        dashboard.create_dashboard(save_path=output_dir / "monitoring_dashboard.html", show=False)
 
         logger.info("Monitoring dashboard created successfully")
 
@@ -284,7 +284,7 @@ def demo_animation_features():
         output_dir = Path("visualization_output")
 
         # Create animation
-        animation = VisualizationUtils.create_animation(
+        VisualizationUtils.create_animation(
             U_sequence,
             x_grid,
             title="MFG Solution Evolution Animation",
@@ -395,7 +395,7 @@ def demo_solver_integration():
         visualizer = MFGVisualizer(backend="auto", theme="default")
 
         # Plot the real solution
-        fig = visualizer.plot_mfg_solution(
+        visualizer.plot_mfg_solution(
             U,
             M,
             x_coords,
@@ -407,7 +407,7 @@ def demo_solver_integration():
 
         # Plot snapshots at different times
         t_indices = [0, problem.Nt // 3, 2 * problem.Nt // 3, -1]
-        snapshots_fig = visualizer.plot_solution_snapshots(
+        visualizer.plot_solution_snapshots(
             U,
             M,
             x_coords,
@@ -422,7 +422,7 @@ def demo_solver_integration():
 
         # Generate convergence data if available
         if hasattr(result, "convergence_history"):
-            convergence_fig = visualizer.plot_convergence_history(
+            visualizer.plot_convergence_history(
                 result.convergence_history,
                 title="Real Solver Convergence",
                 save_path=output_dir / "real_solver_convergence.html",

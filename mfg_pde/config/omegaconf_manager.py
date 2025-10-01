@@ -37,7 +37,6 @@ from typing import TYPE_CHECKING, Any
 # Simplified OmegaConf integration - minimize typing conflicts
 if TYPE_CHECKING:
     # For static typing, use minimal type definitions
-    from typing import Any
 
     DictConfig = dict[str, Any]
     ListConfig = list[Any]

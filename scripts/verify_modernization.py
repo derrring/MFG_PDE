@@ -167,7 +167,6 @@ def check_development_tools() -> bool:
     """Test development tools configuration."""
     print("🔍 Testing development tools...")
 
-    success = True
 
     # Test Ruff (modern unified tool)
     ruff_available = run_command("ruff --version 2>/dev/null", "Ruff availability check")

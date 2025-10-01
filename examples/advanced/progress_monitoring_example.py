@@ -111,7 +111,7 @@ def demo_progress_bars():
             time.sleep(0.02)
             error = np.exp(-i * 0.2)  # Exponential decay
             residual = error * 0.1
-            additional_info = {"residual": f"{residual:.2e}", "step": f"{i+1}/20"}
+            additional_info = {"residual": f"{residual:.2e}", "step": f"{i + 1}/20"}
             progress.update(1, error=error, additional_info=additional_info)
     print()
 
@@ -164,7 +164,7 @@ def demo_solver_integration():
             )
 
             if converged:
-                print(f"\n Converged early at iteration {i+1}!")
+                print(f"\n Converged early at iteration {i + 1}!")
                 break
     print()
 
@@ -208,7 +208,7 @@ def demo_enhanced_solver_wrapper():
                 if error < 1e-3:
                     converged = True
                     if verbose:
-                        print(f"\nSUCCESS: Converged at iteration {i+1}")
+                        print(f"\nSUCCESS: Converged at iteration {i + 1}")
                     break
 
             return {

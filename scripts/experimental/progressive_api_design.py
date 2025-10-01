@@ -19,9 +19,6 @@ def level_1_example():
     result = solve_mfg_problem(problem_type="crowd_dynamics", domain_size=5.0, time_horizon=2.0, crowd_size=1000)
 
     # Simple access to results
-    u_solution = result.u  # Value function
-    m_solution = result.m  # Density
-    converged = result.success
 
     return result
 

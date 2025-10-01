@@ -5,7 +5,7 @@ Test different weight functions in GFDM solver
 
 import numpy as np
 
-from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
+from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
@@ -67,7 +67,7 @@ def test_weight_functions():
 
     print("\n=== Weight Function Comparison ===")
     print(f"{'Function':<15} {'Max |U|':<10} {'Status'}")
-    print(f"{'-'*15} {'-'*10} {'-'*10}")
+    print(f"{'-' * 15} {'-' * 10} {'-' * 10}")
 
     for func, max_val in results.items():
         if max_val is not None:

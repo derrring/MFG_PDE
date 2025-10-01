@@ -336,7 +336,7 @@ def benchmark_error_computation(
     times = []
     for _ in range(n_runs):
         start = time.time()
-        error_np = compute_error_indicators_numpy(U, M, dx, dy)
+        compute_error_indicators_numpy(U, M, dx, dy)
         times.append(time.time() - start)
     results["numpy"] = np.mean(times)
 
@@ -366,7 +366,7 @@ def benchmark_refinement_selection(mesh_data: dict, error_indicators: np.ndarray
     times = []
     for _ in range(n_runs):
         start = time.time()
-        candidates_py = find_cells_to_refine_python(
+        find_cells_to_refine_python(
             error_indicators,
             mesh_data["cell_bounds"],
             mesh_data["cell_levels"],
@@ -392,7 +392,7 @@ def benchmark_refinement_selection(mesh_data: dict, error_indicators: np.ndarray
         times = []
         for _ in range(n_runs):
             start = time.time()
-            candidates_numba = find_cells_to_refine_numba(
+            find_cells_to_refine_numba(
                 error_indicators,
                 mesh_data["cell_bounds"],
                 mesh_data["cell_levels"],
@@ -430,7 +430,7 @@ def main():
         error_results = benchmark_error_computation(U, M, dx, dy)
 
         for method, time_taken in error_results.items():
-            print(f"  {method:>8}: {time_taken*1000:.2f} ms")
+            print(f"  {method:>8}: {time_taken * 1000:.2f} ms")
 
         if "jax" in error_results and "numpy" in error_results:
             speedup = error_results["numpy"] / error_results["jax"]
@@ -451,7 +451,7 @@ def main():
         refinement_results = benchmark_refinement_selection(mesh_data, error_indicators_cells)
 
         for method, time_taken in refinement_results.items():
-            print(f"  {method:>8}: {time_taken*1000:.2f} ms")
+            print(f"  {method:>8}: {time_taken * 1000:.2f} ms")
 
         if "numba" in refinement_results and "python" in refinement_results:
             speedup = refinement_results["python"] / refinement_results["numba"]
@@ -479,7 +479,7 @@ def main():
         error_field = compute_error_indicators_jax(U_jax, M_jax, dx, dy)
         error_indicators_cells = np.random.uniform(0, np.max(error_field), len(mesh_data["cell_bounds"]))
         jax_time1 = time.time() - jax_start
-        print(f"  JAX error computation: {jax_time1*1000:.2f} ms")
+        print(f"  JAX error computation: {jax_time1 * 1000:.2f} ms")
     else:
         error_indicators_cells = np.random.uniform(0, 1, len(mesh_data["cell_bounds"]))
         jax_time1 = 0
@@ -496,7 +496,7 @@ def main():
             mesh_data["max_level"],
         )
         numba_time = time.time() - numba_start
-        print(f"  Numba refinement selection: {numba_time*1000:.2f} ms")
+        print(f"  Numba refinement selection: {numba_time * 1000:.2f} ms")
         print(f"  Found {len(candidates)} cells to refine")
     else:
         numba_time = 0
@@ -507,17 +507,17 @@ def main():
         old_coords = jnp.linspace(-2, 2, 64)
         new_coords = jnp.linspace(-2, 2, 128)
         old_data = jnp.array(U[::2, ::2])  # Downsample for demo
-        interpolated = conservative_interpolation_jax(old_data.ravel(), old_coords, new_coords)
+        conservative_interpolation_jax(old_data.ravel(), old_coords, new_coords)
         jax_time2 = time.time() - jax_start
-        print(f"  JAX solution interpolation: {jax_time2*1000:.2f} ms")
+        print(f"  JAX solution interpolation: {jax_time2 * 1000:.2f} ms")
     else:
         jax_time2 = 0
 
     total_time = time.time() - total_start
 
-    print(f"\nTotal hybrid workflow: {total_time*1000:.2f} ms")
-    print(f"JAX fraction: {(jax_time1 + jax_time2)/total_time*100:.1f}%")
-    print(f"Numba fraction: {numba_time/total_time*100:.1f}%")
+    print(f"\nTotal hybrid workflow: {total_time * 1000:.2f} ms")
+    print(f"JAX fraction: {(jax_time1 + jax_time2) / total_time * 100:.1f}%")
+    print(f"Numba fraction: {numba_time / total_time * 100:.1f}%")
 
     # Summary
     print("\n" + "=" * 60)

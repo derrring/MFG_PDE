@@ -434,7 +434,7 @@ class RealWorldMFGProblems:
         """Create the complete benchmark suite with default parameters."""
         suite = {}
 
-        for problem_type in self.problems.keys():
+        for problem_type in self.problems:
             try:
                 problem = self.create_problem(problem_type)
                 suite[problem_type] = problem
@@ -489,9 +489,9 @@ class RealWorldMFGProblems:
             # Summary statistics
             f.write("## Summary Statistics\n\n")
             f.write(f"**Total Problems**: {len(self.problems)}  \n")
-            f.write(f"**Dimensions Covered**: {set(spec.dimension for spec in self.problems.values())}  \n")
+            f.write(f"**Dimensions Covered**: { {spec.dimension for spec in self.problems.values()} }  \n")
             f.write(
-                f"**Feature Categories**: {len(set(feature for spec in self.problems.values() for feature in spec.expected_features))}  \n\n"
+                f"**Feature Categories**: {len({feature for spec in self.problems.values() for feature in spec.expected_features})}  \n\n"
             )
 
             # Usage examples

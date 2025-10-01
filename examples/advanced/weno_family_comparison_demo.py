@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBWenoSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure logging for research session
@@ -280,12 +280,12 @@ def analyze_and_plot_results(results: dict[str, dict], solutions: dict[str, np.n
     sorted_by_speed = sorted(successful_variants.items(), key=lambda x: x[1]["execution_time"])
     logger.info("  Speed (fastest to slowest):")
     for i, (variant, data) in enumerate(sorted_by_speed):
-        logger.info(f"    {i+1}. {variant.upper()} ({data['execution_time']:.3f}s)")
+        logger.info(f"    {i + 1}. {variant.upper()} ({data['execution_time']:.3f}s)")
 
     sorted_by_quality = sorted(successful_variants.items(), key=lambda x: x[1]["total_variation"])
     logger.info("  Quality - least oscillatory (best to worst):")
     for i, (variant, data) in enumerate(sorted_by_quality):
-        logger.info(f"    {i+1}. {variant.upper()} (TV = {data['total_variation']:.3f})")
+        logger.info(f"    {i + 1}. {variant.upper()} (TV = {data['total_variation']:.3f})")
 
 
 def main():

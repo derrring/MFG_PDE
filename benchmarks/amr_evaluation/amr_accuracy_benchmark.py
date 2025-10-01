@@ -234,7 +234,7 @@ class AMRAccuracyBenchmark:
                     total_elements = result.get("mesh_statistics", {}).get("total_intervals", nx)
                     refinement_levels = result.get("mesh_statistics", {}).get("max_level", 0)
                 else:
-                    U, M, info = result
+                    U, M, _info = result
                     total_elements = nx
                     refinement_levels = 0
 
@@ -342,7 +342,7 @@ class AMRAccuracyBenchmark:
                 total_elements = result.get("mesh_statistics", {}).get("total_intervals", 64)
                 refinement_levels = result.get("mesh_statistics", {}).get("max_level", 0)
             else:
-                U, M, info = result
+                U, M, _info = result
                 total_elements = 64
                 refinement_levels = 0
 
@@ -376,7 +376,7 @@ class AMRAccuracyBenchmark:
             # Print summary
             print(f"    L2 Error U: {errors['l2_error_u']:.2e}")
             print(f"    L2 Error M: {errors['l2_error_m']:.2e}")
-            print(f"    Elements: {total_elements} (efficiency: {total_elements/64:.2f})")
+            print(f"    Elements: {total_elements} (efficiency: {total_elements / 64:.2f})")
             print(f"    Max level: {refinement_levels}")
             print(f"    Time: {solve_time:.3f}s")
 
@@ -394,7 +394,7 @@ class AMRAccuracyBenchmark:
             manufactured_results = [r for r in self.results if "Manufactured" in r.problem_name]
 
             if manufactured_results:
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+                _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
                 # Separate uniform and AMR results
                 uniform_results = [r for r in manufactured_results if not r.solver_name.startswith("AMR")]
@@ -472,7 +472,7 @@ class AMRAccuracyBenchmark:
             # Analysis by problem type
             f.write("\n## Analysis by Problem Type\n\n")
 
-            problem_types = set(r.problem_name for r in self.results)
+            problem_types = {r.problem_name for r in self.results}
 
             for problem_type in problem_types:
                 f.write(f"### {problem_type}\n\n")
@@ -511,7 +511,7 @@ class AMRAccuracyBenchmark:
 
                 f.write(
                     f"**Average Mesh Efficiency**: {avg_efficiency:.3f} "
-                    f"({100*(1-avg_efficiency):.1f}% element reduction)  \n"
+                    f"({100 * (1 - avg_efficiency):.1f}% element reduction)  \n"
                 )
 
                 # Accuracy comparison

@@ -22,36 +22,58 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from .base_pinn import PINNBase, PINNConfig
-    from .fp_pinn_solver import FPPINNSolver
-    from .hjb_pinn_solver import HJBPINNSolver
-    from .mfg_pinn_solver import MFGPINNSolver
+    # Import PINN solver implementations
+    try:
+        from .adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingStrategy, PhysicsGuidedSampler
+        from .base_pinn import PINNBase, PINNConfig
+        from .fp_pinn_solver import FPPINNSolver
+        from .hjb_pinn_solver import HJBPINNSolver
+        from .mfg_pinn_solver import MFGPINNSolver
 
-    __all__ = [
-        "PINNBase",
-        "PINNConfig",
-        "FPPINNSolver",
-        "HJBPINNSolver",
-        "MFGPINNSolver",
-    ]
+        # Individual equation solvers
+        INDIVIDUAL_PINN_SOLVERS = [
+            "HJBPINNSolver",
+            "FPPINNSolver",
+        ]
 
-    # Solver categories for factory selection
-    INDIVIDUAL_PINN_SOLVERS = [
-        "HJBPINNSolver",  # HJB equation PINN solver
-        "FPPINNSolver",  # Fokker-Planck equation PINN solver
-    ]
+        # Coupled system solvers
+        COUPLED_PINN_SOLVERS = [
+            "MFGPINNSolver",
+        ]
 
-    COUPLED_PINN_SOLVERS = [
-        "MFGPINNSolver",  # Complete MFG system PINN solver
-    ]
+        # All PINN solvers
+        ALL_PINN_SOLVERS = INDIVIDUAL_PINN_SOLVERS + COUPLED_PINN_SOLVERS
 
-    ALL_PINN_SOLVERS = INDIVIDUAL_PINN_SOLVERS + COUPLED_PINN_SOLVERS
+        __all__ = [
+            "AdaptiveTrainingConfig",
+            "AdaptiveTrainingStrategy",
+            "FPPINNSolver",
+            "HJBPINNSolver",
+            "MFGPINNSolver",
+            "PINNBase",
+            "PINNConfig",
+            "PhysicsGuidedSampler",
+        ]
+
+    except ImportError as e:
+        # PINN solvers not fully implemented yet
+        import warnings
+
+        warnings.warn(
+            f"PINN solvers are currently under development: {e}. Use numerical or optimization paradigms for now.",
+            UserWarning,
+        )
+
+        __all__ = []
+        INDIVIDUAL_PINN_SOLVERS = []
+        COUPLED_PINN_SOLVERS = []
+        ALL_PINN_SOLVERS = []
 
 else:
     import warnings
 
     warnings.warn(
-        "PyTorch is required for PINN solvers. " "Install with: pip install mfg_pde[neural] or pip install torch",
+        "PyTorch is required for PINN solvers. Install with: pip install mfg_pde[neural] or pip install torch",
         ImportWarning,
     )
 

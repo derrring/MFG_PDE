@@ -41,24 +41,24 @@ from .mfg_solvers import (
 )
 
 __all__ = [
-    "BaseNumericalSolver",
+    "AdaptiveParticleCollocationSolver",
+    # FP Solvers
+    "BaseFPSolver",
     # HJB Solvers
     "BaseHJBSolver",
+    # MFG Solvers (coupled system solvers)
+    "BaseMFGSolver",
+    "BaseNumericalSolver",
+    "ConfigAwareFixedPointIterator",
+    "FPFDMSolver",
+    "FPNetworkSolver",
+    "FPParticleSolver",
+    "FixedPointIterator",
     "HJBFDMSolver",
     "HJBGFDMSolver",
     "HJBSemiLagrangianSolver",
     "HJBWenoSolver",
-    # FP Solvers
-    "BaseFPSolver",
-    "FPFDMSolver",
-    "FPNetworkSolver",
-    "FPParticleSolver",
-    # MFG Solvers (coupled system solvers)
-    "BaseMFGSolver",
-    "ConfigAwareFixedPointIterator",
-    "FixedPointIterator",
-    "ParticleCollocationSolver",
-    "AdaptiveParticleCollocationSolver",
-    "MonitoredParticleCollocationSolver",
     "HybridFPParticleHJBFDM",
+    "MonitoredParticleCollocationSolver",
+    "ParticleCollocationSolver",
 ]

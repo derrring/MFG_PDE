@@ -109,16 +109,16 @@ if PLOTLY_AVAILABLE:
 
     # Final profiles
     fig.add_trace(
-        go.Scatter(x=x, y=u[-1, :], mode="lines", name="u(T,x)", line=dict(color="blue", width=3)), row=2, col=1
+        go.Scatter(x=x, y=u[-1, :], mode="lines", name="u(T,x)", line={"color": "blue", "width": 3}), row=2, col=1
     )
 
     fig.add_trace(
-        go.Scatter(x=x, y=m[-1, :], mode="lines", name="m(T,x)", line=dict(color="red", width=3)), row=2, col=1
+        go.Scatter(x=x, y=m[-1, :], mode="lines", name="m(T,x)", line={"color": "red", "width": 3}), row=2, col=1
     )
 
     # Convergence
     fig.add_trace(
-        go.Scatter(x=iterations, y=errors, mode="lines+markers", name="Error", line=dict(color="green", width=2)),
+        go.Scatter(x=iterations, y=errors, mode="lines+markers", name="Error", line={"color": "green", "width": 2}),
         row=2,
         col=2,
     )

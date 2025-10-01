@@ -39,8 +39,8 @@ import numpy as np
 
 # MFG_PDE imports
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBFDMSolver, HJBWenoSolver
-from mfg_pde.alg.mfg_solvers import FixedPointIterator
+from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver, HJBWenoSolver
+from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure logging for research session

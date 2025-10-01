@@ -56,7 +56,8 @@ class TestNewtonConfig:
         # Test invalid tolerance (too small)
         with pytest.raises(ValidationError) as exc_info:
             NewtonConfig(tolerance=1e-16)
-        assert "greater than" in str(exc_info.value) and "0.000000000000001" in str(exc_info.value)
+        assert "greater than" in str(exc_info.value)
+        assert "0.000000000000001" in str(exc_info.value)
 
         # Test invalid tolerance (too large)
         with pytest.raises(ValidationError) as exc_info:
@@ -78,18 +79,18 @@ class TestNewtonConfig:
         # Should issue warning for very strict tolerance
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            config = NewtonConfig(tolerance=1e-14)
+            NewtonConfig(tolerance=1e-14)
             assert len(w) == 1
             assert "very strict newton tolerance" in str(w[0].message).lower()
 
         # No warning expected for loose tolerance (current implementation)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            config = NewtonConfig(tolerance=1e-2)
+            NewtonConfig(tolerance=1e-2)
             assert len(w) == 0  # Current implementation only warns for strict tolerance
 
     @pytest.mark.parametrize(
-        "max_iter,tol,damping",
+        ("max_iter", "tol", "damping"),
         [
             (10, 1e-4, 0.5),
             (50, 1e-8, 1.0),
@@ -222,7 +223,7 @@ class TestMFGSolverConfig:
         """Test configuration from environment variables."""
         # This would require setting environment variables in the test
         # For now, just test that the env_prefix is set correctly
-        config = MFGSolverConfig()
+        MFGSolverConfig()
 
         # Check that the Config class has env_prefix set correctly
         # In Pydantic v2, model_config can be a dict or ConfigDict
@@ -305,7 +306,7 @@ class TestConfigurationFactories:
             ("research", create_research_config()),
         ]
 
-        for name, config in configs:
+        for _name, config in configs:
             # All factory configs should be valid
             assert isinstance(config, MFGSolverConfig)
 

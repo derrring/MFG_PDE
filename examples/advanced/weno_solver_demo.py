@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.hjb_solvers import HJBFDMSolver, HJBWenoSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver, HJBWenoSolver
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure logging for research session
@@ -231,7 +231,7 @@ def demonstrate_vs_fdm():
     logger.info(f"  FDM execution time: {fdm_time:.4f}s")
     logger.info(f"  WENO5 solution quality (total variation): {weno_variation:.4f}")
     logger.info(f"  FDM solution quality (total variation): {fdm_variation:.4f}")
-    logger.info(f"  WENO quality advantage: {fdm_variation/weno_variation:.2f}x less oscillatory")
+    logger.info(f"  WENO quality advantage: {fdm_variation / weno_variation:.2f}x less oscillatory")
 
 
 def main():

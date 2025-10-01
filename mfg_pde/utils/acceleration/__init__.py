@@ -60,8 +60,8 @@ def _warn_deprecated_import():
 
 
 __all__ = [
-    "get_acceleration_info",
     "JAX_UTILS_AVAILABLE",
+    "get_acceleration_info",
 ]
 
 # Export JAX utils if available

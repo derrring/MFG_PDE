@@ -70,7 +70,7 @@ class MFGProblem2D(MFGProblem):
         self.num_nodes_2d = self.mesh_data.num_vertices
         self.num_elements_2d = self.mesh_data.num_elements
 
-        logger.info(f"Initialized 2D MFG problem: {self.num_nodes_2d} nodes, " f"{self.num_elements_2d} elements")
+        logger.info(f"Initialized 2D MFG problem: {self.num_nodes_2d} nodes, {self.num_elements_2d} elements")
 
     def _setup_boundary_conditions(self):
         """Setup boundary conditions for the 2D domain."""
@@ -299,13 +299,13 @@ def main():
         logger.info(f"L-shaped domain: {mesh_info2['num_vertices']} vertices")
 
         # Demo 3: Mesh convergence analysis
-        convergence_df = analyze_mesh_convergence()
+        analyze_mesh_convergence()
 
         # Demo 4: Advanced boundary conditions
-        advanced_bc = demonstrate_advanced_boundary_conditions()
+        demonstrate_advanced_boundary_conditions()
 
         # Demo 5: OmegaConf integration
-        problem_config, config = integration_with_existing_config()
+        _problem_config, _config = integration_with_existing_config()
 
         # Export meshes for external use
         problem1.export_mesh("./output/rectangle_holes")

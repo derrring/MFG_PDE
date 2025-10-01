@@ -87,7 +87,7 @@ def demonstrate_validation_errors():
 
     # Test 1: Invalid tolerance (too small)
     try:
-        config = MFGSolverConfig(
+        MFGSolverConfig(
             newton=NewtonConfig(tolerance=1e-20),
             convergence_tolerance=1e-15,  # Too strict!  # Too strict!
         )
@@ -97,7 +97,7 @@ def demonstrate_validation_errors():
 
     # Test 2: Invalid iterations (negative)
     try:
-        config = MFGSolverConfig(
+        MFGSolverConfig(
             newton=NewtonConfig(max_iterations=-5),
             picard=PicardConfig(max_iterations=0),  # Invalid!  # Invalid!
         )
@@ -107,7 +107,7 @@ def demonstrate_validation_errors():
 
     # Test 3: Invalid damping factor
     try:
-        config = MFGSolverConfig(
+        MFGSolverConfig(
             newton=NewtonConfig(damping_factor=1.5),  # > 1.0 invalid!
             picard=PicardConfig(damping_factor=0.0),  # <= 0.0 invalid!
         )
@@ -181,7 +181,7 @@ def demonstrate_enhanced_solver_creation():
 
     # Method 1: Using factory with preset
     try:
-        solver1 = create_validated_solver(
+        create_validated_solver(
             problem=problem, solver_type="fixed_point", config_preset="fast", experiment_name="factory_demo"
         )
         print("SUCCESS: Created solver with factory (fast preset)")
@@ -199,7 +199,7 @@ def demonstrate_enhanced_solver_creation():
             enable_warm_start=True,
         )
 
-        solver2 = create_validated_solver(problem=problem, solver_type="adaptive_particle", config=custom_config)
+        create_validated_solver(problem=problem, solver_type="adaptive_particle", config=custom_config)
         print("SUCCESS: Created solver with custom Pydantic config")
 
     except Exception as e:
@@ -217,7 +217,7 @@ def demonstrate_enhanced_solver_creation():
         # Load and use config
         loaded_config = MFGSolverConfig.parse_file(config_path)
 
-        solver3 = create_validated_solver(problem=problem, solver_type="monitored_particle", config=loaded_config)
+        create_validated_solver(problem=problem, solver_type="monitored_particle", config=loaded_config)
         print("SUCCESS: Created solver from JSON configuration")
 
         # Clean up
@@ -357,11 +357,11 @@ def main():
 
     try:
         # Run all demonstrations
-        config = demonstrate_basic_pydantic_config()
+        demonstrate_basic_pydantic_config()
         demonstrate_validation_errors()
-        grid_config, arrays = demonstrate_grid_and_array_validation()
+        _grid_config, _arrays = demonstrate_grid_and_array_validation()
         demonstrate_enhanced_solver_creation()
-        experiment_config, report_paths = demonstrate_enhanced_notebook_reporting()
+        _experiment_config, report_paths = demonstrate_enhanced_notebook_reporting()
         demonstrate_environment_variable_support()
 
         print("\n Pydantic Validation Demo Complete!")

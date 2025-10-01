@@ -27,8 +27,8 @@ from mfg_pde.alg import (
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
 )
-from mfg_pde.alg.fp_solvers import FPParticleSolver
-from mfg_pde.alg.hjb_solvers import HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 from mfg_pde.config import create_research_config
 
 
@@ -402,7 +402,7 @@ def run_comprehensive_test():
                 passed_tests += 1
         else:
             # Multiple test results
-            for test_key, result in results.items():
+            for _test_key, result in results.items():
                 total_tests += 1
                 if result.get("success", False):
                     passed_tests += 1

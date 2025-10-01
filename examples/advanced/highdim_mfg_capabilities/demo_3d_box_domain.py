@@ -34,7 +34,7 @@ class CrowdEvacuation3D(HighDimMFGProblem):
     def __init__(
         self,
         box_size: float = 2.0,
-        obstacles: list = None,
+        obstacles: list | None = None,
         mesh_size: float = 0.2,
         time_horizon: float = 2.0,
         num_timesteps: int = 50,
@@ -130,7 +130,7 @@ class CrowdEvacuation3D(HighDimMFGProblem):
                     return 1e-10
 
                 coords = self.mesh_data.vertices[x_idx]
-                x, y, z = coords
+                _x, _y, _z = coords
 
                 # Multiple crowd sources in different corners
                 sources = [

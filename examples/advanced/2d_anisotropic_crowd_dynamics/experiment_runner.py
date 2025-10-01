@@ -537,28 +537,28 @@ def main():
 
     # Run experiments based on mode
     if args.mode == "single":
-        results = experiment.run_single_configuration(validate=not args.no_validation)
+        experiment.run_single_configuration(validate=not args.no_validation)
         print(f"Single configuration completed. Results in {args.output_dir}")
 
     elif args.mode == "comparative":
-        results = experiment.run_comparative_study()
+        experiment.run_comparative_study()
         print(f"Comparative study completed. Results in {args.output_dir}")
 
     elif args.mode == "convergence":
-        results = experiment.run_convergence_study()
+        experiment.run_convergence_study()
         print(f"Convergence study completed. Results in {args.output_dir}/convergence/")
 
     elif args.mode == "all":
         print("Running complete experimental suite...")
 
         # Single configuration
-        single_results = experiment.run_single_configuration(validate=not args.no_validation)
+        experiment.run_single_configuration(validate=not args.no_validation)
 
         # Comparative study
-        comparative_results = experiment.run_comparative_study()
+        experiment.run_comparative_study()
 
         # Convergence study
-        convergence_results = experiment.run_convergence_study()
+        experiment.run_convergence_study()
 
         print(f"Complete experimental suite completed. Results in {args.output_dir}")
 

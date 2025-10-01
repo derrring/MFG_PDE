@@ -252,7 +252,7 @@ def visualize_anisotropic_movement(problem, solution):
         coordinates = solution.get("coordinates", problem.mesh_data.vertices)
 
         # Create 4-panel figure
-        fig = plt.figure(figsize=(16, 12))
+        plt.figure(figsize=(16, 12))
 
         # Panel 1: Anisotropy field
         ax1 = plt.subplot(2, 2, 1)
@@ -338,7 +338,7 @@ def visualize_anisotropic_movement(problem, solution):
         direct_distance = np.linalg.norm(com_trajectory[-1] - com_trajectory[0])
         print(f"Path length: {total_distance:.3f}")
         print(f"Direct distance: {direct_distance:.3f}")
-        print(f"Path efficiency: {direct_distance/total_distance:.3f}")
+        print(f"Path efficiency: {direct_distance / total_distance:.3f}")
 
     except Exception as e:
         print(f"Visualization failed: {e}")

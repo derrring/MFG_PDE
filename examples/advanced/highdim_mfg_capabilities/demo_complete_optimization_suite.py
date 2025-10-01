@@ -119,7 +119,7 @@ def demo_performance_optimization():
         monitor = PerformanceMonitor()
 
         # Demonstrate sparse matrix operations
-        with monitor.monitor_operation("sparse_matrix_creation") as m:
+        with monitor.monitor_operation("sparse_matrix_creation"):
             laplacian = SparseMatrixOptimizer.create_laplacian_3d(
                 nx=16, ny=16, nz=16, dx=1.0 / 15, dy=1.0 / 15, dz=1.0 / 15
             )
@@ -129,8 +129,8 @@ def demo_performance_optimization():
         logger.info(f"   Creation time: {creation_metrics.duration:.3f}s, Memory: {creation_metrics.memory_used:.1f}MB")
 
         # Test matrix optimization
-        with monitor.monitor_operation("matrix_optimization") as m:
-            optimized_matrix = SparseMatrixOptimizer.optimize_matrix_structure(laplacian)
+        with monitor.monitor_operation("matrix_optimization"):
+            SparseMatrixOptimizer.optimize_matrix_structure(laplacian)
 
         opt_metrics = monitor.metrics_history[-1]
         logger.info(f"✅ Matrix optimization completed in {opt_metrics.duration:.3f}s")
@@ -141,7 +141,7 @@ def demo_performance_optimization():
             op_1d = SparseMatrixOptimizer.create_laplacian_3d(8, 1, 1, 1.0 / 7, 1.0, 1.0)
             operators = [op_1d, op_1d, op_1d]
 
-            with monitor.monitor_operation("tensor_product") as m:
+            with monitor.monitor_operation("tensor_product"):
                 tensor_op = AdvancedSparseOperations.tensor_product_operator(operators)
 
             tensor_metrics = monitor.metrics_history[-1]
@@ -289,7 +289,7 @@ def demo_high_dimensional_solving():
         # Solve with performance monitoring
         monitor = PerformanceMonitor()
 
-        with monitor.monitor_operation("mfg_solve_3d") as m:
+        with monitor.monitor_operation("mfg_solve_3d"):
             result = problem.solve_with_damped_fixed_point(damping_factor=0.5, max_iterations=20, tolerance=1e-3)
 
         solve_metrics = monitor.metrics_history[-1]
@@ -350,7 +350,7 @@ def main():
     start_time = time.time()
 
     # Demo 1: 3D Geometry with Boundary Conditions
-    mesh_data, bc_manager = demo_3d_geometry_with_boundary_conditions()
+    mesh_data, _bc_manager = demo_3d_geometry_with_boundary_conditions()
 
     # Demo 2: Adaptive Mesh Refinement
     amr_mesh = demo_adaptive_mesh_refinement()
@@ -359,7 +359,7 @@ def main():
     perf_monitor = demo_performance_optimization()
 
     # Demo 4: High-Dimensional MFG Solving
-    mfg_result, solve_metrics = demo_high_dimensional_solving()
+    mfg_result, _solve_metrics = demo_high_dimensional_solving()
 
     # Demo 5: Comprehensive Benchmarking
     benchmark_analysis = demo_comprehensive_benchmarking()

@@ -21,6 +21,9 @@ except ImportError:
 
 if TORCH_AVAILABLE:
     # Import loss functions
+    # Import network architectures from nn module
+    from mfg_pde.alg.neural.nn import FeedForwardNetwork, ModifiedMLP, ResidualNetwork, create_mfg_networks
+
     from .loss_functions import (
         BoundaryLoss,
         DataLoss,
@@ -29,13 +32,9 @@ if TORCH_AVAILABLE:
         PINNLossFunction,
     )
 
-    # Import network architectures
+    # Import factory class from core networks
     from .networks import (
-        FeedForwardNetwork,
-        ModifiedMLP,
         NetworkArchitecture,
-        ResidualNetwork,
-        create_mfg_networks,
     )
 
     # Import training components
@@ -55,26 +54,26 @@ if TORCH_AVAILABLE:
     )
 
     __all__ = [
-        # Loss functions
-        "BoundaryLoss",
-        "DataLoss",
-        "MFGLossFunction",
-        "PINNLossFunction",
-        "PhysicsLoss",
-        # Network architectures
-        "FeedForwardNetwork",
-        "ModifiedMLP",
-        "NetworkArchitecture",
-        "ResidualNetwork",
-        "create_mfg_networks",
         # Training components
         "AdaptiveSampling",
+        # Loss functions
+        "BoundaryLoss",
         "CurriculumLearning",
+        "DataLoss",
+        # Network architectures
+        "FeedForwardNetwork",
+        "MFGLossFunction",
+        "ModifiedMLP",
+        "NetworkArchitecture",
         "OptimizationScheduler",
+        "PINNLossFunction",
+        "PhysicsLoss",
+        "ResidualNetwork",
         "TrainingManager",
         # Utilities
         "auto_differentiation",
         "compute_gradients",
+        "create_mfg_networks",
         "neural_network_utils",
         "sample_points",
     ]

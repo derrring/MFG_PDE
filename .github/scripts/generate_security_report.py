@@ -117,7 +117,7 @@ class SecurityReportGenerator:
                     )
                     analysis["severity_counts"][severity] += 1
 
-        analysis["vulnerable_packages"] = len(set(v["package"] for v in analysis["vulnerabilities"]))
+        analysis["vulnerable_packages"] = len({v["package"] for v in analysis["vulnerabilities"]})
         return analysis
 
     def analyze_static_analysis_results(self) -> dict:
@@ -296,26 +296,28 @@ class SecurityReportGenerator:
     <div class="container">
         <div class="header">
             <h1>🔒 MFG_PDE Security Dashboard</h1>
-            <span class="status-badge status-{self.summary['overall_status'].lower()}">{self.summary['overall_status']}</span>
-            <p>Generated: {self.summary['timestamp']}</p>
+            <span class="status-badge status-{self.summary["overall_status"].lower()}">{
+            self.summary["overall_status"]
+        }</span>
+            <p>Generated: {self.summary["timestamp"]}</p>
         </div>
 
         <div class="summary-grid">
             <div class="summary-card">
                 <h3>Total Issues</h3>
-                <p style="font-size: 2em; margin: 0;">{self.summary['total_issues']}</p>
+                <p style="font-size: 2em; margin: 0;">{self.summary["total_issues"]}</p>
             </div>
             <div class="summary-card">
                 <h3>Critical Issues</h3>
-                <p style="font-size: 2em; margin: 0; color: #6f42c1;">{self.summary['critical_issues']}</p>
+                <p style="font-size: 2em; margin: 0; color: #6f42c1;">{self.summary["critical_issues"]}</p>
             </div>
             <div class="summary-card">
                 <h3>High Issues</h3>
-                <p style="font-size: 2em; margin: 0; color: #dc3545;">{self.summary['high_issues']}</p>
+                <p style="font-size: 2em; margin: 0; color: #dc3545;">{self.summary["high_issues"]}</p>
             </div>
             <div class="summary-card">
                 <h3>Medium Issues</h3>
-                <p style="font-size: 2em; margin: 0; color: #fd7e14;">{self.summary['medium_issues']}</p>
+                <p style="font-size: 2em; margin: 0; color: #fd7e14;">{self.summary["medium_issues"]}</p>
             </div>
         </div>
 
@@ -324,16 +326,20 @@ class SecurityReportGenerator:
             <div class="scan-section">
                 <h3>✅ Completed Scans</h3>
                 <ul>
-                    {"".join(f"<li>{scan}</li>" for scan in self.summary['scans_completed'])}
+                    {"".join(f"<li>{scan}</li>" for scan in self.summary["scans_completed"])}
                 </ul>
             </div>
 
-            {f'''<div class="scan-section">
+            {
+            f'''<div class="scan-section">
                 <h3>❌ Failed Scans</h3>
                 <ul>
-                    {"".join(f"<li>{scan}</li>" for scan in self.summary['scans_failed'])}
+                    {"".join(f"<li>{scan}</li>" for scan in self.summary["scans_failed"])}
                 </ul>
-            </div>''' if self.summary['scans_failed'] else ''}
+            </div>'''
+            if self.summary["scans_failed"]
+            else ""
+        }
         </div>
     </div>
 </body>

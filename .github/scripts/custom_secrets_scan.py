@@ -169,10 +169,7 @@ class CustomSecretsScanner:
             return True
 
         # Check if it's a template or example
-        if any(marker in match_lower for marker in ["example", "demo", "test", "placeholder", "dummy"]):
-            return True
-
-        return False
+        return bool(any(marker in match_lower for marker in ["example", "demo", "test", "placeholder", "dummy"]))
 
     def scan_file(self, file_path: Path) -> list[dict]:
         """Scan a single file for secrets."""
@@ -241,11 +238,7 @@ class CustomSecretsScanner:
             return False
 
         # Check if any parent directory is excluded
-        for part in file_path.parts:
-            if part in self.EXCLUDE_DIRS:
-                return False
-
-        return True
+        return all(part not in self.EXCLUDE_DIRS for part in file_path.parts)
 
     def scan_directory(self) -> list[dict]:
         """Scan entire directory tree for secrets."""
@@ -280,7 +273,7 @@ class CustomSecretsScanner:
                 "high_severity": len(by_severity["HIGH"]),
                 "medium_severity": len(by_severity["MEDIUM"]),
                 "low_severity": len(by_severity["LOW"]),
-                "files_scanned": len(set(f["file"] for f in self.findings)),
+                "files_scanned": len({f["file"] for f in self.findings}),
                 "secret_types_found": list(by_type.keys()),
             },
             "findings_by_severity": by_severity,
@@ -349,7 +342,7 @@ class CustomSecretsScanner:
 def main():
     """Main entry point."""
     scanner = CustomSecretsScanner()
-    findings = scanner.scan_directory()
+    scanner.scan_directory()
     scanner.save_results()
 
 

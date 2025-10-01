@@ -202,7 +202,7 @@ class AMRMemoryProfiler:
                 solver = config["create_solver"](problem)
 
                 # Take snapshot after solver creation
-                solver_snapshot = self.take_memory_snapshot("solver_created")
+                self.take_memory_snapshot("solver_created")
 
                 # Monitor memory during solving
                 memory_timeline = []
@@ -231,7 +231,7 @@ class AMRMemoryProfiler:
                 # Calculate memory metrics
                 memory_increase = final_snapshot.process_memory_mb - initial_snapshot.process_memory_mb
                 peak_memory = max(
-                    [initial_snapshot.process_memory_mb] + memory_timeline + [final_snapshot.process_memory_mb]
+                    [initial_snapshot.process_memory_mb, *memory_timeline, final_snapshot.process_memory_mb]
                 )
 
                 # Estimate theoretical minimum
@@ -292,7 +292,7 @@ class AMRMemoryProfiler:
         print(f"Running {num_iterations} consecutive solves...")
 
         for i in range(num_iterations):
-            print(f"  Iteration {i+1}/{num_iterations}")
+            print(f"  Iteration {i + 1}/{num_iterations}")
 
             # Force garbage collection
             gc.collect()
@@ -482,7 +482,7 @@ class AMRMemoryProfiler:
             if scaling_results:
                 ax = axes[0, 1]
 
-                problem_sizes = list(set(r.problem_size[0] for r in scaling_results))
+                problem_sizes = list({r.problem_size[0] for r in scaling_results})
                 problem_sizes.sort()
 
                 uniform_efficiency = []
@@ -630,8 +630,7 @@ class AMRMemoryProfiler:
                     memory_ratio = largest_amr.memory_increase_mb / smallest_amr.memory_increase_mb
 
                     f.write(
-                        f"**AMR Scaling**: {size_ratio:.1f}x size increase → "
-                        f"{memory_ratio:.1f}x memory increase  \n\n"
+                        f"**AMR Scaling**: {size_ratio:.1f}x size increase → {memory_ratio:.1f}x memory increase  \n\n"
                     )
 
             # Memory leak analysis
@@ -663,10 +662,12 @@ class AMRMemoryProfiler:
                 f.write(f"**Average AMR Efficiency**: {avg_amr_efficiency:.3f}  \n")
 
                 if avg_amr_efficiency > avg_uniform_efficiency:
-                    f.write(f"**AMR Advantage**: {avg_amr_efficiency/avg_uniform_efficiency:.2f}x more efficient  \n\n")
+                    f.write(
+                        f"**AMR Advantage**: {avg_amr_efficiency / avg_uniform_efficiency:.2f}x more efficient  \n\n"
+                    )
                 else:
                     f.write(
-                        f"**Uniform Advantage**: {avg_uniform_efficiency/avg_amr_efficiency:.2f}x more efficient  \n\n"
+                        f"**Uniform Advantage**: {avg_uniform_efficiency / avg_amr_efficiency:.2f}x more efficient  \n\n"
                     )
 
             # Recommendations

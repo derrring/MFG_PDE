@@ -104,9 +104,7 @@ class DiscreteSantaFeBarMFG:
         self.initial_u1 = initial_u1
 
         self.logger = get_logger(__name__)
-        self.logger.info(
-            f"Initialized Discrete Santa Fe Bar MFG: " f"threshold={m_threshold}, noise={noise_level}, T={T}"
-        )
+        self.logger.info(f"Initialized Discrete Santa Fe Bar MFG: threshold={m_threshold}, noise={noise_level}, T={T}")
 
     def payoff_function(self, m: float) -> float:
         """
@@ -231,7 +229,7 @@ class DiscreteSantaFeBarMFG:
         payoffs = np.array([self.payoff_function(m[i]) for i in range(len(t))])
 
         self.logger.info(f"SUCCESS: Solution completed in {solve_time:.3f} seconds")
-        self.logger.info(f"Final attendance: {m[-1]:.1%}, " f"Final values: u0={u0[-1]:.3f}, u1={u1[-1]:.3f}")
+        self.logger.info(f"Final attendance: {m[-1]:.1%}, Final values: u0={u0[-1]:.3f}, u1={u1[-1]:.3f}")
 
         return {
             "time": t,
@@ -333,7 +331,7 @@ def create_santa_fe_visualizations(
         transform=ax1.transAxes,
         fontsize=12,
         fontweight="bold",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.8),
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "yellow", "alpha": 0.8},
     )
 
     # 2. Value Functions
@@ -379,7 +377,7 @@ def create_santa_fe_visualizations(
 
     # 5. Phase Portrait (Attendance vs Value Difference)
     ax5 = plt.subplot(2, 3, 5)
-    colors = plt.cm.viridis(np.linspace(0, 1, len(t)))
+    plt.cm.viridis(np.linspace(0, 1, len(t)))
     scatter = ax5.scatter(m, u1 - u0, c=t, cmap="viridis", s=30, alpha=0.7)
     ax5.set_xlabel("Bar Attendance m(t)")
     ax5.set_ylabel("Value Difference u₁ - u₀")
@@ -401,19 +399,19 @@ Problem Parameters:
 • Noise level: {problem.noise_level}
 
 Equilibrium Results:
-• Final attendance: {analysis['steady_state_attendance']:.1%}
-• Attendance variance: {analysis['attendance_variance']:.2e}
-• Value difference: {analysis['value_difference']:.3f}
-• Economic efficiency: {analysis['efficiency']:.1%}
+• Final attendance: {analysis["steady_state_attendance"]:.1%}
+• Attendance variance: {analysis["attendance_variance"]:.2e}
+• Value difference: {analysis["value_difference"]:.3f}
+• Economic efficiency: {analysis["efficiency"]:.1%}
 
 Behavioral Insights:
-• Regime: {analysis['regime'].title()}
-• Overcrowding fraction: {analysis['overcrowding_fraction']:.1%}
-• Oscillation amplitude: {analysis['oscillation_amplitude']:.3f}
-• Converged: {'Yes' if analysis['convergence_achieved'] else 'No'}
+• Regime: {analysis["regime"].title()}
+• Overcrowding fraction: {analysis["overcrowding_fraction"]:.1%}
+• Oscillation amplitude: {analysis["oscillation_amplitude"]:.3f}
+• Converged: {"Yes" if analysis["convergence_achieved"] else "No"}
 
 Economic Interpretation:
-{analysis['interpretation']}
+{analysis["interpretation"]}
 
 Mathematical Framework:
 • Discrete state space (Home vs Bar)
@@ -430,7 +428,7 @@ Mathematical Framework:
         fontsize=9,
         verticalalignment="top",
         fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightblue", "alpha": 0.8},
     )
 
     plt.tight_layout()
@@ -496,7 +494,7 @@ def compare_parameter_scenarios():
         )
         ax.set_xlabel("Time")
         ax.set_ylabel("Bar Attendance")
-        ax.set_title(f'{scenario["name"]}\n' f'(ν={problem.noise_level}, threshold={problem.m_threshold:.0%})')
+        ax.set_title(f"{scenario['name']}\n(ν={problem.noise_level}, threshold={problem.m_threshold:.0%})")
         ax.legend()
         ax.grid(True, alpha=0.3)
         ax.set_ylim(0, 1)
@@ -509,7 +507,7 @@ def compare_parameter_scenarios():
             f"Efficiency: {efficiency:.1%}",
             transform=ax.transAxes,
             fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.2", facecolor="yellow", alpha=0.7),
+            bbox={"boxstyle": "round,pad=0.2", "facecolor": "yellow", "alpha": 0.7},
         )
 
     plt.tight_layout()

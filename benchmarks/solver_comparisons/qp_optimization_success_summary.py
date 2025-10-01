@@ -55,7 +55,7 @@ def create_success_summary():
     print("\nOPTIMIZATION PROGRESSION:")
     print("-" * 50)
 
-    for key, result in optimization_results.items():
+    for _key, result in optimization_results.items():
         qp_rate = result["qp_usage_rate"]
         name = result["name"]
         status = result["status"]
@@ -66,9 +66,9 @@ def create_success_summary():
             print(f"{'':35} Time: {result['time']:>6.1f}s  Speedup: {result['speedup']:.1f}x")
 
     # Key achievements
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("KEY ACHIEVEMENTS")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     print("✅ OPTIMIZATION TARGET ACHIEVED")
     print("   Multiple test cases achieved QP usage rates below 10%:")
@@ -102,9 +102,9 @@ def create_success_summary():
     create_optimization_visualization(optimization_results)
 
     # Technical summary
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("TECHNICAL SUMMARY")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     print("Original Challenge:")
     print("  QP-Collocation was 10-50x slower than FDM/Hybrid methods")
@@ -150,7 +150,7 @@ def create_optimization_visualization(results):
             colors.append(color_map[result["status"]])
 
     # Create comprehensive visualization
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    _fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
 
     # Plot 1: QP Usage Rate Evolution
     ax1.bar(range(len(qp_rates)), qp_rates, color=colors, alpha=0.7)
@@ -207,7 +207,7 @@ def create_optimization_visualization(results):
         fontsize=11,
         verticalalignment="top",
         fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.8),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightgreen", "alpha": 0.8},
     )
 
     # Plot 4: Technical Innovation Summary
@@ -241,7 +241,7 @@ def create_optimization_visualization(results):
         fontsize=10,
         verticalalignment="top",
         fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.8),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightblue", "alpha": 0.8},
     )
 
     plt.tight_layout()
@@ -260,9 +260,9 @@ def main():
     try:
         results = create_success_summary()
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("QP OPTIMIZATION SUCCESS SUMMARY COMPLETED")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print("✅ Comprehensive optimization results documented")
         print("🚀 QP-Collocation method ready for production deployment")
 

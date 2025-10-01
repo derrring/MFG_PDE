@@ -56,7 +56,7 @@ class TestMFGMathematicalProperties:
             solver = create_fast_solver(problem, "fixed_point")
 
             # Solve with moderate tolerance to ensure convergence
-            U, M, info = solver.solve(max_iterations=50, tolerance=1e-4)
+            _U, M, info = solver.solve(max_iterations=50, tolerance=1e-4)
 
             # Check that we got a valid solution
             assume(info.get("converged", False))
@@ -145,8 +145,8 @@ class TestMFGMathematicalProperties:
             solver1 = create_fast_solver(problem1, "fixed_point")
             solver2 = create_fast_solver(problem2, "fixed_point")
 
-            U1, M1, info1 = solver1.solve(max_iterations=30, tolerance=1e-4)
-            U2, M2, info2 = solver2.solve(max_iterations=30, tolerance=1e-4)
+            _U1, M1, info1 = solver1.solve(max_iterations=30, tolerance=1e-4)
+            _U2, M2, info2 = solver2.solve(max_iterations=30, tolerance=1e-4)
 
             assume(info1.get("converged", False) and info2.get("converged", False))
 
@@ -159,11 +159,11 @@ class TestMFGMathematicalProperties:
             tv2 = total_variation(M2)
 
             if sigma1 > sigma2:
-                smoother_M, rougher_M = M1, M2
+                _smoother_M, _rougher_M = M1, M2
                 smoother_sigma, rougher_sigma = sigma1, sigma2
                 smoother_tv, rougher_tv = tv1, tv2
             else:
-                smoother_M, rougher_M = M2, M1
+                _smoother_M, _rougher_M = M2, M1
                 smoother_sigma, rougher_sigma = sigma2, sigma1
                 smoother_tv, rougher_tv = tv2, tv1
 
@@ -395,7 +395,7 @@ class TestMFGParameterValidation:
                     solver.solve(max_iterations=20, tolerance=tolerance)
             else:
                 # Extreme but positive tolerances should work or timeout gracefully
-                U, M, info = solver.solve(max_iterations=100, tolerance=tolerance)
+                _U, _M, info = solver.solve(max_iterations=100, tolerance=tolerance)
 
                 # Very tight tolerances might not converge within iteration limit
                 if tolerance < 1e-10:
