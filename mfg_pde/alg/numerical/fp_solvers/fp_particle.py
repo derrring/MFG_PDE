@@ -3,8 +3,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import scipy.interpolate
-from scipy.stats import gaussian_kde
+
+try:  # pragma: no cover - optional SciPy dependency
+    import scipy.interpolate as _scipy_interpolate
+    from scipy.stats import gaussian_kde
+
+    SCIPY_AVAILABLE = True
+except Exception:  # pragma: no cover - graceful fallback when SciPy missing
+    _scipy_interpolate = None
+    gaussian_kde = None
+    SCIPY_AVAILABLE = False
 
 from mfg_pde.geometry import BoundaryConditions
 
@@ -62,11 +70,14 @@ class FPParticleSolver(BaseFPSolver):
             # However, with many particles, this case becomes less likely.
         else:
             try:
-                kde = gaussian_kde(particles_at_time_t, bw_method=self.kde_bandwidth)
-                m_density_estimated = kde(xSpace)
+                if SCIPY_AVAILABLE and gaussian_kde is not None:
+                    kde = gaussian_kde(particles_at_time_t, bw_method=self.kde_bandwidth)
+                    m_density_estimated = kde(xSpace)
 
-                m_density_estimated[xSpace < xmin] = 0
-                m_density_estimated[xSpace > xmax] = 0
+                    m_density_estimated[xSpace < xmin] = 0
+                    m_density_estimated[xSpace > xmax] = 0
+                else:
+                    raise RuntimeError("SciPy not available for KDE")
 
             except Exception:
                 # print(f"Error during KDE: {e}. Defaulting to peak approximation.")
@@ -144,13 +155,18 @@ class FPParticleSolver(BaseFPSolver):
                 dUdx_grid = np.zeros(Nx)
 
             if Nx > 1:
-                try:
-                    interp_func_dUdx = scipy.interpolate.interp1d(
-                        x_grid, dUdx_grid, kind="linear", fill_value="extrapolate"
+                if SCIPY_AVAILABLE and _scipy_interpolate is not None:
+                    try:
+                        interp_func_dUdx = _scipy_interpolate.interp1d(
+                            x_grid, dUdx_grid, kind="linear", fill_value="extrapolate"
+                        )
+                        dUdx_at_particles = interp_func_dUdx(current_M_particles_t[n_time_idx, :])
+                    except ValueError:
+                        dUdx_at_particles = np.zeros(self.num_particles)
+                else:
+                    dUdx_at_particles = np.interp(
+                        current_M_particles_t[n_time_idx, :], x_grid, dUdx_grid, left=dUdx_grid[0], right=dUdx_grid[-1]
                     )
-                    dUdx_at_particles = interp_func_dUdx(current_M_particles_t[n_time_idx, :])
-                except ValueError:
-                    dUdx_at_particles = np.zeros(self.num_particles)
             else:
                 dUdx_at_particles = np.zeros(self.num_particles)
 
