@@ -11,6 +11,8 @@ All algorithms produce perfect mazes with two critical properties:
 Implemented Algorithms:
 - Recursive Backtracking (DFS): Long winding paths, high exploration difficulty
 - Wilson's Algorithm: Unbiased sampling, structural diversity
+- Eller's Algorithm: Efficient row-by-row generation, O(width) memory
+- Growing Tree: Flexible framework, balanced characteristics
 
 Mathematical Foundation:
 Perfect mazes are minimal spanning trees on grid graphs, ensuring:
@@ -29,8 +31,12 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 class MazeAlgorithm(Enum):
@@ -38,6 +44,8 @@ class MazeAlgorithm(Enum):
 
     RECURSIVE_BACKTRACKING = "recursive_backtracking"
     WILSONS = "wilsons"
+    ELLERS = "ellers"
+    GROWING_TREE = "growing_tree"
 
 
 @dataclass(frozen=False, eq=True)
@@ -237,6 +245,10 @@ class PerfectMazeGenerator:
             self._recursive_backtracking()
         elif self.algorithm == MazeAlgorithm.WILSONS:
             self._wilsons()
+        elif self.algorithm == MazeAlgorithm.ELLERS:
+            self._ellers()
+        elif self.algorithm == MazeAlgorithm.GROWING_TREE:
+            self._growing_tree()
         else:
             raise ValueError(f"Unknown algorithm: {self.algorithm}")
 
@@ -325,7 +337,158 @@ class PerfectMazeGenerator:
                 if path[i] in unvisited:
                     unvisited.remove(path[i])
 
-    def to_numpy_array(self, wall_thickness: int = 1) -> np.ndarray:
+    def _ellers(self):
+        """
+        Eller's algorithm for efficient row-by-row maze generation.
+
+        Generates mazes one row at a time with minimal memory usage,
+        making it ideal for very large mazes or streaming generation.
+
+        Algorithm:
+        1. Process rows from top to bottom
+        2. Assign each cell to a set (initially unique sets)
+        3. Randomly join adjacent cells in same row (merge sets)
+        4. Create vertical connections ensuring each set has >= 1 passage down
+        5. Continue sets to next row
+
+        Characteristics:
+        - Memory efficient: O(width) instead of O(width × height)
+        - Can generate infinite mazes (streaming)
+        - Fast: O(n) where n = number of cells
+        - Moderate exploration difficulty
+        - Balanced mixture of horizontal/vertical passages
+
+        Reference: Eller (1982), "An Efficient Method for Generating Mazes"
+        """
+        # Each cell tracks its set membership
+        current_row_sets = list(range(self.cols))
+        next_set_id = self.cols
+
+        for row_idx in range(self.rows):
+            row_cells = [self.grid.cells[row_idx][col] for col in range(self.cols)]
+
+            # Mark all cells in current row as visited
+            for cell in row_cells:
+                cell.visited = True
+
+            # Step 1: Randomly connect adjacent cells in same row (merge sets)
+            for col in range(self.cols - 1):
+                cell = row_cells[col]
+                neighbor = row_cells[col + 1]
+
+                # Join if different sets and (random choice OR last row)
+                should_join = row_idx == self.rows - 1 or random.random() > 0.5
+                if current_row_sets[col] != current_row_sets[col + 1] and should_join:
+                    # Link cells horizontally
+                    cell.link(neighbor)
+
+                    # Merge sets
+                    old_set = current_row_sets[col + 1]
+                    new_set = current_row_sets[col]
+                    current_row_sets = [new_set if s == old_set else s for s in current_row_sets]
+
+            # Step 2: Create vertical connections (if not last row)
+            if row_idx < self.rows - 1:
+                # Group cells by their set
+                sets_in_row: dict[int, list[int]] = {}
+                for col in range(self.cols):
+                    set_id = current_row_sets[col]
+                    if set_id not in sets_in_row:
+                        sets_in_row[set_id] = []
+                    sets_in_row[set_id].append(col)
+
+                # For each set, create at least one vertical connection
+                next_row_sets = [-1] * self.cols
+
+                for set_id, cols_in_set in sets_in_row.items():
+                    # Choose how many vertical connections for this set
+                    num_connections = random.randint(1, max(1, len(cols_in_set)))
+                    chosen_cols = random.sample(cols_in_set, num_connections)
+
+                    for col in chosen_cols:
+                        cell = row_cells[col]
+                        below = self.grid.cells[row_idx + 1][col]
+
+                        # Link vertically
+                        cell.link(below)
+
+                        # Carry set membership down
+                        next_row_sets[col] = set_id
+
+                # Assign new sets to unconnected cells in next row
+                for col in range(self.cols):
+                    if next_row_sets[col] == -1:
+                        next_row_sets[col] = next_set_id
+                        next_set_id += 1
+
+                current_row_sets = next_row_sets
+
+    def _growing_tree(self, selection_strategy: str = "mixed"):
+        """
+        Growing Tree algorithm - generalized framework for maze generation.
+
+        A flexible algorithm that produces different maze characteristics
+        based on how cells are selected from the active set.
+
+        Algorithm:
+        1. Start with one cell in active set
+        2. While active set not empty:
+           - Choose cell from active set (strategy-dependent)
+           - If cell has unvisited neighbors:
+               * Choose random neighbor
+               * Link and add neighbor to active set
+           - Else remove cell from active set
+
+        Selection Strategies:
+        - newest: Always choose most recent cell (→ Recursive Backtracking)
+        - oldest: Always choose oldest cell (→ Prim's algorithm)
+        - random: Choose random cell (→ Simplified Prim's)
+        - mixed: 50% newest, 50% random (balanced characteristics)
+
+        Characteristics (mixed strategy):
+        - Balanced: Combines benefits of DFS and Prim's
+        - Moderate branching and dead ends
+        - Good exploration difficulty
+        - Versatile maze structure
+
+        Reference: Jamis Buck, "Mazes for Programmers" (2015)
+        """
+        active = []
+        start_cell = self.grid.random_cell()
+        start_cell.visited = True
+        active.append(start_cell)
+
+        while active:
+            # Select cell based on strategy
+            if selection_strategy == "newest":
+                # Like Recursive Backtracking (DFS)
+                current = active[-1]
+            elif selection_strategy == "oldest":
+                # Like Prim's algorithm
+                current = active[0]
+            elif selection_strategy == "random":
+                # Simplified Prim's
+                current = random.choice(active)
+            elif selection_strategy == "mixed":
+                # 50% newest (DFS-like), 50% random (Prim's-like)
+                if random.random() < 0.5:
+                    current = active[-1]
+                else:
+                    current = random.choice(active)
+            else:
+                raise ValueError(f"Unknown selection strategy: {selection_strategy}")
+
+            unvisited = self.grid.get_unvisited_neighbors(current)
+
+            if unvisited:
+                neighbor = random.choice(unvisited)
+                current.link(neighbor)
+                neighbor.visited = True
+                active.append(neighbor)
+            else:
+                active.remove(current)
+
+    def to_numpy_array(self, wall_thickness: int = 1) -> NDArray[np.int32]:
         """
         Convert maze to numpy array representation.
 
@@ -444,7 +607,7 @@ def generate_maze(
     cols: int,
     algorithm: str = "recursive_backtracking",
     seed: int | None = None,
-) -> np.ndarray:
+) -> NDArray[np.int32]:
     """
     High-level function to generate a perfect maze.
 
