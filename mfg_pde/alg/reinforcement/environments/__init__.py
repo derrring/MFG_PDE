@@ -9,8 +9,14 @@ Modules:
 - maze_config: Comprehensive configuration for maze parameters
 - position_placement: Strategies for start/goal position placement
 - recursive_division: Variable-width mazes with rooms and open spaces
+- cellular_automata: Organic, cave-like mazes using cellular automata
 """
 
+from mfg_pde.alg.reinforcement.environments.cellular_automata import (
+    CellularAutomataConfig,
+    CellularAutomataGenerator,
+    create_preset_ca_config,
+)
 from mfg_pde.alg.reinforcement.environments.maze_config import (
     MazeConfig,
     MazeTopology,
@@ -65,4 +71,8 @@ __all__ = [
     "SplitOrientation",
     "add_loops",
     "create_room_based_config",
+    # Cellular Automata (organic mazes)
+    "CellularAutomataConfig",
+    "CellularAutomataGenerator",
+    "create_preset_ca_config",
 ]
