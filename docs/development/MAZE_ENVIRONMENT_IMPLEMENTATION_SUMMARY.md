@@ -96,6 +96,12 @@ create_room_based_config(
 )
 ```
 
+### Multi-Agent Gym Integration ✅
+- `MFGMazeConfig.num_agents` enables vectorised agent rollout through Gymnasium  
+- Observation vectors are normalized per agent and stack automatically  
+- Action space switches to `MultiDiscrete` when more than one agent is active  
+- Population density now applies optional Gaussian smoothing (`scipy`-powered) for congestion-aware rewards
+
 ## Implementation Architecture
 
 ### Directory Structure

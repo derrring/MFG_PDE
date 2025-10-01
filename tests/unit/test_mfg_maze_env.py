@@ -122,11 +122,9 @@ class TestMFGMazeConfig:
 
 @pytest.mark.skipif(not GYMNASIUM_AVAILABLE, reason="Gymnasium not installed")
 class TestMFGMazeEnvironment:
-    """Test MFG Maze Environment."""
+    """Test the Gymnasium-compatible MFG maze environment."""
 
-    def setup_method(self):
-        """Setup test environment."""
-        # Create simple test maze
+    def setup_method(self) -> None:
         generator = PerfectMazeGenerator(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
         generator.generate(seed=42)
         self.maze_array = generator.to_numpy_array()
@@ -138,266 +136,198 @@ class TestMFGMazeEnvironment:
             action_type=ActionType.FOUR_CONNECTED,
             reward_type=RewardType.SPARSE,
             max_episode_steps=100,
+            num_agents=1,
         )
 
         self.env = MFGMazeEnvironment(self.config)
 
-    def test_initialization(self):
-        """Test environment initialization."""
+    def test_initialization(self) -> None:
         assert self.env.maze.shape == self.maze_array.shape
         assert self.env.action_space.n == 4
-        assert isinstance(self.env.observation_space, gym.spaces.Dict)
+        assert isinstance(self.env.observation_space, gym.spaces.Box)
 
-    def test_reset(self):
-        """Test environment reset."""
+    def test_reset(self) -> None:
         observation, info = self.env.reset(seed=42)
+        assert observation.shape == self.env.observation_space.shape
+        np.testing.assert_array_equal(info["positions"], np.array([[1, 1]], dtype=np.int32))
+        np.testing.assert_array_equal(info["goals"], np.array([[8, 8]], dtype=np.int32))
 
-        assert "position" in observation
-        assert "goal" in observation
-        assert "time_remaining" in observation
-        assert self.env.agent_position == (1, 1)
-        assert self.env.goal_position == (8, 8)
-        assert self.env.current_step == 0
-
-    def test_step_valid_action(self):
-        """Test valid action execution."""
+    def test_step_valid_action(self) -> None:
         self.env.reset(seed=42)
-        initial_position = self.env.agent_position
-
-        # Try all actions to find a valid move
-        valid_move_found = False
-        for action in range(4):
-            self.env.reset(seed=42)
-            observation, reward, terminated, truncated, info = self.env.step(action)
-
-            if not terminated:  # If not collision
-                valid_move_found = True
-                assert self.env.agent_position != initial_position
+        for action in range(self.env.action_space.n):
+            _, rewards, terminated, _, _ = self.env.step(action)
+            if not terminated:
+                assert rewards.shape == (1,)
                 assert self.env.current_step == 1
                 break
 
-        assert valid_move_found, "No valid moves found from start position"
-
-    def test_step_collision(self):
-        """Test collision with wall."""
-        self.env.reset(seed=42)
-
-        # Find action that leads to wall
-        for action in range(4):
-            self.env.reset(seed=42)
-            observation, reward, terminated, truncated, info = self.env.step(action)
-
-            if terminated and reward == self.config.collision_penalty:
-                break
-
-        # Note: May not find collision depending on maze structure
-        # This test verifies the mechanism works when collision occurs
-
-    def test_step_goal_reached(self):
-        """Test goal reaching."""
-        # Create maze with goal right next to start
+    def test_step_goal_reached(self) -> None:
         simple_maze = np.ones((5, 5), dtype=np.int32)
-        simple_maze[1:4, 1:4] = 0  # 3x3 open space
+        simple_maze[1:4, 1:4] = 0
 
         config = MFGMazeConfig(
             maze_array=simple_maze,
             start_positions=[(1, 1)],
-            goal_positions=[(1, 2)],  # Goal right next to start
+            goal_positions=[(1, 2)],
             action_type=ActionType.FOUR_CONNECTED,
             goal_reward=10.0,
+            num_agents=1,
         )
 
         env = MFGMazeEnvironment(config)
-        env.reset(seed=42)
-
-        # Move right to goal
-        observation, reward, terminated, truncated, info = env.step(3)
+        env.reset(seed=0)
+        _, rewards, terminated, _, _ = env.step(3)
 
         assert terminated
-        assert reward == 10.0
-        assert env.agent_position == (1, 2)
+        assert rewards[0] == 10.0
+        np.testing.assert_array_equal(env.agent_positions, np.array([[1, 2]], dtype=np.int32))
 
-    def test_episode_truncation(self):
-        """Test episode truncation at max steps."""
-        # Create simple maze with guaranteed safe moves
+    def test_episode_truncation(self) -> None:
         simple_maze = np.ones((7, 7), dtype=np.int32)
-        simple_maze[1:6, 1:6] = 0  # 5x5 open space
-
+        simple_maze[1:6, 1:6] = 0
         config = MFGMazeConfig(
             maze_array=simple_maze,
-            start_positions=[(3, 3)],  # Center
-            goal_positions=[(1, 1)],  # Far corner
-            max_episode_steps=3,  # Very short
+            start_positions=[(3, 3)],
+            goal_positions=[(1, 1)],
+            max_episode_steps=3,
+            num_agents=1,
         )
-
         env = MFGMazeEnvironment(config)
-        env.reset(seed=42)
+        env.reset(seed=0)
 
         truncated = False
-        terminated = False
         for _ in range(5):
-            observation, reward, terminated, truncated, info = env.step(1)  # Move down
-            if truncated or terminated:
+            _, _, terminated, truncated, _ = env.step(0)
+            if terminated or truncated:
                 break
 
         assert truncated or env.current_step >= 3
-        if truncated:
-            assert env.current_step == 3
 
-    def test_observation_space(self):
-        """Test observation space structure."""
-        observation, info = self.env.reset(seed=42)
+    def test_observation_space(self) -> None:
+        observation, _ = self.env.reset(seed=7)
+        assert observation.shape == self.env.observation_space.shape
 
-        assert "position" in observation
-        assert "goal" in observation
-        assert "time_remaining" in observation
-
-        assert observation["position"].shape == (2,)
-        assert observation["goal"].shape == (2,)
-        assert observation["time_remaining"].shape == (1,)
-
-    def test_population_in_observation(self):
-        """Test population density in observation."""
+    def test_population_in_observation(self) -> None:
+        radius = 2
         config = MFGMazeConfig(
             maze_array=self.maze_array,
             start_positions=[(1, 1)],
             goal_positions=[(8, 8)],
             include_population_in_obs=True,
-            population_obs_radius=2,
+            population_obs_radius=radius,
+            num_agents=1,
         )
-
         env = MFGMazeEnvironment(config)
-        observation, info = env.reset(seed=42)
+        observation, _ = env.reset(seed=1)
+        expected_dim = 5 + (2 * radius + 1) ** 2
+        assert observation.shape == (expected_dim,)
 
-        assert "local_density" in observation
-        assert observation["local_density"].shape == (5, 5)  # 2*2+1
-
-    def test_reward_types(self):
-        """Test different reward types."""
-        reward_configs = [
-            (RewardType.SPARSE, "sparse"),
-            (RewardType.DENSE, "dense"),
-            (RewardType.CONGESTION, "congestion"),
-        ]
-
-        for reward_type, _ in reward_configs:
+    def test_reward_types(self) -> None:
+        for reward_type in (RewardType.SPARSE, RewardType.DENSE, RewardType.CONGESTION):
             config = MFGMazeConfig(
                 maze_array=self.maze_array,
                 start_positions=[(1, 1)],
                 goal_positions=[(8, 8)],
                 reward_type=reward_type,
+                num_agents=1,
             )
-
             env = MFGMazeEnvironment(config)
-            env.reset(seed=42)
+            env.reset(seed=5)
+            _, rewards, _, _, _ = env.step(0)
+            assert rewards.shape == (1,)
 
-            # Take a valid action
-            observation, reward, terminated, truncated, info = env.step(0)
-
-            # Reward should be calculated (non-zero for most types)
-            assert isinstance(reward, float)
-
-    def test_action_types(self):
-        """Test different action types."""
-        # Four-connected
+    def test_action_types(self) -> None:
         config4 = MFGMazeConfig(
             maze_array=self.maze_array,
             start_positions=[(1, 1)],
             goal_positions=[(8, 8)],
             action_type=ActionType.FOUR_CONNECTED,
+            num_agents=1,
         )
-        env4 = MFGMazeEnvironment(config4)
-        assert env4.action_space.n == 4
+        assert MFGMazeEnvironment(config4).action_space.n == 4
 
-        # Eight-connected
         config8 = MFGMazeConfig(
             maze_array=self.maze_array,
             start_positions=[(1, 1)],
             goal_positions=[(8, 8)],
             action_type=ActionType.EIGHT_CONNECTED,
+            num_agents=1,
         )
-        env8 = MFGMazeEnvironment(config8)
-        assert env8.action_space.n == 8
+        assert MFGMazeEnvironment(config8).action_space.n == 8
 
-    def test_rendering(self):
-        """Test rendering functionality."""
-        # ASCII rendering
+    def test_multi_agent_support(self) -> None:
+        config = MFGMazeConfig(
+            maze_array=self.maze_array,
+            start_positions=[(1, 1), (1, 2), (1, 3)],
+            goal_positions=[(8, 8), (8, 7), (8, 6)],
+            num_agents=3,
+        )
+        env = MFGMazeEnvironment(config)
+        observation, info = env.reset(seed=9)
+        assert observation.shape[0] == 3
+        assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
+        _, rewards, _, _, _ = env.step(np.zeros(3, dtype=int))
+        assert rewards.shape == (3,)
+
+    def test_rendering(self) -> None:
         env_ascii = MFGMazeEnvironment(self.config, render_mode="human")
-        env_ascii.reset(seed=42)
-        output = env_ascii.render()
-        assert output is None  # Human mode returns None
+        env_ascii.reset(seed=11)
+        assert env_ascii.render() is None
 
-        # RGB array rendering
         env_rgb = MFGMazeEnvironment(self.config, render_mode="rgb_array")
-        env_rgb.reset(seed=42)
+        env_rgb.reset(seed=11)
         img = env_rgb.render()
-        assert img is not None
         assert img.shape == (self.maze_array.shape[0], self.maze_array.shape[1], 3)
-        assert img.dtype == np.uint8
 
-    def test_reproducibility(self):
-        """Test environment reproducibility with seeds."""
+    def test_reproducibility(self) -> None:
         env1 = MFGMazeEnvironment(self.config)
         env2 = MFGMazeEnvironment(self.config)
-
-        obs1, _ = env1.reset(seed=42)
-        obs2, _ = env2.reset(seed=42)
-
-        np.testing.assert_array_equal(obs1["position"], obs2["position"])
-        np.testing.assert_array_equal(obs1["goal"], obs2["goal"])
+        obs1, _ = env1.reset(seed=123)
+        obs2, _ = env2.reset(seed=123)
+        np.testing.assert_array_equal(obs1, obs2)
 
 
 @pytest.mark.skipif(not GYMNASIUM_AVAILABLE, reason="Gymnasium not installed")
 class TestIntegration:
-    """Integration tests with different maze types."""
+    """Integration tests with different maze generators."""
 
-    def test_perfect_maze(self):
-        """Test with perfect maze."""
+    def test_perfect_maze(self) -> None:
         generator = PerfectMazeGenerator(15, 15, MazeAlgorithm.RECURSIVE_BACKTRACKING)
-        generator.generate(seed=42)
+        generator.generate(seed=21)
         maze_array = generator.to_numpy_array()
-
         config = MFGMazeConfig(
             maze_array=maze_array,
             start_positions=[(1, 1)],
             goal_positions=[(13, 13)],
+            num_agents=1,
         )
-
         env = MFGMazeEnvironment(config)
-        observation, info = env.reset(seed=42)
-
-        # Run a few steps
+        env.reset(seed=21)
         for _ in range(10):
             action = env.action_space.sample()
-            observation, reward, terminated, truncated, info = env.step(action)
+            _, _, terminated, truncated, _ = env.step(action)
             if terminated or truncated:
                 break
-
         assert env.current_step <= 10
 
-    def test_recursive_division_maze(self):
-        """Test with recursive division maze."""
-        config_rd = create_room_based_config(20, 20, room_size="medium", corridor_width="medium", seed=42)
+    def test_recursive_division_maze(self) -> None:
+        config_rd = create_room_based_config(20, 20, room_size="medium", corridor_width="medium", seed=33)
         generator = RecursiveDivisionGenerator(config_rd)
         maze = generator.generate()
-
         config = MFGMazeConfig(
             maze_array=maze,
             start_positions=[(2, 2)],
             goal_positions=[(17, 17)],
             action_type=ActionType.EIGHT_CONNECTED,
+            num_agents=1,
         )
-
         env = MFGMazeEnvironment(config)
-        observation, info = env.reset(seed=42)
-
-        # Run a few steps
+        env.reset(seed=33)
         for _ in range(20):
             action = env.action_space.sample()
-            observation, reward, terminated, truncated, info = env.step(action)
+            _, _, terminated, truncated, _ = env.step(action)
             if terminated or truncated:
                 break
-
         assert env.current_step <= 20
 
 

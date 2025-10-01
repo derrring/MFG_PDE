@@ -29,20 +29,37 @@ if CORE_DEPENDENCIES_AVAILABLE:
         RLSolverConfig,
         RLSolverResult,
     )
-    from .environments import (
-        ContinuousMFGEnv,
-        MFGEnvironment,
-        NetworkMFGEnv,
-    )
-    from .population_state import (
-        PopulationMetrics,
-        PopulationState,
-        PopulationTracker,
-    )
-    from .training_loops import (
-        MFRLTrainingLoop,
-        PopulationTrainingManager,
-    )
+
+    try:  # pragma: no cover - optional module
+        from .environments import (
+            ContinuousMFGEnv,
+            MFGEnvironment,
+            NetworkMFGEnv,
+        )
+    except ImportError:
+        ContinuousMFGEnv = None  # type: ignore[assignment]
+        MFGEnvironment = None  # type: ignore[assignment]
+        NetworkMFGEnv = None  # type: ignore[assignment]
+
+    try:  # pragma: no cover - optional module
+        from .population_state import (
+            PopulationMetrics,
+            PopulationState,
+            PopulationTracker,
+        )
+    except ImportError:
+        PopulationMetrics = None  # type: ignore[assignment]
+        PopulationState = None  # type: ignore[assignment]
+        PopulationTracker = None  # type: ignore[assignment]
+
+    try:  # pragma: no cover - optional module
+        from .training_loops import (
+            MFRLTrainingLoop,
+            PopulationTrainingManager,
+        )
+    except ImportError:
+        MFRLTrainingLoop = None  # type: ignore[assignment]
+        PopulationTrainingManager = None  # type: ignore[assignment]
 
     __all__ = [
         # Base MFRL Components
@@ -65,9 +82,17 @@ if CORE_DEPENDENCIES_AVAILABLE:
 
     # Component categories
     BASE_COMPONENTS = ["BaseMFRLSolver", "RLSolverConfig", "RLSolverResult"]
-    ENVIRONMENT_COMPONENTS = ["MFGEnvironment", "ContinuousMFGEnv", "NetworkMFGEnv"]
-    POPULATION_COMPONENTS = ["PopulationState", "PopulationTracker", "PopulationMetrics"]
-    TRAINING_COMPONENTS = ["MFRLTrainingLoop", "PopulationTrainingManager"]
+    ENVIRONMENT_COMPONENTS = [
+        name for name in ("MFGEnvironment", "ContinuousMFGEnv", "NetworkMFGEnv") if globals().get(name) is not None
+    ]
+    POPULATION_COMPONENTS = [
+        name
+        for name in ("PopulationState", "PopulationTracker", "PopulationMetrics")
+        if globals().get(name) is not None
+    ]
+    TRAINING_COMPONENTS = [
+        name for name in ("MFRLTrainingLoop", "PopulationTrainingManager") if globals().get(name) is not None
+    ]
 
 else:
     import warnings
