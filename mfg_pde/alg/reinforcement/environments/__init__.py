@@ -9,6 +9,7 @@ Modules:
 - maze_config: Comprehensive configuration for maze parameters
 - position_placement: Strategies for start/goal position placement
 - recursive_division: Variable-width mazes with rooms and open spaces
+- mfg_maze_env: Gymnasium-compatible MFG maze environments with population dynamics
 """
 
 from mfg_pde.alg.reinforcement.environments.maze_config import (
@@ -40,6 +41,25 @@ from mfg_pde.alg.reinforcement.environments.recursive_division import (
     create_room_based_config,
 )
 
+# Conditional import for MFG environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.mfg_maze_env import (
+        ActionType,
+        MFGMazeConfig,
+        MFGMazeEnvironment,
+        PopulationState,
+        RewardType,
+    )
+
+    MFG_ENV_AVAILABLE = True
+except ImportError:
+    MFG_ENV_AVAILABLE = False
+    ActionType = None  # type: ignore
+    MFGMazeConfig = None  # type: ignore
+    MFGMazeEnvironment = None  # type: ignore
+    PopulationState = None  # type: ignore
+    RewardType = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -65,4 +85,18 @@ __all__ = [
     "SplitOrientation",
     "add_loops",
     "create_room_based_config",
+    # Availability flags
+    "MFG_ENV_AVAILABLE",
 ]
+
+# Add MFG environment exports if available
+if MFG_ENV_AVAILABLE:
+    __all__.extend(
+        [
+            "MFGMazeEnvironment",
+            "MFGMazeConfig",
+            "PopulationState",
+            "ActionType",
+            "RewardType",
+        ]
+    )
