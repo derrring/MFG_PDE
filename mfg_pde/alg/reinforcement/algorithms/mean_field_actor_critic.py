@@ -109,7 +109,14 @@ class ActorNetwork(nn.Module):
         """Initialize network weights."""
         if isinstance(module, nn.Linear):
             nn.init.orthogonal_(module.weight, gain=np.sqrt(2))
-            nn.init.zeros_(module.bias)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+
+        # Special initialization for policy output layer (smaller scale)
+        if isinstance(module, nn.Linear) and module.out_features == self.action_dim:
+            nn.init.orthogonal_(module.weight, gain=0.01)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
 
     def forward(self, state: torch.Tensor, population_state: torch.Tensor) -> torch.Tensor:
         """
@@ -454,16 +461,19 @@ class MeanFieldActorCritic:
                 next_obs, reward, done, truncated, info = self.env.step(action)
                 done = done or truncated
 
+                # Convert reward to scalar if needed
+                reward_scalar = float(reward) if isinstance(reward, np.ndarray | np.generic) else reward
+
                 # Store experience
                 states.append(state)
                 population_states.append(population_state)
                 actions.append(action)
-                rewards.append(reward)
+                rewards.append(reward_scalar)
                 log_probs.append(log_prob)
                 values.append(value)
                 dones.append(done)
 
-                episode_reward += reward
+                episode_reward += reward_scalar
                 episode_length += 1
 
                 # Update state
@@ -522,11 +532,22 @@ class MeanFieldActorCritic:
         advantages_tensor = torch.FloatTensor(advantages).to(self.device)
         returns_tensor = torch.FloatTensor(returns).to(self.device)
 
-        # Normalize advantages
-        advantages_tensor = (advantages_tensor - advantages_tensor.mean()) / (advantages_tensor.std() + 1e-8)
+        # Normalize advantages (with numerical stability)
+        adv_std = advantages_tensor.std()
+        if adv_std > 1e-8:
+            advantages_tensor = (advantages_tensor - advantages_tensor.mean()) / adv_std
+        else:
+            # If all advantages are the same, center them at 0
+            advantages_tensor = advantages_tensor - advantages_tensor.mean()
 
         # Get new log probs and values
         logits = self.actor(states_tensor, pop_states_tensor)
+
+        # Check for NaN in logits (numerical stability)
+        if torch.isnan(logits).any():
+            logger.warning("NaN detected in actor logits - skipping update")
+            return
+
         probs = torch_f.softmax(logits, dim=-1)
         dist = Categorical(probs)
         new_log_probs = dist.log_prob(actions_tensor)

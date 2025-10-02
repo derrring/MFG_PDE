@@ -77,7 +77,11 @@ def create_maze_environment(maze_type: str = "perfect", size: int = 15) -> MFGMa
     """
     if maze_type == "hybrid":
         # Use museum hybrid preset (Voronoi + CA)
-        maze_array, _ = create_museum_hybrid(rows=size, cols=size)
+        from mfg_pde.alg.reinforcement.environments.hybrid_maze import HybridMazeGenerator
+
+        hybrid_config = create_museum_hybrid(rows=size, cols=size)
+        hybrid_generator = HybridMazeGenerator(hybrid_config)
+        maze_array = hybrid_generator.generate()
     elif maze_type == "perfect":
         generator = PerfectMazeGenerator(rows=size, cols=size)
         generator.generate()
@@ -178,7 +182,8 @@ def evaluate_policy(agent, env, num_episodes: int = 10) -> dict:
     success_rate = 0
 
     for episode in range(num_episodes):
-        obs = env.reset()
+        reset_result = env.reset()
+        obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
         state = agent._extract_state(obs)
         population = agent._extract_population(obs)
 
@@ -226,9 +231,12 @@ def plot_training_progress(stats: dict, save_path: str | None = None):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
     # Plot episode rewards
-    rewards = stats["episode_rewards"]
-    window = 20
-    smoothed_rewards = np.convolve(rewards, np.ones(window) / window, mode="valid")
+    rewards = np.array(stats["episode_rewards"])
+    window = min(20, len(rewards))  # Ensure window doesn't exceed data length
+    if len(rewards) >= window:
+        smoothed_rewards = np.convolve(rewards, np.ones(window) / window, mode="valid")
+    else:
+        smoothed_rewards = rewards
 
     ax1.plot(rewards, alpha=0.3, label="Raw")
     ax1.plot(range(window - 1, len(rewards)), smoothed_rewards, label="Smoothed")
@@ -239,8 +247,11 @@ def plot_training_progress(stats: dict, save_path: str | None = None):
     ax1.grid(True, alpha=0.3)
 
     # Plot episode lengths
-    lengths = stats["episode_lengths"]
-    smoothed_lengths = np.convolve(lengths, np.ones(window) / window, mode="valid")
+    lengths = np.array(stats["episode_lengths"])
+    if len(lengths) >= window:
+        smoothed_lengths = np.convolve(lengths, np.ones(window) / window, mode="valid")
+    else:
+        smoothed_lengths = lengths
 
     ax2.plot(lengths, alpha=0.3, label="Raw")
     ax2.plot(range(window - 1, len(lengths)), smoothed_lengths, label="Smoothed")
@@ -323,13 +334,13 @@ def main():
     # Plot training progress
     plot_training_progress(stats, save_path="actor_critic_training_progress.png")
 
-    # Example 2: Train on hybrid maze
+    # Example 2: Train on hybrid maze (requires larger size for Voronoi)
     logger.info("\n--- Example 2: Training on Hybrid Maze ---")
-    hybrid_env = create_maze_environment(maze_type="hybrid", size=15)
+    hybrid_env = create_maze_environment(maze_type="hybrid", size=35)  # Voronoi requires >=20 per region
     hybrid_agent, hybrid_stats = train_actor_critic(
         hybrid_env,
-        num_episodes=500,
-        max_steps=100,
+        num_episodes=50,  # Reduced for demo
+        max_steps=50,
     )
 
     hybrid_eval = evaluate_policy(hybrid_agent, hybrid_env, num_episodes=20)
