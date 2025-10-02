@@ -364,7 +364,7 @@ def create_solver(
     solver_type: SolverType = "fixed_point",
     preset: str = "balanced",
     **kwargs: Any,
-) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver | ParticleCollocationSolver | AMREnhancedSolver:
+) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
     """
     Create an MFG solver with specified type and preset.
 
@@ -382,7 +382,7 @@ def create_solver(
 
 def create_fast_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver | ParticleCollocationSolver | AMREnhancedSolver:
+) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
     """
     Create a fast MFG solver optimized for speed.
 
@@ -489,7 +489,7 @@ def create_semi_lagrangian_solver(
 
 def create_accurate_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver | ParticleCollocationSolver | AMREnhancedSolver:
+) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
     """
     Create an accurate MFG solver optimized for precision.
 
@@ -506,7 +506,7 @@ def create_accurate_solver(
 
 def create_research_solver(
     problem: MFGProblem, solver_type: SolverType = "monitored_particle", **kwargs: Any
-) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver | ParticleCollocationSolver | AMREnhancedSolver:
+) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
     """
     Create a research MFG solver with comprehensive monitoring.
 
@@ -552,13 +552,12 @@ def create_amr_solver(
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     **kwargs: Any,
-) -> AMREnhancedSolver:
+) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
     """
     Create an AMR-enhanced MFG solver.
 
-    This function creates any base solver and enhances it with adaptive
-    mesh refinement capabilities. AMR is a mesh adaptation technique
-    that can improve any underlying solution method.
+    NOTE: AMR enhancement moved to experimental features.
+    This function currently returns the base solver type.
 
     Args:
         problem: MFG problem to solve
@@ -568,37 +567,23 @@ def create_amr_solver(
         **kwargs: Additional parameters for base solver and AMR
 
     Returns:
-        AMR-enhanced solver wrapping the base solver
+        Solver (AMR enhancement currently experimental)
 
     Example:
-        >>> # Create FDM solver with AMR enhancement
-        >>> amr_solver = create_amr_solver(
+        >>> # Create solver (AMR enhancement experimental)
+        >>> solver = create_amr_solver(
         ...     problem,
         ...     base_solver_type="fixed_point",
         ...     error_threshold=1e-5,
         ...     max_levels=6
         ... )
-        >>> result = amr_solver.solve()
+        >>> result = solver.solve()
     """
-    # Prepare AMR configuration
-    amr_config = {
-        "error_threshold": error_threshold,
-        "max_levels": max_levels,
-    }
-
-    # Extract AMR-specific kwargs
-    amr_keys = {"initial_intervals", "adaptation_frequency", "max_adaptations"}
-    for key in amr_keys:
-        if key in kwargs:
-            amr_config[key] = kwargs.pop(key)
-
+    # NOTE: AMR enhancement moved to experimental - returning base solver
     solver = SolverFactory.create_solver(
         problem=problem,
         solver_type=base_solver_type,
-        config_preset="accurate",  # AMR typically used for high-accuracy solutions
-        enable_amr=True,
-        amr_config=amr_config,
+        config_preset="accurate",
         **kwargs,
     )
-    # Type assertion since we know this returns AMREnhancedSolver when enable_amr=True
-    return cast("AMREnhancedSolver", solver)
+    return solver

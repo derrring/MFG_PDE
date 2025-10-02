@@ -22,13 +22,13 @@ from mfg_pde import (
     create_research_solver,
     create_solver,
 )
-from mfg_pde.alg import (
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.alg.numerical.mfg_solvers import (
     AdaptiveParticleCollocationSolver,
     ConfigAwareFixedPointIterator,
     MonitoredParticleCollocationSolver,
 )
-from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 from mfg_pde.config import create_research_config
 
 
@@ -394,7 +394,7 @@ def run_comprehensive_test():
     total_tests = 0
     passed_tests = 0
 
-    for test_name, results in all_results.items():
+    for _test_name, results in all_results.items():
         if isinstance(results, dict) and "success" in results:
             # Single test result
             total_tests += 1
