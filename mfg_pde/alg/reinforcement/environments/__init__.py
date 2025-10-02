@@ -60,7 +60,7 @@ from mfg_pde.alg.reinforcement.environments.voronoi_maze import (
     VoronoiMazeGenerator,
 )
 
-# Maze utilities (wall smoothing, adaptive connectivity, analysis)
+# Maze utilities (connectivity analysis)
 try:
     from mfg_pde.alg.reinforcement.environments.maze_utils import (
         analyze_maze_connectivity,
@@ -68,8 +68,6 @@ try:
         connect_regions_adaptive,
         find_disconnected_regions,
         find_region_boundary,
-        smooth_walls_gaussian,
-        smooth_walls_morphological,
     )
 
     MAZE_UTILS_AVAILABLE = True
@@ -80,6 +78,25 @@ except ImportError:
     connect_regions_adaptive = None  # type: ignore
     find_disconnected_regions = None  # type: ignore
     find_region_boundary = None  # type: ignore
+
+# Maze post-processing (smoothing, enhancement, refinement)
+try:
+    from mfg_pde.alg.reinforcement.environments.maze_postprocessing import (
+        adaptive_door_carving,
+        enhance_organic_maze,
+        normalize_wall_thickness,
+        smooth_walls_combined,
+        smooth_walls_gaussian,
+        smooth_walls_morphological,
+    )
+
+    MAZE_POSTPROCESSING_AVAILABLE = True
+except ImportError:
+    MAZE_POSTPROCESSING_AVAILABLE = False
+    adaptive_door_carving = None  # type: ignore
+    enhance_organic_maze = None  # type: ignore
+    normalize_wall_thickness = None  # type: ignore
+    smooth_walls_combined = None  # type: ignore
     smooth_walls_gaussian = None  # type: ignore
     smooth_walls_morphological = None  # type: ignore
 
@@ -145,19 +162,31 @@ __all__ = [
     # Availability flags
     "MFG_ENV_AVAILABLE",
     "MAZE_UTILS_AVAILABLE",
+    "MAZE_POSTPROCESSING_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
 if MAZE_UTILS_AVAILABLE:
     __all__.extend(
         [
-            "smooth_walls_morphological",
-            "smooth_walls_gaussian",
             "connect_regions_adaptive",
             "analyze_maze_connectivity",
             "find_disconnected_regions",
             "find_region_boundary",
             "compute_adaptive_door_width",
+        ]
+    )
+
+# Add maze post-processing exports if available
+if MAZE_POSTPROCESSING_AVAILABLE:
+    __all__.extend(
+        [
+            "smooth_walls_morphological",
+            "smooth_walls_gaussian",
+            "smooth_walls_combined",
+            "normalize_wall_thickness",
+            "adaptive_door_carving",
+            "enhance_organic_maze",
         ]
     )
 
