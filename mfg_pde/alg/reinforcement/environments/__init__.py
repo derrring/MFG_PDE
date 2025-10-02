@@ -46,6 +46,10 @@ from mfg_pde.alg.reinforcement.environments.recursive_division import (
     add_loops,
     create_room_based_config,
 )
+from mfg_pde.alg.reinforcement.environments.voronoi_maze import (
+    VoronoiMazeConfig,
+    VoronoiMazeGenerator,
+)
 
 # Conditional import for MFG environment (requires Gymnasium)
 try:
@@ -95,6 +99,9 @@ __all__ = [
     "CellularAutomataConfig",
     "CellularAutomataGenerator",
     "create_preset_ca_config",
+    # Voronoi Diagram (room-based mazes)
+    "VoronoiMazeConfig",
+    "VoronoiMazeGenerator",
     # Availability flags
     "MFG_ENV_AVAILABLE",
 ]
