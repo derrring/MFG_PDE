@@ -556,9 +556,22 @@ def create_mean_field_q_learning(env, config: dict[str, Any] | None = None) -> M
         population_dim = 6  # mean + std of observations
 
     else:
-        # Default dimensions
+        # Default dimensions from environment
         state_dim = obs_batch.shape[1]
-        action_dim = 5  # Default discrete actions
+
+        # Extract action_dim from environment's action space
+        if hasattr(env, "action_space"):
+            if hasattr(env.action_space, "n"):
+                # Discrete action space
+                action_dim = env.action_space.n
+            elif hasattr(env.action_space, "nvec"):
+                # MultiDiscrete action space - use single agent's action dim
+                action_dim = env.action_space.nvec[0]
+            else:
+                action_dim = 5  # Fallback
+        else:
+            action_dim = 5  # Fallback
+
         population_dim = state_dim * 2  # mean + std
 
     # Reset environment to initial state for downstream training
