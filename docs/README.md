@@ -1,28 +1,48 @@
 # MFG_PDE Documentation
 
-**Last Updated**: September 26, 2025
-**Version**: Strategic Typing Excellence Edition
-**Status**: Production-Ready Framework with 100% Strategic Typing Coverage  
+**Last Updated**: October 2, 2025
+**Version**: Strategic Typing Excellence Edition + Top-Level Documentation Reorganization
+**Status**: Production-Ready Framework with 100% Strategic Typing Coverage
 
 Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
+
+---
 
 ## 🎯 **Quick Navigation**
 
 ### **For New Users**
 - **[User Documentation](user/)** - Tutorials, guides, and usage patterns
-- **[Network MFG Tutorial](user/tutorials/network_mfg_tutorial.md)** - Complete network MFG guide
-- **[AMR Tutorial](user/tutorials/advanced/amr_tutorial.md)** - Advanced mesh refinement guide
+  - **[Quickstart Guide](user/quickstart.md)** - Get started in 5 minutes
+  - **[Feature Guides](user/guides/)** - Backend usage, maze generation, hooks, plugins
+  - **[Network MFG Tutorial](user/tutorials/network_mfg_tutorial.md)** - Complete network MFG guide
+  - **[Collaboration Workflows](user/collaboration/)** - AI-assisted development, GitHub workflow
 - **[Basic Examples](../examples/basic/)** - Simple problem setup and solving
 
 ### **For Researchers**
 - **[Theory Documentation](theory/)** - Mathematical foundations and algorithms
+  - **[Reinforcement Learning](theory/reinforcement_learning/)** - RL for MFG, continuous actions
+  - **[Numerical Methods](theory/numerical_methods/)** - AMR, semi-Lagrangian, Lagrangian
+  - **[Mathematical Background](theory/mathematical_background.md)** - Core MFG theory
+- **[Advanced Topics](advanced/)** - System design and advanced features
+  - **[System Design](advanced/design/)** - Architecture and design documents
 - **[Advanced Examples](../examples/advanced/)** - Research-grade demonstrations
 - **[Interactive Notebooks](../examples/notebooks/)** - Jupyter-based exploration
 
 ### **For Developers**
-- **[Development Documentation](development/)** - Complete technical documentation
-- **[Strategic Development Roadmap](development/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md)** - Current strategic development plan (2026-2027)
+- **[Development Documentation](development/)** - Development process and standards
+  - **[Consistency Guide](development/CONSISTENCY_GUIDE.md)** - Code standards (most referenced)
+  - **[Strategic Roadmap 2026](development/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md)** - Primary strategic plan
+  - **[Architectural Changes](development/ARCHITECTURAL_CHANGES.md)** - Change history
+- **[Planning & Roadmaps](planning/)** - Strategic planning and project management
+  - **[Roadmaps](planning/roadmaps/)** - Feature roadmaps and development plans
+  - **[Completed Work](planning/completed/)** - Finished features and milestones
+  - **[Quality Reports](planning/reports/)** - Assessments and status reports
+- **[Reference Documentation](reference/)** - Quick references and lookup guides
+  - **[Python Typing](reference/python_typing.md)** - Modern typing guide
+  - **[MyPy Usage](reference/mypy_usage.md)** - Type checking strategies
 - **[Source Reference](../mfg_pde/)** - Complete function and class documentation in source
+
+---
 
 ## 🚀 **Major Achievements (2025)**
 
@@ -45,41 +65,112 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 - **Documentation Coverage**: 100% API with working examples
 - **Test Coverage**: 95%+ with numerical accuracy validation
 
-## 📁 **Documentation Structure** (Reorganized July 2025)
+### **📁 Documentation Reorganization** ✅ (October 2025)
+- **Top-level categorization** by user need (user, theory, planning, development)
+- **Improved discoverability** with clear directory purposes
+- **Better separation** between usage, theory, planning, and development
+- **63+ documents** organized logically across categories
+
+---
+
+## 📁 **Documentation Structure** (Reorganized October 2025)
 
 ```
 docs/
-├── README.md                           # This overview (UPDATED)
-├── user/                              # 🆕 User-facing documentation
+├── README.md                          # This overview
+│
+├── user/                              # 👥 USER-FACING DOCUMENTATION
 │   ├── README.md                      # User documentation index
-│   ├── network_mfg_tutorial.md        # Network MFG complete tutorial
-│   ├── notebook_execution_guide.md    # Jupyter execution guide
-│   └── usage_patterns.md              # Best practices and patterns
-├── theory/                            # Mathematical documentation
-│   ├── mathematical_background.md      # Mean Field Games foundations
-│   ├── network_mfg_mathematical_formulation.md  # Network MFG theory
-│   ├── adaptive_mesh_refinement_mfg.md # AMR theoretical framework
-│   └── [Applications and case studies] # Various MFG applications
-├── development/                       # Complete developer documentation
-│   ├── STRATEGIC_DEVELOPMENT_ROADMAP_2026.md   # 🎯 PRIMARY strategic plan
-│   ├── CONSISTENCY_GUIDE.md           # Code standards and practices
-│   ├── strategy/                      # Strategic planning documents
-│   │   ├── project_summary.md         # High-level project overview
-│   │   └── framework_design_philosophy.md  # Design principles
-│   ├── architecture/                  # System architecture
-│   │   ├── network_backend_architecture.md # Network backend design
-│   │   └── mesh_pipeline_architecture.md   # Mesh system design
-│   ├── analysis/                      # Technical analysis
-│   │   ├── qp_collocation_performance_analysis.md # Performance studies
-│   │   └── [Various algorithmic analyses] # Deep technical studies
-│   ├── completed/                     # Completed development work
-│   │   └── resolved_issues/           # Historical issue resolutions
-│   └── maintenance/                   # Repository maintenance
-│       ├── cleanup_procedures.md      # Maintenance procedures
-│       └── [Maintenance history]      # Repository management
-└── reference/                        # Quick reference guides
-    └── [Quick reference materials]   # Fast lookup documentation
+│   ├── quickstart.md                  # Quick start guide
+│   ├── core_objects.md                # Core MFG_PDE objects
+│   ├── usage_patterns.md              # Best practices
+│   ├── guides/                        # 🆕 Feature usage guides
+│   │   ├── backend_usage.md           # Computational backends
+│   │   ├── maze_generation.md         # Maze environments
+│   │   ├── hooks.md                   # Plugin hooks
+│   │   └── plugin_development.md      # Creating plugins
+│   ├── collaboration/                 # 🆕 Collaboration workflows
+│   │   ├── ai_assisted_development.md # AI-assisted dev
+│   │   ├── github_workflow.md         # GitHub conventions
+│   │   └── issue_templates.md         # Issue examples
+│   └── tutorials/                     # Step-by-step tutorials
+│       ├── network_mfg_tutorial.md    # Network MFG guide
+│       └── advanced/                  # Advanced tutorials
+│
+├── theory/                            # 🔬 MATHEMATICAL FOUNDATIONS
+│   ├── mathematical_background.md     # Core MFG theory
+│   ├── network_mfg_mathematical_formulation.md
+│   ├── adaptive_mesh_refinement_mfg.md
+│   ├── convergence_criteria.md
+│   ├── reinforcement_learning/        # 🆕 RL theory for MFG
+│   │   ├── continuous_action_mfg_theory.md      # 6-12 month roadmap
+│   │   ├── action_space_scalability.md          # Scalability analysis
+│   │   └── continuous_action_architecture_sketch.py  # Code examples
+│   ├── numerical_methods/             # 🆕 Numerical method theory
+│   │   ├── adaptive_mesh_refinement.md
+│   │   ├── semi_lagrangian_methods.md
+│   │   └── lagrangian_formulation.md
+│   └── [Application case studies]     # El Farol, Santa Fe, etc.
+│
+├── advanced/                          # 🎓 ADVANCED TOPICS
+│   ├── design/                        # 🆕 System design documents
+│   │   ├── geometry_system.md
+│   │   ├── hybrid_maze_generation.md
+│   │   ├── api_architecture.md
+│   │   ├── benchmarking.md
+│   │   ├── amr_performance.md
+│   │   └── geometry_amr_integration.md
+│   └── [Advanced case studies]
+│
+├── planning/                          # 📋 🆕 PLANNING & ROADMAPS
+│   ├── README.md                      # Planning documentation index
+│   ├── roadmaps/                      # Strategic roadmaps
+│   │   ├── REINFORCEMENT_LEARNING_ROADMAP.md
+│   │   ├── ALGORITHM_REORGANIZATION_PLAN.md
+│   │   ├── PRAGMATIC_TYPING_PHASE_2_ROADMAP.md
+│   │   └── BRANCH_STRATEGY_PARADIGMS.md
+│   ├── completed/                     # Completed features
+│   │   ├── [COMPLETED]_MAZE_ENVIRONMENT_IMPLEMENTATION_SUMMARY.md
+│   │   ├── [COMPLETED]_RL_MAZE_ROADMAP_PROGRESS.md
+│   │   └── [Other completion summaries]
+│   ├── reports/                       # Quality & status reports
+│   │   ├── CODEBASE_QUALITY_ASSESSMENT.md
+│   │   ├── CONSISTENCY_CHECK_REPORT.md
+│   │   └── [Other assessments]
+│   └── governance/                    # Project governance
+│       └── next_development_priorities.md
+│
+├── development/                       # 🛠️ DEVELOPMENT DOCUMENTATION
+│   ├── README.md                      # Development docs index
+│   ├── CONSISTENCY_GUIDE.md           # 📌 Code standards (most referenced)
+│   ├── STRATEGIC_DEVELOPMENT_ROADMAP_2026.md  # 📌 Primary roadmap
+│   ├── ARCHITECTURAL_CHANGES.md       # 📌 Change history
+│   ├── CODE_REVIEW_GUIDELINES.md      # Review process
+│   ├── SELF_GOVERNANCE_PROTOCOL.md    # Governance protocol
+│   ├── ORGANIZATION.md                # Project structure
+│   ├── typing/                        # Type system & CI/CD
+│   │   ├── CI_CD_STRATEGIC_TYPING_EXPERIENCE_GUIDE.md
+│   │   ├── STRATEGIC_TYPING_PATTERNS_REFERENCE.md
+│   │   ├── CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md
+│   │   └── [MyPy integration docs]
+│   ├── tooling/                       # Development tooling
+│   │   ├── UV_INTEGRATION_GUIDE.md
+│   │   ├── UV_SCIENTIFIC_COMPUTING_GUIDE.md
+│   │   └── logging_guide.md
+│   ├── analysis/                      # Technical analyses
+│   ├── architecture/                  # Architecture documentation
+│   ├── strategy/                      # Strategic planning
+│   └── maintenance/                   # Maintenance procedures
+│
+├── reference/                         # 📖 QUICK REFERENCES
+│   ├── python_typing.md               # 🆕 Modern Python typing
+│   ├── mypy_usage.md                  # 🆕 MyPy strategies
+│   └── typing_methodology.md          # 🆕 Systematic typing approach
+│
+└── examples/                          # Example documentation
 ```
+
+---
 
 ## 🔬 **Current Capabilities**
 
@@ -117,6 +208,8 @@ config = create_fast_config(
 )
 ```
 
+---
+
 ## 📖 **Documentation Categories**
 
 ### 🎓 **Learning Materials**
@@ -127,10 +220,10 @@ config = create_fast_config(
 - Backend selection and GPU setup
 - Common patterns and best practices
 
-#### **[User Guides](user/)**
+#### **[User Guides](user/guides/)**
+- **Feature Guides**: Backend usage, maze generation, hooks, plugins
+- **Collaboration**: AI-assisted development, GitHub workflow
 - **Interactive Notebooks**: Jupyter integration and research workflows
-- **Performance Optimization**: GPU acceleration and scaling
-- **Problem Setup**: Custom MFG problem development
 - **Advanced Features**: Professional configuration and logging
 
 ### 🔬 **Research Documentation**
@@ -138,68 +231,74 @@ config = create_fast_config(
 #### **[Theory](theory/)**
 - **Mathematical Foundations**: HJB and FPK equations, convergence theory
 - **Numerical Methods**: Finite differences, particle methods, adaptive techniques
+- **Reinforcement Learning**: Continuous action MFG, scalability analysis
 - **Case Studies**: Santa Fe Bar Problem, traffic flow, financial applications
-- **Algorithm Analysis**: Performance, stability, and accuracy considerations
 
-#### **[Advanced Examples](../examples/advanced/)**
-- **JAX Acceleration Demo**: GPU performance benchmarking
+#### **[Advanced Topics](advanced/)**
+- **System Design**: Architecture and design patterns
 - **Complex Applications**: Multi-agent systems, economic models
-- **Research Publications**: Publication-ready workflow examples
-- **Custom Development**: Extending solvers and backends
+- **Performance Optimization**: GPU acceleration and scaling
 
 ### 🛠️ **Technical Documentation**
 
-#### **[Source Reference](../mfg_pde/)**
-- **Core Classes**: MFGProblem, solvers, configurations
-- **Backend System**: NumPy and JAX computational backends
-- **Factory Methods**: Automatic solver and backend creation
-- **Utilities**: Logging, validation, notebook integration
-
 #### **[Development](development/)**
+- **Process & Standards**: Consistency guide, code review, governance
+- **Type System**: Strategic typing framework (366→0 MyPy errors)
+- **Tooling**: UV integration, logging, CI/CD
 - **Architecture**: System design and extension points
-- **Roadmap**: Strategic development plan and future features
-- **Contributing**: Code standards, testing, and contribution process
-- **Achievement Summary**: Major accomplishments and platform evolution
 
-### 🏎️ **Performance Documentation**
+#### **[Planning](planning/)**
+- **Roadmaps**: Strategic development plans and feature roadmaps
+- **Completed Work**: Implementation summaries and milestones
+- **Reports**: Quality assessments and status reports
+- **Governance**: Priority setting and decision-making
 
-#### **[Benchmarks](../benchmarks/)** 🆕
-- **GPU Acceleration**: JAX backend setup and optimization
-- **Benchmarking**: Performance measurement and comparison tools  
-- **Scaling**: Large problem solving and memory management
-- **Best Practices**: Optimization techniques and production deployment
+#### **[Reference](reference/)**
+- **Quick Lookups**: Python typing, MyPy usage, methodologies
+- **Best Practices**: Type safety, testing, performance
 
-## 📊 **Documentation Statistics (Updated)**
+---
 
-- **Total Sections**: 7 main documentation categories
-- **Strategic Docs**: 3 major planning documents (2025 updates)
-- **Development Docs**: 8+ comprehensive guides
-- **User Guides**: 5+ practical tutorials
-- **Theory Docs**: 4+ mathematical foundations
-- **Performance Docs**: 3+ optimization guides (NEW)
-- **API Coverage**: 100% with examples
+## 📊 **Documentation Statistics**
+
+- **Total Categories**: 6 main categories (user, theory, advanced, planning, development, reference)
+- **User Guides**: 7+ practical guides
+- **Theory Docs**: 15+ mathematical foundations
+- **Planning Docs**: 15+ roadmaps, reports, and summaries
+- **Development Docs**: 20+ technical guides and standards
 - **Examples**: 15+ working demonstrations across skill levels
+- **API Coverage**: 100% with examples
 
-## 🎯 **Recent Major Updates (September 2025)**
+---
+
+## 🎯 **Recent Major Updates (October 2025)**
+
+### **📁 Top-Level Documentation Reorganization**
+Complete restructuring for improved discoverability:
+
+**New Categories**:
+1. **user/guides/** - Feature usage guides (backend, mazes, hooks, plugins)
+2. **user/collaboration/** - Collaboration workflows (AI, GitHub, issues)
+3. **theory/reinforcement_learning/** - RL theory for MFG
+4. **theory/numerical_methods/** - Numerical method foundations
+5. **advanced/design/** - System design documents
+6. **planning/** - Roadmaps, completed work, reports, governance
+7. **reference/** - Quick reference guides (typing, MyPy)
+
+**Benefits**:
+- User-centric organization (users find guides in user/, not development/)
+- Theory-focused (mathematical content where researchers expect it)
+- Clear separation (usage vs theory vs planning vs development)
+- Better discoverability (top-level categories match user mental models)
 
 ### **🏆 Strategic Typing Excellence Documentation**
 Complete framework documentation for achieving 100% type safety in scientific computing:
 
-1. **[CI_CD_STRATEGIC_TYPING_EXPERIENCE_GUIDE.md](development/CI_CD_STRATEGIC_TYPING_EXPERIENCE_GUIDE.md)** - Complete experience guide
-2. **[STRATEGIC_TYPING_PATTERNS_REFERENCE.md](development/STRATEGIC_TYPING_PATTERNS_REFERENCE.md)** - Production-tested code patterns
-3. **[CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md](development/CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md)** - Emergency diagnostic procedures
+1. **[development/typing/CI_CD_STRATEGIC_TYPING_EXPERIENCE_GUIDE.md](development/typing/CI_CD_STRATEGIC_TYPING_EXPERIENCE_GUIDE.md)** - Complete experience guide
+2. **[reference/python_typing.md](reference/python_typing.md)** - Modern typing patterns
+3. **[reference/mypy_usage.md](reference/mypy_usage.md)** - Practical MyPy strategies
 
-### **🚀 Enhanced Documentation Infrastructure**
-- **Strategic Documentation**: Blueprint for other scientific computing projects
-- **CI/CD Optimization**: Research-optimized pipeline balancing quality with productivity
-- **Type Safety Methodology**: 80/20 approach maximizing benefits with minimal overhead
-- **Environment Compatibility**: Handling local vs CI/CD differences gracefully
-
-### **📊 Quality & Consistency Improvements**
-- **Strategic Typing**: 366 → 0 MyPy errors (100% success) across entire codebase
-- **Documentation Updates**: All READMEs updated with 2025 achievements
-- **Example Integration**: Strategic typing benefits reflected in all demonstration code
-- **Cross-References**: Updated navigation reflecting new strategic typing documentation
+---
 
 ## 🔄 **Documentation Maintenance**
 
@@ -215,11 +314,13 @@ Complete framework documentation for achieving 100% type safety in scientific co
 - **User Feedback**: Regular incorporation of community suggestions
 - **Professional Standard**: Enterprise-grade documentation quality
 
+---
+
 ## 🌟 **Next Phase Documentation (2025-2026)**
 
 ### **Planned Additions**
-- **Adaptive Mesh Refinement Guide**: Dynamic grid optimization techniques
-- **Multi-Dimensional Tutorial**: 2D and 3D problem solving workflows  
+- **Continuous Action RL Guide**: Implementing continuous actions in MFG-RL
+- **Multi-Dimensional Tutorial**: 2D and 3D problem solving workflows
 - **Machine Learning Integration**: PINNs and neural network methods
 - **Production Deployment**: Enterprise-scale installation and management
 - **Performance Profiling**: Advanced optimization and debugging techniques
@@ -228,16 +329,17 @@ Complete framework documentation for achieving 100% type safety in scientific co
 - **Interactive Documentation**: Embedded executable examples
 - **Video Tutorials**: Complex concept explanations and demonstrations
 - **Community Contributions**: User-submitted examples and case studies
-- **Multilingual Support**: Broader accessibility for international users
+
+---
 
 ## 📞 **Getting Help**
 
 ### **Quick Solutions**
-- **Installation Issues**: Check [User Documentation](user/) and [Troubleshooting](development/maintenance/)
-- **Performance Questions**: See [Benchmarks](../benchmarks/) and GPU setup
-- **Research Workflow**: Review [Theory](theory/) and [Advanced Examples](../examples/advanced/)
+- **Installation Issues**: Check [User Documentation](user/) and development/maintenance/
+- **Performance Questions**: See [Advanced Topics](advanced/) and GPU setup
+- **Research Workflow**: Review [Theory](theory/) and [Examples](../examples/advanced/)
 
-### **Community Support** 
+### **Community Support**
 - **GitHub Issues**: Technical problems and bug reports
 - **Discussions**: Feature requests and research collaboration
 - **Examples**: Community-contributed problem solutions
@@ -247,6 +349,12 @@ Complete framework documentation for achieving 100% type safety in scientific co
 
 ## 🎉 **Welcome to MFG_PDE**
 
-**The premier platform for Mean Field Games computational research - now with enterprise-grade performance, professional research tools, and GPU acceleration capabilities.**
+**The premier platform for Mean Field Games computational research - now with enterprise-grade performance, professional research tools, GPU acceleration capabilities, and user-centric documentation.**
 
 *Transform your Mean Field Games research with state-of-the-art computational infrastructure designed for both cutting-edge research and production applications.*
+
+---
+
+**Documentation Version**: v2.2 - Top-Level Reorganization + Strategic Typing Excellence
+**Last Major Update**: October 2, 2025
+**Maintenance**: Continuously updated with codebase evolution
