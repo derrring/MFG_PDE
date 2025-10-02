@@ -192,6 +192,22 @@ class MeanFieldQLearning:
     This algorithm learns Q-functions that depend on both individual agent
     states and the population state (mean field), enabling coordination
     in large multi-agent systems.
+
+    Mathematical Framework:
+        Q-function: Q(s, a, m) = E[∑ γ^t r(s_t, a_t, m_t) | s_0=s, a_0=a, m_0=m]
+        Population consistency: m = μ(π)
+        Nash equilibrium: π(s, m) ∈ argmax_a Q(s, a, m)
+
+    Nash Q-Learning Interpretation:
+        For symmetric Mean Field Games, this algorithm is equivalent to Nash Q-Learning,
+        since the Nash equilibrium reduces to the best response to the mean field.
+        The max operation in the target value computation (see _update_q_network())
+        implements the Nash equilibrium value for symmetric games:
+
+            Nash_value(s', m') = max_a Q(s', a, m')
+
+        For heterogeneous or competitive multi-agent settings, a general Nash solver
+        would be needed. See nash_q_learning_formulation.md for details.
     """
 
     def __init__(
@@ -316,6 +332,44 @@ class MeanFieldQLearning:
 
         return actions
 
+    def compute_nash_value(
+        self, state: torch.Tensor, population_state: torch.Tensor, game_type: str = "symmetric"
+    ) -> torch.Tensor:
+        """
+        Compute Nash equilibrium value at given state and population.
+
+        For symmetric MFG, the Nash equilibrium value is simply the maximum
+        Q-value over all actions, since all agents follow the same best-response
+        policy to the mean field.
+
+        Args:
+            state: Individual agent state [batch_size, state_dim]
+            population_state: Population state [batch_size, population_dim]
+            game_type: Type of game ("symmetric", "zero_sum", "general")
+
+        Returns:
+            Nash equilibrium values [batch_size]
+
+        Note:
+            Currently only symmetric games are supported. For general games,
+            a Nash solver would be needed to compute mixed-strategy equilibria.
+            See nash_q_learning_architecture.md for extension designs.
+        """
+        with torch.no_grad():
+            q_values = self.target_network(state, population_state)
+
+            if game_type == "symmetric":
+                # Symmetric MFG: Nash value = max_a Q(s, a, m)
+                nash_values = q_values.max(dim=1)[0]
+            else:
+                raise NotImplementedError(
+                    f"Nash equilibrium computation for '{game_type}' games not yet implemented. "
+                    "Currently only 'symmetric' games are supported. "
+                    "For general games, see nash_q_learning_architecture.md for extension designs."
+                )
+
+        return nash_values
+
     def train(self, num_episodes: int) -> dict[str, Any]:
         """
         Train the Mean Field Q-Learning algorithm.
@@ -414,7 +468,12 @@ class MeanFieldQLearning:
         return total_reward, step_count
 
     def _update_q_network(self) -> float:
-        """Update Q-network using experience replay."""
+        """
+        Update Q-network using experience replay.
+
+        This implements the Nash Q-Learning update for symmetric Mean Field Games.
+        The max operation below computes the Nash equilibrium value for symmetric games.
+        """
         # Sample batch
         states, actions, rewards, next_states, pop_states, next_pop_states, dones = self.replay_buffer.sample(
             self.config["batch_size"]
@@ -429,18 +488,18 @@ class MeanFieldQLearning:
         next_pop_states = torch.FloatTensor(next_pop_states).to(self.device)
         dones = torch.BoolTensor(dones).to(self.device)
 
-        # Current Q-values
+        # Current Q-values: Q(s, a, m)
         current_q_values = self.q_network(states, pop_states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
-        # Next Q-values (using target network)
+        # Nash equilibrium value for symmetric MFG (using target network for stability)
         with torch.no_grad():
+            # Nash value = max_a Q(s', a, m') for symmetric games
             next_q_values = self.target_network(next_states, next_pop_states).max(1)[0]
             target_q_values = rewards + (self.config["discount_factor"] * next_q_values * (~dones))
 
-        # Compute loss
+        # Compute loss and optimize
         loss = torch_f.mse_loss(current_q_values, target_q_values)
 
-        # Optimize
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
