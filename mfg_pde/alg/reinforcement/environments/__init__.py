@@ -18,6 +18,15 @@ from mfg_pde.alg.reinforcement.environments.cellular_automata import (
     CellularAutomataGenerator,
     create_preset_ca_config,
 )
+from mfg_pde.alg.reinforcement.environments.hybrid_maze import (
+    AlgorithmSpec,
+    HybridMazeConfig,
+    HybridMazeGenerator,
+    HybridStrategy,
+    create_campus_hybrid,
+    create_museum_hybrid,
+    create_office_hybrid,
+)
 from mfg_pde.alg.reinforcement.environments.maze_config import (
     MazeConfig,
     MazeTopology,
@@ -125,6 +134,14 @@ __all__ = [
     # Voronoi Diagram (room-based mazes)
     "VoronoiMazeConfig",
     "VoronoiMazeGenerator",
+    # Hybrid Mazes (multi-algorithm combinations)
+    "HybridMazeConfig",
+    "HybridMazeGenerator",
+    "HybridStrategy",
+    "AlgorithmSpec",
+    "create_museum_hybrid",
+    "create_office_hybrid",
+    "create_campus_hybrid",
     # Availability flags
     "MFG_ENV_AVAILABLE",
     "MAZE_UTILS_AVAILABLE",
