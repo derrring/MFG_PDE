@@ -51,6 +51,29 @@ from mfg_pde.alg.reinforcement.environments.voronoi_maze import (
     VoronoiMazeGenerator,
 )
 
+# Maze utilities (wall smoothing, adaptive connectivity, analysis)
+try:
+    from mfg_pde.alg.reinforcement.environments.maze_utils import (
+        analyze_maze_connectivity,
+        compute_adaptive_door_width,
+        connect_regions_adaptive,
+        find_disconnected_regions,
+        find_region_boundary,
+        smooth_walls_gaussian,
+        smooth_walls_morphological,
+    )
+
+    MAZE_UTILS_AVAILABLE = True
+except ImportError:
+    MAZE_UTILS_AVAILABLE = False
+    analyze_maze_connectivity = None  # type: ignore
+    compute_adaptive_door_width = None  # type: ignore
+    connect_regions_adaptive = None  # type: ignore
+    find_disconnected_regions = None  # type: ignore
+    find_region_boundary = None  # type: ignore
+    smooth_walls_gaussian = None  # type: ignore
+    smooth_walls_morphological = None  # type: ignore
+
 # Conditional import for MFG environment (requires Gymnasium)
 try:
     from mfg_pde.alg.reinforcement.environments.mfg_maze_env import (
@@ -104,7 +127,22 @@ __all__ = [
     "VoronoiMazeGenerator",
     # Availability flags
     "MFG_ENV_AVAILABLE",
+    "MAZE_UTILS_AVAILABLE",
 ]
+
+# Add maze utilities exports if available
+if MAZE_UTILS_AVAILABLE:
+    __all__.extend(
+        [
+            "smooth_walls_morphological",
+            "smooth_walls_gaussian",
+            "connect_regions_adaptive",
+            "analyze_maze_connectivity",
+            "find_disconnected_regions",
+            "find_region_boundary",
+            "compute_adaptive_door_width",
+        ]
+    )
 
 # Add MFG environment exports if available
 if MFG_ENV_AVAILABLE:
