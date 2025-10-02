@@ -178,7 +178,7 @@ m_t = E[φ(s_t) | π]  # Population state matches agent distribution
   - Tests: `test_mean_field_actor_critic.py`
   - Examples: `actor_critic_maze_demo.py`
 
-### Phase 3: Advanced Features (Weeks 11-16)
+### Phase 3: Advanced Features (October 2025 - In Progress)
 **Goal**: Advanced RL techniques for complex MFG problems
 
 #### 3.1 Hierarchical RL for MFG
@@ -186,10 +186,15 @@ m_t = E[φ(s_t) | π]  # Population state matches agent distribution
 - [ ] **Temporal Abstraction**: Options and semi-MDPs for MFG
 - [ ] **Population Hierarchies**: Different time scales for population dynamics
 
-#### 3.2 Multi-Population Extensions
-- [ ] **Heterogeneous Agents**: Multiple agent types with different objectives
+#### 3.2 Multi-Population Extensions ✅ COMPLETED (October 2025)
+- [x] **Heterogeneous Agents**: Multiple agent types with different objectives
+  - Implemented in `mfg_pde/alg/reinforcement/environments/multi_population_maze_env.py`
+  - Mathematical framework: `docs/theory/reinforcement_learning/heterogeneous_agents_formulation.md`
+  - Multi-population Q-Learning: `mfg_pde/alg/reinforcement/algorithms/multi_population_q_learning.py`
+  - Tests: `tests/unit/test_multi_population_env.py` (12/12 passing)
+  - Example: `examples/advanced/predator_prey_mfg.py`
 - [ ] **Coalition Formation**: Agent grouping and cooperation
-- [ ] **Adversarial Settings**: Competing populations
+- [ ] **Adversarial Settings**: Competing populations (partially addressed by predator-prey)
 
 #### 3.3 Continuous Control
 - [ ] **Continuous Action Spaces**: DDPG/SAC for continuous MFG
