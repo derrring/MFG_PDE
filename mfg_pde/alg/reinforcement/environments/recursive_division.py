@@ -178,10 +178,13 @@ class RecursiveDivisionGenerator:
 
         wall_row = random.randint(min_wall_pos, max_wall_pos)
 
-        # Add wall
+        # Add wall (extend beyond chamber to fill corners/intersections)
         for thickness_offset in range(self.config.wall_thickness):
             if wall_row + thickness_offset <= bottom:
-                self.maze[wall_row + thickness_offset, left : right + 1] = 1
+                # Extend wall slightly beyond chamber boundaries to fill intersections
+                wall_left = max(0, left - 1)
+                wall_right = min(self.config.cols - 1, right + 1)
+                self.maze[wall_row + thickness_offset, wall_left : wall_right + 1] = 1
 
         # Add door(s)
         self._add_doors(wall_row, left, right, orientation=SplitOrientation.HORIZONTAL)
@@ -201,10 +204,13 @@ class RecursiveDivisionGenerator:
 
         wall_col = random.randint(min_wall_pos, max_wall_pos)
 
-        # Add wall
+        # Add wall (extend beyond chamber to fill corners/intersections)
         for thickness_offset in range(self.config.wall_thickness):
             if wall_col + thickness_offset <= right:
-                self.maze[top : bottom + 1, wall_col + thickness_offset] = 1
+                # Extend wall slightly beyond chamber boundaries to fill intersections
+                wall_top = max(0, top - 1)
+                wall_bottom = min(self.config.rows - 1, bottom + 1)
+                self.maze[wall_top : wall_bottom + 1, wall_col + thickness_offset] = 1
 
         # Add door(s)
         self._add_doors(wall_col, top, bottom, orientation=SplitOrientation.VERTICAL)

@@ -53,6 +53,13 @@ from mfg_pde.alg.optimization import VariationalMFGSolver, WassersteinMFGSolver
 from mfg_pde.alg.neural import nn  # PyTorch architectures
 from mfg_pde.alg.reinforcement import BaseMFRLSolver  # MFRL foundation
 
+# ✅ NEW: Advanced Maze Environments for RL
+from mfg_pde.alg.reinforcement.environments import (
+    RecursiveDivisionGenerator,
+    CellularAutomataGenerator,
+    add_loops,
+)
+
 # Tier 2: Object-oriented for 8% of users
 solver = create_solver(problem, solver_type="weno3d", backend="jax", device="gpu")
 result = solver.solve()  # ✅ 3D problems supported
@@ -67,6 +74,7 @@ solver = create_solver(problem, hooks=[DebugHook(), VisualizationHook()])
 - **Optimal Transport**: Wasserstein & Sinkhorn methods for geometric MFG approaches
 - **Neural Foundation**: Complete PINN framework + architecture for DGM/FNO
 - **MFRL Framework**: Reinforcement learning paradigm with Nash equilibrium detection
+- **RL Environments**: ✅ **Advanced maze generation** (Recursive Division, Cellular Automata, variable-width corridors)
 - **GPU Acceleration**: 10-100× speedup with JAX backend
 - **Type Safety**: 100% mypy coverage maintained across all paradigms
 - **Documentation**: Comprehensive 3-tier user guidance with paradigm-specific examples

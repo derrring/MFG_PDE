@@ -22,7 +22,12 @@ class TestPerfectMazeGenerator:
 
     @pytest.mark.parametrize(
         "algorithm",
-        [MazeAlgorithm.RECURSIVE_BACKTRACKING, MazeAlgorithm.WILSONS],
+        [
+            MazeAlgorithm.RECURSIVE_BACKTRACKING,
+            MazeAlgorithm.WILSONS,
+            MazeAlgorithm.ELLERS,
+            MazeAlgorithm.GROWING_TREE,
+        ],
     )
     def test_maze_is_perfect(self, algorithm):
         """Test that generated mazes are perfect (connected, no loops)."""
@@ -37,7 +42,12 @@ class TestPerfectMazeGenerator:
 
     @pytest.mark.parametrize(
         "algorithm",
-        [MazeAlgorithm.RECURSIVE_BACKTRACKING, MazeAlgorithm.WILSONS],
+        [
+            MazeAlgorithm.RECURSIVE_BACKTRACKING,
+            MazeAlgorithm.WILSONS,
+            MazeAlgorithm.ELLERS,
+            MazeAlgorithm.GROWING_TREE,
+        ],
     )
     def test_maze_reproducibility(self, algorithm):
         """Test that same seed produces same maze."""
@@ -53,7 +63,12 @@ class TestPerfectMazeGenerator:
 
     @pytest.mark.parametrize(
         "algorithm",
-        [MazeAlgorithm.RECURSIVE_BACKTRACKING, MazeAlgorithm.WILSONS],
+        [
+            MazeAlgorithm.RECURSIVE_BACKTRACKING,
+            MazeAlgorithm.WILSONS,
+            MazeAlgorithm.ELLERS,
+            MazeAlgorithm.GROWING_TREE,
+        ],
     )
     def test_maze_dimensions(self, algorithm):
         """Test that maze has correct dimensions."""
@@ -118,6 +133,22 @@ class TestGenerateMazeFunction:
         assert maze.dtype == np.int32
         assert np.all((maze == 0) | (maze == 1))
 
+    def test_generate_maze_ellers(self):
+        """Test generate_maze with Eller's algorithm."""
+        maze = generate_maze(10, 10, algorithm="ellers", seed=42)
+
+        assert isinstance(maze, np.ndarray)
+        assert maze.dtype == np.int32
+        assert np.all((maze == 0) | (maze == 1))
+
+    def test_generate_maze_growing_tree(self):
+        """Test generate_maze with Growing Tree algorithm."""
+        maze = generate_maze(10, 10, algorithm="growing_tree", seed=42)
+
+        assert isinstance(maze, np.ndarray)
+        assert maze.dtype == np.int32
+        assert np.all((maze == 0) | (maze == 1))
+
     def test_generate_maze_invalid_algorithm(self):
         """Test that invalid algorithm raises error."""
         with pytest.raises(ValueError):
@@ -141,16 +172,16 @@ class TestMazeAlgorithmComparison:
 
         assert not np.array_equal(maze_rb, maze_w)
 
-    def test_both_algorithms_are_perfect(self):
-        """Test that both algorithms produce perfect mazes."""
-        for algorithm in ["recursive_backtracking", "wilsons"]:
+    def test_all_algorithms_are_perfect(self):
+        """Test that all algorithms produce perfect mazes."""
+        for algorithm in ["recursive_backtracking", "wilsons", "ellers", "growing_tree"]:
             generator = PerfectMazeGenerator(15, 15, MazeAlgorithm(algorithm))
             grid = generator.generate(seed=42)
             verification = verify_perfect_maze(grid)
 
-            assert verification["is_perfect"]
-            assert verification["is_connected"]
-            assert verification["is_no_loops"]
+            assert verification["is_perfect"], f"{algorithm} failed perfection test"
+            assert verification["is_connected"], f"{algorithm} not connected"
+            assert verification["is_no_loops"], f"{algorithm} has loops"
 
 
 if __name__ == "__main__":
