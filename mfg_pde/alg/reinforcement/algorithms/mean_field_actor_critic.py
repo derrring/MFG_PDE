@@ -422,7 +422,8 @@ class MeanFieldActorCritic:
 
         for episode in range(num_episodes):
             # Reset environment
-            obs = self.env.reset()
+            reset_result = self.env.reset()
+            obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
             state = self._extract_state(obs)
             population_state = self._extract_population(obs)
 
