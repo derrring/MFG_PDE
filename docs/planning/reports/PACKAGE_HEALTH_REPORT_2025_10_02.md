@@ -55,7 +55,13 @@ test_initial_condition_preservation
 test_boundary_condition_consistency
 ```
 **Impact**: Mathematical property tests - non-blocking but should be investigated
-**Root Cause**: Likely numerical precision or solver configuration issues
+**Root Cause**: Likely numerical precision or boundary condition issues
+
+**Note**: Mass conservation (∫m dx = constant) holds **only for no-flux (Neumann) boundaries**.
+Tests may fail if using Dirichlet or other boundary conditions. Need to verify:
+- Test boundary condition types
+- Whether tests account for boundary flux
+- Numerical precision for conservation verification
 
 **2. DGM Foundation Tests** (9 failures)
 ```
