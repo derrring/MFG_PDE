@@ -261,7 +261,7 @@ class MultiPopulationMazeEnvironment:
             config: Multi-population environment configuration
         """
         if not GYMNASIUM_AVAILABLE:
-            raise ImportError("Gymnasium is required for MFG environments. " "Install with: pip install gymnasium")
+            raise ImportError("Gymnasium is required for MFG environments. Install with: pip install gymnasium")
 
         self.config = config
         self.maze_array = config.maze_array
@@ -349,8 +349,7 @@ class MultiPopulationMazeEnvironment:
             num_agents = type_config.num_agents
             if len(valid_starts) < num_agents:
                 raise ValueError(
-                    f"Not enough valid start positions for type {type_id}: "
-                    f"need {num_agents}, have {len(valid_starts)}"
+                    f"Not enough valid start positions for type {type_id}: need {num_agents}, have {len(valid_starts)}"
                 )
 
             indices = np.random.choice(len(valid_starts), size=num_agents, replace=False)
@@ -397,9 +396,9 @@ class MultiPopulationMazeEnvironment:
             type_actions = actions[type_id]
             num_agents = len(self.positions[type_id])
 
-            assert len(type_actions) == num_agents, (
-                f"Action count mismatch for {type_id}: " f"expected {num_agents}, got {len(type_actions)}"
-            )
+            assert (
+                len(type_actions) == num_agents
+            ), f"Action count mismatch for {type_id}: expected {num_agents}, got {len(type_actions)}"
 
             # Compute new positions
             new_pos = []

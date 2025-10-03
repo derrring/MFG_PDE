@@ -217,7 +217,7 @@ class MultiPopulationMFGEnv(ABC):
             - info: {pop_id: dict} additional information per population
         """
         if len(actions) != self.num_populations:
-            raise ValueError(f"Expected actions for {self.num_populations} populations, " f"got {len(actions)}")
+            raise ValueError(f"Expected actions for {self.num_populations} populations, got {len(actions)}")
 
         next_states: dict[int, NDArray[np.floating[Any]]] = {}
         rewards: dict[int, float] = {}

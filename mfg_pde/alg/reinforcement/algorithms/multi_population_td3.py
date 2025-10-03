@@ -454,7 +454,7 @@ class MultiPopulationTD3:
                     avg_reward = np.mean(episode_rewards[pop_id][-100:])
                     avg_q1 = np.mean(critic1_losses[pop_id][-100:]) if critic1_losses[pop_id] else 0
                     avg_q2 = np.mean(critic2_losses[pop_id][-100:]) if critic2_losses[pop_id] else 0
-                    print(f"  Pop {pop_id}: Reward={avg_reward:.2f}, " f"Q1 Loss={avg_q1:.4f}, Q2 Loss={avg_q2:.4f}")
+                    print(f"  Pop {pop_id}: Reward={avg_reward:.2f}, Q1 Loss={avg_q1:.4f}, Q2 Loss={avg_q2:.4f}")
 
         return {
             "episode_rewards": episode_rewards,
