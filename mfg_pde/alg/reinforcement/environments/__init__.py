@@ -137,6 +137,15 @@ except ImportError:
     LQ_MFG_AVAILABLE = False
     LQMFGEnv = None  # type: ignore
 
+# Conditional import for Crowd Navigation environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.crowd_navigation_env import CrowdNavigationEnv
+
+    CROWD_NAV_AVAILABLE = True
+except ImportError:
+    CROWD_NAV_AVAILABLE = False
+    CrowdNavigationEnv = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -183,6 +192,7 @@ __all__ = [
     "MAZE_POSTPROCESSING_AVAILABLE",
     "CONTINUOUS_MFG_AVAILABLE",
     "LQ_MFG_AVAILABLE",
+    "CROWD_NAV_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
@@ -229,3 +239,7 @@ if CONTINUOUS_MFG_AVAILABLE:
 # Add LQ-MFG environment if available
 if LQ_MFG_AVAILABLE:
     __all__.extend(["LQMFGEnv"])
+
+# Add Crowd Navigation environment if available
+if CROWD_NAV_AVAILABLE:
+    __all__.extend(["CrowdNavigationEnv"])
