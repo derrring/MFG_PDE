@@ -504,9 +504,7 @@ class MeanFieldActorCritic:
                 mean_reward = np.mean(episode_rewards[-log_interval:])
                 mean_length = np.mean(episode_lengths[-log_interval:])
                 logger.info(
-                    f"Episode {episode + 1}/{num_episodes} | "
-                    f"Reward: {mean_reward:.2f} | "
-                    f"Length: {mean_length:.1f}"
+                    f"Episode {episode + 1}/{num_episodes} | Reward: {mean_reward:.2f} | Length: {mean_length:.1f}"
                 )
 
         return {

@@ -138,13 +138,11 @@ class MazeConfig:
 
         if self.start_positions is not None:
             if len(self.start_positions) != self.num_starts:
-                raise ValueError(
-                    f"num_starts={self.num_starts} but got " f"{len(self.start_positions)} start_positions"
-                )
+                raise ValueError(f"num_starts={self.num_starts} but got {len(self.start_positions)} start_positions")
 
         if self.goal_positions is not None:
             if len(self.goal_positions) != self.num_goals:
-                raise ValueError(f"num_goals={self.num_goals} but got " f"{len(self.goal_positions)} goal_positions")
+                raise ValueError(f"num_goals={self.num_goals} but got {len(self.goal_positions)} goal_positions")
 
     def get_pixel_dimensions(self) -> tuple[int, int]:
         """
