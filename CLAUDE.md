@@ -484,6 +484,70 @@ gh issue edit 42 --add-label "priority: high,area: performance,size: small,bug"
 - Include error handling and validation
 - Support both interactive and non-interactive usage
 
+### **Defensive Programming Principles** ⚠️ **CRITICAL**
+**Always test finished architecture before proceeding to new features:**
+
+1. **Test Before Extend**:
+   - ✅ Verify existing functionality works before adding new features
+   - ✅ Run relevant tests after making changes
+   - ✅ Check that examples still execute successfully
+   - ❌ Don't build on untested foundations
+
+2. **Incremental Validation**:
+   ```python
+   # ✅ GOOD: Test each component
+   def add_feature():
+       # Step 1: Test existing code
+       run_existing_tests()
+
+       # Step 2: Implement new feature
+       implement_new_code()
+
+       # Step 3: Test integration
+       run_integration_tests()
+
+   # ❌ BAD: Build without testing
+   def add_feature():
+       implement_feature_A()
+       implement_feature_B()  # Assumes A works
+       implement_feature_C()  # Assumes A and B work
+       # Hope it all works together!
+   ```
+
+3. **Regression Prevention**:
+   - Write tests for bug fixes
+   - Verify fixes don't break existing functionality
+   - Document known issues and workarounds
+
+4. **Architecture Validation**:
+   - Test imports and API surface
+   - Verify backward compatibility
+   - Check type checking passes
+   - Run linter and formatter
+
+5. **Example-Driven Development**:
+   - Create working examples for new features
+   - Examples serve as integration tests
+   - If examples don't run, feature isn't ready
+
+**Checklist Before Committing**:
+```bash
+# 1. Run tests for affected modules
+pytest tests/unit/test_affected_module.py
+
+# 2. Run type checking
+mypy mfg_pde/affected_module.py
+
+# 3. Run linter
+ruff check mfg_pde/affected_module.py
+
+# 4. Test an example
+python examples/basic/relevant_example.py
+
+# 5. Only then commit
+git add ... && git commit -m "..."
+```
+
 ### **Smart .gitignore Strategy** ⚠️ **CRITICAL**
 Always use targeted patterns that preserve valuable code:
 ```bash
