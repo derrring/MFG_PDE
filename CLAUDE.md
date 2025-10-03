@@ -255,10 +255,15 @@ pbar = tqdm(total=total_steps, desc="Convergence",
 ## 🎨 **Visualization Standards**
 
 ### **Plotting Preferences**
-- **Primary**: Use Plotly for interactive plots when possible
-- **Fallback**: Matplotlib with professional styling
+- **Primary**: Matplotlib with immediate rendering using default backend
+  - Simplest approach for quick visualization during development
+  - Use `plt.show()` to display results immediately
+  - Static graphs are sufficient for most research tasks
+- **On-demand**: Plotly/Bokeh for professional exhibition
+  - Use only when interactive features are specifically needed
+  - Export to HTML for presentations and publications
 - **Mathematical notation**: Consistent u(t,x) and m(t,x) conventions
-- **Export**: Support both HTML (interactive) and PNG (static)
+- **Professional styling**: Use clean, publication-ready defaults
 
 ### **Notebook Creation**
 - Use `mfg_pde.utils.notebook_reporting` for research notebooks
