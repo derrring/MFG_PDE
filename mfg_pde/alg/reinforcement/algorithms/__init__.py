@@ -23,7 +23,7 @@ Multi-Population Algorithms (N ≥ 2 interacting populations):
 Continuous Action Spaces:
 - MultiPopulationDDPG: DDPG for heterogeneous populations
 - MultiPopulationTD3: TD3 for heterogeneous populations with twin critics
-- MultiPopulationSAC: SAC for heterogeneous populations (Coming soon)
+- MultiPopulationSAC: SAC for heterogeneous populations with entropy regularization
 """
 
 from __future__ import annotations
@@ -50,6 +50,7 @@ if TORCH_AVAILABLE:
 
     # Multi-population algorithms
     from .multi_population_ddpg import MultiPopulationDDPG
+    from .multi_population_sac import MultiPopulationSAC
     from .multi_population_td3 import MultiPopulationTD3
 
     __all__ = [
@@ -65,6 +66,7 @@ if TORCH_AVAILABLE:
         # Multi-population
         "MultiPopulationDDPG",
         "MultiPopulationTD3",
+        "MultiPopulationSAC",
     ]
 else:
     __all__ = []
