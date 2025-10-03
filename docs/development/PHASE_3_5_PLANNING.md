@@ -14,11 +14,11 @@ Create a comprehensive benchmark suite of continuous control environments for de
 
 ### Success Criteria
 
-- ✅ 4 diverse environments implemented with consistent API
+- ✅ 5 diverse environments implemented with consistent API (LQ-MFG + 4 application domains)
 - ✅ Base environment class with standardized interface
 - ✅ Working demonstration for each environment
-- ✅ Comprehensive test coverage (40+ tests)
-- ✅ Benchmark comparing all three algorithms
+- ✅ Comprehensive test coverage (60+ tests)
+- ✅ Benchmark comparing all three algorithms (DDPG, TD3, SAC)
 - ✅ Theory documentation with mathematical formulations
 - ✅ User guide with environment selection guidelines
 
@@ -81,9 +81,48 @@ class ContinuousMFGEnvBase(gym.Env):
 
 ---
 
-### Phase 2: Core Environments (Days 3-10)
+### Phase 2: Core Environments (Days 3-12)
 
-#### 2.1 Crowd Navigation Environment
+#### 2.1 LQ-MFG Environment (Linear-Quadratic) ⭐ NEW
+**File**: `mfg_pde/alg/reinforcement/environments/lq_mfg_env.py`
+
+**Purpose**: Simple validation environment to test base class and algorithms
+
+**State Space** (dim=2):
+- Position: `x` ∈ [-10, 10]
+- Velocity: `v` ∈ [-5, 5]
+
+**Action Space** (dim=1):
+- Control: `u` ∈ [-2, 2]
+
+**Dynamics**:
+```python
+x_{t+1} = x_t + v_t * dt
+v_{t+1} = v_t + u_t * dt + σ * noise
+```
+
+**Reward**:
+```python
+r = -x² - 0.1*u² - 0.5 * mean_field_term
+```
+
+**Mean Field Coupling**:
+```python
+mean_field_term = ∫(x - y)² * m(y) dy  # Quadratic repulsion
+```
+
+**Why Start Here**:
+- Simplest possible MFG environment
+- Validates base class API works correctly
+- Fast training for algorithm sanity checks
+- Known analytical solution for validation
+- Template for more complex environments
+
+**Estimated**: 4-6 hours
+
+---
+
+#### 2.2 Crowd Navigation Environment
 **File**: `mfg_pde/alg/reinforcement/environments/crowd_navigation_env.py`
 
 **State Space** (dim=6):
@@ -353,16 +392,17 @@ for algo_name, algo in [("DDPG", ddpg), ("TD3", td3), ("SAC", sac)]:
 | Days | Phase | Deliverables | Hours |
 |------|-------|--------------|-------|
 | 1-2 | Foundation | Base class, tests | 6-8 |
-| 3-5 | Crowd Navigation | Env + tests | 10-12 |
-| 6-8 | Price Formation | Env + tests | 12-14 |
-| 9-11 | Resource Allocation | Env + tests | 10-12 |
-| 12-13 | Traffic Flow | Env + tests | 10-12 |
-| 14-16 | Demonstrations | 4 demos | 12-16 |
-| 17-19 | Testing | Unit + integration | 18-24 |
-| 20-22 | Benchmarking | Comprehensive | 10-14 |
-| 23-25 | Documentation | User + theory | 10-14 |
+| 3-4 | LQ-MFG (Validation) | Env + tests | 4-6 |
+| 5-7 | Crowd Navigation | Env + tests | 10-12 |
+| 8-10 | Price Formation | Env + tests | 12-14 |
+| 11-13 | Resource Allocation | Env + tests | 10-12 |
+| 14-15 | Traffic Flow | Env + tests | 10-12 |
+| 16-19 | Demonstrations | 5 demos | 15-20 |
+| 20-23 | Testing | Unit + integration | 20-26 |
+| 24-27 | Benchmarking | Comprehensive | 12-16 |
+| 28-31 | Documentation | User + theory | 12-16 |
 
-**Total Estimated Hours**: 98-126 hours (~2-3 weeks of full-time work)
+**Total Estimated Hours**: 111-142 hours (~3-4 weeks of full-time work)
 
 ---
 
@@ -411,9 +451,9 @@ for algo_name, algo in [("DDPG", ddpg), ("TD3", td3), ("SAC", sac)]:
 ## 📈 Success Metrics
 
 ### Completeness
-- ✅ All 4 environments implemented
+- ✅ All 5 environments implemented (LQ-MFG + 4 application domains)
 - ✅ All environments pass Gymnasium checks
-- ✅ 40+ tests with 100% pass rate
+- ✅ 60+ tests with 100% pass rate
 - ✅ Working demos for each environment
 - ✅ Benchmark results documented
 
@@ -426,7 +466,7 @@ for algo_name, algo in [("DDPG", ddpg), ("TD3", td3), ("SAC", sac)]:
 ### Performance
 - ✅ Training converges on all environments
 - ✅ Algorithms achieve reasonable performance
-- ✅ Benchmark completes in < 12 hours
+- ✅ Benchmark completes in reasonable time (optimized with parallel execution)
 
 ---
 
@@ -435,7 +475,8 @@ for algo_name, algo in [("DDPG", ddpg), ("TD3", td3), ("SAC", sac)]:
 1. **Start**: Implement base environment class
 2. **Priority Order**:
    - Base class (foundation for all)
-   - Crowd Navigation (simplest dynamics)
+   - LQ-MFG (simple validation environment)
+   - Crowd Navigation (2D navigation)
    - Traffic Flow (builds on crowd)
    - Resource Allocation (constrained optimization)
    - Price Formation (most complex)
@@ -445,8 +486,14 @@ for algo_name, algo in [("DDPG", ddpg), ("TD3", td3), ("SAC", sac)]:
    - Tests can be written alongside implementation
    - Documentation can start early with mathematical formulations
 
+4. **Implementation Notes**:
+   - LQ-MFG serves as "hello world" to validate base class API
+   - Consider adding rendering support for visualizations
+   - Benchmark optimization via parallel execution and reduced seeds if needed
+
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Created**: October 3, 2025
+**Updated**: October 3, 2025 (Added LQ-MFG validation environment, adjusted timeline to 3-4 weeks)
 **Status**: Planning Complete - Ready to Start Implementation
