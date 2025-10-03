@@ -39,6 +39,9 @@ class TestMultiPopulationTD3:
         )
         self.env.reset(seed=42)
 
+        # Use smaller batch size for faster testing
+        test_config = {"batch_size": 32}
+
         self.algo = MultiPopulationTD3(
             env=self.env,
             num_populations=2,
@@ -46,6 +49,7 @@ class TestMultiPopulationTD3:
             action_dims=[2, 2],
             population_dims=50,
             action_bounds=[(-1, 1), (-1, 1)],
+            config=test_config,
         )
 
     def test_twin_critics_initialized(self):
