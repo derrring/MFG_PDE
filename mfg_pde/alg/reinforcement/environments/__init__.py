@@ -128,6 +128,15 @@ except ImportError:
     CONTINUOUS_MFG_AVAILABLE = False
     ContinuousMFGEnvBase = None  # type: ignore
 
+# Conditional import for LQ-MFG environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.lq_mfg_env import LQMFGEnv
+
+    LQ_MFG_AVAILABLE = True
+except ImportError:
+    LQ_MFG_AVAILABLE = False
+    LQMFGEnv = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -173,6 +182,7 @@ __all__ = [
     "MAZE_UTILS_AVAILABLE",
     "MAZE_POSTPROCESSING_AVAILABLE",
     "CONTINUOUS_MFG_AVAILABLE",
+    "LQ_MFG_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
@@ -215,3 +225,7 @@ if MFG_ENV_AVAILABLE:
 # Add continuous MFG base class if available
 if CONTINUOUS_MFG_AVAILABLE:
     __all__.extend(["ContinuousMFGEnvBase"])
+
+# Add LQ-MFG environment if available
+if LQ_MFG_AVAILABLE:
+    __all__.extend(["LQMFGEnv"])
