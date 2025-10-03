@@ -209,6 +209,35 @@ print(f"Final reward: {stats['episode_rewards'][-1]:.2f}")
 python examples/advanced/continuous_control_comparison.py
 ```
 
+**🌍 Continuous MFG Environment Library** ✨ **Phase 3.5 Complete**:
+
+Five production-ready environments for benchmarking and research:
+
+| Environment | Domain | State Dim | Action Dim | Key Features |
+|-------------|--------|-----------|------------|--------------|
+| **LQ-MFG** | Control Theory | 2 | 2 | Quadratic costs, analytical solution |
+| **Crowd Navigation** | Robotics | 5 | 2 | 2D kinematics, goal-reaching, collision avoidance |
+| **Price Formation** | Finance | 4 | 2 | Market making, inventory risk, liquidity |
+| **Resource Allocation** | Economics | 6 | 3 | Portfolio optimization, simplex constraints |
+| **Traffic Flow** | Transportation | 3 | 1 | Congestion dynamics, velocity control |
+
+```python
+from mfg_pde.alg.reinforcement.environments import (
+    LQMFGEnv,                # Linear-Quadratic control
+    CrowdNavigationEnv,      # Spatial navigation
+    PriceFormationEnv,       # Market making
+    ResourceAllocationEnv,   # Portfolio optimization
+    TrafficFlowEnv,          # Congestion-aware routing
+)
+
+# Example: Train SAC on crowd navigation
+env = CrowdNavigationEnv(num_agents=100, domain_size=10.0)
+algo = MeanFieldSAC(env, state_dim=5, action_dim=2)
+stats = algo.train(num_episodes=1000)
+```
+
+**📊 113 Tests** - All environments fully validated with comprehensive test coverage.
+
 See **[docs/theory/reinforcement_learning/](docs/theory/reinforcement_learning/)** for mathematical formulations.
 
 ## Features
