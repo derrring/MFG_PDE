@@ -86,12 +86,12 @@ class TestMultiPopulationSAC:
 
     def test_automatic_temperature_tuning(self):
         """Test temperature is tuned automatically during training."""
-        initial_alphas = [self.algo.alphas[i].item() for i in range(2)]
+        initial_alphas = [self.algo.alphas[i] for i in range(2)]
 
         # Train and check alphas change
         self.algo.train(num_episodes=5)
 
-        final_alphas = [self.algo.alphas[i].item() for i in range(2)]
+        final_alphas = [self.algo.alphas[i] for i in range(2)]
 
         # At least one alpha should have changed
         assert not np.isclose(initial_alphas[0], final_alphas[0]) or not np.isclose(initial_alphas[1], final_alphas[1])
@@ -114,9 +114,9 @@ class TestMultiPopulationSAC:
         assert algo_fixed_temp.alpha_optimizers is None
 
         # Temperature should remain fixed
-        initial_alpha = algo_fixed_temp.alphas[0].item()
+        initial_alpha = algo_fixed_temp.alphas[0]
         algo_fixed_temp.train(num_episodes=3)
-        final_alpha = algo_fixed_temp.alphas[0].item()
+        final_alpha = algo_fixed_temp.alphas[0]
 
         assert np.isclose(initial_alpha, final_alpha)
 
@@ -306,6 +306,10 @@ class TestMultiPopulationSAC:
         next_states, rewards, terminated, truncated, _ = self.env.step(actions)
         next_pop_states = self.env.get_population_states()
 
+        # Flatten population states
+        pop_states_flat = np.concatenate([pop_states[i] for i in range(2)])
+        next_pop_states_flat = np.concatenate([next_pop_states[i] for i in range(2)])
+
         # Fill buffer
         for _ in range(self.algo.config["batch_size"] + 10):
             self.algo.replay_buffers[0].push(
@@ -313,15 +317,15 @@ class TestMultiPopulationSAC:
                 actions[0],
                 rewards[0],
                 next_states[0],
-                terminated[0],
-                pop_states,
-                next_pop_states,
+                pop_states_flat,
+                next_pop_states_flat,
+                float(terminated[0]),
             )
 
         # Sample
         batch = self.algo.replay_buffers[0].sample(32)
         assert len(batch) == 7
-        assert batch[0].shape[0] == 32
+        assert batch["states"].shape[0] == 32
 
     def test_initial_temperature_config(self):
         """Test initial temperature can be configured."""
@@ -338,7 +342,7 @@ class TestMultiPopulationSAC:
         )
 
         # Should start with specified temperature
-        assert np.isclose(algo_high_temp.alphas[0].item(), 0.8, atol=1e-3)
+        assert np.isclose(algo_high_temp.alphas[0], 0.8, atol=1e-3)
 
     def test_alpha_stays_positive(self):
         """Test temperature parameter remains positive during training."""
@@ -346,7 +350,7 @@ class TestMultiPopulationSAC:
 
         # All alphas should be positive
         for pop_id in range(2):
-            assert self.algo.alphas[pop_id].item() > 0
+            assert self.algo.alphas[pop_id] > 0
 
     def test_mean_action_differs_from_sampled(self):
         """Test mean action differs from sampled action in training."""

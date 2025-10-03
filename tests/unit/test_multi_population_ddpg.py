@@ -68,9 +68,9 @@ class TestMultiPopulationDDPG:
                 actions[pop_id],
                 rewards[pop_id],
                 next_states[pop_id],
-                float(terminated[pop_id]),
                 pop_states_flat,
                 next_pop_states_flat,
+                float(terminated[pop_id]),
             )
 
         # Check buffer has data
@@ -85,15 +85,15 @@ class TestMultiPopulationDDPG:
                     actions[pop_id],
                     rewards[pop_id],
                     next_states[pop_id],
-                    float(terminated[pop_id]),
                     pop_states_flat,
                     next_pop_states_flat,
+                    float(terminated[pop_id]),
                 )
 
         # Test sampling
         batch = self.algo.replay_buffers[0].sample(32)
         assert len(batch) == 7
-        assert batch[0].shape == (32, 2)  # states
+        assert batch["states"].shape == (32, 2)  # states
 
     def test_training_episode(self):
         """Test a single training episode completes."""
@@ -160,9 +160,9 @@ class TestMultiPopulationDDPG:
                     actions[pop_id],
                     rewards[pop_id],
                     next_states[pop_id],
-                    float(terminated[pop_id]),
                     pop_states_flat,
                     next_pop_states_flat,
+                    float(terminated[pop_id]),
                 )
 
             states = next_states
@@ -202,9 +202,9 @@ class TestMultiPopulationDDPG:
                     actions[pop_id],
                     rewards[pop_id],
                     next_states[pop_id],
-                    float(terminated[pop_id]),
                     pop_states_flat,
                     next_pop_states_flat,
+                    float(terminated[pop_id]),
                 )
 
             states = next_states
@@ -296,9 +296,9 @@ class TestMultiPopulationDDPG:
                 actions[0],
                 rewards[0],
                 next_states[0],
-                terminated[0],
                 pop_states_flat,
                 next_pop_states_flat,
+                float(terminated[0]),
             )
 
         # Should not exceed capacity
