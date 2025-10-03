@@ -206,7 +206,175 @@ class OscillationDetector:
 
 
 # =============================================================================
-# PART 3: ADVANCED CONVERGENCE MONITORING
+# PART 3: STOCHASTIC CONVERGENCE MONITORING
+# =============================================================================
+
+
+class StochasticConvergenceMonitor:
+    """
+    Convergence monitoring for stochastic methods (e.g., particle-based solvers).
+
+    Key insight: For stochastic methods, convergence should be interpreted in a
+    probabilistic framework. Error spikes from particle noise are NORMAL.
+
+    Uses statistical stopping criteria:
+    - Median error over rolling window (robust to outliers)
+    - Quantile-based thresholds
+    - Running average with confidence bounds
+
+    This is the proper way to assess convergence for particle methods, where
+    instantaneous errors fluctuate stochastically.
+    """
+
+    def __init__(
+        self,
+        window_size: int = 10,
+        median_tolerance: float = 1e-4,
+        quantile: float = 0.9,
+        quantile_tolerance: float | None = None,
+        min_iterations: int = 5,
+    ):
+        """
+        Initialize stochastic convergence monitor.
+
+        Args:
+            window_size: Number of recent iterations to analyze
+            median_tolerance: Tolerance for median error over window
+            quantile: Quantile to check (e.g., 0.9 for 90th percentile)
+            quantile_tolerance: Tolerance for quantile (defaults to 2× median_tolerance)
+            min_iterations: Minimum iterations before checking convergence
+        """
+        self.window_size = window_size
+        self.median_tolerance = median_tolerance
+        self.quantile = quantile
+        self.quantile_tolerance = quantile_tolerance or (2.0 * median_tolerance)
+        self.min_iterations = min_iterations
+
+        # Error history
+        self.errors_u: deque[float] = deque(maxlen=window_size)
+        self.errors_m: deque[float] = deque(maxlen=window_size)
+        self.iteration_count = 0
+
+    def add_iteration(self, error_u: float, error_m: float):
+        """Add iteration errors to history."""
+        self.errors_u.append(error_u)
+        self.errors_m.append(error_m)
+        self.iteration_count += 1
+
+    def get_statistics(self) -> dict[str, Any]:
+        """
+        Get statistical summary of recent errors.
+
+        Returns:
+            Dictionary with median, mean, std, quantiles, min, max
+        """
+        if len(self.errors_u) == 0:
+            return {"status": "no_data"}
+
+        errors_u_arr = np.array(self.errors_u)
+        errors_m_arr = np.array(self.errors_m)
+
+        return {
+            "iterations": self.iteration_count,
+            "window_size": len(self.errors_u),
+            "u_stats": {
+                "median": float(np.median(errors_u_arr)),
+                "mean": float(np.mean(errors_u_arr)),
+                "std": float(np.std(errors_u_arr)),
+                "quantile": float(np.quantile(errors_u_arr, self.quantile)),
+                "min": float(np.min(errors_u_arr)),
+                "max": float(np.max(errors_u_arr)),
+            },
+            "m_stats": {
+                "median": float(np.median(errors_m_arr)),
+                "mean": float(np.mean(errors_m_arr)),
+                "std": float(np.std(errors_m_arr)),
+                "quantile": float(np.quantile(errors_m_arr, self.quantile)),
+                "min": float(np.min(errors_m_arr)),
+                "max": float(np.max(errors_m_arr)),
+            },
+        }
+
+    def check_convergence(self) -> tuple[bool, dict[str, Any]]:
+        """
+        Check stochastic convergence using robust statistical criteria.
+
+        Returns:
+            (converged, diagnostics)
+        """
+        # Need sufficient history
+        if self.iteration_count < self.min_iterations or len(self.errors_u) < self.window_size:
+            return False, {
+                "status": "insufficient_history",
+                "iterations": self.iteration_count,
+                "window_filled": len(self.errors_u),
+                "required": self.window_size,
+            }
+
+        stats = self.get_statistics()
+
+        # Check median convergence (robust to spikes)
+        u_median = stats["u_stats"]["median"]
+        m_median = stats["m_stats"]["median"]
+
+        median_converged_u = u_median < self.median_tolerance
+        median_converged_m = m_median < self.median_tolerance
+
+        # Check quantile convergence (ensure most errors are small)
+        u_quantile = stats["u_stats"]["quantile"]
+        m_quantile = stats["m_stats"]["quantile"]
+
+        quantile_converged_u = u_quantile < self.quantile_tolerance
+        quantile_converged_m = m_quantile < self.quantile_tolerance
+
+        # Overall convergence: both median and quantile must satisfy criteria
+        converged = median_converged_u and median_converged_m and quantile_converged_u and quantile_converged_m
+
+        diagnostics = {
+            "status": "converged" if converged else "not_converged",
+            "iterations": self.iteration_count,
+            "statistics": stats,
+            "criteria": {
+                "median_u": {"value": u_median, "threshold": self.median_tolerance, "passed": median_converged_u},
+                "median_m": {"value": m_median, "threshold": self.median_tolerance, "passed": median_converged_m},
+                f"quantile_{int(self.quantile*100)}%_u": {
+                    "value": u_quantile,
+                    "threshold": self.quantile_tolerance,
+                    "passed": quantile_converged_u,
+                },
+                f"quantile_{int(self.quantile*100)}%_m": {
+                    "value": m_quantile,
+                    "threshold": self.quantile_tolerance,
+                    "passed": quantile_converged_m,
+                },
+            },
+        }
+
+        return converged, diagnostics
+
+    def is_stagnating(self, stagnation_threshold: float = 1e-6) -> bool:
+        """
+        Check if error has stagnated (no improvement over window).
+
+        Args:
+            stagnation_threshold: Minimum improvement required
+
+        Returns:
+            True if stagnating
+        """
+        if len(self.errors_u) < self.window_size:
+            return False
+
+        errors_arr = np.array(self.errors_u)
+
+        # Check if range of errors in window is very small
+        error_range = np.max(errors_arr) - np.min(errors_arr)
+
+        return error_range < stagnation_threshold
+
+
+# =============================================================================
+# PART 4: ADVANCED CONVERGENCE MONITORING
 # =============================================================================
 
 
@@ -977,6 +1145,46 @@ def test_particle_detection(solver: MFGSolver) -> dict[str, Any]:
 
 
 # =============================================================================
+# CONVENIENCE FUNCTIONS FOR STOCHASTIC CONVERGENCE
+# =============================================================================
+
+
+def create_stochastic_monitor(
+    window_size: int = 10,
+    median_tolerance: float = 1e-4,
+    quantile: float = 0.9,
+    **kwargs,
+) -> StochasticConvergenceMonitor:
+    """
+    Create stochastic convergence monitor with sensible defaults.
+
+    Args:
+        window_size: Rolling window size for statistics
+        median_tolerance: Threshold for median error
+        quantile: Quantile to monitor (default: 0.9 for 90th percentile)
+        **kwargs: Additional parameters for StochasticConvergenceMonitor
+
+    Returns:
+        Configured StochasticConvergenceMonitor
+
+    Usage:
+        monitor = create_stochastic_monitor()
+        for iteration in range(max_iterations):
+            # ... compute errors ...
+            monitor.add_iteration(error_u, error_m)
+            converged, diagnostics = monitor.check_convergence()
+            if converged:
+                break
+    """
+    return StochasticConvergenceMonitor(
+        window_size=window_size,
+        median_tolerance=median_tolerance,
+        quantile=quantile,
+        **kwargs,
+    )
+
+
+# =============================================================================
 # BACKWARD COMPATIBILITY ALIASES
 # =============================================================================
 
@@ -985,3 +1193,5 @@ AdvancedConvergenceMonitor = AdvancedConvergenceMonitor
 DistributionComparator = DistributionComparator
 OscillationDetector = OscillationDetector
 create_default_monitor = create_default_monitor
+StochasticConvergenceMonitor = StochasticConvergenceMonitor
+create_stochastic_monitor = create_stochastic_monitor
