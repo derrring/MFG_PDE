@@ -146,6 +146,15 @@ except ImportError:
     CROWD_NAV_AVAILABLE = False
     CrowdNavigationEnv = None  # type: ignore
 
+# Conditional import for Price Formation environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.price_formation_env import PriceFormationEnv
+
+    PRICE_FORMATION_AVAILABLE = True
+except ImportError:
+    PRICE_FORMATION_AVAILABLE = False
+    PriceFormationEnv = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -193,6 +202,7 @@ __all__ = [
     "CONTINUOUS_MFG_AVAILABLE",
     "LQ_MFG_AVAILABLE",
     "CROWD_NAV_AVAILABLE",
+    "PRICE_FORMATION_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
@@ -243,3 +253,7 @@ if LQ_MFG_AVAILABLE:
 # Add Crowd Navigation environment if available
 if CROWD_NAV_AVAILABLE:
     __all__.extend(["CrowdNavigationEnv"])
+
+# Add Price Formation environment if available
+if PRICE_FORMATION_AVAILABLE:
+    __all__.extend(["PriceFormationEnv"])
