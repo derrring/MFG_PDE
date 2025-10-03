@@ -164,6 +164,15 @@ except ImportError:
     RESOURCE_ALLOCATION_AVAILABLE = False
     ResourceAllocationEnv = None  # type: ignore
 
+# Conditional import for Traffic Flow environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.traffic_flow_env import TrafficFlowEnv
+
+    TRAFFIC_FLOW_AVAILABLE = True
+except ImportError:
+    TRAFFIC_FLOW_AVAILABLE = False
+    TrafficFlowEnv = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -213,6 +222,7 @@ __all__ = [
     "CROWD_NAV_AVAILABLE",
     "PRICE_FORMATION_AVAILABLE",
     "RESOURCE_ALLOCATION_AVAILABLE",
+    "TRAFFIC_FLOW_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
@@ -271,3 +281,7 @@ if PRICE_FORMATION_AVAILABLE:
 # Add Resource Allocation environment if available
 if RESOURCE_ALLOCATION_AVAILABLE:
     __all__.extend(["ResourceAllocationEnv"])
+
+# Add Traffic Flow environment if available
+if TRAFFIC_FLOW_AVAILABLE:
+    __all__.extend(["TrafficFlowEnv"])
