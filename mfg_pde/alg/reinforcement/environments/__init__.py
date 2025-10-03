@@ -155,6 +155,15 @@ except ImportError:
     PRICE_FORMATION_AVAILABLE = False
     PriceFormationEnv = None  # type: ignore
 
+# Conditional import for Resource Allocation environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.resource_allocation_env import ResourceAllocationEnv
+
+    RESOURCE_ALLOCATION_AVAILABLE = True
+except ImportError:
+    RESOURCE_ALLOCATION_AVAILABLE = False
+    ResourceAllocationEnv = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -203,6 +212,7 @@ __all__ = [
     "LQ_MFG_AVAILABLE",
     "CROWD_NAV_AVAILABLE",
     "PRICE_FORMATION_AVAILABLE",
+    "RESOURCE_ALLOCATION_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
@@ -257,3 +267,7 @@ if CROWD_NAV_AVAILABLE:
 # Add Price Formation environment if available
 if PRICE_FORMATION_AVAILABLE:
     __all__.extend(["PriceFormationEnv"])
+
+# Add Resource Allocation environment if available
+if RESOURCE_ALLOCATION_AVAILABLE:
+    __all__.extend(["ResourceAllocationEnv"])
