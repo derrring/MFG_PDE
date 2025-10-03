@@ -119,6 +119,15 @@ except ImportError:
     PopulationState = None  # type: ignore
     RewardType = None  # type: ignore
 
+# Conditional import for continuous MFG base class (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.continuous_mfg_env_base import ContinuousMFGEnvBase
+
+    CONTINUOUS_MFG_AVAILABLE = True
+except ImportError:
+    CONTINUOUS_MFG_AVAILABLE = False
+    ContinuousMFGEnvBase = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -163,6 +172,7 @@ __all__ = [
     "MFG_ENV_AVAILABLE",
     "MAZE_UTILS_AVAILABLE",
     "MAZE_POSTPROCESSING_AVAILABLE",
+    "CONTINUOUS_MFG_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
@@ -201,3 +211,7 @@ if MFG_ENV_AVAILABLE:
             "RewardType",
         ]
     )
+
+# Add continuous MFG base class if available
+if CONTINUOUS_MFG_AVAILABLE:
+    __all__.extend(["ContinuousMFGEnvBase"])
