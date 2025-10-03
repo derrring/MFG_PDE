@@ -119,6 +119,60 @@ except ImportError:
     PopulationState = None  # type: ignore
     RewardType = None  # type: ignore
 
+# Conditional import for continuous MFG base class (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.continuous_mfg_env_base import ContinuousMFGEnvBase
+
+    CONTINUOUS_MFG_AVAILABLE = True
+except ImportError:
+    CONTINUOUS_MFG_AVAILABLE = False
+    ContinuousMFGEnvBase = None  # type: ignore
+
+# Conditional import for LQ-MFG environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.lq_mfg_env import LQMFGEnv
+
+    LQ_MFG_AVAILABLE = True
+except ImportError:
+    LQ_MFG_AVAILABLE = False
+    LQMFGEnv = None  # type: ignore
+
+# Conditional import for Crowd Navigation environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.crowd_navigation_env import CrowdNavigationEnv
+
+    CROWD_NAV_AVAILABLE = True
+except ImportError:
+    CROWD_NAV_AVAILABLE = False
+    CrowdNavigationEnv = None  # type: ignore
+
+# Conditional import for Price Formation environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.price_formation_env import PriceFormationEnv
+
+    PRICE_FORMATION_AVAILABLE = True
+except ImportError:
+    PRICE_FORMATION_AVAILABLE = False
+    PriceFormationEnv = None  # type: ignore
+
+# Conditional import for Resource Allocation environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.resource_allocation_env import ResourceAllocationEnv
+
+    RESOURCE_ALLOCATION_AVAILABLE = True
+except ImportError:
+    RESOURCE_ALLOCATION_AVAILABLE = False
+    ResourceAllocationEnv = None  # type: ignore
+
+# Conditional import for Traffic Flow environment (requires Gymnasium)
+try:
+    from mfg_pde.alg.reinforcement.environments.traffic_flow_env import TrafficFlowEnv
+
+    TRAFFIC_FLOW_AVAILABLE = True
+except ImportError:
+    TRAFFIC_FLOW_AVAILABLE = False
+    TrafficFlowEnv = None  # type: ignore
+
 __all__ = [
     # Perfect maze generation
     "MazeAlgorithm",
@@ -163,6 +217,12 @@ __all__ = [
     "MFG_ENV_AVAILABLE",
     "MAZE_UTILS_AVAILABLE",
     "MAZE_POSTPROCESSING_AVAILABLE",
+    "CONTINUOUS_MFG_AVAILABLE",
+    "LQ_MFG_AVAILABLE",
+    "CROWD_NAV_AVAILABLE",
+    "PRICE_FORMATION_AVAILABLE",
+    "RESOURCE_ALLOCATION_AVAILABLE",
+    "TRAFFIC_FLOW_AVAILABLE",
 ]
 
 # Add maze utilities exports if available
@@ -201,3 +261,27 @@ if MFG_ENV_AVAILABLE:
             "RewardType",
         ]
     )
+
+# Add continuous MFG base class if available
+if CONTINUOUS_MFG_AVAILABLE:
+    __all__.extend(["ContinuousMFGEnvBase"])
+
+# Add LQ-MFG environment if available
+if LQ_MFG_AVAILABLE:
+    __all__.extend(["LQMFGEnv"])
+
+# Add Crowd Navigation environment if available
+if CROWD_NAV_AVAILABLE:
+    __all__.extend(["CrowdNavigationEnv"])
+
+# Add Price Formation environment if available
+if PRICE_FORMATION_AVAILABLE:
+    __all__.extend(["PriceFormationEnv"])
+
+# Add Resource Allocation environment if available
+if RESOURCE_ALLOCATION_AVAILABLE:
+    __all__.extend(["ResourceAllocationEnv"])
+
+# Add Traffic Flow environment if available
+if TRAFFIC_FLOW_AVAILABLE:
+    __all__.extend(["TrafficFlowEnv"])
