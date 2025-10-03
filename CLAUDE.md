@@ -266,6 +266,144 @@ pbar = tqdm(total=total_steps, desc="Convergence",
 - Provide working examples with error handling
 - Export to both .ipynb and .html formats
 
+## 📁 **Output Organization Strategy** ⚠️ **CRITICAL**
+
+MFG_PDE uses **notebook-based reporting** as the primary method for generating and presenting results. This approach integrates code, mathematical formulae, visualizations, and narrative in a single reproducible document.
+
+### **Core Principle: Notebooks for Reports**
+**All research outputs, benchmarks, and complex analyses should be generated via Jupyter notebooks**, which can:
+- Combine LaTeX math, code, and visualizations
+- Be exported to HTML for sharing (tracked in git)
+- Be re-executed for reproducibility
+- Serve as both analysis tool and final report
+
+### **Output Directory Structure**
+
+```
+examples/
+├── basic/              # Simple demonstrations
+│   └── lq_mfg_demo.py  # Saves to examples/outputs/
+├── advanced/           # Complex demonstrations
+│   └── actor_critic_maze_demo.py
+├── notebooks/          # Jupyter notebooks (primary reporting method)
+│   ├── benchmarks/     # Performance comparisons (notebook + exported HTML)
+│   ├── tutorials/      # Educational notebooks
+│   └── analysis/       # Research analysis notebooks
+└── outputs/            # Generated outputs (gitignored by default)
+    ├── basic/          # From basic examples
+    ├── advanced/       # From advanced examples
+    └── reference/      # Reference outputs (tracked for comparison)
+
+benchmarks/
+├── scripts/            # Benchmark runner scripts
+├── notebooks/          # Benchmark analysis notebooks (tracked)
+├── results/            # Raw data (gitignored)
+└── reports/            # Exported HTML reports (tracked)
+
+docs/
+├── theory/             # Mathematical formulations (markdown, rarely images)
+├── development/        # Development notes (markdown)
+└── tutorials/          # Tutorial notebooks (tracked)
+```
+
+### **File Organization Rules**
+
+**1. Python Scripts (examples/*.py)**
+- Save outputs to `examples/outputs/[category]/`
+- Never save to root directory
+- Use relative paths from script location
+
+```python
+# In examples/basic/lq_mfg_demo.py
+from pathlib import Path
+
+EXAMPLE_DIR = Path(__file__).parent
+OUTPUT_DIR = EXAMPLE_DIR.parent / "outputs" / "basic"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+save_path = OUTPUT_DIR / "lq_mfg_demo.png"
+plt.savefig(save_path, dpi=150, bbox_inches="tight")
+```
+
+**2. Jupyter Notebooks (examples/notebooks/, benchmarks/notebooks/)**
+- **Tracked in git**: Notebook files (.ipynb) with cleared outputs
+- **Tracked**: Exported HTML reports (self-contained)
+- **Gitignored**: Intermediate data files and raw outputs
+
+```python
+# In notebook cell - save to same directory as notebook
+from pathlib import Path
+
+NOTEBOOK_DIR = Path.cwd()  # Current notebook directory
+output_path = NOTEBOOK_DIR / "benchmark_comparison.html"
+
+# Export notebook to HTML
+!jupyter nbconvert --to html --execute current_notebook.ipynb
+```
+
+**3. Documentation (docs/)**
+- **Markdown preferred**: Documentation rarely contains images
+- **Notebooks for tutorials**: Use `docs/tutorials/` for interactive docs
+- **No generated images**: Theory documentation uses LaTeX math, not plots
+
+**4. Benchmarks**
+- **Notebooks primary**: Use `benchmarks/notebooks/` for analysis
+- **Export HTML**: Track exported reports in `benchmarks/reports/`
+- **Raw data gitignored**: Large result files in `benchmarks/results/`
+
+**5. Research Artifacts (User Work)**
+- **User creates**: `research/` directory for personal work (gitignored)
+- **Selective tracking**: User can track finalized notebooks/reports
+
+### **Notebook-Based Workflow Extension**
+
+**Use notebooks for any suitable case**, including:
+- Algorithm comparisons and benchmarking
+- Convergence analysis and parameter studies
+- Method validation and verification
+- Educational tutorials and examples
+- Research experiments and exploration
+- Package demonstration and showcase
+
+**Benefits**:
+- **Reproducibility**: Code and results in one document
+- **Shareability**: Export to HTML for distribution
+- **Documentation**: Self-documenting with narrative + code + output
+- **Collaboration**: Easier review than separate scripts + outputs
+
+### **`.gitignore` Configuration**
+
+```bash
+# Generated outputs (regenerable)
+examples/outputs/
+benchmarks/results/
+tests/outputs/
+
+# Track reference outputs and reports
+!examples/outputs/reference/
+!benchmarks/reports/*.html
+
+# Track notebooks with cleared outputs
+*.ipynb
+
+# Gitignore notebook checkpoints
+.ipynb_checkpoints/
+
+# User research directory (optional)
+/research/
+```
+
+### **When to Use What**
+
+| Use Case | Tool | Output Location | Git Tracking |
+|:---------|:-----|:----------------|:-------------|
+| Simple demo | Python script | `examples/outputs/` | No (gitignored) |
+| Tutorial | Jupyter notebook | `examples/notebooks/` | Yes (.ipynb + .html) |
+| Benchmark | Jupyter notebook | `benchmarks/notebooks/` | Yes (.ipynb + .html) |
+| Research analysis | Jupyter notebook | `examples/notebooks/analysis/` | Yes (.ipynb + .html) |
+| Unit test output | Test script | `tests/outputs/` | No (gitignored) |
+| Reference data | Any | `*/reference/` | Yes (for comparison) |
+
 ## 🔧 **Development Workflow**
 
 ### **Branch Naming Convention** ⚠️ **MANDATORY**
