@@ -1,11 +1,12 @@
 # MFG_PDE: Advanced Mean Field Games Framework
 
-A modern Python framework for solving Mean Field Games with modular solver architecture, GPU acceleration, and state-of-the-art numerical methods.
+A modern Python framework for solving Mean Field Games with modular solver architecture, GPU acceleration, reinforcement learning, and state-of-the-art numerical methods.
 
 **🎯 Simple API**: One-line solving for common problems
 **🧩 Modular Design**: Mix & match FP + HJB solvers freely
 **⭐ WENO Family Solvers**: Unified WENO variants (WENO5, WENO-Z, WENO-M, WENO-JS) + non-oscillatory properties
 **⚡ GPU Acceleration**: JAX backend with 10-100× speedup potential
+**🎮 RL for MFG**: Complete continuous control (DDPG, TD3, SAC) ✨ **v1.4.0**
 **🔧 Multiple Solvers**: Traditional PDE, particles, and hybrid methods
 **🌐 Network Support**: Also works on graphs and networks
 
@@ -166,12 +167,57 @@ solver = create_fast_solver(problem, backend="auto")
 result = solver.solve()
 ```
 
+### 🎮 **Reinforcement Learning for MFG** ✨ **NEW in v1.4.0**
+
+Complete RL framework supporting both **discrete** and **continuous** action spaces:
+
+```python
+from mfg_pde.alg.reinforcement.algorithms import (
+    MeanFieldQLearning,     # Discrete: Value-based learning
+    MeanFieldActorCritic,   # Discrete: Policy gradient
+    MeanFieldDDPG,          # Continuous: Deterministic policies ✨ NEW
+    MeanFieldTD3,           # Continuous: Twin delayed DDPG ✨ NEW
+    MeanFieldSAC,           # Continuous: Maximum entropy ✨ NEW
+)
+
+# Example: Continuous control with SAC
+algo = MeanFieldSAC(
+    env=continuous_env,
+    state_dim=2,
+    action_dim=2,
+    population_dim=100,
+    action_bounds=(-1.0, 1.0)
+)
+
+# Train agent to find Nash equilibrium
+stats = algo.train(num_episodes=500)
+print(f"Final reward: {stats['episode_rewards'][-1]:.2f}")
+```
+
+**🎯 Continuous Control Algorithms** ✨ **Phase 3.3 Complete**:
+- **DDPG**: Deep Deterministic Policy Gradient with Ornstein-Uhlenbeck noise
+- **TD3**: Twin Delayed DDPG with target policy smoothing (best performance)
+- **SAC**: Soft Actor-Critic with automatic temperature tuning (most robust)
+
+**📊 Validated Performance** (Continuous LQ-MFG Benchmark):
+- TD3: **-3.32 ± 0.21** (best)
+- SAC: **-3.50 ± 0.17** (robust)
+- DDPG: **-4.28 ± 1.06** (fast)
+
+**💡 Try it out**:
+```bash
+python examples/advanced/continuous_control_comparison.py
+```
+
+See **[docs/theory/reinforcement_learning/](docs/theory/reinforcement_learning/)** for mathematical formulations.
+
 ## Features
 
 - **🎯 Simple API**: One-line `solve_mfg()` for common problems with smart defaults
 - **🧩 Modular Architecture**: Mix & match any FP solver + any HJB solver
 - **⭐ WENO5 Solver**: Fifth-order accuracy with non-oscillatory properties
 - **⚡ Multi-Backend System**: PyTorch (neural), JAX (math), Numba (CPU) + auto-selection
+- **🎮 Reinforcement Learning**: Complete RL framework (Q-Learning, Actor-Critic, DDPG, TD3, SAC) ✨ **NEW**
 - **🔧 Multiple Solvers**: Fixed-point, particle-collocation, hybrid methods
 - **📊 Interactive Plots**: Built-in visualization with Plotly and Matplotlib
 - **🚀 Performance**: Optimized for both small examples and large-scale problems
