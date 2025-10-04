@@ -16,12 +16,12 @@ from __future__ import annotations
 from .anderson_acceleration import AndersonAccelerator
 from .convergence import AdvancedConvergenceMonitor
 from .integration import get_integration_info, trapezoid
-from .monte_carlo import monte_carlo_sample
+from .monte_carlo import monte_carlo_integrate
 
 __all__ = [
     "AndersonAccelerator",
     "AdvancedConvergenceMonitor",
     "get_integration_info",
     "trapezoid",
-    "monte_carlo_sample",
+    "monte_carlo_integrate",
 ]

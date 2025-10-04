@@ -10,6 +10,6 @@ from __future__ import annotations
 
 # Re-export from submodules
 from .monitoring import PerformanceMonitor
-from .optimization import optimize_array_operations
+from .optimization import create_performance_optimizer
 
-__all__ = ["PerformanceMonitor", "optimize_array_operations"]
+__all__ = ["PerformanceMonitor", "create_performance_optimizer"]
