@@ -21,12 +21,19 @@ else:
     pass
 
 if HAS_JAX:
-    import optax
-
     import jax
     import jax.numpy as jnp
     from jax import device_put, grad, jacfwd, jacrev, jit, vmap
     from jax.lax import cond, scan
+
+    # Optax is optional for optimization schedules
+    try:
+        import optax
+
+        HAS_OPTAX = True
+    except ImportError:
+        optax = None
+        HAS_OPTAX = False
 else:
     # Dummy implementations for graceful fallback
     jax = None
@@ -57,6 +64,7 @@ else:
         return (init, xs)
 
     optax = None
+    HAS_OPTAX = False
 
 
 def ensure_jax_available():
@@ -380,7 +388,7 @@ def create_optimization_schedule(learning_rate: float = 1e-3, decay_steps: int =
     """
     ensure_jax_available()
 
-    if optax is None:
+    if not HAS_OPTAX or optax is None:
         raise ImportError("Optimization schedules require optax. Install with: pip install optax")
 
     schedule = optax.exponential_decay(init_value=learning_rate, transition_steps=decay_steps, decay_rate=decay_rate)
