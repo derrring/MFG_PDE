@@ -14,7 +14,7 @@ import numpy as np
 
 # MFG_PDE imports
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.factory import BackendFactory, print_backend_info
+from mfg_pde.factory import create_backend, print_backend_info
 from mfg_pde.utils.integration import trapezoid
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
@@ -82,7 +82,7 @@ def benchmark_backends(problem_sizes=None, num_runs=3):
         numpy_times = []
         for run in range(num_runs):
             try:
-                backend = BackendFactory.create_backend("numpy", precision="float64")
+                backend = create_backend("numpy", precision="float64")
 
                 start_time = time.perf_counter()
 
@@ -113,7 +113,7 @@ def benchmark_backends(problem_sizes=None, num_runs=3):
         jax_times = []
         for run in range(num_runs):
             try:
-                backend = BackendFactory.create_backend("jax", device="auto", precision="float64", jit_compile=True)
+                backend = create_backend("jax", device="auto", precision="float64", jit_compile=True)
 
                 start_time = time.perf_counter()
 
@@ -163,7 +163,7 @@ def demonstrate_jax_features():
 
     try:
         # Create JAX backend
-        backend = BackendFactory.create_backend("jax", device="auto", jit_compile=True)
+        backend = create_backend("jax", device="auto", jit_compile=True)
         logger.info(f"Created JAX backend: {backend.get_device_info()}")
 
         # Demonstrate automatic differentiation
@@ -362,7 +362,7 @@ def main():
 
     print("\n Next Steps:")
     print("   • Install JAX with GPU support: pip install 'mfg_pde[jax-cuda]'")
-    print("   • Use BackendFactory.create_optimal_backend() for automatic selection")
+    print("   • Use create_backend('auto') for automatic backend selection")
     print("   • Enable JIT compilation for maximum performance")
 
     logger.info("JAX Acceleration Demo completed successfully")
