@@ -206,7 +206,7 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         if verbose:
             print(f"Starting {self.name}:")
             print(f"  - FP Particles: {self.num_particles}")
-            print(f"  - HJB FD Scheme: {self.hjb_fd_scheme}")
+            print("  - HJB Method: Finite Difference (Newton)")
             print(f"  - Max Picard iterations: {final_max_iterations}")
             print(f"  - Convergence tolerance: {final_tolerance}")
             print(f"  - Damping parameter: {self.damping_parameter}")
@@ -264,8 +264,8 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             # Step 1: Solve HJB equation using FDM with current density
             try:
                 U_new = self.hjb_solver.solve_hjb_system(
-                    M_density_evolution_from_FP=M_current,
-                    U_final_condition_at_T=terminal_condition,
+                    M_density_evolution=M_current,
+                    U_final_condition=terminal_condition,
                     U_from_prev_picard=U_current,
                 )
 
@@ -336,7 +336,6 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
                 "fp_method": "particle",
                 "hjb_method": "fdm",
                 "num_particles": self.num_particles,
-                "hjb_scheme": self.hjb_fd_scheme,
                 "damping_parameter": self.damping_parameter,
             },
         }
@@ -378,9 +377,8 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             },
             "hjb_solver": {
                 "method": "fdm",
-                "scheme": self.hjb_fd_scheme,
-                "newton_iterations": self.hjb_newton_iterations,
-                "newton_tolerance": self.hjb_newton_tolerance,
+                "max_newton_iterations": self.max_newton_iterations,
+                "newton_tolerance": self.newton_tolerance,
             },
             "coupling": {
                 "method": "fixed_point_iteration",
