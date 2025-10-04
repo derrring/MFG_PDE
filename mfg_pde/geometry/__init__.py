@@ -19,7 +19,15 @@ Key Components:
 
 from __future__ import annotations
 
+from .amr_1d import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
+from .amr_triangular_2d import (
+    TriangleElement,
+    TriangularAMRMesh,
+    TriangularMeshErrorEstimator,
+    create_triangular_amr_mesh,
+)
 from .base_geometry import BaseGeometry, MeshData
+from .boundary_conditions_1d import BoundaryConditions, dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
 from .boundary_conditions_2d import (
     BoundaryCondition2D,
     BoundaryConditionManager2D,
@@ -43,7 +51,7 @@ from .boundary_conditions_3d import (
     create_sphere_boundary_conditions,
 )
 from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
-from .domain_1d import BoundaryConditions, Domain1D, dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
+from .domain_1d import Domain1D
 from .domain_2d import Domain2D
 from .domain_3d import Domain3D
 from .mesh_manager import MeshManager, MeshPipeline
@@ -58,8 +66,6 @@ from .network_geometry import (
     compute_network_statistics,
     create_network,
 )
-from .one_dimensional_amr import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
-from .triangular_amr import TriangleElement, TriangularAMRMesh, TriangularMeshErrorEstimator, create_triangular_amr_mesh
 
 __all__ = [
     # Multi-dimensional geometry components
