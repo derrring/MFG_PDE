@@ -78,12 +78,13 @@ class TestHybridMassConservation:
         # Override problem BC if needed
         simple_1d_problem.boundary_conditions = bc
 
-        # Create hybrid solver
+        # Create hybrid solver (using modern API)
         solver = HybridFPParticleHJBFDM(
-            mfg_problem=simple_1d_problem,
+            problem=simple_1d_problem,
             num_particles=5000,
             kde_bandwidth="scott",
-            hjb_fd_scheme="upwind",
+            max_newton_iterations=30,
+            newton_tolerance=1e-7,
             damping_parameter=0.5,
         )
 
@@ -150,10 +151,11 @@ class TestHybridMassConservation:
         simple_1d_problem.boundary_conditions = bc
 
         solver = HybridFPParticleHJBFDM(
-            mfg_problem=simple_1d_problem,
+            problem=simple_1d_problem,
             num_particles=5000,
             kde_bandwidth="scott",
-            hjb_fd_scheme="upwind",
+            max_newton_iterations=30,
+            newton_tolerance=1e-7,
             damping_parameter=0.5,
         )
 
@@ -197,7 +199,7 @@ class TestHybridMassConservationFast:
         problem.boundary_conditions = bc
 
         solver = HybridFPParticleHJBFDM(
-            mfg_problem=problem,
+            problem=problem,
             num_particles=1000,  # Small for speed
             damping_parameter=0.5,
         )

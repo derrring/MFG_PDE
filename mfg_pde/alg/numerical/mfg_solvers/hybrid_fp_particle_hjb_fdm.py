@@ -36,38 +36,87 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
 
     def __init__(
         self,
-        mfg_problem: MFGProblem,
+        problem: MFGProblem | None = None,
         num_particles: int = 5000,
         kde_bandwidth: str | float = "scott",
-        hjb_newton_iterations: int = 30,
-        hjb_newton_tolerance: float = 1e-7,
-        hjb_fd_scheme: str = "upwind",
+        max_newton_iterations: int = 30,
+        newton_tolerance: float = 1e-7,
         damping_parameter: float = 0.5,
         config: MFGSolverConfig | None = None,
+        # Deprecated parameters for backward compatibility
+        mfg_problem: MFGProblem | None = None,
+        hjb_newton_iterations: int | None = None,
+        hjb_newton_tolerance: float | None = None,
+        hjb_fd_scheme: str | None = None,
         **kwargs: Any,
     ):
         """
         Initialize the hybrid FP-Particle + HJB-FDM solver.
 
         Args:
-            mfg_problem: MFG problem to solve
+            problem: MFG problem to solve
             num_particles: Number of particles for FP solver
             kde_bandwidth: Bandwidth for kernel density estimation
-            hjb_newton_iterations: Max Newton iterations for HJB solver
-            hjb_newton_tolerance: Newton tolerance for HJB solver
-            hjb_fd_scheme: Finite difference scheme for HJB ("upwind", "central")
+            max_newton_iterations: Max Newton iterations for HJB solver
+            newton_tolerance: Newton tolerance for HJB solver
             damping_parameter: Damping parameter for fixed point iteration
             config: Optional configuration object
+            mfg_problem: (Deprecated) Use 'problem' instead
+            hjb_newton_iterations: (Deprecated) Use 'max_newton_iterations' instead
+            hjb_newton_tolerance: (Deprecated) Use 'newton_tolerance' instead
+            hjb_fd_scheme: (Deprecated) No longer used, HJBFDMSolver handles scheme internally
             **kwargs: Additional parameters
         """
-        super().__init__(mfg_problem)
+        import warnings
+
+        # Handle deprecated 'mfg_problem' parameter
+        if mfg_problem is not None:
+            warnings.warn(
+                "Parameter 'mfg_problem' is deprecated. Use 'problem' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if problem is None:
+                problem = mfg_problem
+
+        # Ensure problem is provided
+        if problem is None:
+            raise ValueError("Parameter 'problem' is required")
+
+        # Handle deprecated 'hjb_newton_iterations' parameter
+        if hjb_newton_iterations is not None:
+            warnings.warn(
+                "Parameter 'hjb_newton_iterations' is deprecated. Use 'max_newton_iterations' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            max_newton_iterations = hjb_newton_iterations
+
+        # Handle deprecated 'hjb_newton_tolerance' parameter
+        if hjb_newton_tolerance is not None:
+            warnings.warn(
+                "Parameter 'hjb_newton_tolerance' is deprecated. Use 'newton_tolerance' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            newton_tolerance = hjb_newton_tolerance
+
+        # Warn about hjb_fd_scheme being removed
+        if hjb_fd_scheme is not None:
+            warnings.warn(
+                "Parameter 'hjb_fd_scheme' is deprecated and ignored. "
+                "HJBFDMSolver handles finite difference scheme internally.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        super().__init__(problem)
 
         # Store solver parameters
         self.num_particles = num_particles
         self.kde_bandwidth = kde_bandwidth
-        self.hjb_newton_iterations = hjb_newton_iterations
-        self.hjb_newton_tolerance = hjb_newton_tolerance
-        self.hjb_fd_scheme = hjb_fd_scheme
+        self.max_newton_iterations = max_newton_iterations
+        self.newton_tolerance = newton_tolerance
         self.damping_parameter = damping_parameter
         self.config = config
 
@@ -75,7 +124,7 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         self._initialize_solvers()
 
         # Solver identification
-        self.name = f"Hybrid(FP-Particle[{num_particles}]_HJB-FDM[{hjb_fd_scheme}])"
+        self.name = f"Hybrid(FP-Particle[{num_particles}]_HJB-FDM)"
 
         # Solution storage
         self.U_solution: np.ndarray
@@ -99,8 +148,8 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
 
         self.hjb_solver = HJBFDMSolver(
             problem=self.problem,
-            max_newton_iterations=self.hjb_newton_iterations,
-            newton_tolerance=self.hjb_newton_tolerance,
+            max_newton_iterations=self.max_newton_iterations,
+            newton_tolerance=self.newton_tolerance,
         )
 
     def solve(  # type: ignore[override]
