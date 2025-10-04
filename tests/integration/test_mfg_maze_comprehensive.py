@@ -228,13 +228,13 @@ class MazePolicyTester:
 
         episode_results = []
 
-        for episode in range(num_episodes):
+        for _ in range(num_episodes):
             obs = env.reset()
             total_reward = 0
             episode_steps = 0
             congestion_history = []
 
-            for step in range(max_steps):
+            for _ in range(max_steps):
                 # Get actions from policy for all agents
                 actions = np.zeros(num_agents, dtype=int)
                 for i in range(num_agents):

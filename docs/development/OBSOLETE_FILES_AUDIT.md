@@ -118,16 +118,198 @@ rm tests/integration/test_stochastic_mass_conservation_simple.py
 
 ---
 
-## 🔍 Examples Directory
+## 🔍 Examples Directory Audit
 
-**Status**: Not yet audited
-**Count**: 84 example files (82 in basic/advanced)
+**Status**: ✅ Audited
+**Total Count**: 82 example files (11 basic + 71 advanced)
 
-**Next Steps**:
-1. Audit `examples/basic/` for obsolete demos
-2. Audit `examples/advanced/` for redundant examples
-3. Check for Phase 2 backend examples (should be updated to Phase 3)
-4. Identify superseded examples from old API versions
+### Basic Examples (11 files) - ✅ All Good
+
+| File | Purpose | Status |
+|:-----|:--------|:-------|
+| `lq_mfg_demo.py` | LQ-MFG baseline example | ✅ Keep (v1.4.0) |
+| `continuous_action_ddpg_demo.py` | DDPG demo | ✅ Keep (v1.4.0) |
+| `rl_intro_comparison.py` | RL intro comparison | ✅ Keep (v1.4.0) |
+| `nash_q_learning_demo.py` | Nash Q-learning | ✅ Keep (v1.4.0) |
+| `towel_beach_example.py` | Beach towel problem | ✅ Keep |
+| `multi_paradigm_comparison.py` | Paradigm comparison | ✅ Keep |
+| `el_farol_bar_example.py` | El Farol bar | ✅ Keep |
+| `dgm_simple_validation.py` | DGM validation | ✅ Keep |
+| `adaptive_pinn_demo.py` | Adaptive PINN | ✅ Keep |
+| `visualization_example.py` | Visualization demo | ✅ Keep |
+| `simple_api_example.py` | Simple API demo | ✅ Keep |
+
+**Action**: No cleanup needed for basic examples.
+
+---
+
+### Advanced Examples (71 files) - 🚨 NEEDS CLEANUP
+
+#### Category 1: Maze Examples (22 files - EXCESSIVE REDUNDANCY)
+
+**Problem**: 22 maze-related examples with substantial overlap.
+
+| File | Purpose | Recommendation |
+|:-----|:--------|:---------------|
+| `actor_critic_maze_demo.py` | Actor-critic in maze | ✅ **KEEP** (unique algorithm) |
+| `all_maze_algorithms_visualization.py` | Algorithm comparison | ✅ **KEEP** (comprehensive) |
+| `hybrid_maze_demo.py` | Hybrid approach | ✅ **KEEP** (unique method) |
+| `voronoi_maze_demo.py` | Voronoi maze generation | ✅ **KEEP** (unique geometry) |
+| `mfg_maze_environment_demo.py` | Environment demo | ✅ **KEEP** (core functionality) |
+| `mfg_maze_environment.py` | Environment implementation | ⚠️ **Move to package?** (looks like module) |
+| `mfg_maze_layouts.py` | Layout definitions | ⚠️ **Move to package?** (looks like module) |
+| `maze_principles_demo.py` | Principles overview | ⚠️ **Consolidate?** |
+| `maze_config_examples.py` | Configuration examples | ⚠️ **Consolidate?** |
+| `demo_page45_maze.py` | Page 45 demo | ❌ **DELETE** (unclear reference) |
+| `page45_perfect_maze_demo.py` | Page 45 perfect maze | ❌ **DELETE** (duplicate) |
+| `visualize_page45_maze.py` | Page 45 visualization | ❌ **DELETE** (duplicate) |
+| `show_proper_maze.py` | Proper maze demo | ❌ **DELETE** (redundant) |
+| `improved_maze_generator.py` | Generator implementation | ⚠️ **Move to package?** |
+| `perfect_maze_generator.py` | Perfect maze generator | ⚠️ **Consolidate with improved?** |
+| `maze_algorithm_assessment.py` | Algorithm assessment | ❌ **DELETE** (testing, not demo) |
+| `maze_postprocessing_demo.py` | Postprocessing demo | ❌ **DELETE** (too specialized) |
+| `maze_smoothing_demo.py` | Smoothing demo | ❌ **DELETE** (too specialized) |
+| `quick_maze_assessment.py` | Quick assessment | ❌ **DELETE** (testing, not demo) |
+| `quick_maze_demo.py` | Quick demo | ❌ **DELETE** (redundant with main) |
+| `quick_perfect_maze_visual.py` | Quick visualization | ❌ **DELETE** (redundant) |
+| `test_mfg_maze_comprehensive.py` | Comprehensive test | ❌ **MOVE TO TESTS** (not example) |
+
+**Recommended Maze Cleanup**:
+- **DELETE 10 files**: page45 duplicates, testing scripts, overly specialized demos
+- **CONSOLIDATE 3 files**: Merge redundant generators and configs
+- **MOVE 4 files**: Move module-like files to package or tests
+- **KEEP 5 files**: Core unique demonstrations
+
+**Impact**: 22 → 5 maze examples (-77% reduction)
+
+---
+
+#### Category 2: WENO Solver Examples (4 files - Reasonable)
+
+| File | Purpose | Status |
+|:-----|:--------|:-------|
+| `2d_weno_solver_demo.py` | 2D WENO demo | ✅ Keep |
+| `weno_family_comparison_demo.py` | WENO family comparison | ✅ Keep |
+| `weno_solver_demo.py` | Basic WENO demo | ✅ Keep |
+| `weno5_hjb_benchmarking_demo.py` | WENO5 benchmarks | ✅ Keep |
+
+**Action**: Keep all WENO examples (reasonable diversity).
+
+---
+
+#### Category 3: Backend Acceleration Examples (6 files)
+
+| File | API Version | Action |
+|:-----|:------------|:-------|
+| `unified_backend_acceleration_demo.py` | ✅ Phase 3 | Keep |
+| `jax_acceleration_demo.py` | ⚠️ BackendFactory | **Update to Phase 3** |
+| `jax_numba_hybrid_performance.py` | ❓ Check | **Verify Phase 3 API** |
+| `triangular_amr_integration.py` | ❓ Check | **Verify Phase 3 API** |
+| `advanced_visualization_example.py` | ❓ Check | Keep |
+| `meta_programming_demo.py` | ❓ Check | Keep |
+
+**Action**: Update 1-3 files to Phase 3 tiered backend API.
+
+---
+
+#### Category 4: RL Examples (Multiple)
+
+| File | Purpose | Status |
+|:-----|:--------|:-------|
+| `continuous_control_comparison.py` | v1.4.0 feature | ✅ Keep |
+| `heterogeneous_traffic_control.py` | Multi-population | ✅ Keep |
+| `mfg_rl_comprehensive_demo.py` | Comprehensive RL | ✅ Keep |
+| `mfg_rl_experiment_suite.py` | Experiment suite | ✅ Keep |
+| `rl_principles_summary.py` | Principles | ⚠️ Should be in docs? |
+
+**Action**: Verify RL examples are current with v1.4.0 API.
+
+---
+
+#### Category 5: Problem-Specific Examples (Keep)
+
+| Type | Examples | Status |
+|:-----|:---------|:-------|
+| MFG Applications | el_farol_bar, santa_fe_bar, predator_prey, traffic_flow | ✅ Keep |
+| Neural Methods | pinn, dgm, neural_operator, adaptive_pinn | ✅ Keep |
+| Optimization | lagrangian, primal_dual | ✅ Keep |
+| Geometry | 2d_anisotropic_crowd (7 files), network_mfg | ✅ Keep |
+| High-Dim | 3d_box, complete_optimization_suite | ✅ Keep |
+| API Demos | factory_patterns, new_api_*, pydantic, progress | ✅ Keep |
+
+**Action**: Keep all problem-specific and API demonstration examples.
+
+---
+
+## 📊 Examples Cleanup Summary
+
+### Recommended Deletions (13 files minimum)
+
+**Maze Examples** (10 files):
+```bash
+# Delete page45 duplicates
+rm examples/advanced/demo_page45_maze.py
+rm examples/advanced/page45_perfect_maze_demo.py
+rm examples/advanced/visualize_page45_maze.py
+
+# Delete testing/assessment scripts (not examples)
+rm examples/advanced/maze_algorithm_assessment.py
+rm examples/advanced/quick_maze_assessment.py
+rm examples/advanced/test_mfg_maze_comprehensive.py
+
+# Delete redundant quick demos
+rm examples/advanced/quick_maze_demo.py
+rm examples/advanced/quick_perfect_maze_visual.py
+rm examples/advanced/show_proper_maze.py
+
+# Delete overly specialized demos
+rm examples/advanced/maze_postprocessing_demo.py
+rm examples/advanced/maze_smoothing_demo.py
+```
+
+### Recommended Moves (1 file)
+
+**Test to Tests Directory**:
+```bash
+git mv examples/advanced/test_mfg_maze_comprehensive.py tests/integration/
+```
+
+### Recommended Consolidations (3 files)
+
+**Maze Generators**:
+- Evaluate `perfect_maze_generator.py` vs `improved_maze_generator.py`
+- Keep the better one, delete or merge the other
+
+**Maze Configs**:
+- Consolidate `maze_config_examples.py` and `maze_principles_demo.py`
+
+### Backend API Updates (2-3 files)
+
+**Update to Phase 3 Tiered Backend API**:
+- `jax_acceleration_demo.py`: Replace `BackendFactory` with `create_backend()`
+- `jax_numba_hybrid_performance.py`: Verify uses Phase 3 API
+- `triangular_amr_integration.py`: Verify uses Phase 3 API
+
+---
+
+## 📈 Expected Impact
+
+**Before Cleanup**:
+- Advanced examples: 71 files
+- Maze examples: 22 files (31%)
+- Redundant/testing files: ~15 files (21%)
+
+**After Cleanup**:
+- Advanced examples: ~54-58 files (-18-24%)
+- Maze examples: ~8-10 files (focused set)
+- All examples demonstrate unique features
+- No testing scripts in examples/
+
+**Benefits**:
+- Clearer example organization
+- Easier for users to find relevant demos
+- Reduced maintenance burden
+- Better separation of examples vs tests
 
 ---
 
