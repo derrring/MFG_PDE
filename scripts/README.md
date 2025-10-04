@@ -1,6 +1,13 @@
 # MFG_PDE Scripts Directory
 
-This directory contains utility scripts for development, environment management, verification, and system administration.
+**Status**: ✅ Audited and Current (2025-10-04)
+
+This directory contains utility scripts for development, environment management, and verification.
+
+**Recent Changes**:
+- ✅ Archived obsolete migration scripts (update_package_imports.py, fix_polars_stubs.py)
+- ✅ Verified all remaining scripts are active and useful
+- ✅ See `docs/development/SCRIPTS_AND_HOOKS_AUDIT.md` for comprehensive analysis
 
 ## Development Environment Setup
 
@@ -61,6 +68,18 @@ python scripts/verify_modernization.py
 - ✅ Typing modernization analysis
 - ✅ Development tools validation
 
+## Experimental Scripts
+
+### `experimental/` Directory
+Research and experimental API/type system design work.
+
+**Contents:**
+- `progressive_api_design.py` - API design experiments
+- `smart_defaults_strategy.py` - Default value experiments
+- `type_system_proposal.py` - Type system experiments
+
+**Status:** Active research - proposals may be implemented in future versions
+
 ## Legacy Environment Management
 
 ### `manage_environments.sh`
@@ -119,11 +138,20 @@ python scripts/quick_type_check.py
 - Test scripts in clean environments before committing
 - Prefer UV-based workflows for performance when available
 
+## Archived Scripts
+
+### `archive/scripts/migration/`
+Obsolete migration tools that successfully completed their tasks:
+- `update_package_imports.py` - Paradigm reorganization complete
+- `fix_polars_stubs.py` - Polars stubs now compatible
+
+See `archive/scripts/migration/README.md` for details.
+
 ## Script Maintenance
 
 Scripts are maintained alongside the main codebase. Update documentation when adding new scripts or modifying existing functionality.
 
-**Recent Updates:**
-- ✅ Added modern UV-based development setup
-- ✅ Added rapid type checking workflow
-- ✅ Enhanced verification capabilities
+**Recent Updates (2025-10-04):**
+- ✅ Archived obsolete migration scripts
+- ✅ Comprehensive audit completed (see `docs/development/SCRIPTS_AND_HOOKS_AUDIT.md`)
+- ✅ All remaining scripts verified as active and useful
