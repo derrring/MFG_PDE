@@ -18,6 +18,18 @@ from __future__ import annotations
 
 import warnings
 
+# Check JAX availability
+try:
+    import jax
+
+    HAS_JAX = True
+    HAS_GPU = any("gpu" in str(d).lower() for d in jax.devices())
+    DEFAULT_DEVICE = jax.devices()[0]
+except ImportError:
+    HAS_JAX = False
+    HAS_GPU = False
+    DEFAULT_DEVICE = None
+
 # Re-export JAX utilities for backward compatibility
 try:
     from .jax_utils import *  # noqa: F403

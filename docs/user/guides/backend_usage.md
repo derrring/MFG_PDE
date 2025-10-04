@@ -219,53 +219,40 @@ for rec in performance_analysis["recommendations"]:
     print(f"  • {rec}")
 ```
 
-## 🔄 **Migration from Old Structure (Phase 2+)**
+## 🔄 **Correct Import Paths**
 
-### **Updating Existing Code**
-If you have existing code using the old `mfg_pde.accelerated` imports:
+### **Current Structure (Phase 3+)**
+
+The acceleration utilities are organized under `mfg_pde.utils.acceleration`:
 
 ```python
-# OLD (still works with deprecation warnings)
-from mfg_pde.accelerated import JAXMFGSolver
-from mfg_pde.accelerated.jax_utils import compute_hamiltonian
+# Correct imports
+from mfg_pde.alg.mfg_solvers import JAXMFGSolver
+from mfg_pde.utils.acceleration.jax_utils import compute_hamiltonian, tridiagonal_solve
 
-# NEW (recommended)
+# Backend factory
+from mfg_pde.backends import create_backend
+
+# Auto-select best backend (torch > jax > numpy)
+backend = create_backend()
+
+# Or explicit selection
+backend = create_backend("torch")  # PyTorch with CUDA/MPS/CPU
+backend = create_backend("jax")    # JAX with GPU/CPU
+backend = create_backend("numpy")  # NumPy baseline
+```
+
+### **Note on Old Imports**
+
+The old `mfg_pde.accelerated` module has been removed. If you have legacy code:
+
+```python
+# REMOVED (no longer available)
+# from mfg_pde.accelerated import JAXMFGSolver
+
+# Use this instead:
 from mfg_pde.alg.mfg_solvers import JAXMFGSolver
 from mfg_pde.utils.acceleration.jax_utils import compute_hamiltonian
-```
-
-### **Suppress Deprecation Warnings (Temporarily)**
-```python
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-# Your existing code continues to work unchanged
-from mfg_pde.accelerated import JAXMFGSolver
-```
-
-### **Migration Script Template**
-```python
-# find_and_replace.py - Update your codebase
-import os
-import re
-
-def migrate_imports(file_path):
-    with open(file_path, 'r') as f:
-        content = f.read()
-
-    # Update imports
-    replacements = {
-        "from mfg_pde.accelerated import JAXMFGSolver":
-            "from mfg_pde.alg.mfg_solvers import JAXMFGSolver",
-        "from mfg_pde.accelerated.jax_utils import":
-            "from mfg_pde.utils.acceleration.jax_utils import"
-    }
-
-    for old, new in replacements.items():
-        content = re.sub(old, new, content)
-
-    with open(file_path, 'w') as f:
-        f.write(content)
 
 # Apply to your Python files
 for root, dirs, files in os.walk("your_project/"):

@@ -64,18 +64,16 @@ class JAXBackend(BaseBackend):
 
     def _setup_backend(self):
         """Initialize JAX backend."""
+        import jax
+
         # Set precision
         if self.precision == "float32":
             self.dtype = jnp.float32
             # Enable float32 mode in JAX
-            from jax.config import config
-
-            config.update("jax_enable_x64", False)
+            jax.config.update("jax_enable_x64", False)
         else:
             self.dtype = jnp.float64
-            from jax.config import config
-
-            config.update("jax_enable_x64", True)
+            jax.config.update("jax_enable_x64", True)
 
         # Device selection
         if self.device == "auto":

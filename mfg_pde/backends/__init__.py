@@ -7,13 +7,16 @@ This module provides different computational backends for MFG solving:
 - Numba: CPU JIT compilation for imperative algorithms
 - NumPy: CPU baseline for compatibility
 
-Device priority: CUDA > MPS > JAX GPU > Numba > NumPy
+Tiered auto-selection priority: torch > jax > numpy
 """
 
 from __future__ import annotations
 
+import logging
 import warnings
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Backend registry
 _BACKENDS = {}
@@ -63,36 +66,60 @@ def get_available_backends() -> dict[str, bool]:
     return backends
 
 
-def create_backend(backend_name: str = "auto", **kwargs):
+def create_backend(backend_name: str | None = None, **kwargs):
     """
     Create a computational backend instance.
 
+    Tiered auto-selection priority: torch > jax > numpy
+
     Args:
-        backend_name: Backend to use ("torch", "jax", "numba", "numpy", or "auto")
+        backend_name: Backend to use ("torch", "jax", "numpy", or None for auto)
+                     None/auto will select best available in order: torch > jax > numpy
         **kwargs: Backend-specific configuration
 
     Returns:
         Backend instance
+
+    Example:
+        >>> # Auto-select (torch > jax > numpy)
+        >>> backend = create_backend()
+
+        >>> # Explicit choice
+        >>> backend = create_backend("jax")
     """
-    if backend_name == "auto":
+    if backend_name is None or backend_name == "auto":
         available = get_available_backends()
 
-        # Priority: CUDA > MPS > JAX GPU > JAX CPU > Numba > NumPy
-        if available.get("torch_cuda", False):
+        # Tiered Priority: torch > jax > numpy (Phase 3 strategy)
+        # PyTorch has priority (leverages RL infrastructure)
+        if available.get("torch", False):
             backend_name = "torch"
-            kwargs.setdefault("device", "cuda")
-        elif available.get("torch_mps", False):
-            backend_name = "torch"
-            kwargs.setdefault("device", "mps")
-        elif available.get("jax_gpu", False):
-            backend_name = "jax"
-            kwargs.setdefault("device", "gpu")
+            # Auto-detect best device: CUDA > MPS > CPU
+            if available.get("torch_cuda", False):
+                kwargs.setdefault("device", "cuda")
+                logger.info("Auto-selected PyTorch backend with CUDA (RL infrastructure available)")
+            elif available.get("torch_mps", False):
+                kwargs.setdefault("device", "mps")
+                logger.info("Auto-selected PyTorch backend with MPS (Apple Silicon)")
+            else:
+                kwargs.setdefault("device", "cpu")
+                logger.info("Auto-selected PyTorch backend with CPU (no GPU available)")
+
+        # JAX fallback (scientific computing alternative)
         elif available.get("jax", False):
             backend_name = "jax"
-        elif available.get("numba", False):
-            backend_name = "numba"
+            # Auto-detect: GPU > CPU
+            if available.get("jax_gpu", False):
+                kwargs.setdefault("device", "gpu")
+                logger.info("Auto-selected JAX backend with GPU (PyTorch not available)")
+            else:
+                kwargs.setdefault("device", "cpu")
+                logger.info("Auto-selected JAX backend with CPU (PyTorch not available)")
+
+        # NumPy baseline (universal compatibility)
         else:
             backend_name = "numpy"
+            logger.info("Using NumPy backend (no acceleration available)")
 
     if backend_name not in _BACKENDS:
         if backend_name == "torch":
