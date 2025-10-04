@@ -19,7 +19,7 @@ from typing import Any
 
 import numpy as np
 
-from .logging import get_logger
+from .logger import get_logger
 
 
 class LogAnalyzer:

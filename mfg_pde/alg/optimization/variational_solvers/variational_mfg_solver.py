@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.utils.integration import trapezoid
+from mfg_pde.utils.numerical.integration import trapezoid
 
 from .base_variational import BaseVariationalSolver, VariationalSolverResult
 

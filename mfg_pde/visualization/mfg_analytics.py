@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 
-from mfg_pde.utils.integration import trapezoid
+from mfg_pde.utils.numerical.integration import trapezoid
 
 # Import MFG components
 try:

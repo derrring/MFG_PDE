@@ -12,7 +12,7 @@ import functools
 import time
 from typing import TYPE_CHECKING
 
-from .logging import LoggedOperation, get_logger, log_solver_completion, log_solver_start
+from .logger import LoggedOperation, get_logger, log_solver_completion, log_solver_start
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -174,7 +174,7 @@ def logged_validation(component_name: str | None = None, logger_name: str | None
                 logger.debug(f"Validation passed: {component}")
                 return result
             except Exception as e:
-                from .logging import log_validation_error
+                from .logger import log_validation_error
 
                 log_validation_error(logger, component, str(e))
                 raise
@@ -233,7 +233,7 @@ def performance_logged(
                 metrics["memory_peak"] = f"{memory_after:.1f}MB"
 
             # Log performance
-            from .logging import log_performance_metric
+            from .logger import log_performance_metric
 
             log_performance_metric(logger, op_name, duration, metrics)
 
@@ -324,7 +324,7 @@ def add_logging_to_class(cls, logger_name: str | None = None):
 # Example usage functions
 def demonstrate_logging_decorators():
     """Demonstrate the logging decorators."""
-    from .logging import configure_logging
+    from .logger import configure_logging
 
     # Configure logging
     configure_logging(level="DEBUG", use_colors=True)

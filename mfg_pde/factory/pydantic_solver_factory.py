@@ -34,7 +34,7 @@ from mfg_pde.config.pydantic_config import (
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
-from mfg_pde.utils.logging import get_logger
+from mfg_pde.utils.logging.logger import get_logger
 
 SolverType = Literal["fixed_point", "particle_collocation", "adaptive_particle", "monitored_particle"]
 

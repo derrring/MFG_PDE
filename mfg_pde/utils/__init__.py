@@ -7,20 +7,24 @@ All plotting functionality has been permanently moved to mfg_pde.visualization.
 For visualization, use:
     from mfg_pde.visualization import create_visualization_manager
     from mfg_pde.visualization import plot_convergence, plot_results
+
+Organization:
+- logging/: Logging utilities and decorators
+- performance/: Performance monitoring and optimization
+- notebooks/: Jupyter notebook integration
+- numerical/: Numerical computation utilities
+- data/: Data handling and validation
 """
 
 # Core utility functions (non-plotting)
 from .aux_func import npart, ppart
-from .convergence import (
-    AdaptiveConvergenceWrapper,
-    AdvancedConvergenceMonitor,
-    DistributionComparator,
-    OscillationDetector,
-    ParticleMethodDetector,
-    adaptive_convergence,
-    create_default_monitor,
-    test_particle_detection,
-    wrap_solver_with_adaptive_convergence,
+
+# Subdirectory imports
+from .data.validation import (
+    safe_solution_return,
+    validate_convergence_parameters,
+    validate_mfg_solution,
+    validate_solution_array,
 )
 from .exceptions import (
     ConfigurationError,
@@ -34,8 +38,15 @@ from .exceptions import (
     validate_parameter_value,
     validate_solver_state,
 )
-from .integration import get_integration_info, trapezoid
-from .logging import (
+from .logging.decorators import (
+    LoggingMixin,
+    add_logging_to_class,
+    logged_operation,
+    logged_solver_method,
+    logged_validation,
+    performance_logged,
+)
+from .logging.logger import (
     LoggedOperation,
     MFGLogger,
     configure_logging,
@@ -47,25 +58,23 @@ from .logging import (
     log_solver_start,
     log_validation_error,
 )
-from .logging_decorators import (
-    LoggingMixin,
-    add_logging_to_class,
-    logged_operation,
-    logged_solver_method,
-    logged_validation,
-    performance_logged,
+from .numerical.convergence import (
+    AdaptiveConvergenceWrapper,
+    AdvancedConvergenceMonitor,
+    DistributionComparator,
+    OscillationDetector,
+    ParticleMethodDetector,
+    adaptive_convergence,
+    create_default_monitor,
+    test_particle_detection,
+    wrap_solver_with_adaptive_convergence,
 )
+from .numerical.integration import get_integration_info, trapezoid
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
-from .validation import (
-    safe_solution_return,
-    validate_convergence_parameters,
-    validate_mfg_solution,
-    validate_solution_array,
-)
 
 # Optional modules with graceful handling
 try:
-    from .notebook_reporting import (  # noqa: F401
+    from .notebooks.reporting import (  # noqa: F401
         MFGNotebookReporter,
         create_comparative_analysis,
         create_mfg_research_report,
@@ -76,7 +85,7 @@ except ImportError:
     NOTEBOOK_REPORTING_AVAILABLE = False
 
 try:
-    from .polars_integration import (
+    from .data.polars_integration import (
         MFGDataFrame,  # noqa: F401
         benchmark_polars_vs_pandas,  # noqa: F401
         create_data_exporter,  # noqa: F401
@@ -123,7 +132,7 @@ except ImportError:
     MEMORY_MANAGEMENT_AVAILABLE = False
 
 try:
-    from .performance_monitoring import (
+    from .performance.monitoring import (
         PerformanceMonitor,  # noqa: F401
         benchmark_solver,  # noqa: F401
         get_performance_report,  # noqa: F401
