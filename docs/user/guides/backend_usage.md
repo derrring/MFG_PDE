@@ -253,13 +253,101 @@ The old `mfg_pde.accelerated` module has been removed. If you have legacy code:
 # Use this instead:
 from mfg_pde.alg.mfg_solvers import JAXMFGSolver
 from mfg_pde.utils.acceleration.jax_utils import compute_hamiltonian
-
-# Apply to your Python files
-for root, dirs, files in os.walk("your_project/"):
-    for file in files:
-        if file.endswith(".py"):
-            migrate_imports(os.path.join(root, file))
 ```
+
+## 🔧 **Backend Selection Guide**
+
+### **Tiered Auto-Selection (torch > jax > numpy)**
+
+The default `create_backend()` follows a tiered priority for optimal performance:
+
+```python
+backend = create_backend()  # Auto-select best available
+
+# Selection logic:
+# 1. PyTorch (CUDA > MPS > CPU) - Best for most use cases
+# 2. JAX (GPU > CPU) - Scientific computing alternative
+# 3. NumPy - Universal fallback
+```
+
+**When auto-selection works best:**
+- ✅ Vectorizable operations (most MFG solvers)
+- ✅ Particle methods (PyTorch KDE)
+- ✅ GPU acceleration available
+- ✅ Standard grid-based PDEs
+
+### **When to Use Numba Backend Explicitly**
+
+Numba is **NOT** in auto-selection but available via explicit opt-in:
+
+```python
+backend = create_backend("numba")
+```
+
+**Use Numba for:**
+
+**1. Adaptive Mesh Refinement (AMR)**
+```python
+# Dynamic grid refinement with irregular patterns
+from mfg_pde.backends import create_backend
+
+backend = create_backend("numba")
+
+# AMR solver with imperative mesh traversal
+solver = AMRSolver(problem, backend=backend)
+solver.refine_mesh(criterion="gradient")
+```
+
+**2. Imperative Algorithms with Heavy Branching**
+```python
+# Algorithms with extensive if/else logic
+@numba.njit
+def gauss_seidel_step(u, f, dx):
+    n = len(u)
+    for i in range(1, n-1):
+        if f[i] > threshold:  # Conditional logic
+            u[i] = relaxation_update(u[i-1], u[i+1], f[i], dx)
+        else:
+            u[i] = simple_update(u[i-1], u[i+1])
+    return u
+
+backend = create_backend("numba")
+```
+
+**3. Sequential Iterative Methods**
+```python
+# Gauss-Seidel, SOR, line relaxation
+backend = create_backend("numba")
+solver = create_solver(problem, method="gauss_seidel", backend=backend)
+```
+
+**4. CPU-Bound Tight Loops**
+```python
+# When vectorization isn't possible
+backend = create_backend("numba")
+# Numba JIT compilation provides ~10-100x speedup over pure Python
+```
+
+**When NOT to use Numba:**
+
+- ❌ Vectorizable operations → Use PyTorch/JAX instead
+- ❌ GPU acceleration needed → Use PyTorch (CUDA/MPS) or JAX (GPU)
+- ❌ Particle methods → Use PyTorch KDE (5-6x faster for 50k+ particles)
+- ❌ Automatic differentiation needed → Use PyTorch or JAX
+- ❌ Neural network components → Use PyTorch (RL infrastructure)
+
+### **Backend Comparison Table**
+
+| Use Case | Best Backend | Reason |
+|:---------|:-------------|:-------|
+| Particle methods (< 10k) | PyTorch (CPU) | Vectorized KDE |
+| Particle methods (> 50k) | PyTorch (MPS/CUDA) | GPU acceleration |
+| Standard FDM/FEM | PyTorch/JAX | Vectorized operations |
+| AMR solvers | **Numba** | Imperative mesh ops |
+| Neural networks | PyTorch | RL infrastructure |
+| Auto-differentiation | PyTorch/JAX | Built-in AD |
+| Tight loops with conditionals | **Numba** | JIT compilation |
+| Linear algebra | JAX | Best precision |
 
 ## 🎯 **Common Usage Patterns**
 

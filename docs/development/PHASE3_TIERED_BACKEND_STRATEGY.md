@@ -10,9 +10,45 @@
 
 Implement a **tiered backend system** where the best available acceleration framework is automatically selected based on user's installation, while maintaining universal compatibility.
 
-**Selection Priority**: `torch > jax > numpy`
+**Auto-Selection Priority**: `torch > jax > numpy`
+
+**Explicit Opt-In**: `numba` (for specialized use cases)
 
 **Key Insight**: This is **not** about mixing frameworks—each computation runs on a **single, consistent backend** chosen at instantiation time.
+
+---
+
+## Backend Roles
+
+### **Tiered Auto-Selection (torch > jax > numpy)**
+
+These backends are automatically selected in priority order:
+
+1. **PyTorch** - Primary choice (leverages RL infrastructure, GPU support)
+2. **JAX** - Scientific computing alternative (functional style, XLA compilation)
+3. **NumPy** - Universal fallback (minimal dependencies, maximum compatibility)
+
+### **Explicit Opt-In (numba)**
+
+**Numba is NOT in auto-selection** but available for specialized scenarios:
+
+- ✅ Adaptive Mesh Refinement (AMR)
+- ✅ Imperative algorithms with heavy conditionals
+- ✅ Sequential iterative methods (Gauss-Seidel, SOR)
+- ✅ CPU-bound tight loops
+
+**Why not auto-selected:**
+- Different paradigm (imperative vs vectorized)
+- CPU-only (no GPU acceleration)
+- Niche use cases (most MFG solvers are vectorizable)
+- Compilation overhead for single-use scripts
+
+**Usage:**
+```python
+# Explicit opt-in for AMR solvers
+backend = create_backend("numba")
+solver = AMRSolver(problem, backend=backend)
+```
 
 ---
 
