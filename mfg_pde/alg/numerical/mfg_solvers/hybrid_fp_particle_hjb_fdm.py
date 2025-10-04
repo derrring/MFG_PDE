@@ -99,7 +99,6 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
 
         self.hjb_solver = HJBFDMSolver(
             problem=self.problem,
-            finite_difference_scheme=self.hjb_fd_scheme,
             max_newton_iterations=self.hjb_newton_iterations,
             newton_tolerance=self.hjb_newton_tolerance,
         )
