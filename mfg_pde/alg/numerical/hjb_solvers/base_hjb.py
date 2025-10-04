@@ -9,6 +9,7 @@ import scipy.sparse as sparse
 from mfg_pde.alg.base_solver import BaseNumericalSolver
 
 if TYPE_CHECKING:
+    from mfg_pde.backends.base_backend import BaseBackend
     from mfg_pde.config import BaseConfig
     from mfg_pde.core.mfg_problem import MFGProblem
 
@@ -440,6 +441,7 @@ def solve_hjb_timestep_newton(
     # Deprecated parameters for backward compatibility
     NiterNewton: int | None = None,
     l2errBoundNewton: float | None = None,
+    backend: BaseBackend | None = None,
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
@@ -482,8 +484,18 @@ def solve_hjb_timestep_newton(
     if newton_tolerance is None:
         newton_tolerance = 1e-6
 
+    # Get array module from backend (defaults to NumPy)
+    if backend is not None:
+        xp = backend.array_module
+    else:
+        xp = np
+
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
-    U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
+    # Use backend-aware copy
+    if hasattr(U_n_plus_1_from_hjb_step, "copy"):
+        U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
+    else:
+        U_n_current_newton_iterate = xp.array(U_n_plus_1_from_hjb_step)
 
     if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
         return U_n_current_newton_iterate
@@ -534,6 +546,7 @@ def solve_hjb_system_backward(
     # Deprecated parameters for backward compatibility
     NiterNewton: int | None = None,
     l2errBoundNewton: float | None = None,
+    backend: BaseBackend | None = None,
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.
@@ -575,10 +588,16 @@ def solve_hjb_system_backward(
     if newton_tolerance is None:
         newton_tolerance = 1e-6
 
+    # Get array module from backend (defaults to NumPy)
+    if backend is not None:
+        xp = backend.array_module
+    else:
+        xp = np
+
     Nt = problem.Nt + 1
     Nx = problem.Nx + 1
 
-    U_solution_this_picard_iter = np.zeros((Nt, Nx))  # U_new in notebook
+    U_solution_this_picard_iter = xp.zeros((Nt, Nx))  # U_new in notebook
     if Nt == 0:
         return U_solution_this_picard_iter
 
@@ -615,6 +634,7 @@ def solve_hjb_system_backward(
             max_newton_iterations=max_newton_iterations,
             newton_tolerance=newton_tolerance,
             t_idx_n=n_idx_hjb,
+            backend=backend,  # Pass backend for acceleration
         )
         if np.any(np.isnan(U_solution_this_picard_iter[n_idx_hjb, :])) and not np.any(
             np.isnan(U_n_plus_1_current_picard)

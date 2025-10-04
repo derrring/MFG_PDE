@@ -30,6 +30,7 @@ class FPParticleSolver(BaseFPSolver):
         kde_bandwidth: Any = "scott",
         normalize_kde_output: bool = True,
         boundary_conditions: BoundaryConditions | None = None,
+        backend: str | None = None,
     ) -> None:
         super().__init__(problem)
         self.fp_method_name = "Particle"
@@ -37,6 +38,14 @@ class FPParticleSolver(BaseFPSolver):
         self.kde_bandwidth = kde_bandwidth
         self.normalize_kde_output = normalize_kde_output  # New flag
         self.M_particles_trajectory: np.ndarray | None = None
+
+        # Initialize backend (defaults to NumPy)
+        from mfg_pde.backends import create_backend
+
+        if backend is not None:
+            self.backend = create_backend(backend)
+        else:
+            self.backend = create_backend("numpy")  # NumPy fallback
 
         # Default to periodic boundaries for backward compatibility
         if boundary_conditions is None:
@@ -50,6 +59,15 @@ class FPParticleSolver(BaseFPSolver):
         xmin = self.problem.xmin
         xmax = self.problem.xmax
         Dx = self.problem.Dx
+
+        # KDE Acceleration Limitation:
+        # scipy.stats.gaussian_kde is CPU-only (no JAX/Torch equivalent)
+        # True GPU acceleration requires custom KDE implementation
+        # Options:
+        # 1. JAX-based KDE using vmap/jit (Phase 3)
+        # 2. PyTorch KDE using tensor operations (Phase 3)
+        # 3. Numba-compiled KDE (partial speedup, Phase 2.5)
+        # Current: Using scipy.stats.gaussian_kde with backend infrastructure ready
 
         if self.num_particles == 0 or len(particles_at_time_t) == 0:
             return np.zeros(Nx)

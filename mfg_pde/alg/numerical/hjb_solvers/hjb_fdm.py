@@ -21,11 +21,20 @@ class HJBFDMSolver(BaseHJBSolver):
         # Deprecated parameters for backward compatibility
         NiterNewton: int | None = None,
         l2errBoundNewton: float | None = None,
+        backend: str | None = None,
     ):
         import warnings
 
         super().__init__(problem)
         self.hjb_method_name = "FDM"
+
+        # Initialize backend (defaults to NumPy)
+        from mfg_pde.backends import create_backend
+
+        if backend is not None:
+            self.backend = create_backend(backend)
+        else:
+            self.backend = create_backend("numpy")  # NumPy fallback
 
         # Handle backward compatibility
         if NiterNewton is not None:
@@ -92,5 +101,6 @@ class HJBFDMSolver(BaseHJBSolver):
             problem=self.problem,
             max_newton_iterations=self.max_newton_iterations,
             newton_tolerance=self.newton_tolerance,
+            backend=self.backend,  # Pass backend for acceleration
         )
         return U_new_solution

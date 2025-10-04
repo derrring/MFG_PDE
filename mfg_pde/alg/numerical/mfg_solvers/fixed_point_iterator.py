@@ -31,6 +31,8 @@ class FixedPointIterator(BaseMFGSolver):
 
     Features:
     - Classic Picard iteration with configurable damping
+    - Anderson acceleration for faster convergence
+    - Computational backend support (NumPy/JAX/Numba/Torch)
     - Comprehensive convergence monitoring
     - Warm start capability
     - Enhanced error handling and reporting
@@ -47,6 +49,10 @@ class FixedPointIterator(BaseMFGSolver):
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
         thetaUM: float = 0.5,
+        backend: str | None = None,
+        use_anderson: bool = False,
+        anderson_depth: int = 5,
+        anderson_beta: float = 1.0,
     ):
         """
         Initialize the Fixed Point Iterator.
@@ -56,15 +62,57 @@ class FixedPointIterator(BaseMFGSolver):
             hjb_solver: Hamilton-Jacob-Bellman solver
             fp_solver: Fokker-Planck solver
             thetaUM: Damping parameter (0.5 = balanced damping)
+            backend: Computational backend ("numpy", "jax", "numba", "torch", None=auto)
+            use_anderson: Enable Anderson acceleration
+            anderson_depth: Number of iterates for Anderson (m parameter)
+            anderson_beta: Damping for Anderson (1.0 = no damping)
         """
         super().__init__(problem)
         self.hjb_solver = hjb_solver
         self.fp_solver = fp_solver
         self.thetaUM = thetaUM
+        self.use_anderson = use_anderson
+        self.anderson_depth = anderson_depth
+        self.anderson_beta = anderson_beta
+
+        # Initialize backend
+        if backend is not None:
+            from mfg_pde.backends import create_backend
+
+            self.backend = create_backend(backend)
+        else:
+            self.backend = None
+
+        # Initialize Anderson accelerator if requested
+        self.anderson_accelerator = None
+        if use_anderson:
+            from mfg_pde.utils.anderson_acceleration import create_anderson_accelerator
+
+            self.anderson_accelerator = create_anderson_accelerator(
+                depth=anderson_depth,
+                beta=anderson_beta,
+                regularization=1e-4,  # Higher regularization for stochastic problems
+                restart_threshold=5.0,  # Restart if error increases 5x
+            )
+
+        # Pass backend to solvers if they support it
+        if backend is not None and hasattr(hjb_solver, "backend"):
+            if hjb_solver.backend is None:  # Only set if not already set
+                from mfg_pde.backends import create_backend
+
+                hjb_solver.backend = create_backend(backend)
+
+        if backend is not None and hasattr(fp_solver, "backend"):
+            if fp_solver.backend is None:  # Only set if not already set
+                from mfg_pde.backends import create_backend
+
+                fp_solver.backend = create_backend(backend)
 
         hjb_name = getattr(hjb_solver, "hjb_method_name", "UnknownHJB")
         fp_name = getattr(fp_solver, "fp_method_name", "UnknownFP")
-        self.name = f"HJB-{hjb_name}_FP-{fp_name}"
+        accel_name = "Anderson" if use_anderson else "Damped"
+        backend_name = backend or "numpy"
+        self.name = f"HJB-{hjb_name}_FP-{fp_name}_{accel_name}_{backend_name}"
 
         # Initialize solution arrays
         self.U: np.ndarray
@@ -208,11 +256,16 @@ class FixedPointIterator(BaseMFGSolver):
         self.l2distm_rel = np.ones(final_max_iterations)
         self.iterations_run = 0
 
+        # Reset Anderson accelerator if using it
+        if self.anderson_accelerator is not None:
+            self.anderson_accelerator.reset()
+
         U_picard_prev = self.U.copy()  # Initialize U from previous Picard (k-1) with initial U for k=0
 
         for iiter in range(final_max_iterations):
             start_time_iter = time.time()
-            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations} ---")
+            accel_tag = " (Anderson)" if self.use_anderson else ""
+            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations}{accel_tag} ---")
 
             U_old_current_picard_iter = self.U.copy()  # U_k
             M_old_current_picard_iter = self.M.copy()  # M_k
@@ -225,14 +278,34 @@ class FixedPointIterator(BaseMFGSolver):
                 U_picard_prev,  # U_{k-1} (this is U_old from notebook's solveHJB_withM(sigma, U, M))
             )
 
-            # Apply damping to U update: U_{k+1} = theta * U_tmp + (1-theta) * U_k
-            self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
+            # 2. Solve FP forward using the newly computed U_new_tmp_hjb
+            M_new_tmp_fp = self.fp_solver.solve_fp_system(initial_m_dist, U_new_tmp_hjb)
 
-            # 2. Solve FP forward using the newly computed U (U_{k+1})
-            M_new_tmp_fp = self.fp_solver.solve_fp_system(initial_m_dist, self.U)
+            # Apply damping and/or Anderson acceleration
+            if self.use_anderson and self.anderson_accelerator is not None:
+                # Two-level damping: Picard damping THEN Anderson acceleration
+                # This provides extra stability for stochastic problems
 
-            # Apply damping to M update: M_{k+1} = theta * M_tmp + (1-theta) * M_k
-            self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
+                # First: Apply standard Picard damping to HJB/FP outputs
+                U_damped = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
+                M_damped = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
+
+                # Second: Apply Anderson acceleration on damped iterates
+                # State vector: [U.flatten(), M.flatten()]
+                x_current = np.concatenate([U_old_current_picard_iter.flatten(), M_old_current_picard_iter.flatten()])
+                f_current = np.concatenate([U_damped.flatten(), M_damped.flatten()])
+
+                # Anderson acceleration (with its own internal beta damping)
+                x_next = self.anderson_accelerator.update(x_current, f_current, method="type1")
+
+                # Extract U and M from accelerated state
+                n_u = U_old_current_picard_iter.size
+                self.U = x_next[:n_u].reshape(U_old_current_picard_iter.shape)
+                self.M = x_next[n_u:].reshape(M_old_current_picard_iter.shape)
+            else:
+                # Standard damping only (no Anderson)
+                self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
+                self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
 
             # Update U_picard_prev for the next iteration's Jacobian calculation
             U_picard_prev = U_old_current_picard_iter.copy()  # U_k becomes U_{k-1} for next iter

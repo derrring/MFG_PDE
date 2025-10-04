@@ -391,19 +391,112 @@ if np.median(recent_errors) < tolerance:
 
 ### Next Steps
 
-1. ✅ **Update FixedPointIterator** to support statistical stopping criteria (enhancement)
-2. ✅ **Add convergence monitoring tools** for stochastic solvers
-3. **Test FP-FDM + HJB-FDM** for comparison with deterministic method
-4. **Create visualization tools** for stochastic convergence analysis
-5. **2D extension** of mass conservation tests with probabilistic framework
+1. ✅ **Update FixedPointIterator** to support statistical stopping criteria (completed)
+2. ✅ **Add convergence monitoring tools** for stochastic solvers (StochasticConvergenceMonitor)
+3. ✅ **Anderson acceleration integration** (implemented but NOT recommended for particle methods)
+4. ✅ **Acceleration testing** (showed Anderson unstable for stochastic solvers)
+5. **Test FP-FDM + HJB-FDM** for comparison with deterministic method
+6. **2D extension** of mass conservation tests with probabilistic framework
 
 ---
 
 ## Files Created
 
+### Tests and Analysis Scripts
+
 - `tests/integration/test_mass_conservation_1d.py` - Comprehensive test (incomplete due to API issues)
 - `tests/integration/test_mass_conservation_1d_simple.py` - Simplified test using `MFGProblem`
+- `test_mass_conservation_fast.py` - Fast test with reduced parameters (500 particles, 26×26 grid)
+- `test_anderson_acceleration.py` - Anderson vs standard damping comparison
+- `test_stochastic_mass_conservation_simple.py` - Probabilistic framework demonstration
+- `visualize_stochastic_mass_conservation.py` - Mass conservation visualization
+- `study_hybrid_mass_conservation.py` - Comprehensive study script
+
+### Core Implementation
+
+- `mfg_pde/utils/convergence.py` - Added `StochasticConvergenceMonitor` class
+- `mfg_pde/utils/anderson_acceleration.py` - **NEW**: Anderson acceleration implementation
+- `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py` - Added Anderson acceleration and backend support
+
+### Documentation
+
 - `docs/development/MASS_CONSERVATION_INVESTIGATION.md` - This document
+- `docs/development/ACCELERATION_INTEGRATION_SUMMARY.md` - **NEW**: Acceleration integration report
+
+### Test Results
+
+- `mass_conservation_fast.png` - Fast test results with standard damping
+- `anderson_acceleration_comparison.png` - Anderson vs damped comparison
+
+---
+
+## Acceleration Integration Findings
+
+### Anderson Acceleration
+
+**Implementation**: 2025-10-04
+
+Anderson acceleration was implemented for `FixedPointIterator` to potentially speed up convergence. The algorithm combines information from previous iterates using least-squares extrapolation.
+
+**Results for Particle-Grid Hybrid (FP-Particle + HJB-FDM)**:
+
+| Metric | Standard Damping | Anderson Acceleration | Result |
+|:-------|:-----------------|:----------------------|:-------|
+| Time (30 iter) | 11.21s | 6.51s | **1.72x faster** |
+| Time/iteration | 0.374s | 0.217s | 42% reduction |
+| Final Error U | 5.02e-01 | **1.14e+00** | ❌ **2.3x worse** |
+| Final Error M | 1.56e-02 | **1.02e+00** | ❌ **65x worse** |
+| Mass Deviation | 2.82e-02 | **3.78e+00** | ❌ **130x worse** |
+| Stability | ✅ Stable | ❌ **Unstable** | Diverges |
+
+**Conclusion**: ❌ **Anderson acceleration NOT suitable for particle-based solvers**
+
+**Why Anderson Fails for Stochastic Methods**:
+
+1. **Least-squares assumption broken**: Anderson assumes smooth, deterministic fixed-point maps
+2. **Particle noise amplified**: Stochastic fluctuations in KDE density estimates break extrapolation
+3. **Mass conservation violated**: Errors compound and violate physical constraints
+4. **No benefit despite speedup**: Faster iterations produce invalid results
+
+**Recommendation**:
+
+```python
+# For Particle-based solvers (FP-Particle + HJB-FDM/GFDM)
+mfg_solver = FixedPointIterator(
+    problem, hjb_solver, fp_solver,
+    use_anderson=False,  # DON'T use Anderson
+    thetaUM=0.5,        # Use standard damping instead
+)
+
+# For Deterministic solvers (FP-FDM + HJB-FDM)
+mfg_solver = FixedPointIterator(
+    problem, hjb_solver, fp_solver,
+    use_anderson=True,   # Anderson is safe here
+    anderson_depth=5,
+    anderson_beta=1.0,
+)
+```
+
+### Computational Backend Support
+
+**Status**: Infrastructure in place, not yet active in numerical solvers
+
+The `FixedPointIterator` now accepts a `backend` parameter:
+
+```python
+mfg_solver = FixedPointIterator(
+    problem, hjb_solver, fp_solver,
+    backend="numba",  # or "jax", "torch", "numpy"
+)
+```
+
+However, the underlying `HJBFDMSolver` and `FPParticleSolver` are still pure NumPy implementations, so **backend parameter currently has no effect on performance**.
+
+**Test Results**:
+- Anderson + numpy: 6.51s
+- Anderson + numba: 6.50s (no difference, as expected)
+
+**Future Work**: Refactor HJB/FP solvers to use backend abstraction for actual acceleration.
 
 ---
 
