@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "1.5.0" # Phase 3.5: Continuous Environments Library complete
+version = "1.4.0" # v1.4.0: Complete Continuous Action Framework (DDPG, TD3, SAC)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

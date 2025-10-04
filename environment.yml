@@ -12,9 +12,10 @@ dependencies:
   - matplotlib>=3.8        # Updated for NumPy 2.0+
 
   # Performance libraries
-  - numba>=0.59           # NumPy 2.0+ support
-  - jax>=0.4.20           # Latest with NumPy 2.0+ support
+  - numba>=0.59           # NumPy 2.0+ support (CPU JIT)
+  - jax>=0.4.20           # Latest with NumPy 2.0+ support (XLA compilation)
   - jaxlib                # JAX support library
+  - pytorch>=2.0          # PyTorch for Phase 3 backend (CUDA/MPS/CPU)
 
   # Data processing
   - pandas>=2.1           # NumPy 2.0+ compatible
@@ -31,12 +32,15 @@ dependencies:
   - bokeh>=3.3            # Advanced visualizations
   - seaborn>=0.13         # Statistical plotting
 
-  # Development tools
+  # Progress and utilities
+  - tqdm>=4.0             # Progress bars (used throughout package)
+
+  # Development tools (modern unified tooling)
   - pytest>=7.0          # Testing framework
   - pytest-benchmark     # Performance testing
-  - black>=23.0          # Code formatting
-  - isort>=5.12          # Import sorting
+  - ruff>=0.6.0          # Fast unified linting and formatting (replaces black+isort+flake8)
   - mypy>=1.5            # Type checking
+  - pre-commit>=2.0      # Pre-commit hooks
 
   # Documentation
   - sphinx>=7.0          # Documentation generation
