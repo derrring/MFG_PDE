@@ -142,7 +142,6 @@ def test_device_compatibility():
     print("DEVICE COMPATIBILITY TEST")
     print("=" * 80)
 
-
     from mfg_pde.utils.acceleration.torch_utils import HAS_CUDA, HAS_MPS
 
     particles = np.random.normal(loc=0.5, scale=0.1, size=100)
