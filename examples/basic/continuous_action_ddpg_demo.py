@@ -203,7 +203,7 @@ def evaluate_policy(env: ContinuousActionMazeEnvironment, algo: MeanFieldDDPG, n
     success_rate = 0
 
     for episode in range(num_episodes):
-        observations, _ = env.reset(seed=episode + 1000)
+        _observations, _ = env.reset(seed=episode + 1000)
         episode_reward = 0
         done = False
         steps = 0

@@ -47,7 +47,7 @@ def run_random_policy_episode(env, seed: int = 42):
     Returns:
         Episode statistics (rewards, states, actions)
     """
-    state, info = env.reset(seed=seed)
+    state, _info = env.reset(seed=seed)
 
     episode_rewards = []
     episode_states = []
