@@ -129,7 +129,7 @@ class TestSimpleMultiPopulationEnv:
 
         # Run for max_steps
         for _ in range(9):
-            _, _, terminated, truncated, _ = env.step(actions)
+            _, _, _terminated, truncated, _ = env.step(actions)
             assert not truncated["pop1"]
 
         # Last step should truncate

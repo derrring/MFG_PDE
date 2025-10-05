@@ -133,7 +133,7 @@ def demo_population_tracking():
     print(f"  Congestion weight: {config.congestion_weight}")
 
     # Run episode
-    observation, info = env.reset(seed=42)
+    observation, _info = env.reset(seed=42)
     print(f"\nLocal density shape: {observation['local_density'].shape}")
     print(f"Initial density sum: {observation['local_density'].sum():.3f}")
 
@@ -188,7 +188,7 @@ def demo_reward_structures():
         )
 
         env = MFGMazeEnvironment(config)
-        observation, info = env.reset(seed=42)
+        _observation, _info = env.reset(seed=42)
 
         total_reward = 0
         step_count = 0
@@ -255,7 +255,7 @@ def demo_maze_types():
         )
 
         env = MFGMazeEnvironment(config)
-        observation, info = env.reset(seed=42)
+        _observation, _info = env.reset(seed=42)
 
         # Run episode
         steps = 0
@@ -309,7 +309,7 @@ def visualize_multi_episode_learning():
     print(f"\nRunning {num_episodes} episodes with random policy...")
 
     for episode in range(num_episodes):
-        observation, info = env.reset(seed=42 + episode)
+        _observation, _info = env.reset(seed=42 + episode)
         episode_reward = 0
         steps = 0
 
