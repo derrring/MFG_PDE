@@ -428,7 +428,7 @@ class MFGSolverConfig(BaseModel):
             experiment_name="research_config",
         )
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(validate_assignment=True, env_prefix="MFG_")
 
 
 # Convenience factory functions for backward compatibility
