@@ -8,7 +8,7 @@ with preference for NumPy 2.0+ standard but fallbacks for older versions.
 from __future__ import annotations
 
 # Import from the comprehensive NumPy compatibility module
-from .numpy_compat import get_numpy_info, trapezoid
+from mfg_pde.utils.numpy_compat import get_numpy_info, trapezoid
 
 
 # Re-export for backward compatibility

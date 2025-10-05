@@ -532,25 +532,35 @@ high-dimensional neural solver for master equation.
 
 ## 🗓️ Implementation Timeline
 
-### Week 1-2: Foundation (Infrastructure)
-- [ ] Create `stochastic/` directory structure
-- [ ] Implement `StochasticMFGProblem` base class
-- [ ] Build noise process library (OU, CIR, GBM, Jump)
-- [ ] Unit tests for noise processes
+### Week 1-2: Foundation (Infrastructure) ✅ COMPLETED
+- ✅ Create `stochastic/` directory structure
+- ✅ Implement `StochasticMFGProblem` base class
+- ✅ Build noise process library (OU, CIR, GBM, Jump)
+- ✅ Unit tests for noise processes (32 tests passing)
 
-### Week 3-4: Common Noise Solver (Core Algorithm)
-- [ ] Implement `CommonNoiseMFGSolver`
-- [ ] Monte Carlo sampling infrastructure
-- [ ] Variance reduction techniques (QMC, control variates)
-- [ ] Parallel execution across noise realizations
+**Commit**: 2bfcf03 - Phase 2.2 Week 1-2: Stochastic MFG Foundation
 
-### Week 5-6: Master Equation Foundation
-- [ ] Functional derivative operators
-- [ ] Finite difference approximation
-- [ ] Automatic differentiation integration (JAX/PyTorch)
-- [ ] Unit tests for functional calculus
+### Week 3-4: Common Noise Solver (Core Algorithm) ✅ COMPLETED
+- ✅ Implement `CommonNoiseMFGSolver`
+- ✅ Monte Carlo sampling infrastructure (leveraged existing utils)
+- ✅ Variance reduction techniques (QMC via Sobol sequences)
+- ✅ Parallel execution across noise realizations (ProcessPoolExecutor)
 
-### Week 7-8: Master Equation Solver
+**Commit**: 81da19a - Phase 2.2 Week 3-4: Common Noise MFG Solver
+
+### Week 5: Master Equation Foundation ✅ COMPLETED
+- ✅ Functional derivative operators (FiniteDifferenceFunctionalDerivative)
+- ✅ Finite difference approximation (forward & central methods)
+- ✅ Particle approximation for measures (empirical measures)
+- ✅ Unit tests for functional calculus (14 tests passing)
+- ✅ Utility functions (create_particle_measure, verify_accuracy)
+
+**Commit**: 0ee6968 - Phase 2.2 Week 5: Functional Calculus for Master Equation
+
+**Key Achievement**: Fixed critical normalization bug - removing normalization after perturbation
+corrected ~100,000x errors in linear functional derivative computation.
+
+### Week 6-8: Master Equation Solver (PAUSED)
 - [ ] Implement `MasterEquationSolver`
 - [ ] Finite difference solver (low-d)
 - [ ] Neural PINN solver (high-d)

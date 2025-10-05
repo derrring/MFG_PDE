@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .amr_mesh import AMRRefinementCriteria, BaseErrorEstimator
+from .amr_quadtree_2d import AMRRefinementCriteria, BaseErrorEstimator
 from .base_geometry import MeshData
 
 logger = logging.getLogger(__name__)

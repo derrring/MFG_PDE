@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 import numpy as np
 
-from mfg_pde.utils.integration import trapezoid
+from mfg_pde.utils.numerical.integration import trapezoid
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

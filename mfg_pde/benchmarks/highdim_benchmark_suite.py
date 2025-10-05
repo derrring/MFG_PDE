@@ -19,8 +19,8 @@ import psutil
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.utils.logging import get_logger
-from mfg_pde.utils.performance_optimization import PerformanceMonitor
+from mfg_pde.utils.logging.logger import get_logger
+from mfg_pde.utils.performance.optimization import PerformanceMonitor
 
 if TYPE_CHECKING:
     from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem

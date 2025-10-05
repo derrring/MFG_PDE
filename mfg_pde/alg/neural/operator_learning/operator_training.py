@@ -46,7 +46,7 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-from mfg_pde.utils.logging import get_logger
+from mfg_pde.utils.logging.logger import get_logger
 
 NDArray = np.ndarray[Any, np.dtype[Any]]
 

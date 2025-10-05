@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from mfg_pde.utils.integration import trapezoid
+from mfg_pde.utils.numerical.integration import trapezoid
 
 from .base_backend import BaseBackend
 
