@@ -39,6 +39,7 @@ from .factory import (  # noqa: E402
     create_monitored_solver,
     create_research_solver,
     create_solver,
+    create_standard_solver,
 )
 from .factory.general_mfg_factory import (  # noqa: E402
     GeneralMFGFactory,
@@ -147,6 +148,7 @@ __all__ = [
     "create_fast_config",
     "create_fast_solver",
     "create_general_mfg_problem",
+    "create_standard_solver",
     "create_grid_mfg_problem",
     "create_mfg_problem",
     "create_monitored_solver",
