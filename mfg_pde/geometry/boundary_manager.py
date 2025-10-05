@@ -56,8 +56,11 @@ class GeometricBoundaryCondition:
             if self.alpha is None or self.beta is None:
                 raise ValueError("Robin boundary conditions require alpha and beta coefficients")
 
-        if self.bc_type in ["dirichlet", "neumann"] and self.value is None:
-            raise ValueError(f"{self.bc_type} boundary condition requires value")
+        if self.bc_type == "dirichlet" and self.value is None:
+            raise ValueError("Dirichlet boundary condition requires value")
+
+        if self.bc_type == "neumann" and self.gradient_value is None and self.value is None:
+            raise ValueError("Neumann boundary condition requires gradient_value or value")
 
     def evaluate(self, coordinates: np.ndarray, time: float = 0.0) -> np.ndarray:
         """
