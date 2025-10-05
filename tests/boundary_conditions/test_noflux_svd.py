@@ -50,8 +50,8 @@ def test_noflux_with_svd():
                 delta=0.8,  # Large delta for stability
                 taylor_order=1,  # First order for stability
                 weight_function="wendland",
-                NiterNewton=10,
-                l2errBoundNewton=1e-4,
+                max_newton_iterations=10,
+                newton_tolerance=1e-4,
                 kde_bandwidth="scott",
                 normalize_kde_output=True,
                 boundary_indices=boundary_indices,

@@ -94,7 +94,7 @@ class FixedPointSolver(BaseSolver):
                 m_init = np.ones((Nt + 1, Nx + 1))
                 m_init[0, :] = problem.get_initial_density()  # Initial condition
                 # Normalize
-                m_init[0, :] /= float(np.trapz(m_init[0, :], x_grid))
+                m_init[0, :] /= float(np.trapezoid(m_init[0, :], x_grid))
 
         except (AttributeError, NotImplementedError):
             # Fallback to default initialization
@@ -194,7 +194,7 @@ class FixedPointSolver(BaseSolver):
         # Forward time iteration
         for n in range(len(t_grid) - 1):
             # Simple conservation of mass constraint
-            total_mass = float(np.trapz(m_new[n, :], x_grid))
+            total_mass = float(np.trapezoid(m_new[n, :], x_grid))
             if total_mass > 0:
                 m_new[n, :] /= total_mass
 

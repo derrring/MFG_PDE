@@ -50,8 +50,8 @@ class TestGFDMHJBSolver:
             collocation_points=self.collocation_points,
             delta=0.3,
             taylor_order=2,
-            NiterNewton=5,
-            l2errBoundNewton=1e-4,
+            max_newton_iterations=5,
+            newton_tolerance=1e-4,
         )
 
     def test_initialization(self):

@@ -38,7 +38,7 @@ def test_basic_kde():
     print(f"Evaluation: {len(x_eval)} points")
     print(f"PyTorch KDE bandwidth: {torch_kde.bandwidth:.6f}")
     print(f"PyTorch density range: [{torch_density.min():.6f}, {torch_density.max():.6f}]")
-    print(f"PyTorch density integral (trapz): {np.trapz(torch_density, x_eval):.6f}")
+    print(f"PyTorch density integral (trapz): {np.trapezoid(torch_density, x_eval):.6f}")
 
     # Compare with scipy if available
     if HAS_SCIPY:
@@ -47,7 +47,7 @@ def test_basic_kde():
 
         print(f"\nScipy KDE bandwidth: {scipy_kde.factor * scipy_kde.covariance[0, 0]**0.5:.6f}")
         print(f"Scipy density range: [{scipy_density.min():.6f}, {scipy_density.max():.6f}]")
-        print(f"Scipy density integral (trapz): {np.trapz(scipy_density, x_eval):.6f}")
+        print(f"Scipy density integral (trapz): {np.trapezoid(scipy_density, x_eval):.6f}")
 
         # Compute relative error
         rel_error = np.abs(torch_density - scipy_density) / (scipy_density + 1e-10)
@@ -86,7 +86,7 @@ def test_bandwidth_methods():
         print(f"\n{method_name}:")
         print(f"  Bandwidth: {kde.bandwidth:.6f}")
         print(f"  Peak density: {density.max():.6f}")
-        print(f"  Integral: {np.trapz(density, x_eval):.6f}")
+        print(f"  Integral: {np.trapezoid(density, x_eval):.6f}")
 
 
 def test_edge_cases():
@@ -101,14 +101,14 @@ def test_edge_cases():
     x_eval = np.linspace(0, 1, 50)
     density_single = kde_single(x_eval)
     print(f"   Density at particle location (x=0.5): {density_single[25]:.6f}")
-    print(f"   Integral: {np.trapz(density_single, x_eval):.6f}")
+    print(f"   Integral: {np.trapezoid(density_single, x_eval):.6f}")
 
     # Two particles
     print("\n2. Two particles:")
     kde_two = TorchKDE(np.array([0.3, 0.7]), bw_method=0.1)
     density_two = kde_two(x_eval)
     print(f"   Density has two modes: {len(find_peaks(density_two))} peaks detected")
-    print(f"   Integral: {np.trapz(density_two, x_eval):.6f}")
+    print(f"   Integral: {np.trapezoid(density_two, x_eval):.6f}")
 
     # Many particles (performance test)
     print("\n3. Large dataset (performance):")
@@ -124,7 +124,7 @@ def test_edge_cases():
 
     print(f"   {len(particles_large)} particles, {len(x_eval_large)} evaluation points")
     print(f"   Time: {elapsed:.4f} seconds")
-    print(f"   Integral: {np.trapz(density_large, x_eval_large):.6f}")
+    print(f"   Integral: {np.trapezoid(density_large, x_eval_large):.6f}")
 
 
 def find_peaks(signal, threshold=0.01):

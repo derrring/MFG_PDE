@@ -170,7 +170,7 @@ class PostprocessingHook(SolverHooks):
             m_corrected = np.maximum(state.m, 0)
             # Normalize each time slice
             for t in range(m_corrected.shape[0]):
-                total = np.trapz(m_corrected[t, :], axis=0)
+                total = np.trapezoid(m_corrected[t, :], axis=0)
                 if total > 0:
                     m_corrected[t, :] /= total
             return state.copy_with_updates(m=m_corrected)

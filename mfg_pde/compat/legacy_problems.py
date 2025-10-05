@@ -45,7 +45,7 @@ class LegacyMFGProblem(DeprecatedAPI):
 
         x = np.linspace(*self._domain_bounds, 101)
         density = np.exp(-10 * (x - 0.2) ** 2)
-        return density / np.trapz(density, x)
+        return density / np.trapezoid(density, x)
 
     def get_terminal_value(self):
         import numpy as np

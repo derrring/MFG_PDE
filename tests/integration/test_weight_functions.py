@@ -39,8 +39,8 @@ def test_weight_functions():
                 delta=0.8,
                 taylor_order=1,
                 weight_function=weight_func,
-                NiterNewton=5,
-                l2errBoundNewton=1e-3,
+                max_newton_iterations=5,
+                newton_tolerance=1e-3,
                 boundary_indices=boundary_indices,
                 boundary_conditions=no_flux_bc,
             )

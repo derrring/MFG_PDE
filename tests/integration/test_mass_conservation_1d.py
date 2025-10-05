@@ -195,7 +195,7 @@ def compute_total_mass(density: np.ndarray, dx: float) -> float:
     Returns:
         Total mass
     """
-    return float(np.trapz(density, dx=dx))
+    return float(np.trapezoid(density, dx=dx))
 
 
 class TestMassConservation1D:

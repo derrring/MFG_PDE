@@ -44,7 +44,7 @@ class DebugHook(SolverHooks):
 
         if output_file:
             self.output_file = Path(output_file)
-            self.file_handle = open(self.output_file, "w")
+            self.file_handle = open(self.output_file, "w")  # noqa: SIM115  # File closed in on_solve_end
 
     def _write(self, message: str):
         """Write message to console and/or file."""
@@ -346,7 +346,7 @@ class StateInspectionHook(SolverHooks):
             if hasattr(state, "metadata") and "x_grid" in state.metadata:
                 x_grid = state.metadata["x_grid"]
                 for t_idx in range(state.m.shape[0]):
-                    mass = np.trapz(state.m[t_idx, :], x_grid)
+                    mass = np.trapezoid(state.m[t_idx, :], x_grid)
                     mass_error = float(abs(float(mass) - 1.0))
                     if mass_error > self.mass_tolerance:
                         issues.append(f"Mass conservation violated at t={t_idx}: mass={float(mass):.6f}")

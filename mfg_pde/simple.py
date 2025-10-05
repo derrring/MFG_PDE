@@ -575,7 +575,7 @@ class SimpleMFGProblem:
         x_grid = np.linspace(xmin, xmax, 101)  # Default grid
         density = np.array([self._initial_density_func(x) for x in x_grid])
         # Normalize
-        density = density / np.trapz(density, x_grid)
+        density = density / np.trapezoid(density, x_grid)
         return density
 
     def get_initial_value_function(self) -> np.ndarray:

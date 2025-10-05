@@ -80,7 +80,7 @@ class TestLQCommonNoiseAnalytical:
         # Set initial density (Gaussian)
         x = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         rho0 = np.exp(-(x**2) / 0.5)
-        rho0 /= np.trapz(rho0, x)  # Normalize
+        rho0 /= np.trapezoid(rho0, x)  # Normalize
         problem.rho0 = rho0
 
         # Set terminal cost (quadratic)
@@ -123,7 +123,7 @@ class TestLQCommonNoiseAnalytical:
             # Density: Gaussian with time-dependent variance
             sigma_t = 0.5 * (1 + 0.5 * t)  # Approximate variance evolution
             m[i] = np.exp(-(x**2) / (2 * sigma_t))
-            m[i] /= np.trapz(m[i], x)  # Normalize
+            m[i] /= np.trapezoid(m[i], x)  # Normalize
 
         return u, m
 
@@ -235,7 +235,7 @@ class TestLQCommonNoiseAnalytical:
         # Check density normalization
         x = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         for i in range(problem.Nt + 1):
-            mass = np.trapz(m[i], x)
+            mass = np.trapezoid(m[i], x)
             assert np.abs(mass - 1.0) < 1e-6, f"Density at t={i} not normalized: mass={mass}"
 
         # Check terminal condition: u(T, x) ≈ A(0)·x²/2

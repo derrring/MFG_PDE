@@ -500,7 +500,7 @@ class FPPINNSolver(PINNBase):
         dx = x_grid[1] - x_grid[0]
 
         # Compute total mass at each time
-        total_mass = np.trapz(m, axis=0, dx=dx)
+        total_mass = np.trapezoid(m, axis=0, dx=dx)
 
         metrics = {
             "initial_mass": total_mass[0],
@@ -592,7 +592,7 @@ class FPPINNSolver(PINNBase):
 
         # Mass conservation
         dx = solution["x_grid"][1] - solution["x_grid"][0]
-        total_mass = np.trapz(solution["m"], axis=0, dx=dx)
+        total_mass = np.trapezoid(solution["m"], axis=0, dx=dx)
         ax3.plot(solution["t_grid"], total_mass)
         ax3.axhline(y=self.target_total_mass, color="r", linestyle="--", label="Target")
         ax3.set_xlabel("Time t")

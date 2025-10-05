@@ -731,7 +731,7 @@ class MFGPINNSolver(PINNBase):
 
         # Mass conservation
         dx = solution["x_grid"][1] - solution["x_grid"][0]
-        total_mass = np.trapz(solution["m"], axis=0, dx=dx)
+        total_mass = np.trapezoid(solution["m"], axis=0, dx=dx)
         ax4.plot(solution["t_grid"], total_mass)
         ax4.axhline(y=self.target_total_mass, color="r", linestyle="--", label="Target")
         ax4.set_xlabel("Time t")

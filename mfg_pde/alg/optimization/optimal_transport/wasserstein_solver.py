@@ -239,7 +239,7 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
             densities[0, :] = np.exp(-((self.spatial_grid - center) ** 2) / (2 * width**2))
 
         # Normalize initial density
-        densities[0, :] /= np.trapz(densities[0, :], self.spatial_grid)
+        densities[0, :] /= np.trapezoid(densities[0, :], self.spatial_grid)
 
         return densities
 

@@ -258,7 +258,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
             densities[0, :] = np.exp(-((self.spatial_grid - center) ** 2) / (2 * width**2))
 
         # Normalize
-        densities[0, :] /= np.trapz(densities[0, :], self.spatial_grid)
+        densities[0, :] /= np.trapezoid(densities[0, :], self.spatial_grid)
 
         return densities
 
@@ -420,5 +420,5 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
 
     def _compute_mass_conservation_error(self, densities: NDArray) -> float:
         """Compute mass conservation error."""
-        total_masses = [np.trapz(density, self.spatial_grid) for density in densities]
+        total_masses = [np.trapezoid(density, self.spatial_grid) for density in densities]
         return np.std(total_masses)

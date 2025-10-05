@@ -167,7 +167,7 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
 
     # Compute masses
     dx = problem.Dx
-    masses = np.array([float(np.trapz(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
+    masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
 
     # Create result object
     class Result:

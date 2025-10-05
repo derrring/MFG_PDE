@@ -96,8 +96,8 @@ def example_particle_collocation_solver():
         delta=0.2,
         taylor_order=2,
         weight_function="gaussian",
-        NiterNewton=10,
-        l2errBoundNewton=1e-4,
+        max_newton_iterations=10,
+        newton_tolerance=1e-4,
     )
 
     # Print solver information
@@ -211,8 +211,8 @@ def example_gfdm_hjb_solver():
         delta=0.25,
         taylor_order=2,
         weight_function="gaussian",
-        NiterNewton=15,
-        l2errBoundNewton=1e-5,
+        max_newton_iterations=15,
+        newton_tolerance=1e-5,
     )
 
     print("GFDM HJB Solver initialized:")
