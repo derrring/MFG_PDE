@@ -211,7 +211,7 @@ class TestWenoFamilySolver:
         u_test = np.sin(2 * np.pi * x)
         m_test = np.ones_like(u_test) / len(u_test)
 
-        dt_stable = solver._compute_dt_stable(u_test, m_test)
+        dt_stable = solver._compute_dt_stable_1d(u_test, m_test)
 
         # Should be positive and finite
         assert dt_stable > 0
@@ -278,7 +278,8 @@ class TestWenoFamilySolver:
 
         # Variant info should be accessible
         info = solver.get_variant_info()
-        assert variant.replace("-", "").upper() in info["name"].upper()
+        # Normalize both strings by removing hyphens for comparison
+        assert variant.replace("-", "").upper() in info["name"].replace("-", "").upper()
 
 
 if __name__ == "__main__":
