@@ -1,209 +1,239 @@
 # MFG_PDE User Documentation
 
-**Mean Field Games made simple with progressive disclosure API**
+**Research-grade Mean Field Games solver for academic and industrial applications**
 
-## 🚀 **Get Started in Under 5 Minutes**
+---
 
-```python
-from mfg_pde import solve_mfg
-
-# Solve a crowd evacuation problem
-result = solve_mfg("crowd_dynamics")
-result.plot()  # Interactive visualization!
-```
-
-**That's it!** You've just solved a sophisticated Mean Field Games problem.
-
-## 📚 **Documentation Structure**
-
-MFG_PDE provides three levels of API access designed for different user needs:
-
-| **API Tier** | **Examples Location** | **Target Users** |
-|--------------|----------------------|------------------|
-| **Tier 1: Simple API** | `examples/basic/` | 60% - Teaching, prototyping |
-| **Tier 2: Core Objects** | `examples/advanced/` | 35% - Research, custom problems |
-| **Tier 3: Advanced Hooks** | `examples/advanced/` | 5% - Algorithm development |
-
-### **🟢 Level 1: Simple API (60% of users)**
-**Perfect for: Teaching, initial prototyping, benchmarking with standard problems**
-
-- **[Quick Start Guide](quickstart.md)** - Get solving in 5 minutes
-- Dead-simple `solve_mfg()` function
-- Automatic configuration and visualization
-- Built-in problem types: crowd dynamics, portfolio optimization, traffic flow, epidemics
+## 🚀 **Get Started in 5 Minutes**
 
 ```python
-# One line to solve and visualize
-result = solve_mfg("crowd_dynamics", crowd_size=500, accuracy="high")
-result.plot()
+from mfg_pde import ExampleMFGProblem
+from mfg_pde.factory import create_fast_solver
+
+# Create problem
+problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
+
+# Solve with standard solver (mass-conserving, robust)
+solver = create_fast_solver(problem, "fixed_point")
+result = solver.solve()
+
+# Access results
+print(result.U)  # Value function u(t,x)
+print(result.M)  # Density m(t,x)
 ```
 
-### **🟡 Level 2: Core Objects (35% of users)**
-**Perfect for: Custom mathematical formulations, research problems, method comparison**
+**That's it!** You've solved a Mean Field Games system with research-grade quality.
 
-- **[Core Objects Guide](core_objects.md)** - Clean OOP interfaces
-- `MFGProblem` → `FixedPointSolver` → `MFGResult` pipeline
-- Full configuration control and monitoring
-- Custom problem definitions
+---
+
+## 📚 **Two-Level API Design**
+
+MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP systems, Nash equilibria).
+
+| **API Level** | **Target Users** | **Entry Point** | **What You Get** |
+|---------------|------------------|-----------------|------------------|
+| **Level 1: Users** | 95% - Researchers & Practitioners | Factory API | Full algorithm access, benchmarking |
+| **Level 2: Developers** | 5% - Core Contributors | Base classes | Infrastructure extension |
+
+### **📚 Level 1: Users - Researchers & Practitioners (95%)**
+
+**Who**: PhD students, postdocs, professors, industrial researchers
+**Assumption**: Understand HJB-FP systems, Nash equilibria, numerical PDEs
+**Entry Point**: Factory API (`create_*_solver()`)
+
+**What you get**:
+- **Algorithm selection**: Choose from 3 solver tiers (Basic/Standard/Advanced)
+- **Method comparison**: Benchmark FDM, Hybrid, WENO, Semi-Lagrangian, etc.
+- **Custom problems**: Define your own Hamiltonians, geometries, boundary conditions
+- **Full configuration**: Control tolerance, iterations, damping, backends
+
+**Get started**: [Factory API Quickstart](quickstart.md)
 
 ```python
-from mfg_pde.solvers import FixedPointSolver
-from mfg_pde import create_mfg_problem
+from mfg_pde.factory import (
+    create_basic_solver,    # Tier 1: Basic FDM (benchmark)
+    create_fast_solver,     # Tier 2: Hybrid (DEFAULT - mass-conserving)
+    create_accurate_solver  # Tier 3: Advanced (WENO, Semi-Lagrangian)
+)
 
-problem = create_mfg_problem("crowd_dynamics", domain=(0, 10), crowd_size=1000)
-solver = FixedPointSolver().with_tolerance(1e-7).with_backend("torch")
-result = solver.solve(problem)
+# Standard usage (DEFAULT)
+solver = create_fast_solver(problem, "fixed_point")
+result = solver.solve()
+
+# Research comparison
+solver_weno = create_accurate_solver(problem, solver_type="weno")
+result_weno = solver_weno.solve()
 ```
 
-### **🔴 Level 3: Advanced Hooks (5% of users)**
-**Perfect for: Algorithm research, custom numerical methods, solver development**
+### **🔧 Level 2: Developers - Core Contributors (5%)**
 
-- **[Advanced Hooks Guide](advanced_hooks.md)** - Full algorithm control
-- 20+ hook points for algorithm customization
-- Real-time monitoring and adaptive algorithms
-- Research data collection and analysis
+**Who**: Package maintainers, algorithm developers
+**Entry Point**: Base classes
+
+**What you get**:
+- **Extend base classes**: `BaseHJBSolver`, `BaseFPSolver`, `BaseMFGSolver`
+- **Register new solvers**: Integrate into factory system
+- **Modify infrastructure**: Add backends, geometries, boundary conditions
+
+**Get started**: [Developer Guide](../development/adding_new_solvers.md)
 
 ```python
-from mfg_pde.hooks import SolverHooks
+from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
 
-class CustomAlgorithmHook(SolverHooks):
-    def on_hjb_step(self, state, x_point, value):
-        return self.my_custom_hjb_logic(x_point, value)
-
-result = solver.solve(problem, hooks=CustomAlgorithmHook())
+class MyCustomSolver(BaseHJBSolver):
+    def solve_hjb_system(self, M, final_u, U_prev):
+        # Your implementation
+        pass
 ```
 
-## 🔄 **Migration from Old API**
+---
 
-Already using MFG_PDE? The new API is designed for smooth migration:
+## 📖 **Documentation Guide**
 
-- **[Migration Guide](migration.md)** - Step-by-step upgrade instructions
-- Compatibility layer maintains old API (with deprecation warnings)
-- Automatic migration tools available
-- Most code reduces from 50+ lines to 3-5 lines
+### **For Users (Researchers & Practitioners)**
 
-## 📖 **Complete Documentation**
+#### **Start Here**
+1. **[Factory API Quickstart](quickstart.md)** - 5-minute tutorial
+2. **[Solver Selection Guide](SOLVER_SELECTION_GUIDE.md)** - Choosing solver tiers
+3. **[Factory API Reference](factory_api_reference.md)** - All `create_*_solver()` functions
 
-### **User Guides**
-- **[Quick Start](quickstart.md)** - 5-minute introduction
-- **[Core Objects](core_objects.md)** - OOP interface guide
-- **[Advanced Hooks](advanced_hooks.md)** - Expert-level control
-- **[Migration Guide](migration.md)** - Upgrade from old API
+#### **Core Guides**
+- **[Custom Problems](custom_problems.md)** - Define your own MFG formulations
+- **[Solver Comparison](solver_comparison.md)** - Benchmarking different methods
+- **[Configuration Guide](configuration.md)** - Fine-tune solver parameters
 
-### **Legacy Guides** (Pre-v2.0)
-- **[Network MFG Tutorial](tutorials/network_mfg_tutorial.md)** - Complete tutorial for network Mean Field Games
-- **[Notebook Execution Guide](notebook_execution_guide.md)** - How to run MFG_PDE in Jupyter notebooks
-- **[Usage Patterns](usage_patterns.md)** - Proven patterns and best practices
+#### **Examples**
+- **[Basic Examples](../examples/basic/)** - Single-concept demonstrations
+- **[Advanced Examples](../examples/advanced/)** - Research-grade problems
+- **[Notebooks](../examples/notebooks/)** - Interactive tutorials
 
-### **Examples**
-- **[Basic Examples](../examples/basic/)** - Simple, focused demonstrations
-- **[Advanced Examples](../examples/advanced/)** - Complex multi-feature demos
-- **[Notebooks](../examples/notebooks/)** - Interactive Jupyter tutorials
+### **For Developers (Core Contributors)**
 
-### **Reference**
-- **[Theory Documentation](../theory/)** - Mathematical background and formulations
-- **[Developer Documentation](../development/)** - Technical implementation details
+- **[Core API Reference](../development/CORE_API_REFERENCE.md)** - Base classes
+- **[Adding New Solvers](../development/adding_new_solvers.md)** - Extension guide
+- **[Infrastructure](../development/infrastructure.md)** - Architecture details
+- **[Factory Registration](../development/factory_registration.md)** - Integrating new solvers
 
-## 🎯 **Choose Your Starting Point**
+---
 
-### **Teaching or using standard problems?**
-→ Start with [Quick Start Guide](quickstart.md) (**Tier 1**)
+## 🎯 **Choose Your Path**
 
-### **Custom mathematical formulations?**
-→ You need [Core Objects Guide](core_objects.md) (**Tier 2 minimum**)
-- Custom Hamiltonians: H(x,p,m,t)
-- Custom geometries and boundary conditions
-- Custom initial/terminal conditions
-- Custom cost functionals
-- Non-standard problem formulations
+### **Standard Research Use (95% of users)**
+→ Start with [Factory API Quickstart](quickstart.md)
 
-### **Custom numerical algorithms?**
-→ Explore [Advanced Hooks Guide](advanced_hooks.md) (**Tier 3**)
-- New solver methods
-- Custom convergence criteria
-- Algorithm performance research
+You need factory API if you want to:
+- ✅ Solve MFG problems with standard methods
+- ✅ Compare different numerical algorithms
+- ✅ Benchmark solver performance
+- ✅ Define custom Hamiltonians H(x,p,m,t)
+- ✅ Specify custom geometries and boundary conditions
 
-### **Upgrading from old API?**
-→ Follow the [Migration Guide](migration.md)
+### **Package Development (5% of users)**
+→ Read [Developer Guide](../development/adding_new_solvers.md)
 
-### **Mathematical background needed?**
-→ Browse [Theory Guide](../theory/) and [Notebooks](../examples/notebooks/)
+You need developer API if you want to:
+- ✅ Implement new numerical methods
+- ✅ Add new solver algorithms
+- ✅ Modify core infrastructure
+- ✅ Contribute to the package
 
-## 📋 **Tier Requirements for Common Tasks**
+---
 
-| **Task** | **Minimum Tier** | **Reason** |
-|----------|------------------|------------|
-| Built-in problems (crowd, portfolio, traffic) | **Tier 1** | Pre-configured |
-| Custom Hamiltonian H(x,p,m,t) | **Tier 2** | Mathematical definition |
-| Custom domain geometry | **Tier 2** | Boundary conditions |
-| Custom initial density m₀(x) | **Tier 2** | Problem specification |
-| Custom terminal cost g(x) | **Tier 2** | Variational formulation |
-| Parameter studies | **Tier 1-2** | Depends on problem type |
-| Performance optimization | **Tier 2** | Solver configuration |
-| New numerical methods | **Tier 3** | Algorithm hooks |
-| Convergence analysis | **Tier 3** | Solver internals |
+## ⚡ **Quick Examples**
+
+### **Example 1: Standard Workflow**
+```python
+from mfg_pde import ExampleMFGProblem
+from mfg_pde.factory import create_fast_solver
+
+# Define problem
+problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
+
+# Solve with default (Tier 2: Hybrid, mass-conserving)
+solver = create_fast_solver(problem, "fixed_point")
+result = solver.solve()
+
+# Check convergence
+print(f"Converged: {result.converged}")
+print(f"Iterations: {result.iterations}")
+print(f"Mass error: {result.mass_conservation_error:.2e}")
+```
+
+### **Example 2: Method Comparison**
+```python
+from mfg_pde.factory import create_basic_solver, create_fast_solver, create_accurate_solver
+
+# Compare three solver tiers
+solvers = {
+    "Basic FDM": create_basic_solver(problem),
+    "Hybrid (Standard)": create_fast_solver(problem, "fixed_point"),
+    "WENO (Advanced)": create_accurate_solver(problem, solver_type="weno")
+}
+
+results = {name: solver.solve() for name, solver in solvers.items()}
+
+# Compare mass conservation
+for name, result in results.items():
+    print(f"{name}: {result.mass_conservation_error:.2e}")
+```
+
+### **Example 3: Custom Problem**
+```python
+from mfg_pde.core import BaseMFGProblem
+import numpy as np
+
+class CustomCrowdProblem(BaseMFGProblem):
+    def evaluate_hamiltonian(self, x, p, m, t):
+        # Custom H(x, p, m, t)
+        kinetic = 0.5 * p**2
+        congestion = 0.2 * m * np.log(1 + m)
+        return kinetic + congestion
+
+# Use with factory API
+problem = CustomCrowdProblem(Nx=50, Nt=20, T=1.0)
+solver = create_fast_solver(problem, "fixed_point")
+result = solver.solve()
+```
+
+---
 
 ## 💡 **Key Features**
 
-✅ **Dead Simple**: `solve_mfg("crowd_dynamics")` - one line solutions
-✅ **Powerful**: Full algorithm customization through hooks system
+✅ **Research-Grade**: Publication-quality solvers with rigorous validation
+✅ **Algorithm Access**: Full control over numerical methods (FDM, WENO, Semi-Lagrangian, etc.)
+✅ **Mass-Conserving**: Default solver achieves ~10⁻¹⁵ mass conservation error
 ✅ **Fast**: Multi-backend acceleration (PyTorch, JAX, Numba)
-✅ **Visual**: Built-in interactive visualization
-✅ **Complete**: Covers major MFG problem classes
-✅ **Research-Ready**: Built for academic and industrial research
+✅ **Benchmarking**: Easy comparison of multiple algorithms
+✅ **Extensible**: Clean architecture for adding new methods
 ✅ **Well-Tested**: Comprehensive test suite and validation
-✅ **Documented**: Complete documentation with examples
+✅ **Documented**: Complete API reference and examples
 
-## 🌟 **Success Stories**
+---
 
-> *"Migration took 30 minutes and reduced our main research script from 150 lines to 12 lines. The new API is incredibly clean!"*
-> — Dr. Sarah Chen, Stanford University
+## 🔄 **Migration from Old API**
 
-> *"The hooks system let us implement our custom algorithm variant in 20 lines instead of 200. Game changer for research!"*
-> — Prof. Michael Rodriguez, MIT
+Already using MFG_PDE? See the [Migration Guide](migration.md) for upgrade instructions.
 
-> *"Built-in visualization saved us weeks of matplotlib wrestling. Perfect for presentations!"*
-> — Research Team, Carnegie Mellon
+---
 
 ## 🤝 **Community and Support**
 
 - **💬 Discussions**: [GitHub Discussions](https://github.com/derrring/MFG_PDE/discussions)
 - **🐛 Issues**: [GitHub Issues](https://github.com/derrring/MFG_PDE/issues)
 
-## ⚡ **Quick Examples**
+---
 
-### **Tier 1: Built-in Examples**
-```python
-from mfg_pde import load_example, solve_mfg
+## 📋 **What You Should Know**
 
-# Pre-configured examples that work immediately
-result = load_example("simple_crowd")       # Small crowd evacuation
-result = load_example("portfolio_basic")    # Basic portfolio optimization
-result = load_example("traffic_light")      # Traffic light problem
-result = load_example("epidemic_basic")     # Simple epidemic model
+MFG_PDE assumes you understand:
+- **Mean Field Games**: HJB-FP coupled systems, Nash equilibria
+- **Numerical PDEs**: Finite difference methods, stability, convergence
+- **Python**: Basic programming and scientific computing (NumPy)
 
-# Custom parameters with built-in problem types
-result = solve_mfg("crowd_dynamics", crowd_size=300, accuracy="balanced")
-result = solve_mfg("portfolio_optimization", risk_aversion=0.3)
-result = solve_mfg("traffic_flow", domain_size=10.0)
-result = solve_mfg("epidemic", infection_rate=0.7)
-```
+If you need mathematical background, see:
+- **[Theory Guide](../theory/)** - Mathematical formulations
+- **[Notebooks](../examples/notebooks/)** - Interactive tutorials with explanations
 
-### **Tier 2: Working Research Examples**
-```python
-# These examples demonstrate custom mathematical formulations:
-# examples/advanced/new_api_core_objects_example.py - Complete Tier 2 showcase
-# examples/advanced/pinn_mfg_example.py - Physics-informed neural networks
-# examples/advanced/primal_dual_constrained_example.py - Constrained optimization
-```
+---
 
-### **Results Interface**
-```python
-# All results have the same interface
-result.plot()                    # Interactive visualization
-print(f"Converged: {result.converged}")
-print(f"Iterations: {result.iterations}")
-print(f"Final error: {result.final_residual}")
-```
-
-**Ready to get started?** → **[Quick Start Guide](quickstart.md)**
+**Ready to get started?** → **[Factory API Quickstart](quickstart.md)**

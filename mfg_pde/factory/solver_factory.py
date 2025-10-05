@@ -380,11 +380,57 @@ def create_solver(
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset=preset, **kwargs)
 
 
+def create_basic_solver(
+    problem: MFGProblem, damping: float = 0.6, max_iterations: int = 100, tolerance: float = 1e-5, **kwargs: Any
+) -> Any:
+    """
+    Create basic FDM benchmark solver (Tier 1).
+
+    Uses HJB-FDM + FP-FDM with upwind + damped fixed point.
+    Fast but approximate (1-10% mass error) - primarily for benchmarking.
+
+    This is the simplest MFG solver, useful for:
+    - Benchmarking and validating advanced methods
+    - Quick testing and prototyping
+    - Educational purposes
+    - Comparison baseline
+
+    Args:
+        problem: MFG problem to solve
+        damping: Damping factor for fixed point (0.5-0.7 recommended, default 0.6)
+        max_iterations: Maximum Picard iterations (default 100)
+        tolerance: Convergence tolerance (default 1e-5)
+        **kwargs: Additional parameters
+
+    Returns:
+        Basic FDM solver instance
+
+    Note:
+        Mass conservation is approximate (~1-10% error).
+        For production, use create_fast_solver() (Tier 2: Hybrid with particles).
+
+    Example:
+        >>> solver = create_basic_solver(problem, damping=0.6)
+        >>> result = solver.solve()
+    """
+    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+    from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+    from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+
+    hjb_solver = HJBFDMSolver(problem=problem)
+    fp_solver = FPFDMSolver(problem=problem)
+
+    return FixedPointIterator(problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=damping, **kwargs)
+
+
 def create_fast_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
 ) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
     """
-    Create a fast MFG solver optimized for speed.
+    Create standard production MFG solver (Tier 2 - DEFAULT).
+
+    Uses HJB-FDM + FP-Particle hybrid for reliable mass conservation
+    and fast convergence. This is the recommended default solver.
 
     Args:
         problem: MFG problem to solve
@@ -392,7 +438,12 @@ def create_fast_solver(
         **kwargs: Additional parameters
 
     Returns:
-        Fast-configured solver instance
+        Standard-configured solver instance
+
+    Note:
+        Default uses Hybrid (HJB-FDM + FP-Particle) for good quality.
+        For basic benchmark, use create_basic_solver() (Tier 1: Pure FDM).
+        For advanced methods, use create_accurate_solver() (Tier 3).
     """
     # For fixed_point solvers, create default HJB and FP solvers if not provided
     if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:

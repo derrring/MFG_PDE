@@ -154,7 +154,12 @@ class FPFDMSolver(BaseFPSolver):
                         # (m[1] - m[0])/Dx = 0 => m[1] = m[0]
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
-                        # For advection terms, assume no velocity at boundary
+                        # Add advection terms at boundary using one-sided derivative for velocity
+                        if Nx > 1:
+                            # Velocity: v_0 = -coefCT * du/dx
+                            # Upwind: ppart(v_0) / Dx for outflow
+                            val_A_ii += float(coefCT * ppart((u_at_tk[1] - u_at_tk[0]) / Dx) / Dx)
+
                         row_indices.append(i)
                         col_indices.append(i)
                         data_values.append(val_A_ii)
@@ -162,6 +167,8 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1:
                             # Coupling to next point (modified for no-flux)
                             val_A_i_ip1 = -(sigma**2) / Dx**2
+                            # Add advection flux: npart(v_0) / Dx for inflow from neighbor
+                            val_A_i_ip1 += float(-coefCT * npart((u_at_tk[1] - u_at_tk[0]) / Dx) / Dx)
                             row_indices.append(i)
                             col_indices.append(i + 1)
                             data_values.append(val_A_i_ip1)
@@ -171,6 +178,12 @@ class FPFDMSolver(BaseFPSolver):
                         # (m[Nx-1] - m[Nx-2])/Dx = 0 => m[Nx-1] = m[Nx-2]
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
+                        # Add advection terms at boundary using one-sided derivative for velocity
+                        if Nx > 1:
+                            # Velocity: v_N = -coefCT * du/dx
+                            # Upwind: ppart(v_N) / Dx for outflow (rightward)
+                            val_A_ii += float(coefCT * ppart((u_at_tk[Nx - 1] - u_at_tk[Nx - 2]) / Dx) / Dx)
+
                         row_indices.append(i)
                         col_indices.append(i)
                         data_values.append(val_A_ii)
@@ -178,6 +191,8 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1:
                             # Coupling to previous point (modified for no-flux)
                             val_A_i_im1 = -(sigma**2) / Dx**2
+                            # Add advection flux: npart(v_N) / Dx for inflow from neighbor (leftward)
+                            val_A_i_im1 += float(-coefCT * npart((u_at_tk[Nx - 1] - u_at_tk[Nx - 2]) / Dx) / Dx)
                             row_indices.append(i)
                             col_indices.append(i - 1)
                             data_values.append(val_A_i_im1)
