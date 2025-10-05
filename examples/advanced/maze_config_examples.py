@@ -230,7 +230,7 @@ def visualize_position_strategies():
         PlacementStrategy.CLUSTERED,
     ]
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 14))
+    _fig, axes = plt.subplots(2, 2, figsize=(14, 14))
     axes = axes.flatten()
 
     for idx, strategy in enumerate(strategies):

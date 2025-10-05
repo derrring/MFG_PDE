@@ -256,7 +256,7 @@ def plot_comparison(ddpg_stats: dict, td3_stats: dict, sac_stats: dict, save_pat
         print("Matplotlib not available, skipping plots")
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    _fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     # Smooth rewards
     def smooth(data, window=20):

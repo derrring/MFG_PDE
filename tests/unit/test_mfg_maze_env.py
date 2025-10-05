@@ -266,7 +266,7 @@ class TestMFGMazeEnvironment:
             num_agents=3,
         )
         env = MFGMazeEnvironment(config)
-        observation, info = env.reset(seed=9)
+        observation, _info = env.reset(seed=9)
         assert observation.shape[0] == 3
         assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
         _, rewards, _, _, _ = env.step(np.zeros(3, dtype=int))

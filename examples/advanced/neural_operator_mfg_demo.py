@@ -40,7 +40,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Standard imports for MFG problems
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.logging import configure_research_logging, get_logger  # noqa: E402
 
 # Check if PyTorch is available
 try:
@@ -139,7 +139,7 @@ def demonstrate_fno_training():
     logger.info("=== Fourier Neural Operator (FNO) Demonstration ===")
 
     # Generate training data
-    parameters, solutions, coordinates = create_synthetic_mfg_data(num_samples=200, spatial_resolution=32)
+    parameters, solutions, _coordinates = create_synthetic_mfg_data(num_samples=200, spatial_resolution=32)
 
     # Create FNO configuration
     config = FNOConfig(
@@ -393,7 +393,7 @@ def plot_training_results(fno_results, deeponet_results):
         return
 
     try:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
         # FNO training curves
         ax1.plot(fno_results["train_losses"], label="Training Loss", color="blue")

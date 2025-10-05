@@ -307,7 +307,7 @@ def create_comparison_visualization():
 
         # Sampling distribution
         plt.subplot(2, 2, 4)
-        sampler, new_points, importance_weights = demonstrate_physics_guided_sampling()
+        _sampler, new_points, _importance_weights = demonstrate_physics_guided_sampling()
         plt.scatter(
             new_points[:, 0].numpy(), new_points[:, 1].numpy(), c="red", alpha=0.6, s=20, label="Adaptive Points"
         )

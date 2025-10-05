@@ -172,7 +172,7 @@ class TestMultiPopulationSAC:
         pop_state_tensor = torch.FloatTensor(np.concatenate(pop_state_list)).unsqueeze(0).requires_grad_(True)
 
         # Sample action (reparameterization)
-        action, log_prob, _ = self.algo.actors[0].sample(state_tensor, pop_state_tensor)
+        action, _log_prob, _ = self.algo.actors[0].sample(state_tensor, pop_state_tensor)
 
         # Compute dummy loss and backprop
         loss = action.sum()
@@ -309,7 +309,7 @@ class TestMultiPopulationSAC:
         states, _ = self.env.reset(seed=42)
         pop_states = self.env.get_population_states()
         actions = self.algo.select_actions(states, pop_states, training=True)
-        next_states, rewards, terminated, truncated, _ = self.env.step(actions)
+        next_states, rewards, terminated, _truncated, _ = self.env.step(actions)
         next_pop_states = self.env.get_population_states()
 
         # Flatten population states

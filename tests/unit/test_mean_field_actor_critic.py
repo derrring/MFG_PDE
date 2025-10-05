@@ -70,7 +70,7 @@ class TestActorNetwork:
         assert 0 <= action.item() < action_dim
 
         # Deterministic action
-        action_det, log_prob_det = actor.get_action(state, population, deterministic=True)
+        action_det, _log_prob_det = actor.get_action(state, population, deterministic=True)
         assert action_det.shape == (1,)
         assert 0 <= action_det.item() < action_dim
 

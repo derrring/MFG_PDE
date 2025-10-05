@@ -69,7 +69,7 @@ def run_solver(name: str, use_anderson: bool, thetaUM: float, anderson_beta: flo
     start_time = time.time()
     try:
         result = mfg_solver.solve(max_iterations=30, tolerance=1e-3, verbose=False)
-        U, M = result[:2]
+        _U, M = result[:2]
     except Exception as e:
         print(f"Exception: {str(e)[:80]}...")
         _ = mfg_solver.U if hasattr(mfg_solver, "U") else np.zeros((26, 26))

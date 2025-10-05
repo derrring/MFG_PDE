@@ -167,7 +167,7 @@ class HeterogeneousTrafficEnv(MultiPopulationMFGEnvironment):
         2. Fuel efficiency: -α|a|²
         3. Congestion cost: -Σ w_j * density_j
         """
-        _, velocity = state
+        _, _velocity = state
         _, next_velocity = next_state
         acceleration = action[0]
 

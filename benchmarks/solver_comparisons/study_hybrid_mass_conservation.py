@@ -115,7 +115,7 @@ def run_hybrid_solver_with_monitoring(problem, bc, max_iterations=100, verbose=T
 
         # Check stochastic convergence
         if iteration >= 10:
-            stochastic_converged, diagnostics = stochastic_monitor.check_convergence()
+            stochastic_converged, _diagnostics = stochastic_monitor.check_convergence()
 
         # Verbose output every 10 iterations
         if verbose and iteration % 10 == 0:
