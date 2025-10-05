@@ -252,7 +252,7 @@ def test_method_comparison():
     print(f"\n{'Method':<25} {'Success':<8} {'Time(s)':<10} {'Mass Error %':<12} {'Converged':<10} {'Iterations':<10}")
     print("-" * 85)
 
-    for key, result in results.items():
+    for _key, result in results.items():
         if result["success"]:
             success_str = "✓"
             time_str = f"{result['time']:.1f}"

@@ -309,7 +309,7 @@ def print_comprehensive_comparison(results):
     print("-" * 120)
 
     # Results table
-    for key, result in results.items():
+    for _key, result in results.items():
         if result["success"]:
             success_str = "✓"
             time_str = f"{result['time']:.1f}"
@@ -503,7 +503,7 @@ def create_comprehensive_plots(results, problem_params):
     ax3.axis("off")
 
     char_text = "METHOD CHARACTERISTICS\n\n"
-    for i, (_key, result) in enumerate(successful_results.items()):
+    for _i, (_key, result) in enumerate(successful_results.items()):
         chars = result.get("characteristics", {})
         char_text += f"{result['method']}:\n"
         char_text += f"  Type: {chars.get('type', 'N/A')}\n"
