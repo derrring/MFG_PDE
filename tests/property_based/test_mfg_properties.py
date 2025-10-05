@@ -7,13 +7,17 @@ of parameter combinations.
 """
 
 import pytest
-from hypothesis import assume, given, note, settings
-from hypothesis import strategies as st
 
 import numpy as np
 
 from mfg_pde import ExampleMFGProblem, create_fast_solver
 from mfg_pde.utils.exceptions import ConfigurationError, ConvergenceError
+
+# Skip all tests if hypothesis is not installed
+pytest.importorskip("hypothesis")
+
+from hypothesis import assume, given, note, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
 
 # === Test Strategies ===
 

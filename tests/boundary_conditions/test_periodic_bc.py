@@ -54,8 +54,19 @@ class TestPeriodic1D:
 
         # Create a mock mesh data
         vertices = np.array([[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]])
-        connectivity = np.array([[0, 1, 2]])
-        mesh = MeshData(vertices=vertices, connectivity=connectivity, dimension=2, num_vertices=3)
+        elements = np.array([[0, 1, 2]])
+        boundary_tags = np.array([0])
+        element_tags = np.array([0])
+        boundary_faces = np.array([[0, 1], [1, 2], [2, 0]])
+        mesh = MeshData(
+            vertices=vertices,
+            elements=elements,
+            element_type="triangle",
+            boundary_tags=boundary_tags,
+            element_tags=element_tags,
+            boundary_faces=boundary_faces,
+            dimension=2,
+        )
 
         # Add boundary tags
         mesh.boundary_tags = np.array([1, 1, 0])  # First two vertices on boundary
@@ -84,12 +95,23 @@ class TestPeriodic2D:
         vertices = []
         for yi in y:
             for xi in x:
-                vertices.append([xi, yi, 0.0])  # Add z=0 for 3D compatibility
+                vertices.append([xi, yi])  # 2D coordinates
 
         vertices = np.array(vertices)
-        connectivity = np.array([[0, 1, 3]])  # Simple connectivity
+        elements = np.array([[0, 1, 3]])  # Simple connectivity
+        boundary_tags = np.array([0])
+        element_tags = np.array([0])
+        boundary_faces = np.array([[0, 1], [1, 3], [3, 0]])
 
-        mesh = MeshData(vertices=vertices, connectivity=connectivity, dimension=2, num_vertices=len(vertices))
+        mesh = MeshData(
+            vertices=vertices,
+            elements=elements,
+            element_type="triangle",
+            boundary_tags=boundary_tags,
+            element_tags=element_tags,
+            boundary_faces=boundary_faces,
+            dimension=2,
+        )
 
         return mesh
 
@@ -205,9 +227,20 @@ class TestPeriodic3D:
             ]
         )
 
-        connectivity = np.array([[0, 1, 2, 4]])  # Simple connectivity
+        elements = np.array([[0, 1, 2, 4]])  # Simple connectivity
+        boundary_tags = np.array([0])
+        element_tags = np.array([0])
+        boundary_faces = np.array([[0, 1, 2], [0, 1, 4], [0, 2, 4], [1, 2, 4]])
 
-        mesh = MeshData(vertices=vertices, connectivity=connectivity, dimension=3, num_vertices=len(vertices))
+        mesh = MeshData(
+            vertices=vertices,
+            elements=elements,
+            element_type="tetrahedron",
+            boundary_tags=boundary_tags,
+            element_tags=element_tags,
+            boundary_faces=boundary_faces,
+            dimension=3,
+        )
 
         mesh.boundary_markers = np.ones(len(vertices))
         return mesh
@@ -317,9 +350,20 @@ class TestBoundaryConditionManagers:
     @pytest.fixture
     def simple_2d_mesh(self):
         """Simple 2D mesh for manager testing."""
-        vertices = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]])
-        connectivity = np.array([[0, 1, 2]])
-        mesh = MeshData(vertices=vertices, connectivity=connectivity, dimension=2, num_vertices=4)
+        vertices = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
+        elements = np.array([[0, 1, 2]])
+        boundary_tags = np.array([0])
+        element_tags = np.array([0])
+        boundary_faces = np.array([[0, 1], [1, 2], [2, 0]])
+        mesh = MeshData(
+            vertices=vertices,
+            elements=elements,
+            element_type="triangle",
+            boundary_tags=boundary_tags,
+            element_tags=element_tags,
+            boundary_faces=boundary_faces,
+            dimension=2,
+        )
         return mesh
 
     def test_manager_2d_apply_periodic(self, simple_2d_mesh):

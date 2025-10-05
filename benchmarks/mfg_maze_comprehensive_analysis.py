@@ -21,14 +21,32 @@ Date: October 2025
 import argparse
 from collections import defaultdict
 
-# Import our maze modules
-from mfg_maze_environment import MFGMazeEnvironment
-from mfg_maze_layouts import CustomMazeLoader, MazeAnalyzer, create_custom_maze_environment
-
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Import our maze modules
+from mfg_pde.alg.reinforcement.environments.mfg_maze_env import MFGMazeEnvironment
 from mfg_pde.utils.logging import configure_research_logging, get_logger
+
+# Import maze analysis tools from examples
+# Note: This benchmark script depends on advanced maze examples
+try:
+    from examples.advanced.mfg_maze_layouts import (
+        CustomMazeLoader,
+        MazeAnalyzer,
+        create_custom_maze_environment,
+    )
+except ImportError:
+    # Fallback: Define minimal stubs if examples not available
+    class CustomMazeLoader:
+        pass
+
+    class MazeAnalyzer:
+        pass
+
+    def create_custom_maze_environment(*args, **kwargs):
+        raise NotImplementedError("Maze examples not available")
+
 
 logger = get_logger(__name__)
 

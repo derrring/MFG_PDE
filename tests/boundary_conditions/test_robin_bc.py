@@ -89,9 +89,20 @@ class TestRobin3D:
         )
 
         # Simple connectivity (not used for BC tests)
-        connectivity = np.array([[0, 1, 2, 4]])  # Single tetrahedron
+        elements = np.array([[0, 1, 2, 4]])  # Single tetrahedron
+        boundary_tags = np.array([0])
+        element_tags = np.array([0])
+        boundary_faces = np.array([[0, 1, 2], [0, 1, 4], [0, 2, 4], [1, 2, 4]])
 
-        mesh = MeshData(vertices=vertices, connectivity=connectivity, dimension=3, num_vertices=len(vertices))
+        mesh = MeshData(
+            vertices=vertices,
+            elements=elements,
+            element_type="tetrahedron",
+            boundary_tags=boundary_tags,
+            element_tags=element_tags,
+            boundary_faces=boundary_faces,
+            dimension=3,
+        )
 
         # Add boundary markers
         mesh.boundary_markers = np.ones(len(vertices))  # All vertices on boundary
@@ -234,9 +245,20 @@ class TestBoundaryConditionManager3D:
                     vertices.append([xi, yi, zi])
 
         vertices = np.array(vertices)
-        connectivity = np.array([[0, 1, 3, 9]])  # Simple connectivity
+        elements = np.array([[0, 1, 3, 9]])  # Simple connectivity
+        boundary_tags = np.array([0])
+        element_tags = np.array([0])
+        boundary_faces = np.array([[0, 1, 3], [0, 1, 9], [0, 3, 9], [1, 3, 9]])
 
-        mesh = MeshData(vertices=vertices, connectivity=connectivity, dimension=3, num_vertices=len(vertices))
+        mesh = MeshData(
+            vertices=vertices,
+            elements=elements,
+            element_type="tetrahedron",
+            boundary_tags=boundary_tags,
+            element_tags=element_tags,
+            boundary_faces=boundary_faces,
+            dimension=3,
+        )
 
         return mesh
 
@@ -245,7 +267,7 @@ class TestBoundaryConditionManager3D:
         manager = BoundaryConditionManager3D()
 
         robin_bc = RobinBC3D(alpha=1.5, beta=2.0, value_function=0.0, name="Test Robin")
-        manager.add_condition(robin_bc, region=0)  # Add to region 0
+        manager.add_condition(robin_bc, boundary_region=0)  # Add to region 0
 
         assert len(manager.conditions) == 1
         assert 0 in manager.region_map
@@ -257,7 +279,7 @@ class TestBoundaryConditionManager3D:
 
         # Add Robin BC for x_min face (region 0)
         robin_bc = RobinBC3D(alpha=2.0, beta=1.0, value_function=1.0)
-        manager.add_condition(robin_bc, region=0)
+        manager.add_condition(robin_bc, boundary_region=0)
 
         # Create test system
         n = box_mesh_3d.num_vertices
@@ -276,7 +298,7 @@ class TestBoundaryConditionManager3D:
         manager = BoundaryConditionManager3D()
 
         robin_bc = RobinBC3D(alpha=1.0, beta=1.0, value_function=0.0)
-        manager.add_condition(robin_bc, region=0)
+        manager.add_condition(robin_bc, boundary_region=0)
 
         # Should validate successfully
         assert manager.validate_all_conditions(box_mesh_3d)
