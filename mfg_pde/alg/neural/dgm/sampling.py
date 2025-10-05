@@ -120,6 +120,9 @@ class MonteCarloSampler(HighDimSampler):
         # Create MC config for centralized utilities
         self.mc_config = MCConfig(seed=seed)
 
+        # Create random number generator for boundary sampling
+        self.rng = np.random.default_rng(seed)
+
         # Initialize space-time domain for centralized sampler
         self.spacetime_domain = None  # Will be set when time bounds are known
 
@@ -178,6 +181,9 @@ class QuasiMonteCarloSampler(HighDimSampler):
 
         # Create MC config for centralized utilities
         self.mc_config = MCConfig(sampling_method=sequence_type)
+
+        # Create random number generator for fallback methods
+        self.rng = np.random.default_rng()
 
     def sample_interior(self, num_points: int, time_bounds: tuple[float, float]) -> NDArray:
         """Sample using low-discrepancy sequence via centralized utilities."""
