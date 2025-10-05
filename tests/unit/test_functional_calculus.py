@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical.functional_calculus import (
+from mfg_pde.utils.functional_calculus import (
     FiniteDifferenceFunctionalDerivative,
     ParticleApproximationFunctionalDerivative,
     create_particle_measure,
