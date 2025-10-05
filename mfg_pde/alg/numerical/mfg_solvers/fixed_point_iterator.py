@@ -229,6 +229,8 @@ class FixedPointIterator(BaseMFGSolver):
             print("   Using warm start initialization from previous solution")
         else:
             # Cold start - default initialization
+            # Note: Nx and Nt here already include +1 (see lines 218-219)
+            # So shape is already (Nt+1, Nx+1) from problem definition
             self.U = np.zeros((Nt, Nx))
             self.M = np.zeros((Nt, Nx))
 
@@ -237,6 +239,7 @@ class FixedPointIterator(BaseMFGSolver):
 
         if Nt > 0:
             # Always enforce boundary conditions (even with warm start)
+            # Nt and Nx here already include +1, so final index is Nt-1
             self.M[0, :] = initial_m_dist
             self.U[Nt - 1, :] = final_u_cost
 
@@ -283,25 +286,28 @@ class FixedPointIterator(BaseMFGSolver):
 
             # Apply damping and/or Anderson acceleration
             if self.use_anderson and self.anderson_accelerator is not None:
-                # Two-level damping: Picard damping THEN Anderson acceleration
-                # This provides extra stability for stochastic problems
+                # HYBRID APPROACH: Anderson for U only, with safeguards for M
+                # Rationale:
+                # 1. Anderson extrapolation can produce negative M (violates M ≥ 0)
+                # 2. Clamping negative M violates mass conservation
+                # 3. Solution: Use standard damping for M (guarantees M ≥ 0 and conservation)
+                # 4. Apply Anderson only to U (value function has no positivity constraint)
 
                 # First: Apply standard Picard damping to HJB/FP outputs
                 U_damped = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
                 M_damped = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
 
-                # Second: Apply Anderson acceleration on damped iterates
-                # State vector: [U.flatten(), M.flatten()]
-                x_current = np.concatenate([U_old_current_picard_iter.flatten(), M_old_current_picard_iter.flatten()])
-                f_current = np.concatenate([U_damped.flatten(), M_damped.flatten()])
+                # Second: Apply Anderson acceleration to U ONLY
+                # M uses standard damping: preserves M ≥ 0 via convex combination
+                x_current_U = U_old_current_picard_iter.flatten()
+                f_current_U = U_damped.flatten()
 
-                # Anderson acceleration (with its own internal beta damping)
-                x_next = self.anderson_accelerator.update(x_current, f_current, method="type1")
+                # Anderson acceleration on U
+                x_next_U = self.anderson_accelerator.update(x_current_U, f_current_U, method="type1")
 
-                # Extract U and M from accelerated state
-                n_u = U_old_current_picard_iter.size
-                self.U = x_next[:n_u].reshape(U_old_current_picard_iter.shape)
-                self.M = x_next[n_u:].reshape(M_old_current_picard_iter.shape)
+                # Update: Anderson-accelerated U, standard-damped M
+                self.U = x_next_U.reshape(U_old_current_picard_iter.shape)
+                self.M = M_damped  # Standard damping - guarantees M ≥ 0 and mass conservation
             else:
                 # Standard damping only (no Anderson)
                 self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
@@ -310,16 +316,11 @@ class FixedPointIterator(BaseMFGSolver):
             # Update U_picard_prev for the next iteration's Jacobian calculation
             U_picard_prev = U_old_current_picard_iter.copy()  # U_k becomes U_{k-1} for next iter
 
-            """
-            # Ensure M remains non-negative and normalized
-            self.M = np.maximum(self.M, 0)
-            for t_step in range(Nt):
-                current_mass = np.sum(self.M[t_step, :]) * Dx
-                if current_mass > 1e-9:
-                    self.M[t_step, :] /= current_mass
-                else:
-                    pass
-            """
+            # NOTE: DO NOT clamp M to non-negative values!
+            # Clamping with np.maximum(self.M, 0) violates mass conservation
+            # If the algorithm produces negative values, they must be preserved
+            # to maintain ∫M dx = constant (mass conservation principle)
+            # Any post-processing that changes values destroys this property
 
             norm_factor = np.sqrt(Dx * Dt)
 

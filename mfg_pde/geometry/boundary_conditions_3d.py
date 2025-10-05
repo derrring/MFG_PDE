@@ -465,9 +465,19 @@ class BoundaryConditionManager3D:
 
             # Apply each condition for this region
             for condition in conditions:
-                # Check for directly specified vertices
-                if hasattr(condition, "_direct_vertices"):
+                # Check for directly specified vertices (override region-based detection)
+                if hasattr(condition, "_direct_vertices") and condition._direct_vertices is not None:
                     boundary_indices = condition._direct_vertices
+
+                # Skip if no boundary indices found (None check prevents TypeError)
+                # Empty array check prevents unnecessary processing
+                if boundary_indices is None or len(boundary_indices) == 0:
+                    warnings.warn(
+                        f"No boundary vertices found for region {region_id}. "
+                        f"Skipping {condition.name} boundary condition.",
+                        UserWarning,
+                    )
+                    continue
 
                 matrix_mod = condition.apply_to_matrix(matrix_mod, mesh, boundary_indices)
                 rhs_mod = condition.apply_to_rhs(rhs_mod, mesh, boundary_indices, time)

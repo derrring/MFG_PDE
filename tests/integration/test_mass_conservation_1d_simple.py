@@ -141,7 +141,8 @@ class TestMassConservation1DSimple:
             boundary_conditions=boundary_conditions,
         )
 
-        hjb_solver = HJBGFDMSolver(problem)
+        collocation_points = problem.xSpace.reshape(-1, 1)
+        hjb_solver = HJBGFDMSolver(problem, collocation_points=collocation_points, delta=0.3)
 
         mfg_solver = FixedPointIterator(
             problem,
@@ -221,7 +222,8 @@ class TestMassConservation1DSimple:
             normalize_kde_output=True,
             boundary_conditions=boundary_conditions,
         )
-        hjb_solver_2 = HJBGFDMSolver(problem)
+        collocation_points = problem.xSpace.reshape(-1, 1)
+        hjb_solver_2 = HJBGFDMSolver(problem, collocation_points=collocation_points, delta=0.3)
         mfg_solver_2 = FixedPointIterator(problem, hjb_solver=hjb_solver_2, fp_solver=fp_solver_2)
 
         result_2 = mfg_solver_2.solve(max_iterations=30, tolerance=1e-5)

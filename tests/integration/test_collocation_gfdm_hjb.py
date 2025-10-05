@@ -83,12 +83,13 @@ class TestGFDMHJBSolver:
         # Test 1D case
         multi_indices_1d = self.solver._get_multi_index_set(1, 2)
         expected_1d = [(1,), (2,)]
-        assert multi_indices_1d == expected_1d
+        assert sorted(multi_indices_1d) == sorted(expected_1d)
 
         # Test 2D case
         multi_indices_2d = self.solver._get_multi_index_set(2, 2)
         expected_2d = [(0, 1), (0, 2), (1, 0), (1, 1), (2, 0)]
-        assert multi_indices_2d == expected_2d
+        # Order doesn't matter mathematically, use set comparison
+        assert sorted(multi_indices_2d) == sorted(expected_2d)
 
     def test_taylor_matrix_construction(self):
         """Test Taylor expansion matrix construction."""
@@ -102,7 +103,8 @@ class TestGFDMHJBSolver:
                 taylor_data = self.solver.taylor_matrices[i]
                 assert "A" in taylor_data
                 assert "W" in taylor_data
-                assert "AtW" in taylor_data
+                # New API: SVD components stored instead of AtW
+                assert "S" in taylor_data or "AtW" in taylor_data  # Support both old and new API
 
                 A = taylor_data["A"]
                 W = taylor_data["W"]
