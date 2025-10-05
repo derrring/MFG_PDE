@@ -81,16 +81,17 @@ if TORCH_AVAILABLE:
             self.output_dim = output_dim
             self.use_batch_norm = use_batch_norm
             self.dropout_rate = dropout_rate
+            self.activation_name = activation
 
-            # Activation function
+            # Store activation class (not instance) for Sequential compatibility
             if activation == "tanh":
-                self.activation = torch.tanh
+                self.activation_class = nn.Tanh
             elif activation == "sigmoid":
-                self.activation = torch.sigmoid
+                self.activation_class = nn.Sigmoid
             elif activation == "relu":
-                self.activation = functional.relu
+                self.activation_class = nn.ReLU
             elif activation == "swish":
-                self.activation = lambda x: x * torch.sigmoid(x)
+                self.activation_class = nn.SiLU  # SiLU is PyTorch's Swish
             else:
                 raise ValueError(f"Unknown activation: {activation}")
 
@@ -115,7 +116,7 @@ if TORCH_AVAILABLE:
 
                 # Activation (except for output layer)
                 if i < len(layer_sizes) - 2:
-                    layers.append(nn.Lambda(self.activation))
+                    layers.append(self.activation_class())
 
                 # Dropout (except for output layer)
                 if self.dropout_rate > 0 and i < len(layer_sizes) - 2:
@@ -257,14 +258,18 @@ if TORCH_AVAILABLE:
 
             self.input_dim = input_dim
             self.hidden_dim = hidden_dim
+            self.activation_name = activation
 
-            # Activation function
+            # Store activation class for Sequential compatibility
             if activation == "tanh":
-                self.activation = torch.tanh
+                self.activation = torch.tanh  # Function for forward()
+                self.activation_class = nn.Tanh
             elif activation == "swish":
-                self.activation = lambda x: x * torch.sigmoid(x)
+                self.activation = lambda x: x * torch.sigmoid(x)  # Function for forward()
+                self.activation_class = nn.SiLU
             else:
-                self.activation = functional.relu
+                self.activation = functional.relu  # Function for forward()
+                self.activation_class = nn.ReLU
 
             # Input projection
             self.input_layer = nn.Linear(input_dim, hidden_dim)
@@ -279,7 +284,7 @@ if TORCH_AVAILABLE:
 
         def _make_residual_block(self, dim: int) -> nn.Module:
             """Create a residual block."""
-            return nn.Sequential(nn.Linear(dim, dim), nn.Lambda(self.activation), nn.Linear(dim, dim))
+            return nn.Sequential(nn.Linear(dim, dim), self.activation_class(), nn.Linear(dim, dim))
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             """Forward pass through residual DGM network."""
