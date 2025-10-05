@@ -166,8 +166,8 @@ class BaseDGMSolver(BaseNeuralSolver):
             config: DGM solver configuration
             **kwargs: Additional solver arguments
         """
-        super().__init__(problem, **kwargs)
         self.config = config or DGMConfig()
+        super().__init__(problem, self.config, **kwargs)
         self.logger = self._get_logger()
 
         # Validate high-dimensional problem
