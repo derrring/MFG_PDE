@@ -80,11 +80,13 @@ def create_market_volatility_problem():
         Nx=Nx,
         T=T,
         Nt=Nt,
-        sigma=sigma,
         noise_process=market_volatility,
         conditional_hamiltonian=conditional_hamiltonian,
         theta_initial=0.0,  # Start at mean volatility
     )
+
+    # Set agent diffusion coefficient
+    problem.sigma = sigma
 
     # Set initial density: Gaussian centered at x=1
     x = np.linspace(xmin, xmax, Nx)
@@ -252,7 +254,8 @@ def visualize_results(problem, result):
 
 if __name__ == "__main__":
     # Run demo with moderate number of samples
-    solve_and_visualize(num_noise_samples=50, use_variance_reduction=True, parallel=True)
+    # Note: parallel=False to avoid pickle issues with nested functions
+    solve_and_visualize(num_noise_samples=50, use_variance_reduction=True, parallel=False)
 
     logger.info("\n" + "=" * 70)
     logger.info("Demo completed successfully!")
