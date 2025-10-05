@@ -12,11 +12,11 @@ The Fokker-Planck Finite Difference Method (FP-FDM) solver exhibits severe mass 
 ### Reproduction
 
 ```python
-from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfg_pde import ExampleMFGProblem, create_standard_solver
 import numpy as np
 
 problem = ExampleMFGProblem(Nx=20, Nt=8, T=0.5)
-solver = create_fast_solver(problem, "fixed_point")  # Uses FP-FDM
+solver = create_standard_solver(problem, "fixed_point")  # Uses FP-FDM
 
 result = solver.solve()
 
@@ -96,8 +96,8 @@ The current discretization violates these principles at boundaries.
 Particle methods **naturally conserve mass** because they track individual particles:
 
 ```python
-# Instead of FDM (default in create_fast_solver):
-solver = create_fast_solver(problem, solver_type="particle_collocation")
+# Instead of FDM (default in create_standard_solver):
+solver = create_standard_solver(problem, solver_type="particle_collocation")
 ```
 
 ### Alternative: Explicit Mass Renormalization (Temporary Hack)

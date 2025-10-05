@@ -8,13 +8,13 @@
 
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Create problem
 problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
 
 # Solve with standard solver (mass-conserving, robust)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
 # Access results
@@ -52,12 +52,12 @@ MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP system
 ```python
 from mfg_pde.factory import (
     create_basic_solver,    # Tier 1: Basic FDM (benchmark)
-    create_fast_solver,     # Tier 2: Hybrid (DEFAULT - mass-conserving)
+    create_standard_solver,     # Tier 2: Hybrid (DEFAULT - mass-conserving)
     create_accurate_solver  # Tier 3: Advanced (WENO, Semi-Lagrangian)
 )
 
 # Standard usage (DEFAULT)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
 # Research comparison
@@ -144,13 +144,13 @@ You need developer API if you want to:
 ### **Example 1: Standard Workflow**
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Define problem
 problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
 
 # Solve with default (Tier 2: Hybrid, mass-conserving)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
 # Check convergence
@@ -161,12 +161,12 @@ print(f"Mass error: {result.mass_conservation_error:.2e}")
 
 ### **Example 2: Method Comparison**
 ```python
-from mfg_pde.factory import create_basic_solver, create_fast_solver, create_accurate_solver
+from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
 
 # Compare three solver tiers
 solvers = {
     "Basic FDM": create_basic_solver(problem),
-    "Hybrid (Standard)": create_fast_solver(problem, "fixed_point"),
+    "Hybrid (Standard)": create_standard_solver(problem, "fixed_point"),
     "WENO (Advanced)": create_accurate_solver(problem, solver_type="weno")
 }
 
@@ -191,7 +191,7 @@ class CustomCrowdProblem(BaseMFGProblem):
 
 # Use with factory API
 problem = CustomCrowdProblem(Nx=50, Nt=20, T=1.0)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 

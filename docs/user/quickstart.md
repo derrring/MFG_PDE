@@ -31,7 +31,7 @@ pip install mfg-pde
 
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Create a standard MFG problem
 problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
@@ -41,7 +41,7 @@ problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
 
 ```python
 # Use default solver (Tier 2: Hybrid, mass-conserving)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 ```
 
 ### Step 3: Solve
@@ -93,10 +93,10 @@ result = solver.solve()
 ### Tier 2: Hybrid (DEFAULT)
 
 ```python
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Hybrid (HJB-FDM + FP-Particle) - RECOMMENDED
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
@@ -127,13 +127,13 @@ Use for specialized requirements (high-order accuracy, large time steps, high di
 
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Define problem
 problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
 
 # Solve with default
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
 # Verify mass conservation
@@ -146,12 +146,12 @@ for t in range(problem.Nt + 1):
 ### Workflow 2: Method Comparison
 
 ```python
-from mfg_pde.factory import create_basic_solver, create_fast_solver, create_accurate_solver
+from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
 
 # Compare three solver tiers
 solvers = {
     "Basic FDM": create_basic_solver(problem),
-    "Hybrid (Standard)": create_fast_solver(problem, "fixed_point"),
+    "Hybrid (Standard)": create_standard_solver(problem, "fixed_point"),
     "WENO (Advanced)": create_accurate_solver(problem, solver_type="weno")
 }
 
@@ -166,10 +166,10 @@ for name, solver in solvers.items():
 ### Workflow 3: Custom Configuration
 
 ```python
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Fine-tune solver parameters
-solver = create_fast_solver(
+solver = create_standard_solver(
     problem,
     "fixed_point",
     max_iterations=200,     # Increase max iterations
@@ -229,7 +229,7 @@ class MyMFGProblem(BaseMFGProblem):
 
 # Use with factory API
 problem = MyMFGProblem(Nx=50, Nt=20, T=1.0)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
@@ -244,7 +244,7 @@ See [Custom Problems Guide](custom_problems.md) for details.
 **A**: Use **Tier 2 (Hybrid)** by default - it's the best balance of accuracy and speed.
 
 ```python
-solver = create_fast_solver(problem, "fixed_point")  # Start here
+solver = create_standard_solver(problem, "fixed_point")  # Start here
 ```
 
 Only use Tier 1 for benchmarking or Tier 3 for specialized needs.
@@ -269,10 +269,10 @@ else:
 
 ```python
 # Option 1: Increase max iterations
-solver = create_fast_solver(problem, "fixed_point", max_iterations=200)
+solver = create_standard_solver(problem, "fixed_point", max_iterations=200)
 
 # Option 2: Relax tolerance
-solver = create_fast_solver(problem, "fixed_point", tolerance=1e-5)
+solver = create_standard_solver(problem, "fixed_point", tolerance=1e-5)
 
 # Option 3: Adjust damping (for Tier 1 only)
 solver = create_basic_solver(problem, damping=0.7)
@@ -308,11 +308,11 @@ plt.show()
 **Key Takeaways**:
 
 1. **Factory API is primary** - Use `create_*_solver()` functions
-2. **Tier 2 is default** - `create_fast_solver()` for most uses
+2. **Tier 2 is default** - `create_standard_solver()` for most uses
 3. **Three lines to solve**:
    ```python
    problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
-   solver = create_fast_solver(problem, "fixed_point")
+   solver = create_standard_solver(problem, "fixed_point")
    result = solver.solve()
    ```
 4. **Check convergence** - Always verify `result.converged`

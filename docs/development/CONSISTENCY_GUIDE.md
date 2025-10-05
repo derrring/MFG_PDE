@@ -142,11 +142,11 @@ return U, M, info  # Where info is a dict with convergence data
 **✅ MANDATORY PATTERNS:**
 ```python
 # 1. Always show modern factory pattern first
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 from mfg_pde.config import create_fast_config
 
 config = create_fast_config()
-solver = create_fast_solver(problem, "solver_type", config=config)
+solver = create_standard_solver(problem, "solver_type", config=config)
 result = solver.solve()
 
 # 2. Then show direct class usage as alternative
@@ -303,7 +303,7 @@ laplacian_u # Laplacian Δu
 
 **✅ FACTORY FUNCTION SIGNATURES:**
 ```python
-def create_fast_solver(problem: MFGProblem,
+def create_standard_solver(problem: MFGProblem,
                       solver_type: str,
                       config: Optional[MFGSolverConfig] = None,
                       **kwargs) -> MFGSolver:
@@ -628,7 +628,7 @@ from .alg.particle_collocation_solver import ParticleCollocationSolver
 from .alg.adaptive_particle_collocation_solver import SilentAdaptiveParticleCollocationSolver
 
 # Modern patterns (factory and config)
-from .factory import create_fast_solver, create_accurate_solver, create_research_solver
+from .factory import create_standard_solver, create_accurate_solver, create_research_solver
 from .config import MFGSolverConfig, create_fast_config, create_accurate_config
 
 # Version info
@@ -639,7 +639,7 @@ __author__ = "MFG_PDE Development Team"
 __all__ = [
     "MFGProblem", "ExampleMFGProblem", "BoundaryConditions",
     "ParticleCollocationSolver", "SilentAdaptiveParticleCollocationSolver", 
-    "create_fast_solver", "create_accurate_solver", "create_research_solver",
+    "create_standard_solver", "create_accurate_solver", "create_research_solver",
     "MFGSolverConfig", "create_fast_config", "create_accurate_config"
 ]
 ```

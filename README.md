@@ -27,10 +27,10 @@ pip install -e ".[dev]"
 
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
-solver = create_fast_solver(problem, "fixed_point")  # Default: mass-conserving hybrid
+solver = create_standard_solver(problem, "fixed_point")  # Default: mass-conserving hybrid
 result = solver.solve()
 
 # Check results
@@ -50,17 +50,17 @@ print(f"Mass error: {result.mass_conservation_error:.2e}")  # ~10⁻¹⁵
 
 **Three Solver Tiers**:
 - **Tier 1**: Basic FDM (`create_basic_solver`) - benchmark, ~1-10% mass error
-- **Tier 2**: Hybrid (`create_fast_solver`) - **DEFAULT**, ~10⁻¹⁵ mass error
+- **Tier 2**: Hybrid (`create_standard_solver`) - **DEFAULT**, ~10⁻¹⁵ mass error
 - **Tier 3**: Advanced (`create_accurate_solver`) - WENO, Semi-Lagrangian, DGM
 
 ```python
-from mfg_pde.factory import create_basic_solver, create_fast_solver, create_accurate_solver
+from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
 
 # Tier 1: Basic FDM (benchmark only)
 solver_fdm = create_basic_solver(problem, damping=0.6)
 
 # Tier 2: Hybrid (DEFAULT - use this!)
-solver_hybrid = create_fast_solver(problem, "fixed_point")
+solver_hybrid = create_standard_solver(problem, "fixed_point")
 
 # Tier 3: Advanced (WENO for high-order accuracy)
 solver_weno = create_accurate_solver(problem, solver_type="weno")
@@ -84,13 +84,13 @@ solver_weno = create_accurate_solver(problem, solver_type="weno")
 
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Create problem
 problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
 
 # Solve with default (Tier 2: Hybrid, mass-conserving)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
 # Verify mass conservation
@@ -103,12 +103,12 @@ for t in range(problem.Nt + 1):
 ### **Method Comparison**
 
 ```python
-from mfg_pde.factory import create_basic_solver, create_fast_solver, create_accurate_solver
+from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
 
 # Compare three solver tiers
 solvers = {
     "Basic FDM": create_basic_solver(problem),
-    "Hybrid (Standard)": create_fast_solver(problem, "fixed_point"),
+    "Hybrid (Standard)": create_standard_solver(problem, "fixed_point"),
     "WENO (Advanced)": create_accurate_solver(problem, solver_type="weno")
 }
 
@@ -238,12 +238,12 @@ stats = algo.train(num_episodes=1000)
 
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 from mfg_pde.backends import create_backend
 
 # Automatic optimal backend selection
 problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
-solver = create_fast_solver(problem, backend="auto")  # Chooses best available
+solver = create_standard_solver(problem, backend="auto")  # Chooses best available
 result = solver.solve()
 
 # Manual backend selection
@@ -256,11 +256,11 @@ numba_backend = create_backend("numba")       # CPU optimization
 
 ```python
 from mfg_pde import create_grid_mfg_problem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # MFG on networks and graphs
 problem = create_grid_mfg_problem(10, 10, T=1.0, Nt=50)
-solver = create_fast_solver(problem, backend="auto")
+solver = create_standard_solver(problem, backend="auto")
 result = solver.solve()
 ```
 

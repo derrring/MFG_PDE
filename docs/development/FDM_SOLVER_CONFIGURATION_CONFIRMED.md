@@ -105,10 +105,10 @@ where `θ` is the damping factor.
 
 ### Default (Recommended): Particle Methods
 ```python
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Automatically uses FP-Particle (mass-conserving)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
@@ -143,7 +143,7 @@ from mfg_pde.config import create_accurate_config
 config = create_accurate_config()
 config.picard.damping_factor = 0.6  # Tune damping
 
-solver = create_fast_solver(
+solver = create_standard_solver(
     problem,
     "fixed_point",
     hjb_solver=HJBFDMSolver(problem),

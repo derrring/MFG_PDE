@@ -137,8 +137,8 @@ Even with optimal damping and boundary advection:
 **Use particle methods** (already default in PR #80):
 ```python
 # This automatically uses FP-Particle (mass-conserving)
-from mfg_pde.factory import create_fast_solver
-solver = create_fast_solver(problem, "fixed_point")
+from mfg_pde.factory import create_standard_solver
+solver = create_standard_solver(problem, "fixed_point")
 ```
 
 ### ⚙️ Advanced: Custom Damping for FDM
