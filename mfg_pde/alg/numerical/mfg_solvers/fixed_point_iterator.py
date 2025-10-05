@@ -86,7 +86,7 @@ class FixedPointIterator(BaseMFGSolver):
         # Initialize Anderson accelerator if requested
         self.anderson_accelerator = None
         if use_anderson:
-            from mfg_pde.utils.anderson_acceleration import create_anderson_accelerator
+            from mfg_pde.utils.numerical.anderson_acceleration import create_anderson_accelerator
 
             self.anderson_accelerator = create_anderson_accelerator(
                 depth=anderson_depth,
