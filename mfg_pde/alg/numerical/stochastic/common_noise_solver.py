@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.utils.monte_carlo import MCConfig, QuasiMCSampler
+from mfg_pde.utils.numerical.monte_carlo import MCConfig, QuasiMCSampler
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -203,7 +203,7 @@ class CommonNoiseMFGSolver:
         Raises:
             ValueError: If problem doesn't have common noise
         """
-        if not problem.has_common_noise():
+        if not hasattr(problem, "has_common_noise") or not problem.has_common_noise():
             raise ValueError("Problem must have common noise process defined")
 
         self.problem = problem
@@ -304,7 +304,9 @@ class CommonNoiseMFGSolver:
             # Use quasi-Monte Carlo for better coverage
             # Note: Quasi-MC works best in [0,1]^d, so we sample uniform
             # then transform to noise paths
-            sampler = QuasiMCSampler(sequence_type="sobol", dimension=1, seed=self.seed)
+            domain = [(0.0, 1.0)]  # 1D unit interval for seed sampling
+            qmc_config = MCConfig(num_samples=self.K, seed=self.seed)
+            sampler = QuasiMCSampler(domain, qmc_config, sequence_type="sobol")
 
             # Generate K quasi-random seeds for noise paths
             quasi_seeds = sampler.sample(self.K)
