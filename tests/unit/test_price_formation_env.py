@@ -184,7 +184,7 @@ class TestPriceFormationEnv:
     def test_terminates_when_inventory_exceeds_limit(self):
         """Test episode terminates when inventory limit reached."""
         env = PriceFormationEnv(q_max=10.0)
-        state, _ = env.reset(seed=42)
+        _state, _ = env.reset(seed=42)
 
         # Directly check termination logic with inventory at 95% of limit
         state_at_limit = np.array([9.5, 100.0, 0.0, 0.5], dtype=np.float32)
@@ -210,7 +210,7 @@ class TestPriceFormationEnv:
     def test_mean_field_coupling_computed(self):
         """Test mean field coupling provides liquidity penalty."""
         env = PriceFormationEnv(liquidity_penalty=1.0, inventory_penalty=0.0, spread_cost=0.0)
-        state, _ = env.reset(seed=42)
+        _state, _ = env.reset(seed=42)
 
         action = np.array([0.1, 0.1], dtype=np.float32)
         _, reward, _, _, _ = env.step(action)

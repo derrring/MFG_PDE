@@ -65,7 +65,7 @@ def run_random_policy_episode(env, seed: int = 42):
         action = env.action_space.sample()
 
         # Execute step
-        next_state, reward, done, truncated, info = env.step(action)
+        next_state, reward, done, truncated, _info = env.step(action)
 
         # Record
         episode_rewards.append(reward)
@@ -103,7 +103,7 @@ def visualize_episode(stats: dict, save_path: str = "lq_mfg_demo.png"):
         print("Matplotlib not available, skipping visualization")
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    _fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     # Plot 1: Position over time
     ax = axes[0, 0]

@@ -90,7 +90,7 @@ class TestHybridMassConservation:
 
         # Solve MFG system
         try:
-            U, M, info = solver.solve(
+            _U, M, info = solver.solve(
                 max_iterations=50,
                 tolerance=1e-3,
                 verbose=False,
@@ -160,7 +160,7 @@ class TestHybridMassConservation:
         )
 
         try:
-            U, M, info = solver.solve(max_iterations=50, tolerance=1e-3, verbose=False)
+            _U, M, _info = solver.solve(max_iterations=50, tolerance=1e-3, verbose=False)
         except Exception as e:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 
@@ -205,7 +205,7 @@ class TestHybridMassConservationFast:
         )
 
         try:
-            U, M, info = solver.solve(max_iterations=10, tolerance=1e-2, verbose=False)
+            U, M, _info = solver.solve(max_iterations=10, tolerance=1e-2, verbose=False)
         except Exception as e:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 

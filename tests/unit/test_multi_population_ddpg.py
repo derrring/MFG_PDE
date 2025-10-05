@@ -54,7 +54,7 @@ class TestMultiPopulationDDPG:
         pop_states = self.env.get_population_states()
 
         actions = self.algo.select_actions(states, pop_states, training=True)
-        next_states, rewards, terminated, truncated, _ = self.env.step(actions)
+        next_states, rewards, terminated, _truncated, _ = self.env.step(actions)
         next_pop_states = self.env.get_population_states()
 
         # Flatten population states for storage
@@ -150,7 +150,7 @@ class TestMultiPopulationDDPG:
 
         for _ in range(self.algo.config["batch_size"] + 50):
             actions = self.algo.select_actions(states, pop_states, training=True)
-            next_states, rewards, terminated, truncated, _ = self.env.step(actions)
+            next_states, rewards, terminated, _truncated, _ = self.env.step(actions)
             next_pop_states = self.env.get_population_states()
             next_pop_states_flat = np.concatenate([next_pop_states[i] for i in range(2)])
 
@@ -192,7 +192,7 @@ class TestMultiPopulationDDPG:
 
         for _ in range(self.algo.config["batch_size"] + 10):
             actions = self.algo.select_actions(states, pop_states, training=True)
-            next_states, rewards, terminated, truncated, _ = self.env.step(actions)
+            next_states, rewards, terminated, _truncated, _ = self.env.step(actions)
             next_pop_states = self.env.get_population_states()
             next_pop_states_flat = np.concatenate([next_pop_states[i] for i in range(2)])
 
@@ -282,7 +282,7 @@ class TestMultiPopulationDDPG:
         states, _ = self.env.reset(seed=42)
         pop_states = self.env.get_population_states()
         actions = self.algo.select_actions(states, pop_states, training=True)
-        next_states, rewards, terminated, truncated, _ = self.env.step(actions)
+        next_states, rewards, terminated, _truncated, _ = self.env.step(actions)
         next_pop_states = self.env.get_population_states()
 
         # Flatten population states

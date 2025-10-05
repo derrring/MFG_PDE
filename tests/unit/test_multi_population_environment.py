@@ -90,7 +90,7 @@ class TestSimpleMultiPopulationEnv:
         states, _ = env.reset()
         actions = {"pop1": np.array([0.5]), "pop2": np.array([-0.5])}
 
-        next_states, rewards, terminated, truncated, info = env.step(actions)
+        next_states, rewards, terminated, truncated, _info = env.step(actions)
 
         # Check state evolution: s' = s + a * dt
         assert np.allclose(next_states["pop1"], states["pop1"] + actions["pop1"] * 0.1)
@@ -133,7 +133,7 @@ class TestSimpleMultiPopulationEnv:
             assert not truncated["pop1"]
 
         # Last step should truncate
-        _, _, terminated, truncated, _ = env.step(actions)
+        _, _, _terminated, truncated, _ = env.step(actions)
         assert truncated["pop1"]
         assert truncated["pop2"]
 
@@ -161,7 +161,7 @@ class TestSimpleMultiPopulationEnv:
         """Test that coupling weights affect rewards."""
         env = SimpleMultiPopulationEnv(populations=simple_populations, dt=0.1)
 
-        states, _ = env.reset()
+        _states, _ = env.reset()
 
         # Pop1 and pop2 start at different positions
         # Pop1 has coupling_weight=0.5 to pop2

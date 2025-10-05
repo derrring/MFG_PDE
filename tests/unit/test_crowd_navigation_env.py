@@ -219,7 +219,7 @@ class TestCrowdNavigationEnv:
     def test_crowd_avoidance_penalty(self):
         """Test mean field coupling provides crowd avoidance."""
         env = CrowdNavigationEnv(cost_crowd=1.0, cost_distance=0.0, cost_velocity=0.0, cost_control=0.0)
-        state, _ = env.reset(seed=42)
+        _state, _ = env.reset(seed=42)
 
         action = np.array([0.0, 0.0], dtype=np.float32)
         _, reward, _, _, _ = env.step(action)

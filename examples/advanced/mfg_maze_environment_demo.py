@@ -140,7 +140,7 @@ def demo_population_tracking():
     # Simulate a few steps
     for step in range(10):
         action = env.action_space.sample()
-        observation, reward, terminated, truncated, info = env.step(action)
+        observation, reward, terminated, truncated, _info = env.step(action)
 
         if step % 5 == 0:
             print(f"\nStep {step}:")
@@ -196,7 +196,7 @@ def demo_reward_structures():
         # Run episode with random policy
         for _ in range(200):
             action = env.action_space.sample()
-            observation, reward, terminated, truncated, info = env.step(action)
+            _observation, reward, terminated, truncated, _info = env.step(action)
             total_reward += reward
             step_count += 1
 
@@ -261,7 +261,7 @@ def demo_maze_types():
         steps = 0
         for _ in range(400):
             action = env.action_space.sample()
-            observation, reward, terminated, truncated, info = env.step(action)
+            _observation, _reward, terminated, _truncated, _info = env.step(action)
             steps += 1
 
             if terminated:
@@ -315,7 +315,7 @@ def visualize_multi_episode_learning():
 
         for _ in range(300):
             action = env.action_space.sample()
-            observation, reward, terminated, truncated, info = env.step(action)
+            _observation, reward, terminated, truncated, _info = env.step(action)
             episode_reward += reward
             steps += 1
 
@@ -343,7 +343,7 @@ def visualize_multi_episode_learning():
     print(f"  Average length: {np.mean(episode_lengths):.1f}")
 
     # Visualize results
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
     ax1.plot(episode_rewards)
     ax1.set_xlabel("Episode")

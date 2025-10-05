@@ -182,7 +182,7 @@ def train_alternating(env, solvers, num_iterations=20, episodes_per_iteration=50
 
 def visualize_training(results):
     """Plot training progress for both populations."""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    _fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     # Predator rewards
     ax = axes[0]
@@ -223,7 +223,7 @@ def visualize_training(results):
 def visualize_population_distributions(env):
     """Visualize final population distributions."""
     # Run one episode with trained policies to get final state
-    observations, _ = env.reset(seed=42)
+    _observations, _ = env.reset(seed=42)
 
     for _ in range(100):  # Run for a bit
         actions = {
@@ -237,7 +237,7 @@ def visualize_population_distributions(env):
     multi_pop_state = env.get_multi_population_state()
     densities = multi_pop_state.get_all_densities()
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    _fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     # Predator density
     ax = axes[0]

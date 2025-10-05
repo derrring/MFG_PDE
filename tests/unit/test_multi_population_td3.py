@@ -71,7 +71,7 @@ class TestMultiPopulationTD3:
         # Fill replay buffer
         for _ in range(self.algo.config["batch_size"] + 10):
             actions = self.algo.select_actions(states, pop_states, training=True)
-            next_states, rewards, terminated, truncated, _ = self.env.step(actions)
+            next_states, rewards, terminated, _truncated, _ = self.env.step(actions)
             next_pop_states = self.env.get_population_states()
 
             # Flatten population states
@@ -315,7 +315,7 @@ class TestMultiPopulationTD3:
         states, _ = self.env.reset(seed=42)
         pop_states = self.env.get_population_states()
         actions = self.algo.select_actions(states, pop_states, training=True)
-        next_states, rewards, terminated, truncated, _ = self.env.step(actions)
+        next_states, rewards, terminated, _truncated, _ = self.env.step(actions)
         next_pop_states = self.env.get_population_states()
 
         # Flatten population states

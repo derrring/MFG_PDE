@@ -66,7 +66,7 @@ def main():
             tolerance=1e-3,  # Relaxed from 1e-4
             verbose=True,
         )
-        U, M = result[:2]
+        _U, M = result[:2]
         _ = True  # converged
     except Exception as e:
         print(f"\nSolver exception (expected for stochastic): {str(e)[:100]}...")

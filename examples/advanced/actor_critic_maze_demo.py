@@ -195,7 +195,7 @@ def evaluate_policy(agent, env, num_episodes: int = 10) -> dict:
             # Use deterministic policy for evaluation
             action, _ = agent.select_action(state, population, deterministic=True)
 
-            next_obs, reward, done, truncated, info = env.step(action)
+            next_obs, reward, done, truncated, _info = env.step(action)
             done = done or truncated
 
             episode_reward += reward
@@ -228,7 +228,7 @@ def plot_training_progress(stats: dict, save_path: str | None = None):
         stats: Training statistics
         save_path: Path to save plot (optional)
     """
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
     # Plot episode rewards
     rewards = np.array(stats["episode_rewards"])
@@ -337,7 +337,7 @@ def main():
     # Example 2: Train on hybrid maze (requires larger size for Voronoi)
     logger.info("\n--- Example 2: Training on Hybrid Maze ---")
     hybrid_env = create_maze_environment(maze_type="hybrid", size=35)  # Voronoi requires >=20 per region
-    hybrid_agent, hybrid_stats = train_actor_critic(
+    hybrid_agent, _hybrid_stats = train_actor_critic(
         hybrid_env,
         num_episodes=50,  # Reduced for demo
         max_steps=50,

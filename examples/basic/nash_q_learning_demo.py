@@ -89,7 +89,7 @@ def visualize_nash_equilibrium_2d():
     action_names = ["Up", "Down", "Left", "Right"]
     action_colors = ["red", "blue", "green", "orange"]
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    _fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
     for idx, (pop_state, pop_label) in enumerate(zip(population_states, pop_labels, strict=False)):
         # Compute Nash policies for all grid points

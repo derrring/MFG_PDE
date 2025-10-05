@@ -140,7 +140,7 @@ class TestLQMFGEnv:
     def test_mean_field_coupling_computed(self):
         """Test mean field coupling contributes to reward."""
         env = LQMFGEnv(cost_state=0.0, cost_control=0.0, cost_mean_field=1.0)
-        state, _ = env.reset(seed=42)
+        _state, _ = env.reset(seed=42)
 
         action = np.array([0.0], dtype=np.float32)
         _, reward, _, _, _ = env.step(action)

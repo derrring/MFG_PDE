@@ -170,7 +170,7 @@ def run_nash_q_learning(env, num_episodes=200):
 
 def plot_comparison(results_list, labels):
     """Plot comparison of algorithms."""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    _fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     # Plot rewards
     ax = axes[0]

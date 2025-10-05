@@ -130,7 +130,7 @@ def visualize_learning_curves(stats: dict, save_path: str = "ddpg_learning_curve
         print("Matplotlib not available for visualization")
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    _fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
     # Episode rewards
     ax = axes[0, 0]
@@ -223,7 +223,7 @@ def evaluate_policy(env: ContinuousActionMazeEnvironment, algo: MeanFieldDDPG, n
                     actions.append(np.zeros(2))
 
             # Step environment
-            observations, rewards, terminated, truncated, _ = env.step(np.array(actions))
+            _observations, rewards, terminated, truncated, _ = env.step(np.array(actions))
             episode_reward += rewards.sum()
             steps += 1
             done = terminated or truncated

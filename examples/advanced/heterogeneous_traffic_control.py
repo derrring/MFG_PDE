@@ -227,7 +227,7 @@ class HeterogeneousTrafficEnv(MultiPopulationMFGEnv):
         Buses: Minimize schedule deviation + congestion penalty
         """
         position, velocity = state
-        next_position, next_velocity = next_state
+        next_position, _next_velocity = next_state
         action_array = np.atleast_1d(action)
 
         # Compute congestion penalty (common to all)
@@ -525,15 +525,15 @@ def main():
     results = {}
 
     # DDPG
-    ddpg, ddpg_stats = train_algorithm(MultiPopulationDDPG, "DDPG", env, num_episodes)
+    _ddpg, ddpg_stats = train_algorithm(MultiPopulationDDPG, "DDPG", env, num_episodes)
     results["DDPG"] = ddpg_stats
 
     # TD3
-    td3, td3_stats = train_algorithm(MultiPopulationTD3, "TD3", env, num_episodes)
+    _td3, td3_stats = train_algorithm(MultiPopulationTD3, "TD3", env, num_episodes)
     results["TD3"] = td3_stats
 
     # SAC
-    sac, sac_stats = train_algorithm(MultiPopulationSAC, "SAC", env, num_episodes)
+    _sac, sac_stats = train_algorithm(MultiPopulationSAC, "SAC", env, num_episodes)
     results["SAC"] = sac_stats
 
     # Print performance comparison

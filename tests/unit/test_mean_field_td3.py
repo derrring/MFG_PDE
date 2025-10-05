@@ -174,7 +174,7 @@ class TestMeanFieldTD3:
         # Update and verify losses exist
         losses = algo.update()
         assert losses is not None
-        critic1_loss, critic2_loss, actor_loss = losses
+        critic1_loss, critic2_loss, _actor_loss = losses
         assert isinstance(critic1_loss, float)
         assert isinstance(critic2_loss, float)
 

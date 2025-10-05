@@ -221,7 +221,7 @@ def train_traffic_coordination(env, solvers, num_iterations=15, episodes_per_ite
 
 def visualize_training(history):
     """Plot training progress for all vehicle types."""
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    _fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     vehicle_types = ["car", "truck", "bus"]
     colors = ["blue", "red", "green"]
@@ -252,7 +252,7 @@ def visualize_training(history):
 def visualize_traffic_flow(env):
     """Visualize traffic density distributions."""
     # Run episode to get traffic patterns
-    observations, _ = env.reset(seed=42)
+    _observations, _ = env.reset(seed=42)
 
     for _ in range(150):
         actions = {
@@ -267,7 +267,7 @@ def visualize_traffic_flow(env):
     multi_pop_state = env.get_multi_population_state()
     densities = multi_pop_state.get_all_densities()
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 14))
+    _fig, axes = plt.subplots(2, 2, figsize=(14, 14))
 
     # Individual vehicle type densities
     vehicle_types = ["car", "truck", "bus"]

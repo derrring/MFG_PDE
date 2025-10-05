@@ -347,7 +347,7 @@ class TestMultiPopulationStochasticActor:
             "pop2": torch.randn(4, 30),
         }
 
-        action, log_prob, _ = actor.sample(state, pop_states)
+        action, _log_prob, _ = actor.sample(state, pop_states)
         loss = action.sum()
         loss.backward()
 
@@ -370,7 +370,7 @@ class TestMultiPopulationStochasticActor:
         }
 
         _, _, mean_action1 = actor.sample(state, pop_states)
-        _, _, mean_action2 = actor.sample(state, pop_states)
+        _, _, _mean_action2 = actor.sample(state, pop_states)
 
         # Mean should be deterministic (same input → same mean)
         mean, _ = actor(state, pop_states)

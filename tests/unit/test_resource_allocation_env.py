@@ -197,7 +197,7 @@ class TestResourceAllocationEnv:
     def test_mean_field_coupling_computed(self):
         """Test mean field coupling provides congestion penalty."""
         env = ResourceAllocationEnv(base_return=0.0, risk_penalty=0.0, transaction_cost=0.0, congestion_penalty=1.0)
-        state, _ = env.reset(seed=42)
+        _state, _ = env.reset(seed=42)
 
         action = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         _, reward, _, _, _ = env.step(action)
