@@ -358,7 +358,7 @@ class Domain3D(BaseGeometry):
 
         # Process tetrahedral elements (type 4 in Gmsh)
         tetrahedra = None
-        for elem_type, tags, connectivity in zip(element_types, element_tags, element_connectivity, strict=False):
+        for elem_type, _tags, connectivity in zip(element_types, element_tags, element_connectivity, strict=False):
             if elem_type == 4:  # Tetrahedron
                 tetrahedra = connectivity.reshape(-1, 4) - 1  # Convert to 0-based indexing
                 break

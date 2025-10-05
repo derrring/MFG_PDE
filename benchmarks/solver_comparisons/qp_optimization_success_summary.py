@@ -184,7 +184,7 @@ def create_optimization_visualization(results):
     assessment_text = "OPTIMIZATION QUALITY ASSESSMENT\n\n"
     assessment_text += "Target: Reduce QP usage from 100% to ~10%\n\n"
 
-    for i, (method, rate) in enumerate(zip(methods, qp_rates, strict=False)):
+    for _i, (method, rate) in enumerate(zip(methods, qp_rates, strict=False)):
         if rate <= 12:  # Within 20% of 10% target
             quality = "✅ EXCELLENT"
         elif rate <= 20:  # Within 100% of target
