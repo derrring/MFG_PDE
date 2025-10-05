@@ -19,9 +19,9 @@ from .integration import get_integration_info, trapezoid
 from .monte_carlo import monte_carlo_integrate
 
 __all__ = [
-    "AndersonAccelerator",
     "AdvancedConvergenceMonitor",
+    "AndersonAccelerator",
     "get_integration_info",
-    "trapezoid",
     "monte_carlo_integrate",
+    "trapezoid",
 ]

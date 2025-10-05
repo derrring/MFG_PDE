@@ -543,7 +543,7 @@ class MultiPopulationSAC:
 
         for episode in range(num_episodes):
             states, _ = self.env.reset()
-            episode_reward_dict = {i: 0.0 for i in range(self.num_populations)}
+            episode_reward_dict = dict.fromkeys(range(self.num_populations), 0.0)
             episode_length = 0
 
             done = False

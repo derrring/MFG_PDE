@@ -87,9 +87,9 @@ class MultiPopulationTrainer:
             population_states = self.env.get_all_population_states()
 
             # Episode tracking
-            episode_rewards = {pop_id: 0.0 for pop_id in self.population_ids}
-            episode_lengths = {pop_id: 0 for pop_id in self.population_ids}
-            done = {pop_id: False for pop_id in self.population_ids}
+            episode_rewards = dict.fromkeys(self.population_ids, 0.0)
+            episode_lengths = dict.fromkeys(self.population_ids, 0)
+            done = dict.fromkeys(self.population_ids, False)
 
             while not all(done.values()):
                 # Select actions for all active populations
@@ -216,9 +216,9 @@ class MultiPopulationTrainer:
             states, _ = self.env.reset()
             population_states = self.env.get_all_population_states()
 
-            episode_rewards = {pop_id: 0.0 for pop_id in self.population_ids}
-            episode_lengths = {pop_id: 0 for pop_id in self.population_ids}
-            done = {pop_id: False for pop_id in self.population_ids}
+            episode_rewards = dict.fromkeys(self.population_ids, 0.0)
+            episode_lengths = dict.fromkeys(self.population_ids, 0)
+            done = dict.fromkeys(self.population_ids, False)
 
             while not all(done.values()):
                 # Select actions (no exploration)

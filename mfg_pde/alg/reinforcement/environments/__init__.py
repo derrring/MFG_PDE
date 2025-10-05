@@ -174,66 +174,66 @@ except ImportError:
     TrafficFlowEnv = None  # type: ignore
 
 __all__ = [
-    # Perfect maze generation
-    "MazeAlgorithm",
-    "PerfectMazeGenerator",
-    "Grid",
+    "CONTINUOUS_MFG_AVAILABLE",
+    "CROWD_NAV_AVAILABLE",
+    "LQ_MFG_AVAILABLE",
+    "MAZE_POSTPROCESSING_AVAILABLE",
+    "MAZE_UTILS_AVAILABLE",
+    # Availability flags
+    "MFG_ENV_AVAILABLE",
+    "PRICE_FORMATION_AVAILABLE",
+    "RESOURCE_ALLOCATION_AVAILABLE",
+    "TRAFFIC_FLOW_AVAILABLE",
+    "AlgorithmSpec",
     "Cell",
-    "generate_maze",
-    "verify_perfect_maze",
-    # Configuration
-    "MazeConfig",
-    "MazeTopology",
-    "PhysicalDimensions",
-    "PlacementStrategy",
-    "create_default_config",
-    "create_continuous_maze_config",
-    "create_multi_goal_config",
-    # Position placement
-    "place_positions",
-    "compute_position_metrics",
-    # Recursive Division (variable-width mazes)
-    "RecursiveDivisionConfig",
-    "RecursiveDivisionGenerator",
-    "SplitOrientation",
-    "add_loops",
-    "create_room_based_config",
     # Cellular Automata (organic mazes)
     "CellularAutomataConfig",
     "CellularAutomataGenerator",
-    "create_preset_ca_config",
-    # Voronoi Diagram (room-based mazes)
-    "VoronoiMazeConfig",
-    "VoronoiMazeGenerator",
+    "Grid",
     # Hybrid Mazes (multi-algorithm combinations)
     "HybridMazeConfig",
     "HybridMazeGenerator",
     "HybridStrategy",
-    "AlgorithmSpec",
+    # Perfect maze generation
+    "MazeAlgorithm",
+    # Configuration
+    "MazeConfig",
+    "MazeTopology",
+    "PerfectMazeGenerator",
+    "PhysicalDimensions",
+    "PlacementStrategy",
+    # Recursive Division (variable-width mazes)
+    "RecursiveDivisionConfig",
+    "RecursiveDivisionGenerator",
+    "SplitOrientation",
+    # Voronoi Diagram (room-based mazes)
+    "VoronoiMazeConfig",
+    "VoronoiMazeGenerator",
+    "add_loops",
+    "compute_position_metrics",
+    "create_campus_hybrid",
+    "create_continuous_maze_config",
+    "create_default_config",
+    "create_multi_goal_config",
     "create_museum_hybrid",
     "create_office_hybrid",
-    "create_campus_hybrid",
-    # Availability flags
-    "MFG_ENV_AVAILABLE",
-    "MAZE_UTILS_AVAILABLE",
-    "MAZE_POSTPROCESSING_AVAILABLE",
-    "CONTINUOUS_MFG_AVAILABLE",
-    "LQ_MFG_AVAILABLE",
-    "CROWD_NAV_AVAILABLE",
-    "PRICE_FORMATION_AVAILABLE",
-    "RESOURCE_ALLOCATION_AVAILABLE",
-    "TRAFFIC_FLOW_AVAILABLE",
+    "create_preset_ca_config",
+    "create_room_based_config",
+    "generate_maze",
+    # Position placement
+    "place_positions",
+    "verify_perfect_maze",
 ]
 
 # Add maze utilities exports if available
 if MAZE_UTILS_AVAILABLE:
     __all__.extend(
         [
-            "connect_regions_adaptive",
             "analyze_maze_connectivity",
+            "compute_adaptive_door_width",
+            "connect_regions_adaptive",
             "find_disconnected_regions",
             "find_region_boundary",
-            "compute_adaptive_door_width",
         ]
     )
 
@@ -241,12 +241,12 @@ if MAZE_UTILS_AVAILABLE:
 if MAZE_POSTPROCESSING_AVAILABLE:
     __all__.extend(
         [
-            "smooth_walls_morphological",
-            "smooth_walls_gaussian",
-            "smooth_walls_combined",
-            "normalize_wall_thickness",
             "adaptive_door_carving",
             "enhance_organic_maze",
+            "normalize_wall_thickness",
+            "smooth_walls_combined",
+            "smooth_walls_gaussian",
+            "smooth_walls_morphological",
         ]
     )
 
@@ -254,10 +254,10 @@ if MAZE_POSTPROCESSING_AVAILABLE:
 if MFG_ENV_AVAILABLE:
     __all__.extend(
         [
-            "MFGMazeEnvironment",
-            "MFGMazeConfig",
-            "PopulationState",
             "ActionType",
+            "MFGMazeConfig",
+            "MFGMazeEnvironment",
+            "PopulationState",
             "RewardType",
         ]
     )

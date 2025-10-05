@@ -14,4 +14,4 @@ from .analysis import LogAnalyzer
 from .decorators import LoggingMixin, logged_operation
 from .logger import configure_research_logging, get_logger
 
-__all__ = ["get_logger", "configure_research_logging", "LoggingMixin", "logged_operation", "LogAnalyzer"]
+__all__ = ["LogAnalyzer", "LoggingMixin", "configure_research_logging", "get_logger", "logged_operation"]

@@ -50,23 +50,23 @@ from .population_config import (
 from .trainer import MultiPopulationTrainer
 
 __all__ = [
-    # Configuration
-    "PopulationConfig",
-    "validate_population_set",
-    "create_symmetric_coupling",
-    "create_asymmetric_coupling",
-    # Environment
-    "MultiPopulationMFGEnvironment",
-    "SimpleMultiPopulationEnv",
     # Networks
     "JointPopulationEncoder",
     "MultiPopulationActor",
     "MultiPopulationCritic",
-    "MultiPopulationStochasticActor",
     # Algorithms
     "MultiPopulationDDPG",
-    "MultiPopulationTD3",
+    # Environment
+    "MultiPopulationMFGEnvironment",
     "MultiPopulationSAC",
+    "MultiPopulationStochasticActor",
+    "MultiPopulationTD3",
     # Training
     "MultiPopulationTrainer",
+    # Configuration
+    "PopulationConfig",
+    "SimpleMultiPopulationEnv",
+    "create_asymmetric_coupling",
+    "create_symmetric_coupling",
+    "validate_population_set",
 ]

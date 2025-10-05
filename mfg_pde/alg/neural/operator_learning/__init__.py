@@ -42,23 +42,23 @@ if TORCH_AVAILABLE:
     from .operator_training import OperatorDataset, OperatorTrainingManager, TrainingConfig
 
     __all__ = [
+        "TORCH_AVAILABLE",
         # Base Classes
         "BaseNeuralOperator",
-        "OperatorConfig",
-        "OperatorResult",
-        # Fourier Neural Operator
-        "FourierNeuralOperator",
-        "FNOConfig",
         # DeepONet
         "DeepONet",
         "DeepONetConfig",
+        "FNOConfig",
+        # Fourier Neural Operator
+        "FourierNeuralOperator",
+        "OperatorConfig",
+        "OperatorDataset",
+        "OperatorResult",
         # Training Infrastructure
         "OperatorTrainingManager",
-        "OperatorDataset",
         "TrainingConfig",
         # Utility Functions
         "create_mfg_operator",
-        "TORCH_AVAILABLE",
     ]
 
     def create_mfg_operator(operator_type: str, config: dict[str, Any]) -> Any:

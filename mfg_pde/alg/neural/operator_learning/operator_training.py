@@ -28,10 +28,8 @@ Data Management:
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -47,6 +45,10 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 from mfg_pde.utils.logging.logger import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 NDArray = np.ndarray[Any, np.dtype[Any]]
 
@@ -340,7 +342,7 @@ if TORCH_AVAILABLE:
                 batch_size=self.config.batch_size,
                 shuffle=True,
                 num_workers=self.config.num_workers,
-                pin_memory=True if self.device.type == "cuda" else False,
+                pin_memory=self.device.type == "cuda",
             )
 
             val_loader = DataLoader(
@@ -348,7 +350,7 @@ if TORCH_AVAILABLE:
                 batch_size=self.config.batch_size,
                 shuffle=False,
                 num_workers=self.config.num_workers,
-                pin_memory=True if self.device.type == "cuda" else False,
+                pin_memory=self.device.type == "cuda",
             )
 
             # Setup optimizer

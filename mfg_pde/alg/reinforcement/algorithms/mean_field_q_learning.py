@@ -383,7 +383,7 @@ class MeanFieldQLearning:
         self.logger.info(f"Starting Mean Field Q-Learning training for {num_episodes} episodes")
 
         for episode in range(num_episodes):
-            episode_reward, episode_length = self._run_episode(episode)
+            _episode_reward, _episode_length = self._run_episode(episode)
 
             # Decay epsilon
             if self.epsilon > self.config["epsilon_min"]:

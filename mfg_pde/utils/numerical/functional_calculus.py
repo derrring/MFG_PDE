@@ -500,7 +500,7 @@ def verify_functional_derivative_accuracy(
         >>> print(f"Max error: {errors['max_error']:.6e}")
     """
     # Create test measure
-    particles, weights = create_particle_measure(domain_bounds, num_particles, method="uniform")
+    _particles, weights = create_particle_measure(domain_bounds, num_particles, method="uniform")
 
     # Create measure density (histogram approximation)
     measure = weights  # For 1D uniform particles

@@ -36,7 +36,6 @@ from dataclasses import dataclass
 try:
     import torch
     import torch.nn as nn
-    import torch.nn.functional as functional
 
     TORCH_AVAILABLE = True
 except ImportError:
@@ -192,7 +191,7 @@ if TORCH_AVAILABLE:
             layers.append(self.activation)
 
             # Hidden layers
-            for i in range(config.trunk_depth - 2):
+            for _i in range(config.trunk_depth - 2):
                 layers.append(nn.Linear(config.trunk_width, config.trunk_width))
                 if config.use_batch_norm:
                     layers.append(nn.BatchNorm1d(config.trunk_width))
@@ -318,38 +317,6 @@ if TORCH_AVAILABLE:
             # Move to device
             self.to(self.device)
 
-        def forward(self, branch_input: torch.Tensor, trunk_input: torch.Tensor) -> torch.Tensor:
-            """
-            Forward pass through DeepONet.
-
-            Args:
-                branch_input: Parameter function values [batch, sensor_points]
-                trunk_input: Evaluation coordinates [batch, num_points, coordinate_dim]
-
-            Returns:
-                Predicted function values [batch, num_points]
-            """
-            # Branch network: encode parameter function
-            branch_output = self.branch_net(branch_input)  # [batch, latent_dim]
-
-            # Trunk network: encode evaluation coordinates
-            trunk_output = self.trunk_net(trunk_input)  # [batch, num_points, latent_dim]
-
-            # Dot product between branch and trunk outputs
-            # branch_output: [batch, latent_dim] -> [batch, 1, latent_dim]
-            # trunk_output: [batch, num_points, latent_dim]
-            branch_expanded = branch_output.unsqueeze(1)  # [batch, 1, latent_dim]
-
-            # Element-wise multiplication and sum over latent dimension
-            operator_output = torch.sum(branch_expanded * trunk_output, dim=-1)  # [batch, num_points]
-
-            # Add bias if enabled
-            if self.config.use_bias_net and hasattr(self, "bias_net"):
-                bias_output = self.bias_net(trunk_input).squeeze(-1)  # [batch, num_points]
-                operator_output = operator_output + bias_output
-
-            return operator_output
-
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             """
             Forward pass compatible with base class.
@@ -445,7 +412,7 @@ if TORCH_AVAILABLE:
 
             # Combine inputs for compatibility with base class
             # Flatten trunk coordinates
-            batch_size, num_points, coord_dim = trunk_data.shape
+            batch_size, _num_points, _coord_dim = trunk_data.shape
             trunk_flat = trunk_data.view(batch_size, -1)
 
             # Combine branch and trunk data

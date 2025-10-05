@@ -9,6 +9,6 @@ This module provides numerical solvers for stochastic MFG formulations:
 from .common_noise_solver import CommonNoiseMFGResult, CommonNoiseMFGSolver
 
 __all__ = [
-    "CommonNoiseMFGSolver",
     "CommonNoiseMFGResult",
+    "CommonNoiseMFGSolver",
 ]
