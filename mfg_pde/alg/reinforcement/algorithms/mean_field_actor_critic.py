@@ -458,7 +458,7 @@ class MeanFieldActorCritic:
                     value = self.critic(state_tensor, pop_tensor).item()
 
                 # Step environment
-                next_obs, reward, done, truncated, info = self.env.step(action)
+                next_obs, reward, done, truncated, _info = self.env.step(action)
                 done = done or truncated
 
                 # Convert reward to scalar if needed

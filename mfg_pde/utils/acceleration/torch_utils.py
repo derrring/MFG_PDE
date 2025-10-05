@@ -263,13 +263,13 @@ def tridiagonal_solve(
 
 
 __all__ = [
-    "HAS_TORCH",
     "HAS_CUDA",
     "HAS_MPS",
+    "HAS_TORCH",
+    "GaussianKDE",
     "ensure_torch_available",
     "get_default_device",
-    "to_tensor",
     "to_numpy",
-    "GaussianKDE",
+    "to_tensor",
     "tridiagonal_solve",
 ]

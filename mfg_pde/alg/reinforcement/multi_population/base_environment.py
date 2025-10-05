@@ -194,7 +194,7 @@ class MultiPopulationMFGEnvironment(ABC):
 
         # Check termination
         terminated = {pop_id: self._is_terminated(pop_id) for pop_id in self.populations}
-        truncated = {pop_id: self.episode_step >= self.max_steps for pop_id in self.populations}
+        truncated = dict.fromkeys(self.populations, self.episode_step >= self.max_steps)
 
         # Info
         info = {

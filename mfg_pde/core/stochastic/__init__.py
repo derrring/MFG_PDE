@@ -15,10 +15,10 @@ from .noise_processes import (
 from .stochastic_problem import StochasticMFGProblem
 
 __all__ = [
-    "NoiseProcess",
-    "OrnsteinUhlenbeckProcess",
     "CoxIngersollRossProcess",
     "GeometricBrownianMotion",
     "JumpDiffusionProcess",
+    "NoiseProcess",
+    "OrnsteinUhlenbeckProcess",
     "StochasticMFGProblem",
 ]

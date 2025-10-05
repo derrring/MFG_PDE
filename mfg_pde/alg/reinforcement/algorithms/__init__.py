@@ -54,19 +54,19 @@ if TORCH_AVAILABLE:
     from .multi_population_td3 import MultiPopulationTD3
 
     __all__ = [
+        "ActorNetwork",
+        "CriticNetwork",
+        "MeanFieldActorCritic",
+        "MeanFieldDDPG",
         # Single-population
         "MeanFieldQLearning",
         "MeanFieldQNetwork",
-        "MeanFieldActorCritic",
-        "ActorNetwork",
-        "CriticNetwork",
-        "MeanFieldDDPG",
-        "MeanFieldTD3",
         "MeanFieldSAC",
+        "MeanFieldTD3",
         # Multi-population
         "MultiPopulationDDPG",
-        "MultiPopulationTD3",
         "MultiPopulationSAC",
+        "MultiPopulationTD3",
     ]
 else:
     __all__ = []
