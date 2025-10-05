@@ -313,6 +313,10 @@ class FixedPointIterator(BaseMFGSolver):
                 self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
                 self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
 
+            # Preserve initial condition (boundary condition in time)
+            # The damping/Anderson steps above may modify M[0,:], but initial condition is fixed
+            self.M[0, :] = initial_m_dist
+
             # Update U_picard_prev for the next iteration's Jacobian calculation
             U_picard_prev = U_old_current_picard_iter.copy()  # U_k becomes U_{k-1} for next iter
 

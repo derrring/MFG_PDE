@@ -194,6 +194,11 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             # Apply damping to M
             self.M = solve_config.picard.damping_factor * M_new_tmp + (1 - solve_config.picard.damping_factor) * M_old
 
+            # Preserve initial condition (boundary condition in time)
+            # The damping step above may modify M[0,:], but initial condition is fixed
+            initial_m_dist = self.problem.get_initial_m() if hasattr(self.problem, "get_initial_m") else np.ones(Nx)
+            self.M[0, :] = initial_m_dist
+
             # Update U_picard_prev for next iteration
             U_picard_prev = U_old.copy()
 
