@@ -26,7 +26,7 @@ class TestMassConservation:
 
         # Check mass conservation at each time step
         for t_idx in range(small_problem.Nt + 1):
-            current_mass = np.sum(result.M_solution[t_idx, :]) * small_problem.Dx
+            current_mass = np.sum(result.M[t_idx, :]) * small_problem.Dx
             mass_error = abs(current_mass - initial_mass)
 
             assert mass_error < 1e-2, (
@@ -43,7 +43,7 @@ class TestMassConservation:
         result = solver.solve()
 
         initial_mass = np.sum(small_problem.m_init) * small_problem.Dx
-        final_mass = np.sum(result.M_solution[-1, :]) * small_problem.Dx
+        final_mass = np.sum(result.M[-1, :]) * small_problem.Dx
 
         mass_error = abs(final_mass - initial_mass)
         assert mass_error < 1e-2, (
@@ -62,7 +62,7 @@ class TestMassConservation:
         result = solver.solve()
 
         initial_mass = np.sum(problem.m_init) * problem.Dx
-        final_mass = np.sum(result.M_solution[-1, :]) * problem.Dx
+        final_mass = np.sum(result.M[-1, :]) * problem.Dx
 
         mass_error = abs(final_mass - initial_mass)
         assert mass_error < 1e-2, (
@@ -78,7 +78,7 @@ class TestMassConservation:
         result = solver.solve()
 
         # Density should be non-negative everywhere (allowing small numerical errors)
-        min_density = np.min(result.M_solution)
+        min_density = np.min(result.M)
         assert min_density >= -1e-10, f"Negative density found: min={min_density:.6e}"
 
     @pytest.mark.mathematical
@@ -88,7 +88,7 @@ class TestMassConservation:
         result = solver.solve()
 
         initial_mass = np.sum(small_problem.m_init) * small_problem.Dx
-        final_mass = np.sum(result.M_solution[-1, :]) * small_problem.Dx
+        final_mass = np.sum(result.M[-1, :]) * small_problem.Dx
 
         # Should have better conservation with accurate solver
         mass_error = abs(final_mass - initial_mass)
@@ -115,7 +115,7 @@ class TestMassConservation:
         result = solver.solve()
 
         initial_mass = np.sum(problem.m_init) * problem.Dx
-        final_mass = np.sum(result.M_solution[-1, :]) * problem.Dx
+        final_mass = np.sum(result.M[-1, :]) * problem.Dx
 
         mass_error = abs(final_mass - initial_mass)
         relative_error = mass_error / initial_mass if initial_mass > 0 else mass_error
@@ -135,7 +135,7 @@ class TestMassConservation:
 
         # Check mass at each time step
         for t_idx in range(small_problem.Nt + 1):
-            current_mass = np.sum(result.M_solution[t_idx, :]) * small_problem.Dx
+            current_mass = np.sum(result.M[t_idx, :]) * small_problem.Dx
             mass_error = abs(current_mass - initial_mass)
             mass_errors.append(mass_error)
 
@@ -166,7 +166,7 @@ class TestPhysicalProperties:
         result = solver.solve()
 
         for t_idx in range(small_problem.Nt + 1):
-            total_probability = np.sum(result.M_solution[t_idx, :]) * small_problem.Dx
+            total_probability = np.sum(result.M[t_idx, :]) * small_problem.Dx
 
             # Should integrate to approximately 1
             assert (
@@ -180,10 +180,10 @@ class TestPhysicalProperties:
         result = solver.solve()
 
         # Value function should be finite
-        assert np.all(np.isfinite(result.U_solution)), "Value function contains non-finite values"
+        assert np.all(np.isfinite(result.U)), "Value function contains non-finite values"
 
         # Should have reasonable magnitude (problem-dependent, but shouldn't be extreme)
-        max_abs_value = np.max(np.abs(result.U_solution))
+        max_abs_value = np.max(np.abs(result.U))
         assert max_abs_value < 1000, f"Value function has extreme values: max_abs={max_abs_value:.2f}"
 
     @pytest.mark.mathematical
@@ -193,7 +193,7 @@ class TestPhysicalProperties:
         result = solver.solve()
 
         # Initial density should match the problem's initial condition
-        computed_initial = result.M_solution[0, :]
+        computed_initial = result.M[0, :]
         expected_initial = small_problem.m_init
 
         # Allow for small numerical differences
@@ -208,8 +208,8 @@ class TestPhysicalProperties:
 
         # For this test, we assume periodic or zero-flux boundary conditions
         # Check that densities at boundaries are reasonable
-        left_boundary = result.M_solution[:, 0]
-        right_boundary = result.M_solution[:, -1]
+        left_boundary = result.M[:, 0]
+        right_boundary = result.M[:, -1]
 
         # Boundary values should be non-negative and finite
         assert np.all(left_boundary >= -1e-10), "Left boundary has negative values"
