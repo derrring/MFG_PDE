@@ -396,12 +396,13 @@ def create_fast_solver(
     """
     # For fixed_point solvers, create default HJB and FP solvers if not provided
     if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
         from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
-        # Create stable default solvers using FDM (more stable than particle methods)
+        # Create stable hybrid solver: HJB-FDM + FP-Particle
+        # Particle FP naturally conserves mass, FDM HJB is efficient for value function
         hjb_solver = HJBFDMSolver(problem=problem)
-        fp_solver = FPFDMSolver(problem=problem)
+        fp_solver = FPParticleSolver(problem=problem, num_particles=5000)
 
         kwargs["hjb_solver"] = hjb_solver
         kwargs["fp_solver"] = fp_solver
@@ -501,6 +502,19 @@ def create_accurate_solver(
     Returns:
         Accurate-configured solver instance
     """
+    # For fixed_point solvers, create default HJB and FP solvers if not provided
+    if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
+        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+
+        # Create stable hybrid solver: HJB-FDM + FP-Particle
+        # Particle FP naturally conserves mass, FDM HJB is efficient for value function
+        hjb_solver = HJBFDMSolver(problem=problem)
+        fp_solver = FPParticleSolver(problem=problem, num_particles=10000)  # More particles for accuracy
+
+        kwargs["hjb_solver"] = hjb_solver
+        kwargs["fp_solver"] = fp_solver
+
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="accurate", **kwargs)
 
 
