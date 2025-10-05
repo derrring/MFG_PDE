@@ -337,12 +337,12 @@ class StochasticConvergenceMonitor:
             "criteria": {
                 "median_u": {"value": u_median, "threshold": self.median_tolerance, "passed": median_converged_u},
                 "median_m": {"value": m_median, "threshold": self.median_tolerance, "passed": median_converged_m},
-                f"quantile_{int(self.quantile*100)}%_u": {
+                f"quantile_{int(self.quantile * 100)}%_u": {
                     "value": u_quantile,
                     "threshold": self.quantile_tolerance,
                     "passed": quantile_converged_u,
                 },
-                f"quantile_{int(self.quantile*100)}%_m": {
+                f"quantile_{int(self.quantile * 100)}%_m": {
                     "value": m_quantile,
                     "threshold": self.quantile_tolerance,
                     "passed": quantile_converged_m,

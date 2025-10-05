@@ -187,7 +187,7 @@ class MultiPopulationTrainer:
                     else:
                         loss_str = f"Q1={last_loss[0]:.4f}, Q2={last_loss[1]:.4f}, π={last_loss[2]:.4f}"
 
-            print(f"  {pop_id:15s} | Reward: {avg_reward:8.2f} | " f"Length: {avg_length:6.1f} | Loss: {loss_str}")
+            print(f"  {pop_id:15s} | Reward: {avg_reward:8.2f} | Length: {avg_length:6.1f} | Loss: {loss_str}")
 
     def evaluate(
         self,

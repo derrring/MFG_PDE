@@ -339,7 +339,7 @@ class CommonNoiseMFGSolver:
 
         for k, noise_path in enumerate(noise_paths):
             if verbose and k % max(1, self.K // 10) == 0:
-                print(f"  Progress: {k}/{self.K} ({100*k/self.K:.0f}%)")
+                print(f"  Progress: {k}/{self.K} ({100 * k / self.K:.0f}%)")
 
             u, m, converged = self._solve_conditional_mfg(noise_path)
             solutions.append((u, m, converged))
@@ -375,7 +375,7 @@ class CommonNoiseMFGSolver:
                 completed += 1
 
                 if verbose and completed % max(1, self.K // 10) == 0:
-                    print(f"  Progress: {completed}/{self.K} ({100*completed/self.K:.0f}%)")
+                    print(f"  Progress: {completed}/{self.K} ({100 * completed / self.K:.0f}%)")
 
         return solutions
 

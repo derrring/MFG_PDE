@@ -241,7 +241,7 @@ class CoxIngersollRossProcess:
             import warnings
 
             warnings.warn(
-                f"Feller condition not satisfied: 2κμ={2*kappa*mu:.6f} < σ²={sigma**2:.6f}. " "Process may hit zero.",
+                f"Feller condition not satisfied: 2κμ={2 * kappa * mu:.6f} < σ²={sigma**2:.6f}. Process may hit zero.",
                 UserWarning,
             )
 

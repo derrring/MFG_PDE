@@ -170,7 +170,7 @@ def validate_population_set(populations: dict[str, PopulationConfig]) -> None:
     # Check ID consistency
     for pop_id, config in populations.items():
         if config.population_id != pop_id:
-            msg = f"Population ID mismatch: key='{pop_id}' but " f"config.population_id='{config.population_id}'"
+            msg = f"Population ID mismatch: key='{pop_id}' but config.population_id='{config.population_id}'"
             raise ValueError(msg)
 
     # Check coupling weights reference valid populations
@@ -178,7 +178,7 @@ def validate_population_set(populations: dict[str, PopulationConfig]) -> None:
     for pop_id, config in populations.items():
         for coupled_pop_id in config.coupling_weights:
             if coupled_pop_id not in all_pop_ids:
-                msg = f"Population '{pop_id}' has coupling weight for " f"unknown population '{coupled_pop_id}'"
+                msg = f"Population '{pop_id}' has coupling weight for unknown population '{coupled_pop_id}'"
                 raise ValueError(msg)
 
             if coupled_pop_id == pop_id:
