@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 # Import centralized Monte Carlo utilities
-from mfg_pde.utils.monte_carlo import (
+from mfg_pde.utils.numerical.monte_carlo import (
     MCConfig,
     QuasiMCSampler,
     UniformMCSampler,
