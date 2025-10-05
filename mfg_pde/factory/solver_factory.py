@@ -423,7 +423,7 @@ def create_basic_solver(
     return FixedPointIterator(problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=damping, **kwargs)
 
 
-def create_fast_solver(
+def create_standard_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
 ) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
     """
@@ -459,6 +459,23 @@ def create_fast_solver(
         kwargs["fp_solver"] = fp_solver
 
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="fast", **kwargs)
+
+
+# Backward compatibility alias
+def create_fast_solver(
+    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
+) -> ConfigAwareFixedPointIterator | ParticleCollocationSolver:
+    """
+    Deprecated: Use create_standard_solver() instead.
+
+    This function is maintained for backward compatibility only.
+    """
+    import warnings
+
+    warnings.warn(
+        "create_fast_solver() is deprecated, use create_standard_solver() instead", DeprecationWarning, stacklevel=2
+    )
+    return create_standard_solver(problem=problem, solver_type=solver_type, **kwargs)
 
 
 def create_semi_lagrangian_solver(

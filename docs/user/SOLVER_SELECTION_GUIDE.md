@@ -7,11 +7,11 @@
 
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # For most applications - use the default
 problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
@@ -78,10 +78,10 @@ result = solver.solve()
 
 ### Usage
 ```python
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 # Tier 2: Standard (DEFAULT) - just use this!
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
@@ -142,7 +142,7 @@ solver = create_accurate_solver(
 ```
 Start here
     ↓
-Do you need high accuracy for production? → YES → Use Tier 2 (create_fast_solver) ✅
+Do you need high accuracy for production? → YES → Use Tier 2 (create_standard_solver) ✅
     ↓ NO
 
 Are you benchmarking a new method? → YES → Compare against Tier 1 & Tier 2
@@ -151,7 +151,7 @@ Are you benchmarking a new method? → YES → Compare against Tier 1 & Tier 2
 Do you have specialized requirements? → YES → Use Tier 3 (create_accurate_solver)
     ↓ NO
 
-When in doubt → Use Tier 2 (create_fast_solver) ✅
+When in doubt → Use Tier 2 (create_standard_solver) ✅
 ```
 
 ## Comparison Table
@@ -170,12 +170,12 @@ When in doubt → Use Tier 2 (create_fast_solver) ✅
 ### Step 1: Start with Standard (Tier 2)
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfg_pde.factory import create_standard_solver
 
 problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
 
 # Use the default - works great!
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
 # Check mass conservation
@@ -219,7 +219,7 @@ Each tier has configuration presets:
 
 ```python
 # Fast preset (fewer iterations, looser tolerance)
-solver = create_fast_solver(problem, "fixed_point")
+solver = create_standard_solver(problem, "fixed_point")
 
 # Accurate preset (more iterations, tighter tolerance)
 from mfg_pde.factory import create_accurate_solver
@@ -233,7 +233,7 @@ solver = create_research_solver(problem, solver_type="fixed_point")
 ## Troubleshooting
 
 ### "Solver doesn't converge"
-1. Check you're using Tier 2 (Standard): `create_fast_solver()`
+1. Check you're using Tier 2 (Standard): `create_standard_solver()`
 2. If using Tier 1 (Basic FDM), increase iterations or adjust damping
 3. Try `create_accurate_solver()` for tighter tolerance
 
@@ -251,8 +251,8 @@ solver = create_research_solver(problem, solver_type="fixed_point")
 
 **For 90% of users**: Just use Tier 2 (Standard)
 ```python
-from mfg_pde.factory import create_fast_solver
-solver = create_fast_solver(problem, "fixed_point")
+from mfg_pde.factory import create_standard_solver
+solver = create_standard_solver(problem, "fixed_point")
 ```
 
 **For benchmarking**: Use Tier 1 (Basic) as comparison
@@ -269,6 +269,6 @@ solver_advanced = create_accurate_solver(problem, solver_type="weno")
 
 ---
 
-**Bottom line**: When in doubt, use `create_fast_solver()` ✅
+**Bottom line**: When in doubt, use `create_standard_solver()` ✅
 
 It's fast enough, accurate enough, and just works.

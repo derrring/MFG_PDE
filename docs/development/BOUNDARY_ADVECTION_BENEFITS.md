@@ -299,7 +299,7 @@ val_A_{0,1} += -npart(v_0) / Dx
 
 ```python
 problem = ExampleMFGProblem(Nx=20, Nt=8, T=0.5)
-solver_fdm_old = create_fast_solver(problem, "fixed_point", 
+solver_fdm_old = create_standard_solver(problem, "fixed_point", 
                                      fp_solver=FPFDMSolver(problem))
 result_old = solver_fdm_old.solve()
 
@@ -317,7 +317,7 @@ for t in range(problem.Nt + 1):
 ### After Fix (Expected)
 
 ```python
-solver_fdm_new = create_fast_solver(problem, "fixed_point",
+solver_fdm_new = create_standard_solver(problem, "fixed_point",
                                      fp_solver=FPFDMSolver_Fixed(problem))
 result_new = solver_fdm_new.solve()
 
@@ -339,7 +339,7 @@ for t in range(problem.Nt + 1):
 
 ```python
 # Compare FDM (fixed) vs Particle
-solver_particle = create_fast_solver(problem, "fixed_point",
+solver_particle = create_standard_solver(problem, "fixed_point",
                                       fp_solver=FPParticleSolver(problem, 5000))
 result_particle = solver_particle.solve()
 

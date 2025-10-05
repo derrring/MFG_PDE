@@ -15,6 +15,7 @@ from .solver_factory import (
     create_research_solver,
     create_semi_lagrangian_solver,
     create_solver,
+    create_standard_solver,
 )
 
 # Removed specific model factory - use GeneralMFGFactory instead
@@ -27,6 +28,7 @@ __all__ = [
     "create_backend_for_problem",
     "create_basic_solver",
     "create_fast_solver",
+    "create_standard_solver",
     "create_monitored_solver",
     "create_research_solver",
     "create_semi_lagrangian_solver",
