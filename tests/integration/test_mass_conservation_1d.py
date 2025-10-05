@@ -18,6 +18,7 @@ from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 from mfg_pde.alg.numerical.mfg_solvers.fixed_point_iterator import FixedPointIterator
+from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
 
@@ -165,6 +166,23 @@ class SimpleMFGProblem1D:
         """
         return self.g(self.xSpace)
 
+    def get_hjb_residual_m_coupling_term(
+        self,
+        M_density_at_n_plus_1: np.ndarray,
+        U_n_current_guess_derivatives: dict,
+        x_idx: int,
+        t_idx_n: int,
+    ) -> float | None:
+        """
+        Optional coupling term for HJB residual computation.
+
+        For this simple problem, no additional coupling beyond the Hamiltonian.
+
+        Returns:
+            None (no additional coupling)
+        """
+        return None
+
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
     """
@@ -185,15 +203,31 @@ class TestMassConservation1D:
 
     @pytest.fixture
     def problem(self):
-        """Create standard test problem."""
-        return SimpleMFGProblem1D(
+        """Create standard test problem using built-in MFGProblem."""
+        # Create problem with custom initial and terminal conditions
+        L = 2.0
+        problem = MFGProblem(
+            xmin=0.0,
+            xmax=L,
             Nx=50,
-            Nt=20,
             T=1.0,
-            L=2.0,
+            Nt=20,
             sigma=0.1,
-            congestion_strength=1.0,
+            coefCT=1.0,  # congestion strength
         )
+
+        # Override initial and terminal conditions to match SimpleMFGProblem1D
+        xSpace = problem.xSpace
+        center_init = L / 4.0
+        std = L / 8.0
+        m0 = np.exp(-((xSpace - center_init) ** 2) / (2 * std**2))
+        m0 = m0 / (np.sum(m0) * problem.Dx)  # Normalize
+        problem.initial_density = m0
+
+        center_term = L / 2.0
+        problem.terminal_cost = (xSpace - center_term) ** 2
+
+        return problem
 
     @pytest.fixture
     def boundary_conditions(self):

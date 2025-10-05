@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem, create_accurate_solver, create_fast_solver
+from mfg_pde import ExampleMFGProblem, create_accurate_solver, create_standard_solver
 
 
 class TestMassConservation:
@@ -18,7 +18,7 @@ class TestMassConservation:
     @pytest.mark.mathematical
     def test_mass_conservation_small_problem(self, small_problem):
         """Test mass conservation for a small problem."""
-        solver = create_fast_solver(small_problem, "fixed_point")
+        solver = create_standard_solver(small_problem, "fixed_point")
         result = solver.solve()
 
         # Calculate initial mass
@@ -39,7 +39,7 @@ class TestMassConservation:
     @pytest.mark.parametrize("solver_type", ["fixed_point"])  # Add more solver types as available
     def test_mass_conservation_across_solvers(self, small_problem, solver_type):
         """Test mass conservation across different solver types."""
-        solver = create_fast_solver(small_problem, solver_type)
+        solver = create_standard_solver(small_problem, solver_type)
         result = solver.solve()
 
         initial_mass = np.sum(small_problem.m_init) * small_problem.Dx
@@ -57,7 +57,7 @@ class TestMassConservation:
     def test_mass_conservation_diffusion_coefficients(self, sigma):
         """Test mass conservation for different diffusion coefficients."""
         problem = ExampleMFGProblem(Nx=20, Nt=8, T=0.5, sigma=sigma)
-        solver = create_fast_solver(problem, "fixed_point")
+        solver = create_standard_solver(problem, "fixed_point")
 
         result = solver.solve()
 
@@ -74,7 +74,7 @@ class TestMassConservation:
     @pytest.mark.mathematical
     def test_non_negativity_property(self, small_problem):
         """Test that density remains non-negative throughout evolution."""
-        solver = create_fast_solver(small_problem, "fixed_point")
+        solver = create_standard_solver(small_problem, "fixed_point")
         result = solver.solve()
 
         # Density should be non-negative everywhere (allowing small numerical errors)
@@ -110,7 +110,7 @@ class TestMassConservation:
     def test_mass_conservation_problem_scaling(self, problem_size):
         """Test mass conservation across different problem sizes."""
         problem = ExampleMFGProblem(**problem_size, T=0.5)
-        solver = create_fast_solver(problem, "fixed_point")
+        solver = create_standard_solver(problem, "fixed_point")
 
         result = solver.solve()
 
@@ -127,7 +127,7 @@ class TestMassConservation:
     @pytest.mark.mathematical
     def test_mass_conservation_time_evolution(self, small_problem):
         """Test that mass conservation holds throughout time evolution."""
-        solver = create_fast_solver(small_problem, "fixed_point")
+        solver = create_standard_solver(small_problem, "fixed_point")
         result = solver.solve()
 
         initial_mass = np.sum(small_problem.m_init) * small_problem.Dx
@@ -162,7 +162,7 @@ class TestPhysicalProperties:
     @pytest.mark.mathematical
     def test_probability_density_normalization(self, small_problem):
         """Test that the density integrates to 1 at all times."""
-        solver = create_fast_solver(small_problem, "fixed_point")
+        solver = create_standard_solver(small_problem, "fixed_point")
         result = solver.solve()
 
         for t_idx in range(small_problem.Nt + 1):
@@ -176,7 +176,7 @@ class TestPhysicalProperties:
     @pytest.mark.mathematical
     def test_energy_bounds(self, small_problem):
         """Test that the value function has reasonable bounds."""
-        solver = create_fast_solver(small_problem, "fixed_point")
+        solver = create_standard_solver(small_problem, "fixed_point")
         result = solver.solve()
 
         # Value function should be finite
@@ -189,7 +189,7 @@ class TestPhysicalProperties:
     @pytest.mark.mathematical
     def test_initial_condition_preservation(self, small_problem):
         """Test that initial conditions are properly preserved."""
-        solver = create_fast_solver(small_problem, "fixed_point")
+        solver = create_standard_solver(small_problem, "fixed_point")
         result = solver.solve()
 
         # Initial density should match the problem's initial condition
@@ -203,7 +203,7 @@ class TestPhysicalProperties:
     @pytest.mark.mathematical
     def test_boundary_condition_consistency(self, small_problem):
         """Test that boundary conditions are consistently applied."""
-        solver = create_fast_solver(small_problem, "fixed_point")
+        solver = create_standard_solver(small_problem, "fixed_point")
         result = solver.solve()
 
         # For this test, we assume periodic or zero-flux boundary conditions
