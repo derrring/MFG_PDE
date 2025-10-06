@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 
 class PlacementStrategy(Enum):
@@ -219,7 +219,7 @@ def create_default_config(
     rows: int = 20,
     cols: int = 20,
     algorithm: str = "recursive_backtracking",
-    **kwargs,
+    **kwargs: Any,
 ) -> MazeConfig:
     """
     Create maze configuration with sensible defaults.
@@ -245,7 +245,7 @@ def create_continuous_maze_config(
     physical_width: float,
     physical_height: float,
     cell_density: int = 20,
-    **kwargs,
+    **kwargs: Any,
 ) -> MazeConfig:
     """
     Create maze with continuous physical dimensions.
@@ -282,7 +282,7 @@ def create_multi_goal_config(
     cols: int,
     num_goals: int,
     goal_strategy: str = "edges",
-    **kwargs,
+    **kwargs: Any,
 ) -> MazeConfig:
     """
     Create maze configuration with multiple goals.
