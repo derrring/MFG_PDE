@@ -440,6 +440,98 @@ temp-branch
 
 **Implementation**: All future branches must follow this convention. No exceptions for temporary or experimental branches.
 
+### **Hierarchical Branch Structure** ⚠️ **CRITICAL**
+
+**Abstract Principle: Organize work through hierarchical branch structures that reflect logical dependencies and functional groupings.**
+
+#### **Core Principles**
+
+1. **Always Work on Branches**
+   - ❌ Never commit directly to `main`
+   - ❌ Never commit directly to parent branches without following proper workflow
+   - ✅ Create feature branches for all work
+   - ✅ Use parent branches to organize related work
+
+2. **Establish Clear Hierarchy**
+   ```
+   main (production-ready code)
+    └── chore/major-refactor (parent branch for related work)
+         ├── chore/refactor-module-a (child branch)
+         ├── chore/refactor-module-b (child branch)
+         └── chore/refactor-module-c (child branch)
+   ```
+
+3. **Respect Merge Order** ⚠️ **MANDATORY**
+   - **Child → Parent**: Always merge child branches to parent first
+   - **Parent → Main**: Only merge parent to main when all children complete
+   - **Dependencies**: If child-B depends on child-A, merge child-A first
+
+4. **When to Use Hierarchy**
+   - **Multi-step refactoring**: Each step is a child branch
+   - **Feature development**: Sub-features as children
+   - **Systematic cleanup**: Categories as children (e.g., code quality fixes)
+   - **Related changes**: Group logically connected work
+
+#### **Workflow Example: Systematic Code Quality Cleanup**
+
+```bash
+# Step 1: Create parent branch from main
+git checkout main
+git checkout -b chore/code-quality-systematic-cleanup
+
+# Step 2: Create child branch from parent
+git checkout chore/code-quality-systematic-cleanup
+git checkout -b chore/fix-unused-variables
+
+# Step 3: Make changes and commit to child
+git add -A
+git commit -m "Fix unused variables"
+git push -u origin chore/fix-unused-variables
+
+# Step 4: Merge child → parent
+git checkout chore/code-quality-systematic-cleanup
+git merge chore/fix-unused-variables --no-ff
+git push
+
+# Step 5: Repeat for other children
+git checkout -b chore/fix-unused-imports
+# ... work, commit, push
+git checkout chore/code-quality-systematic-cleanup
+git merge chore/fix-unused-imports --no-ff
+git push
+
+# Step 6: When all children complete, merge parent → main
+git checkout main
+git merge chore/code-quality-systematic-cleanup --no-ff
+git push
+```
+
+#### **Benefits of Hierarchical Structure**
+
+- **Organized History**: Related changes grouped logically
+- **Easy Rollback**: Can revert entire feature set by reverting parent merge
+- **Parallel Work**: Multiple developers can work on different children
+- **Clear Progress**: Parent branch shows cumulative progress
+- **Clean Main**: Main only receives complete, tested feature sets
+
+#### **Common Patterns**
+
+| Pattern | Parent Branch | Child Branches |
+|:--------|:--------------|:---------------|
+| **Feature Development** | `feature/new-solver` | `feature/solver-core`, `feature/solver-tests`, `feature/solver-docs` |
+| **Systematic Cleanup** | `chore/code-quality` | `chore/fix-imports`, `chore/fix-types`, `chore/fix-lint` |
+| **Architecture Refactor** | `refactor/factory-pattern` | `refactor/solver-factory`, `refactor/problem-factory`, `refactor/config-factory` |
+| **Documentation Overhaul** | `docs/api-reference` | `docs/solver-api`, `docs/geometry-api`, `docs/utils-api` |
+
+#### **Anti-Patterns to Avoid**
+
+❌ **Creating orphaned branches**: Each branch should have clear parent
+❌ **Merging out of order**: Child to main before parent violates hierarchy
+❌ **Too deep nesting**: Keep maximum 2-3 levels (main → parent → child)
+❌ **Unclear relationships**: Branch names should indicate hierarchy
+
+**Enforcement**: When working with AI assistance, always establish branch hierarchy at the start of multi-step work. The AI should create parent branch first, then work in child branches, respecting merge order throughout.
+
 ### **GitHub Issue and PR Management** ⚠️ **MANDATORY**
 **Every issue MUST be properly labeled before work begins:**
 
