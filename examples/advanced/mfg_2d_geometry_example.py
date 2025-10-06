@@ -6,6 +6,7 @@ complex geometry using the Gmsh → Meshio → PyVista pipeline integrated
 with MFG_PDE's existing solver architecture.
 """
 
+import contextlib
 import sys
 from pathlib import Path
 
@@ -79,16 +80,14 @@ class MFGProblem2D(MFGProblem):
         # Example: Dirichlet boundary conditions on all boundaries
         # In a real implementation, this would be problem-specific
         for region_id in [1, 2, 3, 4]:  # Assuming 4 boundary regions for rectangle
-            try:
+            # Skip if region doesn't exist
+            with contextlib.suppress(BaseException):
                 self.boundary_manager.add_boundary_condition(
                     region_id=region_id,
                     bc_type="dirichlet",
                     value=0.0,
                     description=f"Homogeneous Dirichlet on region {region_id}",
                 )
-            except:
-                # Skip if region doesn't exist
-                pass
 
     def get_2d_mesh_info(self) -> dict:
         """Get detailed 2D mesh information."""
