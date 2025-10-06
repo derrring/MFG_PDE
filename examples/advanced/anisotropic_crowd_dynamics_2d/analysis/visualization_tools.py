@@ -401,9 +401,7 @@ class AnisotropicVisualizer:
 
         # Evacuation progress
         fig.add_trace(
-            go.Scatter(
-                x=time_grid, y=evacuation_percentage, mode="lines", name="Evacuated %", line={"color": "green"}
-            ),
+            go.Scatter(x=time_grid, y=evacuation_percentage, mode="lines", name="Evacuated %", line={"color": "green"}),
             row=2,
             col=1,
         )
