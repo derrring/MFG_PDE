@@ -487,6 +487,22 @@ temp-branch
    - **Systematic cleanup**: Categories as children (e.g., code quality fixes)
    - **Related changes**: Group logically connected work
 
+5. **Branch Lifecycle Management**
+   - **Create child**: When starting work on a sub-feature
+   - **Merge to parent**: When a logical unit of work is complete and tested
+   - **Keep child alive**: If more related work remains in that category
+   - **Delete child**: Only when the entire sub-feature is complete
+
+   **Example**: Fixing RUF012 errors
+   - ✅ Create `chore/fix-classvar-annotations`
+   - ✅ Fix 5 errors, commit, merge to parent
+   - ✅ Keep branch alive if more RUF012 errors might appear
+   - ✅ Continue working, make more commits
+   - ✅ Merge again to parent when ready
+   - ✅ Delete only when ALL RUF012 work is done
+
+   **Principle**: Branch deletion depends on **completeness of sub-feature**, not immediacy of merge.
+
 #### **Workflow Example: Systematic Code Quality Cleanup**
 
 ```bash
@@ -508,14 +524,20 @@ git checkout chore/code-quality-systematic-cleanup
 git merge chore/fix-unused-variables --no-ff
 git push
 
-# Step 5: Repeat for other children
+# Step 5a (OPTION A): Delete child if sub-feature is complete
+git branch -d chore/fix-unused-variables
+
+# Step 5b (OPTION B): Keep child alive if more work remains
+# (simply don't delete - you can continue working on it later)
+
+# Step 6: Repeat for other children
 git checkout -b chore/fix-unused-imports
 # ... work, commit, push
 git checkout chore/code-quality-systematic-cleanup
 git merge chore/fix-unused-imports --no-ff
 git push
 
-# Step 6: When all children complete, merge parent → main
+# Step 7: When all children complete, merge parent → main
 git checkout main
 git merge chore/code-quality-systematic-cleanup --no-ff
 git push
