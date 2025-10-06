@@ -36,8 +36,8 @@ from dataclasses import dataclass
 try:
     import torch
     import torch.nn as nn
-    import torch.nn.functional as functional
-    from torch.fft import fft, ifft, irfft, rfft
+    import torch.nn.functional as functional  # noqa: F401
+    from torch.fft import fft, ifft, irfft, rfft  # noqa: F401
 
     TORCH_AVAILABLE = True
 except ImportError:

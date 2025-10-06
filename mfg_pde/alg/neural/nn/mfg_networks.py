@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import torch.nn as nn
 
 try:
-    import torch
+    import torch  # noqa: F401
     import torch.nn as nn
 
     TORCH_AVAILABLE = True

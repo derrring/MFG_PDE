@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 # Import with availability checking
 try:
     import torch
-    import torch.nn as nn
+    import torch.nn as nn  # noqa: F401
     import torch.optim as optim
 
     from .architectures import DeepGalerkinNetwork, HighDimMLP
