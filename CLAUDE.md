@@ -444,6 +444,8 @@ temp-branch
 
 **Abstract Principle: Organize work through hierarchical branch structures that reflect logical dependencies and functional groupings.**
 
+**Universal Application**: This principle applies to **ALL branch types** - `feature/`, `fix/`, `docs/`, `refactor/`, `test/`, and `chore/`. Any multi-step or logically related work should follow this hierarchical approach regardless of branch type prefix.
+
 #### **Core Principles**
 
 1. **Always Work on Branches**
@@ -452,13 +454,26 @@ temp-branch
    - ✅ Create feature branches for all work
    - ✅ Use parent branches to organize related work
 
-2. **Establish Clear Hierarchy**
+2. **Establish Clear Hierarchy** (applies to all branch types)
    ```
    main (production-ready code)
-    └── chore/major-refactor (parent branch for related work)
-         ├── chore/refactor-module-a (child branch)
-         ├── chore/refactor-module-b (child branch)
-         └── chore/refactor-module-c (child branch)
+    └── <type>/major-work (parent branch for related work)
+         ├── <type>/work-component-a (child branch)
+         ├── <type>/work-component-b (child branch)
+         └── <type>/work-component-c (child branch)
+
+   Examples:
+   main
+    └── feature/neural-solver (parent)
+         ├── feature/dgm-implementation (child)
+         ├── feature/fno-implementation (child)
+         └── feature/neural-solver-tests (child)
+
+   main
+    └── fix/convergence-issues (parent)
+         ├── fix/hjb-convergence (child)
+         ├── fix/fp-convergence (child)
+         └── fix/convergence-tests (child)
    ```
 
 3. **Respect Merge Order** ⚠️ **MANDATORY**
