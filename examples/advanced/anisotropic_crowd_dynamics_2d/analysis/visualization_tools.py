@@ -28,6 +28,8 @@ from mfg_pde.utils.logging import get_logger
 
 sys.path.append("..")
 
+from anisotropic_2d_problem import AnisotropicMFGProblem2D
+
 logger = get_logger(__name__)
 
 
@@ -39,12 +41,12 @@ class AnisotropicVisualizer:
     for analyzing MFG solutions with barriers and anisotropic effects.
     """
 
-    def __init__(self, problem: AnisotropicCrowdDynamics, solution: Any):
+    def __init__(self, problem: AnisotropicMFGProblem2D, solution: Any):
         """
         Initialize visualizer with problem and solution.
 
         Args:
-            problem: AnisotropicCrowdDynamics problem instance
+            problem: AnisotropicMFGProblem2D problem instance
             solution: Solved MFG solution
         """
         self.problem = problem
@@ -566,7 +568,7 @@ class AnisotropicVisualizer:
                     )
 
 
-def create_visualization_suite(problem: AnisotropicCrowdDynamics, solution: Any, output_dir: str = "../results/"):
+def create_visualization_suite(problem: AnisotropicMFGProblem2D, solution: Any, output_dir: str = "../results/"):
     """
     Create complete visualization suite for anisotropic experiment.
 

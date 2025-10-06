@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 # Essential imports with error handling
 import numpy as np
+from scipy.integrate import trapezoid
 
 # Check for optional dependencies
 try:

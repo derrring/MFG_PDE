@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+from scipy.integrate import trapezoid
 
 # Add the parent directory to the path so we can import mfg_pde
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -194,9 +195,7 @@ def demo_convergence_visualization():
             logger.info("Created publication-quality convergence plot")
 
         # Quick plot function
-        quick_plot_convergence(
-            convergence_data, backend="auto", save_path=output_dir / "convergence_quick.html"
-        )
+        quick_plot_convergence(convergence_data, backend="auto", save_path=output_dir / "convergence_quick.html")
         logger.info("Created quick convergence plot")
 
     except Exception as e:
