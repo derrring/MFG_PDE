@@ -66,6 +66,7 @@ from .network_geometry import (
     compute_network_statistics,
     create_network,
 )
+from .tensor_product_grid import TensorProductGrid
 
 __all__ = [
     # Multi-dimensional geometry components
@@ -110,6 +111,7 @@ __all__ = [
     "RobinBC2D",
     "RobinBC3D",
     "ScaleFreeNetwork",
+    "TensorProductGrid",
     "TriangleElement",
     # Triangular AMR components
     "TriangularAMRMesh",
