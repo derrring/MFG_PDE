@@ -71,6 +71,12 @@ from .numerical.convergence import (
 )
 from .numerical.integration import get_integration_info, trapezoid
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
+from .sparse_operations import (
+    SparseMatrixBuilder,
+    SparseSolver,
+    estimate_sparsity,
+    sparse_matmul,
+)
 
 # Optional modules with graceful handling
 try:
@@ -185,6 +191,8 @@ __all__ = [
     "ParticleMethodDetector",
     "SolutionNotAvailableError",
     "SolverResult",
+    "SparseMatrixBuilder",
+    "SparseSolver",
     "adaptive_convergence",
     "add_logging_to_class",
     "check_numerical_stability",
@@ -192,6 +200,7 @@ __all__ = [
     "configure_research_logging",
     "create_default_monitor",
     "create_solver_result",
+    "estimate_sparsity",
     # Integration utilities
     "get_integration_info",
     "get_logger",
@@ -207,6 +216,7 @@ __all__ = [
     "npart",
     "performance_logged",
     "ppart",
+    "sparse_matmul",
     # Validation
     "safe_solution_return",
     "test_particle_detection",
