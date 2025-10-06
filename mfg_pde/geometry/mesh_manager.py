@@ -175,7 +175,7 @@ class MeshPipeline:
             # Add quality data if available
             if self.mesh_data.quality_metrics and "quality" in self.mesh_data.quality_metrics:
                 quality_data = self.mesh_data.quality_metrics["quality"]
-                if isinstance(quality_data, (list, np.ndarray)):
+                if isinstance(quality_data, list | np.ndarray):
                     pyvista_mesh.cell_data["quality"] = quality_data
 
             logger.info("SUCCESS: PyVista mesh prepared for visualization")
@@ -234,7 +234,7 @@ class MeshPipeline:
         try:
             import pyvista as pv
         except ImportError:
-            raise ImportError("pyvista is required for interactive visualization")
+            raise ImportError("pyvista is required for interactive visualization") from None
 
         if self.mesh_data is None:
             raise RuntimeError("Mesh data is None")

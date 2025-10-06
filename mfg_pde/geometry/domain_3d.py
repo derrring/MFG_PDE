@@ -85,7 +85,7 @@ class Domain3D(BaseGeometry):
         try:
             import gmsh
         except ImportError:
-            raise ImportError("gmsh is required for mesh generation")
+            raise ImportError("gmsh is required for mesh generation") from None
 
         gmsh.initialize()
         gmsh.clear()
@@ -337,7 +337,7 @@ class Domain3D(BaseGeometry):
             import gmsh
             import meshio  # noqa: F401
         except ImportError:
-            raise ImportError("gmsh and meshio are required for mesh generation")
+            raise ImportError("gmsh and meshio are required for mesh generation") from None
 
         # Create geometry
         self.create_gmsh_geometry()
@@ -512,7 +512,7 @@ class Domain3D(BaseGeometry):
         try:
             import meshio
         except ImportError:
-            raise ImportError("meshio required for mesh export")
+            raise ImportError("meshio required for mesh export") from None
 
         # Convert to meshio format
         cells = [("tetra", self._mesh_data.elements)]
@@ -529,7 +529,7 @@ class Domain3D(BaseGeometry):
         try:
             import pyvista as pv
         except ImportError:
-            raise ImportError("pyvista required for interactive visualization")
+            raise ImportError("pyvista required for interactive visualization") from None
 
         if not hasattr(self, "_mesh_data") or self._mesh_data is None:
             self._mesh_data = self.generate_mesh()

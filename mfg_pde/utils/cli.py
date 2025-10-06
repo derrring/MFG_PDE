@@ -173,7 +173,7 @@ def load_config_file(config_path: str | Path) -> dict[str, Any]:
             else:
                 raise ValueError(f"Unsupported config file format: {suffix}")
     except Exception as e:
-        raise ValueError(f"Error loading config file {config_path}: {e}")
+        raise ValueError(f"Error loading config file {config_path}: {e}") from e
 
 
 def save_config_file(config: dict[str, Any], output_path: str | Path) -> None:
