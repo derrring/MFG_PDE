@@ -91,7 +91,7 @@ class TestPopulationConfig:
 
     def test_negative_coupling_weight(self):
         """Test that negative coupling weight raises ValueError."""
-        with pytest.raises(ValueError, match="Coupling weight.*must be non-negative"):
+        with pytest.raises(ValueError, match=r"Coupling weight.*must be non-negative"):
             PopulationConfig(
                 population_id="test",
                 state_dim=2,
