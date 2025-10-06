@@ -36,6 +36,52 @@ configure_research_logging("common_noise_lq_demo", level="INFO")
 logger = get_logger(__name__)
 
 
+# LQ cost parameters (module-level for pickling in parallel execution)
+X_REF = 0.0  # Reference position
+LAMBDA_0 = 1.0  # Base control cost
+BETA = 0.3  # Sensitivity to volatility
+GAMMA = 0.1  # Congestion cost
+
+
+def conditional_hamiltonian(x, p, m, theta):
+    """
+    Hamiltonian with volatility-dependent control cost.
+
+    H(x, p, m, θ) = p²/(2λ(θ)) + (x-x_ref)²/2 + γm
+
+    where λ(θ) = λ_0(1 + β|θ|) models risk-aversion depending on market volatility.
+
+    Args:
+        x: State
+        p: Co-state (momentum)
+        m: Population density
+        theta: Common noise (market volatility)
+
+    Returns:
+        Hamiltonian value
+    """
+    lambda_theta = LAMBDA_0 * (1.0 + BETA * abs(theta))  # Risk aversion increases with |θ|
+    kinetic_term = p**2 / (2.0 * lambda_theta)
+    potential_term = 0.5 * (x - X_REF) ** 2
+    congestion_term = GAMMA * m
+    return kinetic_term + potential_term + congestion_term
+
+
+def terminal_cost(x):
+    """
+    Terminal cost function.
+
+    g(x) = (x - x_ref)²/2
+
+    Args:
+        x: Final state
+
+    Returns:
+        Terminal cost
+    """
+    return 0.5 * (x - X_REF) ** 2
+
+
 def create_market_volatility_problem():
     """
     Create LQ-MFG problem with market volatility as common noise.
@@ -58,21 +104,6 @@ def create_market_volatility_problem():
     # Create OU process for market volatility
     market_volatility = OrnsteinUhlenbeckProcess(kappa=kappa, mu=mu_theta, sigma=sigma_theta)
 
-    # LQ cost parameters
-    x_ref = 0.0  # Reference position
-    lambda_0 = 1.0  # Base control cost
-    beta = 0.3  # Sensitivity to volatility
-    gamma = 0.1  # Congestion cost
-
-    # Define conditional Hamiltonian: H(x, p, m, θ) = p²/(2λ(θ)) + (x-x_ref)²/2 + γm
-    def conditional_hamiltonian(x, p, m, theta):
-        """Hamiltonian with volatility-dependent control cost."""
-        lambda_theta = lambda_0 * (1.0 + beta * abs(theta))  # Risk aversion increases with |θ|
-        kinetic_term = p**2 / (2.0 * lambda_theta)
-        potential_term = 0.5 * (x - x_ref) ** 2
-        congestion_term = gamma * m
-        return kinetic_term + potential_term + congestion_term
-
     # Create stochastic problem (simplified API, no MFGComponents needed)
     problem = StochasticMFGProblem(
         xmin=xmin,
@@ -92,17 +123,14 @@ def create_market_volatility_problem():
     rho0 /= np.trapezoid(rho0, x)  # Normalize
     problem.rho0 = rho0
 
-    # Set terminal cost: g(x) = (x - x_ref)²/2
-    def terminal_cost(x):
-        return 0.5 * (x - x_ref) ** 2
-
+    # Set terminal cost (using module-level function)
     problem.terminal_cost = terminal_cost
 
     logger.info("Created LQ-MFG problem with market volatility")
     logger.info(f"  Domain: [{xmin}, {xmax}] with {Nx} points")
     logger.info(f"  Time: [0, {T}] with {Nt} steps")
     logger.info(f"  Market volatility: OU(κ={kappa}, μ={mu_theta}, σ={sigma_theta})")
-    logger.info(f"  Control cost: λ(θ) = {lambda_0}(1 + {beta}|θ|)")
+    logger.info(f"  Control cost: λ(θ) = {LAMBDA_0}(1 + {BETA}|θ|)")
 
     return problem
 
@@ -252,7 +280,8 @@ def visualize_results(problem, result):
 
 if __name__ == "__main__":
     # Run demo with moderate number of samples
-    solve_and_visualize(num_noise_samples=50, use_variance_reduction=True, parallel=True)
+    # Note: parallel=False due to pickling issues with lambda functions in CommonNoiseMFGSolver
+    solve_and_visualize(num_noise_samples=50, use_variance_reduction=True, parallel=False)
 
     logger.info("\n" + "=" * 70)
     logger.info("Demo completed successfully!")

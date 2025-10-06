@@ -202,7 +202,18 @@ class StochasticMFGProblem(MFGProblem):
         if self.conditional_hamiltonian is None:
             raise ValueError("Conditional Hamiltonian not defined for this problem")
 
-        return self.conditional_hamiltonian(x, p, m, theta, t)
+        # Check if user's function accepts time parameter using inspect
+        import inspect
+
+        sig = inspect.signature(self.conditional_hamiltonian)
+        num_params = len(sig.parameters)
+
+        if num_params >= 5:
+            # Function accepts time parameter
+            return self.conditional_hamiltonian(x, p, m, theta, t)
+        else:
+            # Function does not accept time (standard case)
+            return self.conditional_hamiltonian(x, p, m, theta)
 
     def g_conditional(self, x: float | np.ndarray, theta_T: float | np.ndarray) -> float | np.ndarray:
         """
@@ -217,7 +228,14 @@ class StochasticMFGProblem(MFGProblem):
         """
         if self.conditional_terminal_cost is None:
             # Default: no dependence on terminal noise
-            return self.g(x)
+            # Support both g (MFGProblem attribute) and terminal_cost (simplified API)
+            if hasattr(self, "terminal_cost"):
+                return self.terminal_cost(x)
+            elif hasattr(self, "g"):
+                return self.g(x)
+            else:
+                # No terminal cost defined - use zero
+                return 0.0
 
         return self.conditional_terminal_cost(x, theta_T)
 
@@ -247,12 +265,55 @@ class StochasticMFGProblem(MFGProblem):
         )
 
         # Create wrapper functions that incorporate noise path
-        def conditional_H(x, m, p, t):
+        # These must match the MFGComponents API signature
+        def conditional_H(x_idx, m_at_x, p_values, t_idx, x_position=None, current_time=None, problem=None):
             """Hamiltonian with frozen noise path."""
-            # Interpolate noise value at time t
-            t_idx = min(int(t / self.Dt), self.Nt)
-            theta_t = noise_path[t_idx]
+            import numpy as np
+
+            # Get scalar values from grid-based inputs
+            x = x_position if x_position is not None else self.xSpace[x_idx]
+            t = current_time if current_time is not None else t_idx * self.Dt
+            m = m_at_x
+
+            # Extract gradient from p_values dict (use average of forward/backward)
+            if isinstance(p_values, dict):
+                p_fwd = p_values.get("forward", 0.0)
+                p_bwd = p_values.get("backward", 0.0)
+                p = 0.5 * (p_fwd + p_bwd) if not (np.isnan(p_fwd) or np.isnan(p_bwd)) else 0.0
+            else:
+                p = p_values  # Assume scalar
+
+            # Get noise value at this time
+            theta_t = noise_path[min(t_idx, len(noise_path) - 1)]
+
+            # Call simplified API Hamiltonian
             return self.H_conditional(x, p, m, theta_t, t)
+
+        def conditional_H_dm(x_idx, m_at_x, p_values, t_idx, x_position=None, current_time=None, problem=None):
+            """Hamiltonian derivative w.r.t. m using finite differences."""
+            import numpy as np
+
+            # Get scalar values
+            x = x_position if x_position is not None else self.xSpace[x_idx]
+            t = current_time if current_time is not None else t_idx * self.Dt
+            m = m_at_x
+
+            # Extract gradient
+            if isinstance(p_values, dict):
+                p_fwd = p_values.get("forward", 0.0)
+                p_bwd = p_values.get("backward", 0.0)
+                p = 0.5 * (p_fwd + p_bwd) if not (np.isnan(p_fwd) or np.isnan(p_bwd)) else 0.0
+            else:
+                p = p_values
+
+            # Get noise value
+            theta_t = noise_path[min(t_idx, len(noise_path) - 1)]
+
+            # Compute ∂H/∂m using central finite difference
+            eps = 1e-6
+            H_plus = self.H_conditional(x, p, m + eps, theta_t, t)
+            H_minus = self.H_conditional(x, p, m - eps, theta_t, t)
+            return (H_plus - H_minus) / (2 * eps)
 
         def conditional_g(x):
             """Terminal cost with final noise value."""
@@ -260,6 +321,7 @@ class StochasticMFGProblem(MFGProblem):
             return self.g_conditional(x, theta_T)
 
         conditional_components.hamiltonian_func = conditional_H
+        conditional_components.hamiltonian_dm_func = conditional_H_dm
         conditional_components.final_value_func = conditional_g
 
         # Preserve other problem components

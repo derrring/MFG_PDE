@@ -225,12 +225,10 @@ class CommonNoiseMFGSolver:
 
         # Conditional solver factory
         if conditional_solver_factory is None:
-            # Default: use standard MFG solver from factory
-            from mfg_pde.factory import create_solver
+            # Default: use fast solver from factory
+            from mfg_pde.factory import create_fast_solver
 
-            self.conditional_solver_factory = lambda prob: create_solver(
-                prob, solver_type="hjb_fp_iteration", method="fdm"
-            )
+            self.conditional_solver_factory = lambda prob: create_fast_solver(prob)
         else:
             self.conditional_solver_factory = conditional_solver_factory
 
@@ -402,9 +400,24 @@ class CommonNoiseMFGSolver:
         result = solver.solve()
 
         # Extract solution and convergence status
-        u = result.u if hasattr(result, "u") else result["u"]
-        m = result.m if hasattr(result, "m") else result["m"]
-        converged = result.converged if hasattr(result, "converged") else True
+        # Handle both SolverResult objects and tuple returns
+        if hasattr(result, "u"):
+            u = result.u
+            m = result.m
+            converged = result.converged if hasattr(result, "converged") else True
+        elif isinstance(result, tuple) and len(result) >= 2:
+            # Tuple format: (u, m) or (u, m, converged)
+            u = result[0]
+            m = result[1]
+            converged = result[2] if len(result) > 2 else True
+        else:
+            # Try dict-like access
+            try:
+                u = result["u"]
+                m = result["m"]
+                converged = result.get("converged", True)
+            except (KeyError, TypeError) as e:
+                raise TypeError(f"Unexpected result format from conditional solver: {type(result)}") from e
 
         return u, m, converged
 
