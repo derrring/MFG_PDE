@@ -178,12 +178,12 @@ class AMRMemoryProfiler:
                 },
                 {
                     "name": f"AMR-{size}",
-                    "create_solver": lambda p: create_amr_solver(
+                    "create_solver": lambda p, s=size: create_amr_solver(
                         p,
                         base_solver_type="fixed_point",
                         error_threshold=1e-4,
                         max_levels=4,
-                        initial_intervals=size // 2,
+                        initial_intervals=s // 2,
                     ),
                     "amr_enabled": True,
                 },
@@ -207,10 +207,10 @@ class AMRMemoryProfiler:
                 # Monitor memory during solving
                 memory_timeline = []
 
-                def memory_monitor_callback():
+                def memory_monitor_callback(timeline=memory_timeline):
                     """Callback to monitor memory during solving."""
                     current_snapshot = self.take_memory_snapshot()
-                    memory_timeline.append(current_snapshot.process_memory_mb)
+                    timeline.append(current_snapshot.process_memory_mb)
 
                 # Solve with memory monitoring
                 start_time = time.perf_counter()

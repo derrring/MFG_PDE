@@ -397,7 +397,7 @@ def adaptive_importance_distribution(
     # Create interpolated importance function
     try:
         from scipy.interpolate import RBFInterpolator
-        from scipy.spatial import cKDTree
+        from scipy.spatial import cKDTree  # noqa: F401
 
         # Use RBF interpolation for smooth importance distribution
         rbf = RBFInterpolator(points, importance_weights, kernel="gaussian", epsilon=smoothing_parameter)

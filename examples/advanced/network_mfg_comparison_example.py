@@ -34,7 +34,7 @@ from mfg_pde.geometry.network_geometry import (
 
 # Optional: use Plotly for interactive plots if available
 try:
-    import plotly.express as px
+    import plotly.express as px  # noqa: F401
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 

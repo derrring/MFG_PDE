@@ -2,7 +2,7 @@
 # Focus on graph analysis methods used in network MFG problems
 
 from collections.abc import Iterator
-from typing import Any, Union
+from typing import Any
 
 # Core NetworkX types
 class Graph:
@@ -27,7 +27,7 @@ def connected_components(G: Graph) -> Iterator[set[Any]]: ...
 def strongly_connected_components(G: DiGraph) -> Iterator[set[Any]]: ...
 
 # Type alias for Graph or DiGraph
-GraphType = Union[Graph, DiGraph]
+GraphType = Graph | DiGraph
 
 # Catch-all for any missing networkx attributes
 def __getattr__(name: str) -> Any: ...

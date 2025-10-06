@@ -5,6 +5,7 @@ This module tests the configuration validation, default values, and error handli
 in the Pydantic configuration classes.
 """
 
+import contextlib
 import warnings
 
 import pytest
@@ -390,10 +391,8 @@ class TestConfigurationEdgeCases:
         config = MFGSolverConfig()
 
         # Should validate on assignment if validate_assignment is True
-        try:
+        # This is expected behavior with validation_assignment=True
+        with contextlib.suppress(ValidationError, ValueError):
             # This should either work or raise ValidationError
             config.convergence_tolerance = -1.0
             # If we get here, validation_assignment might be False
-        except (ValidationError, ValueError):
-            # This is expected behavior with validation_assignment=True
-            pass

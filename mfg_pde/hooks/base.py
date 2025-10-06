@@ -7,7 +7,6 @@ to customize solver behavior without complex inheritance.
 
 from __future__ import annotations
 
-from abc import ABC
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -15,12 +14,13 @@ if TYPE_CHECKING:
     from mfg_pde.types import MFGResult, SpatialTemporalState
 
 
-class SolverHooks(ABC):
+class SolverHooks:
     """
     Base class for solver customization hooks.
 
     Override any method to customize solver behavior. All methods
-    are optional - only implement what you need.
+    are optional with default no-op implementations - only override
+    what you need.
 
     Example:
         class MyHook(SolverHooks):

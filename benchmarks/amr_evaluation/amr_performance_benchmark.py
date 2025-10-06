@@ -30,7 +30,7 @@ from mfg_pde.factory import create_amr_solver, create_solver
 from mfg_pde.geometry import Domain1D, periodic_bc
 
 try:
-    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt  # noqa: F401
 
     PLOTTING_AVAILABLE = True
 except ImportError:
@@ -358,7 +358,7 @@ class AMRBenchmarkSuite:
                 },
             ]
 
-            self.benchmark_problem(lambda: create_1d_congestion_problem(nx), f"1D_Congestion_N{nx}", solver_configs)
+            self.benchmark_problem(lambda n=nx: create_1d_congestion_problem(n), f"1D_Congestion_N{nx}", solver_configs)
 
         # Benchmark 2: 2D Problem with AMR
         print("\n🌐 Benchmark 2: 2D Problem Comparison")

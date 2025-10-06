@@ -141,9 +141,11 @@ class SolverPlugin(ABC):
 
     def on_load(self):
         """Called when plugin is loaded. Override for initialization."""
+        return  # Optional hook - override if needed
 
     def on_unload(self):
         """Called when plugin is unloaded. Override for cleanup."""
+        return  # Optional hook - override if needed
 
 
 class AnalysisPlugin(ABC):
@@ -237,7 +239,7 @@ class PluginManager:
         """
         try:
             # Validate plugin class
-            if not issubclass(plugin_class, (SolverPlugin, AnalysisPlugin)):
+            if not issubclass(plugin_class, SolverPlugin | AnalysisPlugin):
                 raise ValueError("Plugin must inherit from SolverPlugin or AnalysisPlugin")
 
             # Get metadata
@@ -593,7 +595,7 @@ class PluginManager:
 
                 # Find plugin classes
                 for name, obj in inspect.getmembers(module, inspect.isclass):
-                    if issubclass(obj, (SolverPlugin, AnalysisPlugin)) and obj not in (
+                    if issubclass(obj, SolverPlugin | AnalysisPlugin) and obj not in (
                         SolverPlugin,
                         AnalysisPlugin,
                     ):

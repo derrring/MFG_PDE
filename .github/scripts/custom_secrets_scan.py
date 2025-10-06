@@ -111,7 +111,7 @@ class CustomSecretsScanner:
     }
 
     # Files to exclude
-    EXCLUDE_FILES = {
+    EXCLUDE_FILES: ClassVar[set[str]] = {
         ".gitignore",
         ".gitmodules",
         ".gitattributes",

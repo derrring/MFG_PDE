@@ -380,9 +380,9 @@ def main():
 
     # Check dependencies
     try:
-        import nbformat
+        import nbformat  # noqa: F401
 
-        import plotly
+        import plotly  # noqa: F401
 
         print("✓ All required dependencies available")
     except ImportError as e:

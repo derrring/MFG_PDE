@@ -19,7 +19,7 @@ import numpy as np
 try:
     import jax
     import jax.numpy as jnp
-    from jax import jit
+    from jax import jit  # noqa: F401
 
     JAX_AVAILABLE = True
     print("✓ JAX available for pure functional computations")
@@ -29,7 +29,7 @@ except ImportError:
 
 # Numba imports (with fallback)
 try:
-    import numba
+    import numba  # noqa: F401
     from numba import jit as numba_jit
 
     NUMBA_AVAILABLE = True

@@ -440,6 +440,135 @@ temp-branch
 
 **Implementation**: All future branches must follow this convention. No exceptions for temporary or experimental branches.
 
+### **Hierarchical Branch Structure** ⚠️ **CRITICAL**
+
+**Abstract Principle: Organize work through hierarchical branch structures that reflect logical dependencies and functional groupings.**
+
+**Universal Application**: This principle applies to **ALL branch types** - `feature/`, `fix/`, `docs/`, `refactor/`, `test/`, and `chore/`. Any multi-step or logically related work should follow this hierarchical approach regardless of branch type prefix.
+
+#### **Core Principles**
+
+1. **Always Work on Branches**
+   - ❌ Never commit directly to `main`
+   - ❌ Never commit directly to parent branches without following proper workflow
+   - ✅ Create feature branches for all work
+   - ✅ Use parent branches to organize related work
+
+2. **Establish Clear Hierarchy** (applies to all branch types)
+   ```
+   main (production-ready code)
+    └── <type>/major-work (parent branch for related work)
+         ├── <type>/work-component-a (child branch)
+         ├── <type>/work-component-b (child branch)
+         └── <type>/work-component-c (child branch)
+
+   Examples:
+   main
+    └── feature/neural-solver (parent)
+         ├── feature/dgm-implementation (child)
+         ├── feature/fno-implementation (child)
+         └── feature/neural-solver-tests (child)
+
+   main
+    └── fix/convergence-issues (parent)
+         ├── fix/hjb-convergence (child)
+         ├── fix/fp-convergence (child)
+         └── fix/convergence-tests (child)
+   ```
+
+3. **Respect Merge Order** ⚠️ **MANDATORY**
+   - **Child → Parent**: Always merge child branches to parent first
+   - **Parent → Main**: Only merge parent to main when all children complete
+   - **Dependencies**: If child-B depends on child-A, merge child-A first
+
+4. **When to Use Hierarchy**
+   - **Multi-step refactoring**: Each step is a child branch
+   - **Feature development**: Sub-features as children
+   - **Systematic cleanup**: Categories as children (e.g., code quality fixes)
+   - **Related changes**: Group logically connected work
+
+5. **Branch Lifecycle Management**
+   - **Create child**: When starting work on a sub-feature
+   - **Merge to parent**: When a logical unit of work is complete and tested
+   - **Keep child alive**: If more related work remains in that category
+   - **Delete child**: Only when the entire sub-feature is complete
+
+   **Example**: Fixing RUF012 errors
+   - ✅ Create `chore/fix-classvar-annotations`
+   - ✅ Fix 5 errors, commit, merge to parent
+   - ✅ Keep branch alive if more RUF012 errors might appear
+   - ✅ Continue working, make more commits
+   - ✅ Merge again to parent when ready
+   - ✅ Delete only when ALL RUF012 work is done
+
+   **Principle**: Branch deletion depends on **completeness of sub-feature**, not immediacy of merge.
+
+#### **Workflow Example: Systematic Code Quality Cleanup**
+
+```bash
+# Step 1: Create parent branch from main
+git checkout main
+git checkout -b chore/code-quality-systematic-cleanup
+
+# Step 2: Create child branch from parent
+git checkout chore/code-quality-systematic-cleanup
+git checkout -b chore/fix-unused-variables
+
+# Step 3: Make changes and commit to child
+git add -A
+git commit -m "Fix unused variables"
+git push -u origin chore/fix-unused-variables
+
+# Step 4: Merge child → parent
+git checkout chore/code-quality-systematic-cleanup
+git merge chore/fix-unused-variables --no-ff
+git push
+
+# Step 5a (OPTION A): Delete child if sub-feature is complete
+git branch -d chore/fix-unused-variables
+
+# Step 5b (OPTION B): Keep child alive if more work remains
+# (simply don't delete - you can continue working on it later)
+
+# Step 6: Repeat for other children
+git checkout -b chore/fix-unused-imports
+# ... work, commit, push
+git checkout chore/code-quality-systematic-cleanup
+git merge chore/fix-unused-imports --no-ff
+git push
+
+# Step 7: When all children complete, merge parent → main
+git checkout main
+git merge chore/code-quality-systematic-cleanup --no-ff
+git push
+```
+
+#### **Benefits of Hierarchical Structure**
+
+- **Organized History**: Related changes grouped logically
+- **Easy Rollback**: Can revert entire feature set by reverting parent merge
+- **Parallel Work**: Multiple developers can work on different children
+- **Clear Progress**: Parent branch shows cumulative progress
+- **Clean Main**: Main only receives complete, tested feature sets
+
+#### **Common Patterns**
+
+| Pattern | Parent Branch | Child Branches |
+|:--------|:--------------|:---------------|
+| **Feature Development** | `feature/new-solver` | `feature/solver-core`, `feature/solver-tests`, `feature/solver-docs` |
+| **Systematic Cleanup** | `chore/code-quality` | `chore/fix-imports`, `chore/fix-types`, `chore/fix-lint` |
+| **Architecture Refactor** | `refactor/factory-pattern` | `refactor/solver-factory`, `refactor/problem-factory`, `refactor/config-factory` |
+| **Documentation Overhaul** | `docs/api-reference` | `docs/solver-api`, `docs/geometry-api`, `docs/utils-api` |
+
+#### **Anti-Patterns to Avoid**
+
+❌ **Creating orphaned branches**: Each branch should have clear parent
+❌ **Merging out of order**: Child to main before parent violates hierarchy
+❌ **Too deep nesting**: Keep maximum 2-3 levels (main → parent → child)
+❌ **Unclear relationships**: Branch names should indicate hierarchy
+
+**Enforcement**: When working with AI assistance, always establish branch hierarchy at the start of multi-step work. The AI should create parent branch first, then work in child branches, respecting merge order throughout.
+
 ### **GitHub Issue and PR Management** ⚠️ **MANDATORY**
 **Every issue MUST be properly labeled before work begins:**
 

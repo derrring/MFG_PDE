@@ -413,9 +413,22 @@ ignore = [
     "T20",                   # Allow print statements in examples
     "B007",                  # Allow unused loop variables in examples
 ]
+"examples/advanced/advanced_visualization_example.py" = [
+    "F821",                  # Incomplete example with planned API not yet implemented
+]
+"examples/advanced/pinn_bayesian_mfg_demo.py" = [
+    "E402",                  # Module imports after sys.path manipulation
+]
+"examples/basic/dgm_simple_validation.py" = [
+    "E402",                  # Module imports after sys.path manipulation
+]
+"scripts/experimental/**/*.py" = [
+    "F821",                  # Experimental scripts with placeholder/planned API
+]
 "benchmarks/**/*.py" = [
     "N803", "N806", "N816",  # Allow mathematical notation in benchmarks
     "T20",                   # Allow print statements in benchmarks
+    "E402",                  # Module imports after warnings.filterwarnings (intentional)
 ]
 "mfg_pde/alg/**/*.py" = [
     "N803", "N806", "N816",  # Mathematical notation in algorithms
