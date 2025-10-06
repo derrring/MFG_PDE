@@ -33,13 +33,16 @@ class SaveTool:
 class WheelZoomTool:
     def __init__(self, **kwargs: Any) -> None: ...
 
-# Tools submodule
-class tools:
+# Tools submodule (namespace class)
+class Tools:
     BoxZoomTool = BoxZoomTool
     PanTool = PanTool
     ResetTool = ResetTool
     SaveTool = SaveTool
     WheelZoomTool = WheelZoomTool
+
+# Alias for backward compatibility with lowercase import
+tools = Tools
 
 # Catch-all for any missing model types
 def __getattr__(name: str) -> Any: ...
