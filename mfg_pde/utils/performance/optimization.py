@@ -552,9 +552,9 @@ class AdvancedSparseOperations:
             scaled_matrix = time_step * matrix
 
             # First-order Pade: (I - A/2)^-1 * (I + A/2)
-            I = csr_matrix(np.eye(matrix.shape[0]))
-            numerator = I + 0.5 * scaled_matrix
-            denominator = I - 0.5 * scaled_matrix
+            identity_mat = csr_matrix(np.eye(matrix.shape[0]))
+            numerator = identity_mat + 0.5 * scaled_matrix
+            denominator = identity_mat - 0.5 * scaled_matrix
 
             try:
                 # Solve (I - A/2) * result = (I + A/2)
@@ -562,14 +562,14 @@ class AdvancedSparseOperations:
                 return csr_matrix(result_dense)
             except:
                 warnings.warn("Pade approximation failed, using first-order approximation")
-                return I + scaled_matrix
+                return identity_mat + scaled_matrix
 
         elif method == "taylor":
             # Taylor series approximation: I + A + A^2/2! + A^3/3! + ...
-            I = csr_matrix(np.eye(matrix.shape[0]))
+            identity_mat = csr_matrix(np.eye(matrix.shape[0]))
             scaled_matrix = time_step * matrix
-            result = I.copy()
-            term = I.copy()
+            result = identity_mat.copy()
+            term = identity_mat.copy()
 
             for k in range(1, 10):  # Limit terms for efficiency
                 term = term @ scaled_matrix / k
