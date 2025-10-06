@@ -6,10 +6,13 @@ including solution computation, validation, analysis, and visualization.
 """
 
 import argparse
+import json
 import os
 import sys
 import time
 from typing import Any
+
+import numpy as np
 
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -419,7 +422,7 @@ class AnisotropicExperiment:
                     # Use last time step for velocity estimate
                     u_final = solution.U[-1]
                     grad_u = np.gradient(u_final)
-                    if isinstance(grad_u, (list, tuple)) and len(grad_u) >= 2:
+                    if isinstance(grad_u, list | tuple) and len(grad_u) >= 2:
                         vel_magnitude = np.sqrt(grad_u[0] ** 2 + grad_u[1] ** 2)
                     else:
                         vel_magnitude = np.abs(grad_u)
