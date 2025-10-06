@@ -35,8 +35,8 @@ try:
     GYMNASIUM_AVAILABLE = True
 except ImportError:  # pragma: no cover
     GYMNASIUM_AVAILABLE = False
-    gym = None  # type: ignore
-    spaces = None  # type: ignore
+    gym = None
+    spaces = None
 
 
 class RewardType(str, Enum):

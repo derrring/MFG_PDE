@@ -73,11 +73,11 @@ try:
     MAZE_UTILS_AVAILABLE = True
 except ImportError:
     MAZE_UTILS_AVAILABLE = False
-    analyze_maze_connectivity = None  # type: ignore
-    compute_adaptive_door_width = None  # type: ignore
-    connect_regions_adaptive = None  # type: ignore
-    find_disconnected_regions = None  # type: ignore
-    find_region_boundary = None  # type: ignore
+    analyze_maze_connectivity = None
+    compute_adaptive_door_width = None
+    connect_regions_adaptive = None
+    find_disconnected_regions = None
+    find_region_boundary = None
 
 # Maze post-processing (smoothing, enhancement, refinement)
 try:
@@ -93,12 +93,12 @@ try:
     MAZE_POSTPROCESSING_AVAILABLE = True
 except ImportError:
     MAZE_POSTPROCESSING_AVAILABLE = False
-    adaptive_door_carving = None  # type: ignore
-    enhance_organic_maze = None  # type: ignore
-    normalize_wall_thickness = None  # type: ignore
-    smooth_walls_combined = None  # type: ignore
-    smooth_walls_gaussian = None  # type: ignore
-    smooth_walls_morphological = None  # type: ignore
+    adaptive_door_carving = None
+    enhance_organic_maze = None
+    normalize_wall_thickness = None
+    smooth_walls_combined = None
+    smooth_walls_gaussian = None
+    smooth_walls_morphological = None
 
 # Conditional import for MFG environment (requires Gymnasium)
 try:

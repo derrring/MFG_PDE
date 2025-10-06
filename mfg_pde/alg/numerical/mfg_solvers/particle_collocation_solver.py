@@ -109,7 +109,7 @@ class ParticleCollocationSolver(BaseMFGSolver):
         self.convergence_history: list[dict[str, float]] = []
         self.particles_trajectory = None
 
-    def solve(  # type: ignore[override]
+    def solve(
         self,
         max_iterations: int | None = None,
         tolerance: float | None = None,

@@ -43,8 +43,8 @@ try:
 except ImportError:
     GYMNASIUM_AVAILABLE = False
     # Provide dummy types for type checking
-    gym = None  # type: ignore
-    spaces = None  # type: ignore
+    gym = None
+    spaces = None
 
 
 class ActionType(Enum):

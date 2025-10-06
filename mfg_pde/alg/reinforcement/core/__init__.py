@@ -37,9 +37,9 @@ if CORE_DEPENDENCIES_AVAILABLE:
             NetworkMFGEnv,
         )
     except ImportError:
-        ContinuousMFGEnv = None  # type: ignore[assignment]
-        MFGEnvironment = None  # type: ignore[assignment]
-        NetworkMFGEnv = None  # type: ignore[assignment]
+        ContinuousMFGEnv = None
+        MFGEnvironment = None
+        NetworkMFGEnv = None
 
     try:  # pragma: no cover - optional module
         from .population_state import (
@@ -48,9 +48,9 @@ if CORE_DEPENDENCIES_AVAILABLE:
             PopulationTracker,
         )
     except ImportError:
-        PopulationMetrics = None  # type: ignore[assignment]
-        PopulationState = None  # type: ignore[assignment]
-        PopulationTracker = None  # type: ignore[assignment]
+        PopulationMetrics = None
+        PopulationState = None
+        PopulationTracker = None
 
     try:  # pragma: no cover - optional module
         from .training_loops import (
@@ -58,8 +58,8 @@ if CORE_DEPENDENCIES_AVAILABLE:
             PopulationTrainingManager,
         )
     except ImportError:
-        MFRLTrainingLoop = None  # type: ignore[assignment]
-        PopulationTrainingManager = None  # type: ignore[assignment]
+        MFRLTrainingLoop = None
+        PopulationTrainingManager = None
 
     __all__ = [
         # Base MFRL Components

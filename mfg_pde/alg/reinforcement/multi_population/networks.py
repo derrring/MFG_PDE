@@ -26,9 +26,9 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:  # pragma: no cover
     TORCH_AVAILABLE = False
-    torch = None  # type: ignore
-    nn = None  # type: ignore
-    Normal = None  # type: ignore
+    torch = None
+    nn = None
+    Normal = None
 
 # Constants for SAC
 LOG_STD_MIN = -20

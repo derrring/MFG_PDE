@@ -44,8 +44,8 @@ try:
     GYMNASIUM_AVAILABLE = True
 except ImportError:  # pragma: no cover
     GYMNASIUM_AVAILABLE = False
-    gym = None  # type: ignore
-    spaces = None  # type: ignore
+    gym = None
+    spaces = None
 
 
 @dataclass
@@ -396,9 +396,9 @@ class MultiPopulationMazeEnvironment:
             type_actions = actions[type_id]
             num_agents = len(self.positions[type_id])
 
-            assert len(type_actions) == num_agents, (
-                f"Action count mismatch for {type_id}: expected {num_agents}, got {len(type_actions)}"
-            )
+            assert (
+                len(type_actions) == num_agents
+            ), f"Action count mismatch for {type_id}: expected {num_agents}, got {len(type_actions)}"
 
             # Compute new positions
             new_pos = []

@@ -44,7 +44,7 @@ except ImportError:
     ContinuousMFGEnvBase = object  # type: ignore
 
 
-class TrafficFlowEnv(ContinuousMFGEnvBase):  # type: ignore
+class TrafficFlowEnv(ContinuousMFGEnvBase):
     r"""
     Traffic Flow Mean Field Game Environment.
 

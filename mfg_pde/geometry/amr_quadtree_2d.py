@@ -511,7 +511,7 @@ class AdaptiveMesh:
                         if key in containing_node.solution_data:
                             interpolated[key][i, j] = containing_node.solution_data[key]
 
-            return interpolated  # type: ignore[return-value]
+            return interpolated
 
     def _find_containing_node(self, x: float, y: float) -> QuadTreeNode | None:
         """Find the leaf node containing point (x, y)"""

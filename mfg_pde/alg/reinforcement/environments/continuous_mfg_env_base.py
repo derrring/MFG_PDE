@@ -36,8 +36,8 @@ try:
 except ImportError:
     GYMNASIUM_AVAILABLE = False
     # Fallback for when gymnasium not available
-    gym = None  # type: ignore
-    spaces = None  # type: ignore
+    gym = None
+    spaces = None
 
 
 class ContinuousMFGEnvBase(ABC):

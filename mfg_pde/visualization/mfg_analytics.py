@@ -44,7 +44,7 @@ except ImportError:
     create_parameter_sweep_analyzer = None
     create_time_series_analyzer = None
     create_data_exporter = None
-    MFGDataFrame = None  # type: ignore[misc]
+    MFGDataFrame = None
 
 logger = logging.getLogger(__name__)
 

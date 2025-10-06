@@ -113,7 +113,7 @@ class AdaptiveParticleCollocationSolver(ParticleCollocationSolver):
         self.convergence_history: list[dict[str, Any]] = []
         self.adaptive_mode = "particle_aware"  # Default for particle collocation
 
-    def solve(  # type: ignore[override]
+    def solve(
         self,
         max_iterations: int | None = None,
         tolerance: float | None = None,

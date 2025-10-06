@@ -59,7 +59,7 @@ try:
     from mfg_pde.utils.polars_integration import POLARS_AVAILABLE, MFGDataFrame
 except ImportError:
     POLARS_AVAILABLE = False
-    MFGDataFrame = None  # type: ignore[misc]
+    MFGDataFrame = None
 
 logger = logging.getLogger(__name__)
 

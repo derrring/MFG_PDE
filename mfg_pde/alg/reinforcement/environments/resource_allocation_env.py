@@ -44,7 +44,7 @@ except ImportError:
     ContinuousMFGEnvBase = object  # type: ignore
 
 
-class ResourceAllocationEnv(ContinuousMFGEnvBase):  # type: ignore
+class ResourceAllocationEnv(ContinuousMFGEnvBase):
     r"""
     Resource Allocation Mean Field Game Environment.
 

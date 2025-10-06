@@ -152,7 +152,7 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             newton_tolerance=self.newton_tolerance,
         )
 
-    def solve(  # type: ignore[override]
+    def solve(
         self,
         max_iterations: int | None = None,
         tolerance: float | None = None,

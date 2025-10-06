@@ -38,7 +38,7 @@ except ImportError:
     ContinuousMFGEnvBase = object  # type: ignore
 
 
-class LQMFGEnv(ContinuousMFGEnvBase):  # type: ignore
+class LQMFGEnv(ContinuousMFGEnvBase):
     r"""
     Linear-Quadratic Mean Field Game Environment.
 

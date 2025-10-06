@@ -49,7 +49,7 @@ try:
     SCIPY_AVAILABLE = True
 except ImportError:  # pragma: no cover
     SCIPY_AVAILABLE = False
-    scipy_convolve = None  # type: ignore
+    scipy_convolve = None
 
 
 @dataclass

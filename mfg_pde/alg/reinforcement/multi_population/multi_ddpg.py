@@ -34,9 +34,9 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:  # pragma: no cover
     TORCH_AVAILABLE = False
-    torch = None  # type: ignore
-    nn = None  # type: ignore
-    optim = None  # type: ignore
+    torch = None
+    nn = None
+    optim = None
 
 from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import (
     OrnsteinUhlenbeckNoise,

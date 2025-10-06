@@ -44,7 +44,7 @@ except ImportError:
     ContinuousMFGEnvBase = object  # type: ignore
 
 
-class PriceFormationEnv(ContinuousMFGEnvBase):  # type: ignore
+class PriceFormationEnv(ContinuousMFGEnvBase):
     r"""
     Price Formation Mean Field Game Environment.
 

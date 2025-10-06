@@ -44,7 +44,7 @@ except ImportError:
     ContinuousMFGEnvBase = object  # type: ignore
 
 
-class CrowdNavigationEnv(ContinuousMFGEnvBase):  # type: ignore
+class CrowdNavigationEnv(ContinuousMFGEnvBase):
     r"""
     Crowd Navigation Mean Field Game Environment.
 

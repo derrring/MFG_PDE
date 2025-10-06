@@ -102,7 +102,7 @@ class PydanticSolverFactory:
             if solver_type == "fixed_point":
                 return self._create_validated_fixed_point_solver(problem, config)
             elif solver_type == "particle_collocation":
-                return self._create_validated_particle_collocation_solver(problem, config)  # type: ignore[return-value]
+                return self._create_validated_particle_collocation_solver(problem, config)
             elif solver_type == "adaptive_particle":
                 return self._create_validated_adaptive_particle_solver(problem, config)
             elif solver_type == "monitored_particle":
@@ -234,7 +234,7 @@ class PydanticSolverFactory:
                 problem=problem,
                 hjb_solver=hjb_solver,
                 fp_solver=fp_solver,
-                config=config,  # type: ignore[arg-type]
+                config=config,
             )
 
             self.logger.info("Successfully created validated fixed point solver")

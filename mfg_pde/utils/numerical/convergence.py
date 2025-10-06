@@ -855,11 +855,11 @@ class AdaptiveConvergenceWrapper:
 
         # Wrap the solve method
         if hasattr(solver, "solve") and callable(solver.solve):
-            self._original_solve = solver.solve  # type: ignore[assignment]
-            solver.solve = self._adaptive_solve  # type: ignore[method-assign]
+            self._original_solve = solver.solve
+            solver.solve = self._adaptive_solve
 
         # Store reference to wrapper in solver for debugging
-        solver._adaptive_convergence_wrapper = self  # type: ignore[attr-defined]
+        solver._adaptive_convergence_wrapper = self
 
         if self.verbose:
             self._print_convergence_mode()

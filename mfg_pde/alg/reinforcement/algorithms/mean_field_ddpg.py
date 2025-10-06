@@ -33,9 +33,9 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:  # pragma: no cover
     TORCH_AVAILABLE = False
-    torch = None  # type: ignore
-    nn = None  # type: ignore
-    optim = None  # type: ignore
+    torch = None
+    nn = None
+    optim = None
 
 
 class DDPGActor(nn.Module):

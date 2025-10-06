@@ -40,10 +40,10 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:  # pragma: no cover
     TORCH_AVAILABLE = False
-    torch = None  # type: ignore
-    nn = None  # type: ignore
-    optim = None  # type: ignore
-    Normal = None  # type: ignore
+    torch = None
+    nn = None
+    optim = None
+    Normal = None
 
 # Import from multi-population implementations
 from mfg_pde.alg.reinforcement.algorithms.multi_population_ddpg import (
