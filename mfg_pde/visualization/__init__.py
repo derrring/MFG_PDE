@@ -69,6 +69,9 @@ from .mfg_analytics import (
     create_analytics_engine,
 )
 
+# Multi-dimensional visualization (2D/3D)
+from .multidim_viz import MultiDimVisualizer
+
 # Network MFG visualization
 from .network_plots import NetworkMFGVisualizer, create_network_visualizer
 
@@ -87,6 +90,8 @@ __all__ = [
     "MFGVisualizationManager",
     # Mathematical plotting
     "MathematicalPlotter",
+    # Multi-dimensional visualization
+    "MultiDimVisualizer",
     # Network MFG visualization
     "NetworkMFGVisualizer",
     "analyze_mfg_solution_quick",
