@@ -7,13 +7,14 @@ Checks dependencies for license compatibility and compliance.
 import json
 import subprocess
 import sys
+from typing import ClassVar
 
 
 class LicenseComplianceChecker:
     """Check license compliance for project dependencies."""
 
     # Approved licenses for research/academic use
-    APPROVED_LICENSES = {
+    APPROVED_LICENSES: ClassVar[set[str]] = {
         "MIT License",
         "MIT",
         "BSD License",
@@ -36,7 +37,7 @@ class LicenseComplianceChecker:
     }
 
     # Licenses requiring review
-    REVIEW_REQUIRED = {
+    REVIEW_REQUIRED: ClassVar[set[str]] = {
         "GNU General Public License v3 (GPLv3)",
         "GPL-3.0",
         "GNU General Public License v2 (GPLv2)",
@@ -45,7 +46,7 @@ class LicenseComplianceChecker:
     }
 
     # Prohibited licenses
-    PROHIBITED_LICENSES = {
+    PROHIBITED_LICENSES: ClassVar[set[str]] = {
         "AGPL",
         "Proprietary",
         "Commercial",

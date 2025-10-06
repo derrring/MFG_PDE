@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 
 
 class MathematicalSpace(Enum):
@@ -265,8 +265,8 @@ class SolverMetaclass(type):
 class SolverRegistry:
     """Registry for type-based solver dispatch."""
 
-    _solvers: dict[MFGType, list[type]] = {}
-    _method_map: dict[NumericalMethod, type] = {}
+    _solvers: ClassVar[dict[MFGType, list[type]]] = {}
+    _method_map: ClassVar[dict[NumericalMethod, type]] = {}
 
     @classmethod
     def register_solver(cls, solver_class: type, mfg_type: MFGType):
@@ -315,7 +315,7 @@ class DynamicSolver(metaclass=SolverMetaclass):
     """
 
     method_type: NumericalMethod | None = None
-    compatible_types: list[MFGType] = []
+    compatible_types: ClassVar[list[MFGType]] = []
 
     def __init__(self, config=None) -> None:
         self.config = config
