@@ -532,12 +532,12 @@ class MultiPopulationSAC:
             Training statistics per population
         """
         # Per-population tracking
-        episode_rewards = {i: [] for i in range(self.num_populations)}
-        critic1_losses = {i: [] for i in range(self.num_populations)}
-        critic2_losses = {i: [] for i in range(self.num_populations)}
-        actor_losses = {i: [] for i in range(self.num_populations)}
-        alpha_losses = {i: [] for i in range(self.num_populations)}
-        alphas = {i: [] for i in range(self.num_populations)}
+        episode_rewards: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
+        critic1_losses: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
+        critic2_losses: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
+        actor_losses: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
+        alpha_losses: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
+        alphas: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
 
         episode_lengths = []
 

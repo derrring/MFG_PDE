@@ -73,7 +73,7 @@ class MultiPopulationTrainer:
             Training statistics per population
         """
         # Initialize statistics
-        stats = {
+        stats: dict[int, dict[str, list[Any]]] = {
             pop_id: {
                 "episode_rewards": [],
                 "episode_lengths": [],
@@ -204,7 +204,7 @@ class MultiPopulationTrainer:
         Returns:
             Evaluation statistics per population
         """
-        eval_stats = {
+        eval_stats: dict[int, dict[str, list[float]]] = {
             pop_id: {
                 "episode_rewards": [],
                 "episode_lengths": [],

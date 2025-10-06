@@ -147,7 +147,9 @@ class ExperienceReplay:
     """Experience replay buffer for MFRL."""
 
     def __init__(self, capacity: int = 100000):
-        self.buffer = deque(maxlen=capacity)
+        self.buffer: deque[tuple[np.ndarray, int, float, np.ndarray, np.ndarray, np.ndarray, bool]] = deque(
+            maxlen=capacity
+        )
         self.capacity = capacity
 
     def push(
@@ -278,10 +280,10 @@ class MeanFieldQLearning:
         self.training_step = 0
 
         # Results tracking
-        self.episode_rewards = []
-        self.episode_lengths = []
-        self.loss_history = []
-        self.nash_errors = []
+        self.episode_rewards: list[float] = []
+        self.episode_lengths: list[int] = []
+        self.loss_history: list[float] = []
+        self.nash_errors: list[float] = []
 
     def select_action(self, state: np.ndarray, population_state: np.ndarray, training: bool = True) -> int:
         """

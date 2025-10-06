@@ -230,7 +230,7 @@ class PINNBase(BaseNeuralSolver, ABC):
 
         # Adaptive sampling state
         self.current_points = None
-        self.residual_history = []
+        self.residual_history: list[float] = []
 
         # Initialize advanced adaptive training if enabled
         self.adaptive_strategy = None
@@ -874,7 +874,7 @@ class PINNBase(BaseNeuralSolver, ABC):
         if hasattr(self.problem, "domain") and hasattr(self.problem.domain, "bounds"):
             try:
                 bounds = self.problem.domain.bounds
-                if isinstance(bounds, (list, tuple)) and len(bounds) == 2:
+                if isinstance(bounds, list | tuple) and len(bounds) == 2:
                     lower_bounds = torch.tensor(bounds[0], device=self.device, dtype=self.dtype)
                     upper_bounds = torch.tensor(bounds[1], device=self.device, dtype=self.dtype)
             except:

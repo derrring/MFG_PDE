@@ -263,8 +263,8 @@ class MultilevelMonteCarlo:
             num_levels: Number of resolution levels
         """
         self.num_levels = num_levels
-        self.level_costs = []
-        self.level_variances = []
+        self.level_costs: list[float] = []
+        self.level_variances: list[float] = []
 
     def estimate_level_parameters(
         self, sample_function: Callable[[int, int], NDArray], max_samples: int = 1000

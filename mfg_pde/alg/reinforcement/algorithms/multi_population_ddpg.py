@@ -579,9 +579,9 @@ class MultiPopulationDDPG:
             Training statistics per population
         """
         # Per-population tracking
-        episode_rewards = {i: [] for i in range(self.num_populations)}
-        critic_losses = {i: [] for i in range(self.num_populations)}
-        actor_losses = {i: [] for i in range(self.num_populations)}
+        episode_rewards: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
+        critic_losses: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
+        actor_losses: dict[int, list[float]] = {i: [] for i in range(self.num_populations)}
 
         episode_lengths = []
 

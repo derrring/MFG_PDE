@@ -38,7 +38,7 @@ class LogAnalyzer:
         if not self.log_file_path.exists():
             raise FileNotFoundError(f"Log file not found: {log_file_path}")
 
-        self.entries = []
+        self.entries: list[dict[str, Any]] = []
         self.parsed = False
 
     def parse_log_file(self):
@@ -128,7 +128,7 @@ class LogAnalyzer:
         if not self.parsed:
             self.parse_log_file()
 
-        performance_data = {
+        performance_data: dict[str, list[Any]] = {
             "solver_sessions": [],
             "convergence_data": [],
             "timing_data": [],

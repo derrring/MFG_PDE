@@ -387,8 +387,8 @@ class MeanFieldActorCritic:
             advantages: GAE advantages
             returns: Discounted returns
         """
-        advantages = []
-        returns = []
+        advantages: list[float] = []
+        returns: list[float] = []
         gae = 0
         next_value = next_value
 
