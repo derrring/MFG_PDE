@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-SolverType = Literal["fixed_point", "particle_collocation"]
+SolverType = Literal["fixed_point", "particle_collocation", "monitored_particle", "adaptive_particle"]
 
 
 @dataclass
@@ -351,9 +351,7 @@ class SolverFactory:
             **{k: v for k, v in kwargs.items() if k not in config_keys},
         }
 
-        return ParticleCollocationSolver(
-            problem=problem, collocation_points=collocation_points, verbose=False, **solver_kwargs
-        )
+        return ParticleCollocationSolver(problem=problem, collocation_points=collocation_points, **solver_kwargs)
 
 
 # Convenience functions for common use cases

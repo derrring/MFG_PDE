@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+    from mfg_pde.alg.numerical.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 
 import numpy as np
 
@@ -21,9 +21,9 @@ try:
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
-from mfg_pde.alg.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
-from mfg_pde.alg.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
-from mfg_pde.alg.mfg_solvers.enhanced_particle_collocation_solver import MonitoredParticleCollocationSolver
+from mfg_pde.alg.numerical.mfg_solvers.adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
+from mfg_pde.alg.numerical.mfg_solvers.config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
+from mfg_pde.alg.numerical.mfg_solvers.monitored_particle_collocation_solver import MonitoredParticleCollocationSolver
 from mfg_pde.config.pydantic_config import (
     MFGSolverConfig,
     create_accurate_config,
@@ -60,7 +60,12 @@ class PydanticSolverFactory:
         config: MFGSolverConfig | None = None,
         config_preset: str = "balanced",
         **kwargs: Any,
-    ) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver:
+    ) -> (
+        ConfigAwareFixedPointIterator
+        | ParticleCollocationSolver
+        | MonitoredParticleCollocationSolver
+        | AdaptiveParticleCollocationSolver
+    ):
         """
         Create MFG solver with comprehensive Pydantic validation.
 
@@ -212,8 +217,8 @@ class PydanticSolverFactory:
         """Create validated fixed point iterator solver."""
         try:
             # Create HJB and FP solvers (simplified for now)
-            from mfg_pde.alg.fp_solvers.fp_particle import FPParticleSolver
-            from mfg_pde.alg.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+            from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+            from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
@@ -234,7 +239,7 @@ class PydanticSolverFactory:
                 problem=problem,
                 hjb_solver=hjb_solver,
                 fp_solver=fp_solver,
-                config=config,
+                config=config,  # type: ignore[arg-type]  # Pydantic config compatible with dataclass config
             )
 
             self.logger.info("Successfully created validated fixed point solver")
@@ -249,7 +254,7 @@ class PydanticSolverFactory:
     ) -> ParticleCollocationSolver:
         """Create validated particle collocation solver."""
         try:
-            from mfg_pde.alg.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
+            from mfg_pde.alg.numerical.mfg_solvers.particle_collocation_solver import ParticleCollocationSolver
 
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
@@ -333,7 +338,12 @@ def create_validated_solver(
     config: MFGSolverConfig | None = None,
     config_preset: str = "balanced",
     **kwargs: Any,
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | ParticleCollocationSolver
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+):
     """
     Convenience function for creating validated MFG solvers.
 
@@ -358,14 +368,24 @@ def create_validated_solver(
 
 def create_fast_validated_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | ParticleCollocationSolver
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+):
     """Create fast solver with Pydantic validation."""
     return create_validated_solver(problem=problem, solver_type=solver_type, config_preset="fast", **kwargs)
 
 
 def create_accurate_validated_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | ParticleCollocationSolver
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+):
     """Create accurate solver with Pydantic validation."""
     return create_validated_solver(problem=problem, solver_type=solver_type, config_preset="accurate", **kwargs)
 
@@ -375,7 +395,12 @@ def create_research_validated_solver(
     solver_type: SolverType = "fixed_point",
     experiment_name: str | None = None,
     **kwargs: Any,
-) -> ConfigAwareFixedPointIterator | MonitoredParticleCollocationSolver | AdaptiveParticleCollocationSolver:
+) -> (
+    ConfigAwareFixedPointIterator
+    | ParticleCollocationSolver
+    | MonitoredParticleCollocationSolver
+    | AdaptiveParticleCollocationSolver
+):
     """Create research solver with Pydantic validation and experiment tracking."""
     return create_validated_solver(
         problem=problem,
