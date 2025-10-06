@@ -7,7 +7,7 @@ Boundary conditions are now managed in boundary_conditions_1d.py.
 
 from __future__ import annotations
 
-from .boundary_conditions_1d import BoundaryConditions  # Used in __init__, not just typing  # noqa: TCH001
+from .boundary_conditions_1d import BoundaryConditions  # noqa: TCH001
 
 
 class Domain1D:

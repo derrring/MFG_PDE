@@ -216,9 +216,9 @@ __all__ = [
     "npart",
     "performance_logged",
     "ppart",
-    "sparse_matmul",
     # Validation
     "safe_solution_return",
+    "sparse_matmul",
     "test_particle_detection",
     "trapezoid",
     "validate_array_dimensions",
