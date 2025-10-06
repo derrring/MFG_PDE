@@ -2,7 +2,7 @@
 
 **Date**: October 6, 2025
 **Session**: Development Tooling & Automation + Type Safety
-**Commits**: 4 (b9f7b5b, 57a894b, b24e057, 2dce9d2)
+**Commits**: 8 total (b9f7b5b, 57a894b, b24e057, 2dce9d2, e11f0bf, 89eaffc, 09b16c7, + docs)
 
 ---
 
@@ -167,13 +167,56 @@ mfg-pde benchmark --size medium
 - Remaining errors are genuine type issues
 - Clearer path to further type safety improvements
 
+### 7. **Type Annotations - maze_config.py** ✅
+**Status**: Completed (89eaffc)
+**File**: `mfg_pde/alg/reinforcement/environments/maze_config.py`
+
+**Changes**:
+- Added `Any` to typing imports
+- Annotated `**kwargs: Any` in 3 helper functions:
+  - `create_default_config()`
+  - `create_continuous_maze_config()`
+  - `create_multi_goal_config()`
+
+**Impact**:
+- MyPy errors reduced: 375 → 372 (3 errors, 0.8% improvement)
+- no-untyped-def errors: 66 → 63
+- maze_config.py: 3 errors → 1 error (67% file-level reduction)
+
+### 8. **Factory Module Type Improvements** ✅
+**Status**: Completed (09b16c7)
+**Files**: `solver_factory.py`, `pydantic_solver_factory.py`
+
+**Changes to solver_factory.py**:
+- Expanded `SolverType` Literal to include "monitored_particle" and "adaptive_particle"
+- Added return type annotations to all helper methods
+- Removed invalid parameter from ParticleCollocationSolver
+- Updated validation to include all solver types
+
+**Changes to pydantic_solver_factory.py**:
+- Fixed 6 import paths: `mfg_pde.alg.numerical.*` (from incorrect `mfg_pde.alg.*`)
+- Updated return types to include ParticleCollocationSolver in unions
+- Added type ignore for Pydantic/dataclass compatibility
+
+**Impact**:
+- MyPy errors reduced: 372 → 363 (9 errors, 2.4% improvement)
+- Factory module imports now work correctly
+- All factory functions properly typed
+- Better IDE autocomplete and type checking
+
+**Total type safety progress**:
+- Starting: 423 errors
+- After cleanup: 375 errors
+- After annotations: 363 errors
+- **Total reduction: 60 errors (14.2% improvement)**
+
 ---
 
 ## 📊 Metrics Established
 
 ### Code Quality Baseline
 - ✅ **Linting**: 1 Ruff error (98.5% improvement maintained)
-- ✅ **Type checking**: 375 MyPy errors (improved from 423, 11.3% reduction)
+- ✅ **Type checking**: 363 MyPy errors (improved from 423, **14.2% reduction**)
 - ✅ **Coverage**: 14% (27,884/32,345 lines uncovered)
 - ✅ **Tests**: 802 tests, 100% pass rate
 
@@ -256,11 +299,11 @@ pip install pytest-benchmark
 
 ### What We Accomplished
 ✅ **4 tools added**: Makefile, Dependabot, CLI interface, coverage analysis
-✅ **Type safety improved**: MyPy errors reduced 423 → 375 (11.3%)
+✅ **Type safety improved**: MyPy errors reduced 423 → 363 (14.2%)
 ✅ **Developer workflow**: `make help` shows all commands
 ✅ **CLI interface**: Professional command-line access (`mfg-pde`)
 ✅ **Automation**: Dependency updates now automatic
-✅ **Code cleanup**: 80 unused type ignore comments removed
+✅ **Code cleanup**: 80 unused type ignore comments removed + 12 type annotations added
 
 ### Time Invested
 - Coverage analysis: 15 min
@@ -269,7 +312,9 @@ pip install pytest-benchmark
 - MyPy analysis: 30 min
 - CLI implementation: 45 min (including dependency fixes)
 - MyPy cleanup: 30 min (automated with agent)
-- Total: **~2.5 hours**
+- Type annotations (maze_config + factory): 45 min (automated with agent)
+- Documentation updates: 20 min
+- Total: **~3.5 hours**
 
 ### Value Delivered
 - **Immediate**: Better dev workflow (Makefile), CLI interface (mfg-pde), cleaner codebase
@@ -371,7 +416,8 @@ make test
 2. ✅ **Dependabot**: Automated weekly dependency updates
 3. ✅ **CLI Interface**: Professional command-line tool (`mfg-pde`)
 4. ✅ **MyPy Cleanup**: 80 unused ignores removed, 48 errors reduced
-5. ✅ **Metrics Baseline**: Coverage 14%, MyPy 375 errors (improved)
+5. ✅ **Type Annotations**: 12 functions annotated, 12 errors reduced
+6. ✅ **Metrics Baseline**: Coverage 14%, MyPy 363 errors (14.2% improvement)
 
 **CLI Commands Available**:
 ```bash
@@ -401,3 +447,6 @@ mfg-pde benchmark        # Run benchmarks
 - 57a894b: Add development Makefile
 - b24e057: Add CLI interface with Click framework
 - 2dce9d2: Remove 80 unused mypy type ignore comments
+- e11f0bf: Add software engineering documentation and MyPy analysis
+- 89eaffc: Add type annotations to maze_config.py kwargs parameters
+- 09b16c7: Fix factory module type annotations and imports
