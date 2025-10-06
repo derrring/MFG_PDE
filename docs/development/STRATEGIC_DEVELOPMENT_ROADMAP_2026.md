@@ -302,11 +302,16 @@ Population Dynamics: ∂m/∂t - div(m ∇_p H) - Δm = σ(θ_t) · noise_terms
   - Uncertainty quantification with confidence intervals
   - 50+ noise realizations with statistical aggregation
 
-**✅ Working Example**: `examples/basic/common_noise_lq_demo.py` (266 lines)
+**✅ Working Example**: `examples/basic/common_noise_lq_demo.py` (284 lines)
 - Market volatility as common noise (OU process)
 - Risk-sensitive control: λ(θ) = λ₀(1 + β|θ|)
 - Comprehensive 6-panel visualization
 - Uncertainty quantification with 95% confidence intervals
+- **✅ API Compatibility Fixed** (Issue #85, October 6, 2025):
+  - Simplified API ↔ MFGComponents bridge implementation
+  - Flexible parameter handling with `inspect`
+  - Robust result extraction (tuple/dict/object formats)
+  - Finite difference derivative computation for ∂H/∂m
 
 **✅ Test Coverage**: 60 tests passing (56 active, 4 skipped)
 
