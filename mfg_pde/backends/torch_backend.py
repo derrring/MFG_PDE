@@ -493,7 +493,7 @@ class TorchBackend(BaseBackend):
 
     def get_memory_info(self) -> dict[str, Any]:
         """Get device memory information."""
-        info = {"device": str(self.torch_device)}
+        info: dict[str, Any] = {"device": str(self.torch_device)}
 
         if self.device_type == "cuda":
             info.update(

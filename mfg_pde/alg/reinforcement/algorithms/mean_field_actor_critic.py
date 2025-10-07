@@ -367,7 +367,7 @@ class MeanFieldActorCritic:
         with torch.no_grad():
             action, log_prob = self.actor.get_action(state_tensor, pop_tensor, deterministic)
 
-        return action.item(), log_prob.item()
+        return int(action.item()), float(log_prob.item())
 
     def compute_gae(
         self,
