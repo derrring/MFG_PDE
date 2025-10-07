@@ -259,14 +259,15 @@ class PydanticSolverFactory:
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
 
-            # Extract legacy parameters for compatibility
-            legacy_params = config.to_legacy_dict()
-
+            # Extract only compatible parameters for ParticleCollocationSolver
+            # Note: ParticleCollocationSolver doesn't use Picard iterations
+            # delta parameter not in ParticleConfig - uses default value
             solver = ParticleCollocationSolver(
                 problem=problem,
                 collocation_points=collocation_points,
                 num_particles=config.fp.particle.num_particles,
-                **legacy_params,
+                max_newton_iterations=config.newton.max_iterations,
+                newton_tolerance=config.newton.tolerance,
             )
 
             self.logger.info("Successfully created validated particle collocation solver")
