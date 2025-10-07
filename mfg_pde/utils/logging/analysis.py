@@ -407,7 +407,7 @@ def analyze_recent_logs(log_directory: str = "logs", days_back: int = 7) -> dict
         return {"error": f"No recent log files found in {log_directory}"}
 
     # Analyze each file
-    combined_analysis: dict[str, list[Any] | int] = {
+    combined_analysis: dict[str, Any] = {
         "analyzed_files": [],
         "total_entries": 0,
         "combined_errors": [],

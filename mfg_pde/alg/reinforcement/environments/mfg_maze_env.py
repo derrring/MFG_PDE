@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -238,7 +238,7 @@ if GYMNASIUM_AVAILABLE:
     class MFGMazeEnvironment(gym.Env):
         """Gymnasium-compatible Mean Field Games maze environment."""
 
-        metadata: ClassVar[dict[str, Any]] = {"render_modes": ["human", "rgb_array"], "render_fps": 10}
+        metadata: dict[str, Any] = {"render_modes": ["human", "rgb_array"], "render_fps": 10}  # noqa: RUF012
 
         def __init__(self, config: MFGMazeConfig, render_mode: str | None = None):
             super().__init__()

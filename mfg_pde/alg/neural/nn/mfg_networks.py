@@ -206,8 +206,8 @@ def create_coupled_mfg_networks(
         }
 
         config = complexity_configs[complexity]
-        backbone_layers = config["hidden_layers"]
-        backbone_dim = config["backbone_dim"]
+        backbone_layers: list[int] = config["hidden_layers"]
+        backbone_dim: int = config["backbone_dim"]
 
         # Shared backbone
         backbone = FeedForwardNetwork(
