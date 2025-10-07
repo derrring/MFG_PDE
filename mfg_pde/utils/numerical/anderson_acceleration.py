@@ -14,7 +14,7 @@ References:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -73,7 +73,7 @@ class AndersonAccelerator:
         # Storage for iterates and residuals
         self.X_history: list[np.ndarray] = []  # x_k
         self.F_history: list[np.ndarray] = []  # g(x_k)
-        self.residual_norms: list[float] = []
+        self.residual_norms: list[float | np.floating[Any]] = []
         self.iteration_count = 0
 
     def update(

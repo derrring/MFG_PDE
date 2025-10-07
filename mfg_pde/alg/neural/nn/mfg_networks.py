@@ -31,7 +31,7 @@ def create_mfg_networks(
     input_dim: int = 2,  # (t, x) for 1D problems
     output_dim: int = 1,  # Single value function or density
     hidden_layers: list[int] | None = None,
-    activation: str = "tanh",
+    activation: Literal["tanh", "relu", "sigmoid", "elu"] = "tanh",
     problem_type: Literal["hjb", "fp", "coupled"] = "hjb",
     **kwargs: Any,
 ) -> nn.Module:
@@ -181,7 +181,7 @@ def create_coupled_mfg_networks(
     input_dim: int = 2,
     share_backbone: bool = False,
     complexity: Literal["simple", "moderate", "complex"] = "moderate",
-    activation: str = "tanh",
+    activation: Literal["tanh", "relu", "sigmoid", "elu"] = "tanh",
     **kwargs: Any,
 ) -> dict[str, nn.Module]:
     """
