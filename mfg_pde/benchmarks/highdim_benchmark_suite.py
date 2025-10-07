@@ -295,7 +295,7 @@ class HighDimMFGBenchmark:
                         p_backward = p_values.get("backward", 0.0)
                         p_magnitude = abs(p_forward - p_backward)
                         return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
-                    except:
+                    except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
                 def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -304,7 +304,7 @@ class HighDimMFGBenchmark:
                         p_backward = p_values.get("backward", 0.0)
                         p_magnitude = abs(p_forward - p_backward)
                         return 0.1 * p_magnitude**2
-                    except:
+                    except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
                 def initial_density_grid(x_position):
@@ -316,7 +316,7 @@ class HighDimMFGBenchmark:
                         center = np.array([0.5] * self.dimension)
                         distance = np.linalg.norm(coords - center)
                         return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
-                    except:
+                    except (ValueError, IndexError, AttributeError):
                         return 1e-10
 
                 def terminal_cost_grid(x_position):
@@ -328,7 +328,7 @@ class HighDimMFGBenchmark:
                         target = np.array([0.8] * self.dimension)
                         distance = np.linalg.norm(coords - target)
                         return 0.5 * distance**2
-                    except:
+                    except (ValueError, IndexError, AttributeError):
                         return 0.0
 
                 def running_cost_grid(x_idx, x_position, m_at_x, t_idx, current_time, problem, **kwargs):
@@ -347,7 +347,7 @@ class HighDimMFGBenchmark:
                     p_backward = p_values.get("backward", 0.0)
                     p_magnitude = abs(p_forward - p_backward)
                     return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
-                except:
+                except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                     return 0.0
 
             def initial_density(self, x_position):
@@ -359,7 +359,7 @@ class HighDimMFGBenchmark:
                     center = np.array([0.5] * self.dimension)
                     distance = np.linalg.norm(coords - center)
                     return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
-                except:
+                except (ValueError, IndexError, AttributeError):
                     return 1e-10
 
             def terminal_cost(self, x_position):
@@ -371,7 +371,7 @@ class HighDimMFGBenchmark:
                     target = np.array([0.8] * self.dimension)
                     distance = np.linalg.norm(coords - target)
                     return 0.5 * distance**2
-                except:
+                except (ValueError, IndexError, AttributeError):
                     return 0.0
 
             def running_cost(self, x_idx, x_position, m_at_x, t_idx, current_time, problem, **kwargs):
@@ -403,7 +403,7 @@ class HighDimMFGBenchmark:
                         p_backward = p_values.get("backward", 0.0)
                         p_magnitude = abs(p_forward - p_backward)
                         return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
-                    except:
+                    except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
                 def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -412,7 +412,7 @@ class HighDimMFGBenchmark:
                         p_backward = p_values.get("backward", 0.0)
                         p_magnitude = abs(p_forward - p_backward)
                         return 0.1 * p_magnitude**2
-                    except:
+                    except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
                 def initial_density_grid(x_position):
@@ -424,7 +424,7 @@ class HighDimMFGBenchmark:
                         center = np.array([0.5] * self.dimension)
                         distance = np.linalg.norm(coords - center)
                         return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
-                    except:
+                    except (ValueError, IndexError, AttributeError):
                         return 1e-10
 
                 def terminal_cost_grid(x_position):
@@ -436,7 +436,7 @@ class HighDimMFGBenchmark:
                         target = np.array([0.8] * self.dimension)
                         distance = np.linalg.norm(coords - target)
                         return 0.5 * distance**2
-                    except:
+                    except (ValueError, IndexError, AttributeError):
                         return 0.0
 
                 def running_cost_grid(x_idx, x_position, m_at_x, t_idx, current_time, problem, **kwargs):
@@ -455,7 +455,7 @@ class HighDimMFGBenchmark:
                     p_backward = p_values.get("backward", 0.0)
                     p_magnitude = abs(p_forward - p_backward)
                     return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
-                except:
+                except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                     return 0.0
 
             def initial_density(self, x_position):
@@ -467,7 +467,7 @@ class HighDimMFGBenchmark:
                     center = np.array([0.5] * self.dimension)
                     distance = np.linalg.norm(coords - center)
                     return max(np.exp(-(distance**2) / (2 * 0.2**2)), 1e-10)
-                except:
+                except (ValueError, IndexError, AttributeError):
                     return 1e-10
 
             def terminal_cost(self, x_position):
@@ -479,7 +479,7 @@ class HighDimMFGBenchmark:
                     target = np.array([0.8] * self.dimension)
                     distance = np.linalg.norm(coords - target)
                     return 0.5 * distance**2
-                except:
+                except (ValueError, IndexError, AttributeError):
                     return 0.0
 
             def running_cost(self, x_idx, x_position, m_at_x, t_idx, current_time, problem, **kwargs):
