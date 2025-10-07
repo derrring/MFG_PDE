@@ -692,7 +692,7 @@ class MFGPINNSolver(PINNBase):
 
         return metrics
 
-    def plot_solution(self, save_path: str | None = None):
+    def plot_solution(self, save_path: str | None = None) -> None:
         """Plot the complete MFG solution."""
         try:
             import matplotlib.pyplot as plt
