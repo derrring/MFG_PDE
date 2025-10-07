@@ -123,6 +123,7 @@ performance = [
     "jax>=0.4.20",          # Latest with NumPy 2.0+ support
     "jaxlib",               # JAX support library
     "polars>=0.20",         # Fast data processing
+    "pyarrow>=10.0",        # Parquet backend for Polars
     "memory-profiler",      # Memory profiling
     "line-profiler",        # Line-by-line profiling
 ]
