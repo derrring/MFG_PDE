@@ -118,6 +118,9 @@ class PydanticSolverFactory:
         except ValidationError as e:
             self.logger.error(f"Configuration validation failed: {e}")
             raise ValidationError(f"Solver configuration validation failed: {e}") from e
+        except ValueError:
+            # Let ValueError propagate directly (user input errors)
+            raise
         except Exception as e:
             self.logger.error(f"Solver creation failed: {e}")
             raise RuntimeError(f"Failed to create solver: {e}") from e
@@ -285,15 +288,19 @@ class PydanticSolverFactory:
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
 
-            # Extract legacy parameters
-            legacy_params = config.to_legacy_dict()
+            # Extract only parameters that AdaptiveParticleCollocationSolver accepts
+            # This solver does NOT accept max_picard_iterations
+            solver_params = {
+                "max_newton_iterations": config.newton.max_iterations,
+                "newton_tolerance": config.newton.tolerance,
+            }
 
             solver = AdaptiveParticleCollocationSolver(
                 problem=problem,
                 collocation_points=collocation_points,
                 num_particles=config.fp.particle.num_particles,
                 verbose=False,
-                **legacy_params,
+                **solver_params,
             )
 
             self.logger.info("Successfully created validated adaptive particle solver")
@@ -311,14 +318,18 @@ class PydanticSolverFactory:
             # Create collocation points
             collocation_points = np.linspace(0, 1, 10).reshape(-1, 1)
 
-            # Extract legacy parameters
-            legacy_params = config.to_legacy_dict()
+            # Extract only parameters that MonitoredParticleCollocationSolver accepts
+            # This solver does NOT accept max_picard_iterations
+            solver_params = {
+                "max_newton_iterations": config.newton.max_iterations,
+                "newton_tolerance": config.newton.tolerance,
+            }
 
             solver = MonitoredParticleCollocationSolver(
                 problem=problem,
                 collocation_points=collocation_points,
                 num_particles=config.fp.particle.num_particles,
-                **legacy_params,
+                **solver_params,
             )
 
             self.logger.info("Successfully created validated monitored particle solver")
