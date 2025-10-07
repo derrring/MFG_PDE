@@ -373,6 +373,7 @@ def monte_carlo_integrate(integrand: MCIntegrand, domain: MCDomain, config: MCCo
     start_time = time.time()
 
     # Choose sampler based on configuration
+    sampler: MCSampler
     if config.sampling_method == "uniform":
         sampler = UniformMCSampler(domain, config)
     elif config.sampling_method == "stratified":

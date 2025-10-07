@@ -337,6 +337,12 @@ class HybridMazeGenerator:
         region_rows = row_end - row_start
         region_cols = col_end - col_start
 
+        # Type annotations for generator variables (different types per branch)
+        from typing import Any
+
+        config: Any
+        generator: Any
+
         if spec.algorithm == "recursive_division":
             from mfg_pde.alg.reinforcement.environments.recursive_division import (
                 RecursiveDivisionConfig,

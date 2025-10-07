@@ -29,6 +29,7 @@ import numpy as np
 # Import centralized Monte Carlo utilities
 from mfg_pde.utils.numerical.monte_carlo import (
     MCConfig,
+    MCSampler,
     QuasiMCSampler,
     UniformMCSampler,
 )
@@ -191,6 +192,7 @@ class QuasiMonteCarloSampler(HighDimSampler):
         spacetime_domain = [time_bounds, *self.domain_bounds]
 
         # Use centralized quasi-MC sampler
+        sampler: MCSampler
         try:
             sampler = QuasiMCSampler(spacetime_domain, self.mc_config, self.sequence_type)
             points = sampler.sample(num_points)
