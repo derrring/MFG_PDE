@@ -191,10 +191,6 @@ Homepage = "https://github.com/derrring/MFG_PDE"
 Repository = "https://github.com/derrring/MFG_PDE"
 # Bug-Tracker = "https://github.com/derrring/MFG_PDE/issues"
 
-# Command-line scripts
-[project.scripts]
-mfg-pde = "mfg_pde.cli:main"
-
 # --- Setuptools specific configuration ---
 # This tells setuptools to automatically find packages in the current directory.
 # If your package `mfg_pde` is directly in the root of your project (alongside pyproject.toml),
