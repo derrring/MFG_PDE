@@ -461,10 +461,10 @@ if TORCH_AVAILABLE:
 
 else:
     # Placeholder classes when PyTorch is not available
-    class DeepONetConfig:
+    class DeepONetConfig:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("DeepONet requires PyTorch")
 
-    class DeepONet:
+    class DeepONet:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("DeepONet requires PyTorch")

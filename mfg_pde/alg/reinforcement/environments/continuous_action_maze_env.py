@@ -285,13 +285,13 @@ class ContinuousActionMazeEnvironment:
             control_cost = np.linalg.norm(velocity) ** 2
             reward -= self.config.control_cost_weight * control_cost
 
-        return reward
+        return float(reward)
 
     def _is_at_goal(self, agent_idx: int) -> bool:
         """Check if agent reached goal."""
         pos = self.agent_positions[agent_idx]
         goal_pos = np.array(self.goal_positions[agent_idx % len(self.goal_positions)])
-        return np.linalg.norm(pos - goal_pos) < 1.0  # Within 1 cell
+        return bool(np.linalg.norm(pos - goal_pos) < 1.0)  # Within 1 cell
 
     def get_population_state(self) -> PopulationState:
         """Get current population state."""

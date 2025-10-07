@@ -84,11 +84,11 @@ if TORCH_AVAILABLE:
         )
     except ImportError:
         # PINN solvers not available, set empty classes for compatibility
-        FPPINNSolver = None
-        HJBPINNSolver = None
-        MFGPINNSolver = None
-        PINNBase = None
-        PINNConfig = None
+        FPPINNSolver = None  # type: ignore[misc]
+        HJBPINNSolver = None  # type: ignore[misc]
+        MFGPINNSolver = None  # type: ignore[misc]
+        PINNBase = None  # type: ignore[misc]
+        PINNConfig = None  # type: ignore[misc]
 
     pinn_exports = []
     if FPPINNSolver is not None:
