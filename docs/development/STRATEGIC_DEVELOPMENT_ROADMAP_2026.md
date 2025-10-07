@@ -40,32 +40,42 @@ Transform MFG_PDE into the premier platform for Mean Field Games computation, en
 
 ### **Current Capabilities** ✅ **EXPANDED**
 ```python
-# ✅ NEW: Multi-Paradigm Access (All 4 paradigms operational)
-from mfg_pde import solve_mfg, create_solver
-from mfg_pde.hooks import DebugHook, VisualizationHook
+# ✅ Two-Level Research-Grade API (v1.4+)
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_fast_solver, create_accurate_solver
 
-# Tier 1: Dead simple for 90% of users
-result = solve_mfg("crowd_dynamics", domain_size=10, num_agents=1000)
+# Level 1: Factory API for researchers (95% of users)
+class CrowdDynamicsProblem(MFGProblem):
+    def __init__(self):
+        super().__init__(T=1.0, Nt=20, xmin=0.0, xmax=10.0, Nx=100)
 
-# ✅ NEW: Paradigm Selection
+    def g(self, x):
+        return 0.5 * (x - 10.0)**2
+
+    def rho0(self, x):
+        return np.exp(-10 * (x - 2.0)**2)
+
+problem = CrowdDynamicsProblem()
+solver = create_fast_solver(problem, solver_type="fixed_point")
+result = solver.solve()
+
+# ✅ Multi-Paradigm Access (All 4 paradigms operational)
 from mfg_pde.alg.numerical import HJBWenoSolver  # 3D WENO ready
 from mfg_pde.alg.optimization import VariationalMFGSolver, WassersteinMFGSolver
 from mfg_pde.alg.neural import nn  # PyTorch architectures
 from mfg_pde.alg.reinforcement import BaseMFRLSolver  # MFRL foundation
 
-# ✅ NEW: Advanced Maze Environments for RL
+# ✅ Advanced Maze Environments for RL
 from mfg_pde.alg.reinforcement.environments import (
     RecursiveDivisionGenerator,
     CellularAutomataGenerator,
     add_loops,
 )
 
-# Tier 2: Object-oriented for 8% of users
-solver = create_solver(problem, solver_type="weno3d", backend="jax", device="gpu")
-result = solver.solve()  # ✅ 3D problems supported
-
-# Tier 3: Full customization for 2% of users
-solver = create_solver(problem, hooks=[DebugHook(), VisualizationHook()])
+# Level 2: Core API for developers (5% of users)
+from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
+from mfg_pde.alg.numerical.fp_solvers import BaseFPSolver
+# Extend framework with custom solvers...
 ```
 
 **Performance Achieved** ✅ **EXPANDED**:
