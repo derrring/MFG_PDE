@@ -43,9 +43,10 @@
 - [`stochastic_processes_and_functional_calculus.md`](theory/stochastic_processes_and_functional_calculus.md) - Implementation guide
 
 **Applications**:
-- [`towel_beach_spatial_competition.md`](theory/towel_beach_spatial_competition.md) - Spatial positioning games
-- [`anisotropic_mfg_mathematical_formulation.md`](theory/anisotropic_mfg_mathematical_formulation.md) - Direction-dependent dynamics
-- [`evacuation_mfg_mathematical_formulation.md`](theory/evacuation_mfg_mathematical_formulation.md) - Crowd evacuation
+- [`spatial_competition_mfg.md`](theory/spatial_competition_mfg.md) ⭐ NEW - Spatial competition (Hotelling, Wardrop)
+- [`coordination_games_mfg.md`](theory/coordination_games_mfg.md) ⭐ NEW - Coordination games (El Farol)
+- [`evacuation_mfg_mathematical_formulation.md`](theory/evacuation_mfg_mathematical_formulation.md) ✅ - Crowd evacuation
+- [`anisotropic_mfg_mathematical_formulation.md`](theory/anisotropic_mfg_mathematical_formulation.md) ✅ - Direction-dependent dynamics
 
 **Total**: 18 main theory documents + numerical_methods/ + reinforcement_learning/ subdirectories
 
