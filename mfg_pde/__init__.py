@@ -62,13 +62,9 @@ from .geometry.network_geometry import (  # noqa: E402
     compute_network_statistics,
     create_network,
 )
-from .simple import (  # noqa: E402
-    get_available_problems,
-    load_example,
-    solve_mfg,
-    suggest_problem_setup,
-    validate_problem_parameters,
-)
+
+# Simple API removed - use factory API instead
+# from .simple import ...
 
 # Geometry system for 2D/3D complex domains (optional dependency)
 try:
@@ -160,14 +156,9 @@ __all__ = [
     "create_scale_free_mfg_problem",
     "create_solver",
     "create_standard_solver",
-    "get_available_problems",
     "get_backend_manager",
     "get_general_factory",
-    "load_example",
     "set_preferred_backend",
-    "solve_mfg",
-    "suggest_problem_setup",
-    "validate_problem_parameters",
 ]
 
 # Add conditionally available imports to __all__ when available

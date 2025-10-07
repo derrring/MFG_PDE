@@ -1,23 +1,24 @@
-# Migration Guide - Upgrading to the New API
+# Migration Guide - Upgrading to the Factory API
 
-**Smooth transition from the old MFG_PDE API to the new progressive disclosure API**
+**Smooth transition from old MFG_PDE API to the two-level factory-based API**
 
 ## Overview
 
-The new API provides three layers of access:
-- **Layer 1**: Dead-simple `solve_mfg()` for 90% of users
-- **Layer 2**: Clean `MFGProblem` → `FixedPointSolver` → `MFGResult` objects for 8% of users
-- **Layer 3**: Full hooks system for 2% of power users
+MFG_PDE now provides a **two-level research-grade API**:
+- **Level 1 (Users - 95%)**: Factory API for researchers and practitioners
+- **Level 2 (Developers - 5%)**: Core API for framework contributors
+
+**Philosophy**: Research-grade by default - users are assumed to understand MFG theory.
 
 ## Quick Migration Checklist
 
-✅ **Simple cases**: Replace old solver calls with `solve_mfg()`
-✅ **Custom problems**: Use `create_mfg_problem()` or problem builders
-✅ **Advanced customization**: Migrate to `FixedPointSolver` with hooks
-✅ **Configuration**: Switch to new config system
-✅ **Results access**: Update result processing code
+✅ **All cases**: Use factory API (`create_fast_solver()`, `create_accurate_solver()`)
+✅ **Problem definition**: Define MFG problems using `MFGProblem` class
+✅ **Solver selection**: Choose from 3 tiers (basic/standard/advanced)
+✅ **Configuration**: Use factory presets or custom configs
+✅ **Results access**: Standard `SolverResult` interface
 
-## Simple Cases Migration
+## Factory API Migration
 
 ### Before (Old API)
 ```python
@@ -50,21 +51,31 @@ u_values = solution.value_function
 m_values = solution.density
 ```
 
-### After (New API)
+### After (Factory API)
 ```python
-# New approach - one line!
-from mfg_pde import solve_mfg
+# New approach - clean factory pattern
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_fast_solver
 
-# Solve with automatic configuration
-result = solve_mfg("crowd_dynamics",
-                   domain_size=1.0,
-                   time_horizon=1.0,
-                   accuracy="balanced")
+# Define problem (researchers understand MFG theory)
+class CrowdDynamicsProblem(MFGProblem):
+    def __init__(self):
+        super().__init__(T=1.0, Nt=20, xmin=0.0, xmax=1.0, Nx=50)
 
-# Access results directly
-u_values = result.value_function
-m_values = result.density
-result.plot()  # Bonus: built-in visualization!
+    def g(self, x):
+        return 0.5 * (x - 0.5)**2
+
+    def rho0(self, x):
+        return np.exp(-10 * (x - 0.5)**2)
+
+# Create and solve using factory
+problem = CrowdDynamicsProblem()
+solver = create_fast_solver(problem, solver_type="fixed_point")
+result = solver.solve()
+
+# Access results
+u_values = result.U  # Value function
+m_values = result.M  # Density
 ```
 
 ## Problem Type Mapping
@@ -351,22 +362,23 @@ result.plot(interactive=True)          # Interactive plots
 
 ## Breaking Changes and Compatibility
 
-### Deprecated Functions
+### Removed Functions (v1.4+)
 
-The following functions are deprecated and will be removed in v2.0:
+The following "simple API" functions have been **removed** as of v1.4:
 
 ```python
-# DEPRECATED - Use solve_mfg() instead
-from mfg_pde.alg.mfg_solvers import *
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.config.solver_config import SolverConfig
+# REMOVED - Use factory API instead
+from mfg_pde import solve_mfg               # ❌ REMOVED
+from mfg_pde import create_mfg_problem      # ❌ REMOVED
+from mfg_pde import get_available_problems  # ❌ REMOVED
 
-# DEPRECATED - Use new config system
-from mfg_pde.config.pydantic_config import create_enhanced_config
-
-# DEPRECATED - Use hooks system instead
-from mfg_pde.utils.logging import configure_research_logging
+# NEW - Use factory API
+from mfg_pde.factory import create_fast_solver     # ✅ USE THIS
+from mfg_pde.factory import create_accurate_solver # ✅ USE THIS
+from mfg_pde import MFGProblem                      # ✅ USE THIS
 ```
+
+**Why removed?** MFG_PDE is research-grade software. Users are assumed to understand MFG theory and should define problems explicitly rather than using pre-canned "crowd_dynamics" strings.
 
 ### Compatibility Layer
 

@@ -4,50 +4,40 @@ Legacy solver compatibility wrappers
 Provides compatibility for old solver APIs with deprecation warnings.
 """
 
-from mfg_pde.simple import solve_mfg
-from mfg_pde.solvers import FixedPointSolver
+from mfg_pde.factory import create_fast_solver
 
 from . import DeprecatedAPI, deprecated
 
 
-@deprecated("Use solve_mfg('crowd_dynamics') or FixedPointSolver() instead")
+@deprecated("Use create_fast_solver() or FixedPointSolver() instead")
 class LegacyMFGSolver(DeprecatedAPI):
     """
     DEPRECATED: Legacy MFG solver wrapper.
 
-    Use the new API instead:
+    Use the new factory API instead:
 
     Old:
         solver = LegacyMFGSolver(config)
         result = solver.solve(problem)
 
-    New (Simple):
-        result = solve_mfg("crowd_dynamics")
+    New (Factory API):
+        solver = create_fast_solver(problem, solver_type="fixed_point")
+        result = solver.solve()
 
-    New (Advanced):
+    New (Direct):
         solver = FixedPointSolver()
         result = solver.solve(problem)
     """
 
     def __init__(self, config=None):
-        super().__init__("solve_mfg() or FixedPointSolver()")
+        super().__init__("create_fast_solver() or FixedPointSolver()")
         self.config = config or {}
 
     def solve(self, problem):
         """Solve MFG problem using legacy interface."""
-        # Convert legacy config to new API
-        kwargs = self._convert_config(self.config)
-
-        # Try to determine problem type
-        problem_type = self._infer_problem_type(problem)
-
-        if problem_type:
-            # Use simple API
-            return solve_mfg(problem_type, **kwargs)
-        else:
-            # Use core objects API
-            solver = FixedPointSolver(**kwargs)
-            return solver.solve(problem)
+        # Use factory API as default
+        solver = create_fast_solver(problem, solver_type="fixed_point")
+        return solver.solve()
 
     def _convert_config(self, config):
         """Convert legacy config to new API parameters."""
