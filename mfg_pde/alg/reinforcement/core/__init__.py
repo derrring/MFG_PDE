@@ -31,7 +31,7 @@ if CORE_DEPENDENCIES_AVAILABLE:
     )
 
     try:  # pragma: no cover - optional module
-        from .environments import (
+        from .environments import (  # type: ignore[import-not-found]
             ContinuousMFGEnv,
             MFGEnvironment,
             NetworkMFGEnv,
@@ -42,7 +42,7 @@ if CORE_DEPENDENCIES_AVAILABLE:
         NetworkMFGEnv = None
 
     try:  # pragma: no cover - optional module
-        from .population_state import (
+        from .population_state import (  # type: ignore[import-not-found]
             PopulationMetrics,
             PopulationState,
             PopulationTracker,
@@ -53,7 +53,7 @@ if CORE_DEPENDENCIES_AVAILABLE:
         PopulationTracker = None
 
     try:  # pragma: no cover - optional module
-        from .training_loops import (
+        from .training_loops import (  # type: ignore[import-not-found]
             MFRLTrainingLoop,
             PopulationTrainingManager,
         )

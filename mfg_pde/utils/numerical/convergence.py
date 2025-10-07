@@ -42,7 +42,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 if TYPE_CHECKING:
-    from mfg_pde.alg.base_mfg_solver import MFGSolver
+    from mfg_pde.alg.base_mfg_solver import MFGSolver  # type: ignore[import-not-found]
 
 
 # =============================================================================
