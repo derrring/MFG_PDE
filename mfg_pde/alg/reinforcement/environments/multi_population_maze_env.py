@@ -617,6 +617,170 @@ class MultiPopulationMazeEnvironment:
         """Get current multi-population state."""
         return self.multi_pop_state
 
-    def render(self, mode: str = "human") -> None:
-        """Render the environment (placeholder)."""
-        # TODO: Implement visualization
+    def render(self, mode: str = "human") -> NDArray | None:
+        """
+        Render the multi-population environment.
+
+        Args:
+            mode: Rendering mode
+                - "human": Print ASCII visualization to console
+                - "rgb_array": Return RGB numpy array
+
+        Returns:
+            RGB array if mode="rgb_array", None otherwise
+        """
+        if mode == "rgb_array":
+            return self._render_rgb_array()
+        if mode == "human":
+            print(self._render_ascii())
+            return None
+        return None
+
+    def _render_ascii(self) -> str:
+        """
+        Render ASCII visualization with multi-population agents.
+
+        Agent symbols by type:
+        - Type 0: A, B, C, ... (uppercase letters)
+        - Type 1: a, b, c, ... (lowercase letters)
+        - Type 2+: 0, 1, 2, ... (numbers)
+
+        Other symbols:
+        - '#': Wall
+        - 'G': Goal (if single goal for all types)
+        - '.': High population density area
+        - ' ': Empty space
+        """
+        # Map positions to (type_id, agent_idx)
+        agent_map: dict[tuple[int, int], tuple[str, int]] = {}
+        for type_id, positions in self.positions.items():
+            for agent_idx, pos in enumerate(positions):
+                agent_map[tuple(pos)] = (type_id, agent_idx)
+
+        # Map goal positions by type
+        goal_map: dict[tuple[int, int], set[str]] = {}
+        for type_id, type_config in self.agent_types.items():
+            if type_config.goal_positions:
+                for goal_pos in type_config.goal_positions:
+                    if tuple(goal_pos) not in goal_map:
+                        goal_map[tuple(goal_pos)] = set()
+                    goal_map[tuple(goal_pos)].add(type_id)
+
+        lines: list[str] = []
+        for r in range(self.height):
+            line_chars: list[str] = []
+            for c in range(self.width):
+                key = (r, c)
+
+                # Check for agents (highest priority)
+                if key in agent_map:
+                    type_id, agent_idx = agent_map[key]
+                    type_index = self.agent_types[type_id].type_index
+
+                    # Different symbol schemes for different types
+                    if type_index == 0:
+                        # First type: uppercase letters A-Z
+                        symbol = chr(65 + (agent_idx % 26))
+                    elif type_index == 1:
+                        # Second type: lowercase letters a-z
+                        symbol = chr(97 + (agent_idx % 26))
+                    else:
+                        # Additional types: numbers 0-9
+                        symbol = str(agent_idx % 10)
+
+                    line_chars.append(symbol)
+
+                # Check for goals
+                elif key in goal_map:
+                    # If all types share this goal, use 'G'
+                    # Otherwise use type-specific marker
+                    goal_types = goal_map[key]
+                    if len(goal_types) == self.K:
+                        line_chars.append("G")
+                    else:
+                        # Use marker for first type at this goal
+                        first_type_id = next(iter(goal_types))
+                        type_index = self.agent_types[first_type_id].type_index
+                        line_chars.append("*" if type_index > 0 else "G")
+
+                # Check for walls
+                elif self.maze_array[r, c] == 1:
+                    line_chars.append("#")
+
+                # Show population density
+                else:
+                    # Check if any population has significant density here
+                    max_density = max(self.multi_pop_state.distributions[type_id][r, c] for type_id in self.agent_types)
+                    line_chars.append("." if max_density > 0.1 else " ")
+
+            lines.append("".join(line_chars))
+
+        return "\n".join(lines)
+
+    def _render_rgb_array(self) -> NDArray:
+        """
+        Render RGB array visualization with multi-population agents.
+
+        Color scheme:
+        - Walls: Black [0, 0, 0]
+        - Empty space: White [255, 255, 255]
+        - Population densities: Blended colors per type
+        - Goals: Green [0, 255, 0]
+        - Agents: Type-specific colors
+          - Type 0: Red [255, 0, 0]
+          - Type 1: Blue [0, 0, 255]
+          - Type 2+: Orange, Purple, Cyan, etc.
+
+        Returns:
+            RGB array of shape (height, width, 3)
+        """
+        # Start with white background
+        img = np.ones((self.height, self.width, 3), dtype=np.uint8) * 255
+
+        # Draw walls as black
+        img[self.maze_array == 1] = [0, 0, 0]
+
+        # Define colors for different agent types
+        type_colors = {
+            0: np.array([255, 0, 0], dtype=np.uint8),  # Red
+            1: np.array([0, 0, 255], dtype=np.uint8),  # Blue
+            2: np.array([255, 165, 0], dtype=np.uint8),  # Orange
+            3: np.array([128, 0, 128], dtype=np.uint8),  # Purple
+            4: np.array([0, 255, 255], dtype=np.uint8),  # Cyan
+            5: np.array([255, 255, 0], dtype=np.uint8),  # Yellow
+        }
+
+        # Overlay population densities (blend colors)
+        for type_id, type_config in self.agent_types.items():
+            type_index = type_config.type_index
+            density = self.multi_pop_state.distributions[type_id]
+
+            # Get color for this type
+            color = type_colors.get(type_index, np.array([128, 128, 128], dtype=np.uint8))
+
+            # Normalize density to [0, 1]
+            density_normalized = np.clip(density, 0, 1)
+
+            # Blend density color with background (only on non-wall cells)
+            for r in range(self.height):
+                for c in range(self.width):
+                    if self.maze_array[r, c] == 0 and density_normalized[r, c] > 0.01:
+                        # Blend: img = (1-α)*white + α*color
+                        alpha = density_normalized[r, c] * 0.5  # Scale for visibility
+                        img[r, c] = (1 - alpha) * img[r, c] + alpha * color
+
+        # Draw goal positions (green)
+        for _type_id, type_config in self.agent_types.items():
+            if type_config.goal_positions:
+                for goal_pos in type_config.goal_positions:
+                    img[tuple(goal_pos)] = [0, 255, 0]
+
+        # Draw agents on top (use type-specific colors)
+        for type_id, positions in self.positions.items():
+            type_index = self.agent_types[type_id].type_index
+            color = type_colors.get(type_index, np.array([128, 128, 128], dtype=np.uint8))
+
+            for pos in positions:
+                img[tuple(pos)] = color
+
+        return img
