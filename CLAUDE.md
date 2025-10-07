@@ -613,6 +613,48 @@ gh issue edit 42 --add-label "priority: high,area: performance,size: small,bug"
 - Include error handling and validation
 - Support both interactive and non-interactive usage
 
+### **Ruff Version Management** ⚠️ **IMPORTANT**
+**Strategy**: Pin with periodic automated updates
+
+**Current Version**: `ruff==0.13.1` (Updated: 2025-10-07)
+
+**Why Pin?**
+- ✅ Consistent formatting across all environments (local, CI, pre-commit)
+- ✅ Reproducible code formatting over time
+- ✅ No surprise CI failures from ruff updates
+- ✅ Controlled review of formatting changes
+
+**Automated Update System**:
+1. **Monthly Check**: GitHub Action runs 1st of each month
+   - Automatically checks for new ruff releases
+   - Creates PR if update available
+   - Includes formatting changes and release notes
+
+2. **Manual Update**: Use update script as needed
+   ```bash
+   # Check for updates
+   python scripts/update_ruff_version.py --check
+
+   # Apply update interactively
+   python scripts/update_ruff_version.py --update
+
+   # Force specific version
+   python scripts/update_ruff_version.py --force 0.14.0
+   ```
+
+3. **Files Updated**:
+   - `.pre-commit-config.yaml` - Controls pre-commit hooks
+   - `.github/workflows/modern_quality.yml` - Controls CI checks
+   - Both must match for consistency
+
+**Review Process** when update PR is created:
+1. Review formatting changes: `git diff`
+2. Run tests: `pytest tests/`
+3. Check pre-commit: `pre-commit run --all-files`
+4. Merge if all checks pass
+
+**Documentation**: See `docs/development/RUFF_VERSION_MANAGEMENT.md` for complete guide
+
 ### **Defensive Programming Principles** ⚠️ **CRITICAL**
 **Always test finished architecture before proceeding to new features:**
 
