@@ -167,7 +167,8 @@ class IGraphBackend(AbstractNetworkBackend):
         # Use weights if available, otherwise unweighted
         try:
             weight_attr = "weight" if "weight" in graph.es.attributes() else None
-        except:
+        except AttributeError:
+            # Graph may not have edge sequence or attributes method
             weight_attr = None
 
         if source is not None:
@@ -188,7 +189,8 @@ class IGraphBackend(AbstractNetworkBackend):
         try:
             clustering = graph.transitivity_avglocal_undirected()
             return clustering if clustering is not None else 0.0
-        except:
+        except (AttributeError, RuntimeError, TypeError):
+            # Method may not exist, computation may fail, or wrong graph type
             return 0.0
 
 
@@ -274,7 +276,8 @@ class NetworkitBackend(AbstractNetworkBackend):
             cc.run()
             coefficients = cc.scores()
             return np.mean(coefficients) if coefficients else 0.0
-        except:
+        except (AttributeError, RuntimeError, TypeError):
+            # Centrality module may not exist, computation may fail, or wrong graph type
             return 0.0
 
 

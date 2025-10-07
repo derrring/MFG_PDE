@@ -558,7 +558,8 @@ def memory_usage_tracker():
                             current = stats.get("bytes_in_use", 0) / 1024**3  # GB
                             self.current_memory = max(self.current_memory, current)
                             self.peak_memory = max(self.peak_memory, current)
-                except:
+                except (AttributeError, KeyError, RuntimeError):
+                    # Memory stats may not be available or accessible
                     pass
 
         def reset(self):

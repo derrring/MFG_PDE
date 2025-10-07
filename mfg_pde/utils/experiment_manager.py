@@ -206,8 +206,8 @@ def plot_comparison_total_mass(
                 save_path=save_to_file,
             )
             return fig
-        except:
-            # Fallback to matplotlib if modern system fails
+        except (ImportError, AttributeError, TypeError, ValueError):
+            # Fallback to matplotlib if Plotly not available or plotting fails
             pass
 
     # Fallback to matplotlib
@@ -261,8 +261,8 @@ def plot_comparison_final_m(
                 save_path=save_to_file,
             )
             return fig
-        except:
-            # Fallback to matplotlib if modern system fails
+        except (ImportError, AttributeError, TypeError, ValueError):
+            # Fallback to matplotlib if Plotly not available or plotting fails
             pass
 
     # Fallback to matplotlib
@@ -318,8 +318,8 @@ def plot_comparison_initial_U(
                 save_path=save_to_file,
             )
             return fig
-        except:
-            # Fallback to matplotlib if modern system fails
+        except (ImportError, AttributeError, TypeError, ValueError):
+            # Fallback to matplotlib if Plotly not available or plotting fails
             pass
 
     # Fallback to matplotlib
@@ -382,8 +382,8 @@ def plot_comparison_U_slice(
                 save_path=save_to_file,
             )
             return fig
-        except:
-            # Fallback to matplotlib if modern system fails
+        except (ImportError, AttributeError, TypeError, ValueError):
+            # Fallback to matplotlib if Plotly not available or plotting fails
             pass
 
     # Fallback to matplotlib

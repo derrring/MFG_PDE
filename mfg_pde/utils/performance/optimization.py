@@ -560,7 +560,8 @@ class AdvancedSparseOperations:
                 # Solve (I - A/2) * result = (I + A/2)
                 result_dense = sp_linalg.spsolve(denominator, numerator.toarray())
                 return csr_matrix(result_dense)
-            except:
+            except (np.linalg.LinAlgError, RuntimeError):
+                # Sparse solve may fail due to singular matrix or memory issues
                 warnings.warn("Pade approximation failed, using first-order approximation")
                 return identity_mat + scaled_matrix
 
@@ -744,7 +745,8 @@ class AccelerationBackend:
             try:
                 jax.devices("gpu")
                 backends["jax_gpu"] = True
-            except:
+            except (RuntimeError, ValueError):
+                # GPU devices may not be available or device query may fail
                 backends["jax_gpu"] = False
 
         return backends
