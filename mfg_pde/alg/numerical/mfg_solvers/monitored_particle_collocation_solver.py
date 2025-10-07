@@ -76,7 +76,7 @@ class MonitoredParticleCollocationSolver(ParticleCollocationSolver):
         if convergence_monitor is not None:
             self.convergence_monitor = convergence_monitor
         else:
-            from mfg_pde.utils.convergence import create_default_monitor
+            from mfg_pde.utils.numerical.convergence import create_default_monitor
 
             self.convergence_monitor = create_default_monitor(**convergence_kwargs)
 

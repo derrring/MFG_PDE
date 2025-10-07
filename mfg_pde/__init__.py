@@ -101,7 +101,7 @@ except ImportError:
 
 # Interactive research reporting (optional dependency)
 try:
-    from .utils.notebook_reporting import (  # noqa: F401
+    from .utils.notebooks.reporting import (  # noqa: F401
         MFGNotebookReporter,
         create_comparative_analysis,
         create_mfg_research_report,

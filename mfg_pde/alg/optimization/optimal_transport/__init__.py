@@ -21,7 +21,7 @@ except ImportError:
     SCIPY_AVAILABLE = False
 
 try:
-    import ot  # noqa: F401 # Python Optimal Transport library
+    import ot  # noqa: F401  # Python Optimal Transport library
 
     POT_AVAILABLE = True
 except ImportError:
