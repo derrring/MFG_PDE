@@ -108,7 +108,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         """Initialize Sinkhorn MFG solver."""
         super().__init__(problem, **kwargs)
         self.config = config or SinkhornSolverConfig()
-        self.logger = self._get_logger()
+        self.logger = logging.getLogger(__name__)
 
         # Validate dependencies
         self._check_dependencies()
@@ -133,7 +133,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         self.time_grid = np.linspace(0, self.problem.T, self.config.num_time_steps)
         self.dt = self.time_grid[1] - self.time_grid[0]
 
-        self.spatial_grid = np.linspace(self.problem.domain[0], self.problem.domain[1], self.config.num_spatial_points)
+        self.spatial_grid = np.linspace(self.problem.xmin, self.problem.xmax, self.config.num_spatial_points)
         self.dx = self.spatial_grid[1] - self.spatial_grid[0]
 
         self.logger.info(f"Sinkhorn discretization: {len(self.time_grid)}×{len(self.spatial_grid)} grid")
@@ -253,8 +253,8 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
                 densities[0, i] = self.problem.initial_density(x)
         else:
             # Default Gaussian
-            center = np.mean(self.problem.domain)
-            width = (self.problem.domain[1] - self.problem.domain[0]) / 4
+            center = (self.problem.xmin + self.problem.xmax) / 2
+            width = (self.problem.xmax - self.problem.xmin) / 4
             densities[0, :] = np.exp(-((self.spatial_grid - center) ** 2) / (2 * width**2))
 
         # Normalize

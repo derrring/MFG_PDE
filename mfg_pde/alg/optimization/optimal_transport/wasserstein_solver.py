@@ -104,7 +104,7 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
         """
         super().__init__(problem, **kwargs)
         self.config = config or WassersteinSolverConfig()
-        self.logger = self._get_logger()
+        self.logger = logging.getLogger(__name__)
 
         # Validate dependencies
         self._check_dependencies()
@@ -135,7 +135,7 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
         self.dt = self.time_grid[1] - self.time_grid[0]
 
         # Spatial grid (assuming 1D for simplicity, extend to multi-D)
-        self.spatial_grid = np.linspace(self.problem.domain[0], self.problem.domain[1], self.config.num_spatial_points)
+        self.spatial_grid = np.linspace(self.problem.xmin, self.problem.xmax, self.config.num_spatial_points)
         self.dx = self.spatial_grid[1] - self.spatial_grid[0]
 
         self.logger.info(f"Discretization: {len(self.time_grid)} time steps, {len(self.spatial_grid)} spatial points")
@@ -234,8 +234,8 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
                 densities[0, i] = self.problem.initial_density(x)
         else:
             # Default: Gaussian initial density
-            center = (self.problem.domain[0] + self.problem.domain[1]) / 2
-            width = (self.problem.domain[1] - self.problem.domain[0]) / 6
+            center = (self.problem.xmin + self.problem.xmax) / 2
+            width = (self.problem.xmax - self.problem.xmin) / 6
             densities[0, :] = np.exp(-((self.spatial_grid - center) ** 2) / (2 * width**2))
 
         # Normalize initial density
