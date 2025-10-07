@@ -31,6 +31,7 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 # Import with availability checking
 try:
@@ -400,7 +401,7 @@ if TORCH_AVAILABLE:
             self.train_operator(train_dataset, val_dataset)
 
         def evaluate_speedup(
-            self, test_parameters: torch.Tensor, traditional_solver_func, num_evaluations: int = 100
+            self, test_parameters: torch.Tensor, traditional_solver_func: Any, num_evaluations: int = 100
         ) -> dict:
             """
             Evaluate speedup compared to traditional solver.
@@ -442,9 +443,9 @@ if TORCH_AVAILABLE:
 else:
     # Placeholder classes when PyTorch is not available
     class FNOConfig:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise ImportError("FNO requires PyTorch")
 
     class FourierNeuralOperator:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise ImportError("FNO requires PyTorch")

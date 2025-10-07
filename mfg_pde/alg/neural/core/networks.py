@@ -21,6 +21,7 @@ Key Features:
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
 
@@ -71,7 +72,7 @@ class SwishActivation(nn.Module):
         return x * torch.sigmoid(x)
 
 
-def get_activation_function(activation_name: str, **kwargs) -> nn.Module:
+def get_activation_function(activation_name: str, **kwargs: Any) -> nn.Module:
     """
     Get activation function by name.
 
@@ -418,7 +419,7 @@ class NetworkArchitecture:
         hidden_layers: list[int] | None = None,
         output_dim: int = 1,
         activation: str = "tanh",
-        **kwargs,
+        **kwargs: Any,
     ) -> nn.Module:
         """
         Create standard PINN architecture.
@@ -447,7 +448,7 @@ class NetworkArchitecture:
         num_layers: int = 8,
         output_dim: int = 1,
         activation: str = "tanh",
-        **kwargs,
+        **kwargs: Any,
     ) -> nn.Module:
         """
         Create deep PINN with residual connections.
@@ -477,7 +478,7 @@ class NetworkArchitecture:
         num_fourier_features: int = 256,
         fourier_scale: float = 1.0,
         activation: str = "relu",
-        **kwargs,
+        **kwargs: Any,
     ) -> nn.Module:
         """
         Create PINN with Fourier feature mapping.
@@ -510,7 +511,7 @@ class NetworkArchitecture:
 
 
 def create_mfg_networks(
-    architecture_type: str = "standard", separate_networks: bool = True, **kwargs
+    architecture_type: str = "standard", separate_networks: bool = True, **kwargs: Any
 ) -> dict[str, nn.Module]:
     """
     Create neural networks specifically for MFG problems.
