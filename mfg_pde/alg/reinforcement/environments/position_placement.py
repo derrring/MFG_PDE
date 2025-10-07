@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import random
 from collections import deque
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -219,7 +219,7 @@ def _maze_distance(grid: Grid, start: tuple[int, int], goal: tuple[int, int]) ->
     return float("inf")
 
 
-def _get_linked_neighbors(grid: Grid, cell) -> list:
+def _get_linked_neighbors(grid: Grid, cell: Any) -> list:
     """Get neighbors that have passages to this cell."""
     neighbors = []
 

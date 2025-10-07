@@ -231,7 +231,7 @@ class MultiPopulationSAC:
         population_states: dict[str, NDArray],
         next_population_states: dict[str, NDArray],
         done: bool,
-    ):
+    ) -> None:
         """Store transition in replay buffer."""
         joint_pop = np.concatenate([population_states[k] for k in sorted(population_states.keys())])
         joint_next_pop = np.concatenate([next_population_states[k] for k in sorted(next_population_states.keys())])

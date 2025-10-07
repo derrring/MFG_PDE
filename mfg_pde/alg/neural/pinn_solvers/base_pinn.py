@@ -25,7 +25,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -615,7 +615,7 @@ class PINNBase(BaseNeuralSolver, ABC):
         # Convert losses to float for logging
         return {k: v.item() if hasattr(v, "item") else float(v) for k, v in losses.items()}
 
-    def solve(self, **kwargs) -> dict:
+    def solve(self, **kwargs: Any) -> dict:
         """
         Solve the MFG system using PINN approach.
 

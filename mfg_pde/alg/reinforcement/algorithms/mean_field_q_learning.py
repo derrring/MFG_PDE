@@ -214,12 +214,12 @@ class MeanFieldQLearning:
 
     def __init__(
         self,
-        env,
+        env: Any,
         state_dim: int,
         action_dim: int,
         population_dim: int,
         config: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """Initialize Mean Field Q-Learning algorithm."""
         if not TORCH_AVAILABLE:
             raise ImportError("Mean Field Q-Learning requires PyTorch. Install with: pip install torch")
@@ -574,7 +574,7 @@ class MeanFieldQLearning:
         return obs_batch
 
 
-def create_mean_field_q_learning(env, config: dict[str, Any] | None = None) -> MeanFieldQLearning:
+def create_mean_field_q_learning(env, config: dict[str, Any] | None = None) -> MeanFieldQLearning:  # type: ignore[no-untyped-def]
     """
     Factory function to create Mean Field Q-Learning algorithm.
 

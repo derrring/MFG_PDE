@@ -380,7 +380,7 @@ if TORCH_AVAILABLE:
 
             return self.state.is_stagnating
 
-        def step(self, epoch: int, **kwargs) -> dict[str, Any]:
+        def step(self, epoch: int, **kwargs: Any) -> dict[str, Any]:
             """
             Perform one step of adaptive training strategy.
 

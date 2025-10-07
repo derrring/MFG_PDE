@@ -7,7 +7,7 @@ specifically optimized for different types of MFG problems and equations.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     import torch.nn as nn
@@ -33,7 +33,7 @@ def create_mfg_networks(
     hidden_layers: list[int] | None = None,
     activation: str = "tanh",
     problem_type: Literal["hjb", "fp", "coupled"] = "hjb",
-    **kwargs,
+    **kwargs: Any,
 ) -> nn.Module:
     """
     Create neural networks optimized for Mean Field Games.
@@ -99,7 +99,7 @@ def create_hjb_network(
     input_dim: int = 2,
     complexity: Literal["simple", "moderate", "complex"] = "moderate",
     activation: str = "tanh",
-    **kwargs,
+    **kwargs: Any,
 ) -> nn.Module:
     """
     Create network specifically for HJB equation solving.
@@ -136,7 +136,7 @@ def create_fp_network(
     ensure_positivity: bool = True,
     complexity: Literal["simple", "moderate", "complex"] = "moderate",
     activation: str = "tanh",
-    **kwargs,
+    **kwargs: Any,
 ) -> nn.Module:
     """
     Create network specifically for Fokker-Planck equation solving.
@@ -182,7 +182,7 @@ def create_coupled_mfg_networks(
     share_backbone: bool = False,
     complexity: Literal["simple", "moderate", "complex"] = "moderate",
     activation: str = "tanh",
-    **kwargs,
+    **kwargs: Any,
 ) -> dict[str, nn.Module]:
     """
     Create paired networks for coupled MFG system solving.
