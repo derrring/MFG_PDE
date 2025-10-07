@@ -67,7 +67,7 @@ import jax
 
 @jax.jit
 def mfg_parameter_objective(params, problem_data):
-    return solve_mfg_jax(params, problem_data)
+    return run_mfg_solver_jax(params, problem_data)
 
 optimizer = adam(learning_rate=0.01)
 # Direct usage - no custom wrapper needed

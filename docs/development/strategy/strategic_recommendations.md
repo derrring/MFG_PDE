@@ -82,8 +82,9 @@ def mfg_parameter_study():
     })
     
     # Parallel execution with automatic resource management
+    # Note: Use factory API to create and solve problems
     results = workflow.parallel_map(
-        solve_mfg_problem, 
+        lambda p: create_fast_solver(p, "fixed_point").solve(),
         problems,
         max_workers=workflow.detect_optimal_workers()
     )
