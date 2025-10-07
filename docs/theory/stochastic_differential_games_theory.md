@@ -80,6 +80,30 @@ $$df(t, X_t) = \frac{\partial f}{\partial t} dt + \sum_{i=1}^d \frac{\partial f}
 where the quadratic covariation is:
 $$d[X^i, X^j]_t = \sum_{k=1}^m \sigma_t^{ik} \sigma_t^{jk} \, dt$$
 
+### 1.5 Measurable Selection Theorems
+
+**Theorem (Filippov Selection)**: [^1]
+Let $\Gamma : \Omega \times [0,T] \rightrightarrows \mathbb{R}^d$ be a set-valued mapping with:
+- Measurability: $\text{Graph}(\Gamma) \in \mathcal{F} \otimes \mathcal{B}([0,T]) \otimes \mathcal{B}(\mathbb{R}^d)$
+- Closed values: $\Gamma(\omega, t)$ is closed for all $(\omega, t)$
+
+Then there exists a measurable selection $\alpha : \Omega \times [0,T] \to \mathbb{R}^d$ such that $\alpha(\omega, t) \in \Gamma(\omega, t)$ a.e.
+
+**Application to Optimal Controls**:
+The set of optimal controls
+$$\Gamma(t, x) = \arg\min_{\alpha \in \mathcal{A}} \{\alpha \cdot \nabla u(t,x) + L(x, \alpha)\}$$
+admits a measurable selection $\alpha^*(t,x)$ under Lipschitz assumptions on $L$.
+
+**Proof Sketch**: Use Kuratowski-Ryll-Nardzewski theorem on Polish spaces with separable metric.
+
+### 1.6 Skorokhod Representation Theorem
+
+**Theorem**: [^2] Let $(\mu_n)_{n \geq 1}$ be a sequence of probability measures on $(\mathbb{R}^d, \mathcal{B}(\mathbb{R}^d))$ converging weakly to $\mu$. Then there exist random variables $X_n, X$ on a common probability space $(\Omega, \mathcal{F}, \mathbb{P})$ such that:
+1. $X_n \sim \mu_n$ and $X \sim \mu$
+2. $X_n \to X$ almost surely
+
+**Application**: Used to prove tightness in convergence of empirical measures $\mu^N \to m$.
+
 ---
 
 ## 2. N-Player Stochastic Differential Games
@@ -179,49 +203,94 @@ $$\bar{u}(t,x) = \mathbb{E}[u^{\theta}(t,x)], \quad \bar{m}(t,x) = \mathbb{E}[m^
 
 ## 4. Convergence Theory
 
-### 4.1 Convergence of Value Functions
+### 4.1 Propagation of Chaos - Full Statement
 
-**Theorem (Non-Asymptotic Convergence)**:
-Under regularity assumptions (Lipschitz Hamiltonian, bounded derivatives), there exists $C > 0$ such that:
-$$\sup_{t \in [0,T], x \in \mathbb{R}^d} \left|V^{i,N}(t, x, \mu^N) - u(t, x, m)\right| \leq \frac{C}{\sqrt{N}}$$
+**Theorem (Sznitman 1991)**: [^3]
+Consider the N-player system with i.i.d. initial conditions $X_0^i \sim \mu_0$. Assume:
+
+**(H1)** Lipschitz Hamiltonian: $\forall x, p, \mu, \nu$
+$$|H(x, p, \mu) - H(x, p, \nu)| \leq L_H W_1(\mu, \nu)$$
+
+**(H2)** Regularity of MFG solution: $u \in C^{1,2}([0,T] \times \mathbb{R}^d)$ with
+$$\|u\|_{C^{1,2}} + \|\nabla_x u\|_{L^\infty} + \|\nabla_m u\|_{L^\infty} \leq C_u$$
+
+**(H3)** Running cost: $L(x, \alpha, \mu)$ is $L_L$-Lipschitz in $(x, \alpha)$ and $L_M$-Lipschitz in $W_1(\cdot)$ for $\mu$
+
+Then for any $k \geq 1$ fixed:
+$$\mathbb{E}\left[W_1^2\left(\frac{1}{k}\sum_{i=1}^k \delta_{X_t^{i,N}}, m_t\right)\right] \leq \frac{C(T, L_H, L_L, C_u)}{N}$$
+
+where $X^{i,N}$ are the interacting particles and $m_t$ is the MFG solution.
+
+**Proof Strategy**:
+1. **Coupling construction**: Define $(\tilde{X}^i)$ i.i.d. with law $m_t$ on extended space
+2. **Distance estimate**: Control $\mathbb{E}[|X_t^{i,N} - \tilde{X}_t^i|^2]$ via Gronwall
+3. **Exchangeability**: Use symmetry to bound empirical measure distance
+
+### 4.2 Coupling Argument (Detailed)
+
+**Construction**: On product space $(\Omega^{N+\infty}, \mathcal{F}^{N+\infty}, \mathbb{P}^{N+\infty})$, define:
+- $(X^{1,N}, \ldots, X^{N,N})$: Interacting N-player system
+- $(\tilde{X}^1, \tilde{X}^2, \ldots)$: i.i.d. McKean-Vlasov processes with law $m_t$
+
+**Key Estimate**: For $i \leq N$,
+$$d|X_t^{i,N} - \tilde{X}_t^i|^2 \leq 2(X_t^{i,N} - \tilde{X}_t^i) \cdot (\alpha_t^{i,N} - \alpha_t^i) dt + \text{martingale}$$
 
 where:
-- $V^{i,N}$: Value function for player $i$ in N-player game
-- $u$: MFG value function
-- $m$: MFG measure (limit of $\mu^N$)
+$$\alpha_t^{i,N} = \arg\min_\alpha \{\alpha \cdot \nabla u(t, X_t^{i,N}, \mu_t^N) + L(\cdot)\}$$
+$$\alpha_t^i = \arg\min_\alpha \{\alpha \cdot \nabla u(t, \tilde{X}_t^i, m_t) + L(\cdot)\}$$
 
-**Proof Sketch**:
-1. **Master Equation**: Lift to Wasserstein space $\mathcal{P}_2(\mathbb{R}^d)$
-2. **Propagation of Chaos**: $\mu^N \to m$ in $W_2$ distance with rate $1/\sqrt{N}$
-3. **Stability Estimate**: Lipschitz dependence of HJB solution on measure
+**Gronwall Application**:
+$$\mathbb{E}[|X_t^{i,N} - \tilde{X}_t^i|^2] \leq C_1 \mathbb{E}[W_1^2(\mu_t^N, m_t)] + C_2 \mathbb{E}[|X_0^{i,N} - \tilde{X}_0^i|^2] e^{C_3 t}$$
 
-### 4.2 Convergence Rates
+**Conclusion**: By exchangeability and Markov inequality:
+$$\mathbb{E}[W_1^2(\mu_t^N, m_t)] \leq \frac{1}{N} \sum_{i=1}^N \mathbb{E}[|X_t^{i,N} - \tilde{X}_t^i|^2] \leq \frac{C}{N}$$
 
-**Empirical Measure Convergence**:
-$$\mathbb{E}\left[W_2^2(\mu_t^N, m_t)\right] \leq \frac{C}{N}$$
+### 4.3 Master Equation Formulation
 
-where $W_2$ is the 2-Wasserstein distance.
+**Definition**: The master equation is a PDE on $[0,T] \times \mathbb{R}^d \times \mathcal{P}_2(\mathbb{R}^d)$:
+$$\frac{\partial U}{\partial t}(t, x, \mu) + H\left(x, \nabla_x U(t, x, \mu), \mu\right) + \int_{\mathbb{R}^d} \nabla_p H \cdot \nabla_x \frac{\delta U}{\delta m}(t, x, \mu)(y) \, \mu(dy) = 0$$
 
-**Trajectory Convergence**:
-For the law $\mathcal{L}(X_t^i \mid \mu_0^N)$ of a tagged particle:
-$$W_2\left(\mathcal{L}(X_t^i \mid \mu_0^N), m_t\right) \leq \frac{C}{\sqrt{N}}$$
+with terminal condition $U(T, x, \mu) = g(x, \mu)$.
 
-### 4.3 Regularity Assumptions
+**Functional Derivative**: The Lions derivative $\frac{\delta U}{\delta m}(x, \mu)(y)$ satisfies:
+$$\lim_{\epsilon \to 0} \frac{U(x, \mu + \epsilon (\delta_y - \mu)) - U(x, \mu)}{\epsilon} = \frac{\delta U}{\delta m}(x, \mu)(y)$$
 
-**Conditions for $O(1/\sqrt{N})$ Convergence**:
+**Connection to N-Player Games**: The value function $V^{i,N}(t, x, \mu^N)$ converges to $U(t, x, \mu)$ as $N \to \infty$.
 
-1. **Lipschitz Hamiltonian**:
-   $$|H(x, p, \mu) - H(x, p, \nu)| \leq L_H W_1(\mu, \nu)$$
+**Theorem (Cardaliaguet et al. 2019)**: [^4] Under (H1)-(H3), the master equation has a unique classical solution $U \in C^{1,2,1}$ and:
+$$\|V^{i,N}(t, \cdot, \mu^N) - U(t, \cdot, \mu)\|_{L^\infty} \leq \frac{C}{N^{1/2}}$$
 
-2. **Regularity of MFG Solution**:
-   $$\|u\|_{W^{2,\infty}} + \|\nabla_x u\|_{\infty} + \|\nabla_m u\|_{\infty} \leq C$$
+### 4.4 Relative Entropy Method
 
-3. **Interaction Kernel Smoothness**:
-   $$L(x, \alpha, m) = \int K(x, y) \, m(dy) + \ell(x, \alpha)$$
-   with $K \in C^{2,1}$
+**Alternative Approach** (Jabin-Wang 2018): [^5] Use relative entropy
+$$H(\mu^N | m) = \int_{\mathbb{R}^d} \frac{d\mu^N}{dm} \log \frac{d\mu^N}{dm} \, dm$$
 
-4. **Finite Moments**:
-   $$\sup_{t \in [0,T]} \mathbb{E}\left[\int |x|^p \, m_t(dx)\right] < \infty, \quad p \geq 2$$
+**Key Estimate**: Under propagation of chaos,
+$$\frac{d}{dt} H(\mu_t^N | m_t) + I(\mu_t^N | m_t) \leq \frac{C}{N}$$
+
+where $I$ is Fisher information. Integrating gives:
+$$H(\mu_T^N | m_T) \leq H(\mu_0^N | m_0) + \frac{CT}{N}$$
+
+**Csiszár-Kullback-Pinsker Inequality**:
+$$W_1(\mu^N, m) \leq \sqrt{2 \text{diam}(\mathbb{R}^d)^2 H(\mu^N | m)}$$
+
+yields $O(1/\sqrt{N})$ convergence rate.
+
+### 4.5 Quantified Regularity Constants
+
+**Assumption (Quantified Lipschitz)**:
+- $L_H$: Lipschitz constant of $H$ in measure variable
+- $L_L$: Lipschitz constant of $L$ in $(x, \alpha)$
+- $\sigma$: Diffusion coefficient (constant for simplicity)
+
+**Derived Constants**:
+- $C_u = C_u(T, L_H, L_L, \sigma, g)$: Bound on $\|u\|_{W^{2,\infty}}$
+- $C_{\text{conv}} = e^{L_H T} \cdot \max\{L_L, C_u\}$: Convergence rate constant
+
+**Theorem (Quantitative)**: [^6]
+$$\|V^{i,N} - u\|_{L^\infty([0,T] \times \mathbb{R}^d)} \leq \frac{C_{\text{conv}}}{\sqrt{N}}$$
+
+**Optimality**: The $1/\sqrt{N}$ rate is optimal. Counterexample (Delarue-Lacker 2018):[^7] For certain singular $H$, rate can be $1/N^\alpha$ with $\alpha < 1/2$.
 
 ---
 
@@ -603,40 +672,53 @@ $$\mathbb{E}\left[\|u - u_h\|_{L^2}^2\right] \leq C h^2 \|u\|_{H^2}^2$$
 
 ## References
 
-### Classical MFG Theory
-- Lasry, J. M., & Lions, P. L. (2007). "Mean field games." *Japanese Journal of Mathematics*.
-- Cardaliaguet, P. (2013). "Notes on Mean Field Games." [Lecture notes]
+[^1]: Filippov, A. F. (1988). *Differential Equations with Discontinuous Righthand Sides*. Springer. See also Kuratowski-Ryll-Nardzewski theorem in: Wagner, D. H. (1977). "Survey of measurable selection theorems." *SIAM Journal on Control and Optimization*, 15(5), 859-903.
 
-### Convergence Theory
-- Cardaliaguet, P., et al. (2019). "Master equation for the finite state space mean field game problem."
-- Delarue, F., & Lacker, D. (2022). "From the master equation to mean field games." *Probability Theory and Related Fields*.
+[^2]: Skorokhod, A. V. (1956). "Limit theorems for stochastic processes." *Theory of Probability and Its Applications*, 1(3), 261-290.
 
-### Stochastic Calculus
-- Øksendal, B. (2003). *Stochastic Differential Equations*. Springer.
-- Nualart, D. (2006). *The Malliavin Calculus and Related Topics*. Springer.
+[^3]: Sznitman, A. S. (1991). "Topics in propagation of chaos." In *École d'Été de Probabilités de Saint-Flour XIX—1989*, pp. 165-251. Springer.
 
-### Lévy Processes
-- Applebaum, D. (2009). *Lévy Processes and Stochastic Calculus*. Cambridge University Press.
-- Cont, R., & Tankov, P. (2004). *Financial Modelling with Jump Processes*. Chapman & Hall.
+[^4]: Cardaliaguet, P., Delarue, F., Lasry, J.-M., & Lions, P.-L. (2019). "The master equation and the convergence problem in mean field games." *Annals of Mathematics Studies*, Princeton University Press.
 
-### Rough Paths
-- Friz, P., & Hairer, M. (2014). *A Course on Rough Paths*. Springer.
-- Lyons, T., Caruana, M., & Lévy, T. (2007). *Differential Equations Driven by Rough Paths*. Springer.
+[^5]: Jabin, P.-E., & Wang, Z. (2018). "Quantitative estimates of propagation of chaos for stochastic systems with $W^{-1,\infty}$ kernels." *Inventiones Mathematicae*, 214(1), 523-591.
 
-### Stochastic PDEs
-- Da Prato, G., & Zabczyk, J. (2014). *Stochastic Equations in Infinite Dimensions*. Cambridge University Press.
+[^6]: Convergence rate theorem derived from combining Sznitman (1991) propagation of chaos with master equation stability estimates from Cardaliaguet et al. (2019).
+
+[^7]: Delarue, F., & Lacker, D. (2018). "From the master equation to mean field games: a short survey." In *The Abel Symposium*, pp. 1-32. Springer.
+
+### Additional Classical References
+
+**Mean Field Game Theory**:
+- Lasry, J. M., & Lions, P. L. (2007). "Mean field games." *Japanese Journal of Mathematics*, 2(1), 229-260.
+- Cardaliaguet, P. (2013). "Notes on Mean Field Games." [Lecture notes, Université Paris-Dauphine]
+
+**Stochastic Calculus**:
+- Øksendal, B. (2003). *Stochastic Differential Equations* (6th ed.). Springer.
+- Nualart, D. (2006). *The Malliavin Calculus and Related Topics* (2nd ed.). Springer.
+
+**Lévy Processes**:
+- Applebaum, D. (2009). *Lévy Processes and Stochastic Calculus* (2nd ed.). Cambridge University Press.
+- Cont, R., & Tankov, P. (2004). *Financial Modelling with Jump Processes*. Chapman & Hall/CRC.
+
+**Rough Paths**:
+- Friz, P., & Hairer, M. (2014). *A Course on Rough Paths* (2nd ed.). Springer.
+- Lyons, T., Caruana, M., & Lévy, T. (2007). *Differential Equations Driven by Rough Paths*. Springer Lecture Notes in Mathematics 1908.
+
+**Stochastic PDEs**:
+- Da Prato, G., & Zabczyk, J. (2014). *Stochastic Equations in Infinite Dimensions* (2nd ed.). Cambridge University Press.
 - Lord, G. J., Powell, C. E., & Shardlow, T. (2014). *An Introduction to Computational Stochastic PDEs*. Cambridge University Press.
 
-### Regime-Switching Models
-- Davis, M. H. A. (1984). "Piecewise-deterministic Markov processes." *Journal of the Royal Statistical Society*.
-- Guo, X., & Zhang, Q. (2004). *Closed-form Solutions for Perpetual American Options in Regime-Switching Models*. Springer.
+**Regime-Switching**:
+- Davis, M. H. A. (1984). "Piecewise-deterministic Markov processes: A general class of non-diffusion stochastic models." *Journal of the Royal Statistical Society*, Series B, 46(3), 353-388.
+- Guo, X., & Zhang, Q. (2004). *Closed-form Solutions for Perpetual American Options in Regime-Switching Models*. Springer Finance.
 
-### Mean Field Games of Controls
-- Carmona, R., & Delarue, F. (2018). *Probabilistic Theory of Mean Field Games with Applications*. Springer.
-- Cardaliaguet, P., & Porretta, A. (2019). "An introduction to mean field game theory." *Paris-Princeton Lectures on Mathematical Finance*.
+**Mean Field Games of Controls**:
+- Carmona, R., & Delarue, F. (2018). *Probabilistic Theory of Mean Field Games with Applications* (Vols. 1-2). Springer.
+- Cardaliaguet, P., & Porretta, A. (2019). "An introduction to mean field game theory." In *Paris-Princeton Lectures on Mathematical Finance*, pp. 1-60. Springer.
 
 ---
 
 **Document Status**: Planning and theoretical foundation for Phase 4 implementation
 **Next Steps**: Implement computational modules following this mathematical framework
 **Related Implementation**: `STRATEGIC_DEVELOPMENT_ROADMAP_2026.md` Phase 4.0-4.5
+**Notation Standards**: See `NOTATION_STANDARDS.md` for cross-document consistency

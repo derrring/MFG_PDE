@@ -9,12 +9,25 @@
 
 ## Executive Summary
 
-This document establishes the mathematical foundations for integrating **information geometry** with **mean field games (MFGs)**. The intersection of these fields provides a powerful geometric framework for understanding and solving large-scale strategic interaction problems. By treating the space of probability distributions as a statistical manifold equipped with Riemannian metrics and divergence functions, we gain access to:
+This document establishes the mathematical foundations for integrating **information geometry** with **mean field games (MFGs)**. The intersection of these fields provides a powerful geometric framework for understanding and solving large-scale strategic interaction problems.
+
+**Core Conceptual Shift**: Rather than viewing MFG dynamics merely as solutions to coupled PDEs (HJB-FPK system), the geometric perspective treats the evolution of the population distribution $m(t)$ as a **trajectory on a manifold**—the infinite-dimensional space of probability measures $\mathcal{P}(M)$. This reframing transforms analytical questions into geometric ones: Does the system follow a geodesic (shortest path)? Is it a gradient flow (steepest descent)? The answers depend critically on the choice of geometry.
+
+**Geometry as Modeling Axiom**: The choice of metric on $\mathcal{P}(M)$ is not a mathematical convenience but a **fundamental modeling decision** encoding assumptions about the underlying "physics" of agent interactions:
+
+| Geometry | Metric | Physical Intuition | MFG Application |
+|:---------|:-------|:-------------------|:----------------|
+| **Wasserstein** | $W_2$ distance | Mass transport (agent movement) | Congestion games, spatial dynamics |
+| **Fisher-Rao** | Rao distance | Mass creation/destruction | Evolutionary games, entry/exit |
+| **Wasserstein-Fisher-Rao** | WFR distance | Hybrid transport + reaction | Open systems, population dynamics |
+
+By treating the space of probability distributions as a statistical manifold equipped with Riemannian metrics and divergence functions, we gain access to:
 
 - **Structure-preserving numerical methods** that respect the geometry of the measure space
 - **Natural gradient flows** with provably better convergence properties
 - **Regularization techniques** via entropic penalties and KL divergence
 - **Geometric optimization** on probability manifolds
+- **Unified framework** connecting MFGs to optimal transport, evolutionary dynamics, and machine learning
 
 The framework bridges optimal transport theory, differential geometry, and game theory, offering both theoretical insights and computational advantages.
 
@@ -144,6 +157,33 @@ $$g(\nabla^{(e)}_X Y, Z) + g(Y, \nabla^{(m)}_X Z) = X g(Y, Z)$$
 
 This dualistic structure is fundamental to information geometry.
 
+### 2.5 Riemannian Connection for Fisher-Rao Metric
+
+**Levi-Civita Connection**: For the Fisher-Rao metric $g_{FR}$, the Christoffel symbols of the second kind are:[^1]
+$$\Gamma^k_{ij}(\theta) = \frac{1}{2} \sum_{\ell} g^{k\ell} \left(\frac{\partial g_{\ell i}}{\partial \theta^j} + \frac{\partial g_{\ell j}}{\partial \theta^i} - \frac{\partial g_{ij}}{\partial \theta^\ell}\right)$$
+
+**For Exponential Families**: If $p_\theta(x) = \exp(\theta \cdot T(x) - \psi(\theta))$:
+$$g_{ij}(\theta) = \frac{\partial^2 \psi}{\partial \theta^i \partial \theta^j} = \text{Cov}_\theta[T_i, T_j]$$
+
+Then:
+$$\Gamma^k_{ij}(\theta) = \mathbb{E}_\theta\left[\frac{\partial^3 \log p_\theta}{\partial \theta^i \partial \theta^j \partial \theta^k}\right]$$
+
+**Geodesic Equation**: $\gamma(t) = (\theta^1(t), \ldots, \theta^k(t))$ is a geodesic iff:
+$$\frac{d^2 \theta^k}{dt^2} + \sum_{i,j} \Gamma^k_{ij}(\theta(t)) \frac{d\theta^i}{dt} \frac{d\theta^j}{dt} = 0$$
+
+### 2.6 Sectional Curvature
+
+**Definition**: For tangent vectors $X, Y \in T_\theta \mathcal{M}$:[^2]
+$$K(X, Y) = \frac{g(R(X,Y)Y, X)}{g(X,X)g(Y,Y) - g(X,Y)^2}$$
+
+where $R$ is the Riemann curvature tensor:
+$$R(X,Y)Z = \nabla_X \nabla_Y Z - \nabla_Y \nabla_X Z - \nabla_{[X,Y]} Z$$
+
+**For Fisher-Rao Metric**: Sectional curvature is:
+$$K(X, Y) = \frac{1}{4} \frac{g(\nabla_X Y - \nabla_Y X, \nabla_X Y - \nabla_Y X)}{g(X,X)g(Y,Y) - g(X,Y)^2}$$
+
+**Positive Curvature**: Fisher-Rao metric has **non-negative sectional curvature**. For exponential families, curvature is exactly zero (flat connection).
+
 ---
 
 ## 3. Wasserstein Geometry and Optimal Transport
@@ -194,6 +234,50 @@ $$\mathcal{F}(\mu_t) \leq (1-t) \mathcal{F}(\mu_0) + t \mathcal{F}(\mu_1) - \fra
 - **Entropy**: $S[m] = \int m \log m \, dx$ is displacement convex on $\mathbb{R}^d$ ($\lambda = 0$)
 - **Internal Energy**: $\mathcal{E}[m] = \int V(x) m(x) \, dx$ is $\lambda$-convex if $\nabla^2 V \geq \lambda I$
 
+### 3.5 Kantorovich Duality and Otto's Theorem
+
+**Kantorovich Duality for W_1**: [^3]
+
+**Primal Problem**: Wasserstein-1 distance
+$$W_1(\mu, \nu) = \inf_{\pi \in \Pi(\mu, \nu)} \int_{\mathbb{R}^d \times \mathbb{R}^d} |x - y| \, \pi(dx, dy)$$
+
+**Dual Problem** (Kantorovich-Rubinstein):
+$$W_1(\mu, \nu) = \sup_{\|f\|_{Lip} \leq 1} \left\{\int f \, d\mu - \int f \, d\nu\right\}$$
+
+where $\|f\|_{Lip} = \sup_{x \neq y} \frac{|f(x) - f(y)|}{|x - y|}$.
+
+**For W_2**: Dual formulation via $c$-concave functions:
+$$W_2^2(\mu, \nu) = \sup_{\varphi, \psi} \left\{\int \varphi \, d\mu + \int \psi \, d\nu : \varphi(x) + \psi(y) \leq \frac{|x-y|^2}{2}\right\}$$
+
+**Brenier's Theorem**: [^4] For $\mu, \nu \in \mathcal{P}_2(\mathbb{R}^d)$ with $\mu \ll \mathcal{L}^d$, there exists a unique optimal transport map $T : \mathbb{R}^d \to \mathbb{R}^d$ of the form:
+$$T = \nabla \varphi$$
+where $\varphi$ is a convex function (Brenier potential).
+
+### 3.6 Otto's Theorem (Formal Riemannian Structure)
+
+**Theorem (Otto 2001)**: [^5] The space $(\mathcal{P}_2(\mathbb{R}^d), W_2)$ can be endowed with a formal Riemannian structure where:
+
+1. **Tangent Space**: $T_\mu \mathcal{P}_2 = \{\xi = -\text{div}(m v) : v \in L^2(m; \mathbb{R}^d)\}$
+
+2. **Metric**: For $\xi_i = -\text{div}(m v_i)$, $i = 1, 2$:
+   $$g_\mu(\xi_1, \xi_2) = \int_{\mathbb{R}^d} v_1 \cdot v_2 \, m \, dx$$
+
+3. **Geodesics**: Constant-speed geodesics are given by optimal transport maps:
+   $$\mu_t = (T_t)_\# \mu_0, \quad T_t = (1-t) \text{id} + t T_1$$
+   where $T_1$ is Brenier map from $\mu_0$ to $\mu_1$.
+
+4. **Distance**: The Riemannian distance coincides with Wasserstein-2:
+   $$d_g(\mu_0, \mu_1) = W_2(\mu_0, \mu_1)$$
+
+**Proof Sketch**:
+- Variational characterization of $W_2$ via Benamou-Brenier
+- Tangent vectors identified with velocity fields
+- Metric defined by kinetic energy
+- Geodesics from minimizing action functional
+
+**Corollary (Displacement Convexity)**: A functional $\mathcal{F} : \mathcal{P}_2 \to \mathbb{R}$ is displacement convex iff along geodesics:
+$$\mathcal{F}((T_t)_\# \mu_0) \leq (1-t) \mathcal{F}(\mu_0) + t \mathcal{F}(\mu_1)$$
+
 ---
 
 ## 4. Connections Between Fisher-Rao and Wasserstein
@@ -236,6 +320,81 @@ where $\tilde{\mu}$ is a lifted measure on $M \times [0,\infty)$.
 $$g_\alpha(\mu)[\xi, \eta] = (1 - \alpha) g_{FR}(\mu)[\xi, \eta] + \alpha g_W(\mu)[\xi, \eta]$$
 
 for $\alpha \in [0, 1]$.
+
+### 4.5 Information Monotonicity and Cramér-Rao Bound
+
+**Theorem (Čencov 1982, Campbell 1986)**: [^6] The Fisher-Rao metric is the **unique** (up to scaling) Riemannian metric on $\mathcal{P}_{ac}$ that is monotone under Markov morphisms.
+
+**Monotonicity**: For any Markov kernel $K : X \to Y$:
+$$I_{FR}(K \circ p_\theta) \leq I_{FR}(p_\theta)$$
+
+where $I_{FR}$ is the Fisher information matrix.
+
+**Interpretation**: Information cannot increase under stochastic processing.
+
+### 4.6 Cramér-Rao Bound via Information Geometry
+
+**Setup**: Let $\theta \in \Theta \subseteq \mathbb{R}^k$ be a parameter with estimator $\hat{\theta}(X)$ from data $X \sim p_\theta$.
+
+**Fisher Information Matrix**:
+$$I(\theta) = \mathbb{E}_\theta\left[\nabla \log p_\theta(X) \nabla \log p_\theta(X)^T\right]$$
+
+**Cramér-Rao Bound**: [^7] For any unbiased estimator:
+$$\text{Cov}[\hat{\theta}] \geq I(\theta)^{-1}$$
+
+in the sense of positive semi-definite matrices.
+
+**Geometric Interpretation**: The inverse Fisher information $I^{-1}$ is the **pull-back metric** on parameter space from the Fisher-Rao metric on probability space.
+
+**Efficiency**: An estimator is **efficient** if it achieves the Cramér-Rao bound. Geometrically, this means it has minimal variance in the Fisher-Rao metric.
+
+### 4.7 Wasserstein-Fisher-Rao (WFR) Metric: Unbalanced Optimal Transport
+
+**Motivation**: [^11] Classical Wasserstein geometry assumes mass conservation (balanced transport). However, many real systems involve both **transport** (agent movement) and **reaction** (entry/exit, birth/death). The WFR metric provides a unified framework.
+
+**Dynamic Formulation**: Consider the generalized continuity equation with source term:
+$$\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho v) = \rho g$$
+
+where:
+- $v(t,x)$: Velocity field (transport)
+- $g(t,x)$: Growth rate (reaction/source)
+
+**WFR Distance**: [^12] For measures $\mu_0, \mu_1 \in \mathcal{P}(\mathbb{R}^d)$:
+$$\text{WFR}^2(\mu_0, \mu_1) = \inf_{(\rho,v,g)} \int_0^1 \int_{\mathbb{R}^d} \left(|v(t,x)|^2 + |g(t,x)|^2\right) \rho(t,x) \, dx \, dt$$
+
+subject to the continuity equation above with $\rho(0,\cdot) \sim \mu_0$ and $\rho(1,\cdot) \sim \mu_1$.
+
+**Decomposition**: The WFR metric decomposes as:
+$$\text{WFR}^2 = \text{Transport Cost} + \text{Reaction Cost}$$
+
+**Limiting Cases**:
+- $g \equiv 0$: Pure Wasserstein-2 distance (balanced transport)
+- $v \equiv 0$: Pure Fisher-Rao distance (pure reaction)
+- General case: Optimal balance between moving mass and creating/destroying it
+
+**Applications to MFG**:
+
+1. **Open Systems**: Games where agents enter/exit the system
+   - Economic models with firm entry/exit
+   - Epidemic models with birth/death
+   - Traffic networks with on/off ramps
+
+2. **Evolutionary Dynamics**: Population games where species can appear/disappear
+   - Strategy adoption in behavioral economics
+   - Technology diffusion models
+
+3. **Generative Modeling**: GANs and diffusion models where mass is not conserved
+   - Training dynamics involve both transport and mass adjustment
+   - WFR gradient flow provides theoretical foundation
+
+**Theorem (WFR Gradient Flow)**: [^13] The WFR gradient flow of a functional $\mathcal{E}[\rho]$ is:
+$$\frac{\partial \rho}{\partial t} = \nabla \cdot \left(\rho \nabla \frac{\delta \mathcal{E}}{\delta \rho}\right) + \rho \frac{\delta \mathcal{E}}{\delta \rho}$$
+
+This combines:
+- **Diffusion term** (Wasserstein component): $\nabla \cdot (\rho \nabla \frac{\delta \mathcal{E}}{\delta \rho})$
+- **Replicator term** (Fisher-Rao component): $\rho \frac{\delta \mathcal{E}}{\delta \rho}$
+
+**Connection to MFG**: For MFGs with variable population size, the Fokker-Planck equation naturally includes both terms, making WFR the appropriate geometric framework.
 
 ---
 
@@ -352,6 +511,41 @@ where $\mathcal{E}^*$ is the Legendre-Fenchel conjugate.
 **Coupling via Optimality**: $(m, u)$ satisfies:
 $$\nabla u = -\frac{\delta \mathcal{E}}{\delta m}[m], \quad m = \nabla \mathcal{E}^*[u]$$
 
+### 6.5 Energy Dissipation for Gradient Flows
+
+**Theorem (Energy Dissipation Identity)**: [^8] For a Wasserstein gradient flow $\frac{\partial m}{\partial t} = -\nabla_{W_2} \mathcal{E}[m]$:
+$$\frac{d}{dt} \mathcal{E}[m_t] = -\int_{\mathbb{R}^d} \left|\nabla \frac{\delta \mathcal{E}}{\delta m}[m_t](x)\right|^2 m_t(x) \, dx \leq 0$$
+
+**Proof**: By definition of Wasserstein gradient:
+$$v_t = -\nabla \frac{\delta \mathcal{E}}{\delta m}[m_t]$$
+
+Then:
+$$\frac{d}{dt} \mathcal{E}[m_t] = \int \frac{\delta \mathcal{E}}{\delta m} \frac{\partial m_t}{\partial t} dx = -\int \frac{\delta \mathcal{E}}{\delta m} \text{div}(m_t \nabla \frac{\delta \mathcal{E}}{\delta m}) dx$$
+
+Integration by parts:
+$$= \int m_t \nabla \frac{\delta \mathcal{E}}{\delta m} \cdot \nabla \frac{\delta \mathcal{E}}{\delta m} dx = -\|v_t\|_{L^2(m_t)}^2 \leq 0$$
+
+**Lyapunov Functional**: The energy $\mathcal{E}[m_t]$ is a Lyapunov functional, guaranteeing convergence to equilibrium:
+$$\mathcal{E}[m_\infty] \leq \mathcal{E}[m_0]$$
+
+**Equilibrium Condition**: At equilibrium, $\frac{\delta \mathcal{E}}{\delta m}[m_*] = $ constant (Euler-Lagrange).
+
+### 6.6 JKO Scheme Energy Estimate
+
+**Energy Dissipation for JKO**: [^9] Each step decreases energy:
+$$\mathcal{E}[m^{k+1}] + \frac{1}{2\tau} W_2^2(m^{k+1}, m^k) \leq \mathcal{E}[m^k]$$
+
+**Proof**: By optimality of $m^{k+1}$, for any $m$:
+$$\mathcal{E}[m^{k+1}] + \frac{1}{2\tau} W_2^2(m^{k+1}, m^k) \leq \mathcal{E}[m] + \frac{1}{2\tau} W_2^2(m, m^k)$$
+
+Set $m = m^k$:
+$$\mathcal{E}[m^{k+1}] + \frac{1}{2\tau} W_2^2(m^{k+1}, m^k) \leq \mathcal{E}[m^k]$$
+
+**Total Energy Decrease**:
+$$\sum_{k=0}^\infty W_2^2(m^{k+1}, m^k) < \infty$$
+
+implies $m^k \to m_*$ in Wasserstein distance.
+
 ---
 
 ## 7. Natural Gradient Descent
@@ -409,6 +603,29 @@ where $H = \nabla^2 J$ is the Hessian.
 $$\tilde{\nabla}_\theta J = \tilde{\nabla}_{\phi} J \cdot \frac{\partial \phi}{\partial \theta}$$
 
 This ensures consistent convergence regardless of parametrization choice.
+
+### 7.5 Convergence Analysis of Natural Gradient
+
+**Theorem**: [^10] Let $J : \mathcal{M} \to \mathbb{R}$ be a $\mu$-strongly convex function on a statistical manifold $\mathcal{M}$ with Fisher-Rao metric $g_{FR}$. Then natural gradient descent:
+$$\theta^{k+1} = \theta^k - \alpha g_{FR}^{-1}(\theta^k) \nabla J(\theta^k)$$
+
+converges linearly with rate:
+$$J(\theta^k) - J(\theta^*) \leq \left(1 - \alpha \mu\right)^k (J(\theta^0) - J(\theta^*))$$
+
+for $\alpha \in (0, 1/L)$ where $L$ is the Lipschitz constant of $\nabla J$ in the Fisher-Rao metric.
+
+**Proof Sketch**:
+1. Strong convexity in Fisher-Rao metric:
+   $$J(\theta) \geq J(\theta^*) + \langle \nabla J(\theta^*), \theta - \theta^* \rangle_g + \frac{\mu}{2} d_g^2(\theta, \theta^*)$$
+
+2. Descent lemma:
+   $$J(\theta^{k+1}) \leq J(\theta^k) - \alpha \|\nabla J(\theta^k)\|_g^2 + \frac{\alpha^2 L}{2} \|\nabla J(\theta^k)\|_g^2$$
+
+3. Telescoping and using strong convexity yields linear rate.
+
+**Comparison to Euclidean Gradient**: If condition number $\kappa = L/\mu$ is large in Euclidean metric but small in Fisher-Rao metric, natural gradient achieves much faster convergence.
+
+**Practical Advantage**: For ill-conditioned problems, natural gradient reduces effective condition number from $\kappa_{\text{Euclidean}}$ to $\kappa_{\text{Fisher}}$.
 
 ---
 
@@ -675,40 +892,72 @@ $$\theta^{k+1} = \theta^k - \alpha (\hat{F}(\theta^k) + \lambda I)^{-1} \nabla_\
 
 ## References
 
-### Information Geometry Foundations
-- Amari, S. (2016). *Information Geometry and Its Applications*. Springer.
-- Ay, N., et al. (2017). *Information Geometry*. Springer.
+[^1]: Amari, S., & Nagaoka, H. (2000). *Methods of Information Geometry*. American Mathematical Society & Oxford University Press. See Chapter 3 on differential-geometric structures.
 
-### Optimal Transport & Wasserstein Geometry
-- Villani, C. (2003). *Topics in Optimal Transportation*. AMS.
+[^2]: Do Carmo, M. P. (1992). *Riemannian Geometry*. Birkhäuser. Chapter 7 on curvature tensor and sectional curvature.
+
+[^3]: Villani, C. (2003). *Topics in Optimal Transportation*. American Mathematical Society. Theorem 1.3 (Kantorovich duality) and Theorem 2.12 (Kantorovich-Rubinstein).
+
+[^4]: Brenier, Y. (1991). "Polar factorization and monotone rearrangement of vector-valued functions." *Communications on Pure and Applied Mathematics*, 44(4), 375-417.
+
+[^5]: Otto, F. (2001). "The geometry of dissipative evolution equations: the porous medium equation." *Communications in Partial Differential Equations*, 26(1-2), 101-174.
+
+[^6]: Čencov, N. N. (1982). *Statistical Decision Rules and Optimal Inference*. American Mathematical Society. Campbell, L. L. (1986). "An extended Čencov characterization of the information metric." *Proceedings of the American Mathematical Society*, 98(1), 135-141.
+
+[^7]: Cramér, H. (1946). *Mathematical Methods of Statistics*. Princeton University Press. Rao, C. R. (1945). "Information and accuracy attainable in the estimation of statistical parameters." *Bulletin of the Calcutta Mathematical Society*, 37, 81-91.
+
+[^8]: Energy dissipation for Wasserstein gradient flows derived from: Ambrosio, L., Gigli, N., & Savaré, G. (2008). *Gradient Flows in Metric Spaces and in the Space of Probability Measures* (2nd ed.). Birkhäuser. Chapter 11.
+
+[^9]: Jordan, R., Kinderlehrer, D., & Otto, F. (1998). "The variational formulation of the Fokker–Planck equation." *SIAM Journal on Mathematical Analysis*, 29(1), 1-17.
+
+[^10]: Natural gradient convergence theorem adapted from: Amari, S. (1998). "Natural gradient works efficiently in learning." *Neural Computation*, 10(2), 251-276, combined with Riemannian optimization theory in: Absil, P. A., Mahoney, R., & Sepulchre, R. (2008). *Optimization Algorithms on Matrix Manifolds*. Princeton University Press.
+
+[^11]: Chizat, L., Peyré, G., Schmitzer, B., & Vialard, F.-X. (2018). "An interpolating distance between optimal transport and Fisher–Rao metrics." *Foundations of Computational Mathematics*, 18(1), 1-44.
+
+[^12]: Liero, M., Mielke, A., & Savaré, G. (2018). "Optimal entropy-transport problems and a new Hellinger–Kantorovich distance between positive measures." *Inventiones Mathematicae*, 211(3), 969-1117.
+
+[^13]: WFR gradient flow derived from: Chizat, L., & Bach, F. (2018). "On the global convergence of gradient descent for over-parameterized models using optimal transport." *Proceedings of NeurIPS*, 2018, 3036-3046, and Gallouët, T., & Mérigot, Q. (2018). "A Lagrangian scheme à la Brenier for the incompressible Euler equations." *Foundations of Computational Mathematics*, 18(4), 835-865.
+
+### Additional Classical References
+
+**Information Geometry Foundations**:
+- Amari, S. (2016). *Information Geometry and Its Applications*. Springer Applied Mathematical Sciences.
+- Ay, N., Jost, J., Lê, H. V., & Schwachhöfer, L. (2017). *Information Geometry*. Springer.
+- Nielsen, F., & Barbaresco, F. (Eds.). (2013). *Geometric Science of Information*. Springer Lecture Notes in Computer Science.
+
+**Optimal Transport & Wasserstein Geometry**:
+- Villani, C. (2009). *Optimal Transport: Old and New*. Springer Grundlehren der mathematischen Wissenschaften.
 - Santambrogio, F. (2015). *Optimal Transport for Applied Mathematicians*. Birkhäuser.
-- Ambrosio, L., et al. (2008). *Gradient Flows in Metric Spaces and in the Space of Probability Measures*. Birkhäuser.
+- Peyré, G., & Cuturi, M. (2019). "Computational optimal transport." *Foundations and Trends in Machine Learning*, 11(5-6), 355-607.
 
-### Fisher-Rao and Wasserstein Connections
-- Otto, F. (2001). "The geometry of dissipative evolution equations: the porous medium equation." *Comm. PDE*.
-- Lott, J. (2008). "Some geometric calculations on Wasserstein space." *Comm. Math. Phys*.
+**Wasserstein Gradient Flows**:
+- Ambrosio, L., Gigli, N., & Savaré, G. (2008). *Gradient Flows in Metric Spaces and in the Space of Probability Measures* (2nd ed.). Birkhäuser.
+- Santambrogio, F. (2017). "{Euclidean, metric, and Wasserstein} gradient flows: an overview." *Bulletin of Mathematical Sciences*, 7(1), 87-154.
 
-### KL Regularization and Schrödinger Bridges
-- Léonard, C. (2014). "A survey of the Schrödinger problem and some of its connections with optimal transport." *Discrete Contin. Dyn. Syst. A*.
-- Chen, Y., et al. (2021). "Likelihood training of Schrödinger bridge using forward-backward SDEs theory." *ICLR*.
+**Fisher-Rao and Wasserstein Connections**:
+- Lott, J. (2008). "Some geometric calculations on Wasserstein space." *Communications in Mathematical Physics*, 277(2), 423-437.
+- Takatsu, A. (2011). "Wasserstein geometry of Gaussian measures." *Osaka Journal of Mathematics*, 48(4), 1005-1026.
 
-### Natural Gradient Methods
-- Amari, S. (1998). "Natural gradient works efficiently in learning." *Neural Computation*.
-- Martens, J., & Grosse, R. (2015). "Optimizing neural networks with Kronecker-factored approximate curvature." *ICML*.
+**KL Regularization and Schrödinger Bridges**:
+- Léonard, C. (2014). "A survey of the Schrödinger problem and some of its connections with optimal transport." *Discrete and Continuous Dynamical Systems - Series A*, 34(4), 1533-1574.
+- Chen, Y., Georgiou, T. T., & Pavon, M. (2021). "Stochastic control liaisons: Richard Sinkhorn meets Gaspard Monge on a Schrödinger bridge." *SIAM Review*, 63(2), 249-313.
 
-### Information Geometry + Mean Field Games
-- Chizat, L., & Bach, F. (2018). "On the global convergence of gradient descent for over-parameterized models using optimal transport." *NeurIPS*.
-- Rotskoff, G., & Vanden-Eijnden, E. (2022). "Trainability and accuracy of neural networks: An interacting particle system approach." *CPAM*.
-- Maoutsa, D., et al. (2020). "Interacting particle solutions of Fokker–Planck equations through gradient–log–density estimation." *Entropy*.
+**Natural Gradient Methods**:
+- Amari, S., & Douglas, S. C. (1998). "Why natural gradient?" *Proceedings of ICASSP*, 1998, 1213-1216.
+- Martens, J., & Grosse, R. (2015). "Optimizing neural networks with Kronecker-factored approximate curvature." *Proceedings of ICML*, 2015, 2408-2417.
 
-### Mirror Descent and Bregman Geometry
-- Beck, A., & Teboulle, M. (2003). "Mirror descent and nonlinear projected subgradient methods for convex optimization." *Operations Research Letters*.
-- Bauschke, H., & Borwein, J. (1997). "Legendre functions and the method of random Bregman projections." *J. Convex Analysis*.
+**Information Geometry + Mean Field Games**:
+- Chizat, L., & Bach, F. (2018). "On the global convergence of gradient descent for over-parameterized models using optimal transport." *Proceedings of NeurIPS*, 2018, 3036-3046.
+- Rotskoff, G., & Vanden-Eijnden, E. (2022). "Trainability and accuracy of neural networks: An interacting particle system approach." *Communications on Pure and Applied Mathematics*, 75(9), 1889-1935.
+- Maoutsa, D., Reich, S., & Opper, M. (2020). "Interacting particle solutions of Fokker–Planck equations through gradient–log–density estimation." *Entropy*, 22(8), 802.
 
-### Computational Methods
-- Cuturi, M. (2013). "Sinkhorn distances: Lightspeed computation of optimal transport." *NeurIPS*.
-- Peyré, G., & Cuturi, M. (2019). "Computational optimal transport." *Foundations and Trends in Machine Learning*.
-- Jordan, R., et al. (1998). "The variational formulation of the Fokker–Planck equation." *SIAM J. Math. Analysis*.
+**Mirror Descent and Bregman Geometry**:
+- Beck, A., & Teboulle, M. (2003). "Mirror descent and nonlinear projected subgradient methods for convex optimization." *Operations Research Letters*, 31(3), 167-175.
+- Bauschke, H. H., & Borwein, J. M. (1997). "Legendre functions and the method of random Bregman projections." *Journal of Convex Analysis*, 4(1), 27-67.
+
+**Computational Methods**:
+- Cuturi, M. (2013). "Sinkhorn distances: Lightspeed computation of optimal transport." *Proceedings of NeurIPS*, 2013, 2292-2300.
+- Genevay, A., Cuturi, M., Peyré, G., & Bach, F. (2016). "Stochastic optimization for large-scale optimal transport." *Proceedings of NeurIPS*, 2016, 3440-3448.
 
 ---
 
@@ -742,6 +991,7 @@ $$\theta^{k+1} = \theta^k - \alpha (\hat{F}(\theta^k) + \lambda I)^{-1} \nabla_\
 
 ---
 
-**Document Status**: Mathematical foundation for Phase 4.6 implementation
-**Next Steps**: Create module structure `mfg_pde/information_geometry/` and implement core components
-**Related**: `STRATEGIC_DEVELOPMENT_ROADMAP_2026.md` Phase 4.6 (to be added)
+**Document Status**: Mathematical foundation for Phase 4.6 implementation (distributed approach)
+**Next Steps**: Enhance existing modules (`alg/optimization/`, `alg/neural/`, `utils/`) with information geometry methods
+**Related**: `STRATEGIC_DEVELOPMENT_ROADMAP_2026.md` Phase 4.6, `NOTATION_STANDARDS.md`
+**Note**: Information geometry is integrated across existing modules, NOT a separate top-level module
