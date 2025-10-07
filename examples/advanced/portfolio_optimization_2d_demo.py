@@ -390,9 +390,9 @@ def main():
     print()
 
     print("Financial Parameters:")
-    print(f"  - Risk-free rate: {problem['r']*100:.1f}%")
-    print(f"  - Stock expected return: {problem['mu']*100:.1f}%")
-    print(f"  - Stock volatility: {problem['sigma_market']*100:.1f}%")
+    print(f"  - Risk-free rate: {problem['r'] * 100:.1f}%")
+    print(f"  - Stock expected return: {problem['mu'] * 100:.1f}%")
+    print(f"  - Stock volatility: {problem['sigma_market'] * 100:.1f}%")
     print(f"  - Risk aversion: {problem['gamma_risk']:.1f}")
     print()
 

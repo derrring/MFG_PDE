@@ -45,7 +45,7 @@ def test_basic_kde():
         scipy_kde = gaussian_kde(particles, bw_method="scott")
         scipy_density = scipy_kde(x_eval)
 
-        print(f"\nScipy KDE bandwidth: {scipy_kde.factor * scipy_kde.covariance[0, 0]**0.5:.6f}")
+        print(f"\nScipy KDE bandwidth: {scipy_kde.factor * scipy_kde.covariance[0, 0] ** 0.5:.6f}")
         print(f"Scipy density range: [{scipy_density.min():.6f}, {scipy_density.max():.6f}]")
         print(f"Scipy density integral (trapz): {np.trapezoid(scipy_density, x_eval):.6f}")
 

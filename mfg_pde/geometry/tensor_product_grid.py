@@ -82,7 +82,7 @@ class TensorProductGrid:
 
         if len(bounds) != dimension or len(num_points) != dimension:
             raise ValueError(
-                f"bounds and num_points must have length {dimension}, " f"got {len(bounds)} and {len(num_points)}"
+                f"bounds and num_points must have length {dimension}, got {len(bounds)} and {len(num_points)}"
             )
 
         self.dimension = dimension
@@ -115,7 +115,7 @@ class TensorProductGrid:
         # Validate coordinates
         for i, coords in enumerate(self.coordinates):
             if len(coords) != num_points[i]:
-                raise ValueError(f"Coordinate array {i} has length {len(coords)}, " f"expected {num_points[i]}")
+                raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {num_points[i]}")
 
     def meshgrid(self, indexing: str = "ij") -> tuple[NDArray, ...]:
         """

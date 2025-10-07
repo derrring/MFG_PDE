@@ -285,7 +285,7 @@ def visualize_stochastic_convergence(result, masses, problem, monitor):
 
     stats_text = f"""
     STOCHASTIC CONVERGENCE ANALYSIS
-    {'=' * 50}
+    {"=" * 50}
 
     Iterations: {result.iterations}
     Converged: {result.converged}

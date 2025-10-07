@@ -646,7 +646,7 @@ def main():
                 ranking = analysis["algorithm_comparison"]["performance_ranking"]
                 print("   Performance Ranking:")
                 for i, (alg, score) in enumerate(ranking):
-                    print(f"      {i+1}. {alg}: {score:.3f}")
+                    print(f"      {i + 1}. {alg}: {score:.3f}")
 
             if "performance_metrics" in analysis and "performance_improvement" in analysis["performance_metrics"]:
                 improvement = analysis["performance_metrics"]["performance_improvement"]

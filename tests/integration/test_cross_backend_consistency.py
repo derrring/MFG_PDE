@@ -48,7 +48,7 @@ def test_kde_consistency():
         scipy_kde = gaussian_kde(particles, bw_method="scott")
         scipy_density = scipy_kde(x_eval)
         results["scipy"] = scipy_density
-        print(f"   Bandwidth: {scipy_kde.factor * scipy_kde.covariance[0, 0]**0.5:.6f}")
+        print(f"   Bandwidth: {scipy_kde.factor * scipy_kde.covariance[0, 0] ** 0.5:.6f}")
         print(f"   Peak density: {scipy_density.max():.6f}")
         print(f"   Integral: {np.trapezoid(scipy_density, x_eval):.6f}")
 

@@ -198,7 +198,7 @@ def demonstrate_fno_training():
     fno_eval_time = time.time() - start_time
 
     logger.info(f"FNO evaluation time for 10 samples: {fno_eval_time:.4f}s")
-    logger.info(f"FNO throughput: {10/fno_eval_time:.1f} evaluations/second")
+    logger.info(f"FNO throughput: {10 / fno_eval_time:.1f} evaluations/second")
 
     return fno, results, fno_eval_time
 
@@ -291,7 +291,7 @@ def demonstrate_deeponet_training():
     deeponet_eval_time = time.time() - start_time
 
     logger.info(f"DeepONet evaluation time for 5 samples: {deeponet_eval_time:.4f}s")
-    logger.info(f"DeepONet throughput: {5/deeponet_eval_time:.1f} evaluations/second")
+    logger.info(f"DeepONet throughput: {5 / deeponet_eval_time:.1f} evaluations/second")
 
     return deeponet, results, deeponet_eval_time
 
@@ -321,14 +321,14 @@ def demonstrate_speedup_analysis():
     traditional_time = time.time() - start_time
 
     logger.info(f"Traditional solver time: {traditional_time:.2f}s")
-    logger.info(f"Traditional throughput: {num_evaluations/traditional_time:.2f} evaluations/second")
+    logger.info(f"Traditional throughput: {num_evaluations / traditional_time:.2f} evaluations/second")
 
     # Neural operator timing (simulated)
     neural_time = 0.001 * num_evaluations  # Assume 1ms per evaluation
     speedup = traditional_time / neural_time
 
     logger.info(f"Neural operator time: {neural_time:.4f}s")
-    logger.info(f"Neural operator throughput: {num_evaluations/neural_time:.0f} evaluations/second")
+    logger.info(f"Neural operator throughput: {num_evaluations / neural_time:.0f} evaluations/second")
     logger.info(f"Speedup factor: {speedup:.0f}x")
 
     return speedup
@@ -375,7 +375,7 @@ def demonstrate_parameter_exploration():
     exploration_time = time.time() - start_time
 
     logger.info(f"Parameter exploration completed in {exploration_time:.4f}s")
-    logger.info(f"Evaluation rate: {num_evaluations/exploration_time:.0f} evaluations/second")
+    logger.info(f"Evaluation rate: {num_evaluations / exploration_time:.0f} evaluations/second")
 
     # Analyze solutions
     solution_metrics = torch.mean(solutions, dim=1).numpy()  # Simple metric: mean value

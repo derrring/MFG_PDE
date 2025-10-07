@@ -91,7 +91,7 @@ def main():
     # Statistical bounds for N=500 particles
     expected_std = 1.0 / np.sqrt(500)  # ~0.045
     print(f"Expected std (1/√N): ~{expected_std:.3f}")
-    print(f"99% interval:        [{1 - 3*expected_std:.3f}, {1 + 3*expected_std:.3f}]")
+    print(f"99% interval:        [{1 - 3 * expected_std:.3f}, {1 + 3 * expected_std:.3f}]")
     print()
 
     within_bounds = np.all(np.abs(masses - 1.0) < 3 * expected_std)
@@ -148,7 +148,7 @@ def main():
 
     stats_text = f"""
 FAST TEST CONFIGURATION
-{'=' * 40}
+{"=" * 40}
 
 Grid: {problem.Nx + 1} × {problem.Nt + 1}
 Particles: 500
@@ -156,7 +156,7 @@ Iterations: 30 max
 Diffusion: σ = {problem.sigma}
 
 MASS CONSERVATION
-{'=' * 40}
+{"=" * 40}
 
 Initial:     {masses[0]:.8f}
 Final:       {masses[-1]:.8f}
@@ -167,14 +167,14 @@ Max dev:     {np.max(np.abs(masses - masses[0])):.2e}
 Relative:    {np.max(np.abs(masses - masses[0])) / masses[0] * 100:.4f}%
 
 STATISTICAL BOUNDS (N=500)
-{'=' * 40}
+{"=" * 40}
 
 Expected std: ~{expected_std:.3f}
-99% interval: [{1 - 3*expected_std:.2f}, {1 + 3*expected_std:.2f}]
-Status:       {'✅ WITHIN BOUNDS' if within_bounds else '❌ OUTSIDE BOUNDS'}
+99% interval: [{1 - 3 * expected_std:.2f}, {1 + 3 * expected_std:.2f}]
+Status:       {"✅ WITHIN BOUNDS" if within_bounds else "❌ OUTSIDE BOUNDS"}
 
 CONCLUSION
-{'=' * 40}
+{"=" * 40}
 
 ✅ Mass conservation achieved
 ✅ KDE normalization enforces ∫m=1

@@ -447,9 +447,9 @@ def main():
     print("Epidemic Parameters:")
     print(f"  - Infection rate (α): {problem['alpha']:.2f}")
     print(
-        f"  - Recovery rate (γ): {problem['gamma_recovery']:.2f} (avg. recovery: {1/problem['gamma_recovery']:.1f} days)"
+        f"  - Recovery rate (γ): {problem['gamma_recovery']:.2f} (avg. recovery: {1 / problem['gamma_recovery']:.1f} days)"
     )
-    print(f"  - Basic reproduction number (R₀): {problem['alpha']/problem['gamma_recovery']:.2f}")
+    print(f"  - Basic reproduction number (R₀): {problem['alpha'] / problem['gamma_recovery']:.2f}")
     print(f"  - Initial infected fraction: {problem['I0_fraction']:.1%}")
     print()
 

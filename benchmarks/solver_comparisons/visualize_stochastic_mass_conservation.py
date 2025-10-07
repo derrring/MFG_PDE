@@ -99,7 +99,7 @@ def main():
 
     stats_text = f"""
     MASS CONSERVATION ANALYSIS
-    {'=' * 45}
+    {"=" * 45}
 
     Problem Configuration:
     ---------------------

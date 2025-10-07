@@ -197,7 +197,7 @@ def run_production_evacuation():
     print(f"   Initial mass: {initial_mass:.6f}")
     print(f"   Final mass: {final_mass:.6f}")
     print(f"   Max deviation: {max_mass_error:.2e}")
-    print(f"   Evacuation: {(1 - final_mass/initial_mass)*100:.2f}%")
+    print(f"   Evacuation: {(1 - final_mass / initial_mass) * 100:.2f}%")
 
     # Visualize
     print("\n5️⃣ Creating visualizations...")

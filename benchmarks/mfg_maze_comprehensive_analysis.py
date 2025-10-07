@@ -558,10 +558,9 @@ def main():
                 f"({comparison['success_rates'][comparison['best_success_rate']]:.3f})"
             )
             print(
-                f"   Best Reward: {comparison['best_reward']} "
-                f"({comparison['rewards'][comparison['best_reward']]:.1f})"
+                f"   Best Reward: {comparison['best_reward']} ({comparison['rewards'][comparison['best_reward']]:.1f})"
             )
-            print(f"   Fastest: {comparison['fastest']} " f"({comparison['steps'][comparison['fastest']]:.0f} steps)")
+            print(f"   Fastest: {comparison['fastest']} ({comparison['steps'][comparison['fastest']]:.0f} steps)")
 
             if args.visualization:
                 tester.visualize_policy_comparison(results)

@@ -112,18 +112,20 @@ class TestHybridMassConservation:
 
         print(f"\n  Initial mass: {initial_mass:.6f}")
         print(f"  Final mass:   {final_mass:.6f}")
-        print(f"  Mass loss:    {initial_mass - final_mass:.6f} ({100*(initial_mass-final_mass)/initial_mass:.2f}%)")
+        print(
+            f"  Mass loss:    {initial_mass - final_mass:.6f} ({100 * (initial_mass - final_mass) / initial_mass:.2f}%)"
+        )
 
         # Check mass conservation
         mass_variation = np.abs(masses - initial_mass) / initial_mass
         max_mass_variation = np.max(mass_variation)
 
-        print(f"  Max mass variation: {100*max_mass_variation:.2f}%")
+        print(f"  Max mass variation: {100 * max_mass_variation:.2f}%")
 
         # Acceptance criteria: Mass should not vary by more than 5%
         # This is reasonable for particle methods with KDE
         assert max_mass_variation < 0.05, (
-            f"Mass conservation violated: max variation {100*max_mass_variation:.2f}% > 5%\n"
+            f"Mass conservation violated: max variation {100 * max_mass_variation:.2f}% > 5%\n"
             f"  Initial mass: {initial_mass:.6f}\n"
             f"  Masses over time: {masses}"
         )
@@ -175,12 +177,12 @@ class TestHybridMassConservation:
         mass_increase = masses - initial_mass
         max_mass_increase = np.max(mass_increase)
 
-        print(f"\n  Max mass increase: {max_mass_increase:.6f} ({100*max_mass_increase/initial_mass:.2f}%)")
+        print(f"\n  Max mass increase: {max_mass_increase:.6f} ({100 * max_mass_increase / initial_mass:.2f}%)")
 
         # Allow up to 2% mass increase due to KDE boundary effects
         assert (
             max_mass_increase / initial_mass < 0.02
-        ), f"Spurious mass creation detected: {100*max_mass_increase/initial_mass:.2f}%"
+        ), f"Spurious mass creation detected: {100 * max_mass_increase / initial_mass:.2f}%"
 
         print("  ✓ No spurious mass creation")
 
@@ -222,7 +224,7 @@ class TestHybridMassConservationFast:
         final_mass = compute_total_mass(M[-1, :], dx)
 
         relative_change = abs(final_mass - initial_mass) / initial_mass
-        assert relative_change < 0.1, f"Excessive mass change: {100*relative_change:.1f}%"
+        assert relative_change < 0.1, f"Excessive mass change: {100 * relative_change:.1f}%"
 
         print("\n  ✓ Basic functionality verified")
-        print(f"  ✓ Mass change: {100*relative_change:.2f}%")
+        print(f"  ✓ Mass change: {100 * relative_change:.2f}%")

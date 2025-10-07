@@ -147,9 +147,9 @@ def train_alternating(env, solvers, num_iterations=20, episodes_per_iteration=50
     prey_rewards_history = []
 
     for iteration in range(num_iterations):
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"Iteration {iteration + 1}/{num_iterations}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         # Phase 1: Train predators (prey policy fixed)
         print("\n[Phase 1] Training predators (prey uses current policy)...")
@@ -157,7 +157,7 @@ def train_alternating(env, solvers, num_iterations=20, episodes_per_iteration=50
         predator_results = predator_solver.train(num_episodes=episodes_per_iteration)
         predator_rewards_history.extend(predator_results["episode_rewards"])
 
-        print(f"Predator avg reward (last 20 episodes): " f"{np.mean(predator_results['episode_rewards'][-20:]):.2f}")
+        print(f"Predator avg reward (last 20 episodes): {np.mean(predator_results['episode_rewards'][-20:]):.2f}")
 
         # Phase 2: Train prey (predator policy fixed)
         print("\n[Phase 2] Training prey (predator uses current policy)...")
@@ -165,14 +165,14 @@ def train_alternating(env, solvers, num_iterations=20, episodes_per_iteration=50
         prey_results = prey_solver.train(num_episodes=episodes_per_iteration)
         prey_rewards_history.extend(prey_results["episode_rewards"])
 
-        print(f"Prey avg reward (last 20 episodes): " f"{np.mean(prey_results['episode_rewards'][-20:]):.2f}")
+        print(f"Prey avg reward (last 20 episodes): {np.mean(prey_results['episode_rewards'][-20:]):.2f}")
 
         # Report iteration summary
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"Iteration {iteration + 1} Summary:")
         print(f"  Predator: {np.mean(predator_results['episode_rewards']):.2f}")
         print(f"  Prey:     {np.mean(prey_results['episode_rewards']):.2f}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
     return {
         "predator_rewards": predator_rewards_history,

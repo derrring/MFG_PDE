@@ -340,7 +340,7 @@ def main():
     for pop_id in populations:
         train_reward = np.mean(stats[pop_id]["episode_rewards"][-100:])
         eval_reward = np.mean(eval_stats[pop_id]["episode_rewards"])
-        print(f"  {pop_id:15s} | Training: {train_reward:8.2f} | " f"Evaluation: {eval_reward:8.2f}")
+        print(f"  {pop_id:15s} | Training: {train_reward:8.2f} | Evaluation: {eval_reward:8.2f}")
 
     print("\nNash Equilibrium Achieved: All populations optimizing simultaneously!")
 

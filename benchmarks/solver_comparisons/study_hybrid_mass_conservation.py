@@ -61,7 +61,7 @@ def run_hybrid_solver_with_monitoring(problem, bc, max_iterations=100, verbose=T
         print("=" * 80)
         print("HYBRID PARTICLE-GRID SOLVER WITH STOCHASTIC MONITORING")
         print("=" * 80)
-        print(f"\nProblem: Nx={problem.Nx+1}, Nt={problem.Nt+1}, T={problem.T}")
+        print(f"\nProblem: Nx={problem.Nx + 1}, Nt={problem.Nt + 1}, T={problem.T}")
         print("Particles: 1000, KDE normalization: ON")
         print("Boundary: No-flux Neumann")
         print("Convergence: Stochastic (median over window=10)")
@@ -312,7 +312,7 @@ def visualize_results(U, M, convergence_info, masses, problem, mass_analysis):
 
     summary_text = f"""
     HYBRID PARTICLE-GRID SOLVER STUDY
-    {'=' * 70}
+    {"=" * 70}
 
     Problem Configuration:
     ----------------------
@@ -322,34 +322,34 @@ def visualize_results(U, M, convergence_info, masses, problem, mass_analysis):
 
     Convergence Results:
     --------------------
-    Status: {'✅ CONVERGED' if convergence_info['converged'] else '⚠️  MAX ITERATIONS'}
-    Iterations: {convergence_info['iterations']}
+    Status: {"✅ CONVERGED" if convergence_info["converged"] else "⚠️  MAX ITERATIONS"}
+    Iterations: {convergence_info["iterations"]}
     Framework: Stochastic (median over window=10)
 
     Final Error Statistics:
     -----------------------
     Value Function (U):
-      Median:  {u_stats.get('median', 0):.2e}    Mean: {u_stats.get('mean', 0):.2e}
-      Std:     {u_stats.get('std', 0):.2e}       90%:  {u_stats.get('quantile', 0):.2e}
-      Min:     {u_stats.get('min', 0):.2e}       Max:  {u_stats.get('max', 0):.2e}
+      Median:  {u_stats.get("median", 0):.2e}    Mean: {u_stats.get("mean", 0):.2e}
+      Std:     {u_stats.get("std", 0):.2e}       90%:  {u_stats.get("quantile", 0):.2e}
+      Min:     {u_stats.get("min", 0):.2e}       Max:  {u_stats.get("max", 0):.2e}
 
     Density (M):
-      Median:  {m_stats.get('median', 0):.2e}    Mean: {m_stats.get('mean', 0):.2e}
-      Std:     {m_stats.get('std', 0):.2e}       90%:  {m_stats.get('quantile', 0):.2e}
-      Min:     {m_stats.get('min', 0):.2e}       Max:  {m_stats.get('max', 0):.2e}
+      Median:  {m_stats.get("median", 0):.2e}    Mean: {m_stats.get("mean", 0):.2e}
+      Std:     {m_stats.get("std", 0):.2e}       90%:  {m_stats.get("quantile", 0):.2e}
+      Min:     {m_stats.get("min", 0):.2e}       Max:  {m_stats.get("max", 0):.2e}
 
     Mass Conservation:
     ------------------
-    Initial mass:      {mass_analysis['initial_mass']:.8f}
-    Final mass:        {mass_analysis['final_mass']:.8f}
-    Max deviation:     {mass_analysis['max_deviation']:.2e}
-    Relative error:    {mass_analysis['relative_error']:.4f}%
-    Statistical test:  {'✅ PASS' if mass_analysis['within_bounds'] else '❌ FAIL'}
+    Initial mass:      {mass_analysis["initial_mass"]:.8f}
+    Final mass:        {mass_analysis["final_mass"]:.8f}
+    Max deviation:     {mass_analysis["max_deviation"]:.2e}
+    Relative error:    {mass_analysis["relative_error"]:.4f}%
+    Statistical test:  {"✅ PASS" if mass_analysis["within_bounds"] else "❌ FAIL"}
 
     Conclusion:
     -----------
-    {'✅ Mass conservation ACHIEVED under stochastic framework' if mass_analysis['within_bounds'] else '⚠️  Mass deviation exceeds statistical bounds'}
-    {'✅ Stochastic convergence confirmed' if convergence_info['converged'] else '⚠️  Did not converge within iteration limit'}
+    {"✅ Mass conservation ACHIEVED under stochastic framework" if mass_analysis["within_bounds"] else "⚠️  Mass deviation exceeds statistical bounds"}
+    {"✅ Stochastic convergence confirmed" if convergence_info["converged"] else "⚠️  Did not converge within iteration limit"}
     ✅ Error spikes observed and properly handled (median robust)
     ✅ KDE normalization ensures ∫m dx ≈ 1 at each step
     """

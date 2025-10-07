@@ -284,7 +284,7 @@ class TestMassConservation1D:
 
         # DEBUG: Print actual shape and mass calculation
         print("\nDEBUG test_fp_particle_hjb_fdm:")
-        print(f"  result.M shape = {result.M.shape}, expected ({problem.Nt+1}, {problem.Nx+1})")
+        print(f"  result.M shape = {result.M.shape}, expected ({problem.Nt + 1}, {problem.Nx + 1})")
         print(f"  problem.Dx = {problem.Dx:.6f}")
         print(
             f"  m_solution[0] stats: min={m_solution[0].min():.6f}, max={m_solution[0].max():.6f}, sum={m_solution[0].sum():.6f}"
@@ -317,9 +317,9 @@ class TestMassConservation1D:
 
         # Mass should be conserved to within tolerance
         # Particle methods with KDE may have some numerical diffusion
-        assert max_mass_error < 0.05, (
-            f"Mass conservation violated: max error = {max_mass_error:.6e}\n" f"Masses over time: {masses}"
-        )
+        assert (
+            max_mass_error < 0.05
+        ), f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
 
     def test_fp_particle_hjb_gfdm_mass_conservation(self, problem, boundary_conditions):
         """
@@ -394,9 +394,9 @@ class TestMassConservation1D:
 
         # Mass should be conserved to within tolerance
         # GFDM particle collocation may have different numerical properties
-        assert max_mass_error < 0.05, (
-            f"Mass conservation violated: max error = {max_mass_error:.6e}\n" f"Masses over time: {masses}"
-        )
+        assert (
+            max_mass_error < 0.05
+        ), f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
 
     def test_compare_mass_conservation_methods(self, problem, boundary_conditions):
         """

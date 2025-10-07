@@ -58,12 +58,12 @@ def run_solver(name: str, use_anderson: bool, thetaUM: float, anderson_beta: flo
         anderson_beta=anderson_beta or 1.0,
     )
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"{name}")
     print(f"  Picard damping (theta): {thetaUM}")
     if use_anderson:
         print(f"  Anderson beta: {anderson_beta}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     # Run solver
     start_time = time.time()
@@ -89,7 +89,7 @@ def run_solver(name: str, use_anderson: bool, thetaUM: float, anderson_beta: flo
     mass_dev = np.max(np.abs(masses - masses[0]))
 
     print(f"Iterations: {iterations}")
-    print(f"Time: {elapsed_time:.2f}s ({elapsed_time/iterations:.3f}s/iter)")
+    print(f"Time: {elapsed_time:.2f}s ({elapsed_time / iterations:.3f}s/iter)")
     print(f"Final error U: {err_u[-1]:.2e}" if len(err_u) > 0 else "N/A")
     print(f"Final error M: {err_m[-1]:.2e}" if len(err_m) > 0 else "N/A")
     print(f"Mass deviation: {mass_dev:.2e}")

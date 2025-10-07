@@ -292,7 +292,7 @@ def run_advanced_pinn_demo():
         print("Adaptive sampling analysis:")
         print(f"  Original physics points: {pinn_config.num_physics_points}")
         print(f"  Updated physics points: {point_updates['physics']}")
-        print(f"  Residual statistics: mean={np.mean(residuals):.6e}, " f"std={np.std(residuals):.6e}")
+        print(f"  Residual statistics: mean={np.mean(residuals):.6e}, std={np.std(residuals):.6e}")
         print(f"  High-residual regions: {len(adaptive_strategy.state.high_residual_regions)}")
         print()
 
@@ -331,14 +331,14 @@ def run_advanced_pinn_demo():
         print(f"Test points for uncertainty quantification: {len(test_input)}")
         print("Test locations:")
         for i, point in enumerate(test_input):
-            print(f"  Point {i+1}: t={point[0]:.1f}, x=({point[1]:.1f}, {point[2]:.1f})")
+            print(f"  Point {i + 1}: t={point[0]:.1f}, x=({point[1]:.1f}, {point[2]:.1f})")
 
         # Deterministic predictions (Bayesian would require full MCMC)
         u_mean, _u_std, m_mean, _m_std = solver.predict_with_uncertainty(test_input)
 
         print("\nDeterministic predictions (no uncertainty sampling):")
         for i in range(len(test_input)):
-            print(f"  Point {i+1}: u={u_mean[i,0]:.4f}, m={m_mean[i,0]:.4f}")
+            print(f"  Point {i + 1}: u={u_mean[i, 0]:.4f}, m={m_mean[i, 0]:.4f}")
 
         print("\n✓ Uncertainty quantification framework demonstrated")
         print()
@@ -350,10 +350,7 @@ def run_advanced_pinn_demo():
         # Evaluate solution quality
         if result.value_function is not None and result.density_function is not None:
             print("Solution quality metrics:")
-            print(
-                f"  Value function range: [{np.min(result.value_function):.4f}, "
-                f"{np.max(result.value_function):.4f}]"
-            )
+            print(f"  Value function range: [{np.min(result.value_function):.4f}, {np.max(result.value_function):.4f}]")
             print(
                 f"  Density function range: [{np.min(result.density_function):.4f}, "
                 f"{np.max(result.density_function):.4f}]"

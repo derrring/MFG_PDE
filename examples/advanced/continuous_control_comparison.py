@@ -224,9 +224,9 @@ def train_algorithm(algo_class, algo_name: str, env, num_episodes: int, config: 
     Returns:
         Training statistics
     """
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Training {algo_name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     algo = algo_class(
         env=env,
@@ -331,9 +331,9 @@ def plot_comparison(ddpg_stats: dict, td3_stats: dict, sac_stats: dict, save_pat
 
 def print_summary(ddpg_stats: dict, td3_stats: dict, sac_stats: dict):
     """Print summary statistics."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("FINAL PERFORMANCE COMPARISON")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     def get_final_performance(stats):
         rewards = stats["episode_rewards"][-50:]  # Last 50 episodes
@@ -360,9 +360,9 @@ def print_summary(ddpg_stats: dict, td3_stats: dict, sac_stats: dict):
     print(f"\nBest Algorithm: {winner}")
 
     # Key differences
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("KEY ALGORITHM PROPERTIES")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print("\nDDPG (Deep Deterministic Policy Gradient):")
     print("  - Deterministic policy: a = μ(s,m)")
     print("  - Single critic Q(s,a,m)")
@@ -381,7 +381,7 @@ def print_summary(ddpg_stats: dict, td3_stats: dict, sac_stats: dict):
     print("  - Automatic temperature tuning")
     print("  - Best exploration and robustness")
 
-    print(f"\n{'='*60}\n")
+    print(f"\n{'=' * 60}\n")
 
 
 def main():

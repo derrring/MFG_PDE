@@ -60,9 +60,9 @@ def run_solver(use_anderson: bool = False, backend: str | None = None):
 
     method_name = "Anderson" if use_anderson else "Damped"
     backend_name = backend or "numpy"
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing: {method_name} with {backend_name} backend")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     # Run solver
     start_time = time.time()
@@ -92,7 +92,7 @@ def run_solver(use_anderson: bool = False, backend: str | None = None):
     masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
 
     print(f"Iterations: {iterations}")
-    print(f"Time: {elapsed_time:.2f}s ({elapsed_time/iterations:.3f}s/iter)")
+    print(f"Time: {elapsed_time:.2f}s ({elapsed_time / iterations:.3f}s/iter)")
     print(f"Final error U: {err_u[-1]:.2e}" if len(err_u) > 0 else "N/A")
     print(f"Final error M: {err_m[-1]:.2e}" if len(err_m) > 0 else "N/A")
     print(f"Mass deviation: {np.max(np.abs(masses - masses[0])):.2e}")

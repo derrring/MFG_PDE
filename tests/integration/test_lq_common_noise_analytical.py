@@ -215,9 +215,9 @@ class TestLQCommonNoiseAnalytical:
         # Variance should be bounded
         long_time_std = np.std(paths[:, -20:])
         theoretical_std = noise_process.sigma / np.sqrt(2 * noise_process.kappa)
-        assert np.abs(long_time_std - theoretical_std) < 0.1, (
-            f"OU process variance should match σ²/(2κ), " f"got {long_time_std:.3f} vs theory {theoretical_std:.3f}"
-        )
+        assert (
+            np.abs(long_time_std - theoretical_std) < 0.1
+        ), f"OU process variance should match σ²/(2κ), got {long_time_std:.3f} vs theory {theoretical_std:.3f}"
 
     def test_analytical_reference_solution(self):
         """

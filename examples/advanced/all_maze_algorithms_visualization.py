@@ -414,7 +414,7 @@ def visualize_mfg_scenarios():
         row = idx // 3
         col = idx % 3
 
-        print(f"\n{idx+1}. Generating {name}...")
+        print(f"\n{idx + 1}. Generating {name}...")
 
         if gen_type == "recursive_division":
             generator = RecursiveDivisionGenerator(RecursiveDivisionConfig(**config))

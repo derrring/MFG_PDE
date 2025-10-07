@@ -75,9 +75,9 @@ def solve(problem, nx, nt, solver, output, verbose):
         result = solver_obj.solve()
 
         # Display results
-        click.echo(f"\n{'='*50}")
+        click.echo(f"\n{'=' * 50}")
         click.echo("Solution Summary")
-        click.echo(f"{'='*50}")
+        click.echo(f"{'=' * 50}")
         click.echo(f"Converged: {result.converged}")
         click.echo(f"Iterations: {result.iterations if hasattr(result, 'iterations') else 'N/A'}")
 
@@ -109,7 +109,7 @@ def solve(problem, nx, nt, solver, output, verbose):
             plt.savefig(output, dpi=150, bbox_inches="tight")
             click.echo(f"\nSaved visualization to: {output}")
 
-        click.echo(f"\n{'='*50}")
+        click.echo(f"\n{'=' * 50}")
         click.echo("✓ Solution completed successfully!")
 
     except ImportError as e:
@@ -138,7 +138,7 @@ def validate(quick):
         mfg-validate --quick
     """
     click.echo("Validating MFG_PDE installation...")
-    click.echo(f"{'='*50}\n")
+    click.echo(f"{'=' * 50}\n")
 
     all_ok = True
 
@@ -159,9 +159,9 @@ def validate(quick):
             all_ok = False
 
     # Check optional dependencies
-    click.echo(f"\n{'='*50}")
+    click.echo(f"\n{'=' * 50}")
     click.echo("Optional Dependencies:")
-    click.echo(f"{'='*50}\n")
+    click.echo(f"{'=' * 50}\n")
 
     optional = [
         ("JAX (GPU acceleration)", "jax"),
@@ -179,9 +179,9 @@ def validate(quick):
 
     # Run quick test if requested
     if not quick:
-        click.echo(f"\n{'='*50}")
+        click.echo(f"\n{'=' * 50}")
         click.echo("Running integration test...")
-        click.echo(f"{'='*50}\n")
+        click.echo(f"{'=' * 50}\n")
 
         try:
             from mfg_pde import ExampleMFGProblem
@@ -199,14 +199,14 @@ def validate(quick):
             all_ok = False
 
     # Final status
-    click.echo(f"\n{'='*50}")
+    click.echo(f"\n{'=' * 50}")
     if all_ok:
         click.echo("✓ Validation PASSED")
-        click.echo(f"{'='*50}")
+        click.echo(f"{'=' * 50}")
         return 0
     else:
         click.echo("✗ Validation FAILED")
-        click.echo(f"{'='*50}")
+        click.echo(f"{'=' * 50}")
         sys.exit(1)
 
 
@@ -225,7 +225,7 @@ def benchmark(solver, size):
         mfg-benchmark -s neural
     """
     click.echo(f"Running benchmarks: solver={solver}, size={size}")
-    click.echo(f"{'='*50}\n")
+    click.echo(f"{'=' * 50}\n")
 
     # Define problem sizes
     sizes = {
@@ -246,7 +246,7 @@ def benchmark(solver, size):
 
         click.echo(f"Problem: Nx={nx}, Nt={nt}")
         click.echo(f"DOF: {nx * nt}")
-        click.echo(f"\n{'='*50}\n")
+        click.echo(f"\n{'=' * 50}\n")
 
         # Benchmark standard solver
         click.echo("Testing standard solver...")
@@ -261,7 +261,7 @@ def benchmark(solver, size):
         if hasattr(result, "iterations"):
             click.echo(f"Iterations: {result.iterations}")
 
-        click.echo(f"\n{'='*50}")
+        click.echo(f"\n{'=' * 50}")
         click.echo("✓ Benchmark completed")
 
     except Exception as e:
