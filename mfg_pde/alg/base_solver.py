@@ -37,12 +37,13 @@ class BaseMFGSolver(ABC):
         self._solution: Any | None = None
 
     @abstractmethod
-    def solve(self) -> Any:
+    def solve(self) -> Any:  # Concrete solvers should override with specific return type
         """
         Solve the MFG problem.
 
         Returns:
-            Solution object containing u(t,x), m(t,x) and metadata
+            SolverResult object containing u(t,x), m(t,x) and metadata.
+            Note: For backward compatibility, SolverResult supports tuple unpacking.
         """
 
     @abstractmethod
