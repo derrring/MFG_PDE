@@ -31,12 +31,14 @@ class BaseHJBSolver(BaseNumericalSolver):
         self.hjb_method_name = "BaseHJB"
 
     # Implementation of BaseMFGSolver abstract methods
-    def solve(self) -> Any:
+    def solve(self) -> Any:  # Returns SolverResult when called through MFG solver context
         """
         Solve the HJB equation.
 
-        This is a wrapper around solve_hjb_system for compatibility with the new interface.
-        Concrete implementations should override solve_hjb_system.
+        Note: HJB solvers are typically used through MFG fixed-point solvers rather
+        than standalone. The MFG solver calls solve_hjb_system() and wraps the result
+        in a SolverResult object. For backward compatibility, SolverResult supports
+        tuple unpacking: U, M, iterations, err_u, err_m = result
         """
         # This is a placeholder - specific HJB solvers will need proper implementation
         # based on how they're currently used in the MFG system
