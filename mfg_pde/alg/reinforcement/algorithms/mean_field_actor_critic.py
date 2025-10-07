@@ -273,7 +273,7 @@ class MeanFieldActorCritic:
 
     def __init__(
         self,
-        env,
+        env: Any,
         state_dim: int,
         action_dim: int,
         population_dim: int,
@@ -287,7 +287,7 @@ class MeanFieldActorCritic:
         max_grad_norm: float = 0.5,
         hidden_dims: list[int] | None = None,
         device: str | None = None,
-    ):
+    ) -> None:
         """
         Initialize Mean Field Actor-Critic.
 

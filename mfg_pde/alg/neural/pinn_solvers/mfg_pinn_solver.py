@@ -21,7 +21,7 @@ Key Features:
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -583,7 +583,7 @@ class MFGPINNSolver(PINNBase):
         else:
             return self.train_step_joint(interior_points, boundary_points, initial_points, data_points)
 
-    def solve(self, **kwargs) -> dict:
+    def solve(self, **kwargs: Any) -> dict:
         """
         Solve the complete MFG system.
 
