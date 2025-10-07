@@ -39,9 +39,8 @@ try:
 except ImportError:
     PLOTLY_AVAILABLE = False
 
+from mfg_pde.utils.logging import get_logger
 from mfg_pde.visualization import MFGMathematicalVisualizer
-
-from .logging import get_logger
 
 
 class NotebookReportError(Exception):
@@ -206,7 +205,7 @@ The Mean Field Game system is defined with the following parameters:
 
         # Format configuration nicely
         for key, value in config.items():
-            if isinstance(value, (int, float, str, bool)):
+            if isinstance(value, int | float | str | bool):
                 if key in ["sigma", "T", "coefCT"]:
                     # Add mathematical context for key parameters
                     if key == "sigma":
@@ -323,7 +322,7 @@ if hasattr(results['M'], 'shape'):
         for key, value in results.items():
             if isinstance(value, np.ndarray):
                 results_code += f"\n{key} = np.{value!r}"
-            elif isinstance(value, (dict, list)):
+            elif isinstance(value, dict | list):
                 results_code += f"\n{key} = {value!r}"
 
         nb.cells.append(new_code_cell(results_code))
