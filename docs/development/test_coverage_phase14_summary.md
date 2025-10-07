@@ -6,6 +6,8 @@
 **Final Achievement**: ~25% test coverage (+9%)
 **Time Spent**: ~2.25 hours
 
+> **📌 Historical Note**: This document describes test coverage work completed when the "simple API" (`solve_mfg()`, `create_mfg_problem()`) still existed in the codebase. **As of v1.4+, the simple API has been removed** and MFG_PDE now uses a two-level factory-based API. The tests described in this document for `simple.py` have been archived along with the module. This document is preserved for historical reference only.
+
 ---
 
 ## Executive Summary

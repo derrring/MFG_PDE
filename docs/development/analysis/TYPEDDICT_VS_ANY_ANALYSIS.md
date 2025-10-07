@@ -156,7 +156,7 @@ The constrained approach **educates developers** about type safety.
 
 **KEEP `**kwargs: Any`** for now, with these guidelines:
 
-1. **Use for multi-problem functions** like `validate_problem_parameters()` and `solve_mfg()`
+1. **Use for multi-problem functions** like `validate_problem_parameters()` and flexible configuration functions
 2. **Add defensive programming**:
    ```python
    def validate_parameters(**kwargs: Any) -> dict[str, Any]:
@@ -170,13 +170,13 @@ The constrained approach **educates developers** about type safety.
 
 3. **Document expected types clearly**:
    ```python
-   def solve_mfg(problem_type: str, **kwargs: Any) -> MFGResult:
+   def configure_solver(solver_type: str, **kwargs: Any) -> SolverConfig:
        """
        Args:
-           **kwargs: Problem parameters including:
-               domain_size (float): Spatial domain size
-               crowd_size (int): For crowd_dynamics problems
-               risk_aversion (float): For portfolio problems
+           **kwargs: Solver parameters including:
+               max_iterations (int): Maximum solver iterations
+               tolerance (float): Convergence tolerance
+               damping (float): Damping parameter for iterative methods
        """
    ```
 

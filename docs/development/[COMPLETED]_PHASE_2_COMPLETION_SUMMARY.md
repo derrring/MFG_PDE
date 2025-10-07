@@ -827,9 +827,12 @@ MFG_PDE is now the **first comprehensive open-source framework** supporting:
 **Migration Path**:
 Users can adopt Phase 2 features incrementally:
 ```python
-# Existing 1D code: unchanged
-from mfg_pde import solve_mfg
-result = solve_mfg("crowd_dynamics", domain_size=10)
+# Existing code using factory API: unchanged
+from mfg_pde import ExampleMFGProblem
+from mfg_pde.factory import create_fast_solver
+problem = ExampleMFGProblem(Nx=100, T=1.0)
+solver = create_fast_solver(problem, "fixed_point")
+result = solver.solve()
 
 # New 2D capabilities: opt-in
 from mfg_pde.geometry import TensorProductGrid

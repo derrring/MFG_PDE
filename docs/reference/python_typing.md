@@ -60,7 +60,7 @@ SolutionArray: TypeAlias = NDArray[np.float64]
 GridPoints: TypeAlias = tuple[int, ...]
 ParameterDict: TypeAlias = dict[str, float | int | str]
 
-def solve_mfg(
+def run_mfg_solver(
     initial_u: SolutionArray,
     grid_resolution: GridPoints,
     parameters: ParameterDict,
@@ -71,7 +71,7 @@ def solve_mfg(
 
 # ❌ LEGACY - Verbose and cluttered
 from typing import Optional, Callable, Dict, Tuple, Union
-def solve_mfg_old(
+def run_solver_old(
     initial_u: NDArray,
     grid_resolution: Tuple[int, ...],
     parameters: Dict[str, Union[float, int, str]],
@@ -166,30 +166,31 @@ def solve_problem(problem: MFGProblem) -> MFGResult:
 
 Structure your API to reveal complexity progressively. Not every user needs to see your full type system.
 
-### **Three-Layer Type Architecture**
+### **Two-Layer Type Architecture**
 
-#### **Layer 1: Simple Facade (90% of users)**
+#### **Layer 1: Factory API (95% of users - Researchers)**
 ```python
-# mfg_pde/__init__.py - Simple string-based configuration
-def solve_mfg(
-    problem_type: str,
-    domain_size: float = 1.0,
-    time_horizon: float = 1.0,
-    accuracy: str = "balanced"  # "fast" | "balanced" | "precise"
-) -> dict[str, Any]:
-    """Simple one-line solver for common use cases."""
+# mfg_pde/factory.py - Factory API for researchers
+from mfg_pde import MFGProblem
+
+def create_fast_solver(
+    problem: MFGProblem,
+    solver_type: str = "fixed_point",
+    backend: str = "auto"
+) -> FixedPointSolver:
+    """Factory function for fast solvers."""
     pass
 
-def solve_crowd_dynamics(
-    domain_bounds: tuple[float, float],
-    num_agents: int,
-    time_steps: int = 100
-) -> dict[str, Any]:
-    """Domain-specific simple interface."""
+def create_accurate_solver(
+    problem: MFGProblem,
+    solver_type: str = "fixed_point",
+    max_iterations: int = 500
+) -> FixedPointSolver:
+    """Factory function for accurate solvers."""
     pass
 ```
 
-#### **Layer 2: Core Objects (Advanced users)**
+#### **Layer 2: Core Classes (5% of users - Developers)**
 ```python
 # mfg_pde/core.py - Typed objects with clean interfaces
 class FixedPointSolver:
@@ -212,7 +213,7 @@ class MFGSolverConfig:
     solver_type: Literal["fixed_point", "newton", "quasi_newton"]
 ```
 
-#### **Layer 3: Advanced/Internal (Expert users)**
+**Advanced Features (Available to all researchers)**
 ```python
 # mfg_pde/types.py - Full internal type system
 class SpatialTemporalState(NamedTuple):
@@ -223,7 +224,7 @@ class SpatialTemporalState(NamedTuple):
     residual: float
     metadata: dict[str, Any]
 
-# mfg_pde/hooks.py - Expert customization
+# mfg_pde/hooks.py - Advanced customization for researchers
 class SolverHooks(Protocol):
     def on_iteration_start(self, state: SpatialTemporalState) -> None: ...
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None: ...
@@ -470,7 +471,7 @@ from typing import Optional, List, Dict, Tuple, Union, Callable, Any
 import numpy as np
 from numpy.typing import NDArray
 
-def solve_mfg_system(
+def run_mfg_system(
     initial_u: NDArray[np.float64],
     initial_m: NDArray[np.float64],
     domain_bounds: Tuple[float, float],
@@ -495,7 +496,7 @@ SolverConfig: TypeAlias = dict[str, float | int | str]
 IterationCallback: TypeAlias = Callable[[int, float], None]
 SolverResult: TypeAlias = tuple[SolutionArray, SolutionArray, dict[str, Any]]
 
-def solve_mfg_system(
+def run_mfg_system(
     initial_u: SolutionArray,
     initial_m: SolutionArray,
     domain_bounds: DomainBounds,

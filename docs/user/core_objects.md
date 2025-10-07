@@ -18,24 +18,6 @@ MFGProblem → FixedPointSolver → MFGResult
 
 ## Creating Problems
 
-### Using Problem Builders
-
-```python
-from mfg_pde import create_mfg_problem
-
-# Create problems with explicit control
-problem = create_mfg_problem("crowd_dynamics",
-                           domain=(0, 5),        # Custom domain
-                           time_horizon=2.0)     # Custom time horizon
-
-# Portfolio optimization with custom parameters
-problem = create_mfg_problem("portfolio_optimization",
-                           domain=(0, 10),
-                           time_horizon=1.0,
-                           risk_aversion=0.3,
-                           drift=0.05)
-```
-
 ### Custom Problem Definition
 
 ```python
@@ -248,14 +230,18 @@ benchmark.print_summary()
 ### Runtime Parameter Changes
 
 ```python
-# Create base problem
-problem = create_mfg_problem("crowd_dynamics", domain=(0, 5), crowd_size=100)
+# Create base problem using factory API
+from mfg_pde.factory import create_fast_solver
+
+problem = CustomCrowdProblem((0, 5), 2.0)
 
 # Solve with different parameters
-for crowd_size in [50, 100, 200, 500]:
-    modified_problem = problem.with_parameters(crowd_size=crowd_size)
-    result = solver.solve(modified_problem)
-    print(f"Crowd size {crowd_size}: {result.evacuation_time:.2f}s")
+for param_value in [0.5, 1.0, 1.5, 2.0]:
+    # Modify problem parameters as needed
+    modified_problem = problem  # Or create new instance with different params
+    solver = create_fast_solver(modified_problem, solver_type="fixed_point")
+    result = solver.solve()
+    print(f"Parameter {param_value}: {result.iterations} iterations")
 ```
 
 ### Domain and Time Modifications
@@ -314,30 +300,39 @@ convergence_analysis.plot_convergence_history()
 convergence_analysis.identify_convergence_issues()
 ```
 
-## Integration with Simple API
+## Using Factory API with Custom Problems
 
-You can mix the simple and core object APIs:
+Combine custom problems with factory convenience functions:
 
 ```python
-from mfg_pde import solve_mfg
-from mfg_pde.solvers import FixedPointSolver
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_fast_solver, create_accurate_solver
+import numpy as np
 
-# Start with simple API
-result_simple = solve_mfg("crowd_dynamics", crowd_size=200)
+# Define custom problem
+class CustomCrowdProblem(MFGProblem):
+    def __init__(self):
+        super().__init__(T=2.0, Nt=20, xmin=0.0, xmax=5.0, Nx=100)
 
-# Extract the problem for further analysis
-problem = result_simple.problem
+    def g(self, x):
+        return 0.5 * (x - 5.0)**2
 
-# Use core objects for detailed control
-custom_solver = (FixedPointSolver()
-                .with_tolerance(1e-8)
-                .with_adaptive_damping(True))
+    def rho0(self, x):
+        return np.exp(-10 * (x - 1.0)**2)
 
-result_detailed = custom_solver.solve(problem)
+problem = CustomCrowdProblem()
+
+# Use fast solver for quick results
+fast_solver = create_fast_solver(problem, solver_type="fixed_point")
+result_fast = fast_solver.solve()
+
+# Use accurate solver for precision
+accurate_solver = create_accurate_solver(problem, solver_type="fixed_point")
+result_accurate = accurate_solver.solve()
 
 # Compare results
-print(f"Simple API: {result_simple.iterations} iterations")
-print(f"Custom solver: {result_detailed.iterations} iterations")
+print(f"Fast solver: {result_fast.iterations} iterations")
+print(f"Accurate solver: {result_accurate.iterations} iterations")
 ```
 
 ## Performance Optimization
@@ -401,18 +396,30 @@ python examples/advanced/pinn_mfg_example.py
 python examples/advanced/primal_dual_constrained_example.py
 ```
 
-### **Quick Tier 2 Test:**
+### **Quick Core Objects Test:**
 
 ```python
-from mfg_pde import create_mfg_problem
-from mfg_pde.solvers import FixedPointSolver
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_fast_solver
+import numpy as np
 
-# Test Tier 2 API quickly
-problem = create_mfg_problem("crowd_dynamics", domain=(0, 3), crowd_size=150)
-solver = FixedPointSolver().with_tolerance(1e-5).with_max_iterations(100)
-result = solver.solve(problem)
+# Define simple test problem
+class SimpleCrowdProblem(MFGProblem):
+    def __init__(self):
+        super().__init__(T=1.0, Nt=10, xmin=0.0, xmax=3.0, Nx=30)
 
-print(f"Tier 2 test: {result.converged}, {result.iterations} iterations")
+    def g(self, x):
+        return 0.5 * (x - 3.0)**2
+
+    def rho0(self, x):
+        return np.exp(-10 * (x - 0.5)**2)
+
+# Test with factory API
+problem = SimpleCrowdProblem()
+solver = create_fast_solver(problem, solver_type="fixed_point")
+result = solver.solve()
+
+print(f"Core objects test: {result.converged}, {result.iterations} iterations")
 ```
 
 **Note:** All `examples/basic/` files now use current API. For legacy patterns, check `examples/advanced/` for older files.
