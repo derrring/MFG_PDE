@@ -218,7 +218,7 @@ class MazeConfig:
 def create_default_config(
     rows: int = 20,
     cols: int = 20,
-    algorithm: str = "recursive_backtracking",
+    algorithm: Literal["recursive_backtracking", "wilsons"] = "recursive_backtracking",
     **kwargs: Any,
 ) -> MazeConfig:
     """
