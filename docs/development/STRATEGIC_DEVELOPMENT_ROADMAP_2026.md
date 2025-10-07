@@ -1,9 +1,9 @@
 # MFG_PDE Strategic Development Roadmap 2026
 
-**Document Version**: 1.6
+**Document Version**: 1.7
 **Created**: September 28, 2025
 **Last Updated**: October 8, 2025
-**Status**: Active Strategic Planning Document - **PHASE 2 COMPLETED ✅** (2.1 Multi-Dimensional + 2.2 Stochastic MFG) | **PHASE 4 PLANNED** (Stochastic Differential Games)
+**Status**: Active Strategic Planning Document - **PHASE 2 COMPLETED ✅** (2.1 Multi-Dimensional + 2.2 Stochastic MFG) | **PHASE 4 PLANNED** (Stochastic Games + Information Geometry)
 **Supersedes**: CONSOLIDATED_ROADMAP_2025.md (archived)
 
 ## 🎯 **Executive Summary**
@@ -1000,6 +1000,165 @@ MFG_PDE will be the **only open-source framework** providing:
 - Quantitative validation: Non-asymptotic convergence rate estimation
 - Production-ready implementation: Numerical accuracy + computational efficiency
 
+### **4.6 Information-Geometric Methods Integration** (Q2 2027)
+**Goal**: Enhance existing optimization framework with information geometry perspective
+
+**Note**: Information geometry is NOT a separate top-level module, but rather a **geometric perspective** that enhances existing algorithms in `alg/optimization/`, `alg/neural/`, and `alg/reinforcement/`.
+
+#### **4.6.1 Metrics & Divergence Utilities** (2 weeks)
+
+**Location**: `mfg_pde/utils/metrics.py` (new utility module)
+
+**Deliverables**:
+```python
+from mfg_pde.utils.metrics import (
+    kullback_leibler,      # KL divergence computation
+    fisher_rao_distance,   # Fisher-Rao metric
+    alpha_divergence,      # α-divergences
+    # Wasserstein already in alg/optimization/
+)
+
+# Utility functions, used by optimization/neural/RL
+kl_div = kullback_leibler(mu, nu)
+fr_dist = fisher_rao_distance(mu, nu)
+```
+
+**Applications**:
+- KL regularization for robust control
+- Fisher information for sensitivity analysis
+- Divergence-based loss functions
+
+#### **4.6.2 Optimization Enhancements** (3 weeks)
+
+**Location**: `mfg_pde/alg/optimization/` (enhance existing module)
+
+**New Solvers**:
+
+1. **JKO Scheme** (`optimal_transport/jko_solver.py`):
+   ```python
+   # Jordan-Kinderlehrer-Otto scheme (Wasserstein implicit Euler)
+   from mfg_pde.alg.optimization import JKOSolver
+
+   jko_solver = JKOSolver(
+       energy_functional=energy,
+       initial_measure=m0,
+       time_step=0.01
+   )
+   trajectory = jko_solver.run()  # Wasserstein gradient flow
+   ```
+
+2. **KL-Regularized MFG** (`variational_solvers/kl_regularized_solver.py`):
+   ```python
+   # Entropic regularization for robust MFG
+   from mfg_pde.alg.optimization import KLRegularizedMFGSolver
+
+   solver = KLRegularizedMFGSolver(
+       problem=mfg_problem,
+       regularization_weight=0.1,
+       reference_measure=m_ref
+   )
+   result = solver.solve()  # Robust equilibrium
+   ```
+
+3. **Schrödinger Bridge** (`optimal_transport/schrodinger_bridge.py`):
+   ```python
+   # Entropic optimal transport with path constraints
+   from mfg_pde.alg.optimization import SchrodingerBridgeSolver
+
+   bridge_solver = SchrodingerBridgeSolver(
+       initial_measure=mu0,
+       final_measure=mu1,
+       entropy_weight=0.01
+   )
+   path = bridge_solver.solve()
+   ```
+
+**Integration**: Builds on existing `WassersteinMFGSolver` and `SinkhornSolver`
+
+#### **4.6.3 Natural Gradient Methods** (3 weeks)
+
+**Core Utilities**: `mfg_pde/utils/optimization/natural_gradient.py`
+```python
+from mfg_pde.utils.optimization import (
+    fisher_information_matrix,    # Compute Fisher information
+    natural_gradient,              # Precondition gradient by F^{-1}
+    mirror_descent_step,           # Bregman-based update
+)
+```
+
+**Neural Methods**: `mfg_pde/alg/neural/optimizers/natural_gradient.py`
+```python
+from mfg_pde.alg.neural.optimizers import NaturalGradientPINN
+
+# Natural gradient for physics-informed neural networks
+pinn_optimizer = NaturalGradientPINN(
+    network=pinn_model,
+    fisher_damping=1e-3,
+    cg_iterations=10
+)
+```
+
+**Reinforcement Learning**: `mfg_pde/alg/reinforcement/natural_policy_gradient.py`
+```python
+from mfg_pde.alg.reinforcement import NaturalPolicyGradient
+
+# Natural policy gradient for mean field RL
+npg = NaturalPolicyGradient(
+    policy=policy,
+    use_conjugate_gradient=True
+)
+result = npg.update(trajectories)
+```
+
+**Benefits**:
+- Faster convergence (preconditioned by Fisher information)
+- Invariant to reparametrization
+- Automatic constraint handling (positivity, mass conservation)
+
+#### **4.6.4 Documentation & Examples** (1 week)
+
+**Documentation Updates**:
+- `alg/optimization/README.md`: Add information-geometric interpretation
+- `docs/theory/information_geometry_mfg.md`: ✅ Already complete (reference)
+- Tutorial notebook: "Information Geometry Perspective on MFG Optimization"
+
+**Examples**:
+- KL-regularized robust control example
+- Natural gradient for PINN training
+- Comparison: Standard vs natural gradient convergence
+
+#### **4.6.5 Research Opportunities**
+
+**Publication Strategy**:
+- **Method Paper**: "Information-Geometric Optimization for Mean Field Games"
+- **Application Paper**: "Robust Mean Field Control via KL Regularization"
+- **Software Paper**: "MFG_PDE: Information Geometry Implementation"
+
+**Novel Contributions**:
+- First open-source IG-enhanced MFG framework
+- Natural gradient for PINN+MFG
+- JKO+Sinkhorn hybrid methods
+
+#### **4.6.6 Implementation Timeline**
+
+**Week 1-2**: Metrics & divergences (`utils/metrics.py`)
+**Week 3-5**: JKO, KL-regularized, Schrödinger bridge solvers
+**Week 6-8**: Natural gradient utilities and neural/RL integration
+**Week 9**: Documentation, examples, tutorials
+
+**Total**: 9 weeks (2-2.5 months)
+
+**Success Metrics**:
+- JKO solver converges with provable energy dissipation
+- KL regularization achieves robust equilibria
+- Natural gradient shows 2-5× faster convergence vs standard gradient
+- Complete tutorial demonstrating IG perspective
+
+**Dependencies**:
+- ✅ Existing Wasserstein/Sinkhorn infrastructure (`alg/optimization/`)
+- ✅ Fisher information already used in neural methods
+- ⬜ New: Conjugate gradient for Fisher matrix inversion
+
 ---
 
 ## **Phase 5: Community & Ecosystem (2027-2028)**
@@ -1186,6 +1345,7 @@ MFG_PDE will be the **only open-source framework** providing:
 - v1.4 (2025-10-06): Phase 2.2 Stochastic MFG Extensions completed
 - v1.5 (2025-10-06): Phase 2.1 Multi-Dimensional Framework completed (PR #92)
 - v1.6 (2025-10-08): Phase 4 Stochastic Differential Games & Convergence Analysis added
+- v1.7 (2025-10-08): Phase 4.6 Information Geometry integration (distributed approach)
 
 **Related Documents**:
 - `[ARCHIVED]_CONSOLIDATED_ROADMAP_2025.md` - Previous roadmap (completed achievements)
