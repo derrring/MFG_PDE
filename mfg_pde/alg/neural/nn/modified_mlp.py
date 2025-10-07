@@ -96,7 +96,7 @@ class ModifiedMLP(nn.Module):
         # Initialize weights
         self._initialize_weights()
 
-    def _get_activation_function(self, activation: str):
+    def _get_activation_function(self, activation: str) -> object:
         """Get activation function by name."""
         activations = {
             "tanh": torch.tanh,
@@ -111,7 +111,7 @@ class ModifiedMLP(nn.Module):
 
         return activations[activation]
 
-    def _initialize_weights(self):
+    def _initialize_weights(self) -> None:
         """Initialize weights with physics-aware scheme."""
         for layer in self.layers:
             if isinstance(layer, nn.Linear):
