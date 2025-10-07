@@ -81,7 +81,7 @@ class Cell:
             return False
         return self.row == other.row and self.col == other.col
 
-    def link(self, other: Cell, bidirectional: bool = True):
+    def link(self, other: Cell, bidirectional: bool = True) -> None:
         """
         Create passage to another cell.
 
@@ -423,7 +423,7 @@ class PerfectMazeGenerator:
 
                 current_row_sets = next_row_sets
 
-    def _growing_tree(self, selection_strategy: str = "mixed"):
+    def _growing_tree(self, selection_strategy: str = "mixed") -> None:
         """
         Growing Tree algorithm - generalized framework for maze generation.
 
