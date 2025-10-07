@@ -389,6 +389,6 @@ if TORCH_AVAILABLE:
 
 else:
     # Placeholder classes when PyTorch is not available
-    class BaseNeuralOperator:
+    class BaseNeuralOperator:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("Neural operators require PyTorch")

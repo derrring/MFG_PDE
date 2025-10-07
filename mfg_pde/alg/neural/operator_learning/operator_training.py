@@ -601,14 +601,14 @@ if TORCH_AVAILABLE:
 
 else:
     # Placeholder classes when PyTorch is not available
-    class OperatorDataset:
+    class OperatorDataset:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("Operator training requires PyTorch")
 
-    class OperatorTrainingManager:
+    class OperatorTrainingManager:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("Operator training requires PyTorch")
 
-    class MFGDataGenerator:
+    class MFGDataGenerator:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("Data generation requires PyTorch")
