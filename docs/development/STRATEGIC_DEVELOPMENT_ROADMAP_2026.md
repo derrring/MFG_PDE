@@ -461,6 +461,353 @@ webapp.deploy_solver(problem_config, cloud_backend="aws")
 ## **Phase 4: Stochastic Differential Games & Convergence Analysis (Q1-Q2 2027)**
 *Priority: HIGH - Research differentiation and theoretical foundations*
 
+### **4.0 Mathematical & Computational Foundations**
+**Goal**: Build comprehensive stochastic calculus infrastructure for advanced stochastic differential games
+
+#### **4.0.1 Stochastic Calculus Library**
+
+**Itô Calculus Extensions** ✅ *Partially Complete*:
+```python
+# Current: Basic Wiener processes (OU, GBM, CIR, Jump Diffusion)
+# Needed: Advanced Itô integration and calculus
+
+from mfg_pde.stochastic.calculus import (
+    ItoIntegral,           # ∫f(t,ω) dW_t with multiple integration schemes
+    QuadraticVariation,    # [W,W]_t = t computation and verification
+    ItoFormula,            # d[f(W_t)] = f'(W_t)dW_t + (1/2)f''(W_t)dt
+    MultidimensionalIto,   # Vector-valued Itô processes
+)
+
+# Itô integral with multiple schemes
+ito_integral = ItoIntegral(
+    integrand=lambda t, w: np.sin(w),  # f(t, W_t)
+    wiener_process=wiener,
+    method="euler_maruyama"  # or "milstein", "runge_kutta"
+)
+integral_value = ito_integral.compute(T=1.0, num_steps=1000)
+
+# Multidimensional Itô formula
+f = lambda x: x[0]**2 + x[1]**2  # f: ℝ² → ℝ
+df = MultidimensionalIto.apply(f, drift, diffusion, dimension=2)
+```
+
+**Stratonovich Calculus**:
+```python
+from mfg_pde.stochastic.calculus import (
+    StratonovichIntegral,    # ∫f(t,ω) ∘ dW_t (symmetric integration)
+    ItoToStratonovich,       # Convert Itô SDE to Stratonovich form
+    StratonovichToIto,       # Convert back for numerical solving
+)
+
+# Stratonovich integral (useful for geometry, rough paths)
+strat_integral = StratonovichIntegral(integrand, wiener_process)
+value = strat_integral.compute(T=1.0)
+
+# Conversion utilities
+ito_sde = ItoSDE(drift=b, diffusion=sigma)
+strat_sde = ItoToStratonovich.convert(ito_sde)  # Physical interpretation
+```
+
+**Malliavin Calculus** (Advanced):
+```python
+from mfg_pde.stochastic.malliavin import (
+    MalliavinDerivative,     # D_t F (derivative operator in Wiener space)
+    DivergenceOperator,      # δ(u) (adjoint of D, Skorohod integral)
+    OrnsteinUhlenbeckSemigroup,  # P_t (regularity analysis)
+    IntegrationByParts,      # E[F ∫u dW] = E[∫(D_t F)u dt]
+)
+
+# Malliavin derivative for sensitivity analysis
+F = lambda W: np.exp(W[1.0])  # Terminal functional
+D_F = MalliavinDerivative(F, wiener_process)
+sensitivity = D_F.compute(t=0.5)  # ∂F/∂W_0.5
+
+# Application: Greeks in finance (delta, gamma via Malliavin)
+from mfg_pde.stochastic.malliavin import FinancialGreeks
+greeks = FinancialGreeks(option_payoff, diffusion_model)
+delta = greeks.delta()  # Computed via Malliavin calculus
+gamma = greeks.gamma()  # Second-order sensitivity
+```
+
+#### **4.0.2 Lévy Processes & Jump Diffusions**
+
+**Lévy Process Library**:
+```python
+from mfg_pde.stochastic.levy import (
+    PoissonProcess,          # N_t (standard Poisson)
+    CompoundPoissonProcess,  # ∑_{i=1}^{N_t} Y_i (random jump sizes)
+    LevyProcess,             # General Lévy process (Lévy-Khintchine)
+    AlphaStableProcess,      # Stable processes (heavy tails, α-stable)
+    GammaProcess,            # Subordinator (non-decreasing Lévy)
+    VarianceGammaProcess,    # VG process (finance applications)
+    LevyMeasure,             # ν(dx) specification and simulation
+)
+
+# Compound Poisson with Gaussian jumps
+jump_dist = scipy.stats.norm(loc=0, scale=0.5)
+compound_poisson = CompoundPoissonProcess(
+    intensity=10.0,         # λ (jump rate)
+    jump_distribution=jump_dist
+)
+trajectory = compound_poisson.simulate(T=1.0, num_samples=1000)
+
+# General Lévy process via Lévy-Khintchine representation
+levy_measure = LevyMeasure.from_formula(
+    lambda x: np.exp(-x**2) / x**2,  # ν(dx) = e^{-x²}/x² dx
+    truncation_level=1e-6
+)
+levy_process = LevyProcess(
+    drift=0.1,
+    diffusion=0.2,
+    levy_measure=levy_measure
+)
+
+# Alpha-stable process (heavy-tailed, models extreme events)
+alpha_stable = AlphaStableProcess(
+    alpha=1.5,    # Stability parameter ∈ (0,2]
+    beta=0.0,     # Skewness ∈ [-1,1]
+    scale=1.0,
+    location=0.0
+)
+```
+
+**Jump-Diffusion MFG**:
+```python
+from mfg_pde.stochastic.jump_diffusion import (
+    JumpDiffusionMFG,
+    PIDEHJBSolver,           # Partial Integro-Differential Equation solver
+    JumpFokkerPlanckSolver,  # FP with jump terms
+)
+
+# Jump-diffusion MFG system
+# dX_t = α dt + σ dW_t + dJ_t  (J_t = compound Poisson)
+#
+# PIDE for HJB:
+#   ∂u/∂t + H(x,∇u) + σ²/2 Δu + ∫[u(x+y) - u(x)] ν(dy) = 0
+
+jd_problem = JumpDiffusionMFG(
+    base_problem=mfg_problem,
+    jump_process=compound_poisson,
+    jump_kernel=lambda x, y: x + y  # Post-jump state
+)
+
+# PIDE solver with finite difference + integral term
+pide_solver = PIDEHJBSolver(
+    jd_problem,
+    quadrature_rule="gauss_legendre",  # For ∫...ν(dy)
+    num_quadrature_points=50
+)
+result = pide_solver.solve()
+```
+
+#### **4.0.3 SDE/SPDE Numerical Methods**
+
+**Advanced SDE Solvers**:
+```python
+from mfg_pde.stochastic.sde import (
+    EulerMaruyamaMethod,     # Basic O(Δt^{1/2}) strong convergence
+    MilsteinMethod,          # O(Δt) strong convergence (uses Lévy area)
+    StochasticRungeKutta,    # High-order explicit methods
+    ImplicitMilstein,        # For stiff SDEs
+    AdaptiveStepSize,        # Error-controlled time stepping
+    MultiLevelMonteCarlo,    # MLMC for variance reduction
+)
+
+# Milstein scheme (requires derivative of diffusion)
+sde = StochasticDifferentialEquation(
+    drift=lambda t, x: -x,
+    diffusion=lambda t, x: 0.5 * x,
+    diffusion_derivative=lambda t, x: 0.5  # ∂σ/∂x
+)
+milstein = MilsteinMethod(sde, dt=0.01)
+trajectory = milstein.solve(x0=1.0, T=1.0)
+
+# Adaptive step size for accuracy control
+adaptive_solver = AdaptiveStepSize(
+    sde=sde,
+    base_method="milstein",
+    tolerance=1e-4,
+    min_dt=1e-5,
+    max_dt=0.1
+)
+trajectory, timesteps = adaptive_solver.solve(x0=1.0, T=1.0)
+
+# Multilevel Monte Carlo for efficient expectation estimation
+mlmc = MultiLevelMonteCarlo(
+    sde=sde,
+    num_levels=5,
+    samples_per_level=[1000, 500, 250, 125, 64]
+)
+expectation, variance = mlmc.estimate(functional=lambda x: x[-1]**2)
+```
+
+**SPDE Numerical Methods**:
+```python
+from mfg_pde.stochastic.spde import (
+    StochasticHeatEquation,   # ∂u/∂t = Δu + noise
+    WalshDalangSPDE,          # General parabolic SPDE framework
+    FiniteElementSPDE,        # Spatial discretization with FEM
+    SpectralGalerkinSPDE,     # Fourier/spectral methods
+    StochasticCrankNicolson,  # Implicit time stepping
+)
+
+# Stochastic heat equation: ∂u/∂t = Δu + σ Ẇ(t,x)
+spde = StochasticHeatEquation(
+    domain=Domain1D(0, 1),
+    diffusion_coeff=0.01,
+    noise_intensity=0.1,
+    initial_condition=lambda x: np.sin(np.pi * x)
+)
+
+# Spectral Galerkin method (Fourier expansion)
+spectral_solver = SpectralGalerkinSPDE(
+    spde=spde,
+    num_modes=50,           # Truncation in Fourier space
+    time_integrator="exponential_euler"
+)
+solution = spectral_solver.solve(T=1.0, num_timesteps=100)
+
+# Finite element method for complex geometries
+fem_solver = FiniteElementSPDE(
+    spde=spde,
+    mesh=triangular_mesh,
+    element_type="P1",      # Linear elements
+    stabilization="SUPG"    # For convection-dominated
+)
+solution = fem_solver.solve(T=1.0, dt=0.01)
+```
+
+#### **4.0.4 Rough Path Theory** (Advanced)
+
+**Rough Paths for Low-Regularity SDEs**:
+```python
+from mfg_pde.stochastic.rough_paths import (
+    RoughPath,               # (X, 𝕏) iterated integrals
+    LevyArea,                # 𝕏_{s,t} = ∫_s^t (W_r - W_s) ⊗ dW_r
+    SignatureMethod,         # Truncated signature for controlled paths
+    RoughPathSDE,            # SDE driven by rough path
+)
+
+# Construct enhanced Brownian motion (X, 𝕏)
+wiener = WienerProcess(dimension=2)
+levy_area = LevyArea.from_wiener(wiener, approximation="Fourier")
+rough_wiener = RoughPath(path=wiener, levy_area=levy_area)
+
+# Solve SDE driven by rough path (handles low regularity)
+rough_sde = RoughPathSDE(
+    drift=lambda x: -x,
+    diffusion=lambda x: np.sqrt(1 + x**2),
+    rough_driver=rough_wiener,
+    regularity=1/3  # α-Hölder continuity
+)
+solution = rough_sde.solve(x0=1.0, T=1.0)
+
+# Signature method for feature extraction
+signature = SignatureMethod(truncation_level=4)
+features = signature.compute(trajectory)  # (1, X, 𝕏, ...)
+```
+
+#### **4.0.5 Stochastic Analysis Utilities**
+
+**Measure Theory & Weak Convergence**:
+```python
+from mfg_pde.stochastic.measures import (
+    WassersteinDistance,     # W_p(μ, ν) in probability measure space
+    WeakConvergence,         # μ_n → μ verification
+    TightnessCheck,          # Prohorov's theorem conditions
+    SkorohodSpace,           # D[0,T] càdlàg function space
+)
+
+# Wasserstein distance between empirical measures
+mu_N = EmpiricalMeasure(samples_1)
+nu_N = EmpiricalMeasure(samples_2)
+W2_distance = WassersteinDistance.compute(mu_N, nu_N, p=2)
+
+# Weak convergence verification for N-player convergence
+convergence_test = WeakConvergence(
+    sequence_of_measures=[mu_10, mu_20, mu_50, mu_100],
+    candidate_limit=mu_mfg
+)
+is_convergent = convergence_test.verify(tolerance=1e-3)
+```
+
+**Stochastic Filtering & Estimation**:
+```python
+from mfg_pde.stochastic.filtering import (
+    KalmanBucy,              # Linear Gaussian filtering
+    ExtendedKalmanFilter,    # Nonlinear filtering (EKF)
+    ParticleFilter,          # Sequential Monte Carlo
+    ZakaïEquation,           # Unnormalized conditional density
+)
+
+# Kalman-Bucy filter for linear stochastic system
+# dX_t = A X_t dt + B dW_t (signal)
+# dY_t = C X_t dt + D dV_t (observation)
+
+kalman = KalmanBucy(
+    signal_dynamics=(A, B),
+    observation_model=(C, D),
+    initial_mean=x0,
+    initial_covariance=P0
+)
+filtered_estimate = kalman.filter(observations, T=1.0)
+
+# Particle filter for nonlinear filtering
+particle_filter = ParticleFilter(
+    num_particles=1000,
+    state_dynamics=state_sde,
+    observation_model=observation_function,
+    resampling_threshold=0.5
+)
+filtered_trajectory = particle_filter.run(observations)
+```
+
+#### **4.0.6 Implementation Timeline & Dependencies**
+
+**Phase 4.0 Breakdown** (Foundational, before 4.1-4.4):
+
+**Week 1-2: Itô & Stratonovich Calculus**
+- Itô integral with Euler-Maruyama, Milstein
+- Stratonovich integral and conversion utilities
+- Multidimensional Itô formula
+- **Deliverable**: `mfg_pde/stochastic/calculus/` module
+
+**Week 3-4: Lévy Processes & Jump Diffusions**
+- Compound Poisson, Alpha-stable processes
+- Lévy measure simulation and truncation
+- PIDE solver for jump-diffusion HJB
+- **Deliverable**: `mfg_pde/stochastic/levy/` module
+
+**Week 5-6: Advanced SDE/SPDE Solvers**
+- Milstein, Stochastic Runge-Kutta
+- Adaptive step size control
+- Multilevel Monte Carlo
+- Spectral Galerkin for SPDE
+- **Deliverable**: `mfg_pde/stochastic/sde/` and `mfg_pde/stochastic/spde/` modules
+
+**Week 7-8 (Optional): Rough Paths & Advanced Topics**
+- Rough path construction (Lévy area)
+- Signature methods
+- Stochastic filtering (Kalman-Bucy, particle filter)
+- **Deliverable**: `mfg_pde/stochastic/rough_paths/` module
+
+**Dependencies**:
+- ✅ **Current**: Basic Wiener processes (OU, GBM, CIR, Jump Diffusion) - 531 lines
+- ✅ **Current**: Functional calculus foundation - 532 lines
+- ⬜ **Needed**: Advanced integration schemes (Milstein, Runge-Kutta)
+- ⬜ **Needed**: Lévy measure simulation and quadrature
+- ⬜ **Needed**: PIDE solvers with integral operators
+- ⬜ **Needed**: SPDE spatial discretization (FEM, spectral)
+
+**Success Metrics**:
+- Strong convergence rates verified: Euler O(Δt^{1/2}), Milstein O(Δt)
+- Jump-diffusion PIDE solver functional with quadrature accuracy
+- SPDE solver handles both additive and multiplicative noise
+- Rough path theory validates for α-Hölder regularity
+- Integration with Phase 4.1-4.4 (N-player games use advanced SDE solvers)
+
+---
+
 ### **4.1 Finite N-Player Stochastic Differential Games**
 **Goal**: Bridge between N-player games and MFG limit with convergence analysis
 
