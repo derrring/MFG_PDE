@@ -75,7 +75,7 @@ class PopulationState:
         self.smoothing = smoothing
         self.density_histogram = np.zeros(maze_shape, dtype=np.float32)
 
-    def update(self, agent_positions: list[tuple[float, float]]):
+    def update(self, agent_positions: list[tuple[float, float]]) -> None:
         """Update density from continuous agent positions."""
         self.density_histogram.fill(0)
 

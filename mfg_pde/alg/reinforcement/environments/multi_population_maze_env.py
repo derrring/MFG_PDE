@@ -137,7 +137,7 @@ class MultiPopulationState:
             type_id: np.zeros(maze_shape, dtype=np.float32) for type_id in agent_types
         }
 
-    def update_from_positions(self, positions: dict[str, list[tuple[int, int]]], smoothing: float = 0.1):
+    def update_from_positions(self, positions: dict[str, list[tuple[int, int]]], smoothing: float = 0.1) -> None:
         """
         Update population distributions from agent positions.
 
@@ -617,6 +617,6 @@ class MultiPopulationMazeEnvironment:
         """Get current multi-population state."""
         return self.multi_pop_state
 
-    def render(self, mode: str = "human"):
+    def render(self, mode: str = "human") -> None:
         """Render the environment (placeholder)."""
         # TODO: Implement visualization
