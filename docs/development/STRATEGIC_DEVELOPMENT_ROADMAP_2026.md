@@ -1,9 +1,9 @@
 # MFG_PDE Strategic Development Roadmap 2026
 
-**Document Version**: 1.5
+**Document Version**: 1.6
 **Created**: September 28, 2025
-**Last Updated**: October 6, 2025
-**Status**: Active Strategic Planning Document - **PHASE 2 COMPLETED ✅** (2.1 Multi-Dimensional + 2.2 Stochastic MFG)
+**Last Updated**: October 8, 2025
+**Status**: Active Strategic Planning Document - **PHASE 2 COMPLETED ✅** (2.1 Multi-Dimensional + 2.2 Stochastic MFG) | **PHASE 4 PLANNED** (Stochastic Differential Games)
 **Supersedes**: CONSOLIDATED_ROADMAP_2025.md (archived)
 
 ## 🎯 **Executive Summary**
@@ -458,22 +458,219 @@ webapp.deploy_solver(problem_config, cloud_backend="aws")
 - **Publication Exports**: High-resolution PNG, SVG, PDF outputs
 - **VR/AR Capability**: WebXR integration for immersive visualization
 
-## **Phase 4: Community & Ecosystem (2027)**
+## **Phase 4: Stochastic Differential Games & Convergence Analysis (Q1-Q2 2027)**
+*Priority: HIGH - Research differentiation and theoretical foundations*
+
+### **4.1 Finite N-Player Stochastic Differential Games**
+**Goal**: Bridge between N-player games and MFG limit with convergence analysis
+
+**Mathematical Framework**:
+```
+N-Player Game System:
+  dXᵢ = αᵢ(t, Xᵢ, μᴺ) dt + σ dWᵢ + γ dW⁰,  i = 1,...,N
+
+  HJB for Player i:
+    ∂Vᵢ/∂t + Hᵢ(x, ∇Vᵢ, μᴺ) + σ²/2 ΔVᵢ + γ²/2 E[Δ_x Vᵢ | W⁰] = 0
+
+  Nash Equilibrium: (α₁*, ..., αₙ*) satisfies optimality for all i
+```
+
+**Technical Components**:
+- **Coupled HJB System Solver**: Solve N coupled HJB equations simultaneously
+- **Empirical Measure Dynamics**: μᴺ = (1/N)∑ᵢ δ_Xᵢ evolution tracking
+- **Nash Equilibrium Verification**: Multi-player optimality condition checking
+- **Idiosyncratic + Common Noise**: σ dWᵢ (individual) + γ dW⁰ (common)
+
+**Implementation**:
+```python
+# Target N-Player Game Interface
+from mfg_pde.stochastic.n_player import NPlayerStochasticGame, NashEquilibriumSolver
+
+# Define N-player game
+game = NPlayerStochasticGame(
+    N=100,  # Number of players
+    idiosyncratic_noise=0.3,  # σ (individual volatility)
+    common_noise=0.1,         # γ (market volatility)
+    interaction_strength=0.5   # Coupling parameter
+)
+
+# Solve for Nash equilibrium
+nash_solver = NashEquilibriumSolver(game, method="policy_iteration")
+result = nash_solver.solve()  # V₁*, ..., Vₙ* and optimal controls
+
+# Extract Nash equilibrium strategies
+alpha_star = result.equilibrium_strategies  # (α₁*, ..., αₙ*)
+```
+
+**Timeline**: 6-8 weeks
+**Success Metrics**:
+- Solve 50-100 player games with convergence guarantees
+- Nash equilibrium verification with ε < 10⁻⁴
+- Integration with existing stochastic MFG framework
+
+### **4.2 Non-Asymptotic Convergence Rate Analysis**
+**Goal**: Quantitative convergence bounds |V^N - V^MFG| as N → ∞
+
+**Mathematical Framework**:
+```
+Convergence Rate Theorem:
+  |V^N(t,x) - V^MFG(t,x)| ≤ C/√N
+
+  where C depends on:
+    - Lipschitz constants of dynamics/Hamiltonian
+    - Regularity of solutions (W^{2,∞} norms)
+    - Interaction kernel smoothness
+```
+
+**Technical Components**:
+- **Error Estimator**: Compute |V^N - V^MFG| for varying N
+- **Rate Fitting**: Empirical convergence rate determination (C/N^α)
+- **Confidence Intervals**: Bootstrap/subsampling for statistical validation
+- **Comparison with Theory**: Validate against analytical bounds
+
+**Implementation**:
+```python
+# Target Convergence Analysis Interface
+from mfg_pde.stochastic.convergence import ConvergenceAnalyzer
+
+# Create analyzer for convergence study
+analyzer = ConvergenceAnalyzer(
+    problem=stochastic_problem,
+    N_values=[10, 20, 50, 100, 200, 500],  # Player counts to test
+    monte_carlo_samples=100                 # Statistical averaging
+)
+
+# Run convergence analysis
+convergence_result = analyzer.analyze()
+
+# Results include:
+# - Empirical rate: |V^N - V^MFG| ~ C/N^α (fitted α)
+# - Confidence intervals for α
+# - Comparison with theoretical bound (α = 0.5)
+# - Visualization of convergence curve
+```
+
+**Timeline**: 4-6 weeks
+**Success Metrics**:
+- Empirical validation of 1/√N convergence rate
+- Statistical confidence intervals for rate estimates
+- Publication-ready convergence analysis tools
+
+### **4.3 Regime-Switching Dynamics**
+**Goal**: Piecewise deterministic processes with Markov chain modulation
+
+**Mathematical Framework**:
+```
+Regime-Switching MFG:
+  State: (x, θ) ∈ ℝᵈ × {1,...,K}  (continuous state + discrete regime)
+
+  Dynamics: dx = α(t, x, m, θ) dt + σ(θ) dW
+            θ ~ Markov chain with rate matrix Q
+
+  HJB: ∂u_θ/∂t + H_θ(x, ∇u_θ, m_θ) + ∑_k Q_θk (u_k - u_θ) = 0
+  FP:  ∂m_θ/∂t - div(m_θ ∇_p H_θ) + ∑_k (Q_kθ m_k - Q_θk m_θ) = 0
+```
+
+**Applications**:
+- **Financial Markets**: Bull/bear regime switching
+- **Epidemic Modeling**: Seasonal variation in transmission
+- **Energy Markets**: Peak/off-peak pricing regimes
+
+**Implementation**:
+```python
+# Target Regime-Switching Interface
+from mfg_pde.stochastic.regime_switching import RegimeSwitchingMFG, MarkovChain
+
+# Define regime transition matrix
+Q = np.array([[-0.1, 0.1], [0.2, -0.2]])  # 2-regime system
+regimes = MarkovChain(transition_rate_matrix=Q)
+
+# Create regime-switching problem
+rs_problem = RegimeSwitchingMFG(
+    base_problem=mfg_problem,
+    regimes=regimes,
+    regime_dependent_params={
+        'sigma': [0.2, 0.4],  # Low/high volatility regimes
+        'lambda': [1.0, 2.0]  # Different running costs
+    }
+)
+
+# Solve coupled system
+solver = create_solver(rs_problem, method="regime_switching_fp")
+result = solver.solve()  # u₁, u₂, m₁, m₂ for both regimes
+```
+
+**Timeline**: 4-6 weeks
+**Success Metrics**:
+- 2-4 regime systems solved efficiently
+- Regime transition dynamics captured correctly
+- Application examples in finance/epidemics
+
+### **4.4 Mean Field Games of Controls (MFGC)**
+**Goal**: Control interaction through distribution of control actions
+
+**Mathematical Framework**:
+```
+MFGC Formulation:
+  State dynamics: dx = α dt + σ dW
+
+  Control distribution: ν_t = law of α_t (controls themselves interact)
+
+  HJB: ∂u/∂t + inf_α { α·∇u + L(x, α, ν_t) } = 0
+  FP:  ∂m/∂t - div(m α*(x, ∇u, ν_t)) = 0
+
+  Fixed Point: ν_t = law of α*(·, ∇u, ν_t) under measure m_t
+```
+
+**Applications**:
+- **Energy Markets**: Generator dispatch coordination
+- **Autonomous Vehicles**: Speed/route choice interaction
+- **Advertising**: Budget allocation competition
+
+**Timeline**: 6-8 weeks (lower priority)
+**Success Metrics**:
+- MFGC solver for benchmark problems
+- Control distribution convergence verification
+- Application example implementation
+
+### **4.5 Research Opportunities & Strategic Positioning**
+
+**Frontier Research Directions**:
+1. **Master Equation Formulation**: Wasserstein space PDE (foundation exists via functional calculus)
+2. **Non-Markovian Extensions**: Path-dependent interactions and delay equations
+3. **Multi-Population Games**: Heterogeneous agent types with cross-population interaction
+4. **Graphon MFG**: Network structure + mean field limits
+
+**Publication Strategy**:
+- **Method Paper**: "Non-Asymptotic Convergence Rates for Stochastic Mean Field Games"
+- **Application Paper**: "Regime-Switching MFG for Financial Market Modeling"
+- **Software Paper**: "MFG_PDE: A Comprehensive Framework for Stochastic Differential Games"
+
+**Competitive Advantage**:
+MFG_PDE will be the **only open-source framework** providing:
+- Complete spectrum: N-player games → MFG limit with convergence analysis
+- Stochastic extensions: Common noise, regime-switching, control interaction
+- Quantitative validation: Non-asymptotic convergence rate estimation
+- Production-ready implementation: Numerical accuracy + computational efficiency
+
+---
+
+## **Phase 5: Community & Ecosystem (2027-2028)**
 *Priority: MEDIUM - Long-term sustainability*
 
-### **4.1 Educational Platform Development**
+### **5.1 Educational Platform Development**
 - **University Integration**: Course materials and assignments
 - **Interactive Tutorials**: Guided learning with immediate feedback
 - **Workshop Materials**: Advanced training for researchers
 - **Certification Program**: MFG computational competency certification
 
-### **4.2 Industry Partnership Program**
+### **5.2 Industry Partnership Program**
 - **Commercial Applications**: Real-world problem solving partnerships
 - **Consulting Services**: Expert deployment and optimization
 - **Custom Development**: Industry-specific solver extensions
 - **Training Programs**: Professional development workshops
 
-### **4.3 Open Source Governance**
+### **5.3 Open Source Governance**
 - **Community Contribution Guidelines**: Clear development processes
 - **Plugin Architecture**: Third-party extension framework
 - **Governance Structure**: Transparent decision-making processes
@@ -488,6 +685,8 @@ webapp.deploy_solver(problem_config, cloud_backend="aws")
 | **2D Problems** | Research demos | 10⁶ points/<30s | 10⁷ points/<2min |
 | **GPU Acceleration** | 10-100× speedup | Optimized training | Multi-GPU scaling |
 | **Memory Efficiency** | <2GB standard | <4GB large-scale | <8GB enterprise |
+| **N-Player Games** | N/A | N=100 players | N=500 players |
+| **Convergence Rate** | N/A | 1/√N empirical | 1/√N theoretical |
 
 ### **Research Impact**
 | Metric | Current | 2026 Target | 2027 Target |
@@ -639,6 +838,7 @@ webapp.deploy_solver(problem_config, cloud_backend="aws")
 - v1.3 (2025-10-XX): 3D WENO and multi-dimensional framework
 - v1.4 (2025-10-06): Phase 2.2 Stochastic MFG Extensions completed
 - v1.5 (2025-10-06): Phase 2.1 Multi-Dimensional Framework completed (PR #92)
+- v1.6 (2025-10-08): Phase 4 Stochastic Differential Games & Convergence Analysis added
 
 **Related Documents**:
 - `[ARCHIVED]_CONSOLIDATED_ROADMAP_2025.md` - Previous roadmap (completed achievements)
