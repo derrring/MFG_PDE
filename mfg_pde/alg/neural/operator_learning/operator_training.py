@@ -438,7 +438,9 @@ if TORCH_AVAILABLE:
             else:
                 raise ValueError(f"Unknown optimizer: {self.config.optimizer}")
 
-        def _create_scheduler(self, optimizer: optim.Optimizer, steps_per_epoch: int):
+        def _create_scheduler(
+            self, optimizer: optim.Optimizer, steps_per_epoch: int
+        ) -> optim.lr_scheduler.LRScheduler | None:
             """Create learning rate scheduler."""
             if self.config.scheduler.lower() == "cosine":
                 return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.config.max_epochs)
@@ -468,7 +470,7 @@ if TORCH_AVAILABLE:
             train_loader: DataLoader,
             optimizer: optim.Optimizer,
             criterion: nn.Module,
-            scheduler,
+            scheduler: optim.lr_scheduler.LRScheduler | None,
         ) -> float:
             """Train for one epoch."""
             operator.train()

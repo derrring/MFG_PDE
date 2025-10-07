@@ -126,7 +126,7 @@ class BaseNeuralSolver(BaseMFGSolver):
         """Build the neural network architectures."""
 
     @abstractmethod
-    def compute_loss(self, *args, **kwargs) -> dict[str, float]:
+    def compute_loss(self, *args: Any, **kwargs: Any) -> dict[str, float]:
         """Compute the total loss and its components."""
 
     @abstractmethod

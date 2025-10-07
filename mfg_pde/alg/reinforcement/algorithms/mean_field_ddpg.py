@@ -215,7 +215,7 @@ class OrnsteinUhlenbeckNoise:
         self.sigma = sigma
         self.state = np.ones(action_dim) * mu
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset noise to initial state."""
         self.state = np.ones(self.action_dim) * self.mu
 
@@ -260,7 +260,7 @@ class ReplayBuffer:
         population_state: NDArray,
         next_population_state: NDArray,
         done: bool,
-    ):
+    ) -> None:
         """Add transition to buffer."""
         idx = self.position
         self.states[idx] = state
@@ -472,7 +472,7 @@ class MeanFieldDDPG:
 
         return critic_loss.item(), actor_loss.item()
 
-    def _soft_update(self, source: nn.Module, target: nn.Module):
+    def _soft_update(self, source: nn.Module, target: nn.Module) -> None:
         """Soft update target network parameters."""
         tau = self.config["tau"]
         for target_param, param in zip(target.parameters(), source.parameters(), strict=False):

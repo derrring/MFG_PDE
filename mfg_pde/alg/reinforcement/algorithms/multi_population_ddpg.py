@@ -272,7 +272,7 @@ class MultiPopulationReplayBuffer:
         population_states: NDArray,
         next_population_states: NDArray,
         done: bool,
-    ):
+    ) -> None:
         """Add transition to buffer."""
         idx = self.position
         self.states[idx] = state
@@ -562,7 +562,7 @@ class MultiPopulationDDPG:
         self.update_count += 1
         return losses
 
-    def _soft_update(self, source: nn.Module, target: nn.Module):
+    def _soft_update(self, source: nn.Module, target: nn.Module) -> None:
         """Soft update target network parameters."""
         tau = self.config["tau"]
         for target_param, param in zip(target.parameters(), source.parameters(), strict=False):

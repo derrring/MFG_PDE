@@ -105,7 +105,7 @@ class ActorNetwork(nn.Module):
         # Initialize weights
         self.apply(self._init_weights)
 
-    def _init_weights(self, module):
+    def _init_weights(self, module: nn.Module) -> None:
         """Initialize network weights."""
         if isinstance(module, nn.Linear):
             nn.init.orthogonal_(module.weight, gain=np.sqrt(2))
@@ -141,7 +141,9 @@ class ActorNetwork(nn.Module):
 
         return logits
 
-    def get_action(self, state: torch.Tensor, population_state: torch.Tensor, deterministic: bool = False):
+    def get_action(
+        self, state: torch.Tensor, population_state: torch.Tensor, deterministic: bool = False
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Sample action from policy.
 
@@ -225,7 +227,7 @@ class CriticNetwork(nn.Module):
         # Initialize weights
         self.apply(self._init_weights)
 
-    def _init_weights(self, module):
+    def _init_weights(self, module: nn.Module) -> None:
         """Initialize network weights."""
         if isinstance(module, nn.Linear):
             nn.init.orthogonal_(module.weight, gain=np.sqrt(2))
@@ -514,13 +516,13 @@ class MeanFieldActorCritic:
 
     def _update_policy(
         self,
-        states: list,
-        population_states: list,
-        actions: list,
-        old_log_probs: list,
-        advantages: list,
-        returns: list,
-    ):
+        states: list[np.ndarray],
+        population_states: list[np.ndarray],
+        actions: list[int],
+        old_log_probs: list[float],
+        advantages: list[float],
+        returns: list[float],
+    ) -> None:
         """Update actor and critic networks."""
         # Convert to tensors
         states_tensor = torch.FloatTensor(np.array(states)).to(self.device)
@@ -586,7 +588,7 @@ class MeanFieldActorCritic:
             return obs.get("local_density", obs.get("population", np.zeros(self.population_dim)))
         return obs[self.state_dim :] if len(obs) > self.state_dim else np.zeros(self.population_dim)
 
-    def save(self, path: str):
+    def save(self, path: str) -> None:
         """Save model checkpoint."""
         torch.save(
             {
@@ -600,7 +602,7 @@ class MeanFieldActorCritic:
         )
         logger.info(f"Model saved to {path}")
 
-    def load(self, path: str):
+    def load(self, path: str) -> None:
         """Load model checkpoint."""
         checkpoint = torch.load(path, map_location=self.device)
         self.actor.load_state_dict(checkpoint["actor_state_dict"])

@@ -471,7 +471,7 @@ class HybridMazeGenerator:
 
         return region
 
-    def _connect_regions(self, region1: list[tuple[int, int]], region2: list[tuple[int, int]]):
+    def _connect_regions(self, region1: list[tuple[int, int]], region2: list[tuple[int, int]]) -> None:
         """
         Connect two regions by adding a door at the closest boundary.
 

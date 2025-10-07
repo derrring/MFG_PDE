@@ -555,7 +555,7 @@ class FPPINNSolver(PINNBase):
 
         return metrics
 
-    def plot_solution(self, save_path: str | None = None):
+    def plot_solution(self, save_path: str | None = None) -> None:
         """
         Plot the FP solution.
 

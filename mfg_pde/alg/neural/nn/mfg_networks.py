@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import torch.nn as nn
 
 try:
-    import torch  # noqa: F401
+    import torch
     import torch.nn as nn
 
     TORCH_AVAILABLE = True
@@ -234,12 +234,12 @@ def create_coupled_mfg_networks(
 
         # Combined networks
         class SharedBackboneNetwork(nn.Module):
-            def __init__(self, backbone, head):
+            def __init__(self, backbone: nn.Module, head: nn.Module) -> None:
                 super().__init__()
                 self.backbone = backbone
                 self.head = head
 
-            def forward(self, x):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
                 features = self.backbone(x)
                 return self.head(features)
 
@@ -257,7 +257,7 @@ def create_coupled_mfg_networks(
         }
 
 
-def get_network_info(network: nn.Module) -> dict:
+def get_network_info(network: nn.Module) -> dict[str, object]:
     """
     Get comprehensive information about a neural network.
 
@@ -268,11 +268,11 @@ def get_network_info(network: nn.Module) -> dict:
         Dictionary with network information
     """
 
-    def count_parameters(model):
+    def count_parameters(model: nn.Module) -> int:
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    def get_layer_info(model):
-        layers = []
+    def get_layer_info(model: nn.Module) -> list[dict[str, object]]:
+        layers: list[dict[str, object]] = []
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
                 layers.append(
