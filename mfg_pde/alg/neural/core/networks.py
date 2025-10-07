@@ -169,7 +169,7 @@ class FeedForwardNetwork(nn.Module):
         # Initialize weights
         self._initialize_weights(initialization)
 
-    def _initialize_weights(self, initialization: str):
+    def _initialize_weights(self, initialization: str) -> None:
         """Initialize network weights according to specified scheme."""
         for layer in self.layers[:-1]:  # Don't initialize output layer specially
             if initialization == "xavier_normal":
@@ -282,7 +282,7 @@ class ResidualNetwork(nn.Module):
         # Initialize weights
         self._initialize_weights(initialization)
 
-    def _initialize_weights(self, initialization: str):
+    def _initialize_weights(self, initialization: str) -> None:
         """Initialize network weights."""
         for layer in [*list(self.hidden_layers), self.output_layer]:
             if initialization == "xavier_normal":
@@ -568,7 +568,7 @@ def count_parameters(network: nn.Module) -> int:
 
 def analyze_network_gradients(network: nn.Module) -> dict[str, float]:
     """Analyze gradient statistics for debugging training issues."""
-    grad_stats = {
+    grad_stats: dict[str, float] = {
         "grad_norm": 0.0,
         "grad_mean": 0.0,
         "grad_std": 0.0,
@@ -576,7 +576,7 @@ def analyze_network_gradients(network: nn.Module) -> dict[str, float]:
         "total_params": 0,
     }
 
-    all_grads = []
+    all_grads: list[torch.Tensor] = []
     zero_count = 0
 
     for param in network.parameters():
@@ -587,16 +587,16 @@ def analyze_network_gradients(network: nn.Module) -> dict[str, float]:
         grad_stats["total_params"] += param.numel()
 
     if all_grads:
-        all_grads = torch.cat(all_grads)
-        grad_stats["grad_norm"] = torch.norm(all_grads).item()
-        grad_stats["grad_mean"] = torch.mean(all_grads).item()
-        grad_stats["grad_std"] = torch.std(all_grads).item()
+        all_grads_tensor = torch.cat(all_grads)
+        grad_stats["grad_norm"] = torch.norm(all_grads_tensor).item()
+        grad_stats["grad_mean"] = torch.mean(all_grads_tensor).item()
+        grad_stats["grad_std"] = torch.std(all_grads_tensor).item()
         grad_stats["num_zero_grads"] = zero_count
 
     return grad_stats
 
 
-def print_network_info(network: nn.Module, name: str = "Network"):
+def print_network_info(network: nn.Module, name: str = "Network") -> None:
     """Print detailed information about network architecture."""
     print(f"{name} Architecture:")
     print(f"  Total parameters: {count_parameters(network):,}")

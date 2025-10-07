@@ -176,7 +176,7 @@ class ReplayBuffer:
         population_state: dict[str, NDArray],
         next_population_state: dict[str, NDArray],
         done: bool,
-    ):
+    ) -> None:
         """Add transition to buffer."""
         idx = self.position
 
@@ -322,7 +322,7 @@ class MultiPopulationQLearning:
             q_values = self.q_network(state_t, pop_states_t)
             return q_values.argmax().item()
 
-    def update(self):
+    def update(self) -> float | None:
         """Update Q-network from replay buffer."""
         if len(self.replay_buffer) < self.config["batch_size"]:
             return None

@@ -216,7 +216,7 @@ class MultiPopulationSAC:
             offset += dim
         return result
 
-    def _soft_update(self, source: nn.Module, target: nn.Module):
+    def _soft_update(self, source: nn.Module, target: nn.Module) -> None:
         """Soft update target network."""
         tau = self.config["tau"]
         for target_param, param in zip(target.parameters(), source.parameters(), strict=False):

@@ -95,7 +95,7 @@ class FeedForwardNetwork(nn.Module):
         # Set activation function
         self.activation = self._get_activation_function(activation)
 
-    def _get_activation_function(self, activation: str):
+    def _get_activation_function(self, activation: str) -> object:
         """Get activation function by name."""
         activations = {
             "tanh": torch.tanh,
@@ -109,7 +109,7 @@ class FeedForwardNetwork(nn.Module):
 
         return activations[activation]
 
-    def _initialize_weights(self):
+    def _initialize_weights(self) -> None:
         """Initialize network weights using Xavier/Glorot initialization."""
         for layer in self.layers:
             if isinstance(layer, nn.Linear):

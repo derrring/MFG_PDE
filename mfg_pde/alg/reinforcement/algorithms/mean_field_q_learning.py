@@ -110,7 +110,7 @@ class MeanFieldQNetwork(nn.Module):
         # Initialize weights
         self.apply(self._init_weights)
 
-    def _init_weights(self, module):
+    def _init_weights(self, module: nn.Module) -> None:
         """Initialize network weights."""
         if isinstance(module, nn.Linear):
             nn.init.xavier_uniform_(module.weight)
@@ -161,7 +161,7 @@ class ExperienceReplay:
         population_state: np.ndarray,
         next_population_state: np.ndarray,
         done: bool,
-    ):
+    ) -> None:
         """Add experience to buffer."""
         experience = (state, action, reward, next_state, population_state, next_population_state, done)
         self.buffer.append(experience)
@@ -534,7 +534,7 @@ class MeanFieldQLearning:
 
         return population_state
 
-    def save_model(self, filepath: str):
+    def save_model(self, filepath: str) -> None:
         """Save trained model."""
         torch.save(
             {
@@ -549,7 +549,7 @@ class MeanFieldQLearning:
         )
         self.logger.info(f"Model saved to {filepath}")
 
-    def load_model(self, filepath: str):
+    def load_model(self, filepath: str) -> None:
         """Load trained model."""
         checkpoint = torch.load(filepath, map_location=self.device)
 
