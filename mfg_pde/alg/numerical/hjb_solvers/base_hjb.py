@@ -10,7 +10,7 @@ from mfg_pde.alg.base_solver import BaseNumericalSolver
 
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
-    from mfg_pde.config import BaseConfig
+    from mfg_pde.config import BaseConfig  # type: ignore[attr-defined]
     from mfg_pde.core.mfg_problem import MFGProblem
 
     # from mfg_pde.utils.aux_func import npart, ppart # Not needed here if problem provides jacobian parts
