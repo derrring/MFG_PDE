@@ -536,5 +536,5 @@ else:
     class MFGMazeEnvironment:  # pragma: no cover - graceful degradation
         """Placeholder when Gymnasium is unavailable."""
 
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise ImportError("Gymnasium is required for MFGMazeEnvironment. Install with: pip install mfg_pde[rl]")
