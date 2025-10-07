@@ -53,10 +53,22 @@ from mfg_pde.utils.numerical.monte_carlo import MCConfig, QuasiMCSampler
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Protocol
 
     from numpy.typing import NDArray
 
+    from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.core.stochastic import StochasticMFGProblem
+    from mfg_pde.utils.solver_result import SolverResult
+
+    class MFGSolverProtocol(Protocol):
+        """Protocol for MFG solvers that return SolverResult."""
+
+        def solve(self) -> SolverResult:
+            """Solve the MFG problem and return structured result."""
+            ...
+
+    ConditionalSolverFactory = Callable[[MFGProblem], MFGSolverProtocol]
 
 
 @dataclass
@@ -178,7 +190,7 @@ class CommonNoiseMFGSolver:
         self,
         problem: StochasticMFGProblem,
         num_noise_samples: int = 100,
-        conditional_solver_factory: Callable | None = None,
+        conditional_solver_factory: ConditionalSolverFactory | None = None,
         variance_reduction: bool = True,
         parallel: bool = True,
         num_workers: int | None = None,
@@ -399,25 +411,12 @@ class CommonNoiseMFGSolver:
         solver = self.conditional_solver_factory(conditional_problem)
         result = solver.solve()
 
-        # Extract solution and convergence status
-        # Handle both SolverResult objects and tuple returns
-        if hasattr(result, "u"):
-            u = result.u
-            m = result.m
-            converged = result.converged if hasattr(result, "converged") else True
-        elif isinstance(result, tuple) and len(result) >= 2:
-            # Tuple format: (u, m) or (u, m, converged)
-            u = result[0]
-            m = result[1]
-            converged = result[2] if len(result) > 2 else True
-        else:
-            # Try dict-like access
-            try:
-                u = result["u"]
-                m = result["m"]
-                converged = result.get("converged", True)
-            except (KeyError, TypeError) as e:
-                raise TypeError(f"Unexpected result format from conditional solver: {type(result)}") from e
+        # Extract solution and convergence status from SolverResult
+        # Note: SolverResult supports tuple unpacking for backward compatibility
+        # MyPy note: Factory functions return solvers with solve() -> SolverResult
+        u = result.U  # type: ignore[union-attr]
+        m = result.M  # type: ignore[union-attr]
+        converged = result.convergence_achieved  # type: ignore[union-attr]
 
         return u, m, converged
 

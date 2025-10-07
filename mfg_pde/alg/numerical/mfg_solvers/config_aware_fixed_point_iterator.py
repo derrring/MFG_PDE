@@ -97,7 +97,7 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
         self.l2distm_rel: np.ndarray
         self.iterations_run: int = 0
 
-    def solve(self, config: MFGSolverConfig | None = None, **kwargs: Any) -> tuple | SolverResult:  # type: ignore[override]
+    def solve(self, config: MFGSolverConfig | None = None, **kwargs: Any) -> SolverResult:  # type: ignore[override]
         """
         Solve the MFG system using structured configuration.
 
@@ -106,8 +106,9 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             **kwargs: Legacy parameters for backward compatibility
 
         Returns:
-            Tuple (U, M, iterations, err_u, err_m) or SolverResult object
-            based on config.return_structured
+            SolverResult object with solution arrays and metadata.
+            Note: For backward compatibility, SolverResult supports tuple unpacking:
+                  U, M, iterations, err_u, err_m = solver.solve()
         """
         # Use provided config or instance config
         solve_config = config or self.config
@@ -253,40 +254,42 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
         if solve_config.picard.verbose:
             print(f"\n🏁 Solve completed in {execution_time:.3f}s")
 
-        # Return appropriate format
-        if solve_config.return_structured:
-            from mfg_pde.utils.solver_result import create_solver_result
+        # Always return SolverResult for type safety and consistency
+        # Note: return_structured flag is now deprecated but kept for compatibility warnings
+        if not solve_config.return_structured and solve_config.picard.verbose:
+            import warnings
 
-            return create_solver_result(
-                U=self.U,
-                M=self.M,
-                iterations=self.iterations_run,
-                error_history_U=self.l2distu_rel,
-                error_history_M=self.l2distm_rel,
-                solver_name=self.name,
-                convergence_achieved=convergence_achieved,
-                tolerance=solve_config.picard.tolerance,
-                execution_time=execution_time,
-                # Rich metadata from configuration
-                solver_config=solve_config.to_dict(),
-                damping_parameter=solve_config.picard.damping_factor,
-                problem_parameters={
-                    "T": self.problem.T,
-                    "Nx": self.problem.Nx,
-                    "Nt": self.problem.Nt,
-                    "Dx": getattr(self.problem, "Dx", None),
-                    "Dt": getattr(self.problem, "Dt", None),
-                },
+            warnings.warn(
+                "return_structured=False is deprecated. SolverResult is now always returned, "
+                "but it supports tuple unpacking for backward compatibility: "
+                "U, M, iterations, err_u, err_m = solver.solve()",
+                DeprecationWarning,
+                stacklevel=2,
             )
-        else:
-            # Backward compatible tuple return
-            return (
-                self.U,
-                self.M,
-                self.iterations_run,
-                self.l2distu_rel,
-                self.l2distm_rel,
-            )
+
+        from mfg_pde.utils.solver_result import create_solver_result
+
+        return create_solver_result(
+            U=self.U,
+            M=self.M,
+            iterations=self.iterations_run,
+            error_history_U=self.l2distu_rel,
+            error_history_M=self.l2distm_rel,
+            solver_name=self.name,
+            convergence_achieved=convergence_achieved,
+            tolerance=solve_config.picard.tolerance,
+            execution_time=execution_time,
+            # Rich metadata from configuration
+            solver_config=solve_config.to_dict(),
+            damping_parameter=solve_config.picard.damping_factor,
+            problem_parameters={
+                "T": self.problem.T,
+                "Nx": self.problem.Nx,
+                "Nt": self.problem.Nt,
+                "Dx": getattr(self.problem, "Dx", None),
+                "Dt": getattr(self.problem, "Dt", None),
+            },
+        )
 
     def _cold_start_initialization(self, Nt: int, Nx: int) -> None:
         """Initialize with cold start (default initialization)."""
