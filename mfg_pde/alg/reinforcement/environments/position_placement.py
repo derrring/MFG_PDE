@@ -180,7 +180,7 @@ def _place_clustered(grid: Grid, num_positions: int) -> list[tuple[int, int]]:
         return [center, *neighbors, *remaining]
 
 
-def _maze_distance(grid: Grid, start: tuple[int, int], goal: tuple[int, int]) -> int:
+def _maze_distance(grid: Grid, start: tuple[int, int], goal: tuple[int, int]) -> float:
     """
     Compute maze distance between two positions using BFS.
 
