@@ -129,28 +129,37 @@ def solve_mfg(
 
 
 def create_mfg_problem(
-    problem_type: str, domain: tuple = (0.0, 1.0), time_horizon: float = 1.0, **kwargs: Any
+    problem_type: str, domain_size: float = 1.0, time_horizon: float = 1.0, **kwargs: Any
 ) -> SimpleMFGProblem:
     """
     Create an MFG problem with simple parameters.
 
     Args:
         problem_type: Type of problem ("crowd_dynamics", "portfolio", etc.)
-        domain: Spatial domain as (xmin, xmax)
-        time_horizon: Time horizon T
+        domain_size: Size of spatial domain (default: 1.0)
+        time_horizon: Time horizon T (default: 1.0)
         **kwargs: Problem-specific parameters
 
     Returns:
         MFG problem ready to solve
 
+    Raises:
+        ValueError: If domain_size or time_horizon are non-positive
+
     Example:
         problem = create_mfg_problem("crowd_dynamics",
-                                   domain=(0, 5),
+                                   domain_size=5.0,
                                    time_horizon=2.0)
         solver = FixedPointSolver()
         result = solver.solve(problem)
     """
-    return _create_problem_from_string(problem_type, domain[1] - domain[0], time_horizon, **kwargs)
+    # Validate parameters
+    if domain_size <= 0:
+        raise ValueError(f"domain_size must be positive, got {domain_size}")
+    if time_horizon <= 0:
+        raise ValueError(f"time_horizon must be positive, got {time_horizon}")
+
+    return _create_problem_from_string(problem_type, domain_size, time_horizon, **kwargs)
 
 
 def get_config_recommendation(problem_type: str, **kwargs) -> dict[str, Any]:
@@ -172,8 +181,12 @@ def get_config_recommendation(problem_type: str, **kwargs) -> dict[str, Any]:
         print(f"Recommended tolerance: {rec['tolerance']}")
         print(f"Reason: {rec['explanation']}")
     """
+    # Extract domain_size and time_horizon from kwargs to avoid conflicts
+    domain_size = kwargs.pop("domain_size", 1.0)
+    time_horizon = kwargs.pop("time_horizon", 1.0)
+
     # Get the auto-selected configuration
-    config = auto_config(problem_type, 1.0, 1.0, **kwargs)  # Use default sizes for analysis
+    config = auto_config(problem_type, domain_size, time_horizon, **kwargs)
 
     # Build recommendation dict
     recommendation = {
@@ -583,6 +596,31 @@ class SimpleMFGProblem:
         xmin, xmax = self._domain_bounds
         x_grid = np.linspace(xmin, xmax, 101)  # Default grid
         return np.array([self._terminal_value_func(x) for x in x_grid])
+
+    @property
+    def T(self) -> float:
+        """Time horizon T (property accessor for convenience)."""
+        return self._time_horizon
+
+    @property
+    def xmin(self) -> float:
+        """Minimum spatial coordinate (property accessor for convenience)."""
+        return self._domain_bounds[0]
+
+    @property
+    def xmax(self) -> float:
+        """Maximum spatial coordinate (property accessor for convenience)."""
+        return self._domain_bounds[1]
+
+    @property
+    def g(self) -> Callable:
+        """Terminal value function g(x) (property accessor for convenience)."""
+        return self._terminal_value_func
+
+    @property
+    def rho0(self) -> Callable:
+        """Initial density function rho0(x) (property accessor for convenience)."""
+        return self._initial_density_func
 
     def __str__(self) -> str:
         return f"SimpleMFGProblem({self.problem_type}, domain={self._domain_bounds}, T={self._time_horizon})"
