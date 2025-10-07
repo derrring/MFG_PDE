@@ -91,7 +91,7 @@ def solve(problem, nx, nt, solver, output, verbose):
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
 
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+            _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
             # Plot value function
             ax1.imshow(result.U, aspect="auto", origin="lower")
