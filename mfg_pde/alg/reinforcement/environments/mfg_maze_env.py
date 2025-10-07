@@ -533,7 +533,7 @@ if GYMNASIUM_AVAILABLE:
 
 else:
 
-    class MFGMazeEnvironment:  # pragma: no cover - graceful degradation
+    class MFGMazeEnvironment:  # type: ignore[no-redef]  # pragma: no cover - graceful degradation
         """Placeholder when Gymnasium is unavailable."""
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:

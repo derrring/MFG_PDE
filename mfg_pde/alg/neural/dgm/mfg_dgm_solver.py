@@ -123,7 +123,7 @@ if TORCH_AVAILABLE:
             """Setup high-dimensional sampling strategies."""
             # Infer domain bounds from problem
             if hasattr(self.problem, "domain"):
-                if isinstance(self.problem.domain, (list, tuple)) and len(self.problem.domain) == 2:
+                if isinstance(self.problem.domain, list | tuple) and len(self.problem.domain) == 2:
                     # 1D domain (min, max)
                     self.domain_bounds = [self.problem.domain]
                 else:
@@ -431,6 +431,6 @@ if TORCH_AVAILABLE:
 
 else:
     # Placeholder when PyTorch not available
-    class MFGDGMSolver:
+    class MFGDGMSolver:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("PyTorch is required for MFG DGM solver. Install with: pip install torch")

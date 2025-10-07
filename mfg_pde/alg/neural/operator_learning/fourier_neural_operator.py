@@ -442,10 +442,10 @@ if TORCH_AVAILABLE:
 
 else:
     # Placeholder classes when PyTorch is not available
-    class FNOConfig:
+    class FNOConfig:  # type: ignore[no-redef]
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise ImportError("FNO requires PyTorch")
 
-    class FourierNeuralOperator:
+    class FourierNeuralOperator:  # type: ignore[no-redef]
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise ImportError("FNO requires PyTorch")

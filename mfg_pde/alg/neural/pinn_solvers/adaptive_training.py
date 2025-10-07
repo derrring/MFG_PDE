@@ -423,10 +423,10 @@ if TORCH_AVAILABLE:
 
 else:
     # Placeholder classes when PyTorch is not available
-    class PhysicsGuidedSampler:
+    class PhysicsGuidedSampler:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("Adaptive training requires PyTorch")
 
-    class AdaptiveTrainingStrategy:
+    class AdaptiveTrainingStrategy:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("Adaptive training requires PyTorch")

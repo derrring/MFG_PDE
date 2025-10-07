@@ -301,14 +301,14 @@ if TORCH_AVAILABLE:
 
 else:
     # Placeholder classes when PyTorch is not available
-    class DeepGalerkinNetwork:
+    class DeepGalerkinNetwork:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("PyTorch is required for DGM architectures")
 
-    class HighDimMLP:
+    class HighDimMLP:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("PyTorch is required for DGM architectures")
 
-    class ResidualDGMNetwork:
+    class ResidualDGMNetwork:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             raise ImportError("PyTorch is required for DGM architectures")
