@@ -29,7 +29,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -134,7 +134,7 @@ class RecursiveDivisionGenerator:
 
         return self.maze
 
-    def _divide(self, top: int, left: int, bottom: int, right: int):
+    def _divide(self, top: int, left: int, bottom: int, right: int) -> None:
         """
         Recursively divide a chamber.
 
@@ -167,7 +167,7 @@ class RecursiveDivisionGenerator:
         else:
             self._divide_vertically(top, left, bottom, right, height, width)
 
-    def _divide_horizontally(self, top: int, left: int, bottom: int, right: int, height: int, width: int):
+    def _divide_horizontally(self, top: int, left: int, bottom: int, right: int, height: int, width: int) -> None:
         """Add horizontal wall with door(s)."""
         # Choose where to place wall (leave room for recursion)
         min_wall_pos = top + self.config.min_room_height - 1
@@ -193,7 +193,7 @@ class RecursiveDivisionGenerator:
         self._divide(top, left, wall_row - 1, right)
         self._divide(wall_row + self.config.wall_thickness, left, bottom, right)
 
-    def _divide_vertically(self, top: int, left: int, bottom: int, right: int, height: int, width: int):
+    def _divide_vertically(self, top: int, left: int, bottom: int, right: int, height: int, width: int) -> None:
         """Add vertical wall with door(s)."""
         # Choose where to place wall
         min_wall_pos = left + self.config.min_room_width - 1
@@ -225,7 +225,7 @@ class RecursiveDivisionGenerator:
         start: int,
         end: int,
         orientation: SplitOrientation,
-    ):
+    ) -> None:
         """
         Add door(s) in a wall.
 
@@ -339,7 +339,7 @@ def create_room_based_config(
     cols: int = 60,
     room_size: Literal["small", "medium", "large"] = "medium",
     corridor_width: Literal["narrow", "medium", "wide"] = "medium",
-    **kwargs,
+    **kwargs: Any,
 ) -> RecursiveDivisionConfig:
     """
     Create configuration with preset room sizes and corridor widths.
