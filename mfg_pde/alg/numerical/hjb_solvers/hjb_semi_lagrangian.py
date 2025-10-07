@@ -268,7 +268,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 x_idx = int((x - self.problem.xmin) / self.dx)
                 x_idx = np.clip(x_idx, 0, self.problem.Nx)
                 return self.problem.H(x_idx, m, p_values, time_idx)
-            except:
+            except Exception:
+                # User-defined Hamiltonian may raise any exception - return inf for optimizer
                 return np.inf
 
         # Find optimal control using scalar optimization
@@ -515,7 +516,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 diffusion = self._compute_diffusion_term(U_next, i)
 
                 U_current[i] = U_next[i] - self.dt * (hamiltonian - 0.5 * self.problem.sigma**2 * diffusion)
-            except:
+            except (ValueError, IndexError, FloatingPointError, Exception):
+                # Numerical issues or user Hamiltonian errors - keep previous value
                 U_current[i] = U_next[i]
 
         return U_current

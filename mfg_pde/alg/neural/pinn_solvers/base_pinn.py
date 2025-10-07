@@ -877,7 +877,8 @@ class PINNBase(BaseNeuralSolver, ABC):
                 if isinstance(bounds, list | tuple) and len(bounds) == 2:
                     lower_bounds = torch.tensor(bounds[0], device=self.device, dtype=self.dtype)
                     upper_bounds = torch.tensor(bounds[1], device=self.device, dtype=self.dtype)
-            except:
+            except (AttributeError, TypeError, ValueError):
+                # Problem may not have domain attribute, or bounds may have wrong format
                 pass  # Use default bounds
 
         return lower_bounds, upper_bounds

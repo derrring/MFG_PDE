@@ -345,8 +345,8 @@ class HJBGFDMSolver(BaseHJBSolver):
                     "use_qr": False,
                 }
 
-            except:
-                # Fallback to QR decomposition
+            except np.linalg.LinAlgError:
+                # Fallback to QR decomposition if SVD fails
                 try:
                     # QR decomposition: WA = Q @ R
                     Q, R = np.linalg.qr(WA)
@@ -359,8 +359,8 @@ class HJBGFDMSolver(BaseHJBSolver):
                         "use_qr": True,
                         "use_svd": False,
                     }
-                except:
-                    # Final fallback to normal equations
+                except np.linalg.LinAlgError:
+                    # Final fallback to normal equations if QR also fails
                     self.taylor_matrices[i] = {  # type: ignore[assignment]
                         "A": A,
                         "W": W,
@@ -374,7 +374,8 @@ class HJBGFDMSolver(BaseHJBSolver):
                         AtWA = A.T @ W @ A
                         if np.linalg.det(AtWA) > 1e-12:
                             self.taylor_matrices[i]["AtWA_inv"] = np.linalg.inv(AtWA)
-                    except:
+                    except (np.linalg.LinAlgError, FloatingPointError):
+                        # Cannot compute inverse - leave AtWA_inv as None
                         pass
 
     def _compute_weights(self, distances: np.ndarray) -> np.ndarray:
@@ -956,7 +957,8 @@ class HJBGFDMSolver(BaseHJBSolver):
                     # Compute pseudoinverse matrix: V @ S^{-1} @ U^T @ sqrt(W)
                     S_inv_UT = (1.0 / S[:, np.newaxis]) * U.T  # Broadcasting for S^{-1} @ U^T
                     derivative_matrix = Vt.T @ S_inv_UT @ sqrt_W
-                except:
+                except (KeyError, ValueError, FloatingPointError):
+                    # Missing keys or numerical issues in SVD-based computation
                     derivative_matrix = None
             elif taylor_data.get("use_qr", False):  # type: ignore[attr-defined]
                 # For QR approach: derivative matrix = R^{-1} @ Q^T @ sqrt(W)
@@ -967,7 +969,8 @@ class HJBGFDMSolver(BaseHJBSolver):
 
                     R_inv = np.linalg.inv(R)
                     derivative_matrix = R_inv @ Q.T @ sqrt_W
-                except:
+                except (KeyError, np.linalg.LinAlgError, ValueError):
+                    # Missing keys, singular matrix, or numerical issues in QR-based computation
                     derivative_matrix = None
             elif taylor_data.get("AtWA_inv") is not None:  # type: ignore[attr-defined]
                 derivative_matrix = taylor_data["AtWA_inv"] @ taylor_data["AtW"]
@@ -1007,7 +1010,8 @@ class HJBGFDMSolver(BaseHJBSolver):
                     H_plus = self.problem.H(i, m_n_plus_1[i], p_plus, time_idx)
                     H_minus = self.problem.H(i, m_n_plus_1[i], p_minus, time_idx)
                     jacobian[i, j] += (H_plus - H_minus) / (2 * eps)
-                except:
+                except Exception:
+                    # User-defined Hamiltonian may raise any exception - skip this entry
                     pass
 
         return jacobian
