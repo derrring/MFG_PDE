@@ -186,7 +186,10 @@ class SimpleMFGProblem1D:
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
     """
-    Compute total mass ∫m(x)dx using trapezoidal rule.
+    Compute total mass ∫m(x)dx using rectangular rule (consistent with FPParticleSolver normalization).
+
+    The FPParticleSolver normalizes using np.sum(density) * dx (rectangular/midpoint rule),
+    so we must use the same integration method to verify mass conservation.
 
     Args:
         density: Density array
@@ -195,7 +198,7 @@ def compute_total_mass(density: np.ndarray, dx: float) -> float:
     Returns:
         Total mass
     """
-    return float(np.trapezoid(density, dx=dx))
+    return float(np.sum(density) * dx)
 
 
 class TestMassConservation1D:
@@ -317,9 +320,9 @@ class TestMassConservation1D:
 
         # Mass should be conserved to within tolerance
         # Particle methods with KDE may have some numerical diffusion
-        assert (
-            max_mass_error < 0.05
-        ), f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
+        assert max_mass_error < 0.05, (
+            f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
+        )
 
     def test_fp_particle_hjb_gfdm_mass_conservation(self, problem, boundary_conditions):
         """
@@ -394,9 +397,9 @@ class TestMassConservation1D:
 
         # Mass should be conserved to within tolerance
         # GFDM particle collocation may have different numerical properties
-        assert (
-            max_mass_error < 0.05
-        ), f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
+        assert max_mass_error < 0.05, (
+            f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
+        )
 
     def test_compare_mass_conservation_methods(self, problem, boundary_conditions):
         """
