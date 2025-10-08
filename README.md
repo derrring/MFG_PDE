@@ -1,10 +1,10 @@
 # MFG_PDE: Research-Grade Mean Field Games Framework
 
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![CI](https://github.com/derrring/MFG_PDE/workflows/CI/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml)
-[![Code Quality](https://github.com/derrring/MFG_PDE/workflows/Code%20Quality/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/modern_quality.yml)
-[![Security](https://github.com/derrring/MFG_PDE/workflows/Security/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/security.yml)
-[![Release](https://img.shields.io/github/v/release/derrring/MFG_PDE?include_prereleases)](https://github.com/derrring/MFG_PDE/releases)
+[![CI/CD](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml)
+[![Code Quality](https://github.com/derrring/MFG_PDE/actions/workflows/modern_quality.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/modern_quality.yml)
+[![Security](https://github.com/derrring/MFG_PDE/actions/workflows/security.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/security.yml)
+[![Release](https://img.shields.io/github/v/release/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/releases)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 
