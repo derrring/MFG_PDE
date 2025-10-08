@@ -249,15 +249,15 @@ class FixedPointIterator(BaseMFGSolver):
         result = SolverResult(
             U=self.U,
             M=self.M,
-            converged=converged,
             iterations=self.iterations_run,
-            convergence_reason=convergence_reason,
-            diagnostics={
-                "l2distu_abs": self.l2distu_abs[: self.iterations_run],
-                "l2distm_abs": self.l2distm_abs[: self.iterations_run],
+            error_history_U=self.l2distu_abs[: self.iterations_run],
+            error_history_M=self.l2distm_abs[: self.iterations_run],
+            solver_name=self.name,
+            converged=converged,
+            metadata={
+                "convergence_reason": convergence_reason,
                 "l2distu_rel": self.l2distu_rel[: self.iterations_run],
                 "l2distm_rel": self.l2distm_rel[: self.iterations_run],
-                "solver_name": self.name,
                 "anderson_used": self.use_anderson,
             },
         )
