@@ -84,9 +84,14 @@ def _calculate_p_values(
     # (Implementation from base_hjb_v4 - no p-value clipping by default)
     p_forward, p_backward = 0.0, 0.0
     if Nx > 1 and abs(Dx) > 1e-14:
-        u_i = U_array[i]
-        u_ip1 = U_array[(i + 1) % Nx]
-        u_im1 = U_array[(i - 1 + Nx) % Nx]
+        # Extract values and convert to Python scalars (works for both NumPy and PyTorch)
+        u_i = U_array[i].item() if hasattr(U_array[i], "item") else float(U_array[i])
+        u_ip1 = U_array[(i + 1) % Nx].item() if hasattr(U_array[(i + 1) % Nx], "item") else float(U_array[(i + 1) % Nx])
+        u_im1 = (
+            U_array[(i - 1 + Nx) % Nx].item()
+            if hasattr(U_array[(i - 1 + Nx) % Nx], "item")
+            else float(U_array[(i - 1 + Nx) % Nx])
+        )
 
         if np.isinf(u_i) or np.isinf(u_ip1) or np.isinf(u_im1) or np.isnan(u_i) or np.isnan(u_ip1) or np.isnan(u_im1):
             return {"forward": np.nan, "backward": np.nan}
