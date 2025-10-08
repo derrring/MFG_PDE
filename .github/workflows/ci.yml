@@ -130,7 +130,46 @@ jobs:
             print('✅ All public functions and classes have docstrings')
         "
 
-  # === PHASE 2: Performance & Memory Validation ===
+  # === PHASE 2: Test Coverage ===
+  test-coverage:
+    name: Test Suite with Coverage
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[test]
+
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ \
+          --cov=mfg_pde \
+          --cov-report=xml \
+          --cov-report=term \
+          -v
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-mfg-pde
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # === PHASE 3: Performance & Memory Validation ===
   performance-check:
     name: Performance & Memory Validation
     runs-on: ubuntu-latest
@@ -265,7 +304,7 @@ jobs:
   integration-tests:
     name: Integration Testing
     runs-on: ubuntu-latest
-    needs: [code-quality, performance-check]
+    needs: [code-quality, test-coverage, performance-check]
     if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
 
     strategy:
@@ -315,7 +354,7 @@ jobs:
   build-validation:
     name: Build & Distribution
     runs-on: ubuntu-latest
-    needs: [code-quality, performance-check]
+    needs: [code-quality, test-coverage, performance-check]
     if: ${{ github.event_name == 'release' }}
 
     steps:
