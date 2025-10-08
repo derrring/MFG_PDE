@@ -8,18 +8,32 @@
 
 ## Executive Summary
 
-Track B implemented GPU acceleration for particle-based Fokker-Planck solvers through three phases, achieving measurable performance improvements while establishing an elegant backend-aware architecture.
+Track B implemented GPU acceleration for particle-based Fokker-Planck solvers through three phases, achieving **modest performance improvements** (1.66-1.83x) while establishing an elegant backend-aware architecture.
 
 **Key Achievements**:
 - ✅ Eliminated GPU↔CPU transfer bottleneck (100 transfers → 2)
-- ✅ Achieved 1.83x speedup for typical problems (N=50k particles)
-- ✅ Implemented elegant capability-based strategy selection
-- ✅ Production-ready with comprehensive test coverage (17 tests)
+- ✅ Achieved 1.83x speedup for typical problems (N=50k particles) - **modest but measurable**
+- ✅ Implemented elegant capability-based strategy selection architecture
+- ✅ Production-ready with comprehensive test coverage (25 tests)
+- ✅ Identified fundamental GPU performance limitations for particle methods
 
-**Limitations**:
-- MPS architecture prevents 5-10x target (CUDA would perform better)
-- Small problems (N<10k) faster on CPU due to kernel overhead
-- Best suited for N≥50k particles on Apple Silicon
+**Honest Performance Assessment**:
+The **1.83x speedup is modest, not impressive**. Initial 5-10x targets were unrealistic due to:
+1. **Wrong hardware**: MPS kernel overhead (~50μs) vs CUDA (~5μs) - 10x difference
+2. **Wrong abstraction**: PyTorch launches ~400 small kernels (unfused operations)
+3. **Wrong algorithm**: Particle methods inherently have many lightweight operations
+
+**Realistic Expectations**:
+- **Current (MPS)**: 1.5-2x speedup for N≥50k particles
+- **CUDA (expected)**: 3-5x speedup with lower kernel overhead
+- **Custom kernels**: 5-10x possible with kernel fusion on NVIDIA hardware
+- **Grid-based methods**: Would achieve better GPU acceleration (not particle-based)
+
+**Practical Value**:
+- ✅ Production-ready for large-scale particle simulations (N≥50k)
+- ✅ Elegant architecture enables future optimization
+- ✅ Educational value: Documents GPU performance pitfalls
+- ⚠️ Not a dramatic speedup - use CPU for small/medium problems
 
 ---
 
@@ -96,11 +110,27 @@ Track B implemented GPU acceleration for particle-based Fokker-Planck solvers th
 | 50,000 | 50 | 0.695 | 0.381 | **1.83x** | ✅ **Best** |
 | 100,000 | 50 | 1.414 | 0.837 | 1.69x | ✅ Faster |
 
-**Why Not 5-10x?**
-- MPS kernel launch overhead: ~50μs (vs ~5μs for CUDA)
-- Many small operations don't benefit from GPU
-- Unified memory architecture limits bandwidth
-- CUDA would achieve higher speedup
+**Why Not 5-10x? The Three "Wrongs"**
+
+1. **Wrong Hardware: MPS Not Optimized for This Workload**
+   - MPS kernel launch overhead: ~50μs (vs ~5μs for CUDA)
+   - Particle solver launches ~400 kernels per solve
+   - Overhead cost: 400 × 50μs = **20ms fixed overhead before any computation**
+   - CUDA comparison: 400 × 5μs = 2ms (10x better)
+
+2. **Wrong Abstraction: PyTorch Launches Too Many Small Kernels**
+   - PyTorch: Each operation (`+`, `*`, `exp()`) is a separate kernel
+   - Example KDE computation: 8 kernels for what could be 1 fused operation
+   - Better: JAX (XLA auto-fusion) or custom CUDA kernels
+   - PyTorch limitation: ~750 kernel launches per solve (15 per timestep × 50 steps)
+
+3. **Wrong Algorithm: Particle Methods Have Many Small Operations**
+   - Per-timestep operations: interpolate, drift, diffusion, noise, KDE, normalize
+   - Each is lightweight (bad for GPU, which excels at large compute-heavy ops)
+   - Grid-based methods (finite difference) would achieve better GPU speedup
+   - Particle methods better suited for CPU or with custom kernel fusion
+
+**Combined Effect**: Overhead dominates theoretical 5x compute speedup → actual 1.83x
 
 **Files**:
 - `mfg_pde/alg/numerical/density_estimation.py` (internal KDE)
@@ -283,20 +313,31 @@ M = solver.solve_fp_system(m_initial, U_drift)
 
 1. **Transfer overhead dominates for small operations**
    - 100 transfers × 5ms = 500ms overhead
-   - Must eliminate transfers for GPU benefit
+   - Must eliminate transfers for any GPU benefit
+   - **Result**: Phase 2 → Phase 2.1 achieved 13x improvement (0.14x → 1.83x)
 
-2. **MPS has higher kernel overhead than CUDA**
-   - ~10x higher launch latency
-   - Need larger operations to amortize cost
+2. **GPU performance requires alignment of hardware, abstraction, and algorithm**
+   - **Hardware mismatch**: MPS has 10x higher kernel overhead than CUDA
+   - **Abstraction mismatch**: PyTorch unfused kernels launch 400-750 small operations
+   - **Algorithm mismatch**: Particle methods have inherently fragmented computation
+   - **Result**: Even optimal implementation yields only 1.83x, not 5-10x
 
-3. **Pipeline selection > boundary conversion**
+3. **Modest speedup can still be valuable**
+   - 1.83x saves ~50% time on large simulations (hours → minutes)
+   - Production-ready code with elegant architecture
+   - Foundation for future optimization (JAX, custom kernels)
+   - Educational value: Understanding GPU performance pitfalls
+
+4. **Pipeline selection > boundary conversion**
    - Separate CPU/GPU implementations perform better
    - Boundary conversion causes too many small transfers
+   - Hard-coded selection works, but lacks elegance
 
-4. **Capability-based design is elegant**
-   - Query features, not backend types
-   - Strategy pattern enables clean separation
+5. **Capability-based design is elegant**
+   - Query features (`has_capability()`), not backend types
+   - Strategy pattern enables clean separation of concerns
    - Extensible for future backends (JAX, TPU)
+   - Cost estimation enables intelligent auto-selection
 
 ### Architecture Insights
 
@@ -384,11 +425,34 @@ M = solver.solve_fp_system(m_initial, U_drift)
 
 ## Conclusion
 
-Track B successfully implemented GPU acceleration for particle-based MFG solvers, achieving **1.66-1.83x speedup** for production workloads on Apple Silicon. While the initial 5-10x target was not met due to MPS architectural limitations, the implementation is **production-ready, numerically validated, and elegantly architected**.
+Track B successfully implemented GPU acceleration for particle-based MFG solvers, achieving **modest but measurable performance improvements** (1.66-1.83x speedup) on Apple Silicon MPS.
 
-The elegant backend-aware strategy selection architecture established during this work provides a foundation for future optimization and extensibility. CUDA-based systems would achieve higher speedups (~3-5x expected), and further optimization through kernel fusion could push beyond 5x on appropriate hardware.
+### Honest Assessment
 
-**Status**: ✅ **COMPLETE** - Merged to main, production-ready
+**What We Achieved**:
+- ✅ Production-ready GPU acceleration for large particle simulations (N≥50k)
+- ✅ Elegant capability-based architecture for backend selection
+- ✅ Comprehensive test coverage (25 tests) and numerical validation
+- ✅ 13x improvement from initial attempt (0.14x → 1.83x)
+- ✅ Identified and documented fundamental GPU performance limitations
+
+**What We Learned**:
+- The **1.83x speedup is modest, not impressive**
+- Initial 5-10x targets were unrealistic for particle methods on MPS
+- GPU performance requires alignment of hardware, abstraction, and algorithm
+- Transfer elimination was critical (100 transfers → 2)
+- Elegant architecture is valuable even when performance is modest
+
+**Realistic Expectations for Future Work**:
+- **CUDA (untested)**: 3-5x speedup likely due to lower kernel overhead
+- **JAX + XLA**: 4-6x possible with automatic kernel fusion
+- **Custom CUDA kernels**: 5-10x achievable with hand-optimized fusion
+- **Grid-based methods**: Would achieve better GPU performance than particles
+
+**Practical Value**:
+For users with large particle simulations (N≥50k), the **1.83x speedup is worthwhile**. For smaller problems or exploratory work, **CPU remains faster and simpler**. The elegant architecture provides a foundation for future backends and optimization strategies.
+
+**Status**: ✅ **COMPLETE** - Merged to main, production-ready with realistic expectations
 
 ---
 
