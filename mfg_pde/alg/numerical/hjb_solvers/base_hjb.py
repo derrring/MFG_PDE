@@ -184,21 +184,29 @@ def compute_hjb_residual(
     U_n_derivatives_for_m_coupling: dict[str, Any] = {}  # Not used by ExampleMFGProblem's term
 
     for i in range(Nx):
-        if np.isnan(Phi_U[i]):
+        # Get scalar value for nan check (works for both NumPy and PyTorch)
+        phi_val = Phi_U[i].item() if hasattr(Phi_U[i], "item") else float(Phi_U[i])
+        if np.isnan(phi_val):
             continue
 
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
         p_values = _calculate_p_values(U_n_current_newton_iterate, i, Dx, Nx, clip=False)
 
         if np.any(np.isnan(list(p_values.values()))):
-            Phi_U[i] = np.nan
+            Phi_U[i] = float("nan")
             continue
 
         # Hamiltonian term H(x_i, M_{n+1,i}, (Du_n_current)_i, t_n)
         # Notebook: FnU[i] += H_withM(...)
-        hamiltonian_val = problem.H(x_idx=i, m_at_x=M_density_at_n_plus_1[i], p_values=p_values, t_idx=t_idx_n)
+        # Get M value as scalar for H function
+        m_val = (
+            M_density_at_n_plus_1[i].item()
+            if hasattr(M_density_at_n_plus_1[i], "item")
+            else float(M_density_at_n_plus_1[i])
+        )
+        hamiltonian_val = problem.H(x_idx=i, m_at_x=m_val, p_values=p_values, t_idx=t_idx_n)
         if np.isnan(hamiltonian_val) or np.isinf(hamiltonian_val):
-            Phi_U[i] = np.nan
+            Phi_U[i] = float("nan")
             continue
         else:
             Phi_U[i] += hamiltonian_val
@@ -210,7 +218,7 @@ def compute_hjb_residual(
         )
         if m_coupling_term is not None:
             if np.isnan(m_coupling_term) or np.isinf(m_coupling_term):
-                Phi_U[i] = np.nan
+                Phi_U[i] = float("nan")
                 continue
             Phi_U[i] += m_coupling_term
 
