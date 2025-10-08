@@ -1,8 +1,8 @@
 # MFG_PDE Documentation
 
-**Last Updated**: October 2, 2025
-**Version**: Strategic Typing Excellence Edition + Top-Level Documentation Reorganization
-**Status**: Production-Ready Framework with 100% Strategic Typing Coverage
+**Last Updated**: October 8, 2025
+**Version**: Documentation Consolidation + HDF5 Support Release
+**Status**: Production-Ready Framework with 96.3% Test Pass Rate
 
 Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
 
@@ -65,15 +65,16 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 - **Documentation Coverage**: 100% API with working examples
 - **Test Coverage**: 95%+ with numerical accuracy validation
 
-### **📁 Documentation Reorganization** ✅ (October 2025)
-- **Top-level categorization** by user need (user, theory, planning, development)
-- **Improved discoverability** with clear directory purposes
-- **Better separation** between usage, theory, planning, and development
-- **63+ documents** organized logically across categories
+### **📁 Documentation Consolidation** ✅ (October 8, 2025)
+- **Aggressive cleanup**: 62 → 23 active development docs (63% reduction)
+- **Better categorization**: Eliminated advanced/, redistributed to theory/development
+- **Theory organization**: 17 top-level files → 6 topic-based subdirectories
+- **Planning streamlined**: Moved completed work and analyses to development/
+- **User guides centralized**: Quick starts moved to user/guides/
 
 ---
 
-## 📁 **Documentation Structure** (Reorganized October 2025)
+## 📁 **Documentation Structure** (Consolidated October 8, 2025)
 
 ```
 docs/
@@ -83,13 +84,14 @@ docs/
 │   ├── README.md                      # User documentation index
 │   ├── quickstart.md                  # Quick start guide
 │   ├── core_objects.md                # Core MFG_PDE objects
-│   ├── usage_patterns.md              # Best practices
-│   ├── guides/                        # 🆕 Feature usage guides
+│   ├── guides/                        # Feature usage guides
+│   │   ├── amr_quick_reference.md     # AMR quick start
+│   │   ├── multi_population_quick_start.md  # Multi-population guide
 │   │   ├── backend_usage.md           # Computational backends
 │   │   ├── maze_generation.md         # Maze environments
 │   │   ├── hooks.md                   # Plugin hooks
 │   │   └── plugin_development.md      # Creating plugins
-│   ├── collaboration/                 # 🆕 Collaboration workflows
+│   ├── collaboration/                 # Collaboration workflows
 │   │   ├── ai_assisted_development.md # AI-assisted dev
 │   │   ├── github_workflow.md         # GitHub conventions
 │   │   └── issue_templates.md         # Issue examples
@@ -98,76 +100,72 @@ docs/
 │       └── advanced/                  # Advanced tutorials
 │
 ├── theory/                            # 🔬 MATHEMATICAL FOUNDATIONS
-│   ├── mathematical_background.md     # Core MFG theory
-│   ├── network_mfg_mathematical_formulation.md
-│   ├── adaptive_mesh_refinement_mfg.md
-│   ├── convergence_criteria.md
-│   ├── reinforcement_learning/        # 🆕 RL theory for MFG
-│   │   ├── continuous_action_mfg_theory.md      # 6-12 month roadmap
-│   │   ├── action_space_scalability.md          # Scalability analysis
-│   │   └── continuous_action_architecture_sketch.py  # Code examples
-│   ├── numerical_methods/             # 🆕 Numerical method theory
-│   │   ├── adaptive_mesh_refinement.md
+│   ├── foundations/                   # General theory (6 files)
+│   │   ├── mathematical_background.md
+│   │   ├── NOTATION_STANDARDS.md
+│   │   ├── convergence_criteria.md
+│   │   ├── information_geometry_mfg.md
+│   │   └── THEORY_DOCUMENTATION_INDEX.md
+│   ├── stochastic/                    # Stochastic MFG (4 files)
+│   │   ├── stochastic_mfg_common_noise.md
+│   │   ├── stochastic_differential_games_theory.md
+│   │   └── MFG_Initial_Distribution_Sensitivity_Analysis.md
+│   ├── applications/                  # Domain-specific (4 files)
+│   │   ├── anisotropic_mfg_mathematical_formulation.md
+│   │   ├── evacuation_mfg_mathematical_formulation.md
+│   │   ├── coordination_games_mfg.md
+│   │   └── spatial_competition_mfg.md
+│   ├── numerical_methods/             # Numerical methods (8 files)
+│   │   ├── adaptive_mesh_refinement_guide.md
+│   │   ├── amr_mesh_types_analysis.md
+│   │   ├── amr_performance.md
 │   │   ├── semi_lagrangian_methods.md
 │   │   └── lagrangian_formulation.md
-│   └── [Application case studies]     # El Farol, Santa Fe, etc.
+│   ├── network_mfg/                   # Network MFG (1 file)
+│   │   └── network_mfg_mathematical_formulation.md
+│   ├── continuous_control/            # Continuous control (1 file)
+│   │   └── variational_mfg_theory.md
+│   └── reinforcement_learning/        # RL for MFG (13 files)
+│       ├── continuous_action_mfg_theory.md
+│       └── action_space_scalability.md
 │
-├── advanced/                          # 🎓 ADVANCED TOPICS
-│   ├── design/                        # 🆕 System design documents
-│   │   ├── geometry_system.md
-│   │   ├── hybrid_maze_generation.md
-│   │   ├── api_architecture.md
-│   │   ├── benchmarking.md
-│   │   ├── amr_performance.md
-│   │   └── geometry_amr_integration.md
-│   └── [Advanced case studies]
-│
-├── planning/                          # 📋 🆕 PLANNING & ROADMAPS
+├── planning/                          # 📋 PLANNING & ROADMAPS
 │   ├── README.md                      # Planning documentation index
-│   ├── roadmaps/                      # Strategic roadmaps
+│   ├── roadmaps/                      # Strategic roadmaps (5 files)
 │   │   ├── REINFORCEMENT_LEARNING_ROADMAP.md
-│   │   ├── ALGORITHM_REORGANIZATION_PLAN.md
-│   │   ├── PRAGMATIC_TYPING_PHASE_2_ROADMAP.md
+│   │   ├── PHASE_2.2_STOCHASTIC_MFG_PLAN.md
+│   │   ├── MASTER_EQUATION_IMPLEMENTATION_PLAN.md
+│   │   ├── PHASE_3_5_PLANNING.md
 │   │   └── BRANCH_STRATEGY_PARADIGMS.md
-│   ├── completed/                     # Completed features
-│   │   ├── [COMPLETED]_MAZE_ENVIRONMENT_IMPLEMENTATION_SUMMARY.md
-│   │   ├── [COMPLETED]_RL_MAZE_ROADMAP_PROGRESS.md
-│   │   └── [Other completion summaries]
-│   ├── reports/                       # Quality & status reports
-│   │   ├── CODEBASE_QUALITY_ASSESSMENT.md
-│   │   ├── CONSISTENCY_CHECK_REPORT.md
-│   │   └── [Other assessments]
-│   └── governance/                    # Project governance
-│       └── next_development_priorities.md
+│   └── reports/                       # Quality & status reports (2 files)
+│       └── [EVALUATION]_monitoring_tools_comparison.md
 │
 ├── development/                       # 🛠️ DEVELOPMENT DOCUMENTATION
 │   ├── README.md                      # Development docs index
-│   ├── CONSISTENCY_GUIDE.md           # 📌 Code standards (most referenced)
+│   ├── CONSISTENCY_GUIDE.md           # 📌 Code standards
 │   ├── STRATEGIC_DEVELOPMENT_ROADMAP_2026.md  # 📌 Primary roadmap
-│   ├── ARCHITECTURAL_CHANGES.md       # 📌 Change history
-│   ├── CODE_REVIEW_GUIDELINES.md      # Review process
-│   ├── SELF_GOVERNANCE_PROTOCOL.md    # Governance protocol
-│   ├── ORGANIZATION.md                # Project structure
+│   ├── BENCHMARKING_GUIDE.md          # Benchmarking guide
+│   ├── completed/                     # Completed work (48 files)
+│   │   ├── [COMPLETED]_SESSION_2025-10-08_SUMMARY.md
+│   │   ├── [COMPLETED]_SOLVER_UNIFICATION_2025-10-08.md
+│   │   └── [Historical summaries...]
+│   ├── analysis/                      # Technical analyses (27 files)
+│   │   ├── geometry_system_design.md
+│   │   ├── geometry_amr_integration.md
+│   │   ├── PACKAGE_HEALTH_REPORT_2025_10_02.md
+│   │   └── [Other analyses...]
 │   ├── typing/                        # Type system & CI/CD
-│   │   ├── CI_CD_STRATEGIC_TYPING_EXPERIENCE_GUIDE.md
-│   │   ├── STRATEGIC_TYPING_PATTERNS_REFERENCE.md
-│   │   ├── CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md
-│   │   └── [MyPy integration docs]
-│   ├── tooling/                       # Development tooling
-│   │   ├── UV_INTEGRATION_GUIDE.md
-│   │   ├── UV_SCIENTIFIC_COMPUTING_GUIDE.md
-│   │   └── logging_guide.md
-│   ├── analysis/                      # Technical analyses
 │   ├── architecture/                  # Architecture documentation
 │   ├── strategy/                      # Strategic planning
 │   └── maintenance/                   # Maintenance procedures
 │
-├── reference/                         # 📖 QUICK REFERENCES
-│   ├── python_typing.md               # 🆕 Modern Python typing
-│   ├── mypy_usage.md                  # 🆕 MyPy strategies
-│   └── typing_methodology.md          # 🆕 Systematic typing approach
+├── reference/                         # 📖 QUICK REFERENCES (3 files)
+│   ├── python_typing.md               # Modern Python typing
+│   ├── mypy_usage.md                  # MyPy strategies
+│   └── typing_methodology.md          # Systematic typing approach
 │
-└── examples/                          # Example documentation
+└── archive/                           # 📦 HISTORICAL CONTENT
+    └── [Track B GPU acceleration history]
 ```
 
 ---
@@ -271,25 +269,34 @@ config = create_fast_config(
 
 ---
 
-## 🎯 **Recent Major Updates (October 2025)**
+## 🎯 **Recent Major Updates (October 8, 2025)**
 
-### **📁 Top-Level Documentation Reorganization**
-Complete restructuring for improved discoverability:
+### **💾 HDF5 Support** ✅
+Comprehensive file format support for solver data persistence:
+- **save_solution() / load_solution()**: High-level solver result I/O
+- **save_checkpoint() / load_checkpoint()**: Resume interrupted computations
+- **Compression**: Configurable gzip/lzf compression (levels 1-9)
+- **Metadata**: Rich metadata storage with grid information
+- **Integration**: SolverResult.save_hdf5() / load_hdf5() convenience methods
+- **Examples**: Complete demo in examples/basic/hdf5_save_load_demo.py
+- **Tests**: 14 comprehensive tests, all passing ✅
 
-**New Categories**:
-1. **user/guides/** - Feature usage guides (backend, mazes, hooks, plugins)
-2. **user/collaboration/** - Collaboration workflows (AI, GitHub, issues)
-3. **theory/reinforcement_learning/** - RL theory for MFG
-4. **theory/numerical_methods/** - Numerical method foundations
-5. **advanced/design/** - System design documents
-6. **planning/** - Roadmaps, completed work, reports, governance
-7. **reference/** - Quick reference guides (typing, MyPy)
+### **📁 Documentation Consolidation**
+Aggressive cleanup and reorganization:
+- **63% reduction**: 62 → 23 active development docs
+- **Theory organization**: 17 top-level files → 6 topic subdirectories
+- **Eliminated advanced/**: Redistributed to theory/ and development/
+- **Planning streamlined**: Completed work → development/completed/
+- **User guides centralized**: Quick starts → user/guides/
 
-**Benefits**:
-- User-centric organization (users find guides in user/, not development/)
-- Theory-focused (mathematical content where researchers expect it)
-- Clear separation (usage vs theory vs planning vs development)
-- Better discoverability (top-level categories match user mental models)
+**Theory Subdirectories**:
+1. **foundations/** - General theory, notation, convergence (6 files)
+2. **stochastic/** - Stochastic MFG, common noise (4 files)
+3. **applications/** - Domain-specific formulations (4 files)
+4. **numerical_methods/** - AMR, finite differences (8 files)
+5. **network_mfg/** - Network/graph MFG (1 file)
+6. **continuous_control/** - Variational MFG (1 file)
+7. **reinforcement_learning/** - RL for MFG (13 files)
 
 ### **🏆 Strategic Typing Excellence Documentation**
 Complete framework documentation for achieving 100% type safety in scientific computing:
@@ -355,6 +362,6 @@ Complete framework documentation for achieving 100% type safety in scientific co
 
 ---
 
-**Documentation Version**: v2.2 - Top-Level Reorganization + Strategic Typing Excellence
-**Last Major Update**: October 2, 2025
+**Documentation Version**: v2.3 - Documentation Consolidation + HDF5 Support
+**Last Major Update**: October 8, 2025
 **Maintenance**: Continuously updated with codebase evolution

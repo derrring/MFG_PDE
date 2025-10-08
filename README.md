@@ -42,7 +42,39 @@ print(f"Mass error: {result.mass_conservation_error:.2e}")  # ~10⁻¹⁵
 
 ## 🎊 **Recent Achievements**
 
-### **📚 v1.7.0: Complete Paradigm Documentation** ✨ **NEW** (October 2025)
+### **💾 v1.7.1: HDF5 Support + Documentation Consolidation** ✨ **NEW** (October 8, 2025)
+
+**HDF5 Data Persistence**:
+```python
+# Save solver results with compression
+from mfg_pde.utils.io import save_solution, load_solution
+
+save_solution(U, M, metadata, 'solution.h5', compression='gzip', compression_opts=4)
+U, M, meta = load_solution('solution.h5')
+
+# Or use SolverResult convenience methods
+result.save_hdf5('result.h5')
+loaded_result = SolverResult.load_hdf5('result.h5')
+```
+
+**Features**:
+- **High-level API**: `save_solution()` / `load_solution()` for solver results
+- **Checkpointing**: `save_checkpoint()` / `load_checkpoint()` for resuming computations
+- **Compression**: Configurable gzip/lzf compression (levels 1-9)
+- **Rich metadata**: Grid storage, convergence info, solver parameters
+- **SolverResult integration**: `result.save_hdf5()` / `SolverResult.load_hdf5()`
+
+**Documentation Consolidation**:
+- **63% reduction**: 62 → 23 active development docs
+- **Theory organization**: 17 top-level files → 6 topic-based subdirectories
+- **User guides centralized**: Quick starts moved to user/guides/
+- **Planning streamlined**: Completed work moved to development/completed/
+
+📖 **See**: `examples/basic/hdf5_save_load_demo.py` for complete demo
+
+---
+
+### **📚 v1.7.0: Complete Paradigm Documentation** (October 2025)
 
 Comprehensive documentation coverage with complete paradigm overviews:
 
