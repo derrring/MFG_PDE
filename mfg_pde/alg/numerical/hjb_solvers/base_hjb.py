@@ -624,7 +624,11 @@ def solve_hjb_system_backward(
     Nt = problem.Nt + 1
     Nx = problem.Nx + 1
 
-    U_solution_this_picard_iter = xp.zeros((Nt, Nx))  # U_new in notebook
+    # Use backend.zeros() instead of xp.zeros() to ensure correct device
+    if backend is not None:
+        U_solution_this_picard_iter = backend.zeros((Nt, Nx))
+    else:
+        U_solution_this_picard_iter = xp.zeros((Nt, Nx))  # U_new in notebook
     if Nt == 0:
         return U_solution_this_picard_iter
 
