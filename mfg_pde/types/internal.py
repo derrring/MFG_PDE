@@ -11,10 +11,10 @@ Internal Types for Advanced Users
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
-import numpy as np
-from numpy.typing import NDArray
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 # Functional type aliases for mathematical objects
 type HamiltonianFunction = Callable[[float, float, float, float], float]
@@ -54,14 +54,11 @@ type ParameterDict = dict[str, float | int | str | bool]
 type SolverOptions = dict[str, float | int | str | bool | None]
 """Dictionary of optional solver settings"""
 
-# Complex internal types (for maintainers)
-# Note: Using NDArray instead of SolutionArray to avoid import complexity
-type ComplexSolverState = (
-    tuple[NDArray, NDArray]  # Simple (u, m) state
-    | dict[str, NDArray | float | int]  # Complex state with metadata
-    | object  # Completely custom state objects
-)
-"""Internal solver state - can be simple arrays or complex objects"""
+# Note: Solver return types and state types have been moved to types/solver_types.py
+# Import from there for consistency:
+#   from mfg_pde.types.solver_types import SolverReturnTuple, JAXSolverReturn
+#   from mfg_pde.types.solver_types import ComplexSolverState, MetadataDict
+#   from mfg_pde.types.solver_types import MultiIndexTuple, DerivativeDict
 
 type FlexibleInput = (
     HamiltonianFunction
@@ -70,45 +67,6 @@ type FlexibleInput = (
     | object  # Custom problem objects
 )
 """Flexible input type that accepts multiple input formats"""
-
-# Complex solver return types that appear frequently
-type SolverReturnTuple = tuple[np.ndarray, np.ndarray, dict[str, Any]]
-"""Standard solver return type: (U, M, convergence_info)"""
-
-type JAXSolverReturn = tuple[Any, Any, bool, int, float]
-"""JAX solver return type: (U_jax, M_jax, converged, iterations, residual)"""
-
-type MultiIndexTuple = tuple[int, ...]
-"""Multi-index for GFDM operations"""
-
-type DerivativeDict = dict[tuple[int, ...], float]
-"""Dictionary mapping multi-indices to derivative values"""
-
-type GradientDict = dict[str, float]
-"""Dictionary for gradient components: {'dx': value, 'dy': value, ...}"""
-
-type StencilResult = list[tuple[np.ndarray, bool]]
-"""Stencil computation result: list of (stencil_array, success_flag)"""
-
-type MetadataDict = dict[str, float | int | str | bool | np.ndarray]
-"""Flexible metadata dictionary for solver state and results"""
-
-type ErrorCallback = Callable[[Exception], None] | None
-"""Optional error handling callback function"""
-
-# JAX-specific type aliases (with fallbacks)
-try:
-    if TYPE_CHECKING:
-        from jax import Array
-
-        type JAXArray = Array | np.ndarray | Any
-    else:
-        # At runtime, don't import JAX to avoid dependency issues
-        type JAXArray = Any
-except ImportError:
-    # JAX not available - use numpy arrays and Any as fallback
-    if not TYPE_CHECKING:
-        type JAXArray = np.ndarray | Any
 
 
 # Error handling types
