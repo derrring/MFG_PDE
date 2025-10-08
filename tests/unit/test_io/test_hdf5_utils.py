@@ -237,7 +237,7 @@ def test_solver_result_save_hdf5(sample_solution, temp_hdf5_file):
     np.testing.assert_array_equal(U, U_loaded)
     np.testing.assert_array_equal(M, M_loaded)
     assert metadata["solver_name"] == "TestSolver"
-    assert metadata["convergence_achieved"]
+    assert metadata["converged"]
     assert metadata["iterations"] == 3
 
 
