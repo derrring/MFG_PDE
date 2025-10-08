@@ -251,11 +251,12 @@ class FPParticleSolver(BaseFPSolver):
         """
         GPU pipeline - full particle evolution on GPU.
 
-        Track B Phase 2: Eliminates per-timestep transfer overhead by keeping
-        all particle data on GPU throughout evolution.
+        Track B Phase 2.1: Full GPU acceleration including internal KDE.
+        Eliminates all GPU↔CPU transfers during evolution loop.
 
         Expected speedup: 5-10x vs CPU for N=10k-100k particles
         """
+        from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu_internal
         from mfg_pde.alg.numerical.particle_utils import (
             apply_boundary_conditions_gpu,
             interpolate_1d_gpu,
@@ -298,10 +299,35 @@ class FPParticleSolver(BaseFPSolver):
             X_init_np = np.random.uniform(xmin, xmax, self.num_particles)
             X_particles_gpu[0, :] = self.backend.from_numpy(X_init_np)
 
-        # Estimate initial density (convert to numpy for KDE, then back)
-        X_init_np = self.backend.to_numpy(X_particles_gpu[0, :])
-        M_init_np = self._estimate_density_from_particles(X_init_np)
-        M_density_gpu[0, :] = self.backend.from_numpy(M_init_np)
+        # Compute bandwidth for KDE (do this once on CPU)
+        # Convert bandwidth parameter to absolute bandwidth value
+        if isinstance(self.kde_bandwidth, str):
+            from mfg_pde.alg.numerical.density_estimation import adaptive_bandwidth_selection
+
+            # Need numpy array for bandwidth calculation
+            X_init_np = self.backend.to_numpy(X_particles_gpu[0, :])
+            bandwidth_absolute = adaptive_bandwidth_selection(X_init_np, method=self.kde_bandwidth)
+        else:
+            # User provided factor - compute factor * std(particles)
+            X_init_np = self.backend.to_numpy(X_particles_gpu[0, :])
+            data_std = np.std(X_init_np, ddof=1)
+            bandwidth_absolute = float(self.kde_bandwidth) * data_std
+
+        # Estimate initial density using internal GPU KDE (Phase 2.1)
+        M_density_gpu[0, :] = gaussian_kde_gpu_internal(
+            X_particles_gpu[0, :], x_grid_gpu, bandwidth_absolute, self.backend
+        )
+
+        # Normalize if required (match CPU pipeline behavior)
+        if self.normalize_kde_output and Dx > 1e-14:
+            current_mass = xp.sum(M_density_gpu[0, :]) * Dx
+            if hasattr(current_mass, "item"):  # PyTorch tensor
+                current_mass_val = current_mass.item()
+            else:
+                current_mass_val = float(current_mass)
+
+            if current_mass_val > 1e-9:
+                M_density_gpu[0, :] = M_density_gpu[0, :] / current_mass_val
 
         if Nt == 1:
             self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
@@ -345,10 +371,21 @@ class FPParticleSolver(BaseFPSolver):
                     X_particles_gpu[t + 1, :], xmin, xmax, self.boundary_conditions.type, self.backend
                 )
 
-            # Estimate density (still needs numpy for KDE - Phase 1 limitation)
-            X_t_np = self.backend.to_numpy(X_particles_gpu[t + 1, :])
-            M_t_np = self._estimate_density_from_particles(X_t_np)
-            M_density_gpu[t + 1, :] = self.backend.from_numpy(M_t_np)
+            # Estimate density using internal GPU KDE (Phase 2.1 - no transfers!)
+            M_density_gpu[t + 1, :] = gaussian_kde_gpu_internal(
+                X_particles_gpu[t + 1, :], x_grid_gpu, bandwidth_absolute, self.backend
+            )
+
+            # Normalize if required
+            if self.normalize_kde_output and Dx > 1e-14:
+                current_mass = xp.sum(M_density_gpu[t + 1, :]) * Dx
+                if hasattr(current_mass, "item"):
+                    current_mass_val = current_mass.item()
+                else:
+                    current_mass_val = float(current_mass)
+
+                if current_mass_val > 1e-9:
+                    M_density_gpu[t + 1, :] = M_density_gpu[t + 1, :] / current_mass_val
 
         # Store trajectory and convert to NumPy ONCE at end
         self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
