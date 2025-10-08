@@ -11,13 +11,15 @@ to customize solver behavior or implement custom algorithms.
 
 Basic Types (safe to use):
     from mfg_pde.types import MFGProblem, MFGResult, SolverConfig
+    from mfg_pde.types import SolutionArray, SpatialGrid, TimeGrid
 
 Internal Types (use with caution):
     from mfg_pde.types import SpatialTemporalState, HamiltonianFunction
 """
 
 # Re-export the most commonly needed types
-from .protocols import MFGProblem, MFGResult, MFGSolver, SolutionArray, SolverConfig
+from .arrays import SolutionArray, SpatialGrid, TimeGrid
+from .protocols import MFGProblem, MFGResult, MFGSolver, SolverConfig
 from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
@@ -27,8 +29,13 @@ __all__ = [
     "MFGSolver",
     "SolutionArray",
     "SolverConfig",
+    "SpatialGrid",
     "SpatialTemporalState",
+    "TimeGrid",
 ]
+
+# Array types available via explicit import:
+# from mfg_pde.types.arrays import SpatialArray, TemporalArray, ParticleArray, ...
 
 # Internal types available via explicit import:
 # from mfg_pde.types.internal import HamiltonianFunction, ...

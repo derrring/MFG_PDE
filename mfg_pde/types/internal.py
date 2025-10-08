@@ -29,15 +29,9 @@ type DensityFunction = Callable[[float], float]
 type ValueFunction = Callable[[float], float]
 """Value function g(x) -> float"""
 
-# Array type aliases for solver internals
-type SpatialArray = NDArray
-"""1D spatial array, typically shape (Nx+1,)"""
-
-type TemporalArray = NDArray
-"""1D temporal array, typically shape (Nt+1,)"""
-
-# Note: SolutionArray is defined in protocols.py and exported from types/__init__.py
-# to avoid duplication. Import it from there for consistency.
+# Note: Array type aliases have been moved to types/arrays.py
+# Import from there for consistency:
+#   from mfg_pde.types.arrays import SpatialArray, TemporalArray, SolutionArray
 
 
 # Solver component type aliases
