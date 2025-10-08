@@ -632,15 +632,17 @@ def solve_hjb_system_backward(
     if Nt == 0:
         return U_solution_this_picard_iter
 
-    # Use backend-aware nan/inf checking
+    # Use backend-aware nan/inf checking and assignment
     if _has_nan_or_inf(U_final_condition_at_T, backend):
         nan_val = xp.nan if hasattr(xp, "nan") else float("nan")
-        if backend is not None and hasattr(U_solution_this_picard_iter, "fill_"):
+        if backend is not None:
+            # PyTorch: use fill_ for in-place assignment
             U_solution_this_picard_iter[Nt - 1, :].fill_(nan_val)
         else:
             U_solution_this_picard_iter[Nt - 1, :] = nan_val
     else:
-        if backend is not None and hasattr(U_solution_this_picard_iter, "copy_"):
+        if backend is not None:
+            # PyTorch: use copy_ for in-place tensor assignment
             U_solution_this_picard_iter[Nt - 1, :].copy_(U_final_condition_at_T)
         else:
             U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
