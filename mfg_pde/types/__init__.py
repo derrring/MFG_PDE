@@ -20,6 +20,7 @@ Internal Types (use with caution):
 # Re-export the most commonly needed types
 from .arrays import SolutionArray, SpatialGrid, TimeGrid
 from .protocols import MFGProblem, MFGResult, MFGSolver, SolverConfig
+from .solver_types import SolverReturnTuple
 from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "MFGSolver",
     "SolutionArray",
     "SolverConfig",
+    "SolverReturnTuple",
     "SpatialGrid",
     "SpatialTemporalState",
     "TimeGrid",
@@ -36,6 +38,9 @@ __all__ = [
 
 # Array types available via explicit import:
 # from mfg_pde.types.arrays import SpatialArray, TemporalArray, ParticleArray, ...
+
+# Solver types available via explicit import:
+# from mfg_pde.types.solver_types import JAXSolverReturn, ComplexSolverState, MetadataDict, ...
 
 # Internal types available via explicit import:
 # from mfg_pde.types.internal import HamiltonianFunction, ...
