@@ -41,10 +41,10 @@ def create_test_problem():
     problem = ExampleMFGProblem(
         xmin=-5.0,
         xmax=5.0,
-        Nx=100,
+        Nx=50,  # Reduced for faster convergence
         T=1.0,
-        Nt=50,
-        sigma=0.3,
+        Nt=25,  # Reduced for faster convergence
+        sigma=0.5,  # Increased diffusion for better convergence
         hamiltonian=hamiltonian,
     )
 
@@ -84,7 +84,7 @@ def benchmark_backend(backend_name: str, problem):
 
         # Solve and time
         start = time.time()
-        result = solver.solve(max_iterations=30, tolerance=1e-4)
+        result = solver.solve(max_iterations=20, tolerance=1e-3)  # Relaxed for speed
         solve_time = time.time() - start
 
         logger.info(
@@ -113,31 +113,24 @@ def benchmark_anderson(problem, use_anderson: bool, depth: int = 5):
     label = f"Anderson (m={depth})" if use_anderson else "No Anderson"
     logger.info(f"\n  Testing: {label}")
 
-    from mfg_pde.alg.numerical.fp_solvers.fp_upwind import FPUpwindSolver
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_upwind import HJBUpwindSolver
-    from mfg_pde.alg.numerical.mfg_solvers.fixed_point_iterator import FixedPointIterator
+    # Use create_standard_solver and configure Anderson
+    solver = create_standard_solver(problem)
 
-    hjb_solver = HJBUpwindSolver(problem)
-    fp_solver = FPUpwindSolver(problem)
-
-    solver = FixedPointIterator(
-        problem,
-        hjb_solver,
-        fp_solver,
-        thetaUM=0.7,
-        use_anderson=use_anderson,
-        anderson_depth=depth if use_anderson else 5,
-    )
+    # Configure Anderson acceleration if requested
+    if hasattr(solver, "use_anderson"):
+        solver.use_anderson = use_anderson
+        if use_anderson:
+            solver.anderson_depth = depth
 
     start = time.time()
-    _U, _M, iterations, err_U, err_M = solver.solve(max_iterations=50, tolerance=1e-4)
+    result = solver.solve(max_iterations=30, tolerance=1e-3)  # Relaxed for speed
     solve_time = time.time() - start
 
-    converged = err_U[iterations - 1] < 1e-4 and err_M[iterations - 1] < 1e-4
+    converged = result.convergence_achieved
 
-    logger.info(f"    Time: {solve_time:.3f}s, Iterations: {iterations}, Converged: {converged}")
+    logger.info(f"    Time: {solve_time:.3f}s, Iterations: {result.iterations}, Converged: {converged}")
 
-    return solve_time, iterations, converged
+    return solve_time, result.iterations, converged
 
 
 def plot_results(backend_results, anderson_results):
@@ -204,7 +197,7 @@ def main():
     logger.info("=" * 70)
 
     # Create test problem
-    logger.info("\nCreating test problem (LQ-MFG, Nx=100, Nt=50)...")
+    logger.info("\nCreating test problem (LQ-MFG, Nx=50, Nt=25)...")
     problem = create_test_problem()
 
     # Benchmark backends
