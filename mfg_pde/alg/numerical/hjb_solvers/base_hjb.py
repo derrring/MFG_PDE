@@ -398,10 +398,11 @@ def newton_hjb_step(
     M_density_at_n_plus_1: np.ndarray,
     problem: MFGProblem,
     t_idx_n: int,
+    backend=None,  # Add backend parameter for MPS/CUDA support
 ) -> tuple[np.ndarray, float]:
     Dx_norm = problem.Dx if abs(problem.Dx) > 1e-12 else 1.0
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if _has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate, np.inf
 
     residual_F_U = compute_hjb_residual(
@@ -528,7 +529,7 @@ def solve_hjb_timestep_newton(
     else:
         U_n_current_newton_iterate = xp.array(U_n_plus_1_from_hjb_step)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if _has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate
 
     final_l2_error = np.inf
@@ -546,9 +547,10 @@ def solve_hjb_timestep_newton(
             M_density_at_n_plus_1,
             problem,
             t_idx_n,
+            backend,  # Pass backend for MPS/CUDA support
         )
 
-        if np.any(np.isnan(U_n_next_newton_iterate)) or np.any(np.isinf(U_n_next_newton_iterate)):
+        if _has_nan_or_inf(U_n_next_newton_iterate, backend):
             break
 
         if iiter > 0 and l2_error > final_l2_error * 0.9999 and l2_error > newton_tolerance:
