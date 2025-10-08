@@ -34,7 +34,7 @@ class SolverResult:
         error_history_U: History of U convergence errors
         error_history_M: History of M convergence errors
         solver_name: Name/type of solver used
-        convergence_achieved: Whether convergence was achieved
+        converged: Whether convergence was achieved
         execution_time: Total solve time in seconds
         metadata: Additional solver-specific information
     """
@@ -45,7 +45,7 @@ class SolverResult:
     error_history_U: NDArray[np.floating]
     error_history_M: NDArray[np.floating]
     solver_name: str = "Unknown Solver"
-    convergence_achieved: bool = False
+    converged: bool = False
     execution_time: float | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -57,11 +57,11 @@ class SolverResult:
         error_history_U: NDArray[np.floating],
         error_history_M: NDArray[np.floating],
         solver_name: str = "Unknown Solver",
-        convergence_achieved: bool = False,
+        converged: bool = False,
         execution_time: float | None = None,
         metadata: dict[str, Any] | None = None,
         # Deprecated parameters
-        converged: bool | None = None,
+        convergence_achieved: bool | None = None,
         convergence_reason: str | None = None,
         diagnostics: dict[str, Any] | None = None,
         **kwargs: Any,
@@ -76,21 +76,21 @@ class SolverResult:
             error_history_U: History of U convergence errors
             error_history_M: History of M convergence errors
             solver_name: Name/type of solver used
-            convergence_achieved: Whether convergence was achieved
+            converged: Whether convergence was achieved
             execution_time: Total solve time in seconds
             metadata: Additional solver-specific information
-            converged: DEPRECATED - Use convergence_achieved instead
+            convergence_achieved: DEPRECATED - Use converged instead
             convergence_reason: DEPRECATED - Add to metadata instead
             diagnostics: DEPRECATED - Add to metadata instead
         """
-        # Handle deprecated 'converged' parameter
-        if converged is not None:
+        # Handle deprecated 'convergence_achieved' parameter
+        if convergence_achieved is not None:
             warnings.warn(
-                "Parameter 'converged' is deprecated, use 'convergence_achieved' instead",
+                "Parameter 'convergence_achieved' is deprecated, use 'converged' instead",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            convergence_achieved = converged
+            converged = convergence_achieved
 
         # Handle deprecated 'convergence_reason' parameter
         if convergence_reason is not None:
@@ -129,7 +129,7 @@ class SolverResult:
         self.error_history_U = error_history_U
         self.error_history_M = error_history_M
         self.solver_name = solver_name
-        self.convergence_achieved = convergence_achieved
+        self.converged = converged
         self.execution_time = execution_time
         self.metadata = metadata if metadata is not None else {}
 
@@ -181,14 +181,14 @@ class SolverResult:
 
     # Deprecated property for backward compatibility
     @property
-    def converged(self) -> bool:
-        """DEPRECATED: Use convergence_achieved instead."""
+    def convergence_achieved(self) -> bool:
+        """DEPRECATED: Use converged instead."""
         warnings.warn(
-            "Property 'converged' is deprecated, use 'convergence_achieved' instead",
+            "Property 'convergence_achieved' is deprecated, use 'converged' instead",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.convergence_achieved
+        return self.converged
 
     # Convenience properties
     @property
@@ -220,7 +220,7 @@ class SolverResult:
             "error_history_U": self.error_history_U,
             "error_history_M": self.error_history_M,
             "solver_name": self.solver_name,
-            "convergence_achieved": self.convergence_achieved,
+            "converged": self.converged,
             "execution_time": self.execution_time,
             "final_error_U": self.final_error_U,
             "final_error_M": self.final_error_M,
@@ -231,7 +231,7 @@ class SolverResult:
 
     def __repr__(self) -> str:
         """String representation of the result."""
-        convergence_status = "SUCCESS:" if self.convergence_achieved else "WARNING:"
+        convergence_status = "SUCCESS:" if self.converged else "WARNING:"
         time_str = f", {self.execution_time:.3f}s" if self.execution_time else ""
 
         return (
@@ -271,7 +271,7 @@ class SolverResult:
         # Prepare metadata from result fields
         metadata = {
             "solver_name": self.solver_name,
-            "convergence_achieved": self.convergence_achieved,
+            "converged": self.converged,
             "iterations": self.iterations,
             "error_history_U": self.error_history_U,
             "error_history_M": self.error_history_M,
@@ -314,7 +314,7 @@ class SolverResult:
 
         Example:
             >>> result = SolverResult.load_hdf5('solution.h5')
-            >>> print(f"Converged: {result.convergence_achieved}")
+            >>> print(f"Converged: {result.converged}")
         """
         from mfg_pde.utils.io.hdf5_utils import load_solution
 
@@ -325,7 +325,7 @@ class SolverResult:
         error_history_U = metadata.pop("error_history_U", np.array([]))
         error_history_M = metadata.pop("error_history_M", np.array([]))
         solver_name = metadata.pop("solver_name", "Unknown Solver")
-        convergence_achieved = metadata.pop("convergence_achieved", False)
+        converged = metadata.pop("converged", False)
         execution_time = metadata.pop("execution_time", None)
 
         # Remove derived fields that will be recomputed
@@ -339,7 +339,7 @@ class SolverResult:
             error_history_U=error_history_U,
             error_history_M=error_history_M,
             solver_name=solver_name,
-            convergence_achieved=convergence_achieved,
+            converged=converged,
             execution_time=execution_time,
             metadata=metadata,
         )
@@ -412,7 +412,7 @@ def create_solver_result(
     error_history_U: NDArray[np.floating],
     error_history_M: NDArray[np.floating],
     solver_name: str = "Unknown Solver",
-    convergence_achieved: bool = False,
+    converged: bool = False,
     tolerance: float | None = None,
     execution_time: float | None = None,
     **metadata,
@@ -427,7 +427,7 @@ def create_solver_result(
         error_history_U: History of U convergence errors
         error_history_M: History of M convergence errors
         solver_name: Name of the solver
-        convergence_achieved: Whether convergence was achieved (auto-detected if None)
+        converged: Whether convergence was achieved (auto-detected if None)
         tolerance: Convergence tolerance used (for auto-detection)
         execution_time: Solve time in seconds
         **metadata: Additional solver-specific data
@@ -437,17 +437,17 @@ def create_solver_result(
     """
 
     # Auto-detect convergence if not explicitly provided
-    if not convergence_achieved and tolerance is not None and len(error_history_U) > 0:
+    if not converged and tolerance is not None and len(error_history_U) > 0:
         final_error_U = error_history_U[-1] if len(error_history_U) > 0 else float("inf")
         final_error_M = error_history_M[-1] if len(error_history_M) > 0 else float("inf")
-        convergence_achieved = max(final_error_U, final_error_M) < tolerance
+        converged = max(final_error_U, final_error_M) < tolerance
 
     # Create convergence analysis
     convergence_info = ConvergenceResult(
         error_history_U=error_history_U,
         error_history_M=error_history_M,
         iterations_performed=iterations,
-        convergence_achieved=convergence_achieved,
+        convergence_achieved=converged,  # ConvergenceResult keeps its own naming
         final_tolerance=tolerance or 0.0,
         convergence_rate_estimate=None,  # Will be computed on access
     )
@@ -463,7 +463,7 @@ def create_solver_result(
         error_history_U=error_history_U,
         error_history_M=error_history_M,
         solver_name=solver_name,
-        convergence_achieved=convergence_achieved,
+        converged=converged,
         execution_time=execution_time,
         metadata=metadata,
     )

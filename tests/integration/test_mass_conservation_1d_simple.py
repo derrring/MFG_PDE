@@ -213,7 +213,7 @@ class TestMassConservation1DSimple:
         mfg_solver_1 = FixedPointIterator(problem, hjb_solver=hjb_solver_1, fp_solver=fp_solver_1)
 
         result_1 = mfg_solver_1.solve(max_iterations=30, tolerance=1e-5)
-        assert result_1.convergence_achieved
+        assert result_1.converged
 
         # Solver 2: FP Particle + HJB GFDM
         fp_solver_2 = FPParticleSolver(
@@ -227,7 +227,7 @@ class TestMassConservation1DSimple:
         mfg_solver_2 = FixedPointIterator(problem, hjb_solver=hjb_solver_2, fp_solver=fp_solver_2)
 
         result_2 = mfg_solver_2.solve(max_iterations=30, tolerance=1e-5)
-        assert result_2.convergence_achieved
+        assert result_2.converged
 
         # Compute masses for both methods
         dx = problem.Dx
