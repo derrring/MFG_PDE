@@ -25,9 +25,8 @@ from mfg_pde import (
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 from mfg_pde.alg.numerical.mfg_solvers import (
-    AdaptiveParticleCollocationSolver,
-    ConfigAwareFixedPointIterator,
-    MonitoredParticleCollocationSolver,
+    FixedPointIterator,
+    ParticleCollocationSolver,
 )
 from mfg_pde.config import create_research_config
 
@@ -83,7 +82,7 @@ def test_factory_creation_functions():
             if name == "create_monitored_solver":
                 solver = func(problem, collocation_points=collocation_points)
             else:
-                solver = func(problem, "monitored_particle", collocation_points=collocation_points)
+                solver = func(problem, "particle_collocation", collocation_points=collocation_points)
 
             results[name] = {
                 "success": True,
@@ -107,7 +106,7 @@ def test_solver_types():
     x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
     collocation_points = x_coords.reshape(-1, 1)
 
-    solver_types = ["particle_collocation", "monitored_particle", "adaptive_particle"]
+    solver_types = ["particle_collocation"]
 
     results = {}
 
@@ -163,7 +162,10 @@ def test_configuration_presets():
     for preset in presets:
         try:
             solver = create_solver(
-                problem=problem, solver_type="monitored_particle", preset=preset, collocation_points=collocation_points
+                problem=problem,
+                solver_type="particle_collocation",
+                preset=preset,
+                collocation_points=collocation_points,
             )
 
             results[preset] = {
@@ -194,7 +196,7 @@ def test_parameter_overrides():
     try:
         solver = create_solver(
             problem=problem,
-            solver_type="monitored_particle",
+            solver_type="particle_collocation",
             preset="fast",  # Start with fast preset
             collocation_points=collocation_points,
             # Override parameters
@@ -230,7 +232,7 @@ def test_parameter_overrides():
 
         solver = SolverFactory.create_solver(
             problem=problem,
-            solver_type="monitored_particle",
+            solver_type="particle_collocation",
             collocation_points=collocation_points,
             custom_config=custom_config,
         )
@@ -272,7 +274,7 @@ def test_factory_class_usage():
     try:
         solver = SolverFactory.create_solver(
             problem=problem,
-            solver_type="adaptive_particle",
+            solver_type="particle_collocation",
             config_preset="accurate",
             collocation_points=collocation_points,
             num_particles=5500,
@@ -300,9 +302,8 @@ def test_type_consistency():
     collocation_points = x_coords.reshape(-1, 1)
 
     expected_types = {
-        "particle_collocation": MonitoredParticleCollocationSolver,
-        "monitored_particle": MonitoredParticleCollocationSolver,
-        "adaptive_particle": AdaptiveParticleCollocationSolver,
+        "particle_collocation": ParticleCollocationSolver,
+        "fixed_point": FixedPointIterator,
     }
 
     results = {}
@@ -330,31 +331,8 @@ def test_type_consistency():
             results[solver_type] = {"success": False, "error": str(e)}
             print(f"  ✗ {solver_type}: {e}")
 
-    # Test fixed point solver type
-    try:
-        hjb_solver = HJBGFDMSolver(problem, collocation_points)
-        fp_solver = FPParticleSolver(problem, collocation_points)
-
-        solver = create_solver(
-            problem=problem, solver_type="fixed_point", preset="fast", hjb_solver=hjb_solver, fp_solver=fp_solver
-        )
-
-        is_correct_type = isinstance(solver, ConfigAwareFixedPointIterator)
-        results["fixed_point"] = {
-            "success": True,
-            "expected_type": ConfigAwareFixedPointIterator.__name__,
-            "actual_type": type(solver).__name__,
-            "type_correct": is_correct_type,
-        }
-
-        if is_correct_type:
-            print(f"  ✓ fixed_point: correct type {ConfigAwareFixedPointIterator.__name__}")
-        else:
-            print(f"  ⚠ fixed_point: expected {ConfigAwareFixedPointIterator.__name__}, got {type(solver).__name__}")
-
-    except Exception as e:
-        results["fixed_point"] = {"success": False, "error": str(e)}
-        print(f"  ✗ fixed_point: {e}")
+    # Fixed point is already tested in the loop above
+    # (It requires hjb_solver and fp_solver parameters which are handled separately)
 
     return results
 
