@@ -475,7 +475,9 @@ class MFGProblem:
 
         # Default coupling implementation (only for non-custom problems)
         if not self.is_custom:
+            # Extract scalar value (works for both NumPy and PyTorch)
             m_val = M_density_at_n_plus_1[x_idx]
+            m_val = m_val.item() if hasattr(m_val, "item") else float(m_val)
             if np.isnan(m_val) or np.isinf(m_val):
                 return np.nan
             try:
