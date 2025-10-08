@@ -6,7 +6,7 @@ A modern Python framework for solving Mean Field Games with modular solver archi
 **🧩 Three Solver Tiers**: Basic FDM / Hybrid (DEFAULT) / Advanced (WENO, Semi-Lagrangian)
 **⭐ Mass-Conserving**: ~10⁻¹⁵ error with hybrid particle-FDM methods
 **⚡ GPU Acceleration**: Multi-backend system (PyTorch, JAX, Numba)
-**🎮 RL for MFG**: Complete continuous control (DDPG, TD3, SAC) ✨ **v1.4.0**
+**🎮 RL for MFG**: Complete continuous control (DDPG, TD3, SAC)
 **🌐 Network Support**: Also works on graphs and networks
 
 ## 🚀 Quick Start
@@ -40,16 +40,14 @@ print(f"Mass error: {result.mass_conservation_error:.2e}")  # ~10⁻¹⁵
 
 **That's it!** You've solved a Mean Field Games system with research-grade quality.
 
-## 🎊 **Recent Achievements**
+## 🌟 **Key Capabilities**
 
-### **💾 v1.7.1: HDF5 Support + Documentation Consolidation** ✨ **NEW** (October 8, 2025)
-
-**HDF5 Data Persistence**:
+### **💾 Data Persistence & I/O**
 ```python
-# Save solver results with compression
+# Save/load solver results with HDF5
 from mfg_pde.utils.io import save_solution, load_solution
 
-save_solution(U, M, metadata, 'solution.h5', compression='gzip', compression_opts=4)
+save_solution(U, M, metadata, 'solution.h5', compression='gzip')
 U, M, meta = load_solution('solution.h5')
 
 # Or use SolverResult convenience methods
@@ -57,132 +55,42 @@ result.save_hdf5('result.h5')
 loaded_result = SolverResult.load_hdf5('result.h5')
 ```
 
-**Features**:
-- **High-level API**: `save_solution()` / `load_solution()` for solver results
-- **Checkpointing**: `save_checkpoint()` / `load_checkpoint()` for resuming computations
-- **Compression**: Configurable gzip/lzf compression (levels 1-9)
-- **Rich metadata**: Grid storage, convergence info, solver parameters
-- **SolverResult integration**: `result.save_hdf5()` / `SolverResult.load_hdf5()`
-
-**Documentation Consolidation**:
-- **63% reduction**: 62 → 23 active development docs
-- **Theory organization**: 17 top-level files → 6 topic-based subdirectories
-- **User guides centralized**: Quick starts moved to user/guides/
-- **Planning streamlined**: Completed work moved to development/completed/
-
-📖 **See**: `examples/basic/hdf5_save_load_demo.py` for complete demo
-
----
-
-### **📚 v1.7.0: Complete Paradigm Documentation** (October 2025)
-
-Comprehensive documentation coverage with complete paradigm overviews:
-
-**Paradigm Documentation**: Complete implementation guides
-- **Optimization Paradigm**: Variational methods, JKO scheme, Sinkhorn algorithm, primal-dual (673 lines)
-- **Reinforcement Learning Paradigm**: 10+ algorithms, multi-population support, 20+ environments (765 lines)
-- **Neural Paradigm**: PINN, DGM, FNO, DeepONet (existing, 704 lines)
-
-**Classic MFG Examples**: Theory-integrated demonstrations
-- **El Farol Bar**: Discrete coordination game (network MFG formulation)
-- **Santa Fe Bar**: Continuous preference evolution
-- **Towel on Beach**: Spatial competition with phase transitions (λ parameter)
-
-**Documentation Bridge**: 18,690 lines of code fully documented, linking theory (`docs/theory/`) to implementation
-
-📖 **See**: `examples/basic/README.md` for complete example catalog
-
----
-
-### **🎉 Phase 2 Complete: Multi-Dimensional & Stochastic MFG** ✨ **BREAKTHROUGH** (October 2025)
-
-**6 months ahead of schedule**, MFG_PDE now supports:
-
-#### **2D/3D Multi-Dimensional Framework** (Phase 2.1)
+### **🌐 Multi-Dimensional Solvers**
 ```python
+# 2D/3D problems with efficient sparse methods
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.utils import SparseMatrixBuilder, SparseSolver
-from mfg_pde.visualization import MultiDimVisualizer
+from mfg_pde.utils import SparseMatrixBuilder
 
-# Create efficient 2D grid (100× memory reduction)
 grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[51, 51])
-
-# Build sparse Laplacian (<1% density)
 builder = SparseMatrixBuilder(grid, matrix_format='csr')
 L = builder.build_laplacian(boundary_conditions='neumann')
-
-# Solve large-scale system
-solver = SparseSolver(method='cg', tol=1e-8)
-u = solver.solve(L, b)
-
-# Interactive 3D visualization
-viz = MultiDimVisualizer(grid, backend='plotly')
-fig = viz.surface_plot(u, title='Value Function u(x,y)')
 ```
 
-**Applications**: Traffic flow (2D routing), portfolio optimization (wealth × allocation), epidemic modeling (spatial disease containment)
-
-#### **Stochastic MFG with Common Noise** (Phase 2.2)
+### **📊 Stochastic MFG**
 ```python
+# Common noise MFG with variance reduction
 from mfg_pde.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
 from mfg_pde.alg.numerical import CommonNoiseMFGSolver
 
-# Market volatility as common noise
 noise = OrnsteinUhlenbeckProcess(kappa=2.0, theta=0.2, sigma=0.1)
-
-# Define stochastic MFG problem
-problem = StochasticMFGProblem(
-    noise_process=noise,
-    conditional_hamiltonian=H,  # H(x, p, m, θ)
-    # ... other parameters
-)
-
-# Monte Carlo solution with variance reduction
+problem = StochasticMFGProblem(noise_process=noise, ...)
 solver = CommonNoiseMFGSolver(problem, num_realizations=50, use_quasi_mc=True)
-result = solver.solve()  # Returns mean ± confidence intervals
+result = solver.solve()
 ```
 
-**Noise Processes**: Ornstein-Uhlenbeck, CIR, Geometric Brownian Motion, Jump Diffusion
-
-**📊 Phase 2 Statistics**: 6,949 lines, 60 tests (100% passing), 4 application examples
-
----
-
-### **v1.4.0: Two-Level API Design + Three-Tier Solver Hierarchy** ✨ **NEW**
-
-**Two-Level API** (assumes MFG knowledge):
-- **Level 1 (95%)**: Researchers & Practitioners → Factory API (full algorithm access)
-- **Level 2 (5%)**: Core Contributors → Base classes (infrastructure extension)
-
-**Three Solver Tiers**:
-- **Tier 1**: Basic FDM (`create_basic_solver`) - benchmark, ~1-10% mass error
-- **Tier 2**: Hybrid (`create_standard_solver`) - **DEFAULT**, ~10⁻¹⁵ mass error
-- **Tier 3**: Advanced (`create_accurate_solver`) - WENO, Semi-Lagrangian, DGM
-
+### **🎯 Three-Tier Solver Hierarchy**
 ```python
 from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
 
-# Tier 1: Basic FDM (benchmark only)
-solver_fdm = create_basic_solver(problem, damping=0.6)
+# Tier 1: Basic FDM (benchmark, ~1-10% mass error)
+solver = create_basic_solver(problem, damping=0.6)
 
-# Tier 2: Hybrid (DEFAULT - use this!)
-solver_hybrid = create_standard_solver(problem, "fixed_point")
+# Tier 2: Hybrid (**DEFAULT** - ~10⁻¹⁵ mass error)
+solver = create_standard_solver(problem, "fixed_point")
 
-# Tier 3: Advanced (WENO for high-order accuracy)
-solver_weno = create_accurate_solver(problem, solver_type="weno")
+# Tier 3: Advanced (WENO, Semi-Lagrangian, DGM)
+solver = create_accurate_solver(problem, solver_type="weno")
 ```
-
-**Why Tier 2?** Perfect mass conservation + fast convergence + robust.
-
-### **Strategic Typing Excellence**
-
-**🏆 100% Strategic Typing Coverage:**
-- **366 → 0 MyPy errors** (strategic reduction)
-- **91 source files** with complete type safety
-- **Zero breaking changes** throughout improvement process
-- **Research-optimized CI/CD** for fast feedback loops
-
-📚 Complete documentation in [docs/development/](docs/development/)
 
 ## 🏗️ **Factory API - Primary Interface**
 
@@ -282,11 +190,11 @@ solver = create_accurate_solver(problem, solver_type="weno")
 - ✅ **Multiple variants**: WENO5, WENO-Z, WENO-M, WENO-JS
 - ✅ **Academic publication ready** with comprehensive benchmarking
 
-## 🎮 **Reinforcement Learning for MFG** ✨ **v1.4.0**
+## 🎮 **Reinforcement Learning for MFG**
 
 Complete RL framework supporting both **discrete** and **continuous** action spaces:
 
-### **Continuous Control Algorithms** ✨ **Phase 3.3 Complete**
+### **Continuous Control Algorithms**
 
 ```python
 from mfg_pde.alg.reinforcement.algorithms import (
@@ -318,7 +226,7 @@ print(f"Final reward: {stats['episode_rewards'][-1]:.2f}")
 - **SAC**: -3.50 ± 0.17 (robust)
 - **DDPG**: -4.28 ± 1.06 (fast)
 
-### **🌍 Continuous MFG Environment Library** ✨ **Phase 3.5 Complete**
+### **🌍 Continuous MFG Environment Library**
 
 Five production-ready environments:
 
@@ -401,12 +309,12 @@ result = solver.solve()
 - **[Quick Start](docs/user/quickstart.md)** - Factory API tutorial (5 minutes)
 - **[Solver Selection Guide](docs/user/SOLVER_SELECTION_GUIDE.md)** - Choosing solver tiers
 - **[Examples](examples/)** - Working examples and tutorials
-- **[Basic Examples Guide](examples/basic/README.md)** - 11 examples with learning paths ✨ **NEW**
+- **[Basic Examples Guide](examples/basic/README.md)** - 11 examples with learning paths
 
 ### **For Developers (Core Contributors)**
 - **[Developer Guide](docs/development/)** - Extending the framework
 - **[API Design](docs/development/PROGRESSIVE_DISCLOSURE_API_DESIGN.md)** - Two-level architecture
-- **[Paradigm Overviews](docs/development/)** - Implementation guides for all paradigms ✨ **NEW**
+- **[Paradigm Overviews](docs/development/)** - Implementation guides for all paradigms
   - [Optimization Paradigm](docs/development/OPTIMIZATION_PARADIGM_OVERVIEW.md)
   - [RL Paradigm](docs/development/REINFORCEMENT_LEARNING_PARADIGM_OVERVIEW.md)
   - [Neural Paradigm](docs/development/NEURAL_PARADIGM_OVERVIEW.md)
@@ -415,14 +323,14 @@ result = solver.solve()
 
 ## Examples
 
-- **[examples/basic/](examples/basic/)** - Simple getting started examples (11 examples) 📖 **[README](examples/basic/README.md)**
+- **[examples/basic/](examples/basic/)** - Simple getting started examples (11 examples, see [README](examples/basic/README.md))
 - **[examples/advanced/](examples/advanced/)** - Complex workflows, GPU acceleration, WENO benchmarking
 - **[examples/notebooks/](examples/notebooks/)** - Jupyter notebook tutorials
 
-**🆕 Latest Examples (v1.7.0)**:
-- `examples/basic/el_farol_bar_demo.py` - Classic coordination game (discrete states) ✨ **NEW**
-- `examples/basic/santa_fe_bar_demo.py` - Preference evolution formulation ✨ **NEW**
-- `examples/basic/towel_beach_demo.py` - Spatial competition with phase transitions ✨ **NEW**
+**Featured Examples**:
+- `examples/basic/el_farol_bar_demo.py` - Classic coordination game (discrete states)
+- `examples/basic/santa_fe_bar_demo.py` - Preference evolution formulation
+- `examples/basic/towel_beach_demo.py` - Spatial competition with phase transitions
 - `examples/advanced/weno_solver_demo.py` - Unified WENO family demonstration
 - `examples/advanced/continuous_control_comparison.py` - RL continuous control comparison
 
