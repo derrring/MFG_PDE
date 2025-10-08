@@ -157,11 +157,21 @@ def compute_hjb_residual(
     # Diffusion term: -(sigma^2/2) * (U_n_current)_xx
     # Notebook FnU[i] += - ((sigma**2)/2.) * (Ukp1_n[i+1]-2*Ukp1_n[i]+Ukp1_n[i-1])/(Dx**2)
     if abs(Dx) > 1e-14 and Nx > 1:
-        U_xx = (
-            np.roll(U_n_current_newton_iterate, -1)
-            - 2 * U_n_current_newton_iterate
-            + np.roll(U_n_current_newton_iterate, 1)
-        ) / Dx**2
+        # Use backend-aware roll operation
+        if backend is not None and hasattr(U_n_current_newton_iterate, "roll"):
+            # PyTorch tensors have .roll() method
+            U_xx = (
+                U_n_current_newton_iterate.roll(-1)
+                - 2 * U_n_current_newton_iterate
+                + U_n_current_newton_iterate.roll(1)
+            ) / Dx**2
+        else:
+            # NumPy arrays use np.roll()
+            U_xx = (
+                np.roll(U_n_current_newton_iterate, -1)
+                - 2 * U_n_current_newton_iterate
+                + np.roll(U_n_current_newton_iterate, 1)
+            ) / Dx**2
         if has_nan_or_inf(U_xx, backend):
             if backend is not None:
                 return backend.full((Nx,), float("nan"))
