@@ -5,16 +5,35 @@ This file contains preferences and conventions for Claude Code when working with
 ## 🏗️ **Repository Structure Conventions**
 
 ### **Directory Organization**
-- **`mfg_pde/`** - Core package code only
+
+**Top-Level Structure** (outside package):
+- **`mfg_pde/`** - Core package code (see package structure below)
 - **`tests/`** - Pure unit and integration tests (no demos)
+- **`benchmarks/`** - Performance benchmark **test scripts** (peer to `tests/`)
 - **`examples/`** - All demonstration code, organized by complexity:
   - `basic/` - Simple single-concept examples
   - `advanced/` - Complex multi-feature demonstrations
   - `notebooks/` - Jupyter notebook examples
   - `tutorials/` - Step-by-step learning materials
-- **`benchmarks/`** - Performance benchmark **test scripts** (like `tests/` but for performance)
 - **`docs/`** - Documentation organized by category (see docs/README.md)
 - **`archive/`** - Historical code (do not modify)
+
+**Package Structure** (`mfg_pde/` internals):
+- **`mfg_pde/alg/`** - Algorithms (numerical, neural, reinforcement, optimization)
+- **`mfg_pde/backends/`** - Computational backends (NumPy, PyTorch, JAX)
+- **`mfg_pde/benchmarks/`** - Benchmarking **tools** (library code, NOT test scripts)
+  - ⚠️ Note: Different from top-level `/benchmarks/` (test scripts)
+- **`mfg_pde/config/`** - Configuration management
+- **`mfg_pde/core/`** - Core MFG problem definitions
+- **`mfg_pde/factory/`** - Factory functions for common patterns
+- **`mfg_pde/geometry/`** - Domain and boundary condition definitions
+- **`mfg_pde/solvers/`** - High-level solver interfaces
+- **`mfg_pde/utils/`** - Utility functions (logging, numerical, performance)
+- **`mfg_pde/visualization/`** - Plotting and visualization tools
+- **`mfg_pde/workflow/`** - Experiment management and parameter sweeps
+- **`mfg_pde/compat/`** - Backward compatibility layer
+- **`mfg_pde/meta/`** - Metaprogramming utilities
+- **`mfg_pde/_internal/`** - Private internals (do not import directly)
 
 ### **File Placement Rules**
 - **Examples**: Always categorize by complexity (basic/advanced/notebooks)
