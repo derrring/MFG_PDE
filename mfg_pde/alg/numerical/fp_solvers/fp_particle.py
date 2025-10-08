@@ -53,6 +53,71 @@ class FPParticleSolver(BaseFPSolver):
         else:
             self.boundary_conditions = boundary_conditions
 
+    def _compute_gradient(self, U_array, Dx: float, use_backend: bool = False):
+        """
+        Compute spatial gradient using finite differences.
+
+        Backend-agnostic helper to reduce code duplication between CPU and GPU pipelines.
+
+        Parameters
+        ----------
+        U_array : np.ndarray or backend tensor
+            Value function at grid points
+        Dx : float
+            Grid spacing
+        use_backend : bool
+            If True, use backend array module; if False, use NumPy
+
+        Returns
+        -------
+        Gradient array (same type as input)
+        """
+        if use_backend and self.backend is not None:
+            xp = self.backend.array_module
+        else:
+            xp = np
+
+        if Dx > 1e-14:
+            return (xp.roll(U_array, -1) - xp.roll(U_array, 1)) / (2 * Dx)
+        else:
+            return xp.zeros_like(U_array)
+
+    def _normalize_density(self, M_array, Dx: float, use_backend: bool = False):
+        """
+        Normalize density to unit mass.
+
+        Backend-agnostic helper to reduce code duplication between CPU and GPU pipelines.
+
+        Parameters
+        ----------
+        M_array : np.ndarray or backend tensor
+            Density array
+        Dx : float
+            Grid spacing
+        use_backend : bool
+            If True, use backend array module; if False, use NumPy
+
+        Returns
+        -------
+        Normalized density array (same type as input)
+        """
+        if use_backend and self.backend is not None:
+            xp = self.backend.array_module
+            mass = xp.sum(M_array) * Dx if Dx > 1e-14 else xp.sum(M_array)
+            # Handle PyTorch tensors
+            if hasattr(mass, "item"):
+                mass_val = mass.item()
+            else:
+                mass_val = float(mass)
+        else:
+            xp = np
+            mass_val = float(np.sum(M_array) * Dx) if Dx > 1e-14 else float(np.sum(M_array))
+
+        if mass_val > 1e-9:
+            return M_array / mass_val
+        else:
+            return M_array * 0  # Return zeros
+
     def _estimate_density_from_particles(self, particles_at_time_t: np.ndarray) -> np.ndarray:
         Nx = self.problem.Nx + 1
         xSpace = self.problem.xSpace
@@ -192,8 +257,9 @@ class FPParticleSolver(BaseFPSolver):
         for n_time_idx in range(Nt - 1):
             U_at_tn = U_solution_for_drift[n_time_idx, :]
 
-            if Nx > 1 and Dx > 1e-14:
-                dUdx_grid = (np.roll(U_at_tn, -1) - np.roll(U_at_tn, 1)) / (2 * Dx)
+            # Use helper function for gradient computation
+            if Nx > 1:
+                dUdx_grid = self._compute_gradient(U_at_tn, Dx, use_backend=False)
             else:
                 dUdx_grid = np.zeros(Nx)
 
@@ -254,7 +320,10 @@ class FPParticleSolver(BaseFPSolver):
         Track B Phase 2.1: Full GPU acceleration including internal KDE.
         Eliminates all GPU↔CPU transfers during evolution loop.
 
-        Expected speedup: 5-10x vs CPU for N=10k-100k particles
+        Expected speedup:
+            - Apple Silicon MPS: 1.5-2x for N≥50k particles
+            - NVIDIA CUDA: 3-5x (estimated, not tested)
+            - See docs/development/TRACK_B_GPU_ACCELERATION_COMPLETE.md
         """
         from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu_internal
         from mfg_pde.alg.numerical.particle_utils import (
@@ -262,8 +331,6 @@ class FPParticleSolver(BaseFPSolver):
             interpolate_1d_gpu,
             sample_from_density_gpu,
         )
-
-        xp = self.backend.array_module
 
         # Problem parameters
         Nx = self.problem.Nx + 1
@@ -318,16 +385,9 @@ class FPParticleSolver(BaseFPSolver):
             X_particles_gpu[0, :], x_grid_gpu, bandwidth_absolute, self.backend
         )
 
-        # Normalize if required (match CPU pipeline behavior)
-        if self.normalize_kde_output and Dx > 1e-14:
-            current_mass = xp.sum(M_density_gpu[0, :]) * Dx
-            if hasattr(current_mass, "item"):  # PyTorch tensor
-                current_mass_val = current_mass.item()
-            else:
-                current_mass_val = float(current_mass)
-
-            if current_mass_val > 1e-9:
-                M_density_gpu[0, :] = M_density_gpu[0, :] / current_mass_val
+        # Normalize if required (use helper function)
+        if self.normalize_kde_output:
+            M_density_gpu[0, :] = self._normalize_density(M_density_gpu[0, :], Dx, use_backend=True)
 
         if Nt == 1:
             self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
@@ -337,10 +397,9 @@ class FPParticleSolver(BaseFPSolver):
         for t in range(Nt - 1):
             U_t_gpu = U_drift_gpu[t, :]
 
-            # Compute gradient on grid (finite difference)
-            if Nx > 1 and Dx > 1e-14:
-                # Use roll for periodic gradient (GPU operation)
-                dUdx_gpu = (xp.roll(U_t_gpu, -1) - xp.roll(U_t_gpu, 1)) / (2 * Dx)
+            # Compute gradient on grid (use helper function)
+            if Nx > 1:
+                dUdx_gpu = self._compute_gradient(U_t_gpu, Dx, use_backend=True)
             else:
                 dUdx_gpu = self.backend.zeros((Nx,))
 
@@ -376,16 +435,9 @@ class FPParticleSolver(BaseFPSolver):
                 X_particles_gpu[t + 1, :], x_grid_gpu, bandwidth_absolute, self.backend
             )
 
-            # Normalize if required
-            if self.normalize_kde_output and Dx > 1e-14:
-                current_mass = xp.sum(M_density_gpu[t + 1, :]) * Dx
-                if hasattr(current_mass, "item"):
-                    current_mass_val = current_mass.item()
-                else:
-                    current_mass_val = float(current_mass)
-
-                if current_mass_val > 1e-9:
-                    M_density_gpu[t + 1, :] = M_density_gpu[t + 1, :] / current_mass_val
+            # Normalize if required (use helper function)
+            if self.normalize_kde_output:
+                M_density_gpu[t + 1, :] = self._normalize_density(M_density_gpu[t + 1, :], Dx, use_backend=True)
 
         # Store trajectory and convert to NumPy ONCE at end
         self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
