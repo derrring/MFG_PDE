@@ -36,15 +36,15 @@ type SpatialArray = NDArray
 type TemporalArray = NDArray
 """1D temporal array, typically shape (Nt+1,)"""
 
-type SolutionArray = NDArray
-"""2D spatio-temporal solution array, typically shape (Nt+1, Nx+1)"""
+# Note: SolutionArray is defined in protocols.py and exported from types/__init__.py
+# to avoid duplication. Import it from there for consistency.
 
 
 # Solver component type aliases
 class NewtonSolver(Protocol):
     """Protocol for Newton-type solvers."""
 
-    def solve_step(self, u_current: SolutionArray, rhs: SolutionArray) -> SolutionArray: ...
+    def solve_step(self, u_current: NDArray, rhs: NDArray) -> NDArray: ...
 
 
 class LinearSolver(Protocol):
@@ -61,9 +61,10 @@ type SolverOptions = dict[str, float | int | str | bool | None]
 """Dictionary of optional solver settings"""
 
 # Complex internal types (for maintainers)
+# Note: Using NDArray instead of SolutionArray to avoid import complexity
 type ComplexSolverState = (
-    tuple[SolutionArray, SolutionArray]  # Simple (u, m) state
-    | dict[str, SolutionArray | float | int]  # Complex state with metadata
+    tuple[NDArray, NDArray]  # Simple (u, m) state
+    | dict[str, NDArray | float | int]  # Complex state with metadata
     | object  # Completely custom state objects
 )
 """Internal solver state - can be simple arrays or complex objects"""
