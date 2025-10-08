@@ -337,3 +337,40 @@ class JAXBackend(BaseBackend):
             return None
         except Exception:
             return None
+
+    # Backend Capabilities (for auto-switching)
+    def has_capability(self, capability: str) -> bool:
+        """Check if JAX backend supports a specific capability."""
+        capabilities = {
+            "parallel_kde": self.device == "gpu",  # GPU enables parallel KDE
+            "parallel_interpolation": self.device == "gpu",
+            "low_latency": self.device == "gpu",  # JAX GPU has very low latency
+            "high_bandwidth": self.device == "gpu",  # CUDA has high bandwidth
+            "unified_memory": False,  # JAX uses separate GPU memory
+            "jit_compilation": self.jit_compile,  # XLA JIT compilation
+            "kernel_fusion": self.jit_compile,  # XLA auto-fuses kernels
+            "auto_vectorization": True,  # vmap auto-vectorizes
+        }
+        return capabilities.get(capability, False)
+
+    def get_performance_hints(self) -> dict:
+        """Return performance characteristics for strategy selection."""
+        if self.device == "gpu":
+            # Assume CUDA GPU (JAX primary GPU target)
+            return {
+                "kernel_overhead_us": 5,  # Very low latency with XLA
+                "memory_bandwidth_gb": 900,  # High for modern CUDA GPUs
+                "device_type": "cuda",
+                "optimal_problem_size": (10000, 100, 50),
+                "kernel_fusion": self.jit_compile,  # XLA fuses operations
+                "expected_speedup": 4.0 if self.jit_compile else 2.0,
+            }
+        else:  # CPU
+            return {
+                "kernel_overhead_us": 0,  # No kernel overhead on CPU
+                "memory_bandwidth_gb": 50,
+                "device_type": "cpu",
+                "optimal_problem_size": (5000, 50, 20),
+                "kernel_fusion": self.jit_compile,  # XLA can fuse on CPU too
+                "expected_speedup": 1.5 if self.jit_compile else 1.0,
+            }
