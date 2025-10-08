@@ -66,7 +66,8 @@ class FixedPointIterator(BaseMFGSolver):
         anderson_beta: float = 1.0,
         backend: str | None = None,
     ):
-        super().__init__(problem, backend=backend)
+        super().__init__(problem)
+        self.backend = backend
         self.hjb_solver = hjb_solver
         self.fp_solver = fp_solver
         self.config = config
@@ -302,3 +303,17 @@ class FixedPointIterator(BaseMFGSolver):
         """Clear warm start data."""
         self._warm_start_U = None
         self._warm_start_M = None
+
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Get the computed solution arrays.
+
+        Returns:
+            Tuple of (U, M) solution arrays
+
+        Raises:
+            RuntimeError: If no solution has been computed yet
+        """
+        if self.U is None or self.M is None:
+            raise RuntimeError("No solution computed. Call solve() first.")
+        return self.U, self.M
