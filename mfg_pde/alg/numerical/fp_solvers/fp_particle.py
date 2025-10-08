@@ -60,15 +60,6 @@ class FPParticleSolver(BaseFPSolver):
         xmax = self.problem.xmax
         Dx = self.problem.Dx
 
-        # KDE Acceleration Limitation:
-        # scipy.stats.gaussian_kde is CPU-only (no JAX/Torch equivalent)
-        # True GPU acceleration requires custom KDE implementation
-        # Options:
-        # 1. JAX-based KDE using vmap/jit (Phase 3)
-        # 2. PyTorch KDE using tensor operations (Phase 3)
-        # 3. Numba-compiled KDE (partial speedup, Phase 2.5)
-        # Current: Using scipy.stats.gaussian_kde with backend infrastructure ready
-
         if self.num_particles == 0 or len(particles_at_time_t) == 0:
             return np.zeros(Nx)
 
@@ -84,11 +75,27 @@ class FPParticleSolver(BaseFPSolver):
                     m_density_estimated[closest_idx] = 1.0
 
             # Normalization logic will apply below if self.normalize_kde_output is True
-            # If not normalizing, this peak might not integrate to 1 if Dx isn't "right" for one particle.
-            # However, with many particles, this case becomes less likely.
         else:
             try:
-                if SCIPY_AVAILABLE and gaussian_kde is not None:
+                # GPU-accelerated KDE if backend available (Track B Phase 1)
+                if self.backend is not None:
+                    from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu
+
+                    # Convert bandwidth parameter to float if needed
+                    if isinstance(self.kde_bandwidth, str):
+                        from mfg_pde.alg.numerical.density_estimation import adaptive_bandwidth_selection
+
+                        bandwidth_value = adaptive_bandwidth_selection(particles_at_time_t, method=self.kde_bandwidth)
+                    else:
+                        bandwidth_value = float(self.kde_bandwidth)
+
+                    m_density_estimated = gaussian_kde_gpu(particles_at_time_t, xSpace, bandwidth_value, self.backend)
+
+                    m_density_estimated[xSpace < xmin] = 0
+                    m_density_estimated[xSpace > xmax] = 0
+
+                # CPU fallback: scipy.stats.gaussian_kde
+                elif SCIPY_AVAILABLE and gaussian_kde is not None:
                     kde = gaussian_kde(particles_at_time_t, bw_method=self.kde_bandwidth)
                     m_density_estimated = kde(xSpace)
 
@@ -98,8 +105,8 @@ class FPParticleSolver(BaseFPSolver):
                     raise RuntimeError("SciPy not available for KDE")
 
             except Exception:
-                # print(f"Error during KDE: {e}. Defaulting to peak approximation.")
-                m_density_estimated = np.zeros(Nx)  # Fallback
+                # Fallback to peak approximation on error
+                m_density_estimated = np.zeros(Nx)
                 if len(particles_at_time_t) > 0:
                     mean_pos = np.mean(particles_at_time_t)
                     closest_idx = np.argmin(np.abs(xSpace - mean_pos))
