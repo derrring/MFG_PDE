@@ -12,14 +12,17 @@ This file contains preferences and conventions for Claude Code when working with
   - `advanced/` - Complex multi-feature demonstrations
   - `notebooks/` - Jupyter notebook examples
   - `tutorials/` - Step-by-step learning materials
-- **`benchmarks/`** - Performance comparisons and method analysis
+- **`benchmarks/`** - Performance benchmark **test scripts** (like `tests/` but for performance)
 - **`docs/`** - Documentation organized by category (see docs/README.md)
 - **`archive/`** - Historical code (do not modify)
 
 ### **File Placement Rules**
 - **Examples**: Always categorize by complexity (basic/advanced/notebooks)
 - **Tests**: Only actual unit/integration tests, no demos
-- **Benchmarks**: Performance analysis and method comparisons
+- **Benchmarks**: Performance benchmark **test scripts** (top-level, peer to `tests/`)
+  - ❌ NOT `examples/benchmarks/` (benchmarks are tests, not examples)
+  - ✅ `benchmarks/` (peer to `tests/`)
+  - Outputs go to `examples/outputs/benchmarks/` (gitignored)
 - **Documentation**: Follow docs/ category structure
 
 ## 📝 **Coding Standards**
