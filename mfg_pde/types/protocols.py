@@ -8,9 +8,10 @@ regardless of inheritance.
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from numpy.typing import NDArray
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 @runtime_checkable
@@ -123,9 +124,3 @@ class SolverConfig(Protocol):
     def get_parameter(self, name: str, default: Any = None) -> Any:
         """Get a configuration parameter."""
         ...
-
-
-# Type aliases for commonly used types (simple, memorable names)
-SolutionArray = NDArray  # For u(t,x) and m(t,x) arrays
-SpatialGrid = NDArray  # For x-coordinates
-TimeGrid = NDArray  # For t-coordinates
