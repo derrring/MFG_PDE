@@ -185,7 +185,7 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             # Solve HJB system
             final_u_cond = self.problem.get_final_u() if hasattr(self.problem, "get_final_u") else np.zeros(Nx)
             if self.backend is not None:
-                final_u_cond = self.backend.asarray(final_u_cond)
+                final_u_cond = self.backend.from_numpy(final_u_cond)
             U_new_tmp = self.hjb_solver.solve_hjb_system(
                 M_old,
                 final_u_cond,
@@ -198,7 +198,7 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             # Solve FP system
             initial_m_cond = self.problem.get_initial_m() if hasattr(self.problem, "get_initial_m") else np.ones(Nx)
             if self.backend is not None:
-                initial_m_cond = self.backend.asarray(initial_m_cond)
+                initial_m_cond = self.backend.from_numpy(initial_m_cond)
             M_new_tmp = self.fp_solver.solve_fp_system(
                 initial_m_cond,
                 self.U,
@@ -211,7 +211,7 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             # The damping step above may modify M[0,:], but initial condition is fixed
             initial_m_dist = self.problem.get_initial_m() if hasattr(self.problem, "get_initial_m") else np.ones(Nx)
             if self.backend is not None:
-                initial_m_dist = self.backend.asarray(initial_m_dist)
+                initial_m_dist = self.backend.from_numpy(initial_m_dist)
             self.M[0, :] = initial_m_dist
 
             # Update U_picard_prev for next iteration
@@ -319,7 +319,7 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
         if hasattr(self.problem, "get_initial_m"):
             initial_m_dist = self.problem.get_initial_m()
             if self.backend is not None:
-                initial_m_dist = self.backend.asarray(initial_m_dist)
+                initial_m_dist = self.backend.from_numpy(initial_m_dist)
             self.M[0, :] = initial_m_dist
             for t in range(1, Nt):
                 self.M[t, :] = initial_m_dist
@@ -327,7 +327,7 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
         if hasattr(self.problem, "get_final_u"):
             final_u_cost = self.problem.get_final_u()
             if self.backend is not None:
-                final_u_cost = self.backend.asarray(final_u_cost)
+                final_u_cost = self.backend.from_numpy(final_u_cost)
             self.U[Nt - 1, :] = final_u_cost
             for t in range(Nt - 1):
                 self.U[t, :] = final_u_cost
