@@ -7,6 +7,7 @@ import numpy as np
 import scipy.sparse as sparse
 
 from mfg_pde.alg.base_solver import BaseNumericalSolver
+from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
 
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
@@ -17,31 +18,6 @@ if TYPE_CHECKING:
 
 # Clipping limit for p_values ONLY when using numerical FD for Jacobian H-part (fallback)
 P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
-
-
-def _has_nan_or_inf(arr, backend=None):
-    """
-    Backend-aware check for NaN or Inf values in array.
-
-    Args:
-        arr: Array to check (NumPy array, PyTorch tensor, JAX array, etc.)
-        backend: Backend instance (optional)
-
-    Returns:
-        bool: True if any NaN or Inf values exist
-    """
-    if backend is not None:
-        xp = backend.array_module
-        # PyTorch tensors have .isnan() and .isinf() methods
-        if hasattr(arr, "isnan"):
-            # Use tensor methods directly, not xp.any() which has different signature
-            return bool((arr.isnan() | arr.isinf()).any())
-        # JAX and other backends use module-level functions
-        else:
-            return bool(xp.any(xp.isnan(arr)) or xp.any(xp.isinf(arr)))
-    else:
-        # NumPy fallback
-        return bool(np.any(np.isnan(arr)) or np.any(np.isinf(arr)))
 
 
 class BaseHJBSolver(BaseNumericalSolver):
@@ -402,7 +378,7 @@ def newton_hjb_step(
 ) -> tuple[np.ndarray, float]:
     Dx_norm = problem.Dx if abs(problem.Dx) > 1e-12 else 1.0
 
-    if _has_nan_or_inf(U_n_current_newton_iterate, backend):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate, np.inf
 
     residual_F_U = compute_hjb_residual(
@@ -512,24 +488,11 @@ def solve_hjb_timestep_newton(
     if newton_tolerance is None:
         newton_tolerance = 1e-6
 
-    # Get array module from backend (defaults to NumPy)
-    if backend is not None:
-        xp = backend.array_module
-    else:
-        xp = np
-
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
-    # Use backend-aware copy
-    if hasattr(U_n_plus_1_from_hjb_step, "clone"):  # PyTorch
-        U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.clone()
-    elif hasattr(U_n_plus_1_from_hjb_step, "copy"):  # NumPy
-        U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
-    elif backend is not None:
-        U_n_current_newton_iterate = backend.array(U_n_plus_1_from_hjb_step)
-    else:
-        U_n_current_newton_iterate = xp.array(U_n_plus_1_from_hjb_step)
+    # Use backend-aware copy from compatibility layer
+    U_n_current_newton_iterate = backend_aware_copy(U_n_plus_1_from_hjb_step, backend)
 
-    if _has_nan_or_inf(U_n_current_newton_iterate, backend):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate
 
     final_l2_error = np.inf
@@ -550,7 +513,7 @@ def solve_hjb_timestep_newton(
             backend,  # Pass backend for MPS/CUDA support
         )
 
-        if _has_nan_or_inf(U_n_next_newton_iterate, backend):
+        if has_nan_or_inf(U_n_next_newton_iterate, backend):
             break
 
         if iiter > 0 and l2_error > final_l2_error * 0.9999 and l2_error > newton_tolerance:
@@ -621,12 +584,6 @@ def solve_hjb_system_backward(
     if newton_tolerance is None:
         newton_tolerance = 1e-6
 
-    # Get array module from backend (defaults to NumPy)
-    if backend is not None:
-        xp = backend.array_module
-    else:
-        xp = np
-
     Nt = problem.Nt + 1
     Nx = problem.Nx + 1
 
@@ -634,24 +591,15 @@ def solve_hjb_system_backward(
     if backend is not None:
         U_solution_this_picard_iter = backend.zeros((Nt, Nx))
     else:
-        U_solution_this_picard_iter = xp.zeros((Nt, Nx))  # U_new in notebook
+        U_solution_this_picard_iter = np.zeros((Nt, Nx))  # U_new in notebook
     if Nt == 0:
         return U_solution_this_picard_iter
 
     # Use backend-aware nan/inf checking and assignment
-    if _has_nan_or_inf(U_final_condition_at_T, backend):
-        nan_val = xp.nan if hasattr(xp, "nan") else float("nan")
-        if backend is not None:
-            # PyTorch: use fill_ for in-place assignment
-            U_solution_this_picard_iter[Nt - 1, :].fill_(nan_val)
-        else:
-            U_solution_this_picard_iter[Nt - 1, :] = nan_val
+    if has_nan_or_inf(U_final_condition_at_T, backend):
+        backend_aware_assign(U_solution_this_picard_iter, (Nt - 1, slice(None)), float("nan"), backend)
     else:
-        if backend is not None:
-            # PyTorch: use copy_ for in-place tensor assignment
-            U_solution_this_picard_iter[Nt - 1, :].copy_(U_final_condition_at_T)
-        else:
-            U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
+        backend_aware_assign(U_solution_this_picard_iter, (Nt - 1, slice(None)), U_final_condition_at_T, backend)
 
     if Nt == 1:
         return U_solution_this_picard_iter
@@ -660,21 +608,23 @@ def solve_hjb_system_backward(
         U_n_plus_1_current_picard = U_solution_this_picard_iter[n_idx_hjb + 1, :]
 
         # Backend-aware nan/inf checking
-        if _has_nan_or_inf(U_n_plus_1_current_picard, backend):
-            U_solution_this_picard_iter[n_idx_hjb, :] = U_n_plus_1_current_picard
+        if has_nan_or_inf(U_n_plus_1_current_picard, backend):
+            backend_aware_assign(
+                U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_n_plus_1_current_picard, backend
+            )
             continue
 
         M_n_plus_1_prev_picard = M_density_from_prev_picard[n_idx_hjb + 1, :]
-        if _has_nan_or_inf(M_n_plus_1_prev_picard, backend):
-            U_solution_this_picard_iter[n_idx_hjb, :] = xp.nan if hasattr(xp, "nan") else float("nan")
+        if has_nan_or_inf(M_n_plus_1_prev_picard, backend):
+            backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), float("nan"), backend)
             continue
 
         U_n_prev_picard = U_from_prev_picard[n_idx_hjb, :]  # U_k[n] from notebook
-        if _has_nan_or_inf(U_n_prev_picard, backend):
-            U_solution_this_picard_iter[n_idx_hjb, :] = xp.nan if hasattr(xp, "nan") else float("nan")
+        if has_nan_or_inf(U_n_prev_picard, backend):
+            backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), float("nan"), backend)
             continue
 
-        U_solution_this_picard_iter[n_idx_hjb, :] = solve_hjb_timestep_newton(
+        U_new_n = solve_hjb_timestep_newton(
             U_n_plus_1_current_picard,  # U_new[n+1]
             U_n_prev_picard,  # U_k[n] (for Jacobian)
             M_n_plus_1_prev_picard,  # M_k[n+1]
@@ -684,8 +634,11 @@ def solve_hjb_system_backward(
             t_idx_n=n_idx_hjb,
             backend=backend,  # Pass backend for acceleration
         )
-        if np.any(np.isnan(U_solution_this_picard_iter[n_idx_hjb, :])) and not np.any(
-            np.isnan(U_n_plus_1_current_picard)
+        backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
+
+        # Debug check for NaN introduction
+        if has_nan_or_inf(U_solution_this_picard_iter[n_idx_hjb, :], backend) and not has_nan_or_inf(
+            U_n_plus_1_current_picard, backend
         ):
             print(f"SYS_DEBUG: U_solution became NaN after Newton step for t_idx_n={n_idx_hjb}.")
 
