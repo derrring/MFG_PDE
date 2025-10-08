@@ -51,6 +51,11 @@ Comprehensive documentation coverage with complete paradigm overviews:
 - **Reinforcement Learning Paradigm**: 10+ algorithms, multi-population support, 20+ environments (765 lines)
 - **Neural Paradigm**: PINN, DGM, FNO, DeepONet (existing, 704 lines)
 
+**Classic MFG Examples**: Theory-integrated demonstrations
+- **El Farol Bar**: Discrete coordination game (network MFG formulation)
+- **Santa Fe Bar**: Continuous preference evolution
+- **Towel on Beach**: Spatial competition with phase transitions (λ parameter)
+
 **Documentation Bridge**: 18,690 lines of code fully documented, linking theory (`docs/theory/`) to implementation
 
 📖 **See**: `examples/basic/README.md` for complete example catalog
@@ -378,11 +383,14 @@ result = solver.solve()
 
 ## Examples
 
-- **[examples/basic/](examples/basic/)** - Simple getting started examples (8 examples) 📖 **[README](examples/basic/README.md)**
+- **[examples/basic/](examples/basic/)** - Simple getting started examples (11 examples) 📖 **[README](examples/basic/README.md)**
 - **[examples/advanced/](examples/advanced/)** - Complex workflows, GPU acceleration, WENO benchmarking
 - **[examples/notebooks/](examples/notebooks/)** - Jupyter notebook tutorials
 
-**🆕 Latest Examples:**
+**🆕 Latest Examples (v1.7.0)**:
+- `examples/basic/el_farol_bar_demo.py` - Classic coordination game (discrete states) ✨ **NEW**
+- `examples/basic/santa_fe_bar_demo.py` - Preference evolution formulation ✨ **NEW**
+- `examples/basic/towel_beach_demo.py` - Spatial competition with phase transitions ✨ **NEW**
 - `examples/advanced/weno_solver_demo.py` - Unified WENO family demonstration
 - `examples/advanced/continuous_control_comparison.py` - RL continuous control comparison
 

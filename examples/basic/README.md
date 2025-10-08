@@ -35,6 +35,71 @@ python examples/basic/lq_mfg_demo.py
 
 ---
 
+### 🎮 Coordination Games
+
+#### `el_farol_bar_demo.py` - El Farol Bar Problem (Discrete)
+**Difficulty**: ⭐⭐ Moderate
+**Concepts**: Discrete state MFG, network formulation, coordination paradox
+**Theory**: `docs/theory/coordination_games_mfg.md`
+
+Binary choice coordination game where agents decide whether to attend a bar. Demonstrates:
+- Discrete state space via 2-node network
+- Threshold-based payoffs
+- Coordination failure (no universally correct prediction)
+- Phase portrait analysis
+
+**Mathematical Formulation**:
+- States: {home, bar}
+- Threshold: 60% capacity
+- Network MFG formulation
+
+**Run**:
+```bash
+python examples/basic/el_farol_bar_demo.py
+```
+
+#### `santa_fe_bar_demo.py` - Santa Fe Bar (Continuous Preferences)
+**Difficulty**: ⭐⭐ Moderate
+**Concepts**: Continuous state MFG, preference evolution
+**Theory**: `docs/theory/coordination_games_mfg.md` §3
+
+Continuous preference evolution formulation of coordination game. Demonstrates:
+- State space: preference θ ∈ [-θ_max, θ_max]
+- Attendance: ∫_{θ>0} m(θ) dθ
+- Preference diffusion dynamics
+- Richer dynamics than discrete formulation
+
+**Run**:
+```bash
+python examples/basic/santa_fe_bar_demo.py
+```
+
+---
+
+### 🏖️ Spatial Competition
+
+#### `towel_beach_demo.py` - Towel on the Beach
+**Difficulty**: ⭐⭐ Moderate
+**Concepts**: Spatial MFG, phase transitions, congestion
+**Theory**: `docs/theory/spatial_competition_mfg.md`
+
+Spatial competition where agents choose beach positions balancing proximity to ice cream stall vs crowding. Demonstrates:
+- Continuous spatial state (position on beach)
+- Proximity-congestion trade-off
+- **Phase transitions** controlled by crowd aversion λ:
+  - Low λ: Single peak at stall
+  - High λ: Crater equilibrium (avoid stall)
+- Running cost: |x - x_stall| + λ log(m(x)) + (1/2)|u|²
+
+**Run**:
+```bash
+python examples/basic/towel_beach_demo.py
+```
+
+**Output**: Generates equilibrium plots for λ = 0.5, 1.0, 2.0 showing phase transition.
+
+---
+
 ### 🔬 Stochastic MFG
 
 #### `common_noise_lq_demo.py` - Common Noise MFG
@@ -211,11 +276,14 @@ pip install mfg_pde[rl]          # RL paradigm
 ### Recommended Order for New Users:
 
 1. **Start**: `lq_mfg_demo.py` - Understand basic MFG structure
-2. **Choose Specialization**:
+2. **Classic Games**:
+   - `el_farol_bar_demo.py` - Discrete coordination
+   - `towel_beach_demo.py` - Spatial competition
+3. **Choose Specialization**:
    - **Stochastic**: `common_noise_lq_demo.py`
    - **Neural**: `adaptive_pinn_demo.py`
    - **RL**: `rl_intro_comparison.py`
-3. **Advanced**: `multi_paradigm_comparison.py` - See all paradigms together
+4. **Advanced**: `multi_paradigm_comparison.py` - See all paradigms together
 
 ---
 
@@ -233,6 +301,8 @@ All examples save output to `examples/outputs/basic/`:
 ## Theory References
 
 Each example links to comprehensive theory documentation:
+- **Coordination games**: `docs/theory/coordination_games_mfg.md`
+- **Spatial competition**: `docs/theory/spatial_competition_mfg.md`
 - **Stochastic MFG**: `docs/theory/stochastic_mfg_common_noise.md`
 - **Mathematical foundations**: `docs/theory/mathematical_background.md`
 - **Convergence criteria**: `docs/theory/convergence_criteria.md`
@@ -256,5 +326,5 @@ See `CLAUDE.md` for coding standards and example structure guidelines.
 ---
 
 **Last Updated**: October 8, 2025
-**Total Examples**: 8
+**Total Examples**: 11
 **Coverage**: All 4 MFG paradigms (Numerical, Neural, Optimization, RL)
