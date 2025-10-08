@@ -19,6 +19,30 @@ if TYPE_CHECKING:
 P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
 
 
+def _has_nan_or_inf(arr, backend=None):
+    """
+    Backend-aware check for NaN or Inf values in array.
+
+    Args:
+        arr: Array to check (NumPy array, PyTorch tensor, JAX array, etc.)
+        backend: Backend instance (optional)
+
+    Returns:
+        bool: True if any NaN or Inf values exist
+    """
+    if backend is not None:
+        xp = backend.array_module
+        # PyTorch tensors have .isnan() and .isinf() methods
+        if hasattr(arr, "isnan"):
+            return bool(xp.any(arr.isnan() | arr.isinf()))
+        # JAX and other backends use module-level functions
+        else:
+            return bool(xp.any(xp.isnan(arr)) or xp.any(xp.isinf(arr)))
+    else:
+        # NumPy fallback
+        return bool(np.any(np.isnan(arr)) or np.any(np.isinf(arr)))
+
+
 class BaseHJBSolver(BaseNumericalSolver):
     """Base class for Hamilton-Jacobi-Bellman equation solvers."""
 
@@ -603,8 +627,9 @@ def solve_hjb_system_backward(
     if Nt == 0:
         return U_solution_this_picard_iter
 
-    if np.any(np.isnan(U_final_condition_at_T)) or np.any(np.isinf(U_final_condition_at_T)):
-        U_solution_this_picard_iter[Nt - 1, :] = np.nan
+    # Use backend-aware nan/inf checking
+    if _has_nan_or_inf(U_final_condition_at_T, backend):
+        U_solution_this_picard_iter[Nt - 1, :] = xp.nan if hasattr(xp, "nan") else float("nan")
     else:
         U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
 
@@ -614,18 +639,19 @@ def solve_hjb_system_backward(
     for n_idx_hjb in range(Nt - 2, -1, -1):  # Solves for U_solution_this_picard_iter at t_idx_n = n_idx_hjb
         U_n_plus_1_current_picard = U_solution_this_picard_iter[n_idx_hjb + 1, :]
 
-        if np.any(np.isnan(U_n_plus_1_current_picard)) or np.any(np.isinf(U_n_plus_1_current_picard)):
+        # Backend-aware nan/inf checking
+        if _has_nan_or_inf(U_n_plus_1_current_picard, backend):
             U_solution_this_picard_iter[n_idx_hjb, :] = U_n_plus_1_current_picard
             continue
 
         M_n_plus_1_prev_picard = M_density_from_prev_picard[n_idx_hjb + 1, :]
-        if np.any(np.isnan(M_n_plus_1_prev_picard)) or np.any(np.isinf(M_n_plus_1_prev_picard)):
-            U_solution_this_picard_iter[n_idx_hjb, :] = np.nan
+        if _has_nan_or_inf(M_n_plus_1_prev_picard, backend):
+            U_solution_this_picard_iter[n_idx_hjb, :] = xp.nan if hasattr(xp, "nan") else float("nan")
             continue
 
         U_n_prev_picard = U_from_prev_picard[n_idx_hjb, :]  # U_k[n] from notebook
-        if np.any(np.isnan(U_n_prev_picard)) or np.any(np.isinf(U_n_prev_picard)):
-            U_solution_this_picard_iter[n_idx_hjb, :] = np.nan
+        if _has_nan_or_inf(U_n_prev_picard, backend):
+            U_solution_this_picard_iter[n_idx_hjb, :] = xp.nan if hasattr(xp, "nan") else float("nan")
             continue
 
         U_solution_this_picard_iter[n_idx_hjb, :] = solve_hjb_timestep_newton(
