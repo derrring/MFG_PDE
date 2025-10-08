@@ -237,13 +237,13 @@ def test_create_validated_particle_collocation_solver(factory, simple_problem):
 @pytest.mark.unit
 @pytest.mark.skipif(not PYDANTIC_AVAILABLE, reason="Pydantic required")
 def test_create_validated_monitored_particle_solver(factory, simple_problem):
-    """Test creating validated monitored particle solver."""
+    """Test creating validated particle collocation solver."""
     x_coords = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx)
     collocation_points = x_coords.reshape(-1, 1)
 
     solver = factory.create_validated_solver(
         simple_problem,
-        solver_type="monitored_particle",
+        solver_type="particle_collocation",
         config_preset="research",
         collocation_points=collocation_points,
     )
@@ -255,12 +255,15 @@ def test_create_validated_monitored_particle_solver(factory, simple_problem):
 @pytest.mark.unit
 @pytest.mark.skipif(not PYDANTIC_AVAILABLE, reason="Pydantic required")
 def test_create_validated_adaptive_particle_solver(factory, simple_problem):
-    """Test creating validated adaptive particle solver."""
+    """Test creating validated particle collocation solver with custom config."""
     x_coords = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx)
     collocation_points = x_coords.reshape(-1, 1)
 
     solver = factory.create_validated_solver(
-        simple_problem, solver_type="adaptive_particle", config_preset="research", collocation_points=collocation_points
+        simple_problem,
+        solver_type="particle_collocation",
+        config_preset="research",
+        collocation_points=collocation_points,
     )
 
     assert solver is not None

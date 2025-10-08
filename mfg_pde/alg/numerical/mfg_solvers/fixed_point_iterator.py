@@ -76,9 +76,9 @@ class FixedPointIterator(BaseMFGSolver):
         self.use_anderson = use_anderson
         self.anderson_accelerator = None
         if use_anderson:
-            from mfg_pde.utils.numerical.anderson_acceleration import AndersonAcceleration
+            from mfg_pde.utils.numerical.anderson_acceleration import AndersonAccelerator
 
-            self.anderson_accelerator = AndersonAcceleration(depth=anderson_depth, beta=anderson_beta)
+            self.anderson_accelerator = AndersonAccelerator(depth=anderson_depth, beta=anderson_beta)
 
         # Damping parameter (overridden by config if provided)
         self.thetaUM = thetaUM
