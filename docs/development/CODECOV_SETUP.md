@@ -1,43 +1,66 @@
-# Codecov Integration Setup
+# Dynamic Coverage Badge Setup
 
-This guide explains how to set up Codecov for dynamic test coverage badges.
+This guide explains how to set up the dynamic test coverage badge using GitHub Gists.
 
 ## Prerequisites
 
 - GitHub repository with admin access
-- Codecov account (free for public repositories)
+- GitHub personal access token with gist permissions
 
 ## Setup Steps
 
-### 1. Create Codecov Account
+### 1. Create GitHub Personal Access Token
 
-1. Go to https://codecov.io/
-2. Sign in with your GitHub account
-3. Authorize Codecov to access your repositories
+1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Click "Generate new token (classic)"
+3. Name: "Coverage Badge Token"
+4. Select scope: **`gist`** (only this permission needed)
+5. Click "Generate token"
+6. **Copy the token** (you won't see it again!)
 
-### 2. Add Repository to Codecov
+### 2. Create a Gist for Badge Data
 
-1. In Codecov dashboard, click "Add new repository"
-2. Find and select `derrring/MFG_PDE`
-3. Codecov will provide a repository upload token
+1. Go to https://gist.github.com/
+2. Create a new gist:
+   - Filename: `coverage.json`
+   - Content: `{"schemaVersion": 1, "label": "coverage", "message": "unknown", "color": "lightgrey"}`
+3. Make it **public**
+4. Click "Create public gist"
+5. **Copy the gist ID** from the URL (e.g., `https://gist.github.com/username/abc123def456` → `abc123def456`)
 
-### 3. Add Token to GitHub Secrets
+### 3. Add Secrets to GitHub Repository
 
 1. Go to repository Settings → Secrets and variables → Actions
-2. Click "New repository secret"
-3. Name: `CODECOV_TOKEN`
-4. Value: Paste the token from Codecov dashboard
-5. Click "Add secret"
+2. Add two secrets:
 
-### 4. Verify Setup
+**Secret 1: GIST_SECRET**
+- Click "New repository secret"
+- Name: `GIST_SECRET`
+- Value: Paste the personal access token from step 1
+- Click "Add secret"
 
-Once the token is added:
+### 4. Update CI Workflow
+
+The gist ID in `.github/workflows/ci.yml` should match your gist:
+
+```yaml
+- name: Create coverage badge
+  uses: schneegans/dynamic-badges-action@v1.7.0
+  with:
+    auth: ${{ secrets.GIST_SECRET }}
+    gistID: abc123def456  # Replace with your gist ID
+    filename: coverage.json
+```
+
+### 5. Verify Setup
+
+Once configured:
 
 1. Push a commit to trigger CI workflow
 2. Check GitHub Actions tab for workflow run
 3. Test coverage job should complete successfully
-4. Coverage report will appear on Codecov dashboard
-5. Badge in README.md will update automatically
+4. Badge in README.md will update with actual coverage percentage
+5. Check your gist - it should now contain coverage data
 
 ## Configuration
 

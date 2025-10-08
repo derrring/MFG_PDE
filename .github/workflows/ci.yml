@@ -159,15 +159,34 @@ jobs:
           --cov-report=term \
           -v
 
-    - name: Upload coverage to Codecov
+    - name: Extract coverage percentage
+      id: coverage
+      run: |
+        COVERAGE=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); print(f\"{float(root.attrib['line-rate']) * 100:.0f}\")")
+        echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "Coverage: $COVERAGE%"
+
+    - name: Create coverage badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{ secrets.GIST_SECRET }}
+        gistID: mfg-pde-coverage
+        filename: coverage.json
+        label: coverage
+        message: ${{ steps.coverage.outputs.percentage }}%
+        color: ${{ steps.coverage.outputs.percentage > 80 && 'brightgreen' || steps.coverage.outputs.percentage > 70 && 'yellow' || 'red' }}
+      continue-on-error: true
+
+    - name: Upload coverage to Codecov (optional)
+      if: secrets.CODECOV_TOKEN != ''
       uses: codecov/codecov-action@v4
       with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         flags: unittests
         name: codecov-mfg-pde
         fail_ci_if_error: false
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+      continue-on-error: true
 
   # === PHASE 3: Performance & Memory Validation ===
   performance-check:
