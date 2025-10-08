@@ -124,14 +124,20 @@ def compute_hjb_residual(
     M_density_at_n_plus_1: np.ndarray,  # M_k_np1 in notebook
     problem: MFGProblem,
     t_idx_n: int,  # Time index for U_n
+    backend=None,  # Backend for MPS/CUDA support
 ) -> np.ndarray:
     Nx = problem.Nx + 1
     Dx = problem.Dx
     Dt = problem.Dt
     sigma = problem.sigma
-    Phi_U = np.zeros(Nx)
+    if backend is not None:
+        Phi_U = backend.zeros((Nx,))
+    else:
+        Phi_U = np.zeros(Nx)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
+        if backend is not None:
+            return backend.full((Nx,), float("nan"))
         return np.full(Nx, np.nan)
 
     # Time derivative: (U_n_current - U_{n+1})/Dt
@@ -141,7 +147,9 @@ def compute_hjb_residual(
             pass
     else:
         time_deriv_term = (U_n_current_newton_iterate - U_n_plus_1_from_hjb_step) / Dt
-        if np.any(np.isinf(time_deriv_term)) or np.any(np.isnan(time_deriv_term)):
+        if has_nan_or_inf(time_deriv_term, backend):
+            if backend is not None:
+                return backend.full((Nx,), float("nan"))
             Phi_U[:] = np.nan
             return Phi_U
         Phi_U += time_deriv_term
@@ -154,7 +162,9 @@ def compute_hjb_residual(
             - 2 * U_n_current_newton_iterate
             + np.roll(U_n_current_newton_iterate, 1)
         ) / Dx**2
-        if np.any(np.isinf(U_xx)) or np.any(np.isnan(U_xx)):
+        if has_nan_or_inf(U_xx, backend):
+            if backend is not None:
+                return backend.full((Nx,), float("nan"))
             Phi_U[:] = np.nan
             return Phi_U
         Phi_U += -(sigma**2 / 2.0) * U_xx
@@ -203,6 +213,7 @@ def compute_hjb_jacobian(
     M_density_at_n_plus_1: np.ndarray,
     problem: MFGProblem,
     t_idx_n: int,
+    backend=None,  # Backend for MPS/CUDA support
 ) -> sparse.csr_matrix:
     Nx = problem.Nx + 1
     Dx = problem.Dx
@@ -210,11 +221,20 @@ def compute_hjb_jacobian(
     sigma = problem.sigma
     eps = 1e-7
 
+    # For Jacobian, we always need NumPy arrays for scipy.sparse
+    # Convert backend arrays to NumPy if needed
+    if backend is not None:
+        from mfg_pde.backends.compat import to_numpy
+
+        U_n_np = to_numpy(U_n_current_newton_iterate, backend)
+    else:
+        U_n_np = U_n_current_newton_iterate
+
     J_D = np.zeros(Nx)
     J_L = np.zeros(Nx)
     J_U = np.zeros(Nx)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return sparse.diags([np.full(Nx, np.nan)], [0], shape=(Nx, Nx)).tocsr()
 
     # Time derivative part: d/dU_n_current[j] of (U_n_current[i] - U_{n+1}[i])/Dt
@@ -242,11 +262,11 @@ def compute_hjb_jacobian(
         J_L += J_L_H
         J_U += J_U_H
     else:
-        # Fallback to numerical Jacobian for H-part, using U_n_current_newton_iterate
+        # Fallback to numerical Jacobian for H-part, using NumPy version
         for i in range(Nx):
-            U_perturbed_p_i = U_n_current_newton_iterate.copy()
+            U_perturbed_p_i = U_n_np.copy()
             U_perturbed_p_i[i] += eps
-            U_perturbed_m_i = U_n_current_newton_iterate.copy()
+            U_perturbed_m_i = U_n_np.copy()
             U_perturbed_m_i[i] -= eps
 
             pv_p_i = _calculate_p_values(
@@ -387,8 +407,9 @@ def newton_hjb_step(
         M_density_at_n_plus_1,
         problem,
         t_idx_n,
+        backend,
     )
-    if np.any(np.isnan(residual_F_U)) or np.any(np.isinf(residual_F_U)):
+    if has_nan_or_inf(residual_F_U, backend):
         return U_n_current_newton_iterate, np.inf
 
     # Jacobian uses U_k_n_from_prev_picard for its H-part if problem provides specific terms
@@ -398,6 +419,7 @@ def newton_hjb_step(
         M_density_at_n_plus_1,
         problem,
         t_idx_n,
+        backend,
     )
     if np.any(np.isnan(jacobian_J_U.data)) or np.any(np.isinf(jacobian_J_U.data)):
         return U_n_current_newton_iterate, np.inf
