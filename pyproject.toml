@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "1.6.1" # v1.6.1: CLI Removal & Package Simplification
+version = "1.7.0" # v1.7.0: Complete Documentation & Classic Examples
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

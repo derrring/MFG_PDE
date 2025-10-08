@@ -42,6 +42,26 @@ print(f"Mass error: {result.mass_conservation_error:.2e}")  # ~10⁻¹⁵
 
 ## 🎊 **Recent Achievements**
 
+### **📚 v1.7.0: Complete Documentation & Classic Examples** ✨ **NEW** (October 2025)
+
+Comprehensive documentation coverage with paradigm overviews and classic MFG examples:
+
+**Paradigm Documentation**: Complete implementation guides
+- **Optimization Paradigm**: Variational methods, JKO scheme, Sinkhorn algorithm, primal-dual (673 lines)
+- **Reinforcement Learning Paradigm**: 10+ algorithms, multi-population support, 20+ environments (765 lines)
+- **Neural Paradigm**: PINN, DGM, FNO, DeepONet (existing, 704 lines)
+
+**Classic MFG Examples**: Theory-integrated demonstrations
+- **El Farol Bar**: Discrete coordination game (binary choice paradox)
+- **Santa Fe Bar**: Continuous preference evolution formulation
+- **Towel on Beach**: Spatial competition with phase transitions (λ parameter)
+
+**Documentation Bridge**: 18,690 lines of code fully documented, linking theory (`docs/theory/`) to implementation
+
+📖 **See**: `examples/basic/README.md` for complete example catalog
+
+---
+
 ### **🎉 Phase 2 Complete: Multi-Dimensional & Stochastic MFG** ✨ **BREAKTHROUGH** (October 2025)
 
 **6 months ahead of schedule**, MFG_PDE now supports:
@@ -349,22 +369,30 @@ result = solver.solve()
 - **[Quick Start](docs/user/quickstart.md)** - Factory API tutorial (5 minutes)
 - **[Solver Selection Guide](docs/user/SOLVER_SELECTION_GUIDE.md)** - Choosing solver tiers
 - **[Examples](examples/)** - Working examples and tutorials
+- **[Basic Examples Guide](examples/basic/README.md)** - 11 examples with learning paths ✨ **NEW**
 
 ### **For Developers (Core Contributors)**
 - **[Developer Guide](docs/development/)** - Extending the framework
 - **[API Design](docs/development/PROGRESSIVE_DISCLOSURE_API_DESIGN.md)** - Two-level architecture
+- **[Paradigm Overviews](docs/development/)** - Implementation guides for all paradigms ✨ **NEW**
+  - [Optimization Paradigm](docs/development/OPTIMIZATION_PARADIGM_OVERVIEW.md)
+  - [RL Paradigm](docs/development/REINFORCEMENT_LEARNING_PARADIGM_OVERVIEW.md)
+  - [Neural Paradigm](docs/development/NEURAL_PARADIGM_OVERVIEW.md)
 - **[Theory](docs/theory/)** - Mathematical background
+- **[Documentation Index](docs/DOCUMENTATION_INDEX.md)** - Navigation hub for all docs
 
 ## Examples
 
-- **[examples/basic/](examples/basic/)** - Simple getting started examples
+- **[examples/basic/](examples/basic/)** - Simple getting started examples (11 examples) 📖 **[README](examples/basic/README.md)**
 - **[examples/advanced/](examples/advanced/)** - Complex workflows, GPU acceleration, WENO benchmarking
 - **[examples/notebooks/](examples/notebooks/)** - Jupyter notebook tutorials
 
-**🆕 Latest Examples:**
+**🆕 Latest Examples (v1.7.0):**
+- `examples/basic/el_farol_bar_demo.py` - Classic coordination game (discrete states) ✨ **NEW**
+- `examples/basic/santa_fe_bar_demo.py` - Preference evolution formulation ✨ **NEW**
+- `examples/basic/towel_beach_demo.py` - Spatial competition with phase transitions ✨ **NEW**
 - `examples/advanced/weno_solver_demo.py` - Unified WENO family demonstration
 - `examples/advanced/continuous_control_comparison.py` - RL continuous control comparison
-- `test_solver_hierarchy.py` - Three-tier solver comparison
 
 ## Testing
 
