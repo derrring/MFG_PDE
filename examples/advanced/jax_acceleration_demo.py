@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # MFG_PDE imports
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
+from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.factory import create_backend, print_backend_info
 from mfg_pde.utils.integration import trapezoid
 from mfg_pde.utils.logging import configure_research_logging, get_logger
@@ -23,7 +23,7 @@ configure_research_logging("jax_acceleration_demo", level="INFO")
 logger = get_logger(__name__)
 
 
-class BarProblemJAX(ExampleMFGProblem):
+class BarProblemJAX(MFGProblem):
     """El Farol Bar Problem optimized for JAX backend demonstration."""
 
     def __init__(self, capacity=0.6, congestion_cost=2.0, **kwargs):

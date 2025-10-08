@@ -7,6 +7,7 @@ import numpy as np
 import scipy.sparse as sparse
 
 from mfg_pde.alg.base_solver import BaseNumericalSolver
+from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
 
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
@@ -83,9 +84,14 @@ def _calculate_p_values(
     # (Implementation from base_hjb_v4 - no p-value clipping by default)
     p_forward, p_backward = 0.0, 0.0
     if Nx > 1 and abs(Dx) > 1e-14:
-        u_i = U_array[i]
-        u_ip1 = U_array[(i + 1) % Nx]
-        u_im1 = U_array[(i - 1 + Nx) % Nx]
+        # Extract values and convert to Python scalars (works for both NumPy and PyTorch)
+        u_i = U_array[i].item() if hasattr(U_array[i], "item") else float(U_array[i])
+        u_ip1 = U_array[(i + 1) % Nx].item() if hasattr(U_array[(i + 1) % Nx], "item") else float(U_array[(i + 1) % Nx])
+        u_im1 = (
+            U_array[(i - 1 + Nx) % Nx].item()
+            if hasattr(U_array[(i - 1 + Nx) % Nx], "item")
+            else float(U_array[(i - 1 + Nx) % Nx])
+        )
 
         if np.isinf(u_i) or np.isinf(u_ip1) or np.isinf(u_im1) or np.isnan(u_i) or np.isnan(u_ip1) or np.isnan(u_im1):
             return {"forward": np.nan, "backward": np.nan}
@@ -123,14 +129,20 @@ def compute_hjb_residual(
     M_density_at_n_plus_1: np.ndarray,  # M_k_np1 in notebook
     problem: MFGProblem,
     t_idx_n: int,  # Time index for U_n
+    backend=None,  # Backend for MPS/CUDA support
 ) -> np.ndarray:
     Nx = problem.Nx + 1
     Dx = problem.Dx
     Dt = problem.Dt
     sigma = problem.sigma
-    Phi_U = np.zeros(Nx)
+    if backend is not None:
+        Phi_U = backend.zeros((Nx,))
+    else:
+        Phi_U = np.zeros(Nx)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
+        if backend is not None:
+            return backend.full((Nx,), float("nan"))
         return np.full(Nx, np.nan)
 
     # Time derivative: (U_n_current - U_{n+1})/Dt
@@ -140,7 +152,9 @@ def compute_hjb_residual(
             pass
     else:
         time_deriv_term = (U_n_current_newton_iterate - U_n_plus_1_from_hjb_step) / Dt
-        if np.any(np.isinf(time_deriv_term)) or np.any(np.isnan(time_deriv_term)):
+        if has_nan_or_inf(time_deriv_term, backend):
+            if backend is not None:
+                return backend.full((Nx,), float("nan"))
             Phi_U[:] = np.nan
             return Phi_U
         Phi_U += time_deriv_term
@@ -148,12 +162,24 @@ def compute_hjb_residual(
     # Diffusion term: -(sigma^2/2) * (U_n_current)_xx
     # Notebook FnU[i] += - ((sigma**2)/2.) * (Ukp1_n[i+1]-2*Ukp1_n[i]+Ukp1_n[i-1])/(Dx**2)
     if abs(Dx) > 1e-14 and Nx > 1:
-        U_xx = (
-            np.roll(U_n_current_newton_iterate, -1)
-            - 2 * U_n_current_newton_iterate
-            + np.roll(U_n_current_newton_iterate, 1)
-        ) / Dx**2
-        if np.any(np.isinf(U_xx)) or np.any(np.isnan(U_xx)):
+        # Use backend-aware roll operation
+        if backend is not None and hasattr(U_n_current_newton_iterate, "roll"):
+            # PyTorch tensors have .roll() method
+            U_xx = (
+                U_n_current_newton_iterate.roll(-1)
+                - 2 * U_n_current_newton_iterate
+                + U_n_current_newton_iterate.roll(1)
+            ) / Dx**2
+        else:
+            # NumPy arrays use np.roll()
+            U_xx = (
+                np.roll(U_n_current_newton_iterate, -1)
+                - 2 * U_n_current_newton_iterate
+                + np.roll(U_n_current_newton_iterate, 1)
+            ) / Dx**2
+        if has_nan_or_inf(U_xx, backend):
+            if backend is not None:
+                return backend.full((Nx,), float("nan"))
             Phi_U[:] = np.nan
             return Phi_U
         Phi_U += -(sigma**2 / 2.0) * U_xx
@@ -163,21 +189,29 @@ def compute_hjb_residual(
     U_n_derivatives_for_m_coupling: dict[str, Any] = {}  # Not used by ExampleMFGProblem's term
 
     for i in range(Nx):
-        if np.isnan(Phi_U[i]):
+        # Get scalar value for nan check (works for both NumPy and PyTorch)
+        phi_val = Phi_U[i].item() if hasattr(Phi_U[i], "item") else float(Phi_U[i])
+        if np.isnan(phi_val):
             continue
 
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
         p_values = _calculate_p_values(U_n_current_newton_iterate, i, Dx, Nx, clip=False)
 
         if np.any(np.isnan(list(p_values.values()))):
-            Phi_U[i] = np.nan
+            Phi_U[i] = float("nan")
             continue
 
         # Hamiltonian term H(x_i, M_{n+1,i}, (Du_n_current)_i, t_n)
         # Notebook: FnU[i] += H_withM(...)
-        hamiltonian_val = problem.H(x_idx=i, m_at_x=M_density_at_n_plus_1[i], p_values=p_values, t_idx=t_idx_n)
+        # Get M value as scalar for H function
+        m_val = (
+            M_density_at_n_plus_1[i].item()
+            if hasattr(M_density_at_n_plus_1[i], "item")
+            else float(M_density_at_n_plus_1[i])
+        )
+        hamiltonian_val = problem.H(x_idx=i, m_at_x=m_val, p_values=p_values, t_idx=t_idx_n)
         if np.isnan(hamiltonian_val) or np.isinf(hamiltonian_val):
-            Phi_U[i] = np.nan
+            Phi_U[i] = float("nan")
             continue
         else:
             Phi_U[i] += hamiltonian_val
@@ -189,7 +223,7 @@ def compute_hjb_residual(
         )
         if m_coupling_term is not None:
             if np.isnan(m_coupling_term) or np.isinf(m_coupling_term):
-                Phi_U[i] = np.nan
+                Phi_U[i] = float("nan")
                 continue
             Phi_U[i] += m_coupling_term
 
@@ -202,6 +236,7 @@ def compute_hjb_jacobian(
     M_density_at_n_plus_1: np.ndarray,
     problem: MFGProblem,
     t_idx_n: int,
+    backend=None,  # Backend for MPS/CUDA support
 ) -> sparse.csr_matrix:
     Nx = problem.Nx + 1
     Dx = problem.Dx
@@ -209,11 +244,20 @@ def compute_hjb_jacobian(
     sigma = problem.sigma
     eps = 1e-7
 
+    # For Jacobian, we always need NumPy arrays for scipy.sparse
+    # Convert backend arrays to NumPy if needed
+    if backend is not None:
+        from mfg_pde.backends.compat import to_numpy
+
+        U_n_np = to_numpy(U_n_current_newton_iterate, backend)
+    else:
+        U_n_np = U_n_current_newton_iterate
+
     J_D = np.zeros(Nx)
     J_L = np.zeros(Nx)
     J_U = np.zeros(Nx)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return sparse.diags([np.full(Nx, np.nan)], [0], shape=(Nx, Nx)).tocsr()
 
     # Time derivative part: d/dU_n_current[j] of (U_n_current[i] - U_{n+1}[i])/Dt
@@ -241,11 +285,11 @@ def compute_hjb_jacobian(
         J_L += J_L_H
         J_U += J_U_H
     else:
-        # Fallback to numerical Jacobian for H-part, using U_n_current_newton_iterate
+        # Fallback to numerical Jacobian for H-part, using NumPy version
         for i in range(Nx):
-            U_perturbed_p_i = U_n_current_newton_iterate.copy()
+            U_perturbed_p_i = U_n_np.copy()
             U_perturbed_p_i[i] += eps
-            U_perturbed_m_i = U_n_current_newton_iterate.copy()
+            U_perturbed_m_i = U_n_np.copy()
             U_perturbed_m_i[i] -= eps
 
             pv_p_i = _calculate_p_values(
@@ -373,10 +417,11 @@ def newton_hjb_step(
     M_density_at_n_plus_1: np.ndarray,
     problem: MFGProblem,
     t_idx_n: int,
+    backend=None,  # Add backend parameter for MPS/CUDA support
 ) -> tuple[np.ndarray, float]:
     Dx_norm = problem.Dx if abs(problem.Dx) > 1e-12 else 1.0
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate, np.inf
 
     residual_F_U = compute_hjb_residual(
@@ -385,8 +430,9 @@ def newton_hjb_step(
         M_density_at_n_plus_1,
         problem,
         t_idx_n,
+        backend,
     )
-    if np.any(np.isnan(residual_F_U)) or np.any(np.isinf(residual_F_U)):
+    if has_nan_or_inf(residual_F_U, backend):
         return U_n_current_newton_iterate, np.inf
 
     # Jacobian uses U_k_n_from_prev_picard for its H-part if problem provides specific terms
@@ -396,6 +442,7 @@ def newton_hjb_step(
         M_density_at_n_plus_1,
         problem,
         t_idx_n,
+        backend,
     )
     if np.any(np.isnan(jacobian_J_U.data)) or np.any(np.isinf(jacobian_J_U.data)):
         return U_n_current_newton_iterate, np.inf
@@ -486,20 +533,11 @@ def solve_hjb_timestep_newton(
     if newton_tolerance is None:
         newton_tolerance = 1e-6
 
-    # Get array module from backend (defaults to NumPy)
-    if backend is not None:
-        xp = backend.array_module
-    else:
-        xp = np
-
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
-    # Use backend-aware copy
-    if hasattr(U_n_plus_1_from_hjb_step, "copy"):
-        U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
-    else:
-        U_n_current_newton_iterate = xp.array(U_n_plus_1_from_hjb_step)
+    # Use backend-aware copy from compatibility layer
+    U_n_current_newton_iterate = backend_aware_copy(U_n_plus_1_from_hjb_step, backend)
 
-    if np.any(np.isnan(U_n_current_newton_iterate)) or np.any(np.isinf(U_n_current_newton_iterate)):
+    if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate
 
     final_l2_error = np.inf
@@ -517,9 +555,10 @@ def solve_hjb_timestep_newton(
             M_density_at_n_plus_1,
             problem,
             t_idx_n,
+            backend,  # Pass backend for MPS/CUDA support
         )
 
-        if np.any(np.isnan(U_n_next_newton_iterate)) or np.any(np.isinf(U_n_next_newton_iterate)):
+        if has_nan_or_inf(U_n_next_newton_iterate, backend):
             break
 
         if iiter > 0 and l2_error > final_l2_error * 0.9999 and l2_error > newton_tolerance:
@@ -590,23 +629,22 @@ def solve_hjb_system_backward(
     if newton_tolerance is None:
         newton_tolerance = 1e-6
 
-    # Get array module from backend (defaults to NumPy)
-    if backend is not None:
-        xp = backend.array_module
-    else:
-        xp = np
-
     Nt = problem.Nt + 1
     Nx = problem.Nx + 1
 
-    U_solution_this_picard_iter = xp.zeros((Nt, Nx))  # U_new in notebook
+    # Use backend.zeros() instead of xp.zeros() to ensure correct device
+    if backend is not None:
+        U_solution_this_picard_iter = backend.zeros((Nt, Nx))
+    else:
+        U_solution_this_picard_iter = np.zeros((Nt, Nx))  # U_new in notebook
     if Nt == 0:
         return U_solution_this_picard_iter
 
-    if np.any(np.isnan(U_final_condition_at_T)) or np.any(np.isinf(U_final_condition_at_T)):
-        U_solution_this_picard_iter[Nt - 1, :] = np.nan
+    # Use backend-aware nan/inf checking and assignment
+    if has_nan_or_inf(U_final_condition_at_T, backend):
+        backend_aware_assign(U_solution_this_picard_iter, (Nt - 1, slice(None)), float("nan"), backend)
     else:
-        U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
+        backend_aware_assign(U_solution_this_picard_iter, (Nt - 1, slice(None)), U_final_condition_at_T, backend)
 
     if Nt == 1:
         return U_solution_this_picard_iter
@@ -614,21 +652,24 @@ def solve_hjb_system_backward(
     for n_idx_hjb in range(Nt - 2, -1, -1):  # Solves for U_solution_this_picard_iter at t_idx_n = n_idx_hjb
         U_n_plus_1_current_picard = U_solution_this_picard_iter[n_idx_hjb + 1, :]
 
-        if np.any(np.isnan(U_n_plus_1_current_picard)) or np.any(np.isinf(U_n_plus_1_current_picard)):
-            U_solution_this_picard_iter[n_idx_hjb, :] = U_n_plus_1_current_picard
+        # Backend-aware nan/inf checking
+        if has_nan_or_inf(U_n_plus_1_current_picard, backend):
+            backend_aware_assign(
+                U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_n_plus_1_current_picard, backend
+            )
             continue
 
         M_n_plus_1_prev_picard = M_density_from_prev_picard[n_idx_hjb + 1, :]
-        if np.any(np.isnan(M_n_plus_1_prev_picard)) or np.any(np.isinf(M_n_plus_1_prev_picard)):
-            U_solution_this_picard_iter[n_idx_hjb, :] = np.nan
+        if has_nan_or_inf(M_n_plus_1_prev_picard, backend):
+            backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), float("nan"), backend)
             continue
 
         U_n_prev_picard = U_from_prev_picard[n_idx_hjb, :]  # U_k[n] from notebook
-        if np.any(np.isnan(U_n_prev_picard)) or np.any(np.isinf(U_n_prev_picard)):
-            U_solution_this_picard_iter[n_idx_hjb, :] = np.nan
+        if has_nan_or_inf(U_n_prev_picard, backend):
+            backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), float("nan"), backend)
             continue
 
-        U_solution_this_picard_iter[n_idx_hjb, :] = solve_hjb_timestep_newton(
+        U_new_n = solve_hjb_timestep_newton(
             U_n_plus_1_current_picard,  # U_new[n+1]
             U_n_prev_picard,  # U_k[n] (for Jacobian)
             M_n_plus_1_prev_picard,  # M_k[n+1]
@@ -638,8 +679,11 @@ def solve_hjb_system_backward(
             t_idx_n=n_idx_hjb,
             backend=backend,  # Pass backend for acceleration
         )
-        if np.any(np.isnan(U_solution_this_picard_iter[n_idx_hjb, :])) and not np.any(
-            np.isnan(U_n_plus_1_current_picard)
+        backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
+
+        # Debug check for NaN introduction
+        if has_nan_or_inf(U_solution_this_picard_iter[n_idx_hjb, :], backend) and not has_nan_or_inf(
+            U_n_plus_1_current_picard, backend
         ):
             print(f"SYS_DEBUG: U_solution became NaN after Newton step for t_idx_n={n_idx_hjb}.")
 

@@ -25,7 +25,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import ExampleMFGProblem, MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
@@ -34,7 +34,7 @@ configure_research_logging("weno_family_comparison", level="INFO")
 logger = get_logger(__name__)
 
 
-def create_challenging_mfg_problem() -> ExampleMFGProblem:
+def create_challenging_mfg_problem() -> MFGProblem:
     """
     Create MFG problem with features that challenge WENO schemes:
     - Sharp initial conditions
@@ -52,7 +52,7 @@ def create_challenging_mfg_problem() -> ExampleMFGProblem:
     )
 
     # Create sharp initial condition with discontinuous derivative
-    x = problem.domain.x
+    x = problem.xSpace
 
     # Sharp Gaussian with discontinuous derivative at boundaries
     initial_u = np.exp(-50 * (x - 0.3) ** 2) + 0.5 * np.exp(-100 * (x - 0.7) ** 2)

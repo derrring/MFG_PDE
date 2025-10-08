@@ -36,7 +36,7 @@ from mfg_pde.alg.neural.pinn_solvers import (  # noqa: E402
     PINNConfig,
     print_system_info,
 )
-from mfg_pde.core.mfg_problem import ExampleMFGProblem  # noqa: E402
+from mfg_pde.core.mfg_problem import ExampleMFGProblem, MFGProblem  # noqa: E402
 
 try:
     torch_spec = importlib.util.find_spec("torch")
@@ -51,7 +51,7 @@ except ImportError:
     sys.exit(1)
 
 
-def create_mfg_problem() -> ExampleMFGProblem:
+def create_mfg_problem() -> MFGProblem:
     """
     Create a 1D MFG problem for PINN demonstration.
 
@@ -133,7 +133,7 @@ def create_pinn_config(training_type: str = "standard") -> PINNConfig:
         raise ValueError(f"Unknown training type: {training_type}")
 
 
-def demonstrate_hjb_pinn(problem: ExampleMFGProblem, config: PINNConfig) -> dict:
+def demonstrate_hjb_pinn(problem: MFGProblem, config: PINNConfig) -> dict:
     """
     Demonstrate HJB PINN solver.
 
@@ -171,7 +171,7 @@ def demonstrate_hjb_pinn(problem: ExampleMFGProblem, config: PINNConfig) -> dict
     return hjb_results
 
 
-def demonstrate_fp_pinn(problem: ExampleMFGProblem, config: PINNConfig) -> dict:
+def demonstrate_fp_pinn(problem: MFGProblem, config: PINNConfig) -> dict:
     """
     Demonstrate Fokker-Planck PINN solver.
 
@@ -210,7 +210,7 @@ def demonstrate_fp_pinn(problem: ExampleMFGProblem, config: PINNConfig) -> dict:
 
 
 def demonstrate_coupled_mfg_pinn(
-    problem: ExampleMFGProblem, config: PINNConfig, alternating_training: bool = False
+    problem: MFGProblem, config: PINNConfig, alternating_training: bool = False
 ) -> dict:
     """
     Demonstrate coupled MFG PINN solver.

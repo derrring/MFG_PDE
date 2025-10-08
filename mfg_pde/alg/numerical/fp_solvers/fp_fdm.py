@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import scipy.sparse as sparse
 
+from mfg_pde.backends.compat import has_nan_or_inf
 from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.aux_func import npart, ppart
 
@@ -30,9 +31,14 @@ class FPFDMSolver(BaseFPSolver):
         coefCT = self.problem.coefCT
 
         if Nt == 0:
+            if self.backend is not None:
+                return self.backend.zeros((0, Nx))
             return np.zeros((0, Nx))
         if Nt == 1:
-            m_sol = np.zeros((1, Nx))
+            if self.backend is not None:
+                m_sol = self.backend.zeros((1, Nx))
+            else:
+                m_sol = np.zeros((1, Nx))
             m_sol[0, :] = m_initial_condition
             m_sol[0, :] = np.maximum(m_sol[0, :], 0)
             # Apply boundary conditions
@@ -41,7 +47,10 @@ class FPFDMSolver(BaseFPSolver):
                 m_sol[0, -1] = self.boundary_conditions.right_value
             return m_sol
 
-        m = np.zeros((Nt, Nx))
+        if self.backend is not None:
+            m = self.backend.zeros((Nt, Nx))
+        else:
+            m = np.zeros((Nt, Nx))
         m[0, :] = m_initial_condition
         m[0, :] = np.maximum(m[0, :], 0)
         # Apply boundary conditions to initial condition
@@ -237,7 +246,10 @@ class FPFDMSolver(BaseFPSolver):
                 # The no-flux condition is enforced through the matrix coefficients
                 pass
 
-            m_next_step_raw = np.zeros(Nx, dtype=np.float64)
+            if self.backend is not None:
+                m_next_step_raw = self.backend.zeros((Nx,))
+            else:
+                m_next_step_raw = np.zeros(Nx, dtype=np.float64)
             try:
                 if not A_matrix.nnz > 0 and Nx > 0:
                     m_next_step_raw[:] = m[k_idx_fp, :]
@@ -245,7 +257,7 @@ class FPFDMSolver(BaseFPSolver):
                     solution = sparse.linalg.spsolve(A_matrix, b_rhs)
                     m_next_step_raw[:] = solution
 
-                if np.any(np.isnan(m_next_step_raw)) or np.any(np.isinf(m_next_step_raw)):
+                if has_nan_or_inf(m_next_step_raw, self.backend):
                     m_next_step_raw[:] = m[k_idx_fp, :]
             except Exception:
                 m_next_step_raw[:] = m[k_idx_fp, :]
