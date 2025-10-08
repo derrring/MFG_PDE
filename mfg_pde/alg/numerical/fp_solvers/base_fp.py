@@ -37,6 +37,7 @@ class BaseFPSolver(ABC):
         """
         self.problem = problem
         self.fp_method_name: str = "BaseFP"  # Concrete solvers should override this
+        self.backend = None  # Backend for array operations (NumPy, PyTorch, JAX)
 
     @abstractmethod
     def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
