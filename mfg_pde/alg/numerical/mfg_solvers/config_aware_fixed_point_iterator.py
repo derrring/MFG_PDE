@@ -169,7 +169,8 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
         self.iterations_run = 0
 
         # Picard iteration with enhanced monitoring
-        U_picard_prev = self.U.copy()
+        # Use .clone() for PyTorch tensors, .copy() for NumPy arrays
+        U_picard_prev = self.U.clone() if hasattr(self.U, "clone") else self.U.copy()
         convergence_achieved = False
 
         for iiter in range(solve_config.picard.max_iterations):
@@ -179,8 +180,9 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
                 print(f"\n Picard Iteration {iiter + 1}/{solve_config.picard.max_iterations}")
 
             # Store previous iteration
-            U_old = self.U.copy()
-            M_old = self.M.copy()
+            # Use .clone() for PyTorch tensors, .copy() for NumPy arrays
+            U_old = self.U.clone() if hasattr(self.U, "clone") else self.U.copy()
+            M_old = self.M.clone() if hasattr(self.M, "clone") else self.M.copy()
 
             # Solve HJB system
             final_u_cond = self.problem.get_final_u() if hasattr(self.problem, "get_final_u") else np.zeros(Nx)
@@ -215,7 +217,7 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             self.M[0, :] = initial_m_dist
 
             # Update U_picard_prev for next iteration
-            U_picard_prev = U_old.copy()
+            U_picard_prev = U_old.clone() if hasattr(U_old, "clone") else U_old.copy()
 
             # Compute convergence metrics
             norm_factor = np.sqrt(Dx * Dt)
