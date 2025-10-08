@@ -231,8 +231,15 @@ class FixedPointIterator(BaseMFGSolver):
             # Cold start - default initialization
             # Note: Nx and Nt here already include +1 (see lines 218-219)
             # So shape is already (Nt+1, Nx+1) from problem definition
-            self.U = np.zeros((Nt, Nx))
-            self.M = np.zeros((Nt, Nx))
+
+            # Use backend-native array creation if backend is available
+            if self.backend is not None:
+                self.U = self.backend.zeros((Nt, Nx))
+                self.M = self.backend.zeros((Nt, Nx))
+            else:
+                # Fallback to NumPy for backward compatibility
+                self.U = np.zeros((Nt, Nx))
+                self.M = np.zeros((Nt, Nx))
 
         initial_m_dist = self.problem.get_initial_m()
         final_u_cost = self.problem.get_final_u()
@@ -253,10 +260,17 @@ class FixedPointIterator(BaseMFGSolver):
             print("Warning: Nt=0, cannot initialize U and M.")
             return self.U, self.M, 0, np.array([]), np.array([])
 
-        self.l2distu_abs = np.ones(final_max_iterations)
-        self.l2distm_abs = np.ones(final_max_iterations)
-        self.l2distu_rel = np.ones(final_max_iterations)
-        self.l2distm_rel = np.ones(final_max_iterations)
+        # Error tracking arrays - use backend if available
+        if self.backend is not None:
+            self.l2distu_abs = self.backend.ones((final_max_iterations,))
+            self.l2distm_abs = self.backend.ones((final_max_iterations,))
+            self.l2distu_rel = self.backend.ones((final_max_iterations,))
+            self.l2distm_rel = self.backend.ones((final_max_iterations,))
+        else:
+            self.l2distu_abs = np.ones(final_max_iterations)
+            self.l2distm_abs = np.ones(final_max_iterations)
+            self.l2distu_rel = np.ones(final_max_iterations)
+            self.l2distm_rel = np.ones(final_max_iterations)
         self.iterations_run = 0
 
         # Reset Anderson accelerator if using it
