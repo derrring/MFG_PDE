@@ -482,6 +482,46 @@ class TorchBackend(BaseBackend):
                 return func
         return func
 
+    # Backend Capabilities (for auto-switching)
+    def has_capability(self, capability: str) -> bool:
+        """Check if PyTorch backend supports a specific capability."""
+        capabilities = {
+            "parallel_kde": True,  # PyTorch supports parallel KDE on GPU
+            "parallel_interpolation": True,  # GPU-accelerated interpolation
+            "low_latency": self.device_type == "cuda",  # CUDA has low kernel overhead
+            "high_bandwidth": self.device_type == "cuda",  # CUDA has high bandwidth
+            "unified_memory": self.device_type == "mps",  # MPS uses unified memory
+            "jit_compilation": hasattr(torch, "compile"),  # PyTorch 2.0+
+        }
+        return capabilities.get(capability, False)
+
+    def get_performance_hints(self) -> dict:
+        """Return performance characteristics for strategy selection."""
+        if self.device_type == "mps":
+            # Apple Silicon M-series (Metal Performance Shaders)
+            return {
+                "kernel_overhead_us": 50,  # Higher than CUDA
+                "memory_bandwidth_gb": 200,  # M1/M2 Pro unified memory
+                "device_type": "mps",
+                "optimal_problem_size": (50000, 100, 50),  # Sweet spot for MPS
+            }
+        elif self.device_type == "cuda":
+            # NVIDIA GPUs
+            return {
+                "kernel_overhead_us": 5,  # Very low latency
+                "memory_bandwidth_gb": 900,  # High-end GPU bandwidth
+                "device_type": "cuda",
+                "optimal_problem_size": (10000, 100, 50),  # Efficient for most sizes
+            }
+        else:
+            # CPU fallback
+            return {
+                "kernel_overhead_us": 0,  # No GPU overhead
+                "memory_bandwidth_gb": 50,  # DDR4/DDR5
+                "device_type": "cpu",
+                "optimal_problem_size": (5000, 50, 20),  # Small problems
+            }
+
     # Device Management
     def to_device(self, array):
         """Move array to backend's target device."""

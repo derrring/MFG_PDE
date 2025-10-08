@@ -174,6 +174,74 @@ class BaseBackend(ABC):
         """Get memory usage information if available."""
         return None  # Override in specific backends
 
+    # Backend Capabilities (for auto-switching)
+    def has_capability(self, capability: str) -> bool:
+        """
+        Check if backend supports a specific capability.
+
+        This method enables intelligent strategy selection by querying
+        backend capabilities rather than checking backend type.
+
+        Parameters
+        ----------
+        capability : str
+            Capability to check. Standard capabilities:
+            - "parallel_kde": Efficient GPU kernel density estimation
+            - "parallel_interpolation": Fast parallel interpolation
+            - "low_latency": Low kernel launch overhead (<10μs)
+            - "high_bandwidth": High memory bandwidth (>100 GB/s)
+            - "unified_memory": CPU/GPU share memory
+            - "jit_compilation": JIT compilation support (JAX, Numba)
+
+        Returns
+        -------
+        bool
+            True if capability is supported, False otherwise
+
+        Examples
+        --------
+        >>> backend = TorchBackend(device="mps")
+        >>> backend.has_capability("parallel_kde")
+        True
+        >>> backend.has_capability("low_latency")  # MPS has higher latency
+        False
+        """
+        # Default implementation: no special capabilities
+        return False
+
+    def get_performance_hints(self) -> dict:
+        """
+        Return performance characteristics for intelligent strategy selection.
+
+        This method provides runtime performance data that helps select
+        optimal computational strategies based on hardware characteristics.
+
+        Returns
+        -------
+        dict
+            Performance hints with keys:
+            - "kernel_overhead_us": Kernel launch overhead (microseconds)
+            - "memory_bandwidth_gb": Memory bandwidth (GB/s)
+            - "device_type": Device type ("cpu", "cuda", "mps", "tpu")
+            - "optimal_problem_size": Recommended (N, Nx, Nt) for best performance
+
+        Examples
+        --------
+        >>> backend = TorchBackend(device="mps")
+        >>> hints = backend.get_performance_hints()
+        >>> hints["kernel_overhead_us"]
+        50
+        >>> hints["device_type"]
+        'mps'
+        """
+        # Default implementation: CPU-like performance
+        return {
+            "kernel_overhead_us": 0,  # No GPU kernel overhead
+            "memory_bandwidth_gb": 50,  # Typical DDR4 bandwidth
+            "device_type": "cpu",
+            "optimal_problem_size": (5000, 50, 20),  # Small problems
+        }
+
     # Context Management
     def __enter__(self):
         """Context manager entry."""
