@@ -634,9 +634,16 @@ def solve_hjb_system_backward(
 
     # Use backend-aware nan/inf checking
     if _has_nan_or_inf(U_final_condition_at_T, backend):
-        U_solution_this_picard_iter[Nt - 1, :] = xp.nan if hasattr(xp, "nan") else float("nan")
+        nan_val = xp.nan if hasattr(xp, "nan") else float("nan")
+        if backend is not None and hasattr(U_solution_this_picard_iter, "fill_"):
+            U_solution_this_picard_iter[Nt - 1, :].fill_(nan_val)
+        else:
+            U_solution_this_picard_iter[Nt - 1, :] = nan_val
     else:
-        U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
+        if backend is not None and hasattr(U_solution_this_picard_iter, "copy_"):
+            U_solution_this_picard_iter[Nt - 1, :].copy_(U_final_condition_at_T)
+        else:
+            U_solution_this_picard_iter[Nt - 1, :] = U_final_condition_at_T
 
     if Nt == 1:
         return U_solution_this_picard_iter
