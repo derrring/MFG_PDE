@@ -2,11 +2,16 @@
 MFG Solver Acceleration Comparison.
 
 This example demonstrates different acceleration techniques for MFG solvers:
-- Backend acceleration: JAX (CPU/GPU), PyTorch (MPS/CUDA), Numba
+- Backend acceleration: JAX (CPU/GPU), PyTorch (MPS for Apple Silicon), Numba (JIT)
 - Anderson acceleration: Convergence speedup via extrapolation
 - Solver configuration: Damping, tolerance, iteration strategies
 
 Demonstrates performance improvements across different hardware and algorithmic approaches.
+
+Hardware Acceleration Support:
+- Apple Silicon (M1/M2/M3): PyTorch with MPS (Metal Performance Shaders)
+- NVIDIA GPUs: JAX with CUDA, PyTorch with CUDA
+- CPU: All backends (NumPy, JAX, PyTorch, Numba)
 
 Example Usage:
     python examples/basic/acceleration_comparison.py
@@ -143,7 +148,7 @@ def plot_results(backend_results, anderson_results):
     times = [t for _, (t, _, _) in backend_results.items() if t is not None]
 
     if backends:
-        colors = ["blue", "green", "orange", "red"][: len(backends)]
+        colors = ["blue", "green", "orange", "purple", "red"][: len(backends)]
         bars = ax.bar(backends, times, color=colors, alpha=0.7, edgecolor="black")
 
         # Add value labels on bars
@@ -204,9 +209,34 @@ def main():
     logger.info("\n[1/2] Backend Acceleration Comparison:")
     backend_results = {}
 
-    for backend in ["numpy", "jax", "torch", "numba"]:
+    # Test numpy, jax, numba with default settings
+    for backend in ["numpy", "jax", "numba"]:
         time_val, iters, converged = benchmark_backend(backend, problem)
         backend_results[backend] = (time_val, iters, converged)
+
+    # Test PyTorch with explicit MPS device (Apple Silicon acceleration)
+    logger.info("\n  Testing backend: torch-mps")
+    try:
+        from mfg_pde.backends import create_backend
+
+        solver = create_standard_solver(problem)
+        solver.backend = create_backend("torch", device="mps")
+        if hasattr(solver.hjb_solver, "backend"):
+            solver.hjb_solver.backend = solver.backend
+        if hasattr(solver.fp_solver, "backend"):
+            solver.fp_solver.backend = solver.backend
+
+        start = time.time()
+        result = solver.solve(max_iterations=20, tolerance=1e-3)
+        solve_time = time.time() - start
+
+        logger.info(
+            f"    Time: {solve_time:.3f}s, Iterations: {result.iterations}, Converged: {result.convergence_achieved}"
+        )
+        backend_results["torch-mps"] = (solve_time, result.iterations, result.convergence_achieved)
+    except Exception as e:
+        logger.warning(f"    MPS acceleration not available: {e}")
+        backend_results["torch-mps"] = (None, None, False)
 
     # Benchmark Anderson acceleration
     logger.info("\n[2/2] Anderson Acceleration Comparison:")
