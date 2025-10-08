@@ -519,8 +519,12 @@ def solve_hjb_timestep_newton(
 
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
     # Use backend-aware copy
-    if hasattr(U_n_plus_1_from_hjb_step, "copy"):
+    if hasattr(U_n_plus_1_from_hjb_step, "clone"):  # PyTorch
+        U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.clone()
+    elif hasattr(U_n_plus_1_from_hjb_step, "copy"):  # NumPy
         U_n_current_newton_iterate = U_n_plus_1_from_hjb_step.copy()
+    elif backend is not None:
+        U_n_current_newton_iterate = backend.array(U_n_plus_1_from_hjb_step)
     else:
         U_n_current_newton_iterate = xp.array(U_n_plus_1_from_hjb_step)
 
