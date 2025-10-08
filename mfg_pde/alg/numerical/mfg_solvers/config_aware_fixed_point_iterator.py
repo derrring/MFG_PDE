@@ -387,13 +387,14 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
 
     @backend.setter
     def backend(self, value):
-        """Set backend and propagate to sub-solvers."""
+        """Set backend for storage arrays.
+
+        Note: With boundary conversion approach, we do NOT propagate backend
+        to sub-solvers. Solvers work with pure NumPy, conversion happens at
+        iteration boundaries only.
+        """
         self._backend = value
-        # Propagate to HJB and FP solvers
-        if self.hjb_solver is not None:
-            self.hjb_solver.backend = value
-        if self.fp_solver is not None:
-            self.fp_solver.backend = value
+        # Do NOT propagate to sub-solvers - they work with NumPy only
 
     def get_config(self) -> MFGSolverConfig:
         """Get current configuration."""
