@@ -34,7 +34,8 @@ def _has_nan_or_inf(arr, backend=None):
         xp = backend.array_module
         # PyTorch tensors have .isnan() and .isinf() methods
         if hasattr(arr, "isnan"):
-            return bool(xp.any(arr.isnan() | arr.isinf()))
+            # Use tensor methods directly, not xp.any() which has different signature
+            return bool((arr.isnan() | arr.isinf()).any())
         # JAX and other backends use module-level functions
         else:
             return bool(xp.any(xp.isnan(arr)) or xp.any(xp.isinf(arr)))
