@@ -86,6 +86,9 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
         fp_name = getattr(fp_solver, "fp_method_name", "UnknownFP")
         self.name = f"HJB-{hjb_name}_FP-{fp_name} (Config-Aware)"
 
+        # Backend support - initialize as None, will be set via property
+        self._backend = None
+
         # Initialize solution arrays
         self.U: np.ndarray
         self.M: np.ndarray
@@ -357,6 +360,21 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             self.l2distu_rel,
             self.l2distm_rel,
         )
+
+    @property
+    def backend(self):
+        """Get backend."""
+        return self._backend
+
+    @backend.setter
+    def backend(self, value):
+        """Set backend and propagate to sub-solvers."""
+        self._backend = value
+        # Propagate to HJB and FP solvers
+        if self.hjb_solver is not None:
+            self.hjb_solver.backend = value
+        if self.fp_solver is not None:
+            self.fp_solver.backend = value
 
     def get_config(self) -> MFGSolverConfig:
         """Get current configuration."""
