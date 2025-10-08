@@ -35,6 +35,25 @@ python examples/basic/lq_mfg_demo.py
 
 ---
 
+#### `acceleration_comparison.py` - Solver Acceleration Techniques
+**Difficulty**: ⭐⭐ Moderate
+**Concepts**: Backend acceleration, Anderson acceleration, performance benchmarking
+**Theory**: Computational acceleration for MFG solvers
+
+Comprehensive comparison of acceleration methods:
+- **Backend acceleration**: JAX (GPU/CUDA), PyTorch (MPS/CUDA), Numba (JIT)
+- **Anderson acceleration**: Convergence speedup via extrapolation (memory depth m=5)
+- **Performance analysis**: Timing, speedup metrics, iteration reduction
+
+**Run**:
+```bash
+python examples/basic/acceleration_comparison.py
+```
+
+**Output**: Side-by-side performance visualization showing backend comparison and Anderson impact.
+
+---
+
 ### 🎮 Coordination Games
 
 #### `el_farol_bar_demo.py` - El Farol Bar Problem (Discrete)
@@ -326,5 +345,5 @@ See `CLAUDE.md` for coding standards and example structure guidelines.
 ---
 
 **Last Updated**: October 8, 2025
-**Total Examples**: 11
-**Coverage**: All 4 MFG paradigms (Numerical, Neural, Optimization, RL)
+**Total Examples**: 12
+**Coverage**: All 4 MFG paradigms (Numerical, Neural, Optimization, RL) + Acceleration techniques
