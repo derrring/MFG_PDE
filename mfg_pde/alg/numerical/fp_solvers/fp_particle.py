@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -22,22 +23,58 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
+class KDENormalization(str, Enum):
+    """KDE normalization strategy for particle-based FP solvers."""
+
+    NONE = "none"  # No normalization (raw KDE output)
+    INITIAL_ONLY = "initial_only"  # Normalize only at t=0
+    ALL = "all"  # Normalize at every time step (default)
+
+
 class FPParticleSolver(BaseFPSolver):
     def __init__(
         self,
         problem: MFGProblem,
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
-        normalize_kde_output: bool = True,
+        kde_normalization: KDENormalization | str = KDENormalization.ALL,
         boundary_conditions: BoundaryConditions | None = None,
         backend: str | None = None,
+        # Deprecated parameters for backward compatibility
+        normalize_kde_output: bool | None = None,
+        normalize_only_initial: bool | None = None,
     ) -> None:
         super().__init__(problem)
         self.fp_method_name = "Particle"
         self.num_particles = num_particles
         self.kde_bandwidth = kde_bandwidth
-        self.normalize_kde_output = normalize_kde_output  # New flag
+
+        # Handle deprecated parameters
+        if normalize_kde_output is not None or normalize_only_initial is not None:
+            import warnings
+
+            warnings.warn(
+                "Parameters 'normalize_kde_output' and 'normalize_only_initial' are deprecated. "
+                "Use 'kde_normalization' instead with KDENormalization.NONE, KDENormalization.INITIAL_ONLY, or KDENormalization.ALL",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+            # Map old parameters to new enum
+            if normalize_kde_output is False:
+                kde_normalization = KDENormalization.NONE
+            elif normalize_only_initial is True:
+                kde_normalization = KDENormalization.INITIAL_ONLY
+            else:
+                kde_normalization = KDENormalization.ALL
+
+        # Convert string to enum if needed
+        if isinstance(kde_normalization, str):
+            kde_normalization = KDENormalization(kde_normalization)
+
+        self.kde_normalization = kde_normalization
         self.M_particles_trajectory: np.ndarray | None = None
+        self._time_step_counter = 0  # Track current time step for normalization logic
 
         # Initialize backend (defaults to NumPy)
         from mfg_pde.backends import create_backend
@@ -93,6 +130,7 @@ class FPParticleSolver(BaseFPSolver):
         Normalize density to unit mass.
 
         Backend-agnostic helper to reduce code duplication between CPU and GPU pipelines.
+        Respects kde_normalization strategy: NONE, INITIAL_ONLY, or ALL.
 
         Parameters
         ----------
@@ -107,6 +145,18 @@ class FPParticleSolver(BaseFPSolver):
         -------
         Normalized density array (same type as input)
         """
+        # Determine if we should normalize based on strategy
+        if self.kde_normalization == KDENormalization.NONE:
+            should_normalize = False
+        elif self.kde_normalization == KDENormalization.INITIAL_ONLY:
+            should_normalize = self._time_step_counter == 0
+        else:  # KDENormalization.ALL
+            should_normalize = True
+
+        if not should_normalize:
+            return M_array  # Return raw density without normalization
+
+        # Proceed with normalization
         if use_backend and self.backend is not None:
             xp = self.backend.array_module
             mass = xp.sum(M_array) * Dx if Dx > 1e-14 else xp.sum(M_array)
@@ -186,8 +236,15 @@ class FPParticleSolver(BaseFPSolver):
                     elif Nx == 1:
                         m_density_estimated[closest_idx] = 1.0
 
-        # Normalization step (now optional)
-        if self.normalize_kde_output:
+        # Normalization step (conditional based on kde_normalization strategy)
+        if self.kde_normalization == KDENormalization.NONE:
+            should_normalize = False
+        elif self.kde_normalization == KDENormalization.INITIAL_ONLY:
+            should_normalize = self._time_step_counter == 0
+        else:  # KDENormalization.ALL
+            should_normalize = True
+
+        if should_normalize:
             if Dx > 1e-14:
                 current_mass = np.sum(m_density_estimated) * Dx
                 if current_mass > 1e-9:
@@ -215,6 +272,9 @@ class FPParticleSolver(BaseFPSolver):
 
         This replaces hard-coded if-else dispatch with intelligent cost-based selection.
         """
+        # Reset time step counter for normalization logic
+        self._time_step_counter = 0
+
         # Determine problem size for strategy selection
         Nt = self.problem.Nt + 1
         Nx = self.problem.Nx + 1
@@ -269,6 +329,7 @@ class FPParticleSolver(BaseFPSolver):
 
         current_M_particles_t[0, :] = initial_particle_positions
         M_density_on_grid[0, :] = self._estimate_density_from_particles(current_M_particles_t[0, :])
+        self._time_step_counter += 1  # Increment after computing density at t=0
 
         if Nt == 1:
             self.M_particles_trajectory = current_M_particles_t
@@ -329,6 +390,7 @@ class FPParticleSolver(BaseFPSolver):
             M_density_on_grid[n_time_idx + 1, :] = self._estimate_density_from_particles(
                 current_M_particles_t[n_time_idx + 1, :]
             )
+            self._time_step_counter += 1  # Increment after each time step
 
         self.M_particles_trajectory = current_M_particles_t
         return M_density_on_grid
@@ -405,9 +467,11 @@ class FPParticleSolver(BaseFPSolver):
             X_particles_gpu[0, :], x_grid_gpu, bandwidth_absolute, self.backend
         )
 
-        # Normalize if required (use helper function)
-        if self.normalize_kde_output:
+        # Normalize based on strategy (use helper function)
+        if self.kde_normalization != KDENormalization.NONE:
             M_density_gpu[0, :] = self._normalize_density(M_density_gpu[0, :], Dx, use_backend=True)
+
+        self._time_step_counter += 1  # Increment after computing density at t=0
 
         if Nt == 1:
             self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
@@ -455,9 +519,11 @@ class FPParticleSolver(BaseFPSolver):
                 X_particles_gpu[t + 1, :], x_grid_gpu, bandwidth_absolute, self.backend
             )
 
-            # Normalize if required (use helper function)
-            if self.normalize_kde_output:
+            # Normalize based on strategy (use helper function)
+            if self.kde_normalization != KDENormalization.NONE:
                 M_density_gpu[t + 1, :] = self._normalize_density(M_density_gpu[t + 1, :], Dx, use_backend=True)
+
+            self._time_step_counter += 1  # Increment after each time step
 
         # Store trajectory and convert to NumPy ONCE at end
         self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
