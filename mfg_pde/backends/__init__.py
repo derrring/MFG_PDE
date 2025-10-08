@@ -257,3 +257,11 @@ def ensure_numpy_backend():
 
 # Auto-initialize on import
 ensure_numpy_backend()
+
+# Export strategy selection utilities
+__all__ = [
+    "create_backend",
+    "get_available_backends",
+    "get_backend_info",
+    "register_backend",
+]

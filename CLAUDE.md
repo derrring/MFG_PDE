@@ -21,6 +21,7 @@ This file contains preferences and conventions for Claude Code when working with
 **Package Structure** (`mfg_pde/` internals):
 - **`mfg_pde/alg/`** - Algorithms (numerical, neural, reinforcement, optimization)
 - **`mfg_pde/backends/`** - Computational backends (NumPy, PyTorch, JAX)
+  - `strategies/` - Backend-aware strategy selection (CPU/GPU/hybrid)
 - **`mfg_pde/benchmarks/`** - Benchmarking **tools** (library code, NOT test scripts)
   - ⚠️ Note: Different from top-level `/benchmarks/` (test scripts)
 - **`mfg_pde/config/`** - Configuration management
