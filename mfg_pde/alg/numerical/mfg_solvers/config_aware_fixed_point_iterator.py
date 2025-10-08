@@ -182,55 +182,74 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             if solve_config.picard.verbose:
                 print(f"\n Picard Iteration {iiter + 1}/{solve_config.picard.max_iterations}")
 
-            # Store previous iteration
-            # Use .clone() for PyTorch tensors, .copy() for NumPy arrays
-            U_old = self.U.clone() if hasattr(self.U, "clone") else self.U.copy()
-            M_old = self.M.clone() if hasattr(self.M, "clone") else self.M.copy()
-
-            # Solve HJB system
-            final_u_cond = self.problem.get_final_u() if hasattr(self.problem, "get_final_u") else np.zeros(Nx)
+            # === BOUNDARY CONVERSION: MPS/Backend → NumPy for solver internals ===
+            # Solvers use scipy.sparse which requires NumPy, so convert at boundary
+            # This keeps solver code clean and readable
             if self.backend is not None:
-                final_u_cond = self.backend.from_numpy(final_u_cond)
-            U_new_tmp = self.hjb_solver.solve_hjb_system(
-                M_old,
-                final_u_cond,
-                U_picard_prev,
+                from mfg_pde.backends.compat import to_numpy
+
+                U_np = to_numpy(self.U, self.backend)
+                M_np = to_numpy(self.M, self.backend)
+                U_picard_prev_np = to_numpy(U_picard_prev, self.backend)
+            else:
+                U_np = self.U
+                M_np = self.M
+                U_picard_prev_np = U_picard_prev
+
+            # Store previous iteration (NumPy)
+            U_old_np = U_np.copy()
+            M_old_np = M_np.copy()
+
+            # Solve HJB system (pure NumPy, no .item() calls needed)
+            final_u_cond_np = self.problem.get_final_u() if hasattr(self.problem, "get_final_u") else np.zeros(Nx)
+            U_new_tmp_np = self.hjb_solver.solve_hjb_system(
+                M_old_np,
+                final_u_cond_np,
+                U_picard_prev_np,
             )
 
-            # Apply damping to U
-            self.U = solve_config.picard.damping_factor * U_new_tmp + (1 - solve_config.picard.damping_factor) * U_old
-
-            # Solve FP system
-            initial_m_cond = self.problem.get_initial_m() if hasattr(self.problem, "get_initial_m") else np.ones(Nx)
-            if self.backend is not None:
-                initial_m_cond = self.backend.from_numpy(initial_m_cond)
-            M_new_tmp = self.fp_solver.solve_fp_system(
-                initial_m_cond,
-                self.U,
+            # Apply damping to U (NumPy)
+            U_np = (
+                solve_config.picard.damping_factor * U_new_tmp_np + (1 - solve_config.picard.damping_factor) * U_old_np
             )
 
-            # Apply damping to M
-            self.M = solve_config.picard.damping_factor * M_new_tmp + (1 - solve_config.picard.damping_factor) * M_old
+            # Solve FP system (pure NumPy)
+            initial_m_cond_np = self.problem.get_initial_m() if hasattr(self.problem, "get_initial_m") else np.ones(Nx)
+            M_new_tmp_np = self.fp_solver.solve_fp_system(
+                initial_m_cond_np,
+                U_np,
+            )
+
+            # Apply damping to M (NumPy)
+            M_np = (
+                solve_config.picard.damping_factor * M_new_tmp_np + (1 - solve_config.picard.damping_factor) * M_old_np
+            )
 
             # Preserve initial condition (boundary condition in time)
-            # The damping step above may modify M[0,:], but initial condition is fixed
-            initial_m_dist = self.problem.get_initial_m() if hasattr(self.problem, "get_initial_m") else np.ones(Nx)
+            M_np[0, :] = initial_m_cond_np
+
+            # === BOUNDARY CONVERSION: NumPy → MPS/Backend for storage ===
+            # Convert results back to backend arrays for next iteration
             if self.backend is not None:
-                initial_m_dist = self.backend.from_numpy(initial_m_dist)
-            self.M[0, :] = initial_m_dist
+                from mfg_pde.backends.compat import from_numpy
 
-            # Update U_picard_prev for next iteration
-            U_picard_prev = U_old.clone() if hasattr(U_old, "clone") else U_old.copy()
+                self.U = from_numpy(U_np, self.backend)
+                self.M = from_numpy(M_np, self.backend)
+                U_picard_prev = from_numpy(U_old_np, self.backend)
+            else:
+                self.U = U_np
+                self.M = M_np
+                U_picard_prev = U_old_np.copy()
 
-            # Compute convergence metrics
+            # Compute convergence metrics (NumPy)
             norm_factor = np.sqrt(Dx * Dt)
 
-            self.l2distu_abs[iiter] = np.linalg.norm(self.U - U_old) * norm_factor
-            norm_U = np.linalg.norm(self.U) * norm_factor
+            self.l2distu_abs[iiter] = np.linalg.norm(U_np - U_old_np) * norm_factor
+            norm_U = np.linalg.norm(U_np) * norm_factor
             self.l2distu_rel[iiter] = self.l2distu_abs[iiter] / norm_U if norm_U > 1e-12 else self.l2distu_abs[iiter]
 
-            self.l2distm_abs[iiter] = np.linalg.norm(self.M - M_old) * norm_factor
-            norm_M = np.linalg.norm(self.M) * norm_factor
+            self.l2distm_abs[iiter] = np.linalg.norm(M_np - M_old_np) * norm_factor
+            norm_M = np.linalg.norm(M_np) * norm_factor
             self.l2distm_rel[iiter] = self.l2distm_abs[iiter] / norm_M if norm_M > 1e-12 else self.l2distm_abs[iiter]
 
             iter_time = time.time() - iter_start_time
