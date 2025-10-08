@@ -166,6 +166,15 @@ jobs:
           echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
           echo "Coverage: $COVERAGE%"
 
+          # Determine badge color
+          if [ "$COVERAGE" -gt 80 ]; then
+            echo "color=brightgreen" >> $GITHUB_OUTPUT
+          elif [ "$COVERAGE" -gt 70 ]; then
+            echo "color=yellow" >> $GITHUB_OUTPUT
+          else
+            echo "color=red" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create coverage badge
         uses: schneegans/dynamic-badges-action@v1.7.0
         with:
@@ -174,7 +183,7 @@ jobs:
           filename: coverage.json
           label: coverage
           message: ${{ steps.coverage.outputs.percentage }}%
-          color: ${{ steps.coverage.outputs.percentage > 80 && 'brightgreen' || steps.coverage.outputs.percentage > 70 && 'yellow' || 'red' }}
+          color: ${{ steps.coverage.outputs.color }}
         continue-on-error: true
 
       - name: Upload coverage to Codecov (optional)
