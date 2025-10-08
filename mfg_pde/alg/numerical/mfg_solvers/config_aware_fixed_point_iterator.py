@@ -155,11 +155,17 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
             if solve_config.picard.verbose:
                 print("Cold start initialization")
 
-        # Initialize convergence tracking
-        self.l2distu_abs = np.ones(solve_config.picard.max_iterations)
-        self.l2distm_abs = np.ones(solve_config.picard.max_iterations)
-        self.l2distu_rel = np.ones(solve_config.picard.max_iterations)
-        self.l2distm_rel = np.ones(solve_config.picard.max_iterations)
+        # Initialize convergence tracking - use backend if available
+        if self.backend is not None:
+            self.l2distu_abs = self.backend.ones((solve_config.picard.max_iterations,))
+            self.l2distm_abs = self.backend.ones((solve_config.picard.max_iterations,))
+            self.l2distu_rel = self.backend.ones((solve_config.picard.max_iterations,))
+            self.l2distm_rel = self.backend.ones((solve_config.picard.max_iterations,))
+        else:
+            self.l2distu_abs = np.ones(solve_config.picard.max_iterations)
+            self.l2distm_abs = np.ones(solve_config.picard.max_iterations)
+            self.l2distu_rel = np.ones(solve_config.picard.max_iterations)
+            self.l2distm_rel = np.ones(solve_config.picard.max_iterations)
         self.iterations_run = 0
 
         # Picard iteration with enhanced monitoring
@@ -293,8 +299,13 @@ class ConfigAwareFixedPointIterator(BaseMFGSolver):
 
     def _cold_start_initialization(self, Nt: int, Nx: int) -> None:
         """Initialize with cold start (default initialization)."""
-        self.U = np.zeros((Nt, Nx))
-        self.M = np.zeros((Nt, Nx))
+        # Use backend-native arrays if backend is available
+        if self.backend is not None:
+            self.U = self.backend.zeros((Nt, Nx))
+            self.M = self.backend.zeros((Nt, Nx))
+        else:
+            self.U = np.zeros((Nt, Nx))
+            self.M = np.zeros((Nt, Nx))
 
         # Set boundary conditions
         if hasattr(self.problem, "get_initial_m"):
