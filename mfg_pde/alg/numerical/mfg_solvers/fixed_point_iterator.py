@@ -1,8 +1,11 @@
 """
-Damped Fixed Point Iterator for Mean Field Games.
+Fixed Point Iterator
 
-This is the classic fixed point iterator with damping, providing the foundational
-approach for solving coupled MFG systems using numerical methods.
+Modern fixed-point iterator for MFG systems with full feature support:
+- Config-based parameter management with backward compatibility
+- Anderson acceleration for faster convergence
+- Backend support (GPU/CPU)
+- Structured SolverResult output (tuple output for legacy compatibility)
 """
 
 from __future__ import annotations
@@ -12,35 +15,43 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.solver_result import SolverResult
+
 from .base_mfg import BaseMFGSolver
+from .fixed_point_utils import (
+    check_convergence_criteria,
+    initialize_cold_start,
+    preserve_boundary_conditions,
+)
 
 if TYPE_CHECKING:
     from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
     from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
-    from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.utils.solver_result import SolverResult
+    from mfg_pde.config import MFGSolverConfig
+    from mfg_pde.problem.base_mfg_problem import MFGProblem
 
 
 class FixedPointIterator(BaseMFGSolver):
     """
-    Classic Fixed Point Iterator with damping for MFG systems.
-
-    This solver implements the foundational Picard iteration approach for
-    coupled Mean Field Games systems, alternating between HJB and FP solutions
-    with optional damping for stability.
+    Fixed-point iterator for MFG systems with full feature support.
 
     Features:
-    - Classic Picard iteration with configurable damping
-    - Anderson acceleration for faster convergence
-    - Computational backend support (NumPy/JAX/Numba/Torch)
-    - Comprehensive convergence monitoring
-    - Warm start capability
-    - Enhanced error handling and reporting
-    - Structured result objects with rich metadata
-    - Full backward compatibility
+    - Config-based parameter management with backward compatibility
+    - Optional Anderson acceleration for faster convergence
+    - GPU/CPU backend support
+    - Structured SolverResult output (tuple output for legacy compatibility)
+    - Warm start support
 
-    Note: This is the classic implementation maintained for compatibility
-    and comparison with newer configuration-aware approaches.
+    Args:
+        problem: MFG problem definition
+        hjb_solver: HJB solver instance
+        fp_solver: FP solver instance
+        config: Configuration object (preferred modern approach)
+        thetaUM: Damping parameter (legacy parameter, overridden by config)
+        use_anderson: Enable Anderson acceleration
+        anderson_depth: Anderson acceleration memory depth
+        anderson_beta: Anderson acceleration mixing parameter
+        backend: Backend name ('numpy', 'torch', 'jax', etc.)
     """
 
     def __init__(
@@ -48,444 +59,246 @@ class FixedPointIterator(BaseMFGSolver):
         problem: MFGProblem,
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
+        config: MFGSolverConfig | None = None,
         thetaUM: float = 0.5,
-        backend: str | None = None,
         use_anderson: bool = False,
         anderson_depth: int = 5,
         anderson_beta: float = 1.0,
+        backend: str | None = None,
     ):
-        """
-        Initialize the Fixed Point Iterator.
-
-        Args:
-            problem: MFG problem instance
-            hjb_solver: Hamilton-Jacob-Bellman solver
-            fp_solver: Fokker-Planck solver
-            thetaUM: Damping parameter (0.5 = balanced damping)
-            backend: Computational backend ("numpy", "jax", "numba", "torch", None=auto)
-            use_anderson: Enable Anderson acceleration
-            anderson_depth: Number of iterates for Anderson (m parameter)
-            anderson_beta: Damping for Anderson (1.0 = no damping)
-        """
-        super().__init__(problem)
+        super().__init__(problem, backend=backend)
         self.hjb_solver = hjb_solver
         self.fp_solver = fp_solver
-        self.thetaUM = thetaUM
+        self.config = config
+
+        # Anderson acceleration support
         self.use_anderson = use_anderson
-        self.anderson_depth = anderson_depth
-        self.anderson_beta = anderson_beta
-
-        # Initialize backend
-        if backend is not None:
-            from mfg_pde.backends import create_backend
-
-            self.backend = create_backend(backend)
-        else:
-            self.backend = None
-
-        # Initialize Anderson accelerator if requested
         self.anderson_accelerator = None
         if use_anderson:
-            from mfg_pde.utils.numerical.anderson_acceleration import create_anderson_accelerator
+            from mfg_pde.utils.numerical.anderson_acceleration import AndersonAcceleration
 
-            self.anderson_accelerator = create_anderson_accelerator(
-                depth=anderson_depth,
-                beta=anderson_beta,
-                regularization=1e-4,  # Higher regularization for stochastic problems
-                restart_threshold=5.0,  # Restart if error increases 5x
-            )
+            self.anderson_accelerator = AndersonAcceleration(depth=anderson_depth, beta=anderson_beta)
 
-        # Pass backend to solvers if they support it
-        if backend is not None and hasattr(hjb_solver, "backend"):
-            if hjb_solver.backend is None:  # Only set if not already set
-                from mfg_pde.backends import create_backend
+        # Damping parameter (overridden by config if provided)
+        self.thetaUM = thetaUM
 
-                hjb_solver.backend = create_backend(backend)
-
-        if backend is not None and hasattr(fp_solver, "backend"):
-            if fp_solver.backend is None:  # Only set if not already set
-                from mfg_pde.backends import create_backend
-
-                fp_solver.backend = create_backend(backend)
-
-        hjb_name = getattr(hjb_solver, "hjb_method_name", "UnknownHJB")
-        fp_name = getattr(fp_solver, "fp_method_name", "UnknownFP")
-        accel_name = "Anderson" if use_anderson else "Damped"
-        backend_name = backend or "numpy"
-        self.name = f"HJB-{hjb_name}_FP-{fp_name}_{accel_name}_{backend_name}"
-
-        # Initialize solution arrays
-        self.U: np.ndarray
-        self.M: np.ndarray
+        # State arrays (initialized in solve)
+        self.U: np.ndarray | None = None
+        self.M: np.ndarray | None = None
 
         # Convergence tracking
-        self.l2distu_abs: np.ndarray
-        self.l2distm_abs: np.ndarray
-        self.l2distu_rel: np.ndarray
-        self.l2distm_rel: np.ndarray
-        self.iterations_run: int = 0
+        self.l2distu_abs: np.ndarray | None = None
+        self.l2distm_abs: np.ndarray | None = None
+        self.l2distu_rel: np.ndarray | None = None
+        self.l2distm_rel: np.ndarray | None = None
+        self.iterations_run = 0
 
-    def solve(  # type: ignore[override]
+        # Warm start support
+        self._warm_start_U: np.ndarray | None = None
+        self._warm_start_M: np.ndarray | None = None
+
+    def solve(
         self,
+        config: MFGSolverConfig | None = None,
         max_iterations: int | None = None,
         tolerance: float | None = None,
-        # Alias parameters for specific solver compatibility
-        max_picard_iterations: int | None = None,
-        picard_tolerance: float | None = None,
-        # Deprecated parameters for backward compatibility
-        Niter_max: int | None = None,
-        l2errBoundPicard: float | None = None,
-        # New parameter for result format
-        return_structured: bool = False,
+        return_tuple: bool = False,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray] | SolverResult:
+    ) -> SolverResult | tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
         """
-        Solve the MFG system using fixed point iteration.
+        Solve coupled MFG system using fixed-point iteration.
 
         Args:
-            max_iterations: Maximum number of Picard iterations
-            tolerance: Convergence tolerance
-            max_picard_iterations: Alias for max_iterations
-            picard_tolerance: Alias for tolerance
-            Niter_max: DEPRECATED - use max_iterations
-            l2errBoundPicard: DEPRECATED - use tolerance
-            return_structured: Return SolverResult object instead of tuple
-            **kwargs: Additional parameters
+            config: Solver configuration (overrides instance config)
+            max_iterations: Maximum iterations (legacy parameter)
+            tolerance: Convergence tolerance (legacy parameter)
+            return_tuple: Return legacy tuple format instead of SolverResult
+            **kwargs: Additional parameters for backward compatibility
 
         Returns:
-            Tuple (U, M, iterations, err_u, err_m) or SolverResult object
+            SolverResult object (or tuple if return_tuple=True)
         """
-        import warnings
+        # Use provided config or fall back to instance config
+        solve_config = config or self.config
 
-        # Handle parameter precedence: standardized > specific > deprecated
-        # Priority: max_iterations/tolerance > max_picard_iterations/picard_tolerance > Niter_max/l2errBoundPicard
-
-        final_max_iterations = None
-        final_tolerance = None
-
-        # Process max_iterations with precedence
-        if max_iterations is not None:
-            final_max_iterations = max_iterations
-        elif max_picard_iterations is not None:
-            final_max_iterations = max_picard_iterations
-        elif Niter_max is not None:
-            warnings.warn(
-                "Parameter 'Niter_max' is deprecated. Use 'max_iterations' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            final_max_iterations = Niter_max
+        # Parameter resolution (config > explicit args > instance defaults)
+        if solve_config is not None:
+            final_max_iterations = solve_config.picard.max_iterations
+            final_tolerance = solve_config.picard.tolerance
+            final_thetaUM = solve_config.picard.damping_factor
+            verbose = solve_config.picard.verbose
         else:
-            final_max_iterations = 20  # Default
-
-        # Process tolerance with precedence
-        if tolerance is not None:
-            final_tolerance = tolerance
-        elif picard_tolerance is not None:
-            final_tolerance = picard_tolerance
-        elif l2errBoundPicard is not None:
-            warnings.warn(
-                "Parameter 'l2errBoundPicard' is deprecated. Use 'tolerance' instead.",
-                DeprecationWarning,
-                stacklevel=2,
+            # Legacy parameter precedence
+            final_max_iterations = (
+                max_iterations or kwargs.get("max_picard_iterations") or kwargs.get("Niter_max") or 100
             )
-            final_tolerance = l2errBoundPicard
-        else:
-            final_tolerance = 1e-5  # Default
+            final_tolerance = tolerance or kwargs.get("picard_tolerance") or kwargs.get("l2errBoundPicard") or 1e-6
+            final_thetaUM = self.thetaUM
+            verbose = True
 
-        # Validate parameters with enhanced error messages
-        from mfg_pde.utils.exceptions import validate_parameter_value
-
-        validate_parameter_value(
-            final_max_iterations,
-            "max_iterations",
-            int,
-            (1, 1000),
-            solver_name=f"{self.name} (Fixed Point Iterator)",
-        )
-        validate_parameter_value(
-            final_tolerance,
-            "tolerance",
-            (int, float),  # type: ignore[arg-type]
-            (1e-12, 1e-1),
-            solver_name=f"{self.name} (Fixed Point Iterator)",
-        )
-
-        # Track execution time for structured results
-        solve_start_time = time.time()
-
-        print(f"\n________________ Solving MFG with {self.name} (T={self.problem.T}) _______________")
-        Nx = self.problem.Nx + 1
+        # Get problem dimensions
         Nt = self.problem.Nt + 1
-        Dx = self.problem.Dx if abs(self.problem.Dx) > 1e-12 else 1.0
-        Dt = self.problem.Dt if abs(self.problem.Dt) > 1e-12 else 1.0
+        Nx = self.problem.Nx + 1
+        Dx = self.problem.Dx
+        Dt = self.problem.Dt
 
-        # Try warm start initialization first
-        warm_start_init = self._get_warm_start_initialization()
-        if warm_start_init is not None:
-            U_init, M_init = warm_start_init
-            self.U = U_init.copy()
-            self.M = M_init.copy()
-            print("   Using warm start initialization from previous solution")
+        # Initialize arrays (cold start or warm start)
+        warm_start = self.get_warm_start_data()
+        if warm_start is not None:
+            self.U, self.M = warm_start
         else:
-            # Cold start - default initialization
-            # Note: Nx and Nt here already include +1 (see lines 218-219)
-            # So shape is already (Nt+1, Nx+1) from problem definition
-
-            # Use backend-native array creation if backend is available
+            # Cold start initialization
             if self.backend is not None:
                 self.U = self.backend.zeros((Nt, Nx))
                 self.M = self.backend.zeros((Nt, Nx))
             else:
-                # Fallback to NumPy for backward compatibility
                 self.U = np.zeros((Nt, Nx))
                 self.M = np.zeros((Nt, Nx))
 
-        initial_m_dist = self.problem.get_initial_m()
-        final_u_cost = self.problem.get_final_u()
+            initial_m_dist = self.problem.get_initial_m()
+            final_u_cost = self.problem.get_final_u()
 
-        if Nt > 0:
-            # Always enforce boundary conditions (even with warm start)
-            # Nt and Nx here already include +1, so final index is Nt-1
-            self.M[0, :] = initial_m_dist
-            self.U[Nt - 1, :] = final_u_cost
+            if Nt > 0:
+                # Set boundary conditions
+                self.M[0, :] = initial_m_dist
+                self.U[Nt - 1, :] = final_u_cost
 
-            # For cold start, initialize interior with boundary conditions
-            if warm_start_init is None:
-                for n_time_idx in range(Nt - 1):
-                    self.U[n_time_idx, :] = final_u_cost
-                for n_time_idx in range(1, Nt):
-                    self.M[n_time_idx, :] = initial_m_dist
-        elif Nt == 0:
-            print("Warning: Nt=0, cannot initialize U and M.")
-            return self.U, self.M, 0, np.array([]), np.array([])
+                # Initialize interior with boundary conditions
+                self.U, self.M = initialize_cold_start(self.U, self.M, initial_m_dist, final_u_cost, Nt)
 
-        # Error tracking arrays - use backend if available
-        if self.backend is not None:
-            self.l2distu_abs = self.backend.ones((final_max_iterations,))
-            self.l2distm_abs = self.backend.ones((final_max_iterations,))
-            self.l2distu_rel = self.backend.ones((final_max_iterations,))
-            self.l2distm_rel = self.backend.ones((final_max_iterations,))
-        else:
-            self.l2distu_abs = np.ones(final_max_iterations)
-            self.l2distm_abs = np.ones(final_max_iterations)
-            self.l2distu_rel = np.ones(final_max_iterations)
-            self.l2distm_rel = np.ones(final_max_iterations)
+        # Initialize error tracking
+        self.l2distu_abs = np.ones(final_max_iterations)
+        self.l2distm_abs = np.ones(final_max_iterations)
+        self.l2distu_rel = np.ones(final_max_iterations)
+        self.l2distm_rel = np.ones(final_max_iterations)
         self.iterations_run = 0
 
         # Reset Anderson accelerator if using it
         if self.anderson_accelerator is not None:
             self.anderson_accelerator.reset()
 
-        U_picard_prev = self.U.copy()  # Initialize U from previous Picard (k-1) with initial U for k=0
+        # Main fixed-point iteration loop
+        converged = False
+        convergence_reason = "Maximum iterations reached"
+        initial_m_dist = self.problem.get_initial_m()
 
         for iiter in range(final_max_iterations):
-            start_time_iter = time.time()
-            accel_tag = " (Anderson)" if self.use_anderson else ""
-            print(f"--- {self.name} Picard Iteration = {iiter + 1} / {final_max_iterations}{accel_tag} ---")
+            iter_start = time.time()
 
-            U_old_current_picard_iter = self.U.copy()  # U_k
-            M_old_current_picard_iter = self.M.copy()  # M_k
+            U_old = self.U.copy()
+            M_old = self.M.copy()
 
-            # 1. Solve HJB backward using M_old_current_picard_iter (M_k)
-            #    and U_picard_prev (U_{k-1}) for the Jacobian if needed by the specific problem type
-            U_new_tmp_hjb = self.hjb_solver.solve_hjb_system(
-                M_old_current_picard_iter,  # M_k
-                final_u_cost,
-                U_picard_prev,  # U_{k-1} (this is U_old from notebook's solveHJB_withM(sigma, U, M))
-            )
+            # 1. Solve HJB backward with current M
+            U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old)
 
-            # 2. Solve FP forward using the newly computed U_new_tmp_hjb
-            M_new_tmp_fp = self.fp_solver.solve_fp_system(initial_m_dist, U_new_tmp_hjb)
+            # 2. Solve FP forward with new U
+            M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new)
 
-            # Apply damping and/or Anderson acceleration
+            # 3. Apply damping or Anderson acceleration
             if self.use_anderson and self.anderson_accelerator is not None:
-                # HYBRID APPROACH: Anderson for U only, with safeguards for M
-                # Rationale:
-                # 1. Anderson extrapolation can produce negative M (violates M ≥ 0)
-                # 2. Clamping negative M violates mass conservation
-                # 3. Solution: Use standard damping for M (guarantees M ≥ 0 and conservation)
-                # 4. Apply Anderson only to U (value function has no positivity constraint)
-
-                # First: Apply standard Picard damping to HJB/FP outputs
-                U_damped = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
-                M_damped = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
-
-                # Second: Apply Anderson acceleration to U ONLY
-                # M uses standard damping: preserves M ≥ 0 via convex combination
-                x_current_U = U_old_current_picard_iter.flatten()
-                f_current_U = U_damped.flatten()
-
-                # Anderson acceleration on U
+                # Anderson acceleration on U only (M uses standard damping for positivity)
+                x_current_U = U_old.flatten()
+                f_current_U = U_new.flatten()
                 x_next_U = self.anderson_accelerator.update(x_current_U, f_current_U, method="type1")
+                self.U = x_next_U.reshape(U_old.shape)
 
-                # Update: Anderson-accelerated U, standard-damped M
-                self.U = x_next_U.reshape(U_old_current_picard_iter.shape)
-                self.M = M_damped  # Standard damping - guarantees M ≥ 0 and mass conservation
+                # Standard damping for M (guarantees non-negativity and mass conservation)
+                self.M = final_thetaUM * M_new + (1 - final_thetaUM) * M_old
             else:
-                # Standard damping only (no Anderson)
-                self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
-                self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
+                # Standard damping for both
+                self.U = final_thetaUM * U_new + (1 - final_thetaUM) * U_old
+                self.M = final_thetaUM * M_new + (1 - final_thetaUM) * M_old
 
-            # Preserve initial condition (boundary condition in time)
-            # The damping/Anderson steps above may modify M[0,:], but initial condition is fixed
-            self.M[0, :] = initial_m_dist
+            # Preserve initial boundary condition
+            self.M = preserve_boundary_conditions(self.M, initial_m_dist)
 
-            # Update U_picard_prev for the next iteration's Jacobian calculation
-            U_picard_prev = U_old_current_picard_iter.copy()  # U_k becomes U_{k-1} for next iter
+            # Calculate convergence metrics
+            from mfg_pde.utils.numerical.convergence import calculate_l2_convergence_metrics
 
-            # NOTE: DO NOT clamp M to non-negative values!
-            # Clamping with np.maximum(self.M, 0) violates mass conservation
-            # If the algorithm produces negative values, they must be preserved
-            # to maintain ∫M dx = constant (mass conservation principle)
-            # Any post-processing that changes values destroys this property
+            metrics = calculate_l2_convergence_metrics(self.U, U_old, self.M, M_old, Dx, Dt)
+            self.l2distu_abs[iiter] = metrics["l2distu_abs"]
+            self.l2distu_rel[iiter] = metrics["l2distu_rel"]
+            self.l2distm_abs[iiter] = metrics["l2distm_abs"]
+            self.l2distm_rel[iiter] = metrics["l2distm_rel"]
 
-            norm_factor = np.sqrt(Dx * Dt)
-
-            self.l2distu_abs[iiter] = np.linalg.norm(self.U - U_old_current_picard_iter) * norm_factor
-            norm_U_iter = np.linalg.norm(self.U) * norm_factor
-            self.l2distu_rel[iiter] = (
-                self.l2distu_abs[iiter] / norm_U_iter if norm_U_iter > 1e-12 else self.l2distu_abs[iiter]
-            )
-
-            self.l2distm_abs[iiter] = np.linalg.norm(self.M - M_old_current_picard_iter) * norm_factor
-            norm_M_iter = np.linalg.norm(self.M) * norm_factor
-            self.l2distm_rel[iiter] = (
-                self.l2distm_abs[iiter] / norm_M_iter if norm_M_iter > 1e-12 else self.l2distm_abs[iiter]
-            )
-
-            elapsed_time_iter = time.time() - start_time_iter
-            print(
-                f"  Iter {iiter + 1}: Rel Err U={self.l2distu_rel[iiter]:.2e}, "
-                f"M={self.l2distm_rel[iiter]:.2e}. "
-                f"Abs Err U={self.l2distu_abs[iiter]:.2e}, M={self.l2distm_abs[iiter]:.2e}. "
-                f"Time: {elapsed_time_iter:.2f}s"
-            )
-
+            iter_time = time.time() - iter_start
             self.iterations_run = iiter + 1
-            if self.l2distu_rel[iiter] < final_tolerance and self.l2distm_rel[iiter] < final_tolerance:
-                print(f"Convergence reached after {iiter + 1} iterations.")
+
+            if verbose:
+                accel_tag = " (Anderson)" if self.use_anderson else ""
+                print(f"--- Picard Iteration {iiter + 1}/{final_max_iterations}{accel_tag} ---")
+                print(f"  Errors: U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}")
+                print(f"  Time: {iter_time:.3f}s")
+
+            # Check convergence
+            converged, convergence_reason = check_convergence_criteria(
+                self.l2distu_rel[iiter],
+                self.l2distm_rel[iiter],
+                self.l2distu_abs[iiter],
+                self.l2distm_abs[iiter],
+                final_tolerance,
+            )
+
+            if converged:
+                if verbose:
+                    print(convergence_reason)
                 break
-        else:
-            # Enhanced convergence failure reporting
-            final_error_u = self.l2distu_rel[self.iterations_run - 1] if self.iterations_run > 0 else float("inf")
-            final_error_m = self.l2distm_rel[self.iterations_run - 1] if self.iterations_run > 0 else float("inf")
-            final_error = max(final_error_u, final_error_m)
 
-            convergence_history = list(self.l2distu_rel[: self.iterations_run]) + list(
-                self.l2distm_rel[: self.iterations_run]
-            )
+        # Construct result
+        result = SolverResult(
+            U=self.U,
+            M=self.M,
+            converged=converged,
+            iterations=self.iterations_run,
+            convergence_reason=convergence_reason,
+            diagnostics={
+                "l2distu_abs": self.l2distu_abs[: self.iterations_run],
+                "l2distm_abs": self.l2distm_abs[: self.iterations_run],
+                "l2distu_rel": self.l2distu_rel[: self.iterations_run],
+                "l2distm_rel": self.l2distm_rel[: self.iterations_run],
+                "solver_name": self.name,
+                "anderson_used": self.use_anderson,
+            },
+        )
 
-            from mfg_pde.utils.exceptions import ConvergenceError
-
-            # Use strict error handling mode by default (no config available)
-            strict_mode = True
-
-            if strict_mode:
-                # Strict mode: Always raise convergence errors
-                conv_error = ConvergenceError(
-                    iterations_used=self.iterations_run,
-                    max_iterations=final_max_iterations,
-                    final_error=final_error,
-                    tolerance=final_tolerance,
-                    solver_name=self.name,
-                    convergence_history=convergence_history,
-                )
-                raise conv_error
-            else:
-                # Permissive mode: Log warning with detailed analysis
-                print(f"WARNING:  Convergence Warning: Max iterations ({final_max_iterations}) reached")
-
-                try:
-                    conv_error = ConvergenceError(
-                        iterations_used=self.iterations_run,
-                        max_iterations=final_max_iterations,
-                        final_error=final_error,
-                        tolerance=final_tolerance,
-                        solver_name=self.name,
-                        convergence_history=convergence_history,
-                    )
-                    print(f" {conv_error.suggested_action}")
-                    # Store error for later analysis
-                    self._convergence_warning = conv_error
-                except Exception as e:
-                    # Fallback if error analysis fails
-                    print(" Suggestion: Try increasing max_picard_iterations or relaxing picard_tolerance")
-                    print(f"WARNING:  Error analysis failed: {e}")
-
-        self.l2distu_abs = self.l2distu_abs[: self.iterations_run]
-        self.l2distm_abs = self.l2distm_abs[: self.iterations_run]
-        self.l2distu_rel = self.l2distu_rel[: self.iterations_run]
-        self.l2distm_rel = self.l2distm_rel[: self.iterations_run]
-
-        # Mark solution as computed for warm start capability
-        self._solution_computed = True
-
-        # Calculate total execution time
-        execution_time = time.time() - solve_start_time
-
-        # Return structured result if requested, otherwise maintain backward compatibility
-        if return_structured:
-            from mfg_pde.utils.solver_result import create_solver_result
-
-            return create_solver_result(
-                U=self.U,
-                M=self.M,
-                iterations=self.iterations_run,
-                error_history_U=self.l2distu_rel,
-                error_history_M=self.l2distm_rel,
-                solver_name=self.name,
-                convergence_achieved=(
-                    (self.l2distu_rel[-1] < final_tolerance and self.l2distm_rel[-1] < final_tolerance)
-                    if self.iterations_run > 0
-                    else False
-                ),
-                tolerance=final_tolerance,
-                execution_time=execution_time,
-                # Additional metadata
-                damping_parameter=self.thetaUM,
-                problem_parameters={
-                    "T": self.problem.T,
-                    "Nx": self.problem.Nx,
-                    "Nt": self.problem.Nt,
-                    "Dx": getattr(self.problem, "Dx", None),
-                    "Dt": getattr(self.problem, "Dt", None),
-                },
-                absolute_errors_U=self.l2distu_abs,
-                absolute_errors_M=self.l2distm_abs,
-            )
-        else:
-            # Backward compatible tuple return
+        # Return tuple for backward compatibility if requested
+        if return_tuple:
             return (
                 self.U,
                 self.M,
                 self.iterations_run,
-                self.l2distu_rel,
-                self.l2distm_rel,
+                self.l2distu_rel[: self.iterations_run],
+                self.l2distm_rel[: self.iterations_run],
             )
+        else:
+            return result
 
-    def _get_warm_start_initialization(self) -> tuple[np.ndarray, np.ndarray] | None:
+    @property
+    def name(self) -> str:
+        """Solver name for diagnostics."""
+        return "FixedPointIterator"
+
+    def get_convergence_data(self) -> dict[str, np.ndarray]:
+        """Get convergence diagnostics."""
+        return {
+            "l2distu_abs": self.l2distu_abs[: self.iterations_run] if self.l2distu_abs is not None else np.array([]),
+            "l2distm_abs": self.l2distm_abs[: self.iterations_run] if self.l2distm_abs is not None else np.array([]),
+            "l2distu_rel": self.l2distu_rel[: self.iterations_run] if self.l2distu_rel is not None else np.array([]),
+            "l2distm_rel": self.l2distm_rel[: self.iterations_run] if self.l2distm_rel is not None else np.array([]),
+        }
+
+    def set_warm_start_data(self, U_init: np.ndarray, M_init: np.ndarray) -> None:
+        """Set warm start initialization data."""
+        self._warm_start_U = U_init
+        self._warm_start_M = M_init
+
+    def get_warm_start_data(self) -> tuple[np.ndarray, np.ndarray] | None:
         """Get warm start initialization data."""
-        return self.get_warm_start_data()
+        if self._warm_start_U is not None and self._warm_start_M is not None:
+            return (self._warm_start_U, self._warm_start_M)
+        return None
 
-    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
-        """Get computed U and M solutions."""
-        from mfg_pde.utils.exceptions import validate_solver_state
-
-        validate_solver_state(self, "get_results")
-        return self.U, self.M
-
-    def get_convergence_data(
-        self,
-    ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Get convergence information."""
-        from mfg_pde.utils.exceptions import validate_solver_state
-
-        validate_solver_state(self, "get_convergence_data")
-        return (
-            self.iterations_run,
-            self.l2distu_abs,
-            self.l2distm_abs,
-            self.l2distu_rel,
-            self.l2distm_rel,
-        )
+    def clear_warm_start_data(self) -> None:
+        """Clear warm start data."""
+        self._warm_start_U = None
+        self._warm_start_M = None

@@ -47,6 +47,12 @@ class FPParticleSolver(BaseFPSolver):
         else:
             self.backend = create_backend("numpy")  # NumPy fallback
 
+        # Initialize strategy selector for intelligent pipeline selection
+        from mfg_pde.backends.strategies.strategy_selector import StrategySelector
+
+        self.strategy_selector = StrategySelector(enable_profiling=True, verbose=False)
+        self.current_strategy = None  # Will be set in solve_fp_system
+
         # Default to periodic boundaries for backward compatibility
         if boundary_conditions is None:
             self.boundary_conditions = BoundaryConditions(type="periodic")
@@ -198,21 +204,35 @@ class FPParticleSolver(BaseFPSolver):
 
     def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """
-        Solve FP system using particle method.
+        Solve FP system using particle method with intelligent strategy selection.
 
-        Pipeline Selection Strategy (Track B Phase 2):
-        - If backend available: Full GPU pipeline (eliminates transfer overhead)
-        - If backend is None: CPU pipeline (existing NumPy implementation)
+        Strategy Selection (Track B Phase 2.2 - Intelligent Dispatch):
+        - Automatically selects optimal pipeline based on:
+          * Backend capabilities (GPU acceleration availability)
+          * Problem size (num_particles, grid_size, time_steps)
+          * Device characteristics (MPS overhead, CUDA efficiency)
+        - Strategies: CPU-only, GPU-accelerated, Hybrid (for medium-sized MPS problems)
 
-        This avoids boundary conversion which would cause 100-200 transfers
-        per solve (Nt timesteps × 2 transfers per timestep).
+        This replaces hard-coded if-else dispatch with intelligent cost-based selection.
         """
-        if self.backend is not None:
-            # Full GPU pipeline (Phase 2)
-            return self._solve_fp_system_gpu(m_initial_condition, U_solution_for_drift)
-        else:
-            # CPU pipeline (existing implementation)
+        # Determine problem size for strategy selection
+        Nt = self.problem.Nt + 1
+        Nx = self.problem.Nx + 1
+        problem_size = (self.num_particles, Nx, Nt)
+
+        # Select optimal strategy (GPU vs CPU vs Hybrid)
+        self.current_strategy = self.strategy_selector.select_strategy(
+            backend=self.backend if self.backend.name != "numpy" else None,
+            problem_size=problem_size,
+            strategy_hint="auto",  # Can be overridden to "cpu", "gpu", "hybrid"
+        )
+
+        # Execute using selected strategy's pipeline
+        if self.current_strategy.name == "cpu":
             return self._solve_fp_system_cpu(m_initial_condition, U_solution_for_drift)
+        else:
+            # GPU or Hybrid strategy (both use GPU pipeline)
+            return self._solve_fp_system_gpu(m_initial_condition, U_solution_for_drift)
 
     def _solve_fp_system_cpu(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """CPU pipeline - existing NumPy implementation."""

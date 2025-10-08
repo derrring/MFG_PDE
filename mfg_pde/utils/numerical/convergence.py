@@ -1185,6 +1185,69 @@ def create_stochastic_monitor(
 
 
 # =============================================================================
+# SIMPLE L2 CONVERGENCE HELPERS
+# =============================================================================
+
+
+def calculate_l2_convergence_metrics(
+    U_new: np.ndarray,
+    U_old: np.ndarray,
+    M_new: np.ndarray,
+    M_old: np.ndarray,
+    Dx: float,
+    Dt: float,
+) -> dict[str, float]:
+    """
+    Calculate L2 convergence metrics for MFG fixed-point iterations.
+
+    This helper eliminates code duplication between fixed-point iterator implementations
+    by providing a single source for computing both absolute and relative L2 errors.
+
+    Args:
+        U_new: Current value function array
+        U_old: Previous value function array
+        M_new: Current density array
+        M_old: Previous density array
+        Dx: Spatial grid spacing
+        Dt: Temporal grid spacing
+
+    Returns:
+        Dictionary with keys:
+            - 'l2distu_abs': Absolute L2 error for U
+            - 'l2distu_rel': Relative L2 error for U
+            - 'l2distm_abs': Absolute L2 error for M
+            - 'l2distm_rel': Relative L2 error for M
+
+    Example:
+        >>> metrics = calculate_l2_convergence_metrics(U_new, U_old, M_new, M_old, Dx, Dt)
+        >>> print(f"U relative error: {metrics['l2distu_rel']:.2e}")
+        >>> print(f"M relative error: {metrics['l2distm_rel']:.2e}")
+
+    Note:
+        The normalization factor sqrt(Dx * Dt) accounts for grid discretization,
+        making errors comparable across different grid resolutions.
+    """
+    norm_factor = np.sqrt(Dx * Dt)
+
+    # U convergence metrics
+    l2distu_abs = np.linalg.norm(U_new - U_old) * norm_factor
+    norm_U = np.linalg.norm(U_new) * norm_factor
+    l2distu_rel = l2distu_abs / norm_U if norm_U > 1e-12 else l2distu_abs
+
+    # M convergence metrics
+    l2distm_abs = np.linalg.norm(M_new - M_old) * norm_factor
+    norm_M = np.linalg.norm(M_new) * norm_factor
+    l2distm_rel = l2distm_abs / norm_M if norm_M > 1e-12 else l2distm_abs
+
+    return {
+        "l2distu_abs": float(l2distu_abs),
+        "l2distu_rel": float(l2distu_rel),
+        "l2distm_abs": float(l2distm_abs),
+        "l2distm_rel": float(l2distm_rel),
+    }
+
+
+# =============================================================================
 # BACKWARD COMPATIBILITY ALIASES
 # =============================================================================
 
@@ -1195,3 +1258,4 @@ OscillationDetector = OscillationDetector
 create_default_monitor = create_default_monitor
 StochasticConvergenceMonitor = StochasticConvergenceMonitor
 create_stochastic_monitor = create_stochastic_monitor
+calculate_l2_convergence_metrics = calculate_l2_convergence_metrics

@@ -1,8 +1,10 @@
 """
-Particle-Collocation solver for Mean Field Games.
+Unified Particle-Collocation solver for Mean Field Games.
 
 This solver combines particle methods for Fokker-Planck equations with
 generalized finite difference (GFDM) collocation for Hamilton-Jacobi-Bellman equations.
+
+Supports optional advanced convergence monitoring for robust particle-based MFG methods.
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
 
 class ParticleCollocationSolver(BaseMFGSolver):
     """
-    Particle-Collocation solver for Mean Field Games.
+    Unified Particle-Collocation solver for Mean Field Games.
 
     This solver combines:
     - Particle method for Fokker-Planck equations
@@ -30,6 +32,12 @@ class ParticleCollocationSolver(BaseMFGSolver):
     2. Meshfree spatial discretization
     3. Flexibility in choosing collocation points
     4. Excellent conservation properties from particles
+
+    Optional Features:
+    - Advanced convergence monitoring (use_advanced_convergence=True)
+    - Oscillation stabilization detection
+    - Wasserstein distance-based distribution comparison
+    - Multi-criteria convergence validation
     """
 
     def __init__(
@@ -48,6 +56,9 @@ class ParticleCollocationSolver(BaseMFGSolver):
         boundary_indices: np.ndarray | None = None,
         boundary_conditions: dict | None = None,
         use_monotone_constraints: bool = False,
+        use_advanced_convergence: bool = False,
+        convergence_monitor: Any | None = None,
+        **convergence_kwargs: Any,
     ):
         """
         Initialize the Particle-Collocation solver.
@@ -67,12 +78,16 @@ class ParticleCollocationSolver(BaseMFGSolver):
             boundary_indices: Indices of boundary collocation points
             boundary_conditions: Dictionary specifying boundary conditions
             use_monotone_constraints: Enable constrained QP for HJB monotonicity
+            use_advanced_convergence: Enable advanced convergence monitoring
+            convergence_monitor: Pre-configured convergence monitor (optional)
+            **convergence_kwargs: Parameters for default monitor if none provided
         """
         super().__init__(problem)
 
         # Store solver parameters
         self.collocation_points = collocation_points
         self.num_particles = num_particles
+        self.use_advanced_convergence = use_advanced_convergence
 
         # Initialize FP solver (Particle method)
         # Use same boundary conditions for particles as for HJB
@@ -103,6 +118,19 @@ class ParticleCollocationSolver(BaseMFGSolver):
             use_monotone_constraints=use_monotone_constraints,
         )
 
+        # Initialize convergence monitoring (if enabled)
+        if self.use_advanced_convergence:
+            if convergence_monitor is not None:
+                self.convergence_monitor = convergence_monitor
+            else:
+                from mfg_pde.utils.numerical.convergence import create_default_monitor
+
+                self.convergence_monitor = create_default_monitor(**convergence_kwargs)
+            self.detailed_convergence_history: list[dict[str, Any]] = []
+        else:
+            self.convergence_monitor = None
+            self.detailed_convergence_history = []
+
         # Storage for results
         self.U_solution = None
         self.M_solution = None
@@ -117,6 +145,8 @@ class ParticleCollocationSolver(BaseMFGSolver):
         Niter: int | None = None,
         l2errBound: float | None = None,
         verbose: bool = True,
+        plot_convergence: bool = False,
+        save_convergence_plot: str | None = None,
         **kwargs: Any,
     ) -> tuple[np.ndarray, np.ndarray, dict]:
         """
@@ -128,6 +158,8 @@ class ParticleCollocationSolver(BaseMFGSolver):
             Niter: (Deprecated) Use max_iterations instead
             l2errBound: (Deprecated) Use tolerance instead
             verbose: Whether to print convergence information
+            plot_convergence: Whether to plot convergence diagnostics (requires use_advanced_convergence=True)
+            save_convergence_plot: Optional file path to save convergence plot
             **kwargs: Additional keyword arguments
 
         Returns:
@@ -160,11 +192,14 @@ class ParticleCollocationSolver(BaseMFGSolver):
         else:
             final_tolerance = 1e-6  # Default
         if verbose:
-            print("Starting Particle-Collocation MFG solver:")
+            solver_mode = "Enhanced" if self.use_advanced_convergence else "Standard"
+            print(f"Starting {solver_mode} Particle-Collocation MFG solver:")
             print(f"  - Particles: {self.num_particles}")
             print(f"  - Collocation points: {self.hjb_solver.n_points}")
             print(f"  - Max Picard iterations: {final_max_iterations}")
             print(f"  - Convergence tolerance: {final_tolerance}")
+            if self.use_advanced_convergence:
+                print("  - Advanced monitoring: enabled")
 
         # Get problem dimensions
         Nt = self.problem.Nt + 1
@@ -243,26 +278,64 @@ class ParticleCollocationSolver(BaseMFGSolver):
             U_current = U_new
             M_current = M_new
 
-            # Compute convergence metrics
-            U_error = np.linalg.norm(U_current - U_prev) / max(float(np.linalg.norm(U_prev)), 1e-10)
-            M_error = np.linalg.norm(M_current - M_prev) / max(float(np.linalg.norm(M_prev)), 1e-10)
-            total_error = max(float(U_error), float(M_error))
+            # Compute convergence metrics (basic or advanced)
+            if self.use_advanced_convergence:
+                # Enhanced convergence monitoring
+                convergence_data = self.convergence_monitor.check_convergence(
+                    U_current, M_current, U_prev, M_prev, picard_iter
+                )
 
-            convergence_info = {
-                "iteration": picard_iter,
-                "U_error": U_error,
-                "M_error": M_error,
-                "total_error": total_error,
-            }
-            convergence_history.append(convergence_info)
+                # Store detailed convergence information
+                detailed_info = {
+                    "iteration": picard_iter,
+                    "convergence_data": convergence_data,
+                    "U_norm": float(np.linalg.norm(U_current)),
+                    "M_norm": float(np.linalg.norm(M_current)),
+                    "U_error": convergence_data.get("U_error", 0.0),
+                    "M_error": convergence_data.get("M_error", 0.0),
+                }
+                self.detailed_convergence_history.append(detailed_info)
 
-            if verbose and picard_iter % 10 == 0:
-                print(f"    U error: {U_error:.2e}, M error: {M_error:.2e}")
+                # Also maintain basic history for compatibility
+                convergence_info = {
+                    "iteration": picard_iter,
+                    "U_error": detailed_info["U_error"],
+                    "M_error": detailed_info["M_error"],
+                    "total_error": max(detailed_info["U_error"], detailed_info["M_error"]),
+                }
+                convergence_history.append(convergence_info)
+
+                U_error = detailed_info["U_error"]
+                M_error = detailed_info["M_error"]
+                total_error = convergence_info["total_error"]
+                converged = convergence_data.get("converged", False)
+
+                if verbose and picard_iter % 10 == 0:
+                    print(f"    Enhanced errors: U={U_error:.2e}, M={M_error:.2e}")
+            else:
+                # Basic convergence metrics
+                U_error = np.linalg.norm(U_current - U_prev) / max(float(np.linalg.norm(U_prev)), 1e-10)
+                M_error = np.linalg.norm(M_current - M_prev) / max(float(np.linalg.norm(M_prev)), 1e-10)
+                total_error = max(float(U_error), float(M_error))
+
+                convergence_info = {
+                    "iteration": picard_iter,
+                    "U_error": U_error,
+                    "M_error": M_error,
+                    "total_error": total_error,
+                }
+                convergence_history.append(convergence_info)
+
+                converged = total_error < final_tolerance
+
+                if verbose and picard_iter % 10 == 0:
+                    print(f"    U error: {U_error:.2e}, M error: {M_error:.2e}")
 
             # Check convergence
-            if total_error < final_tolerance:
+            if converged:
                 if verbose:
-                    print(f"  Converged at iteration {picard_iter}")
+                    mode_str = "Enhanced convergence" if self.use_advanced_convergence else "Converged"
+                    print(f"  {mode_str} achieved at iteration {picard_iter}")
                     print(f"    Final U error: {U_error:.2e}")
                     print(f"    Final M error: {M_error:.2e}")
                 break
@@ -276,16 +349,33 @@ class ParticleCollocationSolver(BaseMFGSolver):
         if hasattr(self.fp_solver, "M_particles_trajectory"):
             self.particles_trajectory = self.fp_solver.M_particles_trajectory  # type: ignore[assignment]
 
-        # Prepare convergence info
-        final_convergence_info = {
-            "converged": total_error < final_tolerance,
-            "final_error": total_error,
-            "iterations": len(convergence_history),
-            "history": convergence_history,
-        }
+        # Prepare convergence info (basic or enhanced)
+        if self.use_advanced_convergence:
+            final_convergence_info = {
+                "converged": converged,
+                "final_error": total_error,
+                "iterations": len(convergence_history),
+                "history": convergence_history,
+                "detailed_history": self.detailed_convergence_history,
+                "convergence_monitor": self.convergence_monitor.get_summary()
+                if hasattr(self.convergence_monitor, "get_summary")
+                else {},
+            }
+        else:
+            final_convergence_info = {
+                "converged": total_error < final_tolerance,
+                "final_error": total_error,
+                "iterations": len(convergence_history),
+                "history": convergence_history,
+            }
+
+        # Optional convergence plotting (only for advanced mode)
+        if plot_convergence and self.use_advanced_convergence:
+            self._plot_enhanced_convergence(save_convergence_plot)
 
         if verbose:
-            print("Particle-Collocation solver completed:")
+            mode_str = "Enhanced " if self.use_advanced_convergence else ""
+            print(f"{mode_str}Particle-Collocation solver completed:")
             print(f"  - Converged: {final_convergence_info['converged']}")
             print(f"  - Final error: {final_convergence_info['final_error']:.2e}")
             print(f"  - Total iterations: {final_convergence_info['iterations']}")
@@ -371,6 +461,7 @@ class ParticleCollocationSolver(BaseMFGSolver):
         """
         info = {
             "method": "Particle-Collocation",
+            "advanced_convergence": self.use_advanced_convergence,
             "fp_solver": {
                 "method": self.fp_solver.fp_method_name,
                 "num_particles": self.fp_solver.num_particles,
@@ -384,3 +475,100 @@ class ParticleCollocationSolver(BaseMFGSolver):
         }
 
         return info
+
+    def get_enhanced_convergence_history(self) -> list[dict[str, Any]]:
+        """
+        Get the detailed convergence history (only available if use_advanced_convergence=True).
+
+        Returns:
+            List of detailed convergence information dictionaries
+        """
+        if not self.use_advanced_convergence:
+            raise ValueError("Enhanced convergence history only available with use_advanced_convergence=True")
+        return self.detailed_convergence_history
+
+    def get_convergence_monitor(self) -> Any:
+        """
+        Get the convergence monitor object (only available if use_advanced_convergence=True).
+
+        Returns:
+            Convergence monitor instance
+        """
+        if not self.use_advanced_convergence:
+            raise ValueError("Convergence monitor only available with use_advanced_convergence=True")
+        return self.convergence_monitor
+
+    def _plot_enhanced_convergence(self, save_path: str | None = None) -> None:
+        """Plot enhanced convergence diagnostics (only for advanced mode)."""
+        if not self.use_advanced_convergence:
+            print("  Warning: Enhanced convergence plotting requires use_advanced_convergence=True")
+            return
+
+        try:
+            import matplotlib.pyplot as plt
+
+            fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+            fig.suptitle("Enhanced Convergence Monitoring", fontsize=14)
+
+            # Extract convergence data
+            iterations = [h["iteration"] for h in self.detailed_convergence_history]
+            u_errors = [h["U_error"] for h in self.detailed_convergence_history]
+            m_errors = [h["M_error"] for h in self.detailed_convergence_history]
+            u_norms = [h["U_norm"] for h in self.detailed_convergence_history]
+            m_norms = [h["M_norm"] for h in self.detailed_convergence_history]
+
+            # Plot 1: Error evolution
+            axes[0, 0].semilogy(iterations, u_errors, "b-", label="U error")
+            axes[0, 0].semilogy(iterations, m_errors, "r-", label="M error")
+            axes[0, 0].set_xlabel("Iteration")
+            axes[0, 0].set_ylabel("Error")
+            axes[0, 0].set_title("Convergence Error Evolution")
+            axes[0, 0].legend()
+            axes[0, 0].grid(True)
+
+            # Plot 2: Solution norm evolution
+            axes[0, 1].plot(iterations, u_norms, "b-", label="||U||")
+            axes[0, 1].plot(iterations, m_norms, "r-", label="||M||")
+            axes[0, 1].set_xlabel("Iteration")
+            axes[0, 1].set_ylabel("Norm")
+            axes[0, 1].set_title("Solution Norm Evolution")
+            axes[0, 1].legend()
+            axes[0, 1].grid(True)
+
+            # Plot 3: Error ratio (relative change)
+            if len(u_errors) > 1:
+                u_ratios = [
+                    u_errors[i] / u_errors[i - 1] if u_errors[i - 1] > 1e-15 else 1 for i in range(1, len(u_errors))
+                ]
+                m_ratios = [
+                    m_errors[i] / m_errors[i - 1] if m_errors[i - 1] > 1e-15 else 1 for i in range(1, len(m_errors))
+                ]
+                axes[1, 0].plot(iterations[1:], u_ratios, "b-", label="U ratio")
+                axes[1, 0].plot(iterations[1:], m_ratios, "r-", label="M ratio")
+                axes[1, 0].axhline(y=1, color="k", linestyle="--", alpha=0.5)
+            axes[1, 0].set_xlabel("Iteration")
+            axes[1, 0].set_ylabel("Error Ratio")
+            axes[1, 0].set_title("Convergence Rate Analysis")
+            axes[1, 0].legend()
+            axes[1, 0].grid(True)
+
+            # Plot 4: Combined error
+            combined_errors = [max(u_errors[i], m_errors[i]) for i in range(len(u_errors))]
+            axes[1, 1].semilogy(iterations, combined_errors, "g-", linewidth=2)
+            axes[1, 1].set_xlabel("Iteration")
+            axes[1, 1].set_ylabel("Max Error")
+            axes[1, 1].set_title("Combined Error Evolution")
+            axes[1, 1].grid(True)
+
+            plt.tight_layout()
+
+            if save_path:
+                plt.savefig(save_path, dpi=300, bbox_inches="tight")
+                print(f"  Convergence plot saved to: {save_path}")
+
+            plt.show()
+
+        except ImportError:
+            print("  Warning: matplotlib not available for convergence plotting")
+        except Exception as e:
+            print(f"  Warning: Failed to plot convergence: {e}")

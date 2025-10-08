@@ -9,38 +9,43 @@ solvers to solve the coupled MFG system using classical numerical approaches:
 - Adaptive and enhanced variants
 """
 
-from .adaptive_particle_collocation_solver import AdaptiveParticleCollocationSolver
 from .base_mfg import BaseMFGSolver
-from .config_aware_fixed_point_iterator import ConfigAwareFixedPointIterator
 
-# Additional solvers will be imported as they are migrated
+# Modern fixed-point iterator (unified)
 from .fixed_point_iterator import FixedPointIterator
+
+# Shared utilities
+from .fixed_point_utils import (
+    apply_damping,
+    check_convergence_criteria,
+    construct_solver_result,
+    initialize_cold_start,
+    preserve_boundary_conditions,
+)
 from .hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
-from .monitored_particle_collocation_solver import MonitoredParticleCollocationSolver
+
+# Unified particle collocation solver (with optional advanced convergence)
 from .particle_collocation_solver import ParticleCollocationSolver
 
 __all__ = [
-    "AdaptiveParticleCollocationSolver",
     "BaseMFGSolver",
-    # Fixed Point Iterators
-    "ConfigAwareFixedPointIterator",
-    # Additional solvers will be added as they are migrated
     "FixedPointIterator",
     "HybridFPParticleHJBFDM",
-    "MonitoredParticleCollocationSolver",
     "ParticleCollocationSolver",
+    "apply_damping",
+    "check_convergence_criteria",
+    "construct_solver_result",
+    "initialize_cold_start",
+    "preserve_boundary_conditions",
 ]
 
 # Solver categories for factory selection
 FIXED_POINT_SOLVERS = [
-    "ConfigAwareFixedPointIterator",
-    "FixedPointIterator",  # Classic damped fixed point iterator
+    "FixedPointIterator",  # Unified fixed point iterator (all features)
 ]
 
 PARTICLE_SOLVERS = [
-    "ParticleCollocationSolver",  # Particle-GFDM collocation solver
-    "AdaptiveParticleCollocationSolver",  # Adaptive convergence particle solver
-    "MonitoredParticleCollocationSolver",  # Enhanced monitoring particle solver
+    "ParticleCollocationSolver",  # Unified particle-GFDM collocation solver (with optional advanced convergence)
 ]
 
 HYBRID_SOLVERS = [
