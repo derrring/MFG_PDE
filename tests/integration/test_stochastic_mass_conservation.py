@@ -171,12 +171,12 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
 
     # Create result object
     class Result:
-        def __init__(self, u, m, converged, iterations):
+        def __init__(self, u, m, convergence_achieved, iterations):
             self.u = u
             self.m = m
-            self.converged = converged
+            self.convergence_achieved = convergence_achieved
             self.iterations = iterations
-            self.final_error = monitor.get_running_statistics()["median_u"] if converged else np.nan
+            self.final_error = monitor.get_running_statistics()["median_u"] if convergence_achieved else np.nan
 
     result = Result(U, M, converged, iteration)
 
@@ -288,7 +288,7 @@ def visualize_stochastic_convergence(result, masses, problem, monitor):
     {"=" * 50}
 
     Iterations: {result.iterations}
-    Converged: {result.converged}
+    Converged: {result.convergence_achieved}
 
     Error Statistics (last {window} iterations):
     ------------------------------------------------

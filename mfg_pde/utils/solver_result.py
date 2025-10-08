@@ -7,6 +7,7 @@ improving code readability, IDE support, and API maintainability.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -47,6 +48,93 @@ class SolverResult:
     convergence_achieved: bool = False
     execution_time: float | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __init__(
+        self,
+        U: NDArray[np.floating],
+        M: NDArray[np.floating],
+        iterations: int,
+        error_history_U: NDArray[np.floating],
+        error_history_M: NDArray[np.floating],
+        solver_name: str = "Unknown Solver",
+        convergence_achieved: bool = False,
+        execution_time: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        # Deprecated parameters
+        converged: bool | None = None,
+        convergence_reason: str | None = None,
+        diagnostics: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ):
+        """
+        Initialize SolverResult with support for deprecated parameters.
+
+        Args:
+            U: Control/value function solution array
+            M: Density/distribution function solution array
+            iterations: Number of iterations performed
+            error_history_U: History of U convergence errors
+            error_history_M: History of M convergence errors
+            solver_name: Name/type of solver used
+            convergence_achieved: Whether convergence was achieved
+            execution_time: Total solve time in seconds
+            metadata: Additional solver-specific information
+            converged: DEPRECATED - Use convergence_achieved instead
+            convergence_reason: DEPRECATED - Add to metadata instead
+            diagnostics: DEPRECATED - Add to metadata instead
+        """
+        # Handle deprecated 'converged' parameter
+        if converged is not None:
+            warnings.warn(
+                "Parameter 'converged' is deprecated, use 'convergence_achieved' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            convergence_achieved = converged
+
+        # Handle deprecated 'convergence_reason' parameter
+        if convergence_reason is not None:
+            warnings.warn(
+                "Parameter 'convergence_reason' is deprecated, add to metadata instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if metadata is None:
+                metadata = {}
+            metadata["convergence_reason"] = convergence_reason
+
+        # Handle deprecated 'diagnostics' parameter
+        if diagnostics is not None:
+            warnings.warn(
+                "Parameter 'diagnostics' is deprecated, add to metadata instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if metadata is None:
+                metadata = {}
+            metadata.update(diagnostics)
+
+        # Handle any other unexpected kwargs
+        if kwargs:
+            warnings.warn(
+                f"Unknown parameters: {list(kwargs.keys())}",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        # Initialize dataclass fields
+        self.U = U
+        self.M = M
+        self.iterations = iterations
+        self.error_history_U = error_history_U
+        self.error_history_M = error_history_M
+        self.solver_name = solver_name
+        self.convergence_achieved = convergence_achieved
+        self.execution_time = execution_time
+        self.metadata = metadata if metadata is not None else {}
+
+        # Validate
+        self.__post_init__()
 
     def __post_init__(self):
         """Validate result data after initialization."""
@@ -90,6 +178,17 @@ class SolverResult:
             self.error_history_M,
         )
         return tuple_representation[index]
+
+    # Deprecated property for backward compatibility
+    @property
+    def converged(self) -> bool:
+        """DEPRECATED: Use convergence_achieved instead."""
+        warnings.warn(
+            "Property 'converged' is deprecated, use 'convergence_achieved' instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.convergence_achieved
 
     # Convenience properties
     @property
