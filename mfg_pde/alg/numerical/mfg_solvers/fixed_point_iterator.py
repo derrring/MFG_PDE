@@ -249,7 +249,7 @@ class FixedPointIterator(BaseMFGSolver):
         result = SolverResult(
             U=self.U,
             M=self.M,
-            converged=converged,
+            convergence_achieved=converged,
             iterations=self.iterations_run,
             convergence_reason=convergence_reason,
             diagnostics={
