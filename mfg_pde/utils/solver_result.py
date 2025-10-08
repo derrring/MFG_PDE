@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from numpy.typing import NDArray
 
 
@@ -137,6 +139,110 @@ class SolverResult:
             f"SolverResult({self.solver_name}: {convergence_status} "
             f"{self.iterations} iters, errors U={self.final_error_U:.2e} "
             f"M={self.final_error_M:.2e}{time_str})"
+        )
+
+    def save_hdf5(
+        self,
+        filename: str | Path,
+        *,
+        compression: str = "gzip",
+        compression_opts: int = 4,
+        x_grid: NDArray | None = None,
+        t_grid: NDArray | None = None,
+    ) -> None:
+        """
+        Save solver result to HDF5 file.
+
+        Args:
+            filename: Output HDF5 file path
+            compression: Compression algorithm ('gzip', 'lzf', None)
+            compression_opts: Compression level (1-9 for gzip)
+            x_grid: Optional spatial grid coordinates
+            t_grid: Optional temporal grid coordinates
+
+        Raises:
+            ImportError: If h5py not installed
+
+        Example:
+            >>> result = solver.solve()
+            >>> result.save_hdf5('solution.h5')
+        """
+        from mfg_pde.utils.io.hdf5_utils import save_solution
+
+        # Prepare metadata from result fields
+        metadata = {
+            "solver_name": self.solver_name,
+            "convergence_achieved": self.convergence_achieved,
+            "iterations": self.iterations,
+            "error_history_U": self.error_history_U,
+            "error_history_M": self.error_history_M,
+            "final_error_U": self.final_error_U,
+            "final_error_M": self.final_error_M,
+        }
+
+        if self.execution_time is not None:
+            metadata["execution_time"] = self.execution_time
+
+        # Add user metadata
+        metadata.update(self.metadata)
+
+        save_solution(
+            self.U,
+            self.M,
+            metadata,
+            filename,
+            compression=compression,
+            compression_opts=compression_opts,
+            x_grid=x_grid,
+            t_grid=t_grid,
+        )
+
+    @classmethod
+    def load_hdf5(cls, filename: str | Path) -> SolverResult:
+        """
+        Load solver result from HDF5 file.
+
+        Args:
+            filename: HDF5 file path to load
+
+        Returns:
+            SolverResult object reconstructed from file
+
+        Raises:
+            ImportError: If h5py not installed
+            FileNotFoundError: If file doesn't exist
+            KeyError: If file missing required datasets
+
+        Example:
+            >>> result = SolverResult.load_hdf5('solution.h5')
+            >>> print(f"Converged: {result.convergence_achieved}")
+        """
+        from mfg_pde.utils.io.hdf5_utils import load_solution
+
+        U, M, metadata = load_solution(filename)
+
+        # Extract standard fields
+        iterations = metadata.pop("iterations", 0)
+        error_history_U = metadata.pop("error_history_U", np.array([]))
+        error_history_M = metadata.pop("error_history_M", np.array([]))
+        solver_name = metadata.pop("solver_name", "Unknown Solver")
+        convergence_achieved = metadata.pop("convergence_achieved", False)
+        execution_time = metadata.pop("execution_time", None)
+
+        # Remove derived fields that will be recomputed
+        metadata.pop("final_error_U", None)
+        metadata.pop("final_error_M", None)
+
+        return cls(
+            U=U,
+            M=M,
+            iterations=iterations,
+            error_history_U=error_history_U,
+            error_history_M=error_history_M,
+            solver_name=solver_name,
+            convergence_achieved=convergence_achieved,
+            execution_time=execution_time,
+            metadata=metadata,
         )
 
 
