@@ -18,6 +18,8 @@
 
 # Workflow runtime data and workspace
 /.mfg_workflows/
+/.mfg_sweeps/
+/.mfg_cache/
 
 #===============CONTRIBUTOR WORKFLOW ISOLATION============
 # IDE-specific configuration (avoid forcing contributor preferences)

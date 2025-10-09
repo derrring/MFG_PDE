@@ -262,7 +262,7 @@ def test_execute_single_step():
     """Test executing workflow with single step."""
     wf = Workflow(name="test")
 
-    def compute():
+    def compute(**kwargs):  # Accept workflow_context kwarg
         return {"value": 42}
 
     wf.add_step("compute", compute)
@@ -453,7 +453,7 @@ def test_workflow_status_transitions():
 
     assert wf.status == WorkflowStatus.CREATED
 
-    wf.add_step("compute", lambda: 42)
+    wf.add_step("compute", lambda **kwargs: 42)  # Accept workflow_context kwarg
     result = wf.execute(save_results=False)
 
     assert result.status == WorkflowStatus.COMPLETED
@@ -470,10 +470,10 @@ def test_collects_step_outputs():
     """Test workflow collects outputs from all steps."""
     wf = Workflow(name="test")
 
-    def step1():
+    def step1(**kwargs):  # Accept workflow_context kwarg
         return {"value": 10}
 
-    def step2():
+    def step2(**kwargs):  # Accept workflow_context kwarg
         return {"value": 20}
 
     wf.add_step("first", step1)
@@ -492,7 +492,7 @@ def test_handles_non_dict_return_values():
     """Test workflow handles functions returning non-dict values."""
     wf = Workflow(name="test")
 
-    def compute():
+    def compute(**kwargs):  # Accept workflow_context kwarg
         return 42
 
     step_id = wf.add_step("compute", compute)

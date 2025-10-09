@@ -14,7 +14,7 @@ import pickle
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -43,7 +43,7 @@ class ExperimentMetadata:
     name: str
     description: str
     tags: list[str] = field(default_factory=list)
-    created_time: datetime = field(default_factory=lambda: datetime.now(datetime.UTC))
+    created_time: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_time: datetime | None = None
     completed_time: datetime | None = None
     status: ExperimentStatus = ExperimentStatus.CREATED
@@ -75,7 +75,7 @@ class ExperimentResult:
     experiment_id: str
     name: str
     value: Any
-    timestamp: datetime = field(default_factory=lambda: datetime.now(datetime.UTC))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -155,20 +155,21 @@ class Experiment:
 
     def start(self):
         """Start experiment execution."""
-        self.metadata.started_time = datetime.now(datetime.UTC)
+        self.metadata.started_time = datetime.now(UTC)
         self.metadata.status = ExperimentStatus.RUNNING
 
         self.logger.info(f"Started experiment '{self.metadata.name}'")
 
     def complete(self):
         """Mark experiment as completed."""
-        self.metadata.completed_time = datetime.now(datetime.UTC)
+        self.metadata.completed_time = datetime.now(UTC)
         self.metadata.status = ExperimentStatus.COMPLETED
 
         if self.metadata.started_time:
             self.execution_time = (self.metadata.completed_time - self.metadata.started_time).total_seconds()
-
-        self.logger.info(f"Completed experiment '{self.metadata.name}' in {self.execution_time:.2f}s")
+            self.logger.info(f"Completed experiment '{self.metadata.name}' in {self.execution_time:.2f}s")
+        else:
+            self.logger.info(f"Completed experiment '{self.metadata.name}' (no start time recorded)")
 
     def fail(self, error_message: str):
         """Mark experiment as failed."""
@@ -176,7 +177,7 @@ class Experiment:
         self.error_message = error_message
 
         if self.metadata.started_time:
-            failed_time = datetime.now(datetime.UTC)
+            failed_time = datetime.now(UTC)
             self.execution_time = (failed_time - self.metadata.started_time).total_seconds()
 
         self.logger.error(f"Experiment '{self.metadata.name}' failed: {error_message}")
@@ -247,7 +248,7 @@ class Experiment:
     def log_message(self, level: str, message: str, **kwargs):
         """Log message with experiment context."""
         log_entry = {
-            "timestamp": datetime.now(datetime.UTC).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": level,
             "message": message,
             "data": kwargs,
