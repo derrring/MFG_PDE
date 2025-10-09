@@ -295,7 +295,7 @@ def test_get_result():
         exp.add_result("metric", 42)
         result = exp.get_result("metric")
 
-        assert result.value == 42
+        assert result == 42  # get_result returns value directly
 
 
 @pytest.mark.unit
@@ -405,8 +405,10 @@ def test_tracker_list_experiments():
         experiments = tracker.list_experiments()
 
         assert len(experiments) == 2
-        assert exp1 in experiments
-        assert exp2 in experiments
+        # list_experiments returns dicts, not Experiment objects
+        exp_ids = [e["id"] for e in experiments]
+        assert exp1.metadata.id in exp_ids
+        assert exp2.metadata.id in exp_ids
 
 
 # ============================================================================

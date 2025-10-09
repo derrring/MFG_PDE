@@ -167,8 +167,9 @@ class Experiment:
 
         if self.metadata.started_time:
             self.execution_time = (self.metadata.completed_time - self.metadata.started_time).total_seconds()
-
-        self.logger.info(f"Completed experiment '{self.metadata.name}' in {self.execution_time:.2f}s")
+            self.logger.info(f"Completed experiment '{self.metadata.name}' in {self.execution_time:.2f}s")
+        else:
+            self.logger.info(f"Completed experiment '{self.metadata.name}' (no start time recorded)")
 
     def fail(self, error_message: str):
         """Mark experiment as failed."""

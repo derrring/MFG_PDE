@@ -69,10 +69,11 @@ def test_workflow_step_with_dependencies():
     def step2(**kwargs):
         return {"value": 20}
 
-    step1_id = step1()
-    step2_id = step2()
+    step1()  # Register step1
+    step2_id = step2()  # Register step2
 
-    assert step1_id in wf.steps[step2_id].dependencies
+    # Dependencies are stored by step name, not ID
+    assert "step1" in wf.steps[step2_id].dependencies
 
 
 @pytest.mark.unit
@@ -249,20 +250,22 @@ def test_cached_decorator_basic():
     """Test basic cached decorator."""
     call_count = {"count": 0}
 
-    @cached()
-    def expensive_computation(x):
-        call_count["count"] += 1
-        return x * 2
+    with tempfile.TemporaryDirectory() as tmpdir:
 
-    # First call
-    result1 = expensive_computation(5)
-    assert result1 == 10
-    assert call_count["count"] == 1
+        @cached(cache_dir=tmpdir)
+        def expensive_computation(x):
+            call_count["count"] += 1
+            return x * 2
 
-    # Second call with same argument - should use cache
-    result2 = expensive_computation(5)
-    assert result2 == 10
-    assert call_count["count"] == 1  # Not incremented
+        # First call
+        result1 = expensive_computation(5)
+        assert result1 == 10
+        assert call_count["count"] == 1
+
+        # Second call with same argument - should use cache
+        result2 = expensive_computation(5)
+        assert result2 == 10
+        assert call_count["count"] == 1  # Not incremented
 
 
 @pytest.mark.unit
@@ -270,17 +273,19 @@ def test_cached_decorator_different_args():
     """Test cached decorator with different arguments."""
     call_count = {"count": 0}
 
-    @cached()
-    def compute(x):
-        call_count["count"] += 1
-        return x * 3
+    with tempfile.TemporaryDirectory() as tmpdir:
 
-    result1 = compute(1)
-    result2 = compute(2)
+        @cached(cache_dir=tmpdir)
+        def compute(x):
+            call_count["count"] += 1
+            return x * 3
 
-    assert result1 == 3
-    assert result2 == 6
-    assert call_count["count"] == 2  # Both computed
+        result1 = compute(1)
+        result2 = compute(2)
+
+        assert result1 == 3
+        assert result2 == 6
+        assert call_count["count"] == 2  # Both computed
 
 
 @pytest.mark.unit
@@ -323,7 +328,7 @@ def test_retry_decorator_eventual_success():
     """Test retry decorator retries until success."""
     attempt_count = {"count": 0}
 
-    @retry(max_attempts=3, delay=0.1)
+    @retry(max_attempts=3, delay_seconds=0.1)
     def unreliable_function():
         attempt_count["count"] += 1
         if attempt_count["count"] < 3:
@@ -340,7 +345,7 @@ def test_retry_decorator_eventual_success():
 def test_retry_decorator_max_attempts_reached():
     """Test retry decorator fails after max attempts."""
 
-    @retry(max_attempts=2, delay=0.1)
+    @retry(max_attempts=2, delay_seconds=0.1)
     def always_fails():
         raise RuntimeError("Persistent error")
 
@@ -419,14 +424,14 @@ def test_log_execution_basic():
 
 
 @pytest.mark.unit
-def test_log_execution_with_level():
-    """Test log_execution with log level."""
+def test_log_execution_with_inputs():
+    """Test log_execution with input logging."""
 
-    @log_execution(level="DEBUG")
-    def debug_function():
-        return 42
+    @log_execution(log_inputs=True)
+    def debug_function(x):
+        return x * 2
 
-    result = debug_function()
+    result = debug_function(21)
 
     assert result == 42
 
@@ -470,7 +475,7 @@ def test_validate_and_retry():
     """Test combining validate_inputs and retry."""
     rules = {"x": lambda x: x > 0}
 
-    @retry(max_attempts=2, delay=0.1)
+    @retry(max_attempts=2, delay_seconds=0.1)
     @validate_inputs(rules)
     def validated_function(x):
         return x * 2
@@ -520,7 +525,7 @@ def test_retry_with_specific_exception():
     """Test retry can handle specific exception types."""
     attempt_count = {"count": 0}
 
-    @retry(max_attempts=3, delay=0.1)
+    @retry(max_attempts=3, delay_seconds=0.1)
     def function_with_specific_error():
         attempt_count["count"] += 1
         if attempt_count["count"] < 2:
