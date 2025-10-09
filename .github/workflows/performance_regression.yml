@@ -8,6 +8,10 @@ on:
       - 'benchmarks/**/*.py'
       - '.github/workflows/performance_regression.yml'
 
+permissions:
+  contents: read
+  pull-requests: write  # Required to post comments on PRs
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
