@@ -310,8 +310,9 @@ def test_results_include_outputs():
 
     results = sweep.execute(compute)
 
-    assert "outputs" in results[0]
-    assert "value" in results[0]["outputs"]
+    # Result dict is flattened into top level, not nested under 'outputs'
+    assert "value" in results[0]
+    assert results[0]["value"] == 3  # x=1, so value=1*3=3
 
 
 @pytest.mark.unit
@@ -412,7 +413,8 @@ def test_single_combination():
     results = sweep.execute(compute)
 
     assert len(results) == 1
-    assert results[0]["outputs"]["result"] == 2
+    # Result dict is flattened into top level
+    assert results[0]["result"] == 2  # Flattened 'result' key from function return
 
 
 @pytest.mark.unit
