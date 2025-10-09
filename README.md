@@ -1,13 +1,10 @@
 # MFG_PDE: Research-Grade Mean Field Games Framework
 
-[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![CI/CD](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml)
-[![Code Quality](https://github.com/derrring/MFG_PDE/actions/workflows/modern_quality.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/modern_quality.yml)
-[![Security](https://github.com/derrring/MFG_PDE/actions/workflows/security.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/security.yml)
 [![codecov](https://codecov.io/github/derrring/MFG_PDE/graph/badge.svg?token=HGZFRSF5V6)](https://codecov.io/github/derrring/MFG_PDE)
 [![Release](https://img.shields.io/github/v/release/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/releases)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
+[![License](https://img.shields.io/github/license/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/blob/main/LICENSE)
 
 A modern Python framework for solving Mean Field Games with modular solver architecture, GPU acceleration, reinforcement learning, and state-of-the-art numerical methods.
 
