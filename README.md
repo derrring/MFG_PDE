@@ -4,7 +4,7 @@
 [![CI/CD](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml)
 [![Code Quality](https://github.com/derrring/MFG_PDE/actions/workflows/modern_quality.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/modern_quality.yml)
 [![Security](https://github.com/derrring/MFG_PDE/actions/workflows/security.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/security.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/derrring/ecebb54eab8aca47d534ff227eb8ba3a/raw/coverage.json)](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/derrring/MFG_PDE/branch/main/graph/badge.svg)](https://codecov.io/gh/derrring/MFG_PDE)
 [![Release](https://img.shields.io/github/v/release/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/releases)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
