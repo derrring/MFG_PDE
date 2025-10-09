@@ -27,13 +27,14 @@ try:
 except ImportError:
     GYMNASIUM_AVAILABLE = False
 
-from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import (
-    DDPGActor,
-    DDPGCritic,
-    MeanFieldDDPG,
-    OrnsteinUhlenbeckNoise,
-    ReplayBuffer,
-)
+if TORCH_AVAILABLE:
+    from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import (
+        DDPGActor,
+        DDPGCritic,
+        MeanFieldDDPG,
+        OrnsteinUhlenbeckNoise,
+        ReplayBuffer,
+    )
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")

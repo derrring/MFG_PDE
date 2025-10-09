@@ -14,12 +14,20 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.multi_population.population_config import (
-    PopulationConfig,
-    create_asymmetric_coupling,
-    create_symmetric_coupling,
-    validate_population_set,
-)
+try:
+    import torch  # noqa: F401
+
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
+if TORCH_AVAILABLE:
+    from mfg_pde.alg.reinforcement.multi_population.population_config import (
+        PopulationConfig,
+        create_asymmetric_coupling,
+        create_symmetric_coupling,
+        validate_population_set,
+    )
 
 
 class TestPopulationConfig:

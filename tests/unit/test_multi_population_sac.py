@@ -18,7 +18,8 @@ except ImportError:
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.algorithms import MultiPopulationSAC
+if TORCH_AVAILABLE:
+    from mfg_pde.alg.reinforcement.algorithms import MultiPopulationSAC
 from tests.unit.test_multi_population_env import SimpleMultiPopEnv
 
 

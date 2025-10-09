@@ -17,7 +17,8 @@ except ImportError:
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.algorithms import MultiPopulationTD3
+if TORCH_AVAILABLE:
+    from mfg_pde.alg.reinforcement.algorithms import MultiPopulationTD3
 from tests.unit.test_multi_population_env import SimpleMultiPopEnv
 
 

@@ -13,12 +13,21 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.multi_population.base_environment import (
-    SimpleMultiPopulationEnv,
-)
-from mfg_pde.alg.reinforcement.multi_population.population_config import (
-    PopulationConfig,
-)
+try:
+    import torch  # noqa: F401
+
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
+if TORCH_AVAILABLE:
+    from mfg_pde.alg.reinforcement.multi_population.base_environment import (
+        SimpleMultiPopulationEnv,
+    )
+if TORCH_AVAILABLE:
+    from mfg_pde.alg.reinforcement.multi_population.population_config import (
+        PopulationConfig,
+    )
 
 
 @pytest.fixture

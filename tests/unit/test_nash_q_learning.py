@@ -16,10 +16,11 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import (
-    MeanFieldQLearning,
-    MeanFieldQNetwork,
-)
+if TORCH_AVAILABLE:
+    from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import (
+        MeanFieldQLearning,
+        MeanFieldQNetwork,
+    )
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
