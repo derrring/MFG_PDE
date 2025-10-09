@@ -57,6 +57,7 @@ class TestMassConservation1DSimple:
         """No-flux Neumann boundary conditions."""
         return BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
 
+    @pytest.mark.slow
     def test_fp_particle_hjb_fdm_mass_conservation(self, problem, boundary_conditions):
         """
         Test mass conservation for FP Particle + HJB FDM combination.
@@ -128,6 +129,7 @@ class TestMassConservation1DSimple:
             f"Final mass: {masses[-1]:.6f}"
         )
 
+    @pytest.mark.slow
     def test_fp_particle_hjb_gfdm_mass_conservation(self, problem, boundary_conditions):
         """
         Test mass conservation for FP Particle + HJB GFDM (particle collocation).
@@ -200,6 +202,7 @@ class TestMassConservation1DSimple:
             f"Final mass: {masses[-1]:.6f}"
         )
 
+    @pytest.mark.slow
     def test_compare_mass_conservation_methods(self, problem, boundary_conditions):
         """
         Compare mass conservation between FDM and GFDM methods.
