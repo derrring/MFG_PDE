@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 
-@dataclass
+@dataclass(init=False)
 class SolverResult:
     """
     Standardized result object for MFG solver outputs.

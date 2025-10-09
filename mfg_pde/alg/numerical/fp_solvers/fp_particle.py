@@ -282,7 +282,7 @@ class FPParticleSolver(BaseFPSolver):
 
         # Select optimal strategy (GPU vs CPU vs Hybrid)
         self.current_strategy = self.strategy_selector.select_strategy(
-            backend=self.backend if self.backend.name != "numpy" else None,
+            backend=self.backend if (self.backend is not None and self.backend.name != "numpy") else None,
             problem_size=problem_size,
             strategy_hint="auto",  # Can be overridden to "cpu", "gpu", "hybrid"
         )
