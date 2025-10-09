@@ -1,4 +1,4 @@
-name: MFG_PDE Unified CI/CD Pipeline
+name: CI/CD Pipeline
 #
 # Consolidated workflow combining quality, security, and performance checks
 # Smart triggering: lightweight on PRs, comprehensive on releases
