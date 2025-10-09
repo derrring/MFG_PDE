@@ -14,7 +14,7 @@ on:
     types: [published]  # Run security scans on releases
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.12'  # Package requires Python >=3.12
 
 jobs:
   dependency-scanning:
