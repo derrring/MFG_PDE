@@ -24,7 +24,7 @@ from mfg_pde.geometry import BoundaryConditions
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
     """
-    Compute total mass ∫m(x)dx using trapezoidal rule.
+    Compute total mass ∫m(x)dx using rectangular rule (consistent with FPParticleSolver normalization).
 
     Args:
         density: Density array
@@ -33,7 +33,7 @@ def compute_total_mass(density: np.ndarray, dx: float) -> float:
     Returns:
         Total mass
     """
-    return float(np.trapezoid(density, dx=dx))
+    return float(np.sum(density) * dx)
 
 
 class TestMassConservation1DSimple:
@@ -65,10 +65,12 @@ class TestMassConservation1DSimple:
         ∫m(x,t)dx ≈ 1 for all t ∈ [0,T]
         """
         # Create solvers
+        from mfg_pde import KDENormalization
+
         fp_solver = FPParticleSolver(
             problem,
             num_particles=5000,
-            normalize_kde_output=True,
+            kde_normalization=KDENormalization.INITIAL_ONLY,
             boundary_conditions=boundary_conditions,
         )
 
@@ -88,7 +90,7 @@ class TestMassConservation1DSimple:
             pytest.skip(f"MFG solver raised exception: {str(e)[:100]}")
 
         # Extract density solution
-        m_solution = result.m  # Shape: (Nt+1, Nx+1)
+        m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # Compute mass at each time step
         dx = problem.Dx
@@ -134,10 +136,12 @@ class TestMassConservation1DSimple:
         ∫m(x,t)dx ≈ 1 for all t ∈ [0,T]
         """
         # Create solvers
+        from mfg_pde import KDENormalization
+
         fp_solver = FPParticleSolver(
             problem,
             num_particles=5000,
-            normalize_kde_output=True,
+            kde_normalization=KDENormalization.INITIAL_ONLY,
             boundary_conditions=boundary_conditions,
         )
 
@@ -158,7 +162,7 @@ class TestMassConservation1DSimple:
             pytest.skip(f"MFG solver raised exception: {str(e)[:100]}")
 
         # Extract density solution
-        m_solution = result.m  # Shape: (Nt+1, Nx+1)
+        m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # Compute mass at each time step
         dx = problem.Dx
