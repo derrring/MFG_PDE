@@ -1,0 +1,100 @@
+tests/unit/test_workflow/test_experiment_tracker.py:    assert result.experiment_id == "exp_123"
+tests/unit/test_workflow/test_experiment_tracker.py:    assert result.name == "accuracy"
+tests/unit/test_workflow/test_experiment_tracker.py:    assert result.value == 0.95
+tests/unit/test_workflow/test_experiment_tracker.py:    assert isinstance(result.timestamp, datetime)
+tests/unit/test_workflow/test_experiment_tracker.py:    data = result.to_dict()
+tests/unit/test_workflow/test_experiment_tracker.py:    assert result.metadata["units"] == "points"
+tests/unit/test_workflow/test_experiment_tracker.py:    assert result.metadata["max"] == 100
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.status == WorkflowStatus.COMPLETED
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.status == WorkflowStatus.COMPLETED
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.status == WorkflowStatus.COMPLETED
+tests/unit/test_workflow/test_workflow_manager.py:    assert len(result.step_results) == 2
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.execution_time is not None
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.execution_time >= 0
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.start_time is not None
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.end_time is not None
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.end_time >= result.start_time
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.status == WorkflowStatus.FAILED
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.error_message is not None
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.status == WorkflowStatus.COMPLETED
+tests/unit/test_workflow/test_workflow_manager.py:    assert "first_value" in result.outputs
+tests/unit/test_workflow/test_workflow_manager.py:    assert "second_value" in result.outputs
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.outputs["first_value"] == 10
+tests/unit/test_workflow/test_workflow_manager.py:    assert result.outputs["second_value"] == 20
+tests/unit/test_utils/test_solver_decorators.py:        assert "execution_time" in result.metadata
+tests/unit/test_utils/test_solver_decorators.py:        assert result.metadata["execution_time"] is None or result.metadata["execution_time"] > 0
+tests/unit/test_utils/test_progress.py:            result.append(item)
+tests/unit/test_utils/test_progress.py:                result.append(item)
+tests/unit/test_utils/test_progress.py:                result.append(item)
+tests/unit/test_utils/test_solver_result.py:        assert result.U is U
+tests/unit/test_utils/test_solver_result.py:        assert result.M is M
+tests/unit/test_utils/test_solver_result.py:        assert result.iterations == 5
+tests/unit/test_utils/test_solver_result.py:        np.testing.assert_array_equal(result.error_history_U, error_U)
+tests/unit/test_utils/test_solver_result.py:        np.testing.assert_array_equal(result.error_history_M, error_M)
+tests/unit/test_utils/test_solver_result.py:        assert result.solver_name == "Unknown Solver"
+tests/unit/test_utils/test_solver_result.py:        assert result.converged is False
+tests/unit/test_utils/test_solver_result.py:        assert result.execution_time is None
+tests/unit/test_utils/test_solver_result.py:        assert isinstance(result.metadata, dict)
+tests/unit/test_utils/test_solver_result.py:        assert result.solver_name == "Test Solver"
+tests/unit/test_utils/test_solver_result.py:        assert result.converged is True
+tests/unit/test_utils/test_solver_result.py:        assert result.execution_time == 12.34
+tests/unit/test_utils/test_solver_result.py:        assert result.metadata == metadata
+tests/unit/test_utils/test_solver_result.py:        assert len(result.error_history_U) == 3
+tests/unit/test_utils/test_solver_result.py:        assert len(result.error_history_M) == 3
+tests/unit/test_utils/test_solver_result.py:        np.testing.assert_array_equal(result.error_history_U, error_U[:3])
+tests/unit/test_utils/test_solver_result.py:        assert result.converged is True
+tests/unit/test_utils/test_solver_result.py:        assert "convergence_reason" in result.metadata
+tests/unit/test_utils/test_solver_result.py:        assert result.metadata["convergence_reason"] == "tolerance_reached"
+tests/unit/test_utils/test_solver_result.py:        assert "step_size" in result.metadata
+tests/unit/test_utils/test_solver_result.py:        assert "damping" in result.metadata
+tests/unit/test_utils/test_solver_result.py:            assert result.convergence_achieved is True
+tests/unit/test_utils/test_solver_result.py:        assert result.final_error_U == error_U[-1]
+tests/unit/test_utils/test_solver_result.py:        assert result.final_error_M == error_M[-1]
+tests/unit/test_utils/test_solver_result.py:        assert result.final_error_U == float("inf")
+tests/unit/test_utils/test_solver_result.py:        assert result.final_error_M == float("inf")
+tests/unit/test_utils/test_solver_result.py:        assert result.max_error == max(error_U[-1], error_M[-1])
+tests/unit/test_utils/test_solver_result.py:        assert result.solution_shape == U.shape
+tests/unit/test_utils/test_solver_result.py:        d = result.to_dict()
+tests/unit/test_utils/test_solver_result.py:        assert result.iterations == 5
+tests/unit/test_utils/test_solver_result.py:        assert result.converged is False
+tests/unit/test_utils/test_solver_result.py:        assert result.converged
+tests/unit/test_utils/test_solver_result.py:        assert result.converged is False
+tests/unit/test_utils/test_solver_result.py:        assert "convergence_analysis" in result.metadata
+tests/unit/test_utils/test_solver_result.py:        analysis = result.metadata["convergence_analysis"]
+tests/unit/test_utils/test_solver_result.py:        assert result.metadata["algorithm"] == "Newton"
+tests/unit/test_utils/test_solver_result.py:        assert result.metadata["step_size"] == 0.1
+tests/unit/test_io/test_hdf5_utils.py:    result.save_hdf5(temp_hdf5_file)
+tests/unit/test_io/test_hdf5_utils.py:    result.save_hdf5(temp_hdf5_file, x_grid=x_grid, t_grid=t_grid)
+tests/unit/test_io/test_hdf5_utils.py:    np.testing.assert_array_equal(result.U, result_loaded.U)
+tests/unit/test_io/test_hdf5_utils.py:    np.testing.assert_array_equal(result.M, result_loaded.M)
+tests/unit/test_factory_patterns.py:                if result.get("success", False):
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [11, 12, 13, 14, 15])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [6, 6, 6, 6, 6])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [2, 3, 4, 5, 6])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [11, 12, 13, 14, 15])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [0, 1, 2, 3, 4])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [9, 8, 7, 6, 5])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [2, 4, 6, 8, 10])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [3, 6, 9, 12, 15])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [0.5, 1, 1.5, 2, 2.5])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [12, 6, 4, 3, 2.4])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [1, 4, 9, 16, 25])
+tests/unit/test_backends/test_array_wrapper.py:        assert result.data == 3
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [2, 3, 4])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [10, 30, 50])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [5, 7, 9])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [2.0, 5.0])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_allclose(result.data, expected, atol=1e-10)
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_allclose(result.data, expected, atol=1e-10)
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_allclose(result.data, expected)
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, expected)
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_array_equal(result.data, [4, 6])
+tests/unit/test_backends/test_array_wrapper.py:        np.testing.assert_allclose(result.data, np.zeros(5))
+tests/integration/test_lq_common_noise_analytical.py:        u_error = np.linalg.norm(result.u_mean - u_analytical) / np.linalg.norm(u_analytical)
+tests/integration/test_lq_common_noise_analytical.py:        m_error = np.linalg.norm(result.m_mean - m_analytical) / np.linalg.norm(m_analytical)
+tests/integration/test_lq_common_noise_analytical.py:        assert result.mc_error_u < 0.1
+tests/integration/test_lq_common_noise_analytical.py:        assert result.mc_error_m < 0.1
+tests/integration/test_mass_conservation_1d_simple.py:        m_solution = result.M  # Shape: (Nt+1, Nx+1)
+tests/integration/test_mass_conservation_1d_simple.py:        m_solution = result.M  # Shape: (Nt+1, Nx+1)
+tests/integration/test_stochastic_mass_conservation.py:    U = result.u
+tests/integration/test_stochastic_mass_conservation.py:    M = result.m

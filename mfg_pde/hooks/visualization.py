@@ -180,14 +180,14 @@ class PlottingHook(SolverHooks):
                 self._plot_convergence(result.iterations)
 
             # Final solution plot
-            if self.plot_solution and hasattr(result, "u") and hasattr(result, "m"):
+            if self.plot_solution and hasattr(result, "U") and hasattr(result, "M"):
                 # Create a final state for plotting
                 final_state = type(
                     "State",
                     (),
                     {
-                        "u": result.u,
-                        "m": result.m,
+                        "u": result.U,
+                        "m": result.M,
                         "iteration": result.iterations,
                         "metadata": getattr(result, "metadata", {}),
                     },
