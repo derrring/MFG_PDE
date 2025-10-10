@@ -29,6 +29,46 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
+### Optional Dependencies
+
+MFG_PDE supports multiple paradigms with optional dependencies:
+
+| Feature | Install Command | Provides |
+|:--------|:----------------|:---------|
+| **Neural Networks** | `pip install mfg-pde[neural]` | PyTorch-based neural operators, PINNs, DGM |
+| **Reinforcement Learning** | `pip install mfg-pde[reinforcement]` | Gymnasium environments, RL algorithms (DDPG, TD3, SAC) |
+| **GPU Acceleration** | `pip install mfg-pde[gpu]` | CUDA support, JAX GPU kernels |
+| **Performance** | `pip install mfg-pde[performance]` | JAX backend, Numba JIT, Polars analytics |
+| **Numerical** | `pip install mfg-pde[numerical]` | Network MFG (igraph, NetworkX) |
+| **All Features** | `pip install mfg-pde[all]` | Everything included |
+
+**Check what's installed:**
+```python
+import mfg_pde
+mfg_pde.show_optional_features()
+```
+
+**Output example:**
+```
+MFG_PDE Optional Features
+==================================================
+pytorch        : ✓ Available
+jax            : ✗ Not installed
+gymnasium      : ✓ Available
+igraph         : ✓ Available
+networkx       : ✓ Available
+plotly         : ✓ Available
+...
+==================================================
+
+Installation options:
+  All features:     pip install mfg-pde[all]
+  Neural networks:  pip install mfg-pde[neural]
+  Reinforcement:    pip install mfg-pde[reinforcement]
+  Performance:      pip install mfg-pde[performance]
+  GPU support:      pip install mfg-pde[gpu]
+```
+
 ### Your First MFG Solution (3 lines)
 
 ```python

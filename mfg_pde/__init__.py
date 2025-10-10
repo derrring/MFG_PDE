@@ -109,6 +109,28 @@ except ImportError:
     NOTEBOOK_REPORTING_AVAILABLE = False
 
 
+# Optional dependency utilities
+def show_optional_features() -> None:
+    """
+    Display status of all optional features and dependencies.
+
+    Prints a formatted table showing which optional dependencies are installed
+    and available, along with installation instructions for missing features.
+
+    Example:
+        >>> import mfg_pde
+        >>> mfg_pde.show_optional_features()
+        MFG_PDE Optional Features
+        ==================================================
+        pytorch        : ✓ Available
+        jax            : ✗ Not installed
+        ...
+    """
+    from .utils.dependencies import show_optional_features as _show_features
+
+    _show_features()
+
+
 # Public API exports
 __all__ = [
     # Geometry
@@ -162,6 +184,7 @@ __all__ = [
     "get_backend_manager",
     "get_general_factory",
     "set_preferred_backend",
+    "show_optional_features",
 ]
 
 # Add conditionally available imports to __all__ when available
