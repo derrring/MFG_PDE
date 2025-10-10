@@ -8,6 +8,7 @@ that complements the existing configuration system.
 from __future__ import annotations
 
 import copy
+import warnings
 from typing import Any
 
 from .pydantic_config import MFGSolverConfig, create_accurate_config, create_fast_config, create_research_config
@@ -84,8 +85,45 @@ class SolverConfig:
         # Implementation depends on the specific method structure
         return SolverConfig(new_config)
 
-    def with_grid_size(self, nx: int, nt: int | None = None) -> SolverConfig:
-        """Set grid resolution."""
+    def with_grid_size(
+        self,
+        Nx: int | None = None,
+        Nt: int | None = None,
+        # Deprecated parameters (lowercase)
+        nx: int | None = None,
+        nt: int | None = None,
+    ) -> SolverConfig:
+        """
+        Set grid resolution.
+
+        Args:
+            Nx: Number of spatial grid points (preferred)
+            Nt: Number of temporal grid points (preferred)
+            nx: DEPRECATED - Use Nx instead
+            nt: DEPRECATED - Use Nt instead
+
+        Returns:
+            New SolverConfig with updated grid size
+        """
+        # Handle deprecated lowercase parameters
+        if nx is not None:
+            warnings.warn(
+                "Parameter 'nx' is deprecated, use 'Nx' (uppercase) instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if Nx is None:
+                Nx = nx
+
+        if nt is not None:
+            warnings.warn(
+                "Parameter 'nt' is deprecated, use 'Nt' (uppercase) instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if Nt is None:
+                Nt = nt
+
         new_config = copy.deepcopy(self._config)
         # Update grid configuration if available
         # This would depend on how grid configuration is structured

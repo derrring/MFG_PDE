@@ -10,6 +10,7 @@ manipulated, optimized, and compiled to different backends (NumPy, JAX, Numba).
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -196,14 +197,63 @@ class MFGSystemBuilder:
         self.parameters[name] = value
         return self
 
-    def domain(self, xmin: float, xmax: float, tmax: float, nx: int = 100, nt: int = 50) -> MFGSystemBuilder:
-        """Define computational domain."""
+    def domain(
+        self,
+        xmin: float,
+        xmax: float,
+        tmax: float,
+        Nx: int | None = None,
+        Nt: int | None = None,
+        # Deprecated parameters (lowercase)
+        nx: int | None = None,
+        nt: int | None = None,
+    ) -> MFGSystemBuilder:
+        """
+        Define computational domain.
+
+        Args:
+            xmin: Minimum spatial coordinate
+            xmax: Maximum spatial coordinate
+            tmax: Final time
+            Nx: Number of spatial grid points (preferred, default: 100)
+            Nt: Number of temporal grid points (preferred, default: 50)
+            nx: DEPRECATED - Use Nx instead
+            nt: DEPRECATED - Use Nt instead
+
+        Returns:
+            Self for method chaining
+        """
+        # Handle deprecated lowercase parameters
+        if nx is not None:
+            warnings.warn(
+                "Parameter 'nx' is deprecated, use 'Nx' (uppercase) instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if Nx is None:
+                Nx = nx
+
+        if nt is not None:
+            warnings.warn(
+                "Parameter 'nt' is deprecated, use 'Nt' (uppercase) instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if Nt is None:
+                Nt = nt
+
+        # Set defaults if not provided
+        if Nx is None:
+            Nx = 100
+        if Nt is None:
+            Nt = 50
+
         self.domain_info = {
             "xmin": xmin,
             "xmax": xmax,
             "tmax": tmax,
-            "nx": nx,
-            "nt": nt,
+            "Nx": Nx,  # Use uppercase in storage
+            "Nt": Nt,  # Use uppercase in storage
         }
         return self
 

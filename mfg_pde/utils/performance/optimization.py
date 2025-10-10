@@ -143,18 +143,68 @@ class SparseMatrixOptimizer:
     """Sparse matrix operations optimized for MFG problems."""
 
     @staticmethod
-    def create_laplacian_3d(nx: int, ny: int, nz: int, dx: float, dy: float, dz: float) -> csr_matrix:
+    def create_laplacian_3d(
+        Nx: int | None = None,
+        Ny: int | None = None,
+        Nz: int | None = None,
+        dx: float = 0.01,
+        dy: float = 0.01,
+        dz: float = 0.01,
+        # Deprecated parameters (lowercase)
+        nx: int | None = None,
+        ny: int | None = None,
+        nz: int | None = None,
+    ) -> csr_matrix:
         """
         Create 3D discrete Laplacian operator using sparse matrices.
 
         Args:
-            nx, ny, nz: Grid dimensions
-            dx, dy, dz: Grid spacing
+            Nx: Number of grid points in x direction (preferred)
+            Ny: Number of grid points in y direction (preferred)
+            Nz: Number of grid points in z direction (preferred)
+            dx: Grid spacing in x direction
+            dy: Grid spacing in y direction
+            dz: Grid spacing in z direction
+            nx: DEPRECATED - Use Nx instead
+            ny: DEPRECATED - Use Ny instead
+            nz: DEPRECATED - Use Nz instead
 
         Returns:
             Sparse Laplacian matrix
         """
-        total_points = nx * ny * nz
+        # Handle deprecated lowercase parameters
+        if nx is not None:
+            warnings.warn(
+                "Parameter 'nx' is deprecated, use 'Nx' (uppercase) instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if Nx is None:
+                Nx = nx
+
+        if ny is not None:
+            warnings.warn(
+                "Parameter 'ny' is deprecated, use 'Ny' (uppercase) instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if Ny is None:
+                Ny = ny
+
+        if nz is not None:
+            warnings.warn(
+                "Parameter 'nz' is deprecated, use 'Nz' (uppercase) instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if Nz is None:
+                Nz = nz
+
+        # Require at least one set of parameters
+        if Nx is None or Ny is None or Nz is None:
+            raise ValueError("Grid dimensions Nx, Ny, Nz must be provided")
+
+        total_points = Nx * Ny * Nz
 
         # Pre-allocate arrays for sparse matrix construction
         row_indices = []
@@ -163,12 +213,12 @@ class SparseMatrixOptimizer:
 
         def index_3d(i: int, j: int, k: int) -> int:
             """Convert 3D indices to 1D index."""
-            return i * ny * nz + j * nz + k
+            return i * Ny * Nz + j * Nz + k
 
         # Build Laplacian stencil
-        for i in range(nx):
-            for j in range(ny):
-                for k in range(nz):
+        for i in range(Nx):
+            for j in range(Ny):
+                for k in range(Nz):
                     center_idx = index_3d(i, j, k)
 
                     # Center point coefficient
@@ -184,7 +234,7 @@ class SparseMatrixOptimizer:
                         col_indices.append(neighbor_idx)
                         data.append(1.0 / dx**2)
 
-                    if i < nx - 1:
+                    if i < Nx - 1:
                         neighbor_idx = index_3d(i + 1, j, k)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
@@ -197,7 +247,7 @@ class SparseMatrixOptimizer:
                         col_indices.append(neighbor_idx)
                         data.append(1.0 / dy**2)
 
-                    if j < ny - 1:
+                    if j < Ny - 1:
                         neighbor_idx = index_3d(i, j + 1, k)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
@@ -210,7 +260,7 @@ class SparseMatrixOptimizer:
                         col_indices.append(neighbor_idx)
                         data.append(1.0 / dz**2)
 
-                    if k < nz - 1:
+                    if k < Nz - 1:
                         neighbor_idx = index_3d(i, j, k + 1)
                         row_indices.append(center_idx)
                         col_indices.append(neighbor_idx)
