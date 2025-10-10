@@ -30,7 +30,10 @@ References:
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
+
+from mfg_pde.utils.neural import NormalizationType
 
 # Import with availability checking
 try:
@@ -65,9 +68,12 @@ if TORCH_AVAILABLE:
         branch_activation: str = "relu"  # Branch network activation
         trunk_activation: str = "tanh"  # Trunk network activation
 
-        # Normalization
-        use_batch_norm: bool = False  # Use batch normalization
-        use_layer_norm: bool = True  # Use layer normalization
+        # Normalization (new enum-based API)
+        normalization: NormalizationType = NormalizationType.LAYER
+
+        # DEPRECATED: Use normalization parameter instead
+        use_batch_norm: bool | None = None
+        use_layer_norm: bool | None = None
 
         # Bias network
         use_bias_net: bool = True  # Use bias network
@@ -78,7 +84,38 @@ if TORCH_AVAILABLE:
         residual_connections: bool = True  # Use residual connections
 
         def __post_init__(self):
-            """Set DeepONet-specific defaults."""
+            """Handle deprecated parameters and set defaults."""
+            # Handle deprecated boolean parameters
+            if self.use_batch_norm is not None:
+                warnings.warn(
+                    "Parameter 'use_batch_norm' is deprecated, use 'normalization=NormalizationType.BATCH' instead",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+                if self.use_batch_norm and self.normalization == NormalizationType.LAYER:
+                    self.normalization = NormalizationType.BATCH
+
+            if self.use_layer_norm is not None:
+                warnings.warn(
+                    "Parameter 'use_layer_norm' is deprecated, use 'normalization=NormalizationType.LAYER' instead",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+                if self.use_layer_norm and self.normalization == NormalizationType.LAYER:
+                    # Already default
+                    pass
+                elif not self.use_layer_norm and self.normalization == NormalizationType.LAYER:
+                    # User explicitly disabled layer norm
+                    self.normalization = NormalizationType.NONE
+
+            # Validate: can't have both batch and layer norm
+            if self.use_batch_norm is not None and self.use_layer_norm is not None:
+                if self.use_batch_norm and self.use_layer_norm:
+                    raise ValueError(
+                        "Cannot use both batch normalization and layer normalization simultaneously. "
+                        "Use 'normalization' parameter instead."
+                    )
+
             super().__post_init__()
             self.operator_type = "deeponet"
 
@@ -110,16 +147,16 @@ if TORCH_AVAILABLE:
 
             # Input layer
             layers.append(nn.Linear(config.sensor_points, config.branch_width))
-            if config.use_layer_norm:
+            if config.normalization.is_layer:
                 layers.append(nn.LayerNorm(config.branch_width))
             layers.append(self.activation)
 
             # Hidden layers
             for i in range(config.branch_depth - 2):
                 layers.append(nn.Linear(config.branch_width, config.branch_width))
-                if config.use_batch_norm:
+                if config.normalization.is_batch:
                     layers.append(nn.BatchNorm1d(config.branch_width))
-                elif config.use_layer_norm:
+                elif config.normalization.is_layer:
                     layers.append(nn.LayerNorm(config.branch_width))
                 layers.append(self.activation)
 
@@ -186,16 +223,16 @@ if TORCH_AVAILABLE:
 
             # Input layer
             layers.append(nn.Linear(config.coordinate_dim, config.trunk_width))
-            if config.use_layer_norm:
+            if config.normalization.is_layer:
                 layers.append(nn.LayerNorm(config.trunk_width))
             layers.append(self.activation)
 
             # Hidden layers
             for _i in range(config.trunk_depth - 2):
                 layers.append(nn.Linear(config.trunk_width, config.trunk_width))
-                if config.use_batch_norm:
+                if config.normalization.is_batch:
                     layers.append(nn.BatchNorm1d(config.trunk_width))
-                elif config.use_layer_norm:
+                elif config.normalization.is_layer:
                     layers.append(nn.LayerNorm(config.trunk_width))
                 layers.append(self.activation)
 
