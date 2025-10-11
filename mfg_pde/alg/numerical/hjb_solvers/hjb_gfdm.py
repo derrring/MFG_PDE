@@ -700,8 +700,13 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         Compute finite difference weights for a specific derivative.
 
-        For GFDM, the weights to approximate derivative D^β from neighbor
-        values u_j are: w = (A^T W A)^{-1} A^T W e_β
+        For GFDM with weighted least squares, given:
+        - A: Taylor expansion matrix [n_neighbors, n_derivs]
+        - W: Weight matrix [n_neighbors, n_neighbors]
+        - We solve: min ||sqrt(W) @ (A @ D - b)||^2 to get D from b
+
+        To get weights w such that D^β = w @ b (where b = u_center - u_neighbors):
+        We need the β-th row of the solution operator (A^T W A)^{-1} A^T W
 
         Args:
             taylor_data: Precomputed Taylor matrices
@@ -712,34 +717,36 @@ class HJBGFDMSolver(BaseHJBSolver):
                 or None if computation fails
         """
         try:
-            # Extract e_β (unit vector selecting derivative)
-            n_derivs = len(self.multi_indices)
-            e_beta = np.zeros(n_derivs)
-            e_beta[derivative_idx] = 1.0
-
-            # Compute weights w = (A^T W A)^{-1} A^T W e_β
             if taylor_data.get("use_svd"):
-                # Use SVD: w = V @ S^{-1} @ U^T @ sqrt(W) @ e_β
+                # Use SVD decomposition
+                # We have: sqrt(W) @ A = U @ diag(S) @ Vt
+                # Solution operator: D = (A^T W A)^{-1} A^T W @ b
+                #                      = Vt.T @ diag(1/S^2) @ Vt @ Vt.T @ diag(S) @ U.T @ sqrt(W) @ b
+                #                      = Vt.T @ diag(1/S) @ U.T @ sqrt(W) @ b
+                # Weights for derivative β are β-th row of: Vt.T @ diag(1/S) @ U.T @ sqrt(W)
+
                 U = taylor_data["U"]
                 S = taylor_data["S"]
                 Vt = taylor_data["Vt"]
                 sqrt_W = taylor_data["sqrt_W"]
 
-                # Reconstruct (A^T W A)^{-1} A^T W from SVD
-                # Note: WA = U @ diag(S) @ V^T, so A^T W = V @ diag(S) @ U^T @ sqrt(W)
-                # And (A^T W A)^{-1} = V @ diag(1/S^2) @ V^T
-                # Therefore: w = V @ diag(1/S) @ U^T @ sqrt(W) @ e_β
-                weights = Vt.T @ np.diag(1.0 / S) @ U.T @ sqrt_W @ e_beta
+                # Compute: weights_matrix = Vt.T @ diag(1/S) @ U.T @ sqrt(W)
+                # Shape: [n_derivs, n_neighbors]
+                weights_matrix = Vt.T @ np.diag(1.0 / S) @ U.T @ sqrt_W
+
+                # Extract β-th row
+                weights = weights_matrix[derivative_idx, :]
                 return weights
 
             elif taylor_data.get("use_qr"):
-                # Use QR: not as straightforward for weight computation
-                # Fall back to normal equations
+                # Use QR decomposition - fall back to normal equations
                 A = taylor_data["A"]
                 W = taylor_data["W"]
                 try:
+                    # Compute (A^T W A)^{-1} A^T W and extract row
                     AtWA_inv = np.linalg.inv(A.T @ W @ A)
-                    weights = AtWA_inv @ A.T @ W @ e_beta
+                    weights_matrix = AtWA_inv @ A.T @ W
+                    weights = weights_matrix[derivative_idx, :]
                     return weights
                 except np.linalg.LinAlgError:
                     return None
@@ -747,8 +754,10 @@ class HJBGFDMSolver(BaseHJBSolver):
             elif taylor_data.get("AtWA_inv") is not None:
                 # Direct normal equations
                 AtWA_inv = taylor_data["AtWA_inv"]
-                AtW = taylor_data["AtW"]
-                weights = AtWA_inv @ AtW @ e_beta
+                W = taylor_data["W"]
+                A = taylor_data["A"]
+                weights_matrix = AtWA_inv @ A.T @ W
+                weights = weights_matrix[derivative_idx, :]
                 return weights
 
             else:
