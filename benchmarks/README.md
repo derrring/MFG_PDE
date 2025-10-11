@@ -234,3 +234,118 @@ All benchmark modules now benefit from **100% strategic typing coverage** (366 �
 
 *Organized benchmark structure: August 1, 2025*
 *Strategic Typing Excellence integration: September 26, 2025*
+*Performance Monitoring Dashboard: October 11, 2025*
+
+---
+
+## 📊 **Performance Monitoring Dashboard** (Issue #128)
+
+### Automated Performance Tracking System
+
+Comprehensive performance monitoring with git-tracked history, regression detection, and CI/CD integration.
+
+#### Quick Start
+
+```bash
+# Run standard benchmark suite
+python benchmarks/run_benchmarks.py --category small
+
+# Check for regressions
+python benchmarks/run_benchmarks.py --check-regression
+
+# Generate visualizations
+python benchmarks/visualization.py
+```
+
+#### Components
+
+**Standard Problems** (`standard_problems.py`)
+- 5 canonical problems (small/medium/large categories)
+- Expected time ranges and convergence criteria
+- Standardized grid configurations
+
+**Performance Tracker** (`performance_tracker.py`)
+- JSON-based time-series storage
+- Git commit tracking
+- Regression detection (20% threshold)
+- Statistical summaries
+
+**Visualization** (`visualization.py`)
+- Performance trend plots
+- Solver comparison charts
+- Text-based summary reports
+
+**CI/CD Integration** (`.github/workflows/performance_regression.yml`)
+- Automated PR benchmarking
+- Performance history artifacts (90-day retention)
+- Regression detection and reporting
+
+#### Tracked Metrics
+- Execution time (seconds)
+- Peak memory usage (MB, requires psutil)
+- Convergence status and iterations
+- Final error and git metadata
+- Python/NumPy versions and platform
+
+#### Usage Examples
+
+```python
+from benchmarks.performance_tracker import PerformanceTracker
+from benchmarks.visualization import PerformanceVisualizer
+
+# Track performance
+tracker = PerformanceTracker()
+result = tracker.track_solver(
+    solver_name="HJB-FDM",
+    problem_name="LQ-MFG-Small",
+    problem_size={"Nx": 50, "Nt": 50},
+    execution_time=1.23,
+    converged=True,
+    iterations=50,
+    final_error=1.2e-6,
+)
+
+# Check regression
+is_regression, pct_change = tracker.check_regression(result)
+
+# Visualize trends
+viz = PerformanceVisualizer()
+viz.plot_time_trend("HJB-FDM", "LQ-MFG-Small", show=True)
+viz.plot_solver_comparison(["LQ-MFG-Small", "Congestion-Small"])
+```
+
+#### Standard Benchmark Problems
+
+**Small (< 5s expected)**
+- LQ-MFG-Small: Linear-Quadratic MFG, 50×50 grid
+- Congestion-Small: Congestion MFG, 50×50 grid
+
+**Medium (10-30s expected)**
+- LQ-MFG-Medium: Linear-Quadratic MFG, 100×100 grid
+- Congestion-Medium: Congestion MFG, 100×100 grid
+
+**Large (> 60s expected)**
+- Traffic-2D-Large: 2D Traffic Flow, 50×50×100 grid
+
+#### Performance History Storage
+
+Results stored as JSON in `benchmarks/history/`:
+```json
+{
+  "timestamp": "2025-10-11T10:00:00",
+  "commit_hash": "abc123",
+  "branch": "main",
+  "solver_name": "HJB-FDM",
+  "problem_name": "LQ-MFG-Small",
+  "execution_time": 1.23,
+  "converged": true,
+  "iterations": 50,
+  "final_error": 1.2e-06
+}
+```
+
+#### Related Documentation
+- Implementation plan: Issue #128
+- Standard problems: `benchmarks/standard_problems.py`
+- Visualization guide: `benchmarks/visualization.py`
+- CI workflow: `.github/workflows/performance_regression.yml`
