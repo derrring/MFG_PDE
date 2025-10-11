@@ -171,6 +171,32 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
             + "\n   Consider removing unused directories."
         )
 
+    # Check 6: Redundant folder hierarchy (directories with only one subdirectory)
+    redundant_dirs = []
+    for subdir in docs_dir.rglob("*"):
+        if not subdir.is_dir() or any(skip in subdir.parts for skip in ALLOWED_SPARSE_DIRS):
+            continue
+
+        # Get immediate children
+        children = list(subdir.iterdir())
+        subdirs = [c for c in children if c.is_dir() and not c.name.startswith(".")]
+        files = [c for c in children if c.is_file() and c.suffix == ".md"]
+
+        # If directory has exactly 1 subdirectory and no files, it's redundant
+        if len(subdirs) == 1 and len(files) == 0:
+            redundant_dirs.append((subdir, subdirs[0]))
+
+    if redundant_dirs:
+        warnings.append(
+            f"Redundant folder hierarchy detected ({len(redundant_dirs)} cases):\n"
+            + "\n".join(
+                f"   {parent.relative_to(docs_dir)}/ → {child.relative_to(docs_dir)}/"
+                for parent, child in redundant_dirs[:5]
+            )
+            + ("\n   ..." if len(redundant_dirs) > 5 else "")
+            + "\n   Consider merging: move child contents to parent and remove child directory."
+        )
+
     # Generate report
     if report:
         print("=" * 70)
