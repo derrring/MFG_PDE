@@ -592,6 +592,231 @@ git push
 
 **Enforcement**: When working with AI assistance, always establish branch hierarchy at the start of multi-step work. The AI should create parent branch first, then work in child branches, respecting merge order throughout.
 
+### **Asynchronous Multi-Branch Development** ⚠️ **CRITICAL**
+
+**Context**: When working on multiple branches simultaneously (especially with AI assistance), branches can become stale, conflict-prone, and difficult to manage. These principles prevent branch chaos.
+
+#### **1. Branch Lifecycle Management**
+
+**Problem**: Branches become stale (many commits behind main) while sitting unmerged.
+
+**Principles**:
+- ✅ **Merge Early, Merge Often**: Don't let branches sit for extended periods
+- ✅ **Daily Rebase Habit**: If branch lives > 1 day, rebase daily onto main
+- ✅ **Small, Focused Branches**: Keep branches small (< 5 commits ideal)
+- ✅ **Delete Immediately After Merge**: Don't leave merged branches around
+
+**Daily Routine**:
+```bash
+# Morning routine for long-lived branches
+git checkout my-feature
+git fetch origin
+git rebase origin/main
+git push --force-with-lease
+```
+
+#### **2. Branch Status Tracking**
+
+**Problem**: Lost track of which branches were merged, which needed work.
+
+**Principles**:
+- ✅ **Use GitHub Projects/Issues**: Link each branch to a specific issue
+- ✅ **Naming with Issue Numbers**: `<type>/<issue-number>-<short-description>`
+  - Example: `feature/128-performance-dashboard`
+- ✅ **Regular Status Audits**: Weekly review of all branches
+- ✅ **PR-First Workflow**: Create PR immediately when pushing branch
+
+**Weekly Branch Audit**:
+```bash
+# Check all branches status
+git fetch --prune origin
+for branch in $(git branch -r | grep -v HEAD | grep -v main); do
+  ahead=$(git rev-list --count origin/main..$branch)
+  behind=$(git rev-list --count $branch..origin/main)
+  echo "$branch: $ahead ahead, $behind behind"
+done
+```
+
+#### **3. Merge Order Strategy**
+
+**Problem**: Trying to merge branches in wrong order caused conflicts.
+
+**Principles**:
+- ✅ **Foundation First**: Merge infrastructure/core changes before features
+- ✅ **Dependency Aware**: Merge dependencies before dependents
+- ✅ **Test Changes Last**: Merge test-only branches after code changes
+- ✅ **Documentation Separate**: Docs can merge independently
+
+**Merge Priority Order**:
+```
+1. Infrastructure: fix/ci-workflow-updates
+2. Core Features: feature/performance-tracker
+3. Dependent Features: feature/visualization (depends on tracker)
+4. Tests: test/tracker-tests
+5. Documentation: docs/tracker-guide
+```
+
+#### **4. Conflict Prevention**
+
+**Problem**: Branches touched same files, causing merge conflicts.
+
+**Principles**:
+- ✅ **Communicate File Ownership**: Know who's working on what files
+- ✅ **Atomic Changes**: One concern per branch
+- ✅ **Avoid Broad Refactors**: Don't refactor while others work on features
+- ✅ **Rebase Before Review**: Always up-to-date with main before requesting review
+
+**Track Active Work** (for solo dev with AI):
+```markdown
+# Current Work In Progress
+- feature/hjb-improvements: `mfg_pde/solvers/hjb.py`
+- feature/performance-dashboard: `benchmarks/tracker.py`
+- test/coverage-expansion: `tests/**`
+```
+
+#### **5. CI/CD Integration**
+
+**Problem**: Didn't know branch status until attempted merge.
+
+**Principles**:
+- ✅ **CI on All Branches**: Run tests on every push
+- ✅ **Branch Protection Rules**: Require CI pass before merge
+- ✅ **Status Checks Visible**: Use GitHub status badges
+- ✅ **Failed CI = Pause Work**: Fix CI before adding features
+
+#### **6. Communication Protocol** (Solo Dev + AI)
+
+**Principles**:
+- ✅ **Daily Review**: Check what changed in main overnight
+- ✅ **Issue Documentation**: Document decisions on GitHub issues
+- ✅ **Descriptive PRs**: Explain WHY, not just WHAT
+- ✅ **Link Everything**: Issues ↔ PRs ↔ Commits
+
+**PR Description Template**:
+```markdown
+## Changes
+- Brief summary
+
+## Related Issues
+Closes #128
+
+## Dependencies
+- Requires PR #127 to be merged first (or none)
+
+## Testing
+- [x] Unit tests pass
+- [x] Integration tests pass
+- [x] Manual testing complete
+
+## Merge Checklist
+- [x] Up to date with main (rebased)
+- [x] CI passing
+- [x] No merge conflicts
+- [ ] Ready to merge
+```
+
+#### **7. Emergency Protocols**
+
+**Scenario 1: Branch Too Far Behind**
+```bash
+# Option A: Rebase (preferred if no collaborators)
+git checkout my-feature
+git rebase origin/main
+git push --force-with-lease
+
+# Option B: Merge (if branch is shared)
+git merge origin/main
+
+# Option C: Fresh Start (if massive conflicts)
+git checkout main
+git checkout -b feature/fresh-start
+git cherry-pick <commits-to-keep>
+```
+
+**Scenario 2: Accidentally Merged Wrong Branch**
+```bash
+# Revert the merge commit
+git revert -m 1 <merge-commit-hash>
+git push origin main
+```
+
+**Scenario 3: Lost Track of Branch Purpose**
+```bash
+# Review branch history
+git log main..feature-branch --oneline
+
+# Check what files changed
+git diff main...feature-branch --name-only
+
+# If unclear, close and start fresh
+git branch -D feature-branch
+# Create new branch with clear purpose
+```
+
+#### **8. Automated Cleanup**
+
+**Principles**:
+- ✅ **Auto-delete on Merge**: Enable GitHub setting
+- ✅ **Regular Pruning**: Monthly cleanup of merged branches
+- ✅ **Local Sync**: Run `git fetch --prune` regularly
+
+**Cleanup Commands**:
+```bash
+# Delete all local branches already merged to main
+git branch --merged main | grep -v "main" | xargs -I {} git branch -d {}
+
+# Delete remote tracking refs for deleted branches
+git fetch --prune origin
+
+# Force delete all local branches not on remote
+git branch -vv | grep ': gone]' | awk '{print $1}' | xargs -I {} git branch -D {}
+```
+
+#### **Quick Reference: Multi-Branch Checklist**
+
+**Before Creating Branch**:
+- [ ] Link to specific GitHub issue
+- [ ] Choose appropriate type prefix (feature/fix/test/docs/chore)
+- [ ] Ensure main is up to date locally
+- [ ] Check no other branch is working on same files
+
+**During Development**:
+- [ ] Commit small, atomic changes
+- [ ] Push to remote daily
+- [ ] Rebase onto main if branch lives > 1 day
+- [ ] Run tests locally before pushing
+- [ ] Keep branch focused (avoid scope creep)
+
+**Before Merging**:
+- [ ] Rebase onto latest main
+- [ ] All CI checks passing
+- [ ] No merge conflicts
+- [ ] PR description complete
+- [ ] Linked issues will auto-close
+
+**After Merge**:
+- [ ] Delete remote branch immediately
+- [ ] Delete local branch
+- [ ] Close related issues (if not auto-closed)
+- [ ] Pull main to get merged changes
+
+#### **Most Important Lessons**
+
+1. **Merge frequency > Branch organization**: Better to merge often than have perfect branches
+2. **Visibility > Perfection**: Create PR early for visibility, even if not ready (use draft PRs)
+3. **Rebase daily**: Don't let branches drift > 5 commits behind main
+4. **Delete aggressively**: Merged branches are clutter and confusion
+5. **Communicate implicitly**: Use GitHub issues/PRs as communication log
+6. **One branch at a time**: Focus on completing one branch before starting another
+7. **When in doubt, merge**: If branch is "good enough", merge it - don't let perfect be enemy of done
+
+**Real Example from This Project**:
+We had 4 branches (`feature/notebook-export-enhancement`, `feature/solver-result-analysis`, `fix/ci-workflow-timeout-and-triggers`, `test/phase2.5-workflow-remaining`) that were 2-24 commits behind main. All turned out to be already merged via PRs but not cleaned up. Following these principles would have prevented this situation by:
+- Creating PRs immediately (visibility)
+- Deleting branches after merge (cleanup)
+- Daily status checks (awareness)
+- Merging frequently (preventing drift)
+
 ### **GitHub Issue and PR Management** ⚠️ **MANDATORY**
 **Every issue MUST be properly labeled before work begins:**
 
