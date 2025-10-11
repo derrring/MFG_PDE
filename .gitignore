@@ -877,7 +877,6 @@ benchmarks/history/
 **/*\[PRIVATE\]*.txt
 **/*\[PRIVATE\]*.pdf
 
-# Private directories (alternative method)
+# Private directories (simpler: exclude everything)
 docs/theory/private/
-docs/development/private/*
-!docs/development/private/README.md
+docs/development/private/
