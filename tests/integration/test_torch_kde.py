@@ -9,8 +9,10 @@ import numpy as np
 try:
     from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
 
+    # Test if torch is actually available by creating a simple object
+    _test_kde = TorchKDE(np.array([0.5]), bw_method=0.1)
     TORCH_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception):
     TORCH_AVAILABLE = False
     TorchKDE = None
 
