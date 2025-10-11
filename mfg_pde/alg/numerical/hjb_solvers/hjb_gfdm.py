@@ -855,68 +855,102 @@ class HJBGFDMSolver(BaseHJBSolver):
         - Diagonal weight (center): w_center ≤ 0
         - Off-diagonal weights (neighbors): w_j ≥ 0 for j ≠ center
 
-        Note: In the current QP formulation, we optimize over Taylor coefficients
-        D (derivatives at center), not directly over weights w. Therefore, these
-        constraints are approximate - they enforce conditions on D that typically
-        lead to proper M-matrix structure in w.
+        Strategy:
+            This implementation uses INDIRECT constraints on Taylor coefficients D
+            rather than direct Hamiltonian gradient constraints ∂H/∂u_j ≥ 0.
+
+            The indirect approach is simpler but approximate. For enhanced monotonicity,
+            consider implementing direct Hamiltonian gradient constraints (see Section 4.4
+            of particle-collocation theory document).
+
+            TODO (Future Enhancement): Implement direct Hamiltonian gradient constraints
+            -------------------------------------------------------------------------
+            For Hamiltonian H = 1/2|∇u|² + γm|∇u|² + V(x), enforce:
+
+                ∂H_h/∂u_j ≥ 0  for all j ≠ j_0
+
+            where H_h is the numerical Hamiltonian. This gives:
+
+                (1 + 2γm) (Σ_l c_{j_0,l} u_l) · c_{j_0,j} ≥ 0
+
+            These are LINEAR constraints on the finite difference coefficients c_{j_0,j},
+            which can be derived from the Taylor coefficients D through the relation:
+
+                w = β-th row of (A^T W A)^{-1} A^T W
+
+            This approach is more direct and theoretically rigorous than the current
+            indirect constraints on D.
+
+            See docs/theory/numerical_methods/[PRIVATE]_particle_collocation_qp_monotone.md
+            Section 4.5 for implementation details.
+
+        Constraint Categories:
+            1. Diffusion dominance: ∂²u/∂x² coefficient should be negative
+            2. Gradient boundedness: ∂u/∂x shouldn't overwhelm diffusion
+            3. Truncation error control: Higher derivatives should be small
 
         References:
-            Section 4.3 of particle-collocation theory document
+            Section 4.3-4.5 of particle-collocation theory document
         """
         constraints = []
 
         if self.dimension == 1:
-            # Find indices for second derivative (Laplacian)
+            # Find indices for derivatives
             laplacian_idx = None
+            first_deriv_idx = None
+
             for k, beta in enumerate(self.multi_indices):
                 if beta == (2,):
                     laplacian_idx = k
-                    break
+                elif beta == (1,):
+                    first_deriv_idx = k
 
             if laplacian_idx is None:
                 # No second derivative in Taylor expansion - skip constraints
                 return constraints
 
-            # IMPROVED CONSTRAINTS (still indirect, but better motivated):
-            # For elliptic operators like Laplacian with diffusion σ²/2 ∂²u/∂x²,
-            # proper monotone schemes have:
-            # 1. Second derivative coefficient should be negative (diffusion effect)
-            # 2. First derivative coefficient should be bounded (not dominate)
-            # 3. Higher derivatives should be small (truncation error)
-
-            # For elliptic operators: σ²/2 ∂²u/∂x² (diffusion)
-            # We enforce negative Laplacian coefficient for proper monotone discretization
+            # ===================================================================
+            # CONSTRAINT 1: Negative Laplacian (Diffusion Dominance)
+            # ===================================================================
+            # Physical motivation: For elliptic operators σ²/2 ∂²u/∂x²,
+            # the diffusion term should have negative coefficient to produce
+            # proper M-matrix structure (diagonal ≤ 0).
 
             def constraint_laplacian_negative(x):
-                """Enforce Laplacian coefficient is negative (diffusion)"""
-                # For proper elliptic discretization: ∂²u/∂x² < 0 for diffusion
-                return -x[laplacian_idx]  # Should be positive
+                """Enforce Laplacian coefficient is negative (diffusion dominance)"""
+                # For proper elliptic discretization: ∂²u/∂x² < 0
+                return -x[laplacian_idx]  # Should be positive (≥ 0)
 
             constraints.append({"type": "ineq", "fun": constraint_laplacian_negative})
 
-            # Find first derivative index
-            first_deriv_idx = None
-            for k, beta in enumerate(self.multi_indices):
-                if beta == (1,):
-                    first_deriv_idx = k
-                    break
+            # ===================================================================
+            # CONSTRAINT 2: Gradient Boundedness (Prevent Advection Dominance)
+            # ===================================================================
+            # Physical motivation: Prevent first-order (advection) terms from
+            # overwhelming second-order (diffusion) terms, which can break
+            # M-matrix structure.
 
             if first_deriv_idx is not None:
 
                 def constraint_gradient_bounded(x):
                     """Ensure first derivative doesn't dominate second derivative"""
                     # |∂u/∂x| should be O(1) while |∂²u/∂x²| ~ O(σ²)
-                    # Prevent gradient from overwhelming diffusion
                     laplacian_mag = abs(x[laplacian_idx]) + 1e-10
                     gradient_mag = abs(x[first_deriv_idx])
-                    # Gradient shouldn't be more than 10× the Laplacian scale
+                    # Gradient shouldn't exceed 10× the Laplacian scale
                     return 10.0 * laplacian_mag - gradient_mag
 
                 constraints.append({"type": "ineq", "fun": constraint_gradient_bounded})
 
-            # Control higher-order derivatives (truncation error)
+            # ===================================================================
+            # CONSTRAINT 3: Higher-Order Term Control (Truncation Error)
+            # ===================================================================
+            # Physical motivation: Third and higher derivatives represent
+            # truncation error. Keeping them small relative to the Laplacian
+            # improves accuracy and stability.
+
             def constraint_higher_order_small(x):
-                """Keep higher-order terms small (truncation error)"""
+                """Keep higher-order terms small (truncation error control)"""
                 higher_order_norm = 0.0
                 for k, beta in enumerate(self.multi_indices):
                     if sum(beta) >= 3:  # Third and higher derivatives
