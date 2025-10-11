@@ -34,6 +34,17 @@ repos:
         args: [--maxkb=1000]
         exclude: ^uv\.lock$
 
+  # Documentation structure validation (warning-only until consolidation complete)
+  - repo: local
+    hooks:
+      - id: check-docs-structure
+        name: Check documentation structure
+        entry: bash -c 'python scripts/check_docs_structure.py || echo "⚠️  Documentation check failed (non-blocking during consolidation)"'
+        language: system
+        pass_filenames: false
+        files: ^docs/.*\.md$
+        stages: [pre-commit]
+
   # Strategic typing: Core infrastructure perfection maintained (366 → 0 errors achieved)
   # MyPy disabled in pre-commit due to auxiliary module import dependencies
   # Core typing validation maintained through direct `mypy mfg_pde --ignore-missing-imports`
