@@ -388,16 +388,22 @@ class CollocationConfig(BaseModel):
     points: NDArray[np.floating] = Field(..., description="Collocation points array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
 
-    @field_validator("points")
-    @classmethod
-    def validate_collocation_points(cls, v: NDArray[np.floating], info: Any) -> NDArray[np.floating]:
-        """Validate collocation points properties."""
+    @model_validator(mode="after")
+    def validate_collocation_points(self) -> CollocationConfig:
+        """
+        Validate collocation points properties after model construction.
+
+        Note: Must use @model_validator instead of @field_validator for NumPy arrays
+        because Pydantic skips field validation when arbitrary_types_allowed=True.
+        """
+        v = self.points
+        grid_config = self.grid_config
+
         # Shape validation
         if v.ndim != 2 or v.shape[1] != 1:
             raise ValueError(f"Collocation points must be Nx1 array, got shape {v.shape}")
 
         # Domain validation
-        grid_config = info.data.get("grid_config") if info.data else None
         if grid_config:
             xmin, xmax = grid_config.xmin, grid_config.xmax
             if np.any(v < xmin) or np.any(v > xmax):
@@ -436,7 +442,7 @@ class CollocationConfig(BaseModel):
                     UserWarning,
                 )
 
-        return v
+        return self
 
     model_config = {"arbitrary_types_allowed": True, "validate_assignment": True}
 

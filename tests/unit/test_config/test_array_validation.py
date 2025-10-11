@@ -439,8 +439,9 @@ class TestCollocationConfig:
             warnings.simplefilter("always")
             CollocationConfig(points=points, grid_config=grid_config)
 
-            assert len(w) >= 1
-            assert "Duplicate collocation points" in str(w[0].message)
+            # Check for duplicate warning in any warning message (not just first)
+            duplicate_warnings = [warning for warning in w if "Duplicate collocation points" in str(warning.message)]
+            assert len(duplicate_warnings) >= 1
 
     def test_collocation_points_irregular_distribution_warning(self, grid_config):
         """Test warning for irregular point distribution."""
