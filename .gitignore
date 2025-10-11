@@ -827,6 +827,13 @@ demo_benchmark_results/
 !docs/**/*.md
 !benchmarks/**/*.py
 
+# Exception: Never track private files (re-ignore after negation above)
+# Note: Using backslash to escape brackets in gitignore pattern
+**/*\[PRIVATE\]*.md
+**/*\[PRIVATE\]*.py
+**/*\[PRIVATE\]*.txt
+**/*\[PRIVATE\]*.pdf
+
 #===============================================
 # Notebook-Based Reporting and Output Organization
 #===============================================
@@ -859,18 +866,18 @@ tests/outputs/
 benchmarks/history/
 
 #===============================================
-# Unpublished Research and Private Documents (PRIVATE)
+# Unpublished Research and Private Documents
 #===============================================
 
-# Method 1: Filename patterns for private documents
-**/PRIVATE_*.md
-**/[PRIVATE]_*.md
-**/*_PRIVATE.md
+# Private document pattern: Files with [PRIVATE] in the name are never committed
+# Usage: Name any private file as [PRIVATE]_descriptive_name.ext
+# Note: Brackets are escaped with backslash for gitignore pattern matching
+**/*\[PRIVATE\]*.md
+**/*\[PRIVATE\]*.py
+**/*\[PRIVATE\]*.txt
+**/*\[PRIVATE\]*.pdf
 
-# Method 2: Private directories
+# Private directories (alternative method)
 docs/theory/private/
-docs/development/private/
-
-# Method 3: Specific unpublished research files
-# Particle-collocation QP method (unpublished research)
-docs/theory/numerical_methods/particle_collocation_qp_monotone.md
+docs/development/private/*
+!docs/development/private/README.md
