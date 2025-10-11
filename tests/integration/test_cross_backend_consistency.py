@@ -6,6 +6,8 @@ Verifies numerical consistency across PyTorch, JAX, and NumPy backends.
 Tests KDE, tridiagonal solver, and other numerical operations.
 """
 
+import pytest
+
 import numpy as np
 
 from mfg_pde.backends import create_backend, get_available_backends
@@ -30,6 +32,7 @@ except ImportError:
     gaussian_kde = None
 
 
+@pytest.mark.skipif(not TORCH_UTILS_AVAILABLE, reason="PyTorch not available (optional dependency)")
 def test_kde_consistency():
     """Test KDE consistency across backends."""
     print("=" * 80)
@@ -93,6 +96,7 @@ def test_kde_consistency():
                 print(f"   Max relative error: {max_error:.2e}")
 
 
+@pytest.mark.skipif(not TORCH_UTILS_AVAILABLE, reason="PyTorch not available (optional dependency)")
 def test_tridiagonal_solver_consistency():
     """Test tridiagonal solver consistency across backends."""
     print("\n" + "=" * 80)
@@ -249,6 +253,7 @@ def test_backend_factory_integration():
             print(f"{status} {name}: {value:.12f} (rel error: {rel_error:.2e})")
 
 
+@pytest.mark.skipif(not TORCH_UTILS_AVAILABLE, reason="PyTorch not available (optional dependency)")
 def test_performance_comparison():
     """Compare performance across backends."""
     print("\n" + "=" * 80)
