@@ -55,6 +55,7 @@ def simple_populations():
     }
 
 
+@pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
 class TestSimpleMultiPopulationEnv:
     """Tests for SimpleMultiPopulationEnv."""
 
@@ -183,6 +184,7 @@ class TestSimpleMultiPopulationEnv:
         assert rewards["pop1"] < 0  # Has coupling cost
 
 
+@pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
 class TestMultiPopulationEnvironmentValidation:
     """Tests for environment validation."""
 
@@ -227,6 +229,7 @@ class TestMultiPopulationEnvironmentValidation:
             env.get_population_state("invalid")
 
 
+@pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
 class TestMultiPopulationDynamics:
     """Tests for multi-population dynamics."""
 
