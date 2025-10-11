@@ -1,30 +1,32 @@
 # Documentation Policy
 
-**Purpose**: Maintain clean, navigable, and valuable documentation structure.
+**Purpose**: Maintain clean, navigable, and valuable documentation through **content quality** over arbitrary limits.
 
 ---
 
 ## Core Principles
 
-### Category-Based Limits (Dynamic Scaling)
-Documentation limits scale by category, allowing growth where needed:
+### Quality Over Quantity
+Focus on **consolidating duplicate content** and **organizing related docs**, not counting files:
 
-| Category | Limit | Purpose |
-|:---------|:------|:--------|
-| **user/** | 15 files | User-facing: tutorials, guides, installation |
-| **development/** | 35 files | Developer: architecture, APIs, workflows |
-| **theory/** | 25 files | Mathematical theory, foundations, methods |
-| **reference/** | 50 files | API reference (often auto-generated) |
+**Key Quality Metrics:**
+1. 🎯 **No Duplicate Topics**: Same subject shouldn't have multiple files
+   - Example: "architecture_design.md" and "design_architecture.md" → consolidate
+   - Exception: Different perspectives (user guide vs developer deep-dive)
 
-**Global Soft Limit**: 150 files total (sum of categories + 20% buffer)
+2. 🔗 **Related Docs Together**: Similar topics should be consolidated
+   - Example: 3 separate AMR docs → 1 comprehensive AMR guide
+   - Benefit: Easier to maintain, better for readers
 
-**Benefits of Category Limits:**
-- ✅ Scales with project: reference/ can grow without blocking development/
-- ✅ Focused consolidation: Targets specific overgrown categories
-- ✅ Clear organization: Each category has defined purpose
-- ✅ Flexible: Adjust per-category limits as project evolves
+3. 📦 **Archive Completed Work**: Finished projects belong in `archive/`
+   - Rule: Files marked `[COMPLETED]`, `[CLOSED]`, `[RESOLVED]` → archive
+   - Benefit: Active docs remain current and actionable
 
-**Check compliance**: `python scripts/check_docs_structure.py --report`
+4. 📂 **Meaningful Structure**: Directories should reflect actual organization
+   - No single-file directories (except special cases)
+   - No many READMEs proliferation (use index docs instead)
+
+**Check quality**: `python scripts/check_docs_structure.py --report`
 
 ### The Rule of 3
 - **No directories with < 3 files** (except `archive/`, `private/`)
@@ -35,6 +37,25 @@ Documentation limits scale by category, allowing growth where needed:
 - **All completed work goes to archive/**
 - Active docs = current, actionable, frequently referenced
 - Archive = historical, completed, reference-only
+
+### Why No Hard Limits?
+**Problem with hard limits** (e.g., "max 70 files"):
+- ❌ Arbitrary numbers don't reflect actual needs
+- ❌ Some categories naturally need more docs (API reference)
+- ❌ Penalizes growth in appropriate areas
+- ❌ Focuses on counting instead of quality
+
+**Content-based approach** (current system):
+- ✅ Identifies duplicate content that should be consolidated
+- ✅ Finds related docs that belong together
+- ✅ Allows natural growth where needed (reference docs)
+- ✅ Focuses on actual problems (duplication, disorganization)
+
+**Example from real audit:**
+- Found: "README.md" appears 19 times across directories
+- Issue: Not "too many files", but **unnecessary duplication**
+- Solution: Consolidate READMEs, use index pages instead
+- Result: Better organization AND fewer files
 
 ---
 

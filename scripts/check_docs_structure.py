@@ -2,11 +2,11 @@
 """
 Documentation structure validation script.
 
-Checks:
-1. Category-based doc limits (scales with project size)
-2. No directories with < 3 files (except archive/)
-3. No [COMPLETED] files outside archive/
-4. No duplicate/overlapping content
+Focuses on content quality rather than arbitrary limits:
+1. Detect duplicate/overlapping content (same topic in multiple files)
+2. Find related docs that should be consolidated
+3. Identify [COMPLETED] files outside archive/
+4. Detect sparse directories (organizational issues)
 
 Usage:
     python scripts/check_docs_structure.py          # Check only
@@ -14,83 +14,103 @@ Usage:
     python scripts/check_docs_structure.py --report # Detailed report
 """
 
+import re
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
+from difflib import SequenceMatcher
 from pathlib import Path
-
-# Category-based documentation limits (scaled to project needs)
-CATEGORY_LIMITS = {
-    "user": 15,  # User-facing docs: tutorials, guides, installation
-    "development": 35,  # Developer docs: architecture, APIs, workflows
-    "theory": 25,  # Mathematical theory: foundations, methods, applications
-    "reference": 50,  # API reference: can be larger (often auto-generated)
-}
 
 # Universal thresholds
 MIN_FILES_PER_DIR = 3
 ALLOWED_SPARSE_DIRS = {"archive", "private", ".git", ".github"}
 
-# Dynamic global limit (sum of categories + 20% buffer)
-MAX_ACTIVE_DOCS = int(sum(CATEGORY_LIMITS.values()) * 1.2)  # ~150 with 20% buffer
+# Content similarity threshold (0.0-1.0)
+SIMILARITY_THRESHOLD = 0.6  # 60% similar content = potential duplicate
+
+
+def normalize_topic(filename: str) -> str:
+    """Extract normalized topic from filename."""
+    # Remove status tags
+    topic = re.sub(r"\[(COMPLETED|WIP|CLOSED|RESOLVED|ARCHIVED|PRIVATE)\]_?", "", filename, flags=re.IGNORECASE)
+    # Remove dates
+    topic = re.sub(r"_?\d{4}-\d{2}-\d{2}", "", topic)
+    # Remove versions
+    topic = re.sub(r"_?v\d+", "", topic)
+    # Remove common prefixes/suffixes
+    topic = re.sub(r"^(SESSION|PHASE)_?", "", topic, flags=re.IGNORECASE)
+    topic = re.sub(r"_(SUMMARY|STATUS|GUIDE|OVERVIEW|ANALYSIS)$", "", topic, flags=re.IGNORECASE)
+    # Normalize to lowercase, replace separators
+    topic = topic.lower().replace("-", "_").replace(" ", "_")
+    # Remove multiple underscores
+    topic = re.sub(r"_+", "_", topic).strip("_")
+    return topic
+
+
+def calculate_content_similarity(file1: Path, file2: Path) -> float:
+    """Calculate content similarity between two markdown files."""
+    try:
+        content1 = file1.read_text(encoding="utf-8", errors="ignore")
+        content2 = file2.read_text(encoding="utf-8", errors="ignore")
+
+        # Remove markdown formatting for better comparison
+        content1 = re.sub(r"[#*`\[\]()]", "", content1)
+        content2 = re.sub(r"[#*`\[\]()]", "", content2)
+
+        # Use SequenceMatcher for similarity
+        return SequenceMatcher(None, content1, content2).ratio()
+    except Exception:
+        return 0.0
 
 
 def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False) -> int:
-    """Check documentation structure against principles."""
+    """Check documentation structure focusing on content quality."""
     issues = []
     warnings = []
 
-    # Check 1: Count total active docs and check category limits
+    # Collect all active docs
     md_files = list(docs_dir.glob("**/*.md"))
     active_docs = [f for f in md_files if "archive" not in f.parts]
 
-    # Category-based counting
-    category_counts = {}
-    uncategorized_docs = []
+    # Check 1: Find duplicate/similar content
+    duplicates = defaultdict(list)
 
+    # Group by normalized topic
     for doc in active_docs:
-        # Determine category from path
-        relative_path = doc.relative_to(docs_dir)
-        category = relative_path.parts[0] if len(relative_path.parts) > 1 else "root"
+        topic = normalize_topic(doc.stem)
+        if topic:  # Ignore empty topics
+            duplicates[topic].append(doc)
 
-        if category in CATEGORY_LIMITS:
-            category_counts[category] = category_counts.get(category, 0) + 1
-        else:
-            uncategorized_docs.append(doc)
+    # Find potential duplicates (same topic, different files)
+    duplicate_groups = {topic: docs for topic, docs in duplicates.items() if len(docs) > 1}
 
-    # Check category limits
-    for category, count in category_counts.items():
-        limit = CATEGORY_LIMITS[category]
-        if count > limit:
-            issues.append(
-                f"Category '{category}/' exceeds limit: {count}/{limit} files\n"
-                f"   Consider consolidating or archiving completed docs in this category."
-            )
-        elif count > limit * 0.9:
-            warnings.append(
-                f"Category '{category}/' approaching limit: {count}/{limit} files\n   Plan consolidation soon."
-            )
-
-    # Check global limit
-    if len(active_docs) > MAX_ACTIVE_DOCS:
+    if duplicate_groups:
         issues.append(
-            f"Too many active docs overall: {len(active_docs)} (soft limit: {MAX_ACTIVE_DOCS})\n"
-            f"   Category limits: " + ", ".join(f"{k}={v}" for k, v in CATEGORY_LIMITS.items()) + "\n"
-            "   Consider consolidating related documentation."
-        )
-    elif len(active_docs) > MAX_ACTIVE_DOCS * 0.9:
-        warnings.append(
-            f"Approaching global doc limit: {len(active_docs)}/{MAX_ACTIVE_DOCS}\n"
-            f"   Consider planning consolidation soon."
+            f"Found {len(duplicate_groups)} topics with duplicate/similar files:\n"
+            + "\n".join(
+                f"   '{topic}' ({len(docs)} files):\n"
+                + "\n".join(f"      - {d.relative_to(docs_dir)}" for d in docs[:3])
+                + (f"\n      ... and {len(docs) - 3} more" if len(docs) > 3 else "")
+                for topic, docs in sorted(duplicate_groups.items(), key=lambda x: len(x[1]), reverse=True)[:5]
+            )
+            + (f"\n   ... and {len(duplicate_groups) - 5} more duplicate groups" if len(duplicate_groups) > 5 else "")
+            + "\n   → Consolidate these into single comprehensive documents."
         )
 
-    # Warn about uncategorized docs
-    if uncategorized_docs:
-        warnings.append(
-            f"{len(uncategorized_docs)} uncategorized docs found:\n"
-            + "\n".join(f"   - {d.relative_to(docs_dir)}" for d in uncategorized_docs[:5])
-            + ("\n   ..." if len(uncategorized_docs) > 5 else "")
-            + "\n   Consider organizing into user/development/theory/reference categories."
-        )
+    # Check 2: Find related docs that should be grouped
+    by_category = defaultdict(list)
+    for doc in active_docs:
+        relative = doc.relative_to(docs_dir)
+        category = relative.parts[0] if len(relative.parts) > 1 else "root"
+        by_category[category].append(doc)
+
+    # Analyze each category for consolidation opportunities
+    for category, docs in by_category.items():
+        if category in ["root", "planning"] and len(docs) > 5:
+            warnings.append(
+                f"Category '{category}/' has {len(docs)} files\n"
+                f"   Many root-level files suggest need for better organization.\n"
+                f"   Consider creating subdirectories or moving to appropriate categories."
+            )
 
     # Check 2: Sparse directories (< 3 files)
     sparse_dirs = []
@@ -154,25 +174,29 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
     # Generate report
     if report:
         print("=" * 70)
-        print("DOCUMENTATION STRUCTURE REPORT")
+        print("DOCUMENTATION QUALITY REPORT")
         print("=" * 70)
         print(f"\nTotal markdown files: {len(md_files)}")
-        print(f"Active docs: {len(active_docs)} (limit: {MAX_ACTIVE_DOCS})")
+        print(f"Active docs: {len(active_docs)}")
         print(f"Archived docs: {len(md_files) - len(active_docs)}")
         print(f"Directories: {len([d for d in docs_dir.rglob('*') if d.is_dir()])}")
 
         # Category breakdown
-        print("\n📂 Category Breakdown:")
-        for category, limit in sorted(CATEGORY_LIMITS.items()):
-            count = category_counts.get(category, 0)
-            status = "✅" if count <= limit else "❌"
-            pct = int(count / limit * 100) if limit > 0 else 0
-            print(f"   {status} {category:15s}: {count:3d}/{limit:3d} ({pct:3d}%)")
+        print("\n📂 Documentation by Category:")
+        for category, docs in sorted(by_category.items(), key=lambda x: len(x[1]), reverse=True):
+            total_size = sum(d.stat().st_size for d in docs) / 1024
+            print(f"   {category:20s}: {len(docs):3d} files ({total_size:6.1f} KB)")
 
-        if uncategorized_docs:
-            print(f"   ⚠️  {'uncategorized':15s}: {len(uncategorized_docs):3d} files")
+        # Consolidation opportunities
+        print("\n🔄 Consolidation Opportunities:")
+        print(f"   Duplicate topic groups  : {len(duplicate_groups)}")
+        print(
+            f"   [COMPLETED] to archive  : {len([d for d in active_docs if '[COMPLETED]' in d.name or '[CLOSED]' in d.name or '[RESOLVED]' in d.name])}"
+        )
+        print(f"   Sparse directories      : {len(sparse_dirs)}")
+        print(f"   Empty directories       : {len(empty_dirs)}")
 
-        print(f"\nStatus: {'✅ GOOD' if not issues else '❌ NEEDS ATTENTION'}")
+        print(f"\nQuality: {'✅ GOOD' if not issues else '⚠️  NEEDS CONSOLIDATION'}")
         print()
 
     # Report issues
@@ -197,13 +221,10 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
 
         return 1 if issues else 0
     else:
-        print("✅ Documentation structure looks good!")
+        print("✅ Documentation quality is good!")
         if report:
-            print(f"\n   Active docs: {len(active_docs)}/{MAX_ACTIVE_DOCS}")
-            print("   Category compliance:")
-            for category, limit in sorted(CATEGORY_LIMITS.items()):
-                count = category_counts.get(category, 0)
-                print(f"      • {category}: {count}/{limit}")
+            print(f"\n   Active docs: {len(active_docs)}")
+            print("   No duplicate topic groups")
             print(f"   Well-organized directories: All have ≥ {MIN_FILES_PER_DIR} files")
             print("   No completed files outside archive")
         return 0
