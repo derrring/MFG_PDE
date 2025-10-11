@@ -857,7 +857,6 @@ comparison = result.compare_to(other_result)
         # Construct solver_results dictionary from SolverResult attributes
         solver_results = {
             "U": self.U,
-            "M": self.M,
             "convergence_info": {
                 "converged": self.converged,
                 "iterations": self.iterations,
@@ -865,6 +864,10 @@ comparison = result.compare_to(other_result)
                 "final_error": self.max_error,
             },
         }
+
+        # Add M (density) if available - optional for problems without mass conservation
+        if self.M is not None:
+            solver_results["M"] = self.M
 
         # Add execution time if available
         if self.execution_time is not None:
