@@ -34,6 +34,25 @@ ABSTRACT CONSOLIDATION CRITERIA:
    - Group by topic: "PHASE_2_SUMMARY_2025-10-08" → "phase_2"
    - If multiple files map to same topic → Review for consolidation
 
+6. **Directory Purpose Clarity** ⚠️ **CRITICAL**
+   - Maximum 12 subdirectories per major category (development/, theory/, user/)
+   - Each subdirectory must have DISTINCT, non-overlapping purpose
+   - Directory names must be self-explanatory (no ambiguous names)
+   - Overlapping purposes → Consolidate directories
+
+   **Common Overlaps to Avoid**:
+   - design/ + architecture/ → Merge to design/
+   - plans/ + future_enhancements/ + roadmaps/ → Merge to planning/
+   - strategy/ + roadmaps/ + tracks/ → Merge to planning/
+   - technical/ + analysis/ → Keep separate only if clearly distinct
+   - status/ + progress/ + state/ → Merge to status/
+
+   **Directory Naming Standards**:
+   - Use clear functional names: analysis/, guides/, planning/
+   - Avoid temporal names: api_audit_2025-10-10/ (use analysis/ instead)
+   - Avoid vague names: misc/, other/, temp/
+   - Use plural for collections: guides/, sessions/, decisions/
+
 Usage:
     python scripts/check_docs_structure.py          # Check only
     python scripts/check_docs_structure.py --fix    # Auto-fix issues
