@@ -506,3 +506,215 @@ class TestExportSummary:
         summary = converged_result.export_summary(output_format="markdown")
         # Check for metadata keys
         assert "Nx" in summary or "metadata" in summary.lower()
+
+
+class TestNotebookExport:
+    """Tests for notebook export functionality (Phase 1)."""
+
+    def test_notebook_export_creates_file(self, converged_result, tmp_path):
+        """Test that notebook export creates valid .ipynb file."""
+        save_path = tmp_path / "test_export.ipynb"
+        result_path = converged_result.export_summary(output_format="notebook", filename=save_path)
+
+        assert Path(result_path).exists()
+        assert Path(result_path).suffix == ".ipynb"
+        assert str(save_path) == result_path
+
+    def test_notebook_export_valid_structure(self, converged_result, tmp_path):
+        """Test that exported notebook has valid structure."""
+        save_path = tmp_path / "test_export.ipynb"
+        converged_result.export_summary(output_format="notebook", filename=save_path)
+
+        import nbformat as nbf
+
+        with open(save_path) as f:
+            nb = nbf.read(f, as_version=4)
+
+        # Should have 6 cells (as designed)
+        assert len(nb.cells) == 6
+
+        # Cell types in expected order
+        expected_types = ["markdown", "code", "code", "code", "code", "markdown"]
+        actual_types = [cell.cell_type for cell in nb.cells]
+        assert actual_types == expected_types
+
+        # First cell should contain summary
+        assert "Solver Results" in nb.cells[0].source
+        assert converged_result.solver_name in nb.cells[0].source
+
+    def test_notebook_export_auto_filename(self, converged_result, tmp_path, monkeypatch):
+        """Test that auto-generated filename works."""
+        # Change to tmp_path so file is created there
+        monkeypatch.chdir(tmp_path)
+
+        result_path = converged_result.export_summary(output_format="notebook")
+
+        assert Path(result_path).exists()
+        assert "solver_result_" in result_path
+        assert result_path.endswith(".ipynb")
+
+    def test_notebook_export_contains_solver_info(self, converged_result, tmp_path):
+        """Test that notebook contains solver information."""
+        save_path = tmp_path / "test_export.ipynb"
+        converged_result.export_summary(output_format="notebook", filename=save_path)
+
+        import nbformat as nbf
+
+        with open(save_path) as f:
+            nb = nbf.read(f, as_version=4)
+
+        # Combine all cell sources
+        all_content = "\n".join(cell.source for cell in nb.cells)
+
+        # Check for key information
+        assert converged_result.solver_name in all_content
+        assert str(converged_result.iterations) in all_content
+        assert "Converged" in all_content or str(converged_result.converged) in all_content
+
+    def test_notebook_export_unsupported_format_error(self, converged_result):
+        """Test error for unsupported format."""
+        with pytest.raises(ValueError, match="Unsupported format"):
+            converged_result.export_summary(output_format="pdf")
+
+    def test_notebook_export_without_nbformat(self, converged_result, tmp_path, monkeypatch):
+        """Test graceful handling when nbformat unavailable."""
+
+        # Mock nbformat import to fail
+        def mock_import(name, *args, **kwargs):
+            if name == "nbformat" or name.startswith("nbformat."):
+                raise ImportError("nbformat not available")
+            return original_import(name, *args, **kwargs)
+
+        import builtins
+
+        original_import = builtins.__import__
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+
+        with pytest.raises(ImportError, match="nbformat"):
+            converged_result.export_summary(output_format="notebook", filename=tmp_path / "test.ipynb")
+
+
+class TestResearchReportCreation:
+    """Tests for create_research_report() method (Phase 2)."""
+
+    def test_research_report_creates_notebook(self, converged_result, tmp_path):
+        """Test that research report creates notebook file."""
+        pytest.importorskip("plotly")  # Skip if plotly not available
+
+        paths = converged_result.create_research_report(
+            title="Test Report",
+            problem_config={"sigma": 0.5, "T": 1.0},
+            output_dir=str(tmp_path),
+            export_html=False,
+        )
+
+        assert "notebook" in paths
+        assert Path(paths["notebook"]).exists()
+        assert Path(paths["notebook"]).suffix == ".ipynb"
+
+    def test_research_report_with_html_export(self, converged_result, tmp_path):
+        """Test that HTML export is attempted when enabled."""
+        pytest.importorskip("plotly")
+
+        paths = converged_result.create_research_report(
+            title="Test Report",
+            problem_config={"sigma": 0.5},
+            output_dir=str(tmp_path),
+            export_html=True,
+        )
+
+        # HTML might fail gracefully (jupyter not installed), so just check it was attempted
+        assert "notebook" in paths
+        # HTML key might or might not be present depending on jupyter installation
+
+    def test_research_report_notebook_structure(self, converged_result, tmp_path):
+        """Test that generated notebook has comprehensive structure."""
+        pytest.importorskip("plotly")
+
+        paths = converged_result.create_research_report(
+            title="Test Report",
+            problem_config={"sigma": 0.5},
+            output_dir=str(tmp_path),
+            export_html=False,
+        )
+
+        import nbformat as nbf
+
+        with open(paths["notebook"]) as f:
+            nb = nbf.read(f, as_version=4)
+
+        # Should have many cells (comprehensive report)
+        assert len(nb.cells) >= 10
+
+        # Should contain markdown and code cells
+        cell_types = [cell.cell_type for cell in nb.cells]
+        assert "markdown" in cell_types
+        assert "code" in cell_types
+
+        # Should have multiple markdown cells (for sections)
+        assert cell_types.count("markdown") >= 3
+
+    def test_research_report_contains_comprehensive_content(self, converged_result, tmp_path):
+        """Test that research report has comprehensive content."""
+        pytest.importorskip("plotly")
+
+        paths = converged_result.create_research_report(
+            title="Comprehensive Test",
+            problem_config={"sigma": 0.5, "T": 1.0},
+            output_dir=str(tmp_path),
+            export_html=False,
+        )
+
+        import nbformat as nbf
+
+        with open(paths["notebook"]) as f:
+            nb = nbf.read(f, as_version=4)
+
+        all_content = "\n".join(cell.source for cell in nb.cells)
+
+        # Check for key sections
+        assert "Comprehensive Test" in all_content  # Title
+        assert "Mathematical Framework" in all_content  # Theory section
+        assert "Convergence" in all_content or "convergence" in all_content
+        assert "Mass Conservation" in all_content or "mass" in all_content.lower()
+
+    def test_research_report_without_plotly(self, converged_result, tmp_path, monkeypatch):
+        """Test graceful handling when plotly unavailable."""
+
+        # Mock plotly import to fail
+        def mock_import(name, *args, **kwargs):
+            if name == "plotly" or name.startswith("plotly."):
+                raise ImportError("plotly not available")
+            if name == "mfg_pde.utils.notebooks.reporting":
+                # This will also fail because it imports plotly
+                raise ImportError("notebook support")
+            return original_import(name, *args, **kwargs)
+
+        import builtins
+
+        original_import = builtins.__import__
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+
+        with pytest.raises(ImportError, match="notebook support"):
+            converged_result.create_research_report(title="Test", problem_config={}, output_dir=str(tmp_path))
+
+    def test_research_report_includes_metadata(self, converged_result, tmp_path):
+        """Test that research report includes solver result metadata."""
+        pytest.importorskip("plotly")
+
+        paths = converged_result.create_research_report(
+            title="Metadata Test",
+            problem_config={"sigma": 0.5},
+            output_dir=str(tmp_path),
+            export_html=False,
+        )
+
+        import nbformat as nbf
+
+        with open(paths["notebook"]) as f:
+            nb = nbf.read(f, as_version=4)
+
+        all_content = "\n".join(cell.source for cell in nb.cells)
+
+        # Should include execution time and metadata
+        assert "Nx" in all_content or "metadata" in all_content.lower()

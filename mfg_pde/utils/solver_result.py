@@ -492,26 +492,33 @@ class SolverResult:
         Generate publication-ready summary of solver results.
 
         Creates formatted summary tables suitable for reports, papers, or
-        documentation. Supports markdown and LaTeX formats.
+        documentation. Supports markdown, LaTeX, and Jupyter notebook formats.
 
         Args:
-            output_format: Output format ('markdown' or 'latex')
+            output_format: Output format ('markdown', 'latex', or 'notebook')
             filename: Optional path to save summary (if None, returns string)
 
         Returns:
-            Formatted summary string
+            Formatted summary string (or notebook path for 'notebook' format)
 
         Raises:
             ValueError: If output_format is not supported
+            ImportError: If 'notebook' format requested but nbformat unavailable
 
         Example:
             >>> result = solver.solve()
             >>> result.export_summary(output_format='markdown', filename='results.md')
             >>> latex_summary = result.export_summary(output_format='latex')
+            >>> nb_path = result.export_summary(output_format='notebook', filename='analysis.ipynb')
         """
-        if output_format not in ("markdown", "latex"):
-            raise ValueError(f"Unsupported format: {output_format}. Use 'markdown' or 'latex'")
+        if output_format not in ("markdown", "latex", "notebook"):
+            raise ValueError(f"Unsupported format: {output_format}. Use 'markdown', 'latex', or 'notebook'")
 
+        # Notebook format has different return behavior
+        if output_format == "notebook":
+            return self._export_notebook(filename)
+
+        # Markdown and LaTeX return strings
         if output_format == "markdown":
             summary = self._export_markdown()
         else:
@@ -593,6 +600,288 @@ class SolverResult:
         ]
 
         return "\n".join(lines)
+
+    def _export_notebook(self, filename: str | Path | None = None) -> str:
+        """
+        Generate interactive Jupyter notebook summary.
+
+        Creates a lightweight notebook with solver result summary and code
+        templates for interactive analysis using analyze_convergence(),
+        plot_convergence(), and compare_to() methods.
+
+        Args:
+            filename: Path to save notebook (auto-generated if None)
+
+        Returns:
+            Path to saved notebook file
+
+        Raises:
+            ImportError: If nbformat is not available
+        """
+        try:
+            import nbformat as nbf
+            from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
+        except ImportError as e:
+            raise ImportError(
+                "Jupyter notebook export requires nbformat. Install with: pip install nbformat jupyter"
+            ) from e
+
+        from datetime import datetime
+        from pathlib import Path
+
+        # Create new notebook
+        nb = new_notebook()
+
+        # Cell 1: Markdown summary (reuse _export_markdown)
+        summary_markdown = self._export_markdown()
+        nb.cells.append(new_markdown_cell(summary_markdown))
+
+        # Cell 2: Setup code with instructions
+        setup_code = """# Solver Result Analysis - Interactive Notebook
+# ================================================
+# This notebook demonstrates interactive analysis methods for SolverResult.
+#
+# To recreate analysis with your own data, you'll need:
+# 1. The original SolverResult object
+# 2. Import the necessary modules
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mfg_pde.utils.solver_result import SolverResult
+
+# Note: Code cells below are templates.
+# Uncomment and adapt them when you have your SolverResult object.
+"""
+        nb.cells.append(new_code_cell(setup_code))
+
+        # Cell 3: Convergence analysis demo
+        analysis_code = f"""# Convergence Analysis Demo
+# --------------------------
+# Analyze convergence behavior with detailed diagnostics
+
+# If you have a SolverResult object named 'result':
+# analysis = result.analyze_convergence()
+# print(f"Convergence Rate: {{analysis.convergence_rate:.4f}}")
+# print(f"Stagnation Detected: {{analysis.stagnation_detected}}")
+# print(f"Oscillation Detected: {{analysis.oscillation_detected}}")
+# print(f"Error Reduction (U): {{analysis.error_reduction_ratio_U:.1f}}x")
+# print(f"Error Reduction (M): {{analysis.error_reduction_ratio_M:.1f}}x")
+
+# For this exported result, basic info:
+print("Solver: {self.solver_name}")
+print(f"Converged: {self.converged}")
+print(f"Iterations: {self.iterations}")
+print(f"Final Error (U): {self.final_error_U:.6e}")
+print(f"Final Error (M): {self.final_error_M:.6e}")
+"""
+        nb.cells.append(new_code_cell(analysis_code))
+
+        # Cell 4: Plotting demo
+        plot_code = """# Convergence Visualization
+# -------------------------
+# Generate publication-quality convergence plots
+
+# If you have a SolverResult object:
+# result.plot_convergence(
+#     save_path='convergence.png',
+#     show=True,
+#     figsize=(10, 6),
+#     dpi=150,
+#     log_scale=True
+# )
+
+# Manual plotting template:
+# plt.figure(figsize=(10, 6))
+# iterations = range(1, len(error_history_U) + 1)
+# plt.semilogy(iterations, error_history_U, 'o-', label='U error', linewidth=2, markersize=4)
+# plt.semilogy(iterations, error_history_M, 's-', label='M error', linewidth=2, markersize=4)
+# plt.xlabel('Iteration', fontsize=12)
+# plt.ylabel('Error (L∞ norm)', fontsize=12)
+# plt.title('Convergence History', fontsize=14, fontweight='bold')
+# plt.legend(loc='best', fontsize=10)
+# plt.grid(True, alpha=0.3)
+# plt.tight_layout()
+# plt.show()
+"""
+        nb.cells.append(new_code_cell(plot_code))
+
+        # Cell 5: Comparison template
+        comparison_code = """# Solver Comparison
+# ------------------
+# Compare different solver results systematically
+
+# If you have two SolverResult objects:
+# comparison = result1.compare_to(result2)
+#
+# print(f"Solution Difference (L2): {{comparison.solution_diff_l2:.6e}}")
+# print(f"Solution Difference (L∞): {{comparison.solution_diff_linf:.6e}}")
+# print(f"Iteration Difference: {{comparison.iterations_diff}}")
+# print(f"Time Difference: {{comparison.time_diff:.3f}}s")
+# print(f"Both Converged: {{comparison.converged_both}}")
+# print(f"Faster Solver: {{comparison.faster_solver}}")
+# print(f"More Accurate: {{comparison.more_accurate_solver}}")
+
+# Example: Compare with different tolerance
+# result_strict = solve_mfg(problem, config_strict)
+# result_relaxed = solve_mfg(problem, config_relaxed)
+# comparison = result_strict.compare_to(result_relaxed)
+"""
+        nb.cells.append(new_code_cell(comparison_code))
+
+        # Cell 6: Export instructions
+        export_markdown = """## Export and Sharing
+
+This notebook can be exported in multiple formats for different purposes:
+
+### Export Formats
+
+**HTML (with outputs)**:
+```bash
+jupyter nbconvert --to html --execute notebook.ipynb
+```
+
+**PDF (static)**:
+```bash
+jupyter nbconvert --to pdf notebook.ipynb
+```
+
+**Slides (presentation)**:
+```bash
+jupyter nbconvert --to slides --post serve notebook.ipynb
+```
+
+**Python script**:
+```bash
+jupyter nbconvert --to python notebook.ipynb
+```
+
+### Interactive Usage
+
+For full interactive analysis, recreate your `SolverResult` object:
+
+```python
+from mfg_pde import solve_mfg
+
+result = solve_mfg(problem, config)
+
+# Then use all analysis methods:
+analysis = result.analyze_convergence()
+result.plot_convergence()
+comparison = result.compare_to(other_result)
+```
+
+### Additional Analysis Methods
+
+- `result.export_summary(output_format='markdown')` - Markdown summary
+- `result.export_summary(output_format='latex')` - LaTeX table
+- `result.create_research_report()` - Comprehensive report (requires plotly)
+
+---
+
+*Generated by MFG_PDE SolverResult analysis tools*
+"""
+        nb.cells.append(new_markdown_cell(export_markdown))
+
+        # Generate filename if not provided
+        if filename is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_name = "".join(c for c in self.solver_name if c.isalnum() or c in (" ", "-", "_"))
+            safe_name = safe_name.replace(" ", "_").strip("_")
+            filename = f"solver_result_{safe_name}_{timestamp}.ipynb"
+
+        # Save notebook
+        filepath = Path(filename)
+        with open(filepath, "w") as f:
+            nbf.write(nb, f)
+
+        return str(filepath)
+
+    def create_research_report(
+        self,
+        title: str,
+        problem_config: dict[str, Any],
+        output_dir: str = "reports",
+        analysis_metadata: dict[str, Any] | None = None,
+        export_html: bool = True,
+    ) -> dict[str, str]:
+        """
+        Create comprehensive research report using MFGNotebookReporter.
+
+        Generates a publication-quality Jupyter notebook with interactive Plotly
+        visualizations, mathematical framework (LaTeX equations), comprehensive
+        convergence analysis, and mass conservation tracking. Automatically exports
+        to HTML for easy sharing.
+
+        This is a convenience wrapper around MFGNotebookReporter that automatically
+        constructs the required data dictionaries from the SolverResult attributes.
+
+        Args:
+            title: Report title
+            problem_config: MFG problem configuration dictionary (e.g., {"sigma": 0.5, "T": 1.0})
+            output_dir: Output directory for reports (default: "reports")
+            analysis_metadata: Additional metadata for research context (optional)
+            export_html: Whether to export HTML version (default: True)
+
+        Returns:
+            Dictionary with 'notebook' and optionally 'html' keys containing file paths
+
+        Raises:
+            ImportError: If required dependencies (plotly, nbformat, jupyter) unavailable
+
+        Example:
+            >>> result = solver.solve()
+            >>> paths = result.create_research_report(
+            ...     title="LQ-MFG Analysis",
+            ...     problem_config={"sigma": 0.5, "T": 1.0, "Nx": 50, "Nt": 30},
+            ...     export_html=True
+            ... )
+            >>> print(f"Notebook: {paths['notebook']}")
+            >>> print(f"HTML: {paths['html']}")
+
+        Note:
+            Requires plotly for interactive visualizations.
+            For lightweight summaries, use export_summary(output_format='notebook').
+
+        See Also:
+            export_summary: For lightweight template-based notebooks
+            mfg_pde.utils.notebooks.reporting: For direct access to MFGNotebookReporter
+        """
+        try:
+            from mfg_pde.utils.notebooks.reporting import create_mfg_research_report
+        except ImportError as e:
+            raise ImportError(
+                "Research reports require notebook support with plotly. "
+                "Install with: pip install plotly nbformat jupyter"
+            ) from e
+
+        # Construct solver_results dictionary from SolverResult attributes
+        solver_results = {
+            "U": self.U,
+            "M": self.M,
+            "convergence_info": {
+                "converged": self.converged,
+                "iterations": self.iterations,
+                "error_history": list(self.error_history_U),  # Convert ndarray to list
+                "final_error": self.max_error,
+            },
+        }
+
+        # Add execution time if available
+        if self.execution_time is not None:
+            solver_results["execution_time"] = self.execution_time
+
+        # Add metadata from SolverResult
+        if self.metadata:
+            solver_results["metadata"] = self.metadata
+
+        # Create report using existing infrastructure
+        return create_mfg_research_report(
+            title=title,
+            solver_results=solver_results,
+            problem_config=problem_config,
+            output_dir=output_dir,
+            export_html=export_html,
+        )
 
 
 @dataclass
