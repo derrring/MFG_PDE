@@ -6,6 +6,8 @@ Verifies numerical consistency across PyTorch, JAX, and NumPy backends.
 Tests KDE, tridiagonal solver, and other numerical operations.
 """
 
+import pytest
+
 import numpy as np
 
 from mfg_pde.backends import create_backend, get_available_backends
@@ -13,12 +15,25 @@ from mfg_pde.backends import create_backend, get_available_backends
 # Import acceleration utilities
 from mfg_pde.utils.acceleration import JAX_UTILS_AVAILABLE, TORCH_UTILS_AVAILABLE
 
-if TORCH_UTILS_AVAILABLE:
+# Try importing PyTorch utilities (may fail if not installed)
+try:
     from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
     from mfg_pde.utils.acceleration.torch_utils import tridiagonal_solve as torch_tridiag
 
-if JAX_UTILS_AVAILABLE:
+    TORCH_IMPORTS_AVAILABLE = True
+except ImportError:
+    TorchKDE = None
+    torch_tridiag = None
+    TORCH_IMPORTS_AVAILABLE = False
+
+# Try importing JAX utilities (may fail if not installed)
+try:
     from mfg_pde.utils.acceleration.jax_utils import tridiagonal_solve as jax_tridiag
+
+    JAX_IMPORTS_AVAILABLE = True
+except ImportError:
+    jax_tridiag = None
+    JAX_IMPORTS_AVAILABLE = False
 
 # Scipy reference (if available)
 try:
@@ -30,6 +45,7 @@ except ImportError:
     gaussian_kde = None
 
 
+@pytest.mark.skipif(not TORCH_IMPORTS_AVAILABLE, reason="PyTorch not available (optional dependency)")
 def test_kde_consistency():
     """Test KDE consistency across backends."""
     print("=" * 80)
@@ -93,6 +109,7 @@ def test_kde_consistency():
                 print(f"   Max relative error: {max_error:.2e}")
 
 
+@pytest.mark.skipif(not TORCH_IMPORTS_AVAILABLE, reason="PyTorch not available (optional dependency)")
 def test_tridiagonal_solver_consistency():
     """Test tridiagonal solver consistency across backends."""
     print("\n" + "=" * 80)
@@ -249,6 +266,7 @@ def test_backend_factory_integration():
             print(f"{status} {name}: {value:.12f} (rel error: {rel_error:.2e})")
 
 
+@pytest.mark.skipif(not TORCH_IMPORTS_AVAILABLE, reason="PyTorch not available (optional dependency)")
 def test_performance_comparison():
     """Compare performance across backends."""
     print("\n" + "=" * 80)
