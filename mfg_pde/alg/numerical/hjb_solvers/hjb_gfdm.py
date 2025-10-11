@@ -702,6 +702,67 @@ class HJBGFDMSolver(BaseHJBSolver):
                 coeffs = np.zeros(len(b) if b is not None else 1)
             return coeffs
 
+    def _compute_fd_weights_from_taylor(self, taylor_data: dict, derivative_idx: int) -> np.ndarray | None:
+        """
+        Compute finite difference weights for a specific derivative.
+
+        For GFDM, the weights to approximate derivative D^β from neighbor
+        values u_j are: w = (A^T W A)^{-1} A^T W e_β
+
+        Args:
+            taylor_data: Precomputed Taylor matrices
+            derivative_idx: Index of derivative in multi_indices
+
+        Returns:
+            w: Array of finite difference weights [n_neighbors]
+                or None if computation fails
+        """
+        try:
+            # Extract e_β (unit vector selecting derivative)
+            n_derivs = len(self.multi_indices)
+            e_beta = np.zeros(n_derivs)
+            e_beta[derivative_idx] = 1.0
+
+            # Compute weights w = (A^T W A)^{-1} A^T W e_β
+            if taylor_data.get("use_svd"):
+                # Use SVD: w = V @ S^{-1} @ U^T @ sqrt(W) @ e_β
+                U = taylor_data["U"]
+                S = taylor_data["S"]
+                Vt = taylor_data["Vt"]
+                sqrt_W = taylor_data["sqrt_W"]
+
+                # Reconstruct (A^T W A)^{-1} A^T W from SVD
+                # Note: WA = U @ diag(S) @ V^T, so A^T W = V @ diag(S) @ U^T @ sqrt(W)
+                # And (A^T W A)^{-1} = V @ diag(1/S^2) @ V^T
+                # Therefore: w = V @ diag(1/S) @ U^T @ sqrt(W) @ e_β
+                weights = Vt.T @ np.diag(1.0 / S) @ U.T @ sqrt_W @ e_beta
+                return weights
+
+            elif taylor_data.get("use_qr"):
+                # Use QR: not as straightforward for weight computation
+                # Fall back to normal equations
+                A = taylor_data["A"]
+                W = taylor_data["W"]
+                try:
+                    AtWA_inv = np.linalg.inv(A.T @ W @ A)
+                    weights = AtWA_inv @ A.T @ W @ e_beta
+                    return weights
+                except np.linalg.LinAlgError:
+                    return None
+
+            elif taylor_data.get("AtWA_inv") is not None:
+                # Direct normal equations
+                AtWA_inv = taylor_data["AtWA_inv"]
+                AtW = taylor_data["AtW"]
+                weights = AtWA_inv @ AtW @ e_beta
+                return weights
+
+            else:
+                return None
+
+        except Exception:
+            return None
+
     def _build_monotonicity_constraints(
         self,
         A: np.ndarray,
@@ -710,43 +771,84 @@ class HJBGFDMSolver(BaseHJBSolver):
         center_point: np.ndarray,
     ) -> list[dict]:
         """
-        Build monotonicity constraints for finite difference weights.
+        Build M-matrix monotonicity constraints for finite difference weights.
 
-        For a monotone scheme, the finite difference weights should satisfy:
-        - Off-diagonal weights should be non-negative
-        - Diagonal weight should be negative (for Laplacian)
-        - Sum property should be maintained for consistency
+        For a monotone scheme approximating the Laplacian ∂²u/∂x², the GFDM
+        finite difference weights w_j must satisfy the M-matrix property:
+        - Diagonal weight (center): w_center ≤ 0
+        - Off-diagonal weights (neighbors): w_j ≥ 0 for j ≠ center
+
+        Note: In the current QP formulation, we optimize over Taylor coefficients
+        D (derivatives at center), not directly over weights w. Therefore, these
+        constraints are approximate - they enforce conditions on D that typically
+        lead to proper M-matrix structure in w.
+
+        References:
+            Section 4.3 of particle-collocation theory document
         """
         constraints = []
 
         if self.dimension == 1:
-            # For 1D Laplacian approximation, we want weights w_i such that:
-            # Σ w_i u_i ≈ ∂²u/∂x² at center point
-            # Monotonicity requires: w_center < 0, w_neighbors ≥ 0
-
-            # Find the index of the second derivative term
-            second_deriv_idx = None
+            # Find indices for second derivative (Laplacian)
+            laplacian_idx = None
             for k, beta in enumerate(self.multi_indices):
                 if beta == (2,):
-                    second_deriv_idx = k
+                    laplacian_idx = k
                     break
 
-            if second_deriv_idx is not None:
-                # The finite difference weights are related to Taylor coefficients
-                # For second derivative: w = A_inv @ e_k where e_k selects second derivative
-                # We need w_i ≥ 0 for off-diagonal terms
+            if laplacian_idx is None:
+                # No second derivative in Taylor expansion - skip constraints
+                return constraints
 
-                def constraint_positive_neighbors(x):
-                    """Ensure finite difference weights for neighbors are non-negative"""
-                    # Convert Taylor coefficients to finite difference weights
-                    # This is an approximation - exact relationship depends on stencil
-                    second_deriv_coeff = x[second_deriv_idx]
+            # IMPROVED CONSTRAINTS (still indirect, but better motivated):
+            # For elliptic operators like Laplacian with diffusion σ²/2 ∂²u/∂x²,
+            # proper monotone schemes have:
+            # 1. Second derivative coefficient should be negative (diffusion effect)
+            # 2. First derivative coefficient should be bounded (not dominate)
+            # 3. Higher derivatives should be small (truncation error)
 
-                    # For well-behaved stencils, large negative second derivative coefficient
-                    # corresponds to positive neighbor weights
-                    return second_deriv_coeff + 10.0  # Should be reasonable
+            # For elliptic operators: σ²/2 ∂²u/∂x² (diffusion)
+            # We enforce negative Laplacian coefficient for proper monotone discretization
 
-                constraints.append({"type": "ineq", "fun": constraint_positive_neighbors})
+            def constraint_laplacian_negative(x):
+                """Enforce Laplacian coefficient is negative (diffusion)"""
+                # For proper elliptic discretization: ∂²u/∂x² < 0 for diffusion
+                return -x[laplacian_idx]  # Should be positive
+
+            constraints.append({"type": "ineq", "fun": constraint_laplacian_negative})
+
+            # Find first derivative index
+            first_deriv_idx = None
+            for k, beta in enumerate(self.multi_indices):
+                if beta == (1,):
+                    first_deriv_idx = k
+                    break
+
+            if first_deriv_idx is not None:
+
+                def constraint_gradient_bounded(x):
+                    """Ensure first derivative doesn't dominate second derivative"""
+                    # |∂u/∂x| should be O(1) while |∂²u/∂x²| ~ O(σ²)
+                    # Prevent gradient from overwhelming diffusion
+                    laplacian_mag = abs(x[laplacian_idx]) + 1e-10
+                    gradient_mag = abs(x[first_deriv_idx])
+                    # Gradient shouldn't be more than 10× the Laplacian scale
+                    return 10.0 * laplacian_mag - gradient_mag
+
+                constraints.append({"type": "ineq", "fun": constraint_gradient_bounded})
+
+            # Control higher-order derivatives (truncation error)
+            def constraint_higher_order_small(x):
+                """Keep higher-order terms small (truncation error)"""
+                higher_order_norm = 0.0
+                for k, beta in enumerate(self.multi_indices):
+                    if sum(beta) >= 3:  # Third and higher derivatives
+                        higher_order_norm += abs(x[k])
+                # Higher-order terms should be smaller than second derivative
+                laplacian_mag = abs(x[laplacian_idx]) + 1e-10
+                return laplacian_mag - higher_order_norm  # Should be positive
+
+            constraints.append({"type": "ineq", "fun": constraint_higher_order_small})
 
         return constraints
 
