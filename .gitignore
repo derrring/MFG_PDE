@@ -857,3 +857,11 @@ tests/outputs/
 /epidemic_modeling_2d/
 # Benchmark performance history (gitignored - regenerable)
 benchmarks/history/
+
+# Private documentation (local only, not tracked)
+# These folders exist to organize personal research notes
+docs/development/private/*.md
+docs/theory/private/*.md
+# Exception: Track README files to document the structure
+!docs/development/private/README.md
+!docs/theory/private/README.md
