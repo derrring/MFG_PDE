@@ -929,16 +929,27 @@ class HJBGFDMSolver(BaseHJBSolver):
             # Physical motivation: Prevent first-order (advection) terms from
             # overwhelming second-order (diffusion) terms, which can break
             # M-matrix structure.
+            #
+            # ADAPTIVE SCALING: Use problem's diffusion coefficient σ to set
+            # physically meaningful bounds. For diffusion operator σ²/2 ∂²u/∂x²,
+            # gradient scale should be bounded relative to σ²|∂²u/∂x²|.
 
             if first_deriv_idx is not None:
+                # Get diffusion coefficient from problem
+                sigma = getattr(self.problem, "sigma", 1.0)
+                sigma_sq = sigma**2
 
                 def constraint_gradient_bounded(x):
                     """Ensure first derivative doesn't dominate second derivative"""
-                    # |∂u/∂x| should be O(1) while |∂²u/∂x²| ~ O(σ²)
+                    # Physical scaling: |∂u/∂x| ~ O(1), |∂²u/∂x²| ~ O(σ²)
+                    # For proper elliptic operator balance: |∇u| ≤ C·σ²|Δu|
                     laplacian_mag = abs(x[laplacian_idx]) + 1e-10
                     gradient_mag = abs(x[first_deriv_idx])
-                    # Gradient shouldn't exceed 10× the Laplacian scale
-                    return 10.0 * laplacian_mag - gradient_mag
+
+                    # Adaptive bound: gradient shouldn't exceed σ²-scaled Laplacian
+                    # Factor 10.0 allows for reasonable advection while preventing dominance
+                    scale_factor = 10.0 * max(sigma_sq, 0.1)  # Min scale for very small σ
+                    return scale_factor * laplacian_mag - gradient_mag
 
                 constraints.append({"type": "ineq", "fun": constraint_gradient_bounded})
 
