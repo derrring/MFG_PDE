@@ -13,6 +13,8 @@ import pytest
 
 # Check if OmegaConf is available
 try:
+    import omegaconf  # Check for omegaconf package directly
+
     from mfg_pde.config.omegaconf_manager import (
         create_default_structured_config,
         create_omega_manager,
@@ -24,6 +26,7 @@ try:
     OMEGACONF_AVAILABLE = True
 except ImportError:
     OMEGACONF_AVAILABLE = False
+    omegaconf = None
 
 # Skip all tests in this module if OmegaConf not available
 pytestmark = pytest.mark.skipif(not OMEGACONF_AVAILABLE, reason="OmegaConf not available (optional dependency)")
