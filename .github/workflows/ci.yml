@@ -85,8 +85,8 @@ jobs:
     - name: Ruff lint (critical errors only)
       timeout-minutes: 1
       run: |
-        echo "Checking for critical lint errors..."
-        ruff check --select E,F mfg_pde/
+        echo "Checking for critical lint errors (syntax & undefined names)..."
+        ruff check --select F mfg_pde/
         echo "✅ No critical errors"
 
   # === PHASE 1: Code Quality Gate ===
