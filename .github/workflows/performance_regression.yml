@@ -128,3 +128,73 @@ jobs:
             .benchmarks/*.json
             .benchmarks/*.md
           retention-days: 30
+
+  # New PerformanceTracker-based benchmarking
+  performance-tracker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install psutil  # For memory profiling
+
+      - name: Run standard benchmark suite
+        run: |
+          python benchmarks/run_benchmarks.py \
+            --category small \
+            --profile-memory \
+            --check-regression \
+            --history-dir benchmarks/history
+
+      - name: Upload performance history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-history
+          path: benchmarks/history/*.json
+          retention-days: 90
+
+      - name: Generate performance report
+        if: always()
+        run: |
+          python -c "
+          from benchmarks.performance_tracker import PerformanceTracker
+          from benchmarks.standard_problems import get_problems_by_category
+          import json
+
+          tracker = PerformanceTracker('benchmarks/history')
+          report = {'problems': []}
+
+          for problem in get_problems_by_category('small'):
+              stats = tracker.get_statistics(problem.solver_type, problem.name)
+              if stats.get('count', 0) > 0:
+                  report['problems'].append({
+                      'name': problem.name,
+                      'solver': problem.solver_type,
+                      'stats': stats
+                  })
+
+          with open('.benchmarks/tracker_report.json', 'w') as f:
+              json.dump(report, f, indent=2)
+          "
+
+      - name: Upload tracker report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tracker-report
+          path: .benchmarks/tracker_report.json
+          retention-days: 30
