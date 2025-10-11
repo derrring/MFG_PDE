@@ -29,15 +29,12 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 try:
-    import gymnasium as gym
+    import gymnasium as gym  # noqa: F401
     from gymnasium import spaces
 
     GYMNASIUM_AVAILABLE = True
-except ImportError:
-    GYMNASIUM_AVAILABLE = False
-    # Fallback for when gymnasium not available
-    gym = None
-    spaces = None
+except ImportError as e:
+    raise ImportError("gymnasium required for continuous MFG environments. Install with: pip install gymnasium") from e
 
 
 class ContinuousMFGEnvBase(ABC):
