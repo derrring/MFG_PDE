@@ -166,6 +166,75 @@ def demo_export_summary():
     print("...")
 
 
+def demo_export_notebook():
+    """Demonstrate lightweight notebook export (Phase 1)."""
+    print("\n" + "=" * 60)
+    print("Demo 5: Lightweight Notebook Export")
+    print("=" * 60)
+
+    # Create result
+    result = create_sample_result("Interactive Solver", converged=True)
+
+    # Export notebook
+    nb_path = OUTPUT_DIR / "solver_analysis.ipynb"
+    print(f"\nExporting interactive notebook: {nb_path}")
+    result.export_summary(output_format="notebook", filename=nb_path)
+    print(f"✅ Notebook saved to: {nb_path}")
+
+    print("\nThis notebook contains:")
+    print("  • Summary of solver results")
+    print("  • Code templates for interactive analysis")
+    print("  • Convergence analysis examples")
+    print("  • Plotting code templates")
+    print("  • Solver comparison templates")
+
+    print("\nTo use:")
+    print(f"  jupyter notebook {nb_path.name}")
+
+
+def demo_create_research_report():
+    """Demonstrate comprehensive research report creation (Phase 2)."""
+    print("\n" + "=" * 60)
+    print("Demo 6: Comprehensive Research Report")
+    print("=" * 60)
+
+    try:
+        import plotly  # noqa: F401
+    except ImportError:
+        print("\n⚠️  Plotly not available - skipping research report demo")
+        print("   Install with: pip install plotly")
+        return
+
+    # Create result
+    result = create_sample_result("Research Solver", converged=True, iterations=100)
+
+    # Create comprehensive report
+    print("\nCreating comprehensive research report...")
+    try:
+        paths = result.create_research_report(
+            title="MFG Research Analysis",
+            problem_config={"sigma": 0.5, "T": 1.0, "Nx": 50, "Nt": 30},
+            output_dir=str(OUTPUT_DIR),
+            export_html=False,  # Skip HTML to avoid jupyter dependency
+        )
+
+        print("\n✅ Research report created:")
+        print(f"   Notebook: {paths['notebook']}")
+        if "html" in paths:
+            print(f"   HTML: {paths['html']}")
+
+        print("\nResearch report includes:")
+        print("  • Mathematical framework with LaTeX equations")
+        print("  • Interactive Plotly visualizations")
+        print("  • Comprehensive convergence analysis")
+        print("  • Mass conservation tracking")
+        print("  • Professional documentation")
+
+    except Exception as e:
+        print(f"\n⚠️  Could not create research report: {e}")
+        print("   (This is normal if jupyter nbconvert is not installed)")
+
+
 def main():
     """Run all demonstrations."""
     print("\n" + "=" * 60)
@@ -176,6 +245,8 @@ def main():
     demo_plot_convergence()
     demo_compare_results()
     demo_export_summary()
+    demo_export_notebook()  # Phase 1
+    demo_create_research_report()  # Phase 2
 
     print("\n" + "=" * 60)
     print("All demonstrations complete!")
