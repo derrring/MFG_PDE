@@ -109,10 +109,19 @@ python scripts/check_docs_structure.py --fix
 - Manual: `workflow_dispatch`
 - On PR: Changes to `docs/**`
 
+**Permissions** (added):
+```yaml
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+```
+
 **Actions**:
 - Runs full report
-- Creates GitHub issue if problems detected
-- Posts summary to PR if applicable
+- Creates GitHub issue if problems detected (scheduled runs only)
+- Posts summary to PR if applicable (PR runs only)
+- Uses `continue-on-error: true` to avoid blocking PRs
 
 #### C. AI Assistant Guidelines
 
