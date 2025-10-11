@@ -17,11 +17,14 @@ from mfg_pde.alg.numerical.density_estimation import (
 
 # Check if PyTorch is available for GPU tests
 try:
+    import torch  # Check for PyTorch package directly
+
     from mfg_pde.backends.torch_backend import TorchBackend
 
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
+    torch = None
 
 # Check if scipy is available for baseline tests
 try:

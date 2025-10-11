@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Test PyTorch KDE implementation against scipy baseline."""
 
+import pytest
+
 import numpy as np
 
-# Test PyTorch KDE
-from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
+# Check PyTorch availability
+from mfg_pde.utils.acceleration import TORCH_UTILS_AVAILABLE
+
+if TORCH_UTILS_AVAILABLE:
+    from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
 
 # Test scipy KDE for comparison
 try:
@@ -17,6 +22,7 @@ except ImportError:
     print("⚠️  Scipy not available, skipping comparison tests")
 
 
+@pytest.mark.skipif(not TORCH_UTILS_AVAILABLE, reason="PyTorch not available")
 def test_basic_kde():
     """Test basic KDE functionality."""
     print("=" * 80)
@@ -68,6 +74,7 @@ def test_basic_kde():
         print("\n✅ PyTorch KDE computed successfully (scipy not available for comparison)")
 
 
+@pytest.mark.skipif(not TORCH_UTILS_AVAILABLE, reason="PyTorch not available")
 def test_bandwidth_methods():
     """Test different bandwidth selection methods."""
     print("\n" + "=" * 80)
@@ -89,6 +96,7 @@ def test_bandwidth_methods():
         print(f"  Integral: {np.trapezoid(density, x_eval):.6f}")
 
 
+@pytest.mark.skipif(not TORCH_UTILS_AVAILABLE, reason="PyTorch not available")
 def test_edge_cases():
     """Test edge cases and robustness."""
     print("\n" + "=" * 80)
@@ -136,6 +144,7 @@ def find_peaks(signal, threshold=0.01):
     return peaks
 
 
+@pytest.mark.skipif(not TORCH_UTILS_AVAILABLE, reason="PyTorch not available")
 def test_device_compatibility():
     """Test device compatibility (CPU, CUDA, MPS)."""
     print("\n" + "=" * 80)

@@ -17,6 +17,8 @@ from mfg_pde.alg.numerical.particle_utils import (
 
 # Check if PyTorch is available for GPU tests
 try:
+    import torch  # Check for PyTorch package directly
+
     from mfg_pde.alg.numerical.particle_utils import (
         apply_boundary_conditions_gpu,
         interpolate_1d_gpu,
@@ -27,6 +29,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
+    torch = None
 
 
 class TestInterpolate1DNumPy:
