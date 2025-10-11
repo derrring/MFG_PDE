@@ -857,3 +857,20 @@ tests/outputs/
 /epidemic_modeling_2d/
 # Benchmark performance history (gitignored - regenerable)
 benchmarks/history/
+
+#===============================================
+# Unpublished Research and Private Documents (PRIVATE)
+#===============================================
+
+# Method 1: Filename patterns for private documents
+**/PRIVATE_*.md
+**/[PRIVATE]_*.md
+**/*_PRIVATE.md
+
+# Method 2: Private directories
+docs/theory/private/
+docs/development/private/
+
+# Method 3: Specific unpublished research files
+# Particle-collocation QP method (unpublished research)
+docs/theory/numerical_methods/particle_collocation_qp_monotone.md

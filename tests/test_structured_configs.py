@@ -11,15 +11,28 @@ from pathlib import Path
 
 import pytest
 
-from mfg_pde.config.omegaconf_manager import (
-    create_default_structured_config,
-    create_omega_manager,
-    load_structured_beach_config,
-    load_structured_mfg_config,
-)
-from mfg_pde.config.structured_schemas import BeachProblemConfig, MFGConfig
+# Check if OmegaConf is available (optional dependency)
+try:
+    from mfg_pde.config.omegaconf_manager import (
+        create_default_structured_config,
+        create_omega_manager,
+        load_structured_beach_config,
+        load_structured_mfg_config,
+    )
+    from mfg_pde.config.structured_schemas import BeachProblemConfig, MFGConfig
+
+    OMEGACONF_AVAILABLE = True
+except ImportError:
+    OMEGACONF_AVAILABLE = False
+    create_default_structured_config = None
+    create_omega_manager = None
+    load_structured_beach_config = None
+    load_structured_mfg_config = None
+    BeachProblemConfig = None
+    MFGConfig = None
 
 
+@pytest.mark.skipif(not OMEGACONF_AVAILABLE, reason="OmegaConf not available (optional dependency)")
 class TestStructuredConfigs:
     """Test structured configuration functionality."""
 
@@ -211,6 +224,7 @@ problem:
         assert hjb_method == "gfdm"
 
 
+@pytest.mark.skipif(not OMEGACONF_AVAILABLE, reason="OmegaConf not available (optional dependency)")
 class TestIssue28TypeSafetySolution:
     """Test that Issue #28 type safety problems are solved."""
 

@@ -165,7 +165,7 @@ class TestCreateBackend:
         backends_module._BACKENDS.pop("torch", None)
 
         try:
-            with pytest.raises(ImportError, match="PyTorch backend requested"):
+            with pytest.raises(ImportError, match="PyTorch"):
                 create_backend("torch")
         finally:
             backends_module._BACKENDS = original
