@@ -857,3 +857,6 @@ tests/outputs/
 /epidemic_modeling_2d/
 # Benchmark performance history (gitignored - regenerable)
 benchmarks/history/
+
+# Private documentation tracking enabled
+# Note: Previously these were gitignored for privacy, but now tracked normally

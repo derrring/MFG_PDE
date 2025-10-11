@@ -30,6 +30,9 @@ try:
 except ImportError:
     pytorch_available = False
 
+# Skip all tests in this module if PyTorch not available
+pytestmark = pytest.mark.skipif(not pytorch_available, reason="PyTorch not available (optional dependency)")
+
 
 class TestOperatorConfig:
     """Test operator configuration classes."""

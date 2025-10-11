@@ -241,6 +241,62 @@ docs/development/ROADMAP_[milestone]_[date].md
   ❌ BAD: "network_implementation.md" (no status indication)
   ```
 
+### **Documentation Hygiene Checkpoints** ⚠️ **MANDATORY**
+
+Claude Code must proactively check documentation health at these trigger points:
+
+**Checkpoint 1: After Phase Completion**
+```bash
+# When user says "Phase X is complete" or similar milestone:
+1. Run: python scripts/check_docs_structure.py --report
+2. If > 60 active docs: Propose consolidation plan immediately
+3. Create phase summary: docs/development/completed/PHASE_X_SUMMARY.md
+4. Archive detailed docs: git mv phase_x_*.md archive/development/phases/
+5. Verify: All [COMPLETED] files moved to archive/
+```
+
+**Checkpoint 2: Before Creating New Directory**
+```bash
+# Before: mkdir docs/new_category/
+1. Check: Does similar category already exist?
+2. Verify: Will this have ≥ 3 files initially?
+3. Ask user: "Create docs/new_category/ or add to docs/existing_category/?"
+4. Only proceed if justified (≥ 3 files planned)
+```
+
+**Checkpoint 3: On [COMPLETED] Tag Addition**
+```bash
+# When marking document as [COMPLETED], [RESOLVED], [CLOSED]:
+1. Immediately suggest: "Move this to archive/appropriate_location/?"
+2. Update cross-references if moved
+3. Verify no broken links remain
+```
+
+**Checkpoint 4: Weekly Documentation Audit (Proactive)**
+```bash
+# Every 7 days of active development:
+"📊 Weekly Documentation Status:
+- Active docs: X/70 files
+- Completed but not archived: Y files
+- Sparse directories: Z found
+- Action needed: [Yes/No]
+Shall I consolidate now or continue working?"
+```
+
+**Checkpoint 5: Before Major Commits**
+```bash
+# Before committing documentation changes:
+python scripts/check_docs_structure.py
+# If fails: Fix issues before committing
+```
+
+**Automated Enforcement:**
+- Pre-commit hook: Runs `check_docs_structure.py` on docs/ changes
+- Monthly audit: GitHub Action creates issue if structure degrades
+- See: `docs/DOCUMENTATION_POLICY.md` for complete standards
+
+**Key Principle**: Be **proactive**, not reactive. Don't wait for user to ask about documentation cleanup.
+
 ### **Logging Preferences**
 ```python
 # Always use structured logging
