@@ -10,13 +10,21 @@ All files with `[PRIVATE]` in the filename are **automatically excluded** from g
 
 ### Usage: `[PRIVATE]` Naming Convention
 
-**Format**: `[PRIVATE]_descriptive_name.ext`
+**Basic Format**: `[PRIVATE]_descriptive_name.ext`
+
+**With Status Tags** (recommended): `[PRIVATE][STATUS]_descriptive_name.ext`
+
+**Status Tags**:
+- `[WIP]` - Work in progress (actively being developed)
+- `[DRAFT]` - Draft version (needs review)
+- `[COMPLETED]` - Finished work (for reference)
+- `[ARCHIVED]` - Old version (kept for history)
 
 **Examples**:
-- `[PRIVATE]_qp_particle_collocation_implementation.md`
-- `[PRIVATE]_experiment_notes.txt`
-- `[PRIVATE]_draft_algorithm.py`
-- `[PRIVATE]_performance_data.pdf`
+- `[PRIVATE][WIP]_qp_particle_collocation_implementation_reflections.md`
+- `[PRIVATE][DRAFT]_experiment_notes.txt`
+- `[PRIVATE][COMPLETED]_draft_algorithm.py`
+- `[PRIVATE]_performance_data.pdf` (no status tag needed)
 
 **Why This Works**:
 - `.gitignore` pattern: `**/*[PRIVATE]*.md` (and `.py`, `.txt`, `.pdf`)
@@ -71,6 +79,15 @@ Files in these directories are also ignored (regardless of naming):
    - **Status**: Complete (15,000+ words)
    - **Purpose**: Theoretical foundation for unpublished paper
    - **Public Release**: After paper submission/acceptance
+
+3. **`[PRIVATE][WIP]_qp_particle_collocation_implementation_reflections.md`**
+   - **Location**: `docs/development/`
+   - **Topic**: Deep reflections on fundamental implementation challenges
+   - **Status**: Draft complete (18,000 words), pending implementation testing
+   - **Purpose**: Analysis of "optimization variable mismatch" problem and recommended hybrid approach
+   - **Key Insight**: GFDM optimizes Taylor coefficients D, but monotonicity constrains FD weights w - no tractable direct relationship
+   - **Next Steps**: Implement hybrid approach with M-matrix verification
+   - **Public Release**: After paper submission/acceptance (may inform discussion section)
 
 ---
 
