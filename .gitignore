@@ -855,3 +855,5 @@ tests/outputs/
 /traffic_flow_2d/
 /portfolio_optimization_2d/
 /epidemic_modeling_2d/
+# Benchmark performance history (gitignored - regenerable)
+benchmarks/history/
