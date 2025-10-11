@@ -6,10 +6,25 @@
 
 ## Core Principles
 
-### The Rule of 70
-- **Max 70 active docs** in `docs/` (excluding `archive/`)
-- When approaching 70: consolidate before creating new docs
-- Automated check: `python scripts/check_docs_structure.py`
+### Category-Based Limits (Dynamic Scaling)
+Documentation limits scale by category, allowing growth where needed:
+
+| Category | Limit | Purpose |
+|:---------|:------|:--------|
+| **user/** | 15 files | User-facing: tutorials, guides, installation |
+| **development/** | 35 files | Developer: architecture, APIs, workflows |
+| **theory/** | 25 files | Mathematical theory, foundations, methods |
+| **reference/** | 50 files | API reference (often auto-generated) |
+
+**Global Soft Limit**: 150 files total (sum of categories + 20% buffer)
+
+**Benefits of Category Limits:**
+- ✅ Scales with project: reference/ can grow without blocking development/
+- ✅ Focused consolidation: Targets specific overgrown categories
+- ✅ Clear organization: Each category has defined purpose
+- ✅ Flexible: Adjust per-category limits as project evolves
+
+**Check compliance**: `python scripts/check_docs_structure.py --report`
 
 ### The Rule of 3
 - **No directories with < 3 files** (except `archive/`, `private/`)

@@ -3,10 +3,10 @@
 Documentation structure validation script.
 
 Checks:
-1. No directories with < 3 files (except archive/)
-2. No [COMPLETED] files outside archive/
-3. No duplicate/overlapping content
-4. Flag when docs/ has > 70 files (consolidation needed)
+1. Category-based doc limits (scales with project size)
+2. No directories with < 3 files (except archive/)
+3. No [COMPLETED] files outside archive/
+4. No duplicate/overlapping content
 
 Usage:
     python scripts/check_docs_structure.py          # Check only
@@ -18,10 +18,20 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-# Thresholds from CLAUDE.md principles
-MAX_ACTIVE_DOCS = 70
+# Category-based documentation limits (scaled to project needs)
+CATEGORY_LIMITS = {
+    "user": 15,  # User-facing docs: tutorials, guides, installation
+    "development": 35,  # Developer docs: architecture, APIs, workflows
+    "theory": 25,  # Mathematical theory: foundations, methods, applications
+    "reference": 50,  # API reference: can be larger (often auto-generated)
+}
+
+# Universal thresholds
 MIN_FILES_PER_DIR = 3
 ALLOWED_SPARSE_DIRS = {"archive", "private", ".git", ".github"}
+
+# Dynamic global limit (sum of categories + 20% buffer)
+MAX_ACTIVE_DOCS = int(sum(CATEGORY_LIMITS.values()) * 1.2)  # ~150 with 20% buffer
 
 
 def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False) -> int:
@@ -29,19 +39,57 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
     issues = []
     warnings = []
 
-    # Check 1: Count total active docs
+    # Check 1: Count total active docs and check category limits
     md_files = list(docs_dir.glob("**/*.md"))
     active_docs = [f for f in md_files if "archive" not in f.parts]
 
+    # Category-based counting
+    category_counts = {}
+    uncategorized_docs = []
+
+    for doc in active_docs:
+        # Determine category from path
+        relative_path = doc.relative_to(docs_dir)
+        category = relative_path.parts[0] if len(relative_path.parts) > 1 else "root"
+
+        if category in CATEGORY_LIMITS:
+            category_counts[category] = category_counts.get(category, 0) + 1
+        else:
+            uncategorized_docs.append(doc)
+
+    # Check category limits
+    for category, count in category_counts.items():
+        limit = CATEGORY_LIMITS[category]
+        if count > limit:
+            issues.append(
+                f"Category '{category}/' exceeds limit: {count}/{limit} files\n"
+                f"   Consider consolidating or archiving completed docs in this category."
+            )
+        elif count > limit * 0.9:
+            warnings.append(
+                f"Category '{category}/' approaching limit: {count}/{limit} files\n   Plan consolidation soon."
+            )
+
+    # Check global limit
     if len(active_docs) > MAX_ACTIVE_DOCS:
         issues.append(
-            f"Too many active docs: {len(active_docs)} (threshold: {MAX_ACTIVE_DOCS})\n"
-            f"   Consider consolidating related documentation.\n"
-            f"   See: docs/CONSOLIDATION_ROADMAP.md"
+            f"Too many active docs overall: {len(active_docs)} (soft limit: {MAX_ACTIVE_DOCS})\n"
+            f"   Category limits: " + ", ".join(f"{k}={v}" for k, v in CATEGORY_LIMITS.items()) + "\n"
+            "   Consider consolidating related documentation."
         )
     elif len(active_docs) > MAX_ACTIVE_DOCS * 0.9:
         warnings.append(
-            f"Approaching doc limit: {len(active_docs)}/{MAX_ACTIVE_DOCS}\n   Consider planning consolidation soon."
+            f"Approaching global doc limit: {len(active_docs)}/{MAX_ACTIVE_DOCS}\n"
+            f"   Consider planning consolidation soon."
+        )
+
+    # Warn about uncategorized docs
+    if uncategorized_docs:
+        warnings.append(
+            f"{len(uncategorized_docs)} uncategorized docs found:\n"
+            + "\n".join(f"   - {d.relative_to(docs_dir)}" for d in uncategorized_docs[:5])
+            + ("\n   ..." if len(uncategorized_docs) > 5 else "")
+            + "\n   Consider organizing into user/development/theory/reference categories."
         )
 
     # Check 2: Sparse directories (< 3 files)
@@ -109,9 +157,21 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
         print("DOCUMENTATION STRUCTURE REPORT")
         print("=" * 70)
         print(f"\nTotal markdown files: {len(md_files)}")
-        print(f"Active docs: {len(active_docs)}")
+        print(f"Active docs: {len(active_docs)} (limit: {MAX_ACTIVE_DOCS})")
         print(f"Archived docs: {len(md_files) - len(active_docs)}")
         print(f"Directories: {len([d for d in docs_dir.rglob('*') if d.is_dir()])}")
+
+        # Category breakdown
+        print("\n📂 Category Breakdown:")
+        for category, limit in sorted(CATEGORY_LIMITS.items()):
+            count = category_counts.get(category, 0)
+            status = "✅" if count <= limit else "❌"
+            pct = int(count / limit * 100) if limit > 0 else 0
+            print(f"   {status} {category:15s}: {count:3d}/{limit:3d} ({pct:3d}%)")
+
+        if uncategorized_docs:
+            print(f"   ⚠️  {'uncategorized':15s}: {len(uncategorized_docs):3d} files")
+
         print(f"\nStatus: {'✅ GOOD' if not issues else '❌ NEEDS ATTENTION'}")
         print()
 
@@ -140,6 +200,10 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
         print("✅ Documentation structure looks good!")
         if report:
             print(f"\n   Active docs: {len(active_docs)}/{MAX_ACTIVE_DOCS}")
+            print("   Category compliance:")
+            for category, limit in sorted(CATEGORY_LIMITS.items()):
+                count = category_counts.get(category, 0)
+                print(f"      • {category}: {count}/{limit}")
             print(f"   Well-organized directories: All have ≥ {MIN_FILES_PER_DIR} files")
             print("   No completed files outside archive")
         return 0
