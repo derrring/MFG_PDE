@@ -8,6 +8,32 @@ Focuses on content quality rather than arbitrary limits:
 3. Identify [COMPLETED] files outside archive/
 4. Detect sparse directories (organizational issues)
 
+ABSTRACT CONSOLIDATION CRITERIA:
+================================
+
+1. **Completed Work Principle**
+   - Any file with [COMPLETED], [CLOSED], [RESOLVED] → archive/
+   - Completed phases (all sub-phases done) → archive/phase_N_details/
+   - Session summaries > 7 days old → archive/sessions/
+
+2. **Topic Consolidation Trigger**
+   - Same topic in 3+ files → Consolidate into one comprehensive document
+   - Phase sub-documents (2.1, 2.2, 2.3...) when phase complete → Archive details, keep summary
+
+3. **README Minimalism**
+   - Only keep READMEs at major category levels (root, development/, theory/, user/)
+   - Remove subdirectory READMEs (they fragment navigation)
+
+4. **Directory Health**
+   - Directories with < 3 files → Merge content into parent or remove
+   - Empty directories → Remove immediately
+   - Redundant nesting (dir with only 1 subdir) → Flatten
+
+5. **Duplicate Detection**
+   - Normalize filenames (strip dates, versions, status tags)
+   - Group by topic: "PHASE_2_SUMMARY_2025-10-08" → "phase_2"
+   - If multiple files map to same topic → Review for consolidation
+
 Usage:
     python scripts/check_docs_structure.py          # Check only
     python scripts/check_docs_structure.py --fix    # Auto-fix issues
