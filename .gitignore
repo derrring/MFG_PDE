@@ -858,10 +858,5 @@ tests/outputs/
 # Benchmark performance history (gitignored - regenerable)
 benchmarks/history/
 
-# Private documentation (local only, not tracked)
-# These folders exist to organize personal research notes
-docs/development/private/*.md
-docs/theory/private/*.md
-# Exception: Track README files to document the structure
-!docs/development/private/README.md
-!docs/theory/private/README.md
+# Private documentation tracking enabled
+# Note: Previously these were gitignored for privacy, but now tracked normally
