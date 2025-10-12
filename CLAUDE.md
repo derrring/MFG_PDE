@@ -649,6 +649,73 @@ git push
 
 **Enforcement**: When working with AI assistance, always establish branch hierarchy at the start of multi-step work. The AI should create parent branch first, then work in child branches, respecting merge order throughout.
 
+### **Branch Proliferation Prevention** ⚠️ **MANDATORY**
+
+**Core Principle**: Keep the repository clean by maintaining a small number of active branches at all times.
+
+#### **Before Creating Any New Branch** ⚠️ **CHECKLIST**
+
+1. **Check current branch count**:
+   ```bash
+   # Count remote branches (excluding main)
+   git branch -r | grep -v "HEAD\|main" | wc -l
+   ```
+
+2. **If count > 5, STOP and clean up first**:
+   ```bash
+   # Find merged branches
+   gh pr list --state merged --limit 20 --json number,headRefName
+
+   # Delete merged branch refs
+   gh pr list --state merged --limit 20 --json headRefName --jq '.[].headRefName' | \
+     xargs -I {} git push origin --delete {}
+   ```
+
+3. **Verify the new branch is necessary**:
+   - ✅ Is this work distinct from existing branches?
+   - ✅ Can this work be added to an existing branch instead?
+   - ✅ Is there a linked issue for this work?
+   - ❌ Don't create branches for "quick fixes" - use existing branches
+
+4. **Only then create the branch**
+
+#### **Continuous Cleanup Habits**
+
+**After Every PR Merge** (automated):
+- GitHub should auto-delete branch after PR merge (enable in settings)
+- Verify local refs are pruned: `git fetch --prune`
+
+**Weekly Branch Audit** (manual):
+```bash
+# List all branches with status
+for branch in $(git branch -r | grep -v HEAD | grep -v main); do
+  echo "Branch: $branch"
+  gh pr list --head ${branch#origin/} --json number,state,title
+  echo "---"
+done
+```
+
+**Monthly Deep Clean**:
+```bash
+# Remove all local tracking refs for deleted remote branches
+git fetch --prune origin
+
+# List branches merged to main (candidates for deletion)
+git branch -r --merged origin/main | grep -v main
+```
+
+#### **AI Assistant Guidelines**
+
+When working with AI assistance, the assistant should:
+1. **Check branch count** before suggesting new branch creation
+2. **Propose branch cleanup** if count exceeds 5
+3. **Reuse existing branches** when adding related fixes
+4. **Suggest immediate merge** for completed work
+5. **Remind about cleanup** after successful PR merges
+
+**Example AI Prompt**:
+> "Before we create a new branch, let's check if we have too many active branches. If we do, let's clean up merged branches first."
+
 ### **Asynchronous Multi-Branch Development** ⚠️ **CRITICAL**
 
 **Context**: When working on multiple branches simultaneously (especially with AI assistance), branches can become stale, conflict-prone, and difficult to manage. These principles prevent branch chaos.
@@ -662,6 +729,24 @@ git push
 - ✅ **Daily Rebase Habit**: If branch lives > 1 day, rebase daily onto main
 - ✅ **Small, Focused Branches**: Keep branches small (< 5 commits ideal)
 - ✅ **Delete Immediately After Merge**: Don't leave merged branches around
+- ✅ **Maximum Active Branches**: Limit to 3-5 active branches at once
+- ✅ **PR-Driven Development**: Create PR immediately when pushing, merge quickly
+- ✅ **No Orphaned Branches**: Every branch must have a linked issue or clear purpose
+
+**Branch Count Guidelines** ⚠️ **MANDATORY**:
+- **< 5 branches**: Healthy, manageable state
+- **5-10 branches**: Warning zone - start cleanup immediately
+- **> 10 branches**: Critical - stop creating new branches until cleanup complete
+
+**Enforcement**:
+```bash
+# Before creating new branch, check active count
+git branch -r | wc -l
+
+# If > 5, clean up merged branches first
+gh pr list --state merged --limit 20 --json number,headRefName --jq '.[].headRefName' | \
+  xargs -I {} git push origin --delete {}
+```
 
 **Daily Routine**:
 ```bash
