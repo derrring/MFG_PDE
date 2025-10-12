@@ -2,6 +2,141 @@
 
 This file contains preferences and conventions for Claude Code when working with the MFG_PDE repository.
 
+## 🎯 **Repository Mission & Scope** ⚠️ **CRITICAL**
+
+### **MFG_PDE: Public Infrastructure Package**
+
+**Purpose**: Provide comprehensive, production-ready infrastructure for Mean Field Games research and applications.
+
+**Scope - What Belongs in MFG_PDE**:
+
+✅ **Core Infrastructure**:
+- Solver frameworks (HJB, FP, coupled systems)
+- Backend abstraction layer (NumPy, PyTorch, JAX)
+- Configuration and factory systems
+- Geometry and boundary condition handling
+- Workflow and experiment management tools
+- Visualization and analysis utilities
+
+✅ **Classical Algorithms** (well-established methods):
+- **Numerical**: Finite difference, finite element, GFDM, particle methods
+- **Deep Learning**: DGM, PINN, DeepONet (established architectures)
+- **Reinforcement Learning**: Actor-Critic, DQN, PPO (standard algorithms)
+- **Optimization**: Variational methods, gradient descent, ADMM
+
+✅ **Standard Examples**:
+- Classical MFG problems (LQ, crowd motion, traffic flow)
+- Tutorial implementations
+- Benchmark problems
+- Educational demonstrations
+
+### **MFG-Research: Private Research Repository**
+
+**Purpose**: Novel research, experimental algorithms, and unpublished methods.
+
+**Scope - What Belongs in MFG-Research**:
+
+🔬 **Research Algorithms**:
+- Novel numerical schemes under development
+- Experimental neural architectures
+- Unpublished optimization techniques
+- Research-grade implementations
+
+🔬 **Research Applications**:
+- Specialized problem domains
+- Case studies and publications
+- Experimental validations
+- Parameter studies and analysis
+
+**Key Principle**: MFG-Research **imports** MFG_PDE but **never modifies** it. Research repo extends infrastructure through composition, not modification.
+
+### **Boundary Guidelines** ⚠️ **WHEN TO USE WHICH REPO**
+
+| Criterion | MFG_PDE (Public) | MFG-Research (Private) |
+|:----------|:-----------------|:-----------------------|
+| **Maturity** | Production-ready, tested | Experimental, in development |
+| **Publication** | Published methods | Unpublished, under review |
+| **Stability** | Stable API, versioned | Rapid iteration, breaking changes OK |
+| **Documentation** | Comprehensive | Minimal, research notes |
+| **Examples** | Tutorial-grade | Research-grade |
+| **Testing** | Full test coverage | Exploratory testing |
+| **Audience** | Public users, researchers | Personal research only |
+
+### **Development Workflow**
+
+**Working in MFG_PDE**:
+```python
+# ✅ GOOD: Adding well-established method
+from mfg_pde.alg.numerical import FiniteDifferenceSolver
+class SpectralMethodSolver(FiniteDifferenceSolver):
+    """Well-documented spectral method (published 1990)."""
+    pass
+```
+
+**Working in MFG-Research**:
+```python
+# ✅ GOOD: Experimental method using MFG_PDE infrastructure
+from mfg_pde.core import MFGProblem
+from mfg_pde.solvers import create_solver
+
+class NovelAdaptiveScheme:
+    """Experimental adaptive scheme (under development)."""
+    def __init__(self, problem: MFGProblem):
+        self.problem = problem
+        self.base_solver = create_solver(problem, method="gfdm")
+
+    def solve(self):
+        # Novel algorithm building on MFG_PDE infrastructure
+        pass
+```
+
+### **Migration Path: Research → Infrastructure**
+
+When research matures, migrate to MFG_PDE:
+
+1. **Maturity Check**:
+   - Algorithm is proven and validated
+   - Method is published or well-documented
+   - Implementation is stable and tested
+
+2. **Preparation**:
+   - Add comprehensive tests
+   - Write tutorial documentation
+   - Create usage examples
+   - Ensure API consistency
+
+3. **Integration**:
+   - Open PR in MFG_PDE
+   - Follow infrastructure code standards
+   - Maintain backward compatibility
+
+4. **Deprecation** in MFG-Research:
+   - Update to use MFG_PDE version
+   - Keep research notes for historical record
+
+### **AI Assistant Guidelines for Repository Scope**
+
+When working with AI assistance:
+
+**Always ask**: "Is this for infrastructure or research?"
+
+**For infrastructure (MFG_PDE)**:
+- Requires comprehensive documentation
+- Must have tests and examples
+- Should follow existing patterns
+- Needs stability guarantees
+
+**For research (MFG-Research)**:
+- Rapid prototyping OK
+- Minimal documentation acceptable
+- Breaking changes allowed
+- Experimental patterns encouraged
+
+**Example AI Prompts**:
+> "I'm implementing a novel neural architecture. This should go in MFG-Research, not MFG_PDE."
+
+> "This is a standard PINN implementation following DeepXDE. This belongs in MFG_PDE's neural algorithms."
+
 ## 🏗️ **Repository Structure Conventions**
 
 ### **Directory Organization**
