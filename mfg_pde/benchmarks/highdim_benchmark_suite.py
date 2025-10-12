@@ -95,7 +95,8 @@ class HighDimMFGBenchmark:
             List of benchmark results
         """
         if solver_methods is None:
-            solver_methods = ["damped_fixed_point", "particle_collocation"]
+            solver_methods = ["damped_fixed_point"]
+            # Note: "particle_collocation" has been moved to mfg-research repository
 
         results = []
 
@@ -519,10 +520,10 @@ class HighDimMFGBenchmark:
         try:
             if method == "damped_fixed_point":
                 result = problem.solve_with_damped_fixed_point(**default_params)  # type: ignore[arg-type]
-            elif method == "particle_collocation":
-                result = problem.solve_with_particle_collocation(**default_params)  # type: ignore[arg-type]
             else:
-                raise ValueError(f"Unknown method: {method}")
+                raise ValueError(
+                    f"Unknown method: {method}. Note: 'particle_collocation' has been moved to mfg-research repository."
+                )
 
             # Extract convergence information
             converged = result.get("converged", False)
@@ -856,7 +857,8 @@ def create_comprehensive_benchmark_suite() -> BenchmarkSuite:
             {"type": "scaling"},
             {"type": "memory_profiling"},
         ],
-        solver_methods=["damped_fixed_point", "particle_collocation"],
+        solver_methods=["damped_fixed_point"],
+        # Note: "particle_collocation" has been moved to mfg-research repository
         grid_sizes=[
             (16, 16),
             (32, 32),
