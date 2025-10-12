@@ -271,12 +271,15 @@ def create_solver(
 
     Args:
         problem: MFG problem to solve
-        solver_type: Type of solver ("fixed_point", "particle_collocation", "monitored_particle", "adaptive_particle", "amr")
+        solver_type: Type of solver ("fixed_point")
         preset: Configuration preset ("fast", "accurate", "research", "balanced")
         **kwargs: Additional parameters
 
     Returns:
         Configured solver instance
+
+    Note:
+        Particle-collocation methods have been moved to mfg-research repository.
     """
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset=preset, **kwargs)
 
