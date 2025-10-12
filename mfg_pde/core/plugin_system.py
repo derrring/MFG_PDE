@@ -519,7 +519,7 @@ class PluginManager:
         """Discover core solver types available in MFG_PDE."""
         # This would scan the core solver modules to find available types
         # For now, return the known core solver types
-        # Note: "particle_collocation" has been moved to mfg-research repository
+        # Note: "particle_collocation" has been removed from core package
         return ["fixed_point", "hjb_fdm", "hjb_collocation"]
 
     def _create_core_solver(

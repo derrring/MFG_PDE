@@ -30,7 +30,7 @@ from .hjb_solvers import (
 )
 
 # Import MFG solvers (coupled system solvers)
-# Note: ParticleCollocationSolver has been moved to mfg-research repository
+# Note: ParticleCollocationSolver has been removed from core package
 from .mfg_solvers import (
     BaseMFGSolver,
     FixedPointIterator,
@@ -54,5 +54,5 @@ __all__ = [
     "HJBSemiLagrangianSolver",
     "HJBWenoSolver",
     "HybridFPParticleHJBFDM",
-    # Note: ParticleCollocationSolver has been moved to mfg-research repository
+    # Note: ParticleCollocationSolver has been removed from core package
 ]

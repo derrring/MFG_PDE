@@ -1,6 +1,6 @@
 # High-Dimensional MFG Capabilities
 
-> **⚠️ NOTE**: Particle-collocation methods mentioned in this README have been moved to the `mfg-research` repository. MFG_PDE now focuses on fixed-point methods for high-dimensional problems. See `MIGRATION_PARTICLE_COLLOCATION.md` for details.
+> **⚠️ NOTE**: Particle-collocation methods mentioned in this README have been removed from core package. MFG_PDE now focuses on fixed-point methods for high-dimensional problems.
 
 This directory demonstrates the extended high-dimensional capabilities of the MFG_PDE package, including 2D, 3D, and nD Mean Field Games with advanced solver methods.
 

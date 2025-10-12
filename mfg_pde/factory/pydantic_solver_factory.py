@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 from mfg_pde.utils.logging.logger import get_logger
 
 SolverType = Literal["fixed_point"]
-# Note: "particle_collocation" has been moved to mfg-research repository
+# Note: "particle_collocation" has been removed from core package
 
 
 class PydanticSolverFactory:
@@ -100,7 +100,7 @@ class PydanticSolverFactory:
             else:
                 raise ValueError(
                     f"Unknown solver type: {solver_type}. "
-                    "Note: 'particle_collocation' has been moved to mfg-research repository."
+                    "Note: 'particle_collocation' has been removed from core package."
                 )
 
         except ValidationError as e:
@@ -239,7 +239,7 @@ class PydanticSolverFactory:
             raise RuntimeError(f"Fixed point solver creation failed: {e}") from e
 
     # Note: _create_validated_particle_collocation_solver removed
-    # Particle-collocation methods have been moved to mfg-research repository
+    # Particle-collocation methods have been removed from core package
 
 
 # Global factory instance

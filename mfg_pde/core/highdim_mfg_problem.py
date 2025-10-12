@@ -165,7 +165,7 @@ class HighDimMFGProblem(ABC):
             }
 
     # Note: solve_with_particle_collocation method removed
-    # Particle-collocation methods have been moved to mfg-research repository
+    # Particle-collocation methods have been removed from core package
 
     def _convert_solution_to_highdim(self, solution_1d: Any) -> dict:
         """Convert 1D solver solution back to high-dimensional arrays."""
@@ -427,7 +427,7 @@ class HybridMFGSolver:
         """Adaptive strategy: switch methods based on convergence behavior.
 
         Note: Simplified to use only damped fixed point method.
-        Particle-collocation methods have been moved to mfg-research repository.
+        Particle-collocation methods have been removed from core package.
         """
 
         # Phase 1: Quick damped fixed point for initialization
@@ -458,7 +458,7 @@ class HybridMFGSolver:
         """Sequential strategy: run damped fixed point method.
 
         Note: Simplified to use only damped fixed point method.
-        Particle-collocation methods have been moved to mfg-research repository.
+        Particle-collocation methods have been removed from core package.
         """
 
         # Use damped fixed point method

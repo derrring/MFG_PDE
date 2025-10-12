@@ -3,11 +3,8 @@
 Factory Patterns Test Suite - Updated for Architecture Separation
 
 NOTE: Particle-collocation tests have been removed as particle-collocation methods
-have been moved to the mfg-research repository. This test now focuses on fixed_point
+have been removed from core package. This test now focuses on fixed_point
 solver factory functionality.
-
-For particle-collocation tests, see: mfg-research/algorithms/particle_collocation/tests/
-Migration documentation: MIGRATION_PARTICLE_COLLOCATION.md
 """
 
 import os
@@ -204,9 +201,7 @@ def test_type_consistency():
     return results
 
 
-@pytest.mark.skip(
-    reason="Particle-collocation tests removed - solver moved to mfg-research. See MIGRATION_PARTICLE_COLLOCATION.md"
-)
+@pytest.mark.skip(reason="Particle-collocation tests removed - solver removed from core package. ")
 def test_particle_collocation_removed():
     """Placeholder indicating particle-collocation tests have been removed."""
 
@@ -216,7 +211,7 @@ def run_comprehensive_test():
     print("=" * 80)
     print("FACTORY PATTERNS TEST SUITE (Fixed-Point Solvers)")
     print("=" * 80)
-    print("NOTE: Particle-collocation tests removed - see mfg-research repository")
+    print("NOTE: Particle-collocation tests removed - removed from core package")
     print("=" * 80)
 
     all_results = {}

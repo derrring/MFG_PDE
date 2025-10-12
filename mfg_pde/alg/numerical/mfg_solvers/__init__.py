@@ -6,7 +6,7 @@ solvers to solve the coupled MFG system using classical numerical approaches:
 - Fixed point iterators (Picard iteration-based)
 - Hybrid methods combining different techniques
 
-Note: Particle-collocation methods have been moved to mfg-research repository.
+Note: Particle-collocation methods have been removed from core package.
 """
 
 from .base_mfg import BaseMFGSolver
@@ -24,7 +24,7 @@ from .fixed_point_utils import (
 )
 from .hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 
-# Note: ParticleCollocationSolver has been moved to mfg-research repository
+# Note: ParticleCollocationSolver has been removed from core package
 
 __all__ = [
     "BaseMFGSolver",
@@ -42,7 +42,7 @@ FIXED_POINT_SOLVERS = [
     "FixedPointIterator",  # Unified fixed point iterator (all features)
 ]
 
-# Note: PARTICLE_SOLVERS category removed - moved to mfg-research repository
+# Note: PARTICLE_SOLVERS category removed - removed from core package
 
 HYBRID_SOLVERS = [
     "HybridFPParticleHJBFDM",  # FP-Particle + HJB-FDM hybrid solver

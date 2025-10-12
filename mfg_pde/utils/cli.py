@@ -51,7 +51,7 @@ def create_base_parser() -> argparse.ArgumentParser:
             "fixed_point",
         ],
         default="fixed_point",
-        help="Type of solver to use (Note: particle_collocation moved to mfg-research)",
+        help="Type of solver to use (Note: particle_collocation removed from core package)",
     )
     solver_group.add_argument(
         "--preset",

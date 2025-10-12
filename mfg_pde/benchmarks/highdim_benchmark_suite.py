@@ -96,7 +96,7 @@ class HighDimMFGBenchmark:
         """
         if solver_methods is None:
             solver_methods = ["damped_fixed_point"]
-            # Note: "particle_collocation" has been moved to mfg-research repository
+            # Note: "particle_collocation" has been removed from core package
 
         results = []
 
@@ -522,7 +522,7 @@ class HighDimMFGBenchmark:
                 result = problem.solve_with_damped_fixed_point(**default_params)  # type: ignore[arg-type]
             else:
                 raise ValueError(
-                    f"Unknown method: {method}. Note: 'particle_collocation' has been moved to mfg-research repository."
+                    f"Unknown method: {method}. Note: 'particle_collocation' has been removed from core package."
                 )
 
             # Extract convergence information
@@ -858,7 +858,7 @@ def create_comprehensive_benchmark_suite() -> BenchmarkSuite:
             {"type": "memory_profiling"},
         ],
         solver_methods=["damped_fixed_point"],
-        # Note: "particle_collocation" has been moved to mfg-research repository
+        # Note: "particle_collocation" has been removed from core package
         grid_sizes=[
             (16, 16),
             (32, 32),

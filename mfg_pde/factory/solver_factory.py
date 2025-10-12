@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 SolverType = Literal["fixed_point", "monitored_particle", "adaptive_particle"]
-# Note: "particle_collocation" has been moved to mfg-research repository
+# Note: "particle_collocation" has been removed from core package
 
 
 @dataclass
@@ -122,7 +122,7 @@ class SolverFactory:
             raise ValueError(
                 f"Unknown solver type: '{solver_type}'\n\n"
                 f"Valid solver types are:\n{suggestions}\n\n"
-                f"Note: 'particle_collocation' has been moved to mfg-research repository.\n"
+                f"Note: 'particle_collocation' has been removed from core package.\n"
                 f"Example: create_fast_solver(problem, solver_type='fixed_point')"
             )
 
@@ -132,7 +132,7 @@ class SolverFactory:
         else:
             raise ValueError(
                 f"Unsupported solver type: {solver_type}. "
-                "Note: 'particle_collocation' has been moved to mfg-research repository. "
+                "Note: 'particle_collocation' has been removed from core package. "
                 f"Available types: ['fixed_point']"
             )
 
@@ -254,7 +254,7 @@ class SolverFactory:
 
     # Note: _create_particle_collocation_solver, _create_monitored_particle_solver,
     # and _create_adaptive_particle_solver methods have been removed.
-    # Particle-collocation methods have been moved to mfg-research repository.
+    # Particle-collocation methods have been removed from core package.
 
 
 # Convenience functions for common use cases
@@ -279,7 +279,7 @@ def create_solver(
         Configured solver instance
 
     Note:
-        Particle-collocation methods have been moved to mfg-research repository.
+        Particle-collocation methods have been removed from core package.
     """
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset=preset, **kwargs)
 
@@ -505,12 +505,12 @@ def create_research_solver(
         Research-configured solver instance
 
     Note:
-        Particle-collocation methods have been moved to mfg-research repository.
+        Particle-collocation methods have been removed from core package.
     """
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="research", **kwargs)
 
 
-# Note: create_monitored_solver removed - particle-collocation moved to mfg-research repository
+# Note: create_monitored_solver removed - particle-collocation removed from core package
 
 
 def create_amr_solver(
