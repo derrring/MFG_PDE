@@ -15,7 +15,7 @@ This directory contains comprehensive examples and demonstrations of the MFG_PDE
 ### 🔰 [Basic Examples](basic/)
 Simple, single-concept demonstrations perfect for getting started:
 
-- **[particle_collocation_mfg_example.py](basic/particle_collocation_mfg_example.py)** - Basic MFG problem solving
+- **[lq_mfg_demo.py](basic/lq_mfg_demo.py)** - Linear-Quadratic MFG problem solving
 - **[simple_logging_demo.py](basic/simple_logging_demo.py)** - Logging system introduction
 - **[mathematical_visualization_example.py](basic/mathematical_visualization_example.py)** - Mathematical plotting
 - **[logging_integration_example.py](basic/logging_integration_example.py)** - Logging integration patterns
@@ -96,7 +96,7 @@ pip install -e .
 ### Python Scripts
 ```bash
 # Basic example
-python examples/basic/particle_collocation_mfg_example.py
+python examples/basic/lq_mfg_demo.py
 
 # Advanced example  
 python examples/advanced/advanced_visualization_example.py
@@ -122,7 +122,7 @@ python examples/notebooks/working_demo/MFG_Working_Demo.py
 
 ## 🔍 Finding the Right Example
 
-- **New to MFG_PDE?** → Start with `basic/particle_collocation_mfg_example.py`
+- **New to MFG_PDE?** → Start with `basic/lq_mfg_demo.py`
 - **Want interactive plots?** → Try `notebooks/working_demo/`
 - **Need logging?** → Check `basic/simple_logging_demo.py`
 - **Research workflows?** → Explore `advanced/interactive_research_notebook_example.py`

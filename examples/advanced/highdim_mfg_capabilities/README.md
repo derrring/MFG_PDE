@@ -1,5 +1,7 @@
 # High-Dimensional MFG Capabilities
 
+> **⚠️ NOTE**: Particle-collocation methods mentioned in this README have been moved to the `mfg-research` repository. MFG_PDE now focuses on fixed-point methods for high-dimensional problems. See `MIGRATION_PARTICLE_COLLOCATION.md` for details.
+
 This directory demonstrates the extended high-dimensional capabilities of the MFG_PDE package, including 2D, 3D, and nD Mean Field Games with advanced solver methods.
 
 ## 🎯 **Key Features Implemented**
@@ -8,12 +10,11 @@ This directory demonstrates the extended high-dimensional capabilities of the MF
 - **`Domain3D`**: Complete 3D geometry with tetrahedral mesh generation
 - **`HighDimMFGProblem`**: Abstract base for multi-dimensional MFG problems
 - **`GridBasedMFGProblem`**: Simplified interface for rectangular domains
-- **`HybridMFGSolver`**: Multi-strategy solver combining damped fixed point and particle collocation
+- **`HybridMFGSolver`**: Multi-strategy solver using adaptive fixed-point methods
 
 ### **Solver Capabilities**
-- **Damped Fixed Point**: Already multi-dimensional ready (using existing `FixedPointIterator`)
-- **Particle Collocation**: Native support for arbitrary dimensions
-- **Hybrid Methods**: Adaptive strategy switching for robust convergence
+- **Damped Fixed Point**: Multi-dimensional ready (using existing `FixedPointIterator`)
+- **Hybrid Methods**: Adaptive strategy switching with two-phase fixed-point approach
 - **Complex Geometry**: Full integration with Gmsh → Meshio → PyVista pipeline
 
 ## 📁 **File Structure**
