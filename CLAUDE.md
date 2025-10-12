@@ -694,37 +694,132 @@ else
 fi
 ```
 
+#### **Branch Reuse vs. New Branch Decision Tree** ⚠️ **CORE PRINCIPLE**
+
+**Question: "Should I create a new branch or reuse an existing one?"**
+
+Use this decision framework:
+
+```
+Is the work:
+├─ Fixing bugs/typos in same area?
+│  └─ ✅ REUSE existing fix/* branch OR work on parent branch
+│
+├─ Related to existing open PR?
+│  └─ ✅ ADD to existing PR branch (if not merged yet)
+│
+├─ Part of larger feature in progress?
+│  └─ ✅ WORK on parent feature branch directly
+│
+├─ Independent new feature/capability?
+│  └─ 🆕 CREATE new branch (if count < limit)
+│
+└─ Experimental/proof-of-concept?
+   └─ 🆕 CREATE research/* branch
+```
+
+**Key Principle**: **Default to working on existing branches; create new ones only when work is truly independent.**
+
+**Examples**:
+
+**Scenario 1: Multiple Bug Fixes**
+```bash
+# ✅ GOOD: Reuse fix branch for related bugs
+git checkout fix/solver-convergence-issues
+# Fix bug A, commit, push
+# Fix bug B, commit, push
+# Fix bug C, commit, push
+# Create ONE PR with all fixes
+
+# ❌ BAD: Creating separate branches
+git checkout -b fix/solver-bug-a  # Unnecessary
+git checkout -b fix/solver-bug-b  # Unnecessary
+git checkout -b fix/solver-bug-c  # Unnecessary
+```
+
+**Scenario 2: Iterative Feature Development**
+```bash
+# ✅ GOOD: Work directly on parent branch
+git checkout feature/neural-solver
+# Implement base architecture, commit, push
+# Add training loop, commit, push
+# Add validation, commit, push
+# Create PR when feature complete
+
+# ❌ BAD: Creating child branches for every step
+git checkout -b feature/neural-solver-base
+git checkout -b feature/neural-solver-training
+git checkout -b feature/neural-solver-validation
+```
+
+**Scenario 3: When to Create Child Branches**
+```bash
+# ✅ GOOD: Child branches for PARALLEL independent work
+git checkout -b feature/mfg-toolkit-parent
+
+# Create child ONLY if:
+# 1. Work can proceed in parallel
+# 2. Child might fail/be abandoned
+# 3. Requires separate review/testing
+
+git checkout -b feature/toolkit-dgm-solver    # Independent component
+git checkout -b feature/toolkit-fno-solver    # Independent component
+git checkout -b feature/toolkit-pinn-solver   # Independent component
+
+# Each can be developed, tested, merged independently
+```
+
+**When to Create New Branch (Checklist)**:
+
+✅ Create new branch if:
+- Work is **independent** from existing branches
+- Will take **>1 week** and needs isolation
+- Is **experimental** and might be discarded
+- Requires **parallel development** with other work
+- Targets **different code areas** than existing branches
+
+❌ Don't create new branch if:
+- Work is **related** to existing PR
+- Is a **quick fix** (<1 hour)
+- Is **iterative** work on existing feature
+- Would be **5th+ branch** without cleanup
+
 #### **Dynamic Branch Strategy Selection**
 
 Choose strategy based on the work type:
 
 **1. Quick Fix Strategy** (bugs, typos, small changes):
 ```bash
-# Don't create new branch - use existing fix/* branch
+# REUSE existing fix/* branch for similar work
 git checkout fix/quick-fixes || git checkout -b fix/quick-fixes
 # Make fix, commit, push, create PR immediately
+# Keep branch alive for future quick fixes
 ```
 
 **2. Feature Sprint Strategy** (short-term features):
 ```bash
-# Create feature branch, work 2-3 days, merge quickly
+# Create dedicated feature branch, work 2-3 days, merge quickly
 git checkout -b feature/specific-feature
-# Work, commit daily, create PR within 3 days, merge within 5 days
+# Work iteratively, commit daily to THIS branch
+# Don't create child branches unless necessary
+# Create PR within 3 days, merge within 5 days
 ```
 
 **3. Parallel Development Strategy** (multiple independent features):
 ```bash
-# Use hierarchical branches with parent
+# Use hierarchical branches ONLY when work can proceed in parallel
 git checkout -b feature/major-work-parent
-git checkout -b feature/component-a  # Child 1
-git checkout -b feature/component-b  # Child 2
+git checkout -b feature/component-a  # Child 1 - independent
+git checkout -b feature/component-b  # Child 2 - independent
+# Work on children in parallel
 # Merge children to parent, then parent to main when complete
 ```
 
 **4. Research/Exploration Strategy** (experimental work):
 ```bash
-# Longer-lived branches OK, but mark clearly
+# Longer-lived branches OK for experimental work
 git checkout -b research/experimental-approach
+# Work iteratively on THIS branch
 # Regular rebases onto main, document findings
 # Merge when proven OR close without merge if not viable
 ```
