@@ -16,30 +16,15 @@ from mfg_pde.utils.numerical.integration import trapezoid
 
 from .base_backend import BaseBackend
 
-# Check Numba availability
+# Check Numba availability - raise ImportError if not available
 try:
     import numba
-    from numba import jit, njit
+    from numba import jit, njit  # noqa: F401
     from numba import vectorize as numba_vectorize
 
     NUMBA_AVAILABLE = True
-except ImportError:
-    NUMBA_AVAILABLE = False
-    numba = None
-
-    # Fallback decorators when Numba not available
-    def jit(func=None, **kwargs):
-        if func is None:
-            return lambda f: f
-        return func
-
-    def njit(func=None, **kwargs):
-        if func is None:
-            return lambda f: f
-        return func
-
-    def numba_vectorize(func, **kwargs):
-        return np.vectorize(func)
+except ImportError as e:
+    raise ImportError("Numba required for Numba backend. Install with: pip install numba") from e
 
 
 class NumbaBackend(BaseBackend):

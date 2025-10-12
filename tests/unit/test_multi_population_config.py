@@ -30,6 +30,7 @@ if TORCH_AVAILABLE:
     )
 
 
+@pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
 class TestPopulationConfig:
     """Tests for PopulationConfig dataclass."""
 
@@ -151,6 +152,7 @@ class TestPopulationConfig:
             config.sample_initial_state()
 
 
+@pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
 class TestPopulationSetValidation:
     """Tests for validate_population_set function."""
 
@@ -278,6 +280,7 @@ class TestPopulationSetValidation:
             validate_population_set(populations)
 
 
+@pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
 class TestCouplingUtilities:
     """Tests for coupling weight utilities."""
 
