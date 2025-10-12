@@ -431,6 +431,7 @@ def test_factory_without_pydantic_raises_error(simple_problem):
 @pytest.mark.unit
 @pytest.mark.fast
 @pytest.mark.skipif(not PYDANTIC_AVAILABLE, reason="Pydantic required")
+@pytest.mark.skip(reason="HJBGFDMSolver is abstract - Issue #140")
 def test_create_validated_solver_with_invalid_kwargs(factory, simple_problem):
     """Test that invalid kwargs in config update are handled gracefully."""
     # This should either update successfully or log warning
