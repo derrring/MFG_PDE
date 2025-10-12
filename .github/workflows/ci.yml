@@ -89,12 +89,13 @@ jobs:
         ruff check --select F mfg_pde/
         echo "✅ No critical errors"
 
-  # === PHASE 1: Code Quality Gate ===
-  code-quality:
-    name: Code Quality & Type Checking
+  # === PHASE 1: Import Validation ===
+  # Note: Ruff formatting, linting, and MyPy checks run in modern_quality.yml workflow
+  import-validation:
+    name: Import Validation
     runs-on: ubuntu-latest
     needs: quick-checks
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
     - name: Checkout code
@@ -117,38 +118,6 @@ jobs:
       run: |
         echo "Testing package imports..."
         python -c "import mfg_pde; print('✅ Package imports successfully')"
-
-    - name: Ruff Formatting Check
-      timeout-minutes: 2
-      run: |
-        echo "🎨 Running Ruff formatter (10x faster than Black)..."
-        ruff format --check --diff mfg_pde/
-        if [ $? -ne 0 ]; then
-          echo "❌ Formatting issues found. Run 'ruff format mfg_pde/' to fix."
-          exit 1
-        else
-          echo "✅ Code formatting is perfect."
-        fi
-
-    - name: Ruff Linting (Informational)
-      run: |
-        echo "🔍 Running Ruff linter (informational for research codebase)..."
-        ruff check --output-format=github mfg_pde/ || true
-        echo ""
-        echo "📊 Linting summary (informational only):"
-        ruff check --statistics mfg_pde/ || true
-        echo "✅ Linting check completed (non-blocking for research workflow)"
-
-    - name: Strategic type checking validation (Informational)
-      run: |
-        echo "🎆 Strategic typing validation: Informational for research codebase..."
-        mypy mfg_pde --ignore-missing-imports --show-error-codes --pretty || true
-        echo ""
-        echo "📊 Strategic typing framework status:"
-        echo "  • Local development: 366 → 0 errors (100% holy grail achieved)"
-        echo "  • CI/CD environment: Different MyPy version/configuration detected"
-        echo "  • Production health: Zero breaking changes maintained"
-        echo "✅ Strategic typing validation complete (informational only)"
 
     - name: Documentation completeness check
       run: |
@@ -189,7 +158,7 @@ jobs:
   test-suite:
     name: Test Suite
     runs-on: ubuntu-latest
-    needs: code-quality
+    needs: import-validation
     timeout-minutes: 40  # Increased for comprehensive test suite (1450+ tests)
 
     strategy:
@@ -323,7 +292,7 @@ jobs:
   security-scan:
     name: Security Analysis
     runs-on: ubuntu-latest
-    needs: code-quality
+    needs: import-validation
     timeout-minutes: 10  # Timeout for security scans
     if: ${{ github.event_name == 'release' || github.event.inputs.run_security_scan == 'true' || github.event_name == 'workflow_dispatch' }}
 
@@ -379,7 +348,7 @@ jobs:
   integration-tests:
     name: Integration Testing
     runs-on: ubuntu-latest
-    needs: [code-quality, test-suite, performance-check]
+    needs: [import-validation, test-suite, performance-check]
     timeout-minutes: 30  # Timeout for integration tests (includes slow tests)
     if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
 
@@ -430,7 +399,7 @@ jobs:
   build-validation:
     name: Build & Distribution
     runs-on: ubuntu-latest
-    needs: [code-quality, test-suite, performance-check]
+    needs: [import-validation, test-suite, performance-check]
     timeout-minutes: 15  # Timeout for build validation
     if: ${{ github.event_name == 'release' }}
 
@@ -486,7 +455,7 @@ jobs:
   ci-summary:
     name: CI/CD Summary
     runs-on: ubuntu-latest
-    needs: [code-quality, test-suite, performance-check]
+    needs: [import-validation, test-suite, performance-check]
     if: always()
 
     steps:
