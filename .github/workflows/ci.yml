@@ -199,6 +199,7 @@ jobs:
         pytest tests/ -v --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=10
 
     - name: Upload coverage reports to Codecov
+      if: ${{ !cancelled() }}
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
