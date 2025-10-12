@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.types.internal import SolverReturnTuple
+    from mfg_pde.types.solver_types import SolverReturnTuple
 else:
     pass
 

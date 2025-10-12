@@ -17,7 +17,7 @@ OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
-    from mfg_pde.types.internal import MultiIndexTuple
+    from mfg_pde.types.solver_types import MultiIndexTuple
 
 
 class HJBGFDMSolver(BaseHJBSolver):

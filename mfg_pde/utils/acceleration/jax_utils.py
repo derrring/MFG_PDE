@@ -16,7 +16,7 @@ from . import DEFAULT_DEVICE, HAS_GPU, HAS_JAX
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from mfg_pde.types.internal import JAXArray
+    from mfg_pde.types.solver_types import JAXArray
 else:
     pass
 

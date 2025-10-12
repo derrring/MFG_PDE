@@ -11,7 +11,7 @@ Usage:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -144,6 +144,60 @@ except ImportError:
 
 type JAXStateArray = JAXArray | NDArray
 """Array type that can be either JAX or NumPy."""
+
+# === Mathematical Function Types ===
+
+type HamiltonianFunction = Callable[[float, float, float, float], float]
+"""Hamiltonian function H(x, p, m, t) -> float"""
+
+type LagrangianFunction = Callable[[float, float, float, float], float]
+"""Lagrangian function L(x, v, m, t) -> float"""
+
+type DensityFunction = Callable[[float], float]
+"""Density function ρ(x) -> float"""
+
+type ValueFunction = Callable[[float], float]
+"""Value function g(x) -> float"""
+
+# === Solver Component Protocols ===
+
+
+class NewtonSolver(Protocol):
+    """Protocol for Newton-type solvers."""
+
+    def solve_step(self, u_current: NDArray, rhs: NDArray) -> NDArray: ...
+
+
+class LinearSolver(Protocol):
+    """Protocol for linear system solvers."""
+
+    def solve(self, A: NDArray, b: NDArray) -> NDArray: ...
+
+
+# === Flexible Input Types ===
+
+type FlexibleInput = (
+    HamiltonianFunction
+    | str  # String identifier for preset Hamiltonians
+    | dict[str, float | Callable]  # Configuration dictionary
+    | object  # Custom problem objects
+)
+"""Flexible input type that accepts multiple input formats"""
+
+# === Error Classes ===
+
+
+class SolverError(Exception):
+    """Base exception for solver errors."""
+
+
+class ConvergenceError(SolverError):
+    """Raised when solver fails to converge."""
+
+
+class ConfigurationError(SolverError):
+    """Raised when solver configuration is invalid."""
+
 
 # === Legacy Compatibility ===
 

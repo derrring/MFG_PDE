@@ -28,13 +28,14 @@ This file contains preferences and conventions for Claude Code when working with
 - **`mfg_pde/core/`** - Core MFG problem definitions
 - **`mfg_pde/factory/`** - Factory functions for common patterns
 - **`mfg_pde/geometry/`** - Domain and boundary condition definitions
+- **`mfg_pde/hooks/`** - Hook system for solver customization
 - **`mfg_pde/solvers/`** - High-level solver interfaces
+- **`mfg_pde/types/`** - Type definitions (arrays, protocols, solver types)
 - **`mfg_pde/utils/`** - Utility functions (logging, numerical, performance)
 - **`mfg_pde/visualization/`** - Plotting and visualization tools
 - **`mfg_pde/workflow/`** - Experiment management and parameter sweeps
 - **`mfg_pde/compat/`** - Backward compatibility layer
 - **`mfg_pde/meta/`** - Metaprogramming utilities
-- **`mfg_pde/_internal/`** - Private internals (do not import directly)
 
 ### **File Placement Rules**
 - **Examples**: Always categorize by complexity (basic/advanced/notebooks)
