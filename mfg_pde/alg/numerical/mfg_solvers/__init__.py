@@ -4,9 +4,9 @@ Coupled MFG system solvers using numerical methods.
 This module provides complete Mean Field Games solvers that combine HJB and FP
 solvers to solve the coupled MFG system using classical numerical approaches:
 - Fixed point iterators (Picard iteration-based)
-- Particle collocation methods (meshfree approaches)
 - Hybrid methods combining different techniques
-- Adaptive and enhanced variants
+
+Note: Particle-collocation methods have been moved to mfg-research repository.
 """
 
 from .base_mfg import BaseMFGSolver
@@ -24,14 +24,12 @@ from .fixed_point_utils import (
 )
 from .hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 
-# Unified particle collocation solver (with optional advanced convergence)
-from .particle_collocation_solver import ParticleCollocationSolver
+# Note: ParticleCollocationSolver has been moved to mfg-research repository
 
 __all__ = [
     "BaseMFGSolver",
     "FixedPointIterator",
     "HybridFPParticleHJBFDM",
-    "ParticleCollocationSolver",
     "apply_damping",
     "check_convergence_criteria",
     "construct_solver_result",
@@ -44,9 +42,7 @@ FIXED_POINT_SOLVERS = [
     "FixedPointIterator",  # Unified fixed point iterator (all features)
 ]
 
-PARTICLE_SOLVERS = [
-    "ParticleCollocationSolver",  # Unified particle-GFDM collocation solver (with optional advanced convergence)
-]
+# Note: PARTICLE_SOLVERS category removed - moved to mfg-research repository
 
 HYBRID_SOLVERS = [
     "HybridFPParticleHJBFDM",  # FP-Particle + HJB-FDM hybrid solver
@@ -55,4 +51,4 @@ HYBRID_SOLVERS = [
 # JAX-accelerated solvers (optional)
 JAX_SOLVERS: list[str] = []
 
-ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + PARTICLE_SOLVERS + HYBRID_SOLVERS + JAX_SOLVERS
+ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + HYBRID_SOLVERS + JAX_SOLVERS
