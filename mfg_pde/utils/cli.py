@@ -49,12 +49,9 @@ def create_base_parser() -> argparse.ArgumentParser:
         "--solver-type",
         choices=[
             "fixed_point",
-            "particle_collocation",
-            "monitored_particle",
-            "adaptive_particle",
         ],
-        default="monitored_particle",
-        help="Type of solver to use",
+        default="fixed_point",
+        help="Type of solver to use (Note: particle_collocation removed from core package)",
     )
     solver_group.add_argument(
         "--preset",
@@ -488,7 +485,7 @@ def main():
                     xmin=0.0,
                     xmax=1.0,
                     Nx=100,
-                    solver_type="monitored_particle",
+                    solver_type="fixed_point",
                     preset="balanced",
                     max_iterations=None,
                     tolerance=None,

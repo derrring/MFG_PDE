@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Comprehensive test suite for MFG Solver Factory Patterns
+Factory Patterns Test Suite - Updated for Architecture Separation
 
-Tests all factory functionality to ensure correct implementation.
+NOTE: Particle-collocation tests have been removed as particle-collocation methods
+have been removed from core package. This test now focuses on fixed_point
+solver factory functionality.
 """
 
 import os
 import sys
+
+import pytest
 
 import numpy as np
 
@@ -15,20 +19,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mfg_pde import (
     MFGProblem,
-    SolverFactory,
     create_accurate_solver,
     create_fast_solver,
-    create_monitored_solver,
     create_research_solver,
     create_solver,
 )
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers import (
-    FixedPointIterator,
-    ParticleCollocationSolver,
-)
-from mfg_pde.config import create_research_config
+from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 
 
 def create_test_problem():
@@ -60,7 +58,7 @@ def create_test_problem():
 
 
 def test_factory_creation_functions():
-    """Test all factory creation functions."""
+    """Test factory creation functions for fixed_point solver."""
     print("Testing factory creation functions...")
 
     problem = create_test_problem()
@@ -69,26 +67,24 @@ def test_factory_creation_functions():
 
     results = {}
 
-    # Test convenience functions
+    # Test convenience functions with fixed_point solver
     functions_to_test = [
         ("create_fast_solver", create_fast_solver),
         ("create_accurate_solver", create_accurate_solver),
         ("create_research_solver", create_research_solver),
-        ("create_monitored_solver", create_monitored_solver),
     ]
 
     for name, func in functions_to_test:
         try:
-            if name == "create_monitored_solver":
-                solver = func(problem, collocation_points=collocation_points)
-            else:
-                solver = func(problem, "particle_collocation", collocation_points=collocation_points)
+            # Create required component solvers
+            hjb_solver = HJBGFDMSolver(problem, collocation_points)
+            fp_solver = FPParticleSolver(problem, collocation_points)
+
+            solver = func(problem, solver_type="fixed_point", hjb_solver=hjb_solver, fp_solver=fp_solver)
 
             results[name] = {
                 "success": True,
                 "solver_type": type(solver).__name__,
-                "particles": solver.num_particles,
-                "newton_tolerance": solver.hjb_solver.newton_tolerance,
             }
             print(f"  ✓ {name}: {type(solver).__name__}")
         except Exception as e:
@@ -99,34 +95,16 @@ def test_factory_creation_functions():
 
 
 def test_solver_types():
-    """Test all supported solver types."""
+    """Test fixed_point solver type."""
     print("\nTesting solver types...")
 
     problem = create_test_problem()
     x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
     collocation_points = x_coords.reshape(-1, 1)
 
-    solver_types = ["particle_collocation"]
-
     results = {}
 
-    for solver_type in solver_types:
-        try:
-            solver = create_solver(
-                problem=problem, solver_type=solver_type, preset="fast", collocation_points=collocation_points
-            )
-
-            results[solver_type] = {
-                "success": True,
-                "solver_class": type(solver).__name__,
-                "particles": solver.num_particles,
-            }
-            print(f"  ✓ {solver_type}: {type(solver).__name__}")
-        except Exception as e:
-            results[solver_type] = {"success": False, "error": str(e)}
-            print(f"  ✗ {solver_type}: {e}")
-
-    # Test fixed point solver (requires component solvers)
+    # Test fixed point solver
     try:
         hjb_solver = HJBGFDMSolver(problem, collocation_points)
         fp_solver = FPParticleSolver(problem, collocation_points)
@@ -149,7 +127,7 @@ def test_solver_types():
 
 
 def test_configuration_presets():
-    """Test all configuration presets."""
+    """Test configuration presets for fixed_point solver."""
     print("\nTesting configuration presets...")
 
     problem = create_test_problem()
@@ -161,134 +139,25 @@ def test_configuration_presets():
 
     for preset in presets:
         try:
+            hjb_solver = HJBGFDMSolver(problem, collocation_points)
+            fp_solver = FPParticleSolver(problem, collocation_points)
+
             solver = create_solver(
                 problem=problem,
-                solver_type="particle_collocation",
+                solver_type="fixed_point",
                 preset=preset,
-                collocation_points=collocation_points,
+                hjb_solver=hjb_solver,
+                fp_solver=fp_solver,
             )
 
             results[preset] = {
                 "success": True,
-                "particles": solver.num_particles,
-                "newton_tolerance": solver.hjb_solver.newton_tolerance,
-                "has_monitor": hasattr(solver, "convergence_monitor"),
+                "has_config": hasattr(solver, "config"),
             }
-            print(f"  ✓ {preset}: {solver.num_particles} particles, {solver.hjb_solver.newton_tolerance} tolerance")
+            print(f"  ✓ {preset}: FixedPointIterator created")
         except Exception as e:
             results[preset] = {"success": False, "error": str(e)}
             print(f"  ✗ {preset}: {e}")
-
-    return results
-
-
-def test_parameter_overrides():
-    """Test parameter override functionality."""
-    print("\nTesting parameter overrides...")
-
-    problem = create_test_problem()
-    x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-    collocation_points = x_coords.reshape(-1, 1)
-
-    results = {}
-
-    # Test basic parameter override
-    try:
-        solver = create_solver(
-            problem=problem,
-            solver_type="particle_collocation",
-            preset="fast",  # Start with fast preset
-            collocation_points=collocation_points,
-            # Override parameters
-            num_particles=7500,
-            newton_tolerance=1e-7,
-        )
-
-        results["basic_override"] = {
-            "success": True,
-            "particles": solver.num_particles,
-            "newton_tolerance": solver.hjb_solver.newton_tolerance,
-            "expected_particles": 7500,
-            "expected_tolerance": 1e-7,
-        }
-
-        # Verify overrides worked
-        if solver.num_particles == 7500 and solver.hjb_solver.newton_tolerance == 1e-7:
-            print("  ✓ Basic parameter override: values correctly overridden")
-        else:
-            print(
-                f"  ⚠ Basic parameter override: unexpected values - particles={solver.num_particles}, tolerance={solver.hjb_solver.newton_tolerance}"
-            )
-
-    except Exception as e:
-        results["basic_override"] = {"success": False, "error": str(e)}
-        print(f"  ✗ Basic parameter override: {e}")
-
-    # Test custom configuration
-    try:
-        custom_config = create_research_config()
-        custom_config.fp.particle.num_particles = 6000
-        custom_config.hjb.newton.tolerance = 1e-9
-
-        solver = SolverFactory.create_solver(
-            problem=problem,
-            solver_type="particle_collocation",
-            collocation_points=collocation_points,
-            custom_config=custom_config,
-        )
-
-        results["custom_config"] = {
-            "success": True,
-            "particles": solver.num_particles,
-            "newton_tolerance": solver.hjb_solver.newton_tolerance,
-            "expected_particles": 6000,
-            "expected_tolerance": 1e-9,
-        }
-
-        # Verify custom config worked
-        if solver.num_particles == 6000 and solver.hjb_solver.newton_tolerance == 1e-9:
-            print("  ✓ Custom configuration: values correctly applied")
-        else:
-            print(
-                f"  ⚠ Custom configuration: unexpected values - particles={solver.num_particles}, tolerance={solver.hjb_solver.newton_tolerance}"
-            )
-
-    except Exception as e:
-        results["custom_config"] = {"success": False, "error": str(e)}
-        print(f"  ✗ Custom configuration: {e}")
-
-    return results
-
-
-def test_factory_class_usage():
-    """Test direct SolverFactory class usage."""
-    print("\nTesting SolverFactory class...")
-
-    problem = create_test_problem()
-    x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-    collocation_points = x_coords.reshape(-1, 1)
-
-    results = {}
-
-    # Test SolverFactory.create_solver directly
-    try:
-        solver = SolverFactory.create_solver(
-            problem=problem,
-            solver_type="particle_collocation",
-            config_preset="accurate",
-            collocation_points=collocation_points,
-            num_particles=5500,
-        )
-
-        results["direct_factory"] = {
-            "success": True,
-            "solver_class": type(solver).__name__,
-            "particles": solver.num_particles,
-        }
-        print(f"  ✓ SolverFactory.create_solver: {type(solver).__name__}")
-    except Exception as e:
-        results["direct_factory"] = {"success": False, "error": str(e)}
-        print(f"  ✗ SolverFactory.create_solver: {e}")
 
     return results
 
@@ -301,46 +170,48 @@ def test_type_consistency():
     x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
     collocation_points = x_coords.reshape(-1, 1)
 
-    expected_types = {
-        "particle_collocation": ParticleCollocationSolver,
-        "fixed_point": FixedPointIterator,
-    }
-
     results = {}
 
-    for solver_type, expected_class in expected_types.items():
-        try:
-            solver = create_solver(
-                problem=problem, solver_type=solver_type, preset="fast", collocation_points=collocation_points
-            )
+    # Test fixed_point type
+    try:
+        hjb_solver = HJBGFDMSolver(problem, collocation_points)
+        fp_solver = FPParticleSolver(problem, collocation_points)
 
-            is_correct_type = isinstance(solver, expected_class)
-            results[solver_type] = {
-                "success": True,
-                "expected_type": expected_class.__name__,
-                "actual_type": type(solver).__name__,
-                "type_correct": is_correct_type,
-            }
+        solver = create_solver(
+            problem=problem, solver_type="fixed_point", preset="fast", hjb_solver=hjb_solver, fp_solver=fp_solver
+        )
 
-            if is_correct_type:
-                print(f"  ✓ {solver_type}: correct type {expected_class.__name__}")
-            else:
-                print(f"  ⚠ {solver_type}: expected {expected_class.__name__}, got {type(solver).__name__}")
+        is_correct_type = isinstance(solver, FixedPointIterator)
+        results["fixed_point"] = {
+            "success": True,
+            "expected_type": "FixedPointIterator",
+            "actual_type": type(solver).__name__,
+            "type_correct": is_correct_type,
+        }
 
-        except Exception as e:
-            results[solver_type] = {"success": False, "error": str(e)}
-            print(f"  ✗ {solver_type}: {e}")
+        if is_correct_type:
+            print("  ✓ fixed_point: correct type FixedPointIterator")
+        else:
+            print(f"  ⚠ fixed_point: expected FixedPointIterator, got {type(solver).__name__}")
 
-    # Fixed point is already tested in the loop above
-    # (It requires hjb_solver and fp_solver parameters which are handled separately)
+    except Exception as e:
+        results["fixed_point"] = {"success": False, "error": str(e)}
+        print(f"  ✗ fixed_point: {e}")
 
     return results
+
+
+@pytest.mark.skip(reason="Particle-collocation tests removed - solver removed from core package. ")
+def test_particle_collocation_removed():
+    """Placeholder indicating particle-collocation tests have been removed."""
 
 
 def run_comprehensive_test():
     """Run comprehensive factory pattern tests."""
     print("=" * 80)
-    print("COMPREHENSIVE FACTORY PATTERNS TEST SUITE")
+    print("FACTORY PATTERNS TEST SUITE (Fixed-Point Solvers)")
+    print("=" * 80)
+    print("NOTE: Particle-collocation tests removed - removed from core package")
     print("=" * 80)
 
     all_results = {}
@@ -350,8 +221,6 @@ def run_comprehensive_test():
         ("Factory Creation Functions", test_factory_creation_functions),
         ("Solver Types", test_solver_types),
         ("Configuration Presets", test_configuration_presets),
-        ("Parameter Overrides", test_parameter_overrides),
-        ("Factory Class Usage", test_factory_class_usage),
         ("Type Consistency", test_type_consistency),
     ]
 
@@ -388,17 +257,14 @@ def run_comprehensive_test():
     print(f"Tests Passed: {passed_tests}/{total_tests}")
 
     if passed_tests == total_tests:
-        print("🎉 ALL TESTS PASSED! Factory patterns implementation is successful.")
+        print("All tests passed! Factory patterns for fixed_point solver work correctly.")
     else:
-        print(f"⚠️  {total_tests - passed_tests} tests failed. See details above.")
+        print(f"  {total_tests - passed_tests} tests failed. See details above.")
 
-    print("\nFactory Pattern Features Verified:")
-    print("• ✓ All convenience creation functions work correctly")
-    print("• ✓ All solver types can be created through factory")
-    print("• ✓ All configuration presets function properly")
-    print("• ✓ Parameter override system works as expected")
-    print("• ✓ Custom configuration support is functional")
-    print("• ✓ Type consistency is maintained across all factory methods")
+    print("\nFactory Pattern Features Verified (Fixed-Point Solver):")
+    print("  - Convenience creation functions")
+    print("  - Configuration presets")
+    print("  - Type consistency")
 
     return all_results
 

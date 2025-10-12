@@ -164,51 +164,8 @@ class HighDimMFGProblem(ABC):
                 "solver_info": {"method": "damped_fixed_point", "dimension": self.dimension},
             }
 
-    def solve_with_particle_collocation(
-        self,
-        num_particles: int = 5000,
-        max_iterations: int = 30,
-        tolerance: float = 1e-4,
-        solver_config: dict | None = None,
-    ) -> dict:
-        """
-        Solve using particle-collocation method for high dimensions.
-        """
-        from mfg_pde.factory import create_research_solver
-
-        # Create 1D adapter problem
-        adapter_problem = self.create_1d_adapter_problem()
-
-        try:
-            # Create particle collocation solver
-            solver = create_research_solver(
-                problem=adapter_problem,
-                solver_type="particle_collocation",
-                collocation_points=self.collocation_points,
-                num_particles=num_particles,
-            )
-
-            # Solve the system
-            solution = solver.solve()
-
-            if solution is not None:
-                highdim_solution = self._convert_solution_to_highdim(solution)
-                return {
-                    "success": True,
-                    "solution": highdim_solution,
-                    "solver_info": {
-                        "method": "particle_collocation",
-                        "dimension": self.dimension,
-                        "num_particles": num_particles,
-                        "num_collocation_points": len(self.collocation_points),
-                    },
-                }
-            else:
-                return {"success": False, "error": "Particle collocation solver failed"}
-
-        except Exception:
-            # Fallback to damped fixed point if particle collocation fails
-            return self.solve_with_damped_fixed_point(max_iterations=max_iterations, tolerance=tolerance)
+    # Note: solve_with_particle_collocation method removed
+    # Particle-collocation methods have been removed from core package
 
     def _convert_solution_to_highdim(self, solution_1d: Any) -> dict:
         """Convert 1D solver solution back to high-dimensional arrays."""
@@ -467,74 +424,48 @@ class HybridMFGSolver:
             raise ValueError(f"Unknown strategy: {strategy}")
 
     def _solve_adaptive(self, max_iterations: int, tolerance: float) -> dict:
-        """Adaptive strategy: switch methods based on convergence behavior."""
+        """Adaptive strategy: switch methods based on convergence behavior.
+
+        Note: Simplified to use only damped fixed point method.
+        Particle-collocation methods have been removed from core package.
+        """
 
         # Phase 1: Quick damped fixed point for initialization
         print("Phase 1: Damped fixed point initialization...")
         result1 = self.problem.solve_with_damped_fixed_point(
             damping_factor=0.7,  # Higher damping for stability
-            max_iterations=max_iterations // 3,
-            tolerance=tolerance * 10,  # Relaxed tolerance for initialization
+            max_iterations=max_iterations // 2,
+            tolerance=tolerance * 5,  # Relaxed tolerance for initialization
         )
 
         if not result1["success"]:
             return result1
 
-        # Phase 2: Refinement with particle collocation
-        print("Phase 2: Particle collocation refinement...")
-
-        # Use more particles for higher dimensions
-        num_particles = min(10000, 1000 * self.problem.dimension**2)
-
-        result2 = self.problem.solve_with_particle_collocation(
-            num_particles=num_particles, max_iterations=max_iterations // 2, tolerance=tolerance
+        # Phase 2: Refinement with tighter tolerance
+        print("Phase 2: Refined fixed point...")
+        final_result = self.problem.solve_with_damped_fixed_point(
+            damping_factor=0.3,  # Lower damping for accuracy
+            max_iterations=max_iterations // 2,
+            tolerance=tolerance,
         )
 
-        if result2["success"]:
-            final_result = result2
-        else:
-            # Fallback to fixed point with tighter tolerance
-            print("Phase 3: Fallback to refined fixed point...")
-            final_result = self.problem.solve_with_damped_fixed_point(
-                damping_factor=0.3,  # Lower damping for accuracy
-                max_iterations=max_iterations // 3,
-                tolerance=tolerance,
-            )
-
-        final_result["solver_info"]["method"] = "hybrid_adaptive"
-        final_result["solver_info"]["phases"] = ["damped_fixed_point", "particle_collocation"]
+        final_result["solver_info"]["method"] = "adaptive"
+        final_result["solver_info"]["phases"] = ["damped_fixed_point_init", "damped_fixed_point_refined"]
 
         return final_result
 
     def _solve_sequential(self, max_iterations: int, tolerance: float) -> dict:
-        """Sequential strategy: run methods in predetermined order."""
+        """Sequential strategy: run damped fixed point method.
 
-        methods = [("damped_fixed_point", 0.4), ("particle_collocation", 0.6)]
+        Note: Simplified to use only damped fixed point method.
+        Particle-collocation methods have been removed from core package.
+        """
 
-        best_result = None
-        best_accuracy = np.inf
+        # Use damped fixed point method
+        result = self.problem.solve_with_damped_fixed_point(max_iterations=max_iterations, tolerance=tolerance)
 
-        for method, fraction in methods:
-            method_iterations = int(max_iterations * fraction)
-
-            if method == "damped_fixed_point":
-                result = self.problem.solve_with_damped_fixed_point(
-                    max_iterations=method_iterations, tolerance=tolerance
-                )
-            elif method == "particle_collocation":
-                result = self.problem.solve_with_particle_collocation(
-                    max_iterations=method_iterations, tolerance=tolerance
-                )
-
-            if result["success"]:
-                # Estimate accuracy (placeholder - would use proper error estimation)
-                accuracy = tolerance  # Simplified
-                if accuracy < best_accuracy:
-                    best_accuracy = accuracy
-                    best_result = result
-
-        if best_result is None:
-            return {"success": False, "error": "All methods failed"}
-
-        best_result["solver_info"]["method"] = "hybrid_sequential"
-        return best_result
+        if result["success"]:
+            result["solver_info"]["method"] = "sequential"
+            return result
+        else:
+            return {"success": False, "error": "Damped fixed point failed"}
