@@ -827,6 +827,13 @@ demo_benchmark_results/
 !docs/**/*.md
 !benchmarks/**/*.py
 
+# Exception: Never track private files (re-ignore after negation above)
+# Note: Using backslash to escape brackets in gitignore pattern
+**/*\[PRIVATE\]*.md
+**/*\[PRIVATE\]*.py
+**/*\[PRIVATE\]*.txt
+**/*\[PRIVATE\]*.pdf
+
 #===============================================
 # Notebook-Based Reporting and Output Organization
 #===============================================
@@ -858,5 +865,18 @@ tests/outputs/
 # Benchmark performance history (gitignored - regenerable)
 benchmarks/history/
 
-# Private documentation tracking enabled
-# Note: Previously these were gitignored for privacy, but now tracked normally
+#===============================================
+# Unpublished Research and Private Documents
+#===============================================
+
+# Private document pattern: Files with [PRIVATE] in the name are never committed
+# Usage: Name any private file as [PRIVATE]_descriptive_name.ext
+# Note: Brackets are escaped with backslash for gitignore pattern matching
+**/*\[PRIVATE\]*.md
+**/*\[PRIVATE\]*.py
+**/*\[PRIVATE\]*.txt
+**/*\[PRIVATE\]*.pdf
+
+# Private directories (simpler: exclude everything)
+docs/theory/private/
+docs/development/private/

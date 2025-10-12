@@ -732,7 +732,7 @@ where:
 *Under the Lasry-Lions monotonicity condition, the fixed-point map $\Phi$ is a contraction on an appropriate Banach space. Consequently:*
 1. *There exists a unique MFG equilibrium $(u^*, m^*)$*
 2. *The iterative sequence $(u^{(n)}, m^{(n)}) = \Phi(u^{(n-1)}, m^{(n-1)})$ converges to $(u^*, m^*)$ for any initial guess*
-3. *Convergence rate is geometric: $\|(u^{(n)}, m^{(n)}) - (u^*, m^*)\| \leq C \theta^n$ for some $\theta < 1$*
+3. *Convergence rate is geometric: $\|(u^{(n)}, m^{(n)}) - (u^*, m^*)\ \leq C \theta^n$ for some $\theta < 1$*
 
 **Lasry-Lions condition**:
 $$\langle H_m(t,x,p,m_1) - H_m(t,x,p,m_2), m_1 - m_2 \rangle \geq \alpha \|m_1 - m_2\|^2$$

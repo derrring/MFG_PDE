@@ -33,16 +33,20 @@ except ImportError:
 # Re-export JAX utilities
 try:
     from .jax_utils import *  # noqa: F403
+    from .jax_utils import HAS_JAX
 
-    JAX_UTILS_AVAILABLE = True
+    # Only mark as available if JAX is actually installed
+    JAX_UTILS_AVAILABLE = HAS_JAX
 except ImportError:
     JAX_UTILS_AVAILABLE = False
 
 # Re-export PyTorch utilities
 try:
     from .torch_utils import *  # noqa: F403
+    from .torch_utils import HAS_TORCH
 
-    TORCH_UTILS_AVAILABLE = True
+    # Only mark as available if torch is actually installed
+    TORCH_UTILS_AVAILABLE = HAS_TORCH
 except ImportError:
     TORCH_UTILS_AVAILABLE = False
 
