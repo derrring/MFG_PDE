@@ -649,72 +649,225 @@ git push
 
 **Enforcement**: When working with AI assistance, always establish branch hierarchy at the start of multi-step work. The AI should create parent branch first, then work in child branches, respecting merge order throughout.
 
-### **Branch Proliferation Prevention** ⚠️ **MANDATORY**
+### **Dynamic Branch Management Strategy** ⚠️ **ADAPTIVE**
 
-**Core Principle**: Keep the repository clean by maintaining a small number of active branches at all times.
+**Core Principle**: Branch management should adapt to project phase, team size, and work complexity.
 
-#### **Before Creating Any New Branch** ⚠️ **CHECKLIST**
+#### **Context-Aware Branch Limits**
 
-1. **Check current branch count**:
-   ```bash
-   # Count remote branches (excluding main)
-   git branch -r | grep -v "HEAD\|main" | wc -l
-   ```
+Branch limits scale with project activity level and work complexity:
 
-2. **If count > 5, STOP and clean up first**:
-   ```bash
-   # Find merged branches
-   gh pr list --state merged --limit 20 --json number,headRefName
+| Project Phase | Max Branches | Branch Lifetime | Merge Cadence |
+|:--------------|:-------------|:----------------|:--------------|
+| **Maintenance** (bug fixes, small updates) | 3-5 | 1-3 days | Daily |
+| **Active Development** (new features) | 5-8 | 3-7 days | Weekly |
+| **Major Refactor** (architecture changes) | 8-12 | 1-2 weeks | Bi-weekly |
+| **Research/Exploration** (experimental) | 10-15 | 2-4 weeks | Monthly |
 
-   # Delete merged branch refs
-   gh pr list --state merged --limit 20 --json headRefName --jq '.[].headRefName' | \
-     xargs -I {} git push origin --delete {}
-   ```
+**Current Phase**: Auto-detect or manually declare in this file.
 
-3. **Verify the new branch is necessary**:
-   - ✅ Is this work distinct from existing branches?
-   - ✅ Can this work be added to an existing branch instead?
-   - ✅ Is there a linked issue for this work?
-   - ❌ Don't create branches for "quick fixes" - use existing branches
+#### **Intelligent Branch Assessment** ⚠️ **BEFORE CREATING**
 
-4. **Only then create the branch**
+Instead of rigid rules, use this decision tree:
 
-#### **Continuous Cleanup Habits**
-
-**After Every PR Merge** (automated):
-- GitHub should auto-delete branch after PR merge (enable in settings)
-- Verify local refs are pruned: `git fetch --prune`
-
-**Weekly Branch Audit** (manual):
 ```bash
-# List all branches with status
-for branch in $(git branch -r | grep -v HEAD | grep -v main); do
-  echo "Branch: $branch"
-  gh pr list --head ${branch#origin/} --json number,state,title
-  echo "---"
-done
+# Step 1: Assess repository state
+BRANCH_COUNT=$(git branch -r | grep -v "HEAD\|main" | wc -l | tr -d ' ')
+OPEN_PRS=$(gh pr list --state open --json number --jq '. | length')
+STALE_BRANCHES=$(gh pr list --state open --json number,updatedAt --jq 'map(select((now - (.updatedAt | fromdateiso8601)) > (7*24*3600))) | length')
+
+echo "Branch Health Check:"
+echo "  Total branches: $BRANCH_COUNT"
+echo "  Open PRs: $OPEN_PRS"
+echo "  Stale PRs (>7 days): $STALE_BRANCHES"
+
+# Step 2: Determine action based on state
+if [ $STALE_BRANCHES -gt 2 ]; then
+  echo "⚠️  ACTION REQUIRED: Clean up stale branches first"
+  echo "Run: gh pr list --state open --json number,title,updatedAt"
+elif [ $BRANCH_COUNT -gt 12 ]; then
+  echo "⚠️  HIGH: Review branch necessity before creating new ones"
+elif [ $BRANCH_COUNT -gt 8 ]; then
+  echo "⚡ MODERATE: Consider consolidating related work"
+else
+  echo "✅ HEALTHY: Safe to create new branches"
+fi
 ```
 
-**Monthly Deep Clean**:
+#### **Dynamic Branch Strategy Selection**
+
+Choose strategy based on the work type:
+
+**1. Quick Fix Strategy** (bugs, typos, small changes):
 ```bash
-# Remove all local tracking refs for deleted remote branches
+# Don't create new branch - use existing fix/* branch
+git checkout fix/quick-fixes || git checkout -b fix/quick-fixes
+# Make fix, commit, push, create PR immediately
+```
+
+**2. Feature Sprint Strategy** (short-term features):
+```bash
+# Create feature branch, work 2-3 days, merge quickly
+git checkout -b feature/specific-feature
+# Work, commit daily, create PR within 3 days, merge within 5 days
+```
+
+**3. Parallel Development Strategy** (multiple independent features):
+```bash
+# Use hierarchical branches with parent
+git checkout -b feature/major-work-parent
+git checkout -b feature/component-a  # Child 1
+git checkout -b feature/component-b  # Child 2
+# Merge children to parent, then parent to main when complete
+```
+
+**4. Research/Exploration Strategy** (experimental work):
+```bash
+# Longer-lived branches OK, but mark clearly
+git checkout -b research/experimental-approach
+# Regular rebases onto main, document findings
+# Merge when proven OR close without merge if not viable
+```
+
+#### **Automated Branch Health Monitoring**
+
+Create a health check script that assesses branch quality:
+
+```bash
+#!/bin/bash
+# Save as: scripts/check_branch_health.sh
+
+echo "=== Branch Health Report ==="
+
+# Count branches by type
+for type in feature fix chore docs refactor test research; do
+  count=$(git branch -r | grep "origin/$type/" | wc -l | tr -d ' ')
+  echo "$type: $count branches"
+done
+
+# Find stale branches (no activity in 7+ days)
+echo -e "\n=== Stale Branches (>7 days) ==="
+gh pr list --state open --json number,title,headRefName,updatedAt --jq \
+  'map(select((now - (.updatedAt | fromdateiso8601)) > (7*24*3600))) |
+   .[] | "PR #\(.number): \(.headRefName) (\(.title))"'
+
+# Find branches with conflicts
+echo -e "\n=== Branches Behind Main ==="
+for branch in $(git branch -r | grep -v HEAD | grep -v main); do
+  behind=$(git rev-list --count $branch..origin/main)
+  if [ $behind -gt 10 ]; then
+    echo "$branch: $behind commits behind (needs rebase)"
+  fi
+done
+
+# Recommend actions
+echo -e "\n=== Recommendations ==="
+TOTAL_BRANCHES=$(git branch -r | grep -v "HEAD\|main" | wc -l | tr -d ' ')
+if [ $TOTAL_BRANCHES -gt 12 ]; then
+  echo "⚠️  Branch count HIGH ($TOTAL_BRANCHES) - prioritize merging or closing"
+elif [ $TOTAL_BRANCHES -gt 8 ]; then
+  echo "⚡ Branch count MODERATE ($TOTAL_BRANCHES) - review stale branches"
+else
+  echo "✅ Branch count HEALTHY ($TOTAL_BRANCHES)"
+fi
+```
+
+**Run this weekly**: `bash scripts/check_branch_health.sh`
+
+#### **Adaptive Cleanup Cadence**
+
+Cleanup frequency adapts to branch velocity:
+
+**High Activity** (>3 PRs/week):
+- Daily: `git fetch --prune && gh pr list --state merged --limit 5`
+- Delete merged branches immediately after CI passes
+
+**Moderate Activity** (1-3 PRs/week):
+- Every 2-3 days: Run branch health check
+- Merge or close stale PRs weekly
+
+**Low Activity** (<1 PR/week):
+- Weekly: Full branch audit
+- Monthly: Deep cleanup and rebase
+
+**Automated Cleanup Commands**:
+```bash
+# Smart cleanup: Delete merged branches from last 30 days
+gh pr list --state merged --search "merged:>$(date -v-30d +%Y-%m-%d)" \
+  --json headRefName --jq '.[].headRefName' | \
+  xargs -I {} git push origin --delete {} 2>/dev/null
+
+# Prune local tracking refs
 git fetch --prune origin
 
-# List branches merged to main (candidates for deletion)
-git branch -r --merged origin/main | grep -v main
+# List candidates for closure (stale, unmerged)
+gh pr list --state open --search "updated:<$(date -v-14d +%Y-%m-%d)" \
+  --json number,title,updatedAt --jq '.[] | "PR #\(.number): \(.title)"'
 ```
 
-#### **AI Assistant Guidelines**
+#### **AI Assistant Dynamic Guidelines** ⚠️ **CONTEXT-AWARE**
 
-When working with AI assistance, the assistant should:
-1. **Check branch count** before suggesting new branch creation
-2. **Propose branch cleanup** if count exceeds 5
-3. **Reuse existing branches** when adding related fixes
-4. **Suggest immediate merge** for completed work
-5. **Remind about cleanup** after successful PR merges
+The AI assistant should adapt behavior based on repository state:
 
-**Example AI Prompt**:
-> "Before we create a new branch, let's check if we have too many active branches. If we do, let's clean up merged branches first."
+**1. Pre-Branch Creation Assessment**:
+```bash
+# AI runs this check before suggesting new branch
+BRANCH_COUNT=$(git branch -r | grep -v "HEAD\|main" | wc -l | tr -d ' ')
+STALE_COUNT=$(gh pr list --state open --search "updated:<$(date -v-7d +%Y-%m-%d)" --json number --jq '. | length')
+
+if [ $STALE_COUNT -gt 2 ]; then
+  echo "🚨 Stale branches detected - propose cleanup first"
+elif [ $BRANCH_COUNT -gt 12 ]; then
+  echo "⚠️  High branch count - ask user about project phase"
+elif [ $BRANCH_COUNT -gt 8 ]; then
+  echo "⚡ Moderate branches - suggest consolidation opportunity"
+else
+  echo "✅ Healthy state - proceed with branch creation"
+fi
+```
+
+**2. Context-Sensitive Recommendations**:
+
+| Scenario | AI Action |
+|:---------|:----------|
+| **Bug fix + existing fix/* branch** | Suggest reusing existing branch |
+| **Small change + open PR for same area** | Suggest adding to existing PR |
+| **Large feature + >8 branches** | Suggest hierarchical parent/child structure |
+| **Experimental work** | Suggest `research/*` branch with clear timeline |
+| **Stale branches present** | Proactively ask about closing/merging |
+
+**3. Merge Velocity Optimization**:
+```markdown
+AI should track:
+- Time since branch creation
+- Number of commits
+- CI status
+- Review status
+
+If branch is:
+- ✅ CI passing + reviewed → Suggest immediate merge
+- ⏳ >5 days old + 0 reviews → Prompt user for review request
+- 🔄 >10 days old → Suggest rebase or close decision
+- 🔴 CI failing → Don't create new branches until fixed
+```
+
+**4. Adaptive Communication**:
+
+**Healthy State** (<8 branches):
+> "Creating `feature/new-solver` branch for solver implementation."
+
+**Warning State** (8-12 branches):
+> "Note: 10 active branches detected. I'll create `feature/new-solver`, but consider reviewing stale branches soon."
+
+**Critical State** (>12 branches):
+> "⚠️ 14 active branches - above recommended limit. Should we clean up merged/stale branches before creating new ones? I can help identify candidates."
+
+**5. Proactive Maintenance Prompts**:
+
+AI should remind about maintenance at appropriate intervals:
+- After every 3rd PR merge: "Consider running branch health check"
+- When creating 5th branch: "Approaching branch limit - review stale PRs?"
+- When detecting stale branches: "PR #142 hasn't been updated in 10 days - still needed?"
 
 ### **Asynchronous Multi-Branch Development** ⚠️ **CRITICAL**
 
