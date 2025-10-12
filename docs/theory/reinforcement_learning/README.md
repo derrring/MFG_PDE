@@ -34,18 +34,23 @@ Implementation architecture for complex algorithms:
 | [maddpg_architecture_design.md](maddpg_architecture_design.md) | MADDPG implementation architecture | [maddpg_for_mfg_formulation.md](maddpg_for_mfg_formulation.md) |
 | [nash_q_learning_architecture.md](nash_q_learning_architecture.md) | Nash Q-Learning implementation design | [nash_q_learning_formulation.md](nash_q_learning_formulation.md) |
 
-### 🌍 Multi-Population Theory (2 docs)
-Mathematical frameworks for heterogeneous agents and multi-population MFG:
+### 🌍 Multi-Population Theory (1 comprehensive doc)
+Unified mathematical framework for heterogeneous agents and multi-population MFG:
 
-| Document | Focus | Scope |
-|:---------|:------|:------|
-| [heterogeneous_agents_formulation.md](heterogeneous_agents_formulation.md) | Multi-population MFG with different agent types | Phase 3.2.1 |
-| [multi_population_continuous_control.md](multi_population_continuous_control.md) | Multi-population with continuous action spaces | Phase 3.4 (Production) |
+| Document | Scope | Status |
+|:---------|:------|:-------|
+| [multi_population_mfg_reinforcement_learning.md](multi_population_mfg_reinforcement_learning.md) | **Complete multi-population framework** (discrete + continuous) | ✅ Production-Ready |
 
 **Key Concepts**:
-- **Heterogeneous Agents**: K different agent types with distinct objectives, dynamics, and capabilities
+- **Heterogeneous Agents**: $K$ different agent types with distinct objectives, dynamics, and capabilities
+- **Action Spaces**: Both discrete (Q-Learning, Actor-Critic) and continuous (DDPG, TD3, SAC)
 - **Multi-Population Coupling**: Cross-population interactions through joint distribution $\mathbf{m} = (m^1, \ldots, m^K)$
 - **Nash Equilibrium**: No population can unilaterally improve by deviating
+- **Unified Treatment**: Single comprehensive reference covering all formulations
+
+**This document consolidates** (with 30% redundancy elimination):
+- `heterogeneous_agents_formulation.md` (archived)
+- `multi_population_continuous_control.md` (archived)
 
 ### 📊 Scalability & Planning (3 docs)
 Technical analysis, roadmaps, and code examples:
