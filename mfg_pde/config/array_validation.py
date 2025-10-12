@@ -225,13 +225,101 @@ class MFGArrays(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_solution_consistency(self) -> MFGArrays:
-        """Validate consistency between U and M solutions."""
+    def validate_all_arrays(self) -> MFGArrays:
+        """
+        Validate all NumPy array properties after model construction.
+
+        Note: Must use @model_validator instead of @field_validator for NumPy arrays
+        because Pydantic skips field validation when arbitrary_types_allowed=True.
+        """
         U_solution = self.U_solution
         M_solution = self.M_solution
+        grid_config = self.grid_config
+        validation_config = self.validation_config
 
+        # === Validate U_solution ===
+        if U_solution is not None and grid_config is not None:
+            expected_shape = grid_config.grid_shape
+
+            # Shape validation
+            if U_solution.shape != expected_shape:
+                raise ValueError(f"U solution shape {U_solution.shape} != expected {expected_shape}")
+
+            # Data type validation
+            if not np.issubdtype(U_solution.dtype, np.floating):
+                raise ValueError("U solution must be floating point array")
+
+            # NaN/Inf validation
+            if np.any(np.isnan(U_solution)):
+                raise ValueError("U solution contains NaN values")
+            if np.any(np.isinf(U_solution)):
+                raise ValueError("U solution contains infinite values")
+
+            # Smoothness check (optional warning)
+            if U_solution.size > 4 and U_solution.ndim == 2 and min(U_solution.shape) >= 3:
+                try:
+                    second_diff_x = np.diff(U_solution, n=2, axis=1)
+                    second_diff_t = np.diff(U_solution, n=2, axis=0)
+
+                    max_diff_x = np.max(np.abs(second_diff_x))
+                    max_diff_t = np.max(np.abs(second_diff_t))
+
+                    if (
+                        max_diff_x > validation_config.smoothness_threshold
+                        or max_diff_t > validation_config.smoothness_threshold
+                    ):
+                        warnings.warn(
+                            f"U solution may be non-smooth (max second diff: x={max_diff_x:.2e}, t={max_diff_t:.2e})",
+                            UserWarning,
+                        )
+                except Exception:
+                    pass
+
+        # === Validate M_solution ===
+        if M_solution is not None and grid_config is not None:
+            expected_shape = grid_config.grid_shape
+
+            # Shape validation
+            if M_solution.shape != expected_shape:
+                raise ValueError(f"M solution shape {M_solution.shape} != expected {expected_shape}")
+
+            # Data type validation
+            if not np.issubdtype(M_solution.dtype, np.floating):
+                raise ValueError("M solution must be floating point array")
+
+            # NaN/Inf validation
+            if np.any(np.isnan(M_solution)):
+                raise ValueError("M solution contains NaN values")
+            if np.any(np.isinf(M_solution)):
+                raise ValueError("M solution contains infinite values")
+
+            # Physical constraint: non-negativity
+            if np.any(M_solution < 0):
+                negative_count = np.sum(M_solution < 0)
+                min_value = np.min(M_solution)
+                raise ValueError(
+                    f"Density M must be non-negative everywhere. "
+                    f"Found {negative_count} negative values (min: {min_value:.2e})"
+                )
+
+            # Mass conservation check (warnings only)
+            dx = grid_config.dx
+            for t_idx in range(M_solution.shape[0]):
+                mass_at_t = trapezoid(M_solution[t_idx], dx=dx)
+                if not np.isclose(mass_at_t, 1.0, rtol=validation_config.mass_conservation_rtol):
+                    if t_idx == 0:
+                        warnings.warn(
+                            f"Initial mass not normalized: {mass_at_t:.6f} (should be 1.0)",
+                            UserWarning,
+                        )
+                    elif t_idx == M_solution.shape[0] - 1:
+                        warnings.warn(
+                            f"Final mass not conserved: {mass_at_t:.6f} (should be 1.0)",
+                            UserWarning,
+                        )
+
+        # === Validate consistency between U and M ===
         if U_solution is not None and M_solution is not None:
-            # Shape consistency
             if U_solution.shape != M_solution.shape:
                 raise ValueError(f"U and M shape mismatch: {U_solution.shape} vs {M_solution.shape}")
 
@@ -300,16 +388,22 @@ class CollocationConfig(BaseModel):
     points: NDArray[np.floating] = Field(..., description="Collocation points array")
     grid_config: MFGGridConfig = Field(..., description="Grid configuration")
 
-    @field_validator("points")
-    @classmethod
-    def validate_collocation_points(cls, v: NDArray[np.floating], info: Any) -> NDArray[np.floating]:
-        """Validate collocation points properties."""
+    @model_validator(mode="after")
+    def validate_collocation_points(self) -> CollocationConfig:
+        """
+        Validate collocation points properties after model construction.
+
+        Note: Must use @model_validator instead of @field_validator for NumPy arrays
+        because Pydantic skips field validation when arbitrary_types_allowed=True.
+        """
+        v = self.points
+        grid_config = self.grid_config
+
         # Shape validation
         if v.ndim != 2 or v.shape[1] != 1:
             raise ValueError(f"Collocation points must be Nx1 array, got shape {v.shape}")
 
         # Domain validation
-        grid_config = info.data.get("grid_config") if info.data else None
         if grid_config:
             xmin, xmax = grid_config.xmin, grid_config.xmax
             if np.any(v < xmin) or np.any(v > xmax):
@@ -348,7 +442,7 @@ class CollocationConfig(BaseModel):
                     UserWarning,
                 )
 
-        return v
+        return self
 
     model_config = {"arbitrary_types_allowed": True, "validate_assignment": True}
 

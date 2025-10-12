@@ -42,6 +42,9 @@ MFG_PDE supports multiple paradigms with optional dependencies:
 | **Numerical** | `pip install mfg-pde[numerical]` | Network MFG (igraph, NetworkX) |
 | **All Features** | `pip install mfg-pde[all]` | Everything included |
 
+> **💡 Tip:** Combine multiple extras with commas:
+> `pip install mfg-pde[numerical,neural]` or `pip install mfg-pde[gpu,performance,reinforcement]`
+
 **Check what's installed:**
 ```python
 import mfg_pde

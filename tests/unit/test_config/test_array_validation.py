@@ -221,7 +221,7 @@ class TestMFGArrays:
         """Test U solution with wrong shape raises error."""
         wrong_shape_U = np.random.randn(20, 30)
 
-        with pytest.raises(ValidationError, match="U and M shape mismatch"):
+        with pytest.raises(ValidationError, match=r"U solution shape .* != expected"):
             MFGArrays(U_solution=wrong_shape_U, M_solution=valid_M_solution, grid_config=grid_config)
 
     @pytest.mark.skip(reason="Array validation needs fixing - pre-existing test failure")
@@ -325,7 +325,7 @@ class TestMFGArrays:
         U = np.random.randn(*grid_config.grid_shape)
         M = np.abs(np.random.randn(20, 30))  # Wrong shape
 
-        with pytest.raises(ValidationError, match="U and M shape mismatch"):
+        with pytest.raises(ValidationError, match=r"M solution shape .* != expected"):
             MFGArrays(U_solution=U, M_solution=M, grid_config=grid_config)
 
     def test_get_solution_statistics(self, grid_config, valid_U_solution, valid_M_solution):
@@ -450,8 +450,9 @@ class TestCollocationConfig:
             warnings.simplefilter("always")
             CollocationConfig(points=points, grid_config=grid_config)
 
-            assert len(w) >= 1
-            assert "Duplicate collocation points" in str(w[0].message)
+            # Check for duplicate warning in any warning message (not just first)
+            duplicate_warnings = [warning for warning in w if "Duplicate collocation points" in str(warning.message)]
+            assert len(duplicate_warnings) >= 1
 
     def test_collocation_points_irregular_distribution_warning(self, grid_config):
         """Test warning for irregular point distribution."""

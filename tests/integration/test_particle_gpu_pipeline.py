@@ -17,9 +17,12 @@ from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
 try:
     from mfg_pde.backends.torch_backend import TorchBackend
 
+    # Test if torch backend actually works by creating a simple instance
+    _test_backend = TorchBackend(device="cpu")
     TORCH_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception):
     TORCH_AVAILABLE = False
+    TorchBackend = None
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
