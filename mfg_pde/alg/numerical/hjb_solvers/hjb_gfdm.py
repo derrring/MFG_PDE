@@ -974,6 +974,302 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         return constraints
 
+    def solve_hjb_system(
+        self,
+        M_density_evolution_from_FP: np.ndarray,
+        U_final_condition_at_T: np.ndarray,
+        U_from_prev_picard: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Solve the HJB system using GFDM collocation method.
+
+        Args:
+            M_density_evolution_from_FP: (Nt, Nx) density evolution from FP solver
+            U_final_condition_at_T: (Nx,) final condition for value function
+            U_from_prev_picard: (Nt, Nx) value function from previous Picard iteration
+
+        Returns:
+            (Nt, Nx) solution array
+        """
+        Nt, _Nx = M_density_evolution_from_FP.shape
+
+        # For GFDM, we work directly with collocation points
+        # Map grid data to collocation points
+        U_solution_collocation = np.zeros((Nt, self.n_points))
+        M_collocation = self._map_grid_to_collocation_batch(M_density_evolution_from_FP)
+        U_prev_collocation = self._map_grid_to_collocation_batch(U_from_prev_picard)
+
+        # Set final condition
+        U_solution_collocation[Nt - 1, :] = self._map_grid_to_collocation(U_final_condition_at_T)
+
+        # Backward time stepping
+        for n in range(Nt - 2, -1, -1):
+            U_solution_collocation[n, :] = self._solve_timestep(
+                U_solution_collocation[n + 1, :],
+                U_prev_collocation[n, :],
+                M_collocation[n + 1, :],
+                n,
+            )
+
+        # Map back to grid
+        U_solution = self._map_collocation_to_grid_batch(U_solution_collocation)
+        return U_solution
+
+    def _solve_timestep(
+        self,
+        u_n_plus_1: np.ndarray,
+        u_prev_picard: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        time_idx: int,
+    ) -> np.ndarray:
+        """Solve HJB at one time step using Newton iteration."""
+        # Inject temporal context for enhanced QP features
+        if self.qp_optimization_level in ["smart", "tuned"]:
+            total_time_steps = getattr(self.problem, "Nt", 50) + 1
+            self._current_time_ratio = time_idx / max(1, total_time_steps - 1)
+
+        u_current = u_n_plus_1.copy()
+
+        for newton_iter in range(self.max_newton_iterations):
+            # Inject Newton iteration context for enhanced QP features
+            if self.qp_optimization_level in ["smart", "tuned"]:
+                self._current_newton_iter = newton_iter
+            # Compute residual
+            residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+
+            # Check convergence
+            if np.linalg.norm(residual) < self.newton_tolerance:
+                break
+
+            # Compute Jacobian
+            jacobian = self._compute_hjb_jacobian(u_current, u_prev_picard, m_n_plus_1, time_idx)
+
+            # Apply boundary conditions
+            jacobian_bc, residual_bc = self._apply_boundary_conditions_to_system(jacobian, residual, time_idx)
+
+            # Newton update with step size limiting
+            try:
+                delta_u = np.linalg.solve(jacobian_bc, -residual_bc)
+            except np.linalg.LinAlgError:
+                delta_u = np.linalg.pinv(jacobian_bc) @ (-residual_bc)
+
+            # Limit step size to prevent extreme updates
+            max_step = 10.0  # Reasonable limit for value function updates
+            step_norm = np.linalg.norm(delta_u)
+            if step_norm > max_step:
+                delta_u = delta_u * (max_step / step_norm)
+
+            u_current += delta_u
+
+            # Apply boundary conditions to solution
+            u_current = self._apply_boundary_conditions_to_solution(u_current, time_idx)
+
+        return u_current
+
+    def _compute_hjb_residual(
+        self,
+        u_current: np.ndarray,
+        u_n_plus_1: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        time_idx: int,
+    ) -> np.ndarray:
+        """Compute HJB residual at collocation points."""
+        residual = np.zeros(self.n_points)
+
+        # Time derivative approximation (backward Euler)
+        dt = self.problem.T / (self.problem.Nt - 1)
+        u_t = (u_current - u_n_plus_1) / dt
+
+        for i in range(self.n_points):
+            # Get spatial coordinates
+            x = self.collocation_points[i]
+
+            # Approximate derivatives using GFDM
+            derivs = self.approximate_derivatives(u_current, i)
+
+            # Extract gradient and Hessian
+            # For 1D: derivs[(1,)] is du/dx, derivs[(2,)] is d²u/dx²
+            # For 2D: derivs[(1,0)] is du/dx, derivs[(0,1)] is du/dy, etc.
+            d = self.problem.d  # Spatial dimension
+            if d == 1:
+                p = derivs.get((1,), 0.0)
+                laplacian = derivs.get((2,), 0.0)
+            elif d == 2:
+                p_x = derivs.get((1, 0), 0.0)
+                p_y = derivs.get((0, 1), 0.0)
+                p = np.array([p_x, p_y])
+                laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)
+            else:
+                msg = f"Dimension {d} not implemented"
+                raise NotImplementedError(msg)
+
+            # Hamiltonian (user-provided)
+            H = self.problem.H(x, p, m_n_plus_1[i])
+
+            # Diffusion coefficient
+            sigma = self.problem.sigma(x)
+            diffusion_term = 0.5 * sigma**2 * laplacian
+
+            # HJB residual: u_t + H - (sigma²/2)Δu = 0
+            residual[i] = u_t[i] + H - diffusion_term
+
+        return residual
+
+    def _compute_hjb_jacobian(
+        self,
+        u_current: np.ndarray,
+        u_prev_picard: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        time_idx: int,
+    ) -> np.ndarray:
+        """
+        Compute Jacobian matrix for Newton iteration.
+
+        Uses finite differences to approximate ∂R/∂u where R is the residual.
+        """
+        n = self.n_points
+        jacobian = np.zeros((n, n))
+
+        # Finite difference step
+        eps = 1e-7
+
+        # Compute Jacobian by columns (perturbing each u[j])
+        for j in range(n):
+            u_plus = u_current.copy()
+            u_plus[j] += eps
+
+            # Placeholder for u_n_plus_1 (not perturbed in Newton iteration)
+            u_n_plus_1_dummy = u_current.copy()
+
+            residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1_dummy, m_n_plus_1, time_idx)
+            residual_base = self._compute_hjb_residual(u_current, u_n_plus_1_dummy, m_n_plus_1, time_idx)
+
+            jacobian[:, j] = (residual_plus - residual_base) / eps
+
+        return jacobian
+
+    def _apply_boundary_conditions_to_solution(self, u: np.ndarray, time_idx: int) -> np.ndarray:
+        """Apply boundary conditions directly to solution array."""
+        # Check boundary condition type
+        bc_type_val = self._get_boundary_condition_property("type", "dirichlet")
+
+        # Convert to lowercase for case-insensitive comparison
+        if isinstance(bc_type_val, str):
+            bc_type = bc_type_val.lower()
+        else:
+            bc_type = "dirichlet"
+
+        if bc_type == "dirichlet":
+            # For collocation points on boundaries, enforce Dirichlet values
+            # This depends on how boundaries are marked in collocation_points
+            # Placeholder implementation:
+            # bc_value = self._get_boundary_condition_property("value", 0.0)
+            # if callable(bc_value):
+            #     for i in self.boundary_point_indices:
+            #         u[i] = bc_value(self.collocation_points[i], self.problem.T * time_idx / self.problem.Nt)
+            # else:
+            #     u[self.boundary_point_indices] = bc_value
+            return u
+        elif bc_type == "neumann":
+            # Neumann conditions typically enforced weakly through residual
+            return u
+        else:
+            # Default: no modification
+            return u
+
+    def _apply_boundary_conditions_to_system(
+        self, jacobian: np.ndarray, residual: np.ndarray, time_idx: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Apply boundary conditions to the linear system J·δu = -R.
+
+        For Dirichlet BC: Set row to identity and residual to zero.
+        For Neumann BC: Usually handled weakly (no modification).
+        """
+        jacobian_bc = jacobian.copy()
+        residual_bc = residual.copy()
+
+        bc_type_val = self._get_boundary_condition_property("type", "dirichlet")
+        if isinstance(bc_type_val, str):
+            bc_type = bc_type_val.lower()
+        else:
+            bc_type = "dirichlet"
+
+        if bc_type == "dirichlet":
+            # Identify boundary points
+            # Placeholder: Assume boundary_point_indices is available
+            # boundary_indices = getattr(self, 'boundary_point_indices', [])
+            # for i in boundary_indices:
+            #     jacobian_bc[i, :] = 0.0
+            #     jacobian_bc[i, i] = 1.0
+            #     residual_bc[i] = 0.0
+            return jacobian_bc, residual_bc
+        else:
+            return jacobian_bc, residual_bc
+
+    def _map_grid_to_collocation(self, u_grid: np.ndarray) -> np.ndarray:
+        """
+        Map values from regular grid to collocation points.
+
+        Uses nearest neighbor or linear interpolation.
+        """
+        # Placeholder implementation: Assume 1D for simplicity
+        # For production: use scipy.interpolate or custom interpolation
+        u_collocation = np.zeros(self.n_points)
+        for i in range(self.n_points):
+            # Find nearest grid point or interpolate
+            # Simple approach: nearest neighbor
+            idx = self._map_collocation_index_to_grid_index(i)
+            u_collocation[i] = u_grid[idx]
+        return u_collocation
+
+    def _map_collocation_to_grid(self, u_collocation: np.ndarray) -> np.ndarray:
+        """
+        Map values from collocation points to regular grid.
+
+        Uses inverse interpolation or reconstruction.
+        """
+        # Placeholder: Assume 1D and that grid == collocation points
+        Nx = getattr(self.problem, "Nx", self.n_points)
+        u_grid = np.zeros(Nx)
+        for j in range(Nx):
+            # Find nearest collocation point
+            # Simple approach: direct copy if aligned
+            if j < self.n_points:
+                u_grid[j] = u_collocation[j]
+        return u_grid
+
+    def _map_grid_to_collocation_batch(self, U_grid: np.ndarray) -> np.ndarray:
+        """Batch version of _map_grid_to_collocation."""
+        Nt, _Nx = U_grid.shape
+        U_collocation = np.zeros((Nt, self.n_points))
+        for n in range(Nt):
+            U_collocation[n, :] = self._map_grid_to_collocation(U_grid[n, :])
+        return U_collocation
+
+    def _map_collocation_to_grid_batch(self, U_collocation: np.ndarray) -> np.ndarray:
+        """Batch version of _map_collocation_to_grid."""
+        Nt, _n_points = U_collocation.shape
+        Nx = getattr(self.problem, "Nx", self.n_points)
+        U_grid = np.zeros((Nt, Nx))
+        for n in range(Nt):
+            U_grid[n, :] = self._map_collocation_to_grid(U_collocation[n, :])
+        return U_grid
+
+    def _map_collocation_index_to_grid_index(self, collocation_idx: int) -> int:
+        """
+        Map collocation point index to nearest grid index.
+
+        Placeholder: Assumes collocation points are aligned with grid.
+        """
+        # Simple 1D mapping
+        Nx = getattr(self.problem, "Nx", self.n_points)
+        if self.n_points == Nx:
+            return collocation_idx
+        else:
+            # Scale index
+            return int(collocation_idx * Nx / self.n_points)
+
 
 class MonotonicityStats:
     """Track M-matrix property satisfaction statistics across solve."""
