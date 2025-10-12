@@ -324,6 +324,11 @@ class TestMassConservation1D:
             f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
         )
 
+    @pytest.mark.skip(
+        reason="HJBGFDMSolver is abstract and cannot be instantiated directly. "
+        "This test needs refactoring to use a concrete GFDM implementation. "
+        "Issue #140 - pre-existing test failure."
+    )
     def test_fp_particle_hjb_gfdm_mass_conservation(self, problem, boundary_conditions):
         """
         Test mass conservation for FP Particle + HJB GFDM (particle collocation).

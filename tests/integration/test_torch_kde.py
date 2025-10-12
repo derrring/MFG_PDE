@@ -5,14 +5,16 @@ import pytest
 
 import numpy as np
 
-# Check if PyTorch is available
+# Check if PyTorch is available - import HAS_TORCH flag from torch_utils
 try:
+    from mfg_pde.utils.acceleration.torch_utils import HAS_TORCH
     from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
 
-    TORCH_AVAILABLE = True
+    TORCH_AVAILABLE = HAS_TORCH  # Use the actual torch availability flag
 except ImportError:
     TORCH_AVAILABLE = False
     TorchKDE = None
+    HAS_TORCH = False
 
 # Test scipy KDE for comparison
 try:
