@@ -170,6 +170,7 @@ jobs:
       - name: Generate performance report
         if: always()
         run: |
+          mkdir -p .benchmarks
           python -c "
           from benchmarks.performance_tracker import PerformanceTracker
           from benchmarks.standard_problems import get_problems_by_category
