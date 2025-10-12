@@ -13,6 +13,15 @@ import pytest
 
 import numpy as np
 
+# Check if OmegaConf is available
+try:
+    import omegaconf
+
+    OMEGACONF_AVAILABLE = True
+except ImportError:
+    OMEGACONF_AVAILABLE = False
+    omegaconf = None
+
 from mfg_pde.factory.general_mfg_factory import (
     GeneralMFGFactory,
     create_general_mfg_problem,
@@ -344,6 +353,7 @@ def test_validate_config_missing_time(factory):
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not OMEGACONF_AVAILABLE, reason="OmegaConf not available")
 def test_create_template_config(factory):
     """Test creating template configuration file."""
     with tempfile.TemporaryDirectory() as tmpdir:

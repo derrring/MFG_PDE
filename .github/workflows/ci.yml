@@ -46,10 +46,55 @@ env:
   CACHE_VERSION: v1
 
 jobs:
+  # === PHASE 0: Quick Validation (Fail Fast) ===
+  quick-checks:
+    name: Quick Validation (Syntax & Format)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install minimal dependencies
+      timeout-minutes: 2
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff
+
+    - name: Python syntax check (instant fail)
+      timeout-minutes: 1
+      run: |
+        echo "Checking Python syntax..."
+        find mfg_pde -name "*.py" -exec python -m py_compile {} +
+        echo "✅ Syntax valid"
+
+    - name: Ruff format check (instant fail)
+      timeout-minutes: 1
+      run: |
+        echo "Checking code formatting..."
+        ruff format --check mfg_pde/
+        echo "✅ Formatting valid"
+
+    - name: Ruff lint (critical errors only)
+      timeout-minutes: 1
+      run: |
+        echo "Checking for critical lint errors (syntax & undefined names)..."
+        ruff check --select F mfg_pde/
+        echo "✅ No critical errors"
+
   # === PHASE 1: Code Quality Gate ===
   code-quality:
-    name: Code Quality & Formatting
+    name: Code Quality & Type Checking
     runs-on: ubuntu-latest
+    needs: quick-checks
+    timeout-minutes: 10
 
     steps:
     - name: Checkout code
@@ -62,11 +107,19 @@ jobs:
         cache: 'pip'
 
     - name: Install dependencies
+      timeout-minutes: 5
       run: |
         python -m pip install --upgrade pip
         pip install -e .[dev]
 
+    - name: Quick import test
+      timeout-minutes: 1
+      run: |
+        echo "Testing package imports..."
+        python -c "import mfg_pde; print('✅ Package imports successfully')"
+
     - name: Ruff Formatting Check
+      timeout-minutes: 2
       run: |
         echo "🎨 Running Ruff formatter (10x faster than Black)..."
         ruff format --check --diff mfg_pde/
@@ -139,6 +192,9 @@ jobs:
     needs: code-quality
     timeout-minutes: 40  # Increased for comprehensive test suite (1450+ tests)
 
+    strategy:
+      fail-fast: true  # Stop on first failure
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -150,19 +206,28 @@ jobs:
         cache: 'pip'
 
     - name: Install dependencies
+      timeout-minutes: 5
       run: |
         python -m pip install --upgrade pip
         pip install -e .[dev]
 
+    - name: Quick import test
+      timeout-minutes: 1
+      run: |
+        echo "Testing package imports..."
+        python -c "import mfg_pde; print('✅ Package imports successfully')"
+
     - name: Run tests with coverage (skip slow tests on PRs)
       if: github.event_name != 'release'
+      timeout-minutes: 35
       run: |
-        pytest tests/ -v -m "not slow" --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy
+        pytest tests/ -v -m "not slow" --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=5
 
     - name: Run all tests with coverage (including slow tests on releases)
       if: github.event_name == 'release'
+      timeout-minutes: 35
       run: |
-        pytest tests/ -v --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy
+        pytest tests/ -v --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=10
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
@@ -179,7 +244,7 @@ jobs:
   performance-check:
     name: Performance & Memory Validation
     runs-on: ubuntu-latest
-    needs: code-quality
+    needs: test-suite  # Wait for tests to pass before performance checks
     timeout-minutes: 15  # Timeout for performance checks
     if: ${{ github.event.inputs.run_performance_tests != 'false' }}
 
@@ -194,11 +259,13 @@ jobs:
         cache: 'pip'
 
     - name: Install dependencies
+      timeout-minutes: 5
       run: |
         python -m pip install --upgrade pip
         pip install -e .[performance]
 
     - name: Memory usage validation
+      timeout-minutes: 10
       run: |
         echo "🧠 Testing memory usage with controlled problem size..."
         python -c "

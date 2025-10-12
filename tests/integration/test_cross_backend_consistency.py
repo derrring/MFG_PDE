@@ -20,10 +20,8 @@ try:
     from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
     from mfg_pde.utils.acceleration.torch_utils import tridiagonal_solve as torch_tridiag
 
-    # Test if torch is actually available by creating a simple object
-    _test_kde = TorchKDE(np.array([0.5]), bw_method=0.1)
     TORCH_IMPORTS_AVAILABLE = True
-except (ImportError, Exception):
+except ImportError:
     TorchKDE = None
     torch_tridiag = None
     TORCH_IMPORTS_AVAILABLE = False
