@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from jax import jit
 
     from mfg_pde.backends.base_backend import BaseBackend
-    from mfg_pde.types.internal import JAXArray
+    from mfg_pde.types.solver_types import JAXArray
 
     from .domain_1d import Domain1D
 

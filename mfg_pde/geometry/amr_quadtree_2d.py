@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.backends.base_backend import BaseBackend
-    from mfg_pde.types.internal import JAXArray
+    from mfg_pde.types.solver_types import JAXArray
 
 
 @dataclass
