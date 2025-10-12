@@ -11,12 +11,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-import numpy as np
-
 if TYPE_CHECKING:
+    import numpy as np
     from numpy.typing import NDArray
 
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator, ParticleCollocationSolver
+from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 from mfg_pde.config.solver_config import (
     FPConfig,
     GFDMConfig,
@@ -38,7 +37,8 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-SolverType = Literal["fixed_point", "particle_collocation", "monitored_particle", "adaptive_particle"]
+SolverType = Literal["fixed_point", "monitored_particle", "adaptive_particle"]
+# Note: "particle_collocation" has been moved to mfg-research repository
 
 
 @dataclass
@@ -80,7 +80,7 @@ class SolverFactory:
         enable_amr: bool = False,
         amr_config: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> FixedPointIterator | ParticleCollocationSolver:
+    ) -> FixedPointIterator:
         """
         Create an MFG solver with optimized configuration.
 
@@ -116,32 +116,24 @@ class SolverFactory:
             )
 
         # Validate solver type with helpful suggestions
-        valid_types = [
-            "fixed_point",
-            "particle_collocation",
-            "monitored_particle",
-            "adaptive_particle",
-        ]
+        valid_types = ["fixed_point"]
         if solver_type not in valid_types:
             suggestions = "\n".join([f"  • {t}" for t in valid_types])
             raise ValueError(
                 f"Unknown solver type: '{solver_type}'\n\n"
                 f"Valid solver types are:\n{suggestions}\n\n"
-                f"Example: create_fast_solver(problem, solver_type='particle_collocation')"
+                f"Note: 'particle_collocation' has been moved to mfg-research repository.\n"
+                f"Example: create_fast_solver(problem, solver_type='fixed_point')"
             )
 
         # Create base solver based on type
-        base_solver: FixedPointIterator | ParticleCollocationSolver | ParticleCollocationSolver
-
         if solver_type == "fixed_point":
             base_solver = SolverFactory._create_fixed_point_solver(problem, config, hjb_solver, fp_solver, **kwargs)
-        elif solver_type == "particle_collocation":
-            base_solver = SolverFactory._create_particle_collocation_solver(
-                problem, config, collocation_points, **kwargs
-            )
         else:
             raise ValueError(
-                f"Unsupported solver type: {solver_type}. Available types: ['fixed_point', 'particle_collocation']"
+                f"Unsupported solver type: {solver_type}. "
+                "Note: 'particle_collocation' has been moved to mfg-research repository. "
+                f"Available types: ['fixed_point']"
             )
 
         # Enhance with AMR if requested
@@ -260,97 +252,9 @@ class SolverFactory:
             **constructor_kwargs,
         )
 
-    @staticmethod
-    def _create_particle_collocation_solver(
-        problem: MFGProblem,
-        config: MFGSolverConfig,
-        collocation_points: NDArray[np.floating] | None,
-        **kwargs: Any,
-    ) -> ParticleCollocationSolver:
-        """Create a particle collocation solver."""
-        if collocation_points is None:
-            # Create default collocation points
-            collocation_points = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-
-        # Extract particle-specific config
-        particle_config = config.fp.particle
-        gfdm_config = config.hjb.gfdm
-
-        # Filter out config-related kwargs
-        config_keys = {
-            "max_picard_iterations",
-            "picard_tolerance",
-            "max_newton_iterations",
-            "newton_tolerance",
-            "return_structured",
-            "warm_start",
-            "num_particles",
-            "delta",
-        }
-
-        solver_kwargs = {
-            "num_particles": particle_config.num_particles,
-            "delta": gfdm_config.delta,
-            "taylor_order": gfdm_config.taylor_order,
-            "weight_function": gfdm_config.weight_function,
-            "max_newton_iterations": config.hjb.newton.max_iterations,
-            "newton_tolerance": config.hjb.newton.tolerance,
-            "kde_bandwidth": particle_config.kde_bandwidth,
-            "normalize_kde_output": particle_config.normalize_output,
-            **{k: v for k, v in kwargs.items() if k not in config_keys},
-        }
-
-        return ParticleCollocationSolver(problem=problem, collocation_points=collocation_points, **solver_kwargs)
-
-    @staticmethod
-    def _create_monitored_particle_solver(
-        problem: MFGProblem,
-        config: MFGSolverConfig,
-        collocation_points: NDArray[np.floating] | None,
-        **kwargs: Any,
-    ) -> ParticleCollocationSolver:
-        """Create a monitored particle collocation solver with enhanced convergence."""
-        # Same as particle collocation but with additional monitoring config
-        return SolverFactory._create_particle_collocation_solver(problem, config, collocation_points, **kwargs)
-
-    @staticmethod
-    def _create_adaptive_particle_solver(
-        problem: MFGProblem,
-        config: MFGSolverConfig,
-        collocation_points: NDArray[np.floating] | None,
-        **kwargs: Any,
-    ) -> ParticleCollocationSolver:
-        """Create an adaptive particle collocation solver."""
-        if collocation_points is None:
-            collocation_points = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-
-        particle_config = config.fp.particle
-        gfdm_config = config.hjb.gfdm
-
-        # Filter out config-related kwargs
-        config_keys = {
-            "max_picard_iterations",
-            "picard_tolerance",
-            "max_newton_iterations",
-            "newton_tolerance",
-            "return_structured",
-            "warm_start",
-            "num_particles",
-            "delta",
-        }
-
-        solver_kwargs = {
-            "num_particles": particle_config.num_particles,
-            "delta": gfdm_config.delta,
-            "taylor_order": gfdm_config.taylor_order,
-            "weight_function": gfdm_config.weight_function,
-            "max_newton_iterations": config.hjb.newton.max_iterations,
-            "newton_tolerance": config.hjb.newton.tolerance,
-            "kde_bandwidth": particle_config.kde_bandwidth,
-            **{k: v for k, v in kwargs.items() if k not in config_keys},
-        }
-
-        return ParticleCollocationSolver(problem=problem, collocation_points=collocation_points, **solver_kwargs)
+    # Note: _create_particle_collocation_solver, _create_monitored_particle_solver,
+    # and _create_adaptive_particle_solver methods have been removed.
+    # Particle-collocation methods have been moved to mfg-research repository.
 
 
 # Convenience functions for common use cases
@@ -361,7 +265,7 @@ def create_solver(
     solver_type: SolverType = "fixed_point",
     preset: str = "balanced",
     **kwargs: Any,
-) -> FixedPointIterator | ParticleCollocationSolver:
+) -> FixedPointIterator:
     """
     Create an MFG solver with specified type and preset.
 
@@ -422,7 +326,7 @@ def create_basic_solver(
 
 def create_standard_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> FixedPointIterator | ParticleCollocationSolver:
+) -> FixedPointIterator:
     """
     Create standard production MFG solver (Tier 2 - DEFAULT).
 
@@ -461,7 +365,7 @@ def create_standard_solver(
 # Backward compatibility alias
 def create_fast_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> FixedPointIterator | ParticleCollocationSolver:
+) -> FixedPointIterator:
     """
     Deprecated: Use create_standard_solver() instead.
 
@@ -555,7 +459,7 @@ def create_semi_lagrangian_solver(
 
 def create_accurate_solver(
     problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> FixedPointIterator | ParticleCollocationSolver:
+) -> FixedPointIterator:
     """
     Create an accurate MFG solver optimized for precision.
 
@@ -584,45 +488,26 @@ def create_accurate_solver(
 
 
 def create_research_solver(
-    problem: MFGProblem, solver_type: SolverType = "monitored_particle", **kwargs: Any
-) -> FixedPointIterator | ParticleCollocationSolver:
+    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
+) -> FixedPointIterator:
     """
     Create a research MFG solver with comprehensive monitoring.
 
     Args:
         problem: MFG problem to solve
-        solver_type: Type of solver (defaults to monitored_particle for research)
+        solver_type: Type of solver
         **kwargs: Additional parameters
 
     Returns:
         Research-configured solver instance
+
+    Note:
+        Particle-collocation methods have been moved to mfg-research repository.
     """
     return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="research", **kwargs)
 
 
-def create_monitored_solver(
-    problem: MFGProblem, collocation_points: NDArray[np.floating] | None = None, **kwargs: Any
-) -> ParticleCollocationSolver:
-    """
-    Create a monitored particle collocation solver with enhanced convergence analysis.
-
-    Args:
-        problem: MFG problem to solve
-        collocation_points: Spatial collocation points
-        **kwargs: Additional parameters
-
-    Returns:
-        Monitored particle collocation solver
-    """
-    solver = SolverFactory.create_solver(
-        problem=problem,
-        solver_type="monitored_particle",
-        config_preset="research",
-        collocation_points=collocation_points,
-        **kwargs,
-    )
-    # Type assertion since we know this returns ParticleCollocationSolver for monitored_particle solver_type
-    return cast("ParticleCollocationSolver", solver)
+# Note: create_monitored_solver removed - particle-collocation moved to mfg-research repository
 
 
 def create_amr_solver(
@@ -631,7 +516,7 @@ def create_amr_solver(
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     **kwargs: Any,
-) -> FixedPointIterator | ParticleCollocationSolver:
+) -> FixedPointIterator:
     """
     Create an AMR-enhanced MFG solver.
 
