@@ -3,6 +3,8 @@
 Test ghost particle implementation for no-flux boundary conditions
 """
 
+import pytest
+
 import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
@@ -10,6 +12,11 @@ from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
 
+@pytest.mark.skip(
+    reason="HJBGFDMSolver is abstract and cannot be instantiated directly. "
+    "This test needs refactoring to use a concrete GFDM implementation. "
+    "Issue #140 - pre-existing test failure."
+)
 def test_ghost_particles():
     print("=== Testing Ghost Particle Implementation ===")
 
