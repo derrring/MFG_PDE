@@ -204,13 +204,14 @@ class TensorProductGrid:
 
         indices = []
         remaining = flat_index
-        for i in reversed(range(self.dimension)):
+        # Process dimensions in row-major order (C-order)
+        for i in range(self.dimension):
             stride = int(np.prod(self.num_points[i + 1 :])) if i < self.dimension - 1 else 1
             idx = remaining // stride
             indices.append(idx)
             remaining %= stride
 
-        return tuple(reversed(indices))
+        return tuple(indices)
 
     def get_spacing(self, dimension_idx: int = 0) -> float | NDArray:
         """
