@@ -295,7 +295,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
         # Create inputs
         M_density = np.ones((Nt, Nx))
@@ -313,7 +313,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
         # Create inputs with specific final condition
         M_density = np.ones((Nt, Nx))
@@ -332,7 +332,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
         # Create inputs
         M_density = np.ones((Nt, Nx))
@@ -351,7 +351,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
         # Create Gaussian density
         x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
@@ -374,7 +374,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant=variant)
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
         M_density = np.ones((Nt, Nx))
         U_final = np.zeros(Nx)
@@ -390,7 +390,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
         # Uniform density
         M_density = np.ones((Nt, Nx)) / Nx
@@ -412,7 +412,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
         M_density = np.ones((Nt, Nx)) * 0.5
         x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
@@ -430,7 +430,7 @@ class TestWenoSolverIntegration:
             solver = HJBWenoSolver(integration_problem, weno_variant="weno5", cfl_number=cfl)
 
             Nt = integration_problem.Nt + 1
-            Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+            Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
 
             M_density = np.ones((Nt, Nx))
             U_final = np.zeros(Nx)
