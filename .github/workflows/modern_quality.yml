@@ -9,11 +9,20 @@ name: Unified Quality Assurance
 #   - Ruff formatting and linting (covered by ci.yml quick-checks)
 #   - Security scanning (covered by ci.yml security-scan job)
 #
+# PHASE 1 CI CONSOLIDATION: Added workflow_run dependency on ci.yml
+# This workflow now waits for CI/CD Pipeline to complete before running
+# Benefits: Fail-fast execution, reduced wasted compute on broken PRs
+#
 # Trigger levels:
+# - workflow_run: Runs after CI/CD Pipeline completes (primary trigger)
 # - PR/Push: Type checking and benchmarks
 # - Manual/Release: Comprehensive validation (memory, performance, docs)
 
 on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       comprehensive:
