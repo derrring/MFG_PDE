@@ -504,6 +504,55 @@ class Domain3D(BaseGeometry):
         else:
             return 0.0
 
+    @property
+    def bounds(self) -> tuple[np.ndarray, np.ndarray]:
+        """Get 3D domain bounding box."""
+        if self.domain_type == "box":
+            min_coords = np.array([self.xmin, self.ymin, self.zmin])
+            max_coords = np.array([self.xmax, self.ymax, self.zmax])
+            return min_coords, max_coords
+
+        elif self.domain_type == "sphere":
+            center_x, center_y, center_z = self.center
+            min_coords = np.array([center_x - self.radius, center_y - self.radius, center_z - self.radius])
+            max_coords = np.array([center_x + self.radius, center_y + self.radius, center_z + self.radius])
+            return min_coords, max_coords
+
+        elif self.domain_type == "cylinder":
+            if self.axis == "z":
+                center_x, center_y = self.center
+                min_coords = np.array([center_x - self.radius, center_y - self.radius, 0.0])
+                max_coords = np.array([center_x + self.radius, center_y + self.radius, self.height])
+            elif self.axis == "y":
+                center_x, center_z = self.center
+                min_coords = np.array([center_x - self.radius, 0.0, center_z - self.radius])
+                max_coords = np.array([center_x + self.radius, self.height, center_z + self.radius])
+            else:  # axis == "x"
+                center_y, center_z = self.center
+                min_coords = np.array([0.0, center_y - self.radius, center_z - self.radius])
+                max_coords = np.array([self.height, center_y + self.radius, center_z + self.radius])
+            return min_coords, max_coords
+
+        elif self.domain_type == "polyhedron":
+            vertices_array = np.array(self.vertices)
+            min_coords = np.min(vertices_array, axis=0)
+            max_coords = np.max(vertices_array, axis=0)
+            return min_coords, max_coords
+
+        else:
+            # For custom domains, generate mesh first to get bounds
+            if self._mesh_data is None:
+                self._mesh_data = self.generate_mesh()
+            return self._mesh_data.bounds
+
+    def set_mesh_parameters(self, mesh_size: float | None = None, algorithm: str = "delaunay", **kwargs) -> None:
+        """Set mesh generation parameters."""
+        if mesh_size is not None:
+            self.mesh_size = mesh_size
+
+        self.mesh_algorithm = algorithm
+        self.mesh_kwargs = kwargs
+
     def export_mesh(self, format_type: str, filename: str):
         """Export mesh in specified format."""
         if not hasattr(self, "_mesh_data") or self._mesh_data is None:
