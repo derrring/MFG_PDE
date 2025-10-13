@@ -282,6 +282,176 @@ class TestWenoFamilySolver:
         assert variant.replace("-", "").upper() in info["name"].replace("-", "").upper()
 
 
+class TestWenoSolverIntegration:
+    """Integration tests for WENO solver solve_hjb_system method."""
+
+    @pytest.fixture
+    def integration_problem(self) -> ExampleMFGProblem:
+        """Create MFG problem for integration testing."""
+        return ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30, sigma=0.1)
+
+    def test_solve_hjb_system_shape(self, integration_problem):
+        """Test that solve_hjb_system returns correct shape."""
+        solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
+
+        Nt = integration_problem.Nt + 1
+        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+        # Create inputs
+        M_density = np.ones((Nt, Nx))
+        U_final = np.zeros(Nx)
+        U_prev = np.zeros((Nt, Nx))
+
+        # Solve
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        assert U_solution.shape == (Nt, Nx)
+        assert np.all(np.isfinite(U_solution))
+
+    def test_solve_hjb_system_final_condition(self, integration_problem):
+        """Test that final condition is preserved."""
+        solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
+
+        Nt = integration_problem.Nt + 1
+        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+        # Create inputs with specific final condition
+        M_density = np.ones((Nt, Nx))
+        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        U_final = 0.5 * (x_coords - integration_problem.xmax) ** 2
+        U_prev = np.zeros((Nt, Nx))
+
+        # Solve
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # Final time step should match final condition
+        assert np.allclose(U_solution[-1, :], U_final, rtol=0.1)
+
+    def test_solve_hjb_system_backward_propagation(self, integration_problem):
+        """Test that solution propagates backward in time."""
+        solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
+
+        Nt = integration_problem.Nt + 1
+        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+        # Create inputs
+        M_density = np.ones((Nt, Nx))
+        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        U_final = x_coords**2  # Quadratic final condition
+        U_prev = np.zeros((Nt, Nx))
+
+        # Solve
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # Solution should propagate backward
+        assert not np.allclose(U_solution[0, :], 0.0)
+
+    def test_solve_hjb_system_with_density_variation(self, integration_problem):
+        """Test solving with non-uniform density."""
+        solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
+
+        Nt = integration_problem.Nt + 1
+        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+        # Create Gaussian density
+        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        m_profile = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
+        M_density = np.tile(m_profile, (Nt, 1))
+
+        U_final = np.zeros(Nx)
+        U_prev = np.zeros((Nt, Nx))
+
+        # Solve
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # Should produce valid solution
+        assert np.all(np.isfinite(U_solution))
+        assert U_solution.shape == (Nt, Nx)
+
+    @pytest.mark.parametrize("variant", ["weno5", "weno-z", "weno-m", "weno-js"])
+    def test_solve_hjb_system_all_variants(self, integration_problem, variant):
+        """Test solve_hjb_system with all WENO variants."""
+        solver = HJBWenoSolver(integration_problem, weno_variant=variant)
+
+        Nt = integration_problem.Nt + 1
+        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+        M_density = np.ones((Nt, Nx))
+        U_final = np.zeros(Nx)
+        U_prev = np.zeros((Nt, Nx))
+
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        assert U_solution.shape == (Nt, Nx)
+        assert np.all(np.isfinite(U_solution))
+
+    def test_solve_with_uniform_density(self, integration_problem):
+        """Test solver with uniform density distribution."""
+        solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
+
+        Nt = integration_problem.Nt + 1
+        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+        # Uniform density
+        M_density = np.ones((Nt, Nx)) / Nx
+
+        # Simple final condition
+        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        U_final = (x_coords - 0.5) ** 2
+
+        U_prev = np.zeros((Nt, Nx))
+
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # Should produce valid solution
+        assert np.all(np.isfinite(U_solution))
+        assert U_solution.shape == (Nt, Nx)
+
+    def test_solution_finiteness(self, integration_problem):
+        """Test that solution remains finite throughout."""
+        solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
+
+        Nt = integration_problem.Nt + 1
+        Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+        M_density = np.ones((Nt, Nx)) * 0.5
+        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        U_final = np.sin(2 * np.pi * x_coords)
+        U_prev = np.zeros((Nt, Nx))
+
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # All values should be finite
+        assert np.all(np.isfinite(U_solution))
+
+    def test_different_cfl_numbers(self, integration_problem):
+        """Test solver with different CFL numbers."""
+        for cfl in [0.1, 0.3, 0.5]:
+            solver = HJBWenoSolver(integration_problem, weno_variant="weno5", cfl_number=cfl)
+
+            Nt = integration_problem.Nt + 1
+            Nx = integration_problem.Nx  # WENO uses Nx, not Nx+1
+
+            M_density = np.ones((Nt, Nx))
+            U_final = np.zeros(Nx)
+            U_prev = np.zeros((Nt, Nx))
+
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+            assert np.all(np.isfinite(U_solution))
+
+    def test_solver_not_abstract(self, integration_problem):
+        """Test that HJBWenoSolver can be instantiated and used."""
+        import inspect
+
+        # Should not raise TypeError about abstract methods
+        solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
+        assert isinstance(solver, HJBWenoSolver)
+
+        # Should not have abstract methods
+        assert not inspect.isabstract(HJBWenoSolver)
+
+
 if __name__ == "__main__":
     # Run tests when executed directly
     pytest.main([__file__, "-v"])
