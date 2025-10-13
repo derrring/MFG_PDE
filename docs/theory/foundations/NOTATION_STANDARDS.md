@@ -339,13 +339,38 @@ This connects to the JKO scheme discussed in `information_geometry_mfg.md` §6.2
 
 ### 7.2 Discretization Standards
 
-**Spatial**: Use notation $(x_i)_{i=1}^{N_x}$ for grid points
-**Temporal**: Use $(t_n)_{n=0}^{N_t}$ for time grid
-**Discrete Solution**: $u_i^n \approx u(t_n, x_i)$
+**Grid Convention** ⚠️ CRITICAL:
+- **Definition**: `Nx`, `Nt`, `Ny`, `Nz` denote **number of intervals** (not grid points)
+- **Grid Points**: Domain has `Nx+1` spatial points (including endpoints)
+- **Mathematical Basis**: Standard finite difference discretization
+  - Domain $[a, b]$ divided into $N$ equal intervals
+  - Grid spacing: $h = (b-a)/N$
+  - Grid points: $x_i = a + ih$ for $i = 0, 1, \ldots, N$
+
+**Implementation**:
+```python
+# Core definition in MFGProblem
+Nx = 50                            # 50 intervals
+xSpace = np.linspace(xmin, xmax, Nx + 1)  # 51 grid points
+Dx = (xmax - xmin) / Nx            # Interval spacing
+
+# All arrays have shape (Nx+1,) in space
+m_init = np.zeros(Nx + 1)          # Initial density
+u_fin = np.zeros(Nx + 1)           # Final value function
+```
+
+**Spatial**: Use notation $(x_i)_{i=0}^{N_x}$ for $N_x+1$ grid points
+**Temporal**: Use $(t_n)_{n=0}^{N_t}$ for $N_t+1$ time points
+**Discrete Solution**: $u_i^n \approx u(t_n, x_i)$ where arrays have shape `(Nt+1, Nx+1)`
 
 **Error Analysis**: Connect to theory via
 $$\|u^h - u\|_{L^\infty} \leq C h^p$$
-where $h = \Delta x$, $p$ is order of convergence.
+where $h = \Delta x = L/N_x$, $p$ is order of convergence.
+
+**Multi-Dimensional**:
+- 1D: Arrays of shape `(Nx+1,)` for $N_x+1$ points
+- 2D: Arrays of shape `(Nx+1, Ny+1)` for $(N_x+1) \times (N_y+1)$ points
+- Time-dependent: Arrays of shape `(Nt+1, Nx+1, ...)` for time-space
 
 ---
 
