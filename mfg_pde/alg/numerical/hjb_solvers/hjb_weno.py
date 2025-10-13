@@ -192,33 +192,33 @@ class HJBWenoSolver(BaseHJBSolver):
     def _setup_dimensional_grid(self) -> None:
         """Setup grid information based on problem dimension."""
         if self.dimension == 1:
-            # 1D case - existing logic
+            # 1D case - use standard grid convention: Nx intervals → Nx+1 grid points
             if hasattr(self.problem, "Nx"):
-                self.Nx = self.problem.Nx
+                self.Nx = self.problem.Nx + 1  # Grid points = intervals + 1
                 self.Dx = self.problem.Dx
             else:
-                self.Nx = getattr(self.problem, "nx", 64)
+                self.Nx = getattr(self.problem, "nx", 64) + 1
                 self.Dx = getattr(self.problem, "dx", 1.0 / (self.Nx - 1))
 
         elif self.dimension == 2:
-            # 2D case
+            # 2D case - use standard grid convention: Nx,Ny intervals → Nx+1,Ny+1 grid points
             if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "get_computational_grid"):
                 grid = self.problem.geometry.get_computational_grid()
-                self.Nx, self.Ny = grid["nx"], grid["ny"]
+                self.Nx, self.Ny = grid["nx"] + 1, grid["ny"] + 1  # Grid points = intervals + 1
                 self.Dx, self.Dy = grid["dx"], grid["dy"]
                 self.X, self.Y = grid["X"], grid["Y"]
             else:
                 # Fallback for 2D
-                self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 64))
-                self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 64))
+                self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 64)) + 1
+                self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 64)) + 1
                 self.Dx = getattr(self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.Nx - 1)))
                 self.Dy = getattr(self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.Ny - 1)))
 
         elif self.dimension == 3:
-            # 3D case
-            self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 32))
-            self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 32))
-            self.Nz = getattr(self.problem, "Nz", getattr(self.problem, "nz", 32))
+            # 3D case - use standard grid convention: Nx,Ny,Nz intervals → Nx+1,Ny+1,Nz+1 grid points
+            self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 32)) + 1
+            self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 32)) + 1
+            self.Nz = getattr(self.problem, "Nz", getattr(self.problem, "nz", 32)) + 1
             self.Dx = getattr(self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.Nx - 1)))
             self.Dy = getattr(self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.Ny - 1)))
             self.Dz = getattr(self.problem, "Dz", getattr(self.problem, "dz", 1.0 / (self.Nz - 1)))
