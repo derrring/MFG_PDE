@@ -413,6 +413,23 @@ class Domain3D(BaseGeometry):
         boundary_faces = []
         boundary_tags = []
 
+        # Get all physical surfaces and their elements
+        physical_surfaces = gmsh.model.getPhysicalGroups(2)
+        surface_element_map = {}  # Maps element tag to physical group
+
+        for dim_tag in physical_surfaces:
+            dim, phys_tag = dim_tag
+            # Get entities in this physical group
+            entities = gmsh.model.getEntitiesForPhysicalGroup(dim, phys_tag)
+            for entity in entities:
+                # Get mesh elements on this entity
+                elem_types, elem_tags, _ = gmsh.model.mesh.getElements(dim, entity)
+                for elem_type, tags in zip(elem_types, elem_tags, strict=False):
+                    if elem_type == 2:  # Triangle
+                        for tag in tags:
+                            surface_element_map[int(tag)] = phys_tag
+
+        # Now get boundary faces
         for dim in [2]:  # Surface elements
             elem_types, elem_tags, elem_connectivity = gmsh.model.mesh.getElements(dim)
             for elem_type, tags, connectivity in zip(elem_types, elem_tags, elem_connectivity, strict=False):
@@ -422,18 +439,31 @@ class Domain3D(BaseGeometry):
 
                     # Get physical group tags for boundary identification
                     for tag in tags:
-                        physical_groups = gmsh.model.getPhysicalGroupsForEntity(dim, tag)
-                        if physical_groups:
-                            boundary_tags.append(physical_groups[0])
-                        else:
-                            boundary_tags.append(0)
+                        phys_tag = surface_element_map.get(int(tag), 0)
+                        boundary_tags.append(phys_tag)
 
         # Get element physical tags (for region identification)
+        # Create mapping from volume element tags to physical groups
+        physical_volumes = gmsh.model.getPhysicalGroups(3)
+        volume_element_map = {}  # Maps element tag to physical group
+
+        for dim_tag in physical_volumes:
+            dim, phys_tag = dim_tag
+            # Get entities in this physical group
+            entities = gmsh.model.getEntitiesForPhysicalGroup(dim, phys_tag)
+            for entity in entities:
+                # Get mesh elements on this entity
+                elem_types, elem_tags, _ = gmsh.model.mesh.getElements(dim, entity)
+                for elem_type, tags in zip(elem_types, elem_tags, strict=False):
+                    if elem_type == 4:  # Tetrahedron
+                        for tag in tags:
+                            volume_element_map[int(tag)] = phys_tag
+
+        # Use the mapping to assign physical tags
         element_physical_tags = np.ones(len(tetrahedra), dtype=int)
         for i, elem_tag in enumerate(element_tags[0]):
-            physical_groups = gmsh.model.getPhysicalGroupsForEntity(3, elem_tag)
-            if physical_groups:
-                element_physical_tags[i] = physical_groups[0]
+            phys_tag = volume_element_map.get(int(elem_tag), 1)
+            element_physical_tags[i] = phys_tag
 
         gmsh.finalize()
 

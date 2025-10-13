@@ -310,15 +310,15 @@ class TestDomain3DMeshGeneration:
 
     def test_mesh_size_effect(self):
         """Test that smaller mesh_size produces more elements."""
-        domain_coarse = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.5)
-        domain_fine = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.2)
+        domain_coarse = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.8)
+        domain_fine = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.15)
 
         mesh_coarse = domain_coarse.generate_mesh()
         mesh_fine = domain_fine.generate_mesh()
 
-        # Finer mesh should have more elements
-        assert len(mesh_fine.elements) > len(mesh_coarse.elements)
-        assert len(mesh_fine.vertices) > len(mesh_coarse.vertices)
+        # Finer mesh should have more elements (with reasonable margin)
+        assert len(mesh_fine.elements) > len(mesh_coarse.elements) * 1.2
+        assert len(mesh_fine.vertices) > len(mesh_coarse.vertices) * 1.2
 
     def test_mesh_quality_metrics(self):
         """Test that quality metrics are computed."""
