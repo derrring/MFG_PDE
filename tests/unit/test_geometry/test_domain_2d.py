@@ -391,7 +391,6 @@ class TestDomain2DMeshGeneration:
 class TestDomain2DWithHoles:
     """Test domain with holes (requires gmsh and meshio)."""
 
-    @pytest.mark.skip(reason="Known issue: Gmsh OpenCASCADE entity problem with holes - see domain_2d.py:279")
     def test_rectangle_with_circular_hole(self):
         """Test rectangular domain with circular hole."""
         holes = [
@@ -410,7 +409,6 @@ class TestDomain2DWithHoles:
         assert len(mesh_data.vertices) > 0
         assert len(mesh_data.elements) > 0
 
-    @pytest.mark.skip(reason="Known issue: Gmsh OpenCASCADE entity problem with holes - see domain_2d.py:279")
     def test_rectangle_with_rectangular_hole(self):
         """Test rectangular domain with rectangular hole."""
         holes = [
@@ -429,7 +427,6 @@ class TestDomain2DWithHoles:
         assert len(mesh_data.vertices) > 0
         assert len(mesh_data.elements) > 0
 
-    @pytest.mark.skip(reason="Known issue: Gmsh OpenCASCADE entity problem with holes - see domain_2d.py:279")
     def test_domain_with_multiple_holes(self):
         """Test domain with multiple holes."""
         holes = [
@@ -503,7 +500,6 @@ class TestDomain2DMeshRefinement:
 class TestDomain2DMeshExport:
     """Test mesh export functionality."""
 
-    @pytest.mark.skip(reason="Known issue: MeshData.to_meshio() has KeyError - see base_geometry.py:137")
     def test_export_mesh_vtk(self, tmp_path):
         """Test exporting mesh to VTK format."""
         domain = Domain2D(bounds=(0.0, 1.0, 0.0, 1.0), mesh_size=0.2)
@@ -514,7 +510,6 @@ class TestDomain2DMeshExport:
 
         assert output_file.exists()
 
-    @pytest.mark.skip(reason="Known issue: MeshData.to_meshio() has KeyError - see base_geometry.py:137")
     def test_export_mesh_requires_generation(self, tmp_path):
         """Test that export generates mesh if not already done."""
         domain = Domain2D(bounds=(0.0, 1.0, 0.0, 1.0), mesh_size=0.2)

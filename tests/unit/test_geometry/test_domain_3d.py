@@ -290,7 +290,6 @@ class TestDomain3DMeshGeneration:
         assert len(mesh_data.vertices) > 0
         assert len(mesh_data.elements) > 0
 
-    @pytest.mark.skip(reason="Known issue: Domain3D mesh generation boundary surface numbering")
     def test_mesh_data_structure(self):
         """Test that mesh data has correct structure."""
         domain = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.4)
@@ -309,20 +308,18 @@ class TestDomain3DMeshGeneration:
         assert mesh_data.elements.ndim == 2
         assert mesh_data.boundary_faces.ndim == 2
 
-    @pytest.mark.skip(reason="Known issue: Domain3D mesh generation boundary surface numbering")
     def test_mesh_size_effect(self):
         """Test that smaller mesh_size produces more elements."""
-        domain_coarse = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.5)
-        domain_fine = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.2)
+        domain_coarse = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.8)
+        domain_fine = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.15)
 
         mesh_coarse = domain_coarse.generate_mesh()
         mesh_fine = domain_fine.generate_mesh()
 
-        # Finer mesh should have more elements
-        assert len(mesh_fine.elements) > len(mesh_coarse.elements)
-        assert len(mesh_fine.vertices) > len(mesh_coarse.vertices)
+        # Finer mesh should have more elements (with reasonable margin)
+        assert len(mesh_fine.elements) > len(mesh_coarse.elements) * 1.2
+        assert len(mesh_fine.vertices) > len(mesh_coarse.vertices) * 1.2
 
-    @pytest.mark.skip(reason="Known issue: Domain3D mesh generation boundary surface numbering")
     def test_mesh_quality_metrics(self):
         """Test that quality metrics are computed."""
         domain = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.3)
@@ -342,7 +339,6 @@ class TestDomain3DMeshGeneration:
         assert 0.0 <= mesh_data.quality_metrics["mean_quality"] <= 1.0
         assert mesh_data.quality_metrics["min_volume"] > 0.0
 
-    @pytest.mark.skip(reason="Known issue: Domain3D mesh generation boundary surface numbering")
     def test_element_volumes(self):
         """Test that element volumes are computed."""
         domain = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.3)
@@ -355,7 +351,6 @@ class TestDomain3DMeshGeneration:
         assert len(mesh_data.element_volumes) == len(mesh_data.elements)
         assert np.all(mesh_data.element_volumes > 0)
 
-    @pytest.mark.skip(reason="Known issue: Domain3D mesh generation boundary surface numbering")
     def test_boundary_faces_extraction(self):
         """Test boundary face extraction."""
         domain = Domain3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), mesh_size=0.3)

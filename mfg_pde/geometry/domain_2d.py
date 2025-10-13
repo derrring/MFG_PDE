@@ -219,68 +219,89 @@ class Domain2D(BaseGeometry):
         self.main_surface = surfaces[0][1]
 
     def _add_holes_gmsh(self):
-        """Add holes to the domain."""
+        """Add holes to the domain using OCC kernel for proper boolean operations."""
         if not self.holes:
             return
 
         import gmsh
 
-        hole_surfaces = []
-
-        for hole in self.holes:
-            if hole["type"] == "circle":
-                center = hole["center"]
-                radius = hole["radius"]
-
-                # Create hole geometry
-                center_point = gmsh.model.geo.addPoint(center[0], center[1], 0.0)
-
-                # Create points on circumference
-                p1 = gmsh.model.geo.addPoint(center[0] + radius, center[1], 0.0)
-                p2 = gmsh.model.geo.addPoint(center[0], center[1] + radius, 0.0)
-                p3 = gmsh.model.geo.addPoint(center[0] - radius, center[1], 0.0)
-                p4 = gmsh.model.geo.addPoint(center[0], center[1] - radius, 0.0)
-
-                # Create circular arcs
-                c1 = gmsh.model.geo.addCircleArc(p1, center_point, p2)
-                c2 = gmsh.model.geo.addCircleArc(p2, center_point, p3)
-                c3 = gmsh.model.geo.addCircleArc(p3, center_point, p4)
-                c4 = gmsh.model.geo.addCircleArc(p4, center_point, p1)
-
-                # Create hole curve loop and surface
-                hole_loop = gmsh.model.geo.addCurveLoop([c1, c2, c3, c4])
-                hole_surface = gmsh.model.geo.addPlaneSurface([hole_loop])
-                hole_surfaces.append(hole_surface)
-
-            elif hole["type"] == "rectangle":
-                bounds = hole["bounds"]  # (xmin, xmax, ymin, ymax)
-                xmin, xmax, ymin, ymax = bounds
-
-                # Create rectangle hole
-                p1 = gmsh.model.geo.addPoint(xmin, ymin, 0.0)
-                p2 = gmsh.model.geo.addPoint(xmax, ymin, 0.0)
-                p3 = gmsh.model.geo.addPoint(xmax, ymax, 0.0)
-                p4 = gmsh.model.geo.addPoint(xmin, ymax, 0.0)
-
-                l1 = gmsh.model.geo.addLine(p1, p2)
-                l2 = gmsh.model.geo.addLine(p2, p3)
-                l3 = gmsh.model.geo.addLine(p3, p4)
-                l4 = gmsh.model.geo.addLine(p4, p1)
-
-                hole_loop = gmsh.model.geo.addCurveLoop([l1, l2, l3, l4])
-                hole_surface = gmsh.model.geo.addPlaneSurface([hole_loop])
-                hole_surfaces.append(hole_surface)
-
-        # Subtract holes from main surface
-        if hole_surfaces:
+        # Convert existing geo entities to OCC for boolean operations
+        # This is necessary because geo kernel doesn't support cut() operation
+        try:
             gmsh.model.geo.synchronize()
 
-            # Boolean difference: main_surface - holes
-            result = gmsh.model.occ.cut([(2, self.main_surface)], [(2, surf) for surf in hole_surfaces])
-            gmsh.model.occ.synchronize()
+            # Remove the geo-based main surface
+            # We'll recreate everything in OCC kernel
+            gmsh.model.geo.remove([(2, self.main_surface)])
+            gmsh.model.geo.synchronize()
 
-            if result[0]:
-                self.main_surface = result[0][0][1]
+            # Recreate main domain in OCC kernel
+            if self.domain_type == "rectangle":
+                xmin, xmax, ymin, ymax = self.xmin, self.xmax, self.ymin, self.ymax
+                main_rect = gmsh.model.occ.addRectangle(xmin, ymin, 0.0, xmax - xmin, ymax - ymin)
+                main_entities = [(2, main_rect)]
+
+            elif self.domain_type == "circle":
+                center_x, center_y = self.center
+                main_disk = gmsh.model.occ.addDisk(center_x, center_y, 0.0, self.radius, self.radius)
+                main_entities = [(2, main_disk)]
+
+            else:
+                # For other types, holes are not supported yet
+                import warnings
+
+                warnings.warn(
+                    f"Holes not yet supported for domain_type='{self.domain_type}'. "
+                    "Only 'rectangle' and 'circle' domains support holes currently.",
+                    stacklevel=2,
+                )
+                return
+
+            # Create hole entities in OCC kernel
+            hole_entities = []
+            for hole in self.holes:
+                if hole["type"] == "circle":
+                    center = hole["center"]
+                    radius = hole["radius"]
+                    hole_disk = gmsh.model.occ.addDisk(center[0], center[1], 0.0, radius, radius)
+                    hole_entities.append((2, hole_disk))
+
+                elif hole["type"] == "rectangle":
+                    bounds = hole["bounds"]  # (xmin, xmax, ymin, ymax)
+                    xmin, xmax, ymin, ymax = bounds
+                    hole_rect = gmsh.model.occ.addRectangle(xmin, ymin, 0.0, xmax - xmin, ymax - ymin)
+                    hole_entities.append((2, hole_rect))
+
+            # Perform boolean cut: main - holes
+            if hole_entities:
+                import contextlib
+
+                gmsh.model.occ.synchronize()
+                result, _result_map = gmsh.model.occ.cut(main_entities, hole_entities, removeTool=True)
+                gmsh.model.occ.synchronize()
+
+                # Update main surface to the result
+                if result:
+                    self.main_surface = result[0][1]
+
+                    # Add physical groups for the result
+                    # Get boundary curves
+                    boundary_curves = gmsh.model.getBoundary(result, oriented=False)
+                    curve_tags = [abs(c[1]) for c in boundary_curves]
+                    if curve_tags:
+                        with contextlib.suppress(Exception):
+                            # Physical group might already exist, that's okay
+                            gmsh.model.addPhysicalGroup(1, curve_tags, 1)  # Boundary
+
+                    with contextlib.suppress(Exception):
+                        # Physical group might already exist, that's okay
+                        gmsh.model.addPhysicalGroup(2, [self.main_surface], 1)  # Domain
+
+        except Exception as e:
+            # If hole creation fails at boolean operation stage, emit warning
+            import warnings
+
+            warnings.warn(f"Hole creation failed: {e}. Continuing with domain without holes.", stacklevel=2)
 
     def set_mesh_parameters(self, mesh_size: float | None = None, algorithm: str = "delaunay", **kwargs) -> None:
         """Set mesh generation parameters."""

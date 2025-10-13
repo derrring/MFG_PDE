@@ -118,7 +118,12 @@ class MeshData:
         return volumes
 
     def to_meshio(self):
-        """Convert to meshio format for I/O operations."""
+        """Convert to meshio format for I/O operations.
+
+        Note: boundary_tags are not included in the meshio export as they
+        represent boundary elements (edges/faces) rather than vertices or cells.
+        Only element_tags (region identifiers) are exported as cell_data.
+        """
         try:
             import meshio
         except ImportError as err:
@@ -126,19 +131,18 @@ class MeshData:
 
         cells = [(self.element_type, self.elements)]
 
+        # meshio cell_data format: {"data_name": [array_for_block1, array_for_block2, ...]}
         cell_data = {}
         if len(self.element_tags) > 0:
-            cell_data[self.element_type] = {"region": self.element_tags}
+            cell_data["region"] = [self.element_tags]
 
-        point_data = {}
-        if len(self.boundary_tags) > 0:
-            point_data["boundary"] = self.boundary_tags
+        # Note: boundary_tags are not included because they don't map to
+        # meshio's data model (not vertex data, not bulk element data)
 
         return meshio.Mesh(
             points=self.vertices,
             cells=cells,
-            cell_data=cell_data,
-            point_data=point_data,
+            cell_data=cell_data if cell_data else None,
         )
 
     def to_pyvista(self):
