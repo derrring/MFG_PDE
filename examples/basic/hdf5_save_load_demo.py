@@ -68,7 +68,7 @@ def create_mock_solver_result():
         error_history_U=error_history_U,
         error_history_M=error_history_M,
         solver_name="MockFixedPointIterator",
-        convergence_achieved=True,
+        converged=True,
         execution_time=3.142,
         metadata={"problem_type": "LinearQuadratic", "T": T, "Nx": Nx - 1, "Nt": Nt - 1},
     )
@@ -92,7 +92,7 @@ def main():
     result, x_grid, t_grid = create_mock_solver_result()
 
     print(f"   Solution shape: {result.solution_shape}")
-    print(f"   Converged: {result.convergence_achieved}")
+    print(f"   Converged: {result.converged}")
     print(f"   Iterations: {result.iterations}")
     print(f"   Final error U: {result.final_error_U:.2e}")
     print(f"   Final error M: {result.final_error_M:.2e}")
@@ -112,7 +112,7 @@ def main():
 
     print(f"   Loaded solver: {loaded_result.solver_name}")
     print(f"   Loaded shape: {loaded_result.solution_shape}")
-    print(f"   Converged: {loaded_result.convergence_achieved}")
+    print(f"   Converged: {loaded_result.converged}")
     print(f"   Iterations: {loaded_result.iterations}")
 
     # Verify data integrity
@@ -184,7 +184,7 @@ def main():
     alt_file = OUTPUT_DIR / "mock_solution_alt.h5"
 
     metadata = result.metadata.copy()
-    metadata["converged"] = result.convergence_achieved
+    metadata["converged"] = result.converged
 
     save_solution(result.U, result.M, metadata, alt_file)
     print(f"   Saved using low-level API: {alt_file}")

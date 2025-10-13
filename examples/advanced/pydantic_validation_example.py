@@ -29,8 +29,8 @@ from mfg_pde.core.mfg_problem import ExampleMFGProblem
 
 # Import enhanced factory and reporting
 from mfg_pde.factory.pydantic_solver_factory import create_validated_solver
-from mfg_pde.utils.integration import trapezoid
 from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.numpy_compat import trapezoid
 from mfg_pde.utils.pydantic_notebook_integration import create_pydantic_mfg_report
 
 

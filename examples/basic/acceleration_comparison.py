@@ -92,11 +92,9 @@ def benchmark_backend(backend_name: str, problem):
         result = solver.solve(max_iterations=20, tolerance=1e-3)  # Relaxed for speed
         solve_time = time.time() - start
 
-        logger.info(
-            f"    Time: {solve_time:.3f}s, Iterations: {result.iterations}, Converged: {result.convergence_achieved}"
-        )
+        logger.info(f"    Time: {solve_time:.3f}s, Iterations: {result.iterations}, Converged: {result.converged}")
 
-        return solve_time, result.iterations, result.convergence_achieved
+        return solve_time, result.iterations, result.converged
 
     except Exception as e:
         logger.error(f"    Error with {backend_name}: {e}")
@@ -131,7 +129,7 @@ def benchmark_anderson(problem, use_anderson: bool, depth: int = 5):
     result = solver.solve(max_iterations=30, tolerance=1e-3)  # Relaxed for speed
     solve_time = time.time() - start
 
-    converged = result.convergence_achieved
+    converged = result.converged
 
     logger.info(f"    Time: {solve_time:.3f}s, Iterations: {result.iterations}, Converged: {converged}")
 
@@ -230,10 +228,8 @@ def main():
         result = solver.solve(max_iterations=20, tolerance=1e-3)
         solve_time = time.time() - start
 
-        logger.info(
-            f"    Time: {solve_time:.3f}s, Iterations: {result.iterations}, Converged: {result.convergence_achieved}"
-        )
-        backend_results["torch-mps"] = (solve_time, result.iterations, result.convergence_achieved)
+        logger.info(f"    Time: {solve_time:.3f}s, Iterations: {result.iterations}, Converged: {result.converged}")
+        backend_results["torch-mps"] = (solve_time, result.iterations, result.converged)
     except Exception as e:
         logger.warning(f"    MPS acceleration not available: {e}")
         backend_results["torch-mps"] = (None, None, False)

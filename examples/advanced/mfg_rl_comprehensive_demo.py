@@ -35,6 +35,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # MFG_PDE imports
 from examples.advanced.mfg_rl_experiment_suite import ExperimentConfig, MFGRLExperimentSuite
+
 from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
@@ -175,7 +176,7 @@ class MFGRLDemoRunner:
 
         if algorithm_name == "Random Baseline":
             final_reward = results.get("final_average_reward", 0)
-            convergence = results.get("convergence_achieved", False)
+            convergence = results.get("converged", False)
             self.logger.info(f"   Final Reward: {final_reward:.3f}")
             self.logger.info(f"   Convergence: {convergence}")
 

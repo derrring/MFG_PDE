@@ -135,7 +135,7 @@ def create_market_volatility_problem():
     return problem
 
 
-def solve_and_visualize(num_noise_samples=50, use_variance_reduction=True, parallel=True):
+def solve_and_visualize(num_noise_samples=20, use_variance_reduction=True, parallel=True):
     """
     Solve common noise MFG and visualize results.
 
@@ -281,7 +281,7 @@ def visualize_results(problem, result):
 if __name__ == "__main__":
     # Run demo with moderate number of samples
     # Note: parallel=False due to pickling issues with lambda functions in CommonNoiseMFGSolver
-    solve_and_visualize(num_noise_samples=50, use_variance_reduction=True, parallel=False)
+    solve_and_visualize(num_noise_samples=20, use_variance_reduction=True, parallel=False)
 
     logger.info("\n" + "=" * 70)
     logger.info("Demo completed successfully!")

@@ -261,14 +261,14 @@ def main():
     solver = create_standard_solver(problem)
     result = solver.solve(max_iterations=50, tolerance=1e-4)
 
-    logger.info(f"  Converged: {result.convergence_achieved}")
+    logger.info(f"  Converged: {result.converged}")
     logger.info(f"  Iterations: {result.iterations}")
     final_error_U = result.error_history_U[result.iterations - 1] if result.iterations > 0 else np.inf
     final_error_M = result.error_history_M[result.iterations - 1] if result.iterations > 0 else np.inf
     logger.info(f"  Final error: U={final_error_U:.2e}, M={final_error_M:.2e}")
 
     # Compute attendance trajectory
-    t_grid = problem.time_grid
+    t_grid = problem.tSpace
     m_traj = result.M  # Use result.M instead of result.m_traj
     zero_idx = np.argmin(np.abs(theta_grid))
 

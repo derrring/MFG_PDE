@@ -195,7 +195,7 @@ def plot_phase_transition(beach_length, stall_position):
                 bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5},
             )
 
-        logger.info(f"    Converged: {result.convergence_achieved}, Iterations: {result.iterations}")
+        logger.info(f"    Converged: {result.converged}, Iterations: {result.iterations}")
 
     plt.tight_layout()
     return fig
