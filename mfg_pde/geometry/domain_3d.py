@@ -131,14 +131,57 @@ class Domain3D(BaseGeometry):
         gmsh.model.addPhysicalGroup(3, [box_tag], 1)  # Volume
         gmsh.model.setPhysicalName(3, 1, "domain")
 
-        # Tag boundary faces
+        # Tag boundary faces by geometric location
         boundary_tags = gmsh.model.getBoundary([(3, box_tag)], oriented=False)
         surface_tags = [abs(tag[1]) for tag in boundary_tags]
 
-        # Assign boundary IDs: 1=left, 2=right, 3=front, 4=back, 5=bottom, 6=top
-        for i, surf_tag in enumerate(surface_tags):
-            gmsh.model.addPhysicalGroup(2, [surf_tag], i + 1)
-            gmsh.model.setPhysicalName(2, i + 1, f"boundary_{i + 1}")
+        # Identify surfaces by their mass center coordinates
+        # 1=xmin (left), 2=xmax (right), 3=ymin (front), 4=ymax (back), 5=zmin (bottom), 6=zmax (top)
+        surface_map = {}
+
+        # Compute tolerance based on domain size (relative tolerance)
+        domain_size = max(self.xmax - self.xmin, self.ymax - self.ymin, self.zmax - self.zmin)
+        tol = domain_size * 1e-6  # Relative tolerance
+
+        for surf_tag in surface_tags:
+            # Get surface center of mass
+            mass = gmsh.model.occ.getCenterOfMass(2, surf_tag)
+            x, y, z = mass[0], mass[1], mass[2]
+
+            # Identify surface by which coordinate is at boundary
+            if abs(x - self.xmin) < tol:
+                surface_map[1] = surf_tag  # xmin (left)
+            elif abs(x - self.xmax) < tol:
+                surface_map[2] = surf_tag  # xmax (right)
+            elif abs(y - self.ymin) < tol:
+                surface_map[3] = surf_tag  # ymin (front)
+            elif abs(y - self.ymax) < tol:
+                surface_map[4] = surf_tag  # ymax (back)
+            elif abs(z - self.zmin) < tol:
+                surface_map[5] = surf_tag  # zmin (bottom)
+            elif abs(z - self.zmax) < tol:
+                surface_map[6] = surf_tag  # zmax (top)
+
+        # Assign physical groups with correct IDs
+        boundary_names = ["left", "right", "front", "back", "bottom", "top"]
+        for boundary_id in range(1, 7):
+            if boundary_id in surface_map:
+                try:
+                    gmsh.model.addPhysicalGroup(2, [surface_map[boundary_id]], boundary_id)
+                    gmsh.model.setPhysicalName(2, boundary_id, boundary_names[boundary_id - 1])
+                except Exception:
+                    # Surface might not exist or physical group might already be defined
+                    pass
+
+        # If not all surfaces were mapped, it might be due to tolerance issues
+        # In this case, just assign all surfaces to a single physical group
+        if len(surface_map) < 6:
+            # Fallback: assign all surfaces to physical group 1
+            try:
+                gmsh.model.addPhysicalGroup(2, surface_tags, 1)
+                gmsh.model.setPhysicalName(2, 1, "boundary")
+            except Exception:
+                pass
 
     def _create_sphere_gmsh(self):
         """Create sphere geometry in Gmsh."""
