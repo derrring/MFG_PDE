@@ -500,7 +500,6 @@ class TestDomain2DMeshRefinement:
 class TestDomain2DMeshExport:
     """Test mesh export functionality."""
 
-    @pytest.mark.skip(reason="Known issue: MeshData.to_meshio() has KeyError - see base_geometry.py:137")
     def test_export_mesh_vtk(self, tmp_path):
         """Test exporting mesh to VTK format."""
         domain = Domain2D(bounds=(0.0, 1.0, 0.0, 1.0), mesh_size=0.2)
@@ -511,7 +510,6 @@ class TestDomain2DMeshExport:
 
         assert output_file.exists()
 
-    @pytest.mark.skip(reason="Known issue: MeshData.to_meshio() has KeyError - see base_geometry.py:137")
     def test_export_mesh_requires_generation(self, tmp_path):
         """Test that export generates mesh if not already done."""
         domain = Domain2D(bounds=(0.0, 1.0, 0.0, 1.0), mesh_size=0.2)
