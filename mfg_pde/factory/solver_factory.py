@@ -449,7 +449,7 @@ def create_semi_lagrangian_solver(
     # Extract relevant kwargs for fixed-point solver
     fp_kwargs = {k: v for k, v in kwargs.items() if k not in ["tolerance", "max_char_iterations"]}
 
-    solver = create_fast_solver(
+    solver = create_standard_solver(
         problem=problem,
         solver_type="fixed_point",
         hjb_solver=hjb_solver,
