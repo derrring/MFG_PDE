@@ -191,24 +191,31 @@ class MFGProblem:
         if self.components is None:
             raise ValueError("components is None but custom mode is enabled")
 
-        if self.components.hamiltonian_func is None:
-            raise ValueError("hamiltonian_func is required in MFGComponents")
+        # Only validate Hamiltonians if at least one is provided
+        # If both are None, we'll use default implementations
+        has_hamiltonian = self.components.hamiltonian_func is not None
+        has_hamiltonian_dm = self.components.hamiltonian_dm_func is not None
 
-        if self.components.hamiltonian_dm_func is None:
-            raise ValueError("hamiltonian_dm_func is required in MFGComponents")
+        if has_hamiltonian and not has_hamiltonian_dm:
+            raise ValueError("hamiltonian_dm_func is required when hamiltonian_func is provided")
 
-        # Validate function signatures
-        self._validate_function_signature(
-            self.components.hamiltonian_func,
-            "hamiltonian_func",
-            ["x_idx", "m_at_x", "p_values", "t_idx"],
-        )
+        if has_hamiltonian_dm and not has_hamiltonian:
+            raise ValueError("hamiltonian_func is required when hamiltonian_dm_func is provided")
 
-        self._validate_function_signature(
-            self.components.hamiltonian_dm_func,
-            "hamiltonian_dm_func",
-            ["x_idx", "m_at_x", "p_values", "t_idx"],
-        )
+        # Validate function signatures only if Hamiltonians are provided
+        if has_hamiltonian:
+            self._validate_function_signature(
+                self.components.hamiltonian_func,
+                "hamiltonian_func",
+                ["x_idx", "m_at_x", "p_values", "t_idx"],
+            )
+
+        if has_hamiltonian_dm:
+            self._validate_function_signature(
+                self.components.hamiltonian_dm_func,
+                "hamiltonian_dm_func",
+                ["x_idx", "m_at_x", "p_values", "t_idx"],
+            )
 
     def _validate_function_signature(self, func: Callable, name: str, expected_params: list) -> None:
         """Validate function signature has expected parameters."""
@@ -662,11 +669,14 @@ class MFGProblemBuilder:
 
     def build(self) -> MFGProblem:
         """Build the MFG problem."""
-        # Validate required components
-        if self.components.hamiltonian_func is None:
-            raise ValueError("Hamiltonian function is required")
-        if self.components.hamiltonian_dm_func is None:
-            raise ValueError("Hamiltonian derivative function is required")
+        # Validate Hamiltonians if both are provided
+        has_hamiltonian = self.components.hamiltonian_func is not None
+        has_hamiltonian_dm = self.components.hamiltonian_dm_func is not None
+
+        if has_hamiltonian and not has_hamiltonian_dm:
+            raise ValueError("Hamiltonian derivative function is required when Hamiltonian function is provided")
+        if has_hamiltonian_dm and not has_hamiltonian:
+            raise ValueError("Hamiltonian function is required when Hamiltonian derivative function is provided")
 
         # Set default domain if not specified
         if not self.domain_params:
@@ -679,8 +689,27 @@ class MFGProblemBuilder:
         # Combine all parameters
         all_params = {**self.domain_params, **self.time_params, **self.solver_params}
 
-        # Create and return problem with custom components
-        return MFGProblem(components=self.components, **all_params)
+        # Check if components are actually customized (any non-default value set)
+        is_customized = (
+            self.components.hamiltonian_func is not None
+            or self.components.hamiltonian_dm_func is not None
+            or self.components.hamiltonian_jacobian_func is not None
+            or self.components.potential_func is not None
+            or self.components.initial_density_func is not None
+            or self.components.final_value_func is not None
+            or self.components.boundary_conditions is not None
+            or self.components.coupling_func is not None
+            or len(self.components.parameters) > 0
+            or self.components.description != "MFG Problem"
+            or self.components.problem_type != "mfg"
+        )
+
+        # Create and return problem - with components only if customized
+        if is_customized:
+            return MFGProblem(components=self.components, **all_params)
+        else:
+            # No customization - create default problem without components
+            return MFGProblem(**all_params)
 
 
 # ============================================================================
