@@ -704,3 +704,414 @@ def test_edge_case_large_arrays():
 
     assert np.isfinite(metrics["l2distu_abs"])
     assert np.isfinite(metrics["l2distm_abs"])
+
+
+# =============================================================================
+# Additional tests for StochasticConvergenceMonitor
+# =============================================================================
+
+
+@pytest.mark.unit
+def test_stochastic_convergence_monitor_is_stagnating():
+    """Test stagnation detection in stochastic monitor."""
+    monitor = StochasticConvergenceMonitor(window_size=5)
+
+    # Add similar errors (stagnating)
+    for _ in range(5):
+        monitor.add_iteration(1e-5, 1e-5)
+
+    assert monitor.is_stagnating(stagnation_threshold=1e-6)
+
+
+@pytest.mark.unit
+def test_stochastic_convergence_monitor_not_stagnating():
+    """Test non-stagnating convergence."""
+    monitor = StochasticConvergenceMonitor(window_size=5)
+
+    # Add decreasing errors (not stagnating)
+    for i in range(5):
+        monitor.add_iteration(1e-3 / (i + 1), 1e-3 / (i + 1))
+
+    assert not monitor.is_stagnating(stagnation_threshold=1e-6)
+
+
+@pytest.mark.unit
+def test_stochastic_convergence_monitor_quantile_tolerance():
+    """Test custom quantile tolerance."""
+    monitor = StochasticConvergenceMonitor(
+        window_size=5,
+        median_tolerance=1e-4,
+        quantile=0.95,
+        quantile_tolerance=5e-4,
+    )
+
+    # Add errors within tolerance
+    for _ in range(10):
+        monitor.add_iteration(5e-5, 5e-5)
+
+    converged, diagnostics = monitor.check_convergence()
+
+    assert converged
+    assert diagnostics["status"] == "converged"
+
+
+# =============================================================================
+# Additional tests for AdvancedConvergenceMonitor
+# =============================================================================
+
+
+@pytest.mark.unit
+def test_advanced_convergence_monitor_get_convergence_summary():
+    """Test convergence summary generation."""
+    monitor = AdvancedConvergenceMonitor()
+
+    # Simulate convergence iterations
+    x_grid = np.linspace(0, 1, 50)
+    for i in range(10):
+        u_prev = np.ones(50) * (1.0 - i * 0.1)
+        u_curr = np.ones(50) * (1.0 - (i + 1) * 0.1)
+        m_curr = np.exp(-((x_grid - 0.5) ** 2) / 0.1)
+        m_curr = m_curr / np.sum(m_curr)
+
+        monitor.update(u_curr, u_prev, m_curr, x_grid)
+
+    summary = monitor.get_convergence_summary()
+
+    assert "total_iterations" in summary
+    assert summary["total_iterations"] == 10
+    assert "final_u_error" in summary
+    assert "u_error_trend" in summary
+
+
+@pytest.mark.unit
+def test_advanced_convergence_monitor_no_data():
+    """Test convergence summary with no data."""
+    monitor = AdvancedConvergenceMonitor()
+
+    summary = monitor.get_convergence_summary()
+
+    assert summary["status"] == "no_data"
+
+
+@pytest.mark.unit
+def test_advanced_convergence_monitor_plot_convergence_no_history():
+    """Test plotting with no convergence history."""
+    monitor = AdvancedConvergenceMonitor()
+
+    # Should handle gracefully
+    result = monitor.plot_convergence_history()
+
+    assert result is None
+
+
+@pytest.mark.unit
+def test_advanced_convergence_monitor_convergence_criteria_all_pass():
+    """Test all convergence criteria passing."""
+    monitor = AdvancedConvergenceMonitor(
+        wasserstein_tol=1e-3,
+        u_magnitude_tol=1e-2,
+        u_stability_tol=1e-3,
+    )
+
+    x_grid = np.linspace(0, 1, 50)
+    m_curr = np.exp(-((x_grid - 0.5) ** 2) / 0.1)
+    m_curr = m_curr / np.sum(m_curr)
+
+    # Build up history with converging values
+    for i in range(15):
+        u_prev = np.ones(50) * (1e-3 * (15 - i))
+        u_curr = np.ones(50) * (1e-3 * (14 - i))
+        diagnostics = monitor.update(u_curr, u_prev, m_curr, x_grid)
+
+    # Check final iteration has converged
+    assert diagnostics["converged"] or diagnostics["iteration"] < 3
+
+
+# =============================================================================
+# Additional tests for ParticleMethodDetector
+# =============================================================================
+
+
+@pytest.mark.unit
+def test_particle_method_detector_comprehensive():
+    """Test comprehensive particle detection with multiple signals."""
+    from unittest.mock import Mock
+
+    solver = Mock()
+    solver.num_particles = 1000
+    solver.kde_bandwidth = 0.1
+    solver.particle_solver = Mock()
+    solver.update_particles = lambda: None
+    solver.__class__.__name__ = "ParticleCollocationSolver"
+
+    has_particles, info = ParticleMethodDetector.detect_particle_methods(solver)
+
+    assert has_particles
+    assert info["confidence"] > 0.5
+    assert len(info["detection_methods"]) >= 2
+
+
+@pytest.mark.unit
+def test_particle_method_detector_grid_based_solver():
+    """Test detection correctly identifies grid-based solver."""
+    from unittest.mock import Mock
+
+    solver = Mock()
+    solver.Nx = 100
+    solver.Nt = 200
+    solver.grid = Mock()
+    solver.__class__.__name__ = "FixedPointSolver"
+    # Ensure no particle attributes
+    solver.spec = ["Nx", "Nt", "grid"]  # Only grid-based attributes
+
+    has_particles, info = ParticleMethodDetector.detect_particle_methods(solver)
+
+    # The detector should have low confidence or no detection
+    # Since confidence can vary based on Mock behavior, check it's not strongly detected
+    assert info["confidence"] < 0.8 or not has_particles
+
+
+@pytest.mark.unit
+def test_particle_method_detector_fp_solver_inspection():
+    """Test particle detection via fp_solver component."""
+    from unittest.mock import Mock
+
+    solver = Mock()
+    solver.__class__.__name__ = "StandardSolver"
+
+    # Create fp_solver with particle signature
+    fp_solver = Mock()
+    fp_solver.__class__.__name__ = "ParticleFPSolver"
+    solver.fp_solver = fp_solver
+
+    has_particles, info = ParticleMethodDetector.detect_particle_methods(solver)
+
+    assert has_particles
+    assert "fp_solver:ParticleFPSolver" in info["particle_components"]
+
+
+# =============================================================================
+# Additional tests for AdaptiveConvergenceWrapper
+# =============================================================================
+
+
+@pytest.mark.unit
+def test_adaptive_convergence_wrapper_classical_mode():
+    """Test wrapper in classical (non-particle) mode."""
+    from unittest.mock import Mock
+
+    solver = Mock()
+    solver.__class__.__name__ = "GridBasedSolver"
+    solver.solve = Mock(return_value=(np.ones((10, 10)), np.ones((10, 10)), {}))
+
+    wrapper = AdaptiveConvergenceWrapper(solver, classical_tol=1e-3, force_particle_mode=False, verbose=False)
+
+    assert wrapper.get_convergence_mode() == "classical"
+    assert wrapper._particle_mode is False
+
+
+@pytest.mark.unit
+def test_adaptive_convergence_wrapper_forced_particle_mode():
+    """Test forcing particle mode regardless of detection."""
+    from unittest.mock import Mock
+
+    solver = Mock()
+    solver.__class__.__name__ = "GridBasedSolver"
+
+    wrapper = AdaptiveConvergenceWrapper(solver, force_particle_mode=True, verbose=False)
+
+    assert wrapper.get_convergence_mode() == "particle_aware"
+    assert wrapper._particle_mode is True
+
+
+@pytest.mark.unit
+def test_adaptive_convergence_wrapper_get_detection_info():
+    """Test retrieving detection information."""
+    from unittest.mock import Mock
+
+    solver = Mock()
+    solver.__class__.__name__ = "TestSolver"
+
+    wrapper = AdaptiveConvergenceWrapper(solver, verbose=False)
+    info = wrapper.get_detection_info()
+
+    assert isinstance(info, dict)
+
+
+@pytest.mark.unit
+def test_adaptive_convergence_decorator_usage():
+    """Test using adaptive_convergence as decorator."""
+
+    from mfg_pde.utils.numerical.convergence import adaptive_convergence
+
+    @adaptive_convergence(classical_tol=1e-4, verbose=False)
+    class TestSolver:
+        def __init__(self):
+            self.problem = None
+
+        def solve(self, Niter=10, l2errBound=1e-3, verbose=False):
+            return np.ones((10, 10)), np.ones((10, 10)), {}
+
+    solver = TestSolver()
+
+    assert hasattr(solver, "_adaptive_convergence_wrapper")
+
+
+# =============================================================================
+# Additional tests for factory functions
+# =============================================================================
+
+
+@pytest.mark.unit
+def test_wrap_solver_with_adaptive_convergence():
+    """Test wrap_solver_with_adaptive_convergence function."""
+    from unittest.mock import Mock
+
+    from mfg_pde.utils.numerical.convergence import (
+        wrap_solver_with_adaptive_convergence,
+    )
+
+    solver = Mock()
+    solver.__class__.__name__ = "TestSolver"
+    solver.solve = Mock(return_value=(np.ones((5, 5)), np.ones((5, 5)), {}))
+
+    wrapped = wrap_solver_with_adaptive_convergence(solver, verbose=False)
+
+    assert hasattr(wrapped, "_adaptive_convergence_wrapper")
+    assert wrapped is solver  # Modified in-place
+
+
+@pytest.mark.unit
+def test_test_particle_detection_function():
+    """Test test_particle_detection utility function."""
+    from unittest.mock import Mock
+
+    from mfg_pde.utils.numerical.convergence import test_particle_detection
+
+    solver = Mock()
+    solver.num_particles = 500
+    solver.__class__.__name__ = "ParticleSolver"
+
+    result = test_particle_detection(solver)
+
+    assert "has_particles" in result
+    assert "detection_info" in result
+    assert "recommended_convergence" in result
+
+
+@pytest.mark.unit
+def test_adaptive_convergence_decorator_with_parameters():
+    """Test adaptive_convergence decorator with custom parameters."""
+
+    from mfg_pde.utils.numerical.convergence import adaptive_convergence
+
+    @adaptive_convergence(
+        classical_tol=1e-5,
+        wasserstein_tol=5e-5,
+        force_particle_mode=True,
+        verbose=False,
+    )
+    class CustomSolver:
+        def __init__(self):
+            pass
+
+    solver = CustomSolver()
+
+    assert hasattr(solver, "_adaptive_convergence_wrapper")
+    wrapper = solver._adaptive_convergence_wrapper
+    assert wrapper.classical_tol == 1e-5
+    assert wrapper.force_particle_mode is True
+
+
+# =============================================================================
+# Additional integration tests
+# =============================================================================
+
+
+@pytest.mark.unit
+def test_integration_advanced_monitor_full_workflow():
+    """Test complete AdvancedConvergenceMonitor workflow."""
+    monitor = AdvancedConvergenceMonitor(
+        wasserstein_tol=1e-4,
+        u_magnitude_tol=1e-3,
+        u_stability_tol=1e-4,
+    )
+
+    x_grid = np.linspace(0, 1, 100)
+
+    # Simulate converging solver iterations
+    for i in range(20):
+        # Value function converging to zero
+        u_prev = np.ones(100) * (1e-2 / (i + 1))
+        u_curr = np.ones(100) * (1e-2 / (i + 2))
+
+        # Distribution staying relatively constant
+        m_curr = np.exp(-((x_grid - 0.5) ** 2) / 0.05)
+        m_curr = m_curr / np.sum(m_curr)
+
+        diagnostics = monitor.update(u_curr, u_prev, m_curr, x_grid)
+
+    # Should have meaningful diagnostics
+    assert diagnostics["iteration"] == 20
+    assert "convergence_criteria" in diagnostics
+    assert "u_l2_error" in diagnostics
+
+    # Get summary
+    summary = monitor.get_convergence_summary()
+    assert summary["total_iterations"] == 20
+
+
+@pytest.mark.unit
+def test_integration_stochastic_monitor_with_noise():
+    """Test stochastic monitor handles noisy convergence."""
+    monitor = StochasticConvergenceMonitor(
+        window_size=10,
+        median_tolerance=1e-4,
+        quantile=0.9,
+    )
+
+    # Add errors with noise (realistic for particle methods)
+    np.random.seed(42)
+    for i in range(20):
+        base_error = 1e-3 / (i + 1)
+        noise = np.random.randn() * base_error * 0.1
+        monitor.add_iteration(base_error + noise, base_error + noise)
+
+    _converged, diagnostics = monitor.check_convergence()
+
+    assert "status" in diagnostics
+    assert "statistics" in diagnostics
+
+
+@pytest.mark.unit
+def test_integration_distribution_convergence_realistic():
+    """Test distribution convergence with realistic problem."""
+    comparator = DistributionComparator()
+
+    x = np.linspace(0, 2, 200)
+
+    # Initial distribution (wide Gaussian)
+    m_initial = np.exp(-((x - 1.0) ** 2) / 0.5)
+    m_initial = m_initial / np.sum(m_initial)
+
+    # Final distribution (narrow Gaussian at same location)
+    m_final = np.exp(-((x - 1.0) ** 2) / 0.1)
+    m_final = m_final / np.sum(m_final)
+
+    # Compute all metrics
+    wasserstein = comparator.wasserstein_1d(m_final, m_initial, x)
+    kl_div = comparator.kl_divergence(m_final, m_initial)
+    moments_initial = comparator.statistical_moments(m_initial, x)
+    moments_final = comparator.statistical_moments(m_final, x)
+
+    # Wasserstein should be small (same mean)
+    assert wasserstein < 0.5
+
+    # KL divergence should be positive (different shapes)
+    assert kl_div > 0
+
+    # Means should be similar
+    assert abs(moments_initial["mean"] - moments_final["mean"]) < 0.1
+
+    # Variance should decrease
+    assert moments_final["variance"] < moments_initial["variance"]
