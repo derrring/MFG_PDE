@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-Unit tests for auxiliary functions (ppart, npart).
+Unit tests for mfg_pde/utils/aux_func.py
 
-Tests the positive and negative part functions used in upwind schemes
-for solving HJB and FP equations in Mean Field Games.
+Tests auxiliary mathematical functions including:
+- ppart() - Positive part function
+- npart() - Negative part function
+- Scalar inputs (float, int)
+- Array inputs (NumPy arrays)
+- Edge cases (zero, boundary values)
+- Mathematical properties and equivalences
 """
 
 import pytest
@@ -12,252 +17,368 @@ import numpy as np
 
 from mfg_pde.utils.aux_func import npart, ppart
 
-
-class TestPpartFunction:
-    """Test ppart (positive part) function."""
-
-    def test_ppart_positive_scalar(self):
-        """Test ppart with positive scalar."""
-        assert ppart(5.0) == 5.0
-        assert ppart(1.5) == 1.5
-        assert ppart(100.0) == 100.0
-
-    def test_ppart_negative_scalar(self):
-        """Test ppart with negative scalar."""
-        assert ppart(-3.0) == 0.0
-        assert ppart(-1.5) == 0.0
-        assert ppart(-100.0) == 0.0
-
-    def test_ppart_zero(self):
-        """Test ppart with zero."""
-        assert ppart(0.0) == 0.0
-
-    def test_ppart_array_positive(self):
-        """Test ppart with positive array."""
-        arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        result = ppart(arr)
-        expected = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        assert np.allclose(result, expected)
-
-    def test_ppart_array_negative(self):
-        """Test ppart with negative array."""
-        arr = np.array([-1.0, -2.0, -3.0, -4.0, -5.0])
-        result = ppart(arr)
-        expected = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-        assert np.allclose(result, expected)
-
-    def test_ppart_array_mixed(self):
-        """Test ppart with mixed positive/negative array."""
-        arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-        result = ppart(arr)
-        expected = np.array([0.0, 0.0, 0.0, 1.0, 2.0])
-        assert np.allclose(result, expected)
-
-    def test_ppart_array_2d(self):
-        """Test ppart with 2D array."""
-        arr = np.array([[-1.0, 2.0], [3.0, -4.0]])
-        result = ppart(arr)
-        expected = np.array([[0.0, 2.0], [3.0, 0.0]])
-        assert np.allclose(result, expected)
-
-    def test_ppart_equivalence_to_max(self):
-        """Test that ppart(x) equals max(x, 0)."""
-        arr = np.random.randn(100)
-        result = ppart(arr)
-        expected = np.maximum(arr, 0.0)
-        assert np.allclose(result, expected)
-
-    def test_ppart_preserves_shape(self):
-        """Test that ppart preserves array shape."""
-        for shape in [(10,), (5, 5), (2, 3, 4)]:
-            arr = np.random.randn(*shape)
-            result = ppart(arr)
-            assert result.shape == arr.shape
-
-    def test_ppart_returns_same_dtype(self):
-        """Test that ppart returns same dtype as input."""
-        arr_float32 = np.array([1.0, -2.0, 3.0], dtype=np.float32)
-        result = ppart(arr_float32)
-        # np.maximum may upcast to float64, this is acceptable
-        assert result.dtype in [np.float32, np.float64]
+# ===================================================================
+# Test ppart() - Positive Part Function
+# ===================================================================
 
 
-class TestNpartFunction:
-    """Test npart (negative part) function."""
-
-    def test_npart_positive_scalar(self):
-        """Test npart with positive scalar."""
-        assert npart(5.0) == 0.0
-        assert npart(1.5) == 0.0
-        assert npart(100.0) == 0.0
-
-    def test_npart_negative_scalar(self):
-        """Test npart with negative scalar."""
-        assert npart(-3.0) == 3.0
-        assert npart(-1.5) == 1.5
-        assert npart(-100.0) == 100.0
-
-    def test_npart_zero(self):
-        """Test npart with zero."""
-        assert npart(0.0) == 0.0
-
-    def test_npart_array_positive(self):
-        """Test npart with positive array."""
-        arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        result = npart(arr)
-        expected = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-        assert np.allclose(result, expected)
-
-    def test_npart_array_negative(self):
-        """Test npart with negative array."""
-        arr = np.array([-1.0, -2.0, -3.0, -4.0, -5.0])
-        result = npart(arr)
-        expected = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        assert np.allclose(result, expected)
-
-    def test_npart_array_mixed(self):
-        """Test npart with mixed positive/negative array."""
-        arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-        result = npart(arr)
-        expected = np.array([2.0, 1.0, 0.0, 0.0, 0.0])
-        assert np.allclose(result, expected)
-
-    def test_npart_array_2d(self):
-        """Test npart with 2D array."""
-        arr = np.array([[-1.0, 2.0], [3.0, -4.0]])
-        result = npart(arr)
-        expected = np.array([[1.0, 0.0], [0.0, 4.0]])
-        assert np.allclose(result, expected)
-
-    def test_npart_equivalence_to_max_negative(self):
-        """Test that npart(x) equals max(-x, 0)."""
-        arr = np.random.randn(100)
-        result = npart(arr)
-        expected = np.maximum(-arr, 0.0)
-        assert np.allclose(result, expected)
-
-    def test_npart_preserves_shape(self):
-        """Test that npart preserves array shape."""
-        for shape in [(10,), (5, 5), (2, 3, 4)]:
-            arr = np.random.randn(*shape)
-            result = npart(arr)
-            assert result.shape == arr.shape
-
-    def test_npart_square_equivalence(self):
-        """Test that (npart(x))^2 equals (min(x, 0))^2."""
-        arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-        npart_squared = npart(arr) ** 2
-        min_squared = np.minimum(arr, 0.0) ** 2
-        assert np.allclose(npart_squared, min_squared)
+@pytest.mark.unit
+def test_ppart_positive_scalar():
+    """Test ppart() with positive scalar."""
+    assert ppart(5.0) == 5.0
+    assert ppart(1.0) == 1.0
+    assert ppart(0.1) == 0.1
 
 
-class TestPpartNpartComplementarity:
-    """Test complementary properties of ppart and npart."""
-
-    def test_ppart_plus_npart_equals_abs(self):
-        """Test that ppart(x) + npart(x) = |x|."""
-        arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-        result = ppart(arr) + npart(arr)
-        expected = np.abs(arr)
-        assert np.allclose(result, expected)
-
-    def test_ppart_minus_npart_equals_x(self):
-        """Test that ppart(x) - npart(x) = x."""
-        arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-        result = ppart(arr) - npart(arr)
-        assert np.allclose(result, arr)
-
-    def test_ppart_npart_product_is_zero(self):
-        """Test that ppart(x) * npart(x) = 0 for all x."""
-        arr = np.random.randn(100)
-        product = ppart(arr) * npart(arr)
-        assert np.allclose(product, 0.0)
-
-    def test_ppart_squared_plus_npart_squared(self):
-        """Test that ppart(x)^2 + npart(x)^2 = x^2."""
-        arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-        result = ppart(arr) ** 2 + npart(arr) ** 2
-        expected = arr**2
-        assert np.allclose(result, expected)
+@pytest.mark.unit
+def test_ppart_negative_scalar():
+    """Test ppart() with negative scalar."""
+    assert ppart(-5.0) == 0.0
+    assert ppart(-1.0) == 0.0
+    assert ppart(-0.1) == 0.0
 
 
-class TestUpwindSchemeUsage:
-    """Test ppart/npart in typical upwind scheme scenarios."""
-
-    def test_forward_difference_upwind(self):
-        """Test upwind selection for forward differences."""
-        # In upwind schemes: use npart for forward differences
-        dx = 0.1
-        u = np.array([0.0, 0.1, 0.3, 0.4, 0.5])
-        p_fwd = (u[1:] - u[:-1]) / dx
-
-        # npart extracts negative parts (flow to the right)
-        npart_fwd = npart(p_fwd)
-        assert np.all(npart_fwd >= 0)
-
-    def test_backward_difference_upwind(self):
-        """Test upwind selection for backward differences."""
-        # In upwind schemes: use ppart for backward differences
-        dx = 0.1
-        u = np.array([0.0, 0.1, 0.3, 0.4, 0.5])
-        p_bwd = (u[1:] - u[:-1]) / dx
-
-        # ppart extracts positive parts (flow to the left)
-        ppart_bwd = ppart(p_bwd)
-        assert np.all(ppart_bwd >= 0)
-
-    def test_upwind_flux_computation(self):
-        """Test typical upwind flux computation."""
-        # Velocity-like quantity
-        v = np.array([-1.0, -0.5, 0.0, 0.5, 1.0])
-
-        # Upwind flux: ppart(v) goes left, npart(v) goes right
-        flux_left = ppart(v)
-        flux_right = npart(v)
-
-        # Check non-negativity
-        assert np.all(flux_left >= 0)
-        assert np.all(flux_right >= 0)
-
-        # Check partition of total flux
-        total_flux = flux_left + flux_right
-        assert np.allclose(total_flux, np.abs(v))
+@pytest.mark.unit
+def test_ppart_zero():
+    """Test ppart() with zero."""
+    assert ppart(0.0) == 0.0
+    assert ppart(-0.0) == 0.0
 
 
-class TestEdgeCases:
-    """Test edge cases and special values."""
-
-    def test_very_small_positive(self):
-        """Test with very small positive values."""
-        x = 1e-15
-        assert ppart(x) == x
-        assert npart(x) == 0.0
-
-    def test_very_small_negative(self):
-        """Test with very small negative values."""
-        x = -1e-15
-        assert ppart(x) == 0.0
-        assert npart(x) == pytest.approx(-x, abs=1e-20)
-
-    def test_large_values(self):
-        """Test with large values."""
-        assert ppart(1e10) == 1e10
-        assert ppart(-1e10) == 0.0
-        assert npart(1e10) == 0.0
-        assert npart(-1e10) == 1e10
-
-    def test_inf_values(self):
-        """Test with infinity values."""
-        assert ppart(np.inf) == np.inf
-        assert ppart(-np.inf) == 0.0
-        assert npart(np.inf) == 0.0
-        assert npart(-np.inf) == np.inf
-
-    def test_nan_propagation(self):
-        """Test that NaN propagates through functions."""
-        assert np.isnan(ppart(np.nan))
-        assert np.isnan(npart(np.nan))
+@pytest.mark.unit
+def test_ppart_integer_input():
+    """Test ppart() with integer input."""
+    # Should work with integers via NumPy
+    result = ppart(5)
+    assert result == 5
+    result = ppart(-3)
+    assert result == 0
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+@pytest.mark.unit
+def test_ppart_array_positive():
+    """Test ppart() with array of positive values."""
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    result = ppart(arr)
+    expected = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_ppart_array_negative():
+    """Test ppart() with array of negative values."""
+    arr = np.array([-1.0, -2.0, -3.0, -4.0, -5.0])
+    result = ppart(arr)
+    expected = np.zeros(5)
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_ppart_array_mixed():
+    """Test ppart() with array of mixed values."""
+    arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
+    result = ppart(arr)
+    expected = np.array([0.0, 0.0, 0.0, 1.0, 2.0])
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_ppart_array_2d():
+    """Test ppart() with 2D array."""
+    arr = np.array([[-1.0, 0.0, 1.0], [2.0, -2.0, 3.0]])
+    result = ppart(arr)
+    expected = np.array([[0.0, 0.0, 1.0], [2.0, 0.0, 3.0]])
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_ppart_large_values():
+    """Test ppart() with large values."""
+    assert ppart(1e10) == 1e10
+    assert ppart(-1e10) == 0.0
+
+
+@pytest.mark.unit
+def test_ppart_small_values():
+    """Test ppart() with small values."""
+    assert ppart(1e-10) == pytest.approx(1e-10)
+    assert ppart(-1e-10) == 0.0
+
+
+@pytest.mark.unit
+def test_ppart_mathematical_property():
+    """Test ppart(x) = max(x, 0) mathematical property."""
+    x_values = np.array([-5.0, -2.0, 0.0, 2.0, 5.0])
+    result = ppart(x_values)
+    expected = np.maximum(x_values, 0.0)
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_ppart_squared_equivalence():
+    """Test ppart(x)^2 = max(x, 0)^2 equivalence."""
+    arr = np.array([-3.0, -1.0, 0.0, 1.0, 3.0])
+    ppart_sq = ppart(arr) ** 2
+    max_sq = np.maximum(arr, 0.0) ** 2
+    assert np.allclose(ppart_sq, max_sq)
+
+
+# ===================================================================
+# Test npart() - Negative Part Function
+# ===================================================================
+
+
+@pytest.mark.unit
+def test_npart_positive_scalar():
+    """Test npart() with positive scalar."""
+    assert npart(5.0) == 0.0
+    assert npart(1.0) == 0.0
+    assert npart(0.1) == 0.0
+
+
+@pytest.mark.unit
+def test_npart_negative_scalar():
+    """Test npart() with negative scalar."""
+    assert npart(-5.0) == 5.0
+    assert npart(-1.0) == 1.0
+    assert npart(-0.1) == pytest.approx(0.1)
+
+
+@pytest.mark.unit
+def test_npart_zero():
+    """Test npart() with zero."""
+    assert npart(0.0) == 0.0
+    assert npart(-0.0) == 0.0
+
+
+@pytest.mark.unit
+def test_npart_integer_input():
+    """Test npart() with integer input."""
+    result = npart(5)
+    assert result == 0
+    result = npart(-3)
+    assert result == 3
+
+
+@pytest.mark.unit
+def test_npart_array_positive():
+    """Test npart() with array of positive values."""
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    result = npart(arr)
+    expected = np.zeros(5)
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_npart_array_negative():
+    """Test npart() with array of negative values."""
+    arr = np.array([-1.0, -2.0, -3.0, -4.0, -5.0])
+    result = npart(arr)
+    expected = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_npart_array_mixed():
+    """Test npart() with array of mixed values."""
+    arr = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
+    result = npart(arr)
+    expected = np.array([2.0, 1.0, 0.0, 0.0, 0.0])
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_npart_array_2d():
+    """Test npart() with 2D array."""
+    arr = np.array([[-1.0, 0.0, 1.0], [2.0, -2.0, 3.0]])
+    result = npart(arr)
+    expected = np.array([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]])
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_npart_large_values():
+    """Test npart() with large values."""
+    assert npart(1e10) == 0.0
+    assert npart(-1e10) == 1e10
+
+
+@pytest.mark.unit
+def test_npart_small_values():
+    """Test npart() with small values."""
+    assert npart(1e-10) == 0.0
+    assert npart(-1e-10) == pytest.approx(1e-10)
+
+
+@pytest.mark.unit
+def test_npart_mathematical_property():
+    """Test npart(x) = max(-x, 0) mathematical property."""
+    x_values = np.array([-5.0, -2.0, 0.0, 2.0, 5.0])
+    result = npart(x_values)
+    expected = np.maximum(-x_values, 0.0)
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_npart_squared_equivalence():
+    """Test npart(x)^2 = min(x, 0)^2 equivalence."""
+    arr = np.array([-3.0, -1.0, 0.0, 1.0, 3.0])
+    npart_sq = npart(arr) ** 2
+    min_sq = np.minimum(arr, 0.0) ** 2
+    assert np.allclose(npart_sq, min_sq)
+
+
+# ===================================================================
+# Test ppart() and npart() Relationships
+# ===================================================================
+
+
+@pytest.mark.unit
+def test_ppart_npart_complementary():
+    """Test ppart(x) + npart(x) = |x| (complementary property)."""
+    x_values = np.array([-5.0, -2.0, 0.0, 2.0, 5.0])
+    result = ppart(x_values) + npart(x_values)
+    expected = np.abs(x_values)
+    assert np.allclose(result, expected)
+
+
+@pytest.mark.unit
+def test_ppart_npart_sum_identity():
+    """Test ppart(x) - npart(x) = x (sum identity)."""
+    x_values = np.array([-5.0, -2.0, 0.0, 2.0, 5.0])
+    result = ppart(x_values) - npart(x_values)
+    assert np.allclose(result, x_values)
+
+
+@pytest.mark.unit
+def test_ppart_npart_orthogonal():
+    """Test ppart(x) * npart(x) = 0 (orthogonality)."""
+    x_values = np.array([-5.0, -2.0, 0.0, 2.0, 5.0])
+    result = ppart(x_values) * npart(x_values)
+    expected = np.zeros_like(x_values)
+    assert np.array_equal(result, expected)
+
+
+@pytest.mark.unit
+def test_ppart_npart_squared_sum():
+    """Test ppart(x)^2 + npart(x)^2 = x^2."""
+    x_values = np.array([-5.0, -2.0, 0.0, 2.0, 5.0])
+    result = ppart(x_values) ** 2 + npart(x_values) ** 2
+    expected = x_values**2
+    assert np.allclose(result, expected)
+
+
+# ===================================================================
+# Test Edge Cases and Special Values
+# ===================================================================
+
+
+@pytest.mark.unit
+def test_ppart_npart_empty_array():
+    """Test ppart() and npart() with empty array."""
+    arr = np.array([])
+    assert ppart(arr).size == 0
+    assert npart(arr).size == 0
+
+
+@pytest.mark.unit
+def test_ppart_npart_single_element():
+    """Test ppart() and npart() with single element array."""
+    arr = np.array([3.0])
+    assert np.array_equal(ppart(arr), np.array([3.0]))
+    assert np.array_equal(npart(arr), np.array([0.0]))
+
+    arr = np.array([-3.0])
+    assert np.array_equal(ppart(arr), np.array([0.0]))
+    assert np.array_equal(npart(arr), np.array([3.0]))
+
+
+@pytest.mark.unit
+def test_ppart_npart_inf_values():
+    """Test ppart() and npart() with infinity."""
+    assert ppart(np.inf) == np.inf
+    assert ppart(-np.inf) == 0.0
+    assert npart(np.inf) == 0.0
+    assert npart(-np.inf) == np.inf
+
+
+@pytest.mark.unit
+def test_ppart_npart_nan_values():
+    """Test ppart() and npart() with NaN."""
+    # NaN behavior: max(NaN, 0) = NaN
+    result_ppart = ppart(np.nan)
+    result_npart = npart(np.nan)
+    assert np.isnan(result_ppart)
+    assert np.isnan(result_npart)
+
+
+@pytest.mark.unit
+def test_ppart_npart_very_close_to_zero():
+    """Test ppart() and npart() with values very close to zero."""
+    eps = 1e-15
+    assert ppart(eps) == pytest.approx(eps, abs=1e-16)
+    assert ppart(-eps) == 0.0
+    assert npart(eps) == 0.0
+    assert npart(-eps) == pytest.approx(eps, abs=1e-16)
+
+
+# ===================================================================
+# Test Return Types
+# ===================================================================
+
+
+@pytest.mark.unit
+def test_ppart_return_type_scalar():
+    """Test ppart() returns correct type for scalar input."""
+    result = ppart(5.0)
+    assert isinstance(result, (float, np.floating))
+
+
+@pytest.mark.unit
+def test_ppart_return_type_array():
+    """Test ppart() returns ndarray for array input."""
+    arr = np.array([1.0, 2.0, 3.0])
+    result = ppart(arr)
+    assert isinstance(result, np.ndarray)
+    assert result.dtype == arr.dtype
+
+
+@pytest.mark.unit
+def test_npart_return_type_scalar():
+    """Test npart() returns correct type for scalar input."""
+    result = npart(-5.0)
+    assert isinstance(result, (float, np.floating))
+
+
+@pytest.mark.unit
+def test_npart_return_type_array():
+    """Test npart() returns ndarray for array input."""
+    arr = np.array([-1.0, -2.0, -3.0])
+    result = npart(arr)
+    assert isinstance(result, np.ndarray)
+    assert result.dtype == arr.dtype
+
+
+# ===================================================================
+# Test Module Exports
+# ===================================================================
+
+
+@pytest.mark.unit
+def test_module_exports():
+    """Test all functions are importable."""
+    from mfg_pde.utils import aux_func
+
+    assert hasattr(aux_func, "ppart")
+    assert hasattr(aux_func, "npart")
+    assert callable(aux_func.ppart)
+    assert callable(aux_func.npart)
+
+
+@pytest.mark.unit
+def test_module_docstrings():
+    """Test functions have docstrings."""
+    assert ppart.__doc__ is not None
+    assert "Positive part" in ppart.__doc__
+    assert npart.__doc__ is not None
+    assert "Negative part" in npart.__doc__
