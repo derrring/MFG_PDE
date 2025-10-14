@@ -134,8 +134,14 @@ class SolverConfig:
         new_config = copy.deepcopy(self._config)
         # Store custom parameters in the SolverConfig wrapper instead
         new_solver_config = SolverConfig(new_config)
-        if not hasattr(new_solver_config, "_custom_parameters"):
+
+        # Copy existing custom parameters from self
+        if hasattr(self, "_custom_parameters"):
+            new_solver_config._custom_parameters = copy.deepcopy(self._custom_parameters)  # type: ignore
+        else:
             new_solver_config._custom_parameters = {}  # type: ignore
+
+        # Add new custom parameter
         new_solver_config._custom_parameters[name] = value  # type: ignore
         return new_solver_config
 
