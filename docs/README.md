@@ -22,9 +22,7 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 - **[Theory Documentation](theory/)** - Mathematical foundations and algorithms
   - **[Reinforcement Learning](theory/reinforcement_learning/)** - RL for MFG, continuous actions
   - **[Numerical Methods](theory/numerical_methods/)** - AMR, semi-Lagrangian, Lagrangian
-  - **[Mathematical Background](theory/mathematical_background.md)** - Core MFG theory
-- **[Advanced Topics](advanced/)** - System design and advanced features
-  - **[System Design](advanced/design/)** - Architecture and design documents
+  - **[Mathematical Background](theory/foundations/mathematical_background.md)** - Core MFG theory
 - **[Advanced Examples](../examples/advanced/)** - Research-grade demonstrations
 - **[Interactive Notebooks](../examples/notebooks/)** - Jupyter-based exploration
 
@@ -67,7 +65,7 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 
 ### **📁 Documentation Consolidation** ✅ (October 8, 2025)
 - **Aggressive cleanup**: 62 → 23 active development docs (63% reduction)
-- **Better categorization**: Eliminated advanced/, redistributed to theory/development
+- **Better categorization**: Eliminated docs/advanced/, redistributed to theory/ and development/
 - **Theory organization**: 17 top-level files → 6 topic-based subdirectories
 - **Planning streamlined**: Moved completed work and analyses to development/
 - **User guides centralized**: Quick starts moved to user/guides/
@@ -97,7 +95,7 @@ docs/
 │   │   └── issue_templates.md         # Issue examples
 │   └── tutorials/                     # Step-by-step tutorials
 │       ├── network_mfg_tutorial.md    # Network MFG guide
-│       └── advanced/                  # Advanced tutorials
+│       └── advanced/                  # Advanced user tutorials
 │
 ├── theory/                            # 🔬 MATHEMATICAL FOUNDATIONS
 │   ├── foundations/                   # General theory (6 files)
@@ -230,12 +228,7 @@ config = create_fast_config(
 - **Mathematical Foundations**: HJB and FPK equations, convergence theory
 - **Numerical Methods**: Finite differences, particle methods, adaptive techniques
 - **Reinforcement Learning**: Continuous action MFG, scalability analysis
-- **Case Studies**: Santa Fe Bar Problem, traffic flow, financial applications
-
-#### **[Advanced Topics](advanced/)**
-- **System Design**: Architecture and design patterns
-- **Complex Applications**: Multi-agent systems, economic models
-- **Performance Optimization**: GPU acceleration and scaling
+- **Applications**: Domain-specific formulations (anisotropic MFG, evacuation, coordination)
 
 ### 🛠️ **Technical Documentation**
 
@@ -285,7 +278,7 @@ Comprehensive file format support for solver data persistence:
 Aggressive cleanup and reorganization:
 - **63% reduction**: 62 → 23 active development docs
 - **Theory organization**: 17 top-level files → 6 topic subdirectories
-- **Eliminated advanced/**: Redistributed to theory/ and development/
+- **Eliminated docs/advanced/**: Content redistributed to theory/ and development/
 - **Planning streamlined**: Completed work → development/completed/
 - **User guides centralized**: Quick starts → user/guides/
 
@@ -343,7 +336,7 @@ Complete framework documentation for achieving 100% type safety in scientific co
 
 ### **Quick Solutions**
 - **Installation Issues**: Check [User Documentation](user/) and development/maintenance/
-- **Performance Questions**: See [Advanced Topics](advanced/) and GPU setup
+- **Performance Questions**: See [Development/Design](development/design/) for architecture and GPU setup
 - **Research Workflow**: Review [Theory](theory/) and [Examples](../examples/advanced/)
 
 ### **Community Support**
