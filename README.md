@@ -407,7 +407,7 @@ If you use MFG_PDE in your research, please cite:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={0.5.0},
+  version={1.7.3},
   url={https://github.com/derrring/MFG_PDE},
   note={Python package for numerical methods in Mean Field Games}
 }

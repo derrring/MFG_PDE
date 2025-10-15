@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "1.7.2" # v1.7.2: CI Optimization + Codecov Integration + Roadmap
+version = "1.7.3" # v1.7.3: QP Monotonicity Fix + Test Coverage Expansion
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
