@@ -163,6 +163,36 @@ class HJBGFDMSolver(BaseHJBSolver):
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
 
+    def _init_enhanced_qp_features(self) -> None:
+        """
+        Initialize enhanced QP features for smart/tuned optimization levels.
+
+        Sets up adaptive threshold state and tracking statistics for dynamic
+        QP usage optimization. The adaptive system adjusts the violation severity
+        threshold to approach the target QP usage rate specified by qp_usage_target.
+
+        Adaptive State:
+            threshold: Violation severity threshold for QP triggering
+            qp_count: Number of times QP was applied
+            total_count: Total number of violation checks
+            severity_history: Historical record of violation severities
+
+        Context Variables (for enhanced heuristics):
+            _current_point_idx: Current collocation point being processed
+            _current_time_ratio: Current time step ratio (0 = initial, 1 = final)
+            _current_newton_iter: Current Newton iteration number
+        """
+        self._adaptive_qp_state = {
+            "threshold": 0.0,  # Start at 0 (catch all violations initially)
+            "qp_count": 0,
+            "total_count": 0,
+            "severity_history": [],
+        }
+        # Context variables for potential spatial/temporal heuristics
+        self._current_point_idx = 0
+        self._current_time_ratio = 0.0
+        self._current_newton_iter = 0
+
     def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
         """Helper method to get boundary condition properties from either dict or dataclass."""
         if hasattr(self.boundary_conditions, property_name):
@@ -457,11 +487,8 @@ class HJBGFDMSolver(BaseHJBSolver):
             unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)  # type: ignore[arg-type]
 
             # Check if unconstrained solution violates monotonicity
-            # Use enhanced QP logic if available, otherwise use basic check
-            if self.qp_optimization_level in ["smart", "tuned"]:
-                needs_constraints = self._enhanced_check_monotonicity_violation(unconstrained_coeffs)
-            else:
-                needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs)
+            # Unified method automatically adapts based on qp_optimization_level
+            needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs, point_idx)
 
             if needs_constraints:
                 # Use constrained QP for monotonicity (enhanced version if available)
@@ -765,6 +792,134 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         except Exception:
             return None
+
+    def _check_monotonicity_violation(
+        self, D_coeffs: np.ndarray, point_idx: int = 0, use_adaptive: bool | None = None
+    ) -> bool:
+        """
+        Check if unconstrained Taylor coefficients violate monotonicity.
+
+        Unified method supporting both basic (strict) and adaptive (threshold-based) modes.
+
+        Args:
+            D_coeffs: Taylor derivative coefficients from unconstrained solve
+            point_idx: Collocation point index (for context, currently unused)
+            use_adaptive: Override adaptive mode. If None, infer from qp_optimization_level
+                - False: BASIC mode - strict enforcement of all criteria
+                - True: ADAPTIVE mode - threshold-based targeting qp_usage_target
+
+        Returns:
+            True if QP constraints are needed
+
+        Mathematical Criteria (see docs/development/QP_MONOTONICITY_CRITERIA.md):
+            1. Laplacian negativity: D₂ < 0 (diffusion dominance)
+            2. Gradient boundedness: |D₁| ≤ C·σ²·|D₂| (prevent advection dominance)
+            3. Higher-order control: Σ|Dₖ| < |D₂| for order ≥ 3 (truncation error)
+
+        Modes:
+            - BASIC: Return True if ANY criterion violated
+            - ADAPTIVE: Return True if violation_severity > adaptive_threshold
+        """
+        # Find multi-index locations
+        laplacian_idx = None
+        gradient_idx = None
+
+        for k, beta in enumerate(self.multi_indices):
+            if sum(beta) == 2 and all(b <= 2 for b in beta):
+                if laplacian_idx is None:
+                    laplacian_idx = k
+            elif sum(beta) == 1:
+                if gradient_idx is None:
+                    gradient_idx = k
+
+        if laplacian_idx is None:
+            return False  # Cannot check monotonicity without Laplacian term
+
+        # Extract coefficients
+        D_laplacian = D_coeffs[laplacian_idx]
+        tolerance = 1e-12
+        laplacian_mag = abs(D_laplacian) + 1e-10
+
+        # Criterion 1: Laplacian Negativity (Diffusion Dominance)
+        violation_1 = D_laplacian >= -tolerance
+
+        # Criterion 2: Gradient Boundedness (Prevent Advection Dominance)
+        violation_2 = False
+        if gradient_idx is not None:
+            D_gradient = D_coeffs[gradient_idx]
+            sigma = getattr(self.problem, "sigma", 1.0)
+            scale_factor = 10.0 * max(sigma**2, 0.1)
+            gradient_mag = abs(D_gradient)
+            violation_2 = gradient_mag > scale_factor * laplacian_mag
+
+        # Criterion 3: Higher-Order Control (Truncation Error)
+        higher_order_norm = sum(abs(D_coeffs[k]) for k in range(len(D_coeffs)) if sum(self.multi_indices[k]) >= 3)
+        violation_3 = higher_order_norm > laplacian_mag
+
+        # Basic violation check (any criterion violated)
+        has_violation = violation_1 or violation_2 or violation_3
+
+        # Mode Selection: Basic vs Adaptive
+        if use_adaptive is None:
+            use_adaptive = self.qp_optimization_level in ["smart", "tuned"]
+
+        if not use_adaptive:
+            # BASIC MODE: Strict enforcement of all criteria
+            return has_violation
+
+        # ADAPTIVE MODE: Threshold-Based Decision
+        # Compute quantitative severity (0 = no violation, >0 = increasing severity)
+        severity = 0.0
+
+        # Severity 1: How positive is Laplacian (should be negative)
+        if violation_1:
+            severity = max(severity, D_laplacian + tolerance)
+
+        # Severity 2: Excess gradient relative to diffusion
+        if violation_2:
+            D_gradient = D_coeffs[gradient_idx]
+            sigma = getattr(self.problem, "sigma", 1.0)
+            scale_factor = 10.0 * max(sigma**2, 0.1)
+            gradient_mag = abs(D_gradient)
+            excess_gradient = gradient_mag / laplacian_mag - scale_factor
+            severity = max(severity, excess_gradient)
+
+        # Severity 3: Excess higher-order terms
+        if violation_3:
+            excess_higher_order = higher_order_norm / laplacian_mag - 1.0
+            severity = max(severity, excess_higher_order)
+
+        # Initialize adaptive state on first call
+        if not hasattr(self, "_adaptive_qp_state"):
+            self._init_enhanced_qp_features()
+
+        state = self._adaptive_qp_state
+        threshold = state["threshold"]
+
+        # Decision: use QP if severity exceeds adaptive threshold
+        needs_qp = severity > threshold
+
+        # Update statistics
+        state["total_count"] += 1
+        state["severity_history"].append(severity)
+        if needs_qp:
+            state["qp_count"] += 1
+
+        # Adapt threshold every N evaluations to approach qp_usage_target
+        adaptation_interval = 100
+        if state["total_count"] % adaptation_interval == 0:
+            actual_usage = state["qp_count"] / state["total_count"]
+            target_usage = self.qp_usage_target
+
+            # Proportional control to approach target
+            if actual_usage > target_usage * 1.2:
+                # Too much QP usage, increase threshold (be more permissive)
+                state["threshold"] = max(threshold * 1.1, 1e-10)
+            elif actual_usage < target_usage * 0.8:
+                # Too little QP usage, decrease threshold (be more strict)
+                state["threshold"] = threshold * 0.9
+
+        return needs_qp
 
     def _check_m_matrix_property(
         self, weights: np.ndarray, point_idx: int, tolerance: float = 1e-12

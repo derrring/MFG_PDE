@@ -400,15 +400,25 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Citation
 
+If you use MFG_PDE in your research, please cite:
+
 ```bibtex
 @software{mfg_pde2025,
-  title={MFG_PDE: Research-Grade Mean Field Games Framework},
-  author={derrring},
+  title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
+  author={Wang, Jeremy Jiongyi},
   year={2025},
-  url={https://github.com/derrring/MFG_PDE}
+  version={0.5.0},
+  url={https://github.com/derrring/MFG_PDE},
+  note={Python package for numerical methods in Mean Field Games}
 }
 ```
 
+For specific methods, please also cite the original papers referenced in the [documentation](docs/theory/).
+
 ## License
 
-[Add appropriate license information]
+MFG_PDE is released under the [MIT License](LICENSE).
+
+**Copyright** (c) 2025 Jeremy Jiongyi Wang
+
+Permission is hereby granted, free of charge, to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software. See the [LICENSE](LICENSE) file for full details.
