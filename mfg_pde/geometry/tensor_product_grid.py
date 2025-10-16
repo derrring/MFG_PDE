@@ -36,8 +36,11 @@ class TensorProductGrid:
     Provides memory-efficient representation of d-dimensional regular grids
     using 1D coordinate arrays. Supports uniform and non-uniform spacing.
 
+    Supports arbitrary dimensions, though O(N^d) complexity limits practical
+    use to d≤3 for dense grids. For high dimensions (d>3), consider meshfree methods.
+
     Attributes:
-        dimension: Spatial dimension (1, 2, or 3)
+        dimension: Spatial dimension (any positive integer)
         bounds: List of (min, max) tuples for each dimension
         num_points: List of grid points along each dimension
         coordinates: List of 1D coordinate arrays
@@ -53,6 +56,13 @@ class TensorProductGrid:
         ... )
         >>> x, y = grid.meshgrid()  # Get coordinate matrices
         >>> flat_points = grid.flatten()  # Get all grid points as (N,2) array
+
+        >>> # Create 4D grid (with performance warning)
+        >>> grid_4d = TensorProductGrid(
+        ...     dimension=4,
+        ...     bounds=[(0.0, 1.0)] * 4,
+        ...     num_points=[10] * 4  # 10^4 = 10,000 points
+        ... )
     """
 
     def __init__(
@@ -67,18 +77,37 @@ class TensorProductGrid:
         Initialize tensor product grid.
 
         Args:
-            dimension: Spatial dimension (1, 2, or 3)
+            dimension: Spatial dimension (any positive integer).
+                Note: For d>3, grid requires O(N^d) memory/computation.
+                Consider meshfree methods for high-dimensional problems.
             bounds: List of (min, max) bounds for each dimension
             num_points: Number of grid points along each dimension
             spacing_type: "uniform" or "custom"
             custom_coordinates: Optional list of 1D coordinate arrays
 
         Raises:
-            ValueError: If dimension not in [1,2,3]
+            ValueError: If dimension < 1
             ValueError: If bounds/num_points length != dimension
+            UserWarning: If dimension > 3 (performance warning)
         """
-        if dimension not in [1, 2, 3]:
-            raise ValueError(f"Dimension must be 1, 2, or 3, got {dimension}")
+        if dimension < 1:
+            raise ValueError(f"Dimension must be positive, got {dimension}")
+
+        # Warn about performance for high dimensions
+        if dimension > 3:
+            import warnings
+
+            total_points = 1
+            for n in num_points:
+                total_points *= n
+
+            warnings.warn(
+                f"TensorProductGrid with dimension={dimension} requires O(N^d) memory/computation. "
+                f"Total grid points: {total_points:,}. "
+                f"For high dimensions (d>3), consider meshfree methods.",
+                category=UserWarning,
+                stacklevel=2,
+            )
 
         if len(bounds) != dimension or len(num_points) != dimension:
             raise ValueError(
