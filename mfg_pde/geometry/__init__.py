@@ -1,20 +1,27 @@
 """
 Geometry package for MFG_PDE: Professional mesh generation and complex domain support.
 
-This package implements comprehensive domain management for 1D, 2D, and 3D MFG problems:
-- Domain1D: 1D domains with boundary conditions (foundation for MFG solvers)
-- Domain2D: 2D domains with complex geometry support
+This package implements comprehensive domain management for MFG problems:
+- Domain1D, Domain2D, Domain3D: Low-dimensional (d≤3) mesh-based domains with Gmsh
+- implicit: High-dimensional (d≥1) meshfree domains with signed distance functions
 - Gmsh → Meshio → PyVista pipeline for professional mesh generation
 - Advanced boundary condition management for complex domains
 
 Key Components:
-- Domain1D: 1D domain and boundary condition management
+- Domain1D/2D/3D: Mesh-based domain implementations (d≤3)
+- implicit: Meshfree geometry infrastructure for any dimension
+  - Hyperrectangle: Axis-aligned boxes (O(d) sampling, no rejection!)
+  - Hypersphere: Balls/circles for obstacles
+  - CSG operations: Union, Intersection, Difference for complex domains
 - BaseGeometry: Abstract base class for all geometry types
 - MeshData: Universal mesh data container
-- Domain2D: 2D domain implementation with complex geometry support
 - MeshPipeline: Complete Gmsh → Meshio → PyVista workflow orchestration
 - MeshManager: High-level mesh management for multiple geometries
 - BoundaryManager: Advanced boundary condition management
+
+Mesh-based vs Meshfree:
+- Use Domain2D/3D (Gmsh) for low-dimensional FEM/FVM problems (d≤3)
+- Use implicit.* (SDF) for high-dimensional particle-collocation (d≥4)
 """
 
 from __future__ import annotations
