@@ -25,16 +25,19 @@ class MeshData:
     This class serves as the central data structure for mesh information,
     providing seamless conversion between different mesh formats.
 
+    Supports arbitrary dimensions, though mesh generation tools (Gmsh) are
+    limited to d≤3. For d>3, use point clouds or implicit domains.
+
     Attributes:
-        vertices: (N_vertices, dim) coordinates [2D/3D compatible]
+        vertices: (N_vertices, dim) coordinates [any dimension]
         elements: Element connectivity (varies by element type)
-        element_type: Type of elements ("triangle", "tetrahedron", etc.)
+        element_type: Type of elements ("triangle", "tetrahedron", "point", etc.)
         boundary_tags: Boundary region identifiers
         element_tags: Element region identifiers
-        boundary_faces: Boundary face connectivity (2D: edges, 3D: faces)
-        dimension: Spatial dimension (2 or 3)
+        boundary_faces: Boundary face connectivity (2D: edges, 3D: faces, d>3: experimental)
+        dimension: Spatial dimension (any positive integer, though d>3 is experimental)
         quality_metrics: Mesh quality analysis data
-        element_volumes: Element areas (2D) or volumes (3D)
+        element_volumes: Element measures (areas, volumes, hypervolumes)
         metadata: Additional mesh information and parameters
     """
 
@@ -57,8 +60,20 @@ class MeshData:
             self.metadata = {}
 
         # Validate dimensions
-        if self.dimension not in [2, 3]:
-            raise ValueError(f"Dimension must be 2 or 3, got {self.dimension}")
+        if self.dimension < 1:
+            raise ValueError(f"Dimension must be positive, got {self.dimension}")
+
+        # Warn about experimental status for high dimensions
+        if self.dimension > 3:
+            import warnings
+
+            warnings.warn(
+                f"MeshData with dimension={self.dimension} is experimental. "
+                f"Mesh generation tools (Gmsh) do not support d>3. "
+                f"Consider using point clouds or implicit domains.",
+                category=UserWarning,
+                stacklevel=2,
+            )
 
         if self.vertices.shape[1] != self.dimension:
             raise ValueError(

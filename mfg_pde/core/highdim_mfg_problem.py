@@ -19,6 +19,43 @@ if TYPE_CHECKING:
     from mfg_pde.geometry.base_geometry import BaseGeometry
 
 
+class _TensorGridGeometry:
+    """
+    Dimension-agnostic geometry wrapper for TensorProductGrid.
+
+    This internal helper class wraps TensorProductGrid to provide a
+    BaseGeometry-compatible interface for GridBasedMFGProblem.
+    """
+
+    def __init__(self, grid):
+        """Initialize with TensorProductGrid."""
+        from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+
+        if not isinstance(grid, TensorProductGrid):
+            raise TypeError(f"Expected TensorProductGrid, got {type(grid)}")
+
+        self.grid = grid
+        self.dimension = grid.dimension
+
+    def generate_mesh(self):
+        """Generate MeshData from grid points."""
+        from mfg_pde.geometry.base_geometry import MeshData
+
+        # Get all grid points as (N, d) array
+        points = self.grid.flatten()
+
+        # Create MeshData with empty elements (structured grid doesn't need element connectivity)
+        return MeshData(
+            vertices=points,
+            elements=np.array([], dtype=np.int32).reshape(0, 0),
+            element_type="point",  # Point cloud representation
+            boundary_tags=np.array([], dtype=np.int32),
+            element_tags=np.array([], dtype=np.int32),
+            boundary_faces=np.array([], dtype=np.int32).reshape(0, 0),
+            dimension=self.dimension,
+        )
+
+
 class HighDimMFGProblem(ABC):
     """
     Abstract base class for high-dimensional MFG problems.
@@ -313,78 +350,66 @@ class HighDimMFGProblem(ABC):
 
 class GridBasedMFGProblem(HighDimMFGProblem):
     """
-    High-dimensional MFG problem on regular grids.
+    MFG problem on regular grids (dimension-agnostic).
 
-    This class provides a simpler interface for problems on rectangular domains
-    with regular grid discretization, while still supporting the full
-    high-dimensional solver infrastructure.
+    This class provides a simpler interface for problems on hyperrectangular domains
+    with regular tensor product grid discretization. Supports arbitrary dimensions,
+    though O(N^d) complexity limits practical use to d≤3 for dense grids.
+
+    For high dimensions (d>3), consider:
+    - Using sparse grids (reduced grid points)
+    - Switching to meshfree particle-collocation methods
+    - Adaptive refinement strategies
     """
 
     def __init__(
         self,
-        domain_bounds: tuple,  # e.g., (0, 1, 0, 1) for 2D, (0, 1, 0, 1, 0, 1) for 3D
+        domain_bounds: tuple,  # e.g., (0, 1, 0, 1) for 2D, (0, 1, 0, 1, 0, 1) for 3D, etc.
         grid_resolution: int | tuple[int, ...],
         time_domain: tuple[float, int] = (1.0, 100),
         diffusion_coeff: float = 0.1,
     ):
         """
-        Initialize grid-based MFG problem.
+        Initialize grid-based MFG problem (any dimension).
 
         Args:
-            domain_bounds: Domain boundaries (2*dim values: min/max for each dimension)
-            grid_resolution: Grid points per dimension (int for uniform, tuple for per-dimension)
+            domain_bounds: Domain boundaries (2*dim values: min/max for each dimension).
+                Examples:
+                - 2D: (xmin, xmax, ymin, ymax)
+                - 3D: (xmin, xmax, ymin, ymax, zmin, zmax)
+                - 4D: (x0min, x0max, x1min, x1max, x2min, x2max, x3min, x3max)
+            grid_resolution: Grid points per dimension (int for uniform, tuple for per-dimension).
+                Examples:
+                - Uniform 2D 50×50: 50
+                - Non-uniform 2D: (50, 30)
+                - Uniform 4D 10^4 points: 10
             time_domain: (T_final, N_timesteps)
             diffusion_coeff: Diffusion coefficient
         """
+        from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+
         # Determine dimension from bounds
         dimension = len(domain_bounds) // 2
 
-        # Create appropriate geometry (prefer simple grid for regular domains)
-        try:
-            if dimension == 2:
-                from mfg_pde.geometry.simple_grid import SimpleGrid2D
-
-                if isinstance(grid_resolution, int):
-                    res = (grid_resolution, grid_resolution)
-                else:
-                    if len(grid_resolution) != 2:
-                        raise ValueError(
-                            f"For 2D problems, grid_resolution must be int or 2-tuple, got {len(grid_resolution)}-tuple"
-                        )
-                    res = tuple(grid_resolution[:2])  # type: ignore[assignment]  # Ensure exactly 2 elements
-                geometry = SimpleGrid2D(bounds=domain_bounds, resolution=res)
-            elif dimension == 3:
-                from mfg_pde.geometry.simple_grid import SimpleGrid3D
-
-                if isinstance(grid_resolution, int):
-                    res = (grid_resolution, grid_resolution, grid_resolution)  # type: ignore[assignment]
-                else:
-                    if len(grid_resolution) != 3:
-                        raise ValueError(
-                            f"For 3D problems, grid_resolution must be int or 3-tuple, got {len(grid_resolution)}-tuple"
-                        )
-                    res = tuple(grid_resolution[:3])  # type: ignore[assignment]  # Ensure exactly 3 elements
-                geometry = SimpleGrid3D(bounds=domain_bounds, resolution=res)  # type: ignore[assignment,arg-type]
-            else:
-                raise ValueError(f"Grid-based problems only support 2D and 3D, got {dimension}D")
-
-        except ImportError:
-            # Fallback to Domain2D/Domain3D if simple grid not available
-            if dimension == 2:
-                from mfg_pde.geometry.domain_2d import Domain2D
-
-                geometry = Domain2D(  # type: ignore[assignment]
-                    domain_type="rectangle",
-                    bounds=domain_bounds,
-                    mesh_size=1.0 / (grid_resolution if isinstance(grid_resolution, int) else min(grid_resolution)),
+        # Normalize grid_resolution to tuple
+        if isinstance(grid_resolution, int):
+            res = tuple([grid_resolution] * dimension)
+        else:
+            if len(grid_resolution) != dimension:
+                raise ValueError(
+                    f"For {dimension}D problems, grid_resolution must be int or {dimension}-tuple, "
+                    f"got {len(grid_resolution)}-tuple"
                 )
-            elif dimension == 3:
-                # Domain3D is not fully implemented yet - abstract class cannot be instantiated
-                raise NotImplementedError(
-                    "3D grid-based problems are not yet supported. Domain3D is an abstract class that requires concrete implementation."
-                ) from None
-            else:
-                raise ValueError(f"Grid-based problems only support 2D and 3D, got {dimension}D") from None
+            res = tuple(grid_resolution)
+
+        # Create bounds list: [(min_0, max_0), (min_1, max_1), ...]
+        bounds_list = [(domain_bounds[2 * i], domain_bounds[2 * i + 1]) for i in range(dimension)]
+
+        # Create dimension-agnostic TensorProductGrid
+        grid = TensorProductGrid(dimension=dimension, bounds=bounds_list, num_points=res)
+
+        # Wrap in geometry interface
+        geometry = _TensorGridGeometry(grid)
 
         super().__init__(geometry, time_domain, diffusion_coeff, dimension)
 
