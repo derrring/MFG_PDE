@@ -81,11 +81,12 @@ class TestMeshData:
         assert abs(areas[0] - 0.5) < 1e-10
 
     def test_invalid_dimension(self):
-        """Test validation of invalid dimensions."""
-        vertices = np.array([[0, 0], [1, 0], [0, 1]])
+        """Test validation of mismatched dimensions."""
+        vertices = np.array([[0, 0], [1, 0], [0, 1]])  # 2D vertices
         elements = np.array([[0, 1, 2]])
 
-        with pytest.raises(ValueError, match="Dimension must be 2 or 3"):
+        # Should raise error when vertex dimension doesn't match specified dimension
+        with pytest.raises(ValueError, match="Vertex coordinates dimension 2 doesn't match specified dimension 4"):
             MeshData(
                 vertices=vertices,
                 elements=elements,
@@ -93,7 +94,7 @@ class TestMeshData:
                 boundary_tags=np.array([1, 1, 1]),
                 element_tags=np.array([1]),
                 boundary_faces=np.array([[0, 1], [1, 2], [2, 0]]),
-                dimension=4,  # Invalid dimension
+                dimension=4,  # Mismatch: 2D vertices but dimension=4
             )
 
 

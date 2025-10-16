@@ -55,11 +55,12 @@ class TestInitialization:
 
     def test_invalid_dimension_raises(self) -> None:
         """Test that invalid dimension raises ValueError."""
-        with pytest.raises(ValueError, match="Dimension must be 1, 2, or 3"):
-            TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, num_points=[10] * 4)
-
-        with pytest.raises(ValueError, match="Dimension must be 1, 2, or 3"):
+        # Dimension must be positive (dimension < 1 should raise)
+        with pytest.raises(ValueError, match="Dimension must be positive"):
             TensorProductGrid(dimension=0, bounds=[], num_points=[])
+
+        with pytest.raises(ValueError, match="Dimension must be positive"):
+            TensorProductGrid(dimension=-1, bounds=[], num_points=[])
 
     def test_mismatched_bounds_length_raises(self) -> None:
         """Test that mismatched bounds length raises ValueError."""
