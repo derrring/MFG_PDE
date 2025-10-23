@@ -1192,6 +1192,9 @@ class HJBGFDMSolver(BaseHJBSolver):
             H = self.problem.H(x, p, m_n_plus_1[i])
 
             # Diffusion coefficient
+            # NOTE: HJB uses (σ²/2) factor from control theory (Pontryagin maximum principle)
+            # This differs from FP equation which uses σ² (standard diffusion form)
+            # Both forms are correct - they arise from different derivations of MFG system
             sigma = self.problem.sigma(x)
             diffusion_term = 0.5 * sigma**2 * laplacian
 
