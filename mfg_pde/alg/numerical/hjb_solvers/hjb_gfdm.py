@@ -1100,7 +1100,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             U_solution_collocation[n, :] = self._solve_timestep(
                 U_solution_collocation[n + 1, :],
                 U_prev_collocation[n, :],
-                M_collocation[n + 1, :],
+                M_collocation[n, :],  # FIXED: Use m^n, not m^{n+1} (same-time coupling)
                 n,
             )
 
@@ -1127,7 +1127,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 break
 
             # Compute Jacobian
-            jacobian = self._compute_hjb_jacobian(u_current, u_prev_picard, m_n_plus_1, time_idx)
+            jacobian = self._compute_hjb_jacobian(u_current, u_n_plus_1, u_prev_picard, m_n_plus_1, time_idx)
 
             # Apply boundary conditions
             jacobian_bc, residual_bc = self._apply_boundary_conditions_to_system(jacobian, residual, time_idx)
@@ -1203,6 +1203,7 @@ class HJBGFDMSolver(BaseHJBSolver):
     def _compute_hjb_jacobian(
         self,
         u_current: np.ndarray,
+        u_n_plus_1: np.ndarray,  # FIXED: Added actual u_n_plus_1 parameter
         u_prev_picard: np.ndarray,
         m_n_plus_1: np.ndarray,
         time_idx: int,
@@ -1223,11 +1224,9 @@ class HJBGFDMSolver(BaseHJBSolver):
             u_plus = u_current.copy()
             u_plus[j] += eps
 
-            # Placeholder for u_n_plus_1 (not perturbed in Newton iteration)
-            u_n_plus_1_dummy = u_current.copy()
-
-            residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1_dummy, m_n_plus_1, time_idx)
-            residual_base = self._compute_hjb_residual(u_current, u_n_plus_1_dummy, m_n_plus_1, time_idx)
+            # FIXED: Use actual u_n_plus_1 (not perturbed in Newton iteration)
+            residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
+            residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
             jacobian[:, j] = (residual_plus - residual_base) / eps
 
