@@ -1245,14 +1245,16 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         if bc_type == "dirichlet":
             # For collocation points on boundaries, enforce Dirichlet values
-            # This depends on how boundaries are marked in collocation_points
-            # Placeholder implementation:
-            # bc_value = self._get_boundary_condition_property("value", 0.0)
-            # if callable(bc_value):
-            #     for i in self.boundary_point_indices:
-            #         u[i] = bc_value(self.collocation_points[i], self.problem.T * time_idx / self.problem.Nt)
-            # else:
-            #     u[self.boundary_point_indices] = bc_value
+            if len(self.boundary_indices) > 0:
+                bc_value = self._get_boundary_condition_property("value", 0.0)
+                if callable(bc_value):
+                    # Time-dependent or space-dependent BC
+                    current_time = self.problem.T * time_idx / (self.problem.Nt + 1)
+                    for i in self.boundary_indices:
+                        u[i] = bc_value(self.collocation_points[i], current_time)
+                else:
+                    # Constant BC value
+                    u[self.boundary_indices] = bc_value
             return u
         elif bc_type == "neumann":
             # Neumann conditions typically enforced weakly through residual
@@ -1280,13 +1282,14 @@ class HJBGFDMSolver(BaseHJBSolver):
             bc_type = "dirichlet"
 
         if bc_type == "dirichlet":
-            # Identify boundary points
-            # Placeholder: Assume boundary_point_indices is available
-            # boundary_indices = getattr(self, 'boundary_point_indices', [])
-            # for i in boundary_indices:
-            #     jacobian_bc[i, :] = 0.0
-            #     jacobian_bc[i, i] = 1.0
-            #     residual_bc[i] = 0.0
+            # Enforce Dirichlet BC by setting identity rows in Jacobian
+            if len(self.boundary_indices) > 0:
+                for i in self.boundary_indices:
+                    # Set Jacobian row to identity (δu_i = 0 enforced)
+                    jacobian_bc[i, :] = 0.0
+                    jacobian_bc[i, i] = 1.0
+                    # Set residual to zero (no update for boundary values)
+                    residual_bc[i] = 0.0
             return jacobian_bc, residual_bc
         else:
             return jacobian_bc, residual_bc
