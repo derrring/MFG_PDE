@@ -10,7 +10,7 @@ from scipy.spatial.distance import cdist
 
 from .base_hjb import BaseHJBSolver
 
-# Optional QP solver imports (merged from tuned QP solver)
+# Optional QP solver imports
 CVXPY_AVAILABLE = importlib.util.find_spec("cvxpy") is not None
 OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
 
@@ -29,13 +29,11 @@ class HJBGFDMSolver(BaseHJBSolver):
     2. Taylor expansion with weighted least squares for derivative approximation
     3. Newton iteration for nonlinear HJB equations
     4. Support for various boundary conditions
-    5. Enhanced QP optimization levels (smart/tuned) for performance optimization
+    5. Optional QP constraints for monotonicity preservation
 
     QP Optimization Levels:
-    - "none": Basic GFDM without QP optimization
-    - "basic": Standard monotonicity constraints
-    - "smart": Moderate QP usage optimization with context awareness
-    - "tuned": Aggressive QP usage optimization targeting ~10% usage rate
+    - "none": GFDM without QP constraints
+    - "basic": Adaptive QP with M-matrix checking for monotonicity preservation
     """
 
     def __init__(
@@ -54,9 +52,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         boundary_indices: np.ndarray | None = None,
         boundary_conditions: dict | BoundaryConditions | None = None,
         use_monotone_constraints: bool = False,
-        # Enhanced QP options (merged from tuned QP solver)
-        qp_optimization_level: str = "none",  # "none", "basic", "smart", "tuned"
-        qp_usage_target: float = 0.1,
+        # QP optimization level
+        qp_optimization_level: str = "none",  # "none" or "basic" (adaptive M-matrix checking)
+        qp_usage_target: float = 0.1,  # Unused, kept for backward compatibility
     ):
         """
         Initialize the GFDM HJB solver.
@@ -75,23 +73,33 @@ class HJBGFDMSolver(BaseHJBSolver):
             boundary_indices: Indices of boundary collocation points
             boundary_conditions: Dictionary or BoundaryConditions object specifying boundary conditions
             use_monotone_constraints: Enable constrained QP for monotonicity preservation
-            qp_optimization_level: QP optimization level ("none", "basic", "smart", "tuned")
-            qp_usage_target: Target QP usage rate for optimization (default 0.1 = 10%)
+            qp_optimization_level: QP optimization level:
+                - "none": No QP constraints
+                - "basic": Adaptive QP with M-matrix checking (recommended)
+            qp_usage_target: Deprecated parameter, kept for backward compatibility
         """
         super().__init__(problem)
 
-        # Store QP optimization level early for method naming
+        # Handle deprecated QP level names
+        if qp_optimization_level in ["smart", "tuned"]:
+            import warnings
+
+            warnings.warn(
+                f"qp_optimization_level='{qp_optimization_level}' is deprecated and was never fully implemented. "
+                "Using 'basic' (adaptive M-matrix checking) instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            qp_optimization_level = "basic"
+
+        # Store QP optimization level
         self.qp_optimization_level = qp_optimization_level
 
         # Set method name based on QP optimization level
         if qp_optimization_level == "none":
             self.hjb_method_name = "GFDM"
         elif qp_optimization_level == "basic":
-            self.hjb_method_name = "GFDM-Basic"
-        elif qp_optimization_level == "smart":
-            self.hjb_method_name = "GFDM-Smart-QP"
-        elif qp_optimization_level == "tuned":
-            self.hjb_method_name = "GFDM-Tuned-QP"
+            self.hjb_method_name = "GFDM-QP"
         else:
             self.hjb_method_name = f"GFDM-{qp_optimization_level}"
 
@@ -147,51 +155,16 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Monotonicity constraint option
         self.use_monotone_constraints = use_monotone_constraints
 
-        # Enhanced QP optimization features (merged from tuned QP solver)
+        # QP usage target (deprecated, kept for backward compatibility)
         self.qp_usage_target = qp_usage_target
 
-        # Initialize QP-related attributes based on optimization level
-        if qp_optimization_level in ["smart", "tuned"]:
-            self._init_enhanced_qp_features()
-        else:
-            self.enhanced_qp_stats = None
-            self._current_point_idx = 0
-            self._current_time_ratio = 0.0
-            self._current_newton_iter = 0
+        # Initialize QP-related attributes (minimal tracking for statistics)
+        self.qp_stats = None
+        self._current_point_idx = 0
 
         # Pre-compute GFDM structure
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
-
-    def _init_enhanced_qp_features(self) -> None:
-        """
-        Initialize enhanced QP features for smart/tuned optimization levels.
-
-        Sets up adaptive threshold state and tracking statistics for dynamic
-        QP usage optimization. The adaptive system adjusts the violation severity
-        threshold to approach the target QP usage rate specified by qp_usage_target.
-
-        Adaptive State:
-            threshold: Violation severity threshold for QP triggering
-            qp_count: Number of times QP was applied
-            total_count: Total number of violation checks
-            severity_history: Historical record of violation severities
-
-        Context Variables (for enhanced heuristics):
-            _current_point_idx: Current collocation point being processed
-            _current_time_ratio: Current time step ratio (0 = initial, 1 = final)
-            _current_newton_iter: Current Newton iteration number
-        """
-        self._adaptive_qp_state = {
-            "threshold": 0.0,  # Start at 0 (catch all violations initially)
-            "qp_count": 0,
-            "total_count": 0,
-            "severity_history": [],
-        }
-        # Context variables for potential spatial/temporal heuristics
-        self._current_point_idx = 0
-        self._current_time_ratio = 0.0
-        self._current_newton_iter = 0
 
     def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
         """Helper method to get boundary condition properties from either dict or dataclass."""
@@ -450,9 +423,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         Returns:
             Dictionary mapping derivative multi-indices to approximated values
         """
-        # Inject context for enhanced QP features
-        if self.qp_optimization_level in ["smart", "tuned"]:
-            self._current_point_idx = point_idx
+        # Track current point for debugging/statistics
+        self._current_point_idx = point_idx
+
         if self.taylor_matrices[point_idx] is None:
             return {}
 
@@ -486,16 +459,12 @@ class HJBGFDMSolver(BaseHJBSolver):
             # First try unconstrained solution to check if constraints are needed
             unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)  # type: ignore[arg-type]
 
-            # Check if unconstrained solution violates monotonicity
-            # Unified method automatically adapts based on qp_optimization_level
+            # Check if unconstrained solution violates monotonicity (M-matrix property)
             needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs, point_idx)
 
             if needs_constraints:
-                # Use constrained QP for monotonicity (enhanced version if available)
-                if self.qp_optimization_level in ["smart", "tuned"] and CVXPY_AVAILABLE:
-                    derivative_coeffs = self._enhanced_solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
-                else:
-                    derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
+                # Apply constrained QP to enforce monotonicity
+                derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
             else:
                 # Use faster unconstrained solution
                 derivative_coeffs = unconstrained_coeffs
@@ -803,10 +772,8 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         Args:
             D_coeffs: Taylor derivative coefficients from unconstrained solve
-            point_idx: Collocation point index (for context, currently unused)
-            use_adaptive: Override adaptive mode. If None, infer from qp_optimization_level
-                - False: BASIC mode - strict enforcement of all criteria
-                - True: ADAPTIVE mode - threshold-based targeting qp_usage_target
+            point_idx: Collocation point index (for debugging)
+            use_adaptive: Override adaptive mode (deprecated parameter, always uses basic M-matrix check)
 
         Returns:
             True if QP constraints are needed
@@ -859,10 +826,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Basic violation check (any criterion violated)
         has_violation = violation_1 or violation_2 or violation_3
 
-        # Mode Selection: Basic vs Adaptive
-        if use_adaptive is None:
-            use_adaptive = self.qp_optimization_level in ["smart", "tuned"]
-
+        # Always use basic M-matrix check (adaptive parameter deprecated)
         if not use_adaptive:
             # BASIC MODE: Strict enforcement of all criteria
             return has_violation
@@ -889,35 +853,9 @@ class HJBGFDMSolver(BaseHJBSolver):
             excess_higher_order = higher_order_norm / laplacian_mag - 1.0
             severity = max(severity, excess_higher_order)
 
-        # Initialize adaptive state on first call
-        if not hasattr(self, "_adaptive_qp_state"):
-            self._init_enhanced_qp_features()
-
-        state = self._adaptive_qp_state
-        threshold = state["threshold"]
-
-        # Decision: use QP if severity exceeds adaptive threshold
-        needs_qp = severity > threshold
-
-        # Update statistics
-        state["total_count"] += 1
-        state["severity_history"].append(severity)
-        if needs_qp:
-            state["qp_count"] += 1
-
-        # Adapt threshold every N evaluations to approach qp_usage_target
-        adaptation_interval = 100
-        if state["total_count"] % adaptation_interval == 0:
-            actual_usage = state["qp_count"] / state["total_count"]
-            target_usage = self.qp_usage_target
-
-            # Proportional control to approach target
-            if actual_usage > target_usage * 1.2:
-                # Too much QP usage, increase threshold (be more permissive)
-                state["threshold"] = max(threshold * 1.1, 1e-10)
-            elif actual_usage < target_usage * 0.8:
-                # Too little QP usage, decrease threshold (be more strict)
-                state["threshold"] = threshold * 0.9
+        # Decision: use QP if M-matrix property is violated (severity > 0)
+        # This is the basic adaptive M-matrix checking
+        needs_qp = severity > 0.0
 
         return needs_qp
 
@@ -1014,7 +952,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             This implementation uses INDIRECT constraints on Taylor coefficients D
             rather than direct Hamiltonian gradient constraints ∂H/∂u_j ≥ 0.
 
-            The indirect approach is simpler but approximate. For enhanced monotonicity,
+            The indirect approach is simpler but approximate. For stricter monotonicity,
             consider implementing direct Hamiltonian gradient constraints (see Section 4.4
             of particle-collocation theory document).
 
@@ -1178,17 +1116,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         time_idx: int,
     ) -> np.ndarray:
         """Solve HJB at one time step using Newton iteration."""
-        # Inject temporal context for enhanced QP features
-        if self.qp_optimization_level in ["smart", "tuned"]:
-            total_time_steps = getattr(self.problem, "Nt", 50) + 1
-            self._current_time_ratio = time_idx / max(1, total_time_steps - 1)
-
         u_current = u_n_plus_1.copy()
 
-        for newton_iter in range(self.max_newton_iterations):
-            # Inject Newton iteration context for enhanced QP features
-            if self.qp_optimization_level in ["smart", "tuned"]:
-                self._current_newton_iter = newton_iter
+        for _newton_iter in range(self.max_newton_iterations):
             # Compute residual
             residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
 
