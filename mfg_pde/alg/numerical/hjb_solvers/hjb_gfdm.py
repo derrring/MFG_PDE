@@ -1198,8 +1198,9 @@ class HJBGFDMSolver(BaseHJBSolver):
             sigma = self.problem.sigma(x)
             diffusion_term = 0.5 * sigma**2 * laplacian
 
-            # HJB residual: u_t + H - (sigma²/2)Δu = 0
-            residual[i] = u_t[i] + H - diffusion_term
+            # HJB residual: -u_t + H - (sigma²/2)Δu = 0
+            # Note: For backward-in-time problems, the HJB equation has -∂u/∂t
+            residual[i] = -u_t[i] + H - diffusion_term
 
         return residual
 
