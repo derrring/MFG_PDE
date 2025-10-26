@@ -448,9 +448,10 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         u_neighbors = np.array(u_neighbors)  # type: ignore[assignment]
 
-        # Right-hand side: u(x_center) - u(x_neighbor) following equation (6) in the mathematical framework
-        # For ghost particles, this becomes u_center - u_center = 0, enforcing ∂u/∂n = 0
-        b = u_center - u_neighbors
+        # Right-hand side: u(x_neighbor) - u(x_center) for Taylor expansion
+        # u(x_j) - u(x_0) ≈ ∇u·(x_j - x_0) where A matrix uses (x_j - x_0)
+        # For ghost particles: u_ghost = u_center → b = 0, enforcing ∂u/∂n = 0
+        b = u_neighbors - u_center
 
         # Solve weighted least squares with optional monotonicity constraints
         use_monotone_qp = hasattr(self, "use_monotone_constraints") and self.use_monotone_constraints
@@ -1162,8 +1163,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         residual = np.zeros(self.n_points)
 
         # Time derivative approximation (backward Euler)
+        # For backward-in-time problems: ∂u/∂t ≈ (u_{n+1} - u_n) / dt
+        # where t_{n+1} > t_n (future time is at n+1)
         dt = self.problem.T / (self.problem.Nt - 1)
-        u_t = (u_current - u_n_plus_1) / dt
+        u_t = (u_n_plus_1 - u_current) / dt
 
         for i in range(self.n_points):
             # Get spatial coordinates
