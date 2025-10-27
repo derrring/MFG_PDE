@@ -201,7 +201,6 @@ def comprehensive_three_method_evaluation():
             newton_tolerance=1e-3,
             boundary_indices=np.array(boundary_indices),
             boundary_conditions=no_flux_bc,
-            use_monotone_constraints=True,
             qp_optimization_level="tuned",
             qp_usage_target=0.1,  # Target 10% QP usage
         )
@@ -220,7 +219,6 @@ def comprehensive_three_method_evaluation():
             normalize_kde_output=False,
             boundary_indices=np.array(boundary_indices),
             boundary_conditions=no_flux_bc,
-            use_monotone_constraints=True,
         )
         qp_solver.hjb_solver = tuned_hjb_solver
 

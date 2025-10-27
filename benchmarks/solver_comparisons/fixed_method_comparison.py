@@ -169,7 +169,6 @@ def test_method_comparison():
             l2errBoundNewton=1e-3,
             boundary_indices=np.array(boundary_indices),
             boundary_conditions=no_flux_bc,
-            use_monotone_constraints=True,
             qp_activation_tolerance=1e-3,
         )
 
@@ -187,7 +186,6 @@ def test_method_comparison():
             normalize_kde_output=False,
             boundary_indices=np.array(boundary_indices),
             boundary_conditions=no_flux_bc,
-            use_monotone_constraints=True,
         )
 
         # Replace HJB solver with optimized version

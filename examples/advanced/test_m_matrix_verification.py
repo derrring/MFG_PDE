@@ -74,8 +74,7 @@ def test_m_matrix_verification(problem, n_points):
         delta=0.15,  # Neighborhood radius
         taylor_order=2,
         weight_function="wendland",
-        use_monotone_constraints=True,
-        qp_optimization_level="basic",
+        qp_optimization_level="always",
     )
 
     print(f"Solver initialized: {solver.hjb_method_name}")
