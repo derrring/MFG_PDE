@@ -33,13 +33,12 @@ def test_init_enhanced_qp_features():
     """Test that _init_enhanced_qp_features() initializes state correctly."""
     problem = SimpleMFGProblem()
 
-    # Create solver with smart level to trigger initialization
+    # Create solver with auto level to trigger initialization
     points = np.random.rand(50, 2)
     solver = HJBGFDMSolver(
         problem=problem,
         collocation_points=points,
-        use_monotone_constraints=True,
-        qp_optimization_level="smart",
+        qp_optimization_level="auto",
         qp_usage_target=0.1,
     )
 
@@ -63,10 +62,8 @@ def test_check_monotonicity_violation_basic_mode():
     problem = SimpleMFGProblem()
     points = np.random.rand(50, 2)
 
-    # Create solver with basic level
-    solver = HJBGFDMSolver(
-        problem=problem, collocation_points=points, use_monotone_constraints=True, qp_optimization_level="basic"
-    )
+    # Create solver with always level (strict enforcement)
+    solver = HJBGFDMSolver(problem=problem, collocation_points=points, qp_optimization_level="always")
 
     # Build multi-indices for 2D, order 2
     # Should include: (0,0), (1,0), (0,1), (2,0), (1,1), (0,2)
@@ -101,12 +98,11 @@ def test_check_monotonicity_violation_adaptive_mode():
     problem = SimpleMFGProblem()
     points = np.random.rand(50, 2)
 
-    # Create solver with smart level
+    # Create solver with auto level (adaptive M-matrix violation detection)
     solver = HJBGFDMSolver(
         problem=problem,
         collocation_points=points,
-        use_monotone_constraints=True,
-        qp_optimization_level="smart",
+        qp_optimization_level="auto",
         qp_usage_target=0.1,
     )
 
@@ -144,8 +140,7 @@ def test_adaptive_threshold_convergence():
     solver = HJBGFDMSolver(
         problem=problem,
         collocation_points=points,
-        use_monotone_constraints=True,
-        qp_optimization_level="smart",
+        qp_optimization_level="auto",
         qp_usage_target=target_usage,
     )
 
@@ -181,9 +176,7 @@ def test_no_laplacian_returns_false():
     problem = SimpleMFGProblem()
     points = np.random.rand(50, 2)
 
-    solver = HJBGFDMSolver(
-        problem=problem, collocation_points=points, use_monotone_constraints=True, qp_optimization_level="basic"
-    )
+    solver = HJBGFDMSolver(problem=problem, collocation_points=points, qp_optimization_level="always")
 
     # Multi-indices without Laplacian (order < 2)
     solver.multi_indices = [(0, 0), (1, 0), (0, 1)]

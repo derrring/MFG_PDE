@@ -52,7 +52,6 @@ class HJBGFDMSolver(BaseHJBSolver):
         l2errBoundNewton: float | None = None,
         boundary_indices: np.ndarray | None = None,
         boundary_conditions: dict | BoundaryConditions | None = None,
-        use_monotone_constraints: bool = False,
         # QP optimization level
         qp_optimization_level: str = "none",  # "none", "auto", or "always"
         qp_usage_target: float = 0.1,  # Unused, kept for backward compatibility
@@ -174,13 +173,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         self.boundary_conditions = boundary_conditions if boundary_conditions is not None else {}
         self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
 
-        # Monotonicity constraint option (derived from qp_optimization_level)
-        # If user explicitly sets use_monotone_constraints, respect it (backward compat)
-        # Otherwise, derive from qp_optimization_level
-        if use_monotone_constraints:
-            self.use_monotone_constraints = True
-        else:
-            self.use_monotone_constraints = qp_optimization_level in ["auto", "always"]
+        # QP optimization level (single source of truth for QP control)
+        self.qp_optimization_level = qp_optimization_level
 
         # QP usage target (deprecated, kept for backward compatibility)
         self.qp_usage_target = qp_usage_target
@@ -601,13 +595,13 @@ class HJBGFDMSolver(BaseHJBSolver):
         b = u_neighbors - u_center
 
         # Solve weighted least squares with optional monotonicity constraints
-        use_monotone_qp = hasattr(self, "use_monotone_constraints") and self.use_monotone_constraints
-        force_qp_always = hasattr(self, "qp_optimization_level") and self.qp_optimization_level == "always"
+        # Single source of truth: qp_optimization_level
+        qp_level = getattr(self, "qp_optimization_level", "none")
 
-        if force_qp_always:
+        if qp_level == "always":
             # "always" level: Force QP at every point without checking M-matrix
             derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
-        elif use_monotone_qp:
+        elif qp_level == "auto":
             # "auto" level: Adaptive QP with M-matrix checking
             # First try unconstrained solution to check if constraints are needed
             unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)  # type: ignore[arg-type]
@@ -924,17 +918,17 @@ class HJBGFDMSolver(BaseHJBSolver):
         # This is sufficient for most cases and much simpler
 
         if constraint_rows:
-            A_constraint = sp.csr_matrix(np.vstack(constraint_rows))
+            A_constraint = sp.csc_matrix(np.vstack(constraint_rows))
             lower_bounds = np.array(l_bounds)
             upper_bounds = np.array(u_bounds)
         else:
             # No constraints
-            A_constraint = sp.csr_matrix((0, n))
+            A_constraint = sp.csc_matrix((0, n))
             lower_bounds = np.array([])
             upper_bounds = np.array([])
 
-        # Convert P to sparse
-        P_sparse = sp.csr_matrix(P)
+        # Convert P to sparse (CSC format for OSQP)
+        P_sparse = sp.csc_matrix(P)
 
         # Set up OSQP problem
         prob = osqp.OSQP()
@@ -948,7 +942,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             eps_abs=1e-6,
             eps_rel=1e-6,
             max_iter=10000,
-            polish=True,  # Refine solution for better accuracy
+            polish=False,  # Disabled: polishing prints verbose messages even with verbose=False
         )
 
         # Solve
@@ -1426,6 +1420,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         M_density_evolution_from_FP: np.ndarray,
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray,
+        show_progress: bool = True,
     ) -> np.ndarray:
         """
         Solve the HJB system using GFDM collocation method.
@@ -1434,10 +1429,13 @@ class HJBGFDMSolver(BaseHJBSolver):
             M_density_evolution_from_FP: (Nt, Nx) density evolution from FP solver
             U_final_condition_at_T: (Nx,) final condition for value function
             U_from_prev_picard: (Nt, Nx) value function from previous Picard iteration
+            show_progress: Whether to display progress bar for timesteps
 
         Returns:
             (Nt, Nx) solution array
         """
+        from mfg_pde.utils.progress import tqdm
+
         Nt, _Nx = M_density_evolution_from_FP.shape
 
         # For GFDM, we work directly with collocation points
@@ -1449,14 +1447,31 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Set final condition
         U_solution_collocation[Nt - 1, :] = self._map_grid_to_collocation(U_final_condition_at_T)
 
-        # Backward time stepping
-        for n in range(Nt - 2, -1, -1):
+        # Backward time stepping with progress bar
+        timestep_range = range(Nt - 2, -1, -1)
+        if show_progress:
+            timestep_range = tqdm(
+                timestep_range,
+                desc="HJB (backward)",
+                unit="step",
+                disable=False,
+            )
+
+        for n in timestep_range:
             U_solution_collocation[n, :] = self._solve_timestep(
                 U_solution_collocation[n + 1, :],
                 U_prev_collocation[n, :],
                 M_collocation[n, :],  # FIXED: Use m^n, not m^{n+1} (same-time coupling)
                 n,
             )
+
+            # Update progress bar with QP statistics if available
+            if show_progress and hasattr(timestep_range, "set_postfix"):
+                postfix = {}
+                if self.qp_optimization_level in ["auto", "always"] and hasattr(self, "qp_stats"):
+                    postfix["qp_solves"] = self.qp_stats.get("total_qp_solves", 0)
+                if postfix:
+                    timestep_range.set_postfix(postfix)
 
         # Map back to grid
         U_solution = self._map_collocation_to_grid_batch(U_solution_collocation)
@@ -1572,6 +1587,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         Compute Jacobian matrix for Newton iteration.
 
         Uses finite differences to approximate ∂R/∂u where R is the residual.
+
+        Bug #15 fix: Disable QP in Jacobian computation to reduce QP calls from ~750k to ~7.5k.
+        Jacobian only affects Newton convergence rate, not final monotonicity (enforced by residual).
         """
         n = self.n_points
         jacobian = np.zeros((n, n))
@@ -1579,16 +1597,27 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Finite difference step
         eps = 1e-7
 
-        # Compute Jacobian by columns (perturbing each u[j])
-        for j in range(n):
-            u_plus = u_current.copy()
-            u_plus[j] += eps
+        # Bug #15 fix: Temporarily disable QP for Jacobian computation
+        # This reduces QP invocations while maintaining monotonicity (enforced by residual)
+        # Jacobian finite differences are a numerical approximation tool for Newton's method
+        # and don't need monotonicity constraints. Only the residual evaluation needs QP.
+        saved_qp_level = self.qp_optimization_level
+        self.qp_optimization_level = "none"
 
-            # FIXED: Use actual u_n_plus_1 (not perturbed in Newton iteration)
-            residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
-            residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+        try:
+            # Compute Jacobian by columns (perturbing each u[j])
+            for j in range(n):
+                u_plus = u_current.copy()
+                u_plus[j] += eps
 
-            jacobian[:, j] = (residual_plus - residual_base) / eps
+                # FIXED: Use actual u_n_plus_1 (not perturbed in Newton iteration)
+                residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
+                residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+
+                jacobian[:, j] = (residual_plus - residual_base) / eps
+        finally:
+            # Restore QP for residual evaluation
+            self.qp_optimization_level = saved_qp_level
 
         return jacobian
 
