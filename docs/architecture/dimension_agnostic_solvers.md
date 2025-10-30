@@ -28,11 +28,14 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
 
 1. FIXED REGULAR GRID
    ├─ FDM 1D (production)
-   │  └─ File: mfg_pde/alg/numerical/hjb_solvers/base_hjb.py
+   │  └─ Files: mfg_pde/alg/numerical/{hjb,fp}_solvers/base_{hjb,fp}.py
    │  └─ Direct finite difference on uniform 1D grid
    │
    └─ FDM nD via Dimensional Splitting (production)
-      └─ File: mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py
+      └─ Files:
+         - HJB: mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py
+         - FP: mfg_pde/alg/numerical/fp_solvers/fp_fdm_multid.py
+         - MFG: Automatic via mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py
       └─ Strang splitting: alternating 1D sweeps
 
 2. FIXED IRREGULAR GRID (Meshfree Eulerian)
@@ -58,7 +61,10 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
 
 **Approach**: Operator splitting in space (Strang splitting)
 **Key Idea**: Solve nD problem via alternating 1D sweeps
-**Implementation**: `hjb_fdm_multid.py` (2025-10-31)
+**Implementation**: Complete for both HJB and FP solvers (2025-10-31)
+  - `hjb_fdm_multid.py`: HJB backward solve
+  - `fp_fdm_multid.py`: FP forward solve
+  - `fixed_point_iterator.py`: Automatic dimension detection for MFG coupling
 
 ### Algorithm (2D Example)
 
@@ -524,17 +530,20 @@ START: Need to solve nD MFG problem
 
 ## Future Directions
 
-### Short Term (Completed)
+### Phase 2: Dimension-Agnostic FDM (Completed 2025-10-31)
 
-- ✅ **FDM nD Implementation**: Dimensional splitting for 2D/3D
-- ✅ **Documentation**: This document
+- ✅ **HJB FDM nD**: Dimensional splitting for HJB solver (Weeks 1-2)
+- ✅ **FP FDM nD**: Dimensional splitting for FP solver (Weeks 3-4)
+- ✅ **Integration**: Coupled HJB-FP system integration tests (Week 5)
+- ✅ **Factory & Examples**: create_basic_solver() auto-detection + 2D example (Week 6)
+- ✅ **Documentation**: This document and architecture docs
 
-### Medium Term (Next 3-6 months)
+### Next Steps (Phase 3)
 
-- ⏳ **FP FDM nD**: Extend FP solver to use dimensional splitting
 - ⏳ **Validation**: Test FDM vs GFDM on benchmark problems
 - ⏳ **Performance**: Benchmark 2D/3D solvers
 - ⏳ **Parallel FDM**: Parallelize 1D sweeps (embarrassingly parallel)
+- ⏳ **User Guide**: Comprehensive multidimensional MFG tutorial
 
 ### Long Term (6-12 months)
 
