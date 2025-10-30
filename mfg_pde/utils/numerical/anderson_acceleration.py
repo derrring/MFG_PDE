@@ -38,6 +38,11 @@ class AndersonAccelerator:
         depth: Number of previous iterates to use (window size m)
         beta: Damping parameter in [0, 1] (1 = no damping)
         regularization: Regularization parameter for least-squares (0 = none)
+
+    Note:
+        Automatically handles multi-dimensional arrays (e.g., 2D grids for MFG density).
+        Arrays are flattened internally for linear algebra operations, then reshaped
+        to original shape in the output.
     """
 
     def __init__(
@@ -76,6 +81,9 @@ class AndersonAccelerator:
         self.residual_norms: list[float | np.floating[Any]] = []
         self.iteration_count = 0
 
+        # Store original shape for reshaping outputs (set on first update)
+        self._original_shape: tuple[int, ...] | None = None
+
     def update(
         self,
         x_current: np.ndarray,
@@ -86,20 +94,32 @@ class AndersonAccelerator:
         Compute Anderson-accelerated next iterate.
 
         Args:
-            x_current: Current iterate x_k
+            x_current: Current iterate x_k (can be multi-dimensional)
             f_current: Function evaluation g(x_k) (the fixed-point map)
             method: "type1" uses g(x) - x, "type2" uses g(x) formulation
 
         Returns:
-            x_next: Accelerated next iterate
-        """
-        # Compute residual
-        residual = f_current - x_current  # r_k = g(x_k) - x_k
-        residual_norm = np.linalg.norm(residual)
+            x_next: Accelerated next iterate (same shape as input)
 
-        # Store current state
-        self.X_history.append(x_current.copy())
-        self.F_history.append(f_current.copy())
+        Note:
+            Multi-dimensional arrays are automatically flattened for internal
+            computations and reshaped back to original shape in output.
+        """
+        # Store original shape on first call
+        if self._original_shape is None:
+            self._original_shape = x_current.shape
+
+        # Flatten arrays for vector operations (handles 1D, 2D, 3D, etc.)
+        x_flat = x_current.ravel()
+        f_flat = f_current.ravel()
+
+        # Compute residual
+        residual_flat = f_flat - x_flat  # r_k = g(x_k) - x_k
+        residual_norm = np.linalg.norm(residual_flat)
+
+        # Store current state (flattened)
+        self.X_history.append(x_flat.copy())
+        self.F_history.append(f_flat.copy())
         self.residual_norms.append(residual_norm)
         self.iteration_count += 1
 
@@ -111,24 +131,25 @@ class AndersonAccelerator:
         # Need at least 2 iterates for acceleration
         if len(self.X_history) < 2:
             # First iteration: use simple fixed-point with damping
-            x_next = x_current + self.beta * residual
-            return x_next
+            x_next_flat = x_flat + self.beta * residual_flat
+            return x_next_flat.reshape(self._original_shape)
 
         # Check restart condition
         if self.restart_threshold is not None and len(self.residual_norms) >= 2:
             if residual_norm > self.restart_threshold * self.residual_norms[-2]:
                 # Restart: clear history except current
-                self.X_history = [x_current.copy()]
-                self.F_history = [f_current.copy()]
-                x_next = x_current + self.beta * residual
-                return x_next
+                self.X_history = [x_flat.copy()]
+                self.F_history = [f_flat.copy()]
+                x_next_flat = x_flat + self.beta * residual_flat
+                return x_next_flat.reshape(self._original_shape)
 
         # Anderson acceleration with least-squares
         m = len(self.X_history) - 1  # Number of previous iterates to use
 
-        # Build difference matrices
+        # Build difference matrices (all arrays are already flattened)
         # ΔF_k = [f_1 - f_0, f_2 - f_1, ..., f_k - f_{k-1}]
         # ΔX_k = [x_1 - x_0, x_2 - x_1, ..., x_k - x_{k-1}]
+        # Note: column_stack now works because all arrays are 1D
         delta_F = np.column_stack([self.F_history[i] - self.F_history[i - 1] for i in range(1, len(self.F_history))])
 
         if method == "type1":
@@ -138,24 +159,24 @@ class AndersonAccelerator:
             A = delta_F.T @ delta_F
             # Add regularization for stability
             A += self.regularization * np.eye(m)
-            b = -delta_F.T @ f_current
+            b = -delta_F.T @ f_flat
 
             try:
                 alpha = np.linalg.solve(A, b)
             except np.linalg.LinAlgError:
                 # Fallback to pseudo-inverse if singular
-                alpha = np.linalg.lstsq(delta_F, -f_current, rcond=None)[0]
+                alpha = np.linalg.lstsq(delta_F, -f_flat, rcond=None)[0]
 
             # Compute accelerated iterate
             # x_next = (1 - Σα_i) x_k + Σ α_i x_i + β((1 - Σα_i) f_k + Σ α_i f_i)
-            x_mix = (1 - np.sum(alpha)) * x_current
-            f_mix = (1 - np.sum(alpha)) * f_current
+            x_mix_flat = (1 - np.sum(alpha)) * x_flat
+            f_mix_flat = (1 - np.sum(alpha)) * f_flat
 
             for i, a in enumerate(alpha):
-                x_mix += a * self.X_history[i]
-                f_mix += a * self.F_history[i]
+                x_mix_flat += a * self.X_history[i]
+                f_mix_flat += a * self.F_history[i]
 
-            x_next = x_mix + self.beta * (f_mix - x_mix)
+            x_next_flat = x_mix_flat + self.beta * (f_mix_flat - x_mix_flat)
 
         else:  # type2
             # Type II: Minimize ||ΔF_k α + (f_k - x_k)||
@@ -167,22 +188,23 @@ class AndersonAccelerator:
 
             A = delta_R.T @ delta_R
             A += self.regularization * np.eye(m)
-            b = -delta_R.T @ residual
+            b = -delta_R.T @ residual_flat
 
             try:
                 alpha = np.linalg.solve(A, b)
             except np.linalg.LinAlgError:
-                alpha = np.linalg.lstsq(delta_R, -residual, rcond=None)[0]
+                alpha = np.linalg.lstsq(delta_R, -residual_flat, rcond=None)[0]
 
             # Compute accelerated iterate
-            x_next = (1 - np.sum(alpha)) * f_current
+            x_next_flat = (1 - np.sum(alpha)) * f_flat
             for i, a in enumerate(alpha):
-                x_next += a * self.F_history[i]
+                x_next_flat += a * self.F_history[i]
 
             # Apply damping
-            x_next = x_current + self.beta * (x_next - x_current)
+            x_next_flat = x_flat + self.beta * (x_next_flat - x_flat)
 
-        return x_next
+        # Reshape back to original shape before returning
+        return x_next_flat.reshape(self._original_shape)
 
     def reset(self):
         """Reset accelerator state (clear history)."""
