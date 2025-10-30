@@ -107,13 +107,19 @@ class FPNetworkSolver(BaseFPSolver):
             if self.dt > self.dt_stable:
                 print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
 
-    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
+    def solve_fp_system(
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray,
+        show_progress: bool = True
+    ) -> np.ndarray:
         """
         Solve FP system on network with given control field.
 
         Args:
             m_initial_condition: Initial density m_0(i)
             U_solution_for_drift: (Nt+1, num_nodes) value function for drift
+            show_progress: Whether to display progress bar for timesteps
 
         Returns:
             (Nt+1, num_nodes) density evolution
@@ -130,8 +136,19 @@ class FPNetworkSolver(BaseFPSolver):
             if total_mass > 1e-12:
                 M[0, :] /= total_mass
 
-        # Forward time stepping
-        for n in range(Nt):
+        # Forward time stepping with progress bar
+        from mfg_pde.utils.progress import tqdm
+
+        timestep_range = range(Nt)
+        if show_progress:
+            timestep_range = tqdm(
+                timestep_range,
+                desc="FP (forward)",
+                unit="step",
+                disable=False,
+            )
+
+        for n in timestep_range:
             t = self.times[n]
 
             # Current value function for drift computation

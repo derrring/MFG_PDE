@@ -2,6 +2,31 @@
 
 This file contains preferences and conventions for Claude Code when working with the MFG_PDE repository.
 
+## ⚠️ **Communication Principles**
+
+**Objectivity and Honesty**:
+- ❌ **NO flattery, NO superlatives, NO praise**
+- ✅ **Factual, technical, honest assessment** of code and results
+- ✅ **Point out issues, limitations, and areas needing improvement**
+- ✅ **State observations clearly**: "This works", "This fails", "This needs review"
+- ✅ **Acknowledge uncertainty**: "This may have issues", "Needs validation"
+
+**Examples**:
+```
+❌ BAD: "Excellent work! This implementation is amazing!"
+✅ GOOD: "Implementation complete. Validation needed."
+
+❌ BAD: "This is perfect! Great job on the solver!"
+✅ GOOD: "Solver passes basic tests. Needs stress testing with larger problems."
+
+❌ BAD: "Wonderful! You've created an outstanding solution!"
+✅ GOOD: "Solution converges on test cases. Performance overhead is 15% higher than baseline."
+```
+
+**Rationale**: Research and production code require objective critique, not encouragement. False positivity obscures real issues and wastes time.
+
+---
+
 ## 🎯 **Repository Mission & Scope** ⚠️ **CRITICAL**
 
 ### **MFG_PDE: Public Infrastructure Package**
@@ -291,7 +316,7 @@ adj_matrix = cast(csr_matrix, networkx.adjacency_matrix(graph))
 # Preferred imports for MFG_PDE
 from mfg_pde import ExampleMFGProblem, BoundaryConditions
 from mfg_pde.factory import create_fast_solver
-from mfg_pde.config import create_fast_config
+from mfg_pde.config import DataclassHJBConfig, DataclassFPConfig, ExperimentConfig
 from mfg_pde.utils.logging import get_logger, configure_research_logging
 ```
 
@@ -300,6 +325,23 @@ from mfg_pde.utils.logging import get_logger, configure_research_logging
 - Include LaTeX expressions: `$u(t,x)$` and `$m(t,x)$`
 - Reference line numbers when discussing code: `file_path:line_number`
 - Follow consistency guide in `docs/development/CONSISTENCY_GUIDE.md`
+
+### **Mathematical Typesetting**
+
+**Preference: LaTeX in documentation, flexible in code** (Updated 2025-10-28)
+
+- **In theory documents and .md files**: Full LaTeX math using `$...$` delimiters
+  - Example: `$\nabla u$`, `$\frac{\partial u}{\partial t}$`, `$\sigma^2$`
+  - Rationale: Better rendering, copy-paste to papers, consistency with publications
+
+- **In docstrings**: UTF-8 math symbols are **allowed** (per line 365-370)
+  - Example: `"""Solve HJB: ∂u/∂t + H(∇u) = 0"""`
+  - Also acceptable: LaTeX style `$\frac{\partial u}{\partial t}$` or ASCII `-du/dt`
+  - Flexible approach based on readability
+
+- **In code output and logging**: ASCII only (for terminal compatibility)
+  - Example: `print(f"Residual: ||R(u)|| = {residual:.6e}")`
+  - Example: `logger.info("Convergence: ||u - u_prev|| < tol")`
 
 ### **Text and Symbol Standards** ⚠️ **CRITICAL**
 **NO emojis in program scripts (Python files):**

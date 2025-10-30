@@ -22,7 +22,12 @@ class FPFDMSolver(BaseFPSolver):
         else:
             self.boundary_conditions = boundary_conditions
 
-    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
+    def solve_fp_system(
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray,
+        show_progress: bool = True
+    ) -> np.ndarray:
         Nx = self.problem.Nx + 1
         Nt = self.problem.Nt + 1
         Dx = self.problem.Dx
@@ -63,7 +68,19 @@ class FPFDMSolver(BaseFPSolver):
         col_indices: list[int] = []
         data_values: list[float] = []
 
-        for k_idx_fp in range(Nt - 1):
+        # Progress bar for forward timesteps
+        from mfg_pde.utils.progress import tqdm
+
+        timestep_range = range(Nt - 1)
+        if show_progress:
+            timestep_range = tqdm(
+                timestep_range,
+                desc="FP (forward)",
+                unit="step",
+                disable=False,
+            )
+
+        for k_idx_fp in timestep_range:
             if Dt < 1e-14:
                 m[k_idx_fp + 1, :] = m[k_idx_fp, :]
                 continue

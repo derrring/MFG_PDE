@@ -97,6 +97,37 @@ $$H(x, p, m) = \inf_{\alpha} \{\alpha \cdot p + L(x, \alpha, m)\}$$
 - $\frac{\partial u}{\partial t}$, $\partial_t u$, $u_t$: **Partial time derivative**
 - $\frac{du}{dt}$: **Total derivative** along trajectory
 
+**Computational Gradient Notation** ⚠️ **CRITICAL**:
+
+For numerical solvers, derivatives are indexed using **tuple multi-index notation**:
+
+- **Standard**: `derivs[(α₁, α₂, ..., αₙ)]` where αᵢ is the derivative order w.r.t. xᵢ
+- **1D**: `derivs[(k,)]` = $\frac{\partial^k u}{\partial x^k}$
+  - `derivs[(0,)]` = $u$ (function value)
+  - `derivs[(1,)]` = $\frac{\partial u}{\partial x}$ (first derivative)
+  - `derivs[(2,)]` = $\frac{\partial^2 u}{\partial x^2}$ (second derivative)
+
+- **2D**: `derivs[(α, β)]` = $\frac{\partial^{α+β} u}{\partial x^α \partial y^β}$
+  - `derivs[(0, 0)]` = $u$ (function value)
+  - `derivs[(1, 0)]` = $\frac{\partial u}{\partial x}$ (gradient x-component)
+  - `derivs[(0, 1)]` = $\frac{\partial u}{\partial y}$ (gradient y-component)
+  - `derivs[(2, 0)]` = $\frac{\partial^2 u}{\partial x^2}$ (Hessian xx)
+  - `derivs[(0, 2)]` = $\frac{\partial^2 u}{\partial y^2}$ (Hessian yy)
+  - `derivs[(1, 1)]` = $\frac{\partial^2 u}{\partial x \partial y}$ (mixed derivative)
+
+- **3D**: `derivs[(α, β, γ)]` = $\frac{\partial^{α+β+γ} u}{\partial x^α \partial y^β \partial z^γ}$
+
+**Rationale**:
+- Dimension-agnostic (works for 1D, 2D, 3D, nD)
+- Type-safe (tuples are immutable and hashable)
+- Prevents Bug #13 type errors (string key mismatches like `"dx"` vs `"x"`)
+- Mathematical clarity (direct correspondence to multi-index notation)
+
+**References**:
+- Implementation: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1544-1556`
+- Standard: `docs/gradient_notation_standard.md`
+- Audit: `docs/GRADIENT_NOTATION_AUDIT_REPORT.md`
+
 ---
 
 ## 2. Cross-Document Mapping

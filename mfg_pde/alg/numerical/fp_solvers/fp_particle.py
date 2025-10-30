@@ -259,7 +259,12 @@ class FPParticleSolver(BaseFPSolver):
         else:
             return m_density_estimated  # Return raw KDE output on grid
 
-    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
+    def solve_fp_system(
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray,
+        show_progress: bool = True
+    ) -> np.ndarray:
         """
         Solve FP system using particle method with intelligent strategy selection.
 
@@ -274,6 +279,9 @@ class FPParticleSolver(BaseFPSolver):
         """
         # Reset time step counter for normalization logic
         self._time_step_counter = 0
+
+        # Store show_progress for use in CPU/GPU methods
+        self._show_progress = show_progress
 
         # Determine problem size for strategy selection
         Nt = self.problem.Nt + 1
@@ -335,7 +343,19 @@ class FPParticleSolver(BaseFPSolver):
             self.M_particles_trajectory = current_M_particles_t
             return M_density_on_grid
 
-        for n_time_idx in range(Nt - 1):
+        # Progress bar for particle timesteps
+        from mfg_pde.utils.progress import tqdm
+
+        timestep_range = range(Nt - 1)
+        if self._show_progress:
+            timestep_range = tqdm(
+                timestep_range,
+                desc="FP (forward)",
+                unit="step",
+                disable=False,
+            )
+
+        for n_time_idx in timestep_range:
             U_at_tn = U_solution_for_drift[n_time_idx, :]
 
             # Use helper function for gradient computation
