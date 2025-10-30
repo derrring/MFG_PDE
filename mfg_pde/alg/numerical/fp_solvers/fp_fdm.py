@@ -22,18 +22,95 @@ class FPFDMSolver(BaseFPSolver):
         else:
             self.boundary_conditions = boundary_conditions
 
+        # Detect problem dimension
+        self.dimension = self._detect_dimension(problem)
+
+    def _detect_dimension(self, problem: Any) -> int:
+        """
+        Detect the dimension of the problem.
+
+        Returns
+        -------
+        int
+            Problem dimension (1, 2, 3, ...)
+        """
+        # Check for GridBasedMFGProblem with TensorProductGrid
+        if hasattr(problem, "geometry") and hasattr(problem.geometry, "grid"):
+            if hasattr(problem.geometry.grid, "dimension"):
+                return problem.geometry.grid.dimension
+            if hasattr(problem.geometry.grid, "ndim"):
+                return problem.geometry.grid.ndim
+
+        # Check for explicit dimension attribute
+        if hasattr(problem, "dimension"):
+            return problem.dimension
+
+        # Check for 1D attributes (Nx but no Ny)
+        if hasattr(problem, "Nx") and not hasattr(problem, "Ny"):
+            return 1
+
+        # Default to 1D for backward compatibility
+        return 1
+
     def solve_fp_system(
-        self,
-        m_initial_condition: np.ndarray,
-        U_solution_for_drift: np.ndarray,
-        show_progress: bool = True
+        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
     ) -> np.ndarray:
-        Nx = self.problem.Nx + 1
+        """
+        Solve FP system forward in time.
+
+        Automatically routes to 1D or nD solver based on problem dimension.
+
+        Parameters
+        ----------
+        m_initial_condition : np.ndarray
+            Initial density. Shape: (Nx+1,) for 1D or (N1-1, N2-1, ...) for nD
+        U_solution_for_drift : np.ndarray
+            Value function for drift term. Shape: (Nt+1, Nx+1) for 1D or
+            (Nt+1, N1-1, N2-1, ...) for nD
+        show_progress : bool
+            Whether to show progress bar
+
+        Returns
+        -------
+        np.ndarray
+            Density evolution. Shape: (Nt+1, Nx+1) for 1D or
+            (Nt+1, N1-1, N2-1, ...) for nD
+        """
+        # Route to appropriate solver based on dimension
+        if self.dimension == 1:
+            return self._solve_fp_1d(m_initial_condition, U_solution_for_drift, show_progress)
+        else:
+            # Multi-dimensional solver via dimensional splitting
+            from . import fp_fdm_multid
+
+            return fp_fdm_multid.solve_fp_nd_dimensional_splitting(
+                m_initial_condition=m_initial_condition,
+                U_solution_for_drift=U_solution_for_drift,
+                problem=self.problem,
+                boundary_conditions=self.boundary_conditions,
+                show_progress=show_progress,
+                backend=self.backend,
+            )
+
+    def _solve_fp_1d(
+        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+    ) -> np.ndarray:
+        """Original 1D FP solver implementation."""
+        # Handle both old 1D interface and new GridBasedMFGProblem interface
+        if hasattr(self.problem, "Nx"):
+            # Old 1D interface
+            Nx = self.problem.Nx + 1
+            Dx = self.problem.Dx
+            Dt = self.problem.Dt
+        else:
+            # GridBasedMFGProblem interface
+            Nx = self.problem.geometry.grid.num_points[0]
+            Dx = self.problem.geometry.grid.spacing[0]
+            Dt = self.problem.dt
+
         Nt = self.problem.Nt + 1
-        Dx = self.problem.Dx
-        Dt = self.problem.Dt
         sigma = self.problem.sigma
-        coefCT = self.problem.coefCT
+        coefCT = getattr(self.problem, "coefCT", 1.0)
 
         if Nt == 0:
             if self.backend is not None:

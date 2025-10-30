@@ -80,9 +80,17 @@ For each timestep backward from T to 0:
 
 ### Limitations
 
-⚠️ **Splitting error**: O(Δt²) error for cross-derivative terms
+❌ **Curse of Dimensionality (CoD)**: Requires O(N^d) grid storage - **fundamentally impractical for d > 4**
+   - D=2, N=100: 10,000 points (10 KB) ✅
+   - D=3, N=50: 125,000 points (1 MB) ✅
+   - D=4, N=30: 810,000 points (6 MB) ⚠️ Marginal
+   - D=5, N=20: 3.2M points (25 MB) ❌ Impractical
+   - D=10, N=10: 10 billion points (80 GB) ❌ Impossible
+
+⚠️ **Splitting error**: O(Δt²) error for cross-derivative terms (Strang splitting)
 ⚠️ **Isotropic Hamiltonians**: Exact only for H = (1/2)|p|²
 ⚠️ **Anisotropic problems**: Approximate for H with cross-terms like p₁p₂
+⚠️ **Mixed derivatives**: Cannot handle ∂²u/∂x∂y terms cleanly (common in finance)
 
 ### When to Use
 
