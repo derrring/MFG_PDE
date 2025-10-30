@@ -189,10 +189,7 @@ def _sweep_dimension(
     other_ranges = [range(shape[d]) for d in other_dims]
 
     # Copy U for modification
-    if backend is not None:
-        U_new = backend.copy(U)
-    else:
-        U_new = U.copy()
+    U_new = U.copy()
 
     # Iterate over all slices perpendicular to dimension `dim`
     for indices in itertools.product(*other_ranges):
@@ -271,22 +268,39 @@ def _solve_1d_hjb_slice(
     problem_1d = _Problem1DAdapter(problem, dim, slice_indices)
 
     # Prepare 1D arrays for solve_hjb_system_backward
-    # It expects (Nt, Nx) arrays, but we only have one timeslice
-    # So create (2, N) arrays: [dummy, actual_data]
-    N = len(U_slice)
+    # GridBasedMFGProblem convention:
+    #   - grid has num_points[d] points (e.g., 10 points: x0, x1, ..., x9)
+    #   - arrays have shape num_points[d]-1 (e.g., 9 values)
+    #   - These correspond to x0, x1, ..., x(N-2) (includes left boundary, excludes right)
+    #
+    # 1D MFGProblem convention:
+    #   - Nx = number of intervals (e.g., Nx=9)
+    #   - arrays have shape Nx+1 (e.g., 10 points: x0, x1, ..., x9)
+    #   - Includes both boundaries
+    #
+    # So we need to add the RIGHT boundary only
 
+    N_grid_points = len(U_slice)  # Currently: x0, x1, ..., x(N-2)
+    N_total = N_grid_points + 1  # Add right boundary: x0, x1, ..., x(N-1)
+
+    # Pad right boundary with zero (Dirichlet BC)
+    U_slice_padded = np.pad(U_slice, (0, 1), mode="constant", constant_values=0)
+    M_slice_padded = np.pad(M_slice, (0, 1), mode="constant", constant_values=0)
+
+    # Create arrays for 1D solver
+    # It expects (Nt, Nx+1) arrays, we create (2, N_total) arrays
     if backend is not None:
-        M_1d = backend.zeros((2, N))
-        U_final_1d = backend.copy(U_slice)
-        U_prev_1d = backend.zeros((2, N))
+        M_1d = backend.zeros((2, N_total))
+        U_final_1d = U_slice_padded.copy()
+        U_prev_1d = backend.zeros((2, N_total))
     else:
-        M_1d = np.zeros((2, N))
-        U_final_1d = U_slice.copy()
-        U_prev_1d = np.zeros((2, N))
+        M_1d = np.zeros((2, N_total))
+        U_final_1d = U_slice_padded.copy()
+        U_prev_1d = np.zeros((2, N_total))
 
     # Set data for time index 1 (solve for time index 0)
-    M_1d[1, :] = M_slice
-    U_prev_1d[1, :] = U_slice
+    M_1d[1, :] = M_slice_padded
+    U_prev_1d[1, :] = U_slice_padded
 
     # Temporarily override problem's Nt and dt for single timestep solve
     original_Nt = problem_1d.Nt
@@ -309,8 +323,11 @@ def _solve_1d_hjb_slice(
     problem_1d.Nt = original_Nt
     problem_1d.dt = original_dt
 
-    # Extract solution at time index 0
-    U_new_slice = U_solution_1d[0, :]
+    # Extract solution at time index 0 and remove right boundary
+    # 1D solver returns (2, N_total) including right boundary
+    # We need to remove right boundary to match nD convention
+    U_new_slice_padded = U_solution_1d[0, :]
+    U_new_slice = U_new_slice_padded[:-1]  # Remove last point (right boundary)
 
     return U_new_slice
 
@@ -363,13 +380,16 @@ class _Problem1DAdapter:
 
         # Extract 1D parameters from grid
         grid = full_problem.geometry.grid
-        self.Nx = grid.num_points[sweep_dim] - 1  # Number of interior points
+        self.Nx = grid.num_points[sweep_dim] - 1  # Number of intervals (= interior points for FDM)
         self.Dx = grid.spacing[sweep_dim]
 
         # Pass through time parameters
         self.Nt = full_problem.Nt
         self.dt = full_problem.dt
         self.T = full_problem.T
+
+        # Add capitalized versions for compatibility with base_hjb
+        self.Dt = self.dt  # Alias for compatibility
 
         # Pass through diffusion coefficient
         # Handle both callable and numeric sigma
@@ -380,12 +400,41 @@ class _Problem1DAdapter:
         else:
             self.sigma = 0.1  # Default fallback
 
+    def get_hjb_residual_m_coupling_term(
+        self,
+        M_density_at_n_plus_1,
+        U_n_current_guess_derivatives,
+        x_idx: int,
+        t_idx_n: int,
+    ):
+        """
+        Optional coupling term for residual computation.
+
+        For GridBasedMFGProblem, we don't have custom coupling by default.
+        Return None to use standard coupling through Hamiltonian.
+        """
+        return None
+
+    def get_hjb_hamiltonian_jacobian_contrib(
+        self,
+        U_for_jacobian_terms,
+        t_idx_n: int,
+    ):
+        """
+        Optional Jacobian contribution for advanced solvers.
+
+        For GridBasedMFGProblem, we don't provide custom Jacobian.
+        Return None to use finite difference Jacobian.
+        """
+        return None
+
     def H(
         self,
         x_idx: int,
         m_at_x: float,
         derivs: dict[tuple, float] | None = None,
         p_values: dict[str, float] | None = None,
+        **kwargs,  # Accept additional arguments like t_idx, current_time, etc.
     ) -> float:
         """
         Evaluate Hamiltonian for 1D slice.
@@ -433,13 +482,33 @@ class _Problem1DAdapter:
         else:
             derivs_multidim = {}
 
-        # Call full problem's Hamiltonian
-        # Note: This assumes full_problem.H() accepts scalar index x_idx
-        # If it needs coordinates, we'll need to look them up from grid
-        return self.full_problem.H(
-            x_idx=multi_idx,  # Pass as tuple for now
+        # Call full problem's Hamiltonian through components interface
+        # GridBasedMFGProblem uses setup_components() to get MFGComponents
+        if not hasattr(self, "_components"):
+            self._components = self.full_problem.setup_components()
+
+        # Extract known arguments and filter kwargs to avoid duplicates
+        t_idx = kwargs.get("t_idx", 0)
+        current_time = kwargs.get("current_time", 0.0)
+
+        # Filter out arguments we're passing explicitly
+        filtered_kwargs = {
+            k: v
+            for k, v in kwargs.items()
+            if k not in ("t_idx", "current_time", "x_idx", "x_position", "m_at_x", "p_values", "problem", "derivs")
+        }
+
+        # Call the hamiltonian function from components
+        return self._components.hamiltonian_func(
+            x_idx=multi_idx,
+            x_position=multi_idx,  # For compatibility
             m_at_x=m_at_x,
+            p_values=p_values or {},  # Legacy interface
+            t_idx=t_idx,
+            current_time=current_time,
+            problem=self.full_problem,
             derivs=derivs_multidim,
+            **filtered_kwargs,  # Only remaining unknown kwargs
         )
 
     def _convert_derivs_to_multidim(self, derivs_1d: dict[tuple, float]) -> dict[tuple, float]:
