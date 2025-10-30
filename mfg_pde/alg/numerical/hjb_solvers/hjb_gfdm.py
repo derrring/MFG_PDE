@@ -1566,8 +1566,21 @@ class HJBGFDMSolver(BaseHJBSolver):
             # NOTE: HJB uses (σ²/2) factor from control theory (Pontryagin maximum principle)
             # This differs from FP equation which uses σ² (standard diffusion form)
             # Both forms are correct - they arise from different derivations of MFG system
-            sigma = self.problem.sigma(x)
-            diffusion_term = 0.5 * sigma**2 * laplacian
+            #
+            # BUG #15 FIX: Handle both callable sigma(x) and numeric sigma
+            # Some problem classes (e.g., particle-based) provide sigma as constant
+            # Others (e.g., spatially-varying diffusion) provide sigma as function
+            if hasattr(self.problem, "nu"):
+                # Legacy attribute name from some problem formulations
+                sigma_val = self.problem.nu
+            elif callable(getattr(self.problem, "sigma", None)):
+                # Callable sigma: evaluate at current point
+                sigma_val = self.problem.sigma(x)
+            else:
+                # Numeric sigma: use directly (with fallback to default)
+                sigma_val = getattr(self.problem, "sigma", 1.0)
+
+            diffusion_term = 0.5 * sigma_val**2 * laplacian
 
             # HJB residual: -u_t + H - (sigma²/2)Δu = 0
             # Note: For backward-in-time problems, the HJB equation has -∂u/∂t

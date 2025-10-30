@@ -72,8 +72,8 @@ Both MFG_PDE and mfg-research are under active development. This documentation s
 1. Pure FDM solver for 2D problems (PERMANENTLY BLOCKED)
 2. GPU acceleration via backends (not wired)
 3. Hybrid FDM-HJB + Particle-FP (type mismatch)
-4. Anderson-accelerated MFG (requires workaround)
-5. QP-constrained particle collocation (requires workaround)
+4. ~~Anderson-accelerated MFG~~ - UNBLOCKED (2025-10-30)
+5. ~~QP-constrained particle collocation~~ - UNBLOCKED (2025-10-30)
 
 ---
 
@@ -266,25 +266,25 @@ Located in `examples/`:
 **Symptom**: `TypeError: 'method' and 'int'` in QP monotonicity check
 **Root Cause**: Code expects numeric `sigma`, particle methods use callable `sigma(x)`
 **Impact**: Cannot use QP constraints without workaround
-**Status**: Workaround exists (`SmartSigma` class), NOT FIXED in MFG_PDE
-**Evidence**: `experiments/maze_navigation/archives/bugs/bug15_qp_sigma/`
+**Status**: FIXED (2025-10-30) - Comprehensive regression tests passing
+**Evidence**: `experiments/maze_navigation/archives/bugs/bug15_qp_sigma/`, `tests/test_bug15_sigma_fix.py`
 
 ### Anderson Accelerator 1D Limitation
 **File**: `mfg_pde/utils/numerical/anderson_acceleration.py`
 **Symptom**: `IndexError` when passing 2D arrays
 **Root Cause**: `np.column_stack` assumes 1D input
 **Impact**: Requires 25 lines boilerplate per usage
-**Status**: GitHub Issue #199 filed
-**Evidence**: `experiments/maze_navigation/ANDERSON_ISSUE_POSTED.md`
+**Status**: FIXED (2025-10-30) - Multi-dimensional support with flatten/reshape pattern
+**Evidence**: `experiments/maze_navigation/ANDERSON_ISSUE_POSTED.md`, `tests/test_anderson_multidim.py`
 
 ---
 
 ## Refactoring Timeline
 
 **Immediate (2 weeks)**:
-1. Fix Bug #15 (QP sigma API) - 1 day
-2. Fix Anderson multi-dimensional - 3 days
-3. Standardize gradient notation - 1 week
+1. ~~Fix Bug #15 (QP sigma API)~~ - COMPLETE (2025-10-30)
+2. ~~Fix Anderson multi-dimensional~~ - COMPLETE (2025-10-30)
+3. ~~Standardize gradient notation~~ - COMPLETE (Phase 2 & 3)
 
 **Short-term (3 months)**:
 1. Implement 2D/3D FDM solvers - 4-6 weeks
