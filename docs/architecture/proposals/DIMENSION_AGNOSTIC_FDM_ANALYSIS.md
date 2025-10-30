@@ -348,102 +348,136 @@ Strang splitting (2nd order):
    ```python
    def solve_hjb_system(self, M, U_T, U_prev):
        if self.dimension == 1:
+           # Use existing 1D solver
            return self._solve_1d(M, U_T, U_prev)
-       elif self.dimension == 2:
-           return self._solve_2d(M, U_T, U_prev)
-       elif self.dimension == 3:
-           return self._solve_3d(M, U_T, U_prev)
        else:
-           raise ValueError(f"Dimension {self.dimension} not supported by FDM")
+           # Use dimension-agnostic nD solver (works for 2D, 3D, 4D, ...)
+           return solve_hjb_nd_dimensional_splitting(
+               M, U_T, U_prev, self.problem,
+               self.max_newton_iterations,
+               self.newton_tolerance,
+               self.backend
+           )
    ```
+
+**Note**: Single `solve_hjb_nd_dimensional_splitting()` handles all dimensions ≥ 2
 
 ---
 
-### Phase 2: Implement 2D Dimensional Splitting
+### Phase 2: Implement nD Dimensional Splitting (Dimension-Agnostic)
 
 **File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py` (new module)
+
+**Design Principle**: Generic implementation that works for any dimension (2D, 3D, 4D, ...)
 
 **Core Functions**:
 
 ```python
-def solve_hjb_2d_dimensional_splitting(
-    M_density: ndarray,            # (Nt, Nx, Ny)
-    U_final: ndarray,               # (Nx, Ny)
-    U_prev: ndarray,                # (Nt, Nx, Ny)
+import itertools
+from typing import Optional
+import numpy as np
+from numpy.typing import NDArray
+
+def solve_hjb_nd_dimensional_splitting(
+    M_density: NDArray,                  # (Nt, N1, N2, ..., Nd)
+    U_final: NDArray,                    # (N1, N2, ..., Nd)
+    U_prev: NDArray,                     # (Nt, N1, N2, ..., Nd)
     problem: GridBasedMFGProblem,
     max_newton_iterations: int,
     newton_tolerance: float,
     backend=None
-) -> ndarray:                       # Returns (Nt, Nx, Ny)
+) -> NDArray:                            # Returns (Nt, N1, N2, ..., Nd)
     """
-    Solve 2D HJB using dimensional splitting.
+    Solve nD HJB using dimensional splitting (Strang splitting).
+
+    Works for any dimension: 2D, 3D, 4D, etc.
 
     Algorithm: Strang splitting for 2nd-order accuracy
+    - Forward sweeps: dimensions 0, 1, 2, ..., d-1 (half timestep)
+    - Backward sweeps: dimensions d-1, ..., 2, 1, 0 (half timestep)
     """
     Nt = problem.Nt + 1
-    Nx, Ny = problem.geometry.grid.num_points
+    ndim = problem.geometry.grid.ndim
+    shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
     dt = problem.dt
 
-    U_solution = np.zeros((Nt, Nx, Ny))
-    U_solution[Nt-1, :, :] = U_final
+    U_solution = np.zeros((Nt,) + shape)
+    U_solution[Nt-1] = U_final
 
     for n in range(Nt-2, -1, -1):
-        U_np1 = U_solution[n+1, :, :]
-        M_np1 = M_density[n+1, :, :]
+        U_current = U_solution[n+1]
+        M_np1 = M_density[n+1]
 
-        # Strang splitting
-        # Step 1: Half step in x
-        U_star = solve_1d_sweep_x(U_np1, M_np1, problem, dt/2, dim=0)
+        # Strang splitting: forward half-steps (dimensions 0 → d-1)
+        U = U_current
+        for dim in range(ndim):
+            U = _sweep_dimension(U, M_np1, problem, dt/(2*ndim), dim)
 
-        # Step 2: Full step in y
-        U_starstar = solve_1d_sweep_y(U_star, M_np1, problem, dt, dim=1)
+        # Backward half-steps (dimensions d-1 → 0)
+        for dim in range(ndim-1, -1, -1):
+            U = _sweep_dimension(U, M_np1, problem, dt/(2*ndim), dim)
 
-        # Step 3: Half step in x
-        U_new = solve_1d_sweep_x(U_starstar, M_np1, problem, dt/2, dim=0)
-
-        U_solution[n, :, :] = U_new
+        U_solution[n] = U
 
     return U_solution
 
 
-def solve_1d_sweep_x(
-    U_current: ndarray,             # (Nx, Ny)
-    M_current: ndarray,             # (Nx, Ny)
+def _sweep_dimension(
+    U: NDArray,                          # Shape: (N1, N2, ..., Nd)
+    M: NDArray,                          # Shape: (N1, N2, ..., Nd)
     problem: GridBasedMFGProblem,
     dt: float,
-    dim: int = 0
-) -> ndarray:                       # Returns (Nx, Ny)
+    dim: int                             # Which dimension to sweep (0 to d-1)
+) -> NDArray:                            # Returns same shape as U
     """
-    Solve 1D sweep in x-direction.
+    Sweep along dimension `dim`, treating all other dimensions as independent slices.
 
-    For each y-slice, solve 1D HJB problem in x.
+    Examples:
+    - 2D with dim=0: Iterate over y, solve 1D HJB in x for each y-slice
+    - 2D with dim=1: Iterate over x, solve 1D HJB in y for each x-slice
+    - 3D with dim=0: Iterate over (y,z) pairs, solve 1D HJB in x for each (y,z)
+    - 3D with dim=1: Iterate over (x,z) pairs, solve 1D HJB in y for each (x,z)
+
+    This function is dimension-agnostic and works for any nD problem.
     """
-    Nx, Ny = U_current.shape
-    U_new = U_current.copy()
+    shape = U.shape
+    ndim = len(shape)
 
-    # Sweep over y (treat each y-slice independently)
-    for j in range(Ny):
-        U_slice = U_current[:, j]   # (Nx,) array
-        M_slice = M_current[:, j]   # (Nx,) array
+    # Get indices for all dimensions except `dim`
+    other_dims = [d for d in range(ndim) if d != dim]
+    other_ranges = [range(shape[d]) for d in other_dims]
 
-        # Solve 1D HJB in x-direction
-        U_new_slice = solve_1d_hjb_slice(
-            U_slice, M_slice, problem, dt, dim=0, slice_idx=j
+    U_new = U.copy()
+
+    # Iterate over all slices perpendicular to dimension `dim`
+    for indices in itertools.product(*other_ranges):
+        # Build indexing tuple: insert slice(None) at position `dim`
+        full_idx = list(indices)
+        full_idx.insert(dim, slice(None))
+        full_idx = tuple(full_idx)
+
+        # Extract 1D slice along dimension `dim`
+        U_slice = U[full_idx]      # Shape: (N_dim,)
+        M_slice = M[full_idx]      # Shape: (N_dim,)
+
+        # Solve 1D HJB problem along this dimension
+        U_new_slice = _solve_1d_hjb_slice(
+            U_slice, M_slice, problem, dt, dim, indices
         )
 
-        U_new[:, j] = U_new_slice
+        U_new[full_idx] = U_new_slice
 
     return U_new
 
 
-def solve_1d_hjb_slice(
-    U_slice: ndarray,               # (N,) for dimension `dim`
-    M_slice: ndarray,               # (N,)
+def _solve_1d_hjb_slice(
+    U_slice: NDArray,                    # (N,) for dimension `dim`
+    M_slice: NDArray,                    # (N,)
     problem: GridBasedMFGProblem,
     dt: float,
-    dim: int,
-    slice_idx: int
-) -> ndarray:                       # Returns (N,)
+    dim: int,                            # Which dimension this slice is along
+    slice_indices: tuple                 # Indices in other dimensions
+) -> NDArray:                            # Returns (N,)
     """
     Solve 1D HJB problem along one dimension.
 
@@ -572,29 +606,48 @@ class _Problem1DAdapter:
 
 ---
 
-### Phase 4: FP FDM 2D Extension
+### Phase 4: FP FDM nD Extension (Dimension-Agnostic)
 
 **Similar approach** for Fokker-Planck equation:
 
 ```python
-def solve_fp_2d_dimensional_splitting(
-    M_init: ndarray,                # (Nx, Ny) initial density
-    velocity_field: tuple[ndarray, ndarray],  # (v_x, v_y), each (Nt, Nx, Ny)
+def solve_fp_nd_dimensional_splitting(
+    M_init: NDArray,                     # (N1, N2, ..., Nd) initial density
+    velocity_field: list[NDArray],       # [v_1, v_2, ..., v_d], each (Nt, N1, N2, ..., Nd)
     problem: GridBasedMFGProblem,
     ...
-) -> ndarray:                       # Returns (Nt, Nx, Ny)
+) -> NDArray:                            # Returns (Nt, N1, N2, ..., Nd)
     """
-    Solve 2D FP using dimensional splitting.
+    Solve nD FP using dimensional splitting.
 
     FP equation: ∂m/∂t + ∇·(m v) = σ² Δm
 
-    Split into:
-    ∂m/∂t + ∂(m v_x)/∂x = σ² ∂²m/∂x²  (x-direction)
-    ∂m/∂t + ∂(m v_y)/∂y = σ² ∂²m/∂y²  (y-direction)
+    Split into dimension-wise advection-diffusion:
+    ∂m/∂t + ∂(m v_d)/∂x_d = σ² ∂²m/∂x_d²  (for each dimension d)
+
+    Works for 2D, 3D, 4D, ... automatically.
     """
-    # Similar Strang splitting as HJB
-    # But now handling advection-diffusion in each direction
+    ndim = problem.geometry.grid.ndim
+
+    # Strang splitting: similar structure to HJB
+    for n in range(Nt):
+        M_current = M_solution[n]
+
+        # Forward sweeps
+        M = M_current
+        for dim in range(ndim):
+            M = _sweep_fp_dimension(M, velocity_field[dim][n], problem, dt/(2*ndim), dim)
+
+        # Backward sweeps
+        for dim in range(ndim-1, -1, -1):
+            M = _sweep_fp_dimension(M, velocity_field[dim][n], problem, dt/(2*ndim), dim)
+
+        M_solution[n+1] = M
+
+    return M_solution
 ```
+
+**Note**: Generic implementation handles any dimension
 
 ---
 
@@ -672,43 +725,52 @@ def test_2d_fp_mass_conservation():
 
 ## Timeline and Milestones
 
-### Week 1-2: HJB FDM 2D
+### Week 1-2: HJB FDM nD (Dimension-Agnostic)
 
 **Tasks**:
 1. Create `hjb_fdm_multid.py` module
-2. Implement dimensional splitting for 2D
-3. Implement `_Problem1DAdapter`
-4. Add dimension detection to `HJBFDMSolver`
-5. Write 4 convergence tests
-6. Document API
+2. Implement dimension-agnostic `solve_hjb_nd_dimensional_splitting()`
+3. Implement generic `_sweep_dimension()` function
+4. Implement `_Problem1DAdapter`
+5. Add dimension detection to `HJBFDMSolver`
+6. Write convergence tests (2D and 3D)
+7. Document API
 
-**Milestone**: Can solve 2D HJB with FDM, converges to GFDM baseline
+**Note**: Implementation is dimension-agnostic - 2D and 3D both work
 
----
-
-### Week 3-4: FP FDM 2D
-
-**Tasks**:
-1. Extend `fp_fdm.py` for 2D
-2. Implement FP dimensional splitting
-3. Add mass conservation checks
-4. Test coupling with 2D HJB FDM
-5. Write 4 FP-specific tests
-6. Document API
-
-**Milestone**: Can solve 2D FP with FDM, conserves mass
+**Milestone**: Can solve nD HJB with FDM (tested on 2D and 3D), converges to GFDM baseline
 
 ---
 
-### Week 5: 3D Extension (Optional)
+### Week 3-4: FP FDM nD (Dimension-Agnostic)
 
 **Tasks**:
-1. Extend 2D code to 3D
-2. Test on small 3D problem (10×10×10)
-3. Performance benchmarks
-4. Document memory requirements
+1. Extend `fp_fdm.py` for nD
+2. Implement dimension-agnostic FP dimensional splitting
+3. Add mass conservation checks (all dimensions)
+4. Test coupling with nD HJB FDM (2D and 3D)
+5. Write FP-specific tests (2D and 3D)
+6. Document API
 
-**Milestone**: 3D FDM working (may be slow, but correct)
+**Note**: Implementation is dimension-agnostic - 2D and 3D both work
+
+**Milestone**: Can solve nD FP with FDM (tested on 2D and 3D), conserves mass
+
+---
+
+### Week 5: Testing and Validation (All Dimensions)
+
+**Tasks**:
+1. Test 2D problems (50×50, 100×100 grids)
+2. Test 3D problems (10×10×10, 20×20×20 grids) - works automatically!
+3. Validate against GFDM for isotropic problems
+4. Validate splitting error for anisotropic problems
+5. Performance benchmarks (2D, 3D)
+6. Document memory and performance characteristics
+
+**Note**: 3D support is automatic with dimension-agnostic design - no separate implementation needed
+
+**Milestone**: nD FDM validated for 2D and 3D problems
 
 ---
 
@@ -725,6 +787,58 @@ def test_2d_fp_mass_conservation():
 
 ---
 
+## Benefits of Dimension-Agnostic Design
+
+### Architecture Consistency
+
+**MFG_PDE Design Principle**: Dimension is a parameter, not a constraint
+
+```
+Component                    Dimensions Supported
+─────────────────────────────────────────────────
+HighDimMFGProblem           1D, 2D, 3D, ..., nD ✅
+GridBasedMFGProblem         1D, 2D, 3D, ..., nD ✅
+TensorProductGrid           1D, 2D, 3D, ..., nD ✅
+HJB GFDM Solver             1D, 2D, 3D, ..., nD ✅
+HJB FDM Solver (after)      1D, 2D, 3D, ..., nD ✅  ← NEW
+FP FDM Solver (after)       1D, 2D, 3D, ..., nD ✅  ← NEW
+```
+
+**Before This Work**: FDM solvers were 1D-only despite nD infrastructure
+
+**After This Work**: FDM solvers match infrastructure capability
+
+### Immediate Benefits
+
+1. **3D Support Automatic**: No separate 3D implementation needed
+   - Test once with dimension-agnostic logic
+   - Works for 2D, 3D, 4D, ... automatically
+
+2. **Future-Proof**: High-dimensional MFG problems supported
+   - Example: 4D problems (x, y, z, internal_state)
+   - No code changes needed
+
+3. **Reduced Maintenance**: One implementation for all dimensions
+   - Single test suite verifies all dimensions
+   - Bug fixes apply to all dimensions
+
+4. **Code Clarity**: Generic logic forces clear design
+   - No dimension-specific special cases
+   - Indexing logic explicit and testable
+
+### Trade-off
+
+**Complexity**: Generic indexing (`itertools.product`, dynamic slicing) is harder to understand than explicit 2D loops
+
+**But**: Complexity is localized to `_sweep_dimension()` function. Once implemented and tested, users benefit from simplicity:
+```python
+# User code - same for any dimension
+solver = HJBFDMSolver(problem)  # problem can be 2D, 3D, 4D, ...
+U, M, info = solver.solve()     # Just works
+```
+
+---
+
 ## Performance Expectations
 
 ### 2D Problem (50×50 grid, Nt=100)
@@ -738,18 +852,16 @@ def test_2d_fp_mass_conservation():
 - Memory: ~200 MB (stores particles, neighbors)
 - Time: ~30-50 seconds (meshfree advantage)
 
-**Verdict**: FDM is 2-3× slower but provides classical baseline
-
----
-
 ### 3D Problem (20×20×20 grid, Nt=50)
 
 **Dimensional Splitting**:
-- Memory: ~3.2 GB (8000 spatial points × 51 timesteps × 2 arrays)
-- Time per timestep: ~5-10 seconds (3 sweeps × 20× × Newton)
-- Total time: ~250-500 seconds (4-8 minutes)
+- Memory: ~4 GB (20³ × 50 × 8 bytes)
+- Time per timestep: ~10-20 seconds (3 sweeps × 400 slices × Newton iterations)
+- Total time: ~8-16 minutes
 
-**Verdict**: Feasible for small 3D problems, recommend GFDM for large scale
+**Verdict**: Feasible for small 3D problems (research baselines), recommend GFDM for large-scale 3D
+
+**General Comparison**: FDM is 2-3× slower but provides classical baseline for validation
 
 ---
 
@@ -885,21 +997,29 @@ def test_2d_fp_mass_conservation():
 
 ## Conclusion
 
-**Recommended Approach**: Dimensional splitting with `_Problem1DAdapter`
+**Recommended Approach**: Dimension-agnostic dimensional splitting with `_Problem1DAdapter`
 
 **Advantages**:
 - ✅ Reuses existing 1D FDM infrastructure (minimal code changes)
 - ✅ Leverages existing dimension-agnostic problem classes
 - ✅ Well-established numerical method (proven accuracy)
-- ✅ Straightforward to implement and test
-- ✅ Provides classical FDM baseline for 2D/3D research
+- ✅ Single implementation works for 2D, 3D, 4D, ... (automatic 3D support)
+- ✅ Matches MFG_PDE architecture principle: dimension is a parameter, not a constraint
+- ✅ Provides classical FDM baseline for nD research
+
+**Design Choice**: Generic `_sweep_dimension(U, M, problem, dt, dim)` function
+- Uses `itertools.product()` to iterate over perpendicular dimensions
+- Complexity localized to one function
+- Future-proof: 4D+ problems work automatically
 
 **Next Step**: Begin implementation in `hjb_fdm_multid.py`
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Created**: 2025-10-30
-**Updated**: 2025-10-30 (Answered open questions Q1-Q3)
+**Updated**:
+- 2025-10-30 (v1.1): Answered open questions Q1-Q3
+- 2025-10-30 (v1.2): Updated to dimension-agnostic design (works for any dimension)
 **Status**: Investigation Complete - Ready for Implementation
 **Related**: PHASE_2_SHORT_TERM_PLAN.md (Weeks 1-6)
