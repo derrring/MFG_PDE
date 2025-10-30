@@ -137,11 +137,23 @@ class FixedPointIterator(BaseMFGSolver):
             final_thetaUM = self.thetaUM
             verbose = True
 
-        # Get problem dimensions
+        # Get problem dimensions - handle both old 1D and new nD interfaces
         Nt = self.problem.Nt + 1
-        Nx = self.problem.Nx + 1
-        Dx = self.problem.Dx
-        Dt = self.problem.Dt
+
+        # Detect problem shape
+        if hasattr(self.problem, "Nx"):
+            # Old 1D interface
+            shape = (self.problem.Nx + 1,)
+            Dx = self.problem.Dx
+            Dt = self.problem.Dt
+        elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
+            # New GridBasedMFGProblem interface (nD)
+            ndim = self.problem.geometry.grid.dimension
+            shape = tuple(self.problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
+            Dx = self.problem.geometry.grid.spacing[0]  # For compatibility
+            Dt = self.problem.dt
+        else:
+            raise ValueError("Problem must have either (Nx, Dx, Dt) or (geometry.grid) attributes")
 
         # Initialize arrays (cold start or warm start)
         warm_start = self.get_warm_start_data()
@@ -150,19 +162,45 @@ class FixedPointIterator(BaseMFGSolver):
         else:
             # Cold start initialization
             if self.backend is not None:
-                self.U = self.backend.zeros((Nt, Nx))
-                self.M = self.backend.zeros((Nt, Nx))
+                self.U = self.backend.zeros((Nt, *shape))
+                self.M = self.backend.zeros((Nt, *shape))
             else:
-                self.U = np.zeros((Nt, Nx))
-                self.M = np.zeros((Nt, Nx))
+                self.U = np.zeros((Nt, *shape))
+                self.M = np.zeros((Nt, *shape))
 
-            initial_m_dist = self.problem.get_initial_m()
-            final_u_cost = self.problem.get_final_u()
+            # Get initial density and final cost - handle both interfaces
+            if hasattr(self.problem, "get_initial_m"):
+                # Old 1D interface
+                initial_m_dist = self.problem.get_initial_m()
+                final_u_cost = self.problem.get_final_u()
+            else:
+                # New nD interface - evaluate on grid
+                x_vals = []
+                for d in range(len(shape)):
+                    x_min = self.problem.geometry.grid.bounds[d][0]
+                    spacing = self.problem.geometry.grid.spacing[d]
+                    n_points = self.problem.geometry.grid.num_points[d] - 1
+                    x_vals.append(x_min + np.arange(n_points) * spacing)
+
+                meshgrid_arrays = np.meshgrid(*x_vals, indexing="ij")
+                x_flat = np.column_stack([arr.ravel() for arr in meshgrid_arrays])
+
+                initial_m_flat = self.problem.initial_density(x_flat)
+                initial_m_dist = initial_m_flat.reshape(shape)
+                # Normalize
+                initial_m_dist = initial_m_dist / (np.sum(initial_m_dist) + 1e-10)
+
+                final_u_flat = self.problem.terminal_cost(x_flat)
+                final_u_cost = final_u_flat.reshape(shape)
 
             if Nt > 0:
                 # Set boundary conditions
-                self.M[0, :] = initial_m_dist
-                self.U[Nt - 1, :] = final_u_cost
+                if len(shape) == 1:
+                    self.M[0, :] = initial_m_dist
+                    self.U[Nt - 1, :] = final_u_cost
+                else:
+                    self.M[0] = initial_m_dist
+                    self.U[Nt - 1] = final_u_cost
 
                 # Initialize interior with boundary conditions
                 self.U, self.M = initialize_cold_start(self.U, self.M, initial_m_dist, final_u_cost, Nt)
@@ -181,7 +219,7 @@ class FixedPointIterator(BaseMFGSolver):
         # Main fixed-point iteration loop
         converged = False
         convergence_reason = "Maximum iterations reached"
-        initial_m_dist = self.problem.get_initial_m()
+        # initial_m_dist already computed above
 
         # Progress bar for Picard iterations
         from mfg_pde.utils.progress import tqdm
@@ -203,24 +241,28 @@ class FixedPointIterator(BaseMFGSolver):
 
             # 1. Solve HJB backward with current M (disable inner progress bar when verbose)
             show_hjb_progress = not verbose
-            if hasattr(self.hjb_solver, 'solve_hjb_system'):
+            if hasattr(self.hjb_solver, "solve_hjb_system"):
                 # Check if solve_hjb_system accepts show_progress parameter
                 import inspect
+
                 sig = inspect.signature(self.hjb_solver.solve_hjb_system)
-                if 'show_progress' in sig.parameters:
-                    U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old, show_progress=show_hjb_progress)
+                if "show_progress" in sig.parameters:
+                    U_new = self.hjb_solver.solve_hjb_system(
+                        M_old, final_u_cost, U_old, show_progress=show_hjb_progress
+                    )
                 else:
-                    U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old)
+                    U_new = self.hjb_solver.solve_hjb_system(M_old, final_u_cost, U_old)
             else:
-                U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old)
+                U_new = self.hjb_solver.solve_hjb_system(M_old, final_u_cost, U_old)
 
             # 2. Solve FP forward with new U (disable inner progress bar when verbose)
             show_fp_progress = not verbose
-            if hasattr(self.fp_solver, 'solve_fp_system'):
+            if hasattr(self.fp_solver, "solve_fp_system"):
                 # Check if solve_fp_system accepts show_progress parameter
                 import inspect
+
                 sig = inspect.signature(self.fp_solver.solve_fp_system)
-                if 'show_progress' in sig.parameters:
+                if "show_progress" in sig.parameters:
                     M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new, show_progress=show_fp_progress)
                 else:
                     M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new)
@@ -258,14 +300,16 @@ class FixedPointIterator(BaseMFGSolver):
             self.iterations_run = iiter + 1
 
             # Update progress bar with convergence metrics
-            if verbose and hasattr(picard_range, 'set_postfix'):
+            if verbose and hasattr(picard_range, "set_postfix"):
                 accel_tag = "A" if self.use_anderson else ""
-                picard_range.set_postfix({
-                    'U_err': f'{self.l2distu_rel[iiter]:.2e}',
-                    'M_err': f'{self.l2distm_rel[iiter]:.2e}',
-                    't': f'{iter_time:.1f}s',
-                    'acc': accel_tag
-                })
+                picard_range.set_postfix(
+                    {
+                        "U_err": f"{self.l2distu_rel[iiter]:.2e}",
+                        "M_err": f"{self.l2distm_rel[iiter]:.2e}",
+                        "t": f"{iter_time:.1f}s",
+                        "acc": accel_tag,
+                    }
+                )
             elif not verbose:
                 # Print traditional output when not using progress bar
                 accel_tag = " (Anderson)" if self.use_anderson else ""
@@ -283,7 +327,7 @@ class FixedPointIterator(BaseMFGSolver):
             )
 
             if converged:
-                if verbose and hasattr(picard_range, 'write'):
+                if verbose and hasattr(picard_range, "write"):
                     picard_range.write(convergence_reason)
                 elif not verbose:
                     print(convergence_reason)
