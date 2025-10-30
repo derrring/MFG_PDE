@@ -183,17 +183,49 @@ class FixedPointIterator(BaseMFGSolver):
         convergence_reason = "Maximum iterations reached"
         initial_m_dist = self.problem.get_initial_m()
 
-        for iiter in range(final_max_iterations):
+        # Progress bar for Picard iterations
+        from mfg_pde.utils.progress import tqdm
+
+        picard_range = range(final_max_iterations)
+        if verbose:
+            picard_range = tqdm(
+                picard_range,
+                desc="MFG Picard",
+                unit="iter",
+                disable=False,
+            )
+
+        for iiter in picard_range:
             iter_start = time.time()
 
             U_old = self.U.copy()
             M_old = self.M.copy()
 
-            # 1. Solve HJB backward with current M
-            U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old)
+            # 1. Solve HJB backward with current M (disable inner progress bar when verbose)
+            show_hjb_progress = not verbose
+            if hasattr(self.hjb_solver, 'solve_hjb_system'):
+                # Check if solve_hjb_system accepts show_progress parameter
+                import inspect
+                sig = inspect.signature(self.hjb_solver.solve_hjb_system)
+                if 'show_progress' in sig.parameters:
+                    U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old, show_progress=show_hjb_progress)
+                else:
+                    U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old)
+            else:
+                U_new = self.hjb_solver.solve_hjb_system(M_old, self.problem.get_final_u(), U_old)
 
-            # 2. Solve FP forward with new U
-            M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new)
+            # 2. Solve FP forward with new U (disable inner progress bar when verbose)
+            show_fp_progress = not verbose
+            if hasattr(self.fp_solver, 'solve_fp_system'):
+                # Check if solve_fp_system accepts show_progress parameter
+                import inspect
+                sig = inspect.signature(self.fp_solver.solve_fp_system)
+                if 'show_progress' in sig.parameters:
+                    M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new, show_progress=show_fp_progress)
+                else:
+                    M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new)
+            else:
+                M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new)
 
             # 3. Apply damping or Anderson acceleration
             if self.use_anderson and self.anderson_accelerator is not None:
@@ -225,7 +257,17 @@ class FixedPointIterator(BaseMFGSolver):
             iter_time = time.time() - iter_start
             self.iterations_run = iiter + 1
 
-            if verbose:
+            # Update progress bar with convergence metrics
+            if verbose and hasattr(picard_range, 'set_postfix'):
+                accel_tag = "A" if self.use_anderson else ""
+                picard_range.set_postfix({
+                    'U_err': f'{self.l2distu_rel[iiter]:.2e}',
+                    'M_err': f'{self.l2distm_rel[iiter]:.2e}',
+                    't': f'{iter_time:.1f}s',
+                    'acc': accel_tag
+                })
+            elif not verbose:
+                # Print traditional output when not using progress bar
                 accel_tag = " (Anderson)" if self.use_anderson else ""
                 print(f"--- Picard Iteration {iiter + 1}/{final_max_iterations}{accel_tag} ---")
                 print(f"  Errors: U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}")
@@ -241,7 +283,9 @@ class FixedPointIterator(BaseMFGSolver):
             )
 
             if converged:
-                if verbose:
+                if verbose and hasattr(picard_range, 'write'):
+                    picard_range.write(convergence_reason)
+                elif not verbose:
                     print(convergence_reason)
                 break
 

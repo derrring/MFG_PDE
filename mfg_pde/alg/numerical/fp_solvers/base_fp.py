@@ -40,7 +40,12 @@ class BaseFPSolver(ABC):
         self.backend = None  # Backend for array operations (NumPy, PyTorch, JAX)
 
     @abstractmethod
-    def solve_fp_system(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
+    def solve_fp_system(
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray,
+        show_progress: bool = True
+    ) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.
 
@@ -55,6 +60,8 @@ class BaseFPSolver(ABC):
                                             the value function U(t,x) over the entire
                                             time-space grid. This is used to compute
                                             the drift term for the FP equation.
+            show_progress (bool): Whether to display progress bar for timesteps.
+                                Default: True
 
         Returns:
             np.ndarray: A 2D array of shape (Nt, Nx) representing the computed
