@@ -19,8 +19,6 @@ Test Strategy:
 """
 
 import numpy as np
-import pytest
-from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
 
 class MockProblemCallableSigma:
