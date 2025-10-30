@@ -175,16 +175,22 @@ class GridProblem(Protocol):
         self,
         x_idx: int,
         m_at_x: float,
-        p_values: dict[str, float],
+        derivs: dict[tuple, float] | None = None,
+        p_values: dict[str, float] | None = None,
         t_idx: int | None = None,
     ) -> float:
         """
         Hamiltonian function H(x_idx, m, p, t).
 
+        Supports both tuple notation (derivs) and legacy string-key (p_values) formats.
+
         Args:
             x_idx: Grid index (0 to Nx)
             m_at_x: Density at grid point x_idx
-            p_values: Momentum dictionary with keys:
+            derivs: Derivatives in tuple notation (NEW, preferred):
+                   - 1D: {(0,): u, (1,): du/dx}
+                   - 2D: {(0,0): u, (1,0): du/dx, (0,1): du/dy}
+            p_values: Momentum dictionary (LEGACY, deprecated):
                      - "forward": Forward finite difference
                      - "backward": Backward finite difference
             t_idx: Time index (optional, for time-dependent Hamiltonians)
@@ -192,18 +198,29 @@ class GridProblem(Protocol):
         Returns:
             Hamiltonian value H(x_idx, m, p, t)
 
-        Example:
+        Example (new style with derivs):
+            >>> derivs = {(0,): 1.0, (1,): 0.5}
             >>> H_val = problem.H(
             ...     x_idx=25,
             ...     m_at_x=0.01,
-            ...     p_values={"forward": 1.5, "backward": 1.3},
+            ...     derivs=derivs,
+            ...     t_idx=10
+            ... )
+
+        Example (legacy style with p_values):
+            >>> p_values = {"forward": 1.5, "backward": 1.3}
+            >>> H_val = problem.H(
+            ...     x_idx=25,
+            ...     m_at_x=0.01,
+            ...     p_values=p_values,  # Deprecated
             ...     t_idx=10
             ... )
 
         Note:
-            Upwind schemes typically use:
-            - p_values["forward"] for advection in positive direction
-            - p_values["backward"] for advection in negative direction
+            - Provide EITHER derivs OR p_values, not both
+            - p_values is deprecated and will be removed in a future version
+            - Upwind schemes: p_values["forward"] for positive direction,
+              p_values["backward"] for negative direction
         """
         ...
 

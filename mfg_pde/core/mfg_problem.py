@@ -207,22 +207,46 @@ class MFGProblem:
             self._validate_function_signature(
                 self.components.hamiltonian_func,
                 "hamiltonian_func",
-                ["x_idx", "m_at_x", "p_values", "t_idx"],
+                ["x_idx", "m_at_x"],  # Base required params
+                gradient_param_required=True,  # Must have EITHER derivs OR p_values
             )
 
         if has_hamiltonian_dm:
             self._validate_function_signature(
                 self.components.hamiltonian_dm_func,
                 "hamiltonian_dm_func",
-                ["x_idx", "m_at_x", "p_values", "t_idx"],
+                ["x_idx", "m_at_x"],  # Base required params
+                gradient_param_required=True,  # Must have EITHER derivs OR p_values
             )
 
-    def _validate_function_signature(self, func: Callable, name: str, expected_params: list) -> None:
-        """Validate function signature has expected parameters."""
+    def _validate_function_signature(
+        self, func: Callable, name: str, expected_params: list, gradient_param_required: bool = False
+    ) -> None:
+        """
+        Validate function signature has expected parameters.
+
+        Args:
+            func: Function to validate
+            name: Name of the function (for error messages)
+            expected_params: List of required parameter names
+            gradient_param_required: If True, requires EITHER 'derivs' OR 'p_values'
+        """
         sig = inspect.signature(func)
         params = list(sig.parameters.keys())
 
-        # Allow extra parameters, but require the expected ones
+        # Special handling for gradient notation migration
+        if gradient_param_required:
+            has_derivs = "derivs" in params
+            has_p_values = "p_values" in params
+
+            if not (has_derivs or has_p_values):
+                raise ValueError(
+                    f"{name} must accept either 'derivs' (tuple notation, preferred) "
+                    f"or 'p_values' (legacy string-key format) parameter. "
+                    f"Current parameters: {params}"
+                )
+
+        # Check remaining required parameters
         missing = [p for p in expected_params if p not in params]
         if missing:
             raise ValueError(f"{name} must accept parameters: {expected_params}. Missing: {missing}")
@@ -272,30 +296,93 @@ class MFGProblem:
         self,
         x_idx: int,
         m_at_x: float,
-        p_values: dict[str, float],
+        derivs: dict[tuple, float] | None = None,
+        p_values: dict[str, float] | None = None,
         t_idx: int | None = None,
+        x_position: float | None = None,
+        current_time: float | None = None,
     ) -> float:
         """
-        Hamiltonian function - uses custom implementation if provided, otherwise default.
+        Hamiltonian function H(x, m, p, t).
+
+        Supports both tuple notation (derivs) and legacy string-key (p_values) formats.
+
+        Args:
+            x_idx: Grid index (0 to Nx)
+            m_at_x: Density at grid point x_idx
+            derivs: Derivatives in tuple notation (NEW, preferred):
+                    - 1D: {(0,): u, (1,): du/dx}
+                    - 2D: {(0,0): u, (1,0): du/dx, (0,1): du/dy}
+            p_values: Momentum dictionary (LEGACY, deprecated):
+                      {"forward": p_forward, "backward": p_backward}
+            t_idx: Time index (optional)
+            x_position: Actual position coordinate (computed from x_idx if not provided)
+            current_time: Actual time value (computed from t_idx if not provided)
+
+        Returns:
+            Hamiltonian value H(x, m, p, t)
+
+        Note:
+            Provide EITHER derivs OR p_values. If both provided, derivs takes precedence.
+            p_values is deprecated and will be removed in a future version.
         """
+        import warnings
+
+        # Auto-detection and conversion
+        if derivs is None and p_values is None:
+            raise ValueError("Must provide either 'derivs' or 'p_values' to H()")
+
+        if derivs is None:
+            # Legacy mode: convert p_values to derivs
+            warnings.warn(
+                "p_values parameter is deprecated. Use derivs instead. "
+                "See docs/gradient_notation_standard.md for migration guide.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            from mfg_pde.compat.gradient_notation import ensure_tuple_notation
+
+            derivs = ensure_tuple_notation(p_values, dimension=1, u_value=0.0)
+
+        # Compute x_position and current_time if not provided
+        if x_position is None:
+            x_position = self.xSpace[x_idx]
+        if current_time is None and t_idx is not None:
+            current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
 
         # Use custom Hamiltonian if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_func is not None:
             try:
-                # Get current position and time
-                x_position = self.xSpace[x_idx]
-                current_time = self.tSpace[t_idx] if t_idx is not None and t_idx < len(self.tSpace) else 0.0
+                # Check if custom function accepts 'derivs' or 'p_values'
+                sig = inspect.signature(self.components.hamiltonian_func)
+                params = list(sig.parameters.keys())
 
-                # Call user-provided Hamiltonian
-                result = self.components.hamiltonian_func(
-                    x_idx=x_idx,
-                    x_position=x_position,
-                    m_at_x=m_at_x,
-                    p_values=p_values,
-                    t_idx=t_idx,
-                    current_time=current_time,
-                    problem=self,  # Pass reference to problem for accessing parameters
-                )
+                if "derivs" in params:
+                    # New-style custom Hamiltonian
+                    result = self.components.hamiltonian_func(
+                        x_idx=x_idx,
+                        x_position=x_position,
+                        m_at_x=m_at_x,
+                        derivs=derivs,
+                        t_idx=t_idx,
+                        current_time=current_time,
+                        problem=self,
+                    )
+                else:
+                    # Legacy custom Hamiltonian - convert derivs to p_values
+                    from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
+
+                    p_values_legacy = derivs_to_p_values_1d(derivs)
+
+                    result = self.components.hamiltonian_func(
+                        x_idx=x_idx,
+                        x_position=x_position,
+                        m_at_x=m_at_x,
+                        p_values=p_values_legacy,
+                        t_idx=t_idx,
+                        current_time=current_time,
+                        problem=self,
+                    )
 
                 return result
 
@@ -306,31 +393,22 @@ class MFGProblem:
                 logging.getLogger(__name__).warning(f"Custom Hamiltonian evaluation failed at x_idx={x_idx}: {e}")
                 return np.nan
 
-        # Default Hamiltonian implementation
-        p_forward = p_values.get("forward")
-        p_backward = p_values.get("backward")
+        # Default Hamiltonian implementation (uses tuple notation internally)
+        p = derivs.get((1,), 0.0)  # Extract first derivative
 
-        if p_forward is None or p_backward is None:
-            return np.nan
-        if (
-            np.isnan(p_forward)
-            or np.isinf(p_forward)
-            or np.isnan(p_backward)
-            or np.isinf(p_backward)
-            or np.isnan(m_at_x)
-            or np.isinf(m_at_x)
-        ):
+        if np.isnan(p) or np.isinf(p) or np.isnan(m_at_x) or np.isinf(m_at_x):
             return np.nan
 
-        npart_val_fwd = float(npart(p_forward))
-        ppart_val_bwd = float(ppart(p_backward))
+        # Use upwind scheme for default Hamiltonian
+        npart_val = float(npart(p))
+        ppart_val = float(ppart(p))
 
-        if abs(npart_val_fwd) > VALUE_BEFORE_SQUARE_LIMIT or abs(ppart_val_bwd) > VALUE_BEFORE_SQUARE_LIMIT:
+        if abs(npart_val) > VALUE_BEFORE_SQUARE_LIMIT or abs(ppart_val) > VALUE_BEFORE_SQUARE_LIMIT:
             return np.nan
 
         try:
-            term_npart_sq = npart_val_fwd**2
-            term_ppart_sq = ppart_val_bwd**2
+            term_npart_sq = npart_val**2
+            term_ppart_sq = ppart_val**2
         except OverflowError:
             return np.nan
 
@@ -364,30 +442,90 @@ class MFGProblem:
         self,
         x_idx: int,
         m_at_x: float,
-        p_values: dict[str, float],
+        derivs: dict[tuple, float] | None = None,
+        p_values: dict[str, float] | None = None,
         t_idx: int | None = None,
+        x_position: float | None = None,
+        current_time: float | None = None,
     ) -> float:
         """
-        Hamiltonian derivative with respect to density - uses custom if provided, otherwise default.
+        Hamiltonian derivative with respect to density dH/dm.
+
+        Supports both tuple notation (derivs) and legacy string-key (p_values) formats.
+
+        Args:
+            x_idx: Grid index (0 to Nx)
+            m_at_x: Density at grid point x_idx
+            derivs: Derivatives in tuple notation (NEW, preferred)
+            p_values: Momentum dictionary (LEGACY, deprecated)
+            t_idx: Time index (optional)
+            x_position: Actual position coordinate (computed from x_idx if not provided)
+            current_time: Actual time value (computed from t_idx if not provided)
+
+        Returns:
+            Derivative dH/dm at (x, m, p, t)
+
+        Note:
+            Provide EITHER derivs OR p_values. If both provided, derivs takes precedence.
+            p_values is deprecated and will be removed in a future version.
         """
+        import warnings
+
+        # Auto-detection and conversion (same as H())
+        if derivs is None and p_values is None:
+            raise ValueError("Must provide either 'derivs' or 'p_values' to dH_dm()")
+
+        if derivs is None:
+            # Legacy mode: convert p_values to derivs
+            warnings.warn(
+                "p_values parameter is deprecated. Use derivs instead. "
+                "See docs/gradient_notation_standard.md for migration guide.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            from mfg_pde.compat.gradient_notation import ensure_tuple_notation
+
+            derivs = ensure_tuple_notation(p_values, dimension=1, u_value=0.0)
+
+        # Compute x_position and current_time if not provided
+        if x_position is None:
+            x_position = self.xSpace[x_idx]
+        if current_time is None and t_idx is not None:
+            current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
 
         # Use custom derivative if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_dm_func is not None:
             try:
-                # Get current position and time
-                x_position = self.xSpace[x_idx]
-                current_time = self.tSpace[t_idx] if t_idx is not None and t_idx < len(self.tSpace) else 0.0
+                # Check if custom function accepts 'derivs' or 'p_values'
+                sig = inspect.signature(self.components.hamiltonian_dm_func)
+                params = list(sig.parameters.keys())
 
-                # Call user-provided derivative
-                result = self.components.hamiltonian_dm_func(
-                    x_idx=x_idx,
-                    x_position=x_position,
-                    m_at_x=m_at_x,
-                    p_values=p_values,
-                    t_idx=t_idx,
-                    current_time=current_time,
-                    problem=self,  # Pass reference to problem
-                )
+                if "derivs" in params:
+                    # New-style custom derivative
+                    result = self.components.hamiltonian_dm_func(
+                        x_idx=x_idx,
+                        x_position=x_position,
+                        m_at_x=m_at_x,
+                        derivs=derivs,
+                        t_idx=t_idx,
+                        current_time=current_time,
+                        problem=self,
+                    )
+                else:
+                    # Legacy custom derivative - convert derivs to p_values
+                    from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
+
+                    p_values_legacy = derivs_to_p_values_1d(derivs)
+
+                    result = self.components.hamiltonian_dm_func(
+                        x_idx=x_idx,
+                        x_position=x_position,
+                        m_at_x=m_at_x,
+                        p_values=p_values_legacy,
+                        t_idx=t_idx,
+                        current_time=current_time,
+                        problem=self,
+                    )
 
                 return result
 

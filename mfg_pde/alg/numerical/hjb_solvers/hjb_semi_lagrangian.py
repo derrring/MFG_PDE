@@ -263,11 +263,12 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         # For general Hamiltonians, use numerical optimization
         def hamiltonian_objective(p):
-            p_values = {"forward": p, "backward": p}  # Symmetric for optimization
+            # Use tuple notation directly (Phase 3 migration)
+            derivs = {(0,): 0.0, (1,): p}  # Symmetric for optimization
             try:
                 x_idx = int((x - self.problem.xmin) / self.dx)
                 x_idx = np.clip(x_idx, 0, self.problem.Nx)
-                return self.problem.H(x_idx, m, p_values, time_idx)
+                return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
             except Exception:
                 # User-defined Hamiltonian may raise any exception - return inf for optimizer
                 return np.inf
@@ -484,10 +485,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             x_idx = int((x - self.problem.xmin) / self.dx)
             x_idx = np.clip(x_idx, 0, self.problem.Nx)
 
-            # Create p_values dict expected by problem.H
-            p_values = {"forward": p, "backward": p}
+            # Use tuple notation directly (Phase 3 migration)
+            derivs = {(0,): 0.0, (1,): p}
 
-            return self.problem.H(x_idx, m, p_values, time_idx)
+            return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
 
         except Exception as e:
             logger.debug(f"Hamiltonian evaluation failed: {e}")

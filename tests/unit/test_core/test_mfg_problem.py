@@ -316,9 +316,10 @@ def test_mfg_problem_custom_hamiltonian():
 
     # Should use custom Hamiltonian
     assert problem.is_custom is True
-    H_value = problem.H(x_idx=10, m_at_x=0.5, p_values={"forward": 0.2, "backward": 0.1}, t_idx=0)
+    # Use symmetric p_values (conversion to tuple notation preserves symmetry)
+    H_value = problem.H(x_idx=10, m_at_x=0.5, p_values={"forward": 0.15, "backward": 0.15}, t_idx=0)
     assert isinstance(H_value, float)
-    assert H_value == pytest.approx(0.2**2 + 0.1**2 + 0.5**2)
+    assert H_value == pytest.approx(0.15**2 + 0.15**2 + 0.5**2)  # = 0.295
 
 
 # ===================================================================

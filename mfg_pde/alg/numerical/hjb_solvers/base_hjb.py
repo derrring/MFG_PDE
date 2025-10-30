@@ -8,6 +8,7 @@ import scipy.sparse as sparse
 
 from mfg_pde.alg.base_solver import BaseNumericalSolver
 from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
+from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
 
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
@@ -73,6 +74,87 @@ class BaseHJBSolver(BaseNumericalSolver):
         """
 
 
+def _calculate_derivatives(
+    U_array: np.ndarray,
+    i: int,
+    Dx: float,
+    Nx: int,
+    clip: bool = False,
+    clip_limit: float = P_VALUE_CLIP_LIMIT_FD_JAC,
+) -> dict[tuple[int], float]:
+    """
+    Calculate derivatives using standard tuple multi-index notation.
+
+    This function computes 1D derivatives and returns them in tuple notation:
+    - derivs[(0,)] = u (function value)
+    - derivs[(1,)] = ∂u/∂x (first derivative, central difference)
+
+    Args:
+        U_array: Solution array
+        i: Spatial index
+        Dx: Spatial grid spacing
+        Nx: Number of spatial points
+        clip: Whether to clip derivative values
+        clip_limit: Maximum absolute value for clipping
+
+    Returns:
+        Dictionary with tuple keys: {(0,): u, (1,): p}
+
+    See:
+        - docs/gradient_notation_standard.md
+        - mfg_pde/compat/gradient_notation.py
+    """
+    # Extract function value
+    if hasattr(U_array[i], "item"):
+        u_i = U_array[i].item()
+    else:
+        u_i = float(U_array[i])
+
+    # Handle edge cases
+    if Nx == 1:
+        return {(0,): u_i, (1,): 0.0}
+
+    if abs(Dx) < 1e-14:
+        return {(0,): u_i, (1,): np.nan}
+
+    # Extract neighbor values
+    if hasattr(U_array[(i + 1) % Nx], "item"):
+        u_ip1 = U_array[(i + 1) % Nx].item()
+    else:
+        u_ip1 = float(U_array[(i + 1) % Nx])
+
+    if hasattr(U_array[(i - 1 + Nx) % Nx], "item"):
+        u_im1 = U_array[(i - 1 + Nx) % Nx].item()
+    else:
+        u_im1 = float(U_array[(i - 1 + Nx) % Nx])
+
+    # Check for NaN/Inf in values
+    if np.isinf(u_i) or np.isinf(u_ip1) or np.isinf(u_im1) or np.isnan(u_i) or np.isnan(u_ip1) or np.isnan(u_im1):
+        return {(0,): u_i, (1,): np.nan}
+
+    # Compute forward and backward differences
+    p_forward = (u_ip1 - u_i) / Dx
+    p_backward = (u_i - u_im1) / Dx
+
+    # Check for NaN/Inf in derivatives
+    if np.isinf(p_forward) or np.isnan(p_forward):
+        p_forward = np.nan
+    if np.isinf(p_backward) or np.isnan(p_backward):
+        p_backward = np.nan
+
+    # Use central difference approximation
+    if np.isnan(p_forward) or np.isnan(p_backward):
+        p_central = np.nan
+    else:
+        p_central = (p_forward + p_backward) / 2.0
+
+    # Clip if requested
+    if clip and not np.isnan(p_central):
+        p_central = np.clip(p_central, -clip_limit, clip_limit)
+
+    return {(0,): u_i, (1,): p_central}
+
+
 def _calculate_p_values(
     U_array: np.ndarray,
     i: int,
@@ -81,36 +163,26 @@ def _calculate_p_values(
     clip: bool = False,
     clip_limit: float = P_VALUE_CLIP_LIMIT_FD_JAC,
 ) -> dict[str, float]:
-    # (Implementation from base_hjb_v4 - no p-value clipping by default)
-    p_forward, p_backward = 0.0, 0.0
-    if Nx > 1 and abs(Dx) > 1e-14:
-        # Extract values and convert to Python scalars (works for both NumPy and PyTorch)
-        u_i = U_array[i].item() if hasattr(U_array[i], "item") else float(U_array[i])
-        u_ip1 = U_array[(i + 1) % Nx].item() if hasattr(U_array[(i + 1) % Nx], "item") else float(U_array[(i + 1) % Nx])
-        u_im1 = (
-            U_array[(i - 1 + Nx) % Nx].item()
-            if hasattr(U_array[(i - 1 + Nx) % Nx], "item")
-            else float(U_array[(i - 1 + Nx) % Nx])
-        )
+    """
+    Legacy wrapper for _calculate_derivatives() using string keys.
 
-        if np.isinf(u_i) or np.isinf(u_ip1) or np.isinf(u_im1) or np.isnan(u_i) or np.isnan(u_ip1) or np.isnan(u_im1):
-            return {"forward": np.nan, "backward": np.nan}
+    DEPRECATED: Use _calculate_derivatives() with tuple notation instead.
 
-        p_forward = (u_ip1 - u_i) / Dx
-        p_backward = (u_i - u_im1) / Dx
+    This function maintains backward compatibility for code expecting
+    string keys {"forward": ..., "backward": ...}.
 
-        if np.isinf(p_forward) or np.isnan(p_forward):
-            p_forward = np.nan
-        if np.isinf(p_backward) or np.isnan(p_backward):
-            p_backward = np.nan
+    Returns:
+        Dictionary with string keys {" forward": p, "backward": p}
 
-    elif Nx == 1:
-        return {"forward": 0.0, "backward": 0.0}
-    else:
-        return {"forward": np.nan, "backward": np.nan}
+    See:
+        - _calculate_derivatives() for new tuple notation
+        - mfg_pde/compat/gradient_notation.py for conversion utilities
+    """
+    # Call new tuple-based function
+    derivs = _calculate_derivatives(U_array, i, Dx, Nx, clip=clip, clip_limit=clip_limit)
 
-    raw_p_values = {"forward": p_forward, "backward": p_backward}
-    return _clip_p_values(raw_p_values, clip_limit) if clip else raw_p_values
+    # Convert to legacy format
+    return derivs_to_p_values_1d(derivs)
 
 
 def _clip_p_values(p_values: dict[str, float], clip_limit: float) -> dict[str, float]:  # Helper for FD Jac
@@ -195,9 +267,10 @@ def compute_hjb_residual(
             continue
 
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
-        p_values = _calculate_p_values(U_n_current_newton_iterate, i, Dx, Nx, clip=False)
+        # Calculate derivatives using tuple notation (Phase 3 migration)
+        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, Dx, Nx, clip=False)
 
-        if np.any(np.isnan(list(p_values.values()))):
+        if np.any(np.isnan(list(derivs.values()))):
             Phi_U[i] = float("nan")
             continue
 
@@ -209,7 +282,8 @@ def compute_hjb_residual(
             if hasattr(M_density_at_n_plus_1[i], "item")
             else float(M_density_at_n_plus_1[i])
         )
-        hamiltonian_val = problem.H(x_idx=i, m_at_x=m_val, p_values=p_values, t_idx=t_idx_n)
+        # Call H() with tuple notation directly (Phase 3: no more conversion to legacy format)
+        hamiltonian_val = problem.H(x_idx=i, m_at_x=m_val, derivs=derivs, t_idx=t_idx_n)
         if np.isnan(hamiltonian_val) or np.isinf(hamiltonian_val):
             Phi_U[i] = float("nan")
             continue
@@ -292,7 +366,8 @@ def compute_hjb_jacobian(
             U_perturbed_m_i = U_n_np.copy()
             U_perturbed_m_i[i] -= eps
 
-            pv_p_i = _calculate_p_values(
+            # Use tuple notation for Jacobian (Phase 3 migration)
+            derivs_p_i = _calculate_derivatives(
                 U_perturbed_p_i,
                 i,
                 Dx,
@@ -300,7 +375,7 @@ def compute_hjb_jacobian(
                 clip=True,
                 clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
             )
-            pv_m_i = _calculate_p_values(
+            derivs_m_i = _calculate_derivatives(
                 U_perturbed_m_i,
                 i,
                 Dx,
@@ -311,10 +386,10 @@ def compute_hjb_jacobian(
 
             H_p_i = np.nan
             H_m_i = np.nan
-            if not (np.any(np.isnan(list(pv_p_i.values())))):
-                H_p_i = problem.H(i, M_density_at_n_plus_1[i], pv_p_i, t_idx_n)
-            if not (np.any(np.isnan(list(pv_m_i.values())))):
-                H_m_i = problem.H(i, M_density_at_n_plus_1[i], pv_m_i, t_idx_n)
+            if not (np.any(np.isnan(list(derivs_p_i.values())))):
+                H_p_i = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_p_i, t_idx=t_idx_n)
+            if not (np.any(np.isnan(list(derivs_m_i.values())))):
+                H_m_i = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_m_i, t_idx=t_idx_n)
 
             if not (np.isnan(H_p_i) or np.isnan(H_m_i) or np.isinf(H_p_i) or np.isinf(H_m_i)):
                 J_D[i] += (H_p_i - H_m_i) / (2 * eps)
@@ -328,7 +403,8 @@ def compute_hjb_jacobian(
                 U_perturbed_p_im1[im1] += eps
                 U_perturbed_m_im1 = U_n_current_newton_iterate.copy()
                 U_perturbed_m_im1[im1] -= eps
-                pv_p_im1 = _calculate_p_values(
+                # Use tuple notation for Jacobian (Phase 3 migration)
+                derivs_p_im1 = _calculate_derivatives(
                     U_perturbed_p_im1,
                     i,
                     Dx,
@@ -336,7 +412,7 @@ def compute_hjb_jacobian(
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
                 )
-                pv_m_im1 = _calculate_p_values(
+                derivs_m_im1 = _calculate_derivatives(
                     U_perturbed_m_im1,
                     i,
                     Dx,
@@ -346,10 +422,10 @@ def compute_hjb_jacobian(
                 )
                 H_p_im1 = np.nan
                 H_m_im1 = np.nan
-                if not (np.any(np.isnan(list(pv_p_im1.values())))):
-                    H_p_im1 = problem.H(i, M_density_at_n_plus_1[i], pv_p_im1, t_idx_n)
-                if not (np.any(np.isnan(list(pv_m_im1.values())))):
-                    H_m_im1 = problem.H(i, M_density_at_n_plus_1[i], pv_m_im1, t_idx_n)
+                if not (np.any(np.isnan(list(derivs_p_im1.values())))):
+                    H_p_im1 = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_p_im1, t_idx=t_idx_n)
+                if not (np.any(np.isnan(list(derivs_m_im1.values())))):
+                    H_m_im1 = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_m_im1, t_idx=t_idx_n)
                 if not (np.isnan(H_p_im1) or np.isnan(H_m_im1) or np.isinf(H_p_im1) or np.isinf(H_m_im1)):
                     J_L[i] += (H_p_im1 - H_m_im1) / (2 * eps)
                 else:
@@ -360,7 +436,8 @@ def compute_hjb_jacobian(
                 U_perturbed_p_ip1[ip1] += eps
                 U_perturbed_m_ip1 = U_n_current_newton_iterate.copy()
                 U_perturbed_m_ip1[ip1] -= eps
-                pv_p_ip1 = _calculate_p_values(
+                # Use tuple notation for Jacobian (Phase 3 migration)
+                derivs_p_ip1 = _calculate_derivatives(
                     U_perturbed_p_ip1,
                     i,
                     Dx,
@@ -368,7 +445,7 @@ def compute_hjb_jacobian(
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
                 )
-                pv_m_ip1 = _calculate_p_values(
+                derivs_m_ip1 = _calculate_derivatives(
                     U_perturbed_m_ip1,
                     i,
                     Dx,
@@ -378,10 +455,10 @@ def compute_hjb_jacobian(
                 )
                 H_p_ip1 = np.nan
                 H_m_ip1 = np.nan
-                if not (np.any(np.isnan(list(pv_p_ip1.values())))):
-                    H_p_ip1 = problem.H(i, M_density_at_n_plus_1[i], pv_p_ip1, t_idx_n)
-                if not (np.any(np.isnan(list(pv_m_ip1.values())))):
-                    H_m_ip1 = problem.H(i, M_density_at_n_plus_1[i], pv_m_ip1, t_idx_n)
+                if not (np.any(np.isnan(list(derivs_p_ip1.values())))):
+                    H_p_ip1 = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_p_ip1, t_idx=t_idx_n)
+                if not (np.any(np.isnan(list(derivs_m_ip1.values())))):
+                    H_m_ip1 = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_m_ip1, t_idx=t_idx_n)
                 if not (np.isnan(H_p_ip1) or np.isnan(H_m_ip1) or np.isinf(H_p_ip1) or np.isinf(H_m_ip1)):
                     J_U[i] += (H_p_ip1 - H_m_ip1) / (2 * eps)
                 else:
