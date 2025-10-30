@@ -80,7 +80,7 @@ def solve_hjb_nd_dimensional_splitting(
         >>> U_3d = solve_hjb_nd_dimensional_splitting(M_3d, U_final_3d, U_prev_3d, problem_3d, ...)
     """
     Nt = problem.Nt + 1
-    ndim = problem.geometry.grid.ndim
+    ndim = problem.geometry.grid.dimension
     shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
     dt = problem.dt
 
@@ -462,7 +462,7 @@ class _Problem1DAdapter:
             Input:  {(0,): 1.5, (1,): 0.3}
             Output: {(0,): 1.5, (0, 1, 0): 0.3}  # ∂u/∂y in 3D
         """
-        ndim = self.full_problem.geometry.grid.ndim
+        ndim = self.full_problem.geometry.grid.dimension
         derivs_out = {}
 
         for key, val in derivs_1d.items():
