@@ -78,43 +78,86 @@ class MFGProblem:
 
     def __init__(
         self,
-        xmin: float = 0.0,
-        xmax: float = 1.0,
-        Nx: int = 51,
+        # Legacy 1D parameters (backward compatible)
+        xmin: float | None = None,
+        xmax: float | None = None,
+        Nx: int | None = None,
+        # New n-D parameters
+        spatial_bounds: list[tuple[float, float]] | None = None,
+        spatial_discretization: list[int] | None = None,
+        # Common parameters
         T: float = 1.0,
         Nt: int = 51,
         sigma: float = 1.0,
         coefCT: float = 0.5,
         components: MFGComponents | None = None,
+        suppress_warnings: bool = False,
         **kwargs: Any,
     ) -> None:
         """
-        Initialize MFG problem with optional custom components.
+        Initialize MFG problem with support for arbitrary spatial dimensions.
+
+        Supports two initialization modes:
+        1. Legacy 1D mode (backward compatible): Specify Nx, xmin, xmax
+        2. N-dimensional mode (new): Specify spatial_bounds, spatial_discretization
 
         Args:
-            xmin, xmax, Nx: Spatial domain parameters
+            xmin, xmax, Nx: Legacy 1D spatial domain parameters
+            spatial_bounds: List of (min, max) tuples for each dimension
+                           Example: [(0, 1), (0, 1)] for 2D unit square
+            spatial_discretization: List of grid points per dimension
+                                   Example: [50, 50] for 51×51 grid
             T, Nt: Time domain parameters
             sigma: Diffusion coefficient
             coefCT: Control cost coefficient
             components: Optional MFGComponents for custom problem definition
+            suppress_warnings: Suppress computational feasibility warnings
             **kwargs: Additional parameters
+
+        Examples:
+            # 1D (legacy API - 100% backward compatible)
+            problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, Nt=100)
+
+            # 2D (new API)
+            problem = MFGProblem(
+                spatial_bounds=[(0, 1), (0, 1)],
+                spatial_discretization=[50, 50],
+                Nt=50
+            )
+
+            # 3D (new API)
+            problem = MFGProblem(
+                spatial_bounds=[(0, 1), (0, 1), (0, 1)],
+                spatial_discretization=[30, 30, 30],
+                Nt=30
+            )
         """
+        import warnings
 
-        self.xmin: float = xmin
-        self.xmax: float = xmax
-        self.Lx: float = xmax - xmin
-        self.Nx: int = Nx
-        self.Dx: float = (xmax - xmin) / Nx if Nx > 0 else 0.0
-
-        self.T: float = T
-        self.Nt: int = Nt
-        self.Dt: float = T / Nt if Nt > 0 else 0.0
-
-        self.xSpace: np.ndarray = np.linspace(xmin, xmax, Nx + 1, endpoint=True)
-        self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
-
-        self.sigma: float = sigma
-        self.coefCT: float = coefCT
+        # Detect initialization mode
+        if Nx is not None and spatial_bounds is None:
+            # Mode 1: Legacy 1D initialization
+            if xmin is None:
+                xmin = 0.0
+            if xmax is None:
+                xmax = 1.0
+            self._init_1d_legacy(xmin, xmax, Nx, T, Nt, sigma, coefCT)
+        elif spatial_bounds is not None and Nx is None:
+            # Mode 2: N-dimensional initialization
+            self._init_nd(spatial_bounds, spatial_discretization, T, Nt, sigma, coefCT, suppress_warnings)
+        elif Nx is None and spatial_bounds is None:
+            # Default: 1D with default parameters
+            warnings.warn(
+                "No spatial domain specified. Using default 1D domain: [0, 1] with 51 points.",
+                UserWarning,
+                stacklevel=2,
+            )
+            self._init_1d_legacy(0.0, 1.0, 51, T, Nt, sigma, coefCT)
+        else:
+            raise ValueError(
+                "Ambiguous initialization: Provide EITHER (Nx, xmin, xmax) for 1D "
+                "OR (spatial_bounds, spatial_discretization) for n-D, but not both."
+            )
 
         # Store custom components if provided
         self.components = components
@@ -138,6 +181,225 @@ class MFGProblem:
         if self.is_custom:
             self._validate_components()
 
+    def _init_1d_legacy(
+        self,
+        xmin: float,
+        xmax: float,
+        Nx: int,
+        T: float,
+        Nt: int,
+        sigma: float,
+        coefCT: float,
+    ) -> None:
+        """Initialize problem in legacy 1D mode (100% backward compatible)."""
+        # Set dimension
+        self.dimension = 1
+
+        # Legacy 1D attributes (exactly as before)
+        self.xmin: float = xmin
+        self.xmax: float = xmax
+        self.Lx: float = xmax - xmin
+        self.Nx: int = Nx
+        self.Dx: float = (xmax - xmin) / Nx if Nx > 0 else 0.0
+
+        # Time domain
+        self.T: float = T
+        self.Nt: int = Nt
+        self.Dt: float = T / Nt if Nt > 0 else 0.0
+
+        # Grid arrays
+        self.xSpace: np.ndarray = np.linspace(xmin, xmax, Nx + 1, endpoint=True)
+        self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
+
+        # Coefficients
+        self.sigma: float = sigma
+        self.coefCT: float = coefCT
+
+        # New n-D attributes for consistency
+        self.spatial_shape = (Nx + 1,)  # 1D shape: (Nx+1,)
+        self.spatial_bounds = [(xmin, xmax)]
+        self.spatial_discretization = [Nx]
+
+        # Grid object (None for 1D - not needed, kept for compatibility)
+        self._grid = None
+
+    def _init_nd(
+        self,
+        spatial_bounds: list[tuple[float, float]],
+        spatial_discretization: list[int] | None,
+        T: float,
+        Nt: int,
+        sigma: float,
+        coefCT: float,
+        suppress_warnings: bool,
+    ) -> None:
+        """Initialize problem in n-dimensional mode."""
+
+        # Validate inputs
+        if not spatial_bounds:
+            raise ValueError("spatial_bounds must be a non-empty list of (min, max) tuples")
+
+        dimension = len(spatial_bounds)
+
+        if spatial_discretization is None:
+            # Default: 51 points per dimension
+            spatial_discretization = [51] * dimension
+        elif len(spatial_discretization) != dimension:
+            raise ValueError(
+                f"spatial_discretization must have {dimension} elements (one per dimension), "
+                f"got {len(spatial_discretization)}"
+            )
+
+        # Store dimension
+        self.dimension = dimension
+
+        # Store n-D parameters
+        self.spatial_bounds = spatial_bounds
+        self.spatial_discretization = spatial_discretization
+
+        # For TensorProductGrid: num_points=[N] creates N points (not N+1)
+        # So spatial_shape should match spatial_discretization directly
+        self.spatial_shape = tuple(spatial_discretization)
+
+        # Time domain
+        self.T: float = T
+        self.Nt: int = Nt
+        self.Dt: float = T / Nt if Nt > 0 else 0.0
+        self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
+
+        # Coefficients
+        self.sigma: float = sigma
+        self.coefCT: float = coefCT
+
+        # Legacy 1D attributes (set to None for n-D, dimension > 1)
+        if dimension == 1:
+            # Special case: 1D via n-D API (for consistency)
+            self.xmin = spatial_bounds[0][0]
+            self.xmax = spatial_bounds[0][1]
+            self.Lx = self.xmax - self.xmin
+            self.Nx = spatial_discretization[0]
+            self.Dx = (self.xmax - self.xmin) / self.Nx if self.Nx > 0 else 0.0
+            self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1, endpoint=True)
+            self._grid = None
+        else:
+            # True n-D (dimension >= 2)
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.Dx = None
+            self.xSpace = None
+
+            # Create TensorProductGrid
+            from mfg_pde.geometry import TensorProductGrid
+
+            self._grid = TensorProductGrid(
+                dimension=dimension, bounds=spatial_bounds, num_points=spatial_discretization
+            )
+
+        # Check computational feasibility and warn if needed
+        if not suppress_warnings:
+            self._check_computational_feasibility()
+
+    def _check_computational_feasibility(self) -> None:
+        """Warn about computational limits for high-dimensional problems."""
+        import warnings
+
+        MAX_PRACTICAL_DIMENSION = 4
+        MAX_TOTAL_GRID_POINTS = 10_000_000  # 10 million
+
+        # Calculate total grid points
+        total_spatial_points = int(np.prod(self.spatial_shape))
+        total_points = total_spatial_points * (self.Nt + 1)
+        memory_mb = total_points * 8 / (1024**2)  # Assuming float64
+
+        if self.dimension > MAX_PRACTICAL_DIMENSION:
+            warnings.warn(
+                f"\n{'=' * 80}\n"
+                f"HIGH DIMENSION WARNING\n"
+                f"{'=' * 80}\n"
+                f"Problem dimension: {self.dimension}D\n"
+                f"Practical limit for grid-based FDM: {MAX_PRACTICAL_DIMENSION}D\n"
+                f"\n"
+                f"Grid-based methods scale as O(N^d), becoming impractical for high dimensions.\n"
+                f"Your problem will require:\n"
+                f"  - Spatial points: {total_spatial_points:,}\n"
+                f"  - Total points (space × time): {total_points:,}\n"
+                f"  - Estimated memory: {memory_mb:,.1f} MB per array\n"
+                f"\n"
+                f"RECOMMENDATION:\n"
+                f"For dimension > {MAX_PRACTICAL_DIMENSION}, consider alternative methods:\n"
+                f"  - Particle-based collocation methods (algorithms/particle_collocation)\n"
+                f"  - Network MFG formulations (for very high dimensions)\n"
+                f"  - Dimension reduction techniques\n"
+                f"\n"
+                f"To suppress this warning: MFGProblem(..., suppress_warnings=True)\n"
+                f"{'=' * 80}",
+                UserWarning,
+                stacklevel=3,
+            )
+        elif total_points > MAX_TOTAL_GRID_POINTS:
+            warnings.warn(
+                f"\n{'=' * 80}\n"
+                f"MEMORY WARNING\n"
+                f"{'=' * 80}\n"
+                f"Problem requires {total_points:,} grid points ({memory_mb:,.1f} MB per array).\n"
+                f"This may cause memory issues on typical machines.\n"
+                f"\n"
+                f"Consider:\n"
+                f"  - Reducing spatial discretization\n"
+                f"  - Reducing time steps\n"
+                f"  - Using sparse storage methods\n"
+                f"\n"
+                f"To suppress this warning: MFGProblem(..., suppress_warnings=True)\n"
+                f"{'=' * 80}",
+                UserWarning,
+                stacklevel=3,
+            )
+
+    def get_computational_cost_estimate(self) -> dict:
+        """
+        Get estimated computational cost for the problem.
+
+        Returns:
+            Dictionary with cost estimates:
+            - total_spatial_points: Total spatial grid points
+            - total_points: Total grid points (space × time)
+            - memory_per_array_mb: Memory per solution array (MB)
+            - estimated_memory_mb: Total estimated memory (MB)
+            - is_feasible: Whether problem is computationally feasible
+            - warnings: List of warnings about computational costs
+        """
+        total_spatial_points = int(np.prod(self.spatial_shape))
+        total_points = total_spatial_points * (self.Nt + 1)
+        memory_per_array_mb = total_points * 8 / (1024**2)
+        estimated_total_mb = memory_per_array_mb * 10  # Rough estimate: ~10 arrays
+
+        warnings_list = []
+        is_feasible = True
+
+        if self.dimension > 4:
+            warnings_list.append(f"Dimension {self.dimension}D exceeds practical limit (4D)")
+            is_feasible = False
+
+        if total_points > 10_000_000:
+            warnings_list.append(f"Total points ({total_points:,}) exceeds recommended limit (10M)")
+            is_feasible = False
+
+        if estimated_total_mb > 1000:
+            warnings_list.append(f"Estimated memory ({estimated_total_mb:.1f} MB) may be excessive")
+
+        return {
+            "dimension": self.dimension,
+            "spatial_shape": self.spatial_shape,
+            "total_spatial_points": total_spatial_points,
+            "total_points": total_points,
+            "memory_per_array_mb": memory_per_array_mb,
+            "estimated_memory_mb": estimated_total_mb,
+            "is_feasible": is_feasible,
+            "warnings": warnings_list,
+        }
+
     def _potential(self, x: float) -> float:
         """Default potential function."""
         return 50 * (
@@ -157,34 +419,94 @@ class MFGProblem:
     def _initialize_functions(self, **kwargs: Any) -> None:
         """Initialize potential, initial density, and final value functions."""
 
-        # Initialize potential
-        self.f_potential = np.zeros(self.Nx + 1)
-        if self.is_custom and self.components is not None and self.components.potential_func is not None:
-            self._setup_custom_potential()
-        else:
-            for i in range(self.Nx + 1):
-                self.f_potential[i] = self._potential(self.xSpace[i])
+        # Initialize arrays with correct shape for both 1D and n-D
+        self.f_potential = np.zeros(self.spatial_shape)
+        self.u_fin = np.zeros(self.spatial_shape)
+        self.m_init = np.zeros(self.spatial_shape)
 
-        # Initialize final value
-        self.u_fin = np.zeros(self.Nx + 1)
-        if self.is_custom and self.components is not None and self.components.final_value_func is not None:
-            self._setup_custom_final_value()
-        else:
-            for i in range(self.Nx + 1):
-                self.u_fin[i] = self._u_final(self.xSpace[i])
+        # Handle custom vs default initialization
+        if self.is_custom and self.components is not None:
+            # Custom problem - use provided functions
+            if self.components.potential_func is not None:
+                self._setup_custom_potential()
+            else:
+                # Default potential for custom problem
+                self.f_potential[:] = 0.0
 
-        # Initialize initial density
-        self.m_init = np.zeros(self.Nx + 1)
-        if self.is_custom and self.components is not None and self.components.initial_density_func is not None:
-            self._setup_custom_initial_density()
+            if self.components.final_value_func is not None:
+                self._setup_custom_final_value()
+            else:
+                # Default final value for custom problem
+                self.u_fin[:] = 0.0
+
+            if self.components.initial_density_func is not None:
+                self._setup_custom_initial_density()
+            else:
+                # Default initial density for custom problem
+                self._setup_default_initial_density()
         else:
-            for i in range(self.Nx + 1):
-                self.m_init[i] = self._m_initial(self.xSpace[i])
+            # Default problem - use built-in functions
+            if self.dimension == 1:
+                # 1D default functions (original behavior)
+                for i in range(self.spatial_shape[0]):
+                    self.f_potential[i] = self._potential(self.xSpace[i])
+                    self.u_fin[i] = self._u_final(self.xSpace[i])
+                    self.m_init[i] = self._m_initial(self.xSpace[i])
+            else:
+                # n-D default functions (simple defaults)
+                # Potential: zero (can be customized later)
+                self.f_potential[:] = 0.0
+
+                # Final value: zero (can be customized later)
+                self.u_fin[:] = 0.0
+
+                # Initial density: Gaussian at center
+                self._setup_default_initial_density()
 
         # Normalize initial density
-        integral_m_init = np.sum(self.m_init) * self.Dx
+        if self.dimension == 1:
+            # 1D normalization (original)
+            integral_m_init = np.sum(self.m_init) * self.Dx
+        else:
+            # n-D normalization (integrate over all dimensions)
+            # For tensor product grid: integral = sum(m) * prod(dx_i)
+            dx_prod = np.prod(
+                [
+                    (bounds[1] - bounds[0]) / n
+                    for bounds, n in zip(self.spatial_bounds, self.spatial_discretization, strict=False)
+                ]
+            )
+            integral_m_init = np.sum(self.m_init) * dx_prod
+
         if integral_m_init > 1e-10:
             self.m_init /= integral_m_init
+
+    def _setup_default_initial_density(self) -> None:
+        """Setup default initial density (Gaussian at center for n-D problems)."""
+        if self.dimension == 1:
+            # 1D: Use original default
+            for i in range(self.spatial_shape[0]):
+                self.m_init[i] = self._m_initial(self.xSpace[i])
+        else:
+            # n-D: Gaussian at center of domain
+            # Get grid coordinates
+            if self._grid is not None:
+                # Use TensorProductGrid
+                all_points = self._grid.flatten()  # Shape: (N_total, dimension)
+
+                # Center of domain
+                center = np.array([(b[0] + b[1]) / 2 for b in self.spatial_bounds])
+
+                # Gaussian: exp(-alpha * ||x - center||^2)
+                alpha = 100.0  # Width parameter
+                distances_sq = np.sum((all_points - center) ** 2, axis=1)
+                density_flat = np.exp(-alpha * distances_sq)
+
+                # Reshape to grid shape
+                self.m_init = density_flat.reshape(self.spatial_shape)
+            else:
+                # Fallback: uniform density
+                self.m_init[:] = 1.0
 
     def _validate_components(self):
         """Validate that required components are provided."""

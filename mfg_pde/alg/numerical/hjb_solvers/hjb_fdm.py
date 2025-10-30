@@ -77,6 +77,40 @@ class HJBFDMSolver(BaseHJBSolver):
             "tolerance": self.newton_tolerance,
         }
 
+        # Detect problem dimension
+        self.dimension = self._detect_dimension(problem)
+
+    def _detect_dimension(self, problem) -> int:
+        """
+        Detect the dimension of the problem.
+
+        Args:
+            problem: MFGProblem or GridBasedMFGProblem instance
+
+        Returns:
+            dimension: 1 for 1D problems, 2 for 2D, 3 for 3D, etc.
+
+        Raises:
+            ValueError: If dimension cannot be determined
+        """
+        # Check if it's a GridBasedMFGProblem with explicit dimension
+        if hasattr(problem, "geometry") and hasattr(problem.geometry, "grid"):
+            if hasattr(problem.geometry.grid, "ndim"):
+                return problem.geometry.grid.ndim
+
+        # Check for 1D MFGProblem (has Nx but not Ny)
+        if hasattr(problem, "Nx") and not hasattr(problem, "Ny"):
+            return 1
+
+        # Check for explicit dimension attribute
+        if hasattr(problem, "dimension"):
+            return problem.dimension
+
+        # If we can't determine dimension, raise error
+        raise ValueError(
+            "Cannot determine problem dimension. Problem must be either 1D MFGProblem or GridBasedMFGProblem."
+        )
+
     def solve_hjb_system(
         self,
         M_density_evolution: np.ndarray,
@@ -84,23 +118,56 @@ class HJBFDMSolver(BaseHJBSolver):
         U_from_prev_picard: np.ndarray,  # Added this argument
     ) -> np.ndarray:
         """
-        Solves the full HJB system backward in time using FDM (via base_hjb utilities).
+        Solves the full HJB system backward in time using FDM.
+
+        Routes to appropriate solver based on problem dimension:
+        - 1D: Uses existing base_hjb.solve_hjb_system_backward()
+        - 2D, 3D, ...: Uses dimensional splitting (hjb_fdm_multid module)
+
         Args:
-            M_density_evolution (np.ndarray): (Nt, Nx) array of density m(t,x) from prev. Picard.
-            U_final_condition (np.ndarray): (Nx,) array for U(T,x).
-            U_from_prev_picard (np.ndarray): (Nt, Nx) array of U(t,x) from prev. Picard iter.
-                                             Used for specific Jacobian forms (like original notebook).
+            M_density_evolution: Density evolution from previous Picard iteration
+                - 1D: (Nt, Nx) array
+                - nD: (Nt, N1, N2, ..., Nd) array
+            U_final_condition: Terminal condition for value function
+                - 1D: (Nx,) array
+                - nD: (N1, N2, ..., Nd) array
+            U_from_prev_picard: Value function from previous Picard iteration
+                - 1D: (Nt, Nx) array
+                - nD: (Nt, N1, N2, ..., Nd) array
+
         Returns:
-            np.ndarray: U_solution (Nt, Nx) for the current Picard iteration.
+            U_solution: Value function evolution
+                - 1D: (Nt, Nx) array
+                - nD: (Nt, N1, N2, ..., Nd) array
+
+        Notes:
+            - 1D solver: Direct finite difference method
+            - nD solver: Dimensional splitting (Strang splitting)
+            - Both methods use Newton iteration for nonlinear HJB
         """
-        # print(f"****** Solving HJB ({self.hjb_method_name} via base_hjb utilities)")
-        U_new_solution = base_hjb.solve_hjb_system_backward(
-            M_density_from_prev_picard=M_density_evolution,  # Renamed for clarity in base_hjb
-            U_final_condition_at_T=U_final_condition,
-            U_from_prev_picard=U_from_prev_picard,  # Pass this through
-            problem=self.problem,
-            max_newton_iterations=self.max_newton_iterations,
-            newton_tolerance=self.newton_tolerance,
-            backend=self.backend,  # Pass backend for acceleration
-        )
+        if self.dimension == 1:
+            # Use existing 1D FDM solver
+            U_new_solution = base_hjb.solve_hjb_system_backward(
+                M_density_from_prev_picard=M_density_evolution,
+                U_final_condition_at_T=U_final_condition,
+                U_from_prev_picard=U_from_prev_picard,
+                problem=self.problem,
+                max_newton_iterations=self.max_newton_iterations,
+                newton_tolerance=self.newton_tolerance,
+                backend=self.backend,
+            )
+        else:
+            # Use dimension-agnostic nD solver (works for 2D, 3D, 4D, ...)
+            from . import hjb_fdm_multid
+
+            U_new_solution = hjb_fdm_multid.solve_hjb_nd_dimensional_splitting(
+                M_density=M_density_evolution,
+                U_final=U_final_condition,
+                U_prev=U_from_prev_picard,
+                problem=self.problem,
+                max_newton_iterations=self.max_newton_iterations,
+                newton_tolerance=self.newton_tolerance,
+                backend=self.backend,
+            )
+
         return U_new_solution
