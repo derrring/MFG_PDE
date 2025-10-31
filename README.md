@@ -10,6 +10,7 @@ A modern Python framework for solving Mean Field Games with modular solver archi
 
 **🎯 Research-Grade**: Factory API for full algorithm access
 **🧩 Three Solver Tiers**: Basic FDM / Hybrid (DEFAULT) / Advanced (WENO, Semi-Lagrangian)
+**🌐 Dimension-Agnostic**: 2D/3D/4D FDM via dimensional splitting (Phase 2 ✅)
 **⭐ Mass-Conserving**: ~10⁻¹⁵ error with hybrid particle-FDM methods
 **⚡ GPU Acceleration**: Multi-backend system (PyTorch, JAX, Numba)
 **🎮 RL for MFG**: Complete continuous control (DDPG, TD3, SAC)
@@ -104,9 +105,41 @@ result.save_hdf5('result.h5')
 loaded_result = SolverResult.load_hdf5('result.h5')
 ```
 
-### **🌐 Multi-Dimensional Solvers**
+### **🌐 Dimension-Agnostic FDM Solvers** (NEW: Phase 2 ✅)
 ```python
-# 2D/3D problems with efficient sparse methods
+# 2D/3D/4D MFG with automatic dimensional splitting
+from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde.factory import create_basic_solver
+
+# Define 2D crowd motion problem
+problem = GridBasedMFGProblem(
+    domain_bounds=(0.0, 1.0, 0.0, 1.0),  # [x_min, x_max, y_min, y_max]
+    grid_resolution=50,                   # 50×50 grid
+    time_domain=(1.0, 50),                # T=1.0, 50 timesteps
+    diffusion_coeff=0.05,
+)
+
+# Factory automatically detects 2D and uses dimensional splitting!
+solver = create_basic_solver(problem)
+
+# solver.hjb_solver is HJBFDMSolver with dimension=2 (Strang splitting)
+# solver.fp_solver is FPFDMSolver with dimension=2 (Strang splitting)
+
+result = solver.solve()
+print(f"HJB dimension: {solver.hjb_solver.dimension}")  # 2
+print(f"FP dimension: {solver.fp_solver.dimension}")    # 2
+```
+
+**Key Features**:
+- ✅ **Automatic dimension detection** (1D/2D/3D/4D)
+- ✅ **Dimensional splitting (Strang)** for O(Δt²) accuracy
+- ✅ **Single codebase** - no separate 2D/3D implementations
+- ✅ **Factory auto-detection** - just define `GridBasedMFGProblem`
+- ✅ **Example**: `examples/basic/2d_crowd_motion_fdm.py`
+
+### **🔧 Multi-Dimensional Utilities**
+```python
+# Sparse matrix builders for advanced use
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.utils import SparseMatrixBuilder
 
@@ -332,6 +365,7 @@ result = solver.solve()
 - **🎯 Factory API**: Full algorithm access for researchers (3-tier solver hierarchy)
 - **⚡ Mass-Conserving**: ~10⁻¹⁵ error with hybrid particle-FDM methods (Tier 2 default)
 - **🧩 Modular Architecture**: Mix & match any FP solver + any HJB solver
+- **🌐 Dimension-Agnostic FDM**: 2D/3D/4D support via dimensional splitting (Phase 2 ✅)
 - **⭐ WENO5 Solver**: Fifth-order accuracy with non-oscillatory properties
 - **🎮 Reinforcement Learning**: Complete RL framework (Q-Learning, Actor-Critic, DDPG, TD3, SAC)
 - **⚡ Multi-Backend System**: PyTorch (neural), JAX (math), Numba (CPU) + auto-selection
@@ -377,6 +411,7 @@ result = solver.solve()
 - **[examples/notebooks/](examples/notebooks/)** - Jupyter notebook tutorials
 
 **Featured Examples**:
+- `examples/basic/2d_crowd_motion_fdm.py` - **NEW** 2D crowd motion with dimension-agnostic FDM
 - `examples/basic/el_farol_bar_demo.py` - Classic coordination game (discrete states)
 - `examples/basic/santa_fe_bar_demo.py` - Preference evolution formulation
 - `examples/basic/towel_beach_demo.py` - Spatial competition with phase transitions
