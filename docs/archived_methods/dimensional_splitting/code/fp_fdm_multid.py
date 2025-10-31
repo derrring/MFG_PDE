@@ -1,6 +1,15 @@
 """
 Multi-dimensional Fokker-Planck FDM solver using dimensional splitting.
 
+WARNING: DEPRECATED FOR MFG PROBLEMS
+====================================
+This dimensional splitting method is UNSUITABLE for advection-dominated MFG problems.
+It causes catastrophic mass loss (up to 81%) when velocity fields from HJB coupling
+are present. Only use for pure diffusion or testing purposes.
+
+For MFG problems, use full-dimensional system solvers instead.
+See: docs/archived_methods/dimensional_splitting/README.md
+
 This module extends the 1D FP FDM solver to arbitrary dimensions (2D, 3D, 4D, ...)
 using operator splitting in space (Strang splitting).
 

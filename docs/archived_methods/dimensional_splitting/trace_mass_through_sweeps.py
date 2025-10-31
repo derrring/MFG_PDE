@@ -52,7 +52,7 @@ class Simple2DProblem(GridBasedMFGProblem):
 
 
 # Monkey-patch _sweep_dimension to add mass tracking
-from mfg_pde.alg.numerical.fp_solvers import fp_fdm_multid
+from mfg_pde.alg.numerical.fp_solvers import fp_fdm_multid  # noqa: E402
 
 original_sweep = fp_fdm_multid._sweep_dimension
 
