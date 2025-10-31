@@ -57,7 +57,11 @@ class CrowdMotion2D(GridBasedMFGProblem):
         """Gaussian blob centered at start position."""
         dist_sq = np.sum((x - self.start) ** 2, axis=1)
         density = np.exp(-100 * dist_sq)
-        return density / (np.sum(density) + 1e-10)
+        # Normalize so that integral ∫∫ m(x,y) dx dy = 1
+        # For uniform grid: ∫∫ m dx dy ≈ Σ m[i,j] * dx * dy
+        # So we need: sum(m) * dV = 1  =>  m = density / (sum(density) * dV)
+        dV = float(np.prod(self.geometry.grid.spacing))
+        return density / (np.sum(density) * dV + 1e-10)
 
     def terminal_cost(self, x):
         """Quadratic cost: distance to goal."""
@@ -78,6 +82,14 @@ class CrowdMotion2D(GridBasedMFGProblem):
     def setup_components(self):
         """Setup MFG components for numerical solvers."""
         kappa = self.congestion_weight
+
+        # Pre-compute normalization constant for initial density
+        # This must be done ONCE for the entire grid, not point-by-point
+        grid_points = self.geometry.grid.flatten()
+        dist_sq = np.sum((grid_points - self.start) ** 2, axis=1)
+        unnormalized_density = np.exp(-100 * dist_sq)
+        dV = float(np.prod(self.geometry.grid.spacing))
+        normalization_constant = np.sum(unnormalized_density) * dV
 
         def hamiltonian_func(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, derivs=None, **kwargs):
             """H = (1/2)|∇u|² + κ·m"""
@@ -103,7 +115,11 @@ class CrowdMotion2D(GridBasedMFGProblem):
                 x_d = self.geometry.grid.bounds[d][0] + idx_d * self.geometry.grid.spacing[d]
                 coords.append(x_d)
             coords_array = np.array(coords).reshape(1, -1)
-            return float(self.initial_density(coords_array)[0])
+            # Evaluate unnormalized density at this point
+            dist_sq_point = np.sum((coords_array - self.start) ** 2, axis=1)[0]
+            unnormalized = np.exp(-100 * dist_sq_point)
+            # Use pre-computed normalization constant
+            return float(unnormalized / normalization_constant)
 
         def terminal_cost_func(x_idx):
             """Quadratic terminal cost."""

@@ -95,7 +95,7 @@ def solve_fp_nd_dimensional_splitting(
     # Get problem dimensions
     Nt = problem.Nt + 1
     ndim = problem.geometry.grid.dimension
-    shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
+    shape = tuple(problem.geometry.grid.num_points)
     dt = problem.dt
 
     # Validate input shapes
@@ -232,20 +232,20 @@ def _sweep_dimension(
         full_indices = tuple(full_indices)
 
         # Extract 1D slices
-        M_slice = M_in[full_indices]  # Shape: (N_sweep_dim - 1,)
-        U_slice = U_current[full_indices]  # Shape: (N_sweep_dim - 1,)
+        M_slice = M_in[full_indices]  # Shape: (N_sweep_dim,)
+        U_slice = U_current[full_indices]  # Shape: (N_sweep_dim,)
 
-        # Pad right boundary to convert to 1D solver convention
-        # GridBasedMFGProblem: excludes right boundary
-        # 1D solver: includes both boundaries
-        M_slice_padded = np.pad(M_slice, (0, 1), mode="constant", constant_values=0)
-        U_slice_padded = np.pad(U_slice, (0, 1), mode="constant", constant_values=0)
+        # No padding needed - GridBasedMFGProblem now includes all boundaries
+        # Both conventions match after the fix!
+        M_slice_padded = M_slice
+        U_slice_padded = U_slice
 
-        # Create 1D problem adapter
+        # Create 1D problem adapter with sweep timestep
         problem_1d = _FPProblem1DAdapter(
             full_problem=problem,
             sweep_dim=sweep_dim,
             fixed_indices=perp_indices,
+            sweep_dt=dt,  # Pass the sweep timestep (dt/(2*ndim))
         )
 
         # Solve 1D FP problem
@@ -275,7 +275,8 @@ def _sweep_dimension(
         )
 
         # Extract result (1D solver returns shape (2, Nx+1), we want second timestep)
-        M_new_slice = M_solution_1d[1, :-1]  # Remove right boundary padding
+        # No boundary removal needed - conventions now match!
+        M_new_slice = M_solution_1d[1, :]
 
         # Store back into output array
         M_out[full_indices] = M_new_slice
@@ -299,6 +300,7 @@ class _FPProblem1DAdapter:
         full_problem: GridBasedMFGProblem,
         sweep_dim: int,
         fixed_indices: tuple[int, ...],
+        sweep_dt: float | None = None,
     ):
         """
         Create 1D problem adapter for FP solver.
@@ -311,6 +313,9 @@ class _FPProblem1DAdapter:
             Dimension along which to sweep (0, 1, ..., ndim-1)
         fixed_indices : tuple[int, ...]
             Fixed indices in perpendicular dimensions
+        sweep_dt : float | None
+            Timestep for this sweep (typically dt/(2*ndim) for Strang splitting)
+            If None, uses full_problem.dt
         """
         self.full_problem = full_problem
         self.sweep_dim = sweep_dim
@@ -318,13 +323,19 @@ class _FPProblem1DAdapter:
 
         # Extract 1D grid parameters
         grid = full_problem.geometry.grid
-        self.Nx = grid.num_points[sweep_dim] - 1  # Number of intervals (GridBasedMFGProblem convention)
-        self.Dx = grid.spacing[sweep_dim]
+        self.num_grid_points_x = (
+            grid.num_points[sweep_dim] - 1
+        )  # Number of intervals (1D solver convention: Nx+1 points)
+        self.grid_spacing_x = grid.spacing[sweep_dim]
         self.Nt = 1  # Single timestep for sweep
-        self.dt = full_problem.dt  # Will be overridden by sweep dt
-        self.Dt = self.dt  # Alias for compatibility
+        self.dt = sweep_dt if sweep_dt is not None else full_problem.dt  # Use sweep dt
+
+        # Backward compatibility aliases for old naming convention
+        self.Nx = self.num_grid_points_x
+        self.Dx = self.grid_spacing_x
+        self.Dt = self.dt
         self.sigma = full_problem.sigma
         self.coefCT = getattr(full_problem, "coefCT", 1.0)
 
     def __repr__(self):
-        return f"_FPProblem1DAdapter(sweep_dim={self.sweep_dim}, Nx={self.Nx}, Dx={self.Dx:.4f})"
+        return f"_FPProblem1DAdapter(sweep_dim={self.sweep_dim}, Nx={self.num_grid_points_x}, Dx={self.grid_spacing_x:.4f})"

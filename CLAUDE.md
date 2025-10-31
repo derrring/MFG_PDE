@@ -1603,8 +1603,49 @@ This prevents label explosion while maintaining clear categorization.
 ### **Task Management**
 - Use TodoWrite tool for multi-step tasks
 - Track progress and mark completion
-- Create summary documents for major changes
 - Apply consistent GitHub labels following the hierarchical taxonomy
+
+### **Progressive Logging vs. Summary Documents** ⚠️ **CRITICAL**
+
+**Principle**: Log incrementally, summarize at milestones.
+
+**During Active Work**:
+- ✅ **Log each step**: Test results, bug findings, code changes in simple log files or comments
+- ✅ **Use TodoWrite**: Track progress with in-progress/completed tasks
+- ✅ **Write technical notes**: Bug reports (e.g., `BUG5_CENTRAL_VS_UPWIND.md`) as findings emerge
+- ❌ **NO frequent summaries**: Don't create `SESSION_SUMMARY_2025-10-31_AFTERNOON.md` after each small step
+
+**When to Create Summaries**:
+- ✅ **Phase completion**: End of major feature implementation
+- ✅ **Critical milestones**: After fixing major bugs or completing refactors
+- ✅ **Before/after breaks**: End of day if significant progress made
+- ✅ **Investigation conclusions**: After debugging sessions that identify root causes
+
+**Examples**:
+
+```
+❌ BAD (too frequent):
+- BUG_INVESTIGATION_SUMMARY.md (created after finding Bug #1)
+- BUG_INVESTIGATION_UPDATE.md (created after finding Bug #2)
+- BUG_INVESTIGATION_LATEST.md (created after finding Bug #3)
+- FINAL_SESSION_SUMMARY.md (created at end of day)
+
+✅ GOOD (milestone-based):
+- test_lower_damping.log (ongoing: test results)
+- BUG5_CENTRAL_VS_UPWIND.md (critical: root cause identified)
+- CONVERGENCE_DEBUG_2025-10-31.md (milestone: investigation complete, ready to fix)
+```
+
+**Rationale**:
+- Summaries have overhead (creation time, future maintenance burden)
+- Logs capture progress without breaking workflow
+- Critical findings deserve dedicated technical notes
+- Comprehensive summaries are valuable at natural stopping points
+
+**Conflict Resolution**:
+- Does NOT conflict with "Documentation Hygiene" checkpoints (those are for cleanup, not creation)
+- Does NOT conflict with "Status Marking" (marking existing docs, not creating new ones)
+- REINFORCES "Proactive Documentation Cleanup" (fewer docs to clean up if fewer created)
 
 ### **File Organization**
 - Keep root directory clean (only essential directories)

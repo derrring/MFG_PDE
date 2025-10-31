@@ -324,7 +324,9 @@ def create_basic_solver(
     hjb_solver = HJBFDMSolver(problem=problem)
     fp_solver = FPFDMSolver(problem=problem)
 
-    return FixedPointIterator(problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=damping, **kwargs)
+    return FixedPointIterator(
+        problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=damping, **kwargs
+    )
 
 
 def create_standard_solver(
