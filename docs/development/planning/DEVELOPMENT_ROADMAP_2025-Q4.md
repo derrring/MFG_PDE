@@ -1,7 +1,7 @@
 # MFG_PDE Development Roadmap: Q4 2025 - Q2 2026
 
 **Last Updated**: 2025-10-09  
-**Current Version**: v1.7.1  
+**Current Version**: v0.7.1  
 **Focus**: Foundation Quality → Feature Development
 
 ---

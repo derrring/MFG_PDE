@@ -783,7 +783,7 @@ def test_2d_fp_mass_conservation():
 4. Migration guide for users
 5. Performance profiling
 
-**Milestone**: Ready for v1.8.0 release
+**Milestone**: Ready for v0.8.0 release
 
 ---
 

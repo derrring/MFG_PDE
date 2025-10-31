@@ -568,7 +568,7 @@ raise ConvergenceError(
 
 ### Release Preparation
 
-**Version**: v1.8.0 (minor version bump for new features)
+**Version**: v0.8.0 (minor version bump for new features)
 
 **Release Checklist**:
 - [ ] All tests passing (>97.8% pass rate maintained)
@@ -581,7 +581,7 @@ raise ConvergenceError(
 
 **Release Notes Structure**:
 ```markdown
-# MFG_PDE v1.8.0 - Phase 2 Short-Term Improvements
+# MFG_PDE v0.8.0 - Phase 2 Short-Term Improvements
 
 ## New Features
 
@@ -644,7 +644,7 @@ See `docs/migration_guides/phase2_improvements.md`
 - Design APIs based on actual research code patterns
 - Make utilities extensible (base classes)
 - Gather feedback during Weeks 7-10
-**Fallback**: Release minimal utilities, extend in v1.8.1
+**Fallback**: Release minimal utilities, extend in v0.8.1
 
 ---
 
@@ -656,10 +656,10 @@ See `docs/migration_guides/phase2_improvements.md`
 **Mitigation**:
 - Prioritize: FDM solvers (HIGH) > Utilities (MEDIUM) > Quick Wins (LOW)
 - If behind schedule, cut scope:
-  - Skip 3D extension (add in v1.8.1)
+  - Skip 3D extension (add in v0.8.1)
   - Reduce utilities (ship interpolation only)
   - Defer some quick wins
-**Fallback**: Release v1.8.0 with FDM 2D only, utilities in v1.9.0
+**Fallback**: Release v0.8.0 with FDM 2D only, utilities in v0.9.0
 
 ---
 
@@ -698,15 +698,15 @@ See `docs/migration_guides/phase2_improvements.md`
 
 **Timeline**:
 - ✅ Complete within 12 weeks
-- ✅ Release v1.8.0 by end of Week 12
+- ✅ Release v0.8.0 by end of Week 12
 
 ---
 
 ## Post-Phase 2
 
-**After v1.8.0 Release**:
+**After v0.8.0 Release**:
 1. **Gather Feedback** (2 weeks): Monitor GitHub issues, user reports
-2. **Bug Fixes** (ongoing): Address issues in v1.8.1, v1.8.2
+2. **Bug Fixes** (ongoing): Address issues in v0.8.1, v0.8.2
 3. **Plan Phase 3** (4 weeks): Long-term refactoring planning
 4. **Begin Phase 3** (Month 4): Unified problem class, configuration simplification
 

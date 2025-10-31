@@ -1,7 +1,7 @@
 # MFG_PDE Documentation
 
-**Last Updated**: October 28, 2025
-**Version**: v1.7.3 - Current Production Release
+**Last Updated**: October 31, 2025
+**Version**: v0.8.0-phase2 - Current Development Release
 **Status**: Production-Ready Framework with Validated Examples
 
 Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.

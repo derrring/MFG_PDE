@@ -492,7 +492,7 @@ docs/architecture/
 
 ### For Researchers
 
-**✅ No Workarounds Needed** (as of v1.7.3+):
+**✅ No Workarounds Needed** (as of v0.7.3+):
 - ✅ QP sigma: Direct numeric `sigma` works (Bug #15 fixed)
 - ✅ Anderson 2D/3D: Direct array support (multi-dimensional fixed)
 - ✅ Gradient notation: Type-safe tuple format available
@@ -506,7 +506,7 @@ docs/architecture/
 - File GitHub issues with MFG_PDE repository
 - Reference this architecture documentation
 - Provide minimal reproducible examples
-- Check if already fixed in latest version (v1.7.3+)
+- Check if already fixed in latest version (v0.7.3+)
 
 ---
 

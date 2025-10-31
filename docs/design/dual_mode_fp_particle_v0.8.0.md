@@ -1,7 +1,7 @@
-# Dual-Mode FP-Particle Solver Design (v1.8.0)
+# Dual-Mode FP-Particle Solver Design (v0.8.0)
 
 **Status**: Prototype validated in mfg-research ✅
-**Target Release**: MFG_PDE v1.8.0
+**Target Release**: MFG_PDE v0.8.0
 **Implementation**: ~95 lines of new code
 **Backward Compatibility**: 100% ✅
 
@@ -25,7 +25,7 @@ This enables particle-collocation MFG methods for high-dimensional problems (d �
 `FPParticleSolver` uses particles internally but always converts to grid via KDE:
 
 ```python
-# Current (v1.7.3)
+# Current (v0.7.3)
 solver = FPParticleSolver(problem, num_particles=5000)
 M = solver.solve_fp_system(m_initial, U_drift)
 # Returns: (Nt, Nx) on grid (always!)
@@ -111,7 +111,7 @@ def solve_fp_system(self, m_initial, U_drift):
 ```python
 def _solve_hybrid_mode(self, m_initial, U_drift):
     """Sample particles → Advect → KDE to grid."""
-    # Lines 297-380 in current v1.7.3 (UNCHANGED)
+    # Lines 297-380 in current v0.7.3 (UNCHANGED)
     ...
 ```
 
@@ -259,7 +259,7 @@ This complements the Pure Particle Interface design:
 - FP solver works natively with particles
 - Completes particle-collocation capability
 
-**Together**: Full particle-based MFG in MFG_PDE v1.8.0
+**Together**: Full particle-based MFG in MFG_PDE v0.8.0
 
 ---
 
@@ -286,11 +286,11 @@ This complements the Pure Particle Interface design:
 
 **Phase 4**: Release (Week 5-6)
 - [ ] Final review
-- [ ] Version bump to v1.8.0
+- [ ] Version bump to v0.8.0
 - [ ] Release notes
 - [ ] Publish to PyPI
 
-**Total**: 6 weeks to v1.8.0
+**Total**: 6 weeks to v0.8.0
 
 ---
 
@@ -327,7 +327,7 @@ This complements the Pure Particle Interface design:
 **Prototype**: `mfg-research/algorithms/particle_collocation/`
 - Implementation: `fp_particle_dual_mode.py`
 - Tests: `test_fp_dual_mode.py`
-- Proposal: `docs/DUAL_MODE_FP_PROPOSAL_v1.8.0.md`
+- Proposal: `docs/DUAL_MODE_FP_PROPOSAL_v0.8.0.md`
 
 **Design Docs** (mfg-research):
 - `FP_PARTICLE_HYBRID_VS_COLLOCATION.md`

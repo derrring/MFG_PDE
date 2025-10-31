@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "1.7.3" # v1.7.3: QP Monotonicity Fix + Test Coverage Expansion
+version = "0.8.0-phase2" # v0.8.0-phase2: Dimension-Agnostic FDM Solvers (Phase 2 Complete)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
