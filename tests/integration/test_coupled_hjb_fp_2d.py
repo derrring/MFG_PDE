@@ -176,8 +176,8 @@ def solve_mfg_picard_2d(problem, max_iterations=10, tolerance=1e-3, verbose=True
     for iteration in range(max_iterations):
         # Step 1: Solve HJB backward with M_current fixed
         U_new = hjb_solver.solve_hjb_system(
-            M_density_evolution=M_current,
-            U_final_condition=u_final,
+            M_density_evolution_from_FP=M_current,
+            U_final_condition_at_T=u_final,
             U_from_prev_picard=U_current,
         )
 

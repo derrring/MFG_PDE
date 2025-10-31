@@ -46,15 +46,13 @@ def test_bug7_time_index_fix():
         problem=problem,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        damping=0.6,
-        max_iterations=50,
-        tolerance=1e-4,
+        damping_factor=0.6,
     )
 
     print("Running solver with Bug #7 fix...")
     print()
 
-    result = solver.solve()
+    result = solver.solve(max_iterations=50, tolerance=1e-4)
 
     print()
     print("=" * 70)

@@ -211,14 +211,12 @@ def test_lower_damping():
         problem=problem,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        damping=0.4,  # LOWER DAMPING as requested
-        max_iterations=30,
-        tolerance=1e-4,
+        damping_factor=0.4,  # LOWER DAMPING as requested
     )
 
     # Solve
     start_time = time.time()
-    result = solver.solve()
+    result = solver.solve(max_iterations=30, tolerance=1e-4)
     runtime = time.time() - start_time
 
     print("\n" + "=" * 70)
