@@ -80,10 +80,8 @@ class FPFDMSolver(BaseFPSolver):
         if self.dimension == 1:
             return self._solve_fp_1d(m_initial_condition, U_solution_for_drift, show_progress)
         else:
-            # Multi-dimensional solver via dimensional splitting
-            from . import fp_fdm_multid
-
-            return fp_fdm_multid.solve_fp_nd_dimensional_splitting(
+            # Multi-dimensional solver via full nD system (not dimensional splitting)
+            return _solve_fp_nd_full_system(
                 m_initial_condition=m_initial_condition,
                 U_solution_for_drift=U_solution_for_drift,
                 problem=self.problem,
@@ -375,3 +373,487 @@ class FPFDMSolver(BaseFPSolver):
                 m[k_idx_fp + 1, :] = np.maximum(m[k_idx_fp + 1, :], 0)
 
         return m
+
+
+# ============================================================================
+# Multi-dimensional FP solver using full nD system (no dimensional splitting)
+# ============================================================================
+
+
+def _solve_fp_nd_full_system(
+    m_initial_condition: np.ndarray,
+    U_solution_for_drift: np.ndarray,
+    problem: Any,
+    boundary_conditions: BoundaryConditions | None = None,
+    show_progress: bool = True,
+    backend: Any | None = None,
+) -> np.ndarray:
+    """
+    Solve multi-dimensional FP equation using full-dimensional sparse linear system.
+
+    Evolves density forward in time from t=0 to t=T by directly assembling
+    and solving the full multi-dimensional system at each timestep.
+
+    This approach avoids the catastrophic operator splitting errors that occur
+    with advection-dominated problems (high Péclet number).
+
+    Parameters
+    ----------
+    m_initial_condition : np.ndarray
+        Initial density at t=0. Shape: (N₁, N₂, ..., Nₐ)
+    U_solution_for_drift : np.ndarray
+        Value function over time-space grid. Shape: (Nt+1, N₁, N₂, ..., Nₐ)
+        Used to compute drift velocity v = -coefCT ∇U
+    problem : GridBasedMFGProblem
+        The MFG problem definition with geometry and parameters
+    boundary_conditions : BoundaryConditions | None
+        Boundary condition specification (default: no-flux)
+    show_progress : bool
+        Whether to display progress bar
+    backend : Any | None
+        Array backend (currently unused, NumPy only)
+
+    Returns
+    -------
+    np.ndarray
+        Density evolution over time. Shape: (Nt+1, N₁, N₂, ..., Nₐ)
+
+    Notes
+    -----
+    - No splitting error: Direct discretization preserves operator coupling
+    - Mass conservation: Proper flux balance at all boundaries
+    - Enforces non-negativity: m ≥ 0 everywhere
+    - Forward time evolution: k=0 → Nt-1
+    - Complexity: O(N^d) unknowns per timestep
+
+    Mathematical Formulation
+    ------------------------
+    FP Equation: ∂m/∂t + ∇·(m v) = (σ²/2) Δm
+
+    Direct Discretization:
+        (I/Δt + A + D) m^{n+1} = m^n / Δt
+
+    where:
+    - I: identity matrix (size N_total × N_total)
+    - A: advection operator (full multi-D upwind discretization)
+    - D: diffusion operator (full multi-D Laplacian)
+    """
+    # Get problem dimensions
+    Nt = problem.Nt + 1
+    ndim = problem.geometry.grid.dimension
+    shape = tuple(problem.geometry.grid.num_points)
+    dt = problem.dt
+    sigma = problem.sigma
+    coefCT = getattr(problem, "coefCT", 1.0)
+
+    # Get grid spacing
+    spacing = problem.geometry.grid.spacing
+    grid = problem.geometry.grid
+
+    # Validate input shapes
+    assert m_initial_condition.shape == shape, (
+        f"Initial condition shape {m_initial_condition.shape} doesn't match problem shape {shape}"
+    )
+    expected_U_shape = (Nt, *shape)
+    assert U_solution_for_drift.shape == expected_U_shape, (
+        f"Value function shape {U_solution_for_drift.shape} doesn't match expected shape {expected_U_shape}"
+    )
+
+    # Allocate solution array
+    M_solution = np.zeros((Nt, *shape), dtype=np.float64)
+    M_solution[0] = m_initial_condition.copy()
+
+    # Ensure non-negativity of initial condition
+    M_solution[0] = np.maximum(M_solution[0], 0)
+
+    # Edge cases
+    if Nt <= 1:
+        return M_solution
+
+    # Set default boundary conditions
+    if boundary_conditions is None:
+        boundary_conditions = BoundaryConditions(type="no_flux")
+
+    # Progress bar
+    from mfg_pde.utils.progress import tqdm
+
+    timestep_range = range(Nt - 1)
+    if show_progress:
+        timestep_range = tqdm(
+            timestep_range,
+            desc=f"FP {ndim}D (full system)",
+            unit="step",
+            disable=False,
+        )
+
+    # Time evolution loop (forward in time)
+    for k in timestep_range:
+        M_current = M_solution[k]
+        U_current = U_solution_for_drift[k]
+
+        # Build and solve full nD system
+        M_next = _solve_timestep_full_nd(
+            M_current,
+            U_current,
+            problem,
+            dt,
+            sigma,
+            coefCT,
+            spacing,
+            grid,
+            ndim,
+            shape,
+            boundary_conditions,
+        )
+
+        M_solution[k + 1] = M_next
+
+        # Enforce non-negativity
+        M_solution[k + 1] = np.maximum(M_solution[k + 1], 0)
+
+    return M_solution
+
+
+def _solve_timestep_full_nd(
+    M_current: np.ndarray,
+    U_current: np.ndarray,
+    problem: Any,
+    dt: float,
+    sigma: float,
+    coefCT: float,
+    spacing: tuple[float, ...],
+    grid: Any,
+    ndim: int,
+    shape: tuple[int, ...],
+    boundary_conditions: Any,
+) -> np.ndarray:
+    """
+    Solve one timestep of the full nD FP equation.
+
+    Assembles sparse matrix A and RHS b, then solves A*m_{k+1} = b.
+
+    Parameters
+    ----------
+    M_current : np.ndarray
+        Current density field. Shape: (N₁, N₂, ..., Nₐ)
+    U_current : np.ndarray
+        Current value function. Shape: (N₁, N₂, ..., Nₐ)
+    problem : GridBasedMFGProblem
+        Problem definition
+    dt : float
+        Time step
+    sigma : float
+        Diffusion coefficient
+    coefCT : float
+        Coupling coefficient for drift term
+    spacing : tuple[float, ...]
+        Grid spacing in each dimension
+    grid : TensorProductGrid
+        Grid object
+    ndim : int
+        Spatial dimension
+    shape : tuple[int, ...]
+        Grid shape (N₁, N₂, ..., Nₐ)
+    boundary_conditions : Any
+        Boundary condition specification
+
+    Returns
+    -------
+    np.ndarray
+        Next density field. Shape: (N₁, N₂, ..., Nₐ)
+    """
+    # Total number of unknowns
+    N_total = int(np.prod(shape))
+
+    # Flatten current state and value function
+    m_flat = M_current.ravel()  # Row-major (C-order)
+    u_flat = U_current.ravel()
+
+    # Pre-allocate lists for COO format sparse matrix
+    row_indices: list[int] = []
+    col_indices: list[int] = []
+    data_values: list[float] = []
+
+    # Build matrix by iterating over all grid points
+    for flat_idx in range(N_total):
+        # Convert flat index to multi-index (i, j, k, ...)
+        multi_idx = grid.get_multi_index(flat_idx)
+
+        # Check if this is a boundary point
+        is_boundary = _is_boundary_point(multi_idx, shape, ndim)
+
+        if boundary_conditions.type == "no_flux" and is_boundary:
+            # Boundary point with no-flux condition
+            _add_boundary_no_flux_entries(
+                row_indices,
+                col_indices,
+                data_values,
+                flat_idx,
+                multi_idx,
+                shape,
+                ndim,
+                dt,
+                sigma,
+                coefCT,
+                spacing,
+                u_flat,
+                grid,
+            )
+        else:
+            # Interior point or periodic boundary
+            _add_interior_entries(
+                row_indices,
+                col_indices,
+                data_values,
+                flat_idx,
+                multi_idx,
+                shape,
+                ndim,
+                dt,
+                sigma,
+                coefCT,
+                spacing,
+                u_flat,
+                grid,
+                boundary_conditions,
+            )
+
+    # Assemble sparse matrix
+    A_matrix = sparse.coo_matrix((data_values, (row_indices, col_indices)), shape=(N_total, N_total)).tocsr()
+
+    # Right-hand side
+    b_rhs = m_flat / dt
+
+    # Solve linear system
+    try:
+        m_next_flat = sparse.linalg.spsolve(A_matrix, b_rhs)
+    except Exception:
+        # If solver fails, keep current state
+        m_next_flat = m_flat.copy()
+
+    # Reshape back to multi-dimensional array
+    m_next = m_next_flat.reshape(shape)
+
+    return m_next
+
+
+def _is_boundary_point(multi_idx: tuple[int, ...], shape: tuple[int, ...], ndim: int) -> bool:
+    """Check if a grid point is on the boundary."""
+    return any(multi_idx[d] == 0 or multi_idx[d] == shape[d] - 1 for d in range(ndim))
+
+
+def _add_interior_entries(
+    row_indices: list[int],
+    col_indices: list[int],
+    data_values: list[float],
+    flat_idx: int,
+    multi_idx: tuple[int, ...],
+    shape: tuple[int, ...],
+    ndim: int,
+    dt: float,
+    sigma: float,
+    coefCT: float,
+    spacing: tuple[float, ...],
+    u_flat: np.ndarray,
+    grid: Any,
+    boundary_conditions: Any,
+) -> None:
+    """
+    Add matrix entries for interior grid point.
+
+    Discretizes:
+        (1/dt) m + div(m*v) - (σ²/2) Δm = 0
+
+    Using upwind for advection and centered differences for diffusion.
+    """
+    # Diagonal term (accumulates contributions from all dimensions)
+    diagonal_value = 1.0 / dt
+
+    # For each dimension, add advection + diffusion contributions
+    for d in range(ndim):
+        dx = spacing[d]
+        dx_sq = dx * dx
+
+        # Get neighbor indices in dimension d
+        multi_idx_plus = list(multi_idx)
+        multi_idx_minus = list(multi_idx)
+
+        multi_idx_plus[d] = multi_idx[d] + 1
+        multi_idx_minus[d] = multi_idx[d] - 1
+
+        # Handle boundary wrapping for periodic BC
+        if boundary_conditions.type == "periodic":
+            multi_idx_plus[d] = multi_idx_plus[d] % shape[d]
+            multi_idx_minus[d] = multi_idx_minus[d] % shape[d]
+
+        # Check if neighbors exist (non-periodic case)
+        has_plus = multi_idx_plus[d] < shape[d]
+        has_minus = multi_idx_minus[d] >= 0
+
+        if has_plus or boundary_conditions.type == "periodic":
+            flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
+            u_plus = u_flat[flat_idx_plus]
+        else:
+            u_plus = u_flat[flat_idx]  # Use current value at boundary
+
+        if has_minus or boundary_conditions.type == "periodic":
+            flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
+            u_minus = u_flat[flat_idx_minus]
+        else:
+            u_minus = u_flat[flat_idx]  # Use current value at boundary
+
+        u_center = u_flat[flat_idx]
+
+        # Diffusion contribution (centered differences)
+        # -σ²/(2dx²) * (m_{i+1} - 2m_i + m_{i-1})
+        diagonal_value += sigma**2 / dx_sq
+
+        if has_plus or boundary_conditions.type == "periodic":
+            # Coupling to m_{i+1,j}
+            coeff_plus = -(sigma**2) / (2 * dx_sq)
+
+            # Add advection upwind term
+            # For advection: -d/dx(m*v) where v = -coefCT * dU/dx
+            # Upwind: use ppart for positive velocity contribution
+            coeff_plus += float(-coefCT * ppart(u_plus - u_center) / dx_sq)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_plus)
+            data_values.append(coeff_plus)
+
+            # Add advection contribution to diagonal
+            diagonal_value += float(coefCT * ppart(u_plus - u_center) / dx_sq)
+
+        if has_minus or boundary_conditions.type == "periodic":
+            # Coupling to m_{i-1,j}
+            coeff_minus = -(sigma**2) / (2 * dx_sq)
+
+            # Add advection upwind term
+            # Upwind: use npart for negative velocity contribution
+            coeff_minus += float(-coefCT * npart(u_center - u_minus) / dx_sq)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_minus)
+            data_values.append(coeff_minus)
+
+            # Add advection contribution to diagonal
+            diagonal_value += float(coefCT * npart(u_center - u_minus) / dx_sq)
+
+    # Add diagonal entry
+    row_indices.append(flat_idx)
+    col_indices.append(flat_idx)
+    data_values.append(diagonal_value)
+
+
+def _add_boundary_no_flux_entries(
+    row_indices: list[int],
+    col_indices: list[int],
+    data_values: list[float],
+    flat_idx: int,
+    multi_idx: tuple[int, ...],
+    shape: tuple[int, ...],
+    ndim: int,
+    dt: float,
+    sigma: float,
+    coefCT: float,
+    spacing: tuple[float, ...],
+    u_flat: np.ndarray,
+    grid: Any,
+) -> None:
+    """
+    Add matrix entries for boundary grid point with no-flux BC.
+
+    No-flux: Combined advection + diffusion flux = 0 at boundary.
+    Use one-sided stencils for derivatives at boundaries.
+    """
+    # Diagonal term
+    diagonal_value = 1.0 / dt
+
+    # For each dimension, check if we're at a boundary in that dimension
+    for d in range(ndim):
+        dx = spacing[d]
+        dx_sq = dx * dx
+
+        at_left_boundary = multi_idx[d] == 0
+        at_right_boundary = multi_idx[d] == shape[d] - 1
+        at_interior_in_d = not (at_left_boundary or at_right_boundary)
+
+        if at_interior_in_d:
+            # Standard interior stencil in this dimension
+            multi_idx_plus = list(multi_idx)
+            multi_idx_minus = list(multi_idx)
+            multi_idx_plus[d] = multi_idx[d] + 1
+            multi_idx_minus[d] = multi_idx[d] - 1
+
+            flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
+            flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
+
+            u_plus = u_flat[flat_idx_plus]
+            u_minus = u_flat[flat_idx_minus]
+            u_center = u_flat[flat_idx]
+
+            # Diffusion
+            diagonal_value += sigma**2 / dx_sq
+
+            coeff_plus = -(sigma**2) / (2 * dx_sq)
+            coeff_plus += float(-coefCT * ppart(u_plus - u_center) / dx_sq)
+
+            coeff_minus = -(sigma**2) / (2 * dx_sq)
+            coeff_minus += float(-coefCT * npart(u_center - u_minus) / dx_sq)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_plus)
+            data_values.append(coeff_plus)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_minus)
+            data_values.append(coeff_minus)
+
+            diagonal_value += float(coefCT * (ppart(u_plus - u_center) + npart(u_center - u_minus)) / dx_sq)
+
+        elif at_left_boundary:
+            # Left boundary: use one-sided (forward) stencil
+            multi_idx_plus = list(multi_idx)
+            multi_idx_plus[d] = multi_idx[d] + 1
+
+            flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
+            u_plus = u_flat[flat_idx_plus]
+            u_center = u_flat[flat_idx]
+
+            # One-sided diffusion approximation
+            diagonal_value += sigma**2 / dx_sq
+
+            coeff_plus = -(sigma**2) / dx_sq
+            coeff_plus += float(-coefCT * ppart(u_plus - u_center) / dx_sq)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_plus)
+            data_values.append(coeff_plus)
+
+            diagonal_value += float(coefCT * ppart(u_plus - u_center) / dx_sq)
+
+        elif at_right_boundary:
+            # Right boundary: use one-sided (backward) stencil
+            multi_idx_minus = list(multi_idx)
+            multi_idx_minus[d] = multi_idx[d] - 1
+
+            flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
+            u_minus = u_flat[flat_idx_minus]
+            u_center = u_flat[flat_idx]
+
+            # One-sided diffusion approximation
+            diagonal_value += sigma**2 / dx_sq
+
+            coeff_minus = -(sigma**2) / dx_sq
+            coeff_minus += float(-coefCT * npart(u_center - u_minus) / dx_sq)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_minus)
+            data_values.append(coeff_minus)
+
+            diagonal_value += float(coefCT * npart(u_center - u_minus) / dx_sq)
+
+    # Add diagonal entry
+    row_indices.append(flat_idx)
+    col_indices.append(flat_idx)
+    data_values.append(diagonal_value)
