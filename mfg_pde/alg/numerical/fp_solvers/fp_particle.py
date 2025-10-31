@@ -260,10 +260,7 @@ class FPParticleSolver(BaseFPSolver):
             return m_density_estimated  # Return raw KDE output on grid
 
     def solve_fp_system(
-        self,
-        m_initial_condition: np.ndarray,
-        U_solution_for_drift: np.ndarray,
-        show_progress: bool = True
+        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
     ) -> np.ndarray:
         """
         Solve FP system using particle method with intelligent strategy selection.

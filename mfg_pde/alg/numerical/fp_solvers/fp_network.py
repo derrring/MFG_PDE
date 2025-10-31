@@ -108,10 +108,7 @@ class FPNetworkSolver(BaseFPSolver):
                 print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
 
     def solve_fp_system(
-        self,
-        m_initial_condition: np.ndarray,
-        U_solution_for_drift: np.ndarray,
-        show_progress: bool = True
+        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
     ) -> np.ndarray:
         """
         Solve FP system on network with given control field.
