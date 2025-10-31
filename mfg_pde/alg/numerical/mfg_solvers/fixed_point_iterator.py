@@ -148,7 +148,6 @@ class FixedPointIterator(BaseMFGSolver):
             time_step = self.problem.Dt  # Renamed from Dt
         elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
             # New GridBasedMFGProblem interface (nD)
-            ndim = self.problem.geometry.grid.dimension
             shape = tuple(self.problem.geometry.grid.num_points)
             grid_spacing = self.problem.geometry.grid.spacing[0]  # For compatibility
             time_step = self.problem.dt
