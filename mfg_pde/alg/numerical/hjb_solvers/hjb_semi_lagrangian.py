@@ -203,39 +203,44 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             U_from_prev_picard: (Nt, Nx) previous Picard iteration for coupling terms
 
         Returns:
-            (Nt, Nx) solution array for value function
+            (Nt, *grid_shape) solution array for value function
         """
-        Nt, Nx = M_density_evolution_from_FP.shape
-        U_solution = np.zeros((Nt, Nx))
+        # Handle multi-dimensional grids
+        shape = M_density_evolution_from_FP.shape
+        Nt = shape[0]
+        grid_shape = shape[1:]  # Remaining dimensions
+
+        U_solution = np.zeros_like(M_density_evolution_from_FP)
 
         # Set final condition
-        U_solution[Nt - 1, :] = U_final_condition_at_T
+        U_solution[Nt - 1] = U_final_condition_at_T
 
+        total_points = np.prod(grid_shape)
         if logger.isEnabledFor(logging.INFO):
-            logger.info(f"Starting semi-Lagrangian HJB solve: {Nt} time steps, {Nx} spatial points")
+            logger.info(
+                f"Starting semi-Lagrangian HJB solve: {Nt} time steps, {total_points} spatial points ({grid_shape})"
+            )
 
         # Solve backward in time using semi-Lagrangian method
         for n in range(Nt - 2, -1, -1):
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(f"Solving time step {n}/{Nt - 2}")
 
-            U_solution[n, :] = self._solve_timestep_semi_lagrangian(
-                U_solution[n + 1, :],  # u^{n+1}
-                M_density_evolution_from_FP[n + 1, :],  # m^{n+1}
-                U_from_prev_picard[n, :],  # u_k^n for coupling terms
+            U_solution[n] = self._solve_timestep_semi_lagrangian(
+                U_solution[n + 1],  # u^{n+1}
+                M_density_evolution_from_FP[n + 1],  # m^{n+1}
+                U_from_prev_picard[n],  # u_k^n for coupling terms
                 n,  # time index
             )
 
             # Check for numerical issues
-            if np.any(np.isnan(U_solution[n, :]) | np.isinf(U_solution[n, :])):
+            if np.any(np.isnan(U_solution[n]) | np.isinf(U_solution[n])):
                 logger.warning(f"Numerical issues detected at time step {n}")
                 # Use simple backward Euler as fallback
-                U_solution[n, :] = self._fallback_backward_euler(
-                    U_solution[n + 1, :], M_density_evolution_from_FP[n + 1, :], n
-                )
+                U_solution[n] = self._fallback_backward_euler(U_solution[n + 1], M_density_evolution_from_FP[n + 1], n)
 
         if logger.isEnabledFor(logging.INFO):
-            final_residual = np.linalg.norm(U_solution[1, :] - U_solution[0, :])
+            final_residual = np.linalg.norm(U_solution[1] - U_solution[0])
             logger.info(f"Semi-Lagrangian HJB solve completed. Final residual: {final_residual:.2e}")
 
         return U_solution
