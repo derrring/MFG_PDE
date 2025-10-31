@@ -14,8 +14,10 @@ import time
 import numpy as np
 
 from mfg_pde import MFGComponents
+from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-from mfg_pde.factory import create_basic_solver
 
 
 class CrowdMotion2D(GridBasedMFGProblem):
@@ -201,8 +203,14 @@ def test_lower_damping():
     print("  Running solver with damping_factor=0.4")
     print("=" * 70 + "\n")
 
-    solver = create_basic_solver(
-        problem,
+    # Use 2D-capable solvers
+    hjb_solver = HJBSemiLagrangianSolver(problem)
+    fp_solver = FPFDMSolver(problem)
+
+    solver = FixedPointIterator(
+        problem=problem,
+        hjb_solver=hjb_solver,
+        fp_solver=fp_solver,
         damping=0.4,  # LOWER DAMPING as requested
         max_iterations=30,
         tolerance=1e-4,

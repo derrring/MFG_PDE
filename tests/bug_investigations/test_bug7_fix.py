@@ -40,7 +40,7 @@ def test_bug7_time_index_fix():
 
     # Use 2D-capable solvers
     hjb_solver = HJBSemiLagrangianSolver(problem)
-    fp_solver = FPFDMSolver(problem, scheme="upwind")
+    fp_solver = FPFDMSolver(problem)
 
     solver = FixedPointIterator(
         problem=problem,

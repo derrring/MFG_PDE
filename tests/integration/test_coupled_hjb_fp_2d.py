@@ -9,7 +9,7 @@ import numpy as np
 
 from mfg_pde import MFGComponents
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
@@ -131,8 +131,8 @@ def solve_mfg_picard_2d(problem, max_iterations=10, tolerance=1e-3, verbose=True
     Returns:
         dict with 'U', 'M', 'converged', 'iterations', 'errors'
     """
-    # Initialize solvers
-    hjb_solver = HJBFDMSolver(problem, max_newton_iterations=15, newton_tolerance=1e-5)
+    # Initialize solvers (use 2D-capable Semi-Lagrangian solver)
+    hjb_solver = HJBSemiLagrangianSolver(problem)
     fp_solver = FPFDMSolver(problem, boundary_conditions=BoundaryConditions(type="no_flux"))
 
     # Get problem dimensions
@@ -289,7 +289,7 @@ def test_coupled_hjb_fp_dimension_detection():
         coupling_strength=0.3,
     )
 
-    hjb_solver = HJBFDMSolver(problem)
+    hjb_solver = HJBSemiLagrangianSolver(problem)
     fp_solver = FPFDMSolver(problem)
 
     # Check dimension detection
