@@ -170,8 +170,8 @@ def run_fdm_solver(grid_resolution: int, num_timesteps: int, max_iterations: int
         "M": result.M,
         "info": {
             "converged": result.converged,
-            "num_iterations": result.num_iterations,
-            "final_error": result.residual,
+            "num_iterations": result.iterations,
+            "final_error": result.max_error,
             "runtime": runtime,
         },
         "grid_spacing": problem.geometry.grid.spacing,
