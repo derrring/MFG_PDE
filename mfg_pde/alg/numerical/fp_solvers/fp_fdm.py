@@ -249,50 +249,63 @@ class FPFDMSolver(BaseFPSolver):
                             data_values.append(val_A_i_ip1)
 
             elif self.boundary_conditions.type == "no_flux":
-                # Bug #8 Fix: Conservative no-flux boundary conditions
-                # Strategy: Use diffusion-only at boundaries to ensure row sum = 1/Dt
-                # This sacrifices some accuracy at boundaries for strict mass conservation
+                # Bug #8 Fix: No-flux boundaries WITH advection
+                # Previous "partial fix" dropped advection at boundaries → mass leaked
+                # New strategy: Include advection with one-sided stencils
+                # Accept ~1-2% FDM discretization error as normal
 
                 for i in range(Nx):
                     if i == 0:
-                        # Left boundary: diffusion-only with one-sided stencil
-                        # No-flux: dm/dx = 0 => use forward difference approximation
-                        # Discretize: (m[1] - m[0])/Dx = 0 as diffusion boundary condition
+                        # Left boundary: include both diffusion AND advection
+                        # Use one-sided (forward) stencil for velocity gradient
 
-                        # Diagonal term (time + diffusion)
+                        # Diagonal term: time + diffusion + advection (upwind)
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+
+                        # Add advection contribution (one-sided upwind scheme)
+                        # For left boundary, use forward difference for velocity
+                        # Only positive part contributes (flux out of domain)
+                        if Nx > 1:
+                            val_A_ii += float(coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i)
                         data_values.append(val_A_ii)
 
-                        # Coupling to m[1] (one-sided, diffusion-only)
+                        # Coupling to m[1]: diffusion + advection
                         val_A_i_ip1 = -(sigma**2) / Dx**2
+                        if Nx > 1:
+                            val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i + 1)
                         data_values.append(val_A_i_ip1)
 
-                        # Row sum: (1/Dt + σ²/Δx²) - σ²/Δx² = 1/Dt ✓ Conservative
-
                     elif i == Nx - 1:
-                        # Right boundary: diffusion-only with one-sided stencil
+                        # Right boundary: include both diffusion AND advection
+                        # Use one-sided (backward) stencil for velocity gradient
 
-                        # Diagonal term (time + diffusion)
+                        # Diagonal term: time + diffusion + advection (upwind)
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+
+                        # Add advection contribution (one-sided upwind scheme)
+                        # For right boundary, use backward difference for velocity
+                        # Only negative part contributes (flux out of domain)
+                        if Nx > 1:
+                            val_A_ii += float(coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i)
                         data_values.append(val_A_ii)
 
-                        # Coupling to m[N-2] (one-sided, diffusion-only)
+                        # Coupling to m[N-2]: diffusion + advection
                         val_A_i_im1 = -(sigma**2) / Dx**2
+                        if Nx > 1:
+                            val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i - 1)
                         data_values.append(val_A_i_im1)
-
-                        # Row sum: (1/Dt + σ²/Δx²) - σ²/Δx² = 1/Dt ✓ Conservative
 
                     else:
                         # Interior points: standard conservative FDM discretization
