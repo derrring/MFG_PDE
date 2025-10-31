@@ -15,6 +15,34 @@ Output files (plots, logs) are saved to `examples/outputs/basic/`.
 
 ## Examples by Category
 
+### 🌐 Multi-Dimensional Solvers (NEW: Phase 2)
+
+#### `2d_crowd_motion_fdm.py` - 2D Crowd Motion with Dimension-Agnostic FDM
+**Difficulty**: ⭐⭐ Moderate
+**Concepts**: Dimension-agnostic FDM, dimensional splitting, 2D MFG, automatic dimension detection
+**Theory**: `docs/architecture/dimension_agnostic_solvers.md`
+
+**NEW** Demonstrates dimension-agnostic FDM solvers (Phase 2) solving a 2D crowd motion problem:
+- **Automatic dimension detection**: Factory detects 2D from `GridBasedMFGProblem`
+- **Dimensional splitting (Strang)**: O(Δt²) accuracy via operator splitting
+- **Full MFG coupling**: 2D HJB + 2D FP in Picard iteration
+- **Mass conservation**: ~1% error per FP solve (expected for splitting)
+
+**Problem Setup**:
+- Domain: [0,1] × [0,1] (2D square)
+- Initial density: Gaussian at (0.2, 0.2)
+- Goal: (0.8, 0.8)
+- Hamiltonian: H = (1/2)|p|² + κ·m (congestion)
+
+**Run**:
+```bash
+python examples/basic/2d_crowd_motion_fdm.py
+```
+
+**Key Achievement**: Resolves Issue #200 Critical Finding #1 - FDM solvers now support 2D/3D/4D
+
+---
+
 ### 📚 Classic MFG Problems
 
 #### `lq_mfg_demo.py` - Linear-Quadratic MFG
@@ -298,11 +326,12 @@ pip install mfg_pde[rl]          # RL paradigm
 2. **Classic Games**:
    - `el_farol_bar_demo.py` - Discrete coordination
    - `towel_beach_demo.py` - Spatial competition
-3. **Choose Specialization**:
+3. **Multi-Dimensional**: `2d_crowd_motion_fdm.py` - **NEW** 2D/3D FDM capabilities
+4. **Choose Specialization**:
    - **Stochastic**: `common_noise_lq_demo.py`
    - **Neural**: `adaptive_pinn_demo.py`
    - **RL**: `rl_intro_comparison.py`
-4. **Advanced**: `multi_paradigm_comparison.py` - See all paradigms together
+5. **Advanced**: `multi_paradigm_comparison.py` - See all paradigms together
 
 ---
 
@@ -344,6 +373,6 @@ See `CLAUDE.md` for coding standards and example structure guidelines.
 
 ---
 
-**Last Updated**: October 8, 2025
-**Total Examples**: 12
-**Coverage**: All 4 MFG paradigms (Numerical, Neural, Optimization, RL) + Acceleration techniques
+**Last Updated**: October 31, 2025
+**Total Examples**: 13
+**Coverage**: All 4 MFG paradigms (Numerical, Neural, Optimization, RL) + Dimension-Agnostic Solvers (Phase 2) + Acceleration techniques
