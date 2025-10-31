@@ -249,59 +249,53 @@ class FPFDMSolver(BaseFPSolver):
                             data_values.append(val_A_i_ip1)
 
             elif self.boundary_conditions.type == "no_flux":
-                # No-flux boundary conditions using one-sided differences
-                # dm/dx = 0 at boundaries (homogeneous Neumann conditions)
+                # Bug #8 Fix: Conservative no-flux boundary conditions
+                # Strategy: Use diffusion-only at boundaries to ensure row sum = 1/Dt
+                # This sacrifices some accuracy at boundaries for strict mass conservation
+
                 for i in range(Nx):
                     if i == 0:
-                        # Left boundary: dm/dx = 0 using forward difference
-                        # (m[1] - m[0])/Dx = 0 => m[1] = m[0]
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        # Left boundary: diffusion-only with one-sided stencil
+                        # No-flux: dm/dx = 0 => use forward difference approximation
+                        # Discretize: (m[1] - m[0])/Dx = 0 as diffusion boundary condition
 
-                        # Add advection terms at boundary using one-sided derivative for velocity
-                        if Nx > 1:
-                            # Velocity: v_0 = -coefCT * du/dx
-                            # Upwind: ppart(v_0) / Dx for outflow
-                            val_A_ii += float(coefCT * ppart((u_at_tk[1] - u_at_tk[0]) / Dx) / Dx)
+                        # Diagonal term (time + diffusion)
+                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
                         row_indices.append(i)
                         col_indices.append(i)
                         data_values.append(val_A_ii)
 
-                        if Nx > 1:
-                            # Coupling to next point (modified for no-flux)
-                            val_A_i_ip1 = -(sigma**2) / Dx**2
-                            # Add advection flux: npart(v_0) / Dx for inflow from neighbor
-                            val_A_i_ip1 += float(-coefCT * npart((u_at_tk[1] - u_at_tk[0]) / Dx) / Dx)
-                            row_indices.append(i)
-                            col_indices.append(i + 1)
-                            data_values.append(val_A_i_ip1)
+                        # Coupling to m[1] (one-sided, diffusion-only)
+                        val_A_i_ip1 = -(sigma**2) / Dx**2
+
+                        row_indices.append(i)
+                        col_indices.append(i + 1)
+                        data_values.append(val_A_i_ip1)
+
+                        # Row sum: (1/Dt + σ²/Δx²) - σ²/Δx² = 1/Dt ✓ Conservative
 
                     elif i == Nx - 1:
-                        # Right boundary: dm/dx = 0 using backward difference
-                        # (m[Nx-1] - m[Nx-2])/Dx = 0 => m[Nx-1] = m[Nx-2]
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        # Right boundary: diffusion-only with one-sided stencil
 
-                        # Add advection terms at boundary using one-sided derivative for velocity
-                        if Nx > 1:
-                            # Velocity: v_N = -coefCT * du/dx
-                            # Upwind: ppart(v_N) / Dx for outflow (rightward)
-                            val_A_ii += float(coefCT * ppart((u_at_tk[Nx - 1] - u_at_tk[Nx - 2]) / Dx) / Dx)
+                        # Diagonal term (time + diffusion)
+                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
                         row_indices.append(i)
                         col_indices.append(i)
                         data_values.append(val_A_ii)
 
-                        if Nx > 1:
-                            # Coupling to previous point (modified for no-flux)
-                            val_A_i_im1 = -(sigma**2) / Dx**2
-                            # Add advection flux: npart(v_N) / Dx for inflow from neighbor (leftward)
-                            val_A_i_im1 += float(-coefCT * npart((u_at_tk[Nx - 1] - u_at_tk[Nx - 2]) / Dx) / Dx)
-                            row_indices.append(i)
-                            col_indices.append(i - 1)
-                            data_values.append(val_A_i_im1)
+                        # Coupling to m[N-2] (one-sided, diffusion-only)
+                        val_A_i_im1 = -(sigma**2) / Dx**2
+
+                        row_indices.append(i)
+                        col_indices.append(i - 1)
+                        data_values.append(val_A_i_im1)
+
+                        # Row sum: (1/Dt + σ²/Δx²) - σ²/Δx² = 1/Dt ✓ Conservative
 
                     else:
-                        # Interior points: standard FDM discretization
+                        # Interior points: standard conservative FDM discretization
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
                         val_A_ii += float(
