@@ -65,7 +65,7 @@ jobs:
         python .github/scripts/parse_security_results.py dependency
 
     - name: Upload dependency scan results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: dependency-scan-results
@@ -118,7 +118,7 @@ jobs:
         python .github/scripts/parse_security_results.py static
 
     - name: Upload static analysis results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: static-analysis-results
@@ -172,7 +172,7 @@ jobs:
         python .github/scripts/parse_security_results.py secrets
 
     - name: Upload secrets scan results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: secrets-scan-results
@@ -233,7 +233,7 @@ jobs:
         python .github/scripts/parse_security_results.py container
 
     - name: Upload container scan results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: container-scan-results
@@ -278,7 +278,7 @@ jobs:
         python .github/scripts/parse_security_results.py license
 
     - name: Upload license compliance results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: license-compliance-results
@@ -312,7 +312,7 @@ jobs:
         python .github/scripts/generate_security_report.py
 
     - name: Upload comprehensive security report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: comprehensive-security-report
         path: |
