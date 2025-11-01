@@ -138,7 +138,7 @@ def solve_mfg_picard_2d(problem, max_iterations=10, tolerance=1e-3, verbose=True
     # Get problem dimensions
     Nt = problem.Nt + 1
     ndim = problem.geometry.grid.dimension
-    shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
+    shape = tuple(problem.geometry.grid.num_points)
 
     # Initialize density M^0
     # Construct grid points manually from bounds and spacing
@@ -146,7 +146,7 @@ def solve_mfg_picard_2d(problem, max_iterations=10, tolerance=1e-3, verbose=True
     for d in range(ndim):
         x_min = problem.geometry.grid.bounds[d][0]
         spacing = problem.geometry.grid.spacing[d]
-        n_points = problem.geometry.grid.num_points[d] - 1  # Exclude right boundary
+        n_points = problem.geometry.grid.num_points[d]
         x_vals.append(x_min + np.arange(n_points) * spacing)
 
     meshgrid_arrays = np.meshgrid(*x_vals, indexing="ij")

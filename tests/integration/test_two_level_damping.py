@@ -52,7 +52,7 @@ def run_solver(name: str, use_anderson: bool, thetaUM: float, anderson_beta: flo
         problem,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        thetaUM=thetaUM,
+        damping_factor=thetaUM,
         use_anderson=use_anderson,
         anderson_depth=5,
         anderson_beta=anderson_beta or 1.0,

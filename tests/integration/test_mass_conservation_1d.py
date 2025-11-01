@@ -260,7 +260,7 @@ class TestMassConservation1D:
             problem,
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
-            thetaUM=0.5,  # Standard damping
+            damping_factor=0.5,  # Standard damping
             use_anderson=True,  # Anderson acceleration
             anderson_depth=5,  # Store last 5 iterates
             backend=None,  # Use numpy (JAX has issues with particle normalization)
@@ -270,7 +270,7 @@ class TestMassConservation1D:
         # Particle methods + KDE introduce stochasticity, so we need:
         # - More iterations for convergence
         # - Relaxed tolerance (1e-3 instead of 1e-5)
-        # - Proper damping (thetaUM=0.4 for balance between stability and speed)
+        # - Proper damping (damping_factor=0.4 for balance between stability and speed)
         try:
             # With Anderson + JAX, convergence is much faster
             result = mfg_solver.solve(
@@ -362,7 +362,7 @@ class TestMassConservation1D:
         # Particle methods + KDE introduce stochasticity, so we need:
         # - More iterations for convergence
         # - Relaxed tolerance (1e-3 instead of 1e-5)
-        # - Proper damping (thetaUM=0.4 for balance between stability and speed)
+        # - Proper damping (damping_factor=0.4 for balance between stability and speed)
         try:
             # With Anderson + JAX, convergence is much faster
             result = mfg_solver.solve(
