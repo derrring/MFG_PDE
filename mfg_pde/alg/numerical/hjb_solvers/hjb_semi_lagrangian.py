@@ -296,16 +296,27 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # nD solve: Iterate over all grid points
             # Reshape arrays to grid shape for easier indexing
             if U_next.ndim == 1:
-                U_next_shaped = U_next.reshape(self.grid.num_points)
-                M_next_shaped = M_next.reshape(self.grid.num_points)
+                # Infer grid shape from array size (handles both full grid and interior points)
+                total_points = U_next.size
+                expected_full = int(np.prod(self.grid.num_points))
+
+                if total_points == expected_full:
+                    grid_shape = tuple(self.grid.num_points)
+                else:
+                    # Interior points only (num_points - 1 in each dimension)
+                    grid_shape = tuple(n - 1 for n in self.grid.num_points)
+
+                U_next_shaped = U_next.reshape(grid_shape)
+                M_next_shaped = M_next.reshape(grid_shape)
             else:
                 U_next_shaped = U_next
                 M_next_shaped = M_next
+                grid_shape = U_next_shaped.shape
 
             U_current_shaped = np.zeros_like(U_next_shaped)
 
-            # Iterate over all grid points using ndindex
-            for multi_idx in np.ndindex(tuple(self.grid.num_points)):
+            # Iterate over all grid points using the actual array shape
+            for multi_idx in np.ndindex(grid_shape):
                 try:
                     # Get spatial coordinates for this grid point
                     x_current = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
