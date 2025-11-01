@@ -54,7 +54,7 @@ def main():
         problem,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        thetaUM=0.5,
+        damping_factor=0.5,
     )
 
     print("Running solver (30 iterations max)...\n")

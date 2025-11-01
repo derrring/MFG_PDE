@@ -115,35 +115,32 @@ class HJBFDMSolver(BaseHJBSolver):
         self,
         M_density_evolution: np.ndarray,
         U_final_condition: np.ndarray,
-        U_from_prev_picard: np.ndarray,  # Added this argument
+        U_from_prev_picard: np.ndarray,
     ) -> np.ndarray:
         """
-        Solves the full HJB system backward in time using FDM.
+        Solves the HJB system backward in time using FDM.
 
-        Routes to appropriate solver based on problem dimension:
-        - 1D: Uses existing base_hjb.solve_hjb_system_backward()
-        - 2D, 3D, ...: Uses dimensional splitting (hjb_fdm_multid module)
+        Note: This solver only supports 1D problems. For multi-dimensional problems,
+        use HJBGFDMSolver or HJBWENOSolver instead.
 
         Args:
             M_density_evolution: Density evolution from previous Picard iteration
-                - 1D: (Nt, Nx) array
-                - nD: (Nt, N1, N2, ..., Nd) array
+                Shape: (Nt, Nx) for 1D problems
             U_final_condition: Terminal condition for value function
-                - 1D: (Nx,) array
-                - nD: (N1, N2, ..., Nd) array
+                Shape: (Nx,) for 1D problems
             U_from_prev_picard: Value function from previous Picard iteration
-                - 1D: (Nt, Nx) array
-                - nD: (Nt, N1, N2, ..., Nd) array
+                Shape: (Nt, Nx) for 1D problems
 
         Returns:
             U_solution: Value function evolution
-                - 1D: (Nt, Nx) array
-                - nD: (Nt, N1, N2, ..., Nd) array
+                Shape: (Nt, Nx) for 1D problems
+
+        Raises:
+            NotImplementedError: If problem dimension is not 1D
 
         Notes:
-            - 1D solver: Direct finite difference method
-            - nD solver: Dimensional splitting (Strang splitting)
-            - Both methods use Newton iteration for nonlinear HJB
+            - Uses Newton iteration for nonlinear HJB equation
+            - For nD problems, use HJBGFDMSolver (meshfree) or HJBWENOSolver (high-order)
         """
         if self.dimension == 1:
             # Use existing 1D FDM solver
@@ -157,17 +154,14 @@ class HJBFDMSolver(BaseHJBSolver):
                 backend=self.backend,
             )
         else:
-            # Use dimension-agnostic nD solver (works for 2D, 3D, 4D, ...)
-            from . import hjb_fdm_multid
-
-            U_new_solution = hjb_fdm_multid.solve_hjb_nd_dimensional_splitting(
-                M_density=M_density_evolution,
-                U_final=U_final_condition,
-                U_prev=U_from_prev_picard,
-                problem=self.problem,
-                max_newton_iterations=self.max_newton_iterations,
-                newton_tolerance=self.newton_tolerance,
-                backend=self.backend,
+            # HJB FDM only supports 1D problems
+            # For multi-dimensional problems, use production nD methods:
+            raise NotImplementedError(
+                f"HJB FDM solver only supports 1D problems (got {self.dimension}D). "
+                f"For multi-dimensional HJB problems, use:\n"
+                f"  - HJBGFDMSolver (meshfree, flexible geometry, arbitrary dimensions)\n"
+                f"  - HJBWENOSolver (high-order, structured grids, 2D/3D)\n"
+                f"Example: from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver"
             )
 
         return U_new_solution

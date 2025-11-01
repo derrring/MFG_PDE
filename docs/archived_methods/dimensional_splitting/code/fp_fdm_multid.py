@@ -1,6 +1,15 @@
 """
 Multi-dimensional Fokker-Planck FDM solver using dimensional splitting.
 
+WARNING: DEPRECATED FOR MFG PROBLEMS
+====================================
+This dimensional splitting method is UNSUITABLE for advection-dominated MFG problems.
+It causes catastrophic mass loss (up to 81%) when velocity fields from HJB coupling
+are present. Only use for pure diffusion or testing purposes.
+
+For MFG problems, use full-dimensional system solvers instead.
+See: docs/archived_methods/dimensional_splitting/README.md
+
 This module extends the 1D FP FDM solver to arbitrary dimensions (2D, 3D, 4D, ...)
 using operator splitting in space (Strang splitting).
 
@@ -57,6 +66,8 @@ def solve_fp_nd_dimensional_splitting(
     boundary_conditions: Any | None = None,
     show_progress: bool = True,
     backend: BaseBackend | None = None,
+    enforce_mass_conservation: bool = False,
+    mass_conservation_tolerance: float = 0.05,
 ) -> NDArray:
     """
     Solve multi-dimensional FP equation using dimensional splitting.
@@ -79,6 +90,15 @@ def solve_fp_nd_dimensional_splitting(
         Whether to display progress bar
     backend : BaseBackend | None
         Array backend (NumPy, PyTorch, JAX)
+    enforce_mass_conservation : bool, default=False
+        Whether to apply explicit mass renormalization to enforce conservation.
+        When False (default), dimensional splitting errors are left uncorrected,
+        preserving the natural dynamics at the cost of ~1-5% mass drift.
+        When True, mass is renormalized when error exceeds tolerance.
+    mass_conservation_tolerance : float, default=0.05
+        Relative mass error threshold (0.05 = 5%) for triggering renormalization.
+        Only used when enforce_mass_conservation=True.
+        Errors below this threshold are considered acceptable numerical artifacts.
 
     Returns
     -------
@@ -88,14 +108,26 @@ def solve_fp_nd_dimensional_splitting(
     Notes
     -----
     - Uses Strang splitting for 2nd-order accuracy: O(Δt²) + O(Δx²)
-    - Preserves mass: ∫m dx = constant (up to discretization error)
+    - Mass conservation depends on enforce_mass_conservation flag
     - Enforces non-negativity: m ≥ 0 everywhere
     - Forward time evolution: k=0 → Nt-1
+
+    Examples
+    --------
+    Default behavior (natural dynamics, may drift ~1-5%):
+    >>> M = solve_fp_nd_dimensional_splitting(m0, U, problem)
+
+    Strict conservation (renormalize when |error| > 5%):
+    >>> M = solve_fp_nd_dimensional_splitting(
+    ...     m0, U, problem,
+    ...     enforce_mass_conservation=True,
+    ...     mass_conservation_tolerance=0.05
+    ... )
     """
     # Get problem dimensions
     Nt = problem.Nt + 1
     ndim = problem.geometry.grid.dimension
-    shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
+    shape = tuple(problem.geometry.grid.num_points)
     dt = problem.dt
 
     # Validate input shapes
@@ -165,8 +197,21 @@ def solve_fp_nd_dimensional_splitting(
 
         M_solution[k + 1] = M
 
-        # Enforce non-negativity and mass conservation
+        # Enforce non-negativity
         M_solution[k + 1] = np.maximum(M_solution[k + 1], 0)
+
+        # Optional mass conservation enforcement
+        if enforce_mass_conservation:
+            # Compute initial and current mass
+            dV = float(np.prod(problem.geometry.grid.spacing))
+            mass_initial = np.sum(M_solution[0]) * dV
+            mass_current = np.sum(M_solution[k + 1]) * dV
+
+            # Only renormalize if error exceeds tolerance
+            if mass_current > 1e-16:  # Avoid division by zero
+                relative_error = abs(mass_current - mass_initial) / (mass_initial + 1e-16)
+                if relative_error > mass_conservation_tolerance:
+                    M_solution[k + 1] = M_solution[k + 1] * (mass_initial / mass_current)
 
     return M_solution
 
@@ -232,20 +277,20 @@ def _sweep_dimension(
         full_indices = tuple(full_indices)
 
         # Extract 1D slices
-        M_slice = M_in[full_indices]  # Shape: (N_sweep_dim - 1,)
-        U_slice = U_current[full_indices]  # Shape: (N_sweep_dim - 1,)
+        M_slice = M_in[full_indices]  # Shape: (N_sweep_dim,)
+        U_slice = U_current[full_indices]  # Shape: (N_sweep_dim,)
 
-        # Pad right boundary to convert to 1D solver convention
-        # GridBasedMFGProblem: excludes right boundary
-        # 1D solver: includes both boundaries
-        M_slice_padded = np.pad(M_slice, (0, 1), mode="constant", constant_values=0)
-        U_slice_padded = np.pad(U_slice, (0, 1), mode="constant", constant_values=0)
+        # No padding needed - GridBasedMFGProblem now includes all boundaries
+        # Both conventions match after the fix!
+        M_slice_padded = M_slice
+        U_slice_padded = U_slice
 
-        # Create 1D problem adapter
+        # Create 1D problem adapter with sweep timestep
         problem_1d = _FPProblem1DAdapter(
             full_problem=problem,
             sweep_dim=sweep_dim,
             fixed_indices=perp_indices,
+            sweep_dt=dt,  # Pass the sweep timestep (dt/(2*ndim))
         )
 
         # Solve 1D FP problem
@@ -275,7 +320,8 @@ def _sweep_dimension(
         )
 
         # Extract result (1D solver returns shape (2, Nx+1), we want second timestep)
-        M_new_slice = M_solution_1d[1, :-1]  # Remove right boundary padding
+        # No boundary removal needed - conventions now match!
+        M_new_slice = M_solution_1d[1, :]
 
         # Store back into output array
         M_out[full_indices] = M_new_slice
@@ -299,6 +345,7 @@ class _FPProblem1DAdapter:
         full_problem: GridBasedMFGProblem,
         sweep_dim: int,
         fixed_indices: tuple[int, ...],
+        sweep_dt: float | None = None,
     ):
         """
         Create 1D problem adapter for FP solver.
@@ -311,6 +358,9 @@ class _FPProblem1DAdapter:
             Dimension along which to sweep (0, 1, ..., ndim-1)
         fixed_indices : tuple[int, ...]
             Fixed indices in perpendicular dimensions
+        sweep_dt : float | None
+            Timestep for this sweep (typically dt/(2*ndim) for Strang splitting)
+            If None, uses full_problem.dt
         """
         self.full_problem = full_problem
         self.sweep_dim = sweep_dim
@@ -318,13 +368,23 @@ class _FPProblem1DAdapter:
 
         # Extract 1D grid parameters
         grid = full_problem.geometry.grid
-        self.Nx = grid.num_points[sweep_dim] - 1  # Number of intervals (GridBasedMFGProblem convention)
-        self.Dx = grid.spacing[sweep_dim]
+        # BUG FIX: grid.num_points now stores actual points, not intervals
+        # For consistency with GridBasedMFGProblem which includes all boundaries:
+        # - grid.num_points[dim] = N (actual points)
+        # - 1D solver needs Nx = N-1 (intervals) to get Nx+1 = N points
+        # BUT: Due to how 1D solver is called with already-extracted slices,
+        # we need Nx = N-1 where N is the slice length
+        self.num_grid_points_x = grid.num_points[sweep_dim] - 1
+        self.grid_spacing_x = grid.spacing[sweep_dim]
         self.Nt = 1  # Single timestep for sweep
-        self.dt = full_problem.dt  # Will be overridden by sweep dt
-        self.Dt = self.dt  # Alias for compatibility
+        self.dt = sweep_dt if sweep_dt is not None else full_problem.dt  # Use sweep dt
+
+        # Backward compatibility aliases for old naming convention
+        self.Nx = self.num_grid_points_x
+        self.Dx = self.grid_spacing_x
+        self.Dt = self.dt
         self.sigma = full_problem.sigma
         self.coefCT = getattr(full_problem, "coefCT", 1.0)
 
     def __repr__(self):
-        return f"_FPProblem1DAdapter(sweep_dim={self.sweep_dim}, Nx={self.Nx}, Dx={self.Dx:.4f})"
+        return f"_FPProblem1DAdapter(sweep_dim={self.sweep_dim}, Nx={self.num_grid_points_x}, Dx={self.grid_spacing_x:.4f})"

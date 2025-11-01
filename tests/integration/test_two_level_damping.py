@@ -22,7 +22,7 @@ from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
 
-def run_solver(name: str, use_anderson: bool, thetaUM: float, anderson_beta: float | None = None):
+def run_solver(name: str, use_anderson: bool, damping_factor: float, anderson_beta: float | None = None):
     """Run solver with specified damping configuration."""
     np.random.seed(42)
 
@@ -52,7 +52,7 @@ def run_solver(name: str, use_anderson: bool, thetaUM: float, anderson_beta: flo
         problem,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        thetaUM=thetaUM,
+        damping_factor=damping_factor,
         use_anderson=use_anderson,
         anderson_depth=5,
         anderson_beta=anderson_beta or 1.0,
@@ -60,7 +60,7 @@ def run_solver(name: str, use_anderson: bool, thetaUM: float, anderson_beta: flo
 
     print(f"\n{'=' * 80}")
     print(f"{name}")
-    print(f"  Picard damping (theta): {thetaUM}")
+    print(f"  Picard damping (theta): {damping_factor}")
     if use_anderson:
         print(f"  Anderson beta: {anderson_beta}")
     print(f"{'=' * 80}\n")

@@ -81,7 +81,7 @@ def solve_hjb_nd_dimensional_splitting(
     """
     Nt = problem.Nt + 1
     ndim = problem.geometry.grid.dimension
-    shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
+    shape = tuple(problem.geometry.grid.num_points)
     dt = problem.dt
 
     # Initialize solution array
@@ -268,24 +268,23 @@ def _solve_1d_hjb_slice(
     problem_1d = _Problem1DAdapter(problem, dim, slice_indices)
 
     # Prepare 1D arrays for solve_hjb_system_backward
-    # GridBasedMFGProblem convention:
-    #   - grid has num_points[d] points (e.g., 10 points: x0, x1, ..., x9)
-    #   - arrays have shape num_points[d]-1 (e.g., 9 values)
-    #   - These correspond to x0, x1, ..., x(N-2) (includes left boundary, excludes right)
+    # GridBasedMFGProblem convention (after fix):
+    #   - grid has num_points[d] points (e.g., 8 points: x0, x1, ..., x7)
+    #   - arrays have shape num_points[d] (e.g., 8 values)
+    #   - These include all grid points (both boundaries)
     #
     # 1D MFGProblem convention:
-    #   - Nx = number of intervals (e.g., Nx=9)
-    #   - arrays have shape Nx+1 (e.g., 10 points: x0, x1, ..., x9)
+    #   - Nx = number of intervals (e.g., Nx=7)
+    #   - arrays have shape Nx+1 (e.g., 8 points: x0, x1, ..., x7)
     #   - Includes both boundaries
     #
-    # So we need to add the RIGHT boundary only
+    # Both conventions now match - no padding needed!
 
-    N_grid_points = len(U_slice)  # Currently: x0, x1, ..., x(N-2)
-    N_total = N_grid_points + 1  # Add right boundary: x0, x1, ..., x(N-1)
+    N_total = len(U_slice)  # Already includes both boundaries
 
-    # Pad right boundary with zero (Dirichlet BC)
-    U_slice_padded = np.pad(U_slice, (0, 1), mode="constant", constant_values=0)
-    M_slice_padded = np.pad(M_slice, (0, 1), mode="constant", constant_values=0)
+    # No padding needed - slices already include boundaries
+    U_slice_padded = U_slice
+    M_slice_padded = M_slice
 
     # Create arrays for 1D solver
     # It expects (Nt, Nx+1) arrays, we create (2, N_total) arrays
@@ -323,11 +322,10 @@ def _solve_1d_hjb_slice(
     problem_1d.Nt = original_Nt
     problem_1d.dt = original_dt
 
-    # Extract solution at time index 0 and remove right boundary
-    # 1D solver returns (2, N_total) including right boundary
-    # We need to remove right boundary to match nD convention
-    U_new_slice_padded = U_solution_1d[0, :]
-    U_new_slice = U_new_slice_padded[:-1]  # Remove last point (right boundary)
+    # Extract solution at time index 0
+    # 1D solver returns (2, N_total) and nD convention also uses N_total
+    # No boundary removal needed - conventions now match!
+    U_new_slice = U_solution_1d[0, :]
 
     return U_new_slice
 
@@ -380,8 +378,14 @@ class _Problem1DAdapter:
 
         # Extract 1D parameters from grid
         grid = full_problem.geometry.grid
-        self.Nx = grid.num_points[sweep_dim] - 1  # Number of intervals (= interior points for FDM)
-        self.Dx = grid.spacing[sweep_dim]
+        self.num_grid_points_x = (
+            grid.num_points[sweep_dim] - 1
+        )  # Number of intervals (1D solver convention: Nx+1 points)
+        self.grid_spacing_x = grid.spacing[sweep_dim]
+
+        # Backward compatibility aliases for old naming convention
+        self.Nx = self.num_grid_points_x
+        self.Dx = self.grid_spacing_x
 
         # Pass through time parameters
         self.Nt = full_problem.Nt

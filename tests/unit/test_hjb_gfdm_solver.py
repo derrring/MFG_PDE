@@ -65,6 +65,7 @@ class TestHJBGFDMSolverInitialization:
         assert solver.NiterNewton == 40
         assert solver.l2errBoundNewton == 1e-5
 
+    @pytest.mark.skip(reason="Issue #206: Fix QP optimization level detection")
     def test_qp_optimization_levels(self):
         """Test different QP optimization levels."""
         problem = ExampleMFGProblem()

@@ -41,10 +41,7 @@ class BaseFPSolver(ABC):
 
     @abstractmethod
     def solve_fp_system(
-        self,
-        m_initial_condition: np.ndarray,
-        U_solution_for_drift: np.ndarray,
-        show_progress: bool = True
+        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
     ) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.

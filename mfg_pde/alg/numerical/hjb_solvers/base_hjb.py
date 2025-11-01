@@ -81,13 +81,18 @@ def _calculate_derivatives(
     Nx: int,
     clip: bool = False,
     clip_limit: float = P_VALUE_CLIP_LIMIT_FD_JAC,
+    upwind: bool = False,
 ) -> dict[tuple[int], float]:
     """
     Calculate derivatives using standard tuple multi-index notation.
 
     This function computes 1D derivatives and returns them in tuple notation:
     - derivs[(0,)] = u (function value)
-    - derivs[(1,)] = ∂u/∂x (first derivative, central difference)
+    - derivs[(1,)] = ∂u/∂x (first derivative)
+
+    Supports both central difference (default) and upwind discretization:
+    - Central: p = (p_forward + p_backward) / 2 (second-order accurate)
+    - Upwind: Godunov scheme based on characteristic direction (monotone)
 
     Args:
         U_array: Solution array
@@ -96,6 +101,7 @@ def _calculate_derivatives(
         Nx: Number of spatial points
         clip: Whether to clip derivative values
         clip_limit: Maximum absolute value for clipping
+        upwind: If True, use Godunov upwind discretization for HJB stability
 
     Returns:
         Dictionary with tuple keys: {(0,): u, (1,): p}
@@ -142,17 +148,27 @@ def _calculate_derivatives(
     if np.isinf(p_backward) or np.isnan(p_backward):
         p_backward = np.nan
 
-    # Use central difference approximation
+    # Choose discretization based on upwind flag
     if np.isnan(p_forward) or np.isnan(p_backward):
-        p_central = np.nan
+        p_value = np.nan
+    elif upwind:
+        # Godunov upwind: choose based on characteristic direction
+        # For typical MFG Hamiltonian H = |p|²/(2σ²) + V(x,m), characteristic velocity = p/σ²
+        # Use backward difference if p ≥ 0 (info from left), forward if p < 0 (info from right)
+        p_central_for_sign = (p_forward + p_backward) / 2.0
+        if p_central_for_sign >= 0:
+            p_value = p_backward  # Characteristic from left
+        else:
+            p_value = p_forward  # Characteristic from right
     else:
-        p_central = (p_forward + p_backward) / 2.0
+        # Central difference (default, second-order accurate)
+        p_value = (p_forward + p_backward) / 2.0
 
     # Clip if requested
-    if clip and not np.isnan(p_central):
-        p_central = np.clip(p_central, -clip_limit, clip_limit)
+    if clip and not np.isnan(p_value):
+        p_value = np.clip(p_value, -clip_limit, clip_limit)
 
-    return {(0,): u_i, (1,): p_central}
+    return {(0,): u_i, (1,): p_value}
 
 
 def _calculate_p_values(
@@ -268,7 +284,8 @@ def compute_hjb_residual(
 
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
         # Calculate derivatives using tuple notation (Phase 3 migration)
-        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, Dx, Nx, clip=False)
+        # Use upwind=True for HJB FDM stability (Godunov upwind discretization)
+        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, Dx, Nx, clip=False, upwind=True)
 
         if np.any(np.isnan(list(derivs.values()))):
             Phi_U[i] = float("nan")
@@ -367,6 +384,7 @@ def compute_hjb_jacobian(
             U_perturbed_m_i[i] -= eps
 
             # Use tuple notation for Jacobian (Phase 3 migration)
+            # Use upwind=True for consistency with residual computation
             derivs_p_i = _calculate_derivatives(
                 U_perturbed_p_i,
                 i,
@@ -374,6 +392,7 @@ def compute_hjb_jacobian(
                 Nx,
                 clip=True,
                 clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                upwind=True,
             )
             derivs_m_i = _calculate_derivatives(
                 U_perturbed_m_i,
@@ -382,6 +401,7 @@ def compute_hjb_jacobian(
                 Nx,
                 clip=True,
                 clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                upwind=True,
             )
 
             H_p_i = np.nan
@@ -411,6 +431,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                    upwind=True,
                 )
                 derivs_m_im1 = _calculate_derivatives(
                     U_perturbed_m_im1,
@@ -419,6 +440,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                    upwind=True,
                 )
                 H_p_im1 = np.nan
                 H_m_im1 = np.nan
@@ -444,6 +466,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                    upwind=True,
                 )
                 derivs_m_ip1 = _calculate_derivatives(
                     U_perturbed_m_ip1,
@@ -452,6 +475,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
+                    upwind=True,
                 )
                 H_p_ip1 = np.nan
                 H_m_ip1 = np.nan
@@ -736,8 +760,10 @@ def solve_hjb_system_backward(
             )
             continue
 
-        M_n_plus_1_prev_picard = M_density_from_prev_picard[n_idx_hjb + 1, :]
-        if has_nan_or_inf(M_n_plus_1_prev_picard, backend):
+        # BUG #7 FIX: Use M at the same time index as we're solving for U
+        # Previously used M[n+1], now correctly uses M[n] to match HJB equation structure
+        M_n_prev_picard = M_density_from_prev_picard[n_idx_hjb, :]  # M_k[n] - FIXED from n_idx_hjb+1
+        if has_nan_or_inf(M_n_prev_picard, backend):
             backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), float("nan"), backend)
             continue
 
@@ -749,7 +775,7 @@ def solve_hjb_system_backward(
         U_new_n = solve_hjb_timestep_newton(
             U_n_plus_1_current_picard,  # U_new[n+1]
             U_n_prev_picard,  # U_k[n] (for Jacobian)
-            M_n_plus_1_prev_picard,  # M_k[n+1]
+            M_n_prev_picard,  # M_k[n] - FIXED: now uses correct time index
             problem,
             max_newton_iterations=max_newton_iterations,
             newton_tolerance=newton_tolerance,

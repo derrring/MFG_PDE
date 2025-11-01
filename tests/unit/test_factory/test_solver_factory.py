@@ -423,7 +423,7 @@ def test_create_basic_solver():
         MockIterator.assert_called_once()
         # Check damping was passed
         call_kwargs = MockIterator.call_args[1]
-        assert call_kwargs["thetaUM"] == 0.7
+        assert call_kwargs["damping_factor"] == 0.7
 
 
 # ===================================================================

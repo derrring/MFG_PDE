@@ -60,7 +60,7 @@ class FixedPointIterator(BaseMFGSolver):
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
         config: MFGSolverConfig | None = None,
-        thetaUM: float = 0.5,
+        damping_factor: float = 0.5,  # Renamed from thetaUM
         use_anderson: bool = False,
         anderson_depth: int = 5,
         anderson_beta: float = 1.0,
@@ -81,7 +81,7 @@ class FixedPointIterator(BaseMFGSolver):
             self.anderson_accelerator = AndersonAccelerator(depth=anderson_depth, beta=anderson_beta)
 
         # Damping parameter (overridden by config if provided)
-        self.thetaUM = thetaUM
+        self.damping_factor = damping_factor
 
         # State arrays (initialized in solve)
         self.U: np.ndarray | None = None
@@ -126,7 +126,7 @@ class FixedPointIterator(BaseMFGSolver):
         if solve_config is not None:
             final_max_iterations = solve_config.picard.max_iterations
             final_tolerance = solve_config.picard.tolerance
-            final_thetaUM = solve_config.picard.damping_factor
+            final_damping_factor = solve_config.picard.damping_factor
             verbose = solve_config.picard.verbose
         else:
             # Legacy parameter precedence
@@ -134,24 +134,23 @@ class FixedPointIterator(BaseMFGSolver):
                 max_iterations or kwargs.get("max_picard_iterations") or kwargs.get("Niter_max") or 100
             )
             final_tolerance = tolerance or kwargs.get("picard_tolerance") or kwargs.get("l2errBoundPicard") or 1e-6
-            final_thetaUM = self.thetaUM
+            final_damping_factor = self.damping_factor
             verbose = True
 
         # Get problem dimensions - handle both old 1D and new nD interfaces
-        Nt = self.problem.Nt + 1
+        num_time_steps = self.problem.Nt + 1  # Renamed from Nt
 
         # Detect problem shape
         if hasattr(self.problem, "Nx"):
             # Old 1D interface
             shape = (self.problem.Nx + 1,)
-            Dx = self.problem.Dx
-            Dt = self.problem.Dt
+            grid_spacing = self.problem.Dx  # Renamed from Dx
+            time_step = self.problem.Dt  # Renamed from Dt
         elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
             # New GridBasedMFGProblem interface (nD)
-            ndim = self.problem.geometry.grid.dimension
-            shape = tuple(self.problem.geometry.grid.num_points[d] - 1 for d in range(ndim))
-            Dx = self.problem.geometry.grid.spacing[0]  # For compatibility
-            Dt = self.problem.dt
+            shape = tuple(self.problem.geometry.grid.num_points)
+            grid_spacing = self.problem.geometry.grid.spacing[0]  # For compatibility
+            time_step = self.problem.dt
         else:
             raise ValueError("Problem must have either (Nx, Dx, Dt) or (geometry.grid) attributes")
 
@@ -162,11 +161,11 @@ class FixedPointIterator(BaseMFGSolver):
         else:
             # Cold start initialization
             if self.backend is not None:
-                self.U = self.backend.zeros((Nt, *shape))
-                self.M = self.backend.zeros((Nt, *shape))
+                self.U = self.backend.zeros((num_time_steps, *shape))
+                self.M = self.backend.zeros((num_time_steps, *shape))
             else:
-                self.U = np.zeros((Nt, *shape))
-                self.M = np.zeros((Nt, *shape))
+                self.U = np.zeros((num_time_steps, *shape))
+                self.M = np.zeros((num_time_steps, *shape))
 
             # Get initial density and final cost - handle both interfaces
             if hasattr(self.problem, "get_initial_m"):
@@ -175,35 +174,23 @@ class FixedPointIterator(BaseMFGSolver):
                 final_u_cost = self.problem.get_final_u()
             else:
                 # New nD interface - evaluate on grid
-                x_vals = []
-                for d in range(len(shape)):
-                    x_min = self.problem.geometry.grid.bounds[d][0]
-                    spacing = self.problem.geometry.grid.spacing[d]
-                    n_points = self.problem.geometry.grid.num_points[d] - 1
-                    x_vals.append(x_min + np.arange(n_points) * spacing)
+                x_grid = self.problem.geometry.grid.flatten()
+                initial_m_dist = self.problem.initial_density(x_grid).reshape(shape)
+                final_u_cost = self.problem.terminal_cost(x_grid).reshape(shape)
+                # Note: initial_density() should already return normalized density
+                # (integral = 1), so no renormalization needed here
 
-                meshgrid_arrays = np.meshgrid(*x_vals, indexing="ij")
-                x_flat = np.column_stack([arr.ravel() for arr in meshgrid_arrays])
-
-                initial_m_flat = self.problem.initial_density(x_flat)
-                initial_m_dist = initial_m_flat.reshape(shape)
-                # Normalize
-                initial_m_dist = initial_m_dist / (np.sum(initial_m_dist) + 1e-10)
-
-                final_u_flat = self.problem.terminal_cost(x_flat)
-                final_u_cost = final_u_flat.reshape(shape)
-
-            if Nt > 0:
+            if num_time_steps > 0:
                 # Set boundary conditions
                 if len(shape) == 1:
                     self.M[0, :] = initial_m_dist
-                    self.U[Nt - 1, :] = final_u_cost
+                    self.U[num_time_steps - 1, :] = final_u_cost
                 else:
                     self.M[0] = initial_m_dist
-                    self.U[Nt - 1] = final_u_cost
+                    self.U[num_time_steps - 1] = final_u_cost
 
                 # Initialize interior with boundary conditions
-                self.U, self.M = initialize_cold_start(self.U, self.M, initial_m_dist, final_u_cost, Nt)
+                self.U, self.M = initialize_cold_start(self.U, self.M, initial_m_dist, final_u_cost, num_time_steps)
 
         # Initialize error tracking
         self.l2distu_abs = np.ones(final_max_iterations)
@@ -278,11 +265,11 @@ class FixedPointIterator(BaseMFGSolver):
                 self.U = x_next_U.reshape(U_old.shape)
 
                 # Standard damping for M (guarantees non-negativity and mass conservation)
-                self.M = final_thetaUM * M_new + (1 - final_thetaUM) * M_old
+                self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
             else:
                 # Standard damping for both
-                self.U = final_thetaUM * U_new + (1 - final_thetaUM) * U_old
-                self.M = final_thetaUM * M_new + (1 - final_thetaUM) * M_old
+                self.U = final_damping_factor * U_new + (1 - final_damping_factor) * U_old
+                self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
 
             # Preserve initial boundary condition
             self.M = preserve_boundary_conditions(self.M, initial_m_dist)
@@ -290,7 +277,7 @@ class FixedPointIterator(BaseMFGSolver):
             # Calculate convergence metrics
             from mfg_pde.utils.numerical.convergence import calculate_l2_convergence_metrics
 
-            metrics = calculate_l2_convergence_metrics(self.U, U_old, self.M, M_old, Dx, Dt)
+            metrics = calculate_l2_convergence_metrics(self.U, U_old, self.M, M_old, grid_spacing, time_step)
             self.l2distu_abs[iiter] = metrics["l2distu_abs"]
             self.l2distu_rel[iiter] = metrics["l2distu_rel"]
             self.l2distm_abs[iiter] = metrics["l2distm_abs"]

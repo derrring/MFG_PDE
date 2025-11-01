@@ -30,7 +30,7 @@ class TestFDMSolversMFGIntegration:
         fp_solver = FPFDMSolver(problem)
 
         # Create MFG solver
-        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.5)
+        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
         # Solve
         result = mfg_solver.solve(max_iterations=10, tolerance=1e-4)
@@ -71,7 +71,7 @@ class TestFDMSolversMFGIntegration:
         hjb_solver_coarse = HJBFDMSolver(problem_coarse)
         fp_solver_coarse = FPFDMSolver(problem_coarse)
         mfg_solver_coarse = FixedPointIterator(
-            problem_coarse, hjb_solver=hjb_solver_coarse, fp_solver=fp_solver_coarse, thetaUM=0.5
+            problem_coarse, hjb_solver=hjb_solver_coarse, fp_solver=fp_solver_coarse, damping_factor=0.5
         )
         result_coarse = mfg_solver_coarse.solve(max_iterations=5, tolerance=1e-3)
 
@@ -80,7 +80,7 @@ class TestFDMSolversMFGIntegration:
         hjb_solver_fine = HJBFDMSolver(problem_fine)
         fp_solver_fine = FPFDMSolver(problem_fine)
         mfg_solver_fine = FixedPointIterator(
-            problem_fine, hjb_solver=hjb_solver_fine, fp_solver=fp_solver_fine, thetaUM=0.5
+            problem_fine, hjb_solver=hjb_solver_fine, fp_solver=fp_solver_fine, damping_factor=0.5
         )
         result_fine = mfg_solver_fine.solve(max_iterations=5, tolerance=1e-3)
 
@@ -99,7 +99,7 @@ class TestFDMSolversMFGIntegration:
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
 
-        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.5)
+        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
         result = mfg_solver.solve(max_iterations=8, tolerance=1e-4)
 
@@ -115,7 +115,7 @@ class TestFDMSolversMFGIntegration:
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
         hjb_solver = HJBFDMSolver(problem)
 
-        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.5)
+        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
         result = mfg_solver.solve(max_iterations=8, tolerance=1e-4)
 
@@ -133,7 +133,7 @@ class TestFDMSolversMFGIntegration:
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
         hjb_solver = HJBFDMSolver(problem)
 
-        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.5)
+        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
         result = mfg_solver.solve(max_iterations=8, tolerance=1e-4)
 
@@ -180,7 +180,7 @@ class TestFDMSolversCoupling:
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
 
-        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.5)
+        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
         result = mfg_solver.solve(max_iterations=15, tolerance=1e-5)
 
@@ -198,7 +198,7 @@ class TestFDMSolversNumericalProperties:
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
 
-        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.5)
+        mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
         result = mfg_solver.solve(max_iterations=8, tolerance=1e-4)
 

@@ -194,34 +194,57 @@ class HJBWenoSolver(BaseHJBSolver):
         if self.dimension == 1:
             # 1D case - use standard grid convention: Nx intervals → Nx+1 grid points
             if hasattr(self.problem, "Nx"):
-                self.Nx = self.problem.Nx + 1  # Grid points = intervals + 1
-                self.Dx = self.problem.Dx
+                self.num_grid_points_x = self.problem.Nx + 1  # Grid points = intervals + 1
+                self.grid_spacing_x = self.problem.Dx
+            elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
+                # GridBasedMFGProblem: num_points already includes all grid points
+                grid_obj = self.problem.geometry.grid
+                self.num_grid_points_x = grid_obj.num_points[0]
+                self.grid_spacing_x = grid_obj.spacing[0]
             else:
-                self.Nx = getattr(self.problem, "nx", 64) + 1
-                self.Dx = getattr(self.problem, "dx", 1.0 / (self.Nx - 1))
+                self.num_grid_points_x = getattr(self.problem, "nx", 64) + 1
+                self.grid_spacing_x = getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
 
         elif self.dimension == 2:
             # 2D case - use standard grid convention: Nx,Ny intervals → Nx+1,Ny+1 grid points
             if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "get_computational_grid"):
                 grid = self.problem.geometry.get_computational_grid()
-                self.Nx, self.Ny = grid["nx"] + 1, grid["ny"] + 1  # Grid points = intervals + 1
-                self.Dx, self.Dy = grid["dx"], grid["dy"]
+                self.num_grid_points_x, self.num_grid_points_y = (
+                    grid["nx"] + 1,
+                    grid["ny"] + 1,
+                )  # Grid points = intervals + 1
+                self.grid_spacing_x, self.grid_spacing_y = grid["dx"], grid["dy"]
                 self.X, self.Y = grid["X"], grid["Y"]
+            elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
+                # GridBasedMFGProblem: num_points already includes all grid points
+                grid_obj = self.problem.geometry.grid
+                self.num_grid_points_x, self.num_grid_points_y = grid_obj.num_points[0], grid_obj.num_points[1]
+                self.grid_spacing_x, self.grid_spacing_y = grid_obj.spacing[0], grid_obj.spacing[1]
             else:
                 # Fallback for 2D
-                self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 64)) + 1
-                self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 64)) + 1
-                self.Dx = getattr(self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.Nx - 1)))
-                self.Dy = getattr(self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.Ny - 1)))
+                self.num_grid_points_x = getattr(self.problem, "Nx", getattr(self.problem, "nx", 64)) + 1
+                self.num_grid_points_y = getattr(self.problem, "Ny", getattr(self.problem, "ny", 64)) + 1
+                self.grid_spacing_x = getattr(
+                    self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
+                )
+                self.grid_spacing_y = getattr(
+                    self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.num_grid_points_y - 1))
+                )
 
         elif self.dimension == 3:
             # 3D case - use standard grid convention: Nx,Ny,Nz intervals → Nx+1,Ny+1,Nz+1 grid points
-            self.Nx = getattr(self.problem, "Nx", getattr(self.problem, "nx", 32)) + 1
-            self.Ny = getattr(self.problem, "Ny", getattr(self.problem, "ny", 32)) + 1
-            self.Nz = getattr(self.problem, "Nz", getattr(self.problem, "nz", 32)) + 1
-            self.Dx = getattr(self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.Nx - 1)))
-            self.Dy = getattr(self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.Ny - 1)))
-            self.Dz = getattr(self.problem, "Dz", getattr(self.problem, "dz", 1.0 / (self.Nz - 1)))
+            self.num_grid_points_x = getattr(self.problem, "Nx", getattr(self.problem, "nx", 32)) + 1
+            self.num_grid_points_y = getattr(self.problem, "Ny", getattr(self.problem, "ny", 32)) + 1
+            self.num_grid_points_z = getattr(self.problem, "Nz", getattr(self.problem, "nz", 32)) + 1
+            self.grid_spacing_x = getattr(
+                self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
+            )
+            self.grid_spacing_y = getattr(
+                self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.num_grid_points_y - 1))
+            )
+            self.grid_spacing_z = getattr(
+                self.problem, "Dz", getattr(self.problem, "dz", 1.0 / (self.num_grid_points_z - 1))
+            )
 
     def _setup_weno_coefficients(self) -> None:
         """Setup WENO reconstruction coefficients (shared across variants)."""
@@ -473,7 +496,7 @@ class HJBWenoSolver(BaseHJBSolver):
         """
         n = len(u)
         rhs = np.zeros(n)
-        dx = self.problem.Dx
+        dx = self.grid_spacing_x
 
         # Compute spatial derivatives using WENO reconstruction
         u_x = np.zeros(n)
@@ -516,7 +539,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
     def _compute_dt_stable_1d(self, u: np.ndarray, m: np.ndarray) -> float:
         """Compute stable time step based on CFL and diffusion stability."""
-        dx = getattr(self.problem, "Dx", self.Dx)
+        dx = getattr(self.problem, "Dx", self.grid_spacing_x)
 
         # CFL condition for advection terms
         max_speed = np.max(np.abs(np.gradient(u, dx))) + 1e-10
@@ -568,7 +591,7 @@ class HJBWenoSolver(BaseHJBSolver):
     ) -> np.ndarray:
         """Solve 1D HJB system (original implementation)."""
         Nt = self.problem.Nt
-        Nx = self.Nx
+        Nx = self.num_grid_points_x
         dt = self.problem.T / Nt
 
         # Initialize solution array
@@ -604,7 +627,7 @@ class HJBWenoSolver(BaseHJBSolver):
         dt = self.problem.T / Nt
 
         # Initialize solution array
-        U_solved = np.zeros((Nt + 1, self.Nx, self.Ny))
+        U_solved = np.zeros((Nt + 1, self.num_grid_points_x, self.num_grid_points_y))
 
         # Set final condition
         U_solved[-1, :, :] = U_final_condition_at_T
@@ -687,20 +710,20 @@ class HJBWenoSolver(BaseHJBSolver):
     def _compute_dt_stable_2d(self, u: np.ndarray, m: np.ndarray) -> float:
         """Compute stable time step for 2D problem based on CFL and diffusion stability."""
         # Compute gradients for stability analysis
-        u_x = np.gradient(u, self.Dx, axis=0)
-        u_y = np.gradient(u, self.Dy, axis=1)
+        u_x = np.gradient(u, self.grid_spacing_x, axis=0)
+        u_y = np.gradient(u, self.grid_spacing_y, axis=1)
 
         # CFL condition for advection terms
         max_speed_x = np.max(np.abs(u_x)) + 1e-10
         max_speed_y = np.max(np.abs(u_y)) + 1e-10
 
-        dt_cfl_x = self.cfl_number * self.Dx / max_speed_x
-        dt_cfl_y = self.cfl_number * self.Dy / max_speed_y
+        dt_cfl_x = self.cfl_number * self.grid_spacing_x / max_speed_x
+        dt_cfl_y = self.cfl_number * self.grid_spacing_y / max_speed_y
         dt_cfl = min(dt_cfl_x, dt_cfl_y)
 
         # Stability condition for diffusion term (more restrictive in 2D)
-        dt_diffusion_x = self.diffusion_stability_factor * self.Dx**2 / self.problem.sigma**2
-        dt_diffusion_y = self.diffusion_stability_factor * self.Dy**2 / self.problem.sigma**2
+        dt_diffusion_x = self.diffusion_stability_factor * self.grid_spacing_x**2 / self.problem.sigma**2
+        dt_diffusion_y = self.diffusion_stability_factor * self.grid_spacing_y**2 / self.problem.sigma**2
         dt_diffusion = min(dt_diffusion_x, dt_diffusion_y)
 
         # Take minimum for stability
@@ -713,7 +736,7 @@ class HJBWenoSolver(BaseHJBSolver):
         u_new = u.copy()
 
         # Apply 1D WENO reconstruction in X-direction for each Y-slice
-        for j in range(self.Ny):
+        for j in range(self.num_grid_points_y):
             u_slice = u[:, j]
             m_slice = m[:, j]
 
@@ -728,7 +751,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # Apply 1D WENO reconstruction in Y-direction for each X-slice
         # This requires adapting the 1D solver to work on transposed arrays
-        for i in range(self.Nx):
+        for i in range(self.num_grid_points_x):
             u_slice = u[i, :]
             m_slice = m[i, :]
 
@@ -775,7 +798,7 @@ class HJBWenoSolver(BaseHJBSolver):
     def _compute_spatial_operator_y_adapted(self, u: np.ndarray, m: np.ndarray) -> np.ndarray:
         """Compute spatial operator for Y-direction with adapted grid spacing."""
         # This is a placeholder - full implementation would properly handle
-        # Y-direction WENO reconstruction with self.Dy spacing
+        # Y-direction WENO reconstruction with self.grid_spacing_y spacing
         n = len(u)
         rhs = np.zeros(n)
 
@@ -784,7 +807,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # Second derivative (central differences with Y spacing)
         u_yy = np.zeros(n)
-        u_yy[1:-1] = (u[:-2] - 2 * u[1:-1] + u[2:]) / (self.Dy**2)
+        u_yy[1:-1] = (u[:-2] - 2 * u[1:-1] + u[2:]) / (self.grid_spacing_y**2)
         u_yy[0] = u_yy[1]
         u_yy[-1] = u_yy[-2]
 
@@ -799,14 +822,14 @@ class HJBWenoSolver(BaseHJBSolver):
         """WENO reconstruction adapted for Y-direction with proper grid spacing."""
         # This would use the same WENO logic but with Dy spacing
         # For now, use standard gradient as placeholder
-        return np.gradient(u, self.Dy)
+        return np.gradient(u, self.grid_spacing_y)
 
     def _compute_dt_stable_3d(self, u: np.ndarray, m: np.ndarray) -> float:
         """Compute stable time step for 3D problem based on CFL and diffusion stability."""
         # Compute gradients for stability analysis
-        u_x = np.gradient(u, self.Dx, axis=0)
-        u_y = np.gradient(u, self.Dy, axis=1)
-        u_z = np.gradient(u, self.Dz, axis=2)
+        u_x = np.gradient(u, self.grid_spacing_x, axis=0)
+        u_y = np.gradient(u, self.grid_spacing_y, axis=1)
+        u_z = np.gradient(u, self.grid_spacing_z, axis=2)
 
         # Maximum gradient magnitude for CFL condition
         max_grad_x = np.max(np.abs(u_x)) if u_x.size > 0 else 0.0
@@ -815,18 +838,18 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # CFL stability condition (very conservative for 3D)
         if max_grad_x > 1e-12 or max_grad_y > 1e-12 or max_grad_z > 1e-12:
-            dt_cfl_x = self.cfl_number * self.Dx / (max_grad_x + 1e-12)
-            dt_cfl_y = self.cfl_number * self.Dy / (max_grad_y + 1e-12)
-            dt_cfl_z = self.cfl_number * self.Dz / (max_grad_z + 1e-12)
+            dt_cfl_x = self.cfl_number * self.grid_spacing_x / (max_grad_x + 1e-12)
+            dt_cfl_y = self.cfl_number * self.grid_spacing_y / (max_grad_y + 1e-12)
+            dt_cfl_z = self.cfl_number * self.grid_spacing_z / (max_grad_z + 1e-12)
             dt_cfl = min(dt_cfl_x, dt_cfl_y, dt_cfl_z)
         else:
             dt_cfl = self.dt
 
         # Stability condition for diffusion term (very restrictive in 3D)
         sigma_sq = self.problem.sigma**2 if hasattr(self.problem, "sigma") else 1.0
-        dt_diffusion_x = self.diffusion_stability_factor * (self.Dx**2) / sigma_sq
-        dt_diffusion_y = self.diffusion_stability_factor * (self.Dy**2) / sigma_sq
-        dt_diffusion_z = self.diffusion_stability_factor * (self.Dz**2) / sigma_sq
+        dt_diffusion_x = self.diffusion_stability_factor * (self.grid_spacing_x**2) / sigma_sq
+        dt_diffusion_y = self.diffusion_stability_factor * (self.grid_spacing_y**2) / sigma_sq
+        dt_diffusion_z = self.diffusion_stability_factor * (self.grid_spacing_z**2) / sigma_sq
         dt_diffusion = min(dt_diffusion_x, dt_diffusion_y, dt_diffusion_z)
 
         return min(dt_cfl, dt_diffusion)
@@ -835,8 +858,8 @@ class HJBWenoSolver(BaseHJBSolver):
         """Apply WENO reconstruction in X-direction for 3D problem."""
         u_new = u.copy()
         # Apply 1D WENO reconstruction in X-direction for each (Y,Z)-slice
-        for j in range(self.Ny):
-            for k in range(self.Nz):
+        for j in range(self.num_grid_points_y):
+            for k in range(self.num_grid_points_z):
                 u_slice = u[:, j, k]
                 m_slice = m[:, j, k]
                 # Apply 1D WENO step
@@ -847,8 +870,8 @@ class HJBWenoSolver(BaseHJBSolver):
         """Apply WENO reconstruction in Y-direction for 3D problem."""
         u_new = u.copy()
         # Apply 1D WENO reconstruction in Y-direction for each (X,Z)-slice
-        for i in range(self.Nx):
-            for k in range(self.Nz):
+        for i in range(self.num_grid_points_x):
+            for k in range(self.num_grid_points_z):
                 u_slice = u[i, :, k]
                 m_slice = m[i, :, k]
                 # Apply 1D WENO step adapted for Y-direction
@@ -859,8 +882,8 @@ class HJBWenoSolver(BaseHJBSolver):
         """Apply WENO reconstruction in Z-direction for 3D problem."""
         u_new = u.copy()
         # Apply 1D WENO reconstruction in Z-direction for each (X,Y)-slice
-        for i in range(self.Nx):
-            for j in range(self.Ny):
+        for i in range(self.num_grid_points_x):
+            for j in range(self.num_grid_points_y):
                 u_slice = u[i, j, :]
                 m_slice = m[i, j, :]
                 # Apply 1D WENO step adapted for Z-direction
@@ -908,7 +931,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # Second derivative (central differences with Z spacing)
         u_zz = np.zeros(n)
-        u_zz[1:-1] = (u[:-2] - 2 * u[1:-1] + u[2:]) / (self.Dz**2)
+        u_zz[1:-1] = (u[:-2] - 2 * u[1:-1] + u[2:]) / (self.grid_spacing_z**2)
         u_zz[0] = u_zz[1]
         u_zz[-1] = u_zz[-2]
 
@@ -923,7 +946,7 @@ class HJBWenoSolver(BaseHJBSolver):
         """WENO reconstruction adapted for Z-direction with proper grid spacing."""
         # This would use the same WENO logic but with Dz spacing
         # For now, use standard gradient as placeholder
-        return np.gradient(u, self.Dz)
+        return np.gradient(u, self.grid_spacing_z)
 
     def get_variant_info(self) -> dict[str, str]:
         """

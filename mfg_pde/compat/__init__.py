@@ -47,13 +47,22 @@ class DeprecatedAPI:
         )
 
 
-__all__ = ["DeprecatedAPI", "deprecated"]
+__all__ = [
+    "DeprecatedAPI",
+    "check_derivs_format",
+    "deprecated",
+    "derivs_to_gradient_array",
+    "derivs_to_p_values_1d",
+    "ensure_tuple_notation",
+    "gradient_array_to_derivs",
+    "p_values_to_derivs_1d",
+]
 
 # Re-export old API with deprecation warnings
 # NOTE: Temporarily commented out due to legacy_config.py having a bug with @deprecated decorator on classes
-# from .legacy_config import *  # noqa: F403, E402
-# from .legacy_problems import *  # noqa: F403, E402
-# from .legacy_solvers import *  # noqa: F403, E402
+# from .legacy_config import *
+# from .legacy_problems import *
+# from .legacy_solvers import *
 
 # Gradient notation backward compatibility
 from .gradient_notation import (  # noqa: E402
@@ -64,16 +73,3 @@ from .gradient_notation import (  # noqa: E402
     gradient_array_to_derivs,
     p_values_to_derivs_1d,
 )
-
-__all__.extend([
-    # "LegacyConfig",  # Temporarily disabled
-    # "LegacyMFGProblem",  # Temporarily disabled
-    # "LegacyMFGSolver",  # Temporarily disabled
-    # Gradient notation utilities
-    "check_derivs_format",
-    "derivs_to_gradient_array",
-    "derivs_to_p_values_1d",
-    "ensure_tuple_notation",
-    "gradient_array_to_derivs",
-    "p_values_to_derivs_1d",
-])
