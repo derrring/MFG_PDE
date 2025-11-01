@@ -97,7 +97,7 @@ def create_network_mfg_solver(
             problem=problem,
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
-            thetaUM=damping_factor,
+            damping_factor=damping_factor,
             **solver_kwargs,
         )
     else:

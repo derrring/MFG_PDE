@@ -240,9 +240,9 @@ def test_coupled_hjb_fp_2d_basic():
 
     # Check shapes
     Nt = problem.Nt + 1
-    shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(2))
-    assert result["U"].shape == (Nt, *shape), "U shape should match (Nt, Nx-1, Ny-1)"
-    assert result["M"].shape == (Nt, *shape), "M shape should match (Nt, Nx-1, Ny-1)"
+    shape = tuple(problem.geometry.grid.num_points[d] for d in range(2))
+    assert result["U"].shape == (Nt, *shape), "U shape should match (Nt, Nx, Ny)"
+    assert result["M"].shape == (Nt, *shape), "M shape should match (Nt, Nx, Ny)"
 
     # Check mass conservation
     # Note: Errors accumulate over Picard iterations, each FP solve adds ~1% error
@@ -300,7 +300,7 @@ def test_coupled_hjb_fp_dimension_detection():
 
     # Run one iteration to verify compatibility
     Nt = problem.Nt + 1
-    shape = tuple(problem.geometry.grid.num_points[d] - 1 for d in range(2))
+    shape = tuple(problem.geometry.grid.num_points[d] for d in range(2))
 
     # Initialize
     m_init = np.ones(shape) / np.prod(shape)
