@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.8.0+phase2" # v0.8.0+phase2: Dimension-Agnostic FDM Solvers (Phase 2 Complete)
+version = "0.8.1" # v0.8.1: Bug #8 Fix - Full nD FP Solver + Semi-Lagrangian 2D
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
