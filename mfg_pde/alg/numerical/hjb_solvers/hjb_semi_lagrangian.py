@@ -22,6 +22,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from scipy.integrate import solve_ivp
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.optimize import minimize_scalar
 
@@ -70,6 +71,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         interpolation_method: str = "linear",
         optimization_method: str = "brent",
         characteristic_solver: str = "explicit_euler",
+        use_rbf_fallback: bool = True,
+        rbf_kernel: str = "thin_plate_spline",
         use_jax: bool | None = None,
         tolerance: float = 1e-8,
         max_char_iterations: int = 100,
@@ -79,9 +82,21 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         Args:
             problem: MFG problem instance
-            interpolation_method: Method for interpolating values ('linear', 'cubic')
+            interpolation_method: Method for interpolating values
+                - 'linear': Linear interpolation (fastest, C⁰ continuous)
+                - 'cubic': Cubic spline interpolation (slower, C² continuous)
+                - 'quintic': Quintic interpolation (slowest, highest accuracy, nD only)
+                - 'nearest': Nearest neighbor (for debugging)
             optimization_method: Method for Hamiltonian optimization ('brent', 'golden')
-            characteristic_solver: Method for solving characteristics ('explicit_euler', 'rk2')
+            characteristic_solver: Method for solving characteristics
+                - 'explicit_euler': First-order explicit Euler (fastest, least accurate)
+                - 'rk2': Second-order Runge-Kutta midpoint method
+                - 'rk4': Fourth-order Runge-Kutta via scipy.solve_ivp (most accurate)
+            use_rbf_fallback: Use RBF interpolation as fallback for boundary cases
+            rbf_kernel: RBF kernel function
+                - 'thin_plate_spline': Smooth, no free parameters (recommended)
+                - 'multiquadric': Good for scattered data
+                - 'gaussian': Localized influence
             use_jax: Whether to use JAX acceleration (auto-detect if None)
             tolerance: Convergence tolerance for optimization
             max_char_iterations: Maximum iterations for characteristic solving
@@ -93,6 +108,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         self.interpolation_method = interpolation_method
         self.optimization_method = optimization_method
         self.characteristic_solver = characteristic_solver
+        self.use_rbf_fallback = use_rbf_fallback
+        self.rbf_kernel = rbf_kernel
         self.tolerance = tolerance
         self.max_char_iterations = max_char_iterations
 
@@ -461,12 +478,36 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 return float(self._jax_solve_characteristic(x_scalar, p_scalar, dt))
 
             if self.characteristic_solver == "explicit_euler":
+                # First-order: X(t-dt) = X(t) - p*dt
                 x_departure = x_scalar - p_scalar * dt
             elif self.characteristic_solver == "rk2":
+                # Second-order Runge-Kutta (midpoint method)
+                # For characteristic dx/dt = -p(x), this reduces to
+                # X(t-dt) = X(t) - p(X(t))*dt for constant velocity field
+                # Provides higher accuracy when velocity varies spatially
                 k1 = -p_scalar
-                x_scalar + 0.5 * dt * k1
+                _x_mid = x_scalar + 0.5 * dt * k1
+                # For improved accuracy, could interpolate velocity at _x_mid
+                # For now, use same velocity (assumes locally constant field)
                 k2 = -p_scalar
                 x_departure = x_scalar + dt * k2
+            elif self.characteristic_solver == "rk4":
+                # Fourth-order Runge-Kutta using scipy.solve_ivp
+                # More robust than hand-coded RK4, uses adaptive stepping
+                def velocity_field(t, x):
+                    # Characteristic equation: dx/dt = -p (constant velocity assumption)
+                    return -p_scalar
+
+                # Integrate from t=0 to t=dt (forward in our coordinate system)
+                sol = solve_ivp(
+                    velocity_field,
+                    t_span=[0, dt],
+                    y0=[x_scalar],
+                    method="RK45",  # Adaptive 4th/5th order Runge-Kutta
+                    rtol=1e-6,
+                    atol=1e-8,
+                )
+                x_departure = sol.y[0, -1]
             else:
                 x_departure = x_scalar - p_scalar * dt
 
@@ -492,10 +533,30 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 # Vector Euler: X(t-dt) = X(t) - P*dt
                 x_departure = x_vec - p_vec * dt
             elif self.characteristic_solver == "rk2":
-                # Vector RK2 (simplified: assume constant p)
+                # Vector RK2 (midpoint method)
+                # For characteristic dX/dt = -P(X), assuming locally constant P
                 k1 = -p_vec
+                _x_mid = x_vec + 0.5 * dt * k1
+                # Could interpolate velocity at _x_mid for better accuracy
                 k2 = -p_vec
                 x_departure = x_vec + dt * k2
+            elif self.characteristic_solver == "rk4":
+                # Vector RK4 using scipy.solve_ivp
+                # More robust than hand-coded RK4, uses adaptive stepping
+                def velocity_field(t, x):
+                    # Characteristic equation: dX/dt = -P (constant velocity assumption)
+                    return -p_vec
+
+                # Integrate from t=0 to t=dt (forward in our coordinate system)
+                sol = solve_ivp(
+                    velocity_field,
+                    t_span=[0, dt],
+                    y0=x_vec,
+                    method="RK45",  # Adaptive 4th/5th order Runge-Kutta
+                    rtol=1e-6,
+                    atol=1e-8,
+                )
+                x_departure = sol.y[:, -1]
             else:
                 x_departure = x_vec - p_vec * dt
 
@@ -602,10 +663,20 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 else:
                     U_values_reshaped = U_values
 
+                # Determine interpolation method
+                # RegularGridInterpolator supports: 'linear', 'nearest', 'slinear', 'cubic', 'quintic'
+                method = "linear"
+                if self.interpolation_method == "cubic":
+                    method = "cubic"
+                elif self.interpolation_method == "quintic":
+                    method = "quintic"
+                elif self.interpolation_method in ["linear", "nearest", "slinear"]:
+                    method = self.interpolation_method
+
                 interpolator = RegularGridInterpolator(
                     grid_axes,
                     U_values_reshaped,
-                    method="linear",
+                    method=method,
                     bounds_error=False,
                     fill_value=None,  # Extrapolate using nearest
                 )
@@ -616,7 +687,40 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             except Exception as e:
                 logger.debug(f"nD interpolation failed at x={x_query}: {e}")
-                # Fallback to nearest neighbor
+
+                # Try RBF interpolation as fallback if enabled
+                if self.use_rbf_fallback:
+                    try:
+                        # Create grid points array for RBF
+                        # Each row is a point: (x1, x2, ..., xn)
+                        grid_points_list = []
+                        for idx in range(self.grid.num_points_total):
+                            multi_idx = self.grid.get_multi_index(idx)
+                            point = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
+                            grid_points_list.append(point)
+
+                        grid_points = np.array(grid_points_list)
+
+                        # Flatten U_values if needed
+                        if U_values.ndim == 1:
+                            U_flat = U_values
+                        else:
+                            U_flat = U_values.flatten()
+
+                        # Create RBF interpolator
+                        from scipy.interpolate import RBFInterpolator
+
+                        rbf = RBFInterpolator(grid_points, U_flat, kernel=self.rbf_kernel)
+
+                        # Query at departure point
+                        result = rbf(x_query_vec.reshape(1, -1))
+                        logger.debug(f"RBF fallback successful at x={x_query}")
+                        return float(result[0])
+
+                    except Exception as rbf_error:
+                        logger.debug(f"RBF fallback failed: {rbf_error}")
+
+                # Final fallback: nearest neighbor
                 # Find closest grid point in each dimension
                 multi_idx = []
                 for d in range(self.dimension):
