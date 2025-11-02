@@ -134,17 +134,11 @@ def solve_mfg(
         else:  # 3D
             resolution = 30
 
-    # Build configuration overrides
-    config_overrides = {}
-    if max_iterations is not None:
-        config_overrides["max_iterations"] = max_iterations
-    if tolerance is not None:
-        config_overrides["tolerance"] = tolerance
-
     # Create custom config if overrides specified
     custom_config = None
-    if config_overrides:
+    if max_iterations is not None or tolerance is not None:
         from mfg_pde.config import create_accurate_config, create_fast_config, create_research_config
+        from mfg_pde.config.pydantic_config import PicardConfig
 
         # Get base config for method
         if method in ["auto", "fast"]:
@@ -154,12 +148,25 @@ def solve_mfg(
         else:  # research
             base_config = create_research_config()
 
-        # Apply overrides
-        custom_config = MFGSolverConfig(
-            max_iterations=config_overrides.get("max_iterations", base_config.max_iterations),
-            tolerance_U=config_overrides.get("tolerance", base_config.tolerance_U),
-            tolerance_M=config_overrides.get("tolerance", base_config.tolerance_M),
+        # Create modified Picard config with overrides
+        picard_config = PicardConfig(
+            max_iterations=max_iterations if max_iterations is not None else base_config.picard.max_iterations,
+            tolerance=tolerance if tolerance is not None else base_config.picard.tolerance,
+            damping_factor=base_config.picard.damping_factor,
+            adaptive_damping=base_config.picard.adaptive_damping,
             verbose=verbose,
+        )
+
+        # Create new config with modified picard settings
+        custom_config = MFGSolverConfig(
+            picard=picard_config,
+            newton=base_config.newton,
+            hjb=base_config.hjb,
+            fp=base_config.fp,
+            return_structured=True,
+            enable_warm_start=base_config.enable_warm_start,
+            convergence_tolerance=tolerance if tolerance is not None else base_config.convergence_tolerance,
+            experiment_name=f"solve_mfg_{method}",
         )
 
     # Select factory function based on method
