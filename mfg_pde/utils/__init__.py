@@ -38,6 +38,23 @@ from .exceptions import (
     validate_parameter_value,
     validate_solver_state,
 )
+from .geometry import (
+    BoxObstacle,
+    CircleObstacle,
+    Complement,
+    Difference,
+    Hyperrectangle,
+    Hypersphere,
+    ImplicitDomain,
+    Intersection,
+    RectangleObstacle,
+    SphereObstacle,
+    Union,
+    create_box_obstacle,
+    create_circle_obstacle,
+    create_rectangle_obstacle,
+    create_sphere_obstacle,
+)
 from .logging.decorators import (
     LoggingMixin,
     add_logging_to_class,
@@ -70,6 +87,11 @@ from .numerical.convergence import (
     wrap_solver_with_adaptive_convergence,
 )
 from .numerical.integration import get_integration_info, trapezoid
+from .numerical.particle_interpolation import (
+    adaptive_bandwidth_selection,
+    interpolate_grid_to_particles,
+    interpolate_particles_to_grid,
+)
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .sparse_operations import (
     SparseMatrixBuilder,
@@ -160,6 +182,7 @@ AVAILABLE_MODULES = {
 }
 
 # Public API - Core utilities always available
+# ruff: noqa: RUF022  # Keep organized with comments, don't auto-sort
 __all__ = [
     # Availability flags
     "AVAILABLE_MODULES",
@@ -172,13 +195,24 @@ __all__ = [
     # Convergence monitoring
     "AdaptiveConvergenceWrapper",
     "AdvancedConvergenceMonitor",
+    # Geometry utilities (obstacles, SDF)
+    "BoxObstacle",
+    "CircleObstacle",
+    "Complement",
     # Exception handling
     "ConfigurationError",
     "ConvergenceError",
     # Solver results
     "ConvergenceResult",
+    # CSG operations
+    "Difference",
     "DimensionMismatchError",
     "DistributionComparator",
+    # Geometry primitives
+    "Hyperrectangle",
+    "Hypersphere",
+    "ImplicitDomain",
+    "Intersection",
     # Logging
     "LoggedOperation",
     # Logging decorators
@@ -193,6 +227,7 @@ __all__ = [
     "SolverResult",
     "SparseMatrixBuilder",
     "SparseSolver",
+    "adaptive_bandwidth_selection",
     "adaptive_convergence",
     "add_logging_to_class",
     "check_numerical_stability",
@@ -203,6 +238,9 @@ __all__ = [
     "estimate_sparsity",
     # Integration utilities
     "get_integration_info",
+    # Particle interpolation
+    "interpolate_grid_to_particles",
+    "interpolate_particles_to_grid",
     "get_logger",
     "log_performance_metric",
     "log_solver_completion",
@@ -216,11 +254,16 @@ __all__ = [
     "npart",
     "performance_logged",
     "ppart",
+    # Geometry aliases
+    "RectangleObstacle",
+    "SphereObstacle",
     # Validation
     "safe_solution_return",
     "sparse_matmul",
     "test_particle_detection",
     "trapezoid",
+    # CSG helpers
+    "Union",
     "validate_array_dimensions",
     "validate_convergence_parameters",
     "validate_mfg_solution",
@@ -228,6 +271,11 @@ __all__ = [
     "validate_solution_array",
     "validate_solver_state",
     "wrap_solver_with_adaptive_convergence",
+    # Geometry factory functions
+    "create_box_obstacle",
+    "create_circle_obstacle",
+    "create_rectangle_obstacle",
+    "create_sphere_obstacle",
 ]
 
 # Add optional modules to public API if available
