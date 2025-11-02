@@ -82,70 +82,142 @@ class MFGProblem:
         xmin: float | None = None,
         xmax: float | None = None,
         Nx: int | None = None,
-        # New n-D parameters
+        Lx: float | None = None,  # Alternative to xmin/xmax
+        # N-D grid parameters
         spatial_bounds: list[tuple[float, float]] | None = None,
         spatial_discretization: list[int] | None = None,
-        # Common parameters
-        T: float = 1.0,
-        Nt: int = 51,
-        sigma: float = 1.0,
+        # Complex geometry parameters (NEW)
+        geometry: Any | None = None,  # BaseGeometry
+        obstacles: list | None = None,
+        # Network parameters (NEW)
+        network: Any | None = None,  # NetworkGraph
+        # Time domain parameters
+        T: float | None = None,
+        Nt: int | None = None,
+        time_domain: tuple[float, int] | None = None,  # Alternative to T/Nt
+        # Physical parameters
+        sigma: float | None = None,
+        diffusion: float | None = None,  # Alias for sigma
         coefCT: float = 0.5,
+        # Advanced
         components: MFGComponents | None = None,
         suppress_warnings: bool = False,
         **kwargs: Any,
     ) -> None:
         """
-        Initialize MFG problem with support for arbitrary spatial dimensions.
+        Initialize MFG problem with support for all spatial dimensions and domain types.
 
-        Supports two initialization modes:
-        1. Legacy 1D mode (backward compatible): Specify Nx, xmin, xmax
-        2. N-dimensional mode (new): Specify spatial_bounds, spatial_discretization
+        Supports five initialization modes:
+        1. Legacy 1D mode: Specify Nx, xmin, xmax
+        2. N-D grid mode: Specify spatial_bounds, spatial_discretization
+        3. Geometry mode: Specify geometry object (with optional obstacles)
+        4. Network mode: Specify network graph
+        5. Custom components: Full mathematical control via MFGComponents
 
         Args:
-            xmin, xmax, Nx: Legacy 1D spatial domain parameters
+            xmin, xmax, Nx, Lx: Legacy 1D spatial domain parameters
             spatial_bounds: List of (min, max) tuples for each dimension
                            Example: [(0, 1), (0, 1)] for 2D unit square
             spatial_discretization: List of grid points per dimension
                                    Example: [50, 50] for 51×51 grid
-            T, Nt: Time domain parameters
-            sigma: Diffusion coefficient
+            geometry: BaseGeometry object for complex domains
+            obstacles: List of obstacle geometries
+            network: NetworkGraph for network MFG problems
+            T, Nt, time_domain: Time domain parameters (T, Nt) or tuple (T, Nt)
+            sigma, diffusion: Diffusion coefficient (sigma is standard name)
             coefCT: Control cost coefficient
             components: Optional MFGComponents for custom problem definition
             suppress_warnings: Suppress computational feasibility warnings
             **kwargs: Additional parameters
 
         Examples:
-            # 1D (legacy API - 100% backward compatible)
+            # Mode 1: 1D legacy (100% backward compatible)
             problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, Nt=100)
 
-            # 2D (new API)
+            # Mode 2: N-D grid
             problem = MFGProblem(
                 spatial_bounds=[(0, 1), (0, 1)],
                 spatial_discretization=[50, 50],
                 Nt=50
             )
 
-            # 3D (new API)
+            # Mode 3: Complex geometry with obstacles
+            from mfg_pde.geometry import Hyperrectangle, Hypersphere
+            domain = Hyperrectangle(bounds=[[0, 1], [0, 1]])
+            obstacle = Hypersphere(center=[0.5, 0.5], radius=0.1)
             problem = MFGProblem(
-                spatial_bounds=[(0, 1), (0, 1), (0, 1)],
-                spatial_discretization=[30, 30, 30],
-                Nt=30
+                geometry=domain,
+                obstacles=[obstacle],
+                time_domain=(1.0, 50),
+                diffusion=0.1
+            )
+
+            # Mode 4: Network MFG
+            import networkx as nx
+            graph = nx.grid_2d_graph(10, 10)
+            problem = MFGProblem(network=graph, time_domain=(1.0, 100))
+
+            # Mode 5: Custom components
+            components = MFGComponents(hamiltonian_func=..., ...)
+            problem = MFGProblem(
+                spatial_bounds=[(0, 1)],
+                spatial_discretization=[100],
+                Nt=50,
+                components=components
             )
         """
         import warnings
 
+        # Normalize parameter aliases
+        if time_domain is not None:
+            if T is not None or Nt is not None:
+                raise ValueError("Specify EITHER (T, Nt) OR time_domain, not both")
+            T, Nt = time_domain
+
+        if diffusion is not None:
+            if sigma is not None:
+                raise ValueError("Specify EITHER sigma OR diffusion, not both")
+            sigma = diffusion
+
+        # Set defaults for T, Nt, sigma if not provided
+        if T is None:
+            T = 1.0
+        if Nt is None:
+            Nt = 51
+        if sigma is None:
+            sigma = 1.0
+
         # Detect initialization mode
-        if Nx is not None and spatial_bounds is None:
-            # Mode 1: Legacy 1D initialization
-            if xmin is None:
-                xmin = 0.0
-            if xmax is None:
-                xmax = 1.0
+        mode = self._detect_init_mode(Nx=Nx, spatial_bounds=spatial_bounds, geometry=geometry, network=network)
+
+        # Dispatch to appropriate initializer
+        if mode == "1d_legacy":
+            # Mode 1: Legacy 1D
+            if Lx is not None:
+                # Use Lx to set xmin/xmax if provided
+                if xmin is None:
+                    xmin = 0.0
+                xmax = xmin + Lx
+            else:
+                if xmin is None:
+                    xmin = 0.0
+                if xmax is None:
+                    xmax = 1.0
             self._init_1d_legacy(xmin, xmax, Nx, T, Nt, sigma, coefCT)
-        elif spatial_bounds is not None and Nx is None:
-            # Mode 2: N-dimensional initialization
+
+        elif mode == "nd_grid":
+            # Mode 2: N-dimensional grid
             self._init_nd(spatial_bounds, spatial_discretization, T, Nt, sigma, coefCT, suppress_warnings)
-        elif Nx is None and spatial_bounds is None:
+
+        elif mode == "geometry":
+            # Mode 3: Complex geometry
+            self._init_geometry(geometry, obstacles, T, Nt, sigma, coefCT, suppress_warnings)
+
+        elif mode == "network":
+            # Mode 4: Network MFG
+            self._init_network(network, T, Nt, sigma, coefCT)
+
+        elif mode == "default":
             # Default: 1D with default parameters
             warnings.warn(
                 "No spatial domain specified. Using default 1D domain: [0, 1] with 51 points.",
@@ -153,11 +225,9 @@ class MFGProblem:
                 stacklevel=2,
             )
             self._init_1d_legacy(0.0, 1.0, 51, T, Nt, sigma, coefCT)
+
         else:
-            raise ValueError(
-                "Ambiguous initialization: Provide EITHER (Nx, xmin, xmax) for 1D "
-                "OR (spatial_bounds, spatial_discretization) for n-D, but not both."
-            )
+            raise ValueError(f"Unknown initialization mode: {mode}")
 
         # Store custom components if provided
         self.components = components
@@ -222,6 +292,9 @@ class MFGProblem:
 
         # Grid object (None for 1D - not needed, kept for compatibility)
         self._grid = None
+
+        # Set domain type
+        self.domain_type = "grid"
 
     def _init_nd(
         self,
@@ -297,6 +370,9 @@ class MFGProblem:
                 dimension=dimension, bounds=spatial_bounds, num_points=spatial_discretization
             )
 
+        # Set domain type
+        self.domain_type = "grid"
+
         # Check computational feasibility and warn if needed
         if not suppress_warnings:
             self._check_computational_feasibility()
@@ -356,6 +432,187 @@ class MFGProblem:
                 UserWarning,
                 stacklevel=3,
             )
+
+    def _detect_init_mode(
+        self,
+        Nx: int | None,
+        spatial_bounds: list[tuple[float, float]] | None,
+        geometry: Any | None,
+        network: Any | None,
+    ) -> str:
+        """
+        Detect which initialization mode to use based on provided parameters.
+
+        Returns:
+            mode: One of "1d_legacy", "nd_grid", "geometry", "network", "default"
+
+        Raises:
+            ValueError: If parameters are ambiguous or conflicting
+        """
+        # Count how many modes are specified
+        mode_indicators = {
+            "1d_legacy": Nx is not None,
+            "nd_grid": spatial_bounds is not None,
+            "geometry": geometry is not None,
+            "network": network is not None,
+        }
+
+        num_modes = sum(mode_indicators.values())
+
+        if num_modes == 0:
+            return "default"
+        elif num_modes > 1:
+            specified = [k for k, v in mode_indicators.items() if v]
+            raise ValueError(
+                f"Ambiguous initialization: Multiple modes specified: {specified}\n"
+                f"Provide ONLY ONE of:\n"
+                f"  - Nx (for 1D legacy mode)\n"
+                f"  - spatial_bounds (for n-D grid mode)\n"
+                f"  - geometry (for complex geometry mode)\n"
+                f"  - network (for network MFG mode)"
+            )
+        else:
+            # Exactly one mode specified
+            for mode, is_set in mode_indicators.items():
+                if is_set:
+                    return mode
+
+        # Should never reach here
+        return "default"
+
+    def _init_geometry(
+        self,
+        geometry: Any,
+        obstacles: list | None,
+        T: float,
+        Nt: int,
+        sigma: float,
+        coefCT: float,
+        suppress_warnings: bool,
+    ) -> None:
+        """
+        Initialize problem with complex geometry (implicit domains, obstacles).
+
+        Args:
+            geometry: BaseGeometry object
+            obstacles: List of obstacle geometries
+            T, Nt: Time domain parameters
+            sigma, coefCT: Physical parameters
+            suppress_warnings: Suppress warnings
+        """
+        # Import geometry types
+        try:
+            from mfg_pde.geometry.base_geometry import BaseGeometry
+        except ImportError as err:
+            raise ImportError(
+                "Complex geometry mode requires geometry module. Install with: pip install mfg_pde[geometry]"
+            ) from err
+
+        # Validate geometry object
+        if not isinstance(geometry, BaseGeometry):
+            raise TypeError(f"geometry must be a BaseGeometry instance, got {type(geometry)}")
+
+        # Store geometry
+        self.geometry = geometry
+        self.dimension = geometry.dimension
+        self.obstacles = obstacles or []
+        self.has_obstacles = len(self.obstacles) > 0
+
+        # Time domain
+        self.T = T
+        self.Nt = Nt
+        self.Dt = T / Nt if Nt > 0 else 0.0
+        self.tSpace = np.linspace(0, T, Nt + 1, endpoint=True)
+
+        # Physical parameters
+        self.sigma = sigma
+        self.coefCT = coefCT
+
+        # Generate mesh from geometry
+        self.mesh_data = geometry.generate_mesh()
+        self.collocation_points = self.mesh_data.vertices
+        self.num_spatial_points = len(self.collocation_points)
+
+        # Set spatial shape and bounds
+        self.spatial_shape = (self.num_spatial_points,)  # Unstructured
+        self.spatial_bounds = None  # Not a regular grid
+        self.spatial_discretization = None
+
+        # Legacy 1D attributes (None for geometry mode)
+        self.xmin = None
+        self.xmax = None
+        self.Lx = None
+        self.Nx = None
+        self.Dx = None
+        self.xSpace = None
+        self._grid = None
+
+        # Set domain type
+        self.domain_type = "implicit"
+
+    def _init_network(
+        self,
+        network: Any,
+        T: float,
+        Nt: int,
+        sigma: float,
+        coefCT: float,
+    ) -> None:
+        """
+        Initialize problem on network/graph.
+
+        Args:
+            network: NetworkGraph or networkx.Graph
+            T, Nt: Time domain parameters
+            sigma, coefCT: Physical parameters
+        """
+        # Store network
+        self.network = network
+        self.dimension = "network"  # Special dimension indicator
+        self.domain_type = "network"
+
+        # Get number of nodes
+        try:
+            import networkx as nx
+
+            if isinstance(network, nx.Graph):
+                self.num_nodes = network.number_of_nodes()
+                self.adjacency_matrix = nx.adjacency_matrix(network).toarray()
+            else:
+                # Assume custom NetworkGraph type
+                self.num_nodes = len(network.nodes)
+                self.adjacency_matrix = network.adjacency_matrix
+        except ImportError:
+            # Fallback: assume custom type
+            self.num_nodes = len(network.nodes)
+            self.adjacency_matrix = network.adjacency_matrix
+
+        # Time domain
+        self.T = T
+        self.Nt = Nt
+        self.Dt = T / Nt if Nt > 0 else 0.0
+        self.tSpace = np.linspace(0, T, Nt + 1, endpoint=True)
+
+        # Physical parameters
+        self.sigma = sigma
+        self.coefCT = coefCT
+
+        # Spatial discretization (nodes)
+        self.spatial_shape = (self.num_nodes,)
+        self.spatial_bounds = None
+        self.spatial_discretization = None
+
+        # Legacy 1D attributes (None for network mode)
+        self.xmin = None
+        self.xmax = None
+        self.Lx = None
+        self.Nx = None
+        self.Dx = None
+        self.xSpace = None
+        self._grid = None
+        self.geometry = None
+        self.obstacles = None
+        self.has_obstacles = False
 
     def get_computational_cost_estimate(self) -> dict:
         """
