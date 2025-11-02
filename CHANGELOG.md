@@ -13,6 +13,29 @@ Major architecture refactoring completing Phase 3.1 (MFGProblem), Phase 3.2 (Sol
 
 ### Added
 
+**Issue #216: Missing Utilities (Complete - All 4 Parts)**
+- **Part 1: Particle Interpolation** (commit 84e6e6d)
+  - `interpolate_grid_to_particles()` - Grid → Particles (1D/2D/3D)
+  - `interpolate_particles_to_grid()` - Particles → Grid (RBF, KDE, nearest)
+  - `estimate_kde_bandwidth()` - Automatic bandwidth selection
+  - Saves ~220 lines per research project
+- **Part 2: Signed Distance Functions** (commit 83f59f4)
+  - Primitives: `sdf_sphere()`, `sdf_box()` for 1D/2D/3D/nD
+  - CSG operations: `sdf_union()`, `sdf_intersection()`, `sdf_complement()`, `sdf_difference()`
+  - Smooth blending: `sdf_smooth_union()`, `sdf_smooth_intersection()`
+  - Gradient: `sdf_gradient()` using finite differences
+  - Saves ~150 lines per research project
+- **Part 3: QP Solver Caching** (already existed)
+  - `QPCache` - Hash-based caching with LRU eviction
+  - `QPSolver` - Unified solver with warm-starting
+  - Multiple backends: OSQP, scipy SLSQP, scipy L-BFGS-B
+  - Saves ~180 lines per project + 2-5× GFDM speedup
+- **Part 4: Convergence Monitoring** (already existed)
+  - `AdvancedConvergenceMonitor` - Plotting, stagnation detection
+  - `AdaptiveConvergenceWrapper` - Adaptive convergence criteria
+  - Saves ~60 lines per project
+- **Total Impact**: ~610 lines saved per research project + performance improvements
+
 **Phase 3.1: Unified Problem Class (PR #218)**
 - Single `MFGProblem` class replacing 5+ specialized problem classes
 - Flexible `MFGComponents` system for custom problem definitions
@@ -113,6 +136,12 @@ result = solve_mfg(problem, config="accurate")
 - Updated examples with new unified API
 - Added problem type taxonomy
 - Created Phase 3 completion summary
+- **New User Guides**:
+  - `docs/user_guides/particle_interpolation.md` - Complete particle interpolation reference
+  - `docs/user_guides/sdf_utilities.md` - Complete SDF utilities reference
+  - `docs/migration/PHASE_3_MIGRATION_GUIDE.md` - Phase 3 migration guide
+  - `docs/tutorials/01_getting_started.md` - Beginner tutorial
+  - `docs/tutorials/02_configuration_patterns.md` - Configuration patterns tutorial
 
 ### Technical Details
 
