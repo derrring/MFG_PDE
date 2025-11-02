@@ -32,13 +32,21 @@ class MFGComponents:
 
     This class holds all the mathematical components needed to fully specify
     an MFG problem, allowing users to provide custom implementations.
+
+    Supports multiple MFG formulations:
+    - Standard HJB-FP (Hamiltonian-based)
+    - Network/Graph MFG (discrete domains)
+    - Variational/Lagrangian (optimization-based)
+    - Stochastic MFG (common noise)
+    - High-dimensional (n-D spatial domains)
     """
 
-    # Core Hamiltonian components
+    # =========================================================================
+    # Core Hamiltonian Components (Standard MFG)
+    # =========================================================================
+
     hamiltonian_func: Callable | None = None  # H(x, m, p, t) -> float
     hamiltonian_dm_func: Callable | None = None  # dH/dm(x, m, p, t) -> float
-
-    # Optional Jacobian for advanced solvers
     hamiltonian_jacobian_func: Callable | None = None  # Jacobian contribution
 
     # Potential function V(x, t)
@@ -54,12 +62,59 @@ class MFGComponents:
     # Coupling terms (for advanced MFG formulations)
     coupling_func: Callable | None = None  # Additional coupling terms
 
-    # Problem parameters
+    # =========================================================================
+    # Network/Graph MFG Components
+    # =========================================================================
+
+    # Network geometry (if None, assumes continuous domain)
+    network_geometry: Any | None = None  # NetworkGeometry instance
+
+    # Node and edge interactions
+    node_interaction_func: Callable | None = None  # Interactions at nodes
+    edge_interaction_func: Callable | None = None  # Interactions along edges
+    edge_cost_func: Callable | None = None  # Cost of traversing edges
+
+    # =========================================================================
+    # Variational/Lagrangian MFG Components
+    # =========================================================================
+
+    # Lagrangian formulation L(t, x, v, m)
+    lagrangian_func: Callable | None = None  # Running cost function
+    lagrangian_dx_func: Callable | None = None  # ∂L/∂x
+    lagrangian_dv_func: Callable | None = None  # ∂L/∂v (velocity)
+    lagrangian_dm_func: Callable | None = None  # ∂L/∂m (coupling)
+
+    # Terminal cost for variational formulation
+    terminal_cost_func: Callable | None = None  # g(x) -> float
+    terminal_cost_dx_func: Callable | None = None  # ∂g/∂x
+
+    # Trajectory-based formulation (for NetworkMFG)
+    trajectory_cost_func: Callable | None = None  # Cost along paths
+
+    # Constraints (optional)
+    state_constraints: list[Callable] | None = None  # c(t, x) ≤ 0
+    velocity_constraints: list[Callable] | None = None  # h(t, x, v) ≤ 0
+    integral_constraints: list[Callable] | None = None  # ∫ψ(x,m)dx = const
+
+    # =========================================================================
+    # Stochastic MFG Components
+    # =========================================================================
+
+    # Noise specification
+    noise_intensity: float = 0.0  # Diffusion coefficient σ
+    common_noise_func: Callable | None = None  # Common noise W(t)
+    idiosyncratic_noise_func: Callable | None = None  # Individual noise Z(t)
+    correlation_matrix: NDArray | None = None  # Noise correlations
+
+    # =========================================================================
+    # Problem Parameters and Metadata
+    # =========================================================================
+
     parameters: dict[str, Any] = field(default_factory=dict)
 
     # Metadata
     description: str = "MFG Problem"
-    problem_type: str = "mfg"
+    problem_type: str = "mfg"  # Options: "mfg", "network", "variational", "stochastic", "highdim"
 
 
 # ============================================================================
@@ -540,6 +595,55 @@ class MFGProblem:
                 ["x_idx", "m_at_x"],  # Base required params
                 gradient_param_required=True,  # Must have EITHER derivs OR p_values
             )
+
+    def get_problem_type(self) -> str:
+        """
+        Detect problem type based on components and configuration.
+
+        Returns
+        -------
+        str
+            Problem type: "standard", "network", "variational", "stochastic", "highdim"
+
+        Examples
+        --------
+        >>> problem = MFGProblem(Nx=100)
+        >>> problem.get_problem_type()
+        'standard'
+
+        >>> components = MFGComponents(network_geometry=NetworkGeometry(...))
+        >>> problem = MFGProblem(components=components)
+        >>> problem.get_problem_type()
+        'network'
+        """
+        # Use explicit problem_type if provided
+        if self.components is not None and self.components.problem_type != "mfg":
+            return self.components.problem_type
+
+        # Auto-detect based on components
+        if self.components is not None:
+            # Check for network MFG
+            if self.components.network_geometry is not None:
+                return "network"
+
+            # Check for variational/Lagrangian MFG
+            if self.components.lagrangian_func is not None:
+                return "variational"
+
+            # Check for stochastic MFG
+            if (
+                self.components.noise_intensity > 0
+                or self.components.common_noise_func is not None
+                or self.components.idiosyncratic_noise_func is not None
+            ):
+                return "stochastic"
+
+        # Check for high-dimensional (d > 3)
+        if hasattr(self, "dimension") and self.dimension > 3:
+            return "highdim"
+
+        # Default: standard HJB-FP
+        return "standard"
 
     def _validate_function_signature(
         self, func: Callable, name: str, expected_params: list, gradient_param_required: bool = False
