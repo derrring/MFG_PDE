@@ -311,7 +311,7 @@ def high_dimensional_solver(use_gpu: bool = True) -> SolverConfig:
 
     High-dimensional problems require:
     - Meshfree methods (GFDM for HJB)
-    - Particle collocation (avoid curse of dimensionality)
+    - Many particles (avoid curse of dimensionality)
     - GPU acceleration (if available)
 
     Parameters
@@ -330,6 +330,14 @@ def high_dimensional_solver(use_gpu: bool = True) -> SolverConfig:
     >>> problem = MyHighDimProblem(dimension=10, ...)
     >>> config = presets.high_dimensional_solver()
     >>> result = solve_mfg(problem, config=config)
+
+    Note
+    ----
+    Uses hybrid mode (sample particles, output to grid via KDE).
+    For meshfree collocation output, set external_particles programmatically:
+    >>> import numpy as np
+    >>> config.fp.particle_config.mode = "collocation"
+    >>> config.fp.particle_config.external_particles = np.random.uniform(...)
     """
     device = "gpu" if use_gpu else "cpu"
     backend = "jax" if use_gpu else "numpy"
@@ -337,7 +345,7 @@ def high_dimensional_solver(use_gpu: bool = True) -> SolverConfig:
     return (
         ConfigBuilder()
         .solver_hjb_gfdm(delta=0.1, stencil_size=25, qp_optimization_level="auto")
-        .solver_fp_particle(num_particles=10000, mode="collocation")
+        .solver_fp_particle(num_particles=10000, mode="hybrid")
         .picard(max_iterations=50, tolerance=1e-6, anderson_memory=5)
         .backend(backend_type=backend, device=device)
         .logging(level="INFO", progress_bar=True)

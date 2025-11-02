@@ -93,11 +93,14 @@ from .modern_config import SolverConfig as ModernSolverConfig
 from .pydantic_config import FPConfig as PydanticFPConfig
 from .pydantic_config import GFDMConfig as PydanticGFDMConfig
 from .pydantic_config import HJBConfig as PydanticHJBConfig
+from .pydantic_config import (
+    MFGSolverConfig,  # Backward compatibility - unaliased import
+    extract_legacy_parameters,
+)
 from .pydantic_config import MFGSolverConfig as PydanticMFGSolverConfig
 from .pydantic_config import NewtonConfig as PydanticNewtonConfig
 from .pydantic_config import ParticleConfig as PydanticParticleConfig
 from .pydantic_config import PicardConfig as PydanticPicardConfig
-from .pydantic_config import extract_legacy_parameters
 
 # Old dataclass-based configurations
 from .solver_config import FPConfig as DataclassFPConfig
@@ -182,6 +185,7 @@ __all__ = [  # noqa: RUF022 - Intentionally organized by category, not alphabeti
     "production_config",
     "educational_config",
     # Old config classes (deprecated)
+    "MFGSolverConfig",  # Backward compatibility - Pydantic version
     "PydanticFPConfig",
     "PydanticGFDMConfig",
     "PydanticHJBConfig",
