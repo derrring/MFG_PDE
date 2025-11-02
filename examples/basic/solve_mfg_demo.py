@@ -78,6 +78,7 @@ def demo_custom_parameters():
         max_iterations=200,
         tolerance=1e-6,  # Tighter tolerance
         damping_factor=0.3,  # Custom damping
+        backend="numpy",  # Specify backend
         verbose=False,
     )
 
@@ -86,6 +87,7 @@ def demo_custom_parameters():
     print("  Max iterations: 200")
     print("  Tolerance: 1e-6")
     print("  Damping: 0.3")
+    print("  Backend: numpy")
     print("\nResults:")
     print(f"  Converged: {result.converged}")
     print(f"  Iterations: {result.iterations}")

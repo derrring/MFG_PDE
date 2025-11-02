@@ -191,12 +191,11 @@ class TestSolveMFGKwargsPassthrough:
 
         assert result.iterations >= 1
 
-    @pytest.mark.skip(reason="Backend parameter needs proper string-to-object conversion (Issue #TBD)")
     def test_backend_kwarg(self):
         """Test that backend parameter is passed through."""
         problem = ExampleMFGProblem()
 
-        # Should accept backend via **kwargs
+        # Should accept backend string via **kwargs (converted to backend object internally)
         result = solve_mfg(problem, method="fast", backend="numpy", max_iterations=2, verbose=False)
 
         assert result.iterations >= 1

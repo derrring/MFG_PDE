@@ -61,6 +61,7 @@ def solve_mfg(
             - damping_factor: Damping parameter for fixed-point (default: 0.5)
             - use_anderson: Enable Anderson acceleration (default: False)
             - backend: Computational backend ("numpy", "jax", "torch", "auto")
+                      String values are automatically converted to backend objects
             - hjb_method: Override HJB solver method
             - fp_method: Override FP solver method
 
@@ -184,6 +185,12 @@ def solve_mfg(
 
         kwargs["hjb_solver"] = HJBFDMSolver(problem=problem)
         kwargs["fp_solver"] = FPParticleSolver(problem=problem, num_particles=5000)
+
+    # Convert backend string to backend object if provided
+    if "backend" in kwargs and isinstance(kwargs["backend"], str):
+        from mfg_pde.backends import create_backend
+
+        kwargs["backend"] = create_backend(kwargs["backend"])
 
     # Create solver
     solver = solver_factory(problem=problem, custom_config=custom_config, **kwargs)
