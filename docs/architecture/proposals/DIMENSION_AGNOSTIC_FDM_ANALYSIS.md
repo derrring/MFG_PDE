@@ -1,8 +1,11 @@
 # Dimension-Agnostic FDM Implementation Analysis
 
 **Date**: 2025-10-30
-**Status**: Phase 2 Planning - Analyzing Existing Infrastructure
-**Related**: PHASE_2_SHORT_TERM_PLAN.md (Priority 1: 2D/3D FDM Solvers)
+**Status**: ⚠️ **DEPRECATED - Dimensional Splitting Failed**
+**Updated**: 2025-11-02
+**Related**: See `docs/archived_methods/dimensional_splitting/README.md` for failure analysis
+
+⚠️ **WARNING**: This document describes the dimensional splitting approach that was implemented but later found to fail catastrophically (-81% mass loss) for MFG problems with advection. See end of document for current recommendations.
 
 ---
 
@@ -1016,10 +1019,52 @@ U, M, info = solver.solve()     # Just works
 
 ---
 
-**Document Version**: 1.2
+## ⚠️ DEPRECATION NOTICE (2025-11-02)
+
+### What Happened
+
+The dimensional splitting approach described in this document was **implemented and tested** but found to **fail catastrophically** for realistic MFG problems:
+
+**Test Results**:
+- Pure diffusion (no advection): ✓ Perfect (0% mass error)
+- **MFG with advection: ✗ CATASTROPHIC (-81% mass loss)**
+
+**Root Cause**:
+1. High Péclet number (advection >> diffusion) in MFG problems
+2. Operator non-commutativity: [∇·(mv), σ²Δm] ≠ 0
+3. Error compounds over 15-30 Picard iterations
+4. Boundary contamination from intermediate 1D solves
+
+**Decision**: Dimensional splitting **archived** for MFG problems
+
+### What Was Implemented Instead
+
+**For FP Equation** (✅ COMPLETED):
+- **Method**: Full coupled sparse linear system
+- **File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:383` (`_solve_fp_nd_full_system`)
+- **Performance**: ~1-2% mass error (acceptable)
+- **Dimensions**: 2D, 3D, 4D+ supported
+- **PR**: #204 (merged 2025-11-01)
+
+**For HJB Equation** (⏳ Future Work):
+- **Current**: Use GFDM or Semi-Lagrangian
+- **Future**: Implement full nD HJB FDM (similar to FP approach)
+
+### References
+
+**Failure Analysis**: `docs/archived_methods/dimensional_splitting/README.md`
+**Archived Code**: `docs/archived_methods/dimensional_splitting/code/`
+**Current Overview**: `docs/architecture/dimension_agnostic_solvers.md`
+
+---
+
+**Document Version**: 1.3 (DEPRECATED)
 **Created**: 2025-10-30
 **Updated**:
 - 2025-10-30 (v1.1): Answered open questions Q1-Q3
 - 2025-10-30 (v1.2): Updated to dimension-agnostic design (works for any dimension)
-**Status**: Investigation Complete - Ready for Implementation
-**Related**: PHASE_2_SHORT_TERM_PLAN.md (Weeks 1-6)
+- 2025-11-02 (v1.3): **DEPRECATED** - Dimensional splitting failed, added deprecation notice
+**Status**: ⚠️ **DEPRECATED** - Method failed in testing
+**Related**:
+- `docs/archived_methods/dimensional_splitting/README.md` (failure analysis)
+- `docs/architecture/dimension_agnostic_solvers.md` (current methods)

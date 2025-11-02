@@ -31,12 +31,15 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
    │  └─ Files: mfg_pde/alg/numerical/{hjb,fp}_solvers/base_{hjb,fp}.py
    │  └─ Direct finite difference on uniform 1D grid
    │
-   └─ FDM nD via Dimensional Splitting (production)
-      └─ Files:
-         - HJB: mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py
-         - FP: mfg_pde/alg/numerical/fp_solvers/fp_fdm_multid.py
-         - MFG: Automatic via mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py
-      └─ Strang splitting: alternating 1D sweeps
+   ├─ FDM nD via Full Coupled System (production - FP only)
+   │  └─ Files: mfg_pde/alg/numerical/fp_solvers/fp_fdm.py (_solve_fp_nd_full_system)
+   │  └─ Direct sparse linear system for nD FP equation
+   │  └─ No splitting error, ~1-2% mass error
+   │
+   └─ FDM nD via Dimensional Splitting (DEPRECATED - archived)
+      └─ Files: docs/archived_methods/dimensional_splitting/code/
+      └─ FAILURE: -81% mass loss for MFG with advection
+      └─ See: docs/archived_methods/dimensional_splitting/README.md
 
 2. FIXED IRREGULAR GRID (Meshfree Eulerian)
    ├─ GFDM (production)
@@ -55,16 +58,66 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
 
 ---
 
-## Method 1: FDM with Dimensional Splitting
+## Method 1: FDM nD with Full Coupled System (Production - FP Only)
 
 ### Overview
 
+**Status**: ✅ Production-ready for FP equation, ❌ HJB not yet implemented
+**Approach**: Direct sparse linear system for full nD discretization
+**Key Idea**: Solve coupled advection-diffusion system without operator splitting
+**Implementation**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:383` (`_solve_fp_nd_full_system`)
+
+### Algorithm
+
+For each timestep forward from 0 to T:
+1. **Compute gradients**: ∇U(t,x) from value function (all dimensions)
+2. **Compute velocity**: v = -coefCT · ∇U (advection field)
+3. **Assemble system**: (I/Δt + A + D) where:
+   - A: full nD advection operator with upwinding
+   - D: full nD diffusion operator (Laplacian)
+4. **Solve**: Sparse linear system m^{n+1} = solve(system_matrix, rhs)
+5. **Enforce**: m ≥ 0 (non-negativity)
+
+### Advantages
+
+✅ **No splitting error**: Direct discretization preserves operator coupling
+✅ **Mass conservative**: ~1-2% error (normal FDM accuracy)
+✅ **Stable for high Pe**: Modern sparse solvers handle advection-diffusion
+✅ **Dimension-agnostic**: Works for 2D, 3D, 4D+ automatically
+
+### Limitations
+
+⚠️ **Memory**: O(N^d) sparse matrix storage
+⚠️ **Computational cost**: O(N^d) unknowns per timestep
+⚠️ **HJB not implemented**: Currently FP only, HJB needs separate implementation
+
+### When to Use
+
+**Good for**:
+- Multi-dimensional MFG problems (2D, 3D)
+- Advection-dominated flows (high Péclet number)
+- Production code requiring mass conservation
+
+**Not recommended for**:
+- Very high dimensions (d > 4) due to curse of dimensionality
+- HJB equation (use GFDM or Semi-Lagrangian instead)
+
+---
+
+## Method 1b: FDM with Dimensional Splitting (DEPRECATED)
+
+### Overview
+
+**Status**: ⚠️ **DEPRECATED - ARCHIVED**
+**Reason**: Catastrophic failure (-81% mass loss) for MFG with advection
+**Archived**: `docs/archived_methods/dimensional_splitting/`
+
 **Approach**: Operator splitting in space (Strang splitting)
 **Key Idea**: Solve nD problem via alternating 1D sweeps
-**Implementation**: Complete for both HJB and FP solvers (2025-10-31)
-  - `hjb_fdm_multid.py`: HJB backward solve
-  - `fp_fdm_multid.py`: FP forward solve
-  - `fixed_point_iterator.py`: Automatic dimension detection for MFG coupling
+**Implementation**: Archived code (not recommended for use)
+  - `hjb_fdm_multid.py`: HJB backward solve (archived)
+  - `fp_fdm_multid.py`: FP forward solve (archived)
+  - Failure documented in `docs/archived_methods/dimensional_splitting/README.md`
 
 ### Algorithm (2D Example)
 
@@ -100,15 +153,22 @@ For each timestep backward from T to 0:
 
 ### When to Use
 
-**Good for**:
-- Isotropic MFG problems (standard crowd dynamics)
-- Quick classical baselines
-- Benchmarking against more complex methods
+⚠️ **NOT RECOMMENDED FOR ANY USE** ⚠️
 
-**Not recommended for**:
-- Anisotropic Hamiltonians with strong cross-coupling
-- Problems requiring exact cross-derivatives
-- Irregular domains (requires regular grid)
+**Historical context only**:
+- Method was initially attractive for reusing 1D code
+- Works perfectly for pure diffusion problems
+- Fails catastrophically for MFG with advection
+
+**Why it fails**:
+- High Péclet number (advection >> diffusion) in MFG
+- Operator non-commutativity: [∇·(mv), Δm] ≠ 0
+- Error compounds over Picard iterations
+- Result: -81% mass loss in realistic test cases
+
+**Use instead**:
+- FP: Full nD coupled system (`_solve_fp_nd_full_system`)
+- HJB: GFDM or Semi-Lagrangian methods
 
 ### Implementation Details
 
@@ -375,8 +435,10 @@ where w_j are weights (e.g., inverse distance).
 
 | Method | Grid Type | Cross-Deriv | Complexity | Status | Use Case |
 |--------|-----------|-------------|------------|--------|----------|
-| **FDM + Splitting** | Regular | Approx O(Δt²) | Low | ✅ Prod | Classical baselines |
+| **FDM Full nD (FP)** | Regular | Exact | Medium | ✅ Prod | 2D/3D FP equation |
+| **FDM Splitting** | Regular | Fails | Low | ⚠️ DEPRECATED | ~~NONE~~ (archived) |
 | **GFDM** | Irregular fixed | Exact | Medium | ✅ Prod | Robust production |
+| **Semi-Lagrangian** | Regular | Exact | Medium | ✅ Prod | HJB equation (1D/2D) |
 | **Adaptive Eulerian** | Irregular fixed | Exact | Medium-High | 🔬 Research | Efficient adaptive |
 | **Particle Dual** | Dynamic | Exact | High | 🔬 Research | Novel Lagrangian |
 
@@ -494,33 +556,38 @@ solver.solve_hjb_system(M_density, U_final, U_prev)  # Works for 1D/2D/3D/...
 ```
 START: Need to solve nD MFG problem
   |
-  ├─ Is problem isotropic (H = (1/2)|p|²)?
-  │   YES → Use FDM + Splitting (fast baseline)
-  │   NO ↓
+  ├─ Which equation? FP or HJB?
+  │   FP → Use FDM Full nD (production, 2D/3D)
+  │   HJB ↓
   │
-  ├─ Need exact cross-derivatives?
-  │   YES → Use GFDM (production) or Adaptive Eulerian (research)
-  │   NO → FDM Splitting sufficient
+  ├─ What dimension?
+  │   1D → Use FDM 1D (base_hjb.py)
+  │   2D/3D ↓
   │
   ├─ Have irregular domain or obstacles?
   │   YES → Use GFDM (flexible geometry)
-  │   NO → FDM Splitting on regular grid
+  │   NO ↓
+  │
+  ├─ Need pure FDM for regular grid?
+  │   YES → Use Semi-Lagrangian (characteristic-based) or full nD HJB FDM (future)
+  │   NO → Use GFDM (works on regular grids too)
   │
   ├─ Research on adaptive methods?
   │   YES → Explore Adaptive Eulerian or Particle Collocation
-  │   NO → Use production methods (FDM/GFDM)
+  │   NO → Use production methods (GFDM/Semi-Lagrangian)
   │
   └─ Need real-time performance?
-      YES → Use FDM Splitting (fastest)
-      NO → GFDM acceptable
+      YES → Consider GFDM with coarse grid or Semi-Lagrangian
+      NO → GFDM or Semi-Lagrangian acceptable
 ```
 
 ### Recommended Starting Point by Use Case
 
 | Use Case | Recommended Method | Alternative |
 |----------|-------------------|-------------|
-| Classical MFG baseline | FDM + Splitting | - |
-| Production solver | GFDM | FDM + Splitting |
+| 2D/3D FP equation | FDM Full nD | GFDM |
+| 2D/3D HJB equation | GFDM | Semi-Lagrangian |
+| Production solver | GFDM | Semi-Lagrangian |
 | Anisotropic problem | GFDM | Adaptive Eulerian (research) |
 | Irregular domain | GFDM | - |
 | Research on adaptation | Adaptive Eulerian | Particle Collocation |
@@ -530,20 +597,25 @@ START: Need to solve nD MFG problem
 
 ## Future Directions
 
-### Phase 2: Dimension-Agnostic FDM (Completed 2025-10-31)
+### Completed (2025-10-31 to 2025-11-01)
 
-- ✅ **HJB FDM nD**: Dimensional splitting for HJB solver (Weeks 1-2)
-- ✅ **FP FDM nD**: Dimensional splitting for FP solver (Weeks 3-4)
-- ✅ **Integration**: Coupled HJB-FP system integration tests (Week 5)
-- ✅ **Factory & Examples**: create_basic_solver() auto-detection + 2D example (Week 6)
-- ✅ **Documentation**: This document and architecture docs
+- ✅ **FP FDM nD**: Full coupled system solver (replaces dimensional splitting)
+- ✅ **Bug Discovery**: Identified catastrophic failure of dimensional splitting (-81% mass loss)
+- ✅ **Archival**: Moved dimensional splitting to `docs/archived_methods/`
+- ✅ **Semi-Lagrangian 2D**: Fixed TensorProductGrid API issues
+- ✅ **Documentation**: Updated to reflect deprecated methods
+
+### In Progress (2025-11)
+
+- 🔄 **Semi-Lagrangian nD**: Extending Semi-Lagrangian to arbitrary dimensions (current work)
+- 🔄 **Testing**: Validating FDM Full nD vs GFDM on benchmark problems
 
 ### Next Steps (Phase 3)
 
-- ⏳ **Validation**: Test FDM vs GFDM on benchmark problems
+- ⏳ **HJB FDM nD**: Full coupled system for HJB (like FP, without splitting)
 - ⏳ **Performance**: Benchmark 2D/3D solvers
-- ⏳ **Parallel FDM**: Parallelize 1D sweeps (embarrassingly parallel)
 - ⏳ **User Guide**: Comprehensive multidimensional MFG tutorial
+- ⏳ **Validation suite**: Automated comparison of FDM vs GFDM vs Semi-Lagrangian
 
 ### Long Term (6-12 months)
 
