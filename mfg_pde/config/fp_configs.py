@@ -9,12 +9,9 @@ This module provides configuration for all FP solver methods:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 class FDMFPConfig(BaseModel):
@@ -53,8 +50,8 @@ class ParticleConfig(BaseModel):
         Particle mode (default: hybrid):
         - hybrid: Sample particles, output to grid via KDE
         - collocation: Use external particles, output on particles (meshfree)
-    external_particles : np.ndarray | None
-        External collocation points (required for collocation mode)
+    external_particles : Any
+        External collocation points (ndarray, required for collocation mode)
         NOTE: This field is excluded from serialization (use only programmatically)
 
     Examples
@@ -75,7 +72,7 @@ class ParticleConfig(BaseModel):
     kde_bandwidth: float | Literal["auto"] = "auto"
     normalization: Literal["none", "initial_only", "all"] = "initial_only"
     mode: Literal["hybrid", "collocation"] = "hybrid"
-    external_particles: np.ndarray | None = Field(default=None, exclude=True)
+    external_particles: Any = Field(default=None, exclude=True)
 
     model_config = {"arbitrary_types_allowed": True}
 
