@@ -6,7 +6,13 @@
 [![Release](https://img.shields.io/github/v/release/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/releases)
 [![License](https://img.shields.io/github/license/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/blob/main/LICENSE)
 
-A modern Python framework for solving Mean Field Games with modular solver architecture, GPU acceleration, reinforcement learning, and state-of-the-art numerical methods.
+A modern Python framework for solving Mean Field Games with unified architecture, modular solver design, GPU acceleration, reinforcement learning, and state-of-the-art numerical methods.
+
+> **✨ v0.9.0 Released!** - Phase 3 Complete: Unified Architecture + Essential Utilities
+> - Simplified API: 10+ lines → 2 lines
+> - Utilities: Particle interpolation, SDF, QP caching, convergence monitoring
+> - ~610 lines saved per research project
+> - See [Release Notes](https://github.com/derrring/MFG_PDE/releases/tag/v0.9.0)
 
 **🎯 Research-Grade**: Factory API for full algorithm access
 **🧩 Three Solver Tiers**: Basic FDM / Hybrid (DEFAULT) / Advanced (WENO, Semi-Lagrangian)
@@ -73,24 +79,77 @@ Installation options:
   GPU support:      pip install mfg-pde[gpu]
 ```
 
-### Your First MFG Solution (3 lines)
+### Your First MFG Solution (2 lines) - NEW v0.9.0 API
 
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_standard_solver
+from mfg_pde import solve_mfg, ExampleMFGProblem
 
-problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
-solver = create_standard_solver(problem, "fixed_point")  # Default: mass-conserving hybrid
-result = solver.solve()
+# Solve with unified API - configuration handled automatically
+result = solve_mfg(ExampleMFGProblem(Nx=50, Nt=20, T=1.0), config="fast")
 
 # Check results
 print(f"Converged: {result.converged}")
+print(f"Iterations: {result.iterations}")
 print(f"Mass error: {result.mass_conservation_error:.2e}")  # ~10⁻¹⁵
 ```
 
-**That's it!** You've solved a Mean Field Games system with research-grade quality.
+**That's it!** You've solved a Mean Field Games system with the new unified API.
+
+**Three Configuration Patterns** (all equivalent performance):
+```python
+# Pattern 1: Preset strings (quickest)
+result = solve_mfg(problem, config="accurate")
+
+# Pattern 2: Preset objects (explicit)
+from mfg_pde.config import presets
+result = solve_mfg(problem, config=presets.accurate_solver())
+
+# Pattern 3: Builder API (flexible)
+from mfg_pde.config import ConfigBuilder
+config = ConfigBuilder().picard(tolerance=1e-8).build()
+result = solve_mfg(problem, config=config)
+```
+
+See [Configuration Patterns Tutorial](docs/tutorials/02_configuration_patterns.md) for details.
 
 ## 🌟 **Key Capabilities**
+
+### **🛠️ Essential Utilities** (NEW v0.9.0)
+
+Save ~610 lines of code per research project with production-grade utilities:
+
+```python
+# Particle interpolation (Grid ↔ Particles)
+from mfg_pde.utils import interpolate_grid_to_particles, interpolate_particles_to_grid
+
+u_particles = interpolate_grid_to_particles(u_grid, (0, 1), particles)
+u_grid = interpolate_particles_to_grid(values, particles, (51,), (0, 1), method="rbf")
+
+# Signed distance functions (Obstacles, domains, geometry)
+from mfg_pde.utils import sdf_sphere, sdf_box, sdf_union, sdf_difference
+
+obstacles = sdf_union(
+    sdf_sphere(points, center=[0.3, 0.5], radius=0.1),
+    sdf_box(points, bounds=[[0.6, 0.8], [0.4, 0.6]])
+)
+domain = sdf_difference(base_domain, obstacles)  # Domain with holes
+
+# QP solver caching (2-5× GFDM speedup)
+from mfg_pde.utils import QPSolver, QPCache
+
+cache = QPCache(max_size=1000)
+solver = QPSolver(backend="osqp", cache=cache)
+solution = solver.solve_weighted_least_squares(A, b, W, bounds=bounds)
+
+# Convergence monitoring
+from mfg_pde.utils import AdvancedConvergenceMonitor
+
+monitor = AdvancedConvergenceMonitor(plot_every=5)
+monitor.update(iteration, residual)
+monitor.plot(save_path="convergence.png")
+```
+
+See [Particle Interpolation Guide](docs/user_guides/particle_interpolation.md) and [SDF Utilities Guide](docs/user_guides/sdf_utilities.md).
 
 ### **💾 Data Persistence & I/O**
 ```python
@@ -389,8 +448,18 @@ result = solver.solve()
 ## Documentation
 
 ### **For Users (Researchers & Practitioners)**
-- **[Quick Start](docs/user/quickstart.md)** - Factory API tutorial (5 minutes)
+
+**Getting Started (v0.9.0)**:
+- **[Getting Started Tutorial](docs/tutorials/01_getting_started.md)** - First solve in 30 minutes
+- **[Configuration Patterns](docs/tutorials/02_configuration_patterns.md)** - Three configuration patterns
+- **[Phase 3 Migration Guide](docs/migration/PHASE_3_MIGRATION_GUIDE.md)** - Upgrading from v0.8.x
+
+**User Guides**:
+- **[Particle Interpolation](docs/user_guides/particle_interpolation.md)** - Grid ↔ Particles conversion
+- **[SDF Utilities](docs/user_guides/sdf_utilities.md)** - Signed distance functions for obstacles
 - **[Solver Selection Guide](docs/user/SOLVER_SELECTION_GUIDE.md)** - Choosing solver tiers
+
+**Examples**:
 - **[Examples](examples/)** - Working examples and tutorials
 - **[Basic Examples Guide](examples/basic/README.md)** - 11 examples with learning paths
 
@@ -442,7 +511,7 @@ If you use MFG_PDE in your research, please cite:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={1.7.3},
+  version={0.9.0},
   url={https://github.com/derrring/MFG_PDE},
   note={Python package for numerical methods in Mean Field Games}
 }
