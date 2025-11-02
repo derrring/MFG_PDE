@@ -78,7 +78,7 @@ class BackendConfig(BaseModel):
 
 class PicardConfig(BaseModel):
     """
-    Configuration for Picard (fixed-point) iteration.
+    Configuration for Picard (fixed-point) iteration with damping.
 
     Attributes
     ----------
@@ -86,6 +86,11 @@ class PicardConfig(BaseModel):
         Maximum number of iterations (default: 100)
     tolerance : float
         Convergence tolerance (default: 1e-6)
+    damping_factor : float
+        Damping factor θ ∈ (0, 1] for update: u^{n+1} = θu_new + (1-θ)u^n
+        - 1.0: No damping (faster but may diverge)
+        - 0.5: Moderate damping (balanced, default)
+        - <0.3: Heavy damping (slower but more stable)
     anderson_memory : int
         Anderson acceleration memory depth (0 = disabled, default: 0)
     verbose : bool
@@ -94,6 +99,7 @@ class PicardConfig(BaseModel):
 
     max_iterations: int = Field(default=100, ge=1)
     tolerance: float = Field(default=1e-6, gt=0)
+    damping_factor: float = Field(default=0.5, gt=0, le=1.0)
     anderson_memory: int = Field(default=0, ge=0)
     verbose: bool = True
 
