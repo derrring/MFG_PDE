@@ -1,8 +1,10 @@
-# Factory API Quickstart
+# MFG_PDE Quickstart
 
 **Get started with MFG_PDE in 5 minutes**
 
-This guide shows you the **factory API** - the primary interface for MFG_PDE users.
+MFG_PDE provides two interfaces:
+1. **`solve_mfg()`** - One-line solver (NEW in v0.8+)
+2. **Factory API** - Fine-grained control with `create_*_solver()` functions
 
 ---
 
@@ -25,7 +27,64 @@ pip install mfg-pde
 
 ---
 
-## Your First MFG Solution (2 minutes)
+## Simplest Example (30 seconds) - NEW!
+
+**New in v0.8**: One-line solver with automatic configuration:
+
+```python
+from mfg_pde import ExampleMFGProblem, solve_mfg
+
+# Create and solve in one line
+problem = ExampleMFGProblem()
+result = solve_mfg(problem)
+
+# Access results
+print(f"Converged: {result.converged}")
+print(f"Iterations: {result.iterations}")
+print(result.U.shape)  # Value function
+print(result.M.shape)  # Density
+```
+
+**That's it!** The solver automatically:
+- Selects appropriate method (HJB-FDM + FP-Particle hybrid)
+- Chooses resolution based on dimension (100 for 1D, 50×50 for 2D)
+- Sets sensible defaults (max_iterations=100, tolerance=1e-4)
+
+### Method Presets
+
+```python
+# Fast (optimized for speed)
+result = solve_mfg(problem, method="fast")
+
+# Accurate (high precision)
+result = solve_mfg(problem, method="accurate")
+
+# Research (comprehensive diagnostics)
+result = solve_mfg(problem, method="research")
+```
+
+### Custom Parameters
+
+```python
+# Override defaults
+result = solve_mfg(
+    problem,
+    method="accurate",
+    resolution=150,         # Higher resolution
+    max_iterations=200,     # More iterations
+    tolerance=1e-6,         # Tighter tolerance
+    damping_factor=0.3,     # Custom damping
+    backend="numpy"         # Specify backend
+)
+```
+
+**When to use `solve_mfg()`**: Quick prototyping, standard problems, getting started
+
+**When to use Factory API**: Custom solvers, fine control, research comparison
+
+---
+
+## Your First MFG Solution with Factory API (2 minutes)
 
 ### Step 1: Import and Create Problem
 

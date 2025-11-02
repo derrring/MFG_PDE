@@ -6,9 +6,15 @@ This module provides utilities for converting between particle and grid represen
 essential for hybrid particle-grid methods in MFG problems.
 
 Key Functions:
-- interpolate_grid_to_particles: Sample grid values at particle positions
-- interpolate_particles_to_grid: Estimate density/values on grid from particles
+- interpolate_grid_to_particles: Sample grid values at particle positions (supports arbitrary nD)
+- interpolate_particles_to_grid: Estimate density/values on grid from particles (supports arbitrary nD)
 - adaptive_bandwidth_selection: Optimal KDE bandwidth selection
+
+Dimension Support:
+- Fully dimension-agnostic (1D, 2D, 3D, 4D+)
+- Uses scipy.interpolate.RegularGridInterpolator for nD interpolation
+- Uses scipy.stats.gaussian_kde for nD kernel density estimation
+- Uses np.meshgrid for arbitrary-dimensional grid generation
 
 Use Cases:
 - Hybrid particle-grid solvers
@@ -63,17 +69,19 @@ def interpolate_grid_to_particles(
     """
     Interpolate values from regular grid to particle positions.
 
-    Supports 1D, 2D, and 3D grids with multiple interpolation methods.
+    Supports arbitrary-dimensional grids (1D, 2D, 3D, 4D, ...) with multiple interpolation methods.
 
     Args:
         grid_values: Grid values
             - 1D: shape (Nx,) or (Nt, Nx)
             - 2D: shape (Nx, Ny) or (Nt, Nx, Ny)
             - 3D: shape (Nx, Ny, Nz) or (Nt, Nx, Ny, Nz)
+            - nD: shape (Nx1, Nx2, ..., Nxd) or (Nt, Nx1, Nx2, ..., Nxd)
         grid_bounds: Spatial bounds for each dimension
             - 1D: ((xmin, xmax),)
             - 2D: ((xmin, xmax), (ymin, ymax))
             - 3D: ((xmin, xmax), (ymin, ymax), (zmin, zmax))
+            - nD: ((x1_min, x1_max), (x2_min, x2_max), ..., (xd_min, xd_max))
         particle_positions: Particle coordinates, shape (N_particles, d)
         method: Interpolation method
             - "linear": Linear interpolation (fast, C0 continuous)
@@ -210,11 +218,12 @@ def interpolate_particles_to_grid(
     Args:
         particle_positions: Particle coordinates
             - 1D: shape (N_particles,) or (N_particles, 1)
-            - 2D/3D: shape (N_particles, d)
+            - nD: shape (N_particles, d)
         grid_points: Grid coordinates
             - 1D: array of shape (Nx,)
             - 2D: tuple (x_coords, y_coords) each shape (Nx,) and (Ny,)
             - 3D: tuple (x_coords, y_coords, z_coords)
+            - nD: tuple (x1_coords, x2_coords, ..., xd_coords)
         particle_values: Optional values at particles, shape (N_particles,)
             If None, estimates density (default behavior)
         method: Interpolation method
@@ -268,15 +277,10 @@ def interpolate_particles_to_grid(
             raise ValueError(f"Grid dimension ({len(grid_points)}) doesn't match particle dimension ({dimension})")
         grid_shape = tuple(len(g) for g in grid_points)
 
-        # Create meshgrid for evaluation
-        if dimension == 2:
-            X, Y = np.meshgrid(grid_points[0], grid_points[1], indexing="ij")
-            eval_points = np.column_stack([X.ravel(), Y.ravel()])
-        elif dimension == 3:
-            X, Y, Z = np.meshgrid(grid_points[0], grid_points[1], grid_points[2], indexing="ij")
-            eval_points = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
-        else:
-            raise ValueError(f"Unsupported dimension: {dimension}")
+        # Create meshgrid for evaluation (dimension-agnostic)
+        # np.meshgrid works for arbitrary dimensions
+        grids = np.meshgrid(*grid_points, indexing="ij")
+        eval_points = np.column_stack([grid.ravel() for grid in grids])
     else:
         # 1D grid
         if dimension != 1:
@@ -334,6 +338,9 @@ def interpolate_particles_to_grid(
             # Multi-dimensional histogram
             bins = [grid_points[i] for i in range(dimension)]
             counts, _ = np.histogramdd(particle_positions, bins=bins, weights=particle_values)
+            # Histogram has shape (n-1, n-1, ..., n-1) for nD
+            # Update grid_shape to match histogram output
+            grid_shape = tuple(len(grid_points[i]) - 1 for i in range(dimension))
             grid_values = counts.ravel()
 
     else:
