@@ -348,85 +348,111 @@ class HighDimMFGProblem(ABC):
         plotter.show()
 
 
-class GridBasedMFGProblem(MFGProblem):
+def GridBasedMFGProblem(
+    domain_bounds: tuple,  # e.g., (0, 1, 0, 1) for 2D, (0, 1, 0, 1, 0, 1) for 3D, etc.
+    grid_resolution: int | tuple[int, ...],
+    time_domain: tuple[float, int] = (1.0, 100),
+    diffusion_coeff: float = 0.1,
+) -> MFGProblem:
     """
-    Legacy base class for grid-based MFG problems (backward compatible).
+    Factory function for grid-based MFG problems (backward compatible).
 
-    DEPRECATED: Use MFGProblem directly instead of inheriting from this class.
+    DEPRECATED: Use MFGProblem() directly with spatial_bounds parameter.
 
-    This class exists only to support existing code that inherits from
-    GridBasedMFGProblem. It will be removed in v2.0.0.
+    This function provides backward compatibility for code that used the old
+    GridBasedMFGProblem class. It converts parameters to the unified MFGProblem
+    interface.
 
     Deprecation Timeline:
     - v0.9.0 (2025-Q1): Added deprecation warning
     - v1.0.0 (2025-Q2): Warning becomes more prominent
-    - v2.0.0 (2026-Q1): Class removed entirely
+    - v2.0.0 (2026-Q1): Function removed entirely
 
-    Migration:
-        # Old (deprecated):
-        class MyProblem(GridBasedMFGProblem):
-            def __init__(self, ...):
-                super().__init__(domain_bounds=(...), ...)
+    Migration Example:
+        # Old API (deprecated):
+        problem = GridBasedMFGProblem(
+            domain_bounds=(0, 1, 0, 1),
+            grid_resolution=50,
+            time_domain=(1.0, 100),
+            diffusion_coeff=0.1
+        )
 
-        # New (recommended):
-        class MyProblem(MFGProblem):
-            def __init__(self, ...):
-                super().__init__(spatial_bounds=[...], ...)
+        # New API (recommended):
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)],
+            spatial_discretization=[50, 50],
+            T=1.0,
+            Nt=100,
+            sigma=0.1
+        )
+
+    Args:
+        domain_bounds: Domain boundaries (2*dim values: min/max for each dimension).
+            Examples:
+            - 2D: (xmin, xmax, ymin, ymax)
+            - 3D: (xmin, xmax, ymin, ymax, zmin, zmax)
+        grid_resolution: Grid points per dimension (int for uniform, tuple for per-dimension).
+        time_domain: (T_final, N_timesteps)
+        diffusion_coeff: Diffusion coefficient
+
+    Returns:
+        MFGProblem: Unified problem instance
+
+    Raises:
+        ValueError: If parameters are invalid
     """
+    import warnings
 
-    def __init__(
-        self,
-        domain_bounds: tuple,
-        grid_resolution: int | tuple[int, ...],
-        time_domain: tuple[float, int] = (1.0, 100),
-        diffusion_coeff: float = 0.1,
-    ):
-        import warnings
+    warnings.warn(
+        "GridBasedMFGProblem is deprecated and will be removed in v2.0.0. "
+        "Use MFGProblem() directly:\n"
+        "  MFGProblem(\n"
+        "      spatial_bounds=[(xmin, xmax), (ymin, ymax), ...],\n"
+        "      spatial_discretization=[Nx, Ny, ...],\n"
+        "      T=T_final, Nt=N_timesteps, sigma=diffusion_coeff\n"
+        "  )\n"
+        "See docs/migration/unified_problem_migration.md for details.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
-        warnings.warn(
-            "GridBasedMFGProblem class is deprecated and will be removed in v2.0.0. "
-            "Use MFGProblem() directly. See docs/migration/unified_problem_migration.md",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+    # Determine dimension from bounds
+    dimension = len(domain_bounds) // 2
 
-        # Determine dimension
-        dimension = len(domain_bounds) // 2
-        spatial_bounds = [(domain_bounds[2 * i], domain_bounds[2 * i + 1]) for i in range(dimension)]
+    if dimension == 0:
+        raise ValueError("domain_bounds must contain at least 2 values (min, max for 1D)")
 
-        # Convert grid_resolution
-        if isinstance(grid_resolution, int):
-            spatial_discretization = [grid_resolution] * dimension
-        else:
-            spatial_discretization = list(grid_resolution)
+    # Convert domain_bounds to spatial_bounds
+    spatial_bounds = [(domain_bounds[2 * i], domain_bounds[2 * i + 1]) for i in range(dimension)]
 
-        # Extract time parameters
-        T, Nt = time_domain
+    # Convert grid_resolution to spatial_discretization
+    if isinstance(grid_resolution, int):
+        spatial_discretization = [grid_resolution] * dimension
+    else:
+        if len(grid_resolution) != dimension:
+            raise ValueError(
+                f"For {dimension}D problems, grid_resolution must be int or {dimension}-tuple, "
+                f"got {len(grid_resolution)}-tuple"
+            )
+        spatial_discretization = list(grid_resolution)
 
-        # Initialize parent MFGProblem
-        super().__init__(
-            spatial_bounds=spatial_bounds,
-            spatial_discretization=spatial_discretization,
-            T=T,
-            Nt=Nt,
-            sigma=diffusion_coeff,
-        )
+    # Extract time parameters
+    T, Nt = time_domain
 
-        # Store legacy attributes for backward compatibility
-        self.domain_bounds = domain_bounds
-        self.grid_resolution = grid_resolution
+    # Create unified MFGProblem
+    problem = MFGProblem(
+        spatial_bounds=spatial_bounds,
+        spatial_discretization=spatial_discretization,
+        T=T,
+        Nt=Nt,
+        sigma=diffusion_coeff,
+    )
 
-        # Create geometry wrapper for compatibility with dimension-agnostic solvers
-        # The HJBSemiLagrangianSolver expects problem.geometry.grid
-        if dimension > 1:
-            self.geometry = _TensorGridGeometry(self._grid)
+    # Store legacy attributes for backward compatibility
+    problem.domain_bounds = domain_bounds  # type: ignore[attr-defined]
+    problem.grid_resolution = grid_resolution  # type: ignore[attr-defined]
 
-            # Remove 1D attributes for nD problems to ensure solvers use geometry path
-            # FixedPointIterator checks hasattr(problem, "Nx"), which returns True even when Nx=None
-            del self.Nx, self.xmin, self.xmax, self.Dx, self.Lx, self.xSpace
-
-        # Add lowercase dt alias (some solvers expect lowercase)
-        self.dt = self.Dt
+    return problem
 
 
 class HybridMFGSolver:
