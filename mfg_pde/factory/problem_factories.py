@@ -13,22 +13,36 @@ Supported Problem Types
 - Stochastic MFG (common noise)
 - High-Dimensional MFG (n-D spatial domains)
 
+IMPORTANT: Function Signature Requirements
+-------------------------------------------
+Hamiltonian and related functions must use the MFGProblem signature format:
+
+def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+    '''
+    Args:
+        x_idx: Grid index
+        x_position: Physical position
+        m_at_x: Density at position
+        derivs: Dictionary with tuple keys:
+            - (0,): u(x,t) function value
+            - (1,): ∂u/∂x first derivative
+        t_idx: Time index
+        current_time: Physical time
+        problem: MFGProblem reference
+    '''
+    du_dx = derivs.get((1,), 0.0)
+    return 0.5 * du_dx**2 + m_at_x
+
+See examples/basic/custom_hamiltonian_derivs_demo.py for complete examples.
+
 Usage
 -----
->>> # New unified API (recommended)
->>> from mfg_pde.factory import create_mfg_problem
->>> from mfg_pde.core import MFGComponents
+>>> # For simple examples, use ExampleMFGProblem
+>>> from mfg_pde import ExampleMFGProblem
+>>> problem = ExampleMFGProblem()
 >>>
->>> components = MFGComponents(
->>>     hamiltonian_func=H,
->>>     hamiltonian_dm_func=dH_dm,
->>>     terminal_cost_func=g,
->>>     initial_density_func=rho_0
->>> )
->>> problem = create_mfg_problem("standard", components, geometry=domain)
->>>
->>> # Old API (backward compatibility)
->>> problem = create_lq_problem(..., use_unified=False)
+>>> # For custom problems, see custom_hamiltonian_derivs_demo.py
+>>> # Factory functions are provided but require the complex signature above
 """
 
 from __future__ import annotations
