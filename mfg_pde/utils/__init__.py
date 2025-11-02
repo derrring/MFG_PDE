@@ -92,6 +92,7 @@ from .numerical.particle_interpolation import (
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
 )
+from .numerical.qp_utils import QPCache, QPSolver
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .sparse_operations import (
     SparseMatrixBuilder,
@@ -241,6 +242,9 @@ __all__ = [
     # Particle interpolation
     "interpolate_grid_to_particles",
     "interpolate_particles_to_grid",
+    # QP utilities
+    "QPCache",
+    "QPSolver",
     "get_logger",
     "log_performance_metric",
     "log_solver_completion",
