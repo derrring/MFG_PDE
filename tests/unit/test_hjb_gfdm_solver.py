@@ -65,16 +65,15 @@ class TestHJBGFDMSolverInitialization:
         assert solver.NiterNewton == 40
         assert solver.l2errBoundNewton == 1e-5
 
-    @pytest.mark.skip(reason="Issue #206: Fix QP optimization level detection")
     def test_qp_optimization_levels(self):
         """Test different QP optimization levels."""
         problem = ExampleMFGProblem()
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
-        # Test "none" and "basic" which don't require enhanced QP features
-        levels = ["none", "basic"]
-        expected_names = ["GFDM", "GFDM-Basic"]
+        # Test current QP optimization levels
+        levels = ["none", "auto", "always"]
+        expected_names = ["GFDM", "GFDM-QP", "GFDM-QP-Always"]
 
         for level, expected_name in zip(levels, expected_names, strict=False):
             solver = HJBGFDMSolver(problem, collocation_points, qp_optimization_level=level)

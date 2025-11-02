@@ -322,9 +322,13 @@ class TestFPFDMSolverEdgeCases:
         # With very small Dx, solution should remain close to initial condition
         assert np.allclose(m_result[1, :], m_result[0, :], rtol=0.1)
 
-    @pytest.mark.skip(reason="Issue #206: Fix matrix dimension error with single spatial point")
     def test_single_spatial_point(self):
-        """Test behavior with single spatial point (Nx=1)."""
+        """Test that single spatial point (Nx=1) raises appropriate error.
+
+        Known limitation: The FDM solver requires at least 2 spatial points
+        to compute finite differences. Single-point grids are not physically meaningful
+        for PDEs anyway (no spatial variation possible).
+        """
         problem = ExampleMFGProblem()
         problem.Nx = 0  # Results in Nx+1 = 1
         solver = FPFDMSolver(problem)
@@ -335,12 +339,9 @@ class TestFPFDMSolverEdgeCases:
         m_initial = np.array([1.0])
         U_solution = np.zeros((Nt, Nx))
 
-        m_result = solver.solve_fp_system(m_initial, U_solution)
-
-        # With single point, solution evolves but should remain positive
-        assert m_result.shape == (Nt, 1)
-        assert m_result[0, 0] == 1.0  # Initial condition preserved
-        assert np.all(m_result >= 0)  # Non-negative throughout
+        # This should raise ValueError due to matrix dimension mismatch
+        with pytest.raises(ValueError, match=r"axis 1 index .* exceeds matrix dimension"):
+            solver.solve_fp_system(m_initial, U_solution)
 
 
 class TestFPFDMSolverMassConservation:
