@@ -55,6 +55,7 @@ from .geometry import (
     create_rectangle_obstacle,
     create_sphere_obstacle,
 )
+from .hamiltonian_adapter import HamiltonianAdapter, adapt_hamiltonian, create_hamiltonian_adapter
 from .logging.decorators import (
     LoggingMixin,
     add_logging_to_class,
@@ -214,6 +215,10 @@ __all__ = [
     "Hypersphere",
     "ImplicitDomain",
     "Intersection",
+    # Hamiltonian signature adapter
+    "HamiltonianAdapter",
+    "adapt_hamiltonian",
+    "create_hamiltonian_adapter",
     # Logging
     "LoggedOperation",
     # Logging decorators

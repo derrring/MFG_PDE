@@ -190,61 +190,82 @@ class HJBWenoSolver(BaseHJBSolver):
             return min(base_factor, 0.0625)  # Very restrictive for 3D+
 
     def _setup_dimensional_grid(self) -> None:
-        """Setup grid information based on problem dimension."""
-        if self.dimension == 1:
-            # 1D case - use standard grid convention: Nx intervals → Nx+1 grid points
+        """Setup grid information based on problem dimension (dimension-agnostic)."""
+        # Try GridBasedMFGProblem first (supports arbitrary nD)
+        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
+            grid_obj = self.problem.geometry.grid
+            # Store as lists for dimension-agnostic access
+            self.num_grid_points = list(grid_obj.num_points)
+            self.grid_spacing = list(grid_obj.spacing)
+
+            # Backward compatibility: set _x, _y, _z attributes for legacy code
+            if self.dimension >= 1:
+                self.num_grid_points_x = self.num_grid_points[0]
+                self.grid_spacing_x = self.grid_spacing[0]
+            if self.dimension >= 2:
+                self.num_grid_points_y = self.num_grid_points[1]
+                self.grid_spacing_y = self.grid_spacing[1]
+            if self.dimension >= 3:
+                self.num_grid_points_z = self.num_grid_points[2]
+                self.grid_spacing_z = self.grid_spacing[2]
+
+        # Legacy 2D geometry interface
+        elif (
+            self.dimension == 2
+            and hasattr(self.problem, "geometry")
+            and hasattr(self.problem.geometry, "get_computational_grid")
+        ):
+            grid = self.problem.geometry.get_computational_grid()
+            self.num_grid_points = [grid["nx"] + 1, grid["ny"] + 1]
+            self.grid_spacing = [grid["dx"], grid["dy"]]
+            self.num_grid_points_x, self.num_grid_points_y = self.num_grid_points
+            self.grid_spacing_x, self.grid_spacing_y = self.grid_spacing
+            self.X, self.Y = grid["X"], grid["Y"]
+
+        # Legacy 1D MFGProblem
+        elif self.dimension == 1:
             if hasattr(self.problem, "Nx"):
-                self.num_grid_points_x = self.problem.Nx + 1  # Grid points = intervals + 1
+                self.num_grid_points_x = self.problem.Nx + 1
                 self.grid_spacing_x = self.problem.Dx
-            elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
-                # GridBasedMFGProblem: num_points already includes all grid points
-                grid_obj = self.problem.geometry.grid
-                self.num_grid_points_x = grid_obj.num_points[0]
-                self.grid_spacing_x = grid_obj.spacing[0]
             else:
                 self.num_grid_points_x = getattr(self.problem, "nx", 64) + 1
                 self.grid_spacing_x = getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
+            self.num_grid_points = [self.num_grid_points_x]
+            self.grid_spacing = [self.grid_spacing_x]
 
-        elif self.dimension == 2:
-            # 2D case - use standard grid convention: Nx,Ny intervals → Nx+1,Ny+1 grid points
-            if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "get_computational_grid"):
-                grid = self.problem.geometry.get_computational_grid()
-                self.num_grid_points_x, self.num_grid_points_y = (
-                    grid["nx"] + 1,
-                    grid["ny"] + 1,
-                )  # Grid points = intervals + 1
-                self.grid_spacing_x, self.grid_spacing_y = grid["dx"], grid["dy"]
-                self.X, self.Y = grid["X"], grid["Y"]
-            elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
-                # GridBasedMFGProblem: num_points already includes all grid points
-                grid_obj = self.problem.geometry.grid
-                self.num_grid_points_x, self.num_grid_points_y = grid_obj.num_points[0], grid_obj.num_points[1]
-                self.grid_spacing_x, self.grid_spacing_y = grid_obj.spacing[0], grid_obj.spacing[1]
-            else:
-                # Fallback for 2D
-                self.num_grid_points_x = getattr(self.problem, "Nx", getattr(self.problem, "nx", 64)) + 1
-                self.num_grid_points_y = getattr(self.problem, "Ny", getattr(self.problem, "ny", 64)) + 1
-                self.grid_spacing_x = getattr(
-                    self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
-                )
-                self.grid_spacing_y = getattr(
-                    self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.num_grid_points_y - 1))
-                )
+        # Fallback: construct from dimension with default values
+        else:
+            self.num_grid_points = []
+            self.grid_spacing = []
+            dim_names = ["x", "y", "z"] + [f"d{i}" for i in range(3, self.dimension)]
+            default_points = [64, 64, 32] + [16] * max(0, self.dimension - 3)
 
-        elif self.dimension == 3:
-            # 3D case - use standard grid convention: Nx,Ny,Nz intervals → Nx+1,Ny+1,Nz+1 grid points
-            self.num_grid_points_x = getattr(self.problem, "Nx", getattr(self.problem, "nx", 32)) + 1
-            self.num_grid_points_y = getattr(self.problem, "Ny", getattr(self.problem, "ny", 32)) + 1
-            self.num_grid_points_z = getattr(self.problem, "Nz", getattr(self.problem, "nz", 32)) + 1
-            self.grid_spacing_x = getattr(
-                self.problem, "Dx", getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
-            )
-            self.grid_spacing_y = getattr(
-                self.problem, "Dy", getattr(self.problem, "dy", 1.0 / (self.num_grid_points_y - 1))
-            )
-            self.grid_spacing_z = getattr(
-                self.problem, "Dz", getattr(self.problem, "dz", 1.0 / (self.num_grid_points_z - 1))
-            )
+            for i, name in enumerate(dim_names[: self.dimension]):
+                # Try legacy uppercase (Nx, Ny, Nz)
+                num_pts = getattr(self.problem, f"N{name}", None)
+                if num_pts is None:
+                    # Try lowercase (nx, ny, nz)
+                    num_pts = getattr(self.problem, f"n{name}", default_points[i])
+                num_pts = num_pts + 1 if not hasattr(self.problem, "geometry") else num_pts
+
+                # Grid spacing
+                spacing = getattr(self.problem, f"D{name}", None)
+                if spacing is None:
+                    spacing = getattr(self.problem, f"d{name}", 1.0 / (num_pts - 1))
+
+                self.num_grid_points.append(num_pts)
+                self.grid_spacing.append(spacing)
+
+            # Backward compatibility attributes
+            if self.dimension >= 1:
+                self.num_grid_points_x = self.num_grid_points[0]
+                self.grid_spacing_x = self.grid_spacing[0]
+            if self.dimension >= 2:
+                self.num_grid_points_y = self.num_grid_points[1]
+                self.grid_spacing_y = self.grid_spacing[1]
+            if self.dimension >= 3:
+                self.num_grid_points_z = self.num_grid_points[2]
+                self.grid_spacing_z = self.grid_spacing[2]
 
     def _setup_weno_coefficients(self) -> None:
         """Setup WENO reconstruction coefficients (shared across variants)."""
@@ -564,15 +585,15 @@ class HJBWenoSolver(BaseHJBSolver):
 
         Automatically dispatches to appropriate dimensional solver based on detected problem dimension:
         - 1D: Direct WENO reconstruction
-        - 2D/3D: Dimensional splitting with WENO in each direction
+        - 2D/3D/nD: Dimensional splitting with WENO in each direction
 
         Args:
-            M_density_evolution_from_FP: Density evolution m(t,x[,y[,z]]) from FP solver
-            U_final_condition_at_T: Terminal condition u(T,x[,y[,z]])
+            M_density_evolution_from_FP: Density evolution m(t,x[,y[,z[,...]]) from FP solver
+            U_final_condition_at_T: Terminal condition u(T,x[,y[,z[,...]]])
             U_from_prev_picard: Value function from previous Picard iteration
 
         Returns:
-            U_solved: Complete solution u(t,x[,y[,z]]) over time domain
+            U_solved: Complete solution u(t,x[,y[,z[,...]]]) over time domain
         """
         if self.dimension == 1:
             return self._solve_hjb_system_1d(M_density_evolution_from_FP, U_final_condition_at_T, U_from_prev_picard)
@@ -581,7 +602,8 @@ class HJBWenoSolver(BaseHJBSolver):
         elif self.dimension == 3:
             return self._solve_hjb_system_3d(M_density_evolution_from_FP, U_final_condition_at_T, U_from_prev_picard)
         else:
-            raise NotImplementedError(f"WENO solver not implemented for dimension {self.dimension}")
+            # Use generalized nD solver for dimensions > 3
+            return self._solve_hjb_system_nd(M_density_evolution_from_FP, U_final_condition_at_T, U_from_prev_picard)
 
     def _solve_hjb_system_1d(
         self,
@@ -706,6 +728,172 @@ class HJBWenoSolver(BaseHJBSolver):
 
         logger.info("3D WENO HJB solver completed successfully")
         return U_solved
+
+    def _solve_hjb_system_nd(
+        self,
+        M_density_evolution_from_FP: np.ndarray,
+        U_final_condition_at_T: np.ndarray,
+        U_from_prev_picard: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Solve nD HJB system using dimensional splitting (for dimensions > 3).
+
+        Uses generalized dimensional splitting approach that works for arbitrary dimensions.
+        This is the dimension-agnostic implementation that extends WENO to 4D, 5D, etc.
+
+        Args:
+            M_density_evolution_from_FP: Density evolution m(t,x0,x1,...,xn)
+            U_final_condition_at_T: Terminal condition u(T,x0,x1,...,xn)
+            U_from_prev_picard: Value function from previous Picard iteration
+
+        Returns:
+            U_solved: Complete solution u(t,x0,x1,...,xn) over time domain
+        """
+        # Time stepping parameters
+        Nt = M_density_evolution_from_FP.shape[0]
+
+        # Initialize solution array with time dimension
+        # Shape: (Nt, spatial_dims...)
+        spatial_shape = U_final_condition_at_T.shape
+        U_solved = np.zeros((Nt, *spatial_shape))
+
+        # Set final condition
+        U_solved[-1, ...] = U_final_condition_at_T
+
+        # Get time step from problem
+        dt = self.problem.T / self.problem.Nt
+
+        # Solve backward in time
+        for time_idx in range(Nt - 2, -1, -1):
+            u_current = U_solved[time_idx + 1, ...]
+            m_current = M_density_evolution_from_FP[time_idx, ...]
+
+            # Compute stable time step for nD
+            dt_stable = min(dt, self._compute_dt_stable_nd(u_current, m_current))
+
+            # Apply dimensional splitting
+            if self.splitting_method == "strang":
+                # Strang splitting: Forward half-steps, full step on last dimension, backward half-steps
+                u_temp = u_current.copy()
+                # Forward half-steps: d0(dt/2) -> d1(dt/2) -> ... -> d(n-2)(dt/2)
+                for dim_idx in range(self.dimension - 1):
+                    u_temp = self._solve_hjb_step_direction_nd(u_temp, m_current, dt_stable / 2, dim_idx)
+                # Full step on last dimension: d(n-1)(dt)
+                u_temp = self._solve_hjb_step_direction_nd(u_temp, m_current, dt_stable, self.dimension - 1)
+                # Backward half-steps: d(n-2)(dt/2) -> ... -> d1(dt/2) -> d0(dt/2)
+                for dim_idx in range(self.dimension - 2, -1, -1):
+                    u_temp = self._solve_hjb_step_direction_nd(u_temp, m_current, dt_stable / 2, dim_idx)
+                u_new = u_temp
+            else:  # Godunov splitting
+                # Godunov splitting: d0(dt) -> d1(dt) -> ... -> d(n-1)(dt)
+                u_new = u_current.copy()
+                for dim_idx in range(self.dimension):
+                    u_new = self._solve_hjb_step_direction_nd(u_new, m_current, dt_stable, dim_idx)
+
+            U_solved[time_idx, ...] = u_new
+
+        return U_solved
+
+    def _solve_hjb_step_direction_nd(self, u: np.ndarray, m: np.ndarray, dt: float, axis: int) -> np.ndarray:
+        """
+        Apply WENO reconstruction along a specific axis for nD problems.
+
+        This is the dimension-agnostic directional solver that works for any dimension.
+
+        Args:
+            u: Value function array (shape: [n0, n1, ..., nd])
+            m: Density array (shape: [n0, n1, ..., nd])
+            dt: Time step
+            axis: Axis index to apply WENO (0 = first spatial dimension, etc.)
+
+        Returns:
+            u_new: Updated value function after WENO step along specified axis
+        """
+        u_new = u.copy()
+
+        # Move target axis to the end for easier slicing
+        u_transposed = np.moveaxis(u, axis, -1)
+        m_transposed = np.moveaxis(m, axis, -1)
+        u_new_transposed = np.moveaxis(u_new, axis, -1)
+
+        # Get shape of all dimensions except the target axis
+        shape_except_axis = u_transposed.shape[:-1]
+
+        # Iterate over all slices perpendicular to the target axis
+        for idx in np.ndindex(shape_except_axis):
+            u_slice = u_transposed[idx]
+            m_slice = m_transposed[idx]
+
+            # Apply 1D WENO step adapted for this direction
+            u_new_transposed[idx] = self._solve_hjb_step_1d_direction_adapted(u_slice, m_slice, dt, axis)
+
+        # Move axis back to original position
+        u_new = np.moveaxis(u_new_transposed, -1, axis)
+
+        return u_new
+
+    def _solve_hjb_step_1d_direction_adapted(
+        self, u_1d: np.ndarray, m_1d: np.ndarray, dt: float, axis: int
+    ) -> np.ndarray:
+        """
+        Apply 1D WENO step adapted for a specific direction with appropriate grid spacing.
+
+        Args:
+            u_1d: 1D slice of value function
+            m_1d: 1D slice of density
+            dt: Time step
+            axis: Axis index (0, 1, 2, ...) to determine grid spacing
+
+        Returns:
+            u_new: Updated 1D slice
+        """
+        # Save current grid spacing and temporarily replace with axis-specific spacing
+        original_spacing = self.grid_spacing_x
+        self.grid_spacing_x = self.grid_spacing[axis]
+
+        # Apply 1D WENO solver
+        if self.time_integration == "tvd_rk3":
+            u_new = self._solve_hjb_tvd_rk3(u_1d, m_1d, dt)
+        else:
+            u_new = self._solve_hjb_explicit_euler(u_1d, m_1d, dt)
+
+        # Restore original spacing
+        self.grid_spacing_x = original_spacing
+
+        return u_new
+
+    def _compute_dt_stable_nd(self, u: np.ndarray, m: np.ndarray) -> float:
+        """
+        Compute stable time step for nD problem based on CFL and diffusion stability.
+
+        Args:
+            u: Value function array (shape: [n0, n1, ..., nd])
+            m: Density array (shape: [n0, n1, ..., nd])
+
+        Returns:
+            dt_stable: Maximum stable time step
+        """
+        dt_cfl_list = []
+        dt_diffusion_list = []
+
+        # Check CFL and diffusion conditions for each dimension
+        for axis in range(self.dimension):
+            # Compute gradient along this axis
+            u_grad = np.gradient(u, self.grid_spacing[axis], axis=axis)
+
+            # CFL condition for advection
+            max_speed = np.max(np.abs(u_grad)) + 1e-10
+            dt_cfl = self.cfl_number * self.grid_spacing[axis] / max_speed
+            dt_cfl_list.append(dt_cfl)
+
+            # Diffusion stability condition
+            dt_diffusion = self.diffusion_stability_factor * self.grid_spacing[axis] ** 2 / self.problem.sigma**2
+            dt_diffusion_list.append(dt_diffusion)
+
+        # Take minimum across all dimensions for stability
+        dt_stable = min(min(dt_cfl_list), min(dt_diffusion_list))
+
+        return max(dt_stable, 1e-10)  # Ensure positive time step
 
     def _compute_dt_stable_2d(self, u: np.ndarray, m: np.ndarray) -> float:
         """Compute stable time step for 2D problem based on CFL and diffusion stability."""
