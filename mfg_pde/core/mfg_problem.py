@@ -28,50 +28,17 @@ VALUE_BEFORE_SQUARE_LIMIT = 1e150
 @dataclass
 class MFGComponents:
     """
-    Environment configuration for MFG problems.
+    Container for all components that define a custom MFG problem.
 
-    MFGComponents defines the physics and structure of the MFG environment:
-    what forces act on agents, how they interact, what constraints exist,
-    and what the geometry looks like. This is separate from numerical methods
-    (which are specified via modular solvers).
-
-    Think of this as configuring a game level: terrain, movement physics,
-    obstacles, starting positions, win conditions, and player interactions.
-
-    Capabilities
-    ------------
-    Standard MFG formulations:
-    - HJB-FP (Hamiltonian-based): Specify Hamiltonian H(x,m,p,t), potential V(x,t)
-    - Network/Graph MFG: Discrete locations with node/edge interactions
-    - Variational/Lagrangian: Optimization-based with Lagrangian L(t,x,v,m)
-    - Stochastic MFG: Common and idiosyncratic noise
-    - High-dimensional: Arbitrary spatial dimensions (n-D)
-
-    Advanced capabilities:
-    - Neural Network MFG: PINN, Deep BSDE with architecture configuration
-    - Reinforcement Learning MFG: Reward functions, action spaces, policy constraints
-    - Implicit Geometry: Level sets, signed distance functions, obstacles
-    - Adaptive Mesh Refinement: Refinement criteria, error estimation
-    - Time-Dependent Domains: Moving boundaries, dynamic obstacles
-    - Multi-Population MFG: Multiple interacting agent populations
-
-    Notes
-    -----
-    All fields are optional with sensible defaults. Only specify what you need
-    to customize for your problem. For standard problems, MFGProblem provides
-    default implementations.
-
-    See Also
-    --------
-    MFGProblem : Problem instance using these components
+    This class holds all the mathematical components needed to fully specify
+    an MFG problem, allowing users to provide custom implementations.
     """
 
-    # =========================================================================
-    # Core Hamiltonian Components (Standard MFG)
-    # =========================================================================
-
+    # Core Hamiltonian components
     hamiltonian_func: Callable | None = None  # H(x, m, p, t) -> float
     hamiltonian_dm_func: Callable | None = None  # dH/dm(x, m, p, t) -> float
+
+    # Optional Jacobian for advanced solvers
     hamiltonian_jacobian_func: Callable | None = None  # Jacobian contribution
 
     # Potential function V(x, t)
@@ -87,153 +54,12 @@ class MFGComponents:
     # Coupling terms (for advanced MFG formulations)
     coupling_func: Callable | None = None  # Additional coupling terms
 
-    # =========================================================================
-    # Network/Graph MFG Components
-    # =========================================================================
-
-    # Network geometry (if None, assumes continuous domain)
-    network_geometry: Any | None = None  # NetworkGeometry instance
-
-    # Node and edge interactions
-    node_interaction_func: Callable | None = None  # Interactions at nodes
-    edge_interaction_func: Callable | None = None  # Interactions along edges
-    edge_cost_func: Callable | None = None  # Cost of traversing edges
-
-    # =========================================================================
-    # Variational/Lagrangian MFG Components
-    # =========================================================================
-
-    # Lagrangian formulation L(t, x, v, m)
-    lagrangian_func: Callable | None = None  # Running cost function
-    lagrangian_dx_func: Callable | None = None  # ∂L/∂x
-    lagrangian_dv_func: Callable | None = None  # ∂L/∂v (velocity)
-    lagrangian_dm_func: Callable | None = None  # ∂L/∂m (coupling)
-
-    # Terminal cost for variational formulation
-    terminal_cost_func: Callable | None = None  # g(x) -> float
-    terminal_cost_dx_func: Callable | None = None  # ∂g/∂x
-
-    # Trajectory-based formulation (for NetworkMFG)
-    trajectory_cost_func: Callable | None = None  # Cost along paths
-
-    # Constraints (optional)
-    state_constraints: list[Callable] | None = None  # c(t, x) ≤ 0
-    velocity_constraints: list[Callable] | None = None  # h(t, x, v) ≤ 0
-    integral_constraints: list[Callable] | None = None  # ∫ψ(x,m)dx = const
-
-    # =========================================================================
-    # Stochastic MFG Components
-    # =========================================================================
-
-    # Noise specification
-    noise_intensity: float = 0.0  # Diffusion coefficient σ
-    common_noise_func: Callable | None = None  # Common noise W(t)
-    idiosyncratic_noise_func: Callable | None = None  # Individual noise Z(t)
-    correlation_matrix: NDArray | None = None  # Noise correlations
-
-    # =========================================================================
-    # Neural Network MFG Components (PINN, Deep BSDE, etc.)
-    # =========================================================================
-
-    # Network architecture specifications
-    neural_architecture: dict[str, Any] | None = None  # {layers, activation, etc.}
-    value_network_config: dict[str, Any] | None = None  # For u(t,x)
-    policy_network_config: dict[str, Any] | None = None  # For optimal control
-    density_network_config: dict[str, Any] | None = None  # For m(t,x)
-
-    # Training configuration
-    loss_weights: dict[str, float] | None = None  # PDE loss, IC loss, BC loss weights
-    physics_loss_func: Callable | None = None  # Custom physics-informed loss
-    network_initializer: Callable | None = None  # Custom weight initialization
-
-    # =========================================================================
-    # Reinforcement Learning MFG Components
-    # =========================================================================
-
-    # Reward/cost specification
-    reward_func: Callable | None = None  # r(s, a, m, t) -> float
-    terminal_reward_func: Callable | None = None  # r_T(s) -> float
-
-    # Action and observation spaces
-    action_space_bounds: list[tuple[float, float]] | None = None  # [(a_min, a_max), ...]
-    observation_func: Callable | None = None  # Map state to observation
-    action_constraints: list[Callable] | None = None  # g(s, a) ≤ 0
-
-    # Multi-agent specifications
-    agent_interaction_func: Callable | None = None  # How agents interact
-    population_coupling_strength: float = 0.0  # λ for mean-field coupling
-
-    # =========================================================================
-    # Implicit Geometry Components
-    # =========================================================================
-
-    # Implicit surface representation
-    level_set_func: Callable | None = None  # φ(x) = 0 defines surface
-    signed_distance_func: Callable | None = None  # d(x) -> float (distance to boundary)
-
-    # Obstacle/constraint representations
-    obstacle_func: Callable | None = None  # 1 if obstacle, 0 otherwise
-    obstacle_penalty: float = 1e10  # Penalty for obstacle violations
-
-    # Manifold constraints (for MFG on manifolds)
-    manifold_projection: Callable | None = None  # Project to manifold
-    tangent_space_basis: Callable | None = None  # Local coordinate system
-
-    # =========================================================================
-    # Adaptive Mesh Refinement (AMR) Components
-    # =========================================================================
-
-    # Refinement criteria
-    refinement_indicator: Callable | None = None  # Estimate local error
-    refinement_threshold: float = 0.1  # Refine if indicator > threshold
-    coarsening_threshold: float = 0.01  # Coarsen if indicator < threshold
-
-    # Solution features to track
-    feature_detection_func: Callable | None = None  # Detect shocks, fronts, etc.
-
-    # Mesh constraints
-    min_cell_size: float | None = None
-    max_cell_size: float | None = None
-    max_refinement_level: int = 5
-
-    # =========================================================================
-    # Time-Dependent Domain Components
-    # =========================================================================
-
-    # Time-varying boundaries
-    boundary_motion_func: Callable | None = None  # ∂Ω(t)
-    domain_velocity_func: Callable | None = None  # v_domain(x, t)
-
-    # Moving obstacles
-    obstacle_trajectory_func: Callable | None = None  # x_obstacle(t)
-
-    # Topology changes
-    domain_split_func: Callable | None = None  # When/how domain splits
-    domain_merge_func: Callable | None = None  # When/how domains merge
-
-    # =========================================================================
-    # Multi-Population MFG Components
-    # =========================================================================
-
-    num_populations: int = 1  # Number of distinct populations
-
-    # Population-specific components
-    population_hamiltonians: list[Callable] | None = None  # H_i for each population
-    population_initial_densities: list[Callable] | None = None  # m_0^i for each population
-
-    # Cross-population interactions
-    cross_population_coupling: Callable | None = None  # F(m_1, m_2, ..., m_N)
-    population_weights: list[float] | None = None  # Relative population sizes
-
-    # =========================================================================
-    # Problem Parameters and Metadata
-    # =========================================================================
-
+    # Problem parameters
     parameters: dict[str, Any] = field(default_factory=dict)
 
     # Metadata
     description: str = "MFG Problem"
-    problem_type: str = "mfg"  # Options: "mfg", "network", "variational", "stochastic", "highdim"
+    problem_type: str = "mfg"
 
 
 # ============================================================================
@@ -424,9 +250,6 @@ class MFGProblem:
         # Validate custom components if provided
         if self.is_custom:
             self._validate_components()
-
-        # Detect solver compatibility
-        self._detect_solver_compatibility()
 
     def _init_1d_legacy(
         self,
@@ -791,220 +614,6 @@ class MFGProblem:
         self.obstacles = None
         self.has_obstacles = False
 
-    def _detect_solver_compatibility(self) -> None:
-        """
-        Detect which solver types are compatible with this problem.
-
-        Sets:
-            self.solver_compatible: List of compatible solver type strings
-            self.solver_recommendations: Dict mapping use cases to solvers
-
-        Called automatically after initialization.
-        """
-        compatible = []
-        recommendations = {}
-
-        # Get problem characteristics
-        is_grid = self.domain_type == "grid"
-        is_implicit = self.domain_type == "implicit"
-        is_network = self.domain_type == "network"
-        dim = self.dimension if isinstance(self.dimension, int) else None
-
-        # FDM: Requires regular grid, no complex geometry, works best for dim <= 3
-        if (is_grid and not hasattr(self, "has_obstacles")) or (
-            hasattr(self, "has_obstacles") and not self.has_obstacles
-        ):
-            compatible.append("fdm")
-            if dim and dim <= 2:
-                recommendations["fast"] = "fdm"
-                recommendations["accurate"] = "fdm"
-
-        # Semi-Lagrangian: Works with grids, especially good for higher dimensions
-        if is_grid:
-            compatible.append("semi_lagrangian")
-            if dim and dim >= 3:
-                recommendations["fast"] = "semi_lagrangian"
-
-        # GFDM: Works with grids and complex geometry (particle collocation)
-        if is_grid or is_implicit:
-            compatible.append("gfdm")
-            if is_implicit or (hasattr(self, "has_obstacles") and self.has_obstacles):
-                recommendations["obstacles"] = "gfdm"
-                recommendations["complex_geometry"] = "gfdm"
-
-        # Particle methods: Work with everything except pure networks
-        if not is_network:
-            compatible.append("particle")
-            if dim and dim >= 4:
-                recommendations["high_dimensional"] = "particle"
-                recommendations["fast"] = "particle"
-
-        # Network solver: Only for network problems
-        if is_network:
-            compatible.append("network_solver")
-            recommendations["default"] = "network_solver"
-
-        # DGM: Works with grids (experimental)
-        if is_grid:
-            compatible.append("dgm")
-
-        # PINN: Works with everything (deep learning approach)
-        compatible.append("pinn")
-        if dim and dim >= 5:
-            recommendations["very_high_dimensional"] = "pinn"
-
-        # Set attributes
-        self.solver_compatible = compatible
-        self.solver_recommendations = recommendations
-
-        # Set default recommendation
-        if "default" not in recommendations:
-            if is_grid and dim and dim <= 2:
-                recommendations["default"] = "fdm"
-            elif is_grid and dim and dim == 3:
-                recommendations["default"] = "semi_lagrangian"
-            elif is_implicit:
-                recommendations["default"] = "gfdm"
-            elif compatible:
-                recommendations["default"] = compatible[0]
-
-    def validate_solver_type(self, solver_type: str) -> None:
-        """
-        Validate that solver type is compatible with this problem.
-
-        Args:
-            solver_type: Solver type identifier (e.g., "fdm", "gfdm", "particle")
-
-        Raises:
-            ValueError: If solver type is incompatible with problem configuration
-
-        Note:
-            This method is called by solver constructors to provide early
-            error detection with helpful messages.
-        """
-        if not hasattr(self, "solver_compatible"):
-            # Compatibility not yet detected (shouldn't happen if __init__ called)
-            self._detect_solver_compatibility()
-
-        if solver_type not in self.solver_compatible:
-            # Build helpful error message
-            reason = self._get_incompatibility_reason(solver_type)
-            suggestion = self._get_solver_suggestion()
-
-            raise ValueError(
-                f"Solver type '{solver_type}' is incompatible with this problem.\n\n"
-                f"Problem Configuration:\n"
-                f"  Domain type: {self.domain_type}\n"
-                f"  Dimension: {self.dimension}\n"
-                f"  Has obstacles: {getattr(self, 'has_obstacles', False)}\n\n"
-                f"Reason: {reason}\n\n"
-                f"Compatible solvers: {self.solver_compatible}\n\n"
-                f"Suggestion: {suggestion}"
-            )
-
-    def _get_incompatibility_reason(self, solver_type: str) -> str:
-        """Get human-readable reason why solver is incompatible."""
-        reasons = {
-            "fdm": {
-                "implicit": "FDM requires regular grid, not implicit geometry",
-                "network": "FDM requires spatial grid, not network structure",
-                "obstacles": "FDM doesn't support obstacles (use GFDM instead)",
-            },
-            "semi_lagrangian": {
-                "implicit": "Semi-Lagrangian requires regular grid",
-                "network": "Semi-Lagrangian requires spatial grid",
-            },
-            "gfdm": {
-                "network": "GFDM requires spatial coordinates, not network structure",
-            },
-            "particle": {
-                "network": "Particle methods require spatial domain",
-            },
-            "network_solver": {
-                "grid": "Network solver requires network structure, not spatial grid",
-                "implicit": "Network solver requires network structure",
-            },
-        }
-
-        domain_reasons = reasons.get(solver_type, {})
-        return domain_reasons.get(self.domain_type, "Solver not compatible with problem configuration")
-
-    def _get_solver_suggestion(self) -> str:
-        """Get helpful suggestion for which solver to use."""
-        if not self.solver_recommendations:
-            if self.solver_compatible:
-                return f"Try using: {self.solver_compatible[0]}"
-            return "No compatible solvers found for this configuration"
-
-        # Get default recommendation
-        default_solver = self.solver_recommendations.get(
-            "default", self.solver_compatible[0] if self.solver_compatible else None
-        )
-
-        if not default_solver:
-            return "No solver recommendations available"
-
-        # Build recommendation text
-        suggestion = f"Use solver '{default_solver}' (recommended for this problem)"
-
-        # Add context-specific recommendations
-        additional_recs = []
-        if "obstacles" in self.solver_recommendations:
-            additional_recs.append(f"obstacles: {self.solver_recommendations['obstacles']}")
-        if "fast" in self.solver_recommendations and self.solver_recommendations["fast"] != default_solver:
-            additional_recs.append(f"fastest: {self.solver_recommendations['fast']}")
-        if "accurate" in self.solver_recommendations and self.solver_recommendations["accurate"] != default_solver:
-            additional_recs.append(f"most accurate: {self.solver_recommendations['accurate']}")
-
-        if additional_recs:
-            suggestion += f"\n  Alternative recommendations: {', '.join(additional_recs)}"
-
-        suggestion += "\n  Or use create_fast_solver() for automatic selection"
-
-        return suggestion
-
-    def get_solver_info(self) -> dict[str, Any]:
-        """
-        Get comprehensive solver compatibility information.
-
-        Returns:
-            Dictionary with solver compatibility details:
-            - compatible: List of compatible solver types
-            - recommendations: Dict of use-case specific recommendations
-            - dimension: Problem dimension
-            - domain_type: Type of spatial domain
-            - complexity: Estimated computational complexity
-        """
-        if not hasattr(self, "solver_compatible"):
-            self._detect_solver_compatibility()
-
-        return {
-            "compatible": self.solver_compatible,
-            "recommendations": self.solver_recommendations,
-            "dimension": self.dimension,
-            "domain_type": self.domain_type,
-            "has_obstacles": getattr(self, "has_obstacles", False),
-            "complexity": self._estimate_complexity(),
-            "default_solver": self.solver_recommendations.get("default", None),
-        }
-
-    def _estimate_complexity(self) -> str:
-        """Estimate computational complexity category."""
-        if self.domain_type == "network":
-            return "O(N_nodes × N_time)"
-
-        if isinstance(self.dimension, int):
-            if self.dimension == 1:
-                return "O(Nx × Nt)"
-            elif self.dimension == 2:
-                return "O(Nx × Ny × Nt)"
-            elif self.dimension == 3:
-                return "O(Nx × Ny × Nz × Nt)"
-            else:
-                return f"O(N^{self.dimension} × Nt) - curse of dimensionality"
-
-        return "Problem-dependent"
-
     def get_computational_cost_estimate(self) -> dict:
         """
         Get estimated computational cost for the problem.
@@ -1188,55 +797,6 @@ class MFGProblem:
                 ["x_idx", "m_at_x"],  # Base required params
                 gradient_param_required=True,  # Must have EITHER derivs OR p_values
             )
-
-    def get_problem_type(self) -> str:
-        """
-        Detect problem type based on components and configuration.
-
-        Returns
-        -------
-        str
-            Problem type: "standard", "network", "variational", "stochastic", "highdim"
-
-        Examples
-        --------
-        >>> problem = MFGProblem(Nx=100)
-        >>> problem.get_problem_type()
-        'standard'
-
-        >>> components = MFGComponents(network_geometry=NetworkGeometry(...))
-        >>> problem = MFGProblem(components=components)
-        >>> problem.get_problem_type()
-        'network'
-        """
-        # Use explicit problem_type if provided
-        if self.components is not None and self.components.problem_type != "mfg":
-            return self.components.problem_type
-
-        # Auto-detect based on components
-        if self.components is not None:
-            # Check for network MFG
-            if self.components.network_geometry is not None:
-                return "network"
-
-            # Check for variational/Lagrangian MFG
-            if self.components.lagrangian_func is not None:
-                return "variational"
-
-            # Check for stochastic MFG
-            if (
-                self.components.noise_intensity > 0
-                or self.components.common_noise_func is not None
-                or self.components.idiosyncratic_noise_func is not None
-            ):
-                return "stochastic"
-
-        # Check for high-dimensional (d > 3)
-        if hasattr(self, "dimension") and self.dimension > 3:
-            return "highdim"
-
-        # Default: standard HJB-FP
-        return "standard"
 
     def _validate_function_signature(
         self, func: Callable, name: str, expected_params: list, gradient_param_required: bool = False
