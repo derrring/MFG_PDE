@@ -177,6 +177,14 @@ def solve_mfg(
     else:  # research
         solver_factory = create_research_solver
 
+    # For research solver, create default hjb_solver and fp_solver if not provided
+    if method == "research" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
+        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+
+        kwargs["hjb_solver"] = HJBFDMSolver(problem=problem)
+        kwargs["fp_solver"] = FPParticleSolver(problem=problem, num_particles=5000)
+
     # Create solver
     solver = solver_factory(problem=problem, custom_config=custom_config, **kwargs)
 
