@@ -255,10 +255,8 @@ def solve_mfg(
         if max_iterations is not None and config.picard is not None:
             config.picard.max_iterations = max_iterations
 
-        if tolerance is not None:
-            if config.picard is not None:
-                config.picard.tolerance = tolerance
-            config.convergence_tolerance = tolerance
+        if tolerance is not None and config.picard is not None:
+            config.picard.tolerance = tolerance
 
     # =========================================================================
     # Solver Creation and Execution

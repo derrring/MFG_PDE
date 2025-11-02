@@ -85,6 +85,8 @@ class TestSolveMFGParameterOverrides:
     def test_custom_tolerance(self):
         """Test tolerance override."""
         problem = ExampleMFGProblem()
+        # Note: Phase 3.2 removed 'convergence_tolerance' field
+        # tolerance parameter affects picard.tolerance only
         result = solve_mfg(problem, method="fast", tolerance=1e-2, max_iterations=5, verbose=False)
 
         # Tolerance affects convergence criteria
@@ -94,6 +96,8 @@ class TestSolveMFGParameterOverrides:
     def test_custom_max_iterations_and_tolerance(self):
         """Test both max_iterations and tolerance overrides."""
         problem = ExampleMFGProblem()
+        # Note: Phase 3.2 removed 'convergence_tolerance' field
+        # tolerance parameter affects picard.tolerance only
         result = solve_mfg(problem, method="accurate", max_iterations=4, tolerance=1e-4, verbose=False)
 
         assert result.iterations <= 4
@@ -119,7 +123,8 @@ class TestSolveMFGErrorHandling:
         """Test that invalid method raises ValueError."""
         problem = ExampleMFGProblem()
 
-        with pytest.raises(ValueError, match="Unknown method"):
+        # Phase 3.2/3.3: Error message changed from "Unknown method" to "Unknown config preset"
+        with pytest.raises(ValueError, match="Unknown config preset"):
             solve_mfg(problem, method="invalid_method")
 
     def test_valid_methods_list(self):
