@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""
+Integration tests for 2D HJB FDM solver validation.
+
+Tests the dimension-agnostic HJB FDM solver on 2D problems with:
+- Both fixed-point and Newton solver modes
+- Convergence studies
+- Comparison between solver types
+- Mass-conserving density evolution
+"""
+
+import pytest
+
+import numpy as np
+
+from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+
+
+class QuadraticHamiltonian2D(GridBasedMFGProblem):
+    """
+    2D LQ problem with quadratic Hamiltonian.
+
+    Hamiltonian: H(x, p, m) = 0.5·|p|² + 0.5·|x|²
+
+    This has a simple structure that should converge well.
+    """
+
+    def __init__(self, N=20, T=1.0, Nt=20, nu=0.01):
+        super().__init__(
+            domain_bounds=(-1, 1, -1, 1),  # (xmin, xmax, ymin, ymax)
+            grid_resolution=N,
+            time_domain=(T, Nt),
+            diffusion_coeff=nu,
+        )
+
+    def hamiltonian(self, x, m, p, t):
+        """Quadratic Hamiltonian: H = 0.5·|p|² + 0.5·|x|²"""
+        return 0.5 * np.sum(p**2) + 0.5 * np.sum(x**2)
+
+    def terminal_cost(self, x):
+        """Terminal cost: g(x) = 0.5·|x|²"""
+        return 0.5 * np.sum(x**2)
+
+    def initial_density(self, x):
+        """Initial density: Gaussian centered at origin"""
+        return np.exp(-5 * np.sum(x**2))
+
+    def running_cost(self, x, m, t):
+        """Running cost: f(x,m) = 0.5·|x|²"""
+        return 0.5 * np.sum(x**2)
+
+    def setup_components(self):
+        """No additional setup needed."""
+
+
+class TestHJBFDM2DBasic:
+    """Basic 2D HJB FDM functionality tests."""
+
+    def test_2d_initialization_fixed_point(self):
+        """Test that 2D solver initializes correctly in fixed-point mode."""
+        problem = QuadraticHamiltonian2D(N=10, T=0.5, Nt=10)
+        solver = HJBFDMSolver(problem, solver_type="fixed_point", damping_factor=0.7)
+
+        assert solver.dimension == 2
+        assert solver.hjb_method_name == "FDM-2D-fixed_point"
+        assert solver.shape == (10, 10)
+        assert solver.solver_type == "fixed_point"
+
+    def test_2d_initialization_newton(self):
+        """Test that 2D solver initializes correctly in Newton mode."""
+        problem = QuadraticHamiltonian2D(N=10, T=0.5, Nt=10)
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        assert solver.dimension == 2
+        assert solver.hjb_method_name == "FDM-2D-newton"
+        assert solver.shape == (10, 10)
+        assert solver.solver_type == "newton"
+
+    def test_2d_gradient_computation(self):
+        """Test gradient computation in 2D."""
+        problem = QuadraticHamiltonian2D(N=10, T=0.5, Nt=10)
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        # Create test function: u(x,y) = x² + y²
+        x = np.linspace(-1, 1, 10)
+        y = np.linspace(-1, 1, 10)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        U = X**2 + Y**2
+
+        # Compute gradients
+        gradients = solver._compute_gradients_nd(U)
+
+        # Check gradient keys
+        assert (0, 0) in gradients  # Value
+        assert (1, 0) in gradients  # ∂u/∂x
+        assert (0, 1) in gradients  # ∂u/∂y
+
+        # Check gradient values (should be approximately 2x and 2y)
+        grad_x = gradients[(1, 0)]
+        grad_y = gradients[(0, 1)]
+
+        # Interior points should have gradients ≈ 2x, 2y
+        interior_x = grad_x[5, 5]
+        interior_y = grad_y[5, 5]
+        expected_x = 2 * X[5, 5]
+        expected_y = 2 * Y[5, 5]
+
+        assert np.abs(interior_x - expected_x) < 0.5  # Loose check due to discretization
+        assert np.abs(interior_y - expected_y) < 0.5
+
+
+class TestHJBFDM2DSolving:
+    """Test 2D HJB solving with both solver types."""
+
+    def test_2d_solve_fixed_point(self):
+        """Test solving 2D HJB with fixed-point solver."""
+        problem = QuadraticHamiltonian2D(N=15, T=0.5, Nt=10)
+        solver = HJBFDMSolver(
+            problem,
+            solver_type="fixed_point",
+            damping_factor=0.8,
+            max_newton_iterations=50,
+            newton_tolerance=1e-5,
+        )
+
+        # Create test density (uniform)
+        M_test = np.ones((11, 15, 15)) / 225  # Normalized uniform density
+
+        # Terminal condition
+        x = np.linspace(-1, 1, 15)
+        y = np.linspace(-1, 1, 15)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        U_terminal = 0.5 * (X**2 + Y**2)
+
+        # Initial guess
+        U_guess = np.zeros((11, 15, 15))
+
+        # Solve
+        U_solution = solver.solve_hjb_system(M_test, U_terminal, U_guess)
+
+        # Check output shape
+        assert U_solution.shape == (11, 15, 15)
+
+        # Check terminal condition preserved
+        assert np.allclose(U_solution[10], U_terminal, atol=1e-10)
+
+        # Check finiteness
+        assert np.all(np.isfinite(U_solution))
+
+        # Value function should be non-negative for this problem
+        assert np.all(U_solution >= -1e-6)  # Small tolerance for numerical errors
+
+    def test_2d_solve_newton(self):
+        """Test solving 2D HJB with Newton solver."""
+        problem = QuadraticHamiltonian2D(N=15, T=0.5, Nt=10)
+        solver = HJBFDMSolver(problem, solver_type="newton", max_newton_iterations=30, newton_tolerance=1e-5)
+
+        # Create test density (uniform)
+        M_test = np.ones((11, 15, 15)) / 225
+
+        # Terminal condition
+        x = np.linspace(-1, 1, 15)
+        y = np.linspace(-1, 1, 15)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        U_terminal = 0.5 * (X**2 + Y**2)
+
+        # Initial guess
+        U_guess = np.zeros((11, 15, 15))
+
+        # Solve
+        U_solution = solver.solve_hjb_system(M_test, U_terminal, U_guess)
+
+        # Check output shape
+        assert U_solution.shape == (11, 15, 15)
+
+        # Check terminal condition preserved
+        assert np.allclose(U_solution[10], U_terminal, atol=1e-10)
+
+        # Check finiteness
+        assert np.all(np.isfinite(U_solution))
+
+        # Value function should be non-negative
+        assert np.all(U_solution >= -1e-6)
+
+
+class TestHJBFDM2DConvergence:
+    """Test convergence properties of 2D solver."""
+
+    def test_fixed_point_vs_newton_consistency(self):
+        """Test that fixed-point and Newton give similar results."""
+        problem = QuadraticHamiltonian2D(N=12, T=0.3, Nt=8)
+
+        # Solve with fixed-point
+        solver_fp = HJBFDMSolver(
+            problem,
+            solver_type="fixed_point",
+            damping_factor=0.8,
+            max_newton_iterations=100,
+            newton_tolerance=1e-6,
+        )
+
+        # Solve with Newton
+        solver_newton = HJBFDMSolver(problem, solver_type="newton", max_newton_iterations=30, newton_tolerance=1e-6)
+
+        # Create test inputs
+        M_test = np.ones((9, 12, 12)) / 144
+        x = np.linspace(-1, 1, 12)
+        y = np.linspace(-1, 1, 12)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        U_terminal = 0.5 * (X**2 + Y**2)
+        U_guess = np.zeros((9, 12, 12))
+
+        # Solve both
+        U_fp = solver_fp.solve_hjb_system(M_test, U_terminal, U_guess)
+        U_newton = solver_newton.solve_hjb_system(M_test, U_terminal, U_guess)
+
+        # Solutions should be close (not identical due to different convergence paths)
+        rel_error = np.linalg.norm(U_fp - U_newton) / np.linalg.norm(U_newton)
+        assert rel_error < 0.1  # Within 10% (loose check, different solvers)
+
+        # Both should satisfy terminal condition
+        assert np.allclose(U_fp[8], U_terminal, atol=1e-6)
+        assert np.allclose(U_newton[8], U_terminal, atol=1e-6)
+
+    @pytest.mark.slow
+    def test_spatial_convergence(self):
+        """Test that solution converges with grid refinement."""
+        T, Nt = 0.3, 10
+
+        # Solve on coarse grid
+        problem_coarse = QuadraticHamiltonian2D(N=10, T=T, Nt=Nt)
+        solver_coarse = HJBFDMSolver(
+            problem_coarse, solver_type="newton", max_newton_iterations=30, newton_tolerance=1e-6
+        )
+
+        M_coarse = np.ones((11, 10, 10)) / 100
+        x_c = np.linspace(-1, 1, 10)
+        X_c, Y_c = np.meshgrid(x_c, x_c, indexing="ij")
+        U_terminal_coarse = 0.5 * (X_c**2 + Y_c**2)
+        U_guess_coarse = np.zeros((11, 10, 10))
+
+        U_coarse = solver_coarse.solve_hjb_system(M_coarse, U_terminal_coarse, U_guess_coarse)
+
+        # Solve on fine grid
+        problem_fine = QuadraticHamiltonian2D(N=20, T=T, Nt=Nt)
+        solver_fine = HJBFDMSolver(problem_fine, solver_type="newton", max_newton_iterations=30, newton_tolerance=1e-6)
+
+        M_fine = np.ones((11, 20, 20)) / 400
+        x_f = np.linspace(-1, 1, 20)
+        X_f, Y_f = np.meshgrid(x_f, x_f, indexing="ij")
+        U_terminal_fine = 0.5 * (X_f**2 + Y_f**2)
+        U_guess_fine = np.zeros((11, 20, 20))
+
+        U_fine = solver_fine.solve_hjb_system(M_fine, U_terminal_fine, U_guess_fine)
+
+        # Interpolate coarse solution to fine grid for comparison
+        from scipy.interpolate import RegularGridInterpolator
+
+        # Compare at initial time
+        interpolator = RegularGridInterpolator(
+            (x_c, x_c), U_coarse[0], method="linear", bounds_error=False, fill_value=None
+        )
+        points_fine = np.array([[x, y] for x in x_f for y in x_f])
+        U_coarse_interp = interpolator(points_fine).reshape(20, 20)
+
+        # Fine grid should be more accurate (lower values typically for this problem)
+        # Just check that they're reasonably close
+        rel_diff = np.linalg.norm(U_fine[0] - U_coarse_interp) / np.linalg.norm(U_fine[0])
+        assert rel_diff < 0.5  # Should converge with refinement
+
+
+class TestHJBFDM2DPhysicalProperties:
+    """Test physical properties of 2D solutions."""
+
+    def test_monotonicity_in_time(self):
+        """Test that value function is decreasing backward in time."""
+        problem = QuadraticHamiltonian2D(N=12, T=0.5, Nt=10)
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        M_test = np.ones((11, 12, 12)) / 144
+        x = np.linspace(-1, 1, 12)
+        X, Y = np.meshgrid(x, x, indexing="ij")
+        U_terminal = 0.5 * (X**2 + Y**2)
+        U_guess = np.zeros((11, 12, 12))
+
+        U_solution = solver.solve_hjb_system(M_test, U_terminal, U_guess)
+
+        # Value function should generally decrease going backward in time
+        # (earlier times have lower cost-to-go)
+        # Check at center point
+        center_values = U_solution[:, 6, 6]
+
+        # Should be monotone increasing forward in time (decreasing backward)
+        diffs = np.diff(center_values)
+        # Most diffs should be positive (some may be zero or slightly negative due to numerics)
+        assert np.sum(diffs >= -1e-6) > 0.7 * len(diffs)
+
+    def test_symmetry(self):
+        """Test that solution respects problem symmetry."""
+        problem = QuadraticHamiltonian2D(N=20, T=0.3, Nt=10)
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        # Symmetric initial density
+        x = np.linspace(-1, 1, 20)
+        X, Y = np.meshgrid(x, x, indexing="ij")
+        m_init_2d = np.exp(-5 * (X**2 + Y**2))
+        m_init_2d /= np.trapezoid(np.trapezoid(m_init_2d, x), x)
+
+        M_test = np.tile(m_init_2d, (11, 1, 1))
+
+        # Symmetric terminal condition
+        U_terminal = 0.5 * (X**2 + Y**2)
+        U_guess = np.zeros((11, 20, 20))
+
+        U_solution = solver.solve_hjb_system(M_test, U_terminal, U_guess)
+
+        # Solution should be symmetric about x=0 and y=0
+        # Check at initial time
+        U_0 = U_solution[0]
+
+        # Check x-symmetry: U(x,y) ≈ U(-x,y)
+        x_sym_error = np.linalg.norm(U_0 - np.flip(U_0, axis=0)) / np.linalg.norm(U_0)
+        assert x_sym_error < 0.05  # Within 5%
+
+        # Check y-symmetry: U(x,y) ≈ U(x,-y)
+        y_sym_error = np.linalg.norm(U_0 - np.flip(U_0, axis=1)) / np.linalg.norm(U_0)
+        assert y_sym_error < 0.05
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "-s"])
