@@ -89,11 +89,14 @@ from .numerical.convergence import (
 )
 from .numerical.integration import get_integration_info, trapezoid
 from .numerical.particle_interpolation import (
-    adaptive_bandwidth_selection,
+    estimate_kde_bandwidth,
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
 )
 from .numerical.qp_utils import QPCache, QPSolver
+
+# Backward compatibility alias (deprecated, use estimate_kde_bandwidth)
+adaptive_bandwidth_selection = estimate_kde_bandwidth
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .sparse_operations import (
     SparseMatrixBuilder,
