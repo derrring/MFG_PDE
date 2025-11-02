@@ -251,6 +251,9 @@ class MFGProblem:
         if self.is_custom:
             self._validate_components()
 
+        # Detect solver compatibility
+        self._detect_solver_compatibility()
+
     def _init_1d_legacy(
         self,
         xmin: float,
@@ -613,6 +616,220 @@ class MFGProblem:
         self.geometry = None
         self.obstacles = None
         self.has_obstacles = False
+
+    def _detect_solver_compatibility(self) -> None:
+        """
+        Detect which solver types are compatible with this problem.
+
+        Sets:
+            self.solver_compatible: List of compatible solver type strings
+            self.solver_recommendations: Dict mapping use cases to solvers
+
+        Called automatically after initialization.
+        """
+        compatible = []
+        recommendations = {}
+
+        # Get problem characteristics
+        is_grid = self.domain_type == "grid"
+        is_implicit = self.domain_type == "implicit"
+        is_network = self.domain_type == "network"
+        dim = self.dimension if isinstance(self.dimension, int) else None
+
+        # FDM: Requires regular grid, no complex geometry, works best for dim <= 3
+        if (is_grid and not hasattr(self, "has_obstacles")) or (
+            hasattr(self, "has_obstacles") and not self.has_obstacles
+        ):
+            compatible.append("fdm")
+            if dim and dim <= 2:
+                recommendations["fast"] = "fdm"
+                recommendations["accurate"] = "fdm"
+
+        # Semi-Lagrangian: Works with grids, especially good for higher dimensions
+        if is_grid:
+            compatible.append("semi_lagrangian")
+            if dim and dim >= 3:
+                recommendations["fast"] = "semi_lagrangian"
+
+        # GFDM: Works with grids and complex geometry (particle collocation)
+        if is_grid or is_implicit:
+            compatible.append("gfdm")
+            if is_implicit or (hasattr(self, "has_obstacles") and self.has_obstacles):
+                recommendations["obstacles"] = "gfdm"
+                recommendations["complex_geometry"] = "gfdm"
+
+        # Particle methods: Work with everything except pure networks
+        if not is_network:
+            compatible.append("particle")
+            if dim and dim >= 4:
+                recommendations["high_dimensional"] = "particle"
+                recommendations["fast"] = "particle"
+
+        # Network solver: Only for network problems
+        if is_network:
+            compatible.append("network_solver")
+            recommendations["default"] = "network_solver"
+
+        # DGM: Works with grids (experimental)
+        if is_grid:
+            compatible.append("dgm")
+
+        # PINN: Works with everything (deep learning approach)
+        compatible.append("pinn")
+        if dim and dim >= 5:
+            recommendations["very_high_dimensional"] = "pinn"
+
+        # Set attributes
+        self.solver_compatible = compatible
+        self.solver_recommendations = recommendations
+
+        # Set default recommendation
+        if "default" not in recommendations:
+            if is_grid and dim and dim <= 2:
+                recommendations["default"] = "fdm"
+            elif is_grid and dim and dim == 3:
+                recommendations["default"] = "semi_lagrangian"
+            elif is_implicit:
+                recommendations["default"] = "gfdm"
+            elif compatible:
+                recommendations["default"] = compatible[0]
+
+    def validate_solver_type(self, solver_type: str) -> None:
+        """
+        Validate that solver type is compatible with this problem.
+
+        Args:
+            solver_type: Solver type identifier (e.g., "fdm", "gfdm", "particle")
+
+        Raises:
+            ValueError: If solver type is incompatible with problem configuration
+
+        Note:
+            This method is called by solver constructors to provide early
+            error detection with helpful messages.
+        """
+        if not hasattr(self, "solver_compatible"):
+            # Compatibility not yet detected (shouldn't happen if __init__ called)
+            self._detect_solver_compatibility()
+
+        if solver_type not in self.solver_compatible:
+            # Build helpful error message
+            reason = self._get_incompatibility_reason(solver_type)
+            suggestion = self._get_solver_suggestion()
+
+            raise ValueError(
+                f"Solver type '{solver_type}' is incompatible with this problem.\n\n"
+                f"Problem Configuration:\n"
+                f"  Domain type: {self.domain_type}\n"
+                f"  Dimension: {self.dimension}\n"
+                f"  Has obstacles: {getattr(self, 'has_obstacles', False)}\n\n"
+                f"Reason: {reason}\n\n"
+                f"Compatible solvers: {self.solver_compatible}\n\n"
+                f"Suggestion: {suggestion}"
+            )
+
+    def _get_incompatibility_reason(self, solver_type: str) -> str:
+        """Get human-readable reason why solver is incompatible."""
+        reasons = {
+            "fdm": {
+                "implicit": "FDM requires regular grid, not implicit geometry",
+                "network": "FDM requires spatial grid, not network structure",
+                "obstacles": "FDM doesn't support obstacles (use GFDM instead)",
+            },
+            "semi_lagrangian": {
+                "implicit": "Semi-Lagrangian requires regular grid",
+                "network": "Semi-Lagrangian requires spatial grid",
+            },
+            "gfdm": {
+                "network": "GFDM requires spatial coordinates, not network structure",
+            },
+            "particle": {
+                "network": "Particle methods require spatial domain",
+            },
+            "network_solver": {
+                "grid": "Network solver requires network structure, not spatial grid",
+                "implicit": "Network solver requires network structure",
+            },
+        }
+
+        domain_reasons = reasons.get(solver_type, {})
+        return domain_reasons.get(self.domain_type, "Solver not compatible with problem configuration")
+
+    def _get_solver_suggestion(self) -> str:
+        """Get helpful suggestion for which solver to use."""
+        if not self.solver_recommendations:
+            if self.solver_compatible:
+                return f"Try using: {self.solver_compatible[0]}"
+            return "No compatible solvers found for this configuration"
+
+        # Get default recommendation
+        default_solver = self.solver_recommendations.get(
+            "default", self.solver_compatible[0] if self.solver_compatible else None
+        )
+
+        if not default_solver:
+            return "No solver recommendations available"
+
+        # Build recommendation text
+        suggestion = f"Use solver '{default_solver}' (recommended for this problem)"
+
+        # Add context-specific recommendations
+        additional_recs = []
+        if "obstacles" in self.solver_recommendations:
+            additional_recs.append(f"obstacles: {self.solver_recommendations['obstacles']}")
+        if "fast" in self.solver_recommendations and self.solver_recommendations["fast"] != default_solver:
+            additional_recs.append(f"fastest: {self.solver_recommendations['fast']}")
+        if "accurate" in self.solver_recommendations and self.solver_recommendations["accurate"] != default_solver:
+            additional_recs.append(f"most accurate: {self.solver_recommendations['accurate']}")
+
+        if additional_recs:
+            suggestion += f"\n  Alternative recommendations: {', '.join(additional_recs)}"
+
+        suggestion += "\n  Or use create_fast_solver() for automatic selection"
+
+        return suggestion
+
+    def get_solver_info(self) -> dict[str, Any]:
+        """
+        Get comprehensive solver compatibility information.
+
+        Returns:
+            Dictionary with solver compatibility details:
+            - compatible: List of compatible solver types
+            - recommendations: Dict of use-case specific recommendations
+            - dimension: Problem dimension
+            - domain_type: Type of spatial domain
+            - complexity: Estimated computational complexity
+        """
+        if not hasattr(self, "solver_compatible"):
+            self._detect_solver_compatibility()
+
+        return {
+            "compatible": self.solver_compatible,
+            "recommendations": self.solver_recommendations,
+            "dimension": self.dimension,
+            "domain_type": self.domain_type,
+            "has_obstacles": getattr(self, "has_obstacles", False),
+            "complexity": self._estimate_complexity(),
+            "default_solver": self.solver_recommendations.get("default", None),
+        }
+
+    def _estimate_complexity(self) -> str:
+        """Estimate computational complexity category."""
+        if self.domain_type == "network":
+            return "O(N_nodes × N_time)"
+
+        if isinstance(self.dimension, int):
+            if self.dimension == 1:
+                return "O(Nx × Nt)"
+            elif self.dimension == 2:
+                return "O(Nx × Ny × Nt)"
+            elif self.dimension == 3:
+                return "O(Nx × Ny × Nz × Nt)"
+            else:
+                return f"O(N^{self.dimension} × Nt) - curse of dimensionality"
+
+        return "Problem-dependent"
 
     def get_computational_cost_estimate(self) -> dict:
         """
