@@ -350,7 +350,8 @@ Content:
 ## Next Steps (Future Work)
 
 ### Issue #216 (Remaining Parts)
-- Part 2/4: Signed Distance Functions (~150 lines saved per project)
+- ✅ Part 1/4: Particle Interpolation (~220 lines saved, commit 84e6e6d)
+- ✅ Part 2/4: Signed Distance Functions (~150 lines saved, commit 83f59f4)
 - Part 3/4: QP Solver Caching (~180 lines saved per project)
 - Part 4/4: Convergence Monitoring (~60 lines saved per project)
 
@@ -363,11 +364,51 @@ Content:
 - Particle interpolation benchmarks (deferred - not critical)
 - GPU acceleration profiling (deferred - not critical)
 
-**Recommendation**: Continue with Issue #216 Part 2/4 (Signed Distance Functions) for maximum user impact.
+**Recommendation**: Continue with Issue #216 Part 3/4 (QP Solver Caching) for maximum user impact.
 
 ---
 
 **Created**: 2025-11-03
 **Completed**: 2025-11-03 (same day)
-**Status**: ✅ A, C, and D ALL COMPLETE
-**Next**: Issue #216 Part 2/4 (Signed Distance Functions) or other priorities
+**Status**: ✅ A, C, and D ALL COMPLETE | ✅ Issue #216 Parts 1-2/4 COMPLETE
+**Next**: Issue #216 Part 3/4 (QP Solver Caching) or other priorities
+
+---
+
+## ✅ COMPLETED (Session Extension): Issue #216 Part 2/4 - SDF Utilities
+
+**What Was Built**:
+- **Feature**: Signed Distance Function (SDF) Utilities
+- **Files Created**:
+  - `mfg_pde/utils/numerical/sdf_utils.py` (500 lines)
+  - `tests/unit/utils/test_sdf_utils.py` (300 lines)
+  - `docs/user_guides/sdf_utilities.md` (400 lines)
+
+**Functions Implemented** (9 total):
+1. Primitives: `sdf_sphere()`, `sdf_box()`
+2. CSG Operations: `sdf_union()`, `sdf_intersection()`, `sdf_complement()`, `sdf_difference()`
+3. Smooth Blending: `sdf_smooth_union()`, `sdf_smooth_intersection()`
+4. Gradient: `sdf_gradient()`
+
+**Design**:
+- Function-based API wrapping existing `mfg_pde.geometry.implicit` infrastructure
+- Supports 1D/2D/3D and arbitrary dimensions
+- Convention: negative inside, zero on boundary, positive outside
+- Smooth operations use polynomial smooth minimum (Quilez, 2008)
+
+**Test Coverage**: 24/24 tests passing
+- Sphere/box primitives (1D/2D/3D)
+- CSG operations (union, intersection, complement, difference)
+- Smooth blending operations
+- Gradient computation with finite differences
+- Edge cases (empty points, high-dimensional, list inputs)
+
+**Impact**:
+- Saves ~150 lines per research project
+- Simplifies obstacle avoidance in MFG problems
+- Makes domain specification more accessible
+- Production-quality implementation with comprehensive documentation
+
+**Commit**: `83f59f4` - "feat: Add signed distance function (SDF) utilities (Issue #216, Part 2/4)"
+
+**Total Issue #216 Impact So Far**: ~370 lines saved per project (Parts 1+2)
