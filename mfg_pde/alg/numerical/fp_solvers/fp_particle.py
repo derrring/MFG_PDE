@@ -622,7 +622,6 @@ class FPParticleSolver(BaseFPSolver):
         """
         Nt = self.problem.Nt + 1
         N_points = len(self.collocation_points)
-        dimension = self.problem.dimension
 
         # Validate input shapes
         if m_initial_condition.shape != (N_points,):
@@ -639,12 +638,8 @@ class FPParticleSolver(BaseFPSolver):
         M_solution = np.zeros((Nt, N_points))
         M_solution[0, :] = m_initial_condition.copy()
 
-        # Get problem parameters
-        dt = self.problem.T / self.problem.Nt
-        sigma = getattr(self.problem, "sigma", 0.1)
-        coef_CT = getattr(self.problem, "coefCT", 0.5)
-
         # Simplified collocation mode: density remains constant on particles
+        # TODO: Implement proper advection on particles using drift from U_solution_for_drift
         # (Full implementation would solve continuity equation on particle basis)
         # This is a first-order approximation - mass is conserved on particles
         for t_idx in range(Nt - 1):

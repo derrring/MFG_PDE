@@ -170,7 +170,7 @@ def visualize_collocation_mode(points, M):
     print("Visualization: Density on Particles")
     print("=" * 70)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    _fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
     # Time snapshots
     time_indices = [0, M.shape[0] // 2, M.shape[0] - 1]

@@ -71,7 +71,7 @@ class TestParticleCollocationIntegration:
         points = domain.sample_uniform(N_points, seed=42)
 
         # Create solvers
-        hjb_solver = HJBGFDMSolver(problem, collocation_points=points, delta=0.15)
+        _hjb_solver = HJBGFDMSolver(problem, collocation_points=points, delta=0.15)
         fp_solver = FPParticleSolver(problem, mode="collocation", external_particles=points)
 
         # Initial density (uniform)
@@ -101,7 +101,7 @@ class TestParticleCollocationIntegration:
         domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
         points = domain.sample_uniform(N_points, seed=42)
 
-        hjb_solver = HJBGFDMSolver(problem, collocation_points=points, delta=0.15)
+        _hjb_solver = HJBGFDMSolver(problem, collocation_points=points, delta=0.15)
         fp_solver = FPParticleSolver(problem, mode="collocation", external_particles=points)
 
         # Initial conditions
