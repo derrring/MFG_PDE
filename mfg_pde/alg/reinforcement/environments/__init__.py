@@ -18,32 +18,6 @@ from mfg_pde.alg.reinforcement.environments.cellular_automata import (
     CellularAutomataGenerator,
     create_preset_ca_config,
 )
-from mfg_pde.alg.reinforcement.environments.hybrid_maze import (
-    AlgorithmSpec,
-    HybridMazeConfig,
-    HybridMazeGenerator,
-    HybridStrategy,
-    create_campus_hybrid,
-    create_museum_hybrid,
-    create_office_hybrid,
-)
-from mfg_pde.alg.reinforcement.environments.maze_config import (
-    MazeConfig,
-    MazeTopology,
-    PhysicalDimensions,
-    PlacementStrategy,
-    create_continuous_maze_config,
-    create_default_config,
-    create_multi_goal_config,
-)
-from mfg_pde.alg.reinforcement.environments.maze_generator import (
-    Cell,
-    Grid,
-    MazeAlgorithm,
-    PerfectMazeGenerator,
-    generate_maze,
-    verify_perfect_maze,
-)
 from mfg_pde.alg.reinforcement.environments.position_placement import (
     compute_position_metrics,
     place_positions,
@@ -55,14 +29,40 @@ from mfg_pde.alg.reinforcement.environments.recursive_division import (
     add_loops,
     create_room_based_config,
 )
-from mfg_pde.alg.reinforcement.environments.voronoi_maze import (
+from mfg_pde.geometry.mazes.hybrid_maze import (
+    AlgorithmSpec,
+    HybridMazeConfig,
+    HybridMazeGenerator,
+    HybridStrategy,
+    create_campus_hybrid,
+    create_museum_hybrid,
+    create_office_hybrid,
+)
+from mfg_pde.geometry.mazes.maze_config import (
+    MazeConfig,
+    MazeTopology,
+    PhysicalDimensions,
+    PlacementStrategy,
+    create_continuous_maze_config,
+    create_default_config,
+    create_multi_goal_config,
+)
+from mfg_pde.geometry.mazes.maze_generator import (
+    Cell,
+    Grid,
+    MazeAlgorithm,
+    PerfectMazeGenerator,
+    generate_maze,
+    verify_perfect_maze,
+)
+from mfg_pde.geometry.mazes.voronoi_maze import (
     VoronoiMazeConfig,
     VoronoiMazeGenerator,
 )
 
 # Maze utilities (connectivity analysis)
 try:
-    from mfg_pde.alg.reinforcement.environments.maze_utils import (
+    from mfg_pde.geometry.mazes.maze_utils import (
         analyze_maze_connectivity,
         compute_adaptive_door_width,
         connect_regions_adaptive,
@@ -81,7 +81,7 @@ except ImportError:
 
 # Maze post-processing (smoothing, enhancement, refinement)
 try:
-    from mfg_pde.alg.reinforcement.environments.maze_postprocessing import (
+    from mfg_pde.geometry.mazes.maze_postprocessing import (
         adaptive_door_carving,
         enhance_organic_maze,
         normalize_wall_thickness,

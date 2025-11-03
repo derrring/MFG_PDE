@@ -20,10 +20,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.environments.maze_config import PlacementStrategy
+from mfg_pde.geometry.mazes.maze_config import PlacementStrategy
 
 if TYPE_CHECKING:
-    from mfg_pde.alg.reinforcement.environments.maze_generator import Grid
+    from mfg_pde.geometry.mazes.maze_generator import Grid
 
 
 def place_positions(
