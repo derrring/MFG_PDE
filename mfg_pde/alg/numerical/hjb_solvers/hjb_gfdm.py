@@ -1535,7 +1535,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 if self.qp_optimization_level in ["auto", "always"] and hasattr(self, "qp_stats"):
                     postfix["qp_solves"] = self.qp_stats.get("total_qp_solves", 0)
                 if postfix:
-                    timestep_range.set_postfix(postfix)
+                    timestep_range.set_postfix(**postfix)
 
         # Map back to grid
         U_solution = self._map_collocation_to_grid_batch(U_solution_collocation)
