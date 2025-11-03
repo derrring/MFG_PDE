@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mfg_pde import BoundaryConditions, MFGComponents, MFGProblem
 from mfg_pde.config import create_research_config
+from mfg_pde.geometry.implicit import Hyperrectangle, Hypersphere
 from mfg_pde.utils.logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -46,28 +47,36 @@ class BarrierConfig:
 
 @dataclass
 class CircularBarrier(BarrierConfig):
-    """Circular barrier configuration."""
+    """Circular barrier configuration using unified geometry infrastructure."""
 
     center: tuple[float, float]
     radius: float
 
+    def __post_init__(self):
+        """Initialize implicit domain representation."""
+        self._domain = Hypersphere(center=list(self.center), radius=self.radius)
+
     def compute_distance(self, x: np.ndarray) -> np.ndarray:
-        """Compute signed distance to circular barrier."""
-        center_array = np.array(self.center)
-        distances = np.linalg.norm(x - center_array, axis=1)
-        return distances - self.radius
+        """Compute signed distance to circular barrier using Hypersphere."""
+        return self._domain.signed_distance(x)
 
 
 @dataclass
 class LinearBarrier(BarrierConfig):
-    """Linear barrier configuration."""
+    """
+    Linear barrier configuration.
+
+    Note: This uses custom SDF implementation as the implicit domain infrastructure
+    does not yet have a capsule/line segment primitive. Future work could add this
+    primitive to mfg_pde.geometry.implicit for dimension-agnostic line segments.
+    """
 
     start: tuple[float, float]
     end: tuple[float, float]
     thickness: float = 0.05
 
     def compute_distance(self, x: np.ndarray) -> np.ndarray:
-        """Compute signed distance to linear barrier."""
+        """Compute signed distance to linear barrier using custom capsule SDF."""
         start_array = np.array(self.start)
         end_array = np.array(self.end)
         line_vec = end_array - start_array
@@ -88,29 +97,19 @@ class LinearBarrier(BarrierConfig):
 
 @dataclass
 class RectangularBarrier(BarrierConfig):
-    """Rectangular barrier configuration."""
+    """Rectangular barrier configuration using unified geometry infrastructure."""
 
     bounds: list[tuple[float, float]]  # [(x_min, x_max), (y_min, y_max)]
 
+    def __post_init__(self):
+        """Initialize implicit domain representation."""
+        # Convert bounds list to numpy array format for Hyperrectangle
+        bounds_array = np.array(self.bounds)
+        self._domain = Hyperrectangle(bounds=bounds_array)
+
     def compute_distance(self, x: np.ndarray) -> np.ndarray:
-        """Compute signed distance to rectangular barrier."""
-        x_min, x_max = self.bounds[0]
-        y_min, y_max = self.bounds[1]
-
-        # Distance to rectangle boundary
-        dx = np.maximum(x_min - x[:, 0], x[:, 0] - x_max, 0)
-        dy = np.maximum(y_min - x[:, 1], x[:, 1] - y_max, 0)
-
-        # Outside distance
-        outside_dist = np.sqrt(dx**2 + dy**2)
-
-        # Inside distance (negative)
-        inside_mask = (x[:, 0] >= x_min) & (x[:, 0] <= x_max) & (x[:, 1] >= y_min) & (x[:, 1] <= y_max)
-        inside_dist = np.minimum(
-            np.minimum(x[:, 0] - x_min, x_max - x[:, 0]), np.minimum(x[:, 1] - y_min, y_max - x[:, 1])
-        )
-
-        return np.where(inside_mask, -inside_dist, outside_dist)
+        """Compute signed distance to rectangular barrier using Hyperrectangle."""
+        return self._domain.signed_distance(x)
 
 
 class GridBased2DAdapter:
