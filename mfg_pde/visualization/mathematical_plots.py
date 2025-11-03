@@ -18,14 +18,8 @@ from typing import Any
 
 import numpy as np
 
-# Plotly imports with LaTeX support
-try:
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
+# Import optional dependencies from parent module (centralized imports)
+from . import PLOTLY_AVAILABLE, go, make_subplots
 
 # Matplotlib imports with LaTeX configuration
 try:

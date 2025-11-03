@@ -16,14 +16,12 @@ import numpy as np
 
 from mfg_pde.utils.numerical.integration import trapezoid
 
+# Import optional dependencies from parent module (centralized imports)
+from . import BOKEH_AVAILABLE, PLOTLY_AVAILABLE
+
 # Import MFG components
 try:
-    from .interactive_plots import (
-        BOKEH_AVAILABLE,
-        PLOTLY_AVAILABLE,
-        MFGVisualizationManager,
-        create_visualization_manager,
-    )
+    from .interactive_plots import MFGVisualizationManager, create_visualization_manager
 
     VISUALIZATION_AVAILABLE = True
 except ImportError:

@@ -20,39 +20,29 @@ if TYPE_CHECKING:
 
 import numpy as np
 
-# Core dependencies
-try:
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import plotly.offline as offline
-    from plotly.subplots import make_subplots
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-    go = px = make_subplots = offline = None
-
-try:
-    import bokeh.transform as transform
-    from bokeh.io import curdoc, push_notebook, show
-    from bokeh.layouts import column, gridplot, row
-    from bokeh.models import ColorBar, ColumnDataSource, HoverTool, LinearColorMapper
-    from bokeh.models.tools import BoxZoomTool, PanTool, ResetTool, SaveTool, WheelZoomTool
-    from bokeh.palettes import Inferno256, Plasma256, Viridis256
-    from bokeh.plotting import figure, output_file, save
-
-    BOKEH_AVAILABLE = True
-except ImportError:
-    BOKEH_AVAILABLE = False
-    # Functions
-    figure = save = output_file = None
-    gridplot = column = row = curdoc = push_notebook = show = transform = None
-    # Classes set to None
-    HoverTool = ColorBar = LinearColorMapper = None  # type: ignore[misc]
-    PanTool = WheelZoomTool = BoxZoomTool = ResetTool = SaveTool = None  # type: ignore[misc]
-    ColumnDataSource = None  # type: ignore[misc]
-    # Palettes
-    Viridis256 = Plasma256 = Inferno256 = None
+# Import optional dependencies from parent module (centralized imports)
+from . import (
+    BOKEH_AVAILABLE,
+    PLOTLY_AVAILABLE,
+    BoxZoomTool,
+    ColorBar,
+    ColumnDataSource,
+    HoverTool,
+    LinearColorMapper,
+    PanTool,
+    ResetTool,
+    SaveTool,
+    Viridis256,
+    WheelZoomTool,
+    figure,
+    go,
+    gridplot,
+    make_subplots,
+    output_file,
+    px,
+    save,
+    show,
+)
 
 # Optional Polars integration
 try:

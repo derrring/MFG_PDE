@@ -21,22 +21,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-try:
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-
-try:
-    import networkx as nx
-
-    NETWORKX_AVAILABLE = True
-except ImportError:
-    NETWORKX_AVAILABLE = False
-
+# Import optional dependencies from parent module (centralized imports)
+from . import NETWORKX_AVAILABLE, PLOTLY_AVAILABLE, go, make_subplots, nx, px
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure

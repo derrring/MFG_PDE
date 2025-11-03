@@ -15,26 +15,14 @@ Key enhancements:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 
-try:
-    import plotly.graph_objects as go
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-
-try:
-    import networkx as nx  # noqa: F401
-
-    NETWORKX_AVAILABLE = True
-except ImportError:
-    NETWORKX_AVAILABLE = False
-
-from typing import TYPE_CHECKING
-
+# Import optional dependencies from parent module (centralized imports)
+from . import PLOTLY_AVAILABLE, go
 from .network_plots import NetworkMFGVisualizer
 
 if TYPE_CHECKING:
