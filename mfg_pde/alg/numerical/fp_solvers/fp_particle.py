@@ -655,3 +655,40 @@ class FPParticleSolver(BaseFPSolver):
         self.M_particles_trajectory = np.tile(self.collocation_points, (Nt, 1, 1))
 
         return M_solution
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing FPParticleSolver...")
+
+    from mfg_pde import ExampleMFGProblem
+
+    # Test 1D problem with particle solver
+    problem = ExampleMFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    solver = FPParticleSolver(problem, num_particles=1000, mode="hybrid")
+
+    # Test solver initialization
+    assert solver.fp_method_name == "Particle"
+    assert solver.num_particles == 1000
+    assert solver.mode == ParticleMode.HYBRID
+
+    # Test solve_fp_system
+    import numpy as np
+
+    U_test = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    M_init = problem.m_init
+
+    M_solution = solver.solve_fp_system(M_init, U_test)
+
+    assert M_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+    assert not np.any(np.isnan(M_solution))
+    assert not np.any(np.isinf(M_solution))
+    assert np.all(M_solution >= 0), "Density must be non-negative"
+
+    print("  Particle solver converged")
+    print(f"  Num particles: {solver.num_particles}")
+    print(f"  M range: [{M_solution.min():.3f}, {M_solution.max():.3f}]")
+    print(f"  KDE bandwidth: {solver.kde_bandwidth}")
+    print(f"  Mode: {solver.mode.value}")
+
+    print("All smoke tests passed!")

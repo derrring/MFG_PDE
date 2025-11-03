@@ -857,3 +857,42 @@ def _add_boundary_no_flux_entries(
     row_indices.append(flat_idx)
     col_indices.append(flat_idx)
     data_values.append(diagonal_value)
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing FPFDMSolver...")
+
+    from mfg_pde import ExampleMFGProblem
+
+    # Test 1D problem
+    problem = ExampleMFGProblem(Nx=40, Nt=25, T=1.0, sigma=0.1)
+    solver = FPFDMSolver(problem, boundary_conditions=BoundaryConditions(type="no_flux"))
+
+    # Test solver initialization
+    assert solver.dimension == 1
+    assert solver.fp_method_name == "FDM"
+    assert solver.boundary_conditions.type == "no_flux"
+
+    # Test solve_fp_system
+    U_test = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    M_init = problem.m_init  # Shape (Nx+1,)
+    M_prev_single = np.ones(problem.Nx + 1) * 0.5
+
+    M_solution = solver.solve_fp_system(M_init, U_test, show_progress=False)
+
+    assert M_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+    assert not has_nan_or_inf(M_solution)
+    assert np.all(M_solution >= 0), "Density must be non-negative"
+
+    # Check mass conservation (integral of density)
+    initial_mass = np.trapz(M_solution[0], dx=problem.Dx)
+    final_mass = np.trapz(M_solution[-1], dx=problem.Dx)
+    mass_drift = abs(final_mass - initial_mass) / initial_mass
+
+    print("  FDM solver converged")
+    print(f"  M range: [{M_solution.min():.3f}, {M_solution.max():.3f}]")
+    print(f"  Mass conservation: initial={initial_mass:.6f}, final={final_mass:.6f}, drift={mass_drift:.2e}")
+    print(f"  Boundary conditions: {solver.boundary_conditions.type}")
+
+    print("All smoke tests passed!")

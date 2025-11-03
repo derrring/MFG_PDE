@@ -982,3 +982,37 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             "tolerance": self.tolerance,
             "max_iterations": self.max_char_iterations,
         }
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing HJBSemiLagrangianSolver...")
+
+    from mfg_pde import ExampleMFGProblem
+
+    # Test 1D problem with semi-Lagrangian method
+    problem = ExampleMFGProblem(Nx=25, Nt=15, T=1.0, sigma=0.15)
+    solver = HJBSemiLagrangianSolver(problem, interpolation_method="linear", optimization_method="brent")
+
+    # Test solver initialization
+    assert solver.dimension == 1
+    assert solver.hjb_method_name == "Semi-Lagrangian"
+    assert solver.interpolation_method == "linear"
+
+    # Test solve_hjb_system
+    M_test = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.3
+    U_final = np.zeros(problem.Nx + 1)
+    U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+
+    U_solution = solver.solve_hjb_system(M_test, U_final, U_prev)
+
+    assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+    assert not np.any(np.isnan(U_solution))
+    assert not np.any(np.isinf(U_solution))
+
+    print("  Semi-Lagrangian solver converged")
+    print(f"  U range: [{U_solution.min():.3f}, {U_solution.max():.3f}]")
+    print(f"  Interpolation: {solver.interpolation_method}")
+    print(f"  Characteristic solver: {solver.characteristic_solver}")
+
+    print("All smoke tests passed!")
