@@ -23,6 +23,7 @@ try:
 
     PROGRESS_BACKEND = "rich"
     RICH_AVAILABLE = True
+    TQDM_AVAILABLE = False  # Rich is preferred, so tqdm not used
     console = Console()
 
 except ImportError:
