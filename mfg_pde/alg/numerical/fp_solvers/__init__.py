@@ -11,11 +11,13 @@ individual Fokker-Planck equations, including:
 from .base_fp import BaseFPSolver
 from .fp_fdm import FPFDMSolver
 from .fp_network import FPNetworkSolver
-from .fp_particle import FPParticleSolver
+from .fp_particle import FPParticleSolver, KDENormalization, ParticleMode
 
 __all__ = [
     "BaseFPSolver",
     "FPFDMSolver",
     "FPNetworkSolver",
     "FPParticleSolver",
+    "KDENormalization",
+    "ParticleMode",
 ]

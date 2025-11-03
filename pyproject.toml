@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.8.1" # v0.8.1: Bug #8 Fix - Full nD FP Solver + Semi-Lagrangian 2D
+version = "0.9.0" # v0.9.0: Phase 3 Complete - Unified Architecture (MFGProblem + SolverConfig + Factories)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
@@ -44,7 +44,8 @@ dependencies = [
     "seaborn>=0.13",        # Statistical plotting
 
     # Progress and utilities
-    "tqdm>=4.0",            # For progress bars
+    "rich>=13.0",           # Modern progress bars and console output (preferred)
+    "tqdm>=4.0",            # Legacy progress bars (fallback)
     "psutil>=5.9",          # System monitoring
 
     # Data validation
@@ -164,6 +165,7 @@ typing = [
     "types-tqdm",
     "types-setuptools",
     "types-psutil",
+    # rich has built-in type hints, no stub package needed
 ]
 
 # All extras combined (Ruff unified tooling)
@@ -261,6 +263,7 @@ module = [
     "jaxlib.*",
     "numba.*",
     "tqdm.*",
+    "rich.*",            # rich has type hints but allow ignore for flexibility
     "nbformat.*",
     "jupyter.*",
     "pytest.*",

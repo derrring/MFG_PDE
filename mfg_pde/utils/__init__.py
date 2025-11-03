@@ -89,11 +89,22 @@ from .numerical.convergence import (
 )
 from .numerical.integration import get_integration_info, trapezoid
 from .numerical.particle_interpolation import (
-    adaptive_bandwidth_selection,
+    estimate_kde_bandwidth,
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
 )
 from .numerical.qp_utils import QPCache, QPSolver
+from .numerical.sdf_utils import (
+    sdf_box,
+    sdf_complement,
+    sdf_difference,
+    sdf_gradient,
+    sdf_intersection,
+    sdf_smooth_intersection,
+    sdf_smooth_union,
+    sdf_sphere,
+    sdf_union,
+)
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .sparse_operations import (
     SparseMatrixBuilder,
@@ -101,6 +112,9 @@ from .sparse_operations import (
     estimate_sparsity,
     sparse_matmul,
 )
+
+# Backward compatibility alias (deprecated, use estimate_kde_bandwidth)
+adaptive_bandwidth_selection = estimate_kde_bandwidth
 
 # Optional modules with graceful handling
 try:
@@ -247,6 +261,17 @@ __all__ = [
     # Particle interpolation
     "interpolate_grid_to_particles",
     "interpolate_particles_to_grid",
+    "estimate_kde_bandwidth",
+    # Signed distance functions
+    "sdf_box",
+    "sdf_complement",
+    "sdf_difference",
+    "sdf_gradient",
+    "sdf_intersection",
+    "sdf_smooth_intersection",
+    "sdf_smooth_union",
+    "sdf_sphere",
+    "sdf_union",
     # QP utilities
     "QPCache",
     "QPSolver",

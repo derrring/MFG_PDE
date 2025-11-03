@@ -1,6 +1,29 @@
 """
 Hybrid FP-Particle + HJB-FDM Solver for Mean Field Games.
 
+.. deprecated:: 0.9.0
+    This class is deprecated and will be removed in v2.0.0.
+    Use :class:`FixedPointIterator` with modular HJB/FP solvers instead.
+
+    Migration example::
+
+        # OLD (deprecated)
+        from mfg_pde.alg.numerical.coupling import HybridFPParticleHJBFDM
+        solver = HybridFPParticleHJBFDM(problem, num_particles=5000)
+
+        # NEW (recommended)
+        from mfg_pde import solve_mfg
+        from mfg_pde.config import ConfigBuilder
+
+        config = (
+            ConfigBuilder()
+            .solver_hjb(method="fdm")
+            .solver_fp_particle(num_particles=5000)
+            .picard(max_iterations=20, damping_factor=0.5)
+            .build()
+        )
+        result = solve_mfg(problem, config=config)
+
 This module implements a hybrid solver that combines:
 - Fokker-Planck equation: Particle-based solution
 - Hamilton-Jacobi-Bellman equation: Finite Difference Method (FDM)
@@ -52,6 +75,9 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
     ):
         """
         Initialize the hybrid FP-Particle + HJB-FDM solver.
+
+        .. deprecated:: 0.9.0
+            This class is deprecated. Use FixedPointIterator with ConfigBuilder instead.
 
         Args:
             problem: MFG problem to solve

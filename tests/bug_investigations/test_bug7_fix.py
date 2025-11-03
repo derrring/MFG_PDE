@@ -8,9 +8,9 @@ instead of M(t_{n+1}) when solving HJB at time t_n.
 import numpy as np
 
 from benchmarks.validation.test_2d_crowd_motion import CrowdMotion2D
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 
 
 def test_bug7_time_index_fix():

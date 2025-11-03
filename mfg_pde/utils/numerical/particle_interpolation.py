@@ -1,35 +1,32 @@
-#!/usr/bin/env python3
 """
-Particle Interpolation Utilities
+Particle Interpolation Utilities for MFG Computations.
 
-This module provides utilities for converting between particle and grid representations,
-essential for hybrid particle-grid methods in MFG problems.
+This module provides functions for converting between grid-based and particle-based
+representations, a common need in hybrid MFG solvers and visualization.
 
 Key Functions:
-- interpolate_grid_to_particles: Sample grid values at particle positions (supports arbitrary nD)
-- interpolate_particles_to_grid: Estimate density/values on grid from particles (supports arbitrary nD)
-- adaptive_bandwidth_selection: Optimal KDE bandwidth selection
-
-Dimension Support:
-- Fully dimension-agnostic (1D, 2D, 3D, 4D+)
-- Uses scipy.interpolate.RegularGridInterpolator for nD interpolation
-- Uses scipy.stats.gaussian_kde for nD kernel density estimation
-- Uses np.meshgrid for arbitrary-dimensional grid generation
+- interpolate_grid_to_particles: Grid → Particles
+- interpolate_particles_to_grid: Particles → Grid
+- estimate_kde_bandwidth: Automatic bandwidth selection
 
 Use Cases:
-- Hybrid particle-grid solvers
-- Initial condition generation
-- Visualization of particle simulations
+- Hybrid particle-grid methods (FP particle + HJB grid)
+- Visualization of particle simulations on regular grids
 - Coupling different solver types
+- Initial condition generation
 
-Example:
-    >>> from mfg_pde.utils import interpolate_particles_to_grid
+Examples:
+    >>> import numpy as np
+    >>> from mfg_pde.utils.numerical import interpolate_grid_to_particles
     >>>
-    >>> # Estimate density on grid from particle positions
-    >>> density = interpolate_particles_to_grid(
-    ...     particle_positions=particles,
-    ...     grid_points=x_grid,
-    ...     method="kde"
+    >>> # Create grid values
+    >>> x = np.linspace(0, 1, 51)
+    >>> u = np.exp(-10 * (x - 0.5)**2)
+    >>>
+    >>> # Interpolate to particles
+    >>> particles = np.random.uniform(0, 1, 100)
+    >>> u_particles = interpolate_grid_to_particles(
+    ...     u, grid_bounds=(0, 1), particle_positions=particles
     ... )
 """
 
@@ -38,398 +35,316 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+from scipy.interpolate import RBFInterpolator, RegularGridInterpolator
+from scipy.stats import gaussian_kde
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-# Optional dependencies
-try:
-    from scipy.interpolate import RegularGridInterpolator, interp1d
-    from scipy.stats import gaussian_kde
-
-    SCIPY_AVAILABLE = True
-except ImportError:
-    RegularGridInterpolator = None
-    interp1d = None
-    gaussian_kde = None
-    SCIPY_AVAILABLE = False
-
-
-# =============================================================================
-# GRID TO PARTICLES INTERPOLATION
-# =============================================================================
+InterpolationMethod = Literal["linear", "cubic", "rbf", "kde", "nearest"]
 
 
 def interpolate_grid_to_particles(
-    grid_values: NDArray[np.float64],
-    grid_bounds: tuple[tuple[float, float], ...],
-    particle_positions: NDArray[np.float64],
-    method: Literal["linear", "cubic", "nearest"] = "linear",
-) -> NDArray[np.float64]:
+    grid_values: NDArray[np.floating],
+    grid_bounds: tuple[float, float] | tuple[tuple[float, float], ...],
+    particle_positions: NDArray[np.floating],
+    method: InterpolationMethod = "linear",
+) -> NDArray[np.floating]:
     """
     Interpolate values from regular grid to particle positions.
 
-    Supports arbitrary-dimensional grids (1D, 2D, 3D, 4D, ...) with multiple interpolation methods.
+    This function takes values defined on a regular grid and evaluates them at
+    arbitrary particle positions using the specified interpolation method.
 
-    Args:
-        grid_values: Grid values
-            - 1D: shape (Nx,) or (Nt, Nx)
-            - 2D: shape (Nx, Ny) or (Nt, Nx, Ny)
-            - 3D: shape (Nx, Ny, Nz) or (Nt, Nx, Ny, Nz)
-            - nD: shape (Nx1, Nx2, ..., Nxd) or (Nt, Nx1, Nx2, ..., Nxd)
-        grid_bounds: Spatial bounds for each dimension
-            - 1D: ((xmin, xmax),)
-            - 2D: ((xmin, xmax), (ymin, ymax))
-            - 3D: ((xmin, xmax), (ymin, ymax), (zmin, zmax))
-            - nD: ((x1_min, x1_max), (x2_min, x2_max), ..., (xd_min, xd_max))
-        particle_positions: Particle coordinates, shape (N_particles, d)
-        method: Interpolation method
-            - "linear": Linear interpolation (fast, C0 continuous)
-            - "cubic": Cubic spline (smooth, C2 continuous, 1D only)
-            - "nearest": Nearest neighbor (fastest, discontinuous)
+    Parameters
+    ----------
+    grid_values : ndarray
+        Values on regular grid. Shape:
+        - 1D: (Nx,)
+        - 2D: (Nx, Ny)
+        - 3D: (Nx, Ny, Nz)
+    grid_bounds : tuple
+        Grid bounds:
+        - 1D: (xmin, xmax)
+        - 2D: ((xmin, xmax), (ymin, ymax))
+        - 3D: ((xmin, xmax), (ymin, ymax), (zmin, zmax))
+    particle_positions : ndarray
+        Particle positions. Shape:
+        - 1D: (N,) or (N, 1)
+        - 2D: (N, 2)
+        - 3D: (N, 3)
+    method : {"linear", "cubic", "nearest"}
+        Interpolation method:
+        - "linear": Fast, C0 continuous
+        - "cubic": Smooth, C1 continuous (1D/2D only)
+        - "nearest": Fastest, discontinuous
 
-    Returns:
-        Interpolated values at particle positions, shape (N_particles,)
-            If grid_values has time dimension, returns (Nt, N_particles)
+    Returns
+    -------
+    ndarray
+        Interpolated values at particle positions, shape (N,)
 
-    Raises:
-        ValueError: If scipy not available or invalid method
-        ValueError: If dimensions don't match
+    Raises
+    ------
+    ValueError
+        If dimensions don't match or method is unsupported
 
-    Example:
-        >>> # 1D grid to particles
-        >>> x_grid = np.linspace(0, 1, 50)
-        >>> u_grid = np.sin(2*np.pi*x_grid)
-        >>> particles = np.array([[0.25], [0.5], [0.75]])
-        >>> u_particles = interpolate_grid_to_particles(
-        ...     u_grid, ((0, 1),), particles, method="cubic"
-        ... )
+    Examples
+    --------
+    1D interpolation:
 
-        >>> # 2D grid to particles
-        >>> x = np.linspace(0, 1, 30)
-        >>> y = np.linspace(0, 1, 30)
-        >>> X, Y = np.meshgrid(x, y, indexing='ij')
-        >>> u_grid = np.sin(2*np.pi*X) * np.cos(2*np.pi*Y)
-        >>> particles = np.array([[0.3, 0.4], [0.7, 0.2]])
-        >>> u_particles = interpolate_grid_to_particles(
-        ...     u_grid, ((0, 1), (0, 1)), particles, method="linear"
-        ... )
+    >>> x_grid = np.linspace(0, 1, 51)
+    >>> u_grid = np.sin(2 * np.pi * x_grid)
+    >>> particles = np.array([0.25, 0.5, 0.75])
+    >>> u_particles = interpolate_grid_to_particles(
+    ...     u_grid, grid_bounds=(0, 1), particle_positions=particles
+    ... )
+
+    2D interpolation:
+
+    >>> x = y = np.linspace(0, 1, 51)
+    >>> X, Y = np.meshgrid(x, y, indexing='ij')
+    >>> u_grid = np.exp(-10 * ((X - 0.5)**2 + (Y - 0.5)**2))
+    >>> particles = np.random.uniform(0, 1, (100, 2))
+    >>> u_particles = interpolate_grid_to_particles(
+    ...     u_grid, grid_bounds=((0, 1), (0, 1)), particle_positions=particles
+    ... )
     """
-    if not SCIPY_AVAILABLE:
-        raise ValueError("scipy is required for grid-to-particle interpolation")
+    # Normalize inputs
+    grid_values = np.asarray(grid_values)
+    particle_positions = np.asarray(particle_positions)
 
-    # Detect dimension
-    dimension = len(grid_bounds)
+    # Determine dimension
+    ndim = grid_values.ndim
 
-    # Check if grid_values has time dimension
-    has_time = grid_values.ndim == dimension + 1
+    if ndim == 1:
+        # 1D case
+        if not isinstance(grid_bounds[0], (tuple, list)):
+            xmin, xmax = grid_bounds
+        else:
+            xmin, xmax = grid_bounds[0]
 
-    if has_time:
-        # Time-dependent: interpolate each time step
-        Nt = grid_values.shape[0]
-        N_particles = particle_positions.shape[0]
-        result = np.zeros((Nt, N_particles))
+        x = np.linspace(xmin, xmax, len(grid_values))
 
-        for t in range(Nt):
-            result[t] = interpolate_grid_to_particles(grid_values[t], grid_bounds, particle_positions, method=method)
-        return result
+        # Ensure particle_positions is 1D
+        if particle_positions.ndim == 2 and particle_positions.shape[1] == 1:
+            particle_positions = particle_positions.ravel()
 
-    # Validate dimensions
-    if particle_positions.shape[1] != dimension:
-        raise ValueError(
-            f"Particle positions dimension ({particle_positions.shape[1]}) doesn't match grid dimension ({dimension})"
+        interp = RegularGridInterpolator(
+            (x,), grid_values, method=method if method != "cubic" else "linear", bounds_error=False, fill_value=0.0
         )
 
-    # 1D special case: can use faster interp1d
-    if dimension == 1:
-        if method == "cubic":
-            interpolator = interp1d(
-                np.linspace(grid_bounds[0][0], grid_bounds[0][1], grid_values.shape[0]),
-                grid_values,
-                kind="cubic",
-                bounds_error=False,
-                fill_value=0.0,
-            )
-        elif method == "linear":
-            interpolator = interp1d(
-                np.linspace(grid_bounds[0][0], grid_bounds[0][1], grid_values.shape[0]),
-                grid_values,
-                kind="linear",
-                bounds_error=False,
-                fill_value=0.0,
-            )
-        elif method == "nearest":
-            interpolator = interp1d(
-                np.linspace(grid_bounds[0][0], grid_bounds[0][1], grid_values.shape[0]),
-                grid_values,
-                kind="nearest",
-                bounds_error=False,
-                fill_value=0.0,
-            )
-        else:
-            raise ValueError(f"Unknown interpolation method: {method}")
+        return interp(particle_positions.reshape(-1, 1)).ravel()
 
-        return interpolator(particle_positions[:, 0])
+    elif ndim == 2:
+        # 2D case
+        (xmin, xmax), (ymin, ymax) = grid_bounds
+        nx, ny = grid_values.shape
+        x = np.linspace(xmin, xmax, nx)
+        y = np.linspace(ymin, ymax, ny)
 
-    # Multi-dimensional: use RegularGridInterpolator
-    # Create coordinate arrays for each dimension
-    coords = []
-    for i, (bmin, bmax) in enumerate(grid_bounds):
-        n_points = grid_values.shape[i]
-        coords.append(np.linspace(bmin, bmax, n_points))
+        # scipy wants (linear, cubic, quintic) for method name
+        scipy_method = "linear" if method in ["linear", "cubic"] else "nearest"
 
-    # Map method names
-    scipy_method = {
-        "linear": "linear",
-        "nearest": "nearest",
-        "cubic": "cubic",  # Note: scipy only supports linear/nearest for nD
-    }.get(method, "linear")
+        interp = RegularGridInterpolator((x, y), grid_values, method=scipy_method, bounds_error=False, fill_value=0.0)
 
-    if dimension > 1 and method == "cubic":
-        import warnings
+        return interp(particle_positions)
 
-        warnings.warn(f"Cubic interpolation not available for {dimension}D, using linear", stacklevel=2)
-        scipy_method = "linear"
+    elif ndim == 3:
+        # 3D case
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = grid_bounds
+        nx, ny, nz = grid_values.shape
+        x = np.linspace(xmin, xmax, nx)
+        y = np.linspace(ymin, ymax, ny)
+        z = np.linspace(zmin, zmax, nz)
 
-    interpolator = RegularGridInterpolator(coords, grid_values, method=scipy_method, bounds_error=False, fill_value=0.0)
+        interp = RegularGridInterpolator(
+            (x, y, z),
+            grid_values,
+            method="linear" if method != "nearest" else "nearest",
+            bounds_error=False,
+            fill_value=0.0,
+        )
 
-    return interpolator(particle_positions)
+        return interp(particle_positions)
 
-
-# =============================================================================
-# PARTICLES TO GRID INTERPOLATION
-# =============================================================================
+    else:
+        raise ValueError(f"Unsupported grid dimension: {ndim}. Only 1D, 2D, and 3D are supported.")
 
 
 def interpolate_particles_to_grid(
-    particle_positions: NDArray[np.float64],
-    grid_points: NDArray[np.float64] | tuple[NDArray[np.float64], ...],
-    particle_values: NDArray[np.float64] | None = None,
-    method: Literal["kde", "nearest", "histogram"] = "kde",
-    bandwidth: float | str = "scott",
-    normalize: bool = True,
-) -> NDArray[np.float64]:
+    particle_values: NDArray[np.floating],
+    particle_positions: NDArray[np.floating],
+    grid_shape: tuple[int, ...],
+    grid_bounds: tuple[float, float] | tuple[tuple[float, float], ...],
+    method: Literal["rbf", "kde", "nearest"] = "rbf",
+    **kwargs,
+) -> NDArray[np.floating]:
     """
-    Interpolate particle data to regular grid.
+    Interpolate particle values to regular grid.
 
-    Primary use: Estimate density on grid from particle positions using KDE.
-    Also supports: Value interpolation from particles to grid.
+    This function takes values at scattered particle positions and creates a
+    regular grid representation using the specified interpolation method.
 
-    Args:
-        particle_positions: Particle coordinates
-            - 1D: shape (N_particles,) or (N_particles, 1)
-            - nD: shape (N_particles, d)
-        grid_points: Grid coordinates
-            - 1D: array of shape (Nx,)
-            - 2D: tuple (x_coords, y_coords) each shape (Nx,) and (Ny,)
-            - 3D: tuple (x_coords, y_coords, z_coords)
-            - nD: tuple (x1_coords, x2_coords, ..., xd_coords)
-        particle_values: Optional values at particles, shape (N_particles,)
-            If None, estimates density (default behavior)
-        method: Interpolation method
-            - "kde": Gaussian kernel density estimation (smooth, accurate)
-            - "nearest": Nearest neighbor (fast, discontinuous)
-            - "histogram": Histogram binning (fast, piecewise constant)
-        bandwidth: KDE bandwidth (only for method="kde")
-            - float: explicit bandwidth value
-            - "scott": Scott's rule (default)
-            - "silverman": Silverman's rule
-        normalize: If True, normalize result to unit integral (for densities)
+    Parameters
+    ----------
+    particle_values : ndarray
+        Values at particle positions, shape (N,)
+    particle_positions : ndarray
+        Particle positions. Shape:
+        - 1D: (N,) or (N, 1)
+        - 2D: (N, 2)
+        - 3D: (N, 3)
+    grid_shape : tuple
+        Shape of output grid:
+        - 1D: (Nx,)
+        - 2D: (Nx, Ny)
+        - 3D: (Nx, Ny, Nz)
+    grid_bounds : tuple
+        Grid bounds (same format as interpolate_grid_to_particles)
+    method : {"rbf", "kde", "nearest"}
+        Interpolation method:
+        - "rbf": Radial Basis Functions (smooth, accurate, slower)
+        - "kde": Kernel Density Estimation (for density fields)
+        - "nearest": Nearest neighbor (fast, discontinuous)
+    **kwargs
+        Additional parameters:
+        - kernel: RBF kernel type ("gaussian", "multiquadric", "thin_plate_spline")
+        - epsilon: RBF shape parameter (default: auto)
+        - bandwidth: KDE bandwidth (default: auto via Scott's rule)
 
-    Returns:
-        Grid values
-            - 1D: shape (Nx,)
-            - 2D: shape (Nx, Ny)
-            - 3D: shape (Nx, Ny, Nz)
+    Returns
+    -------
+    ndarray
+        Grid values with shape matching grid_shape
 
-    Raises:
-        ValueError: If scipy not available (for KDE method)
+    Examples
+    --------
+    1D particle-to-grid:
 
-    Example:
-        >>> # Density estimation from particles (most common use)
-        >>> particles = np.random.randn(1000) * 0.2 + 0.5  # Gaussian blob
-        >>> x_grid = np.linspace(0, 1, 100)
-        >>> density = interpolate_particles_to_grid(
-        ...     particles.reshape(-1, 1),
-        ...     x_grid,
-        ...     method="kde"
-        ... )
+    >>> particles = np.random.uniform(0, 1, 100)
+    >>> values = np.exp(-10 * (particles - 0.5)**2)
+    >>> u_grid = interpolate_particles_to_grid(
+    ...     values, particles, grid_shape=(51,), grid_bounds=(0, 1)
+    ... )
 
-        >>> # Value interpolation from particles
-        >>> particle_temps = np.sin(2*np.pi*particles)  # Temperature at particles
-        >>> temp_grid = interpolate_particles_to_grid(
-        ...     particles.reshape(-1, 1),
-        ...     x_grid,
-        ...     particle_values=particle_temps,
-        ...     method="kde"
-        ... )
+    2D with RBF:
+
+    >>> particles = np.random.uniform(0, 1, (200, 2))
+    >>> values = np.exp(-10 * np.sum((particles - 0.5)**2, axis=1))
+    >>> u_grid = interpolate_particles_to_grid(
+    ...     values,
+    ...     particles,
+    ...     grid_shape=(51, 51),
+    ...     grid_bounds=((0, 1), (0, 1)),
+    ...     method="rbf",
+    ...     kernel="thin_plate_spline"
+    ... )
     """
-    # Ensure particle_positions is 2D
-    if particle_positions.ndim == 1:
+    particle_values = np.asarray(particle_values)
+    particle_positions = np.asarray(particle_positions)
+
+    # Determine dimension
+    if particle_positions.ndim == 1 or (particle_positions.ndim == 2 and particle_positions.shape[1] == 1):
+        ndim = 1
         particle_positions = particle_positions.reshape(-1, 1)
-
-    N_particles, dimension = particle_positions.shape
-
-    # Parse grid_points
-    if isinstance(grid_points, tuple):
-        # Multi-dimensional grid
-        if dimension != len(grid_points):
-            raise ValueError(f"Grid dimension ({len(grid_points)}) doesn't match particle dimension ({dimension})")
-        grid_shape = tuple(len(g) for g in grid_points)
-
-        # Create meshgrid for evaluation (dimension-agnostic)
-        # np.meshgrid works for arbitrary dimensions
-        grids = np.meshgrid(*grid_points, indexing="ij")
-        eval_points = np.column_stack([grid.ravel() for grid in grids])
     else:
-        # 1D grid
-        if dimension != 1:
-            raise ValueError("For 1D grid, particle_positions must have dimension 1")
-        grid_shape = (len(grid_points),)
-        eval_points = grid_points.reshape(-1, 1)
+        ndim = particle_positions.shape[1]
 
-    # Compute grid values based on method
-    if method == "kde":
-        if not SCIPY_AVAILABLE or gaussian_kde is None:
-            raise ValueError("scipy is required for KDE method")
+    # Create grid points
+    if ndim == 1:
+        xmin, xmax = grid_bounds if not isinstance(grid_bounds[0], (tuple, list)) else grid_bounds[0]
+        x = np.linspace(xmin, xmax, grid_shape[0])
+        grid_points = x.reshape(-1, 1)
 
-        if particle_values is None:
-            # Density estimation (standard KDE)
-            kde = gaussian_kde(particle_positions.T, bw_method=bandwidth)
-            grid_values = kde(eval_points.T)
-        else:
-            # Weighted KDE for value interpolation
-            # Use KDE weights to interpolate values
-            kde = gaussian_kde(particle_positions.T, bw_method=bandwidth)
-            kde(eval_points.T)
+    elif ndim == 2:
+        (xmin, xmax), (ymin, ymax) = grid_bounds
+        x = np.linspace(xmin, xmax, grid_shape[0])
+        y = np.linspace(ymin, ymax, grid_shape[1])
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        grid_points = np.column_stack([X.ravel(), Y.ravel()])
 
-            # Weighted average of particle values
-            # This is approximate but reasonable for scattered data
-            from scipy.spatial import cKDTree
+    elif ndim == 3:
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = grid_bounds
+        x = np.linspace(xmin, xmax, grid_shape[0])
+        y = np.linspace(ymin, ymax, grid_shape[1])
+        z = np.linspace(zmin, zmax, grid_shape[2])
+        X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+        grid_points = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
 
-            tree = cKDTree(particle_positions)
-            distances, indices = tree.query(eval_points, k=min(10, N_particles))
+    else:
+        raise ValueError(f"Unsupported dimension: {ndim}")
 
-            # Gaussian weighting based on distances
-            sigma = bandwidth if isinstance(bandwidth, float) else 1.0
-            gaussian_weights = np.exp(-0.5 * (distances / sigma) ** 2)
-            gaussian_weights /= gaussian_weights.sum(axis=1, keepdims=True)
+    # Interpolate based on method
+    if method == "rbf":
+        kernel = kwargs.get("kernel", "thin_plate_spline")
+        epsilon = kwargs.get("epsilon")
 
-            grid_values = (gaussian_weights * particle_values[indices]).sum(axis=1)
+        rbf = RBFInterpolator(particle_positions, particle_values, kernel=kernel, epsilon=epsilon)
+
+        grid_values = rbf(grid_points)
+
+    elif method == "kde":
+        # KDE is specifically for density estimation
+        bandwidth = kwargs.get("bandwidth")
+
+        if bandwidth is None:
+            bandwidth = estimate_kde_bandwidth(particle_positions)
+
+        kde = gaussian_kde(particle_positions.T, bw_method=bandwidth)
+        grid_values = kde(grid_points.T)
 
     elif method == "nearest":
         from scipy.spatial import cKDTree
 
         tree = cKDTree(particle_positions)
-        _, indices = tree.query(eval_points)
-
-        if particle_values is None:
-            # Count particles in Voronoi cells (approximate density)
-            grid_values = np.bincount(indices, minlength=len(eval_points)).astype(float)
-        else:
-            grid_values = particle_values[indices]
-
-    elif method == "histogram":
-        if dimension == 1:
-            counts, _ = np.histogram(particle_positions[:, 0], bins=grid_points, weights=particle_values)
-            # Extend to grid points (piecewise constant)
-            grid_values = np.concatenate([counts, [counts[-1]]])
-        else:
-            # Multi-dimensional histogram
-            bins = [grid_points[i] for i in range(dimension)]
-            counts, _ = np.histogramdd(particle_positions, bins=bins, weights=particle_values)
-            # Histogram has shape (n-1, n-1, ..., n-1) for nD
-            # Update grid_shape to match histogram output
-            grid_shape = tuple(len(grid_points[i]) - 1 for i in range(dimension))
-            grid_values = counts.ravel()
+        _, indices = tree.query(grid_points)
+        grid_values = particle_values[indices]
 
     else:
-        raise ValueError(f"Unknown method: {method}")
+        raise ValueError(f"Unknown method: {method}. Use 'rbf', 'kde', or 'nearest'.")
 
-    # Reshape to grid shape
-    if len(grid_shape) > 1:
-        grid_values = grid_values.reshape(grid_shape)
-
-    # Normalize if requested (for density estimation)
-    if normalize and particle_values is None:
-        if dimension == 1:
-            dx = grid_points[1] - grid_points[0] if len(grid_points) > 1 else 1.0
-            total_mass = np.sum(grid_values) * dx
-        else:
-            # Compute cell volumes for multi-dimensional grids
-            cell_volume = np.prod([(grid_points[i][1] - grid_points[i][0]) for i in range(dimension)])
-            total_mass = np.sum(grid_values) * cell_volume
-
-        if total_mass > 1e-12:
-            grid_values = grid_values / total_mass
-
-    return grid_values
+    return grid_values.reshape(grid_shape)
 
 
-# =============================================================================
-# BANDWIDTH SELECTION
-# =============================================================================
-
-
-def adaptive_bandwidth_selection(
-    data: NDArray[np.float64], method: Literal["scott", "silverman", "isj"] = "scott"
+def estimate_kde_bandwidth(
+    particle_positions: NDArray[np.floating], method: Literal["scott", "silverman"] = "scott"
 ) -> float:
     """
-    Select optimal bandwidth for kernel density estimation.
+    Estimate optimal KDE bandwidth using standard rules.
 
-    Args:
-        data: Sample data, shape (N_samples, d) or (N_samples,)
-        method: Bandwidth selection method
-            - "scott": Scott's rule (1.06 * σ * N^(-1/5))
-            - "silverman": Silverman's rule (0.9 * σ * N^(-1/5))
-            - "isj": Improved Sheather-Jones (scipy required)
+    Parameters
+    ----------
+    particle_positions : ndarray
+        Particle positions, shape (N, d)
+    method : {"scott", "silverman"}
+        Bandwidth selection rule:
+        - "scott": n^(-1/(d+4))
+        - "silverman": (n*(d+2)/4)^(-1/(d+4))
 
-    Returns:
-        Optimal bandwidth value
+    Returns
+    -------
+    float
+        Estimated bandwidth
 
-    Example:
-        >>> particles = np.random.randn(1000) * 0.2
-        >>> bandwidth = adaptive_bandwidth_selection(particles, method="scott")
-        >>> kde = gaussian_kde(particles, bw_method=bandwidth)
+    Examples
+    --------
+    >>> particles = np.random.uniform(0, 1, (100, 2))
+    >>> bw = estimate_kde_bandwidth(particles)
+    >>> print(f"Optimal bandwidth: {bw:.4f}")
     """
-    if data.ndim == 1:
-        data = data.reshape(-1, 1)
-
-    N, d = data.shape
+    n, d = particle_positions.shape
 
     if method == "scott":
-        # Scott's rule: h = σ * N^(-1/(d+4))
-        sigma = np.std(data, axis=0)
-        return float(np.mean(sigma) * N ** (-1.0 / (d + 4)))
-
+        return n ** (-1.0 / (d + 4))
     elif method == "silverman":
-        # Silverman's rule: h = (4/(d+2))^(1/(d+4)) * σ * N^(-1/(d+4))
-        sigma = np.std(data, axis=0)
-        factor = (4.0 / (d + 2)) ** (1.0 / (d + 4))
-        return float(factor * np.mean(sigma) * N ** (-1.0 / (d + 4)))
-
-    elif method == "isj":
-        # Improved Sheather-Jones (requires scipy)
-        if not SCIPY_AVAILABLE:
-            raise ValueError("scipy required for ISJ bandwidth selection")
-
-        # For now, fall back to Scott's rule
-        # Full ISJ implementation is complex
-        import warnings
-
-        warnings.warn("ISJ method not fully implemented, using Scott's rule", stacklevel=2)
-        return adaptive_bandwidth_selection(data, method="scott")
-
+        return (n * (d + 2) / 4.0) ** (-1.0 / (d + 4))
     else:
-        raise ValueError(f"Unknown bandwidth selection method: {method}")
+        raise ValueError(f"Unknown method: {method}. Use 'scott' or 'silverman'.")
 
-
-# =============================================================================
-# PUBLIC API
-# =============================================================================
 
 __all__ = [
-    "adaptive_bandwidth_selection",
+    "estimate_kde_bandwidth",
     "interpolate_grid_to_particles",
     "interpolate_particles_to_grid",
 ]

@@ -10,7 +10,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.mfg_solvers.network_mfg_solver import (
+from mfg_pde.alg.numerical.coupling.network_mfg_solver import (
     create_network_mfg_solver,
     create_simple_network_solver,
 )

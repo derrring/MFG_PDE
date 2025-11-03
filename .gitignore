@@ -880,3 +880,4 @@ benchmarks/history/
 # Private directories (simpler: exclude everything)
 docs/theory/private/
 docs/development/private/
+examples/outputs/

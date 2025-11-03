@@ -1,6 +1,6 @@
 # Two-Level API Design for MFG_PDE
 
-**Date**: 2025-10-05 (Revised for research-focused audience)
+**Date**: 2025-11-03 (Updated with factory vs modular clarification)
 **Status**: Implementation Complete
 **Philosophy**: Research-grade by default, extensible for developers
 
@@ -10,10 +10,14 @@
 
 MFG_PDE provides a **two-level API** designed for academic researchers and industrial practitioners who understand MFG systems:
 
-- **Level 1 (95%)**: Users (Researchers & Practitioners) - Full algorithm access via factory
+- **Level 1 (95%)**: Users (Researchers & Practitioners) - Modular composition + Domain templates
 - **Level 2 (5%)**: Developers (Core Contributors) - Infrastructure modification
 
 **Design Principle**: Assume users understand Mean Field Games. No "dumbed down" API—start with full research capabilities.
+
+**Key Distinction**:
+- **Modular Approach** (Recommended): Explicit composition with full control
+- **Domain Templates** (Future): Domain-specific patterns for mature applications (crowd motion, epidemic, finance)
 
 ---
 
@@ -23,35 +27,91 @@ MFG_PDE provides a **two-level API** designed for academic researchers and indus
 **Who**: PhD students, postdocs, professors, industrial researchers
 **Assumption**: Understand MFG theory (HJB-FP systems, Nash equilibria)
 **Needs**: Access all algorithms, compare methods, benchmark, custom problems
-**Access**: Full algorithm API via factory
+**Access**: Modular Approach (Recommended) + Domain Templates (Future)
+
+#### Modular Approach (Recommended)
+
+For research, custom algorithms, and fine-grained control:
 
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import (
-    create_basic_solver,    # Tier 1: Basic FDM (benchmark)
-    create_fast_solver,     # Tier 2: Hybrid (standard, DEFAULT)
-    create_accurate_solver  # Tier 3: Advanced (WENO, DGM, etc.)
+from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver, HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver, FPFDMSolver
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
+
+# Compose custom solver configuration
+hjb_solver = HJBGFDMSolver(
+    problem,
+    collocation_points=custom_points,
+    max_newton_iterations=50
+)
+fp_solver = FPParticleSolver(
+    problem,
+    num_particles=10000,
+    kde_bandwidth=0.1
 )
 
-# Standard usage - DEFAULT is Tier 2 (good quality, mass-conserving)
-problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
-solver = create_fast_solver(problem, "fixed_point")
-result = solver.solve()
+# Create MFG solver with explicit composition
+mfg_solver = FixedPointIterator(
+    problem=problem,
+    hjb_solver=hjb_solver,
+    fp_solver=fp_solver,
+    damping_factor=0.7,
+    use_anderson=True
+)
 
-# Compare different algorithms for research
-solver_fdm = create_basic_solver(problem)        # Benchmark
-solver_weno = create_accurate_solver(problem, solver_type="weno")  # High-order
-
-# Access results
-print(result.U)  # Value function u(t,x)
-print(result.M)  # Density m(t,x)
+result = mfg_solver.solve()
 ```
 
+**Use modular approach when**:
+- Research and experimentation (primary use case)
+- Testing novel solver combinations
+- Need fine control over solver parameters
+- Custom Hamiltonian or geometry requires specific solvers
+- Investigating algorithmic behavior
+- Learning the framework internals
+
+**Advantages**:
+- Clear what you're getting (no hidden defaults)
+- Full control over all parameters
+- Easy to modify and experiment
+- Explicit composition aids understanding
+
+#### Domain Templates (Future)
+
+For mature application domains with established best practices:
+
+```python
+from mfg_pde.templates import (
+    create_crowd_motion_solver,   # Crowd evacuation, pedestrian dynamics
+    create_epidemic_solver,        # SIR/SEIR models, disease spread
+    create_finance_solver,         # Portfolio optimization, trading
+    create_traffic_solver          # Traffic flow, congestion pricing
+)
+
+# Templates encode domain knowledge
+problem = CrowdMotionProblem(...)  # Domain-specific problem class
+solver = create_crowd_motion_solver(
+    problem,
+    num_particles=5000,
+    use_anisotropy=True,      # Domain-specific option
+    exit_absorption=True       # Typical for evacuation scenarios
+)
+result = solver.solve()
+```
+
+**Use domain templates when**:
+- Working in well-established application domains
+- Want domain-specific best practices
+- Need production-ready defaults for specific fields
+- Prefer domain terminology over algorithmic details
+
 **Key Features for Users**:
-- **Algorithm selection**: Choose from 3 solver tiers based on quality needs
-- **Method comparison**: Benchmark multiple algorithms easily
+- **Modular Approach**: Explicit composition with full control (recommended)
+- **Domain Templates**: Domain-specific patterns for mature applications (future)
+- **Method selection**: Choose from FDM, WENO, GFDM, DGM, particle methods
+- **Algorithm comparison**: Benchmark multiple methods with explicit composition
 - **Custom problems**: Define custom Hamiltonians, boundary conditions, geometries
-- **Configuration control**: Full access to solver parameters (tolerance, max iterations, damping)
+- **Configuration control**: Full access to all solver parameters
 
 ### 🔧 Level 2: Developers - Core Contributors (5%)
 **Who**: Package maintainers, algorithm developers, infrastructure contributors
@@ -61,6 +121,7 @@ print(result.M)  # Density m(t,x)
 ```python
 from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
 from mfg_pde.alg.numerical.fp_solvers import BaseFPSolver
+from mfg_pde.alg.numerical.coupling import BaseMFGSolver
 from mfg_pde.factory import SolverFactory
 
 # Implement new solver from scratch
@@ -74,73 +135,197 @@ class MyCustomFPSolver(BaseFPSolver):
         # Custom FP implementation
         pass
 
-# Register with factory for all users
+# Register with factory for all users (optional - enables factory mode)
 SolverFactory.register_solver("my_custom", MyCustomHJBSolver, MyCustomFPSolver)
 ```
 
 **Key Features for Developers**:
 - **Base class hierarchy**: Extend `BaseHJBSolver`, `BaseFPSolver`, `BaseMFGSolver`
-- **Factory integration**: Register new solvers for seamless user access
+- **Factory integration**: Register new solvers for factory mode access
 - **Infrastructure modification**: Add backends, geometry types, boundary conditions
+- **Coupling algorithms**: Implement new MFG coupling methods in `alg/numerical/coupling/`
 
 ---
 
-## Mapping: User Levels to Solver Tiers
+## Mapping: User Levels to Access Patterns
 
-**Important**: User levels and solver tiers are **orthogonal concepts**:
+**Important**: User levels and access patterns are **independent concepts**:
 
-| User Level | API Access | Typical Tier Usage | Purpose |
-|------------|-----------|-------------------|----|
-| **Users (Researchers)** | Factory API | All tiers | Research, benchmark, production |
-| **Developers** | Core API | Create new tiers | Extend framework |
+| User Level | Access Pattern | API Entry Point | Purpose |
+|------------|---------------|-----------------|---------|
+| **Users (Researchers)** | Modular Approach | Direct solver imports | Research, custom configurations (recommended) |
+| **Users (Researchers)** | Domain Templates | `create_[domain]_solver()` | Mature domains with best practices (future) |
+| **Developers** | Core API | Base classes | Extend framework |
 
-### Solver Tiers (Algorithm Quality)
+### Access Patterns (Level 1 Users)
 
-- **Tier 1**: Basic FDM (poor quality, ~1-10% mass error, benchmark only)
-- **Tier 2**: Hybrid (good quality, ~10⁻¹⁵ mass error, **DEFAULT**)
-- **Tier 3**: Advanced (specialized methods: WENO, Semi-Lagrangian, DGM)
+1. **Modular Approach** (Recommended)
+   - Explicit composition with full control
+   - Clear what you're getting (no guessing)
+   - Entry: `from mfg_pde.alg.numerical.{hjb_solvers,fp_solvers,coupling}`
+   - Direct access to: HJBFDMSolver, HJBWENOSolver, HJBGFDMSolver, FPParticleSolver, FPFDMSolver, etc.
+   - **Use for**: Research, custom problems, learning the framework
 
-**Example**: A researcher (Level 1) uses all three tiers for comparison, defaults to Tier 2 for production.
+2. **Domain-Specific Templates** (Future)
+   - Templates that understand problem domains
+   - Entry: `from mfg_pde.templates import create_crowd_motion_solver`
+   - Domain knowledge baked in (crowd motion, epidemic, finance, traffic)
+   - **Use for**: Mature application domains with established best practices
+
+### Legacy: Generic Factory Functions (Not Recommended)
+
+Generic factory functions exist but lack domain knowledge:
+
+```python
+# These exist but don't understand your problem's needs
+from mfg_pde.factory import create_fast_solver, create_accurate_solver
+
+solver = create_fast_solver(problem)  # Generic defaults, may not suit your problem
+```
+
+**Why not recommended**:
+- Names like "fast" or "accurate" are arbitrary and context-dependent
+- No domain knowledge about your specific problem
+- Quality depends on configuration (Nx, Nt, tolerance), not function name
+- **Use modular approach instead** for clarity and control
+
+**Example**: A researcher uses modular approach to compose custom GFDM+Particle solver, choosing parameters based on their specific problem requirements.
+
+---
+
+## Modular Approach vs Domain Templates
+
+Both are available to **Level 1 users** (researchers & practitioners). Choose based on your use case:
+
+### When to Use Modular Approach (Recommended)
+
+```python
+from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
+
+# Explicit composition - you know exactly what you're getting
+hjb = HJBGFDMSolver(problem, collocation_points=custom_points)
+fp = FPParticleSolver(problem, num_particles=10000)
+solver = FixedPointIterator(problem, hjb, fp, damping_factor=0.7)
+```
+
+**Use cases**:
+- ✅ Research and experimentation
+- ✅ Custom problems requiring specific methods
+- ✅ Learning the framework
+- ✅ When you need full control over configuration
+- ✅ Prototyping new methods
+
+### When to Use Domain Templates (Future)
+
+```python
+from mfg_pde.templates import create_crowd_motion_solver
+
+# Domain template knows crowd motion requirements
+solver = create_crowd_motion_solver(
+    problem,
+    num_particles=5000,
+    use_anisotropy=True,
+    exit_attraction=True
+)
+```
+
+**Use cases**:
+- ✅ Mature application domains (crowd motion, epidemic, finance)
+- ✅ When domain best practices are established
+- ✅ Production deployment in known domains
+- ✅ Teaching domain-specific applications
+
+### Relationship
+
+**Domain templates use modular approach internally**:
+
+```python
+# What a domain template does:
+def create_crowd_motion_solver(problem, num_particles=5000):
+    # Encode domain expertise
+    hjb = HJBFDMSolver(problem, max_newton_iterations=30)
+    fp = FPParticleSolver(
+        problem,
+        num_particles=num_particles,
+        normalize_kde_output=True  # Crowd motion needs this
+    )
+    return FixedPointIterator(
+        problem, hjb, fp,
+        damping_factor=0.5,  # Works well for crowd problems
+        use_anderson=True
+    )
+```
+
+Templates encode **domain knowledge**. For research or custom needs, use modular approach directly for full control.
 
 ---
 
 ## Implementation: Two-Level API Architecture
 
-### Level 1: Factory API (Users - Researchers & Practitioners)
+### Level 1: Modular Approach (Users - Recommended)
 
-**Entry point**: Algorithm selection and comparison
+**Entry point**: Direct solver imports with explicit composition
 
 ```python
-from mfg_pde.factory import (
-    create_basic_solver,    # Tier 1: Benchmark
-    create_fast_solver,     # Tier 2: Standard (default)
-    create_accurate_solver  # Tier 3: Advanced
+from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
+
+# Create individual solvers with custom configuration
+hjb_solver = HJBGFDMSolver(
+    problem,
+    collocation_points=my_custom_points,
+    max_newton_iterations=50,
+    newton_tolerance=1e-8
 )
 
-# Full control over algorithm choice
-solver = create_basic_solver(problem, damping=0.6)
-solver = create_fast_solver(problem, "fixed_point")
-solver = create_accurate_solver(problem, solver_type="weno")
+fp_solver = FPParticleSolver(
+    problem,
+    num_particles=10000,
+    kde_bandwidth=0.1,
+    normalize_kde_output=True
+)
+
+# Compose MFG solver with full control
+mfg_solver = FixedPointIterator(
+    problem=problem,
+    hjb_solver=hjb_solver,
+    fp_solver=fp_solver,
+    damping_factor=0.7,
+    use_anderson=True,
+    anderson_depth=10
+)
+
+# Solve
+U, M, info = mfg_solver.solve(max_iterations=50, tolerance=1e-6)
 ```
 
 **Usage patterns**:
 ```python
-# Pattern 1: Method comparison
-solvers = {
-    "FDM": create_basic_solver(problem),
-    "Hybrid": create_fast_solver(problem, "fixed_point"),
-    "WENO": create_accurate_solver(problem, solver_type="weno"),
-    "Semi-Lagrangian": create_accurate_solver(problem, solver_type="semi_lagrangian")
-}
+# Pattern 1: Custom solver combinations
+from mfg_pde.alg.numerical.hjb_solvers import HJBWENOSolver, HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver, FPDGMSolver
 
-results = {name: solver.solve() for name, solver in solvers.items()}
+# Test different combinations
+combinations = [
+    (HJBWENOSolver(problem), FPParticleSolver(problem, num_particles=5000)),
+    (HJBGFDMSolver(problem), FPDGMSolver(problem)),
+]
 
-# Pattern 2: Benchmarking
-from mfg_pde.benchmarks import BenchmarkSuite
-suite = BenchmarkSuite(problem)
-suite.add_solver("Basic FDM", create_basic_solver(problem))
-suite.add_solver("Standard", create_fast_solver(problem, "fixed_point"))
-suite.run_comparison()
+for hjb, fp in combinations:
+    solver = FixedPointIterator(problem, hjb, fp)
+    result = solver.solve()
+    # Analyze results...
+
+# Pattern 2: Parameter sweeps
+for damping in [0.3, 0.5, 0.7]:
+    for num_particles in [3000, 5000, 10000]:
+        hjb = HJBFDMSolver(problem)
+        fp = FPParticleSolver(problem, num_particles=num_particles)
+        solver = FixedPointIterator(problem, hjb, fp, damping_factor=damping)
+        # Run experiments...
 ```
 
 ### Level 2: Core API (Developers)
@@ -150,7 +335,7 @@ suite.run_comparison()
 ```python
 from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
 from mfg_pde.alg.numerical.fp_solvers import BaseFPSolver
-from mfg_pde.alg.numerical.mfg_solvers import BaseMFGSolver
+from mfg_pde.alg.numerical.coupling import BaseMFGSolver
 
 # Direct access to infrastructure
 class MyNewSolver(BaseMFGSolver):
@@ -158,7 +343,7 @@ class MyNewSolver(BaseMFGSolver):
         # Modify core algorithm
         pass
 
-# Extend factory system
+# Extend factory system (optional)
 from mfg_pde.factory.solver_factory import SolverFactory
 SolverFactory.register("my_solver", MyNewSolver)
 ```
@@ -167,28 +352,31 @@ SolverFactory.register("my_solver", MyNewSolver)
 
 ## Usage Examples by User Level
 
-### User Example (Researcher)
+### User Example 1: Modular Approach (Recommended)
 ```python
 """
-Academic user: Comparing methods for a paper
+Researcher: Method comparison using modular composition
 """
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_basic_solver, create_fast_solver, create_accurate_solver
+from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver, HJBWENOSolver, HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver, FPFDMSolver
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 import matplotlib.pyplot as plt
 
 problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
 
-# Test different solvers
+# Create explicit solver combinations
 methods = {
-    "FDM (Tier 1)": create_basic_solver(problem),
-    "Hybrid (Tier 2)": create_fast_solver(problem, "fixed_point"),
-    "WENO (Tier 3)": create_accurate_solver(problem, solver_type="weno"),
-    "Semi-Lag (Tier 3)": create_accurate_solver(problem, solver_type="semi_lagrangian")
+    "FDM-only": (HJBFDMSolver(problem), FPFDMSolver(problem)),
+    "Hybrid (FDM+Particle)": (HJBFDMSolver(problem), FPParticleSolver(problem, num_particles=5000)),
+    "WENO+Particle": (HJBWENOSolver(problem), FPParticleSolver(problem, num_particles=5000)),
+    "GFDM+Particle": (HJBGFDMSolver(problem), FPParticleSolver(problem, num_particles=5000)),
 }
 
 # Run and compare
 results = {}
-for name, solver in methods.items():
+for name, (hjb, fp) in methods.items():
+    solver = FixedPointIterator(problem, hjb, fp, damping_factor=0.6)
     results[name] = solver.solve()
     print(f"{name}: {results[name].iterations} iterations, "
           f"mass error: {results[name].mass_conservation_error:.2e}")
@@ -199,6 +387,27 @@ for (name, result), ax in zip(results.items(), axes.flat):
     ax.imshow(result.M, aspect='auto')
     ax.set_title(name)
 plt.savefig("solver_comparison.png")
+```
+
+### User Example 2: Domain Template (Future)
+```python
+"""
+Researcher: Using domain-specific template for crowd motion
+"""
+from mfg_pde import ExampleMFGProblem
+from mfg_pde.templates import create_crowd_motion_solver  # Future
+
+problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
+
+# Template encodes crowd motion domain knowledge
+solver = create_crowd_motion_solver(
+    problem,
+    num_particles=5000,
+    use_anisotropy=True,  # Domain-specific option
+    exit_absorption=True   # Typical for evacuation
+)
+
+U, M, info = solver.solve()
 ```
 
 ### Developer Example (Core Contributor)
@@ -259,48 +468,52 @@ solver = create_semi_implicit_solver(problem)
 ```
 docs/
 ├── user/                          # For Users (Researchers & Practitioners)
-│   ├── quickstart.md             # 5-minute tutorial with factory API
-│   ├── SOLVER_SELECTION_GUIDE.md # Choosing solver tiers (Basic/Standard/Advanced)
-│   ├── factory_reference.md      # All create_*_solver() functions
+│   ├── quickstart.md             # 5-minute tutorial with modular approach
+│   ├── SOLVER_SELECTION_GUIDE.md # Choosing methods (HJB solvers, FP solvers, coupling)
+│   ├── modular_reference.md      # Solver classes and composition patterns
 │   ├── solver_comparison.md      # Benchmarking guide
 │   ├── algorithm_details.md      # Mathematical details of each method
+│   ├── domain_templates.md       # Domain-specific templates (future)
 │   └── examples/                  # Research examples
 │
 └── development/                   # For Developers (Core Contributors)
     ├── CORE_API_REFERENCE.md     # Base classes, extension points
     ├── adding_new_solvers.md     # How to extend framework
     ├── infrastructure.md          # Architecture details
-    └── factory_registration.md    # How to register new solvers
+    └── template_creation.md       # How to create domain templates
 ```
 
 ---
 
 ## Summary Table
 
-### User Level Mapping
+### User Level and Access Pattern Mapping
 
-| User Level | What They See | Entry Point | Solver Tiers Used |
-|------------|---------------|-------------|-------------------|
-| **📚 Users (Researchers)** | Factory API | `create_*_solver()` | All tiers (default: Tier 2) |
-| **🔧 Developers** | Core API | Base classes | Create new tiers |
+| User Level | Access Pattern | Entry Point | Use Case | Control Level |
+|------------|---------------|-------------|----------|---------------|
+| **📚 Users (Researchers)** | Modular Approach | Direct solver imports | Research, custom configurations, method comparison | Full control |
+| **📚 Users (Researchers)** | Domain Templates | `create_[domain]_solver()` | Mature domains with best practices | Domain-specific |
+| **🔧 Developers** | Core API | Base classes | Extend framework, new methods | Infrastructure |
 
-### Access Pattern
+**Note**: Generic factory functions (`create_fast_solver`, `create_accurate_solver`) are legacy and not recommended. Use modular approach for clarity.
+
+### Quick Reference
 
 ```python
-# Users - Researchers & Practitioners (95% of users)
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver, create_accurate_solver
+# LEVEL 1: Modular Approach (Recommended)
+from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 
 problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
 
-# Default: Use Tier 2 (Standard, mass-conserving)
-solver = create_fast_solver(problem, "fixed_point")
-result = solver.solve()
+# Explicit composition with full control
+hjb = HJBGFDMSolver(problem, collocation_points=custom_points)
+fp = FPParticleSolver(problem, num_particles=10000)
+solver = FixedPointIterator(problem, hjb, fp, damping_factor=0.7)
+U, M, info = solver.solve()
 
-# Research: Compare multiple methods
-solver_weno = create_accurate_solver(problem, solver_type="weno")
-
-# Developers - Core Contributors (5% of users)
+# LEVEL 2: Developers (Core contributors)
 from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
 
 class MyNewSolver(BaseHJBSolver):  # Extend framework
@@ -309,27 +522,38 @@ class MyNewSolver(BaseHJBSolver):  # Extend framework
         pass
 ```
 
-This creates a **research-grade design**: full capabilities by default, extensible for contributors.
+This creates a **research-grade design**: full capabilities by default (Level 1), extensible for contributors (Level 2).
+
+**Key Insights**:
+- **Modular approach is recommended** - explicit composition with full control
+- **Domain templates** (future) encode domain-specific best practices
+- **Generic factories are legacy** - arbitrary names like "fast" or "accurate" lack domain knowledge
+- Quality depends on **configuration** (Nx, Nt, tolerance, damping), not function names
 
 ---
 
 ## Implementation Status
 
-- ✅ Factory API (Users) - complete
-- ✅ Solver tiers 1-3 - complete
+- ✅ Modular approach (Users) - complete and recommended
 - ✅ Core API (Developers) - complete
-- 📝 Documentation structure - needs update for two-level design
+- ⚠️ Generic factory functions - present but legacy/not recommended
+- 📝 Domain templates - future implementation
+- 📝 Documentation - needs alignment with modular-first philosophy
 
 ## Next Steps
 
-1. ~~Remove `solve_mfg()` simple API~~ - **ELIMINATED** (researchers don't need it)
-2. Update documentation for two user levels (Users vs Developers)
-3. Emphasize factory API as the **primary entry point**
-4. Create research-focused examples
+1. ✅ ~~Remove `solve_mfg()` simple API~~ - **ELIMINATED** (researchers don't need it)
+2. ✅ ~~Eliminate "Solver Tiers" terminology~~ - **COMPLETED** (2025-11-03)
+3. 📝 Update user documentation to emphasize modular approach
+4. 📝 Implement domain-specific templates (crowd motion, epidemic, finance, traffic)
+5. 📝 Add deprecation warnings to generic factory functions
+6. 📝 Create migration guide from generic factories to modular approach
 
 ---
 
-**Last Updated**: 2025-10-05
+**Last Updated**: 2025-11-03
 **Consolidated from**: `api_architecture.md`, `USER_LEVEL_API_DESIGN.md`
-**Revised**: Eliminated "basic user" level - package assumes MFG knowledge
-**Philosophy**: Research-grade by default, extensible for contributors
+**Major Revisions**:
+- 2025-10-05: Eliminated "basic user" level - package assumes MFG knowledge
+- 2025-11-03: Eliminated "Solver Tiers", prioritized modular approach over generic factories
+**Philosophy**: Research-grade by default, modular composition recommended, domain templates for mature applications

@@ -15,9 +15,9 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers.fixed_point_iterator import FixedPointIterator
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryConditions
 

@@ -14,9 +14,9 @@ import time
 import numpy as np
 
 from mfg_pde import MFGComponents
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 
 

@@ -1,16 +1,20 @@
 # Two-Level API Design - Integrity Check ✅
 
-**Date**: 2025-10-05
-**Status**: All documentation aligned and consistent
-**Design**: Two levels (95% Users / 5% Developers)
+**Date**: 2025-11-03 (Updated with factory vs modular clarification)
+**Status**: Documentation updated with access pattern distinction
+**Design**: Two levels (95% Users / 5% Developers), Two access patterns for Level 1
 
 ---
 
 ## Executive Summary
 
-✅ **COMPLETE** - All user documentation has been updated to reflect the two-level API design.
+✅ **UPDATED** - User documentation now clarifies factory mode vs modular approach.
 
-**Key Decision**: Eliminated "basic user" tier. MFG_PDE assumes users understand Mean Field Games.
+**Key Decisions**:
+1. Eliminated "basic user" tier. MFG_PDE assumes users understand Mean Field Games.
+2. **NEW**: Level 1 users have two access patterns:
+   - **Factory Mode**: For standard problems in mature domains
+   - **Modular Approach**: For research and custom configurations
 
 ---
 
@@ -22,12 +26,15 @@ MFG_PDE is a **research-grade package** for users who understand:
 - Nash equilibria in Mean Field Games
 - Numerical PDEs and finite difference methods
 
-### **Two User Levels**
+### **Two User Levels with Access Patterns**
 
-| Level | Users | Entry Point | Purpose |
-|:------|:------|:------------|:--------|
-| **Level 1 (95%)** | Researchers & Practitioners | Factory API | Full algorithm access |
-| **Level 2 (5%)** | Core Contributors | Base classes | Infrastructure extension |
+| Level | Users | Access Pattern | Entry Point | Purpose |
+|:------|:------|:---------------|:------------|:--------|
+| **Level 1 (95%)** | Researchers & Practitioners | Factory Mode | `create_*_solver()` | Standard problems, mature domains |
+| **Level 1 (95%)** | Researchers & Practitioners | Modular Approach | Direct solver imports | Research, custom configurations |
+| **Level 2 (5%)** | Core Contributors | Core API | Base classes | Infrastructure extension |
+
+**Note**: Factory mode and modular approach are both Level 1 access patterns, not separate user levels.
 
 ---
 
@@ -169,20 +176,25 @@ from mfg_pde.factory import SolverFactory
 
 These are **independent** from user levels:
 
-### **Solver Tiers** (Algorithm Quality)
-- **Tier 1**: Basic FDM (poor quality, benchmark)
-- **Tier 2**: Hybrid (good quality, **DEFAULT**)
-- **Tier 3**: Advanced (specialized methods)
+### **Factory Functions** (Method Shortcuts)
 
-**Note**: A researcher (Level 1 user) uses all three tiers for comparison.
+Factory functions provide convenient access to common solver configurations:
+- **`create_basic_solver()`**: FDM-only (simple, baseline)
+- **`create_fast_solver()`**: Hybrid FDM+Particle (**DEFAULT**)
+- **`create_accurate_solver()`**: High-order methods (WENO, Semi-Lagrangian)
+- **`create_research_solver()`**: Research configuration with monitoring
+- **`create_semi_lagrangian_solver()`**: Semi-Lagrangian method
+- **`create_amr_solver()`**: Adaptive mesh refinement
 
-### **Backend Tiers** (Computational)
+**Note**: Quality depends on configuration (grid resolution, tolerance, parameters), not function name.
+
+### **Backend Selection** (Computational)
 - **torch** > **jax** > **numpy** (auto-selection)
 
 **Note**: Backend selection is independent of user level.
 
 ### **Type Layers** (Progressive Disclosure)
-- **Layer 1**: Simple types (for factory API)
+- **Layer 1**: Simple types (for factory API and modular approach)
 - **Layer 2**: Full types (for core API)
 
 **Note**: Type layers coincide with user levels (95%/5%).

@@ -17,7 +17,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.mfg_solvers.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
+from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryConditions
 
@@ -180,9 +180,9 @@ class TestHybridMassConservation:
         print(f"\n  Max mass increase: {max_mass_increase:.6f} ({100 * max_mass_increase / initial_mass:.2f}%)")
 
         # Allow up to 2% mass increase due to KDE boundary effects
-        assert (
-            max_mass_increase / initial_mass < 0.02
-        ), f"Spurious mass creation detected: {100 * max_mass_increase / initial_mass:.2f}%"
+        assert max_mass_increase / initial_mass < 0.02, (
+            f"Spurious mass creation detected: {100 * max_mass_increase / initial_mass:.2f}%"
+        )
 
         print("  ✓ No spurious mass creation")
 
