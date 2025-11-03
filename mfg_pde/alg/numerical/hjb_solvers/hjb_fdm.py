@@ -323,3 +323,37 @@ class HJBFDMSolver(BaseHJBSolver):
                 raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
 
         return H_values
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing HJBFDMSolver...")
+
+    # Test 1D problem
+    from mfg_pde import ExampleMFGProblem
+
+    problem_1d = ExampleMFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    solver_1d = HJBFDMSolver(problem_1d, solver_type="newton")
+
+    # Test solver initialization
+    assert solver_1d.dimension == 1
+    assert solver_1d.solver_type == "newton"
+    assert solver_1d.hjb_method_name == "FDM"
+
+    # Test solve_hjb_system
+    import numpy as np
+
+    M_test = np.ones((problem_1d.Nt + 1, problem_1d.Nx + 1)) * 0.5
+    U_final = np.zeros(problem_1d.Nx + 1)
+    U_prev = np.zeros((problem_1d.Nt + 1, problem_1d.Nx + 1))
+
+    U_solution = solver_1d.solve_hjb_system(M_test, U_final, U_prev)
+
+    assert U_solution.shape == (problem_1d.Nt + 1, problem_1d.Nx + 1)
+    assert not np.any(np.isnan(U_solution))
+    assert not np.any(np.isinf(U_solution))
+
+    print("  1D solver converged")
+    print(f"  U range: [{U_solution.min():.3f}, {U_solution.max():.3f}]")
+
+    print("All smoke tests passed!")
