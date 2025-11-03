@@ -10,7 +10,9 @@ import pytest
 import numpy as np
 
 from mfg_pde.utils.numerical.particle_interpolation import (
-    adaptive_bandwidth_selection,
+    estimate_kde_bandwidth as adaptive_bandwidth_selection,  # Renamed in main
+)
+from mfg_pde.utils.numerical.particle_interpolation import (
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
 )
