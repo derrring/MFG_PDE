@@ -123,8 +123,8 @@ class TestSolveMFGErrorHandling:
         """Test that invalid method raises ValueError."""
         problem = ExampleMFGProblem()
 
-        # Phase 3.2/3.3: Error message changed from "Unknown method" to "Unknown config preset"
-        with pytest.raises(ValueError, match="Unknown config preset"):
+        # Phase 3.3: Error message uses "Unknown method" for solve_mfg() method parameter
+        with pytest.raises(ValueError, match="Unknown method"):
             solve_mfg(problem, method="invalid_method")
 
     def test_valid_methods_list(self):
