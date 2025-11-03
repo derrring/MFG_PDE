@@ -183,7 +183,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 return problem.geometry.grid.dimension
 
         # Check for 1D MFGProblem (has Nx but not Ny)
-        if hasattr(problem, "Nx") and not hasattr(problem, "Ny"):
+        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
             return 1
 
         # Check for explicit dimension attribute

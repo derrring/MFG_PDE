@@ -155,7 +155,7 @@ class HJBFDMSolver(BaseHJBSolver):
             return getattr(problem.geometry.grid, "dimension", getattr(problem.geometry.grid, "ndim", 1))
         if hasattr(problem, "dimension"):
             return problem.dimension
-        if hasattr(problem, "Nx") and not hasattr(problem, "Ny"):
+        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
             return 1
         raise ValueError("Cannot determine problem dimension")
 
