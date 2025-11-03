@@ -20,9 +20,11 @@ Examples
 >>> # Use maze to define obstacles in domain
 """
 
+from .cellular_automata import CellularAutomataConfig, CellularAutomataGenerator
 from .hybrid_maze import HybridMazeGenerator
 from .maze_config import MazeConfig
 from .maze_generator import MazeAlgorithm, PerfectMazeGenerator
+from .recursive_division import RecursiveDivisionConfig, RecursiveDivisionGenerator
 from .voronoi_maze import VoronoiMazeGenerator
 
 # Utility and postprocessing modules available but not imported by default
@@ -35,6 +37,10 @@ __all__ = [
     "MazeAlgorithm",
     "MazeConfig",
     # Specialized generators
+    "CellularAutomataConfig",
+    "CellularAutomataGenerator",
     "HybridMazeGenerator",
+    "RecursiveDivisionConfig",
+    "RecursiveDivisionGenerator",
     "VoronoiMazeGenerator",
 ]
