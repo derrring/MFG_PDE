@@ -19,15 +19,8 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.ticker import FormatStrFormatter, LinearLocator
 
-# Modern visualization imports for enhanced functions
-try:
-    import plotly.express as px
-    import plotly.graph_objects as go
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-    go = px = None
+# Import optional dependencies from parent module (centralized imports)
+from . import PLOTLY_AVAILABLE, go, px
 
 # Configure matplotlib for cross-platform compatibility
 plt.rcParams["text.usetex"] = False
