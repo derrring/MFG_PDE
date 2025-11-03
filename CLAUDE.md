@@ -188,6 +188,121 @@ benchmarks/reports/*.html # Tracked (exported reports)
 
 ---
 
+## 🧪 **Testing Philosophy**
+
+MFG_PDE uses a **hybrid testing approach** optimized for research code that evolves rapidly.
+
+### **1. Unit Tests (`tests/`) - For Stable APIs**
+
+**When to write unit tests**:
+- ✅ Public APIs (`solve_mfg()`, `create_*_solver()`, factory functions)
+- ✅ Core infrastructure (config, problem, result, backend)
+- ✅ Numerical correctness validation (convergence criteria, boundary conditions)
+- ✅ Data structures and utilities used across multiple modules
+
+**Characteristics**:
+- Comprehensive test coverage with fixtures and mocks
+- Run in CI/CD on every commit
+- Should be maintained as API stabilizes
+- Located in `tests/unit/` and `tests/integration/`
+
+**Current state**: 172 unit test files covering stable framework APIs ✅
+
+### **2. Smoke Tests (`if __name__ == "__main__"`) - For Development**
+
+**When to add inline smoke tests**:
+- ✅ Algorithm implementations (HJB solvers, FP solvers, coupling methods)
+- ✅ Rapidly changing experimental code
+- ✅ Modules that benefit from visual verification
+- ✅ Utilities and helper functions
+
+**Example pattern**:
+```python
+# mfg_pde/alg/numerical/hjb_solvers/my_solver.py
+
+class MySolver:
+    """Implementation of my solver."""
+    def solve(self):
+        # Solver logic...
+        return result
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    from mfg_pde import ExampleMFGProblem
+    import matplotlib.pyplot as plt
+
+    print("Testing MySolver...")
+
+    # Basic convergence test
+    problem = ExampleMFGProblem()
+    solver = MySolver(problem)
+    result = solver.solve()
+
+    assert result.converged, "Convergence test failed"
+    print(f"✓ Converged in {result.iterations} iterations")
+
+    # Quick visualization (optional)
+    plt.semilogy(result.error_history_U)
+    plt.title("Convergence History")
+    plt.show()
+
+    print("All smoke tests passed! ✓")
+```
+
+**Usage**:
+```bash
+# Quick test during development
+python mfg_pde/alg/numerical/hjb_solvers/my_solver.py
+```
+
+**Benefits**:
+- Fast iteration - no need to update separate test files
+- Visual debugging - see algorithm output immediately
+- Self-documenting - shows usage example
+- Low maintenance - simple asserts, no mock overhead
+- Colocated - tests travel with code
+
+### **3. Examples (`examples/`) - For User Documentation**
+
+**Purpose**:
+- Demonstrate complete workflows
+- Show best practices
+- Validate across versions
+- Tutorial content
+
+**Not for**: Quick algorithm testing (use smoke tests instead)
+
+### **Decision Matrix**
+
+| Code Type | Changes Frequently? | Public API? | Test Type |
+|:----------|:-------------------|:------------|:----------|
+| `solve_mfg()` | No | Yes | Unit tests ✅ |
+| Config system | No | Yes | Unit tests ✅ |
+| New HJB solver | Yes | Maybe | Smoke tests ✅ |
+| Experimental RL | Yes | No | Smoke tests ✅ |
+| Visualization | Sometimes | Yes | Smoke tests ✅ |
+| Utility function | No | Internal | Unit tests OR smoke tests |
+
+### **Rationale**
+
+Research code evolves quickly. Inline smoke tests:
+- ✅ Reduce maintenance burden on rapidly changing algorithms
+- ✅ Enable visual verification during development
+- ✅ Provide immediate feedback without test suite overhead
+- ✅ Delete naturally when code is refactored/removed
+
+Unit tests remain essential for:
+- ✅ Public APIs that users depend on
+- ✅ Numerical correctness that must not regress
+- ✅ Core infrastructure that rarely changes
+
+### **Current Target**
+
+- **Unit tests**: 172 files (stable, keep as-is) ✅
+- **Smoke tests**: 10 files → **50-60 files** (add to algorithms/utils) 🎯
+
+---
+
 ## 🔧 **Development Workflow**
 
 ### **Branch Naming** ⚠️ **MANDATORY**
