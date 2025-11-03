@@ -21,9 +21,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers.fp_network import FPNetworkSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_network import NetworkHJBSolver
-from mfg_pde.alg.numerical.mfg_solvers.fixed_point_iterator import FixedPointIterator
 
 if TYPE_CHECKING:
     from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
@@ -60,7 +60,7 @@ def create_network_mfg_solver(
 
     Example:
         >>> from mfg_pde import NetworkMFGProblem
-        >>> from mfg_pde.alg.numerical.mfg_solvers.network_mfg_solver import create_network_mfg_solver
+        >>> from mfg_pde.alg.numerical.coupling.network_mfg_solver import create_network_mfg_solver
         >>> # Create problem (network geometry, components, etc.)
         >>> problem = NetworkMFGProblem(...)
         >>> # Create solver

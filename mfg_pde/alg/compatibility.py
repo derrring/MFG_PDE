@@ -14,7 +14,7 @@ from typing import Any
 _LEGACY_IMPORT_MAP = {
     "hjb_solvers": "numerical.hjb_solvers",
     "fp_solvers": "numerical.fp_solvers",
-    "mfg_solvers": "numerical.mfg_solvers",
+    "mfg_solvers": "numerical.coupling",
     "variational_solvers": "optimization.variational_methods",
     "neural_solvers": "neural.physics_informed",
 }
@@ -104,7 +104,7 @@ Algorithm Reorganization Migration Guide:
 Old Structure → New Structure:
 - mfg_pde.alg_old.hjb_solvers → mfg_pde.alg.numerical.hjb_solvers
 - mfg_pde.alg_old.fp_solvers → mfg_pde.alg.numerical.fp_solvers
-- mfg_pde.alg_old.mfg_solvers → mfg_pde.alg.numerical.mfg_solvers
+- mfg_pde.alg_old.mfg_solvers → mfg_pde.alg.numerical.coupling
 - mfg_pde.alg_old.variational_solvers → mfg_pde.alg.optimization.variational_methods
 - mfg_pde.alg_old.neural_solvers → mfg_pde.alg.neural.physics_informed
 

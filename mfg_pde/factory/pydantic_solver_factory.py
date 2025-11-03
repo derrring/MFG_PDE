@@ -18,7 +18,7 @@ try:
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.config.pydantic_config import (
     MFGSolverConfig,
     create_accurate_config,

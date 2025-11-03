@@ -10,9 +10,9 @@ import pytest
 
 import numpy as np
 
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryConditions
 

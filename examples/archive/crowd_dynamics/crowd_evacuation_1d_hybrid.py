@@ -34,7 +34,7 @@ import numpy as np
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mfg_pde.alg.numerical.mfg_solvers.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
+from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryConditions
 

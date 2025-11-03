@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
-from mfg_pde.alg.numerical.mfg_solvers.hybrid_fp_particle_hjb_fdm import (
+from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import (
     HybridSolverPresets,
     create_hybrid_fp_particle_hjb_fdm_solver,
 )

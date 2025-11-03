@@ -28,17 +28,42 @@ VALUE_BEFORE_SQUARE_LIMIT = 1e150
 @dataclass
 class MFGComponents:
     """
-    Container for all components that define a custom MFG problem.
+    Environment configuration for MFG problems.
 
-    This class holds all the mathematical components needed to fully specify
-    an MFG problem, allowing users to provide custom implementations.
+    MFGComponents defines the physics and structure of the MFG environment:
+    what forces act on agents, how they interact, what constraints exist,
+    and what the geometry looks like. This is separate from numerical methods
+    (which are specified via modular solvers).
 
-    Supports multiple MFG formulations:
-    - Standard HJB-FP (Hamiltonian-based)
-    - Network/Graph MFG (discrete domains)
-    - Variational/Lagrangian (optimization-based)
-    - Stochastic MFG (common noise)
-    - High-dimensional (n-D spatial domains)
+    Think of this as configuring a game level: terrain, movement physics,
+    obstacles, starting positions, win conditions, and player interactions.
+
+    Capabilities
+    ------------
+    Standard MFG formulations:
+    - HJB-FP (Hamiltonian-based): Specify Hamiltonian H(x,m,p,t), potential V(x,t)
+    - Network/Graph MFG: Discrete locations with node/edge interactions
+    - Variational/Lagrangian: Optimization-based with Lagrangian L(t,x,v,m)
+    - Stochastic MFG: Common and idiosyncratic noise
+    - High-dimensional: Arbitrary spatial dimensions (n-D)
+
+    Advanced capabilities:
+    - Neural Network MFG: PINN, Deep BSDE with architecture configuration
+    - Reinforcement Learning MFG: Reward functions, action spaces, policy constraints
+    - Implicit Geometry: Level sets, signed distance functions, obstacles
+    - Adaptive Mesh Refinement: Refinement criteria, error estimation
+    - Time-Dependent Domains: Moving boundaries, dynamic obstacles
+    - Multi-Population MFG: Multiple interacting agent populations
+
+    Notes
+    -----
+    All fields are optional with sensible defaults. Only specify what you need
+    to customize for your problem. For standard problems, MFGProblem provides
+    default implementations.
+
+    See Also
+    --------
+    MFGProblem : Problem instance using these components
     """
 
     # =========================================================================
@@ -105,6 +130,100 @@ class MFGComponents:
     common_noise_func: Callable | None = None  # Common noise W(t)
     idiosyncratic_noise_func: Callable | None = None  # Individual noise Z(t)
     correlation_matrix: NDArray | None = None  # Noise correlations
+
+    # =========================================================================
+    # Neural Network MFG Components (PINN, Deep BSDE, etc.)
+    # =========================================================================
+
+    # Network architecture specifications
+    neural_architecture: dict[str, Any] | None = None  # {layers, activation, etc.}
+    value_network_config: dict[str, Any] | None = None  # For u(t,x)
+    policy_network_config: dict[str, Any] | None = None  # For optimal control
+    density_network_config: dict[str, Any] | None = None  # For m(t,x)
+
+    # Training configuration
+    loss_weights: dict[str, float] | None = None  # PDE loss, IC loss, BC loss weights
+    physics_loss_func: Callable | None = None  # Custom physics-informed loss
+    network_initializer: Callable | None = None  # Custom weight initialization
+
+    # =========================================================================
+    # Reinforcement Learning MFG Components
+    # =========================================================================
+
+    # Reward/cost specification
+    reward_func: Callable | None = None  # r(s, a, m, t) -> float
+    terminal_reward_func: Callable | None = None  # r_T(s) -> float
+
+    # Action and observation spaces
+    action_space_bounds: list[tuple[float, float]] | None = None  # [(a_min, a_max), ...]
+    observation_func: Callable | None = None  # Map state to observation
+    action_constraints: list[Callable] | None = None  # g(s, a) ≤ 0
+
+    # Multi-agent specifications
+    agent_interaction_func: Callable | None = None  # How agents interact
+    population_coupling_strength: float = 0.0  # λ for mean-field coupling
+
+    # =========================================================================
+    # Implicit Geometry Components
+    # =========================================================================
+
+    # Implicit surface representation
+    level_set_func: Callable | None = None  # φ(x) = 0 defines surface
+    signed_distance_func: Callable | None = None  # d(x) -> float (distance to boundary)
+
+    # Obstacle/constraint representations
+    obstacle_func: Callable | None = None  # 1 if obstacle, 0 otherwise
+    obstacle_penalty: float = 1e10  # Penalty for obstacle violations
+
+    # Manifold constraints (for MFG on manifolds)
+    manifold_projection: Callable | None = None  # Project to manifold
+    tangent_space_basis: Callable | None = None  # Local coordinate system
+
+    # =========================================================================
+    # Adaptive Mesh Refinement (AMR) Components
+    # =========================================================================
+
+    # Refinement criteria
+    refinement_indicator: Callable | None = None  # Estimate local error
+    refinement_threshold: float = 0.1  # Refine if indicator > threshold
+    coarsening_threshold: float = 0.01  # Coarsen if indicator < threshold
+
+    # Solution features to track
+    feature_detection_func: Callable | None = None  # Detect shocks, fronts, etc.
+
+    # Mesh constraints
+    min_cell_size: float | None = None
+    max_cell_size: float | None = None
+    max_refinement_level: int = 5
+
+    # =========================================================================
+    # Time-Dependent Domain Components
+    # =========================================================================
+
+    # Time-varying boundaries
+    boundary_motion_func: Callable | None = None  # ∂Ω(t)
+    domain_velocity_func: Callable | None = None  # v_domain(x, t)
+
+    # Moving obstacles
+    obstacle_trajectory_func: Callable | None = None  # x_obstacle(t)
+
+    # Topology changes
+    domain_split_func: Callable | None = None  # When/how domain splits
+    domain_merge_func: Callable | None = None  # When/how domains merge
+
+    # =========================================================================
+    # Multi-Population MFG Components
+    # =========================================================================
+
+    num_populations: int = 1  # Number of distinct populations
+
+    # Population-specific components
+    population_hamiltonians: list[Callable] | None = None  # H_i for each population
+    population_initial_densities: list[Callable] | None = None  # m_0^i for each population
+
+    # Cross-population interactions
+    cross_population_coupling: Callable | None = None  # F(m_1, m_2, ..., m_N)
+    population_weights: list[float] | None = None  # Relative population sizes
 
     # =========================================================================
     # Problem Parameters and Metadata

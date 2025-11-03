@@ -3,7 +3,7 @@
 Progress Monitoring Utilities for MFG_PDE
 
 Provides elegant progress bars, timing, and performance monitoring for long-running
-solver operations using modern tools like tqdm.
+solver operations using modern tools like rich (preferred) or tqdm (fallback).
 """
 
 from __future__ import annotations
@@ -14,16 +14,114 @@ import warnings
 from contextlib import contextmanager
 from typing import Any
 
+# Try rich first (preferred), then tqdm, then fallback
+PROGRESS_BACKEND = None
+
 try:
-    from tqdm import tqdm as _tqdm_real
-    from tqdm import trange as _trange_real
+    from rich.console import Console
+    from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
-    TQDM_AVAILABLE = True
-    tqdm = _tqdm_real
-    trange = _trange_real
+    PROGRESS_BACKEND = "rich"
+    RICH_AVAILABLE = True
+    console = Console()
+
 except ImportError:
-    TQDM_AVAILABLE = False
+    RICH_AVAILABLE = False
+    console = None
 
+    try:
+        from tqdm import tqdm as _tqdm_real
+        from tqdm import trange as _trange_real
+
+        PROGRESS_BACKEND = "tqdm"
+        TQDM_AVAILABLE = True
+        tqdm = _tqdm_real
+        trange = _trange_real
+    except ImportError:
+        PROGRESS_BACKEND = "fallback"
+        TQDM_AVAILABLE = False
+
+
+# Rich-based progress bar wrapper
+class RichProgressBar:
+    """Rich progress bar that mimics tqdm interface."""
+
+    def __init__(self, iterable=None, total=None, desc=None, disable=False, **kwargs):
+        self.iterable = iterable
+        self.total = total or (len(iterable) if iterable and hasattr(iterable, "__len__") else None)
+        self.desc = desc or ""
+        self.disable = disable
+        self.n = 0
+        self.progress = None
+        self.task_id = None
+        self.postfix_data = {}
+
+    def __iter__(self):
+        if self.iterable is None:
+            return iter([])
+        for item in self.iterable:
+            yield item
+            self.update(1)
+
+    def __enter__(self):
+        if not self.disable and RICH_AVAILABLE:
+            self.progress = Progress(
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TextColumn("•"),
+                TextColumn("{task.completed}/{task.total}"),
+                TimeElapsedColumn(),
+                TextColumn("•"),
+                TimeRemainingColumn(),
+                console=console,
+            )
+            self.progress.__enter__()
+            self.task_id = self.progress.add_task(self.desc, total=self.total or 100)
+        return self
+
+    def __exit__(self, *args):
+        if self.progress:
+            self.progress.__exit__(*args)
+
+    def update(self, n=1):
+        self.n += n
+        if not self.disable and self.progress and self.task_id is not None:
+            # Update with postfix if available
+            desc = self.desc
+            if self.postfix_data:
+                postfix_str = ", ".join(f"{k}={v}" for k, v in self.postfix_data.items())
+                desc = f"{self.desc} [{postfix_str}]"
+            self.progress.update(self.task_id, advance=n, description=desc)
+
+    def set_postfix(self, **kwargs):
+        self.postfix_data.update(kwargs)
+        if not self.disable and self.progress and self.task_id is not None:
+            postfix_str = ", ".join(f"{k}={v}" for k, v in self.postfix_data.items())
+            self.progress.update(self.task_id, description=f"{self.desc} [{postfix_str}]")
+
+    def set_description(self, desc: str):
+        self.desc = desc
+        if not self.disable and self.progress and self.task_id is not None:
+            self.progress.update(self.task_id, description=desc)
+
+    def close(self):
+        if self.progress:
+            self.progress.stop()
+
+
+# Unified interface
+if PROGRESS_BACKEND == "rich":
+    tqdm = RichProgressBar
+
+    def trange(n: int, **kwargs) -> RichProgressBar:
+        return RichProgressBar(range(n), total=n, **kwargs)
+
+elif PROGRESS_BACKEND == "tqdm":
+    # tqdm already imported above
+    pass
+
+else:
     # Fallback simple progress implementation
     class tqdm:  # noqa: N801
         def __init__(self, iterable=None, total=None, desc=None, disable=False, **kwargs):
@@ -199,7 +297,7 @@ class IterationProgress:
 
             self.pbar.update(n)
             if postfix and hasattr(self.pbar, "set_postfix"):
-                self.pbar.set_postfix(postfix)
+                self.pbar.set_postfix(**postfix)
 
     def set_description(self, desc: str):
         """Update the progress bar description."""
@@ -278,17 +376,38 @@ def progress_context(
         yield iterable
 
 
-def check_tqdm_availability() -> bool:
-    """Check if tqdm is available and recommend installation if not."""
-    if not TQDM_AVAILABLE:
+def check_progress_backend() -> str:
+    """
+    Check which progress backend is being used.
+
+    Returns:
+        Backend name: "rich", "tqdm", or "fallback"
+    """
+    if PROGRESS_BACKEND == "fallback":
         warnings.warn(
-            "tqdm is not available. For enhanced progress bars, install with: "
-            "pip install tqdm\n"
+            "Neither rich nor tqdm is available. For enhanced progress bars, install with:\n"
+            "  pip install rich  (recommended, modern)\n"
+            "  pip install tqdm  (alternative)\n"
             "Falling back to basic progress indication.",
             UserWarning,
             stacklevel=2,
         )
-    return TQDM_AVAILABLE
+    return PROGRESS_BACKEND
+
+
+def check_tqdm_availability() -> bool:
+    """
+    Check if tqdm is available (deprecated: use check_progress_backend instead).
+
+    Returns:
+        True if any progress backend is available
+    """
+    warnings.warn(
+        "check_tqdm_availability() is deprecated. Use check_progress_backend() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return PROGRESS_BACKEND in ("rich", "tqdm")
 
 
 # Convenience functions for common patterns

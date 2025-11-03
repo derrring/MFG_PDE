@@ -24,9 +24,9 @@ from mfg_pde import (
     create_research_solver,
     create_solver,
 )
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 
 
 def create_test_problem():

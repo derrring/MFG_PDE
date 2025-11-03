@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     import numpy as np
     from numpy.typing import NDArray
 
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.config.solver_config import (
     FPConfig,
     GFDMConfig,
@@ -317,9 +317,9 @@ def create_basic_solver(
         >>> solver = create_basic_solver(problem, damping=0.6)
         >>> result = solver.solve()
     """
+    from mfg_pde.alg.numerical.coupling import FixedPointIterator
     from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
     from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-    from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
 
     hjb_solver = HJBFDMSolver(problem=problem)
     fp_solver = FPFDMSolver(problem=problem)
