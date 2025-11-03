@@ -409,7 +409,7 @@ def test_create_basic_solver():
     with (
         patch("mfg_pde.alg.numerical.hjb_solvers.hjb_fdm.HJBFDMSolver") as MockHJB,
         patch("mfg_pde.alg.numerical.fp_solvers.fp_fdm.FPFDMSolver") as MockFP,
-        patch("mfg_pde.alg.numerical.mfg_solvers.FixedPointIterator") as MockIterator,
+        patch("mfg_pde.alg.numerical.coupling.FixedPointIterator") as MockIterator,
     ):
         MockHJB.return_value = Mock()
         MockFP.return_value = Mock()
