@@ -187,7 +187,7 @@ class PerformanceMonitor:
                 problem_size = {}
                 if args and hasattr(args[0], "problem"):
                     problem = args[0].problem
-                    if hasattr(problem, "Nx"):
+                    if getattr(problem, "Nx", None) is not None:
                         problem_size["Nx"] = problem.Nx
                     if hasattr(problem, "Nt"):
                         problem_size["Nt"] = problem.Nt

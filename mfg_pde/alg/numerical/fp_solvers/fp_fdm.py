@@ -46,7 +46,7 @@ class FPFDMSolver(BaseFPSolver):
             return problem.dimension
 
         # Check for 1D attributes (Nx but no Ny)
-        if hasattr(problem, "Nx") and not hasattr(problem, "Ny"):
+        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
             return 1
 
         # Default to 1D for backward compatibility
@@ -95,7 +95,7 @@ class FPFDMSolver(BaseFPSolver):
     ) -> np.ndarray:
         """Original 1D FP solver implementation."""
         # Handle both old 1D interface and new GridBasedMFGProblem interface
-        if hasattr(self.problem, "Nx"):
+        if getattr(self.problem, "Nx", None) is not None:
             # Old 1D interface
             Nx = self.problem.Nx + 1
             Dx = self.problem.Dx

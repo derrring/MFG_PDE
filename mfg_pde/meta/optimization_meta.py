@@ -294,7 +294,7 @@ class JITSolverFactory:
         """Infer performance profile from problem characteristics."""
 
         # Estimate problem size
-        if hasattr(problem, "Nx") and hasattr(problem, "Nt"):
+        if getattr(problem, "Nx", None) is not None and getattr(problem, "Nt", None) is not None:
             problem_size = problem.Nx * problem.Nt
         else:
             problem_size = 1000  # Default
@@ -371,7 +371,7 @@ def create_optimized_solver(
     factory = JITSolverFactory()
 
     # Create performance profile
-    if hasattr(problem, "Nx") and hasattr(problem, "Nt"):
+    if getattr(problem, "Nx", None) is not None and getattr(problem, "Nt", None) is not None:
         problem_size = problem.Nx * problem.Nt
     else:
         problem_size = 1000
@@ -449,7 +449,7 @@ def adaptive_backend(backends: list[str] | None = None):
 
             if args and hasattr(args[0], "problem"):
                 solver = args[0]
-                if hasattr(solver.problem, "Nx") and hasattr(solver.problem, "Nt"):
+                if getattr(solver.problem, "Nx", None) is not None and getattr(solver.problem, "Nt", None) is not None:
                     problem_size = solver.problem.Nx * solver.problem.Nt
 
             # Select backend based on problem size
