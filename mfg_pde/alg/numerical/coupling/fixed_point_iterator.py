@@ -290,12 +290,10 @@ class FixedPointIterator(BaseMFGSolver):
             if verbose and hasattr(picard_range, "set_postfix"):
                 accel_tag = "A" if self.use_anderson else ""
                 picard_range.set_postfix(
-                    {
-                        "U_err": f"{self.l2distu_rel[iiter]:.2e}",
-                        "M_err": f"{self.l2distm_rel[iiter]:.2e}",
-                        "t": f"{iter_time:.1f}s",
-                        "acc": accel_tag,
-                    }
+                    U_err=f"{self.l2distu_rel[iiter]:.2e}",
+                    M_err=f"{self.l2distm_rel[iiter]:.2e}",
+                    t=f"{iter_time:.1f}s",
+                    acc=accel_tag,
                 )
             elif not verbose:
                 # Print traditional output when not using progress bar
