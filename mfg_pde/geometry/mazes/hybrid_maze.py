@@ -344,7 +344,7 @@ class HybridMazeGenerator:
         generator: Any
 
         if spec.algorithm == "recursive_division":
-            from mfg_pde.alg.reinforcement.environments.recursive_division import (
+            from mfg_pde.geometry.mazes.recursive_division import (
                 RecursiveDivisionConfig,
                 RecursiveDivisionGenerator,
             )
@@ -354,7 +354,7 @@ class HybridMazeGenerator:
             return generator.generate(seed=int(self.rng.integers(0, 2**31)))
 
         elif spec.algorithm == "cellular_automata":
-            from mfg_pde.alg.reinforcement.environments.cellular_automata import (
+            from mfg_pde.geometry.mazes.cellular_automata import (
                 CellularAutomataConfig,
                 CellularAutomataGenerator,
             )
@@ -364,7 +364,7 @@ class HybridMazeGenerator:
             return generator.generate(seed=int(self.rng.integers(0, 2**31)))
 
         elif spec.algorithm == "voronoi":
-            from mfg_pde.alg.reinforcement.environments.voronoi_maze import (
+            from mfg_pde.geometry.mazes.voronoi_maze import (
                 VoronoiMazeConfig,
                 VoronoiMazeGenerator,
             )
@@ -374,7 +374,7 @@ class HybridMazeGenerator:
             return generator.generate(seed=int(self.rng.integers(0, 2**31)))
 
         elif spec.algorithm == "perfect":
-            from mfg_pde.alg.reinforcement.environments.maze_generator import (
+            from mfg_pde.geometry.mazes.maze_generator import (
                 PerfectMazeGenerator,
             )
 
