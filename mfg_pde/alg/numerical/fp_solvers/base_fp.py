@@ -39,6 +39,50 @@ class BaseFPSolver(ABC):
         self.fp_method_name: str = "BaseFP"  # Concrete solvers should override this
         self.backend = None  # Backend for array operations (NumPy, PyTorch, JAX)
 
+        # Validate solver compatibility if problem supports it (Phase 3.1.5)
+        self._validate_problem_compatibility()
+
+    def _validate_problem_compatibility(self) -> None:
+        """
+        Validate that this solver is compatible with the problem.
+
+        This method checks if the problem has solver compatibility detection
+        (Phase 3.1 unified interface) and validates compatibility if available.
+        For older problems without this feature, validation is skipped.
+        """
+        # Only validate if problem has the new unified interface
+        if not hasattr(self.problem, "validate_solver_type"):
+            return  # Backward compatibility: skip validation for old problems
+
+        # Get solver type identifier from subclass
+        solver_type = self._get_solver_type_id()
+        if solver_type is None:
+            return  # Solver doesn't specify type, skip validation
+
+        # Validate compatibility
+        try:
+            self.problem.validate_solver_type(solver_type)
+        except ValueError as e:
+            # Re-raise with solver class information
+            raise ValueError(f"Cannot use {self.__class__.__name__} with this problem.\n\n{e!s}") from e
+
+    def _get_solver_type_id(self) -> str | None:
+        """
+        Get solver type identifier for compatibility checking.
+
+        Subclasses should override this to return their type identifier.
+        Returns None if solver type cannot be determined (skips validation).
+        """
+        # Map class names to solver type IDs
+        class_name = self.__class__.__name__
+        type_mapping = {
+            "FPFDMSolver": "fdm",
+            "FPParticleSolver": "particle",
+            "FPNetworkSolver": "network_solver",
+            "FPGFDMSolver": "gfdm",
+        }
+        return type_mapping.get(class_name)
+
     @abstractmethod
     def solve_fp_system(
         self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True

@@ -348,73 +348,85 @@ class HighDimMFGProblem(ABC):
         plotter.show()
 
 
-class GridBasedMFGProblem(HighDimMFGProblem):
+class GridBasedMFGProblem(MFGProblem):
     """
-    MFG problem on regular grids (dimension-agnostic).
+    Legacy base class for grid-based MFG problems (backward compatible).
 
-    This class provides a simpler interface for problems on hyperrectangular domains
-    with regular tensor product grid discretization. Supports arbitrary dimensions,
-    though O(N^d) complexity limits practical use to d≤3 for dense grids.
+    DEPRECATED: Use MFGProblem directly instead of inheriting from this class.
 
-    For high dimensions (d>3), consider:
-    - Using sparse grids (reduced grid points)
-    - Switching to meshfree particle-collocation methods
-    - Adaptive refinement strategies
+    This class exists only to support existing code that inherits from
+    GridBasedMFGProblem. It will be removed in v2.0.0.
+
+    Deprecation Timeline:
+    - v0.9.0 (2025-Q1): Added deprecation warning
+    - v1.0.0 (2025-Q2): Warning becomes more prominent
+    - v2.0.0 (2026-Q1): Class removed entirely
+
+    Migration:
+        # Old (deprecated):
+        class MyProblem(GridBasedMFGProblem):
+            def __init__(self, ...):
+                super().__init__(domain_bounds=(...), ...)
+
+        # New (recommended):
+        class MyProblem(MFGProblem):
+            def __init__(self, ...):
+                super().__init__(spatial_bounds=[...], ...)
     """
 
     def __init__(
         self,
-        domain_bounds: tuple,  # e.g., (0, 1, 0, 1) for 2D, (0, 1, 0, 1, 0, 1) for 3D, etc.
+        domain_bounds: tuple,
         grid_resolution: int | tuple[int, ...],
         time_domain: tuple[float, int] = (1.0, 100),
         diffusion_coeff: float = 0.1,
     ):
-        """
-        Initialize grid-based MFG problem (any dimension).
+        import warnings
 
-        Args:
-            domain_bounds: Domain boundaries (2*dim values: min/max for each dimension).
-                Examples:
-                - 2D: (xmin, xmax, ymin, ymax)
-                - 3D: (xmin, xmax, ymin, ymax, zmin, zmax)
-                - 4D: (x0min, x0max, x1min, x1max, x2min, x2max, x3min, x3max)
-            grid_resolution: Grid points per dimension (int for uniform, tuple for per-dimension).
-                Examples:
-                - Uniform 2D 50×50: 50
-                - Non-uniform 2D: (50, 30)
-                - Uniform 4D 10^4 points: 10
-            time_domain: (T_final, N_timesteps)
-            diffusion_coeff: Diffusion coefficient
-        """
-        from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+        warnings.warn(
+            "GridBasedMFGProblem class is deprecated and will be removed in v2.0.0. "
+            "Use MFGProblem() directly. See docs/migration/unified_problem_migration.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        # Determine dimension from bounds
+        # Determine dimension
         dimension = len(domain_bounds) // 2
+        spatial_bounds = [(domain_bounds[2 * i], domain_bounds[2 * i + 1]) for i in range(dimension)]
 
-        # Normalize grid_resolution to tuple
+        # Convert grid_resolution
         if isinstance(grid_resolution, int):
-            res = tuple([grid_resolution] * dimension)
+            spatial_discretization = [grid_resolution] * dimension
         else:
-            if len(grid_resolution) != dimension:
-                raise ValueError(
-                    f"For {dimension}D problems, grid_resolution must be int or {dimension}-tuple, "
-                    f"got {len(grid_resolution)}-tuple"
-                )
-            res = tuple(grid_resolution)
+            spatial_discretization = list(grid_resolution)
 
-        # Create bounds list: [(min_0, max_0), (min_1, max_1), ...]
-        bounds_list = [(domain_bounds[2 * i], domain_bounds[2 * i + 1]) for i in range(dimension)]
+        # Extract time parameters
+        T, Nt = time_domain
 
-        # Create dimension-agnostic TensorProductGrid
-        grid = TensorProductGrid(dimension=dimension, bounds=bounds_list, num_points=res)
+        # Initialize parent MFGProblem
+        super().__init__(
+            spatial_bounds=spatial_bounds,
+            spatial_discretization=spatial_discretization,
+            T=T,
+            Nt=Nt,
+            sigma=diffusion_coeff,
+        )
 
-        # Wrap in geometry interface
-        geometry = _TensorGridGeometry(grid)
-
-        super().__init__(geometry, time_domain, diffusion_coeff, dimension)
-
+        # Store legacy attributes for backward compatibility
         self.domain_bounds = domain_bounds
         self.grid_resolution = grid_resolution
+
+        # Create geometry wrapper for compatibility with dimension-agnostic solvers
+        # The HJBSemiLagrangianSolver expects problem.geometry.grid
+        if dimension > 1:
+            self.geometry = _TensorGridGeometry(self._grid)
+
+            # Remove 1D attributes for nD problems to ensure solvers use geometry path
+            # FixedPointIterator checks hasattr(problem, "Nx"), which returns True even when Nx=None
+            del self.Nx, self.xmin, self.xmax, self.Dx, self.Lx, self.xSpace
+
+        # Add lowercase dt alias (some solvers expect lowercase)
+        self.dt = self.Dt
 
 
 class HybridMFGSolver:

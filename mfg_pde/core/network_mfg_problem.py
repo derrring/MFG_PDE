@@ -137,6 +137,15 @@ class NetworkMFGProblem(MFGProblem):
         self.components = components or NetworkMFGComponents()  # type: ignore[assignment]
         self.problem_name = problem_name
 
+        # Phase 3.1 integration: Set attributes expected by validation system
+        self.geometry = network_geometry  # Alias for compatibility
+        self.domain_type = "network"  # Domain classification for solver selection
+        self.dimension = "network"  # Special dimension indicator for network problems
+
+        # Re-detect solver compatibility now that domain_type is set correctly
+        # (parent __init__ called _detect_solver_compatibility() with grid domain)
+        self._detect_solver_compatibility()
+
         # Override spatial properties for network
         self.is_network_problem = True
         self.num_nodes = network_geometry.num_nodes

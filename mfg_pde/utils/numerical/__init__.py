@@ -6,7 +6,7 @@ in MFG research projects, including particle interpolation, signed distance
 functions, spatial operations, and computational utilities.
 """
 
-from mfg_pde.utils.numerical.nonlinear_solvers import FixedPointSolver, NewtonSolver
+from mfg_pde.utils.numerical.nonlinear_solvers import FixedPointSolver, NewtonSolver, PolicyIterationSolver, SolverInfo
 from mfg_pde.utils.numerical.particle_interpolation import (
     estimate_kde_bandwidth,
     interpolate_grid_to_particles,
@@ -28,6 +28,8 @@ __all__ = [
     # Nonlinear solvers
     "FixedPointSolver",
     "NewtonSolver",
+    "PolicyIterationSolver",
+    "SolverInfo",
     # Particle interpolation
     "estimate_kde_bandwidth",
     "interpolate_grid_to_particles",

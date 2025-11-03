@@ -9,9 +9,12 @@ from unittest.mock import patch
 import pytest
 
 from mfg_pde.utils.progress import (
+    PROGRESS_BACKEND,
+    RICH_AVAILABLE,
     TQDM_AVAILABLE,
     IterationProgress,
     SolverTimer,
+    check_progress_backend,
     check_tqdm_availability,
     progress_context,
     solver_progress,
@@ -22,22 +25,50 @@ from mfg_pde.utils.progress import (
 )
 
 
-class TestTqdmAvailability:
-    """Test tqdm availability detection and fallback."""
+class TestProgressBackend:
+    """Test progress backend detection and configuration."""
 
-    def test_tqdm_import_status(self):
-        """Test TQDM_AVAILABLE flag is set correctly."""
+    def test_progress_backend_is_set(self):
+        """Test PROGRESS_BACKEND is one of the valid options."""
+        assert PROGRESS_BACKEND in ["rich", "tqdm", "fallback"]
+
+    def test_check_progress_backend(self):
+        """Test check_progress_backend returns current backend."""
+        backend = check_progress_backend()
+        assert backend == PROGRESS_BACKEND
+        assert backend in ["rich", "tqdm", "fallback"]
+
+    def test_backend_availability_flags(self):
+        """Test RICH_AVAILABLE and TQDM_AVAILABLE flags are consistent."""
+        assert isinstance(RICH_AVAILABLE, bool)
         assert isinstance(TQDM_AVAILABLE, bool)
 
+        # Only one backend should be active
+        if PROGRESS_BACKEND == "rich":
+            assert RICH_AVAILABLE is True
+        elif PROGRESS_BACKEND == "tqdm":
+            assert TQDM_AVAILABLE is True
+        else:  # fallback
+            assert RICH_AVAILABLE is False
+            assert TQDM_AVAILABLE is False
+
+    def test_tqdm_availability_deprecated(self):
+        """Test TQDM_AVAILABLE for backward compatibility (deprecated)."""
+        # TQDM_AVAILABLE should be False when using rich backend
+        assert isinstance(TQDM_AVAILABLE, bool)
+        if PROGRESS_BACKEND == "rich":
+            assert TQDM_AVAILABLE is False
+
     def test_check_tqdm_availability(self):
-        """Test check_tqdm_availability returns bool and warns if unavailable."""
-        if not TQDM_AVAILABLE:
-            with pytest.warns(UserWarning, match="tqdm is not available"):
-                result = check_tqdm_availability()
-            assert result is False
-        else:
+        """Test check_tqdm_availability returns bool and shows deprecation warning."""
+        # Function is deprecated in favor of check_progress_backend()
+        # Now returns True if ANY progress backend is available (rich or tqdm)
+        with pytest.warns(DeprecationWarning, match="check_tqdm_availability.*deprecated"):
             result = check_tqdm_availability()
-            assert result is True
+
+        assert isinstance(result, bool)
+        # Should return True if rich or tqdm backend is active
+        assert result == (PROGRESS_BACKEND in ("rich", "tqdm"))
 
     def test_tqdm_class_exists(self):
         """Test tqdm class is available (real or fallback)."""
