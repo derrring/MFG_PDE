@@ -74,6 +74,21 @@ class FPParticleSolver(BaseFPSolver):
                 raise ValueError(
                     f"external_particles must be 2D array (N_points, dimension), got shape {external_particles.shape}"
                 )
+
+            # WARN: Incomplete implementation
+            import warnings
+
+            warnings.warn(
+                "Collocation mode has an INCOMPLETE IMPLEMENTATION. "
+                "Density is frozen at the initial condition instead of evolving via the continuity equation. "
+                "This is physically incorrect for non-equilibrium problems. "
+                "Use mode='default' (KDE-based) for correct density evolution. "
+                "See Issue #240 for implementation status. "
+                "Expected completion: v1.0.0",
+                UserWarning,
+                stacklevel=2,
+            )
+
             self.collocation_points = external_particles.copy()
             self.num_particles = len(external_particles)
             self.fp_method_name = "Particle-Collocation"
@@ -600,25 +615,43 @@ class FPParticleSolver(BaseFPSolver):
         """
         Solve FP system in collocation mode (meshfree particle output).
 
-        In collocation mode:
-        - Particles are FIXED at collocation points (Eulerian representation)
-        - Density evolves on particles via continuity equation
-        - NO KDE interpolation to grid
-        - Output: density on collocation points
+        WARNING: INCOMPLETE IMPLEMENTATION
+            This method currently freezes density at the initial condition instead of
+            solving the continuity equation. Density does NOT evolve in time.
 
-        This enables true meshfree MFG when combined with particle-collocation HJB solvers (GFDM).
+            Current behavior (line 652): M[t+1] = M[0] for all t
+            Expected behavior: M[t+1] = M[t] - Δt * (divergence_term - diffusion_term)
+
+            See Issue #240 for implementation plan.
+            Estimated completion: v1.0.0 (target: ~3 days development)
+
+        Design Intent (not yet implemented):
+        - Particles FIXED at collocation points (Eulerian representation)
+        - Density should evolve via continuity equation: ∂m/∂t + ∇·(m α) = σ²/2 Δm
+        - NO KDE interpolation to grid
+        - Output: density evolution on collocation points
+
+        Current Limitations:
+        - Density frozen at initial condition (physically incorrect for non-equilibrium)
+        - No GFDM spatial operators (divergence, Laplacian)
+        - No time integration of continuity equation
+        - Tests validate API only, not physical correctness
 
         Args:
             m_initial_condition: Initial density on collocation points (N_particles,)
             U_solution_for_drift: Value function on collocation points (Nt, N_particles)
+                (Currently unused - will be needed for drift computation)
 
         Returns:
-            M_solution: Density evolution on collocation points (Nt, N_particles)
+            M_solution: Density on collocation points (Nt, N_particles)
+                WARNING: Currently returns M[0] repeated for all time steps
 
         Note:
-            In collocation mode, particles remain at collocation points (Eulerian grid-free).
-            Mass is advected using continuity equation: ∂m/∂t + ∇·(m α) = σ²/2 Δm
-            where α = -coefCT ∇H (optimal control from Hamiltonian).
+            This incomplete implementation is sufficient for API testing but should NOT
+            be used for production MFG simulations. Use mode="default" (KDE-based) for
+            correct density evolution until Issue #240 is resolved.
+
+            Tracking: https://github.com/your-org/MFG_PDE/issues/240
         """
         Nt = self.problem.Nt + 1
         N_points = len(self.collocation_points)
