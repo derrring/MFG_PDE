@@ -188,9 +188,19 @@ jobs:
 
     - name: Run tests with coverage (skip slow tests on PRs)
       if: github.event_name != 'release'
-      timeout-minutes: 35
+      timeout-minutes: 20
       run: |
-        pytest tests/ -v -m "not slow and not optional_torch and not benchmark and not experimental and not environment" --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=5
+        pytest tests/ -v \
+          --ignore=tests/unit/test_geometry/ \
+          --ignore=tests/unit/test_utils/ \
+          --ignore=tests/unit/test_config/ \
+          --ignore=tests/unit/test_backends/ \
+          --ignore=tests/unit/test_visualization/ \
+          --ignore=tests/unit/test_workflow/ \
+          --ignore=tests/unit/geometry/ \
+          --ignore=tests/unit/utils/ \
+          -m "not slow and not optional_torch and not benchmark and not experimental and not environment" \
+          --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=5
 
     - name: Run all tests with coverage (including slow tests on releases)
       if: github.event_name == 'release'
