@@ -10,11 +10,12 @@
 
 1. [Mathematical Definitions](#mathematical-definitions)
 2. [Kernel Properties](#kernel-properties)
-3. [Mollifiers and Regularization](#mollifiers-and-regularization)
-4. [Convolution and Approximation](#convolution-and-approximation)
-5. [Kernel Types](#kernel-types)
-6. [Applications in MFG_PDE](#applications-in-mfg_pde)
-7. [References](#references)
+3. [Differential Operators on Kernels](#differential-operators-on-kernels)
+4. [Mollifiers and Regularization](#mollifiers-and-regularization)
+5. [Convolution and Approximation](#convolution-and-approximation)
+6. [Kernel Types](#kernel-types)
+7. [Applications in MFG_PDE](#applications-in-mfg_pde)
+8. [References](#references)
 
 ---
 
@@ -112,9 +113,71 @@ for all continuous functions $f$ with compact support.
 
 ---
 
-## 3. Mollifiers and Regularization
+## 3. Differential Operators on Kernels
 
-### 3.1 Mollifier Definition
+For radial kernels $K(\mathbf{x}) = k(r)$ where $r = \|\mathbf{x}\|$, the differential operators have explicit forms. These formulas are essential for GFDM, SPH, and other meshfree methods that compute derivatives via kernel approximations.
+
+### 3.1 Gradient of Radial Kernel
+
+For a radial kernel $K(\mathbf{x}) = k(r)$ with $r = \|\mathbf{x}\|$:
+
+$$\nabla K(\mathbf{x}) = \frac{dk}{dr} \frac{\mathbf{x}}{r} = k'(r) \frac{\mathbf{x}}{r}$$
+
+**Scaled kernel** with smoothing length $h$:
+$$K_h(\mathbf{x}) = \frac{1}{h^d} k\left(\frac{r}{h}\right)$$
+
+$$\nabla K_h(\mathbf{x}) = \frac{1}{h^{d+1}} k'(q) \frac{\mathbf{x}}{r}, \quad q = \frac{r}{h}$$
+
+**Component form** in $\mathbb{R}^d$:
+$$\frac{\partial K_h}{\partial x_i} = \frac{1}{h^{d+1}} k'(q) \frac{x_i}{r}$$
+
+### 3.2 Divergence of Radial Kernel
+
+The divergence of a vector field $\mathbf{F}(\mathbf{x}) = F(r) \mathbf{x}/r$ is:
+
+$$\nabla \cdot \left( F(r) \frac{\mathbf{x}}{r} \right) = F'(r) + \frac{d-1}{r} F(r)$$
+
+For the gradient of a radial kernel:
+$$\nabla \cdot (\nabla K) = \Delta K = k''(r) + \frac{d-1}{r} k'(r)$$
+
+**Scaled kernel**:
+$$\Delta K_h(\mathbf{x}) = \frac{1}{h^{d+2}} \left[ k''(q) + \frac{d-1}{q h} k'(q) \right], \quad q = \frac{r}{h}$$
+
+Alternatively, in terms of the radial variable $q$:
+$$\Delta K_h(\mathbf{x}) = \frac{1}{h^{d+2}} \left[ k''(q) + \frac{d-1}{q} k'(q) \right]$$
+
+### 3.3 Laplacian of Radial Kernel
+
+The Laplacian $\Delta K = \nabla^2 K = \nabla \cdot (\nabla K)$ for radial kernel $K(r) = k(r)$:
+
+$$\Delta K(r) = k''(r) + \frac{d-1}{r} k'(r)$$
+
+**In $d$ dimensions**:
+- **1D**: $\Delta K = k''(r)$
+- **2D**: $\Delta K = k''(r) + \frac{1}{r} k'(r)$
+- **3D**: $\Delta K = k''(r) + \frac{2}{r} k'(r)$
+
+**Scaled kernel** with smoothing length $h$:
+$$\Delta K_h(r) = \frac{1}{h^{d+2}} \left[ k''(q) + \frac{d-1}{q} k'(q) \right], \quad q = \frac{r}{h}$$
+
+### 3.4 Applications in Numerical Methods
+
+**SPH Approximations**:
+- Gradient approximation: $\nabla f(\mathbf{x}) \approx \sum_j f_j \nabla_{\mathbf{x}} K_h(\mathbf{x} - \mathbf{x}_j)$
+- Laplacian approximation: $\Delta f(\mathbf{x}) \approx \sum_j f_j \Delta_{\mathbf{x}} K_h(\mathbf{x} - \mathbf{x}_j)$
+
+**GFDM Weight Functions**:
+- The gradient $\nabla_{\mathbf{x}} K_h(\mathbf{x} - \mathbf{x}_i)$ provides directional weights for computing partial derivatives
+- Used in weighted least squares reconstruction: `mfg_pde.utils.numerical.gfdm_operators`
+
+**Kernel Derivatives in Code**:
+The `smoothing_kernels` module provides `evaluate_with_derivative()` method returning both $k(q)$ and $k'(q)$, which can be used to construct $\nabla K$ and $\Delta K$ using the formulas above.
+
+---
+
+## 4. Mollifiers and Regularization
+
+### 4.1 Mollifier Definition
 
 A **mollifier** is a smooth, compactly supported, non-negative kernel satisfying:
 $$\phi \in C^\infty_c(\mathbb{R}^d), \quad \phi \geq 0, \quad \int_{\mathbb{R}^d} \phi(\mathbf{x}) \, d\mathbf{x} = 1$$
@@ -130,7 +193,7 @@ where $C$ is a normalization constant.
 **Scaled Mollifier**:
 $$\phi_\epsilon(\mathbf{x}) = \frac{1}{\epsilon^d} \phi\left(\frac{\mathbf{x}}{\epsilon}\right)$$
 
-### 3.2 Mollification (Regularization)
+### 4.2 Mollification (Regularization)
 
 Given a function $f \in L^1_{\text{loc}}(\mathbb{R}^d)$, its **mollification** is:
 $$f_\epsilon(\mathbf{x}) = (f * \phi_\epsilon)(\mathbf{x}) = \int_{\mathbb{R}^d} f(\mathbf{y}) \phi_\epsilon(\mathbf{x} - \mathbf{y}) \, d\mathbf{y}$$
@@ -142,7 +205,7 @@ $$f_\epsilon(\mathbf{x}) = (f * \phi_\epsilon)(\mathbf{x}) = \int_{\mathbb{R}^d}
 
 **Use in MFG**: Regularize non-smooth initial data $m_0$ to ensure $m_\epsilon \in C^\infty$.
 
-### 3.3 Relationship to Smoothing Kernels
+### 4.3 Relationship to Smoothing Kernels
 
 - **Mollifiers**: Always $C^\infty$ and compactly supported
 - **Smoothing Kernels**: May have infinite support (Gaussian) or finite smoothness (Wendland C²)
@@ -153,9 +216,9 @@ Example mapping:
 
 ---
 
-## 4. Convolution and Approximation
+## 5. Convolution and Approximation
 
-### 4.1 Continuous Convolution
+### 5.1 Continuous Convolution
 
 For kernel $K_h$ and function $f$:
 $$(f * K_h)(\mathbf{x}) = \int_{\mathbb{R}^d} f(\mathbf{y}) K_h(\mathbf{x} - \mathbf{y}) \, d\mathbf{y}$$
@@ -165,14 +228,14 @@ $$(f * K_h)(\mathbf{x}) = \int_{\mathbb{R}^d} f(\mathbf{y}) K_h(\mathbf{x} - \ma
 **Key Property**:
 If $\int K_h = 1$, then $(f * K_h)(\mathbf{x}) \to f(\mathbf{x})$ as $h \to 0$ (pointwise for continuous $f$).
 
-### 4.2 Kernel Density Estimation (KDE)
+### 5.2 Kernel Density Estimation (KDE)
 
 Given particles $\{\mathbf{x}_i\}_{i=1}^N$, approximate density:
 $$\rho_h(\mathbf{x}) = \frac{1}{N} \sum_{i=1}^N K_h(\mathbf{x} - \mathbf{x}_i)$$
 
 **Used in MFG_PDE**: `FPParticleSolver` in hybrid mode uses KDE to project particle density onto grid.
 
-### 4.3 SPH Approximation
+### 5.3 SPH Approximation
 
 In Smoothed Particle Hydrodynamics (SPH), approximate function $f$ at $\mathbf{x}$:
 $$f(\mathbf{x}) \approx \sum_{j=1}^N \frac{m_j}{\rho_j} f(\mathbf{x}_j) K_h(\mathbf{x} - \mathbf{x}_j)$$
@@ -185,7 +248,7 @@ where:
 **Gradient Approximation**:
 $$\nabla f(\mathbf{x}) \approx \sum_{j=1}^N \frac{m_j}{\rho_j} f(\mathbf{x}_j) \nabla K_h(\mathbf{x} - \mathbf{x}_j)$$
 
-### 4.4 GFDM Weighted Least Squares
+### 5.4 GFDM Weighted Least Squares
 
 In Generalized Finite Difference Method (GFDM), derivatives approximated via weighted least squares with kernel weights:
 $$w_{ij} = K_h(\mathbf{x}_i - \mathbf{x}_j)$$
@@ -197,9 +260,9 @@ $$\min_{\nabla f} \sum_j w_{ij} \left[ f(\mathbf{x}_j) - f(\mathbf{x}_i) - \nabl
 
 ---
 
-## 5. Kernel Types
+## 6. Kernel Types
 
-### 5.1 Gaussian Kernel (Infinite Support)
+### 6.1 Gaussian Kernel (Infinite Support)
 
 **Profile Function**:
 $$k(q) = \exp(-q^2), \quad q = \frac{r}{h}$$
@@ -214,7 +277,7 @@ $$K_h(r) = \frac{1}{(\pi h^2)^{d/2}} \exp\left(-\frac{r^2}{h^2}\right)$$
 
 **MFG_PDE Implementation**: `GaussianKernel()` in `smoothing_kernels.py`
 
-### 5.2 Wendland Kernels (Compact Support)
+### 6.2 Wendland Kernels (Compact Support)
 
 **General Parameterized Form**:
 The Wendland family of kernels has the structure:
@@ -267,7 +330,7 @@ $$K_h(r) = \frac{\sigma_d}{h^d} k\left(\frac{r}{h}\right)$$
 - Automatic polynomial coefficient generation based on $k$
 - Factory: `create_kernel('wendland_c2')` → `WendlandKernel(k=1)`
 
-### 5.3 Cubic Spline (B-Spline M4)
+### 6.3 Cubic Spline (B-Spline M4)
 
 **General Theory**:
 B-splines are piecewise polynomials constructed via recursive convolution. The cubic spline (order 4, degree 3) is the most widely used SPH kernel.
@@ -311,7 +374,7 @@ The cubic spline is the B-spline of order 4, obtained by convolving the box func
 
 **MFG_PDE Implementation**: `CubicSplineKernel(dimension=d)`
 
-### 5.4 Quintic Spline (B-Spline M6)
+### 6.4 Quintic Spline (B-Spline M6)
 
 **General Theory**:
 The quintic spline (order 6, degree 5) provides higher accuracy and smoother derivatives than the cubic spline, at the cost of larger support radius.
@@ -418,7 +481,7 @@ These simple kernels are useful for:
 
 ---
 
-## 6. Applications in MFG_PDE
+## 7. Applications in MFG_PDE
 
 ### 6.1 Kernel Density Estimation (KDE)
 
@@ -470,7 +533,7 @@ u_interp = Σ_i w_i u_i / Σ_i w_i
 
 ---
 
-## 7. References
+## 8. References
 
 ### 7.1 Kernel Theory
 
