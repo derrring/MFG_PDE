@@ -93,6 +93,53 @@ from abc import ABC, abstractmethod
 from typing import Literal
 
 import numpy as np
+from scipy import integrate
+
+
+def _compute_spline_normalization(
+    kernel_func: callable, support_radius: float, dimension: int
+) -> float:
+    """
+    Compute normalization constant for radial kernel in arbitrary dimension.
+
+    Uses spherical integration: ∫ K(r) dr = σ ∫₀^R W(r) r^(d-1) dr
+
+    where W(r) is the unnormalized kernel profile and σ is the normalization constant.
+    We require ∫ K(r) dr = 1, so:
+        σ = 1 / [Ω_d ∫₀^R W(r) r^(d-1) dr]
+
+    where Ω_d = 2π^(d/2) / Γ(d/2) is the surface area of the unit sphere in d dimensions.
+
+    Parameters
+    ----------
+    kernel_func : callable
+        Unnormalized kernel profile function W(q) where q = r/h
+    support_radius : float
+        Support radius as multiple of h (e.g., 2.0 for cubic spline)
+    dimension : int
+        Spatial dimension
+
+    Returns
+    -------
+    sigma : float
+        Normalization constant
+    """
+    from scipy.special import gamma
+
+    # Surface area of unit sphere: Ω_d = 2π^(d/2) / Γ(d/2)
+    omega_d = 2 * np.pi ** (dimension / 2.0) / gamma(dimension / 2.0)
+
+    # Integrate W(q) * q^(d-1) from 0 to support_radius
+    # Using substitution q = r/h, so dq = dr/h
+    def integrand(q: float) -> float:
+        return kernel_func(q) * q ** (dimension - 1)
+
+    integral, _error = integrate.quad(integrand, 0, support_radius, limit=100)
+
+    # Normalization: σ = 1 / (Ω_d * integral)
+    sigma = 1.0 / (omega_d * integral)
+
+    return sigma
 
 
 class Kernel(ABC):
@@ -438,18 +485,37 @@ class CubicSplineKernel(Kernel):
         Parameters
         ----------
         dimension : int
-            Spatial dimension (1, 2, or 3). Affects normalization constant.
+            Spatial dimension (must be >= 1). Affects normalization constant.
         """
+        if dimension < 1:
+            raise ValueError(f"Dimension must be >= 1, got {dimension}")
+
         self.dimension = dimension
-        # Normalization constants for different dimensions
-        if dimension == 1:
-            self.sigma = 2.0 / 3.0
-        elif dimension == 2:
-            self.sigma = 10.0 / (7.0 * np.pi)
-        elif dimension == 3:
-            self.sigma = 1.0 / np.pi
+
+        # Use precomputed normalization constants for common dimensions
+        # These match the standard literature values
+        _known_sigmas = {
+            1: 2.0 / 3.0,
+            2: 10.0 / (7.0 * np.pi),
+            3: 1.0 / np.pi,
+        }
+
+        if dimension in _known_sigmas:
+            self.sigma = _known_sigmas[dimension]
         else:
-            raise ValueError(f"Dimension {dimension} not supported (use 1, 2, or 3)")
+            # Compute normalization for arbitrary dimension
+            def cubic_spline_profile(q: float) -> float:
+                """Unnormalized cubic spline kernel profile."""
+                if q < 1.0:
+                    return 1 - 1.5 * q**2 + 0.75 * q**3
+                elif q < 2.0:
+                    return 0.25 * (2 - q) ** 3
+                else:
+                    return 0.0
+
+            self.sigma = _compute_spline_normalization(
+                cubic_spline_profile, support_radius=2.0, dimension=dimension
+            )
 
     def __call__(self, r: np.ndarray | float, h: float) -> np.ndarray | float:
         """Evaluate cubic spline kernel."""
@@ -531,17 +597,38 @@ class QuinticSplineKernel(Kernel):
         Parameters
         ----------
         dimension : int
-            Spatial dimension (1, 2, or 3).
+            Spatial dimension (must be >= 1). Affects normalization constant.
         """
+        if dimension < 1:
+            raise ValueError(f"Dimension must be >= 1, got {dimension}")
+
         self.dimension = dimension
-        if dimension == 1:
-            self.sigma = 1.0 / 120.0
-        elif dimension == 2:
-            self.sigma = 7.0 / (478.0 * np.pi)
-        elif dimension == 3:
-            self.sigma = 1.0 / (120.0 * np.pi)
+
+        # Use precomputed normalization constants for common dimensions
+        _known_sigmas = {
+            1: 1.0 / 120.0,
+            2: 7.0 / (478.0 * np.pi),
+            3: 1.0 / (120.0 * np.pi),
+        }
+
+        if dimension in _known_sigmas:
+            self.sigma = _known_sigmas[dimension]
         else:
-            raise ValueError(f"Dimension {dimension} not supported (use 1, 2, or 3)")
+            # Compute normalization for arbitrary dimension
+            def quintic_spline_profile(q: float) -> float:
+                """Unnormalized quintic spline kernel profile."""
+                result = 0.0
+                if q < 3.0:
+                    result += max(0, (3 - q) ** 5)
+                if q < 2.0:
+                    result -= 6 * max(0, (2 - q) ** 5)
+                if q < 1.0:
+                    result += 15 * max(0, (1 - q) ** 5)
+                return result
+
+            self.sigma = _compute_spline_normalization(
+                quintic_spline_profile, support_radius=3.0, dimension=dimension
+            )
 
     def __call__(self, r: np.ndarray | float, h: float) -> np.ndarray | float:
         """Evaluate quintic spline kernel."""
