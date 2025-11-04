@@ -527,36 +527,35 @@ class HJBGFDMSolver(BaseHJBSolver):
                         pass
 
     def _compute_weights(self, distances: np.ndarray) -> np.ndarray:
-        """Compute weights based on distance and weight function."""
+        """
+        Compute weights based on distance and weight function using smoothing kernels.
+
+        Uses the unified smoothing kernel API from mfg_pde.utils.numerical.smoothing_kernels.
+        """
+        from mfg_pde.utils.numerical.smoothing_kernels import (
+            GaussianKernel,
+            WendlandC4Kernel,
+        )
+
         if self.weight_function == "gaussian":
-            return np.exp(-(distances**2) / self.weight_scale**2)
+            # Use GaussianKernel with smoothing length = weight_scale
+            kernel = GaussianKernel()
+            return kernel(distances, h=self.weight_scale)
+
         elif self.weight_function == "inverse_distance":
+            # Keep legacy inverse distance weights (not a standard kernel)
             return 1.0 / (distances + 1e-12)
+
         elif self.weight_function == "uniform":
+            # Keep legacy uniform weights (trivial case)
             return np.ones_like(distances)
+
         elif self.weight_function == "wendland":
-            # Wendland's compactly supported kernel following equation (8):
-            # w_{j_0,j_l} = (1/c_d) * (1 - ||X_{k,j_0} - X_{k,j_l}||/c)_+^4
-            # where c = delta (support radius) and ()_+ = max(0, .)
-            c = self.delta
-            normalized_distances = distances / c
+            # Use WendlandC4Kernel: (1 - r/h)_+^6 (35q² + 18q + 3)
+            kernel = WendlandC4Kernel()
+            # Support radius = delta (neighborhood size)
+            return kernel(distances, h=self.delta)
 
-            # Compute (1 - r/c)_+^4
-            weights = np.maximum(0, 1 - normalized_distances) ** 4
-
-            # For 1D case, the normalization constant c_d can be computed analytically
-            # ∫_{-δ}^{δ} (1 - |x|/δ)_+^4 dx = δ * ∫_{-1}^{1} (1 - |t|)_+^4 dt = δ * (2/5) = 2δ/5
-            if self.dimension == 1:
-                c_d = 2 * c / 5
-            else:
-                # For higher dimensions, use empirical normalization
-                # or compute c_d numerically, but for now use simple normalization
-                c_d = 1.0
-
-            # Apply normalization: w = (1/c_d) * (1 - r/c)_+^4
-            weights = weights / c_d
-
-            return weights
         else:
             raise ValueError(
                 f"Unknown weight function: {self.weight_function}. "

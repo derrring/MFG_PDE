@@ -153,6 +153,8 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
     """
     Gaussian RBF (Radial Basis Function) weight for GFDM.
 
+    This is a convenience wrapper around GaussianKernel from the smoothing_kernels module.
+
     Weight function: w(r) = exp(-(r/h)²)
 
     Parameters
@@ -170,15 +172,15 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
 
     Notes
     -----
-    Gaussian RBF is infinitely differentiable and provides smooth weights.
-    Typical choice: h = average neighbor spacing or h = max(neighbor_distances).
+    Uses GaussianKernel from mfg_pde.utils.numerical.smoothing_kernels with proper
+    normalization for arbitrary dimensions.
 
-    Alternative weight functions:
-    - Cubic: w(r) = (1 - r/h)³ for r < h, 0 otherwise
-    - Quartic: w(r) = (1 - r/h)⁴ for r < h, 0 otherwise
-    - Wendland C2: Compact support, C2 continuous
+    Alternative weight functions available in smoothing_kernels module:
+    - WendlandC0, WendlandC2, WendlandC4, WendlandC6: Compact support, various smoothness
+    - CubicSplineKernel, QuinticSplineKernel: SPH B-spline kernels
+    - CubicKernel, QuarticKernel: Simple polynomial kernels
 
-    For more kernel options, see mfg_pde.utils.numerical.smoothing_kernels module.
+    See mfg_pde.utils.numerical.smoothing_kernels for full kernel API.
 
     Examples
     --------
@@ -187,7 +189,10 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
     >>> w
     array([1.        , 0.77880078, 0.36787944, 0.01831564])
     """
-    return np.exp(-((r / h) ** 2))
+    from mfg_pde.utils.numerical.smoothing_kernels import GaussianKernel
+
+    kernel = GaussianKernel()
+    return kernel(r, h=h)
 
 
 def compute_laplacian_gfdm(scalar_field: np.ndarray, points: np.ndarray, k: int | None = None) -> np.ndarray:
