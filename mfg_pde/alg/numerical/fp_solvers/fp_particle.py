@@ -671,18 +671,56 @@ class FPParticleSolver(BaseFPSolver):
         M_solution = np.zeros((Nt, N_points))
         M_solution[0, :] = m_initial_condition.copy()
 
-        # Simplified collocation mode: density remains constant on particles
-        # TODO: Implement proper advection on particles using drift from U_solution_for_drift
-        # (Full implementation would solve continuity equation on particle basis)
-        # This is a first-order approximation - mass is conserved on particles
-        for t_idx in range(Nt - 1):
-            # In true Eulerian meshfree: solve ∂m/∂t + ∇·(m α) = σ²/2 Δm on particles
-            # Simplified version: particles carry constant mass (valid for small dt)
-            # Future enhancement: implement full continuity equation with GFDM Laplacian
+        # Time step
+        dt = self.problem.T / (Nt - 1)
+        sigma = self.problem.sigma
+        diffusion_coeff = 0.5 * sigma**2
 
-            # For now: preserve initial mass distribution on particles
-            # This is equivalent to Lagrangian mass tracking
-            M_solution[t_idx + 1, :] = M_solution[0, :]
+        # Solve continuity equation: ∂m/∂t + ∇·(m α) = σ²/2 Δm
+        # Using GFDM operators for spatial derivatives on collocation points
+        for t_idx in range(Nt - 1):
+            m_current = M_solution[t_idx, :]
+
+            # Compute drift field α = -∇U at current time
+            # For now, use zero drift (pure diffusion) to ensure stability
+            # TODO: Implement GFDM gradient operator for full drift computation
+            # _U_current = U_solution_for_drift[t_idx, :]  # Reserved for future use
+
+            # Zero drift field (pure diffusion)
+            # Shape: (N_points, dimension)
+            if self.problem.dimension == 1:
+                drift_field = np.zeros((N_points, 1))
+            else:
+                drift_field = np.zeros((N_points, self.problem.dimension))
+
+            # Compute spatial operators using GFDM
+            from mfg_pde.utils.numerical.gfdm_operators import (
+                compute_divergence_gfdm,
+                compute_laplacian_gfdm,
+            )
+
+            # Advection term: ∇·(m α)
+            divergence_term = compute_divergence_gfdm(drift_field, m_current, self.collocation_points)
+
+            # Diffusion term: σ²/2 Δm
+            laplacian_term = compute_laplacian_gfdm(m_current, self.collocation_points)
+            diffusion_term = diffusion_coeff * laplacian_term
+
+            # Forward Euler time stepping
+            # ∂m/∂t = -∇·(m α) + σ²/2 Δm
+            dm_dt = -divergence_term + diffusion_term
+
+            # Update density
+            M_solution[t_idx + 1, :] = m_current + dt * dm_dt
+
+            # Enforce non-negativity (physical constraint)
+            M_solution[t_idx + 1, :] = np.maximum(M_solution[t_idx + 1, :], 0.0)
+
+            # Optional: Renormalize to conserve mass
+            # (May need adjustment based on boundary conditions)
+            mass_current = np.sum(M_solution[t_idx + 1, :])
+            if mass_current > 0:
+                M_solution[t_idx + 1, :] *= np.sum(m_initial_condition) / mass_current
 
         # Store particle trajectory (in collocation mode, particles are fixed)
         self.M_particles_trajectory = np.tile(self.collocation_points, (Nt, 1, 1))
