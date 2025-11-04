@@ -269,6 +269,9 @@ $$K_h(r) = \frac{\sigma_d}{h^d} k\left(\frac{r}{h}\right)$$
 
 ### 5.3 Cubic Spline (B-Spline M4)
 
+**General Theory**:
+B-splines are piecewise polynomials constructed via recursive convolution. The cubic spline (order 4, degree 3) is the most widely used SPH kernel.
+
 **Profile Function**:
 $$k(q) = \begin{cases}
 1 - \frac{3}{2}q^2 + \frac{3}{4}q^3, & 0 \leq q < 1 \\
@@ -276,21 +279,44 @@ $$k(q) = \begin{cases}
 0, & q \geq 2
 \end{cases}$$
 
-**Normalization Constants**:
+**Derivative**:
+$$\frac{dk}{dq} = \begin{cases}
+-3q + \frac{9}{4}q^2, & 0 \leq q < 1 \\
+-\frac{3}{4}(2 - q)^2, & 1 \leq q < 2 \\
+0, & q \geq 2
+\end{cases}$$
+
+**Normalization Constants** (dimension-dependent):
 - 1D: $\sigma = \frac{2}{3}$
-- 2D: $\sigma = \frac{10}{7\pi}$
-- 3D: $\sigma = \frac{1}{\pi}$
+- 2D: $\sigma = \frac{10}{7\pi} \approx 0.4547$
+- 3D: $\sigma = \frac{1}{\pi} \approx 0.3183$
+
+**Scaled Kernel**:
+$$K_h(r) = \frac{\sigma}{h^d} k\left(\frac{r}{h}\right)$$
 
 **Properties**:
-- C² continuous
+- C² continuous (second derivative continuous)
 - Compact support: $[0, 2h]$
+- Positive everywhere in support
+- Monotonically decreasing
+- Bell-shaped profile
 - SPH standard (Monaghan & Lattanzio, 1985)
+
+**Mathematical Justification**:
+The cubic spline is the B-spline of order 4, obtained by convolving the box function with itself 4 times. It provides a good balance between:
+- Smoothness (C² continuity)
+- Compact support (radius 2h)
+- Computational efficiency
+- Numerical stability
 
 **MFG_PDE Implementation**: `CubicSplineKernel(dimension=d)`
 
 ### 5.4 Quintic Spline (B-Spline M6)
 
-**Profile Function** (simplified):
+**General Theory**:
+The quintic spline (order 6, degree 5) provides higher accuracy and smoother derivatives than the cubic spline, at the cost of larger support radius.
+
+**Profile Function**:
 $$k(q) = \begin{cases}
 (3-q)^5 - 6(2-q)^5 + 15(1-q)^5, & 0 \leq q < 1 \\
 (3-q)^5 - 6(2-q)^5, & 1 \leq q < 2 \\
@@ -298,12 +324,97 @@ $$k(q) = \begin{cases}
 0, & q \geq 3
 \end{cases}$$
 
+**Expanded Forms**:
+- Region 1 ($0 \leq q < 1$): $66 - 60q^2 + 30q^3 - 10q^4 + q^5$
+- Region 2 ($1 \leq q < 2$): $51 - 75q + 60q^2 - 30q^3 + 9q^4 - q^5$
+- Region 3 ($2 \leq q < 3$): $243 - 405q + 270q^2 - 90q^3 + 15q^4 - q^5$
+
+**Derivative**:
+$$\frac{dk}{dq} = \begin{cases}
+-120q + 90q^2 - 40q^3 + 5q^4, & 0 \leq q < 1 \\
+-75 + 120q - 90q^2 + 36q^3 - 5q^4, & 1 \leq q < 2 \\
+-405 + 540q - 270q^2 + 60q^3 - 5q^4, & 2 \leq q < 3 \\
+0, & q \geq 3
+\end{cases}$$
+
+**Normalization Constants** (dimension-dependent):
+- 1D: $\sigma = \frac{1}{120}$
+- 2D: $\sigma = \frac{7}{478\pi} \approx 0.00466$
+- 3D: $\sigma = \frac{1}{120\pi} \approx 0.00265$
+
+**Scaled Kernel**:
+$$K_h(r) = \frac{\sigma}{h^d} k\left(\frac{r}{h}\right)$$
+
 **Properties**:
-- C⁴ continuous
+- C⁴ continuous (fourth derivative continuous)
 - Compact support: $[0, 3h]$
-- Higher accuracy than cubic spline
+- Positive everywhere in support
+- Monotonically decreasing
+- Smoother than cubic spline
+- Higher computational cost (larger support)
+- Better accuracy for gradient approximations
+
+**Mathematical Justification**:
+The quintic spline is the B-spline of order 6, providing:
+- Higher smoothness (C⁴ vs C² for cubic)
+- More accurate particle approximations
+- Better derivative estimates
+- Reduced numerical noise in SPH simulations
+
+However, the larger support radius (3h vs 2h) increases computational cost by ~3× in 2D and ~4× in 3D.
+
+**Trade-off Analysis**:
+| Property | Cubic Spline | Quintic Spline |
+|:---------|:-------------|:---------------|
+| Continuity | C² | C⁴ |
+| Support | 2h | 3h |
+| Neighbors (2D) | ~12-16 | ~28-36 |
+| Accuracy | Good | Excellent |
+| Cost | Low | Medium |
 
 **MFG_PDE Implementation**: `QuinticSplineKernel(dimension=d)`
+
+**Note on Implementation**: B-splines are kept as separate classes (cubic and quintic) rather than parameterized by degree because:
+1. Only these two orders are standard in SPH literature
+2. Normalization constants are well-established
+3. Higher-order B-splines require complex recursive formulas
+4. Parameterization would add significant complexity for minimal gain
+
+### 5.5 Simple Polynomial Kernels
+
+**Cubic Kernel**:
+$$k(q) = \begin{cases}
+(1-q)^3, & 0 \leq q < 1 \\
+0, & q \geq 1
+\end{cases}$$
+
+**Properties**:
+- C⁰ continuous (discontinuous derivative at q=1)
+- Compact support: $[0, h]$
+- Simplest polynomial kernel
+- Fast evaluation
+- No dimension-dependent normalization needed for relative weights
+
+**Quartic Kernel**:
+$$k(q) = \begin{cases}
+(1-q)^4, & 0 \leq q < 1 \\
+0, & q \geq 1
+\end{cases}$$
+
+**Properties**:
+- C¹ continuous (continuous first derivative)
+- Compact support: $[0, h]$
+- Slightly smoother than cubic
+- Fast evaluation
+
+**Use Cases**:
+These simple kernels are useful for:
+- GFDM weight functions where only relative magnitudes matter
+- Quick prototyping
+- Educational examples
+- Cases where C^n continuity is not critical
+
+**MFG_PDE Implementation**: `CubicKernel()`, `QuarticKernel()`
 
 ---
 
