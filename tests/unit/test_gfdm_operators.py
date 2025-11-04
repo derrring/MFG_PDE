@@ -12,9 +12,14 @@ import pytest
 import numpy as np
 
 from mfg_pde.utils.numerical.gfdm_operators import (
+    compute_curl_gfdm,
+    compute_directional_derivative_gfdm,
     compute_divergence_gfdm,
     compute_gradient_gfdm,
+    compute_hessian_gfdm,
+    compute_kernel_density_gfdm,
     compute_laplacian_gfdm,
+    compute_vector_laplacian_gfdm,
     find_neighbors_kdtree,
     gaussian_rbf_weight,
 )
@@ -302,3 +307,196 @@ class TestConsistency:
         assert laplacian_direct.shape == (points.shape[0],)
         assert not np.any(np.isnan(laplacian_direct))
         assert not np.any(np.isinf(laplacian_direct))
+
+
+class TestHessianOperator:
+    """Test Hessian operator."""
+
+    def test_hessian_constant_function(self):
+        """Hessian of constant function should be zero."""
+        points = np.random.rand(50, 2)
+        f = 5.0 * np.ones(50)
+
+        hessian = compute_hessian_gfdm(f, points, k=5)
+
+        assert hessian.shape == (50, 2, 2)
+        assert np.max(np.abs(hessian)) < 0.2
+
+    def test_hessian_symmetry(self):
+        """Hessian should be symmetric."""
+        points = np.random.rand(50, 2)
+        f = points[:, 0] ** 2 + points[:, 0] * points[:, 1] + points[:, 1] ** 2
+
+        hessian = compute_hessian_gfdm(f, points, k=9)
+
+        # Check symmetry: H[i,j] = H[j,i]
+        for i in range(50):
+            assert np.abs(hessian[i, 0, 1] - hessian[i, 1, 0]) < 0.3
+
+    def test_hessian_trace_equals_laplacian(self):
+        """Trace of Hessian should equal Laplacian."""
+        points = np.random.rand(50, 2)
+        f = points[:, 0] ** 2 + points[:, 1] ** 2
+
+        hessian = compute_hessian_gfdm(f, points, k=9)
+        laplacian = compute_laplacian_gfdm(f, points, k=9)
+
+        # Trace = H[0,0] + H[1,1]
+        trace_hessian = hessian[:, 0, 0] + hessian[:, 1, 1]
+
+        # Should be close
+        assert np.max(np.abs(trace_hessian - laplacian)) < 0.5
+
+
+class TestCurlOperator:
+    """Test curl operator."""
+
+    def test_curl_2d_constant_field(self):
+        """Curl of constant field should be zero."""
+        points = np.random.rand(50, 2)
+        alpha = np.ones((50, 2))
+
+        curl = compute_curl_gfdm(alpha, points, k=5)
+
+        assert curl.shape == (50,)
+        assert np.max(np.abs(curl)) < 0.2
+
+    def test_curl_2d_vortex(self):
+        """Test 2D vortex field."""
+        x = np.linspace(-1, 1, 15)
+        y = np.linspace(-1, 1, 15)
+        xx, yy = np.meshgrid(x, y)
+        points = np.column_stack([xx.ravel(), yy.ravel()])
+
+        # Vortex: α = [-y, x] → curl = ∂x/∂x - ∂(-y)/∂y = 1 - (-1) = 2
+        alpha = np.column_stack([-points[:, 1], points[:, 0]])
+
+        curl = compute_curl_gfdm(alpha, points, k=9)
+
+        # Mean curl should be close to 2.0
+        mean_curl = np.mean(curl)
+        assert mean_curl == pytest.approx(2.0, abs=0.5)
+
+    def test_curl_3d_shape(self):
+        """Test 3D curl shape."""
+        points = np.random.rand(50, 3)
+        alpha = np.random.rand(50, 3)
+
+        curl = compute_curl_gfdm(alpha, points, k=7)
+
+        assert curl.shape == (50, 3)
+
+    def test_curl_1d_raises_error(self):
+        """Curl should raise error for 1D."""
+        points = np.random.rand(50, 1)
+        alpha = np.random.rand(50, 1)
+
+        with pytest.raises(ValueError, match=r"Curl only defined for 2D or 3D"):
+            compute_curl_gfdm(alpha, points)
+
+
+class TestDirectionalDerivativeOperator:
+    """Test directional derivative operator."""
+
+    def test_directional_derivative_constant_function(self):
+        """Directional derivative of constant should be zero."""
+        points = np.random.rand(50, 2)
+        f = 3.0 * np.ones(50)
+        direction = np.array([1.0, 0.0])
+
+        D_v = compute_directional_derivative_gfdm(f, direction, points, k=5)
+
+        assert D_v.shape == (50,)
+        assert np.max(np.abs(D_v)) < 0.1
+
+    def test_directional_derivative_linear_function(self):
+        """Test directional derivative on linear function."""
+        points = np.random.rand(50, 2)
+        f = 2 * points[:, 0] + 3 * points[:, 1]
+
+        # Direction [1, 0] → should get ∂f/∂x = 2
+        direction = np.array([1.0, 0.0])
+        D_v = compute_directional_derivative_gfdm(f, direction, points, k=5)
+
+        assert np.mean(D_v) == pytest.approx(2.0, abs=0.3)
+
+    def test_directional_derivative_per_point_direction(self):
+        """Test directional derivative with different direction per point."""
+        points = np.random.rand(50, 2)
+        f = points[:, 0] ** 2 + points[:, 1] ** 2
+
+        # Different direction for each point
+        directions = np.random.rand(50, 2)
+
+        D_v = compute_directional_derivative_gfdm(f, directions, points, k=5)
+
+        assert D_v.shape == (50,)
+        assert not np.any(np.isnan(D_v))
+
+
+class TestKernelDensityOperator:
+    """Test kernel density estimation."""
+
+    def test_kde_uniform_masses(self):
+        """Test KDE with uniform masses."""
+        points = np.random.rand(100, 2)
+        masses = np.ones(100)
+
+        rho = compute_kernel_density_gfdm(masses, points, k=5)
+
+        assert rho.shape == (100,)
+        assert np.all(rho > 0)
+        # All densities should be similar for uniform distribution
+        assert np.std(rho) / np.mean(rho) < 1.0  # Relative variation
+
+    def test_kde_varying_masses(self):
+        """Test KDE with varying masses."""
+        points = np.random.rand(50, 2)
+        masses = np.random.rand(50) + 0.1  # Avoid zeros
+
+        rho = compute_kernel_density_gfdm(masses, points, k=5)
+
+        assert rho.shape == (50,)
+        assert np.all(rho > 0)
+
+
+class TestVectorLaplacianOperator:
+    """Test vector Laplacian operator."""
+
+    def test_vector_laplacian_constant_field(self):
+        """Vector Laplacian of constant field should be zero."""
+        points = np.random.rand(50, 2)
+        alpha = np.ones((50, 2))
+
+        delta_alpha = compute_vector_laplacian_gfdm(alpha, points, k=5)
+
+        assert delta_alpha.shape == (50, 2)
+        assert np.max(np.abs(delta_alpha)) < 0.2
+
+    def test_vector_laplacian_linear_field(self):
+        """Test vector Laplacian on linear field."""
+        # Use uniform grid for better numerical behavior
+        x = np.linspace(0, 1, 10)
+        y = np.linspace(0, 1, 10)
+        xx, yy = np.meshgrid(x, y)
+        points = np.column_stack([xx.ravel(), yy.ravel()])
+
+        # α = [x, y] → Δα = [Δx, Δy] = [0, 0]
+        alpha = points.copy()
+
+        delta_alpha = compute_vector_laplacian_gfdm(alpha, points, k=9)
+
+        assert delta_alpha.shape == (100, 2)
+        # Verify operator runs without errors
+        assert not np.any(np.isnan(delta_alpha))
+        assert not np.any(np.isinf(delta_alpha))
+
+    def test_vector_laplacian_3d(self):
+        """Test vector Laplacian in 3D."""
+        points = np.random.rand(50, 3)
+        alpha = np.random.rand(50, 3)
+
+        delta_alpha = compute_vector_laplacian_gfdm(alpha, points, k=7)
+
+        assert delta_alpha.shape == (50, 3)
+        assert not np.any(np.isnan(delta_alpha))

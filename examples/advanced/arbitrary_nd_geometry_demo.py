@@ -53,7 +53,7 @@ for d in dimensions:
 
     # Memory footprint
     memory_bytes = bounds.nbytes
-    print(f"  Memory: {memory_bytes} bytes (O(d) = {2*d*8} bytes)")
+    print(f"  Memory: {memory_bytes} bytes (O(d) = {2 * d * 8} bytes)")
 
     # Sampling performance
     start = time.time()
@@ -65,14 +65,14 @@ for d in dimensions:
     assert np.all(domain.contains(particles))
 
     print(f"  Sampled {n_samples} particles in {elapsed:.3f}s")
-    print(f"  Sampling rate: {n_samples/elapsed:.0f} particles/second")
+    print(f"  Sampling rate: {n_samples / elapsed:.0f} particles/second")
 
     # Mesh comparison (hypothetical)
     if d <= 3:
         N = 50  # Grid points per dimension
-        mesh_points = N ** d
+        mesh_points = N**d
         mesh_memory = mesh_points * d * 8  # bytes for coordinates
-        print(f"  [Compare] Mesh with N={N}: {mesh_points:,} points, {mesh_memory/1e6:.1f} MB")
+        print(f"  [Compare] Mesh with N={N}: {mesh_points:,} points, {mesh_memory / 1e6:.1f} MB")
     else:
         print(f"  [Compare] Mesh infeasible for d={d} (curse of dimensionality)")
 
@@ -112,7 +112,7 @@ for d in [2, 4]:
 
     # Navigable space = room \\ obstacle
     navigable = DifferenceDomain(room, obstacle)
-    print(f"  Navigable: Room - Obstacle (CSG difference)")
+    print("  Navigable: Room - Obstacle (CSG difference)")
 
     # Sample particles
     particles = navigable.sample_uniform(5000, seed=42)
@@ -126,7 +126,7 @@ for d in [2, 4]:
     in_obstacle = obstacle.contains(particles)
     in_navigable = navigable.contains(particles)
 
-    print(f"  Verification:")
+    print("  Verification:")
     print(f"    In room: {np.sum(in_room)} / {len(particles)}")
     print(f"    In obstacle: {np.sum(in_obstacle)} / {len(particles)}")
     print(f"    In navigable: {np.sum(in_navigable)} / {len(particles)}")
@@ -230,7 +230,7 @@ for d in [2, 3, 4, 5, 10]:
     # Mesh: N^d grid points, each storing d coordinates
     N = 50
     if d <= 5:
-        mesh_points = N ** d
+        mesh_points = N**d
         mesh_bytes = mesh_points * d * 8
         mesh_mb = mesh_bytes / 1e6
         mesh_str = f"{mesh_mb:.1f}"
@@ -260,18 +260,20 @@ print()
 
 # 6D configuration space: (x, y, vx, vy, theta, omega)
 d = 6
-bounds_6d = np.array([
-    [0.0, 10.0],    # x position
-    [0.0, 10.0],    # y position
-    [-2.0, 2.0],    # vx velocity
-    [-2.0, 2.0],    # vy velocity
-    [0.0, 2*np.pi], # theta angle
-    [-1.0, 1.0],    # omega angular velocity
-])
+bounds_6d = np.array(
+    [
+        [0.0, 10.0],  # x position
+        [0.0, 10.0],  # y position
+        [-2.0, 2.0],  # vx velocity
+        [-2.0, 2.0],  # vy velocity
+        [0.0, 2 * np.pi],  # theta angle
+        [-1.0, 1.0],  # omega angular velocity
+    ]
+)
 
 domain_6d = Hyperrectangle(bounds_6d)
 
-print(f"Created 6D domain: position × velocity × orientation")
+print("Created 6D domain: position × velocity × orientation")
 print(f"  Memory: {bounds_6d.nbytes} bytes")
 print()
 
@@ -283,16 +285,20 @@ agents = domain_6d.sample_uniform(n_agents, seed=42)
 elapsed = time.time() - start
 
 print(f"  Sampled in {elapsed:.3f}s")
-print(f"  Agent 0 state: x={agents[0,0]:.2f}, y={agents[0,1]:.2f}, vx={agents[0,2]:.2f}, ...")
+print(f"  Agent 0 state: x={agents[0, 0]:.2f}, y={agents[0, 1]:.2f}, vx={agents[0, 2]:.2f}, ...")
 print()
 
 # Extract 2D positions for visualization (if needed)
 positions_2d = agents[:, :2]
 velocities = agents[:, 2:4]
-print(f"  2D positions range: x∈[{positions_2d[:,0].min():.1f}, {positions_2d[:,0].max():.1f}], "
-      f"y∈[{positions_2d[:,1].min():.1f}, {positions_2d[:,1].max():.1f}]")
-print(f"  Velocity magnitude: {np.linalg.norm(velocities, axis=1).mean():.2f} ± "
-      f"{np.linalg.norm(velocities, axis=1).std():.2f}")
+print(
+    f"  2D positions range: x∈[{positions_2d[:, 0].min():.1f}, {positions_2d[:, 0].max():.1f}], "
+    f"y∈[{positions_2d[:, 1].min():.1f}, {positions_2d[:, 1].max():.1f}]"
+)
+print(
+    f"  Velocity magnitude: {np.linalg.norm(velocities, axis=1).mean():.2f} ± "
+    f"{np.linalg.norm(velocities, axis=1).std():.2f}"
+)
 print()
 
 print("Key Insight: Implicit geometry makes high-D state spaces tractable")

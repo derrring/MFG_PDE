@@ -71,7 +71,7 @@ print()
 domain_bounds = np.array([[0.0, 20.0], [0.0, 20.0]])
 base_domain = Hyperrectangle(domain_bounds)
 
-print(f"Base domain: [{domain_bounds[0,0]}, {domain_bounds[0,1]}] x [{domain_bounds[1,0]}, {domain_bounds[1,1]}]")
+print(f"Base domain: [{domain_bounds[0, 0]}, {domain_bounds[0, 1]}] x [{domain_bounds[1, 0]}, {domain_bounds[1, 1]}]")
 print(f"  Memory: {domain_bounds.nbytes} bytes (O(d) complexity)")
 print()
 
@@ -85,7 +85,7 @@ obstacle_radius = 1.5
 
 print(f"Adding {len(obstacle_centers)} spherical obstacles:")
 for i, center in enumerate(obstacle_centers):
-    print(f"  Obstacle {i+1}: center={center}, radius={obstacle_radius}")
+    print(f"  Obstacle {i + 1}: center={center}, radius={obstacle_radius}")
 
 # Create spherical obstacles using CSG
 obstacles = [Hypersphere(center=c, radius=obstacle_radius) for c in obstacle_centers]
@@ -96,8 +96,8 @@ for obstacle in obstacles:
     navigable_domain = DifferenceDomain(navigable_domain, obstacle)
 
 print()
-print(f"✓ Created navigable domain via CSG operations")
-print(f"  Base domain - Obstacle 1 - Obstacle 2 - Obstacle 3")
+print("✓ Created navigable domain via CSG operations")
+print("  Base domain - Obstacle 1 - Obstacle 2 - Obstacle 3")
 print()
 
 # ==============================================================================
@@ -178,11 +178,9 @@ def combine_maze_and_obstacles(
 
 
 # Combine maze and obstacles
-combined_grid, contains_func = combine_maze_and_obstacles(
-    maze_grid, obstacle_centers, obstacle_radius, cell_size
-)
+combined_grid, contains_func = combine_maze_and_obstacles(maze_grid, obstacle_centers, obstacle_radius, cell_size)
 
-print(f"Combined domain statistics:")
+print("Combined domain statistics:")
 print(f"  Original navigable cells: {np.sum(maze_grid == 0)} / {maze_grid.size}")
 print(f"  Hybrid navigable cells: {np.sum(combined_grid == 0)} / {combined_grid.size}")
 print(f"  Additional blocked by spheres: {np.sum(maze_grid == 0) - np.sum(combined_grid == 0)}")
@@ -259,7 +257,7 @@ print()
 print("Verification:")
 in_domain = np.array([contains_func(p) for p in particles])
 print(f"  All particles in navigable space: {np.all(in_domain)}")
-print(f"  Particle positions range:")
+print("  Particle positions range:")
 print(f"    x ∈ [{particles[:, 0].min():.2f}, {particles[:, 0].max():.2f}]")
 print(f"    y ∈ [{particles[:, 1].min():.2f}, {particles[:, 1].max():.2f}]")
 print()
@@ -323,7 +321,7 @@ ax3.legend(loc="upper right")
 
 plt.tight_layout()
 plt.savefig("examples/outputs/maze_implicit_geometry_hybrid.png", dpi=150, bbox_inches="tight")
-print(f"✓ Saved visualization to examples/outputs/maze_implicit_geometry_hybrid.png")
+print("✓ Saved visualization to examples/outputs/maze_implicit_geometry_hybrid.png")
 print()
 
 # ==============================================================================
@@ -346,10 +344,10 @@ exit_location = np.array([19.0, 10.0])  # Right side of domain
 # Compute distances to exit for all particles
 distances = np.linalg.norm(particles - exit_location, axis=1)
 
-print(f"Crowd statistics:")
+print("Crowd statistics:")
 print(f"  Total agents: {len(particles)}")
 print(f"  Exit location: {exit_location}")
-print(f"  Distance to exit:")
+print("  Distance to exit:")
 print(f"    Mean: {distances.mean():.2f} units")
 print(f"    Std: {distances.std():.2f} units")
 print(f"    Min: {distances.min():.2f} units")
@@ -391,7 +389,7 @@ navigable_3d = domain_3d
 for obs in obstacles_3d:
     navigable_3d = DifferenceDomain(navigable_3d, obs)
 
-print(f"3D Domain: [0, 20] x [0, 20] x [0, 5]")
+print("3D Domain: [0, 20] x [0, 20] x [0, 5]")
 print(f"  Base domain memory: {domain_3d.bounds.nbytes} bytes")
 print(f"  Obstacles: {len(obstacles_3d)} spheres")
 print()
