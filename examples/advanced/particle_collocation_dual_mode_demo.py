@@ -1,14 +1,31 @@
 """
 Demonstration of Dual-Mode FP Solver with Particle-Collocation MFG.
 
+WARNING: INCOMPLETE IMPLEMENTATION (Issue #240)
+-----------------------------------------------
+The collocation mode demonstrated in this example has an INCOMPLETE IMPLEMENTATION.
+Density is frozen at the initial condition instead of evolving via the continuity
+equation. This is physically incorrect for non-equilibrium problems.
+
+Current Status:
+- API works correctly (accepts particles, returns particle output)
+- Physics is INCORRECT (density does not evolve in time)
+- Use mode='default' (hybrid KDE-based) for correct density evolution
+- Expected completion: v1.0.0 (~3 days development)
+
+See docs/development/COLLOCATION_FP_IMPLEMENTATION_PLAN.md for details.
+
+Design Intent (not yet implemented):
+------------------------------------
 This example demonstrates the new collocation mode of FPParticleSolver,
-which enables true meshfree MFG workflows when combined with particle-collocation
+which will enable true meshfree MFG workflows when combined with particle-collocation
 HJB solvers (GFDM).
 
-Key Features:
+Key Features (planned):
 - HJB and FP solvers share the SAME particle discretization
 - No grid interpolation (fully meshfree)
 - Output on particles (not grid)
+- Proper continuity equation evolution on collocation points
 """
 
 from __future__ import annotations
@@ -71,8 +88,9 @@ def run_hybrid_mode_demo():
 def run_collocation_mode_demo():
     """Demo 2: Collocation mode - particles → particles output."""
     print("\n" + "=" * 70)
-    print("DEMO 2: Collocation Mode (New Capability)")
+    print("DEMO 2: Collocation Mode (INCOMPLETE IMPLEMENTATION - Issue #240)")
     print("=" * 70)
+    print("WARNING: Density frozen at initial condition (does NOT evolve)")
     print("External particles used as collocation points, output on particles")
 
     problem = SimpleLQMFG2D()
