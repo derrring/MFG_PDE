@@ -5,6 +5,48 @@ All notable changes to MFG_PDE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2025-11-04
+
+### Added
+
+**PR #242: GFDM Operators with Unified Smoothing Kernels**
+- `mfg_pde/utils/numerical/smoothing_kernels.py` (807 lines)
+  - Unified kernel implementations: Gaussian, Wendland, Cubic Spline, Quintic Spline, Cubic, Quartic
+  - Parameterized Wendland kernels: `WendlandKernel(k=0,1,2,3)` for C^0, C^2, C^4, C^6 smoothness
+  - Arbitrary dimension support with proper normalization
+  - Factory pattern: `create_kernel(kernel_type, dimension)`
+  - Derivative support for gradient-based methods
+- `mfg_pde/utils/numerical/gfdm_operators.py` (1050 lines)
+  - Weighted least squares gradient/Hessian reconstruction
+  - Support for structured and unstructured grids
+  - Boundary condition handling (Dirichlet, Neumann)
+  - Anisotropic/directional derivative support
+- Theory documentation with differential operators (gradient, divergence, Laplacian)
+- Comprehensive test suite (502 lines, 54 tests)
+- Advanced example demos for nD geometry and implicit geometry
+
+**PR #239: Maze Refactoring**
+- Moved maze generation from `alg/reinforcement/environments` to `geometry/mazes`
+- Makes maze utilities accessible to all solver types (PDE, particle, neural, RL)
+- Backward compatibility through re-exports
+- 6 core files relocated: `maze_generator`, `hybrid_maze`, `voronoi_maze`, `maze_config`, `maze_utils`, `maze_postprocessing`
+
+### Changed
+- Updated solver integrations to use unified kernel API
+- Consolidated 4 separate Wendland classes into single parameterized implementation
+- Updated test imports to reference new maze location
+
+### Documentation
+- Added `docs/theory/smoothing_kernels_mathematical_formulation.md` with complete mathematical foundations
+- Dimension-specific formulas for differential operators (1D, 2D, 3D)
+- SPH and GFDM application notes
+- Implementation details with code references
+
+### Testing
+- All 3300+ tests passing
+- New GFDM operator tests validated against analytical solutions
+- Kernel tests cover edge cases, normalization, and derivatives
+
 ## [0.9.0] - 2025-11-03
 
 ### Phase 3 Complete: Unified Architecture

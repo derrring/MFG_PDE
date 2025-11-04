@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.9.0" # v0.9.0: Phase 3 Complete - Unified Architecture (MFGProblem + SolverConfig + Factories)
+version = "0.9.1" # v0.9.1: GFDM operators, unified smoothing kernels, and maze refactoring
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
