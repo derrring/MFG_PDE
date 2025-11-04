@@ -145,6 +145,8 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
     - Quartic: w(r) = (1 - r/h)⁴ for r < h, 0 otherwise
     - Wendland C2: Compact support, C2 continuous
 
+    For more kernel options, see mfg_pde.utils.numerical.smoothing_kernels module.
+
     Examples
     --------
     >>> r = np.array([0.0, 0.5, 1.0, 2.0])
