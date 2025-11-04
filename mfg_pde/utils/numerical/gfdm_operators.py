@@ -176,7 +176,7 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
     normalization for arbitrary dimensions.
 
     Alternative weight functions available in smoothing_kernels module:
-    - WendlandC0, WendlandC2, WendlandC4, WendlandC6: Compact support, various smoothness
+    - WendlandKernel(k=0,1,2,3): Compact support, C^0, C^2, C^4, C^6 smoothness
     - CubicSplineKernel, QuinticSplineKernel: SPH B-spline kernels
     - CubicKernel, QuarticKernel: Simple polynomial kernels
 
