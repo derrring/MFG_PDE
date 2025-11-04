@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.environments.hybrid_maze import (
+from mfg_pde.geometry.mazes.hybrid_maze import (
     AlgorithmSpec,
     HybridMazeConfig,
     HybridMazeGenerator,

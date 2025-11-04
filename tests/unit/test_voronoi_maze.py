@@ -67,7 +67,7 @@ class TestUnionFind:
 
     def test_initialization(self):
         """Test UnionFind initialization."""
-        from mfg_pde.alg.reinforcement.environments.voronoi_maze import UnionFind
+        from mfg_pde.geometry.mazes.voronoi_maze import UnionFind
 
         uf = UnionFind(5)
 
@@ -77,7 +77,7 @@ class TestUnionFind:
 
     def test_union_operation(self):
         """Test union of two sets."""
-        from mfg_pde.alg.reinforcement.environments.voronoi_maze import UnionFind
+        from mfg_pde.geometry.mazes.voronoi_maze import UnionFind
 
         uf = UnionFind(5)
 
@@ -90,7 +90,7 @@ class TestUnionFind:
 
     def test_union_already_connected(self):
         """Test union of already connected elements."""
-        from mfg_pde.alg.reinforcement.environments.voronoi_maze import UnionFind
+        from mfg_pde.geometry.mazes.voronoi_maze import UnionFind
 
         uf = UnionFind(5)
 
@@ -101,7 +101,7 @@ class TestUnionFind:
 
     def test_path_compression(self):
         """Test path compression optimization."""
-        from mfg_pde.alg.reinforcement.environments.voronoi_maze import UnionFind
+        from mfg_pde.geometry.mazes.voronoi_maze import UnionFind
 
         uf = UnionFind(5)
 
@@ -235,7 +235,7 @@ class TestVoronoiMazeGenerator:
 
     def test_spanning_tree_connectivity(self):
         """Test that spanning tree connects all points."""
-        from mfg_pde.alg.reinforcement.environments.voronoi_maze import UnionFind
+        from mfg_pde.geometry.mazes.voronoi_maze import UnionFind
 
         config = VoronoiMazeConfig(rows=40, cols=40, num_points=10, seed=42)
         generator = VoronoiMazeGenerator(config)

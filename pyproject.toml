@@ -400,6 +400,7 @@ ignore = [
     "RUF001", # String contains ambiguous Unicode character (allow mathematical symbols)
     "RUF002", # Docstring contains ambiguous Unicode character (allow mathematical symbols)
     "RUF003", # Comment contains ambiguous Unicode character (allow mathematical symbols)
+    "RUF022", # `__all__` is not sorted (allow logical grouping)
     "SIM108", # Ternary operator suggestion (allow both styles)
     "SIM102", # Nested if statements (allow for clarity in mathematical conditions)
 ]

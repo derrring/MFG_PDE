@@ -61,6 +61,15 @@ from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
 from .domain_1d import Domain1D
 from .domain_2d import Domain2D
 from .domain_3d import Domain3D
+
+# Maze generation (moved from alg.reinforcement.environments)
+from .mazes import (
+    HybridMazeGenerator,
+    MazeAlgorithm,
+    MazeConfig,
+    PerfectMazeGenerator,
+    VoronoiMazeGenerator,
+)
 from .mesh_manager import MeshManager, MeshPipeline
 from .network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
 from .network_geometry import (
@@ -134,6 +143,12 @@ __all__ = [
     "create_triangular_amr_mesh",
     "dirichlet_bc",
     "get_backend_manager",
+    # Maze generation
+    "HybridMazeGenerator",
+    "MazeAlgorithm",
+    "MazeConfig",
+    "PerfectMazeGenerator",
+    "VoronoiMazeGenerator",
     "neumann_bc",
     "no_flux_bc",
     "periodic_bc",
