@@ -216,28 +216,56 @@ $$K_h(r) = \frac{1}{(\pi h^2)^{d/2}} \exp\left(-\frac{r^2}{h^2}\right)$$
 
 ### 5.2 Wendland Kernels (Compact Support)
 
-**General Form**:
+**General Parameterized Form**:
+The Wendland family of kernels has the structure:
 $$k(q) = \begin{cases}
-p(q), & 0 \leq q < 1 \\
+(1-q)^m P_k(q), & 0 \leq q < 1 \\
 0, & q \geq 1
 \end{cases}$$
 
-where $p(q)$ is a polynomial ensuring $C^n$ continuity.
+where:
+- $m = 2k + 2$ determines the support power
+- $P_k(q)$ is a polynomial of degree $k$ ensuring $C^{2k}$ continuity
+- $k \in \{0, 1, 2, 3\}$ is the **smoothness parameter**
 
-**Wendland C²** (most common):
-$$k(q) = (1 - q)^4 (4q + 1), \quad 0 \leq q < 1$$
+**Polynomial Coefficients by Smoothness Order**:
+
+**Wendland C⁰** ($k=0$, $m=2$):
+$$k(q) = (1-q)^2, \quad 0 \leq q < 1$$
+- C⁰ continuous, $P_0(q) = 1$
+
+**Wendland C²** ($k=1$, $m=4$):
+$$k(q) = (1-q)^4 (4q + 1), \quad 0 \leq q < 1$$
+- C² continuous, $P_1(q) = 4q + 1$
+
+**Wendland C⁴** ($k=2$, $m=6$):
+$$k(q) = (1-q)^6 (35q^2 + 18q + 3), \quad 0 \leq q < 1$$
+- C⁴ continuous, $P_2(q) = 35q^2 + 18q + 3$
+
+**Wendland C⁶** ($k=3$, $m=8$):
+$$k(q) = (1-q)^8 (32q^3 + 25q^2 + 8q + 1), \quad 0 \leq q < 1$$
+- C⁶ continuous, $P_3(q) = 32q^3 + 25q^2 + 8q + 1$
+
+**Derivative Formula**:
+$$\frac{dk}{dq} = \begin{cases}
+(1-q)^{m-1} \left[-m P_k(q) + (1-q) P_k'(q)\right], & 0 \leq q < 1 \\
+0, & q \geq 1
+\end{cases}$$
 
 **Properties**:
-- C² continuous
 - Compact support: $[0, h]$
-- Positive definite
+- Positive definite (guaranteed for all Wendland kernels)
 - Minimal degree polynomial for given smoothness
+- Higher $k$ → smoother but computationally more expensive
 
 **Normalization** (dimension-dependent):
 Wendland kernels require normalization constants $\sigma_d$:
 $$K_h(r) = \frac{\sigma_d}{h^d} k\left(\frac{r}{h}\right)$$
 
-**MFG_PDE Implementation**: `WendlandC2Kernel()`, `WendlandC4Kernel()`, `WendlandC6Kernel()`
+**MFG_PDE Implementation**: `WendlandKernel(k, dimension)` with $k \in \{0, 1, 2, 3\}$
+- Unified parameterized class replaces separate C0/C2/C4/C6 classes
+- Automatic polynomial coefficient generation based on $k$
+- Factory: `create_kernel('wendland_c2')` → `WendlandKernel(k=1)`
 
 ### 5.3 Cubic Spline (B-Spline M4)
 
