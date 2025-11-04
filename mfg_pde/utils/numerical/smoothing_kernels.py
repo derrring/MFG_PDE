@@ -52,16 +52,16 @@ Properties of Good Kernels:
 
 Usage Examples:
 --------------
-    from mfg_pde.utils.numerical.kernels import (
+    from mfg_pde.utils.numerical.smoothing_kernels import (
         GaussianKernel,
-        WendlandC2Kernel,
+        WendlandKernel,
         CubicSplineKernel,
         create_kernel
     )
 
     # Create kernel instances
     kernel = GaussianKernel()
-    kernel_w = WendlandC2Kernel()
+    kernel_w = WendlandKernel(k=1, dimension=2)  # C^2 Wendland kernel
 
     # Evaluate kernel
     r = np.array([0.0, 0.5, 1.0, 2.0])
@@ -72,7 +72,7 @@ Usage Examples:
     w, dw_dr = kernel.evaluate_with_derivative(r, h)
 
     # Factory pattern
-    kernel = create_kernel('wendland_c2', dimension=2)
+    kernel = create_kernel('wendland_c2', dimension=2)  # Returns WendlandKernel(k=1)
 
 References:
 ----------
@@ -758,7 +758,7 @@ def create_kernel(kernel_type: KernelType, dimension: int = 3) -> Kernel:
         - 'cubic': Simple cubic polynomial
         - 'quartic': Simple quartic polynomial
     dimension : int
-        Spatial dimension (only used for spline kernels). Default: 3.
+        Spatial dimension (used for Wendland and spline kernels for normalization). Default: 3.
 
     Returns
     -------
