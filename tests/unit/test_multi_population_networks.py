@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = pytest.mark.optional_torch
+
 # Skip tests if PyTorch not available
 torch = pytest.importorskip("torch")
 

@@ -15,6 +15,8 @@ from mfg_pde.alg.reinforcement.environments import (
     create_preset_ca_config,
 )
 
+pytestmark = pytest.mark.experimental
+
 
 class TestCellularAutomataConfig:
     """Test CA configuration."""

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.optional_torch
+
 # Skip PyTorch tests if not available
 pytorch_available = True
 try:

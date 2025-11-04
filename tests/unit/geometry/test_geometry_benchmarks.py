@@ -14,6 +14,8 @@ from mfg_pde.geometry.implicit import (
     Hypersphere,
 )
 
+pytestmark = pytest.mark.benchmark
+
 
 class TestSamplingPerformance:
     """Benchmark sampling performance across dimensions."""

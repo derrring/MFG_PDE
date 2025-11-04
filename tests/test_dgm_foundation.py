@@ -22,6 +22,8 @@ from mfg_pde.alg.neural.dgm.variance_reduction import (
     create_control_variate_function,
 )
 
+pytestmark = pytest.mark.optional_torch
+
 # Skip PyTorch tests if not available
 pytorch_available = True
 try:

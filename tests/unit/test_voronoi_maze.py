@@ -14,6 +14,8 @@ from mfg_pde.alg.reinforcement.environments import (
     VoronoiMazeGenerator,
 )
 
+pytestmark = pytest.mark.environment
+
 # Check scipy availability
 scipy_available = True
 try:

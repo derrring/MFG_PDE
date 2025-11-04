@@ -15,6 +15,8 @@ from mfg_pde.alg.numerical.density_estimation import (
     gaussian_kde_numpy,
 )
 
+pytestmark = pytest.mark.optional_torch
+
 # Check if PyTorch is available for GPU tests
 try:
     import torch  # Check for PyTorch package directly

@@ -37,6 +37,8 @@ if GYMNASIUM_AVAILABLE:
         RewardType,
     )
 
+pytestmark = pytest.mark.environment
+
 
 @pytest.mark.skipif(not GYMNASIUM_AVAILABLE, reason="Gymnasium not installed")
 class TestPopulationState:

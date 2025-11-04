@@ -15,6 +15,8 @@ from mfg_pde.utils.functional_calculus import (
     verify_functional_derivative_accuracy,
 )
 
+pytestmark = pytest.mark.experimental
+
 
 class TestFiniteDifferenceFunctionalDerivative:
     """Test finite difference functional derivative computation."""

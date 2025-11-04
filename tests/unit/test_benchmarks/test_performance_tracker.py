@@ -20,6 +20,8 @@ import numpy as np
 
 from benchmarks.performance_tracker import BenchmarkResult, PerformanceTracker
 
+pytestmark = pytest.mark.benchmark
+
 
 class TestBenchmarkResult:
     """Tests for BenchmarkResult dataclass."""

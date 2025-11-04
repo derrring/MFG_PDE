@@ -13,6 +13,8 @@ from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
 
+pytestmark = pytest.mark.optional_torch
+
 # Check if PyTorch is available for GPU tests
 try:
     from mfg_pde.backends.torch_backend import TorchBackend

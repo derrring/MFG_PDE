@@ -17,8 +17,13 @@ Test Strategy:
     4. Verify output shape matches input shape
 """
 
+import pytest
+
 import numpy as np
+
 from mfg_pde.utils.numerical.anderson_acceleration import AndersonAccelerator
+
+pytestmark = pytest.mark.experimental
 
 
 def test_1d_arrays():

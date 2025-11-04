@@ -16,6 +16,8 @@ from mfg_pde.alg.reinforcement.environments import (
     verify_perfect_maze,
 )
 
+pytestmark = pytest.mark.environment
+
 
 class TestPerfectMazeGenerator:
     """Test perfect maze generation algorithms."""

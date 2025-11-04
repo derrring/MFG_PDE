@@ -18,6 +18,8 @@ from mfg_pde.geometry.mazes.hybrid_maze import (
     create_office_hybrid,
 )
 
+pytestmark = pytest.mark.environment
+
 
 class TestAlgorithmSpec:
     """Test AlgorithmSpec dataclass."""

@@ -22,6 +22,8 @@ from mfg_pde.utils.numerical.monte_carlo import (
     monte_carlo_integrate,
 )
 
+pytestmark = pytest.mark.experimental
+
 # ============================================================================
 # Test: MCConfig Dataclass
 # ============================================================================

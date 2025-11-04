@@ -28,6 +28,8 @@ from mfg_pde.utils.numerical.mcmc import (
     sample_mfg_posterior,
 )
 
+pytestmark = pytest.mark.experimental
+
 # =============================================================================
 # Test MCMCConfig and MCMCResult Dataclasses
 # =============================================================================

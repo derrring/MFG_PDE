@@ -5,6 +5,8 @@ import pytest
 
 import numpy as np
 
+pytestmark = pytest.mark.optional_torch
+
 # Check if PyTorch is available - import HAS_TORCH flag from torch_utils
 try:
     from mfg_pde.utils.acceleration.torch_utils import HAS_TORCH

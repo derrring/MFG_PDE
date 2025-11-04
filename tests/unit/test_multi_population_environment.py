@@ -13,6 +13,8 @@ import pytest
 
 import numpy as np
 
+pytestmark = pytest.mark.optional_torch
+
 try:
     import torch  # noqa: F401
 

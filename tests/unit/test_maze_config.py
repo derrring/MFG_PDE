@@ -21,6 +21,8 @@ from mfg_pde.alg.reinforcement.environments import (
     place_positions,
 )
 
+pytestmark = pytest.mark.environment
+
 
 class TestMazeConfig:
     """Test maze configuration."""

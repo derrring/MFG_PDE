@@ -13,6 +13,8 @@ from mfg_pde.alg.reinforcement.environments import (
     CellularAutomataGenerator,
 )
 
+pytestmark = pytest.mark.environment
+
 # Check scipy availability
 scipy_available = True
 try:

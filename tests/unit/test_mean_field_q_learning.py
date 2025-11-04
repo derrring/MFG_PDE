@@ -4,6 +4,8 @@ import pytest
 
 import numpy as np
 
+pytestmark = pytest.mark.optional_torch
+
 try:
     import gymnasium as gym  # noqa: F401
 

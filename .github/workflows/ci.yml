@@ -190,7 +190,7 @@ jobs:
       if: github.event_name != 'release'
       timeout-minutes: 35
       run: |
-        pytest tests/ -v -m "not slow" --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=5
+        pytest tests/ -v -m "not slow and not optional_torch and not benchmark and not experimental and not environment" --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=5
 
     - name: Run all tests with coverage (including slow tests on releases)
       if: github.event_name == 'release'

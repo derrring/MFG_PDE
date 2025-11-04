@@ -16,6 +16,8 @@ from benchmarks.standard_problems import (
     get_problems_by_category,
 )
 
+pytestmark = pytest.mark.benchmark
+
 
 class TestBenchmarkProblem:
     """Tests for BenchmarkProblem dataclass."""

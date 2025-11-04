@@ -21,7 +21,10 @@ if TORCH_AVAILABLE:
         MultiPopulationSAC,
         MultiPopulationTD3,
     )
+
 from tests.unit.test_multi_population_env import SimpleMultiPopEnv
+
+pytestmark = pytest.mark.optional_torch
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
