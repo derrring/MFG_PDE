@@ -534,7 +534,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         from mfg_pde.utils.numerical.smoothing_kernels import (
             GaussianKernel,
-            WendlandC4Kernel,
+            WendlandKernel,
         )
 
         if self.weight_function == "gaussian":
@@ -551,8 +551,8 @@ class HJBGFDMSolver(BaseHJBSolver):
             return np.ones_like(distances)
 
         elif self.weight_function == "wendland":
-            # Use WendlandC4Kernel: (1 - r/h)_+^6 (35q² + 18q + 3)
-            kernel = WendlandC4Kernel()
+            # Use Wendland C^4 kernel: (1 - r/h)_+^6 (35q² + 18q + 3)
+            kernel = WendlandKernel(k=2)  # k=2 → C^4 continuity
             # Support radius = delta (neighborhood size)
             return kernel(distances, h=self.delta)
 
