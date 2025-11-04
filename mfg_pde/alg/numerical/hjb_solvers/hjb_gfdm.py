@@ -1600,8 +1600,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         u_t = (u_n_plus_1 - u_current) / dt
 
         for i in range(self.n_points):
-            # Get spatial coordinates
-            x = self.collocation_points[i]
+            # Get spatial coordinates (currently unused but kept for future extensions)
+            _ = self.collocation_points[i]
 
             # Approximate derivatives using GFDM
             derivs = self.approximate_derivatives(u_current, i)
@@ -1609,21 +1609,26 @@ class HJBGFDMSolver(BaseHJBSolver):
             # Extract gradient and Hessian
             # For 1D: derivs[(1,)] is du/dx, derivs[(2,)] is d²u/dx²
             # For 2D: derivs[(1,0)] is du/dx, derivs[(0,1)] is du/dy, etc.
-            d = self.problem.d  # Spatial dimension
+            d = self.problem.dimension  # Spatial dimension
             if d == 1:
-                p = derivs.get((1,), 0.0)
+                p_value = derivs.get((1,), 0.0)
                 laplacian = derivs.get((2,), 0.0)
+                # Convert to derivs format for problem.H()
+                p_derivs = {(1,): p_value}
             elif d == 2:
                 p_x = derivs.get((1, 0), 0.0)
                 p_y = derivs.get((0, 1), 0.0)
-                p = np.array([p_x, p_y])
                 laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)
+                # Convert to derivs format for problem.H()
+                p_derivs = {(1, 0): p_x, (0, 1): p_y}
             else:
                 msg = f"Dimension {d} not implemented"
                 raise NotImplementedError(msg)
 
             # Hamiltonian (user-provided)
-            H = self.problem.H(x, p, m_n_plus_1[i])
+            # problem.H() signature: H(x_idx, m_at_x, derivs, ...)
+            # For collocation points that align with grid, i is the grid index
+            H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs)
 
             # Diffusion coefficient
             # NOTE: HJB uses (σ²/2) factor from control theory (Pontryagin maximum principle)
@@ -1772,15 +1777,24 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         Uses inverse interpolation or reconstruction.
         """
-        # Placeholder: Assume 1D and that grid == collocation points
-        Nx = getattr(self.problem, "Nx", self.n_points)
-        u_grid = np.zeros(Nx)
-        for j in range(Nx):
-            # Find nearest collocation point
-            # Simple approach: direct copy if aligned
-            if j < self.n_points:
-                u_grid[j] = u_collocation[j]
-        return u_grid
+        # If collocation points match grid size (including boundaries), return directly
+        # Otherwise, map to grid interior points (Nx)
+        Nx_grid = getattr(self.problem, "Nx", self.n_points)
+
+        # Check if collocation includes boundaries (Nx+1 points)
+        if self.n_points == Nx_grid + 1:
+            # Collocation points include boundaries - return all points
+            return u_collocation.copy()
+        elif self.n_points == Nx_grid:
+            # Collocation points are interior only - return as is
+            return u_collocation.copy()
+        else:
+            # Mismatch - interpolate to grid
+            u_grid = np.zeros(Nx_grid)
+            for j in range(Nx_grid):
+                if j < self.n_points:
+                    u_grid[j] = u_collocation[j]
+            return u_grid
 
     def _map_grid_to_collocation_batch(self, U_grid: np.ndarray) -> np.ndarray:
         """Batch version of _map_grid_to_collocation."""
@@ -1793,8 +1807,17 @@ class HJBGFDMSolver(BaseHJBSolver):
     def _map_collocation_to_grid_batch(self, U_collocation: np.ndarray) -> np.ndarray:
         """Batch version of _map_collocation_to_grid."""
         Nt, _n_points = U_collocation.shape
-        Nx = getattr(self.problem, "Nx", self.n_points)
-        U_grid = np.zeros((Nt, Nx))
+
+        # Determine output grid size based on collocation points
+        Nx_grid = getattr(self.problem, "Nx", self.n_points)
+        if self.n_points == Nx_grid + 1:
+            # Collocation includes boundaries - output should be Nx+1
+            Nx_output = Nx_grid + 1
+        else:
+            # Interior points only or other - output is Nx
+            Nx_output = Nx_grid
+
+        U_grid = np.zeros((Nt, Nx_output))
         for n in range(Nt):
             U_grid[n, :] = self._map_collocation_to_grid(U_collocation[n, :])
         return U_grid

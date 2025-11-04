@@ -85,12 +85,30 @@ class MFGNotationRegistry:
 
         self.register(
             NotationEntry(
-                symbol="Nx",
-                variable_name="Nx",
-                description="Number of spatial grid points",
+                symbol="d",
+                variable_name="dimension",
+                description="Spatial dimension",
                 domain="ℕ⁺",
                 variable_type=VariableType.SPATIAL,
-                latex="N_x",
+                latex="d",
+                aliases=["d"],  # Too ambiguous - use full name
+            )
+        )
+
+        self.register(
+            NotationEntry(
+                symbol="Nx[i]",
+                variable_name="Nx",
+                description="Number of spatial grid points (array for arbitrary dimensions)",
+                domain="ℕ⁺",
+                variable_type=VariableType.SPATIAL,
+                latex="N_{x_i}",
+                aliases=[
+                    "N",
+                    "Ny",
+                    "Nz",
+                    "num_spatial_points",
+                ],  # Deprecated: N too ambiguous, Ny/Nz dimension-specific
             )
         )
 
@@ -107,25 +125,27 @@ class MFGNotationRegistry:
 
         self.register(
             NotationEntry(
-                symbol="Δx",
-                variable_name="Dx",
-                description="Spatial grid spacing",
+                symbol="Δx[i]",
+                variable_name="dx",
+                description="Spatial grid spacing (array for arbitrary dimensions)",
                 domain="ℝ⁺",
                 units="length",
                 variable_type=VariableType.SPATIAL,
-                latex="\\Delta x",
+                latex="\\Delta x_i",
+                aliases=["Dx"],  # Deprecated: uppercase inconsistent
             )
         )
 
         self.register(
             NotationEntry(
                 symbol="Δt",
-                variable_name="Dt",
+                variable_name="dt",
                 description="Temporal grid spacing",
                 domain="ℝ⁺",
                 units="time",
                 variable_type=VariableType.TEMPORAL,
                 latex="\\Delta t",
+                aliases=["Dt"],  # Deprecated: uppercase inconsistent
             )
         )
 

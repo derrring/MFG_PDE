@@ -284,10 +284,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             Value function at current time step (same shape as U_next)
         """
         if self.dimension == 1:
-            # 1D solve: Use existing logic
+            # 1D solve with operator splitting: characteristics + Crank-Nicolson diffusion
             Nx = len(U_next)
-            U_current = np.zeros(Nx)
+            U_star = np.zeros(Nx)  # Intermediate solution after advection
 
+            # Step 1: Advection along characteristics (explicit)
             for i in range(Nx):
                 x_current = self.x_grid[i]
                 m_current = M_next[i]
@@ -296,16 +297,19 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     p_optimal = self._find_optimal_control(x_current, m_current, time_idx)
                     x_departure = self._trace_characteristic_backward(x_current, p_optimal, self.dt)
                     u_departure = self._interpolate_value(U_next, x_departure)
-                    diffusion_term = self._compute_diffusion_term(U_next, i)
                     hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
-                    U_current[i] = u_departure - self.dt * (
-                        hamiltonian_value - 0.5 * self.problem.sigma**2 * diffusion_term
-                    )
+                    # Advection step: u* = u(X(t-dt)) - dt * H(x, p*, m)
+                    U_star[i] = u_departure - self.dt * hamiltonian_value
 
                 except Exception as e:
                     logger.warning(f"Error at grid point {i}: {e}")
-                    U_current[i] = U_next[i]
+                    U_star[i] = U_next[i]
+
+            # Step 2: Diffusion (Crank-Nicolson for unconditional stability)
+            # Solve: (I - 0.5*dt*sigma^2*L) u^n = (I + 0.5*dt*sigma^2*L) u*
+            # where L is the Laplacian operator
+            U_current = self._solve_crank_nicolson_diffusion(U_star, self.dt, self.problem.sigma)
 
             return U_current
 
@@ -942,6 +946,68 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 logger.debug(f"nD Hamiltonian evaluation failed: {e}, using fallback")
                 p_norm_sq = np.sum(p_vec**2)
                 return 0.5 * p_norm_sq + getattr(self.problem, "coefCT", 0.5) * m
+
+    def _solve_crank_nicolson_diffusion(self, U_star: np.ndarray, dt: float, sigma: float) -> np.ndarray:
+        """
+        Solve diffusion step using Crank-Nicolson (unconditionally stable).
+
+        Solves: (I - θ*dt*σ²/2*L) u^n = (I + θ*dt*σ²/2*L) u*
+        where θ = 0.5 for Crank-Nicolson, L is the 1D Laplacian operator.
+
+        Args:
+            U_star: Intermediate solution after advection step
+            dt: Time step size
+            sigma: Diffusion coefficient
+
+        Returns:
+            Solution after implicit diffusion step
+        """
+        from scipy.linalg import solve_banded
+
+        Nx = len(U_star)
+        dx = self.x_grid[1] - self.x_grid[0]
+
+        # Diffusion coefficient: α = σ²/2 * dt/dx²
+        alpha = 0.5 * sigma**2 * dt / dx**2
+        theta = 0.5  # Crank-Nicolson parameter
+
+        # Build tridiagonal system: A * u^n = b
+        # where A = (I - θ*α*L), b = (I + (1-θ)*α*L) * u*
+
+        # Tridiagonal matrix coefficients
+        # Main diagonal: 1 + 2*θ*α
+        # Off-diagonals: -θ*α
+        main_diag = np.ones(Nx) * (1.0 + 2.0 * theta * alpha)
+        off_diag = np.ones(Nx - 1) * (-theta * alpha)
+
+        # Build banded matrix format for solve_banded (upper_diag, main_diag, lower_diag)
+        ab = np.zeros((3, Nx))
+        ab[0, 1:] = off_diag  # Upper diagonal
+        ab[1, :] = main_diag  # Main diagonal
+        ab[2, :-1] = off_diag  # Lower diagonal
+
+        # Build right-hand side: b = (I + (1-θ)*α*L) * u*
+        b = np.zeros(Nx)
+        for i in range(1, Nx - 1):
+            b[i] = (1.0 - 2.0 * (1.0 - theta) * alpha) * U_star[i] + (1.0 - theta) * alpha * (
+                U_star[i - 1] + U_star[i + 1]
+            )
+
+        # Boundary conditions (Neumann: du/dx = 0)
+        # Left boundary (i=0)
+        b[0] = (1.0 - (1.0 - theta) * alpha) * U_star[0] + (1.0 - theta) * alpha * U_star[1]
+        ab[1, 0] = 1.0 + theta * alpha  # Modified main diagonal
+        ab[0, 1] = -theta * alpha  # Upper diagonal
+
+        # Right boundary (i=Nx-1)
+        b[Nx - 1] = (1.0 - (1.0 - theta) * alpha) * U_star[Nx - 1] + (1.0 - theta) * alpha * U_star[Nx - 2]
+        ab[1, Nx - 1] = 1.0 + theta * alpha  # Modified main diagonal
+        ab[2, Nx - 2] = -theta * alpha  # Lower diagonal
+
+        # Solve tridiagonal system
+        u_new = solve_banded((1, 1), ab, b)
+
+        return u_new
 
     def _fallback_backward_euler(self, U_next: np.ndarray, M_next: np.ndarray, time_idx: int) -> np.ndarray:
         """

@@ -80,18 +80,76 @@ class BaseHJBSolver(BaseNumericalSolver):
         return type_mapping.get(class_name)
 
     # Implementation of BaseMFGSolver abstract methods
-    def solve(self) -> Any:  # Returns SolverResult when called through MFG solver context
+    def solve(self) -> np.ndarray:
         """
-        Solve the HJB equation.
+        Solve standalone HJB equation (single-agent optimal control).
 
-        Note: HJB solvers are typically used through MFG fixed-point solvers rather
-        than standalone. The MFG solver calls solve_hjb_system() and wraps the result
-        in a SolverResult object. For backward compatibility, SolverResult supports
-        tuple unpacking: U, M, iterations, err_u, err_m = result
+        This method solves the HJB equation in standalone mode without Mean Field Game
+        coupling. It uses uniform density (no population effects) and is suitable for:
+        - Single-agent optimal control problems
+        - HJB solver comparison and benchmarking
+        - Algorithm testing and validation
+
+        For Mean Field Games with population coupling, use through MFG fixed-point
+        solver which calls solve_hjb_system() with density from Fokker-Planck equation.
+
+        Returns:
+            np.ndarray: Value function U(t,x) of shape (Nt+1, Nx+1) for 1D problems
+                       or (Nt+1, *spatial_shape) for nD problems.
+
+        Example:
+            >>> from mfg_pde.core.mfg_problem import MFGProblem
+            >>> from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+            >>> problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, Nt=50, T=1.0)
+            >>> solver = HJBFDMSolver(problem)
+            >>> U = solver.solve()  # Standalone HJB solution
+            >>> print(U.shape)  # (51, 101)
         """
-        # This is a placeholder - specific HJB solvers will need proper implementation
-        # based on how they're currently used in the MFG system
-        raise NotImplementedError("HJB solvers need MFG context - use through MFG solver")
+        # Create uniform density for standalone mode (no MFG coupling)
+        if hasattr(self.problem, "Nx") and self.problem.Nx is not None:
+            # 1D problem
+            Nt, Nx = self.problem.Nt + 1, self.problem.Nx + 1
+            m_uniform = np.ones((Nt, Nx)) / (self.problem.xmax - self.problem.xmin)
+
+            # Get terminal condition from problem
+            U_terminal = self.problem.get_final_u()
+
+            # Initial guess for nonlinear solver: repeat terminal condition
+            U_prev_picard = np.tile(U_terminal, (Nt, 1))
+
+        elif hasattr(self.problem, "spatial_shape") and self.problem.spatial_shape is not None:
+            # nD problem (2D, 3D, etc.)
+            Nt = self.problem.Nt + 1
+            spatial_shape = self.problem.spatial_shape
+
+            # Compute domain volume for normalization
+            if hasattr(self.problem, "spatial_bounds") and self.problem.spatial_bounds:
+                volume = 1.0
+                for bounds in self.problem.spatial_bounds:
+                    volume *= bounds[1] - bounds[0]
+            else:
+                # Fallback if bounds not available
+                volume = 1.0
+
+            # Create uniform density: shape (Nt, *spatial_shape)
+            full_shape = (Nt, *spatial_shape)
+            m_uniform = np.ones(full_shape) / volume
+
+            # Get terminal condition from problem
+            U_terminal = self.problem.get_final_u()
+
+            # Initial guess for nonlinear solver: repeat terminal condition across time
+            U_prev_picard = np.tile(U_terminal, (Nt,) + (1,) * len(spatial_shape))
+
+        else:
+            # Complex geometry or network - not yet supported
+            raise NotImplementedError(
+                "Standalone solve() for geometry/network problems not yet implemented. "
+                "Use solve_hjb_system() directly with uniform density."
+            )
+
+        # Solve using the specific solver's implementation
+        return self.solve_hjb_system(m_uniform, U_terminal, U_prev_picard)
 
     def validate_solution(self) -> dict[str, float]:
         """Validate the HJB solution."""
@@ -112,12 +170,24 @@ class BaseHJBSolver(BaseNumericalSolver):
         self,
         M_density_evolution_from_FP: np.ndarray,
         U_final_condition_at_T: np.ndarray,
-        U_from_prev_picard: np.ndarray,  # Added: U from previous Picard iteration
+        U_from_prev_picard: np.ndarray,
     ) -> np.ndarray:
         """
         Solve the HJB system given density evolution and boundary conditions.
 
         This is the main method that specific HJB solvers must implement.
+
+        Args:
+            M_density_evolution_from_FP: Density field m(t,x) from Fokker-Planck equation
+                                        For MFG: from previous Picard iteration
+                                        For standalone: uniform density
+            U_final_condition_at_T: Terminal condition u(T,x) at final time
+            U_from_prev_picard: Value function from previous Picard iteration
+                               For MFG: actual previous iterate U^{k-1}
+                               For standalone: initial guess (zeros, terminal condition, etc.)
+
+        Returns:
+            np.ndarray: Value function U(t,x) solution
         """
 
 
