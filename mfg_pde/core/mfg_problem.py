@@ -76,12 +76,57 @@ class MFGProblem:
     - Custom usage: Accepts MFGComponents for full mathematical control
     """
 
+    @staticmethod
+    def _normalize_to_array(
+        value: int | float | list[int] | list[float] | None,
+        param_name: str = "parameter",
+        warn: bool = True,
+    ) -> list[int] | list[float] | None:
+        """
+        Convert scalar or array to array with optional deprecation warning.
+
+        Args:
+            value: Scalar or array value to normalize
+            param_name: Parameter name for warning message
+            warn: Whether to emit deprecation warning for scalar inputs
+
+        Returns:
+            Array form of the value, or None if input is None
+
+        Examples:
+            >>> MFGProblem._normalize_to_array(100, "Nx")  # Warns
+            [100]
+            >>> MFGProblem._normalize_to_array([100], "Nx")  # No warning
+            [100]
+            >>> MFGProblem._normalize_to_array(None, "Nx")
+            None
+        """
+        import warnings
+
+        if value is None:
+            return None
+
+        if isinstance(value, (int, float)):
+            if warn:
+                warnings.warn(
+                    f"Passing scalar {param_name}={value} is deprecated. "
+                    f"Use array notation {param_name}=[{value}] instead. "
+                    f"Scalar support will be removed in v1.0.0. "
+                    f"See docs/development/MATHEMATICAL_NOTATION_STANDARD.md for details.",
+                    DeprecationWarning,
+                    stacklevel=4,
+                )
+            return [value]
+
+        # Already a list - return as-is
+        return list(value)
+
     def __init__(
         self,
-        # Legacy 1D parameters (backward compatible)
-        xmin: float | None = None,
-        xmax: float | None = None,
-        Nx: int | None = None,
+        # Legacy 1D parameters (backward compatible - scalars will be converted to arrays with deprecation warning)
+        xmin: float | list[float] | None = None,
+        xmax: float | list[float] | None = None,
+        Nx: int | list[int] | None = None,
         Lx: float | None = None,  # Alternative to xmin/xmax
         # N-D grid parameters
         spatial_bounds: list[tuple[float, float]] | None = None,
@@ -187,23 +232,42 @@ class MFGProblem:
         if sigma is None:
             sigma = 1.0
 
-        # Detect initialization mode
-        mode = self._detect_init_mode(Nx=Nx, spatial_bounds=spatial_bounds, geometry=geometry, network=network)
+        # Normalize spatial parameters to arrays (with deprecation warnings for scalars)
+        # This enables dimension-agnostic code while maintaining backward compatibility
+        if Nx is not None:
+            Nx_normalized = self._normalize_to_array(Nx, "Nx")
+        else:
+            Nx_normalized = None
+
+        if xmin is not None:
+            xmin_normalized = self._normalize_to_array(xmin, "xmin")
+        else:
+            xmin_normalized = None
+
+        if xmax is not None:
+            xmax_normalized = self._normalize_to_array(xmax, "xmax")
+        else:
+            xmax_normalized = None
+
+        # Detect initialization mode (use normalized Nx for detection)
+        mode = self._detect_init_mode(
+            Nx=Nx_normalized, spatial_bounds=spatial_bounds, geometry=geometry, network=network
+        )
 
         # Dispatch to appropriate initializer
         if mode == "1d_legacy":
             # Mode 1: Legacy 1D
             if Lx is not None:
                 # Use Lx to set xmin/xmax if provided
-                if xmin is None:
-                    xmin = 0.0
-                xmax = xmin + Lx
+                if xmin_normalized is None:
+                    xmin_normalized = [0.0]
+                xmax_normalized = [xmin_normalized[0] + Lx]
             else:
-                if xmin is None:
-                    xmin = 0.0
-                if xmax is None:
-                    xmax = 1.0
-            self._init_1d_legacy(xmin, xmax, Nx, T, Nt, sigma, coefCT)
+                if xmin_normalized is None:
+                    xmin_normalized = [0.0]
+                if xmax_normalized is None:
+                    xmax_normalized = [1.0]
+            self._init_1d_legacy(xmin_normalized, xmax_normalized, Nx_normalized, T, Nt, sigma, coefCT)
 
         elif mode == "nd_grid":
             # Mode 2: N-dimensional grid
@@ -224,7 +288,7 @@ class MFGProblem:
                 UserWarning,
                 stacklevel=2,
             )
-            self._init_1d_legacy(0.0, 1.0, 51, T, Nt, sigma, coefCT)
+            self._init_1d_legacy([0.0], [1.0], [51], T, Nt, sigma, coefCT)
 
         else:
             raise ValueError(f"Unknown initialization mode: {mode}")
@@ -256,24 +320,40 @@ class MFGProblem:
 
     def _init_1d_legacy(
         self,
-        xmin: float,
-        xmax: float,
-        Nx: int,
+        xmin: list[float],
+        xmax: list[float],
+        Nx: list[int],
         T: float,
         Nt: int,
         sigma: float,
         coefCT: float,
     ) -> None:
-        """Initialize problem in legacy 1D mode (100% backward compatible)."""
+        """
+        Initialize problem in legacy 1D mode (100% backward compatible).
+
+        Args:
+            xmin: Lower bound as array (e.g., [-2.0])
+            xmax: Upper bound as array (e.g., [2.0])
+            Nx: Grid points as array (e.g., [100])
+            T: Terminal time
+            Nt: Temporal grid points
+            sigma: Diffusion coefficient
+            coefCT: Control cost coefficient
+        """
         # Set dimension
         self.dimension = 1
 
-        # Legacy 1D attributes (exactly as before)
-        self.xmin: float = xmin
-        self.xmax: float = xmax
-        self.Lx: float = xmax - xmin
-        self.Nx: int = Nx
-        self.Dx: float = (xmax - xmin) / Nx if Nx > 0 else 0.0
+        # Extract scalar values from arrays for backward compatibility
+        xmin_scalar = xmin[0]
+        xmax_scalar = xmax[0]
+        Nx_scalar = Nx[0]
+
+        # Legacy 1D attributes (scalars for backward compatibility)
+        self.xmin: float = xmin_scalar
+        self.xmax: float = xmax_scalar
+        self.Lx: float = xmax_scalar - xmin_scalar
+        self.Nx: int = Nx_scalar
+        self.Dx: float = (xmax_scalar - xmin_scalar) / Nx_scalar if Nx_scalar > 0 else 0.0
 
         # Time domain
         self.T: float = T
@@ -281,17 +361,17 @@ class MFGProblem:
         self.Dt: float = T / Nt if Nt > 0 else 0.0
 
         # Grid arrays
-        self.xSpace: np.ndarray = np.linspace(xmin, xmax, Nx + 1, endpoint=True)
+        self.xSpace: np.ndarray = np.linspace(xmin_scalar, xmax_scalar, Nx_scalar + 1, endpoint=True)
         self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Coefficients
         self.sigma: float = sigma
         self.coefCT: float = coefCT
 
-        # New n-D attributes for consistency
-        self.spatial_shape = (Nx + 1,)  # 1D shape: (Nx+1,)
-        self.spatial_bounds = [(xmin, xmax)]
-        self.spatial_discretization = [Nx]
+        # New n-D attributes for consistency (stored as arrays)
+        self.spatial_shape = (Nx_scalar + 1,)  # 1D shape: (Nx+1,)
+        self.spatial_bounds = [(xmin_scalar, xmax_scalar)]
+        self.spatial_discretization = [Nx_scalar]
 
         # Grid object (None for 1D - not needed, kept for compatibility)
         self._grid = None
@@ -438,13 +518,19 @@ class MFGProblem:
 
     def _detect_init_mode(
         self,
-        Nx: int | None,
+        Nx: list[int] | None,
         spatial_bounds: list[tuple[float, float]] | None,
         geometry: Any | None,
         network: Any | None,
     ) -> str:
         """
         Detect which initialization mode to use based on provided parameters.
+
+        Args:
+            Nx: Normalized array of grid points (or None)
+            spatial_bounds: Spatial bounds (or None)
+            geometry: Geometry object (or None)
+            network: Network object (or None)
 
         Returns:
             mode: One of "1d_legacy", "nd_grid", "geometry", "network", "default"
