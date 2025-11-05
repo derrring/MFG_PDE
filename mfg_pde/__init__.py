@@ -67,7 +67,6 @@ from .geometry.network_geometry import (  # noqa: E402
     compute_network_statistics,
     create_network,
 )
-from .solve_mfg import solve_mfg  # noqa: E402
 
 # Simple API removed - use factory API instead
 # from .simple import ...
@@ -184,7 +183,6 @@ __all__ = [
     "get_general_factory",
     "set_preferred_backend",
     "show_optional_features",
-    "solve_mfg",
 ]
 
 # Add conditionally available imports to __all__ when available
