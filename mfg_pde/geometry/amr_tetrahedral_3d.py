@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 from .base_geometry import MeshData
+from .geometry_protocol import GeometryType
 
 
 @dataclass
@@ -230,6 +231,57 @@ class TetrahedralAMRMesh:
             self.elements_list.append(element)
             self.active_elements.append(self.element_count)
             self.element_count += 1
+
+    # GeometryProtocol implementation
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension (3D for tetrahedral mesh)."""
+        return 3
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Geometry type (CARTESIAN_GRID for structured adaptive mesh)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points (active elements)."""
+        return len(self.active_elements)
+
+    def get_spatial_grid(self) -> NDArray:
+        """
+        Get spatial grid representation.
+
+        Returns:
+            numpy array of active element centers (N, 3)
+        """
+        centers = np.array([self.elements_list[i].center for i in self.active_elements])
+        return centers
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        This polymorphic method provides AMR-specific configuration for MFGProblem.
+        Tetrahedral AMR meshes have dynamic grids with variable element sizes.
+
+        Returns:
+            Dictionary with keys:
+                - num_spatial_points: Number of active elements
+                - spatial_shape: (num_active_elements,) - flattened for AMR
+                - spatial_bounds: None - AMR has dynamic bounds
+                - spatial_discretization: None - AMR has variable element sizes
+                - legacy_1d_attrs: None - AMR doesn't support legacy attrs
+
+        Added in v0.10.1 for polymorphic geometry handling.
+        """
+        return {
+            "num_spatial_points": len(self.active_elements),
+            "spatial_shape": (len(self.active_elements),),
+            "spatial_bounds": None,  # AMR has dynamic bounds
+            "spatial_discretization": None,  # AMR has variable element sizes
+            "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
+        }
 
     def refine_mesh(
         self, solution: np.ndarray, refinement_fraction: float = 0.3, error_method: str = "gradient_recovery"

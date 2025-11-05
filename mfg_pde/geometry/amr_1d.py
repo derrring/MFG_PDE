@@ -17,6 +17,7 @@ import numpy as np
 
 from .amr_quadtree_2d import AMRRefinementCriteria, BaseErrorEstimator
 from .base_geometry import MeshData
+from .geometry_protocol import GeometryType
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +210,63 @@ class OneDimensionalAMRMesh:
 
         self._jax_gradient_error = compute_1d_gradient_error
         self._jax_conservative_interp = conservative_interpolation_1d
+
+    # ==================== GeometryProtocol Implementation ====================
+    # Added in v0.10.1 to enable AMR meshes to work with geometry-first API
+
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension (1D)."""
+        return 1
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Geometry type (CARTESIAN_GRID for structured adaptive grids)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Number of active (leaf) intervals in current AMR state."""
+        return len(self.leaf_intervals)
+
+    def get_spatial_grid(self) -> np.ndarray:
+        """
+        Get spatial grid as (N, 1) array of leaf interval centers.
+
+        Returns current AMR state - updates dynamically as mesh is refined.
+
+        Returns:
+            NDArray with shape (num_leaf_intervals, 1)
+        """
+        centers = [self.intervals[i].center for i in self.leaf_intervals]
+        return np.array(centers).reshape(-1, 1)
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        This polymorphic method provides AMR-specific configuration for MFGProblem.
+        AMR meshes have dynamic grids, so configuration is based on current state.
+
+        Returns:
+            Dictionary with keys:
+                - num_spatial_points: Number of leaf intervals
+                - spatial_shape: (num_leaf_intervals,) - flattened for AMR
+                - spatial_bounds: None - AMR has dynamic bounds
+                - spatial_discretization: None - AMR has variable spacing
+                - legacy_1d_attrs: None - AMR doesn't support legacy attrs
+
+        Added in v0.10.1 for polymorphic geometry handling.
+        """
+        return {
+            "num_spatial_points": len(self.leaf_intervals),
+            "spatial_shape": (len(self.leaf_intervals),),
+            "spatial_bounds": None,  # AMR has dynamic bounds
+            "spatial_discretization": None,  # AMR has variable spacing
+            "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
+        }
+
+    # ==================== AMR Operations ====================
 
     def refine_interval(self, interval_id: int) -> list[int]:
         """

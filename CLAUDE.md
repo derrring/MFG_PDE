@@ -502,6 +502,15 @@ Use targeted patterns preserving valuable code:
 - ✅ Log steps in simple files, use TodoWrite, write technical notes
 - ❌ Don't create frequent summaries
 
+**Bug Reporting**:
+- ✅ Bugs belong to GitHub issues (use `gh issue create`)
+- ❌ Don't create markdown files in docs/bugs/ directory
+
+**Summary Creation**:
+- ✅ Only create summaries after important phases
+- ✅ Always ask user first if summary is needed
+- ❌ Don't create markdown summaries after each operation
+
 **Create Summaries at**:
 - Phase completion, critical milestones, before/after breaks, investigation conclusions
 
