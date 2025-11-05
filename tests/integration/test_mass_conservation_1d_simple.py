@@ -49,7 +49,7 @@ class TestMassConservation1DSimple:
             T=1.0,
             Nt=20,
             sigma=0.1,
-            coefCT=1.0,
+            coupling_coefficient=1.0,
         )
 
     @pytest.fixture

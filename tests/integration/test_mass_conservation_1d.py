@@ -216,7 +216,7 @@ class TestMassConservation1D:
             T=1.0,
             Nt=20,
             sigma=0.1,
-            coefCT=1.0,  # congestion strength
+            coupling_coefficient=1.0,  # congestion strength
         )
 
         # Override initial and terminal conditions to match SimpleMFGProblem1D

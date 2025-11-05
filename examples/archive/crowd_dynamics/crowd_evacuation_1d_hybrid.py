@@ -71,7 +71,7 @@ def create_crowd_evacuation_problem() -> MFGProblem:
         T=T,
         Nt=Nt,
         sigma=sigma,
-        coefCT=lambda_crowd,  # Congestion cost coefficient
+        coupling_coefficient=lambda_crowd,  # Congestion cost coefficient
     )
 
     # Set boundary conditions (absorbing at exit, reflecting at far wall)
@@ -129,7 +129,7 @@ def solve_with_hybrid_solver(problem: MFGProblem, verbose: bool = True):
         print(f"Grid: {problem.Nx+1} points")
         print(f"Time: [0, {problem.T}]s with {problem.Nt+1} steps")
         print(f"Diffusion: σ = {problem.sigma} m²/s")
-        print(f"Congestion cost: λ = {problem.coefCT}")
+        print(f"Congestion cost: λ = {problem.coupling_coefficient}")
         print()
 
     # Create hybrid solver

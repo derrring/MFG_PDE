@@ -37,7 +37,7 @@ Collocation mode should solve the **continuity equation** on fixed collocation p
 
 where:
 - m(t, xᵢ): density at collocation point xᵢ (Eulerian representation)
-- α(t, xᵢ) = -coefCT ∇H(t, xᵢ): optimal control from Hamiltonian
+- α(t, xᵢ) = -coupling_coefficient ∇H(t, xᵢ): optimal control from Hamiltonian
 - ∇·: divergence operator (computed via GFDM)
 - Δ: Laplacian operator (computed via GFDM)
 ```
@@ -183,12 +183,12 @@ def _solve_fp_system_collocation(self, m_initial, U_drift):
     M_solution[0, :] = m_initial.copy()
 
     for t in range(Nt - 1):
-        # 1. Compute optimal control: α = -coefCT ∇H
+        # 1. Compute optimal control: α = -coupling_coefficient ∇H
         grad_H = self._compute_gradient_gfdm(
             U_drift[t, :],
             self.collocation_points
         )
-        alpha = -self.problem.coefCT * grad_H  # (N_points, d)
+        alpha = -self.problem.coupling_coefficient * grad_H  # (N_points, d)
 
         # 2. Compute advection term: ∇·(m α)
         flux = M_solution[t, :, np.newaxis] * alpha  # (N_points, d)

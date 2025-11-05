@@ -23,8 +23,8 @@ Anderson acceleration uses linear extrapolation of past iterates with potentiall
 
 if self.use_anderson and self.anderson_accelerator is not None:
     # Apply Picard damping first
-    U_damped = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
-    M_damped = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
+    U_damped = self.damping_factor * U_new_tmp_hjb + (1 - self.damping_factor) * U_old_current_picard_iter
+    M_damped = self.damping_factor * M_new_tmp_fp + (1 - self.damping_factor) * M_old_current_picard_iter
 
     # Apply Anderson to U ONLY
     x_current_U = U_old_current_picard_iter.flatten()
@@ -35,8 +35,8 @@ if self.use_anderson and self.anderson_accelerator is not None:
     self.M = M_damped  # Standard damping only - preserves non-negativity
 else:
     # Standard damping
-    self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
-    self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
+    self.U = self.damping_factor * U_new_tmp_hjb + (1 - self.damping_factor) * U_old_current_picard_iter
+    self.M = self.damping_factor * M_new_tmp_fp + (1 - self.damping_factor) * M_old_current_picard_iter
 ```
 
 #### Pros
@@ -147,7 +147,7 @@ mfg_solver = FixedPointIterator(
     use_anderson=True,
     anderson_depth=2,  # Reduced from 5 (fewer past iterates)
     anderson_beta=0.5, # Reduced mixing (if parameter exists)
-    thetaUM=0.5,
+    damping_factor=0.5,
 )
 ```
 
@@ -163,7 +163,7 @@ if self.use_anderson and self.anderson_accelerator is not None:
     # SAFEGUARD: If Anderson produces negatives, fall back to damping
     if (M_anderson < 0).any():
         print(f"  Anderson overshoot detected, using standard damping for M")
-        self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
+        self.M = self.damping_factor * M_new_tmp_fp + (1 - self.damping_factor) * M_old_current_picard_iter
     else:
         self.M = M_anderson
 

@@ -206,13 +206,13 @@ The Mean Field Game system is defined with the following parameters:
         # Format configuration nicely
         for key, value in config.items():
             if isinstance(value, int | float | str | bool):
-                if key in ["sigma", "T", "coefCT"]:
+                if key in ["sigma", "T", "coupling_coefficient"]:
                     # Add mathematical context for key parameters
                     if key == "sigma":
                         config_markdown += f"- **Diffusion coefficient** $\\sigma = {value}$\n"
                     elif key == "T":
                         config_markdown += f"- **Time horizon** $T = {value}$\n"
-                    elif key == "coefCT":
+                    elif key == "coupling_coefficient":
                         config_markdown += f"- **Coupling strength** $\\alpha = {value}$\n"
                     else:
                         config_markdown += f"- **{key}**: {value}\n"

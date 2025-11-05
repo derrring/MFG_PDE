@@ -34,7 +34,7 @@ def run_solver(name: str, use_anderson: bool, damping_factor: float, anderson_be
         T=1.0,
         Nt=25,
         sigma=1.0,
-        coefCT=0.5,
+        coupling_coefficient=0.5,
     )
     bc = BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
 

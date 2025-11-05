@@ -435,7 +435,7 @@ class MPIFixedPointIterator(BaseMFGSolver):
         self.fp_solver = MPIFPSolver(fp_solver, self.decomp)
 
         # Use original solver parameters
-        self.thetaUM = kwargs.get('thetaUM', 0.5)
+        self.damping_factor = kwargs.get('damping_factor', 0.5)
 
     def solve(self, max_iterations: int, tolerance: float = 1e-5, **kwargs):
         """
@@ -467,8 +467,8 @@ class MPIFixedPointIterator(BaseMFGSolver):
             M_new_local = exchange_ghost_cells_1d(M_new_local, self.decomp)
 
             # 3. Apply damping
-            U_local = self.thetaUM * U_new_local + (1 - self.thetaUM) * U_old_local
-            M_local = self.thetaUM * M_new_local + (1 - self.thetaUM) * M_old_local
+            U_local = self.damping_factor * U_new_local + (1 - self.damping_factor) * U_old_local
+            M_local = self.damping_factor * M_new_local + (1 - self.damping_factor) * M_old_local
 
             # 4. Global convergence check
             conv_metrics = global_convergence_check(
@@ -513,7 +513,7 @@ class MPIHJBSolver:
         Key adjustments:
         - Nx_local = decomp.nx_local (interior points only)
         - xmin_local, xmax_local from decomp
-        - Same Nt, T, sigma, coefCT as global problem
+        - Same Nt, T, sigma, coupling_coefficient as global problem
         """
 
     def solve_hjb_system(self, M_local, U_final, U_prev):

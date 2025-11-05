@@ -192,7 +192,7 @@ solver_params = {
 
 problem_params = {
     "sigma": 0.25,             # Higher diffusion
-    "coefCT": 0.1,            # Stronger coupling for stability
+    "coupling_coefficient": 0.1,            # Stronger coupling for stability
     "Nt": 2*T*50              # Finer time steps
 }
 ```

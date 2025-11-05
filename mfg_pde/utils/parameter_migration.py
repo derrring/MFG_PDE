@@ -76,7 +76,7 @@ class ParameterMigrator:
 
         # Picard iteration parameters
         self.add_mapping(
-            old_name="Niter_max",
+            old_name="max_iterations",
             new_name="max_picard_iterations",
             deprecation_version="1.3.0",
             removal_version="2.0.0",
@@ -93,7 +93,7 @@ class ParameterMigrator:
 
         # Problem parameters
         self.add_mapping(
-            old_name="coefCT",
+            old_name="coupling_coefficient",
             new_name="coupling_coefficient",
             deprecation_version="1.4.0",
             removal_version="2.0.0",
@@ -391,8 +391,8 @@ The following parameter names have been modernized for clarity and consistency:
             "verbose_NewtonSolver",
             "damping_NewtonSolver",
         ],
-        "Picard Iteration": ["Niter_max", "l2errBoundPicard"],
-        "Problem Definition": ["coefCT"],
+        "Picard Iteration": ["max_iterations", "l2errBoundPicard"],
+        "Problem Definition": ["coupling_coefficient"],
         "GFDM Method": ["taylorOrder"],
         "Return Options": ["returnExtraInfo"],
     }

@@ -32,7 +32,7 @@ Design unified MFGProblem class that supports all dimensions (1D, 2D, 3D, nD), a
      * Legacy: `MFGProblem(Nx=100, xmin=0, xmax=1)`
      * N-D: `MFGProblem(spatial_bounds=[(0,1), (0,1)], spatial_discretization=[50, 50])`
    - **Attributes**: `dimension`, `spatial_shape`, `spatial_bounds`, `xSpace` (1D), etc.
-   - **Hamilton**ian**: Built-in quadratic H(p) = |p|²/(2σ) + coefCT·m
+   - **Hamilton**ian**: Built-in quadratic H(p) = |p|²/(2σ) + coupling_coefficient·m
 
 2. **GridBasedMFGProblem** (`mfg_pde/core/highdim_mfg_problem.py`)
    - **Purpose**: Dimension-agnostic grid-based problems
@@ -116,7 +116,7 @@ problem = MFGProblem(
     Nt=100,
     T=1.0,
     sigma=0.5,
-    coefCT=1.0
+    coupling_coefficient=1.0
 )
 
 # Auto-detected attributes:
@@ -249,7 +249,7 @@ class MFGProblem:
 
         sigma: float = 1.0,
         diffusion: float | None = None,  # NEW: alias for sigma
-        coefCT: float = 0.5,
+        coupling_coefficient: float = 0.5,
 
         # Advanced
         components: MFGComponents | None = None,
@@ -352,7 +352,7 @@ self.tSpace: np.ndarray        # (Nt+1,)
 
 # Physical parameters
 self.sigma: float
-self.coefCT: float
+self.coupling_coefficient: float
 
 # Components
 self.components: MFGComponents

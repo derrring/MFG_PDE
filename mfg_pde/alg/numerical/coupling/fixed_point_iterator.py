@@ -47,7 +47,7 @@ class FixedPointIterator(BaseMFGSolver):
         hjb_solver: HJB solver instance
         fp_solver: FP solver instance
         config: Configuration object (preferred modern approach)
-        thetaUM: Damping parameter (legacy parameter, overridden by config)
+        damping_factor: Damping parameter (legacy parameter, overridden by config)
         use_anderson: Enable Anderson acceleration
         anderson_depth: Anderson acceleration memory depth
         anderson_beta: Anderson acceleration mixing parameter
@@ -60,7 +60,7 @@ class FixedPointIterator(BaseMFGSolver):
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
         config: MFGSolverConfig | None = None,
-        damping_factor: float = 0.5,  # Renamed from thetaUM
+        damping_factor: float = 0.5,  # Renamed from damping_factor
         use_anderson: bool = False,
         anderson_depth: int = 5,
         anderson_beta: float = 1.0,
@@ -131,7 +131,7 @@ class FixedPointIterator(BaseMFGSolver):
         else:
             # Legacy parameter precedence
             final_max_iterations = (
-                max_iterations or kwargs.get("max_picard_iterations") or kwargs.get("Niter_max") or 100
+                max_iterations or kwargs.get("max_picard_iterations") or kwargs.get("max_iterations") or 100
             )
             final_tolerance = tolerance or kwargs.get("picard_tolerance") or kwargs.get("l2errBoundPicard") or 1e-6
             final_damping_factor = self.damping_factor

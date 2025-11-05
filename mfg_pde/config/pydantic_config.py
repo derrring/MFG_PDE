@@ -381,7 +381,7 @@ class MFGSolverConfig(BaseModel):
             # Legacy parameter names (for backward compatibility)
             "NiterNewton": self.newton.max_iterations,
             "l2errBoundNewton": self.newton.tolerance,
-            "Niter_max": self.picard.max_iterations,
+            "max_iterations": self.picard.max_iterations,
             "l2errBoundPicard": self.picard.tolerance,
             "l2errBound": self.convergence_tolerance,
             # Additional parameters

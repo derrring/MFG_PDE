@@ -133,7 +133,7 @@ from mfg_pde.factory import create_semi_lagrangian_solver
 problem = MFGProblem(
     xmin=0.0, xmax=1.0, Nx=50,
     T=0.5, Nt=25,
-    sigma=0.1, coefCT=1.0
+    sigma=0.1, coupling_coefficient=1.0
 )
 
 # Create solver

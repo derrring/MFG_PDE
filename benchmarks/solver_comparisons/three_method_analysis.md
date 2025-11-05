@@ -4,7 +4,7 @@
 **Problem Parameters:**
 - Domain: [0,1] × [0,1.0]
 - Resolution: Nx=60, Nt=50  
-- Physics: σ=0.2, coefCT=0.05
+- Physics: σ=0.2, coupling_coefficient=0.05
 - Boundary Conditions: No-flux (reflective boundaries)
 - Particles: 400 (for particle-based methods)
 

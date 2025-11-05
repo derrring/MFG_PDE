@@ -39,7 +39,7 @@ def with_progress_monitoring(
                 "max_iterations",
                 "Niter",
                 "max_picard_iterations",
-                "Niter_max",
+                "max_iterations",
             ]:
                 if param_name in kwargs:
                     max_iterations = kwargs[param_name]

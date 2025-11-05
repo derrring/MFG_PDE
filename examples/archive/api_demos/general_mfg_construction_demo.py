@@ -55,7 +55,7 @@ def example_1_quadratic_hamiltonian():
 
         try:
             # Kinetic energy term: (1/2)γ|p|²
-            gamma = problem.coefCT
+            gamma = problem.coupling_coefficient
             kinetic_energy = 0.5 * gamma * (npart_val_fwd**2 + ppart_val_bwd**2)
 
             # Potential term: V(x)
@@ -102,7 +102,7 @@ def example_1_quadratic_hamiltonian():
         .final_value(my_final_value)
         .domain(xmin=0.0, xmax=1.0, Nx=101)
         .time(T=1.0, Nt=101)
-        .coefficients(sigma=0.5, coefCT=1.0)
+        .coefficients(sigma=0.5, coupling_coefficient=1.0)
         .parameters(congestion_strength=2.0)
         .boundary_conditions(BoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0))
         .description("Quadratic Hamiltonian with congestion", "congestion_control")
@@ -150,7 +150,7 @@ def example_2_time_dependent_potential():
 
         try:
             # Time-dependent control cost: γ(t) = γ₀(1 + 0.5*sin(2πt))
-            gamma_0 = problem.coefCT
+            gamma_0 = problem.coupling_coefficient
             gamma_t = gamma_0 * (1.0 + 0.5 * np.sin(2 * np.pi * current_time))
 
             kinetic_energy = 0.5 * gamma_t * (npart_val_fwd**2 + ppart_val_bwd**2)
@@ -190,7 +190,7 @@ def example_2_time_dependent_potential():
         .final_value(lambda x: 0.0)  # Zero final cost
         .domain(xmin=0.0, xmax=1.0, Nx=81)
         .time(T=2.0, Nt=81)
-        .coefficients(sigma=0.3, coefCT=0.8)
+        .coefficients(sigma=0.3, coupling_coefficient=0.8)
         .parameters(coupling_strength=0.5)
         .boundary_conditions(BoundaryConditions(type="periodic"))
         .description("Time-dependent potential and control cost", "time_dependent")
@@ -238,7 +238,7 @@ def example_3_nonlocal_coupling():
 
         try:
             # Standard kinetic energy
-            kinetic_energy = 0.5 * problem.coefCT * (npart_val_fwd**2 + ppart_val_bwd**2)
+            kinetic_energy = 0.5 * problem.coupling_coefficient * (npart_val_fwd**2 + ppart_val_bwd**2)
 
             # Potential
             potential = problem.f_potential[x_idx]
@@ -301,7 +301,7 @@ def example_3_nonlocal_coupling():
         .coupling(custom_coupling)
         .domain(xmin=0.0, xmax=1.0, Nx=51)
         .time(T=1.0, Nt=51)
-        .coefficients(sigma=0.2, coefCT=1.0)
+        .coefficients(sigma=0.2, coupling_coefficient=1.0)
         .parameters(nonlocal_strength=0.5, kernel_width=0.1)
         .boundary_conditions(BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0))
         .description("Nonlocal coupling MFG", "nonlocal")
@@ -349,7 +349,7 @@ def example_4_portfolio_optimization():
 
             # Transaction cost (quadratic in control)
             transaction_cost = problem.components.parameters.get("transaction_cost", 0.01)
-            control_cost = (problem.coefCT + transaction_cost) * risk_aversion
+            control_cost = (problem.coupling_coefficient + transaction_cost) * risk_aversion
 
             kinetic_energy = 0.5 * control_cost * (npart_val_fwd**2 + ppart_val_bwd**2)
 
@@ -399,7 +399,7 @@ def example_4_portfolio_optimization():
         .final_value(final_portfolio_value)
         .domain(xmin=-2.0, xmax=2.0, Nx=81)
         .time(T=1.0, Nt=101)
-        .coefficients(sigma=0.2, coefCT=1.0)
+        .coefficients(sigma=0.2, coupling_coefficient=1.0)
         .parameters(
             risk_aversion=1.5,
             transaction_cost=0.02,

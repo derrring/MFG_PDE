@@ -1150,7 +1150,7 @@ problem = MFGProblem2D(
     discretization="finite_element",
     element_type="P1",
     sigma=1.0,
-    coefCT=0.5
+    coupling_coefficient=0.5
 )
 
 # Solve the problem
@@ -1244,7 +1244,7 @@ problem = MFGProblem3D(
     discretization="finite_element",
     element_type="P1",  # Tetrahedral elements
     sigma=1.0,
-    coefCT=0.5
+    coupling_coefficient=0.5
 )
 
 # Solve 3D problem

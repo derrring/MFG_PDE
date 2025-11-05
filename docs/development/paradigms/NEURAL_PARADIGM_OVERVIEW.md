@@ -266,7 +266,7 @@ fno = FourierNeuralOperator(config=fno_config)
 fno.train(training_data, epochs=100)
 
 # Real-time inference for new parameters
-new_params = {'sigma': 0.15, 'coefCT': 1.2}
+new_params = {'sigma': 0.15, 'coupling_coefficient': 1.2}
 solution = fno.predict(new_params)  # Milliseconds!
 ```
 
@@ -316,7 +316,7 @@ from mfg_pde.alg.neural.operator_learning import OperatorTrainingManager
 manager = OperatorTrainingManager()
 dataset = manager.generate_training_data(
     num_samples=1000,
-    parameter_ranges={'sigma': (0.05, 0.2), 'coefCT': (0.5, 2.0)},
+    parameter_ranges={'sigma': (0.05, 0.2), 'coupling_coefficient': (0.5, 2.0)},
     solver_type='fixed_point',
 )
 
@@ -679,7 +679,7 @@ operator = create_mfg_operator(operator_type='fno', config=FNOConfig())
 operator.train(training_data, epochs=100)
 
 # 3. Real-time inference
-new_params = {'sigma': 0.12, 'coefCT': 1.5}
+new_params = {'sigma': 0.12, 'coupling_coefficient': 1.5}
 solution = operator.predict(new_params)  # Milliseconds!
 ```
 

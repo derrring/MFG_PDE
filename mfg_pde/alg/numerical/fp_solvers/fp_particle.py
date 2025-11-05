@@ -370,7 +370,7 @@ class FPParticleSolver(BaseFPSolver):
         Dx = self.problem.Dx
         Dt = self.problem.Dt
         sigma_sde = self.problem.sigma
-        coefCT = self.problem.coefCT
+        coupling_coefficient = self.problem.coupling_coefficient
         x_grid = self.problem.xSpace
         xmin = self.problem.xmin
         Lx = self.problem.Lx
@@ -440,7 +440,7 @@ class FPParticleSolver(BaseFPSolver):
             else:
                 dUdx_at_particles = np.zeros(self.num_particles)
 
-            alpha_optimal_at_particles = -coefCT * dUdx_at_particles
+            alpha_optimal_at_particles = -coupling_coefficient * dUdx_at_particles
 
             dW = np.random.normal(0.0, np.sqrt(Dt), self.num_particles) if Dt > 1e-14 else np.zeros(self.num_particles)
 
@@ -500,7 +500,7 @@ class FPParticleSolver(BaseFPSolver):
         Dx = self.problem.Dx
         Dt = self.problem.Dt
         sigma_sde = self.problem.sigma
-        coefCT = self.problem.coefCT
+        coupling_coefficient = self.problem.coupling_coefficient
         x_grid = self.problem.xSpace
         xmin = self.problem.xmin
         xmax = xmin + self.problem.Lx
@@ -574,7 +574,7 @@ class FPParticleSolver(BaseFPSolver):
                 dUdx_particles_gpu = self.backend.zeros((self.num_particles,))
 
             # Compute drift (GPU)
-            drift_gpu = -coefCT * dUdx_particles_gpu
+            drift_gpu = -coupling_coefficient * dUdx_particles_gpu
 
             # Random noise (GPU native RNG)
             if Dt > 1e-14:

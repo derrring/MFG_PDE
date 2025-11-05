@@ -141,10 +141,10 @@ val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 val_A_i_ip1 = -sigma**2 / Dx**2
 
 # ADD: Advection using one-sided derivative
-# v_0 = -coefCT * (u_1 - u_0)/Dx
+# v_0 = -coupling_coefficient * (u_1 - u_0)/Dx
 # Upwind flux: if v_0 > 0, flux from left (ghost) = 0
 #              if v_0 < 0, flux = v_0 * m_0
-val_A_ii += coefCT * ppart((u_1 - u_0)/Dx) / Dx  # outflow
+val_A_ii += coupling_coefficient * ppart((u_1 - u_0)/Dx) / Dx  # outflow
 ```
 
 **Check row sum conservation**:
@@ -188,9 +188,9 @@ if i == 0:
     
     # Advection: one-sided derivative for velocity
     if Nx > 1:
-        v_0 = -coefCT * (u_at_tk[1] - u_at_tk[0]) / Dx
+        v_0 = -coupling_coefficient * (u_at_tk[1] - u_at_tk[0]) / Dx
         # Upwind: outflow from cell 0
-        val_A_ii += coefCT * ppart(v_0) / Dx
+        val_A_ii += coupling_coefficient * ppart(v_0) / Dx
         # Inflow to cell 0 (from boundary, zero by no-flux)
     
     row_indices.append(i)
@@ -200,8 +200,8 @@ if i == 0:
     if Nx > 1:
         val_A_i_ip1 = -sigma**2 / Dx**2
         # Advection: flux to neighbor
-        v_0 = -coefCT * (u_at_tk[1] - u_at_tk[0]) / Dx
-        val_A_i_ip1 += -coefCT * npart(v_0) / Dx
+        v_0 = -coupling_coefficient * (u_at_tk[1] - u_at_tk[0]) / Dx
+        val_A_i_ip1 += -coupling_coefficient * npart(v_0) / Dx
         row_indices.append(i)
         col_indices.append(i + 1)
         data_values.append(val_A_i_ip1)

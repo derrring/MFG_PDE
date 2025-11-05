@@ -48,7 +48,7 @@ def create_challenging_mfg_problem() -> MFGProblem:
         T=1.0,
         Nt=200,
         sigma=0.05,  # Low diffusion -> sharp features
-        coefCT=2.0,  # High congestion -> nonlinear effects
+        coupling_coefficient=2.0,  # High congestion -> nonlinear effects
     )
 
     # Create sharp initial condition with discontinuous derivative
@@ -65,7 +65,7 @@ def create_challenging_mfg_problem() -> MFGProblem:
 
     logger.info("Created challenging MFG problem with sharp features")
     logger.info(f"Grid: {problem.Nx} points, Time steps: {problem.Nt}")
-    logger.info(f"Diffusion σ = {problem.sigma}, Congestion = {problem.coefCT}")
+    logger.info(f"Diffusion σ = {problem.sigma}, Congestion = {problem.coupling_coefficient}")
 
     return problem
 

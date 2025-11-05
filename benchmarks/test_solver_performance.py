@@ -38,7 +38,7 @@ def small_problem():
         T=1.0,
         Nt=30,  # Small time steps
         sigma=0.12,
-        coefCT=0.02,
+        coupling_coefficient=0.02,
     )
 
 
@@ -52,7 +52,7 @@ def medium_problem():
         T=1.0,
         Nt=50,  # Medium time steps
         sigma=0.12,
-        coefCT=0.02,
+        coupling_coefficient=0.02,
     )
 
 
@@ -193,7 +193,7 @@ def test_problem_creation_overhead(benchmark):
             T=1.0,
             Nt=50,
             sigma=0.12,
-            coefCT=0.02,
+            coupling_coefficient=0.02,
         )
 
     problem = benchmark(create_problem)

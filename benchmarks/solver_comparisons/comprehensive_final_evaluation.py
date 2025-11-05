@@ -32,7 +32,15 @@ def comprehensive_three_method_evaluation():
     print("With Tuned Smart QP optimization achieving 3.7% QP usage rate")
 
     # Problem parameters for comprehensive evaluation
-    problem_params = {"xmin": 0.0, "xmax": 1.0, "Nx": 20, "T": 1.0, "Nt": 30, "sigma": 0.12, "coefCT": 0.02}
+    problem_params = {
+        "xmin": 0.0,
+        "xmax": 1.0,
+        "Nx": 20,
+        "T": 1.0,
+        "Nt": 30,
+        "sigma": 0.12,
+        "coupling_coefficient": 0.02,
+    }
 
     print("Problem Configuration:")
     print(f"  Domain: [{problem_params['xmin']}, {problem_params['xmax']}]")
@@ -40,7 +48,7 @@ def comprehensive_three_method_evaluation():
     print(f"  Time horizon: T = {problem_params['T']}")
     print(f"  Temporal discretization: Nt = {problem_params['Nt']}")
     print(f"  Volatility: σ = {problem_params['sigma']}")
-    print(f"  Control cost: coefCT = {problem_params['coefCT']}")
+    print(f"  Control cost: coupling_coefficient = {problem_params['coupling_coefficient']}")
 
     results = {}
 

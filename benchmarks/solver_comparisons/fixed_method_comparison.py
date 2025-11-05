@@ -31,10 +31,18 @@ def test_method_comparison():
     print("Methods: Pure FDM, Hybrid Particle-FDM, Improved QP-Collocation")
 
     # Problem parameters - moderate size for reasonable execution time
-    problem_params = {"xmin": 0.0, "xmax": 1.0, "Nx": 20, "T": 1.0, "Nt": 40, "sigma": 0.15, "coefCT": 0.02}
+    problem_params = {
+        "xmin": 0.0,
+        "xmax": 1.0,
+        "Nx": 20,
+        "T": 1.0,
+        "Nt": 40,
+        "sigma": 0.15,
+        "coupling_coefficient": 0.02,
+    }
 
     print(f"Problem: Nx={problem_params['Nx']}, T={problem_params['T']}, Nt={problem_params['Nt']}")
-    print(f"Parameters: σ={problem_params['sigma']}, coefCT={problem_params['coefCT']}")
+    print(f"Parameters: σ={problem_params['sigma']}, coupling_coefficient={problem_params['coupling_coefficient']}")
 
     results = {}
 
@@ -53,12 +61,12 @@ def test_method_comparison():
         fp_solver = FdmFPSolver(problem)
 
         # Create fixed point iterator
-        fdm_solver = FixedPointIterator(problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.5)
+        fdm_solver = FixedPointIterator(problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
         print("Running FDM solver...")
         start_time = time.time()
         U_fdm, M_fdm, iterations_fdm, rel_err_u_fdm, rel_err_m_fdm = fdm_solver.solve(
-            Niter_max=10, l2errBoundPicard=1e-3
+            max_iterations=10, l2errBoundPicard=1e-3
         )
         fdm_time = time.time() - start_time
 
@@ -107,12 +115,14 @@ def test_method_comparison():
         )
 
         # Create fixed point iterator
-        hybrid_solver = FixedPointIterator(problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, thetaUM=0.3)
+        hybrid_solver = FixedPointIterator(
+            problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.3
+        )
 
         print("Running Hybrid solver...")
         start_time = time.time()
         U_hybrid, M_hybrid, iterations_hybrid, rel_err_u_hybrid, rel_err_m_hybrid = hybrid_solver.solve(
-            Niter_max=10, l2errBoundPicard=1e-3
+            max_iterations=10, l2errBoundPicard=1e-3
         )
         hybrid_time = time.time() - start_time
 

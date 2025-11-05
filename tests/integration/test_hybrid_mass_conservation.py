@@ -58,7 +58,7 @@ class TestHybridMassConservation:
             T=1.0,
             Nt=20,
             sigma=0.1,
-            coefCT=1.0,  # Running cost coefficient
+            coupling_coefficient=1.0,  # Running cost coefficient
         )
 
     def test_hybrid_solver_mass_conservation_neumann_bc(self, simple_1d_problem):

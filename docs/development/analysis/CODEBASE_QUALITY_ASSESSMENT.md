@@ -90,7 +90,7 @@ class ConvergenceError(MFGSolverError):
 #### Parameter Naming Evolution:
 ```python
 # Legacy (maintained for compatibility)
-NiterNewton, l2errBoundNewton, Niter_max
+NiterNewton, l2errBoundNewton, max_iterations
 
 # Modern (preferred)
 max_newton_iterations, newton_tolerance, max_picard_iterations
@@ -171,7 +171,7 @@ result = solver.solve()
 #### Mixed Naming Conventions:
 ```python
 # Mathematical notation (legacy)
-Nx, Nt, Dx, Dt, coefCT
+Nx, Nt, Dx, Dt, coupling_coefficient
 
 # Descriptive names (modern)
 num_spatial_points, num_time_steps, spatial_step, time_step

@@ -99,7 +99,7 @@ Think of MFGProblem like a game level:
 │ MFGProblem (The Complete Problem)          │
 │ - Domain size (xmin, xmax, Nx)             │
 │ - Time horizon (T, Nt)                     │
-│ - Default parameters (sigma, coefCT)       │
+│ - Default parameters (sigma, coupling_coefficient)       │
 └─────────────────────┬───────────────────────┘
                       │ uses
                       ▼
@@ -256,7 +256,7 @@ problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 
 # ...implicitly uses default environment configuration:
 implicit_components = MFGComponents(
-    hamiltonian_func=lambda x, m, p, t: 0.5 * p**2 + problem.coefCT * m,
+    hamiltonian_func=lambda x, m, p, t: 0.5 * p**2 + problem.coupling_coefficient * m,
     potential_func=lambda x, t: default_potential(x),
     initial_density_func=lambda x: default_gaussian(x),
     boundary_conditions=default_bc

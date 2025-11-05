@@ -40,7 +40,7 @@ def create_test_problem():
         "T": 1.0,
         "Nt": 50,
         "sigma": 1.0,
-        "coefCT": 0.5,
+        "coupling_coefficient": 0.5,
     }
     return ExampleMFGProblem(**problem_params)
 

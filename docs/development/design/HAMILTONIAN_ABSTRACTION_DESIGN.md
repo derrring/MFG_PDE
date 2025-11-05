@@ -325,10 +325,10 @@ class MFGProblem:
                 )
             else:
                 # Default
-                self._hamiltonian = QuadraticHamiltonian(self.coefCT)
+                self._hamiltonian = QuadraticHamiltonian(self.coupling_coefficient)
         else:
             # Default problem
-            self._hamiltonian = QuadraticHamiltonian(self.coefCT)
+            self._hamiltonian = QuadraticHamiltonian(self.coupling_coefficient)
 
     def H(self, x_idx, m_at_x, derivs, ...):
         """Simplified - delegates to Hamiltonian object."""

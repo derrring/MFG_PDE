@@ -98,7 +98,7 @@ class AMRAccuracyBenchmark:
             Nx=nx,
             Nt=20,
             sigma=0.1,  # Moderate diffusion
-            coefCT=0.5,  # Moderate congestion
+            coupling_coefficient=0.5,  # Moderate congestion
         )
 
         problem.domain = domain
@@ -125,7 +125,7 @@ class AMRAccuracyBenchmark:
             Nx=nx,
             Nt=30,
             sigma=0.02,  # Small diffusion → sharp features
-            coefCT=3.0,  # Strong congestion → localized dynamics
+            coupling_coefficient=3.0,  # Strong congestion → localized dynamics
         )
 
         problem.domain = domain

@@ -210,7 +210,7 @@ def _default_hamiltonian(self, derivs: dict[tuple, float], m: float) -> float:
     # Compute ||∇u||²
     grad_norm_sq = sum(p**2 for p in grad_components)
 
-    return 0.5 * grad_norm_sq + self.coefCT * m
+    return 0.5 * grad_norm_sq + self.coupling_coefficient * m
 ```
 
 **Pros**:

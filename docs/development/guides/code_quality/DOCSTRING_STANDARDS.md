@@ -186,7 +186,7 @@ where:
 - `U`: Value function $u(t,x)$ solution array
 - `M`: Density function $m(t,x)$ solution array
 - `sigma`: Diffusion coefficient $\\sigma$
-- `coupling_coefficient`: Coupling strength (modern name for coefCT)
+- `coupling_coefficient`: Coupling strength (modern name for coupling_coefficient)
 
 ## Type Annotation Standards
 

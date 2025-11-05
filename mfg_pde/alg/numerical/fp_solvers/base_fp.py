@@ -20,7 +20,7 @@ class BaseFPSolver(ABC):
     M_t + div(drift_term * M) - (sigma^2/2) * M_xx = 0
 
     The drift_term often depends on the gradient of the value function U(t,x)
-    obtained from the HJB equation, e.g., drift = -coefCT * grad(U) or a more
+    obtained from the HJB equation, e.g., drift = -coupling_coefficient * grad(U) or a more
     complex optimal control.
 
     Note: This class maintains backward compatibility with the original interface

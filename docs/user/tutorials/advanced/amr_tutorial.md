@@ -94,7 +94,7 @@ def basic_amr_example():
         xmax=2.0,
         T=1.0,
         sigma=0.05,      # Small diffusion → sharp features
-        coefCT=1.0       # Strong congestion → localized dynamics
+        coupling_coefficient=1.0       # Strong congestion → localized dynamics
     )
     
     print("Step 1: Created MFG problem with sharp features")
@@ -423,7 +423,7 @@ def amr_vs_uniform_comparison():
         xmin=-3.0, xmax=3.0,
         T=1.0,
         sigma=0.02,  # Very small diffusion → sharp gradients
-        coefCT=2.0   # Strong congestion
+        coupling_coefficient=2.0   # Strong congestion
     )
     
     print("=== AMR vs Uniform Grid Comparison ===\n")
@@ -435,7 +435,7 @@ def amr_vs_uniform_comparison():
     print("Testing uniform grids...")
     for nx in uniform_tests:
         problem_uniform = ExampleMFGProblem(
-            Nx=nx, Nt=50, xmin=-3.0, xmax=3.0, T=1.0, sigma=0.02, coefCT=2.0
+            Nx=nx, Nt=50, xmin=-3.0, xmax=3.0, T=1.0, sigma=0.02, coupling_coefficient=2.0
         )
         
         start_time = time.time()
@@ -962,7 +962,7 @@ def traffic_flow_amr_example():
         def congestion_cost(self, x, m):
             # Higher congestion near city center
             distance_factor = np.exp(-2 * (x - self.city_center)**2)
-            return self.coefCT * m * (1 + 5 * distance_factor)
+            return self.coupling_coefficient * m * (1 + 5 * distance_factor)
     
     problem = TrafficFlowProblem(
         Nx=48,
@@ -970,7 +970,7 @@ def traffic_flow_amr_example():
         xmin=-5.0, xmax=5.0,
         T=2.0,
         sigma=0.1,
-        coefCT=1.0
+        coupling_coefficient=1.0
     )
     
     print("=== Traffic Flow with AMR ===")
@@ -1015,9 +1015,9 @@ def financial_market_amr_example():
         def running_cost(self, x, u, m):
             # Higher costs during volatility shocks
             if self.volatility_shock and abs(x) > 1.5:
-                return 2.0 * (u**2 + self.coefCT * m**2)
+                return 2.0 * (u**2 + self.coupling_coefficient * m**2)
             else:
-                return u**2 + self.coefCT * m**2
+                return u**2 + self.coupling_coefficient * m**2
     
     problem = FinancialMarketProblem(
         Nx=40,
@@ -1025,7 +1025,7 @@ def financial_market_amr_example():
         xmin=-3.0, xmax=3.0,
         T=1.5,
         sigma=0.05,  # Low base volatility
-        coefCT=0.8
+        coupling_coefficient=0.8
     )
     
     print("=== Financial Market with AMR ===")
@@ -1078,7 +1078,7 @@ def epidemic_spread_amr_example():
         xmin=-4.0, xmax=4.0,
         T=3.0,
         sigma=0.2,   # Moderate spread rate
-        coefCT=1.5   # Strong interaction effects
+        coupling_coefficient=1.5   # Strong interaction effects
     )
     
     print("=== Epidemic Spread with AMR ===")

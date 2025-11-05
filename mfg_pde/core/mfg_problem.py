@@ -143,7 +143,7 @@ class MFGProblem:
         # Physical parameters
         sigma: float | None = None,
         diffusion: float | None = None,  # Alias for sigma
-        coefCT: float = 0.5,
+        coupling_coefficient: float = 0.5,
         # Advanced
         components: MFGComponents | None = None,
         suppress_warnings: bool = False,
@@ -170,7 +170,7 @@ class MFGProblem:
             network: NetworkGraph for network MFG problems
             T, Nt, time_domain: Time domain parameters (T, Nt) or tuple (T, Nt)
             sigma, diffusion: Diffusion coefficient (sigma is standard name)
-            coefCT: Control cost coefficient
+            coupling_coefficient: Control cost coefficient
             components: Optional MFGComponents for custom problem definition
             suppress_warnings: Suppress computational feasibility warnings
             **kwargs: Additional parameters
@@ -267,19 +267,19 @@ class MFGProblem:
                     xmin_normalized = [0.0]
                 if xmax_normalized is None:
                     xmax_normalized = [1.0]
-            self._init_1d_legacy(xmin_normalized, xmax_normalized, Nx_normalized, T, Nt, sigma, coefCT)
+            self._init_1d_legacy(xmin_normalized, xmax_normalized, Nx_normalized, T, Nt, sigma, coupling_coefficient)
 
         elif mode == "nd_grid":
             # Mode 2: N-dimensional grid
-            self._init_nd(spatial_bounds, spatial_discretization, T, Nt, sigma, coefCT, suppress_warnings)
+            self._init_nd(spatial_bounds, spatial_discretization, T, Nt, sigma, coupling_coefficient, suppress_warnings)
 
         elif mode == "geometry":
             # Mode 3: Complex geometry
-            self._init_geometry(geometry, obstacles, T, Nt, sigma, coefCT, suppress_warnings)
+            self._init_geometry(geometry, obstacles, T, Nt, sigma, coupling_coefficient, suppress_warnings)
 
         elif mode == "network":
             # Mode 4: Network MFG
-            self._init_network(network, T, Nt, sigma, coefCT)
+            self._init_network(network, T, Nt, sigma, coupling_coefficient)
 
         elif mode == "default":
             # Default: 1D with default parameters
@@ -288,7 +288,7 @@ class MFGProblem:
                 UserWarning,
                 stacklevel=2,
             )
-            self._init_1d_legacy([0.0], [1.0], [51], T, Nt, sigma, coefCT)
+            self._init_1d_legacy([0.0], [1.0], [51], T, Nt, sigma, coupling_coefficient)
 
         else:
             raise ValueError(f"Unknown initialization mode: {mode}")
@@ -326,7 +326,7 @@ class MFGProblem:
         T: float,
         Nt: int,
         sigma: float,
-        coefCT: float,
+        coupling_coefficient: float,
     ) -> None:
         """
         Initialize problem in legacy 1D mode (100% backward compatible).
@@ -338,7 +338,7 @@ class MFGProblem:
             T: Terminal time
             Nt: Temporal grid points
             sigma: Diffusion coefficient
-            coefCT: Control cost coefficient
+            coupling_coefficient: Control cost coefficient
 
         Note:
             This manual grid construction pattern is deprecated. Consider using
@@ -386,7 +386,7 @@ class MFGProblem:
 
         # Coefficients
         self.sigma: float = sigma
-        self.coefCT: float = coefCT
+        self.coupling_coefficient: float = coupling_coefficient
 
         # New n-D attributes for consistency (stored as arrays)
         self.spatial_shape = (Nx_scalar + 1,)  # 1D shape: (Nx+1,)
@@ -406,7 +406,7 @@ class MFGProblem:
         T: float,
         Nt: int,
         sigma: float,
-        coefCT: float,
+        coupling_coefficient: float,
         suppress_warnings: bool,
     ) -> None:
         """
@@ -469,7 +469,7 @@ class MFGProblem:
 
         # Coefficients
         self.sigma: float = sigma
-        self.coefCT: float = coefCT
+        self.coupling_coefficient: float = coupling_coefficient
 
         # Legacy 1D attributes (set to None for n-D, dimension > 1)
         if dimension == 1:
@@ -620,7 +620,7 @@ class MFGProblem:
         T: float,
         Nt: int,
         sigma: float,
-        coefCT: float,
+        coupling_coefficient: float,
         suppress_warnings: bool,
     ) -> None:
         """
@@ -633,7 +633,7 @@ class MFGProblem:
             geometry: Any object implementing GeometryProtocol
             obstacles: List of obstacle geometries (for domain geometries)
             T, Nt: Time domain parameters
-            sigma, coefCT: Physical parameters
+            sigma, coupling_coefficient: Physical parameters
             suppress_warnings: Suppress warnings
         """
         # Import geometry protocol
@@ -668,7 +668,7 @@ class MFGProblem:
 
         # Physical parameters
         self.sigma = sigma
-        self.coefCT = coefCT
+        self.coupling_coefficient = coupling_coefficient
 
         # Initialize spatial discretization based on geometry type
         from mfg_pde.geometry.geometry_protocol import GeometryType
@@ -771,7 +771,7 @@ class MFGProblem:
         T: float,
         Nt: int,
         sigma: float,
-        coefCT: float,
+        coupling_coefficient: float,
     ) -> None:
         """
         Initialize problem on network/graph.
@@ -779,7 +779,7 @@ class MFGProblem:
         Args:
             network: NetworkGraph or networkx.Graph
             T, Nt: Time domain parameters
-            sigma, coefCT: Physical parameters
+            sigma, coupling_coefficient: Physical parameters
         """
         # Store network
         self.network = network
@@ -810,7 +810,7 @@ class MFGProblem:
 
         # Physical parameters
         self.sigma = sigma
-        self.coefCT = coefCT
+        self.coupling_coefficient = coupling_coefficient
 
         # Spatial discretization (nodes)
         self.spatial_shape = (self.num_nodes,)
@@ -1428,7 +1428,7 @@ class MFGProblem:
         if np.isinf(term_npart_sq) or np.isnan(term_npart_sq) or np.isinf(term_ppart_sq) or np.isnan(term_ppart_sq):
             return np.nan
 
-        hamiltonian_control_part = 0.5 * self.coefCT * (term_npart_sq + term_ppart_sq)
+        hamiltonian_control_part = 0.5 * self.coupling_coefficient * (term_npart_sq + term_ppart_sq)
 
         if np.isinf(hamiltonian_control_part) or np.isnan(hamiltonian_control_part):
             return np.nan
@@ -1579,7 +1579,7 @@ class MFGProblem:
         if not self.is_custom:
             Nx = self.Nx + 1
             Dx = self.Dx
-            coefCT = self.coefCT
+            coupling_coefficient = self.coupling_coefficient
 
             J_D_H = np.zeros(Nx)
             J_L_H = np.zeros(Nx)
@@ -1598,9 +1598,9 @@ class MFGProblem:
                 p1_i = (U_curr[ip1] - U_curr[i]) / Dx
                 p2_i = (U_curr[i] - U_curr[im1]) / Dx
 
-                J_D_H[i] = coefCT * (npart(p1_i) + ppart(p2_i)) / (Dx**2)
-                J_L_H[i] = -coefCT * ppart(p2_i) / (Dx**2)
-                J_U_H[i] = -coefCT * npart(p1_i) / (Dx**2)
+                J_D_H[i] = coupling_coefficient * (npart(p1_i) + ppart(p2_i)) / (Dx**2)
+                J_L_H[i] = -coupling_coefficient * ppart(p2_i) / (Dx**2)
+                J_U_H[i] = -coupling_coefficient * npart(p1_i) / (Dx**2)
 
             return J_D_H, J_L_H, J_U_H
 
@@ -1696,7 +1696,7 @@ class MFGProblem:
                 "parameters": self.components.parameters,
                 "domain": {"xmin": self.xmin, "xmax": self.xmax, "Nx": self.Nx},
                 "time": {"T": self.T, "Nt": self.Nt},
-                "coefficients": {"sigma": self.sigma, "coefCT": self.coefCT},
+                "coefficients": {"sigma": self.sigma, "coupling_coefficient": self.coupling_coefficient},
             }
         else:
             return {
@@ -1712,7 +1712,7 @@ class MFGProblem:
                 "parameters": {},
                 "domain": {"xmin": self.xmin, "xmax": self.xmax, "Nx": self.Nx},
                 "time": {"T": self.T, "Nt": self.Nt},
-                "coefficients": {"sigma": self.sigma, "coefCT": self.coefCT},
+                "coefficients": {"sigma": self.sigma, "coupling_coefficient": self.coupling_coefficient},
             }
 
 
@@ -1802,9 +1802,9 @@ class MFGProblemBuilder:
         self.time_params = {"T": T, "Nt": Nt}
         return self
 
-    def coefficients(self, sigma: float = 1.0, coefCT: float = 0.5) -> MFGProblemBuilder:
+    def coefficients(self, sigma: float = 1.0, coupling_coefficient: float = 0.5) -> MFGProblemBuilder:
         """Set solver coefficients."""
-        self.solver_params.update({"sigma": sigma, "coefCT": coefCT})
+        self.solver_params.update({"sigma": sigma, "coupling_coefficient": coupling_coefficient})
         return self
 
     def parameters(self, **params: Any) -> MFGProblemBuilder:
@@ -1898,7 +1898,7 @@ def create_mfg_problem(hamiltonian_func: Callable, hamiltonian_dm_func: Callable
 
     solver_config = {
         "sigma": kwargs.pop("sigma", 1.0),
-        "coefCT": kwargs.pop("coefCT", 0.5),
+        "coupling_coefficient": kwargs.pop("coupling_coefficient", 0.5),
     }
 
     # Create components

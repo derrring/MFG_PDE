@@ -92,7 +92,7 @@ def create_mock_problem():
     problem.xmin = 0.0
     problem.xmax = 1.0
     problem.sigma = 0.1
-    problem.coefCT = 0.5
+    problem.coupling_coefficient = 0.5
     problem.tSpace = np.linspace(0, 1.0, 21)
     problem.xSpace = np.linspace(0.0, 1.0, 11)
     return problem
@@ -218,7 +218,7 @@ def test_save_experiment_data_filename_format():
         )
 
         filename = Path(filepath).name
-        # Should contain T, Nx, Nt, sigma, coefCT
+        # Should contain T, Nx, Nt, sigma, coupling_coefficient
         assert "T1.0" in filename
         assert "Nx11" in filename
         assert "Nt21" in filename

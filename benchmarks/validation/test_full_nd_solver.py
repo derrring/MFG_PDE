@@ -63,7 +63,7 @@ class CrowdMotion2D(GridBasedMFGProblem):
             T=time_horizon,
             Nt=num_timesteps,
             sigma=diffusion,
-            coefCT=1.0,
+            coupling_coefficient=1.0,
         )
 
     def initial_density(self, x):
@@ -119,7 +119,7 @@ class PureDiffusion2D(GridBasedMFGProblem):
             T=time_horizon,
             Nt=num_timesteps,
             sigma=diffusion,
-            coefCT=1.0,
+            coupling_coefficient=1.0,
         )
 
     def initial_density(self, x):

@@ -227,7 +227,7 @@ U = np.zeros(shape)  # Often far from solution
 **Problem 2: Fixed Damping Parameters**
 ```python
 # Current: Fixed damping
-thetaUM = 0.7  # May be too aggressive or too conservative
+damping_factor = 0.7  # May be too aggressive or too conservative
 ```
 
 **Problem 3: Limited Diagnostics**
@@ -283,7 +283,7 @@ class FixedPointIterator:
 
 #### Enhancement 2: Adaptive Damping
 
-**Current**: Fixed `thetaUM = 0.7`
+**Current**: Fixed `damping_factor = 0.7`
 
 **Proposed**: Adaptive damping based on convergence behavior
 
@@ -322,7 +322,7 @@ def solve(self, max_iterations=100, adaptive_damping=False):
         # Solve sub-problems...
 
         if adaptive_damping:
-            self.thetaUM = damping_strategy.update(current_error)
+            self.damping_factor = damping_strategy.update(current_error)
 
         # Update with adaptive damping...
 ```

@@ -165,7 +165,7 @@ class AMRMemoryProfiler:
 
             # Create 1D problem
             domain = Domain1D(0.0, 1.0, periodic_bc())
-            problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=size, Nt=20, sigma=0.1, coefCT=1.0)
+            problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=size, Nt=20, sigma=0.1, coupling_coefficient=1.0)
             problem.domain = domain
             problem.dimension = 1
 
@@ -282,7 +282,7 @@ class AMRMemoryProfiler:
 
         # Create a moderate-size problem
         domain = Domain1D(0.0, 1.0, periodic_bc())
-        problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=128, Nt=20, sigma=0.1, coefCT=1.0)
+        problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=128, Nt=20, sigma=0.1, coupling_coefficient=1.0)
         problem.domain = domain
         problem.dimension = 1
 
@@ -372,7 +372,7 @@ class AMRMemoryProfiler:
             Nx=256,
             Nt=20,
             sigma=0.05,
-            coefCT=2.0,  # Sharp features for AMR
+            coupling_coefficient=2.0,  # Sharp features for AMR
         )
         problem.domain = domain
         problem.dimension = 1
