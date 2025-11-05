@@ -17,7 +17,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem, MFGProblemBuilder
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.core.mfg_problem_legacy import MFGComponents, MFGProblemBuilder
 from mfg_pde.geometry import BoundaryConditions
 
 # ===================================================================

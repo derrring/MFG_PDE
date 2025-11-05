@@ -28,7 +28,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.core.mfg_problem_legacy import MFGComponents
 
 if TYPE_CHECKING:
     from collections.abc import Callable

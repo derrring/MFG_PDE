@@ -9,7 +9,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.core.mfg_problem_legacy import MFGComponents
 from mfg_pde.factory import (
     create_crowd_problem,
     create_lq_problem,
