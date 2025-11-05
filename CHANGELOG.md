@@ -5,6 +5,75 @@ All notable changes to MFG_PDE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-11-05
+
+### Added
+
+**PR #244: Phase 2 Array Notation - Backward Compatible Implementation**
+- Added `_normalize_to_array()` helper method in `MFGProblem` (`mfg_problem.py:79-122`)
+  - Automatically converts scalar inputs to arrays
+  - Emits `DeprecationWarning` for scalar usage
+  - Points users to `MATHEMATICAL_NOTATION_STANDARD.md`
+- Updated `MFGProblem.__init__` signature to accept both scalar and array inputs:
+  - `Nx`: `int | list[int]` (deprecated scalar, standard array)
+  - `xmin`, `xmax`: `float | list[float]` (deprecated scalar, standard array)
+- Both scalar and array inputs produce identical results with 100% backward compatibility
+- Migration path for Phase 3 (v1.0.0): Remove deprecated scalar API
+
+**PR #247: GeometryProtocol Foundation**
+- Created `GeometryProtocol` runtime-checkable Protocol (`mfg_pde/geometry/geometry_protocol.py`)
+  - Minimal interface for all geometry objects
+  - Four required properties: `dimension`, `geometry_type`, `num_spatial_points`, `get_spatial_grid()`
+- Created `GeometryType` enum with 7 types:
+  - `CARTESIAN_GRID`: Regular tensor product grids
+  - `NETWORK`: Graph/network geometries
+  - `MAZE`: Maze environments
+  - `DOMAIN_2D`, `DOMAIN_3D`: Gmsh-based unstructured meshes
+  - `IMPLICIT`: Level sets and signed distance functions
+  - `CUSTOM`: User-defined geometries
+- Added helper functions:
+  - `detect_geometry_type()`: Self-aware type detection via attribute inspection
+  - `is_geometry_compatible()`: Compatibility checking
+  - `validate_geometry()`: Validation with informative error messages
+- Implemented GeometryProtocol for 4 core geometry classes:
+  - `Domain1D`: 1D Cartesian grids with grid caching
+  - `BaseGeometry`: Abstract base for Domain2D/Domain3D meshes
+  - `TensorProductGrid`: Arbitrary-dimension structured grids
+  - `NetworkGeometry`: Graph-based geometries (Grid/Random/ScaleFree networks)
+- Comprehensive design documentation (`docs/development/UNIFIED_GEOMETRY_PARAMETER_DESIGN.md`, 844 lines)
+
+### Changed
+
+**API Improvements**
+- `MFGProblem` now accepts both scalar and array notation for spatial parameters
+- Array notation is the new standard (following `MATHEMATICAL_NOTATION_STANDARD.md`)
+- Scalar inputs trigger deprecation warnings pointing to migration guide
+
+**Code Quality**
+- Unified geometry interface across all geometry types
+- Protocol-based design enables duck typing without explicit inheritance
+- Self-aware geometry types for automatic type detection
+- Enhanced type safety and consistency
+
+### Deprecated
+
+**API Parameters** (to be removed in v1.0.0)
+- Scalar `Nx`, `xmin`, `xmax` parameters in `MFGProblem.__init__`
+  - Use arrays instead: `Nx=[100]`, `xmin=[-2.0]`, `xmax=[2.0]`
+  - Deprecation warnings guide users to `MATHEMATICAL_NOTATION_STANDARD.md`
+
+### Documentation
+
+- Array-Based Notation Migration plan (`docs/development/ARRAY_BASED_NOTATION_MIGRATION.md`)
+- Mathematical Notation Standard (`docs/development/MATHEMATICAL_NOTATION_STANDARD.md`)
+- Unified Geometry Parameter Design (`docs/development/UNIFIED_GEOMETRY_PARAMETER_DESIGN.md`)
+
+### Testing
+
+- All 3300+ tests passing
+- Array notation backward compatibility validated
+- GeometryProtocol compliance verified for all implemented geometries
+
 ## [0.9.1] - 2025-11-04
 
 ### Added
