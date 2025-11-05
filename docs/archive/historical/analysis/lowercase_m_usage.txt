@@ -1,1 +1,0 @@
-mfg_pde/hooks/visualization.py:                        "m": result.m,
