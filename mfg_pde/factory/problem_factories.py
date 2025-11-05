@@ -244,16 +244,6 @@ def create_mfg_problem(
                 components=components,
                 **kwargs,
             )
-        elif problem_type == "highdim":
-            from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-
-            return GridBasedMFGProblem(
-                geometry=geometry,
-                time_horizon=time_horizon,
-                num_timesteps=num_timesteps,
-                components=components,
-                **kwargs,
-            )
         else:
             # Standard MFG
             return MFGProblem(
@@ -638,9 +628,8 @@ def create_highdim_problem(
     boundary_conditions: BoundaryConditions | None = None,
     time_horizon: float = 1.0,
     num_timesteps: int = 100,
-    use_unified: bool = True,
     **kwargs: Any,
-) -> MFGProblem | Any:
+) -> MFGProblem:
     """
     Create high-dimensional MFG problem (d > 3).
 
@@ -666,13 +655,11 @@ def create_highdim_problem(
         Final time T
     num_timesteps : int, default=100
         Number of time steps
-    use_unified : bool, default=True
-        Use unified MFGProblem (True) or GridBasedMFGProblem (False)
 
     Returns
     -------
-    MFGProblem or GridBasedMFGProblem
-        Problem instance
+    MFGProblem
+        Unified problem instance
 
     Examples
     --------
@@ -695,16 +682,15 @@ def create_highdim_problem(
         initial_density_func=initial_density,
         potential_func=potential,
         boundary_conditions=boundary_conditions,
-        problem_type="highdim",
+        problem_type="mfg",
     )
 
-    return create_mfg_problem(
-        "highdim",
-        components,
+    # Always use unified MFGProblem (GridBasedMFGProblem eliminated)
+    return MFGProblem(
         geometry=geometry,
         time_horizon=time_horizon,
         num_timesteps=num_timesteps,
-        use_unified=use_unified,
+        components=components,
         dimension=dimension,
         **kwargs,
     )
