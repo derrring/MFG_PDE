@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from .geometry_protocol import GeometryType
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -217,6 +219,43 @@ class BaseGeometry(ABC):
         self.dimension = dimension
         self.mesh_data: MeshData | None = None
         self._gmsh_model = None
+
+    # GeometryProtocol implementation
+    @property
+    def geometry_type(self) -> GeometryType:
+        """
+        Type of geometry.
+
+        Returns DOMAIN_2D or DOMAIN_3D based on dimension.
+        Subclasses can override for more specific types.
+        """
+        if self.dimension == 2:
+            return GeometryType.DOMAIN_2D
+        elif self.dimension == 3:
+            return GeometryType.DOMAIN_3D
+        else:
+            return GeometryType.CUSTOM
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points (mesh vertices)."""
+        if self.mesh_data is None:
+            raise ValueError("Mesh not yet generated. Call generate_mesh() first.")
+        return self.mesh_data.num_vertices
+
+    def get_spatial_grid(self) -> NDArray[np.floating]:
+        """
+        Get spatial grid representation (mesh vertices).
+
+        Returns:
+            Numpy array of mesh vertex coordinates (N_vertices, dimension)
+
+        Raises:
+            ValueError: If mesh has not been generated yet
+        """
+        if self.mesh_data is None:
+            raise ValueError("Mesh not yet generated. Call generate_mesh() first.")
+        return self.mesh_data.vertices
 
     @abstractmethod
     def create_gmsh_geometry(self) -> Any:

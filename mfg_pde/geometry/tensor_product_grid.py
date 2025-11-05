@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from .geometry_protocol import GeometryType
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -145,6 +147,26 @@ class TensorProductGrid:
         for i, coords in enumerate(self.coordinates):
             if len(coords) != num_points[i]:
                 raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {num_points[i]}")
+
+    # GeometryProtocol implementation
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Type of geometry (always CARTESIAN_GRID for tensor product grids)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points."""
+        return self.total_points()
+
+    def get_spatial_grid(self) -> NDArray:
+        """
+        Get spatial grid representation.
+
+        Returns:
+            numpy array of all grid points (N, dimension)
+        """
+        return self.flatten()
 
     def meshgrid(self, indexing: str = "ij") -> tuple[NDArray, ...]:
         """
