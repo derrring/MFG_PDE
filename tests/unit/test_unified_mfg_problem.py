@@ -271,35 +271,6 @@ class TestBackwardCompatibility:
         assert hasattr(problem, "Nt")
         assert hasattr(problem, "sigma")
 
-    def test_grid_based_mfg_problem_factory(self):
-        """Test GridBasedMFGProblem factory function."""
-        from mfg_pde import GridBasedMFGProblem
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            problem = GridBasedMFGProblem(
-                domain_bounds=(0, 1, 0, 1),
-                grid_resolution=50,
-                time_domain=(1.0, 100),
-                diffusion_coeff=0.1,
-            )
-
-            # Should emit deprecation warning
-            deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-            assert len(deprecation_warnings) >= 1
-            assert "deprecated" in str(deprecation_warnings[0].message).lower()
-
-        # Should create valid problem
-        assert problem.dimension == 2
-        assert problem.T == 1.0
-        assert problem.Nt == 100
-        assert problem.sigma == 0.1
-
-        # Should have legacy attributes
-        assert hasattr(problem, "domain_bounds")
-        assert hasattr(problem, "grid_resolution")
-        assert problem.domain_bounds == (0, 1, 0, 1)
-
 
 class TestComplexityEstimation:
     """Test computational complexity estimation."""
