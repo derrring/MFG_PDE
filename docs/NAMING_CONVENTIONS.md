@@ -52,10 +52,10 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 
 In v0.10.0+, `Nx` represents spatial discretization for **arbitrary dimensions**:
 
-- **1D**: `Nx = [50]` → 50 intervals, 51 grid points
-- **2D**: `Nx = [50, 30]` → 50×30 intervals, 51×31 grid points
-- **3D**: `Nx = [20, 20, 20]` → 20³ intervals, 21³ grid points
-- **nD**: `Nx = [N₁, N₂, ..., Nₐ]`
+- **1D**: `Nx = [Nx1]` → `Nx1` intervals, `Nx1+1` grid points. Example: `Nx = [50]`
+- **2D**: `Nx = [Nx1, Nx2]` → `Nx1×Nx2` intervals, `(Nx1+1)×(Nx2+1)` grid points. Example: `Nx = [50, 30]`
+- **3D**: `Nx = [Nx1, Nx2, Nx3]` → `Nx1×Nx2×Nx3` intervals. Example: `Nx = [20, 20, 20]`
+- **nD**: `Nx = [Nx1, Nx2, ..., Nxd]` where `d` is the spatial dimension
 
 **There is NO `Ny`, `Nz`**. All dimensions use the single array `Nx`.
 
@@ -103,26 +103,27 @@ Internally, scalars are normalized to 1-element arrays.
 
 | Parameter | Type | Meaning | Math | Example |
 |-----------|------|---------|------|---------|
-| `Nx` | int or list[int] | Number of intervals per dimension | N | `[50, 30]` |
+| `Nx` | int or list[int] | Number of intervals per dimension: `[Nx1, Nx2, ..., Nxd]` | N | `[50, 30]` |
 | `xmin` | float or list[float] | Domain lower bounds | x_min | `[0.0, 0.0]` |
 | `xmax` | float or list[float] | Domain upper bounds | x_max | `[1.0, 1.0]` |
-| `Dx` | float or list[float] | Grid spacing per dimension | Δx | `[0.02, 0.033]` |
-| `Lx` | float or list[float] | Domain length per dimension | L | `[1.0, 1.0]` |
+| `Dx` | float or list[float] | Grid spacing per dimension: `[Dx1, Dx2, ..., Dxd]` | Δx | `[0.02, 0.033]` |
+| `Lx` | float or list[float] | Domain length per dimension: `[Lx1, Lx2, ..., Lxd]` | L | `[1.0, 1.0]` |
 
 **Grid Convention**:
-- `Nx` intervals → `Nx+1` grid points
-- Grid spacing: `Dx[i] = (xmax[i] - xmin[i]) / Nx[i]`
+- `Nxi` intervals → `Nxi+1` grid points (for each dimension i)
+- Grid spacing: `Dxi = (xmax[i] - xmin[i]) / Nxi`
 - Arrays include both boundaries
 
 **Example (2D)**:
 ```python
+# Nx = [Nx1, Nx2] = [50, 30]
 problem = MFGProblem(
     spatial_bounds=[(0.0, 1.0), (0.0, 0.5)],
-    spatial_discretization=[50, 30],  # 50×30 intervals
+    spatial_discretization=[50, 30],  # Nx1=50, Nx2=30 intervals
     T=1.0,
     Nt=100
 )
-# Creates 51×31 = 1581 spatial grid points
+# Creates (Nx1+1)×(Nx2+1) = 51×31 = 1581 spatial grid points
 ```
 
 ### Temporal Discretization
@@ -199,9 +200,9 @@ solver = FixedPointIterator(
 
 | Array Name | Shape | Meaning | Math |
 |------------|-------|---------|------|
-| `U` | (Nt+1, Nx+1, ...) | Value function | u(t,x) |
-| `M` | (Nt+1, Nx+1, ...) | Density function | m(t,x) |
-| `grad_U` | (Nt+1, Nx+1, ..., d) | Gradient of value function | ∇u |
+| `U` | (Nt+1, Nx1+1, Nx2+1, ...) | Value function | u(t,x) |
+| `M` | (Nt+1, Nx1+1, Nx2+1, ...) | Density function | m(t,x) |
+| `grad_U` | (Nt+1, Nx1+1, Nx2+1, ..., d) | Gradient of value function | ∇u |
 
 **Example**:
 ```python
@@ -209,8 +210,8 @@ def solve(self) -> tuple[np.ndarray, np.ndarray]:
     """Solve MFG system.
 
     Returns:
-        U: Value function u(t,x) of shape (Nt+1, Nx[0]+1, Nx[1]+1)
-        M: Density function m(t,x) of shape (Nt+1, Nx[0]+1, Nx[1]+1)
+        U: Value function u(t,x) of shape (Nt+1, Nx1+1, Nx2+1)
+        M: Density function m(t,x) of shape (Nt+1, Nx1+1, Nx2+1)
     """
 ```
 
@@ -224,25 +225,25 @@ For a function u(x₁, x₂, ..., xₙ), derivatives are indexed by tuples (α�
 
 **Examples**:
 
-**1D**: `u(x)`
+**1D**: `u(x1)`
 - `derivs[(0,)] = u` - Function value
-- `derivs[(1,)] = ∂u/∂x` - First derivative
-- `derivs[(2,)] = ∂²u/∂x²` - Second derivative
+- `derivs[(1,)] = ∂u/∂x1` - First derivative
+- `derivs[(2,)] = ∂²u/∂x1²` - Second derivative
 
-**2D**: `u(x, y)`
+**2D**: `u(x1, x2)`
 - `derivs[(0, 0)] = u` - Function value
-- `derivs[(1, 0)] = ∂u/∂x` - Gradient x-component
-- `derivs[(0, 1)] = ∂u/∂y` - Gradient y-component
-- `derivs[(2, 0)] = ∂²u/∂x²` - Hessian xx
-- `derivs[(0, 2)] = ∂²u/∂y²` - Hessian yy
-- `derivs[(1, 1)] = ∂²u/∂x∂y` - Mixed derivative
+- `derivs[(1, 0)] = ∂u/∂x1` - Gradient x1-component
+- `derivs[(0, 1)] = ∂u/∂x2` - Gradient x2-component
+- `derivs[(2, 0)] = ∂²u/∂x1²` - Hessian x1x1
+- `derivs[(0, 2)] = ∂²u/∂x2²` - Hessian x2x2
+- `derivs[(1, 1)] = ∂²u/∂x1∂x2` - Mixed derivative
 
-**3D**: `u(x, y, z)`
-- `derivs[(1, 0, 0)] = ∂u/∂x`
-- `derivs[(0, 1, 0)] = ∂u/∂y`
-- `derivs[(0, 0, 1)] = ∂u/∂z`
-- `derivs[(2, 0, 0)] = ∂²u/∂x²`
-- `derivs[(1, 1, 0)] = ∂²u/∂x∂y`
+**3D**: `u(x1, x2, x3)`
+- `derivs[(1, 0, 0)] = ∂u/∂x1`
+- `derivs[(0, 1, 0)] = ∂u/∂x2`
+- `derivs[(0, 0, 1)] = ∂u/∂x3`
+- `derivs[(2, 0, 0)] = ∂²u/∂x1²`
+- `derivs[(1, 1, 0)] = ∂²u/∂x1∂x2`
 
 ### Benefits
 
@@ -259,13 +260,13 @@ For a function u(x₁, x₂, ..., xₙ), derivatives are indexed by tuples (α�
 derivs = self.approximate_derivatives(u_current, i)
 
 if d == 1:
-    p = derivs.get((1,), 0.0)
-    laplacian = derivs.get((2,), 0.0)
+    p = derivs.get((1,), 0.0)  # ∂u/∂x1
+    laplacian = derivs.get((2,), 0.0)  # ∂²u/∂x1²
 elif d == 2:
-    p_x = derivs.get((1, 0), 0.0)
-    p_y = derivs.get((0, 1), 0.0)
-    p = np.array([p_x, p_y])
-    laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)
+    p_x1 = derivs.get((1, 0), 0.0)  # ∂u/∂x1
+    p_x2 = derivs.get((0, 1), 0.0)  # ∂u/∂x2
+    p = np.array([p_x1, p_x2])
+    laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)  # ∂²u/∂x1² + ∂²u/∂x2²
 ```
 
 ---
@@ -407,9 +408,10 @@ with terminal condition $u(T,x) = g(x, m(T,x))$.
 
 ✅ **Spatial/temporal discretization**:
 ```python
+# Nx = [Nx1, Nx2] for 2D
 problem = MFGProblem(Nx=[50, 30], Nt=100, T=1.0)
 x = problem.xSpace  # 1D only
-grid_spacing = problem.Dx
+grid_spacing = problem.Dx  # [Dx1, Dx2]
 ```
 
 ✅ **Physical parameters from equations**:
