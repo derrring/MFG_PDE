@@ -50,7 +50,7 @@ def demonstrate_protocol_compliance():
     base_domain = Domain1D(
         xmin=0.0,
         xmax=1.0,
-        boundary_conditions=BoundaryConditions(),  # Default periodic
+        boundary_conditions=BoundaryConditions(type="periodic"),
     )
     refinement_criteria = AMRRefinementCriteria(
         max_level=2, refinement_threshold=0.5, coarsening_threshold=0.25, min_cell_size=0.001
@@ -62,7 +62,11 @@ def demonstrate_protocol_compliance():
 
     # 3. 2D AMR quadtree mesh
     print("3. Creating 2D AMR quadtree mesh...")
-    amr_2d = AdaptiveMesh(xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0, initial_level=2, max_level=4)
+    amr_2d = AdaptiveMesh(
+        domain_bounds=(0.0, 1.0, 0.0, 1.0),
+        initial_resolution=(8, 8),
+        refinement_criteria=AMRRefinementCriteria(max_refinement_levels=4),
+    )
     geometries.append(("2D AMR Quadtree", amr_2d))
 
     print("\n" + "=" * 70)
@@ -106,7 +110,7 @@ def demonstrate_polymorphic_config():
     # Create different geometries
     grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[50])
 
-    base_domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions())
+    base_domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
     refinement_criteria = AMRRefinementCriteria(max_level=2)
     amr_1d = OneDimensionalAMRMesh(
         domain_1d=base_domain, initial_num_intervals=20, refinement_criteria=refinement_criteria
@@ -139,7 +143,7 @@ def visualize_amr_structure():
     print("=" * 70)
 
     # Create 1D AMR mesh
-    base_domain = Domain1D(xmin=0.0, xmax=1.0, Nx=100)
+    base_domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
     refinement_criteria = AMRRefinementCriteria(
         max_level=3, refinement_threshold=0.3, coarsening_threshold=0.15, min_cell_size=0.001
     )
@@ -157,7 +161,11 @@ def visualize_amr_structure():
     print(f"  Grid points shape: {grid.shape}")
 
     # Create 2D AMR quadtree
-    amr_2d = AdaptiveMesh(xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0, initial_level=2, max_level=4)
+    amr_2d = AdaptiveMesh(
+        domain_bounds=(0.0, 1.0, 0.0, 1.0),
+        initial_resolution=(8, 8),
+        refinement_criteria=AMRRefinementCriteria(max_refinement_levels=4),
+    )
 
     print("\n2D AMR Quadtree:")
     print(f"  Total nodes: {amr_2d.num_spatial_points}")
