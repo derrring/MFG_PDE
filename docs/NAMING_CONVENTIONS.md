@@ -21,11 +21,11 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 **Examples**:
 - `Nx`: Number of spatial intervals (not `num_intervals_x`)
 - `Nt`: Number of time intervals
-- `Dx`: Spatial grid spacing Δx
-- `Dt`: Time step size Δt
+- `dx`: Spatial grid spacing Δx
+- `dt`: Time step size Δt
 - `sigma`: Diffusion coefficient σ
 - `T`: Terminal time
-- `xSpace`: 1D spatial grid array
+- `xSpace`: Spatial grid array (all dimensions)
 - `tSpace`: Temporal grid array
 
 **Rationale**: Direct correspondence to mathematical notation makes algorithm validation straightforward.
@@ -77,23 +77,20 @@ Internally, scalars are normalized to 1-element arrays.
 
 ## Spatial Grid Terminology
 
-### `xSpace` vs `xGrid`
+### `xSpace` - Universal Spatial Grid Array
 
-**`xSpace`**: 1D spatial coordinate array (legacy attribute)
-- Type: `np.ndarray` of shape `(Nx+1,)`
-- Usage: Only for 1D problems
-- Example: `xSpace = np.linspace(0, 1, 51)`
-- Set to `None` for nD problems
+**`xSpace`**: Spatial coordinate array for all dimensions
+- **1D**: `np.ndarray` of shape `(Nx1+1,)`
+  - Example: `xSpace = np.linspace(0, 1, 51)`
+- **2D**: `np.ndarray` of shape `(Nx1+1, Nx2+1)` or `(Nx1+1, Nx2+1, 2)` for meshgrid
+  - Contains spatial coordinates for entire grid
+- **nD**: Array or tuple of coordinate arrays
+  - Can be flattened or meshgrid format depending on usage
 
-**`xGrid`**: Multi-dimensional coordinate meshgrid (internal)
-- Type: `TensorProductGrid` or geometry object
-- Usage: nD problems (dimension ≥ 2)
-- Provides: `.meshgrid()`, `.flatten()` methods
-- Not exposed as public API
-
-**Decision rule**:
-- 1D problems: Use `xSpace` (maintained for backward compatibility)
-- nD problems: Use `geometry.get_spatial_grid()` (GeometryProtocol)
+**Usage**:
+- Access via `problem.xSpace` or `geometry.get_spatial_grid()`
+- All geometry types provide spatial grid through consistent interface
+- GeometryProtocol ensures uniform access across implementations
 
 ---
 
@@ -106,12 +103,12 @@ Internally, scalars are normalized to 1-element arrays.
 | `Nx` | int or list[int] | Number of intervals per dimension: `[Nx1, Nx2, ..., Nxd]` | N | `[50, 30]` |
 | `xmin` | float or list[float] | Domain lower bounds | x_min | `[0.0, 0.0]` |
 | `xmax` | float or list[float] | Domain upper bounds | x_max | `[1.0, 1.0]` |
-| `Dx` | float or list[float] | Grid spacing per dimension: `[Dx1, Dx2, ..., Dxd]` | Δx | `[0.02, 0.033]` |
+| `dx` | float or list[float] | Grid spacing per dimension: `[dx1, dx2, ..., dxd]` | Δx | `[0.02, 0.033]` |
 | `Lx` | float or list[float] | Domain length per dimension: `[Lx1, Lx2, ..., Lxd]` | L | `[1.0, 1.0]` |
 
 **Grid Convention**:
 - `Nxi` intervals → `Nxi+1` grid points (for each dimension i)
-- Grid spacing: `Dxi = (xmax[i] - xmin[i]) / Nxi`
+- Grid spacing: `dxi = (xmax[i] - xmin[i]) / Nxi`
 - Arrays include both boundaries
 
 **Example (2D)**:
@@ -132,13 +129,13 @@ problem = MFGProblem(
 |-----------|------|---------|------|
 | `Nt` | int | Number of time intervals | N_t |
 | `T` | float | Terminal time | T |
-| `Dt` | float | Time step size | Δt |
+| `dt` | float | Time step size | Δt |
 | `tSpace` | ndarray | Time grid array | t_i |
 
 **Grid Convention**:
 - `Nt` intervals → `Nt+1` time points
-- Time step: `Dt = T / Nt`
-- Time grid: `tSpace = [0, Dt, 2Dt, ..., T]`
+- Time step: `dt = T / Nt`
+- Time grid: `tSpace = [0, dt, 2*dt, ..., T]`
 
 ---
 
@@ -314,11 +311,11 @@ assert geometry.num_spatial_points == 51 * 51
 | `thetaUM` | `damping_factor` | Unclear acronym |
 | `Niter_max` | `max_iterations` | Inconsistent capitalization |
 | `l2errBound` | `tolerance` | Unclear abbreviation |
-| `dx` (lowercase) | `Dx` (uppercase) | Mathematical notation consistency |
-| `dt` (lowercase) | `Dt` (uppercase) | Mathematical notation consistency |
+| `Dx` (uppercase) | `dx` (lowercase) | Consistency with standard notation |
+| `Dt` (uppercase) | `dt` (lowercase) | Consistency with standard notation |
 | `coefCT` | `coupling_coefficient` | Unclear acronym |
 
-**Exception**: Some solvers accept lowercase `dt` for compatibility with external libraries.
+**Note**: Lowercase `dx`, `dt` are standard in mathematical and scientific computing.
 
 ---
 
@@ -410,8 +407,9 @@ with terminal condition $u(T,x) = g(x, m(T,x))$.
 ```python
 # Nx = [Nx1, Nx2] for 2D
 problem = MFGProblem(Nx=[50, 30], Nt=100, T=1.0)
-x = problem.xSpace  # 1D only
-grid_spacing = problem.Dx  # [Dx1, Dx2]
+x = problem.xSpace  # All dimensions
+grid_spacing = problem.dx  # [dx1, dx2]
+time_step = problem.dt  # Δt
 ```
 
 ✅ **Physical parameters from equations**:
