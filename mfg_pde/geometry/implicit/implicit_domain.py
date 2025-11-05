@@ -23,6 +23,8 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from mfg_pde.geometry.geometry_protocol import GeometryType
+
 
 class ImplicitDomain(ABC):
     """
@@ -49,6 +51,59 @@ class ImplicitDomain(ABC):
         >>> domain.contains(np.array([1.5, 0.5]))  # False (exterior)
         >>> particles = domain.sample_uniform(1000)  # Sample particles
     """
+
+    # GeometryProtocol implementation
+    @property
+    def geometry_type(self) -> GeometryType:
+        """
+        Type of geometry (IMPLICIT for all ImplicitDomain subclasses).
+
+        All implicit domains (defined by signed distance functions) return
+        GeometryType.IMPLICIT regardless of dimension or specific shape.
+        """
+        return GeometryType.IMPLICIT
+
+    @property
+    def num_spatial_points(self) -> int:
+        """
+        Number of discrete spatial points.
+
+        For implicit domains, this is not well-defined as they are continuous
+        representations. This method estimates the number of points by computing
+        the volume and assuming a typical mesh spacing of 0.1.
+
+        Note: For actual discretization, use sample_uniform() or meshfree methods.
+        """
+        # Estimate number of points based on volume
+        # Assume typical mesh spacing h = 0.1
+        try:
+            volume = self.compute_volume(n_monte_carlo=10000)
+            h = 0.1  # Typical mesh spacing
+            n_points = int(volume / (h**self.dimension))
+            return max(n_points, 100)  # Minimum of 100 points
+        except Exception:
+            # Fallback: use bounding box
+            bounds = self.get_bounding_box()
+            bbox_volume = np.prod(bounds[:, 1] - bounds[:, 0])
+            h = 0.1
+            return max(int(bbox_volume / (h**self.dimension)), 100)
+
+    def get_spatial_grid(self) -> NDArray[np.float64]:
+        """
+        Get spatial grid representation (sampled interior points).
+
+        Since implicit domains are continuous (defined by SDF), we return
+        a uniform sample of interior points as the "grid".
+
+        Returns:
+            Array of shape (N, dimension) with N sampled interior points
+            where N is determined by num_spatial_points.
+
+        Note: This is a sampling-based approximation. For more control over
+        point distribution, use sample_uniform() directly.
+        """
+        n_points = self.num_spatial_points
+        return self.sample_uniform(n_points)
 
     @property
     @abstractmethod

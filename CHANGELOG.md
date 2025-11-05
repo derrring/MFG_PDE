@@ -5,6 +5,128 @@ All notable changes to MFG_PDE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-11-05
+
+**Major Release: Geometry-First API**
+
+This release introduces the geometry-first API, a new recommended pattern for constructing MFG problems using geometry objects. This provides better type safety, clearer separation of concerns, and unified support for diverse geometry types.
+
+### Added
+
+**PR #244: Phase 2 Array Notation - Backward Compatible Implementation**
+- Added `_normalize_to_array()` helper method in `MFGProblem` (`mfg_problem.py:79-122`)
+  - Automatically converts scalar inputs to arrays
+  - Emits `DeprecationWarning` for scalar usage
+  - Points users to `MATHEMATICAL_NOTATION_STANDARD.md`
+- Updated `MFGProblem.__init__` signature to accept both scalar and array inputs:
+  - `Nx`: `int | list[int]` (deprecated scalar, standard array)
+  - `xmin`, `xmax`: `float | list[float]` (deprecated scalar, standard array)
+- Both scalar and array inputs produce identical results with 100% backward compatibility
+- Migration path for Phase 3 (v1.0.0): Remove deprecated scalar API
+
+**PR #247: GeometryProtocol Foundation**
+- Created `GeometryProtocol` runtime-checkable Protocol (`mfg_pde/geometry/geometry_protocol.py`)
+  - Minimal interface for all geometry objects
+  - Four required properties: `dimension`, `geometry_type`, `num_spatial_points`, `get_spatial_grid()`
+- Created `GeometryType` enum with 7 types:
+  - `CARTESIAN_GRID`: Regular tensor product grids
+  - `NETWORK`: Graph/network geometries
+  - `MAZE`: Maze environments
+  - `DOMAIN_2D`, `DOMAIN_3D`, `DOMAIN_1D`: Cartesian/unstructured meshes
+  - `IMPLICIT`: Level sets and signed distance functions
+  - `CUSTOM`: User-defined geometries
+- Added helper functions:
+  - `detect_geometry_type()`: Self-aware type detection via attribute inspection
+  - `is_geometry_compatible()`: Compatibility checking
+  - `validate_geometry()`: Validation with informative error messages
+- Implemented GeometryProtocol for 6 core geometry classes:
+  - `Domain1D`: 1D Cartesian grids with grid caching
+  - `BaseGeometry`: Abstract base for Domain2D/Domain3D meshes
+  - `TensorProductGrid`: Arbitrary-dimension structured grids
+  - `NetworkGeometry`: Graph-based geometries (Grid/Random/ScaleFree networks)
+  - `ImplicitDomain`: Meshfree domains via signed distance functions (`Hyperrectangle`, `Hypersphere`)
+  - `Grid` (mazes): Maze-based geometries from PerfectMazeGenerator
+- Comprehensive design documentation (`docs/development/UNIFIED_GEOMETRY_PARAMETER_DESIGN.md`, 844 lines)
+
+**Geometry-First API Implementation**
+- Updated `MFGProblem._init_geometry()` to accept any GeometryProtocol-compliant object (`mfg_problem.py:647-768`)
+  - Automatic geometry type detection via `geometry.geometry_type` enum
+  - Specialized handling for CARTESIAN_GRID, IMPLICIT, DOMAIN_2D/3D, MAZE, NETWORK types
+  - Generic fallback for CUSTOM geometries
+- Added deprecation warnings for manual grid construction (`mfg_problem.py:350-363, 430-450`)
+  - Warns users to migrate to geometry-first API
+  - Points to migration guide with code examples
+  - 100% backward compatibility maintained
+- Created `docs/migration/GEOMETRY_FIRST_API_GUIDE.md` (400+ lines)
+  - Quick start examples for all geometry types
+  - Migration strategy from old to new API
+  - Performance considerations and FAQ
+- Created `examples/basic/geometry_first_api_demo.py` (350+ lines)
+  - Demonstrates 8 geometry patterns (TensorProductGrid, Domain1D, Hyperrectangle, Hypersphere, Maze, 4D, reuse, refinement)
+  - All examples tested and working
+- Fixed normalization bug for implicit geometries (`mfg_problem.py:1158-1172`)
+  - Handles `None` spatial_bounds for SDF-based geometries
+  - Uses uniform approximation when structured grid info unavailable
+
+### Changed
+
+**API Improvements**
+- `MFGProblem` now accepts both scalar and array notation for spatial parameters
+- `MFGProblem` now accepts geometry objects via `geometry=` parameter (NEW recommended API)
+- Array notation is the standard for manual construction (following `MATHEMATICAL_NOTATION_STANDARD.md`)
+- Scalar inputs and manual grid construction trigger deprecation warnings
+
+**Code Quality**
+- Unified geometry interface across all geometry types via GeometryProtocol
+- Protocol-based design enables duck typing without explicit inheritance
+- Self-aware geometry types for automatic type detection in MFGProblem
+- Enhanced type safety and consistency across geometry module
+- Separation of concerns: geometry construction vs. problem temporal/diffusion parameters
+
+### Deprecated
+
+**API Patterns** (will be restricted in v1.0.0, removed in v2.0.0)
+- Manual grid construction in `MFGProblem` (passing `spatial_bounds`, `spatial_discretization`, `xmin`, `xmax`, `Nx`)
+  - Use geometry-first API instead: create geometry object, pass to `MFGProblem(geometry=...)`
+  - Deprecation warnings provide migration examples
+  - See `docs/migration/GEOMETRY_FIRST_API_GUIDE.md` for complete guide
+- Scalar `Nx`, `xmin`, `xmax` parameters (if still using manual construction)
+  - Use arrays instead: `Nx=[100]`, `xmin=[-2.0]`, `xmax=[2.0]`
+  - Warnings guide users to `MATHEMATICAL_NOTATION_STANDARD.md`
+
+**Deprecation Timeline**:
+- v0.10.x: Warnings emitted, old API fully functional
+- v0.11.x - v0.99.x: Continued warnings
+- v1.0.0: Manual construction requires explicit `allow_manual_construction=True` flag
+- v2.0.0: Complete removal of manual construction
+
+### Documentation
+
+- Array-Based Notation Migration plan (`docs/development/ARRAY_BASED_NOTATION_MIGRATION.md`)
+- Mathematical Notation Standard (`docs/development/MATHEMATICAL_NOTATION_STANDARD.md`)
+- Unified Geometry Parameter Design (`docs/development/UNIFIED_GEOMETRY_PARAMETER_DESIGN.md`)
+- Geometry-First API Guide (`docs/migration/GEOMETRY_FIRST_API_GUIDE.md`)
+
+### Future Work (Planned for 0.10.x series)
+
+**v0.10.1** (Planned):
+- Add GeometryProtocol compliance to AMR classes (OneDimensionalAMRMesh, AdaptiveMesh, TriangularAMRMesh, TetrahedralAMRMesh)
+- Enable AMR meshes to be used directly in `MFGProblem(geometry=amr_mesh)`
+
+**v0.10.2** (Planned):
+- Design and implement dimension-agnostic boundary condition system (`BoundaryConditionND`)
+- Support for nD boundary conditions (d > 3) with per-axis BC specification
+
+**v0.10.3** (Planned):
+- Rename `BaseGeometry` → `MeshGeometry` for clarity (breaking change with deprecation)
+- Update all documentation and examples to reflect renamed class
+
+### Testing
+
+- All 3300+ tests passing
+- Array notation backward compatibility validated
+- GeometryProtocol compliance verified for all implemented geometries
+
 ## [0.9.1] - 2025-11-04
 
 ### Added

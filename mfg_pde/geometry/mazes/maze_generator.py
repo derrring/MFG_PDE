@@ -35,6 +35,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from mfg_pde.geometry.geometry_protocol import GeometryType
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -193,6 +195,41 @@ class Grid:
         """Reset visited flags for all cells."""
         for cell in self.all_cells():
             cell.visited = False
+
+    # GeometryProtocol implementation
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension of the maze (always 2 for grid-based mazes)."""
+        return 2
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Type of geometry (MAZE for maze grids)."""
+        return GeometryType.MAZE
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points (maze cells)."""
+        return self.rows * self.cols
+
+    def get_spatial_grid(self) -> NDArray:
+        """
+        Get spatial grid representation (cell center coordinates).
+
+        Returns:
+            numpy array of shape (rows * cols, 2) containing (x, y) coordinates
+            of cell centers in the maze grid
+        """
+        # Generate cell center coordinates
+        # Convention: (col + 0.5, row + 0.5) for cell centers
+        x_coords = []
+        y_coords = []
+        for row in range(self.rows):
+            for col in range(self.cols):
+                x_coords.append(col + 0.5)
+                y_coords.append(row + 0.5)
+
+        return np.column_stack([x_coords, y_coords])
 
 
 class PerfectMazeGenerator:
