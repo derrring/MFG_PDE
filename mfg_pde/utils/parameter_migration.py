@@ -76,7 +76,7 @@ class ParameterMigrator:
 
         # Picard iteration parameters
         self.add_mapping(
-            old_name="max_iterations",
+            old_name="Niter_max",
             new_name="max_picard_iterations",
             deprecation_version="1.3.0",
             removal_version="2.0.0",
@@ -93,7 +93,7 @@ class ParameterMigrator:
 
         # Problem parameters
         self.add_mapping(
-            old_name="coupling_coefficient",
+            old_name="coefCT",
             new_name="coupling_coefficient",
             deprecation_version="1.4.0",
             removal_version="2.0.0",

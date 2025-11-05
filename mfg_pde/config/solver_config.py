@@ -356,13 +356,13 @@ def extract_legacy_parameters(config: MFGSolverConfig, **kwargs: Any) -> dict[st
         picard_params["max_iterations"] = kwargs.pop("max_iterations")
     elif "max_picard_iterations" in kwargs:
         picard_params["max_iterations"] = kwargs.pop("max_picard_iterations")
-    elif "max_iterations" in kwargs:
+    elif "Niter_max" in kwargs:
         warnings.warn(
-            "Parameter 'max_iterations' is deprecated. Use configuration objects instead.",
+            "Parameter 'Niter_max' is deprecated. Use configuration objects instead.",
             DeprecationWarning,
             stacklevel=3,
         )
-        picard_params["max_iterations"] = kwargs.pop("max_iterations")
+        picard_params["max_iterations"] = kwargs.pop("Niter_max")
 
     if "tolerance" in kwargs:
         picard_params["tolerance"] = kwargs.pop("tolerance")
