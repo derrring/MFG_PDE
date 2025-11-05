@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.config.omegaconf_manager import OmegaConfManager
-from mfg_pde.core.mfg_problem import MFGProblem, MFGProblemBuilder
+from mfg_pde.core.mfg_problem import MFGProblem  # noqa: TC001
+from mfg_pde.core.mfg_problem_legacy import MFGProblemBuilder
 from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.logging.logger import get_logger
 

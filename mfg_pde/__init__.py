@@ -13,10 +13,15 @@ _numpy_info = ensure_numpy_compatibility()
 
 from .alg.numerical.fp_solvers.fp_particle import KDENormalization  # noqa: E402
 from .config import MFGSolverConfig, create_accurate_config, create_fast_config, create_research_config  # noqa: E402
-from .core.mfg_problem import (  # noqa: E402
+
+# New dimension-agnostic MFG infrastructure
+from .core.base_problem import BaseMFGProblem, MFGProblemProtocol  # noqa: E402
+from .core.mfg_problem import MFGProblem  # noqa: E402
+
+# Legacy imports for backward compatibility
+from .core.mfg_problem_legacy import (  # noqa: E402
     ExampleMFGProblem,
     MFGComponents,
-    MFGProblem,
     MFGProblemBuilder,
     create_mfg_problem,
 )
@@ -135,6 +140,9 @@ def show_optional_features() -> None:
 __all__ = [
     # Geometry
     "BoundaryConditions",
+    # Core MFG base classes
+    "BaseMFGProblem",
+    "MFGProblemProtocol",
     # Core MFG classes
     "ExampleMFGProblem",
     # General MFG factory

@@ -1,6 +1,13 @@
 from mfg_pde.geometry import BoundaryConditions
 
-from .mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem
+# New dimension-agnostic infrastructure
+from .base_problem import BaseMFGProblem, MFGProblemProtocol
+from .mfg_problem import MFGProblem
+
+# Legacy imports for backward compatibility
+from .mfg_problem_legacy import ExampleMFGProblem, MFGComponents, MFGProblemBuilder, create_mfg_problem
+
+# Specialized MFG problems
 from .network_mfg_problem import (
     NetworkMFGComponents,
     NetworkMFGProblem,
@@ -18,10 +25,13 @@ from .variational_mfg_problem import (
 __all__ = [
     # Geometry
     "BoundaryConditions",
-    # Core MFG components
+    # New dimension-agnostic base
+    "BaseMFGProblem",
+    "MFGProblemProtocol",
+    "MFGProblem",
+    # Legacy components (backward compatibility)
     "ExampleMFGProblem",
     "MFGComponents",
-    "MFGProblem",
     "MFGProblemBuilder",
     # Network MFG
     "NetworkMFGComponents",

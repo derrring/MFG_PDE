@@ -50,7 +50,8 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any, Literal, overload
 
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.core.mfg_problem_legacy import MFGComponents
 from mfg_pde.utils.logging.logger import get_logger
 
 if TYPE_CHECKING:
