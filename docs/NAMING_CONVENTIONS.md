@@ -37,12 +37,13 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 **Examples**:
 - `damping_factor` (NOT `thetaUM`) - Picard iteration damping parameter
 - `max_iterations` (NOT `Niter_max`) - Maximum iteration count
-- `tolerance` (NOT `l2errBound`) - Convergence tolerance
+- `tolerance` - Generic convergence tolerance
+- `l2errBound` - Specific L² error bound (accepted terminology)
 - `num_spatial_points` - Total spatial grid points
 - `spatial_shape` - Shape tuple for nD arrays
 - `coupling_coefficient` (NOT `coefCT`) - MFG coupling strength
 
-**Rationale**: Configuration parameters are not formula symbols. `thetaUM` is "magic number" jargon with no clear meaning. `damping_factor` clearly describes its purpose.
+**Rationale**: Configuration parameters are not formula symbols. `thetaUM` is "magic number" jargon with no clear meaning. `damping_factor` clearly describes its purpose. Use generic names (`tolerance`) for generic concepts, but preserve specific mathematical terminology (`l2errBound`) when appropriate.
 
 ---
 
@@ -310,12 +311,22 @@ assert geometry.num_spatial_points == 51 * 51
 |----------|----------|--------|
 | `thetaUM` | `damping_factor` | Unclear acronym |
 | `Niter_max` | `max_iterations` | Inconsistent capitalization |
-| `l2errBound` | `tolerance` | Unclear abbreviation |
-| `Dx` (uppercase) | `dx` (lowercase) | Consistency with standard notation |
-| `Dt` (uppercase) | `dt` (lowercase) | Consistency with standard notation |
 | `coefCT` | `coupling_coefficient` | Unclear acronym |
 
-**Note**: Lowercase `dx`, `dt` are standard in mathematical and scientific computing.
+**Note**: Lowercase `dx`, `dt` are standard in mathematical and scientific computing. Use these in algorithm implementations, but `Dx`, `Dt` may appear in legacy contexts.
+
+---
+
+## Accepted Specific Terminology
+
+Some parameter names use specific mathematical or domain terminology and are **not** considered deprecated:
+
+| Parameter Name | Usage Context | Reason for Acceptance |
+|----------------|---------------|----------------------|
+| `l2errBound` | Convergence criteria | Specific L² error bound (not generic tolerance) |
+| `Dx`, `Dt` | Algorithm code | Valid mathematical symbols in specific contexts |
+
+**Guideline**: When a parameter represents a specific mathematical concept (like L² error bound), use the established terminology rather than generic names like `tolerance`. Use generic names only when the parameter is truly generic.
 
 ---
 
