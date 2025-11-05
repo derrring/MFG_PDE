@@ -1489,17 +1489,18 @@ class HJBGFDMSolver(BaseHJBSolver):
         Solve the HJB system using GFDM collocation method.
 
         Args:
-            M_density_evolution_from_FP: (Nt, Nx) density evolution from FP solver
-            U_final_condition_at_T: (Nx,) final condition for value function
-            U_from_prev_picard: (Nt, Nx) value function from previous Picard iteration
+            M_density_evolution_from_FP: (Nt, ...) density evolution from FP solver (nD spatial grid)
+            U_final_condition_at_T: (...,) final condition for value function (nD spatial grid)
+            U_from_prev_picard: (Nt, ...) value function from previous Picard iteration (nD spatial grid)
             show_progress: Whether to display progress bar for timesteps
 
         Returns:
-            (Nt, Nx) solution array
+            (Nt, ...) solution array (nD spatial grid)
         """
         from mfg_pde.utils.progress import tqdm
 
-        Nt, _Nx = M_density_evolution_from_FP.shape
+        # Extract time dimension (works for arbitrary spatial dimensions)
+        Nt = M_density_evolution_from_FP.shape[0]
 
         # For GFDM, we work directly with collocation points
         # Map grid data to collocation points
