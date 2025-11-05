@@ -126,12 +126,14 @@ def solve_mfg_with_amr(
 
     # Create base domain
     logger.info("Creating base 1D domain [0,1]")
-    domain = Domain1D(xmin=0.0, xmax=1.0, Nx=100)  # Base grid for construction
+    from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+
+    domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
 
     # Create refinement criteria
     refinement_criteria = AMRRefinementCriteria(
-        max_level=max_refinement,
-        refinement_threshold=gradient_threshold,
+        max_refinement_levels=max_refinement,
+        gradient_threshold=gradient_threshold,
         coarsening_threshold=gradient_threshold * 0.5,
         min_cell_size=0.001,
     )
@@ -205,7 +207,9 @@ def solve_mfg_uniform(Nx: int = 100, T: float = 1.0, Nt: int = 50, sigma: float 
 
     # Create uniform domain
     logger.info(f"Creating 1D uniform domain ({Nx} points)")
-    domain = Domain1D(xmin=0.0, xmax=1.0, Nx=Nx)
+    from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+
+    domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
 
     # Create MFG problem using geometry-first API
     logger.info("Creating MFG problem with uniform geometry...")

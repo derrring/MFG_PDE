@@ -53,7 +53,7 @@ def demonstrate_protocol_compliance():
         boundary_conditions=BoundaryConditions(type="periodic"),
     )
     refinement_criteria = AMRRefinementCriteria(
-        max_level=2, refinement_threshold=0.5, coarsening_threshold=0.25, min_cell_size=0.001
+        max_refinement_levels=2, gradient_threshold=0.5, coarsening_threshold=0.25, min_cell_size=0.001
     )
     amr_1d = OneDimensionalAMRMesh(
         domain_1d=base_domain, initial_num_intervals=20, refinement_criteria=refinement_criteria
@@ -111,7 +111,7 @@ def demonstrate_polymorphic_config():
     grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[50])
 
     base_domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
-    refinement_criteria = AMRRefinementCriteria(max_level=2)
+    refinement_criteria = AMRRefinementCriteria(max_refinement_levels=2)
     amr_1d = OneDimensionalAMRMesh(
         domain_1d=base_domain, initial_num_intervals=20, refinement_criteria=refinement_criteria
     )
@@ -145,7 +145,7 @@ def visualize_amr_structure():
     # Create 1D AMR mesh
     base_domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
     refinement_criteria = AMRRefinementCriteria(
-        max_level=3, refinement_threshold=0.3, coarsening_threshold=0.15, min_cell_size=0.001
+        max_refinement_levels=3, gradient_threshold=0.3, coarsening_threshold=0.15, min_cell_size=0.001
     )
     amr_mesh = OneDimensionalAMRMesh(
         domain_1d=base_domain, initial_num_intervals=10, refinement_criteria=refinement_criteria
@@ -180,11 +180,11 @@ def visualize_amr_structure():
 
     # Plot 1D AMR structure
     ax1.set_title("1D AMR Mesh Structure", fontweight="bold")
-    intervals = amr_mesh.intervals
-    for interval in intervals:
+    intervals = amr_mesh.intervals  # dict of {id: Interval1D}
+    for interval in intervals.values():
         if interval.is_leaf:
             # Color by refinement level
-            color = plt.cm.viridis(interval.level / refinement_criteria.max_level)
+            color = plt.cm.viridis(interval.level / refinement_criteria.max_refinement_levels)
             ax1.axvspan(interval.x_min, interval.x_max, alpha=0.5, color=color)
             ax1.axvline(interval.x_min, color="k", linewidth=0.5, alpha=0.5)
 
