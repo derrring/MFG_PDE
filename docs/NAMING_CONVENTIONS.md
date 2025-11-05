@@ -2,7 +2,7 @@
 
 **Last Updated**: 2025-11-05
 **Status**: Current reference document
-**Related**: See `docs/gradient_notation_standard.md` for gradient notation
+**Related**: See sections on gradient notation for derivative indexing
 
 ---
 
@@ -14,10 +14,130 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 
 ## Core Principles
 
-1. **Descriptive English names** for clarity: `damping_factor` not `thetaUM`
-2. **Consistency** across the codebase
-3. **Mathematical notation in documentation**, not code variable names
-4. **No camelCase** - use `snake_case` for all Python identifiers
+### 1. Mathematical Symbols for Direct Algorithm Implementation
+
+**When to use**: When code directly implements a textbook algorithm or specific mathematical formula.
+
+**Examples**:
+- `Nx`: Number of spatial intervals (not `num_intervals_x`)
+- `Nt`: Number of time intervals
+- `Dx`: Spatial grid spacing Δx
+- `Dt`: Time step size Δt
+- `sigma`: Diffusion coefficient σ
+- `T`: Terminal time
+- `xSpace`: 1D spatial grid array
+- `tSpace`: Temporal grid array
+
+**Rationale**: Direct correspondence to mathematical notation makes algorithm validation straightforward.
+
+### 2. Descriptive English for Configuration Parameters
+
+**When to use**: When variable represents a conceptual parameter, configuration, or setting rather than a formula symbol.
+
+**Examples**:
+- `damping_factor` (NOT `thetaUM`) - Picard iteration damping parameter
+- `max_iterations` (NOT `Niter_max`) - Maximum iteration count
+- `tolerance` (NOT `l2errBound`) - Convergence tolerance
+- `num_spatial_points` - Total spatial grid points
+- `spatial_shape` - Shape tuple for nD arrays
+- `coupling_coefficient` (NOT `coefCT`) - MFG coupling strength
+
+**Rationale**: Configuration parameters are not formula symbols. `thetaUM` is "magic number" jargon with no clear meaning. `damping_factor` clearly describes its purpose.
+
+---
+
+## Dimension-Agnostic Design (v0.10.0+)
+
+### Key Concept: `Nx` is an Array
+
+In v0.10.0+, `Nx` represents spatial discretization for **arbitrary dimensions**:
+
+- **1D**: `Nx = [50]` → 50 intervals, 51 grid points
+- **2D**: `Nx = [50, 30]` → 50×30 intervals, 51×31 grid points
+- **3D**: `Nx = [20, 20, 20]` → 20³ intervals, 21³ grid points
+- **nD**: `Nx = [N₁, N₂, ..., Nₐ]`
+
+**There is NO `Ny`, `Nz`**. All dimensions use the single array `Nx`.
+
+### Legacy 1D Scalar Compatibility
+
+For backward compatibility, 1D problems accept scalar `Nx`:
+
+```python
+# Modern (dimension-agnostic)
+problem = MFGProblem(Nx=[50], ...)  # Recommended
+
+# Legacy (1D only)
+problem = MFGProblem(Nx=50, ...)    # Still works, normalized to [50]
+```
+
+Internally, scalars are normalized to 1-element arrays.
+
+---
+
+## Spatial Grid Terminology
+
+### `xSpace` vs `xGrid`
+
+**`xSpace`**: 1D spatial coordinate array (legacy attribute)
+- Type: `np.ndarray` of shape `(Nx+1,)`
+- Usage: Only for 1D problems
+- Example: `xSpace = np.linspace(0, 1, 51)`
+- Set to `None` for nD problems
+
+**`xGrid`**: Multi-dimensional coordinate meshgrid (internal)
+- Type: `TensorProductGrid` or geometry object
+- Usage: nD problems (dimension ≥ 2)
+- Provides: `.meshgrid()`, `.flatten()` methods
+- Not exposed as public API
+
+**Decision rule**:
+- 1D problems: Use `xSpace` (maintained for backward compatibility)
+- nD problems: Use `geometry.get_spatial_grid()` (GeometryProtocol)
+
+---
+
+## Discretization Parameters
+
+### Spatial Discretization
+
+| Parameter | Type | Meaning | Math | Example |
+|-----------|------|---------|------|---------|
+| `Nx` | int or list[int] | Number of intervals per dimension | N | `[50, 30]` |
+| `xmin` | float or list[float] | Domain lower bounds | x_min | `[0.0, 0.0]` |
+| `xmax` | float or list[float] | Domain upper bounds | x_max | `[1.0, 1.0]` |
+| `Dx` | float or list[float] | Grid spacing per dimension | Δx | `[0.02, 0.033]` |
+| `Lx` | float or list[float] | Domain length per dimension | L | `[1.0, 1.0]` |
+
+**Grid Convention**:
+- `Nx` intervals → `Nx+1` grid points
+- Grid spacing: `Dx[i] = (xmax[i] - xmin[i]) / Nx[i]`
+- Arrays include both boundaries
+
+**Example (2D)**:
+```python
+problem = MFGProblem(
+    spatial_bounds=[(0.0, 1.0), (0.0, 0.5)],
+    spatial_discretization=[50, 30],  # 50×30 intervals
+    T=1.0,
+    Nt=100
+)
+# Creates 51×31 = 1581 spatial grid points
+```
+
+### Temporal Discretization
+
+| Parameter | Type | Meaning | Math |
+|-----------|------|---------|------|
+| `Nt` | int | Number of time intervals | N_t |
+| `T` | float | Terminal time | T |
+| `Dt` | float | Time step size | Δt |
+| `tSpace` | ndarray | Time grid array | t_i |
+
+**Grid Convention**:
+- `Nt` intervals → `Nt+1` time points
+- Time step: `Dt = T / Nt`
+- Time grid: `tSpace = [0, Dt, 2Dt, ..., T]`
 
 ---
 
@@ -25,14 +145,16 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 
 ### Picard Iteration
 
-| Parameter | Type | Meaning |
-|-----------|------|---------|
-| `damping_factor` | float | Picard iteration damping (0-1), math: θ |
-| `max_iterations` | int | Maximum Picard iterations |
-| `tolerance` | float | Convergence tolerance, math: ε |
+| Parameter | Type | Meaning | Math |
+|-----------|------|---------|------|
+| `damping_factor` | float | Picard iteration damping (0-1) | θ |
+| `max_iterations` | int | Maximum Picard iterations | N_max |
+| `tolerance` | float | Convergence tolerance | ε |
 
 **Example**:
 ```python
+from mfg_pde.solvers import FixedPointIterator
+
 solver = FixedPointIterator(
     problem, hjb_solver, fp_solver,
     damping_factor=0.6,
@@ -41,83 +163,19 @@ solver = FixedPointIterator(
 )
 ```
 
----
+### AMR (Adaptive Mesh Refinement)
 
-## Discretization Parameters
-
-### Time Discretization
-
-| Parameter | Type | Meaning |
-|-----------|------|---------|
-| `num_time_steps` | int | Number of time steps (Nt), creates Nt+1 time points |
-| `time_step` | float | Temporal step size Δt |
-| `T` | float | Terminal time |
-
-### Spatial Discretization (1D)
-
-| Parameter | Type | Meaning |
-|-----------|------|---------|
-| `num_intervals_x` | int | Number of spatial intervals (legacy: `Nx`) |
-| `grid_spacing` | float | Spatial grid spacing Δx or h |
-| `xmin`, `xmax` | float | Domain boundaries |
-
-**Grid Convention**:
-- `Nx` intervals → `Nx+1` grid points
-- Arrays have shape `(Nx+1,)` including both boundaries
-- Grid spacing: `Δx = (xmax - xmin) / Nx`
-
-### Spatial Discretization (nD)
-
-| Parameter | Type | Meaning |
-|-----------|------|---------|
-| `dimension` | int | Spatial dimension (1, 2, 3, or arbitrary) |
-| `num_spatial_points` | int | Total number of spatial points |
-| `spatial_shape` | tuple | Shape of spatial grid (e.g., (Nx+1, Ny+1)) |
-
----
-
-## AMR (Adaptive Mesh Refinement) Parameters
-
-**Canonical definition**: See `mfg_pde/geometry/amr_quadtree_2d.py:AMRRefinementCriteria`
-
-### Required Parameters
+**Canonical definition**: `mfg_pde/geometry/amr_quadtree_2d.py:AMRRefinementCriteria`
 
 | Parameter | Type | Default | Meaning |
 |-----------|------|---------|---------|
-| `max_refinement_levels` | int | 5 | Maximum number of refinement levels |
-| `gradient_threshold` | float | 0.1 | Threshold for gradient-based refinement |
-| `coarsening_threshold` | float | 0.1 | Threshold for mesh coarsening |
-| `error_threshold` | float | 1e-4 | Maximum allowed solution error per cell |
-| `min_cell_size` | float | 1e-6 | Minimum allowed cell size |
+| `max_refinement_levels` | int | 5 | Maximum refinement levels |
+| `gradient_threshold` | float | 0.1 | Gradient-based refinement threshold |
+| `coarsening_threshold` | float | 0.1 | Mesh coarsening threshold |
+| `error_threshold` | float | 1e-4 | Max solution error per cell |
+| `min_cell_size` | float | 1e-6 | Minimum cell size |
 
-### Optional Parameters
-
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `solution_variance_threshold` | float | 1e-5 | Variance threshold for refinement |
-| `density_gradient_threshold` | float | 0.05 | Density gradient threshold |
-| `adaptive_error_scaling` | bool | True | Enable adaptive error scaling |
-
-**Example**:
-```python
-from mfg_pde.geometry.amr_quadtree_2d import AMRRefinementCriteria
-from mfg_pde.geometry.amr_1d import OneDimensionalAMRMesh
-
-criteria = AMRRefinementCriteria(
-    max_refinement_levels=3,
-    gradient_threshold=0.5,
-    coarsening_threshold=0.25,
-    min_cell_size=0.001
-)
-
-amr_mesh = OneDimensionalAMRMesh(
-    domain_1d=domain,
-    initial_num_intervals=20,
-    refinement_criteria=criteria
-)
-```
-
-**Note**: Common mistakes found in outdated docs:
+**Common mistakes** (found in outdated docs):
 - ❌ `max_level` or `max_levels` → ✅ `max_refinement_levels`
 - ❌ `refinement_threshold` → ✅ `gradient_threshold`
 
@@ -125,20 +183,13 @@ amr_mesh = OneDimensionalAMRMesh(
 
 ## Physical Parameters
 
-### Mean Field Game System
-
 | Parameter | Type | Meaning | Math Symbol |
 |-----------|------|---------|-------------|
 | `sigma` | float | Diffusion coefficient | σ |
-| `coupling_coefficient` | float | Coupling strength between agents | λ |
-
-### Problem-Specific
-
-| Parameter | Type | Meaning |
-|-----------|------|---------|
-| `terminal_cost` | callable | Terminal cost function g(x,m) |
-| `running_cost` | callable | Running cost function f(x,m) |
-| `hamiltonian` | callable | Hamiltonian function H(x,p,m) |
+| `coupling_coefficient` | float | MFG coupling strength | λ |
+| `terminal_cost` | callable | Terminal cost function | g(x,m) |
+| `running_cost` | callable | Running cost function | f(x,m) |
+| `hamiltonian` | callable | Hamiltonian function | H(x,p,m) |
 
 ---
 
@@ -146,11 +197,11 @@ amr_mesh = OneDimensionalAMRMesh(
 
 **Convention**: Uppercase for solution arrays, lowercase for parameters
 
-| Array Name | Shape | Meaning |
-|------------|-------|---------|
-| `U` | (Nt+1, Nx+1, ...) | Value function u(t,x) |
-| `M` | (Nt+1, Nx+1, ...) | Density function m(t,x) |
-| `grad_U` | (Nt+1, Nx+1, ..., d) | Gradient of value function ∇u |
+| Array Name | Shape | Meaning | Math |
+|------------|-------|---------|------|
+| `U` | (Nt+1, Nx+1, ...) | Value function | u(t,x) |
+| `M` | (Nt+1, Nx+1, ...) | Density function | m(t,x) |
+| `grad_U` | (Nt+1, Nx+1, ..., d) | Gradient of value function | ∇u |
 
 **Example**:
 ```python
@@ -158,16 +209,70 @@ def solve(self) -> tuple[np.ndarray, np.ndarray]:
     """Solve MFG system.
 
     Returns:
-        U: Value function u(t,x) of shape (Nt+1, Nx+1)
-        M: Density function m(t,x) of shape (Nt+1, Nx+1)
+        U: Value function u(t,x) of shape (Nt+1, Nx[0]+1, Nx[1]+1)
+        M: Density function m(t,x) of shape (Nt+1, Nx[0]+1, Nx[1]+1)
     """
 ```
 
 ---
 
-## Geometry Parameters
+## Gradient Notation Standard
 
-### GeometryProtocol Standard (v0.10.0+)
+### Tuple Multi-Index Notation
+
+For a function u(x₁, x₂, ..., xₙ), derivatives are indexed by tuples (α₁, α₂, ..., αₙ) where αᵢ is the derivative order with respect to xᵢ.
+
+**Examples**:
+
+**1D**: `u(x)`
+- `derivs[(0,)] = u` - Function value
+- `derivs[(1,)] = ∂u/∂x` - First derivative
+- `derivs[(2,)] = ∂²u/∂x²` - Second derivative
+
+**2D**: `u(x, y)`
+- `derivs[(0, 0)] = u` - Function value
+- `derivs[(1, 0)] = ∂u/∂x` - Gradient x-component
+- `derivs[(0, 1)] = ∂u/∂y` - Gradient y-component
+- `derivs[(2, 0)] = ∂²u/∂x²` - Hessian xx
+- `derivs[(0, 2)] = ∂²u/∂y²` - Hessian yy
+- `derivs[(1, 1)] = ∂²u/∂x∂y` - Mixed derivative
+
+**3D**: `u(x, y, z)`
+- `derivs[(1, 0, 0)] = ∂u/∂x`
+- `derivs[(0, 1, 0)] = ∂u/∂y`
+- `derivs[(0, 0, 1)] = ∂u/∂z`
+- `derivs[(2, 0, 0)] = ∂²u/∂x²`
+- `derivs[(1, 1, 0)] = ∂²u/∂x∂y`
+
+### Benefits
+
+1. **Dimension-agnostic**: Works for 1D, 2D, 3D, nD without special cases
+2. **Type-safe**: Tuples are hashable and immutable
+3. **Mathematical clarity**: Direct correspondence to multi-index notation
+4. **No ambiguity**: `(1,0)` is unambiguous, `"dx"` vs `"x"` is not
+5. **Extensibility**: Higher-order derivatives naturally supported
+
+### Implementation Example
+
+```python
+# GFDM solver (hjb_gfdm.py:1544-1556)
+derivs = self.approximate_derivatives(u_current, i)
+
+if d == 1:
+    p = derivs.get((1,), 0.0)
+    laplacian = derivs.get((2,), 0.0)
+elif d == 2:
+    p_x = derivs.get((1, 0), 0.0)
+    p_y = derivs.get((0, 1), 0.0)
+    p = np.array([p_x, p_y])
+    laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)
+```
+
+---
+
+## Geometry Parameters (v0.10.0+)
+
+### GeometryProtocol Standard
 
 All geometry classes implement:
 
@@ -182,15 +287,19 @@ All geometry classes implement:
 **Example**:
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.geometry.domain_1d import Domain1D
+from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
 
 # Geometry-first API (v0.10.0+)
-geometry = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+geometry = TensorProductGrid(
+    dimension=2,
+    bounds=[(0.0, 1.0), (0.0, 1.0)],
+    num_points=[51, 51]
+)
 problem = ExampleMFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
 
 # Geometry provides configuration
-assert geometry.dimension == 1
-assert geometry.num_spatial_points == geometry.get_spatial_grid().shape[0]
+assert geometry.dimension == 2
+assert geometry.num_spatial_points == 51 * 51
 ```
 
 ---
@@ -204,22 +313,25 @@ assert geometry.num_spatial_points == geometry.get_spatial_grid().shape[0]
 | `thetaUM` | `damping_factor` | Unclear acronym |
 | `Niter_max` | `max_iterations` | Inconsistent capitalization |
 | `l2errBound` | `tolerance` | Unclear abbreviation |
-| `Dx`, `dx` | `grid_spacing` | Ambiguous (also derivative) |
-| `Dt`, `dt` | `time_step` | Ambiguous |
+| `dx` (lowercase) | `Dx` (uppercase) | Mathematical notation consistency |
+| `dt` (lowercase) | `Dt` (uppercase) | Mathematical notation consistency |
 | `coefCT` | `coupling_coefficient` | Unclear acronym |
 
-**Transition**: Legacy names may still exist in older code but should be replaced during refactoring.
+**Exception**: Some solvers accept lowercase `dt` for compatibility with external libraries.
 
 ---
 
 ## Code Style Examples
 
-### Good - Descriptive Names
+### Good - Clear Naming
+
 ```python
+# Configuration uses descriptive English
 problem = ExampleMFGProblem(
-    geometry=geometry,
+    spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
+    spatial_discretization=[50, 50],  # Nx in 2D
     T=1.0,
-    num_time_steps=100,
+    Nt=100,
     sigma=0.1
 )
 
@@ -230,13 +342,19 @@ solver = create_fast_solver(
     max_iterations=100,
     tolerance=1e-6
 )
+
+# Arrays use mathematical notation
+U = solver.solve()  # Value function u(t,x)
+M = problem.M       # Density m(t,x)
 ```
 
 ### Bad - Unclear Abbreviations
+
 ```python
 # Don't do this
 prob = ExMFGProb(
-    geom=g,
+    sb=[(0.0, 1.0), (0.0, 1.0)],
+    sd=[50, 50],
     T=1.0,
     Nt=100,
     sig=0.1
@@ -276,9 +394,62 @@ def solve_hjb(self, u_init: np.ndarray) -> np.ndarray:
 ```markdown
 The value function $u(t,x)$ satisfies the HJB equation:
 
-$$\frac{\partial u}{\partial t} + H(x, \nabla u, m) = 0$$
+$$\\frac{\\partial u}{\\partial t} + H(x, \\nabla u, m) = 0$$
 
 with terminal condition $u(T,x) = g(x, m(T,x))$.
+```
+
+---
+
+## When to Use Which Convention
+
+### Use Mathematical Symbols (`Nx`, `Dt`, `sigma`)
+
+✅ **Spatial/temporal discretization**:
+```python
+problem = MFGProblem(Nx=[50, 30], Nt=100, T=1.0)
+x = problem.xSpace  # 1D only
+grid_spacing = problem.Dx
+```
+
+✅ **Physical parameters from equations**:
+```python
+def hamiltonian(x, p, m, sigma=0.1):
+    """H(x,p,m) = σ²|p|²/2 - V(x)"""
+    return 0.5 * sigma**2 * np.sum(p**2) - V(x)
+```
+
+✅ **Solution arrays**:
+```python
+U = solver.solve_hjb()  # u(t,x)
+M = solver.solve_fp()   # m(t,x)
+```
+
+### Use Descriptive English (`damping_factor`, `num_spatial_points`)
+
+✅ **Algorithm configuration**:
+```python
+solver = FixedPointIterator(
+    problem,
+    damping_factor=0.6,          # NOT thetaUM
+    max_iterations=100,           # NOT Niter_max
+    tolerance=1e-6                # NOT l2errBound
+)
+```
+
+✅ **High-level abstractions**:
+```python
+geometry = TensorProductGrid(
+    dimension=2,
+    num_points=[51, 51],          # NOT Nx (this is constructor param)
+    bounds=[(0.0, 1.0), (0.0, 1.0)]
+)
+```
+
+✅ **Function/class names**:
+```python
+class FixedPointIterator:        # NOT FPIterator
+    def check_convergence(...):  # NOT chk_conv
 ```
 
 ---
@@ -287,20 +458,24 @@ with terminal condition $u(T,x) = g(x, m(T,x))$.
 
 When adding new parameters:
 
-- ✅ Use descriptive English names
+- ✅ Use mathematical symbols for direct algorithm implementation
+- ✅ Use descriptive English for configuration/settings
 - ✅ Use `snake_case` not `camelCase`
-- ✅ Document mathematical symbol in docstring
+- ✅ Document mathematical symbol in docstring if using notation
 - ✅ Provide type hints
-- ✅ Use standard names from this document
+- ✅ Use dimension-agnostic arrays (e.g., `Nx=[...]`) when possible
 - ✅ Add to this document if introducing new convention
 
 ---
 
 ## References
 
-- **Gradient Notation**: `docs/gradient_notation_standard.md`
 - **GeometryProtocol**: `mfg_pde/geometry/geometry_protocol.py`
 - **AMR Parameters**: `mfg_pde/geometry/amr_quadtree_2d.py` (AMRRefinementCriteria)
+- **Tensor Grids**: `mfg_pde/geometry/tensor_product_grid.py`
+- **Config Classes**: `mfg_pde/config/solver_config.py` (NewtonConfig, PicardConfig)
+- **Fixed Point Iterator**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
+- **HJB FDM Solver**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 ---
 
