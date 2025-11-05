@@ -1,7 +1,7 @@
-# Matrix Diffusion for Anisotropic MFG: Future Enhancement
+# Matrix Diffusion for Anisotropic MFG: IMPLEMENTED
 
 **Created**: 2025-11-05
-**Status**: Future Enhancement
+**Status**: Implemented (2025-11-05)
 **Related**: #245 (Dimension-agnostic MFG architecture)
 
 ## Current Implementation
@@ -156,15 +156,38 @@ def get_diffusion_at(self, x) -> float | NDArray:
 - Theory doc: Matrix diffusion mathematical formulation
 - Example: Corridor evacuation with anisotropic diffusion
 
-### Decision: Not Implementing Now
+### Implementation Status: COMPLETED
 
-**Rationale**:
-- Current scalar + Hamiltonian approach covers existing use cases
-- Matrix diffusion adds significant complexity
-- No immediate user demand
-- Can be added incrementally without breaking changes
+**Date**: 2025-11-05
 
-**Recommendation**: Track as future enhancement, implement if user requests arise.
+**What was implemented**:
+1. Extended `diffusion_coeff` parameter to support matrix-valued Callable
+2. Added `get_diffusion_matrix(x) -> NDArray` method to BaseMFGProblem
+3. Implemented SPD validation for matrix diffusion
+4. Created comprehensive test suite (16 tests)
+5. Updated docstrings in base_problem.py and mfg_problem.py
+
+**API Design** (Option 1 from proposal above):
+```python
+# Unified diffusion_coeff parameter supports all three modes:
+diffusion_coeff: float | Callable
+
+# Where Callable can return:
+#   - float → σI (scalar diffusion)
+#   - NDArray → D(x) (matrix diffusion)
+```
+
+**Validation**:
+- Matrix diffusion automatically validates symmetric positive-definite
+- Scalar diffusion (constant or callable) requires no validation
+- Comprehensive test coverage for all cases
+
+**Files Modified**:
+- `mfg_pde/core/base_problem.py`: Added get_diffusion_matrix() and SPD validation
+- `mfg_pde/core/mfg_problem.py`: Updated docstrings
+- `tests/unit/test_matrix_diffusion.py`: Complete test suite (NEW)
+
+**Next Steps**: Create example demonstrating anisotropic diffusion
 
 ## References
 

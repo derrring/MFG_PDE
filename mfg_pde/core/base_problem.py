@@ -77,7 +77,7 @@ class MFGProblemProtocol(Protocol):
     time_grid: NDArray
 
     # Physical properties
-    sigma: float | Callable  # Constant or position-dependent diffusion
+    sigma: float | Callable  # Constant, position-dependent scalar, or matrix diffusion
 
     # MFG components
     def hamiltonian(self, x, m, p, t) -> float:
@@ -210,11 +210,12 @@ class BaseMFGProblem(ABC):
                 Number of grid points per dimension
             time_domain: (T_final, Nt)
                 Final time and number of time steps
-            diffusion_coeff: σ or σ(x)
+            diffusion_coeff: σ or σ(x) or D(x)
                 Diffusion coefficient (noise intensity)
-                - float: Constant diffusion for all positions
-                - Callable: Position-dependent diffusion σ(x) → float
-                  Enables matrix diffusion for higher dimensions
+                - float: Constant scalar diffusion σ (isotropic, σI in matrix form)
+                - Callable returning float: Position-dependent scalar σ(x) → float
+                - Callable returning NDArray: Full matrix diffusion D(x) → ℝ^{d×d}
+                  For anisotropic diffusion with direction-dependent noise
 
         Raises:
             ValueError: If dimensions are inconsistent or parameters invalid
@@ -406,6 +407,94 @@ class BaseMFGProblem(ABC):
             ...     return self.alpha * m**2
         """
         return 0.0
+
+    def get_diffusion_matrix(self, x) -> NDArray:
+        """
+        Get diffusion matrix D(x) at position x.
+
+        This method provides a unified interface for diffusion coefficients:
+        - Constant scalar σ → σI (scalar × identity matrix)
+        - Callable returning scalar σ(x) → σ(x)I
+        - Callable returning matrix D(x) → D(x) directly
+
+        Args:
+            x: Spatial position (scalar for 1D, tuple/array for nD)
+
+        Returns:
+            Diffusion matrix D(x) ∈ ℝ^{d×d}
+
+        Raises:
+            ValueError: If diffusion matrix is not symmetric positive-definite
+
+        Examples:
+            >>> # Constant scalar diffusion σ = 0.1
+            >>> problem = MFGProblem(..., diffusion_coeff=0.1)
+            >>> D = problem.get_diffusion_matrix(x)
+            >>> # Returns 0.1 * I for any dimension
+
+            >>> # Position-dependent scalar diffusion
+            >>> def sigma_func(x):
+            ...     return 0.1 + 0.01 * np.linalg.norm(x)**2
+            >>> problem = MFGProblem(..., diffusion_coeff=sigma_func)
+            >>> D = problem.get_diffusion_matrix(x)
+            >>> # Returns σ(x) * I
+
+            >>> # Anisotropic matrix diffusion
+            >>> def D_func(x):
+            ...     if x[0] < 0.5:  # Left half: easy horizontal movement
+            ...         return np.array([[1.0, 0.0], [0.0, 0.1]])
+            ...     else:  # Right half: easy vertical movement
+            ...         return np.array([[0.1, 0.0], [0.0, 1.0]])
+            >>> problem = MFGProblem(..., diffusion_coeff=D_func)
+            >>> D = problem.get_diffusion_matrix(x)
+            >>> # Returns position-dependent diffusion matrix
+        """
+        if callable(self.sigma):
+            # Evaluate callable diffusion coefficient
+            result = self.sigma(x)
+
+            if isinstance(result, (int, float, np.number)):
+                # Scalar diffusion: return σ(x) * I
+                return result * np.eye(self.dimension)
+            elif isinstance(result, np.ndarray):
+                # Matrix diffusion: validate and return
+                if result.shape != (self.dimension, self.dimension):
+                    raise ValueError(
+                        f"Diffusion matrix must be ({self.dimension}, {self.dimension}), "
+                        f"got {result.shape} at position {x}"
+                    )
+
+                # Validate symmetric positive-definite
+                if not self._is_symmetric_positive_definite(result):
+                    raise ValueError(f"Diffusion matrix at {x} is not symmetric positive-definite: {result}")
+
+                return result
+            else:
+                raise ValueError(
+                    f"Callable sigma must return float or NDArray, got {type(result).__name__} at position {x}"
+                )
+        else:
+            # Constant scalar diffusion: return σ * I
+            return float(self.sigma) * np.eye(self.dimension)
+
+    def _is_symmetric_positive_definite(self, matrix: NDArray, tol: float = 1e-10) -> bool:
+        """
+        Check if matrix is symmetric positive-definite.
+
+        Args:
+            matrix: Matrix to check
+            tol: Tolerance for symmetry check
+
+        Returns:
+            True if matrix is SPD, False otherwise
+        """
+        # Check symmetric
+        if not np.allclose(matrix, matrix.T, atol=tol):
+            return False
+
+        # Check positive-definite via eigenvalues
+        eigenvalues = np.linalg.eigvalsh(matrix)
+        return np.all(eigenvalues > 0)
 
     def __repr__(self) -> str:
         """String representation of the problem."""

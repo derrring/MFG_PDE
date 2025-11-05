@@ -54,8 +54,11 @@ class MFGProblem(BaseMFGProblem):
             Grid points per dimension
         time_domain: (T_final, Nt)
             Final time and number of time steps
-        diffusion_coeff: σ
+        diffusion_coeff: σ or σ(x) or D(x)
             Diffusion coefficient (noise intensity)
+            - float: Constant scalar diffusion σ
+            - Callable → float: Position-dependent scalar σ(x)
+            - Callable → NDArray: Matrix diffusion D(x) ∈ ℝ^{d×d}
         hamiltonian_func: Optional custom Hamiltonian H(x, m, p, t)
         terminal_cost_func: Optional custom terminal cost g(x)
         initial_density_func: Optional custom initial density m₀(x)
@@ -124,7 +127,10 @@ class MFGProblem(BaseMFGProblem):
             spatial_bounds: [(x₀_min, x₀_max), ...] for each dimension
             spatial_discretization: [N₀, ...] grid points per dimension
             time_domain: (T_final, Nt)
-            diffusion_coeff: Diffusion coefficient σ (float or callable σ(x))
+            diffusion_coeff: Diffusion coefficient σ or σ(x) or D(x)
+                - float: Constant scalar diffusion
+                - Callable → float: Position-dependent scalar σ(x)
+                - Callable → NDArray: Matrix diffusion D(x) ∈ ℝ^{d×d}
             hamiltonian_func: Custom Hamiltonian H(x, m, p, t) or None for default
             terminal_cost_func: Custom terminal cost g(x) or None for default
             initial_density_func: Custom initial density m₀(x) or None for default
