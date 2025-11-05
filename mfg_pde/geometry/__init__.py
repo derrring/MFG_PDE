@@ -62,6 +62,15 @@ from .domain_1d import Domain1D
 from .domain_2d import Domain2D
 from .domain_3d import Domain3D
 
+# Unified geometry protocol
+from .geometry_protocol import (
+    GeometryProtocol,
+    GeometryType,
+    detect_geometry_type,
+    is_geometry_compatible,
+    validate_geometry,
+)
+
 # Maze generation (moved from alg.reinforcement.environments)
 from .mazes import (
     HybridMazeGenerator,
@@ -103,6 +112,9 @@ __all__ = [
     "Domain2D",
     "Domain3D",
     "GeometricBoundaryCondition",
+    # Unified geometry protocol
+    "GeometryProtocol",
+    "GeometryType",
     "GridNetwork",
     "Interval1D",
     "MFGBoundaryHandler2D",
@@ -141,8 +153,10 @@ __all__ = [
     "create_rectangle_boundary_conditions",
     "create_sphere_boundary_conditions",
     "create_triangular_amr_mesh",
+    "detect_geometry_type",
     "dirichlet_bc",
     "get_backend_manager",
+    "is_geometry_compatible",
     # Maze generation
     "HybridMazeGenerator",
     "MazeAlgorithm",
@@ -154,6 +168,7 @@ __all__ = [
     "periodic_bc",
     "robin_bc",
     "set_preferred_backend",
+    "validate_geometry",
 ]
 
 # Version information
