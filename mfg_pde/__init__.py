@@ -89,17 +89,9 @@ try:
 except ImportError:
     GEOMETRY_SYSTEM_AVAILABLE = False
 
-# High-dimensional MFG capabilities
-try:
-    from .core.highdim_mfg_problem import (
-        GridBasedMFGProblem,  # noqa: F401
-        HighDimMFGProblem,  # noqa: F401
-        HybridMFGSolver,  # noqa: F401
-    )
-
-    HIGHDIM_MFG_AVAILABLE = True
-except ImportError:
-    HIGHDIM_MFG_AVAILABLE = False
+# High-dimensional MFG capabilities removed - use unified MFGProblem instead
+# GridBasedMFGProblem and HighDimMFGProblem have been deprecated and eliminated
+HIGHDIM_MFG_AVAILABLE = False
 
 # Interactive research reporting (optional dependency)
 try:
@@ -210,14 +202,7 @@ if GEOMETRY_SYSTEM_AVAILABLE:
         ]
     )
 
-if HIGHDIM_MFG_AVAILABLE:
-    __all__.extend(
-        [
-            "GridBasedMFGProblem",
-            "HighDimMFGProblem",
-            "HybridMFGSolver",
-        ]
-    )
+# HighDimMFGProblem and GridBasedMFGProblem removed - use MFGProblem instead
 
 if NOTEBOOK_REPORTING_AVAILABLE:
     __all__.extend(
