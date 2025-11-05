@@ -21,6 +21,9 @@ from typing import Any
 import numpy as np
 from scipy.sparse import csr_matrix, diags
 
+# Import geometry protocol
+from .geometry_protocol import GeometryType
+
 # Import unified backend system
 from .network_backend import (
     NetworkBackendType,
@@ -250,6 +253,47 @@ class BaseNetworkGeometry(ABC):
         self.network_data: NetworkData | None = None
         self.backend_preference = backend_preference
         self.backend_manager = get_backend_manager(backend_preference)
+
+    # GeometryProtocol implementation
+    @property
+    def dimension(self) -> int:
+        """
+        Spatial dimension of network geometry.
+
+        For networks, dimension represents the embedding space dimension
+        if node_positions are available, or 1 (topological dimension) otherwise.
+        """
+        if self.network_data is not None and self.network_data.node_positions is not None:
+            return self.network_data.node_positions.shape[1]
+        return 1  # Topological dimension for abstract networks
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Type of geometry (always NETWORK for network geometries)."""
+        return GeometryType.NETWORK
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points (network nodes)."""
+        return self.num_nodes
+
+    def get_spatial_grid(self) -> np.ndarray:
+        """
+        Get spatial grid representation.
+
+        Returns:
+            For networks with positions: (num_nodes, dimension) position array
+            For abstract networks: (num_nodes, num_nodes) adjacency matrix
+        """
+        if self.network_data is None:
+            raise ValueError("Network data not initialized. Call create_network() first.")
+
+        # Return node positions if available
+        if self.network_data.node_positions is not None:
+            return self.network_data.node_positions
+
+        # Otherwise return adjacency matrix as network structure representation
+        return self.network_data.adjacency_matrix.toarray()
 
     @abstractmethod
     def create_network(self, **kwargs) -> NetworkData:
