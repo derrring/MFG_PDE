@@ -168,6 +168,45 @@ class TensorProductGrid:
         """
         return self.flatten()
 
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        This polymorphic method provides TensorProductGrid-specific configuration
+        for MFGProblem, including structured grid information.
+
+        Returns:
+            Dictionary with keys:
+                - num_spatial_points: Total number of points
+                - spatial_shape: Shape tuple (Nx, Ny, ...)
+                - spatial_bounds: Bounds [(xmin, xmax), (ymin, ymax), ...]
+                - spatial_discretization: Number of points [Nx, Ny, ...]
+                - legacy_1d_attrs: Legacy 1D attributes (xmin, xmax, etc.) if 1D
+
+        Added in v0.10.1 for polymorphic geometry handling.
+        """
+        config = {
+            "num_spatial_points": self.total_points(),
+            "spatial_shape": tuple(self.num_points),
+            "spatial_bounds": tuple(self.bounds),
+            "spatial_discretization": tuple(self.num_points),
+        }
+
+        # Legacy 1D attributes (for backward compatibility with 1D solvers)
+        if self.dimension == 1:
+            config["legacy_1d_attrs"] = {
+                "xmin": self.bounds[0][0],
+                "xmax": self.bounds[0][1],
+                "Lx": self.bounds[0][1] - self.bounds[0][0],
+                "Nx": self.num_points[0],
+                "Dx": self.spacing[0],
+                "xSpace": self.coordinates[0],
+            }
+        else:
+            config["legacy_1d_attrs"] = None
+
+        return config
+
     def meshgrid(self, indexing: str = "ij") -> tuple[NDArray, ...]:
         """
         Create meshgrid from 1D coordinate arrays.

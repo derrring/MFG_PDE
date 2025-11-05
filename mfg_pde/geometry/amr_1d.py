@@ -241,6 +241,31 @@ class OneDimensionalAMRMesh:
         centers = [self.intervals[i].center for i in self.leaf_intervals]
         return np.array(centers).reshape(-1, 1)
 
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        This polymorphic method provides AMR-specific configuration for MFGProblem.
+        AMR meshes have dynamic grids, so configuration is based on current state.
+
+        Returns:
+            Dictionary with keys:
+                - num_spatial_points: Number of leaf intervals
+                - spatial_shape: (num_leaf_intervals,) - flattened for AMR
+                - spatial_bounds: None - AMR has dynamic bounds
+                - spatial_discretization: None - AMR has variable spacing
+                - legacy_1d_attrs: None - AMR doesn't support legacy attrs
+
+        Added in v0.10.1 for polymorphic geometry handling.
+        """
+        return {
+            "num_spatial_points": len(self.leaf_intervals),
+            "spatial_shape": (len(self.leaf_intervals),),
+            "spatial_bounds": None,  # AMR has dynamic bounds
+            "spatial_discretization": None,  # AMR has variable spacing
+            "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
+        }
+
     # ==================== AMR Operations ====================
 
     def refine_interval(self, interval_id: int) -> list[int]:

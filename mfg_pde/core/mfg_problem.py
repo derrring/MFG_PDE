@@ -675,30 +675,25 @@ class MFGProblem:
 
         if geometry.geometry_type == GeometryType.CARTESIAN_GRID:
             # CARTESIAN_GRID: Can be TensorProductGrid or AMR mesh
+            # Use polymorphic method to get configuration
             self._grid = geometry
+            config = geometry.get_problem_config()
 
-            # Check if structured grid (TensorProductGrid) or adaptive (AMR)
-            if hasattr(geometry, "num_points"):
-                # TensorProductGrid - structured regular grid
-                self.spatial_shape = tuple(geometry.num_points)
-                self.spatial_bounds = geometry.bounds
-                self.spatial_discretization = geometry.num_points
-                self.num_spatial_points = geometry.total_points()
-            else:
-                # AMR mesh - adaptive grid (uses GeometryProtocol only)
-                self.num_spatial_points = geometry.num_spatial_points
-                self.spatial_shape = (geometry.num_spatial_points,)  # Flattened shape
-                self.spatial_bounds = None  # AMR has dynamic bounds
-                self.spatial_discretization = None  # AMR has variable spacing
+            # Apply configuration from geometry
+            self.num_spatial_points = config["num_spatial_points"]
+            self.spatial_shape = config["spatial_shape"]
+            self.spatial_bounds = config["spatial_bounds"]
+            self.spatial_discretization = config["spatial_discretization"]
 
-            # Legacy 1D attributes (for 1D case only, TensorProductGrid only)
-            if self.dimension == 1 and hasattr(geometry, "bounds"):
-                self.xmin = geometry.bounds[0][0]
-                self.xmax = geometry.bounds[0][1]
-                self.Lx = self.xmax - self.xmin
-                self.Nx = geometry.num_points[0]
-                self.Dx = geometry.spacing[0]
-                self.xSpace = geometry.coordinates[0]
+            # Legacy 1D attributes (only if geometry provides them)
+            if config["legacy_1d_attrs"] is not None:
+                legacy = config["legacy_1d_attrs"]
+                self.xmin = legacy["xmin"]
+                self.xmax = legacy["xmax"]
+                self.Lx = legacy["Lx"]
+                self.Nx = legacy["Nx"]
+                self.Dx = legacy["Dx"]
+                self.xSpace = legacy["xSpace"]
             else:
                 # AMR or higher dimensional grids
                 self.xmin = None
