@@ -7,7 +7,10 @@ Boundary conditions are now managed in boundary_conditions_1d.py.
 
 from __future__ import annotations
 
+import numpy as np
+
 from .boundary_conditions_1d import BoundaryConditions  # noqa: TC001
+from .geometry_protocol import GeometryType
 
 
 class Domain1D:
@@ -38,6 +41,42 @@ class Domain1D:
         # Validate boundary conditions
         self.boundary_conditions.validate_values()
 
+        # Cache for grid storage
+        self._cached_grid: list[float] | None = None
+        self._cached_num_points: int | None = None
+
+    # GeometryProtocol implementation
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension of the geometry (always 1 for Domain1D)."""
+        return 1
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Type of geometry (Cartesian grid for Domain1D)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points."""
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+        return self._cached_num_points
+
+    def get_spatial_grid(self) -> np.ndarray:
+        """
+        Get spatial grid representation.
+
+        Returns:
+            numpy array of grid points
+
+        Raises:
+            ValueError: If grid has not been created yet
+        """
+        if self._cached_grid is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+        return np.array(self._cached_grid)
+
     def create_grid(self, num_points: int) -> tuple[float, list[float]]:
         """
         Create spatial grid for the domain.
@@ -53,6 +92,10 @@ class Domain1D:
 
         dx = self.length / (num_points - 1)
         x_points = [self.xmin + i * dx for i in range(num_points)]
+
+        # Cache grid for GeometryProtocol
+        self._cached_grid = x_points
+        self._cached_num_points = num_points
 
         return dx, x_points
 
