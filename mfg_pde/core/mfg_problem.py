@@ -674,15 +674,25 @@ class MFGProblem:
         from mfg_pde.geometry.geometry_protocol import GeometryType
 
         if geometry.geometry_type == GeometryType.CARTESIAN_GRID:
-            # TensorProductGrid - structured grid
+            # CARTESIAN_GRID: Can be TensorProductGrid or AMR mesh
             self._grid = geometry
-            self.spatial_shape = tuple(geometry.num_points)
-            self.spatial_bounds = geometry.bounds
-            self.spatial_discretization = geometry.num_points
-            self.num_spatial_points = geometry.total_points()
 
-            # Legacy 1D attributes (for 1D case only)
-            if self.dimension == 1:
+            # Check if structured grid (TensorProductGrid) or adaptive (AMR)
+            if hasattr(geometry, "num_points"):
+                # TensorProductGrid - structured regular grid
+                self.spatial_shape = tuple(geometry.num_points)
+                self.spatial_bounds = geometry.bounds
+                self.spatial_discretization = geometry.num_points
+                self.num_spatial_points = geometry.total_points()
+            else:
+                # AMR mesh - adaptive grid (uses GeometryProtocol only)
+                self.num_spatial_points = geometry.num_spatial_points
+                self.spatial_shape = (geometry.num_spatial_points,)  # Flattened shape
+                self.spatial_bounds = None  # AMR has dynamic bounds
+                self.spatial_discretization = None  # AMR has variable spacing
+
+            # Legacy 1D attributes (for 1D case only, TensorProductGrid only)
+            if self.dimension == 1 and hasattr(geometry, "bounds"):
                 self.xmin = geometry.bounds[0][0]
                 self.xmax = geometry.bounds[0][1]
                 self.Lx = self.xmax - self.xmin
@@ -690,6 +700,7 @@ class MFGProblem:
                 self.Dx = geometry.spacing[0]
                 self.xSpace = geometry.coordinates[0]
             else:
+                # AMR or higher dimensional grids
                 self.xmin = None
                 self.xmax = None
                 self.Lx = None
