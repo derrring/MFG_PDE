@@ -24,7 +24,7 @@ class Simple1DProblem:
         self.Dx = 0.1
         self.Dt = 0.01
         self.sigma = 0.1
-        self.coefCT = 1.0
+        self.coupling_coefficient = 1.0
         self.Nt = 1
 
 
@@ -38,7 +38,7 @@ Nx = problem.Nx
 Dx = problem.Dx
 Dt = problem.Dt
 sigma = problem.sigma
-coefCT = problem.coefCT
+coupling_coefficient = problem.coupling_coefficient
 
 # Create dummy U field (constant velocity for simplicity)
 u_field = np.linspace(0, 1, Nx)  # Linear potential -> constant velocity
@@ -49,7 +49,7 @@ col_indices = []
 data_values = []
 
 print(f"Building FP matrix for {Nx} interior points")
-print(f"Parameters: Dx={Dx}, Dt={Dt}, sigma={sigma}, coefCT={coefCT}")
+print(f"Parameters: Dx={Dx}, Dt={Dt}, sigma={sigma}, coupling_coefficient={coupling_coefficient}")
 print()
 
 # Use no-flux boundary conditions with ghost cell method (Bug #8 fix)
@@ -64,7 +64,7 @@ for i in range(Nx):
         u_grad_forward = u_field[1] - u_field[0]
         u_grad_backward = -u_grad_forward  # Symmetric reflection
 
-        val_A_ii += float(coefCT * (npart(u_grad_forward) + ppart(u_grad_backward)) / Dx**2)
+        val_A_ii += float(coupling_coefficient * (npart(u_grad_forward) + ppart(u_grad_backward)) / Dx**2)
 
         row_indices.append(i)
         col_indices.append(i)
@@ -72,10 +72,10 @@ for i in range(Nx):
 
         # Coupling to m[1]: combines both ghost (i-1→1) and real neighbor (i+1=1)
         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-        val_A_i_im1 += float(-coefCT * npart(u_grad_backward) / Dx**2)
+        val_A_i_im1 += float(-coupling_coefficient * npart(u_grad_backward) / Dx**2)
 
         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-        val_A_i_ip1 += float(-coefCT * ppart(u_grad_forward) / Dx**2)
+        val_A_i_ip1 += float(-coupling_coefficient * ppart(u_grad_forward) / Dx**2)
 
         # Add combined coefficient to m[1]
         row_indices.append(i)
@@ -92,7 +92,7 @@ for i in range(Nx):
         u_grad_backward = u_field[Nx - 1] - u_field[Nx - 2]
         u_grad_forward = -u_grad_backward  # Symmetric reflection
 
-        val_A_ii += float(coefCT * (npart(u_grad_forward) + ppart(u_grad_backward)) / Dx**2)
+        val_A_ii += float(coupling_coefficient * (npart(u_grad_forward) + ppart(u_grad_backward)) / Dx**2)
 
         row_indices.append(i)
         col_indices.append(i)
@@ -100,10 +100,10 @@ for i in range(Nx):
 
         # Coupling to m[N-2]: combines both real neighbor (i-1=N-2) and ghost (i+1→N-2)
         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-        val_A_i_im1 += float(-coefCT * npart(u_grad_backward) / Dx**2)
+        val_A_i_im1 += float(-coupling_coefficient * npart(u_grad_backward) / Dx**2)
 
         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-        val_A_i_ip1 += float(-coefCT * ppart(u_grad_forward) / Dx**2)
+        val_A_i_ip1 += float(-coupling_coefficient * ppart(u_grad_forward) / Dx**2)
 
         # Add combined coefficient to m[N-2]
         row_indices.append(i)
@@ -113,20 +113,20 @@ for i in range(Nx):
     else:
         # Interior points
         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
-        val_A_ii += float(coefCT * (npart(u_field[i + 1] - u_field[i]) + ppart(u_field[i] - u_field[i - 1])) / Dx**2)
+        val_A_ii += float(coupling_coefficient * (npart(u_field[i + 1] - u_field[i]) + ppart(u_field[i] - u_field[i - 1])) / Dx**2)
 
         row_indices.append(i)
         col_indices.append(i)
         data_values.append(val_A_ii)
 
         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-        val_A_i_im1 += float(-coefCT * npart(u_field[i] - u_field[i - 1]) / Dx**2)
+        val_A_i_im1 += float(-coupling_coefficient * npart(u_field[i] - u_field[i - 1]) / Dx**2)
         row_indices.append(i)
         col_indices.append(i - 1)
         data_values.append(val_A_i_im1)
 
         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-        val_A_i_ip1 += float(-coefCT * ppart(u_field[i + 1] - u_field[i]) / Dx**2)
+        val_A_i_ip1 += float(-coupling_coefficient * ppart(u_field[i + 1] - u_field[i]) / Dx**2)
         row_indices.append(i)
         col_indices.append(i + 1)
         data_values.append(val_A_i_ip1)

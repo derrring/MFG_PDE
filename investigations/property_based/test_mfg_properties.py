@@ -56,7 +56,7 @@ class TestMFGMathematicalProperties:
         note(f"Testing mass conservation with Nx={Nx}, Nt={Nt}, σ={sigma:.3f}, λ={coupling_coefficient:.3f}")
 
         try:
-            problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=T, sigma=sigma, coefCT=coupling_coefficient)
+            problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=T, sigma=sigma, coupling_coefficient=coupling_coefficient)
             solver = create_fast_solver(problem, "fixed_point")
 
             # Solve with moderate tolerance to ensure convergence

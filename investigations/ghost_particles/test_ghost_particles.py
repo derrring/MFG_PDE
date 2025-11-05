@@ -21,7 +21,7 @@ def test_ghost_particles():
     print("=== Testing Ghost Particle Implementation ===")
 
     # Simple problem
-    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=10, T=0.02, Nt=2, sigma=0.1, coefCT=0.1)
+    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=10, T=0.02, Nt=2, sigma=0.1, coupling_coefficient=0.1)
 
     # Create collocation points including boundary points
     num_collocation_points = 5
