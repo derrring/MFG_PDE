@@ -339,7 +339,27 @@ class MFGProblem:
             Nt: Temporal grid points
             sigma: Diffusion coefficient
             coefCT: Control cost coefficient
+
+        Note:
+            This manual grid construction pattern is deprecated. Consider using
+            the geometry-first API with Domain1D or TensorProductGrid instead.
+            See migration guide: docs/migration/GEOMETRY_PARAMETER_MIGRATION.md
         """
+        import warnings
+
+        # Emit deprecation warning for manual grid construction pattern
+        warnings.warn(
+            "Manual grid construction in MFGProblem is deprecated and will be "
+            "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
+            "  from mfg_pde.geometry import Domain1D\n"
+            f"  domain = Domain1D(xmin={xmin[0]}, xmax={xmax[0]}, boundary_conditions='periodic')\n"
+            f"  domain.create_grid(Nx={Nx[0]})\n"
+            f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
+            "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
+            DeprecationWarning,
+            stacklevel=4,  # Point to user's code, not internal calls
+        )
+
         # Set dimension
         self.dimension = 1
 
@@ -389,13 +409,37 @@ class MFGProblem:
         coefCT: float,
         suppress_warnings: bool,
     ) -> None:
-        """Initialize problem in n-dimensional mode."""
+        """
+        Initialize problem in n-dimensional mode.
+
+        Note:
+            This manual grid construction pattern is deprecated. Consider using
+            the geometry-first API with TensorProductGrid instead.
+            See migration guide: docs/migration/GEOMETRY_PARAMETER_MIGRATION.md
+        """
+        import warnings
 
         # Validate inputs
         if not spatial_bounds:
             raise ValueError("spatial_bounds must be a non-empty list of (min, max) tuples")
 
         dimension = len(spatial_bounds)
+
+        # Emit deprecation warning for manual grid construction pattern
+        warnings.warn(
+            "Manual grid construction in MFGProblem is deprecated and will be "
+            "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
+            "  from mfg_pde.geometry import TensorProductGrid\n"
+            "  geometry = TensorProductGrid(\n"
+            f"      dimension={dimension},\n"
+            f"      bounds={spatial_bounds},\n"
+            f"      num_points={spatial_discretization if spatial_discretization else [51] * dimension}\n"
+            "  )\n"
+            f"  problem = MFGProblem(geometry=geometry, T={T}, Nt={Nt})\n\n"
+            "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
+            DeprecationWarning,
+            stacklevel=4,  # Point to user's code, not internal calls
+        )
 
         if spatial_discretization is None:
             # Default: 51 points per dimension
@@ -580,26 +624,35 @@ class MFGProblem:
         suppress_warnings: bool,
     ) -> None:
         """
-        Initialize problem with complex geometry (implicit domains, obstacles).
+        Initialize problem with geometry object implementing GeometryProtocol.
+
+        Accepts any geometry type: TensorProductGrid, Domain1D, BaseGeometry,
+        ImplicitDomain, NetworkGeometry, etc.
 
         Args:
-            geometry: BaseGeometry object
-            obstacles: List of obstacle geometries
+            geometry: Any object implementing GeometryProtocol
+            obstacles: List of obstacle geometries (for domain geometries)
             T, Nt: Time domain parameters
             sigma, coefCT: Physical parameters
             suppress_warnings: Suppress warnings
         """
-        # Import geometry types
+        # Import geometry protocol
         try:
-            from mfg_pde.geometry.base_geometry import BaseGeometry
+            from mfg_pde.geometry.geometry_protocol import GeometryProtocol, validate_geometry
         except ImportError as err:
             raise ImportError(
-                "Complex geometry mode requires geometry module. Install with: pip install mfg_pde[geometry]"
+                "Geometry mode requires geometry module. Install with: pip install mfg_pde[geometry]"
             ) from err
 
-        # Validate geometry object
-        if not isinstance(geometry, BaseGeometry):
-            raise TypeError(f"geometry must be a BaseGeometry instance, got {type(geometry)}")
+        # Validate geometry object implements GeometryProtocol
+        if not isinstance(geometry, GeometryProtocol):
+            raise TypeError(
+                f"geometry must implement GeometryProtocol, got {type(geometry)}. "
+                f"Use TensorProductGrid, Domain1D, BaseGeometry, ImplicitDomain, or NetworkGeometry."
+            )
+
+        # Validate geometry is properly implemented
+        validate_geometry(geometry)
 
         # Store geometry
         self.geometry = geometry
@@ -617,27 +670,94 @@ class MFGProblem:
         self.sigma = sigma
         self.coefCT = coefCT
 
-        # Generate mesh from geometry
-        self.mesh_data = geometry.generate_mesh()
-        self.collocation_points = self.mesh_data.vertices
-        self.num_spatial_points = len(self.collocation_points)
+        # Initialize spatial discretization based on geometry type
+        from mfg_pde.geometry.geometry_protocol import GeometryType
 
-        # Set spatial shape and bounds
-        self.spatial_shape = (self.num_spatial_points,)  # Unstructured
-        self.spatial_bounds = None  # Not a regular grid
-        self.spatial_discretization = None
+        if geometry.geometry_type == GeometryType.CARTESIAN_GRID:
+            # TensorProductGrid - structured grid
+            self._grid = geometry
+            self.spatial_shape = tuple(geometry.num_points)
+            self.spatial_bounds = geometry.bounds
+            self.spatial_discretization = geometry.num_points
+            self.num_spatial_points = geometry.total_points()
 
-        # Legacy 1D attributes (None for geometry mode)
-        self.xmin = None
-        self.xmax = None
-        self.Lx = None
-        self.Nx = None
-        self.Dx = None
-        self.xSpace = None
-        self._grid = None
+            # Legacy 1D attributes (for 1D case only)
+            if self.dimension == 1:
+                self.xmin = geometry.bounds[0][0]
+                self.xmax = geometry.bounds[0][1]
+                self.Lx = self.xmax - self.xmin
+                self.Nx = geometry.num_points[0]
+                self.Dx = geometry.spacing[0]
+                self.xSpace = geometry.coordinates[0]
+            else:
+                self.xmin = None
+                self.xmax = None
+                self.Lx = None
+                self.Nx = None
+                self.Dx = None
+                self.xSpace = None
 
-        # Set domain type
-        self.domain_type = "implicit"
+            self.domain_type = "grid"
+
+        elif geometry.geometry_type in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D):
+            # BaseGeometry - unstructured mesh via Gmsh
+            self.mesh_data = geometry.generate_mesh()
+            self.collocation_points = self.mesh_data.vertices
+            self.num_spatial_points = len(self.collocation_points)
+
+            # Set spatial shape and bounds
+            self.spatial_shape = (self.num_spatial_points,)  # Unstructured
+            self.spatial_bounds = None  # Not a regular grid
+            self.spatial_discretization = None
+            self._grid = None
+
+            # Legacy 1D attributes (None for unstructured mesh)
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.Dx = None
+            self.xSpace = None
+
+            self.domain_type = "mesh"
+
+        elif geometry.geometry_type == GeometryType.IMPLICIT:
+            # ImplicitDomain - point cloud from SDF
+            self.num_spatial_points = geometry.num_spatial_points
+            self.collocation_points = geometry.get_spatial_grid()
+            self.spatial_shape = (self.num_spatial_points,)
+            self.spatial_bounds = geometry.get_bounding_box()
+            self.spatial_discretization = None
+            self._grid = None
+
+            # Legacy 1D attributes (None for implicit domain)
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.Dx = None
+            self.xSpace = None
+
+            self.domain_type = "implicit"
+
+        else:
+            # Generic GeometryProtocol object - use spatial grid
+            self.num_spatial_points = geometry.num_spatial_points
+            self.collocation_points = geometry.get_spatial_grid()
+            self.spatial_shape = (self.num_spatial_points,)
+            self.spatial_bounds = None
+            self.spatial_discretization = None
+            self._grid = None
+
+            # Legacy 1D attributes (None)
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.Dx = None
+            self.xSpace = None
+
+            self.domain_type = str(geometry.geometry_type.value)
 
     def _init_network(
         self,
@@ -1027,7 +1147,7 @@ class MFGProblem:
         if self.dimension == 1:
             # 1D normalization (original)
             integral_m_init = np.sum(self.m_init) * self.Dx
-        else:
+        elif self.spatial_bounds is not None and self.spatial_discretization is not None:
             # n-D normalization (integrate over all dimensions)
             # For tensor product grid: integral = sum(m) * prod(dx_i)
             dx_prod = np.prod(
@@ -1037,6 +1157,11 @@ class MFGProblem:
                 ]
             )
             integral_m_init = np.sum(self.m_init) * dx_prod
+        else:
+            # For unstructured/implicit geometries: use uniform normalization
+            # This is a rough approximation - for accurate integration, use proper
+            # quadrature rules based on the geometry type
+            integral_m_init = np.sum(self.m_init) / self.num_spatial_points
 
         if integral_m_init > 1e-10:
             self.m_init /= integral_m_init
