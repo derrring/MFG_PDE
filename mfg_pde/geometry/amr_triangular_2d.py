@@ -16,6 +16,7 @@ import numpy as np
 
 from .amr_quadtree_2d import AMRRefinementCriteria, BaseErrorEstimator
 from .base_geometry import MeshData
+from .geometry_protocol import GeometryType
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,57 @@ class TriangularAMRMesh:
             self.triangles[i] = triangle
             self.leaf_triangles.append(i)
             self._next_element_id = max(self._next_element_id, i + 1)
+
+    # GeometryProtocol implementation
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension (2D for triangular mesh)."""
+        return 2
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Geometry type (CARTESIAN_GRID for structured adaptive mesh)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points (leaf triangles)."""
+        return len(self.leaf_triangles)
+
+    def get_spatial_grid(self) -> np.ndarray:
+        """
+        Get spatial grid representation.
+
+        Returns:
+            numpy array of leaf triangle centroids (N, 2)
+        """
+        centroids = [self.triangles[i].centroid for i in self.leaf_triangles]
+        return np.array(centroids)
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        This polymorphic method provides AMR-specific configuration for MFGProblem.
+        Triangular AMR meshes have dynamic grids with variable element sizes.
+
+        Returns:
+            Dictionary with keys:
+                - num_spatial_points: Number of leaf triangles
+                - spatial_shape: (num_leaf_triangles,) - flattened for AMR
+                - spatial_bounds: None - AMR has dynamic bounds
+                - spatial_discretization: None - AMR has variable element sizes
+                - legacy_1d_attrs: None - AMR doesn't support legacy attrs
+
+        Added in v0.10.1 for polymorphic geometry handling.
+        """
+        return {
+            "num_spatial_points": len(self.leaf_triangles),
+            "spatial_shape": (len(self.leaf_triangles),),
+            "spatial_bounds": None,  # AMR has dynamic bounds
+            "spatial_discretization": None,  # AMR has variable element sizes
+            "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
+        }
 
     def refine_triangle(self, triangle_id: int, strategy: str = "red") -> list[int]:
         """

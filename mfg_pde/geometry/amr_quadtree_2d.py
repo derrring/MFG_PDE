@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from .geometry_protocol import GeometryType
+
 # Apply TYPE_CHECKING isolation principle for JAX (same as OmegaConf pattern)
 if TYPE_CHECKING:
     jnp = np  # Type alias for static analysis
@@ -315,6 +317,57 @@ class AdaptiveMesh:
         cell_id = self._next_cell_id
         self._next_cell_id += 1
         return cell_id
+
+    # GeometryProtocol implementation
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension (2D for quadtree mesh)."""
+        return 2
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Geometry type (CARTESIAN_GRID for structured adaptive mesh)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points (leaf nodes)."""
+        return len(self.leaf_nodes)
+
+    def get_spatial_grid(self) -> NDArray:
+        """
+        Get spatial grid representation.
+
+        Returns:
+            numpy array of leaf node centers (N, 2)
+        """
+        centers = np.array([[node.center_x, node.center_y] for node in self.leaf_nodes])
+        return centers
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        This polymorphic method provides AMR-specific configuration for MFGProblem.
+        Quadtree AMR meshes have dynamic grids with variable cell sizes.
+
+        Returns:
+            Dictionary with keys:
+                - num_spatial_points: Number of leaf nodes
+                - spatial_shape: (num_leaf_nodes,) - flattened for AMR
+                - spatial_bounds: None - AMR has dynamic bounds
+                - spatial_discretization: None - AMR has variable cell sizes
+                - legacy_1d_attrs: None - AMR doesn't support legacy attrs
+
+        Added in v0.10.1 for polymorphic geometry handling.
+        """
+        return {
+            "num_spatial_points": len(self.leaf_nodes),
+            "spatial_shape": (len(self.leaf_nodes),),
+            "spatial_bounds": None,  # AMR has dynamic bounds
+            "spatial_discretization": None,  # AMR has variable cell sizes
+            "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
+        }
 
     def refine_mesh(self, solution_data: dict[str, NDArray]) -> int:
         """
