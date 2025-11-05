@@ -134,6 +134,7 @@ class VariationalMFGProblem:
         components: VariationalMFGComponents | None = None,
         # Standard MFG parameters (for compatibility)
         sigma: float = 1.0,
+        diffusion_coeff: float | Callable | None = None,
         **kwargs: Any,
     ):
         """
@@ -143,8 +144,20 @@ class VariationalMFGProblem:
             xmin, xmax, Nx: Spatial domain discretization
             T, Nt: Time domain discretization
             components: Lagrangian problem specification
-            sigma: Noise intensity (diffusion coefficient)
+            sigma: Noise intensity (diffusion coefficient) - DEPRECATED, use diffusion_coeff
+            diffusion_coeff: Diffusion coefficient (noise intensity)
+                - float: Constant scalar diffusion σ (isotropic)
+                - Callable returning float: Position-dependent scalar σ(x) → float
+                - Callable returning NDArray: Full matrix diffusion D(x) → ℝ^{1×1}
+                  For anisotropic diffusion (1D only supports scalar in practice)
+                If None, falls back to sigma parameter
             **kwargs: Additional parameters
+
+        Note:
+            This is a 1D-only variational formulation class. For multi-dimensional
+            variational MFG problems, use create_compatible_mfg_problem() to convert
+            to the dimension-agnostic MFGProblem and specify spatial_bounds and
+            spatial_discretization with matrix diffusion support.
         """
         # Domain setup
         self.xmin = xmin
@@ -161,8 +174,13 @@ class VariationalMFGProblem:
         self.x = np.linspace(xmin, xmax, Nx + 1)
         self.t = np.linspace(0, T, Nt)
 
-        # Noise/diffusion
-        self.sigma = sigma
+        # Noise/diffusion (handle both old sigma and new diffusion_coeff)
+        if diffusion_coeff is not None:
+            self.sigma = diffusion_coeff  # Use new parameter
+            self.diffusion_coeff = diffusion_coeff
+        else:
+            self.sigma = sigma  # Fallback to old parameter
+            self.diffusion_coeff = sigma
 
         # Lagrangian components
         self.components = components or self._create_default_components()
@@ -562,6 +580,7 @@ def create_quadratic_variational_mfg(
     kinetic_coefficient: float = 0.5,
     congestion_coefficient: float = 0.5,
     sigma: float = 1.0,
+    diffusion_coeff: float | Callable | None = None,
 ) -> VariationalMFGProblem:
     """
     Create standard quadratic Lagrangian MFG problem.
@@ -572,7 +591,8 @@ def create_quadratic_variational_mfg(
         Domain and discretization parameters
         kinetic_coefficient: α (control cost)
         congestion_coefficient: β (congestion cost)
-        sigma: Noise intensity
+        sigma: Noise intensity (deprecated, use diffusion_coeff)
+        diffusion_coeff: Diffusion coefficient (scalar, callable, or matrix)
 
     Returns:
         VariationalMFGProblem with quadratic structure
@@ -601,7 +621,9 @@ def create_quadratic_variational_mfg(
         description="Quadratic Lagrangian MFG",
     )
 
-    return VariationalMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)
+    return VariationalMFGProblem(
+        xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, diffusion_coeff=diffusion_coeff, components=components
+    )
 
 
 def create_obstacle_variational_mfg(
@@ -614,6 +636,7 @@ def create_obstacle_variational_mfg(
     obstacle_radius: float = 0.1,
     obstacle_penalty: float = 100.0,
     sigma: float = 1.0,
+    diffusion_coeff: float | Callable | None = None,
 ) -> VariationalMFGProblem:
     """
     Create Lagrangian MFG with obstacle avoidance.
@@ -625,7 +648,8 @@ def create_obstacle_variational_mfg(
         obstacle_center: Center of obstacle
         obstacle_radius: Radius of obstacle region
         obstacle_penalty: Penalty coefficient for obstacle
-        sigma: Noise intensity
+        sigma: Noise intensity (deprecated, use diffusion_coeff)
+        diffusion_coeff: Diffusion coefficient (scalar, callable, or matrix)
 
     Returns:
         VariationalMFGProblem with obstacle constraints
@@ -665,4 +689,6 @@ def create_obstacle_variational_mfg(
         description="Obstacle Avoidance Lagrangian MFG",
     )
 
-    return VariationalMFGProblem(xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, components=components)
+    return VariationalMFGProblem(
+        xmin=xmin, xmax=xmax, Nx=Nx, T=T, Nt=Nt, sigma=sigma, diffusion_coeff=diffusion_coeff, components=components
+    )
