@@ -27,7 +27,11 @@ from collections.abc import Callable  # noqa: TC003
 
 import numpy as np
 
+from mfg_pde.utils.logging import get_logger
+
 from .base_problem import BaseMFGProblem
+
+logger = get_logger(__name__)
 
 
 class MFGProblem(BaseMFGProblem):
@@ -107,7 +111,7 @@ class MFGProblem(BaseMFGProblem):
         spatial_bounds: list[tuple[float, float]],
         spatial_discretization: list[int],
         time_domain: tuple[float, int] = (1.0, 100),
-        diffusion_coeff: float = 0.1,
+        diffusion_coeff: float | Callable = 0.1,
         hamiltonian_func: Callable | None = None,
         terminal_cost_func: Callable | None = None,
         initial_density_func: Callable | None = None,
@@ -120,7 +124,7 @@ class MFGProblem(BaseMFGProblem):
             spatial_bounds: [(x₀_min, x₀_max), ...] for each dimension
             spatial_discretization: [N₀, ...] grid points per dimension
             time_domain: (T_final, Nt)
-            diffusion_coeff: Diffusion coefficient σ
+            diffusion_coeff: Diffusion coefficient σ (float or callable σ(x))
             hamiltonian_func: Custom Hamiltonian H(x, m, p, t) or None for default
             terminal_cost_func: Custom terminal cost g(x) or None for default
             initial_density_func: Custom initial density m₀(x) or None for default
@@ -134,6 +138,16 @@ class MFGProblem(BaseMFGProblem):
         self._terminal_cost_func = terminal_cost_func
         self._initial_density_func = initial_density_func
         self._running_cost_func = running_cost_func
+
+        # Warn about default functions
+        if hamiltonian_func is None:
+            logger.warning("Using default Hamiltonian H = 0.5·|p|² (LQ-type with no interaction)")
+        if terminal_cost_func is None:
+            logger.warning("Using default terminal cost g(x) = 0.5·|x - x_center|² (quadratic)")
+        if initial_density_func is None:
+            logger.warning("Using default initial density m₀(x) = Gaussian centered at domain center")
+        if running_cost_func is None:
+            logger.info("Using default running cost f = 0 (no running cost)")
 
         # Build spatial grid
         self._build_spatial_grid()

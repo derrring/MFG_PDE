@@ -20,6 +20,7 @@ Part of: Issue #245 - Radical Architecture Renovation
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable  # noqa: TC003
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import numpy as np
@@ -52,7 +53,7 @@ class MFGProblemProtocol(Protocol):
         - time_grid: Array of time points [t₀, t₁, ..., t_Nt]
 
     Physical Parameters:
-        - sigma: Diffusion coefficient σ (noise intensity)
+        - sigma: Diffusion coefficient σ (constant or callable for matrix diffusion)
 
     MFG Components:
         - hamiltonian(x, m, p, t): H(x, m, p, t)
@@ -76,7 +77,7 @@ class MFGProblemProtocol(Protocol):
     time_grid: NDArray
 
     # Physical properties
-    sigma: float
+    sigma: float | Callable  # Constant or position-dependent diffusion
 
     # MFG components
     def hamiltonian(self, x, m, p, t) -> float:
@@ -197,7 +198,7 @@ class BaseMFGProblem(ABC):
         spatial_bounds: list[tuple[float, float]],
         spatial_discretization: list[int],
         time_domain: tuple[float, int],
-        diffusion_coeff: float,
+        diffusion_coeff: float | Callable,
     ):
         """
         Initialize dimension-agnostic MFG problem.
@@ -209,8 +210,11 @@ class BaseMFGProblem(ABC):
                 Number of grid points per dimension
             time_domain: (T_final, Nt)
                 Final time and number of time steps
-            diffusion_coeff: σ
+            diffusion_coeff: σ or σ(x)
                 Diffusion coefficient (noise intensity)
+                - float: Constant diffusion for all positions
+                - Callable: Position-dependent diffusion σ(x) → float
+                  Enables matrix diffusion for higher dimensions
 
         Raises:
             ValueError: If dimensions are inconsistent or parameters invalid
@@ -231,7 +235,11 @@ class BaseMFGProblem(ABC):
         if time_domain[0] <= 0 or time_domain[1] <= 0:
             raise ValueError(f"Time domain values must be positive: {time_domain}")
 
-        if diffusion_coeff < 0:
+        # Validate diffusion coefficient
+        if callable(diffusion_coeff):
+            # For callable sigma, validation happens at runtime
+            pass
+        elif diffusion_coeff < 0:
             raise ValueError(f"Diffusion coefficient must be non-negative: {diffusion_coeff}")
 
         # Spatial setup
