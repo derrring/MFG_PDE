@@ -72,7 +72,7 @@ class TestWithProgressMonitoring:
         solver = DummySolver()
 
         # Test various parameter name variations
-        for param_name in ["max_iterations", "Niter", "max_picard_iterations", "Niter_max"]:
+        for param_name in ["max_iterations", "Niter", "max_picard_iterations", "max_iterations"]:
             result = solve(solver, **{param_name: 20})
             assert result is not None
 

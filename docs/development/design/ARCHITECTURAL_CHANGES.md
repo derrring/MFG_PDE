@@ -97,7 +97,7 @@ def crowd_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, 
     
     # Control cost with panic effects
     panic_factor = problem.components.parameters.get("panic_factor", 0.0)
-    effective_cost = problem.coefCT * (1.0 - 0.5 * panic_factor)
+    effective_cost = problem.coupling_coefficient * (1.0 - 0.5 * panic_factor)
     kinetic_energy = 0.5 * effective_cost * (p_fwd**2 + p_bwd**2)
     
     # Congestion penalty

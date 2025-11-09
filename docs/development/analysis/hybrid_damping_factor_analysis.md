@@ -7,15 +7,15 @@
 
 ## Problem Description
 
-The Hybrid Particle-FDM method exhibits parameter-dependent mass evolution patterns, with the damping factor (thetaUM) serving as a critical stability threshold. Unlike QP-Collocation's inherent initial mass loss, the Hybrid method's mass instability is **parameter-avoidable** and occurs only with aggressive damping values.
+The Hybrid Particle-FDM method exhibits parameter-dependent mass evolution patterns, with the damping factor (damping_factor) serving as a critical stability threshold. Unlike QP-Collocation's inherent initial mass loss, the Hybrid method's mass instability is **parameter-avoidable** and occurs only with aggressive damping values.
 
-**Key Finding**: Experimental analysis reveals a clear stability threshold around **thetaUM ≈ 0.6-0.7**, beyond which mass oscillations and deviations increase dramatically.
+**Key Finding**: Experimental analysis reveals a clear stability threshold around **damping_factor ≈ 0.6-0.7**, beyond which mass oscillations and deviations increase dramatically.
 
 ## Experimental Evidence
 
-### Systematic Damping Study Results (T=2.0, σ=0.2, coefCT=0.03)
+### Systematic Damping Study Results (T=2.0, σ=0.2, coupling_coefficient=0.03)
 
-| thetaUM | Early Loss % | Max Deviation % | Oscillation % | Final Change % | Status |
+| damping_factor | Early Loss % | Max Deviation % | Oscillation % | Final Change % | Status |
 |---------|-------------|-----------------|---------------|----------------|---------|
 | 0.10    | +0.394      | 0.624          | 0.032         | -0.624        | Stable |
 | 0.30    | +0.435      | 0.577          | 0.036         | -0.577        | Stable |
@@ -25,7 +25,7 @@ The Hybrid Particle-FDM method exhibits parameter-dependent mass evolution patte
 | 0.90    | +0.933      | 1.623          | 0.607         | -0.565        | Moderate |
 | 0.95    | -0.917      | 9.073          | 3.542         | -0.073        | Unstable |
 
-**Stability Threshold**: thetaUM ≈ 0.75 (empirically determined)
+**Stability Threshold**: damping_factor ≈ 0.75 (empirically determined)
 
 ## Mathematical Analysis
 
@@ -39,7 +39,7 @@ M^(k+1) = (1 - θ_UM) · M^(k) + θ_UM · M_FP[U^(k+1)]
 ```
 
 Where:
-- `θ_UM ∈ (0,1]` is the damping parameter (thetaUM)
+- `θ_UM ∈ (0,1]` is the damping parameter (damping_factor)
 - `U_HJB[M]` is the HJB solver response to density M
 - `M_FP[U]` is the Fokker-Planck solver response to control U
 
@@ -190,13 +190,13 @@ Large `θ_UM` forces artificial rapid changes incompatible with physical dynamic
 **Mathematical Explanation**: Longer time horizons accumulate more nonlinear interactions, requiring more conservative damping.
 
 ### **Coupling Strength Effect**
-- **Light coupling (coefCT ≤ 0.02)**: Higher θ_UM tolerated
-- **Moderate coupling (0.02 < coefCT ≤ 0.05)**: Standard threshold applies
-- **Strong coupling (coefCT > 0.05)**: Lower θ_UM required
+- **Light coupling (coupling_coefficient ≤ 0.02)**: Higher θ_UM tolerated
+- **Moderate coupling (0.02 < coupling_coefficient ≤ 0.05)**: Standard threshold applies
+- **Strong coupling (coupling_coefficient > 0.05)**: Lower θ_UM required
 
 **Formula**: Approximate stability condition:
 ```
-θ_UM < 0.8 - 10 · coefCT
+θ_UM < 0.8 - 10 · coupling_coefficient
 ```
 
 ### **Diffusion Parameter Effect**
@@ -230,11 +230,11 @@ def mass_conservative_update(M_old, M_new, theta_UM):
 
 ### **3. Stability-Aware Parameter Selection**
 ```python
-def compute_safe_damping(problem_T, coefCT, sigma):
+def compute_safe_damping(problem_T, coupling_coefficient, sigma):
     """Compute safe damping factor based on problem parameters"""
     base_damping = 0.8
     time_factor = min(1.0, 2.0 / problem_T)
-    coupling_factor = max(0.3, 1.0 - 10 * coefCT)
+    coupling_factor = max(0.3, 1.0 - 10 * coupling_coefficient)
     diffusion_factor = max(0.3, 1.0 - 2 * sigma)
     
     return base_damping * time_factor * coupling_factor * diffusion_factor
@@ -256,7 +256,7 @@ def regularized_kde_update(M_old, particles, theta_UM, regularization=0.1):
 ## Implementation Recommendations
 
 ### **Phase 1: Parameter Guidelines**
-1. **Default thetaUM = 0.5** for general use
+1. **Default damping_factor = 0.5** for general use
 2. **Problem-dependent scaling**: Use stability-aware selection
 3. **Warning system**: Alert users when parameters approach instability
 
@@ -292,7 +292,7 @@ def regularized_kde_update(M_old, particles, theta_UM, regularization=0.1):
 
 The Hybrid method's mass instability is a **parameter-controllable phenomenon** fundamentally different from QP-Collocation's inherent mass loss pattern. The mathematical analysis reveals that:
 
-1. **Stability threshold exists** around thetaUM ≈ 0.6-0.8 depending on problem parameters
+1. **Stability threshold exists** around damping_factor ≈ 0.6-0.8 depending on problem parameters
 2. **Mass oscillations arise** from overshoot in the damped fixed-point iteration
 3. **Multiple amelioration strategies** exist with high success probability
 4. **Parameter-avoidable nature** means users can completely eliminate the problem through proper parameter selection

@@ -432,7 +432,7 @@ env = LQMFGEnv(
     num_agents=1000,
     sigma=0.1,
     lambda_control=1.0,
-    coefCT=0.5,
+    coupling_coefficient=0.5,
 )
 
 # Train and compare to analytical solution

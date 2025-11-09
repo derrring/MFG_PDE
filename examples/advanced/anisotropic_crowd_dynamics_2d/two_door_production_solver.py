@@ -137,7 +137,7 @@ def create_two_door_evacuation_problem(Nx=100, Nt=100, T=1.0):
         T=T,
         Nt=Nt,
         sigma=0.02,  # Diffusion
-        coefCT=0.5,  # Control cost coefficient
+        coupling_coefficient=0.5,  # Control cost coefficient
         components=components,
     )
 

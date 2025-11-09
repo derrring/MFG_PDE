@@ -60,7 +60,7 @@ class GeneralMFGFactory:
             hamiltonian_dm_func: Hamiltonian derivative dH/dm(...)
             domain_config: Domain specification {"xmin": ..., "xmax": ..., "Nx": ...}
             time_config: Time specification {"T": ..., "Nt": ...}
-            solver_config: Solver parameters {"sigma": ..., "coefCT": ...}
+            solver_config: Solver parameters {"sigma": ..., "coupling_coefficient": ...}
             **optional_components: Additional components (potential_func, etc.)
         """
 
@@ -125,7 +125,7 @@ class GeneralMFGFactory:
 
         solver:
           sigma: 0.5
-          coefCT: 1.0
+          coupling_coefficient: 1.0
 
         parameters:
           alpha: 2.0
@@ -170,7 +170,7 @@ class GeneralMFGFactory:
         # Extract configurations
         domain_config = config.get("domain", {"xmin": 0.0, "xmax": 1.0, "Nx": 51})
         time_config = config.get("time", {"T": 1.0, "Nt": 51})
-        solver_config = config.get("solver", {"sigma": 1.0, "coefCT": 0.5})
+        solver_config = config.get("solver", {"sigma": 1.0, "coupling_coefficient": 0.5})
 
         # Extract other components
         if "boundary_conditions" in config:
@@ -253,7 +253,7 @@ class GeneralMFGFactory:
         template = {
             "problem": {"description": "My custom MFG problem", "type": "custom"},
             "functions": {
-                "hamiltonian": "lambda x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem: 0.5 * problem.coefCT * (problem.utils.npart(p_values.get('forward', 0))**2 + problem.utils.ppart(p_values.get('backward', 0))**2) - problem.f_potential[x_idx] - m_at_x**2",
+                "hamiltonian": "lambda x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem: 0.5 * problem.coupling_coefficient * (problem.utils.npart(p_values.get('forward', 0))**2 + problem.utils.ppart(p_values.get('backward', 0))**2) - problem.f_potential[x_idx] - m_at_x**2",
                 "hamiltonian_dm": "lambda x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem: -2.0 * m_at_x",
                 "potential": "lambda x: 0.5 * x * (1 - x)",
                 "initial_density": "lambda x: np.exp(-10 * (x - 0.3)**2)",
@@ -261,7 +261,7 @@ class GeneralMFGFactory:
             },
             "domain": {"xmin": 0.0, "xmax": 1.0, "Nx": 51},
             "time": {"T": 1.0, "Nt": 51},
-            "solver": {"sigma": 0.5, "coefCT": 1.0},
+            "solver": {"sigma": 0.5, "coupling_coefficient": 1.0},
             "boundary_conditions": {"type": "periodic"},
             "parameters": {"alpha": 1.0, "beta": 0.5},
         }
@@ -341,7 +341,7 @@ def create_general_mfg_problem(
 
     solver_config = {
         "sigma": kwargs.pop("sigma", 1.0),
-        "coefCT": kwargs.pop("coefCT", 0.5),
+        "coupling_coefficient": kwargs.pop("coupling_coefficient", 0.5),
     }
 
     return factory.create_from_functions(

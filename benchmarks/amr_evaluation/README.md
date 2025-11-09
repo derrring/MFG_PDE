@@ -181,7 +181,7 @@ from mfg_pde import ExampleMFGProblem
 def create_sharp_problem():
     return ExampleMFGProblem(
         T=1.0, Nx=64, sigma=0.01,  # Low diffusion = sharp features
-        coefCT=3.0  # High congestion = localized dynamics
+        coupling_coefficient=3.0  # High congestion = localized dynamics
     )
 
 # Evaluate AMR effectiveness

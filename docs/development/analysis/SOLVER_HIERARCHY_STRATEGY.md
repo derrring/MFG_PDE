@@ -91,7 +91,7 @@ def create_basic_solver(problem, **kwargs):
         problem=problem,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        thetaUM=damping,
+        damping_factor=damping,
         **kwargs
     )
 ```

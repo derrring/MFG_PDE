@@ -391,8 +391,8 @@ The following parameter names have been modernized for clarity and consistency:
             "verbose_NewtonSolver",
             "damping_NewtonSolver",
         ],
-        "Picard Iteration": ["Niter_max", "l2errBoundPicard"],
-        "Problem Definition": ["coefCT"],
+        "Picard Iteration": ["max_iterations", "l2errBoundPicard"],
+        "Problem Definition": ["coupling_coefficient"],
         "GFDM Method": ["taylorOrder"],
         "Return Options": ["returnExtraInfo"],
     }

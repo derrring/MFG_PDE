@@ -45,7 +45,7 @@ class MockMFGProblem:
         xmax=1.0,
         Nx=100,
         sigma=0.1,
-        coefCT=0.5,
+        coupling_coefficient=0.5,
     ):
         self.T = T
         self.Nt = Nt
@@ -55,7 +55,7 @@ class MockMFGProblem:
         self.Dx = (xmax - xmin) / (Nx - 1) if Nx > 1 else 0.0
         self.Dt = T / (Nt - 1) if Nt > 1 else 0.0
         self.sigma = sigma
-        self.coefCT = coefCT
+        self.coupling_coefficient = coupling_coefficient
 
 
 # ===================================================================

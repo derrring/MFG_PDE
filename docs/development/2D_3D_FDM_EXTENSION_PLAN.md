@@ -164,7 +164,7 @@ class MFGProblem:
         T: float = 1.0,
         Nt: int = 51,
         sigma: float = 1.0,
-        coefCT: float = 0.5,
+        coupling_coefficient: float = 0.5,
         suppress_warnings: bool = False
     ):
         """
@@ -192,12 +192,12 @@ class MFGProblem:
         # Detect initialization mode
         if Nx is not None and spatial_bounds is None:
             # Mode 1: Legacy 1D
-            self._init_1d_legacy(Nx, xmin, xmax, T, Nt, sigma, coefCT)
+            self._init_1d_legacy(Nx, xmin, xmax, T, Nt, sigma, coupling_coefficient)
 
         elif spatial_bounds is not None and Nx is None:
             # Mode 2: N-dimensional
             self._init_nd(spatial_bounds, spatial_discretization,
-                         T, Nt, sigma, coefCT, suppress_warnings)
+                         T, Nt, sigma, coupling_coefficient, suppress_warnings)
 
         elif Nx is not None and spatial_bounds is not None:
             raise ValueError(
@@ -212,7 +212,7 @@ class MFGProblem:
                 "  - spatial_bounds (for n-D problems, new API)"
             )
 
-    def _init_1d_legacy(self, Nx, xmin, xmax, T, Nt, sigma, coefCT):
+    def _init_1d_legacy(self, Nx, xmin, xmax, T, Nt, sigma, coupling_coefficient):
         """Initialize in legacy 1D mode (backward compatible)."""
         self.dimension = 1
         self.Nx = Nx
@@ -220,7 +220,7 @@ class MFGProblem:
         self.Dx = (xmax - xmin) / Nx
         self.Dt = T / Nt
         self.sigma = sigma
-        self.coefCT = coefCT
+        self.coupling_coefficient = coupling_coefficient
 
         # Use TensorProductGrid internally (but maintain legacy interface)
         from mfg_pde.geometry import TensorProductGrid
@@ -237,7 +237,7 @@ class MFGProblem:
         self.m_init = np.zeros(Nx + 1)
 
     def _init_nd(self, spatial_bounds, spatial_discretization,
-                 T, Nt, sigma, coefCT, suppress_warnings):
+                 T, Nt, sigma, coupling_coefficient, suppress_warnings):
         """Initialize in n-dimensional mode."""
         from mfg_pde.geometry import TensorProductGrid
 
@@ -251,7 +251,7 @@ class MFGProblem:
 
         # Physical parameters
         self.sigma = sigma
-        self.coefCT = coefCT
+        self.coupling_coefficient = coupling_coefficient
 
         # Create n-dimensional grid using existing TensorProductGrid
         self._grid = TensorProductGrid(
@@ -433,7 +433,7 @@ class MFGProblemND:
                  T: float = 1.0,
                  Nt: int = 51,
                  sigma: float = 1.0,
-                 coefCT: float = 0.5,
+                 coupling_coefficient: float = 0.5,
                  suppress_warnings: bool = False):
 
         # Detect spatial dimension
@@ -457,7 +457,7 @@ class MFGProblemND:
 
         # Physical parameters
         self.sigma = sigma
-        self.coefCT = coefCT
+        self.coupling_coefficient = coupling_coefficient
 
         # N-dimensional spatial shape (N1+1, N2+1, ..., Nd+1)
         spatial_shape = tuple(N + 1 for N in spatial_discretization)

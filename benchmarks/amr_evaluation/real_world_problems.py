@@ -62,7 +62,7 @@ class TrafficFlowProblem(ExampleMFGProblem):
             Nx=128,
             Nt=60,
             sigma=0.02,  # Low diffusion (vehicles follow traffic flow)
-            coefCT=rush_hour_intensity,  # Congestion cost
+            coupling_coefficient=rush_hour_intensity,  # Congestion cost
         )
 
         self.domain = domain
@@ -132,7 +132,7 @@ class FinancialMarketProblem(ExampleMFGProblem):
             Nx=96,
             Nt=80,
             sigma=0.15,  # Market volatility
-            coefCT=volatility_factor,  # Price impact intensity
+            coupling_coefficient=volatility_factor,  # Price impact intensity
         )
 
         self.domain = domain
@@ -188,7 +188,7 @@ class CrowdDynamicsProblem(ExampleMFGProblem):
             Nx=80,
             Nt=40,
             sigma=0.5,  # Higher diffusion (people spreading)
-            coefCT=panic_factor,  # Panic-driven congestion cost
+            coupling_coefficient=panic_factor,  # Panic-driven congestion cost
         )
 
         self.domain = domain
@@ -251,7 +251,7 @@ class EnergyTradingProblem(ExampleMFGProblem):
             Nx=120,
             Nt=96,
             sigma=0.3,  # Price volatility
-            coefCT=price_volatility,  # Market impact
+            coupling_coefficient=price_volatility,  # Market impact
         )
 
         self.domain = domain
@@ -308,7 +308,7 @@ class EpidemicSpreadProblem(ExampleMFGProblem):
             Nx=100,
             Nt=50,
             sigma=0.1,  # Population mobility
-            coefCT=social_distancing_strength,  # Social distancing cost
+            coupling_coefficient=social_distancing_strength,  # Social distancing cost
         )
 
         self.domain = domain
@@ -479,7 +479,7 @@ class RealWorldMFGProblems:
                     f.write(f"- Spatial domain: [{problem.xmin}, {problem.xmax}]\n")
                     f.write(f"- Grid size: {problem.Nx} × {problem.Nt}\n")
                     f.write(f"- Diffusion: σ = {problem.sigma}\n")
-                    f.write(f"- Congestion: λ = {problem.coefCT}\n\n")
+                    f.write(f"- Congestion: λ = {problem.coupling_coefficient}\n\n")
 
                 except Exception as e:
                     f.write(f"**Error creating problem**: {e}\n\n")

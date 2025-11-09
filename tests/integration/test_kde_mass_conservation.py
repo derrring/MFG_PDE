@@ -13,7 +13,7 @@ from mfg_pde.geometry import BoundaryConditions
 def test_kde_normalization():
     print("=== Testing KDE Mass Conservation ===")
 
-    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, sigma=1.0, coefCT=0.5)
+    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, sigma=1.0, coupling_coefficient=0.5)
 
     no_flux_bc = BoundaryConditions(type="no_flux")
 

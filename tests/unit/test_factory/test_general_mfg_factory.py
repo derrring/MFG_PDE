@@ -48,7 +48,11 @@ def sample_functions():
         # Simple quadratic hamiltonian
         p_forward = p_values.get("forward", 0.0)
         p_backward = p_values.get("backward", 0.0)
-        return 0.5 * problem.coefCT * (problem.utils.npart(p_forward) ** 2 + problem.utils.ppart(p_backward) ** 2)
+        return (
+            0.5
+            * problem.coupling_coefficient
+            * (problem.utils.npart(p_forward) ** 2 + problem.utils.ppart(p_backward) ** 2)
+        )
 
     def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         """Hamiltonian dm derivative with full signature."""
@@ -87,7 +91,7 @@ def time_config():
 @pytest.fixture
 def solver_config():
     """Create sample solver configuration."""
-    return {"sigma": 0.1, "coefCT": 1.0}
+    return {"sigma": 0.1, "coupling_coefficient": 1.0}
 
 
 # ============================================================================
@@ -382,7 +386,11 @@ def test_create_general_mfg_problem_from_functions():
     def hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         p_forward = p_values.get("forward", 0.0)
         p_backward = p_values.get("backward", 0.0)
-        return 0.5 * problem.coefCT * (problem.utils.npart(p_forward) ** 2 + problem.utils.ppart(p_backward) ** 2)
+        return (
+            0.5
+            * problem.coupling_coefficient
+            * (problem.utils.npart(p_forward) ** 2 + problem.utils.ppart(p_backward) ** 2)
+        )
 
     def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         return 0.0

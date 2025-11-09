@@ -119,7 +119,7 @@ m(x,0) = m₀(x)                         in Ω
 ### **Damped Fixed Point (Recommended for Testing)**
 - **Current Implementation**: `FixedPointIterator` (aliased as `DampedFixedPointIterator`)
 - **Multi-dimensional**: ✅ Already supports arbitrary dimensions
-- **Damping Parameter**: `thetaUM` for stability control
+- **Damping Parameter**: `damping_factor` for stability control
 - **Best for**: Initial testing, stable problems, rapid prototyping
 
 ### **Particle Collocation**

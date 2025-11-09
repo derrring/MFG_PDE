@@ -194,7 +194,7 @@ if self.dimension == 1:
 
 # nD: Analytical solution (p* = 0 for quadratic)
 else:
-    if hasattr(self.problem, "coefCT"):
+    if hasattr(self.problem, "coupling_coefficient"):
         return np.zeros(self.dimension)
 
     # TODO: Implement scipy.optimize.minimize for general H
@@ -288,7 +288,7 @@ grid = TensorProductGrid(
 class CrowdMotion2D(GridBasedMFGProblem):
     def __init__(self):
         geometry = SimpleGeometry(grid, BoundaryConditions(type="no_flux"))
-        super().__init__(geometry=geometry, T=1.0, Nt=20, sigma=0.1, coefCT=0.5)
+        super().__init__(geometry=geometry, T=1.0, Nt=20, sigma=0.1, coupling_coefficient=0.5)
 
     def initial_density(self, x):
         # x is (N, 2) array of points

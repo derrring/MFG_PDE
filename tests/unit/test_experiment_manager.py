@@ -42,7 +42,7 @@ class MockMFGProblem:
         xmax=1.0,
         Nx=100,
         sigma=0.1,
-        coefCT=0.5,
+        coupling_coefficient=0.5,
     ):
         self.T = T
         self.Nt = Nt
@@ -52,7 +52,7 @@ class MockMFGProblem:
         self.Dx = (xmax - xmin) / (Nx - 1) if Nx > 1 else 0.0
         self.Dt = T / (Nt - 1) if Nt > 1 else 0.0
         self.sigma = sigma
-        self.coefCT = coefCT
+        self.coupling_coefficient = coupling_coefficient
         self.tSpace = np.linspace(0, T, Nt)
         self.xSpace = np.linspace(xmin, xmax, Nx)
 
@@ -404,7 +404,7 @@ def test_load_experiment_data_problem_params():
         xmax=2.0,
         Nx=150,
         sigma=0.2,
-        coefCT=0.8,
+        coupling_coefficient=0.8,
     )
     U_sol = np.random.rand(problem.Nt, problem.Nx)
     M_sol = np.random.rand(problem.Nt, problem.Nx)
@@ -434,7 +434,7 @@ def test_load_experiment_data_problem_params():
         assert params["xmax"] == 2.0
         assert params["Nx"] == 150
         assert params["sigma"] == 0.2
-        assert params["coefCT"] == 0.8
+        assert params["coupling_coefficient"] == 0.8
 
 
 @pytest.mark.unit

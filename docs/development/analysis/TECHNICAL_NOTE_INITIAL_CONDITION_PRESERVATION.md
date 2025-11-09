@@ -198,8 +198,8 @@ if self.use_anderson and self.anderson_accelerator is not None:
     self.M = M_damped
 else:
     # Standard damping for both
-    self.U = self.thetaUM * U_new + (1 - self.thetaUM) * U_old
-    self.M = self.thetaUM * M_new + (1 - self.thetaUM) * M_old
+    self.U = self.damping_factor * U_new + (1 - self.damping_factor) * U_old
+    self.M = self.damping_factor * M_new + (1 - self.damping_factor) * M_old
 
 # Preserve initial condition (boundary condition in time)
 # The damping/Anderson steps above may modify M[0,:], but initial condition is fixed

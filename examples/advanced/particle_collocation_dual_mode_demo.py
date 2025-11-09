@@ -49,7 +49,7 @@ class SimpleLQMFG2D(MFGProblem):
             Lx=1.0,
             xmin=0.0,
             sigma=0.2,
-            coefCT=0.5,
+            coupling_coefficient=0.5,
             dimension=2,
         )
 

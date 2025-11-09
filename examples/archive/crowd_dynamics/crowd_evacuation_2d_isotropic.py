@@ -178,7 +178,7 @@ def create_2d_crowd_evacuation_problem(adapter: Grid2DAdapter) -> MFGProblem:
         T=T,
         Nt=Nt,
         sigma=sigma,
-        coefCT=lambda_crowd,
+        coupling_coefficient=lambda_crowd,
     )
 
     # Set boundary conditions (no-flux)
@@ -210,7 +210,7 @@ def solve_2d_evacuation(problem: MFGProblem, verbose: bool = True):
         print(f"Grid size: {problem.Nx+1} points (flattened 2D)")
         print(f"Time: [0, {problem.T}]s with {problem.Nt+1} steps")
         print(f"Diffusion: σ = {problem.sigma}")
-        print(f"Congestion cost: λ = {problem.coefCT}")
+        print(f"Congestion cost: λ = {problem.coupling_coefficient}")
         print()
 
     # Create hybrid solver

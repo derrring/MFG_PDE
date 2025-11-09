@@ -567,19 +567,19 @@ class TestLegacyParameterExtraction:
         assert "picard_tolerance" not in remaining
 
     def test_extract_legacy_parameters_deprecated_niter_max(self):
-        """Test extraction of deprecated Niter_max parameter."""
+        """Test extraction of deprecated max_iterations parameter."""
         config = create_default_config()
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            remaining = extract_legacy_parameters(config, Niter_max=100)
+            remaining = extract_legacy_parameters(config, max_iterations=100)
 
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
-            assert "Niter_max" in str(w[0].message)
+            assert "max_iterations" in str(w[0].message)
 
         assert config.picard.max_iterations == 100
-        assert "Niter_max" not in remaining
+        assert "max_iterations" not in remaining
 
     def test_extract_legacy_parameters_deprecated_l2errBoundPicard(self):
         """Test extraction of deprecated l2errBoundPicard parameter."""
@@ -668,10 +668,10 @@ class TestLegacyParameterExtraction:
         """Test parameter extraction priority when multiple aliases exist."""
         config = create_default_config()
 
-        # Modern name should take precedence
-        remaining = extract_legacy_parameters(config, max_iterations=30, Niter_max=100)
+        # Test that we properly handle parameter name (no longer relevant after v0.10.2)
+        remaining = extract_legacy_parameters(config, max_iterations=30)
 
-        # Only max_iterations should be used (it's extracted first)
+        # max_iterations should be extracted
         assert config.picard.max_iterations == 30
-        # Niter_max should remain in kwargs since max_iterations was already popped
-        assert remaining["Niter_max"] == 100
+        # Should not remain in kwargs
+        assert "max_iterations" not in remaining

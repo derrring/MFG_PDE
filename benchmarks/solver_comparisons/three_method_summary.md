@@ -3,7 +3,7 @@
 Based on our testing with the same MFG equation, here's a comprehensive comparison of three particle-collocation approaches:
 
 ## Test Configuration
-- **Problem**: T=1.0, Nx=60, Nt=50, σ=0.2, coefCT=0.05
+- **Problem**: T=1.0, Nx=60, Nt=50, σ=0.2, coupling_coefficient=0.05
 - **Boundary Conditions**: No-flux (particles reflect at boundaries)
 - **Particles**: 400 particles for Fokker-Planck evolution
 - **Collocation**: 15 points for HJB equation solving

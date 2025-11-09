@@ -401,7 +401,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             x_scalar = float(x) if np.ndim(x) > 0 else x
 
             # For standard MFG problems, analytical solution
-            if hasattr(self.problem, "coefCT"):
+            if hasattr(self.problem, "coupling_coefficient"):
                 return 0.0
 
             # For general Hamiltonians, use numerical optimization
@@ -439,7 +439,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         else:
             # nD optimal control
             # For standard quadratic Hamiltonian: H = |p|²/2 + ..., optimal p* = 0
-            if hasattr(self.problem, "coefCT"):
+            if hasattr(self.problem, "coupling_coefficient"):
                 return np.zeros(self.dimension)
 
             # Vector optimization using scipy.optimize.minimize
@@ -454,7 +454,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     else:
                         # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
                         p_norm_sq = np.sum(p_vec**2)
-                        coef_CT = getattr(self.problem, "coefCT", 0.5)
+                        coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
                         return 0.5 * p_norm_sq + coef_CT * m
                 except Exception:
                     # Fallback: quadratic in p
@@ -921,10 +921,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
                 else:
                     # Fallback: standard quadratic Hamiltonian
-                    return 0.5 * p_scalar**2 + getattr(self.problem, "coefCT", 0.5) * m
+                    return 0.5 * p_scalar**2 + getattr(self.problem, "coupling_coefficient", 0.5) * m
             except Exception as e:
                 logger.debug(f"1D Hamiltonian evaluation failed: {e}, using fallback")
-                return 0.5 * p_scalar**2 + getattr(self.problem, "coefCT", 0.5) * m
+                return 0.5 * p_scalar**2 + getattr(self.problem, "coupling_coefficient", 0.5) * m
 
         else:
             # nD Hamiltonian evaluation
@@ -939,13 +939,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 else:
                     # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
                     p_norm_sq = np.sum(p_vec**2)
-                    coef_CT = getattr(self.problem, "coefCT", 0.5)
+                    coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
                     return 0.5 * p_norm_sq + coef_CT * m
 
             except Exception as e:
                 logger.debug(f"nD Hamiltonian evaluation failed: {e}, using fallback")
                 p_norm_sq = np.sum(p_vec**2)
-                return 0.5 * p_norm_sq + getattr(self.problem, "coefCT", 0.5) * m
+                return 0.5 * p_norm_sq + getattr(self.problem, "coupling_coefficient", 0.5) * m
 
     def _solve_crank_nicolson_diffusion(self, U_star: np.ndarray, dt: float, sigma: float) -> np.ndarray:
         """

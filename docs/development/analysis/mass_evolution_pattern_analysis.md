@@ -12,7 +12,7 @@ When comparing Hybrid Particle-FDM and QP-Collocation methods for MFG problems, 
 ## Observed Behavior
 
 ### Test Case: T=2.0 Simulation Results
-- **Problem Parameters:** T=2.0, Nx=25, Nt=100, sigma=0.2, coefCT=0.05
+- **Problem Parameters:** T=2.0, Nx=25, Nt=100, sigma=0.2, coupling_coefficient=0.05
 - **Hybrid Method:** -0.187% mass change (smooth, gradual decrease)
 - **QP-Collocation Method:** +1.978% mass change (initial increase, then stabilization)
 

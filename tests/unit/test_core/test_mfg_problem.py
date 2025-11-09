@@ -92,7 +92,7 @@ def test_mfg_problem_default_initialization():
 
     # Physical parameters
     assert problem.sigma == 1.0
-    assert problem.coefCT == 0.5
+    assert problem.coupling_coefficient == 0.5
 
     # Custom components
     assert problem.components is None
@@ -126,10 +126,10 @@ def test_mfg_problem_custom_time():
 @pytest.mark.unit
 def test_mfg_problem_custom_coefficients():
     """Test MFGProblem with custom coefficients."""
-    problem = MFGProblem(sigma=0.5, coefCT=0.8)
+    problem = MFGProblem(sigma=0.5, coupling_coefficient=0.8)
 
     assert problem.sigma == 0.5
-    assert problem.coefCT == 0.8
+    assert problem.coupling_coefficient == 0.8
 
 
 @pytest.mark.unit
@@ -266,7 +266,7 @@ def test_mfg_problem_with_custom_final_value():
 @pytest.mark.unit
 def test_hamiltonian_h_default():
     """Test default Hamiltonian H computation."""
-    problem = MFGProblem(Nx=10, sigma=1.0, coefCT=0.5)
+    problem = MFGProblem(Nx=10, sigma=1.0, coupling_coefficient=0.5)
 
     x_idx = 5
     m_at_x = 1.0
@@ -396,7 +396,7 @@ def test_get_initial_m():
 @pytest.mark.unit
 def test_get_problem_info():
     """Test get_problem_info returns comprehensive info dict."""
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100, sigma=0.5, coefCT=0.8)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100, sigma=0.5, coupling_coefficient=0.8)
 
     info = problem.get_problem_info()
 
@@ -414,7 +414,7 @@ def test_get_problem_info():
     assert info["time"]["T"] == 1.0
     assert info["time"]["Nt"] == 100
     assert info["coefficients"]["sigma"] == 0.5
-    assert info["coefficients"]["coefCT"] == 0.8
+    assert info["coefficients"]["coupling_coefficient"] == 0.8
 
 
 # ===================================================================
@@ -490,7 +490,7 @@ def test_problem_builder_chaining():
     problem = (
         builder.domain(-1.0, 1.0, 100)
         .time(2.0, 200)
-        .coefficients(sigma=0.8, coefCT=0.3)
+        .coefficients(sigma=0.8, coupling_coefficient=0.3)
         .initial_density(custom_initial)
         .final_value(custom_final)
         .description("Test Problem", "test")
@@ -504,7 +504,7 @@ def test_problem_builder_chaining():
     assert problem.T == 2.0
     assert problem.Nt == 200
     assert problem.sigma == 0.8
-    assert problem.coefCT == 0.3
+    assert problem.coupling_coefficient == 0.3
     assert problem.is_custom is True
     assert problem.components.description == "Test Problem"
 

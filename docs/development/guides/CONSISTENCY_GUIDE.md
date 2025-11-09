@@ -62,7 +62,7 @@ newton_damping         # NOT: newton_damping_factor (if used)
 **✅ PICARD METHOD PARAMETERS:**
 ```python
 # Modern standard names
-max_picard_iterations   # NOT: Niter_max, picard_max_iter
+max_picard_iterations   # NOT: max_iterations, picard_max_iter
 picard_tolerance       # NOT: l2errBoundPicard, picard_tol  
 picard_damping_factor  # NOT: damping_factor, damping
 convergence_tolerance  # NOT: l2errBound, conv_tol
@@ -816,7 +816,7 @@ def check_mathematical_notation(file_path):
 
 # Check for deprecated parameter names
 echo "Checking for deprecated parameter names..."
-if grep -r "NiterNewton\|l2errBoundNewton\|Niter_max" --include="*.py" .; then
+if grep -r "NiterNewton\|l2errBoundNewton\|max_iterations" --include="*.py" .; then
     echo "ERROR: Found deprecated parameter names"
     exit 1
 fi

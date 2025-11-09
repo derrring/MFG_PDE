@@ -108,7 +108,7 @@ def solve_lq_mfg_with_value_iteration():
         xmin=0.0,
         xmax=1.0,
         sigma=0.1,  # Diffusion
-        coefCT=0.5,  # Control cost
+        coupling_coefficient=0.5,  # Control cost
     )
 
     print("\nProblem setup:")
@@ -116,7 +116,7 @@ def solve_lq_mfg_with_value_iteration():
     print(f"  Grid: {problem.Nx + 1} spatial points")
     print(f"  Time: {problem.Nt + 1} time steps")
     print(f"  Diffusion: σ = {problem.sigma}")
-    print(f"  Control cost: {problem.coefCT}")
+    print(f"  Control cost: {problem.coupling_coefficient}")
 
     # Create HJB solver with fixed-point iteration
     solver = HJBFDMSolver(

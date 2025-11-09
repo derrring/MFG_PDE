@@ -1,7 +1,0 @@
-mfg_pde/core/mfg_problem.py:    def domain(self, xmin: float, xmax: float, Nx: int) -> MFGProblemBuilder:
-mfg_pde/core/mathematical_notation.py:def validate_solution_arrays(U: SolutionArray, M: SolutionArray, Nx: int, Nt: int) -> bool:
-mfg_pde/config/modern_config.py:    def with_grid_size(self, nx: int, nt: int | None = None) -> SolverConfig:
-mfg_pde/meta/mathematical_dsl.py:    def domain(self, xmin: float, xmax: float, tmax: float, nx: int = 100, nt: int = 50) -> MFGSystemBuilder:
-mfg_pde/utils/cli.py:            def __init__(self, T, Nt, xmin, xmax, Nx):
-mfg_pde/utils/performance/optimization.py:    def create_laplacian_3d(nx: int, ny: int, nz: int, dx: float, dy: float, dz: float) -> csr_matrix:
-mfg_pde/workflow/workflow_manager.py:        def example_solve(sigma, Nx=20, Nt=10):

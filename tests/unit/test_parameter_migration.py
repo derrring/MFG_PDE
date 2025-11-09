@@ -154,8 +154,8 @@ def test_parameter_migrator_has_standard_mappings():
     # Check for known standard mappings
     old_names = [m.old_name for m in migrator.mappings]
     assert "NiterNewton" in old_names
-    assert "Niter_max" in old_names
-    assert "coefCT" in old_names
+    assert "max_iterations" in old_names
+    assert "coupling_coefficient" in old_names
 
 
 # ===================================================================
@@ -297,7 +297,7 @@ def test_migrate_parameters_multiple_mappings():
 
     kwargs = {
         "NiterNewton": 100,
-        "Niter_max": 50,
+        "max_iterations": 50,
         "modern_param": "value",
     }
 
@@ -309,7 +309,7 @@ def test_migrate_parameters_multiple_mappings():
     assert "max_picard_iterations" in result
     assert "modern_param" in result
     assert "NiterNewton" not in result
-    assert "Niter_max" not in result
+    assert "max_iterations" not in result
 
 
 # ===================================================================
@@ -325,7 +325,7 @@ def test_get_deprecated_parameters():
 
     assert isinstance(deprecated, set)
     assert "NiterNewton" in deprecated
-    assert "Niter_max" in deprecated
+    assert "max_iterations" in deprecated
     assert len(deprecated) > 0
 
 

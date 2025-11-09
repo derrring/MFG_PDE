@@ -124,7 +124,7 @@ class GridProblem(Protocol):
         T, Nt, Dt: Time discretization parameters
         xSpace, tSpace: Grid point arrays
         sigma: Diffusion coefficient (float attribute, not callable!)
-        coefCT: Control cost coefficient
+        coupling_coefficient: Control cost coefficient
 
     Required methods:
         H(x_idx, m_at_x, p_values, t_idx): Hamiltonian function
@@ -142,11 +142,11 @@ class GridProblem(Protocol):
         ...         self.Dx = (self.xmax - self.xmin) / self.Nx
         ...         self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1)
         ...         self.sigma = 0.1  # Float attribute
-        ...         self.coefCT = 0.5
+        ...         self.coupling_coefficient = 0.5
         ...
         ...     def H(self, x_idx, m_at_x, p_values, t_idx):
         ...         p = p_values['forward']
-        ...         return 0.5 * self.coefCT * p**2
+        ...         return 0.5 * self.coupling_coefficient * p**2
 
     See Also:
         - BaseHJBSolver: Uses this interface
@@ -169,7 +169,7 @@ class GridProblem(Protocol):
 
     # Physical parameters
     sigma: float  # Constant diffusion (attribute, NOT callable!)
-    coefCT: float  # Control cost coefficient
+    coupling_coefficient: float  # Control cost coefficient
 
     def H(
         self,
@@ -235,7 +235,7 @@ class DirectAccessProblem(Protocol):
 
     Required attributes:
         sigma: Diffusion coefficient (float)
-        coefCT: Control cost coefficient (float)
+        coupling_coefficient: Control cost coefficient (float)
         Dx, Dt: Spatial and temporal discretization
         xSpace: Spatial grid points
 
@@ -250,7 +250,7 @@ class DirectAccessProblem(Protocol):
         >>> class MyDirectAccessProblem:
         ...     def __init__(self):
         ...         self.sigma = 0.1
-        ...         self.coefCT = 0.5
+        ...         self.coupling_coefficient = 0.5
         ...         self.Dx = 0.02
         ...         self.Dt = 0.01
         ...         self.xSpace = np.linspace(0, 1, 51)
@@ -262,7 +262,7 @@ class DirectAccessProblem(Protocol):
     """
 
     sigma: float
-    coefCT: float
+    coupling_coefficient: float
     Dx: float
     Dt: float
     xSpace: NDArray

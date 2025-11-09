@@ -81,7 +81,7 @@ def save_experiment_data(
         f"Nx{problem.Nx}",
         f"Nt{problem.Nt}",
         f"sig{problem.sigma:.1e}",
-        f"ct{problem.coefCT:.1e}",
+        f"ct{problem.coupling_coefficient:.1e}",
         solver_name.replace("/", "-"),  # Replace slashes if any
         timestamp,
     ]
@@ -99,7 +99,7 @@ def save_experiment_data(
         "Nt": problem.Nt,
         "Dt": problem.Dt,
         "sigma": problem.sigma,
-        "coefCT": problem.coefCT,
+        "coupling_coefficient": problem.coupling_coefficient,
         # Add other problem-specific parameters if they exist and are relevant
         # e.g., "potential_type": problem.potential_type if hasattr(problem, 'potential_type') else "default"
     }
@@ -417,7 +417,7 @@ if __name__ == "__main__":
 
     # Create a dummy MFGProblem instance (requires MFGProblem to be importable)
     # from mfg_pde.core.mfg_problem import ExampleMFGProblem
-    # dummy_problem_params = {"Nx": 11, "Nt": 11, "T": 0.1, "sigma":1.0, "coefCT":0.5}
+    # dummy_problem_params = {"Nx": 11, "Nt": 11, "T": 0.1, "sigma":1.0, "coupling_coefficient":0.5}
     # dummy_problem = ExampleMFGProblem(**dummy_problem_params)
 
     # Dummy data

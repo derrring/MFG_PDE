@@ -100,7 +100,7 @@ def hamiltonian(self, t: float, x: np.ndarray, p: np.ndarray, m: float) -> float
         p: Momentum
         m: Density
     """
-    return 0.5 * np.sum(p**2) + self.coefCT * m
+    return 0.5 * np.sum(p**2) + self.coupling_coefficient * m
 ```
 
 **Files using this**:

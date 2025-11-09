@@ -133,7 +133,7 @@ def create_rectangle_with_holes_problem():
     }
 
     # Create MFG problem
-    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), sigma=0.5, coefCT=1.0)
+    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), sigma=0.5, coupling_coefficient=1.0)
 
     return problem
 
@@ -252,7 +252,7 @@ def integration_with_existing_config():
 
     # Create configuration that includes geometry
     config_dict = {
-        "problem": {"type": "ExampleMFGProblem", "T": 1.0, "Nt": 51, "sigma": 0.5, "coefCT": 1.0},
+        "problem": {"type": "ExampleMFGProblem", "T": 1.0, "Nt": 51, "sigma": 0.5, "coupling_coefficient": 1.0},
         "geometry": {
             "dimension": 2,
             "domain_type": "rectangle",
@@ -273,7 +273,7 @@ def integration_with_existing_config():
         geometry_config=dict(config.geometry),
         time_domain=(config.problem.T, config.problem.Nt),
         sigma=config.problem.sigma,
-        coefCT=config.problem.coefCT,
+        coupling_coefficient=config.problem.coupling_coefficient,
     )
 
     logger.info("Created MFG problem from OmegaConf configuration")

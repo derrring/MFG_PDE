@@ -100,7 +100,7 @@ problem = ExampleMFGProblem(
     xmin=0.0, xmax=1.0, Nx=100,
     T=1.0, Nt=50,
     sigma=0.1,    # Low diffusion
-    coefCT=0.5    # Moderate control cost
+    coupling_coefficient=0.5    # Moderate control cost
 )
 
 # Test different initial distributions
@@ -157,7 +157,7 @@ problem = ExampleMFGProblem(
     xmin=0.0, xmax=1.0, Nx=50,
     T=0.5, Nt=25,     # Short time horizon
     sigma=0.05,       # Very low diffusion (precise positioning)
-    coefCT=10.0       # High control cost (strong positioning incentive)
+    coupling_coefficient=10.0       # High control cost (strong positioning incentive)
 )
 
 # Override potential to represent beach customer distribution
@@ -627,15 +627,15 @@ def analyze_m0_sensitivity():
     # Problem configurations
     problems = {
         'traffic_flow': {
-            'sigma': 0.1, 'coefCT': 0.5, 'T': 1.0,
+            'sigma': 0.1, 'coupling_coefficient': 0.5, 'T': 1.0,
             'description': 'Standard traffic flow (m0-sensitive)'
         },
         'ice_cream_stall': {
-            'sigma': 0.05, 'coefCT': 10.0, 'T': 0.5, 
+            'sigma': 0.05, 'coupling_coefficient': 10.0, 'T': 0.5, 
             'description': 'Spatial competition (m0-insensitive)'
         },
         'balanced': {
-            'sigma': 0.2, 'coefCT': 2.0, 'T': 0.8,
+            'sigma': 0.2, 'coupling_coefficient': 2.0, 'T': 0.8,
             'description': 'Balanced dynamics (moderate sensitivity)'
         }
     }
@@ -725,7 +725,7 @@ def generate_phase_diagram():
                 xmin=0.0, xmax=1.0, Nx=50,
                 T=0.5, Nt=25,
                 sigma=0.1,
-                coefCT=1.0/alpha,  # Inverse relationship
+                coupling_coefficient=1.0/alpha,  # Inverse relationship
             )
             
             # Scale density coupling (modify Hamiltonian implicitly)

@@ -21,7 +21,7 @@ def test_svd_implementation():
     print("=== Testing SVD Implementation in GFDM ===")
 
     # Simple problem
-    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=10, T=0.02, Nt=2, sigma=0.1, coefCT=0.1)
+    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=10, T=0.02, Nt=2, sigma=0.1, coupling_coefficient=0.1)
 
     num_collocation_points = 7
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)

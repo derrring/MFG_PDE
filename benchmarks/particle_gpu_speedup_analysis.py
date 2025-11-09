@@ -32,7 +32,7 @@ def benchmark_particle_solver(Nx: int, Nt: int, N_particles: int, device: str = 
         xmin=0.0,
         xmax=1.0,
         sigma=0.1,
-        coefCT=1.0,
+        coupling_coefficient=1.0,
     )
 
     # Initial condition: Gaussian

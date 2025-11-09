@@ -71,7 +71,7 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
 
 For each timestep forward from 0 to T:
 1. **Compute gradients**: ∇U(t,x) from value function (all dimensions)
-2. **Compute velocity**: v = -coefCT · ∇U (advection field)
+2. **Compute velocity**: v = -coupling_coefficient · ∇U (advection field)
 3. **Assemble system**: (I/Δt + A + D) where:
    - A: full nD advection operator with upwinding
    - D: full nD diffusion operator (Laplacian)

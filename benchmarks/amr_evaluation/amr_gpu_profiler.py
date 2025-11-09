@@ -213,7 +213,7 @@ class AMRGPUProfiler:
 
             # Create 1D problem
             domain = Domain1D(0.0, 1.0, periodic_bc())
-            problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=size, Nt=20, sigma=0.05, coefCT=1.0)
+            problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=size, Nt=20, sigma=0.05, coupling_coefficient=1.0)
             problem.domain = domain
             problem.dimension = 1
 

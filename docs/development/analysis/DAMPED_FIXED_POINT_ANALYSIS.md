@@ -14,7 +14,7 @@ U^{k+1} = θ * F_HJB(M^k) + (1-θ) * U^k
 M^{k+1} = θ * F_FP(U^{k+1}) + (1-θ) * M^k
 ```
 
-where `θ ∈ [0, 1]` is the damping factor (called `thetaUM` in code).
+where `θ ∈ [0, 1]` is the damping factor (called `damping_factor` in code).
 
 ### Special Cases
 
@@ -35,8 +35,8 @@ where `θ ∈ [0, 1]` is the damping factor (called `thetaUM` in code).
 **mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py:305-308:**
 ```python
 # Standard damping only (no Anderson)
-self.U = self.thetaUM * U_new_tmp_hjb + (1 - self.thetaUM) * U_old_current_picard_iter
-self.M = self.thetaUM * M_new_tmp_fp + (1 - self.thetaUM) * M_old_current_picard_iter
+self.U = self.damping_factor * U_new_tmp_hjb + (1 - self.damping_factor) * U_old_current_picard_iter
+self.M = self.damping_factor * M_new_tmp_fp + (1 - self.damping_factor) * M_old_current_picard_iter
 ```
 
 ### Configuration System
@@ -158,7 +158,7 @@ solver = FixedPointIterator(
     problem=problem,
     hjb_solver=hjb_solver,
     fp_solver=fp_solver,
-    thetaUM=0.6  # Tuned damping factor
+    damping_factor=0.6  # Tuned damping factor
 )
 
 result = solver.solve(
@@ -173,7 +173,7 @@ result = solver.solve(
 For advanced users, consider adaptive damping:
 ```python
 # Start with heavy damping, reduce as convergence improves
-solver = FixedPointIterator(..., thetaUM=0.3)
+solver = FixedPointIterator(..., damping_factor=0.3)
 # ... or use Anderson acceleration for automatic adaptation
 solver = FixedPointIterator(..., use_anderson=True, anderson_depth=5)
 ```

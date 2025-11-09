@@ -108,7 +108,7 @@ class FPFDMSolver(BaseFPSolver):
 
         Nt = self.problem.Nt + 1
         sigma = self.problem.sigma
-        coefCT = getattr(self.problem, "coefCT", 1.0)
+        coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
 
         if Nt == 0:
             if self.backend is not None:
@@ -181,7 +181,9 @@ class FPFDMSolver(BaseFPSolver):
                         ip1 = (i + 1) % Nx
                         im1 = (i - 1 + Nx) % Nx
                         val_A_ii += float(
-                            coefCT * (npart(u_at_tk[ip1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[im1])) / Dx**2
+                            coupling_coefficient
+                            * (npart(u_at_tk[ip1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[im1]))
+                            / Dx**2
                         )
 
                     row_indices.append(i)
@@ -192,7 +194,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Lower diagonal term
                         im1 = (i - 1 + Nx) % Nx  # Previous cell index (periodic)
                         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2)
+                        val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(im1)
                         data_values.append(val_A_i_im1)
@@ -200,7 +202,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Upper diagonal term
                         ip1 = (i + 1) % Nx  # Next cell index (periodic)
                         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2)
+                        val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(ip1)
                         data_values.append(val_A_i_ip1)
@@ -221,7 +223,7 @@ class FPFDMSolver(BaseFPSolver):
                             # Advection part (no wrapping for interior points)
                             if i > 0 and i < Nx - 1:
                                 val_A_ii += float(
-                                    coefCT
+                                    coupling_coefficient
                                     * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1]))
                                     / Dx**2
                                 )
@@ -233,7 +235,7 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1 and i > 0:
                             # Lower diagonal term (flux from left)
                             val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                            val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+                            val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i - 1)
                             data_values.append(val_A_i_im1)
@@ -241,7 +243,7 @@ class FPFDMSolver(BaseFPSolver):
                         if Nx > 1 and i < Nx - 1:
                             # Upper diagonal term (flux from right)
                             val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                            val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+                            val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i + 1)
                             data_values.append(val_A_i_ip1)
@@ -264,7 +266,7 @@ class FPFDMSolver(BaseFPSolver):
                         # For left boundary, use forward difference for velocity
                         # Only positive part contributes (flux out of domain)
                         if Nx > 1:
-                            val_A_ii += float(coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+                            val_A_ii += float(coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i)
@@ -273,7 +275,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Coupling to m[1]: diffusion + advection
                         val_A_i_ip1 = -(sigma**2) / Dx**2
                         if Nx > 1:
-                            val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+                            val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i + 1)
@@ -290,7 +292,7 @@ class FPFDMSolver(BaseFPSolver):
                         # For right boundary, use backward difference for velocity
                         # Only negative part contributes (flux out of domain)
                         if Nx > 1:
-                            val_A_ii += float(coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+                            val_A_ii += float(coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i)
@@ -299,7 +301,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Coupling to m[N-2]: diffusion + advection
                         val_A_i_im1 = -(sigma**2) / Dx**2
                         if Nx > 1:
-                            val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+                            val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
 
                         row_indices.append(i)
                         col_indices.append(i - 1)
@@ -310,7 +312,9 @@ class FPFDMSolver(BaseFPSolver):
                         val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
 
                         val_A_ii += float(
-                            coefCT * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1])) / Dx**2
+                            coupling_coefficient
+                            * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1]))
+                            / Dx**2
                         )
 
                         row_indices.append(i)
@@ -319,14 +323,14 @@ class FPFDMSolver(BaseFPSolver):
 
                         # Lower diagonal term
                         val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_im1 += float(-coefCT * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+                        val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i - 1)
                         data_values.append(val_A_i_im1)
 
                         # Upper diagonal term
                         val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
-                        val_A_i_ip1 += float(-coefCT * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+                        val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i + 1)
                         data_values.append(val_A_i_ip1)
@@ -403,7 +407,7 @@ def _solve_fp_nd_full_system(
         Initial density at t=0. Shape: (N₁, N₂, ..., Nₐ)
     U_solution_for_drift : np.ndarray
         Value function over time-space grid. Shape: (Nt+1, N₁, N₂, ..., Nₐ)
-        Used to compute drift velocity v = -coefCT ∇U
+        Used to compute drift velocity v = -coupling_coefficient ∇U
     problem : GridBasedMFGProblem
         The MFG problem definition with geometry and parameters
     boundary_conditions : BoundaryConditions | None
@@ -444,7 +448,7 @@ def _solve_fp_nd_full_system(
     shape = tuple(problem.geometry.grid.num_points)
     dt = problem.dt
     sigma = problem.sigma
-    coefCT = getattr(problem, "coefCT", 1.0)
+    coupling_coefficient = getattr(problem, "coupling_coefficient", 1.0)
 
     # Get grid spacing
     spacing = problem.geometry.grid.spacing
@@ -498,7 +502,7 @@ def _solve_fp_nd_full_system(
             problem,
             dt,
             sigma,
-            coefCT,
+            coupling_coefficient,
             spacing,
             grid,
             ndim,
@@ -520,7 +524,7 @@ def _solve_timestep_full_nd(
     problem: Any,
     dt: float,
     sigma: float,
-    coefCT: float,
+    coupling_coefficient: float,
     spacing: tuple[float, ...],
     grid: Any,
     ndim: int,
@@ -544,7 +548,7 @@ def _solve_timestep_full_nd(
         Time step
     sigma : float
         Diffusion coefficient
-    coefCT : float
+    coupling_coefficient : float
         Coupling coefficient for drift term
     spacing : tuple[float, ...]
         Grid spacing in each dimension
@@ -594,7 +598,7 @@ def _solve_timestep_full_nd(
                 ndim,
                 dt,
                 sigma,
-                coefCT,
+                coupling_coefficient,
                 spacing,
                 u_flat,
                 grid,
@@ -611,7 +615,7 @@ def _solve_timestep_full_nd(
                 ndim,
                 dt,
                 sigma,
-                coefCT,
+                coupling_coefficient,
                 spacing,
                 u_flat,
                 grid,
@@ -652,7 +656,7 @@ def _add_interior_entries(
     ndim: int,
     dt: float,
     sigma: float,
-    coefCT: float,
+    coupling_coefficient: float,
     spacing: tuple[float, ...],
     u_flat: np.ndarray,
     grid: Any,
@@ -713,16 +717,16 @@ def _add_interior_entries(
             coeff_plus = -(sigma**2) / (2 * dx_sq)
 
             # Add advection upwind term
-            # For advection: -d/dx(m*v) where v = -coefCT * dU/dx
+            # For advection: -d/dx(m*v) where v = -coupling_coefficient * dU/dx
             # Upwind: use ppart for positive velocity contribution
-            coeff_plus += float(-coefCT * ppart(u_plus - u_center) / dx_sq)
+            coeff_plus += float(-coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_plus)
             data_values.append(coeff_plus)
 
             # Add advection contribution to diagonal
-            diagonal_value += float(coefCT * ppart(u_plus - u_center) / dx_sq)
+            diagonal_value += float(coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
 
         if has_minus or boundary_conditions.type == "periodic":
             # Coupling to m_{i-1,j}
@@ -730,14 +734,14 @@ def _add_interior_entries(
 
             # Add advection upwind term
             # Upwind: use npart for negative velocity contribution
-            coeff_minus += float(-coefCT * npart(u_center - u_minus) / dx_sq)
+            coeff_minus += float(-coupling_coefficient * npart(u_center - u_minus) / dx_sq)
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_minus)
             data_values.append(coeff_minus)
 
             # Add advection contribution to diagonal
-            diagonal_value += float(coefCT * npart(u_center - u_minus) / dx_sq)
+            diagonal_value += float(coupling_coefficient * npart(u_center - u_minus) / dx_sq)
 
     # Add diagonal entry
     row_indices.append(flat_idx)
@@ -755,7 +759,7 @@ def _add_boundary_no_flux_entries(
     ndim: int,
     dt: float,
     sigma: float,
-    coefCT: float,
+    coupling_coefficient: float,
     spacing: tuple[float, ...],
     u_flat: np.ndarray,
     grid: Any,
@@ -796,10 +800,10 @@ def _add_boundary_no_flux_entries(
             diagonal_value += sigma**2 / dx_sq
 
             coeff_plus = -(sigma**2) / (2 * dx_sq)
-            coeff_plus += float(-coefCT * ppart(u_plus - u_center) / dx_sq)
+            coeff_plus += float(-coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
 
             coeff_minus = -(sigma**2) / (2 * dx_sq)
-            coeff_minus += float(-coefCT * npart(u_center - u_minus) / dx_sq)
+            coeff_minus += float(-coupling_coefficient * npart(u_center - u_minus) / dx_sq)
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_plus)
@@ -809,7 +813,9 @@ def _add_boundary_no_flux_entries(
             col_indices.append(flat_idx_minus)
             data_values.append(coeff_minus)
 
-            diagonal_value += float(coefCT * (ppart(u_plus - u_center) + npart(u_center - u_minus)) / dx_sq)
+            diagonal_value += float(
+                coupling_coefficient * (ppart(u_plus - u_center) + npart(u_center - u_minus)) / dx_sq
+            )
 
         elif at_left_boundary:
             # Left boundary: use one-sided (forward) stencil
@@ -824,13 +830,13 @@ def _add_boundary_no_flux_entries(
             diagonal_value += sigma**2 / dx_sq
 
             coeff_plus = -(sigma**2) / dx_sq
-            coeff_plus += float(-coefCT * ppart(u_plus - u_center) / dx_sq)
+            coeff_plus += float(-coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_plus)
             data_values.append(coeff_plus)
 
-            diagonal_value += float(coefCT * ppart(u_plus - u_center) / dx_sq)
+            diagonal_value += float(coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
 
         elif at_right_boundary:
             # Right boundary: use one-sided (backward) stencil
@@ -845,13 +851,13 @@ def _add_boundary_no_flux_entries(
             diagonal_value += sigma**2 / dx_sq
 
             coeff_minus = -(sigma**2) / dx_sq
-            coeff_minus += float(-coefCT * npart(u_center - u_minus) / dx_sq)
+            coeff_minus += float(-coupling_coefficient * npart(u_center - u_minus) / dx_sq)
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_minus)
             data_values.append(coeff_minus)
 
-            diagonal_value += float(coefCT * npart(u_center - u_minus) / dx_sq)
+            diagonal_value += float(coupling_coefficient * npart(u_center - u_minus) / dx_sq)
 
     # Add diagonal entry
     row_indices.append(flat_idx)

@@ -47,7 +47,7 @@ class FixedPointIterator(BaseMFGSolver):
         hjb_solver: HJB solver instance
         fp_solver: FP solver instance
         config: Configuration object (preferred modern approach)
-        thetaUM: Damping parameter (legacy parameter, overridden by config)
+        damping_factor: Damping parameter (legacy parameter, overridden by config)
         use_anderson: Enable Anderson acceleration
         anderson_depth: Anderson acceleration memory depth
         anderson_beta: Anderson acceleration mixing parameter

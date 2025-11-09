@@ -338,7 +338,7 @@ class AMRBenchmarkSuite:
                 Nx=nx,
                 Nt=50,
                 sigma=0.05,
-                coefCT=2.0,  # Sharp features  # Strong congestion
+                coupling_coefficient=2.0,  # Sharp features  # Strong congestion
             )
             problem.domain = domain
             problem.dimension = 1
@@ -365,7 +365,7 @@ class AMRBenchmarkSuite:
 
         def create_2d_problem():
             problem = ExampleMFGProblem(
-                T=1.0, xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0, Nx=32, Ny=32, Nt=30, sigma=0.1, coefCT=1.5
+                T=1.0, xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0, Nx=32, Ny=32, Nt=30, sigma=0.1, coupling_coefficient=1.5
             )
             problem.dimension = 2
             return problem

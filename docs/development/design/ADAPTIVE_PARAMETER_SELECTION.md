@@ -11,7 +11,7 @@
 MFG problems have several critical parameters that significantly affect convergence, stability, and accuracy:
 
 1. **σ (sigma)** - Diffusion coefficient / noise intensity
-2. **λ (coefCT)** - Coupling strength
+2. **λ (coupling_coefficient)** - Coupling strength
 3. **θ (damping_factor)** - Picard iteration damping
 4. **Δt, Δx** - Discretization parameters
 5. **Tolerance** - Convergence thresholds
@@ -28,11 +28,11 @@ Currently, these are **manually specified** by users, requiring expertise and tr
 
 1. **Adaptive Damping Factor** (Implemented):
    - Location: `docs/development/analysis/hybrid_damping_factor_analysis.md`
-   - Considers: T, coefCT, sigma
+   - Considers: T, coupling_coefficient, sigma
    - Method: Heuristic formula based on problem parameters
 
 2. **Fixed Parameters** (User-specified):
-   - σ, coefCT: Set at problem creation
+   - σ, coupling_coefficient: Set at problem creation
    - No automatic adjustment
 
 3. **Adaptive Mesh Refinement** (Design exists):
@@ -42,7 +42,7 @@ Currently, these are **manually specified** by users, requiring expertise and tr
 ### **What's Missing**
 
 - ❌ Adaptive sigma selection
-- ❌ Adaptive coupling strength (coefCT)
+- ❌ Adaptive coupling strength (coupling_coefficient)
 - ❌ Joint parameter optimization
 - ❌ Problem-specific parameter tuning
 - ❌ Runtime parameter adjustment
@@ -139,7 +139,7 @@ def compute_adaptive_sigma(
     time_horizon : float
         Total time T
     coupling_strength : float
-        Coupling coefficient λ (coefCT)
+        Coupling coefficient λ (coupling_coefficient)
     initial_density_variance : float
         Var(m_0(x))
     problem_type : str
@@ -182,7 +182,7 @@ from mfg_pde.utils.adaptive_parameters import compute_adaptive_sigma
 problem = MFGProblem(
     xmin=0, xmax=1, Nx=100,
     T=1.0, Nt=50,
-    coefCT=0.5,
+    coupling_coefficient=0.5,
     components=components
 )
 
@@ -284,7 +284,7 @@ Train a model to predict optimal σ from problem features.
 #### **Training Data**
 
 Collect pairs: (problem features, optimal sigma)
-- Features: domain_size, T, coefCT, m0_variance, etc.
+- Features: domain_size, T, coupling_coefficient, m0_variance, etc.
 - Optimal sigma: Determined by convergence studies
 
 #### **Model**
@@ -441,7 +441,7 @@ class AdaptivePicardIterator:
 
 #### **Concept**
 
-Jointly optimize σ, coefCT, damping_factor using Bayesian optimization.
+Jointly optimize σ, coupling_coefficient, damping_factor using Bayesian optimization.
 
 #### **Objective**
 
@@ -450,10 +450,10 @@ Minimize: convergence_time + accuracy_penalty
 ```python
 def objective(params: dict) -> float:
     """Objective for parameter optimization."""
-    sigma, coefCT, damping = params['sigma'], params['coefCT'], params['damping']
+    sigma, coupling_coefficient, damping = params['sigma'], params['coupling_coefficient'], params['damping']
 
     # Solve problem with these parameters
-    problem = MFGProblem(sigma=sigma, coefCT=coefCT, ...)
+    problem = MFGProblem(sigma=sigma, coupling_coefficient=coupling_coefficient, ...)
     solver = PicardIterator(problem, damping_factor=damping)
     result = solver.solve()
 
@@ -473,7 +473,7 @@ from scipy.optimize import minimize
 # Bayesian optimization or grid search
 best_params = minimize(
     objective,
-    x0=[1.0, 0.5, 0.5],  # Initial guess [sigma, coefCT, damping]
+    x0=[1.0, 0.5, 0.5],  # Initial guess [sigma, coupling_coefficient, damping]
     bounds=[(0.01, 10), (0, 2), (0, 1)],
     method='L-BFGS-B'
 )
@@ -537,14 +537,14 @@ from mfg_pde.utils.adaptive_parameters import compute_adaptive_sigma
 problem = MFGProblem(
     xmin=0, xmax=1, Nx=100,
     T=1.0, Nt=50,
-    coefCT=0.5
+    coupling_coefficient=0.5
 )
 
 # Automatically compute sigma
 sigma = compute_adaptive_sigma(
     domain_size=problem.domain_size,
     time_horizon=problem.T,
-    coupling_strength=problem.coefCT,
+    coupling_strength=problem.coupling_coefficient,
     initial_density_variance=problem.m0_variance,
     problem_type="congestion"
 )
