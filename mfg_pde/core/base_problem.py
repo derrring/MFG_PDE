@@ -30,93 +30,71 @@ if TYPE_CHECKING:
 @runtime_checkable
 class MFGProblemProtocol(Protocol):
     """
-    Protocol that ALL MFG problems must satisfy for dimension-agnostic solvers.
+    Minimal protocol that ALL MFG problems must satisfy.
 
-    This defines the minimal interface required by solvers. Any class
-    implementing these attributes and methods can be used with our
-    solver infrastructure, enabling:
-    - Uniform solver code for 1D, 2D, 3D, nD
-    - Type-safe solver implementations
-    - Clear separation between problem definition and solver logic
+    This protocol is intentionally geometry-agnostic, working with:
+    - Cartesian grids (Domain1D, Domain2D, TensorProductGrid)
+    - Networks (NetworkMFGProblem)
+    - Unstructured meshes (AMR geometries)
+    - Implicit domains (level set, SDF)
+    - Custom geometries
 
-    Spatial Properties:
-        dimension: int
-            Number of spatial dimensions (1, 2, 3, ...)
-        spatial_bounds: list[tuple[float, float]]
-            [(x₀_min, x₀_max), (x₁_min, x₁_max), ...]
-        spatial_discretization: list[int]
-            [N₀, N₁, ...] grid points per dimension
-        spatial_grid: NDArray | list[NDArray]
-            Coordinate arrays (format depends on dimension/domain)
-        grid_shape: tuple[int, ...]
-            Shape of spatial grid (N₀, N₁, ...)
-        grid_spacing: list[float]
-            [Δx₀, Δx₁, ...] spacing per dimension
+    Grid-specific properties (grid_shape, grid_spacing, etc.) are NOT
+    required here. See CartesianGridMFGProtocol for grid-specific interface.
 
-    Temporal Properties:
+    Universal Properties:
+        dimension: int | str
+            Spatial dimension (int for grids/meshes, "network" for graphs)
         T: float
             Final time
         Nt: int
             Number of time steps
-        dt: float
-            Time step size Δt = T/Nt
-        time_grid: NDArray
-            Array of time points [t₀, t₁, ..., t_Nt]
-
-    Physical Properties:
+        tSpace: NDArray
+            Time points array [t₀, t₁, ..., t_Nt]
         sigma: float | Callable
             Diffusion coefficient σ
-            - float: Constant scalar diffusion
-            - Callable → float: Position-dependent scalar σ(x)
-            - Callable → NDArray: Matrix diffusion D(x) ∈ ℝ^{d×d}
 
     MFG Components:
-        All problems must provide these mathematical components:
+        All problems must provide:
         - hamiltonian(x, m, p, t): H(x, m, p, t)
         - terminal_cost(x): g(x)
         - initial_density(x): m₀(x)
         - running_cost(x, m, t): f(x, m, t)
 
     Examples:
-        >>> # Type checking with Protocol
+        >>> # Geometry-agnostic solver
         >>> def solve_hjb(problem: MFGProblemProtocol) -> NDArray:
-        ...     # Solver works for ANY dimension
-        ...     dim = problem.dimension
-        ...     dx = problem.grid_spacing
-        ...     # ... dimension-agnostic solver code ...
+        ...     # Works for grids, networks, meshes, etc.
+        ...     T = problem.T
+        ...     tSpace = problem.tSpace
+        ...     sigma = problem.sigma
+        ...     # ... solver code ...
         ...     return u
 
         >>> # Runtime validation
-        >>> from mfg_pde.core.base_problem import MFGProblemProtocol
-        >>> problem = MFGProblem(...)
-        >>> assert isinstance(problem, MFGProblemProtocol)
+        >>> problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1, Nt=50, sigma=0.1)
+        >>> assert isinstance(problem, MFGProblemProtocol)  # ✅ Should pass!
     """
 
     # ====================
-    # Spatial Properties
+    # Spatial (minimal)
     # ====================
 
-    dimension: int
-    spatial_bounds: list[tuple[float, float]]
-    spatial_discretization: list[int]
-    spatial_grid: NDArray | list[NDArray]
-    grid_shape: tuple[int, ...]
-    grid_spacing: list[float]
+    dimension: int | str  # int for grids/meshes, "network" for graphs
 
     # ====================
-    # Temporal Properties
+    # Temporal (universal)
     # ====================
 
-    T: float
-    Nt: int
-    dt: float
-    time_grid: NDArray
+    T: float  # Final time
+    Nt: int  # Number of time steps
+    tSpace: NDArray  # Time points [t₀, t₁, ..., t_Nt]
 
     # ====================
-    # Physical Properties
+    # Physical (universal)
     # ====================
 
-    sigma: float | Callable
+    sigma: float | Callable  # Diffusion coefficient
 
     # ====================
     # MFG Components
@@ -199,5 +177,93 @@ class MFGProblemProtocol(Protocol):
             >>> # Congestion cost
             >>> def running_cost(self, x, m, t):
             ...     return 0.1 * m  # Penalize high density
+        """
+        ...
+
+
+@runtime_checkable
+class CartesianGridMFGProtocol(MFGProblemProtocol, Protocol):
+    """
+    Extended protocol for Cartesian grid-based MFG problems.
+
+    Adds grid-specific properties required by finite difference, WENO,
+    and other structured grid solvers.
+
+    Only applies to problems with GeometryType.CARTESIAN_GRID:
+    - Domain1D, Domain2D, Domain3D
+    - TensorProductGrid
+    - SimpleGrid2D, SimpleGrid3D
+
+    Does NOT apply to:
+    - Networks (NetworkMFGProblem)
+    - Unstructured meshes (AMR geometries)
+    - Implicit domains
+
+    Additional Grid Properties:
+        dimension: int
+            Must be integer (not "network")
+        spatial_bounds: list[tuple[float, float]]
+            [(x₀_min, x₀_max), (x₁_min, x₁_max), ...]
+        spatial_discretization: list[int]
+            [N₀, N₁, ...] grid points per dimension
+        xSpace: NDArray | list[NDArray]
+            Coordinate arrays
+
+    Grid-Specific Computed Properties:
+        grid_shape: tuple[int, ...]
+            Shape of grid (N₀, N₁, ...)
+        grid_spacing: list[float]
+            Spacing [Δx₀, Δx₁, ...] per dimension
+
+    Examples:
+        >>> # Grid-specific solver (FDM)
+        >>> def solve_hjb_fdm(problem: CartesianGridMFGProtocol) -> NDArray:
+        ...     dx = problem.grid_spacing  # Can safely assume regular grid
+        ...     shape = problem.grid_shape
+        ...     # ... FDM implementation ...
+        ...     return u
+
+        >>> # Runtime check
+        >>> if isinstance(problem, CartesianGridMFGProtocol):
+        ...     return solve_hjb_fdm(problem)  # Use FDM
+        ... else:
+        ...     return solve_hjb_particle(problem)  # Use particles
+    """
+
+    # ====================
+    # Spatial (grid-specific)
+    # ====================
+
+    dimension: int  # Must be int, not "network"
+    spatial_bounds: list[tuple[float, float]]  # [(x₀_min, x₀_max), ...]
+    spatial_discretization: list[int]  # [N₀, N₁, ...]
+    xSpace: NDArray | list[NDArray]  # Coordinate arrays
+
+    # ====================
+    # Grid Properties (computed)
+    # ====================
+
+    @property
+    def grid_shape(self) -> tuple[int, ...]:
+        """
+        Shape of spatial grid (N₀, N₁, ...).
+
+        Returns tuple for dimension-agnostic grid operations.
+
+        Example:
+            >>> problem.grid_shape  # (50, 50) for 2D grid
+        """
+        ...
+
+    @property
+    def grid_spacing(self) -> list[float]:
+        """
+        Grid spacing [Δx₀, Δx₁, ...] for each dimension.
+
+        Computed from bounds and discretization:
+        Δx_i = (xmax_i - xmin_i) / N_i
+
+        Example:
+            >>> problem.grid_spacing  # [0.02, 0.02] for 2D grid
         """
         ...
