@@ -1,5 +1,6 @@
 from mfg_pde.geometry import BoundaryConditions
 
+from .base_problem import MFGProblemProtocol
 from .mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem
 from .network_mfg_problem import (
     NetworkMFGComponents,
@@ -23,6 +24,7 @@ __all__ = [
     "MFGComponents",
     "MFGProblem",
     "MFGProblemBuilder",
+    "MFGProblemProtocol",
     # Network MFG
     "NetworkMFGComponents",
     "NetworkMFGProblem",
