@@ -1502,14 +1502,17 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Extract time dimension (works for arbitrary spatial dimensions)
         Nt = M_density_evolution_from_FP.shape[0]
 
+        # Store original spatial shape for reshaping output
+        self._output_spatial_shape = M_density_evolution_from_FP.shape[1:]
+
         # For GFDM, we work directly with collocation points
         # Map grid data to collocation points
         U_solution_collocation = np.zeros((Nt, self.n_points))
         M_collocation = self._map_grid_to_collocation_batch(M_density_evolution_from_FP)
         U_prev_collocation = self._map_grid_to_collocation_batch(U_from_prev_picard)
 
-        # Set final condition
-        U_solution_collocation[Nt - 1, :] = self._map_grid_to_collocation(U_final_condition_at_T)
+        # Set final condition (flatten if nD)
+        U_solution_collocation[Nt - 1, :] = self._map_grid_to_collocation(U_final_condition_at_T.flatten())
 
         # Backward time stepping with progress bar
         timestep_range = range(Nt - 2, -1, -1)
@@ -1798,29 +1801,62 @@ class HJBGFDMSolver(BaseHJBSolver):
             return u_grid
 
     def _map_grid_to_collocation_batch(self, U_grid: np.ndarray) -> np.ndarray:
-        """Batch version of _map_grid_to_collocation."""
-        Nt, _Nx = U_grid.shape
+        """
+        Batch version of _map_grid_to_collocation.
+
+        Handles nD spatial grids by flattening spatial dimensions.
+
+        Args:
+            U_grid: Shape (Nt, ...) where ... represents arbitrary spatial dimensions
+
+        Returns:
+            U_collocation: Shape (Nt, n_points)
+        """
+        Nt = U_grid.shape[0]  # Extract time dimension (works for arbitrary spatial dimensions)
+
         U_collocation = np.zeros((Nt, self.n_points))
         for n in range(Nt):
-            U_collocation[n, :] = self._map_grid_to_collocation(U_grid[n, :])
+            # Flatten spatial dimensions to 1D array for mapping
+            u_grid_flat = U_grid[n].flatten()
+            U_collocation[n, :] = self._map_grid_to_collocation(u_grid_flat)
         return U_collocation
 
     def _map_collocation_to_grid_batch(self, U_collocation: np.ndarray) -> np.ndarray:
-        """Batch version of _map_collocation_to_grid."""
-        Nt, _n_points = U_collocation.shape
+        """
+        Batch version of _map_collocation_to_grid.
 
-        # Determine output grid size based on collocation points
-        Nx_grid = getattr(self.problem, "Nx", self.n_points)
-        if self.n_points == Nx_grid + 1:
-            # Collocation includes boundaries - output should be Nx+1
-            Nx_output = Nx_grid + 1
+        Handles nD spatial grids by reshaping output to match original spatial dimensions.
+
+        Args:
+            U_collocation: Shape (Nt, n_points)
+
+        Returns:
+            U_grid: Shape (Nt, ...) where ... matches original spatial shape
+        """
+        Nt = U_collocation.shape[0]  # Extract time dimension
+
+        # Get the original spatial shape from stored attribute (set in solve_hjb_system)
+        if hasattr(self, "_output_spatial_shape"):
+            spatial_shape = self._output_spatial_shape
+            # Total number of spatial grid points
+            n_spatial_points = np.prod(spatial_shape)
         else:
-            # Interior points only or other - output is Nx
-            Nx_output = Nx_grid
+            # Fallback for 1D case
+            Nx_grid = getattr(self.problem, "Nx", self.n_points)
+            if self.n_points == Nx_grid + 1:
+                n_spatial_points = Nx_grid + 1
+            else:
+                n_spatial_points = Nx_grid
+            spatial_shape = (n_spatial_points,)
 
-        U_grid = np.zeros((Nt, Nx_output))
+        # Map each timestep from collocation to flattened grid
+        U_grid_flat = np.zeros((Nt, n_spatial_points))
         for n in range(Nt):
-            U_grid[n, :] = self._map_collocation_to_grid(U_collocation[n, :])
+            U_grid_flat[n, :] = self._map_collocation_to_grid(U_collocation[n, :])
+
+        # Reshape to original spatial dimensions
+        output_shape = (Nt, *tuple(spatial_shape))
+        U_grid = U_grid_flat.reshape(output_shape)
         return U_grid
 
     def _map_collocation_index_to_grid_index(self, collocation_idx: int) -> int:
