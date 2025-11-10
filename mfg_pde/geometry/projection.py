@@ -381,7 +381,11 @@ class GeometryProjector:
 
         Leverages existing GPU-accelerated KDE from density_estimation.py.
         """
-        from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu
+        from mfg_pde.alg.numerical.density_estimation import (
+            adaptive_bandwidth_selection_nd,
+            gaussian_kde_gpu,
+            gaussian_kde_gpu_nd,
+        )
         from mfg_pde.backends import create_backend
         from mfg_pde.geometry.base import CartesianGrid
 
@@ -421,9 +425,19 @@ class GeometryProjector:
             )
             return density.reshape(grid_shape)
 
-        # Multi-dimensional: use histogram-based density (fast fallback)
-        # TODO: Implement multi-D GPU KDE in future
-        return self._histogram_density_nd(particle_positions, particle_values, grid_shape)
+        # Multi-dimensional: use GPU-accelerated KDE
+        # Compute adaptive bandwidth if needed
+        if isinstance(bandwidth, str):
+            bw_factor = adaptive_bandwidth_selection_nd(particle_positions, method=bandwidth)
+
+        density = gaussian_kde_gpu_nd(
+            particles=particle_positions,
+            grid_points=hjb_points,
+            bandwidth=bw_factor,
+            backend=backend,
+        )
+
+        return density.reshape(grid_shape)
 
     def _histogram_density_nd(
         self, particle_positions: NDArray, particle_weights: NDArray, grid_shape: tuple[int, ...]
