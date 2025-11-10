@@ -134,6 +134,9 @@ class MFGProblem:
         # Complex geometry parameters (NEW)
         geometry: Any | None = None,  # BaseGeometry
         obstacles: list | None = None,
+        # Dual geometry parameters (Issue #257)
+        hjb_geometry: Any | None = None,  # Geometry for HJB solver
+        fp_geometry: Any | None = None,  # Geometry for FP solver
         # Network parameters (NEW)
         network: Any | None = None,  # NetworkGraph
         # Time domain parameters
@@ -165,8 +168,11 @@ class MFGProblem:
                            Example: [(0, 1), (0, 1)] for 2D unit square
             spatial_discretization: List of grid points per dimension
                                    Example: [50, 50] for 51×51 grid
-            geometry: BaseGeometry object for complex domains
+            geometry: BaseGeometry object for complex domains (unified mode)
             obstacles: List of obstacle geometries
+            hjb_geometry: Geometry for HJB solver (dual geometry mode, Issue #257)
+            fp_geometry: Geometry for FP solver (dual geometry mode, Issue #257)
+                        Note: Both hjb_geometry and fp_geometry must be specified together
             network: NetworkGraph for network MFG problems
             T, Nt, time_domain: Time domain parameters (T, Nt) or tuple (T, Nt)
             sigma, diffusion: Diffusion coefficient (sigma is standard name)
@@ -210,6 +216,18 @@ class MFGProblem:
                 Nt=50,
                 components=components
             )
+
+            # Mode 6: Dual geometry (Issue #257) - Separate geometries for HJB and FP
+            from mfg_pde.geometry import SimpleGrid2D
+            hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))  # Fine grid for HJB
+            fp_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(20, 20))  # Coarse grid for FP
+            problem = MFGProblem(
+                hjb_geometry=hjb_grid,
+                fp_geometry=fp_grid,
+                time_domain=(1.0, 50),
+                diffusion=0.1
+            )
+            # Automatically creates geometry_projector for mapping between geometries
         """
         import warnings
 
@@ -249,9 +267,41 @@ class MFGProblem:
         else:
             xmax_normalized = None
 
+        # Handle dual geometry specification (Issue #257)
+        self.geometry_projector = None  # Will be set if dual geometries provided
+
+        if hjb_geometry is not None and fp_geometry is not None:
+            # Dual geometry mode: separate geometries for HJB and FP
+            if geometry is not None:
+                raise ValueError(
+                    "Specify EITHER 'geometry' (unified) OR ('hjb_geometry', 'fp_geometry') (dual), not both"
+                )
+            # Use dual geometries
+            final_hjb_geometry = hjb_geometry
+            final_fp_geometry = fp_geometry
+            # Create projector for mapping between geometries
+            from mfg_pde.geometry import GeometryProjector
+
+            self.geometry_projector = GeometryProjector(
+                hjb_geometry=hjb_geometry, fp_geometry=fp_geometry, projection_method="auto"
+            )
+        elif hjb_geometry is not None or fp_geometry is not None:
+            # Partial dual geometry specification
+            raise ValueError("If using dual geometries, both 'hjb_geometry' AND 'fp_geometry' must be specified")
+        elif geometry is not None:
+            # Unified geometry mode (backward compatible)
+            final_hjb_geometry = geometry
+            final_fp_geometry = geometry
+        else:
+            # No explicit geometry provided - will be handled by mode detection
+            final_hjb_geometry = None
+            final_fp_geometry = None
+
         # Detect initialization mode (use normalized Nx for detection)
+        # For dual geometry, pass the hjb_geometry to mode detection
+        geometry_for_detection = final_hjb_geometry if final_hjb_geometry is not None else geometry
         mode = self._detect_init_mode(
-            Nx=Nx_normalized, spatial_bounds=spatial_bounds, geometry=geometry, network=network
+            Nx=Nx_normalized, spatial_bounds=spatial_bounds, geometry=geometry_for_detection, network=network
         )
 
         # Dispatch to appropriate initializer
@@ -275,7 +325,11 @@ class MFGProblem:
 
         elif mode == "geometry":
             # Mode 3: Complex geometry
-            self._init_geometry(geometry, obstacles, T, Nt, sigma, coupling_coefficient, suppress_warnings)
+            self._init_geometry(final_hjb_geometry, obstacles, T, Nt, sigma, coupling_coefficient, suppress_warnings)
+            # For dual geometry mode, store both geometries explicitly
+            if self.geometry_projector is not None:
+                self.hjb_geometry = final_hjb_geometry
+                self.fp_geometry = final_fp_geometry
 
         elif mode == "network":
             # Mode 4: Network MFG
@@ -292,6 +346,13 @@ class MFGProblem:
 
         else:
             raise ValueError(f"Unknown initialization mode: {mode}")
+
+        # Store dual geometries (Issue #257)
+        # For unified mode, both point to self.geometry (set by init methods)
+        # For dual mode, these were already computed above
+        if not hasattr(self, "hjb_geometry"):
+            self.hjb_geometry = getattr(self, "geometry", None)
+            self.fp_geometry = getattr(self, "geometry", None)
 
         # Store custom components if provided
         self.components = components

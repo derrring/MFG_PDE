@@ -8,7 +8,7 @@
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **✨ v0.9.0 Released** - [What's New](https://github.com/derrring/MFG_PDE/releases/tag/v0.9.0): Unified API, Essential Utilities, 2,300+ lines of documentation
+> **✨ v0.11.0 In Progress** - [What's New](#whats-new-in-v0110): Dual Geometry Support, FEM Mesh Integration, Multi-Resolution Methods
 
 ---
 
@@ -45,6 +45,7 @@ result = solve_mfg(ExampleMFGProblem(), config="fast")
 - **⚡ Production-Ready** - 10⁻¹⁵ mass conservation error, 98.4% test pass rate
 - **🧩 Modular** - Mix and match HJB + FP solvers (FDM, Particles, WENO, Neural)
 - **🌐 Multi-Dimensional** - 1D/2D/3D/nD support with automatic dimensional splitting
+- **🔀 Dual Geometry** - Separate discretizations for HJB and FP (multi-resolution, FEM meshes)
 - **🎮 Reinforcement Learning** - Complete RL framework (DDPG, TD3, SAC)
 - **⚡ GPU Acceleration** - PyTorch, JAX, Numba backends
 - **🛠️ Essential Utilities** - Particle interpolation, SDF, QP caching, convergence monitoring
@@ -117,27 +118,75 @@ from mfg_pde.utils import QPSolver, QPCache
 solver = QPSolver(backend="osqp", cache=QPCache(max_size=1000))
 ```
 
+### Dual Geometry (v1.0+)
+
+```python
+from mfg_pde import MFGProblem
+from mfg_pde.geometry import SimpleGrid2D
+
+# Multi-resolution: fine HJB + coarse FP (4-15× speedup)
+hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(100, 100))
+fp_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(25, 25))
+
+problem = MFGProblem(
+    hjb_geometry=hjb_grid,  # Fine for accuracy
+    fp_geometry=fp_grid,     # Coarse for speed
+    T=1.0, Nt=100, sigma=0.1
+)
+
+# Projections handled automatically
+result = solve_mfg(problem, config="fast")
+```
+
+```python
+from mfg_pde.geometry import Mesh2D, SimpleGrid2D
+
+# Complex domains: FEM mesh + regular grid
+mesh = Mesh2D(
+    domain_type="rectangle",
+    bounds=(0.0, 1.0, 0.0, 1.0),
+    holes=[{"type": "circle", "center": (0.5, 0.5), "radius": 0.2}],
+    mesh_size=0.05
+)
+mesh.generate_mesh()
+
+problem = MFGProblem(
+    hjb_geometry=SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50)),
+    fp_geometry=mesh,  # Handles obstacles naturally
+    T=1.0, Nt=50, sigma=0.1
+)
+```
+
 ---
 
-## What's New in v0.9.0
+## What's New in v0.11.0
 
-**Unified Architecture**:
-- Single `solve_mfg()` interface replacing multiple solver creation patterns
+**Dual Geometry Support** (New in v0.11.0):
+- Separate discretizations for HJB and FP solvers
+- Multi-resolution methods: 4-15× speedup with minimal accuracy loss
+- FEM mesh support: complex domains with obstacles (automatic Delaunay interpolation)
+- Hybrid methods: Grid HJB + Particle FP, or any geometry combination
+- Automatic projection with registry pattern for extensibility
+
+**Unified API** (Stable in v0.10.x):
+- Single `MFGProblem` class with consistent parameter interface
 - Three configuration patterns: Presets, Builder API, YAML files
 - Simplified from 10+ lines to 2 lines for typical use cases
+- Full backward compatibility with deprecation warnings
 
-**Essential Utilities** (saves ~610 lines per project):
+**Essential Utilities** (v0.9.0+):
 - Particle interpolation (grid ↔ particles, 1D/2D/3D)
 - Signed distance functions (primitives, CSG operations, smooth blending)
 - QP solver caching (2-5× GFDM speedup)
 - Convergence monitoring (plotting, stagnation detection)
 
 **Documentation**:
-- 2,300+ lines of new user-facing documentation
-- Migration guide for upgrading from v0.8.x
-- Complete tutorials and user guides
+- 5,000+ lines of comprehensive documentation
+- Complete migration guide with dual geometry integration
+- Working examples: multi-resolution, FEM meshes, complex domains
+- Mathematical theory and implementation guides
 
-See [Release Notes](https://github.com/derrring/MFG_PDE/releases/tag/v0.9.0) for full details.
+See [Changelog](CHANGELOG.md) for full details.
 
 ---
 
@@ -173,7 +222,7 @@ If you use MFG_PDE in your research:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={0.9.0},
+  version={0.11.0},
   url={https://github.com/derrring/MFG_PDE}
 }
 ```

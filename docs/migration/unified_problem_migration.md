@@ -1,7 +1,7 @@
 # Migration Guide: Unified MFGProblem Interface
 
-**Version**: MFG_PDE v0.9.0+
-**Status**: Active Migration Path
+**Version**: MFG_PDE v0.10.x - v0.11.x
+**Status**: Stable API (v0.10.x+), Dual Geometry Added (v0.11.x)
 **Deprecation Timeline**: v0.9.0 (warnings) → v2.0.0 (removal)
 
 ---
@@ -10,12 +10,15 @@
 
 MFG_PDE v0.9.0 introduces a unified `MFGProblem` class that supports all problem types through a single interface. The old `GridBasedMFGProblem` class has been converted to a factory function with deprecation warnings.
 
+**v0.11.0 Update**: The unified API now includes complete dual geometry support, enabling HJB and FP solvers to use different discretizations.
+
 **Benefits of Migration**:
 - Single unified API for all problem types
 - Automatic solver compatibility detection
 - Better error messages with specific recommendations
 - Support for complex geometries and networks
 - Simplified parameter interface with aliases
+- **New in v0.11**: Dual geometry support (separate discretizations for HJB and FP)
 
 ---
 
@@ -24,8 +27,9 @@ MFG_PDE v0.9.0 introduces a unified `MFGProblem` class that supports all problem
 | Version | Date | Status |
 |:--------|:-----|:-------|
 | v0.9.0 | 2025-Q1 | DeprecationWarning added |
-| v1.0.0 | 2025-Q2 | Warning becomes prominent |
-| v2.0.0 | 2026-Q1 | GridBasedMFGProblem removed |
+| v0.10.x | 2025-Q2 | Unified API stabilized |
+| v0.11.0 | 2025-11-10 | Dual geometry support added |
+| v2.0.0 | 2026-Q1+ | GridBasedMFGProblem removed |
 
 ---
 
@@ -217,6 +221,107 @@ except ValueError as e:
     #
     # Suggestion: Use 'particle' solver for high-dimensional problems (d≥4)
 ```
+
+### 4. Dual Geometry Support (v0.11+)
+
+**New in v0.11**: Use different geometries for HJB and FP solvers, enabling multi-resolution methods, hybrid discretizations, and complex domains.
+
+#### Unified Geometry (Standard)
+
+```python
+from mfg_pde import MFGProblem
+from mfg_pde.geometry import SimpleGrid2D
+
+# Single geometry for both solvers (standard approach)
+grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+
+problem = MFGProblem(
+    geometry=grid,  # Same geometry for HJB and FP
+    T=1.0, Nt=100,
+    sigma=0.1
+)
+
+# Access unified geometry
+assert problem.hjb_geometry is grid
+assert problem.fp_geometry is grid
+assert problem.geometry_projector is None  # No projection needed
+```
+
+#### Dual Geometry (Multi-Resolution)
+
+```python
+from mfg_pde import MFGProblem
+from mfg_pde.geometry import SimpleGrid2D
+
+# Fine grid for HJB (needs accuracy for value function)
+hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(100, 100))
+
+# Coarse grid for FP (density is smooth)
+fp_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(25, 25))
+
+problem = MFGProblem(
+    hjb_geometry=hjb_grid,  # Fine for HJB
+    fp_geometry=fp_grid,    # Coarse for FP
+    T=1.0, Nt=100,
+    sigma=0.1
+)
+
+# Automatic projection setup
+assert problem.hjb_geometry is hjb_grid
+assert problem.fp_geometry is fp_grid
+assert problem.geometry_projector is not None
+
+# Projections handled automatically
+projector = problem.geometry_projector
+print(f"HJB→FP: {projector.hjb_to_fp_method}")  # "grid_interpolation"
+print(f"FP→HJB: {projector.fp_to_hjb_method}")  # "grid_restriction"
+```
+
+#### Dual Geometry (FEM Mesh + Grid)
+
+```python
+from mfg_pde import MFGProblem
+from mfg_pde.geometry import Mesh2D, SimpleGrid2D
+
+# FEM mesh for complex domain with obstacles
+mesh = Mesh2D(
+    domain_type="rectangle",
+    bounds=(0.0, 1.0, 0.0, 1.0),
+    holes=[{"type": "circle", "center": (0.5, 0.5), "radius": 0.2}],
+    mesh_size=0.05
+)
+mesh.generate_mesh()  # Requires gmsh
+
+# Regular grid for HJB
+grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+
+problem = MFGProblem(
+    hjb_geometry=grid,  # Regular grid for fast HJB
+    fp_geometry=mesh,   # FEM mesh handles obstacles
+    T=1.0, Nt=50,
+    sigma=0.1
+)
+
+# Automatic Delaunay interpolation (requires scipy)
+projector = problem.geometry_projector
+print(f"HJB→FP: {projector.hjb_to_fp_method}")  # "interpolation"
+print(f"FP→HJB: {projector.fp_to_hjb_method}")  # "registry" (Delaunay)
+```
+
+#### Use Cases for Dual Geometry
+
+| Use Case | HJB Geometry | FP Geometry | Benefit |
+|:---------|:-------------|:------------|:--------|
+| **Multi-resolution** | Fine grid | Coarse grid | 4-15× speedup, minimal accuracy loss |
+| **Complex domains** | Regular grid | FEM mesh | Fast HJB, handles obstacles naturally |
+| **Hybrid methods** | Grid | Particles | Grid-based value, particle-based density |
+| **Network agents** | Grid | Network graph | Spatial value, network-constrained agents |
+
+**Documentation**: See `docs/user_guide/dual_geometry_usage.md` for comprehensive guide.
+
+**Examples**:
+- `examples/basic/dual_geometry_multiresolution.py` - Multi-resolution MFG
+- `examples/advanced/dual_geometry_fem_mesh.py` - FEM mesh with obstacles
 
 ---
 
@@ -444,6 +549,10 @@ For migration assistance:
 
 ---
 
-**Last Updated**: 2025-11-03
-**Document Version**: 1.0
-**Related**: PHASE_3_1_UNIFIED_PROBLEM_DESIGN.md, ARCHITECTURE_REFACTORING_PLAN_2025-11-02.md
+**Last Updated**: 2025-11-10
+**Document Version**: 2.0 (v0.11.0 dual geometry integration)
+**Related**:
+- `docs/architecture/unified_problem_design.md` - Unified API design
+- `docs/user_guide/dual_geometry_usage.md` - Dual geometry user guide
+- `docs/theory/geometry_projection_mathematical_formulation.md` - Projection theory
+- `examples/basic/dual_geometry_multiresolution.py` - Multi-resolution example
