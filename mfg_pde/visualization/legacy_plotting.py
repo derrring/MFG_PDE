@@ -111,7 +111,7 @@ def plot_results(problem, u, m, solver_name="Solver", prefix=None):
 
     # Mass conservation plot
     plt.figure()
-    mtot = np.sum(m * problem.Dx, axis=1)
+    mtot = np.sum(m * problem.dx, axis=1)
     plt.plot(problem.tSpace, mtot)
     plt.xlabel("t")
     plt.ylabel("Total Mass $\\int m(t)$")

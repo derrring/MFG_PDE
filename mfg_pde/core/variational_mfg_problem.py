@@ -151,11 +151,11 @@ class VariationalMFGProblem:
         self.xmax = xmax
         self.Nx = Nx
         self.Lx = xmax - xmin
-        self.Dx = self.Lx / Nx
+        self.dx = self.Lx / Nx
 
         self.T = T
         self.Nt = Nt
-        self.Dt = T / (Nt - 1) if Nt > 1 else T
+        self.dt = T / (Nt - 1) if Nt > 1 else T
 
         # Grid points
         self.x = np.linspace(xmin, xmax, Nx + 1)
@@ -420,7 +420,7 @@ class VariationalMFGProblem:
 
             # Add running cost
             cost_contribution = self.evaluate_lagrangian(t, x, v, m_at_x)
-            running_cost += float(cost_contribution * self.Dt)
+            running_cost += float(cost_contribution * self.dt)
 
         # Add terminal cost
         terminal_cost = self.evaluate_terminal_cost(trajectory[-1])
@@ -443,7 +443,7 @@ class VariationalMFGProblem:
             return density_field[-1]
         else:
             # Linear interpolation
-            idx = (x - self.xmin) / self.Dx
+            idx = (x - self.xmin) / self.dx
             i = int(idx)
             alpha = idx - i
 
