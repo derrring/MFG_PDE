@@ -347,53 +347,65 @@ class MFGProblem:
         """
         import warnings
 
+        from mfg_pde.geometry import SimpleGrid1D
+        from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+
         # Emit deprecation warning for manual grid construction pattern
         warnings.warn(
             "Manual grid construction in MFGProblem is deprecated and will be "
             "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
             "  from mfg_pde.geometry import SimpleGrid1D\n"
             f"  domain = SimpleGrid1D(xmin={xmin[0]}, xmax={xmax[0]}, boundary_conditions='periodic')\n"
-            f"  domain.create_grid(Nx={Nx[0]})\n"
+            f"  domain.create_grid(num_points={Nx[0] + 1})\n"
             f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
             "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
             DeprecationWarning,
             stacklevel=4,  # Point to user's code, not internal calls
         )
 
-        # Set dimension
-        self.dimension = 1
-
         # Extract scalar values from arrays for backward compatibility
         xmin_scalar = xmin[0]
         xmax_scalar = xmax[0]
         Nx_scalar = Nx[0]
 
+        # Create SimpleGrid1D geometry object (unified internal representation)
+        bc = BoundaryConditions(type="periodic")  # Default to periodic for backward compatibility
+        geometry = SimpleGrid1D(xmin=xmin_scalar, xmax=xmax_scalar, boundary_conditions=bc)
+        dx, _ = geometry.create_grid(num_points=Nx_scalar + 1)
+
+        # Store geometry for unified interface
+        self.geometry = geometry
+
+        # Set dimension from geometry
+        self.dimension = geometry.dimension
+
         # Legacy 1D attributes (scalars for backward compatibility)
+        # Derived from geometry for consistency
         self.xmin: float = xmin_scalar
         self.xmax: float = xmax_scalar
         self.Lx: float = xmax_scalar - xmin_scalar
         self.Nx: int = Nx_scalar
-        self.Dx: float = (xmax_scalar - xmin_scalar) / Nx_scalar if Nx_scalar > 0 else 0.0
+        self.Dx: float = dx
 
         # Time domain
         self.T: float = T
         self.Nt: int = Nt
         self.Dt: float = T / Nt if Nt > 0 else 0.0
 
-        # Grid arrays
-        self.xSpace: np.ndarray = np.linspace(xmin_scalar, xmax_scalar, Nx_scalar + 1, endpoint=True)
+        # Grid arrays (from geometry)
+        self.xSpace: np.ndarray = geometry.get_spatial_grid()
         self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Coefficients
         self.sigma: float = sigma
         self.coupling_coefficient: float = coupling_coefficient
 
-        # New n-D attributes for consistency (stored as arrays)
-        self.spatial_shape = (Nx_scalar + 1,)  # 1D shape: (Nx+1,)
+        # New n-D attributes for consistency (derived from geometry)
+        self.spatial_shape = geometry.get_grid_shape()
         self.spatial_bounds = [(xmin_scalar, xmax_scalar)]
         self.spatial_discretization = [Nx_scalar]
 
-        # Grid object (None for 1D - not needed, kept for compatibility)
+        # Grid object (deprecated, use self.geometry instead)
         self._grid = None
 
         # Set domain type
@@ -450,15 +462,93 @@ class MFGProblem:
                 f"got {len(spatial_discretization)}"
             )
 
-        # Store dimension
-        self.dimension = dimension
+        # Create appropriate geometry object based on dimension
+        if dimension == 1:
+            # 1D case: use SimpleGrid1D
+            from mfg_pde.geometry import SimpleGrid1D
+            from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+
+            bc = BoundaryConditions(type="periodic")
+            geometry = SimpleGrid1D(xmin=spatial_bounds[0][0], xmax=spatial_bounds[0][1], boundary_conditions=bc)
+            dx, _ = geometry.create_grid(num_points=spatial_discretization[0] + 1)
+
+            # Legacy 1D attributes
+            self.xmin = spatial_bounds[0][0]
+            self.xmax = spatial_bounds[0][1]
+            self.Lx = self.xmax - self.xmin
+            self.Nx = spatial_discretization[0]
+            self.Dx = dx
+            self.xSpace = geometry.get_spatial_grid()
+
+        elif dimension == 2:
+            # 2D case: use SimpleGrid2D
+            from mfg_pde.geometry import SimpleGrid2D
+
+            bounds_flat = (
+                spatial_bounds[0][0],  # xmin
+                spatial_bounds[0][1],  # xmax
+                spatial_bounds[1][0],  # ymin
+                spatial_bounds[1][1],  # ymax
+            )
+            resolution = tuple(spatial_discretization)
+            geometry = SimpleGrid2D(bounds=bounds_flat, resolution=resolution)
+
+            # No legacy 1D attributes for 2D
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.Dx = None
+            self.xSpace = None
+
+        elif dimension == 3:
+            # 3D case: use SimpleGrid3D
+            from mfg_pde.geometry import SimpleGrid3D
+
+            bounds_flat = (
+                spatial_bounds[0][0],  # xmin
+                spatial_bounds[0][1],  # xmax
+                spatial_bounds[1][0],  # ymin
+                spatial_bounds[1][1],  # ymax
+                spatial_bounds[2][0],  # zmin
+                spatial_bounds[2][1],  # zmax
+            )
+            resolution = tuple(spatial_discretization)
+            geometry = SimpleGrid3D(bounds=bounds_flat, resolution=resolution)
+
+            # No legacy 1D attributes for 3D
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.Dx = None
+            self.xSpace = None
+
+        else:
+            # 4D+: use TensorProductGrid (for now, until we have SimpleGridND)
+            from mfg_pde.geometry import TensorProductGrid
+
+            geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, num_points=spatial_discretization)
+
+            # No legacy 1D attributes for nD
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.Dx = None
+            self.xSpace = None
+
+        # Store geometry for unified interface
+        self.geometry = geometry
+
+        # Set dimension from geometry
+        self.dimension = geometry.dimension
 
         # Store n-D parameters
         self.spatial_bounds = spatial_bounds
         self.spatial_discretization = spatial_discretization
 
-        # For TensorProductGrid: num_points=[N] creates N points (not N+1)
-        # So spatial_shape should match spatial_discretization directly
+        # Spatial shape from discretization
         self.spatial_shape = tuple(spatial_discretization)
 
         # Time domain
@@ -471,31 +561,8 @@ class MFGProblem:
         self.sigma: float = sigma
         self.coupling_coefficient: float = coupling_coefficient
 
-        # Legacy 1D attributes (set to None for n-D, dimension > 1)
-        if dimension == 1:
-            # Special case: 1D via n-D API (for consistency)
-            self.xmin = spatial_bounds[0][0]
-            self.xmax = spatial_bounds[0][1]
-            self.Lx = self.xmax - self.xmin
-            self.Nx = spatial_discretization[0]
-            self.Dx = (self.xmax - self.xmin) / self.Nx if self.Nx > 0 else 0.0
-            self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1, endpoint=True)
-            self._grid = None
-        else:
-            # True n-D (dimension >= 2)
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.Dx = None
-            self.xSpace = None
-
-            # Create TensorProductGrid
-            from mfg_pde.geometry import TensorProductGrid
-
-            self._grid = TensorProductGrid(
-                dimension=dimension, bounds=spatial_bounds, num_points=spatial_discretization
-            )
+        # Grid object (deprecated, use self.geometry instead)
+        self._grid = None
 
         # Set domain type
         self.domain_type = "grid"
@@ -692,7 +759,8 @@ class MFGProblem:
                 self.xmax = legacy["xmax"]
                 self.Lx = legacy["Lx"]
                 self.Nx = legacy["Nx"]
-                self.Dx = legacy["Dx"]
+                # Handle both "Dx" and "dx" for backward compatibility
+                self.Dx = legacy.get("Dx") or legacy.get("dx")
                 self.xSpace = legacy["xSpace"]
             else:
                 # AMR or higher dimensional grids
