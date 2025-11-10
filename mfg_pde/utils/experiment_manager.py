@@ -88,16 +88,16 @@ def save_experiment_data(
     filename = "_".join(filename_parts) + ".npz"
     filepath = os.path.join(solver_output_dir, filename)
 
-    total_mass_vs_time = calculate_total_mass(M_solution, problem.Dx)
+    total_mass_vs_time = calculate_total_mass(M_solution, problem.dx)
 
     problem_params_dict = {
         "xmin": problem.xmin,
         "xmax": problem.xmax,
         "Nx": problem.Nx,
-        "Dx": problem.Dx,
+        "Dx": problem.dx,
         "T": problem.T,
         "Nt": problem.Nt,
-        "Dt": problem.Dt,
+        "Dt": problem.dt,
         "sigma": problem.sigma,
         "coupling_coefficient": problem.coupling_coefficient,
         # Add other problem-specific parameters if they exist and are relevant
