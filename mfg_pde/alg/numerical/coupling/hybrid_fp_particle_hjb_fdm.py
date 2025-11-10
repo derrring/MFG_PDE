@@ -260,7 +260,7 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         if hasattr(self.problem, "get_initial_m"):
             initial_density = self.problem.get_initial_m()
         else:
-            initial_density = np.ones(Nx) / self.problem.Lx if self.problem.Dx > 1e-14 else np.ones(Nx)
+            initial_density = np.ones(Nx) / self.problem.Lx if self.problem.dx > 1e-14 else np.ones(Nx)
 
         # Initialize with boundary conditions
         if warm_start_init is None:
