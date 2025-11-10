@@ -337,8 +337,8 @@ def compute_hjb_residual(
     backend=None,  # Backend for MPS/CUDA support
 ) -> np.ndarray:
     Nx = problem.Nx + 1
-    Dx = problem.Dx
-    Dt = problem.Dt
+    dx = problem.dx
+    dt = problem.dt
     sigma = problem.sigma
     if backend is not None:
         Phi_U = backend.zeros((Nx,))
@@ -350,13 +350,13 @@ def compute_hjb_residual(
             return backend.full((Nx,), float("nan"))
         return np.full(Nx, np.nan)
 
-    # Time derivative: (U_n_current - U_{n+1})/Dt
-    # Notebook FnU[i] += -(Ukp1_np1[i] - Ukp1_n[i])/Dt;  (U_n - U_{n+1})/Dt
-    if abs(Dt) < 1e-14:
+    # Time derivative: (U_n_current - U_{n+1})/dt
+    # Notebook FnU[i] += -(Ukp1_np1[i] - Ukp1_n[i])/dt;  (U_n - U_{n+1})/dt
+    if abs(dt) < 1e-14:
         if not np.allclose(U_n_current_newton_iterate, U_n_plus_1_from_hjb_step, rtol=1e-9, atol=1e-9):
             pass
     else:
-        time_deriv_term = (U_n_current_newton_iterate - U_n_plus_1_from_hjb_step) / Dt
+        time_deriv_term = (U_n_current_newton_iterate - U_n_plus_1_from_hjb_step) / dt
         if has_nan_or_inf(time_deriv_term, backend):
             if backend is not None:
                 return backend.full((Nx,), float("nan"))
@@ -365,8 +365,8 @@ def compute_hjb_residual(
         Phi_U += time_deriv_term
 
     # Diffusion term: -(sigma^2/2) * (U_n_current)_xx
-    # Notebook FnU[i] += - ((sigma**2)/2.) * (Ukp1_n[i+1]-2*Ukp1_n[i]+Ukp1_n[i-1])/(Dx**2)
-    if abs(Dx) > 1e-14 and Nx > 1:
+    # Notebook FnU[i] += - ((sigma**2)/2.) * (Ukp1_n[i+1]-2*Ukp1_n[i]+Ukp1_n[i-1])/(dx**2)
+    if abs(dx) > 1e-14 and Nx > 1:
         # Use backend-aware roll operation
         if backend is not None and hasattr(U_n_current_newton_iterate, "roll"):
             # PyTorch tensors have .roll() method
@@ -374,14 +374,14 @@ def compute_hjb_residual(
                 U_n_current_newton_iterate.roll(-1)
                 - 2 * U_n_current_newton_iterate
                 + U_n_current_newton_iterate.roll(1)
-            ) / Dx**2
+            ) / dx**2
         else:
             # NumPy arrays use np.roll()
             U_xx = (
                 np.roll(U_n_current_newton_iterate, -1)
                 - 2 * U_n_current_newton_iterate
                 + np.roll(U_n_current_newton_iterate, 1)
-            ) / Dx**2
+            ) / dx**2
         if has_nan_or_inf(U_xx, backend):
             if backend is not None:
                 return backend.full((Nx,), float("nan"))
@@ -402,7 +402,7 @@ def compute_hjb_residual(
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
         # Calculate derivatives using tuple notation (Phase 3 migration)
         # Use upwind=True for HJB FDM stability (Godunov upwind discretization)
-        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, Dx, Nx, clip=False, upwind=True)
+        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, dx, Nx, clip=False, upwind=True)
 
         if np.any(np.isnan(list(derivs.values()))):
             Phi_U[i] = float("nan")
@@ -447,8 +447,8 @@ def compute_hjb_jacobian(
     backend=None,  # Backend for MPS/CUDA support
 ) -> sparse.csr_matrix:
     Nx = problem.Nx + 1
-    Dx = problem.Dx
-    Dt = problem.Dt
+    dx = problem.dx
+    dt = problem.dt
     sigma = problem.sigma
     eps = 1e-7
 
@@ -468,14 +468,14 @@ def compute_hjb_jacobian(
     if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return sparse.diags([np.full(Nx, np.nan)], [0], shape=(Nx, Nx)).tocsr()
 
-    # Time derivative part: d/dU_n_current[j] of (U_n_current[i] - U_{n+1}[i])/Dt
-    if abs(Dt) > 1e-14:
-        J_D += 1.0 / Dt
+    # Time derivative part: d/dU_n_current[j] of (U_n_current[i] - U_{n+1}[i])/dt
+    if abs(dt) > 1e-14:
+        J_D += 1.0 / dt
 
     # Diffusion part: d/dU_n_current[j] of -(sigma^2/2) * (U_n_current)_xx[i]
-    if abs(Dx) > 1e-14 and Nx > 1:
-        J_D += sigma**2 / Dx**2
-        val_off_diag_diff = -(sigma**2) / (2 * Dx**2)
+    if abs(dx) > 1e-14 and Nx > 1:
+        J_D += sigma**2 / dx**2
+        val_off_diag_diff = -(sigma**2) / (2 * dx**2)
         J_L += val_off_diag_diff
         J_U += val_off_diag_diff
 
@@ -505,7 +505,7 @@ def compute_hjb_jacobian(
             derivs_p_i = _calculate_derivatives(
                 U_perturbed_p_i,
                 i,
-                Dx,
+                dx,
                 Nx,
                 clip=True,
                 clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
@@ -514,7 +514,7 @@ def compute_hjb_jacobian(
             derivs_m_i = _calculate_derivatives(
                 U_perturbed_m_i,
                 i,
-                Dx,
+                dx,
                 Nx,
                 clip=True,
                 clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
@@ -544,7 +544,7 @@ def compute_hjb_jacobian(
                 derivs_p_im1 = _calculate_derivatives(
                     U_perturbed_p_im1,
                     i,
-                    Dx,
+                    dx,
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
@@ -553,7 +553,7 @@ def compute_hjb_jacobian(
                 derivs_m_im1 = _calculate_derivatives(
                     U_perturbed_m_im1,
                     i,
-                    Dx,
+                    dx,
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
@@ -579,7 +579,7 @@ def compute_hjb_jacobian(
                 derivs_p_ip1 = _calculate_derivatives(
                     U_perturbed_p_ip1,
                     i,
-                    Dx,
+                    dx,
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
@@ -588,7 +588,7 @@ def compute_hjb_jacobian(
                 derivs_m_ip1 = _calculate_derivatives(
                     U_perturbed_m_ip1,
                     i,
-                    Dx,
+                    dx,
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
@@ -622,7 +622,7 @@ def compute_hjb_jacobian(
     try:
         Jac = sparse.spdiags(diagonals_data, offsets, Nx, Nx, format="csr")
     except ValueError:
-        fallback_diag = np.ones(Nx) * (1.0 / Dt if abs(Dt) > 1e-14 else 1.0)
+        fallback_diag = np.ones(Nx) * (1.0 / dt if abs(dt) > 1e-14 else 1.0)
         Jac = sparse.diags([fallback_diag], [0], shape=(Nx, Nx)).tocsr()
 
     return Jac.tocsr()
@@ -637,7 +637,7 @@ def newton_hjb_step(
     t_idx_n: int,
     backend=None,  # Add backend parameter for MPS/CUDA support
 ) -> tuple[np.ndarray, float]:
-    Dx_norm = problem.Dx if abs(problem.Dx) > 1e-12 else 1.0
+    dx_norm = problem.dx if abs(problem.dx) > 1e-12 else 1.0
 
     if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate, np.inf
@@ -681,16 +681,16 @@ def newton_hjb_step(
         if np.any(np.isnan(delta_U)) or np.any(np.isinf(delta_U)):
             delta_U = np.zeros_like(U_n_current_newton_iterate)
         else:
-            l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(Dx_norm)
+            l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(dx_norm)
 
     except Exception:
         pass
 
     max_delta_u_norm = 1e2
-    current_delta_u_norm = np.linalg.norm(delta_U) * np.sqrt(Dx_norm)
+    current_delta_u_norm = np.linalg.norm(delta_U) * np.sqrt(dx_norm)
     if current_delta_u_norm > max_delta_u_norm and current_delta_u_norm > 1e-9:
         delta_U = delta_U * (max_delta_u_norm / current_delta_u_norm)
-        l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(Dx_norm)
+        l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(dx_norm)
 
     U_n_next_newton_iterate = U_n_current_newton_iterate + delta_U
 
