@@ -23,15 +23,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from .base import CartesianGrid
 from .geometry_protocol import GeometryType
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from numpy.typing import NDArray
 
 
-class TensorProductGrid:
+class TensorProductGrid(CartesianGrid):
     """
     Tensor product grid for multi-dimensional structured domains.
 
@@ -116,28 +117,28 @@ class TensorProductGrid:
                 f"bounds and num_points must have length {dimension}, got {len(bounds)} and {len(num_points)}"
             )
 
-        self.dimension = dimension
+        self._dimension = dimension
         self.bounds = list(bounds)
         self.num_points = list(num_points)
         self.spacing_type = spacing_type
 
         # Create coordinate arrays
         if spacing_type == "uniform":
-            self.coordinates = [np.linspace(bounds[i][0], bounds[i][1], num_points[i]) for i in range(dimension)]
+            self.coordinates = [np.linspace(bounds[i][0], bounds[i][1], num_points[i]) for i in range(self._dimension)]
             self.spacing = [
                 (bounds[i][1] - bounds[i][0]) / (num_points[i] - 1) if num_points[i] > 1 else 0.0
-                for i in range(dimension)
+                for i in range(self._dimension)
             ]
             self.is_uniform = True
 
         elif spacing_type == "custom":
             if custom_coordinates is None:
                 raise ValueError("custom_coordinates required for spacing_type='custom'")
-            if len(custom_coordinates) != dimension:
-                raise ValueError(f"custom_coordinates must have length {dimension}")
+            if len(custom_coordinates) != self._dimension:
+                raise ValueError(f"custom_coordinates must have length {self._dimension}")
 
             self.coordinates = [np.asarray(coords) for coords in custom_coordinates]
-            self.spacing = [None] * dimension  # Variable spacing
+            self.spacing = [None] * self._dimension  # Variable spacing
             self.is_uniform = False
 
         else:
@@ -148,7 +149,12 @@ class TensorProductGrid:
             if len(coords) != num_points[i]:
                 raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {num_points[i]}")
 
-    # GeometryProtocol implementation
+    # Geometry ABC implementation - properties
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension of the grid."""
+        return self._dimension
+
     @property
     def geometry_type(self) -> GeometryType:
         """Type of geometry (always CARTESIAN_GRID for tensor product grids)."""
@@ -193,7 +199,7 @@ class TensorProductGrid:
         }
 
         # Legacy 1D attributes (for backward compatibility with 1D solvers)
-        if self.dimension == 1:
+        if self._dimension == 1:
             config["legacy_1d_attrs"] = {
                 "xmin": self.bounds[0][0],
                 "xmax": self.bounds[0][1],
@@ -264,12 +270,12 @@ class TensorProductGrid:
             >>> grid = TensorProductGrid(2, [(0,1), (0,1)], [10, 10])
             >>> flat_idx = grid.get_index((5, 3))  # Point (i=5, j=3)
         """
-        if len(multi_index) != self.dimension:
-            raise ValueError(f"multi_index must have length {self.dimension}")
+        if len(multi_index) != self._dimension:
+            raise ValueError(f"multi_index must have length {self._dimension}")
 
         flat_idx = 0
         stride = 1
-        for i in reversed(range(self.dimension)):
+        for i in reversed(range(self._dimension)):
             flat_idx += multi_index[i] * stride
             stride *= self.num_points[i]
 
@@ -295,8 +301,8 @@ class TensorProductGrid:
         indices = []
         remaining = flat_index
         # Process dimensions in row-major order (C-order)
-        for i in range(self.dimension):
-            stride = int(np.prod(self.num_points[i + 1 :])) if i < self.dimension - 1 else 1
+        for i in range(self._dimension):
+            stride = int(np.prod(self.num_points[i + 1 :])) if i < self._dimension - 1 else 1
             idx = remaining // stride
             indices.append(idx)
             remaining %= stride
@@ -313,8 +319,8 @@ class TensorProductGrid:
         Returns:
             Scalar spacing (uniform) or array of spacings (non-uniform)
         """
-        if dimension_idx >= self.dimension:
-            raise ValueError(f"dimension_idx {dimension_idx} >= dimension {self.dimension}")
+        if dimension_idx >= self._dimension:
+            raise ValueError(f"dimension_idx {dimension_idx} >= dimension {self._dimension}")
 
         if self.is_uniform:
             return self.spacing[dimension_idx]
@@ -338,14 +344,14 @@ class TensorProductGrid:
             >>> fine_grid = grid.refine(2)  # Now 20×20 points
         """
         if isinstance(factor, int):
-            factors = [factor] * self.dimension
+            factors = [factor] * self._dimension
         else:
             factors = list(factor)
 
         new_num_points = [(n - 1) * f + 1 for n, f in zip(self.num_points, factors, strict=False)]
 
         return TensorProductGrid(
-            dimension=self.dimension,
+            dimension=self._dimension,
             bounds=self.bounds,
             num_points=new_num_points,
             spacing_type=self.spacing_type,
@@ -362,14 +368,14 @@ class TensorProductGrid:
             New TensorProductGrid with coarser resolution
         """
         if isinstance(factor, int):
-            factors = [factor] * self.dimension
+            factors = [factor] * self._dimension
         else:
             factors = list(factor)
 
         new_num_points = [(n - 1) // f + 1 for n, f in zip(self.num_points, factors, strict=False)]
 
         return TensorProductGrid(
-            dimension=self.dimension,
+            dimension=self._dimension,
             bounds=self.bounds,
             num_points=new_num_points,
             spacing_type=self.spacing_type,
@@ -393,7 +399,7 @@ class TensorProductGrid:
                 raise ValueError("multi_index required for non-uniform grids")
 
             vol = 1.0
-            for i in range(self.dimension):
+            for i in range(self._dimension):
                 spacings = self.get_spacing(i)
                 idx = multi_index[i]
                 # Use average of left and right spacing
@@ -407,11 +413,229 @@ class TensorProductGrid:
 
             return vol
 
+    # ============================================================================
+    # Geometry ABC implementation (data interface)
+    # ============================================================================
+
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """
+        Return bounding box of grid.
+
+        Returns:
+            (min_coords, max_coords) tuple of arrays
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], num_points=[10,20])
+            >>> min_coords, max_coords = grid.get_bounds()
+            >>> min_coords
+            array([0., 0.])
+            >>> max_coords
+            array([1., 2.])
+        """
+        min_coords = np.array([b[0] for b in self.bounds])
+        max_coords = np.array([b[1] for b in self.bounds])
+        return min_coords, max_coords
+
+    # ============================================================================
+    # CartesianGrid ABC implementation (grid-specific utilities)
+    # ============================================================================
+
+    def get_grid_spacing(self) -> list[float]:
+        """
+        Get grid spacing per dimension.
+
+        Returns:
+            [dx1, dx2, ...] where dxi = (xmax_i - xmin_i) / (Ni - 1)
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], num_points=[11,21])
+            >>> dx = grid.get_grid_spacing()
+            >>> dx
+            [0.1, 0.1]
+        """
+        if not self.is_uniform:
+            raise ValueError("get_grid_spacing() only valid for uniform grids. Use get_spacing() for non-uniform.")
+        return self.spacing
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """
+        Get number of grid points per dimension.
+
+        Returns:
+            (Nx1, Nx2, ...) tuple of grid points
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, num_points=[10, 20])
+            >>> shape = grid.get_grid_shape()
+            >>> shape
+            (10, 20)
+        """
+        return tuple(self.num_points)
+
+    # ============================================================================
+    # Solver Operation Interface (NEW - from Geometry ABC)
+    # ============================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """
+        Return finite difference Laplacian operator.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: tuple[int, ...]) -> float
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[10,10])
+            >>> laplacian = grid.get_laplacian_operator()
+            >>> u = np.random.rand(10, 10)
+            >>> lap_value = laplacian(u, (5, 5))  # Laplacian at grid point (5,5)
+        """
+        if not self.is_uniform:
+            raise NotImplementedError("Laplacian operator not yet implemented for non-uniform grids")
+
+        def laplacian_fd(u: NDArray, idx: tuple[int, ...]) -> float:
+            """
+            Compute Laplacian at grid point idx using central finite differences.
+
+            Args:
+                u: Solution array of shape self.grid_shape
+                idx: Grid index tuple (i, j, k, ...)
+
+            Returns:
+                Laplacian value: Δu = Σ (∂²u/∂xi²)
+            """
+            if len(idx) != self._dimension:
+                raise ValueError(f"Index must have length {self._dimension}, got {len(idx)}")
+
+            laplacian = 0.0
+            for dim in range(self._dimension):
+                dx = self.spacing[dim]
+
+                # Handle boundaries with clamping (Neumann-like BC)
+                idx_plus = list(idx)
+                idx_minus = list(idx)
+                idx_plus[dim] = min(idx[dim] + 1, self.num_points[dim] - 1)
+                idx_minus[dim] = max(idx[dim] - 1, 0)
+
+                # Central difference: (u[i+1] - 2*u[i] + u[i-1]) / dx²
+                laplacian += (u[tuple(idx_plus)] - 2.0 * u[idx] + u[tuple(idx_minus)]) / (dx**2)
+
+            return float(laplacian)
+
+        return laplacian_fd
+
+    def get_gradient_operator(self) -> Callable:
+        """
+        Return finite difference gradient operator.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: tuple[int, ...]) -> NDArray
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[10,10])
+            >>> gradient = grid.get_gradient_operator()
+            >>> u = np.random.rand(10, 10)
+            >>> grad_u = gradient(u, (5, 5))  # Returns [du/dx, du/dy]
+            >>> grad_u.shape
+            (2,)
+        """
+        if not self.is_uniform:
+            raise NotImplementedError("Gradient operator not yet implemented for non-uniform grids")
+
+        def gradient_fd(u: NDArray, idx: tuple[int, ...]) -> NDArray:
+            """
+            Compute gradient at grid point idx using central finite differences.
+
+            Args:
+                u: Solution array of shape self.grid_shape
+                idx: Grid index tuple (i, j, k, ...)
+
+            Returns:
+                Gradient vector [∂u/∂x1, ∂u/∂x2, ...]
+            """
+            if len(idx) != self._dimension:
+                raise ValueError(f"Index must have length {self._dimension}, got {len(idx)}")
+
+            gradient = np.zeros(self._dimension)
+            for dim in range(self._dimension):
+                dx = self.spacing[dim]
+
+                # Handle boundaries with clamping
+                idx_plus = list(idx)
+                idx_minus = list(idx)
+                idx_plus[dim] = min(idx[dim] + 1, self.num_points[dim] - 1)
+                idx_minus[dim] = max(idx[dim] - 1, 0)
+
+                # Central difference: (u[i+1] - u[i-1]) / (2*dx)
+                gradient[dim] = (u[tuple(idx_plus)] - u[tuple(idx_minus)]) / (2.0 * dx)
+
+            return gradient
+
+        return gradient_fd
+
+    def get_interpolator(self) -> Callable:
+        """
+        Return linear interpolator for arbitrary points.
+
+        Returns:
+            Function with signature: (u: NDArray, point: NDArray) -> float
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[10,10])
+            >>> interpolate = grid.get_interpolator()
+            >>> u = np.random.rand(10, 10)
+            >>> value = interpolate(u, np.array([0.5, 0.3]))  # Interpolate at (0.5, 0.3)
+        """
+
+        def interpolate_linear(u: NDArray, point: NDArray) -> float:
+            """
+            Linear interpolation at arbitrary point.
+
+            Args:
+                u: Solution array of shape self.grid_shape
+                point: Physical coordinates [x, y, z, ...]
+
+            Returns:
+                Interpolated value
+            """
+            if len(point) != self._dimension:
+                raise ValueError(f"Point must have length {self._dimension}, got {len(point)}")
+
+            # Use scipy's RegularGridInterpolator for nD linear interpolation
+            try:
+                from scipy.interpolate import RegularGridInterpolator
+            except ImportError as err:
+                raise ImportError("scipy required for interpolation") from err
+
+            interpolator = RegularGridInterpolator(
+                self.coordinates, u, method="linear", bounds_error=False, fill_value=0.0
+            )
+            return float(interpolator(point))
+
+        return interpolate_linear
+
+    def get_boundary_handler(self):
+        """
+        Return boundary condition handler.
+
+        Returns:
+            Boundary condition handler object (currently placeholder dict)
+
+        Note: Currently returns a placeholder. Full BC handler implementation
+        depends on boundary condition infrastructure being finalized.
+
+        TODO: Implement proper boundary handler that can:
+            - Apply Dirichlet, Neumann, periodic, Robin BCs
+            - Handle multi-dimensional boundaries
+            - Integrate with solver operations
+        """
+        # Placeholder - return simple dict until BC infrastructure is complete
+        return {"type": "periodic", "implementation": "placeholder"}
+
     def __repr__(self) -> str:
         """String representation of grid."""
         return (
             f"TensorProductGrid(\n"
-            f"  dimension={self.dimension},\n"
+            f"  dimension={self._dimension},\n"
             f"  bounds={self.bounds},\n"
             f"  num_points={self.num_points},\n"
             f"  spacing_type='{self.spacing_type}',\n"

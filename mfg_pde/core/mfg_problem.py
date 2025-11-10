@@ -342,7 +342,7 @@ class MFGProblem:
 
         Note:
             This manual grid construction pattern is deprecated. Consider using
-            the geometry-first API with Domain1D or TensorProductGrid instead.
+            the geometry-first API with SimpleGrid1D or TensorProductGrid instead.
             See migration guide: docs/migration/GEOMETRY_PARAMETER_MIGRATION.md
         """
         import warnings
@@ -351,8 +351,8 @@ class MFGProblem:
         warnings.warn(
             "Manual grid construction in MFGProblem is deprecated and will be "
             "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
-            "  from mfg_pde.geometry import Domain1D\n"
-            f"  domain = Domain1D(xmin={xmin[0]}, xmax={xmax[0]}, boundary_conditions='periodic')\n"
+            "  from mfg_pde.geometry import SimpleGrid1D\n"
+            f"  domain = SimpleGrid1D(xmin={xmin[0]}, xmax={xmax[0]}, boundary_conditions='periodic')\n"
             f"  domain.create_grid(Nx={Nx[0]})\n"
             f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
             "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
@@ -626,7 +626,7 @@ class MFGProblem:
         """
         Initialize problem with geometry object implementing GeometryProtocol.
 
-        Accepts any geometry type: TensorProductGrid, Domain1D, BaseGeometry,
+        Accepts any geometry type: TensorProductGrid, SimpleGrid1D, BaseGeometry,
         ImplicitDomain, NetworkGeometry, etc.
 
         Args:
@@ -648,7 +648,7 @@ class MFGProblem:
         if not isinstance(geometry, GeometryProtocol):
             raise TypeError(
                 f"geometry must implement GeometryProtocol, got {type(geometry)}. "
-                f"Use TensorProductGrid, Domain1D, BaseGeometry, ImplicitDomain, or NetworkGeometry."
+                f"Use TensorProductGrid, SimpleGrid1D, BaseGeometry, ImplicitDomain, or NetworkGeometry."
             )
 
         # Validate geometry is properly implemented

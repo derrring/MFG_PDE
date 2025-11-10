@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-    from mfg_pde.geometry.domain_1d import Domain1D
-    from mfg_pde.geometry.domain_2d import Domain2D
+    from mfg_pde.geometry.mesh_2d import Mesh2D
+    from mfg_pde.geometry.simple_grid_1d import SimpleGrid1D
 
     from .population_config import PopulationConfig
 
@@ -48,7 +48,7 @@ class MultiPopulationMFGEnvironment(ABC):
         self,
         populations: dict[str, PopulationConfig],
         coupling_dynamics: Callable | None = None,
-        domain: Domain1D | Domain2D | None = None,
+        domain: SimpleGrid1D | Mesh2D | None = None,
         time_horizon: float = 1.0,
         dt: float = 0.01,
     ):

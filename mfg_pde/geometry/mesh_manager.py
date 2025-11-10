@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .domain_2d import Domain2D
+from .mesh_2d import Mesh2D
 
 if TYPE_CHECKING:
     from .base_geometry import BaseGeometry, MeshData
@@ -69,7 +69,7 @@ class MeshPipeline:
         dimension = config.get("dimension", 2)
 
         if dimension == 2:
-            return Domain2D(
+            return Mesh2D(
                 domain_type=geometry_type,
                 bounds=config.get("bounds", (0.0, 1.0, 0.0, 1.0)),
                 holes=config.get("holes", []),
@@ -302,7 +302,7 @@ class MeshManager:
     def create_geometry(self, name: str, geometry_config: dict) -> BaseGeometry:
         """Create and register a geometry."""
         if geometry_config.get("dimension", 2) == 2:
-            geometry = Domain2D(
+            geometry = Mesh2D(
                 domain_type=geometry_config.get("type", "rectangle"),
                 bounds=geometry_config.get("bounds", (0.0, 1.0, 0.0, 1.0)),
                 holes=geometry_config.get("holes", []),

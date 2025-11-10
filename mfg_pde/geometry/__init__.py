@@ -1,14 +1,16 @@
 """
 Geometry package for MFG_PDE: Professional mesh generation and complex domain support.
 
-This package implements comprehensive domain management for MFG problems:
-- Domain1D, Domain2D, Domain3D: Low-dimensional (d≤3) mesh-based domains with Gmsh
-- implicit: High-dimensional (d≥1) meshfree domains with signed distance functions
+This package implements comprehensive geometry management for MFG problems:
+- Cartesian grids (SimpleGrid1D/2D/3D): Regular finite difference grids
+- Unstructured meshes (Mesh2D/3D): FEM/FVM triangular/tetrahedral meshes via Gmsh
+- Implicit domains: High-dimensional meshfree domains with signed distance functions
 - Gmsh → Meshio → PyVista pipeline for professional mesh generation
 - Advanced boundary condition management for complex domains
 
 Key Components:
-- Domain1D/2D/3D: Mesh-based domain implementations (d≤3)
+- SimpleGrid1D/2D/3D: Regular Cartesian grids for finite difference methods
+- Mesh2D/3D: Unstructured meshes for FEM/FVM (d≤3)
 - implicit: Meshfree geometry infrastructure for any dimension
   - Hyperrectangle: Axis-aligned boxes (O(d) sampling, no rejection!)
   - Hypersphere: Balls/circles for obstacles
@@ -19,8 +21,9 @@ Key Components:
 - MeshManager: High-level mesh management for multiple geometries
 - BoundaryManager: Advanced boundary condition management
 
-Mesh-based vs Meshfree:
-- Use Domain2D/3D (Gmsh) for low-dimensional FEM/FVM problems (d≤3)
+Discretization Methods:
+- Use SimpleGrid* for finite difference solvers
+- Use Mesh* (Gmsh) for FEM/FVM problems (d≤3)
 - Use implicit.* (SDF) for high-dimensional particle-collocation (d≥4)
 """
 
@@ -58,9 +61,6 @@ from .boundary_conditions_3d import (
     create_sphere_boundary_conditions,
 )
 from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
-from .domain_1d import Domain1D
-from .domain_2d import Domain2D
-from .domain_3d import Domain3D
 
 # Unified geometry protocol
 from .geometry_protocol import (
@@ -79,6 +79,9 @@ from .mazes import (
     PerfectMazeGenerator,
     VoronoiMazeGenerator,
 )
+from .mesh_1d import Mesh1D
+from .mesh_2d import Mesh2D
+from .mesh_3d import Mesh3D
 from .mesh_manager import MeshManager, MeshPipeline
 from .network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
 from .network_geometry import (
@@ -91,7 +94,13 @@ from .network_geometry import (
     compute_network_statistics,
     create_network,
 )
+from .simple_grid_1d import SimpleGrid1D
 from .tensor_product_grid import TensorProductGrid
+
+# Backward compatibility aliases
+Domain1D = SimpleGrid1D
+Domain2D = Mesh2D
+Domain3D = Mesh3D
 
 __all__ = [
     # Multi-dimensional geometry components
@@ -107,7 +116,12 @@ __all__ = [
     # Specific boundary condition types
     "DirichletBC2D",
     "DirichletBC3D",
-    # Domain components
+    # Geometry components (new naming convention)
+    "SimpleGrid1D",
+    "Mesh1D",
+    "Mesh2D",
+    "Mesh3D",
+    # Backward compatibility aliases
     "Domain1D",
     "Domain2D",
     "Domain3D",
