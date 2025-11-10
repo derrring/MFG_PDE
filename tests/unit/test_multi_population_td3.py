@@ -30,6 +30,12 @@ class TestMultiPopulationTD3:
 
     def setup_method(self):
         """Create test environment and algorithm."""
+        # Set random seeds for deterministic testing (Issue #237)
+        np.random.seed(42)
+        torch.manual_seed(42)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(42)
+
         self.env = SimpleMultiPopEnv(
             num_populations=2,
             state_dims=2,
@@ -208,43 +214,59 @@ class TestMultiPopulationTD3:
             assert np.all(actions[1] <= 1 + 1e-5)
 
     def test_soft_update_all_target_networks(self):
-        """Test all target networks (2 actors + 4 critics) are updated."""
+        """Test all target networks (2 actors + 4 critics) are updated.
+
+        Note: Default tau=0.001 produces very small changes. For testing purposes,
+        we use tau=0.1 to make updates detectable while still validating the
+        soft update mechanism works correctly (Issue #237).
+        """
+        # Use larger tau for this test to make changes detectable
+        test_algo = MultiPopulationTD3(
+            env=self.env,
+            num_populations=2,
+            state_dims=2,
+            action_dims=[2, 2],
+            population_dims=50,
+            action_bounds=[(-1, 1), (-1, 1)],
+            config={"batch_size": 32, "tau": 0.1},  # Larger tau for testing
+        )
+
         # Get initial parameters
         initial_actor_target_params = [
-            [p.clone() for p in self.algo.actor_targets[pop_id].parameters()] for pop_id in range(2)
+            [p.clone() for p in test_algo.actor_targets[pop_id].parameters()] for pop_id in range(2)
         ]
         initial_critic1_target_params = [
-            [p.clone() for p in self.algo.critic1_targets[pop_id].parameters()] for pop_id in range(2)
+            [p.clone() for p in test_algo.critic1_targets[pop_id].parameters()] for pop_id in range(2)
         ]
         initial_critic2_target_params = [
-            [p.clone() for p in self.algo.critic2_targets[pop_id].parameters()] for pop_id in range(2)
+            [p.clone() for p in test_algo.critic2_targets[pop_id].parameters()] for pop_id in range(2)
         ]
 
         # Run training
-        self.algo.train(num_episodes=3)
+        test_algo.train(num_episodes=3)
 
-        # Check all targets updated
+        # Check all targets updated (use stricter tolerance to detect small changes)
         for pop_id in range(2):
             for p_new, p_old in zip(
-                self.algo.actor_targets[pop_id].parameters(),
+                test_algo.actor_targets[pop_id].parameters(),
                 initial_actor_target_params[pop_id],
                 strict=False,
             ):
-                assert not torch.allclose(p_new, p_old, atol=1e-6)
+                assert not torch.allclose(p_new, p_old, atol=1e-5)
 
             for p_new, p_old in zip(
-                self.algo.critic1_targets[pop_id].parameters(),
+                test_algo.critic1_targets[pop_id].parameters(),
                 initial_critic1_target_params[pop_id],
                 strict=False,
             ):
-                assert not torch.allclose(p_new, p_old, atol=1e-6)
+                assert not torch.allclose(p_new, p_old, atol=1e-5)
 
             for p_new, p_old in zip(
-                self.algo.critic2_targets[pop_id].parameters(),
+                test_algo.critic2_targets[pop_id].parameters(),
                 initial_critic2_target_params[pop_id],
                 strict=False,
             ):
-                assert not torch.allclose(p_new, p_old, atol=1e-6)
+                assert not torch.allclose(p_new, p_old, atol=1e-5)
 
     def test_deterministic_policy_in_eval(self):
         """Test policy is deterministic without noise in eval mode."""
