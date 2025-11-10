@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.10.2" # v0.10.2: MFGProblem geometry-based unification (Phase 1)
+version = "0.11.0" # v0.11.0: Dual geometry architecture with FEM mesh support
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

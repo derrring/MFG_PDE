@@ -5,6 +5,148 @@ All notable changes to MFG_PDE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2025-11-10
+
+**Major Release: Dual Geometry Architecture**
+
+This release introduces complete dual geometry support, enabling HJB and FP solvers to use different discretizations. This enables multi-resolution methods (4-15× speedup), FEM meshes with obstacles, hybrid particle-grid methods, and network-based agent models.
+
+### Added
+
+**Dual Geometry Infrastructure (PR #258, Issues #257 & #245 Phase 4)**
+
+- **GeometryProjector** class (`mfg_pde/geometry/projection.py`, 706 lines)
+  - Automatic projection method selection based on geometry types
+  - `project_hjb_to_fp()`: Maps HJB solution values to FP geometry
+  - `project_fp_to_hjb()`: Maps FP density values to HJB geometry
+  - Supports grid-to-grid, grid-to-particles, particles-to-grid (KDE)
+  - Vectorized implementations for 1D/2D/3D
+
+- **ProjectionRegistry** pattern
+  - Decorator-based registration: `@ProjectionRegistry.register(SourceType, TargetType, direction)`
+  - Hierarchical fallback: exact type → category match → generic
+  - O(N) custom projectors (not O(N²))
+  - User-extensible for custom geometry types
+
+- **MFGProblem Dual Geometry Integration** (`mfg_pde/core/mfg_problem.py`)
+  - New parameters: `hjb_geometry` and `fp_geometry`
+  - Automatic `GeometryProjector` creation when geometries differ
+  - Unified attribute access: `problem.hjb_geometry`, `problem.fp_geometry`
+  - Full backward compatibility with single `geometry` parameter
+
+- **FEM Mesh Support**
+  - Automatic Delaunay interpolation for `UnstructuredMesh` ↔ `CartesianGrid` (requires scipy)
+  - Nearest neighbor fallback when scipy unavailable
+  - Works with Mesh2D, Mesh3D, TriangularAMRMesh
+  - Graceful extrapolation handling (fills NaN with nearest neighbor)
+
+- **Vectorized Grid Interpolators**
+  - `SimpleGrid1D.get_interpolator()`: Binary search-based 1D interpolation
+  - `SimpleGrid2D/3D.get_interpolator()`: RegularGridInterpolator wrapper
+  - Accepts array of query points for batch interpolation
+  - Used by projection system for efficient grid-to-mesh operations
+
+### Documentation
+
+**Comprehensive Dual Geometry Documentation** (5,000+ lines)
+
+- **Theory**: `docs/theory/geometry_projection_mathematical_formulation.md` (556 lines)
+  - Mathematical formulation of all projection methods
+  - Error analysis (interpolation, KDE, nearest neighbor)
+  - Performance complexity analysis (O(N log N), O(N), etc.)
+  - Pseudocode for all algorithms
+
+- **Developer Guide**: `docs/development/GEOMETRY_PROJECTION_IMPLEMENTATION_GUIDE.md` (797 lines)
+  - Adding new geometry types and projections
+  - Registry pattern usage and best practices
+  - Debugging tips and performance optimization
+  - Complete code examples for custom projections
+
+- **User Guide**: `docs/user_guide/dual_geometry_usage.md` (679 lines)
+  - Complete workflow examples
+  - Use cases: multi-resolution, hybrid methods, network agents
+  - Performance tips and FAQ
+  - Best practices for choosing projection methods
+
+- **FEM Mesh Guide**: `docs/user_guide/fem_mesh_projection_guide.md` (352 lines)
+  - FEM mesh support levels (basic + optimized)
+  - Comparison of nearest neighbor vs Delaunay
+  - Use cases: complex domains, obstacles, CAD import
+  - Complete examples with performance tips
+
+- **Migration Guide Update**: `docs/migration/unified_problem_migration.md`
+  - Updated with dual geometry integration
+  - Examples showing unified API + dual geometry together
+  - Updated deprecation timeline with v0.11.0 milestone
+
+- **Completion Summary**: `docs/development/ISSUE_257_COMPLETION_SUMMARY.md` (379 lines)
+  - Complete implementation details for all 5 phases
+  - Performance impact and testing results
+  - Known limitations and future enhancements
+
+### Examples
+
+- **Multi-Resolution MFG**: `examples/basic/dual_geometry_multiresolution.py` (323 lines)
+  - Fine HJB grid (100×100) + coarse FP grid (25×25)
+  - Demonstrates 4× speedup with minimal accuracy loss
+  - Complete visualization of projections
+  - Performance comparison with unified geometry
+
+- **FEM Mesh with Obstacles**: `examples/advanced/dual_geometry_fem_mesh.py` (330 lines)
+  - Complex domain with circular obstacle using Gmsh
+  - Automatic vs manual Delaunay registration
+  - Accuracy comparison of projection methods
+  - Working example with 495 vertices, 884 elements
+
+### Testing
+
+- **Projection Tests**: `tests/unit/geometry/test_geometry_projection.py` (439 lines)
+  - 20 unit tests covering all projection methods
+  - Shape verification, accuracy tests, conservation tests
+  - Tests for 1D, 2D, 3D projections
+  - Registry pattern tests
+
+- **Integration Tests**: `tests/unit/test_core/test_mfg_problem.py` (+131 lines)
+  - 7 new tests for dual geometry MFGProblem integration
+  - Backward compatibility verification
+  - Error handling and validation tests
+
+### Use Cases Enabled
+
+| Use Case | HJB Geometry | FP Geometry | Benefit |
+|----------|--------------|-------------|---------|
+| Multi-resolution | Fine grid | Coarse grid | 4-15× speedup, 46% memory savings |
+| Complex domains | Regular grid | FEM mesh | Fast HJB, handles obstacles naturally |
+| Hybrid methods | Grid | Particles | Grid-based value, particle density |
+| Network agents | Grid | Network graph | Spatial value, network-constrained agents |
+
+### Performance
+
+- Multi-resolution: 4-15× speedup (depending on resolution ratio)
+- Projection overhead: <1% of solve time
+- Memory savings: Up to 46% for 4× resolution ratio
+- Grid→Points: O(N) with RegularGridInterpolator
+- Particles→Grid KDE: GPU-accelerated available (1D)
+
+### Changed
+
+- README updated with v0.11.0 features and dual geometry examples
+- Citation updated to v0.11.0
+
+### Backward Compatibility
+
+- ✅ Fully backward compatible
+- Existing code using single `geometry` parameter continues to work
+- `hjb_geometry` and `fp_geometry` are optional
+- No breaking changes
+
+### Closes
+
+- Issue #257: Dual geometry architecture (5 phases complete)
+- Issue #245 Phase 4: Documentation for unified MFG problem
+
+---
+
 ## [0.10.0] - 2025-11-05
 
 **Major Release: Geometry-First API**
