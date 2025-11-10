@@ -581,3 +581,134 @@ def test_module_exports_are_classes():
     assert isinstance(MFGComponents, type)
     assert isinstance(MFGProblem, type)
     assert isinstance(MFGProblemBuilder, type)
+
+
+# ===================================================================
+# Test Dual Geometry Support (Issue #257 Phase 3)
+# ===================================================================
+
+
+@pytest.mark.unit
+def test_dual_geometry_specification():
+    """Test MFGProblem with separate HJB and FP geometries (Issue #257)."""
+    from mfg_pde.geometry import SimpleGrid2D
+
+    # Create two different grids
+    hjb_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(50, 50))
+    fp_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(20, 20))
+
+    # Create problem with dual geometries
+    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
+
+    # Check that both geometries are stored
+    assert problem.hjb_geometry is hjb_grid
+    assert problem.fp_geometry is fp_grid
+
+    # Check that geometry projector was created
+    assert problem.geometry_projector is not None
+    assert problem.geometry_projector.hjb_geometry is hjb_grid
+    assert problem.geometry_projector.fp_geometry is fp_grid
+
+
+@pytest.mark.unit
+def test_dual_geometry_backward_compatibility():
+    """Test that unified geometry mode still works (backward compatibility)."""
+    from mfg_pde.geometry import SimpleGrid2D
+
+    grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
+
+    # Create problem with unified geometry (old API)
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=0.1)
+
+    # Check that both hjb_geometry and fp_geometry point to the same geometry
+    assert problem.hjb_geometry is grid
+    assert problem.fp_geometry is grid
+
+    # Check that no projector is created for unified mode
+    assert problem.geometry_projector is None
+
+
+@pytest.mark.unit
+def test_dual_geometry_error_on_partial_specification():
+    """Test that specifying only one of hjb_geometry/fp_geometry raises error."""
+    from mfg_pde.geometry import SimpleGrid2D
+
+    grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
+
+    # Test with only hjb_geometry
+    with pytest.raises(ValueError, match="both 'hjb_geometry' AND 'fp_geometry' must be specified"):
+        MFGProblem(hjb_geometry=grid, time_domain=(1.0, 50))
+
+    # Test with only fp_geometry
+    with pytest.raises(ValueError, match="both 'hjb_geometry' AND 'fp_geometry' must be specified"):
+        MFGProblem(fp_geometry=grid, time_domain=(1.0, 50))
+
+
+@pytest.mark.unit
+def test_dual_geometry_error_on_conflict():
+    """Test that specifying both geometry and dual geometries raises error."""
+    from mfg_pde.geometry import SimpleGrid2D
+
+    grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
+    grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(20, 20))
+    grid3 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+
+    # Test conflict: can't specify both geometry and dual geometries
+    with pytest.raises(ValueError, match=r"Specify EITHER 'geometry'.*OR.*'hjb_geometry', 'fp_geometry'"):
+        MFGProblem(geometry=grid1, hjb_geometry=grid2, fp_geometry=grid3, time_domain=(1.0, 50))
+
+
+@pytest.mark.unit
+def test_dual_geometry_projector_attributes():
+    """Test that geometry projector has correct attributes."""
+    from mfg_pde.geometry import SimpleGrid2D
+
+    hjb_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(50, 50))
+    fp_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
+
+    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50))
+
+    projector = problem.geometry_projector
+
+    # Check that projector has the right geometries
+    assert projector.hjb_geometry is hjb_grid
+    assert projector.fp_geometry is fp_grid
+
+    # Check that projector has selected appropriate methods
+    assert projector.hjb_to_fp_method in ["grid_interpolation", "interpolation", "registry"]
+    assert projector.fp_to_hjb_method in ["grid_restriction", "nearest", "registry"]
+
+
+@pytest.mark.unit
+def test_dual_geometry_with_1d_grids():
+    """Test dual geometry with 1D grids."""
+    from mfg_pde.geometry import BoundaryConditions, SimpleGrid1D
+
+    bc = BoundaryConditions(type="periodic")
+
+    # Create two 1D grids with different resolutions
+    hjb_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+    hjb_grid.create_grid(num_points=101)  # Fine grid
+
+    fp_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+    fp_grid.create_grid(num_points=51)  # Coarse grid
+
+    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
+
+    # Verify dual geometry setup
+    assert problem.hjb_geometry is hjb_grid
+    assert problem.fp_geometry is fp_grid
+    assert problem.geometry_projector is not None
+
+
+@pytest.mark.unit
+def test_dual_geometry_legacy_mode_compatibility():
+    """Test that legacy 1D mode sets hjb_geometry and fp_geometry correctly."""
+    # Legacy mode creates its own grid internally
+    problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, T=1.0, Nt=50)
+
+    # Check that hjb_geometry and fp_geometry are set (to the same unified geometry)
+    assert problem.hjb_geometry is not None
+    assert problem.fp_geometry is not None
+    assert problem.hjb_geometry is problem.fp_geometry  # Unified mode
+    assert problem.geometry_projector is None  # No projector for unified mode
