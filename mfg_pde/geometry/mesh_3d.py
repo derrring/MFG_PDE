@@ -1,8 +1,8 @@
 """
-3D domain implementation for MFG_PDE geometry system.
+3D unstructured mesh for FEM/FVM methods in MFG_PDE.
 
-This module implements 3D geometric domains using the Gmsh → Meshio → PyVista pipeline,
-supporting box domains, spheres, cylinders, complex shapes, and CAD import.
+This module implements 3D tetrahedral meshes using the Gmsh → Meshio → PyVista pipeline,
+supporting boxes, spheres, cylinders, complex shapes, and CAD import.
 """
 
 from __future__ import annotations
@@ -11,11 +11,12 @@ from typing import Any
 
 import numpy as np
 
-from .base_geometry import BaseGeometry, MeshData
+from .base import UnstructuredMesh
+from .base_geometry import MeshData
 
 
-class Domain3D(BaseGeometry):
-    """3D domain with complex geometry support using Gmsh pipeline."""
+class Mesh3D(UnstructuredMesh):
+    """3D unstructured tetrahedral mesh for FEM/FVM methods using Gmsh pipeline."""
 
     def __init__(
         self,

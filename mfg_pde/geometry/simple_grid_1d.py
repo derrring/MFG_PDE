@@ -1,8 +1,8 @@
 """
-1D Domain for MFG Problems.
+1D Cartesian Grid for MFG Problems.
 
-This module provides the 1D domain specification for MFG problems.
-Boundary conditions are now managed in boundary_conditions_1d.py.
+This module provides 1D regular grid specification for finite difference methods.
+Boundary conditions are managed in boundary_conditions_1d.py.
 """
 
 from __future__ import annotations
@@ -21,12 +21,12 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 
-class Domain1D(CartesianGrid):
+class SimpleGrid1D(CartesianGrid):
     """
-    1D domain specification for MFG problems.
+    1D regular Cartesian grid for finite difference methods.
 
-    This class encapsulates the spatial domain definition and boundary conditions
-    for 1D MFG problems, providing a unified interface for domain management.
+    This class provides a 1D uniform grid with boundary conditions,
+    implementing finite difference operators for MFG solvers.
     """
 
     def __init__(self, xmin: float, xmax: float, boundary_conditions: BoundaryConditions):
@@ -56,12 +56,12 @@ class Domain1D(CartesianGrid):
     # GeometryProtocol implementation
     @property
     def dimension(self) -> int:
-        """Spatial dimension of the geometry (always 1 for Domain1D)."""
+        """Spatial dimension of the geometry (always 1 for SimpleGrid1D)."""
         return 1
 
     @property
     def geometry_type(self) -> GeometryType:
-        """Type of geometry (Cartesian grid for Domain1D)."""
+        """Type of geometry (Cartesian grid for SimpleGrid1D)."""
         return GeometryType.CARTESIAN_GRID
 
     @property
@@ -112,12 +112,12 @@ class Domain1D(CartesianGrid):
         return self.boundary_conditions.get_matrix_size(num_interior_points)
 
     def __str__(self) -> str:
-        """String representation of domain."""
-        return f"Domain1D([{self.xmin}, {self.xmax}], {self.boundary_conditions})"
+        """String representation of grid."""
+        return f"SimpleGrid1D([{self.xmin}, {self.xmax}], {self.boundary_conditions})"
 
     def __repr__(self) -> str:
-        """Detailed representation of domain."""
-        return f"Domain1D(xmin={self.xmin}, xmax={self.xmax}, length={self.length}, bc={self.boundary_conditions})"
+        """Detailed representation of grid."""
+        return f"SimpleGrid1D(xmin={self.xmin}, xmax={self.xmax}, length={self.length}, bc={self.boundary_conditions})"
 
     # ============================================================================
     # Geometry ABC implementation

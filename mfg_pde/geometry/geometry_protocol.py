@@ -120,8 +120,8 @@ def detect_geometry_type(geometry: object) -> GeometryType:
         ValueError: If geometry type cannot be determined
 
     Examples:
-        >>> from mfg_pde.geometry import Domain1D
-        >>> domain = Domain1D(xmin=0.0, xmax=1.0)
+        >>> from mfg_pde.geometry import SimpleGrid1D
+        >>> domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
         >>> detect_geometry_type(domain)
         <GeometryType.CARTESIAN_GRID: 'cartesian_grid'>
 
@@ -169,8 +169,8 @@ def is_geometry_compatible(geometry: object) -> bool:
         True if object implements GeometryProtocol, False otherwise
 
     Examples:
-        >>> from mfg_pde.geometry import Domain1D
-        >>> domain = Domain1D(xmin=0.0, xmax=1.0)
+        >>> from mfg_pde.geometry import SimpleGrid1D
+        >>> domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
         >>> is_geometry_compatible(domain)
         True
 
@@ -192,8 +192,8 @@ def validate_geometry(geometry: object) -> None:
         ValueError: If geometry has invalid properties
 
     Examples:
-        >>> from mfg_pde.geometry import Domain1D
-        >>> domain = Domain1D(xmin=0.0, xmax=1.0)
+        >>> from mfg_pde.geometry import SimpleGrid1D
+        >>> domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
         >>> validate_geometry(domain)  # No error
 
         >>> validate_geometry("invalid")

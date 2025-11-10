@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
     from mfg_pde.types.solver_types import JAXArray
 
-    from .domain_1d import Domain1D
+    from .simple_grid_1d import SimpleGrid1D
 
 # Always define JAX_AVAILABLE at module level
 try:
@@ -124,13 +124,13 @@ class OneDimensionalAMRMesh:
 
     def __init__(
         self,
-        domain_1d: Domain1D,
+        domain_1d: SimpleGrid1D,
         initial_num_intervals: int = 10,
         refinement_criteria: AMRRefinementCriteria | None = None,
         backend: BaseBackend | None = None,
     ):
         """
-        Initialize 1D AMR mesh from Domain1D.
+        Initialize 1D AMR mesh from SimpleGrid1D.
 
         Args:
             domain_1d: 1D domain specification
@@ -555,14 +555,14 @@ class OneDimensionalErrorEstimator(BaseErrorEstimator):
 
 # Factory function for 1D AMR
 def create_1d_amr_mesh(
-    domain_1d: Domain1D,
+    domain_1d: SimpleGrid1D,
     initial_intervals: int = 10,
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     backend: BaseBackend | None = None,
 ) -> OneDimensionalAMRMesh:
     """
-    Create 1D AMR mesh from Domain1D.
+    Create 1D AMR mesh from SimpleGrid1D.
 
     Args:
         domain_1d: 1D domain specification

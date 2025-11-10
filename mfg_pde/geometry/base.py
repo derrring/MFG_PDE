@@ -13,6 +13,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -424,6 +426,283 @@ class UnstructuredMesh(Geometry):
         Must be implemented by subclasses.
         """
         ...
+
+    # ============================================================================
+    # Geometry ABC implementation
+    # ============================================================================
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """
+        Type of geometry.
+
+        Returns DOMAIN_2D or DOMAIN_3D based on dimension.
+        Subclasses can override for more specific types.
+        """
+        if self._dimension == 2:
+            return GeometryType.DOMAIN_2D
+        elif self._dimension == 3:
+            return GeometryType.DOMAIN_3D
+        else:
+            return GeometryType.CUSTOM
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of discrete spatial points (mesh vertices)."""
+        if self.mesh_data is None:
+            raise ValueError("Mesh not yet generated. Call generate_mesh() first.")
+        return self.mesh_data.num_vertices
+
+    def get_spatial_grid(self) -> NDArray:
+        """
+        Get spatial grid representation (mesh vertices).
+
+        Returns:
+            Numpy array of mesh vertex coordinates (N_vertices, dimension)
+
+        Raises:
+            ValueError: If mesh has not been generated yet
+        """
+        if self.mesh_data is None:
+            raise ValueError("Mesh not yet generated. Call generate_mesh() first.")
+        return self.mesh_data.vertices
+
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """
+        Get geometry bounding box from mesh.
+
+        Returns:
+            (min_coords, max_coords) tuple
+
+        Raises:
+            ValueError: If mesh not yet generated
+        """
+        if self.mesh_data is None:
+            raise ValueError("Mesh not yet generated. Call generate_mesh() first.")
+        return self.mesh_data.bounds
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration for MFGProblem.
+
+        Returns:
+            Dictionary with mesh configuration
+        """
+        if self.mesh_data is None:
+            raise ValueError("Mesh not yet generated. Call generate_mesh() first.")
+
+        return {
+            "num_spatial_points": self.mesh_data.num_vertices,
+            "spatial_shape": (self.mesh_data.num_vertices,),  # Unstructured
+            "spatial_bounds": list(zip(*self.mesh_data.bounds, strict=True)),
+            "spatial_discretization": None,  # No regular discretization
+            "legacy_1d_attrs": None,
+            "mesh_data": self.mesh_data,
+        }
+
+    # ============================================================================
+    # Solver Operation Interface (FEM-style for unstructured meshes)
+    # ============================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """
+        Return FEM Laplacian operator for unstructured mesh.
+
+        Returns:
+            Function with signature: (u: NDArray, vertex_idx: int) -> float
+
+        Note: This is a placeholder implementation. Full FEM Laplacian requires
+        assembly of mass and stiffness matrices.
+        """
+
+        def laplacian_fem_placeholder(u: NDArray, vertex_idx: int) -> float:
+            """
+            Placeholder FEM Laplacian (returns 0.0).
+
+            TODO: Implement full FEM assembly with mass/stiffness matrices.
+
+            Args:
+                u: Solution vector at mesh vertices
+                vertex_idx: Vertex index
+
+            Returns:
+                Laplacian value (currently 0.0)
+            """
+            return 0.0
+
+        return laplacian_fem_placeholder
+
+    def get_gradient_operator(self) -> Callable:
+        """
+        Return FEM gradient operator for unstructured mesh.
+
+        Returns:
+            Function with signature: (u: NDArray, vertex_idx: int) -> NDArray
+
+        Note: This is a placeholder implementation. Full FEM gradient requires
+        element-wise gradient reconstruction.
+        """
+
+        def gradient_fem_placeholder(u: NDArray, vertex_idx: int) -> NDArray:
+            """
+            Placeholder FEM gradient (returns zeros).
+
+            TODO: Implement FEM gradient with element-wise reconstruction.
+
+            Args:
+                u: Solution vector at mesh vertices
+                vertex_idx: Vertex index
+
+            Returns:
+                Gradient vector (currently zeros)
+            """
+            return np.zeros(self._dimension)
+
+        return gradient_fem_placeholder
+
+    def get_interpolator(self) -> Callable:
+        """
+        Return barycentric interpolator for unstructured mesh.
+
+        Returns:
+            Function with signature: (u: NDArray, point: NDArray) -> float
+
+        Note: This is a placeholder. Full implementation requires finding
+        containing element and computing barycentric coordinates.
+        """
+
+        def interpolate_barycentric_placeholder(u: NDArray, point: NDArray) -> float:
+            """
+            Placeholder barycentric interpolation (nearest neighbor).
+
+            TODO: Implement proper barycentric interpolation with element search.
+
+            Args:
+                u: Solution vector at mesh vertices
+                point: Physical coordinates
+
+            Returns:
+                Interpolated value (currently nearest neighbor)
+            """
+            if self.mesh_data is None:
+                raise ValueError("Mesh not generated")
+
+            # Simple nearest neighbor for now
+            vertices = self.mesh_data.vertices
+            distances = np.linalg.norm(vertices - point, axis=1)
+            nearest_idx = int(np.argmin(distances))
+            return float(u[nearest_idx])
+
+        return interpolate_barycentric_placeholder
+
+    def get_boundary_handler(self):
+        """
+        Return boundary condition handler.
+
+        Returns:
+            Dict with boundary information (placeholder)
+        """
+        return {"type": "unstructured_mesh", "implementation": "placeholder"}
+
+    # ============================================================================
+    # Mesh Utilities (from old BaseGeometry)
+    # ============================================================================
+
+    @abstractmethod
+    def export_mesh(self, file_format: str, filename: str) -> None:
+        """
+        Export mesh in specified file format.
+
+        Must be implemented by subclasses.
+        """
+        ...
+
+    def visualize_mesh(self, show_edges: bool = True, show_quality: bool = False):
+        """Visualize mesh using PyVista."""
+        if self.mesh_data is None:
+            self.generate_mesh()
+
+        try:
+            import pyvista as pv
+        except ImportError as err:
+            raise ImportError("pyvista is required for mesh visualization") from err
+
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
+        mesh = self.mesh_data.to_pyvista()
+        plotter = pv.Plotter()
+
+        if show_quality:
+            # Color by mesh quality if available
+            if self.mesh_data.quality_metrics and "quality" in self.mesh_data.quality_metrics:
+                mesh.cell_data["quality"] = self.mesh_data.quality_metrics["quality"]
+                plotter.add_mesh(mesh, scalars="quality", show_edges=show_edges)
+            else:
+                plotter.add_mesh(mesh, show_edges=show_edges)
+        else:
+            plotter.add_mesh(mesh, show_edges=show_edges)
+
+        plotter.show()
+
+    def compute_mesh_quality(self) -> dict[str, float]:
+        """Compute mesh quality metrics."""
+        if self.mesh_data is None:
+            self.generate_mesh()
+
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
+
+        quality_metrics = {}
+
+        if self.mesh_data.element_type == "triangle":
+            quality_metrics.update(self._compute_triangle_quality())
+        elif self.mesh_data.element_type == "tetrahedron":
+            quality_metrics.update(self._compute_tetrahedron_quality())
+
+        if self.mesh_data.quality_metrics is not None:
+            self.mesh_data.quality_metrics.update(quality_metrics)
+        return quality_metrics
+
+    def _compute_triangle_quality(self) -> dict[str, float]:
+        """Compute quality metrics for triangular elements."""
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
+        areas = self.mesh_data.compute_element_volumes()
+
+        # Compute aspect ratios
+        aspect_ratios = []
+        for _i, element in enumerate(self.mesh_data.elements):
+            v0, v1, v2 = self.mesh_data.vertices[element]
+
+            # Edge lengths
+            e1 = np.linalg.norm(v1 - v0)
+            e2 = np.linalg.norm(v2 - v1)
+            e3 = np.linalg.norm(v0 - v2)
+
+            # Aspect ratio = (longest edge) / (shortest edge)
+            aspect_ratios.append(max(float(e1), float(e2), float(e3)) / min(float(e1), float(e2), float(e3)))
+
+        return {
+            "min_area": float(np.min(areas)),
+            "max_area": float(np.max(areas)),
+            "mean_area": float(np.mean(areas)),
+            "min_aspect_ratio": float(np.min(aspect_ratios)),
+            "max_aspect_ratio": float(np.max(aspect_ratios)),
+            "mean_aspect_ratio": float(np.mean(aspect_ratios)),
+        }
+
+    def _compute_tetrahedron_quality(self) -> dict[str, float]:
+        """Compute quality metrics for tetrahedral elements."""
+        if self.mesh_data is None:
+            raise RuntimeError("Mesh data is None")
+        volumes = self.mesh_data.compute_element_volumes()
+
+        # Basic volume statistics
+        return {
+            "min_volume": float(np.min(volumes)),
+            "max_volume": float(np.max(volumes)),
+            "mean_volume": float(np.mean(volumes)),
+        }
 
 
 class NetworkGraph(Geometry):

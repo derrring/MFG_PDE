@@ -1,8 +1,8 @@
 """
-2D domain implementation for MFG_PDE geometry system.
+2D unstructured mesh for FEM/FVM methods in MFG_PDE.
 
-This module implements 2D geometric domains using the Gmsh → Meshio → PyVista pipeline,
-supporting rectangular domains, complex shapes, holes, and CAD import.
+This module implements 2D triangular meshes using the Gmsh → Meshio → PyVista pipeline,
+supporting rectangles, circles, complex shapes, holes, and CAD import.
 """
 
 from __future__ import annotations
@@ -11,14 +11,15 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .base_geometry import BaseGeometry, MeshData
+from .base import UnstructuredMesh
+from .base_geometry import MeshData
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class Domain2D(BaseGeometry):
-    """2D domain with complex geometry support using Gmsh pipeline."""
+class Mesh2D(UnstructuredMesh):
+    """2D unstructured triangular mesh for FEM/FVM methods using Gmsh pipeline."""
 
     def __init__(
         self,
