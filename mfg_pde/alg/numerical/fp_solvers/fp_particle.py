@@ -676,28 +676,27 @@ class FPParticleSolver(BaseFPSolver):
         sigma = self.problem.sigma
         diffusion_coeff = 0.5 * sigma**2
 
+        # Import GFDM operators for spatial derivatives
+        from mfg_pde.utils.numerical.gfdm_operators import (
+            compute_divergence_gfdm,
+            compute_gradient_gfdm,
+            compute_laplacian_gfdm,
+        )
+
         # Solve continuity equation: ∂m/∂t + ∇·(m α) = σ²/2 Δm
         # Using GFDM operators for spatial derivatives on collocation points
         for t_idx in range(Nt - 1):
             m_current = M_solution[t_idx, :]
 
             # Compute drift field α = -∇U at current time
-            # For now, use zero drift (pure diffusion) to ensure stability
-            # TODO: Implement GFDM gradient operator for full drift computation
-            # _U_current = U_solution_for_drift[t_idx, :]  # Reserved for future use
+            U_current = U_solution_for_drift[t_idx, :]
 
-            # Zero drift field (pure diffusion)
+            # Compute gradient of value function using GFDM
+            grad_U = compute_gradient_gfdm(U_current, self.collocation_points)
+
+            # Drift field: α = -∇U
             # Shape: (N_points, dimension)
-            if self.problem.dimension == 1:
-                drift_field = np.zeros((N_points, 1))
-            else:
-                drift_field = np.zeros((N_points, self.problem.dimension))
-
-            # Compute spatial operators using GFDM
-            from mfg_pde.utils.numerical.gfdm_operators import (
-                compute_divergence_gfdm,
-                compute_laplacian_gfdm,
-            )
+            drift_field = -grad_U
 
             # Advection term: ∇·(m α)
             divergence_term = compute_divergence_gfdm(drift_field, m_current, self.collocation_points)
