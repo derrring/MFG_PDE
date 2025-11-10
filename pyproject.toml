@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.10.1" # v0.10.1: Phase 4 complete - ImplicitGeometry and unified GraphGeometry
+version = "0.10.2" # v0.10.2: MFGProblem geometry-based unification (Phase 1)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
