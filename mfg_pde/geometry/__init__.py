@@ -94,6 +94,7 @@ from .network_geometry import (
     compute_network_statistics,
     create_network,
 )
+from .simple_grid import SimpleGrid2D, SimpleGrid3D
 from .simple_grid_1d import SimpleGrid1D
 from .tensor_product_grid import TensorProductGrid
 
@@ -118,6 +119,8 @@ __all__ = [
     "DirichletBC3D",
     # Geometry components (new naming convention)
     "SimpleGrid1D",
+    "SimpleGrid2D",
+    "SimpleGrid3D",
     "Mesh1D",
     "Mesh2D",
     "Mesh3D",
