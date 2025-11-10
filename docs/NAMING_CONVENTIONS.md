@@ -1,8 +1,8 @@
 # MFG_PDE Naming Conventions
 
-**Last Updated**: 2025-11-05
+**Last Updated**: 2025-11-10
 **Status**: Current reference document
-**Related**: See sections on gradient notation for derivative indexing
+**Related**: See sections on gradient notation for derivative indexing and array-based notation standard
 
 ---
 
@@ -47,32 +47,187 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 
 ---
 
-## Dimension-Agnostic Design (v0.10.0+)
+## Array-Based Notation Standard (v0.10.0+)
 
-### Key Concept: `Nx` is an Array
+### Canonical Standard: Always Use Arrays for Spatial Quantities
 
-In v0.10.0+, `Nx` represents spatial discretization for **arbitrary dimensions**:
+**Goal**: Enable dimension-agnostic algorithms that work seamlessly for 1D, 2D, 3D, and nD problems without special cases.
 
-- **1D**: `Nx = [Nx1]` → `Nx1` intervals, `Nx1+1` grid points. Example: `Nx = [50]`
-- **2D**: `Nx = [Nx1, Nx2]` → `Nx1×Nx2` intervals, `(Nx1+1)×(Nx2+1)` grid points. Example: `Nx = [50, 30]`
-- **3D**: `Nx = [Nx1, Nx2, Nx3]` → `Nx1×Nx2×Nx3` intervals. Example: `Nx = [20, 20, 20]`
-- **nD**: `Nx = [Nx1, Nx2, ..., Nxd]` where `d` is the spatial dimension
+**Principle**: **All spatial quantities are arrays**, even for 1D problems.
 
-**There is NO `Ny`, `Nz`**. All dimensions use the single array `Nx`.
+### Array Notation for Spatial Parameters
+
+| Parameter | 1D Example | 2D Example | 3D Example | Type |
+|-----------|-----------|-----------|-----------|------|
+| `Nx` | `[100]` | `[100, 80]` | `[100, 80, 60]` | `list[int]` |
+| `xmin` | `[-2.0]` | `[-2.0, -1.0]` | `[-2.0, -1.0, -0.5]` | `list[float]` |
+| `xmax` | `[2.0]` | `[2.0, 1.0]` | `[2.0, 1.0, 0.5]` | `list[float]` |
+| `dx` | `[0.04]` | `[0.04, 0.025]` | `[0.04, 0.025, 0.017]` | `list[float]` |
+| `Lx` | `[4.0]` | `[4.0, 2.0]` | `[4.0, 2.0, 1.0]` | `list[float]` |
+
+**Key points**:
+- **1D uses single-element arrays**: `Nx=[100]` not `Nx=100`
+- **No separate `Ny`, `Nz`**: All dimensions in one array `Nx`
+- **Natural indexing**: Access dimension `i` via `Nx[i]`, `dx[i]`, `xmin[i]`
+- **Algorithms work for arbitrary dimensions** without type checking
+
+### Benefits of Array-First Convention
+
+1. **Dimension-agnostic code**: Algorithms work for 1D/2D/3D/nD without special cases
+2. **Consistent interface**: `Nx` is always a list, never "sometimes int, sometimes list"
+3. **Natural subscripts**: `for i in range(len(Nx)): print(f"Dimension {i}: {Nx[i]} intervals")`
+4. **Eliminates type checking**: No need for `if isinstance(Nx, int)` branches
+5. **Easier maintenance**: Single code path for all dimensions
+
+### Migration Strategy: Gradual Deprecation
+
+**Current state (v0.10.0 - v0.11.0)**:
+- ✅ Array notation is canonical and recommended
+- ✅ Scalar notation still works for 1D (backward compatibility)
+- ⚠️ Scalar notation emits `DeprecationWarning`
+- ✅ Internal normalization via `MFGProblem._normalize_to_array()`
+
+**Future state (v1.0.0)**:
+- ❌ Scalar notation will be removed
+- ✅ Only array notation will be accepted
+
+### Deprecation Warnings
+
+When you pass scalar values, you'll see:
+
+```python
+from mfg_pde import MFGProblem
+
+# This works but warns:
+problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, T=1.0)
+# DeprecationWarning: Passing scalar Nx=100 is deprecated.
+# Use array notation Nx=[100] instead.
+# Scalar support will be removed in v1.0.0.
+
+# Recommended:
+problem = MFGProblem(Nx=[100], xmin=[0.0], xmax=[1.0], T=1.0)
+# No warning
+```
 
 ### Legacy 1D Scalar Compatibility
 
-For backward compatibility, 1D problems accept scalar `Nx`:
+For backward compatibility only, 1D problems still accept scalar notation:
 
 ```python
-# Modern (dimension-agnostic)
-problem = MFGProblem(Nx=[50], ...)  # Recommended
+# ✅ Modern (dimension-agnostic) - RECOMMENDED
+problem = MFGProblem(Nx=[50], xmin=[0.0], xmax=[1.0], ...)
 
-# Legacy (1D only)
-problem = MFGProblem(Nx=50, ...)    # Still works, normalized to [50]
+# ⚠️ Legacy (1D only) - DEPRECATED
+problem = MFGProblem(Nx=50, xmin=0.0, xmax=1.0, ...)  # Warns, normalized to arrays internally
 ```
 
-Internally, scalars are normalized to 1-element arrays.
+**Implementation**: `MFGProblem._normalize_to_array()` converts scalars to 1-element lists with deprecation warnings.
+
+### Dimension-Agnostic Examples
+
+**1D Problem**:
+```python
+problem = MFGProblem(
+    Nx=[100],           # 100 intervals → 101 grid points
+    xmin=[-2.0],        # Lower bound
+    xmax=[2.0],         # Upper bound
+    T=1.0,
+    Nt=50
+)
+```
+
+**2D Problem**:
+```python
+problem = MFGProblem(
+    Nx=[100, 80],                # 100×80 intervals → 101×81 grid
+    xmin=[-2.0, -1.0],           # Lower bounds
+    xmax=[2.0, 1.0],             # Upper bounds
+    T=1.0,
+    Nt=50
+)
+# Grid spacing: dx = [(2-(-2))/100, (1-(-1))/80] = [0.04, 0.025]
+```
+
+**3D Problem**:
+```python
+problem = MFGProblem(
+    Nx=[100, 80, 60],            # 100×80×60 intervals
+    xmin=[-2.0, -1.0, -0.5],     # Lower bounds
+    xmax=[2.0, 1.0, 0.5],        # Upper bounds
+    T=1.0,
+    Nt=50
+)
+```
+
+### Alternative: High-Level API
+
+For explicit multi-dimensional problems, use the high-level API:
+
+```python
+problem = MFGProblem(
+    spatial_bounds=[(-2.0, 2.0), (-1.0, 1.0)],  # 2D bounds
+    spatial_discretization=[100, 80],            # 2D discretization
+    time_domain=(1.0, 50),                       # (T, Nt)
+    diffusion=0.1
+)
+```
+
+Both APIs normalize to the same internal array representation.
+
+### Migration Guide: Scalar → Array Notation
+
+**Step 1: Identify scalar usage**
+```bash
+# Find all scalar Nx usage in your code
+grep -r "Nx\s*=\s*[0-9]" your_code/
+```
+
+**Step 2: Convert to arrays**
+```python
+# Before (deprecated):
+problem = MFGProblem(Nx=100, xmin=-2.0, xmax=2.0, T=1.0, Nt=50)
+
+# After (recommended):
+problem = MFGProblem(Nx=[100], xmin=[-2.0], xmax=[2.0], T=1.0, Nt=50)
+```
+
+**Step 3: Suppress warnings during migration**
+```python
+import warnings
+
+# Temporarily suppress during gradual migration
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, T=1.0)
+```
+
+**Step 4: Test thoroughly**
+- Verify array access: `Nx[0]` instead of `Nx`
+- Check loops: `for i in range(len(Nx))` works for all dimensions
+- Validate outputs match before/after migration
+
+**Common Pitfalls**:
+```python
+# ❌ Wrong: Mixing scalar and array
+problem = MFGProblem(Nx=[100], xmin=0.0, xmax=1.0, T=1.0)
+# xmin and xmax should also be arrays
+
+# ✅ Correct: All arrays
+problem = MFGProblem(Nx=[100], xmin=[0.0], xmax=[1.0], T=1.0)
+
+# ❌ Wrong: Accessing scalar like array
+Nx = 100
+dx = (xmax - xmin) / Nx[0]  # IndexError!
+
+# ✅ Correct: Array access
+Nx = [100]
+dx = (xmax[0] - xmin[0]) / Nx[0]
+```
+
+**Timeline**:
+- **v0.10.0 - v0.11.0**: Deprecation warnings active, both work
+- **v0.12.0+**: Continued deprecation warnings
+- **v1.0.0**: Scalar notation removed, arrays required
 
 ---
 
@@ -101,11 +256,11 @@ Internally, scalars are normalized to 1-element arrays.
 
 | Parameter | Type | Meaning | Math | Example |
 |-----------|------|---------|------|---------|
-| `Nx` | int or list[int] | Number of intervals per dimension: `[Nx1, Nx2, ..., Nxd]` | N | `[50, 30]` |
-| `xmin` | float or list[float] | Domain lower bounds | x_min | `[0.0, 0.0]` |
-| `xmax` | float or list[float] | Domain upper bounds | x_max | `[1.0, 1.0]` |
-| `dx` | float or list[float] | Grid spacing per dimension: `[dx1, dx2, ..., dxd]` | Δx | `[0.02, 0.033]` |
-| `Lx` | float or list[float] | Domain length per dimension: `[Lx1, Lx2, ..., Lxd]` | L | `[1.0, 1.0]` |
+| `Nx` | **list[int]** | Number of intervals per dimension: `[Nx1, Nx2, ..., Nxd]` | N | `[50, 30]` |
+| `xmin` | **list[float]** | Domain lower bounds | x_min | `[0.0, 0.0]` |
+| `xmax` | **list[float]** | Domain upper bounds | x_max | `[1.0, 1.0]` |
+| `dx` | **list[float]** | Grid spacing per dimension: `[dx1, dx2, ..., dxd]` | Δx | `[0.02, 0.033]` |
+| `Lx` | **list[float]** | Domain length per dimension: `[Lx1, Lx2, ..., Lxd]` | L | `[1.0, 1.0]` |
 
 **Grid Convention**:
 - `Nxi` intervals → `Nxi+1` grid points (for each dimension i)
@@ -116,12 +271,21 @@ Internally, scalars are normalized to 1-element arrays.
 ```python
 # Nx = [Nx1, Nx2] = [50, 30]
 problem = MFGProblem(
-    spatial_bounds=[(0.0, 1.0), (0.0, 0.5)],
-    spatial_discretization=[50, 30],  # Nx1=50, Nx2=30 intervals
+    Nx=[50, 30],             # Array notation (recommended)
+    xmin=[0.0, 0.0],         # Array notation
+    xmax=[1.0, 0.5],         # Array notation
     T=1.0,
     Nt=100
 )
 # Creates (Nx1+1)×(Nx2+1) = 51×31 = 1581 spatial grid points
+
+# Alternative: High-level API
+problem = MFGProblem(
+    spatial_bounds=[(0.0, 1.0), (0.0, 0.5)],
+    spatial_discretization=[50, 30],
+    T=1.0,
+    Nt=100
+)
 ```
 
 ### Temporal Discretization
@@ -335,10 +499,20 @@ Some parameter names use specific mathematical or domain terminology and are **n
 ### Good - Clear Naming
 
 ```python
-# Configuration uses descriptive English
-problem = ExampleMFGProblem(
+# Array notation for dimension-agnostic code
+problem = MFGProblem(
+    Nx=[50, 50],                      # 2D: array notation
+    xmin=[0.0, 0.0],                  # Array notation
+    xmax=[1.0, 1.0],                  # Array notation
+    T=1.0,
+    Nt=100,
+    sigma=0.1
+)
+
+# Or use high-level API
+problem = MFGProblem(
     spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
-    spatial_discretization=[50, 50],  # Nx in 2D
+    spatial_discretization=[50, 50],
     T=1.0,
     Nt=100,
     sigma=0.1
@@ -357,10 +531,10 @@ U = solver.solve()  # Value function u(t,x)
 M = problem.M       # Density m(t,x)
 ```
 
-### Bad - Unclear Abbreviations
+### Bad - Unclear Abbreviations or Deprecated Patterns
 
 ```python
-# Don't do this
+# ❌ Don't use unclear abbreviations
 prob = ExMFGProb(
     sb=[(0.0, 1.0), (0.0, 1.0)],
     sd=[50, 50],
@@ -376,6 +550,16 @@ slv = mk_slv(
     NiterMax=100,
     l2err=1e-6
 )
+
+# ❌ Don't use deprecated scalar notation (1D)
+problem = MFGProblem(
+    Nx=100,           # Deprecated! Use Nx=[100]
+    xmin=0.0,         # Deprecated! Use xmin=[0.0]
+    xmax=1.0,         # Deprecated! Use xmax=[1.0]
+    T=1.0,
+    Nt=50
+)
+# Emits DeprecationWarning, will break in v1.0.0
 ```
 
 ---
@@ -414,12 +598,16 @@ with terminal condition $u(T,x) = g(x, m(T,x))$.
 
 ### Use Mathematical Symbols (`Nx`, `Dt`, `sigma`)
 
-✅ **Spatial/temporal discretization**:
+✅ **Spatial/temporal discretization** (array notation):
 ```python
-# Nx = [Nx1, Nx2] for 2D
-problem = MFGProblem(Nx=[50, 30], Nt=100, T=1.0)
+# 1D problem - use arrays
+problem = MFGProblem(Nx=[100], xmin=[-2.0], xmax=[2.0], Nt=100, T=1.0)
+
+# 2D problem - Nx = [Nx1, Nx2]
+problem = MFGProblem(Nx=[50, 30], xmin=[0.0, 0.0], xmax=[1.0, 1.0], Nt=100, T=1.0)
+
 x = problem.xSpace  # All dimensions
-grid_spacing = problem.dx  # [dx1, dx2]
+grid_spacing = problem.dx  # [dx1, dx2] for 2D
 time_step = problem.dt  # Δt
 ```
 
