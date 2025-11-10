@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from mfg_pde.geometry.base import GraphGeometry
 from mfg_pde.geometry.geometry_protocol import GeometryType
 
 if TYPE_CHECKING:
@@ -232,16 +233,25 @@ class Grid:
         return np.column_stack([x_coords, y_coords])
 
 
-class PerfectMazeGenerator:
+class PerfectMazeGenerator(GraphGeometry):
     """
     Perfect maze generator using classic algorithms.
 
     Generates mazes that are minimal spanning trees on grid graphs,
-    guaranteeing connectivity and acyclicity.
+    guaranteeing connectivity and acyclicity. Inherits from GraphGeometry,
+    treating mazes as spatially-embedded grid graphs.
 
     Algorithms:
     - Recursive Backtracking: DFS-based, creates long winding paths
     - Wilson's: Loop-erased random walk, unbiased sampling
+    - Eller's: Row-by-row generation with O(width) memory
+    - Growing Tree: Flexible framework with configurable selection
+
+    Graph Representation:
+    - Nodes: Maze cells (free spaces)
+    - Edges: Open passages between cells
+    - Spatial embedding: (x, y) grid coordinates
+    - Adjacency: 4-connected grid with walls as missing edges
 
     Reference: Jamis Buck, "Mazes for Programmers" (2015)
     """
@@ -251,19 +261,26 @@ class PerfectMazeGenerator:
         rows: int,
         cols: int,
         algorithm: MazeAlgorithm = MazeAlgorithm.RECURSIVE_BACKTRACKING,
+        seed: int | None = None,
     ):
         """
-        Initialize maze generator.
+        Initialize and generate maze.
 
         Args:
             rows: Number of rows in maze
             cols: Number of columns in maze
             algorithm: Algorithm to use for generation
+            seed: Random seed for reproducibility
+
+        Note: Maze is generated immediately upon initialization.
         """
         self.rows = rows
         self.cols = cols
         self.algorithm = algorithm
         self.grid = Grid(rows, cols)
+
+        # Generate maze immediately
+        self.generate(seed=seed)
 
     def generate(self, seed: int | None = None) -> Grid:
         """
@@ -570,6 +587,96 @@ class PerfectMazeGenerator:
                     ] = 0
 
         return maze
+
+    # ============================================================================
+    # GraphGeometry implementation
+    # ============================================================================
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of nodes (maze cells)."""
+        return self.rows * self.cols
+
+    def get_spatial_grid(self) -> NDArray:
+        """
+        Get node positions as (N, 2) array of cell centers.
+
+        Returns:
+            Array of shape (rows * cols, 2) with (x, y) coordinates
+            Convention: (col + 0.5, row + 0.5) for cell centers
+        """
+        return self.grid.get_spatial_grid()
+
+    def get_adjacency_matrix(self) -> NDArray:
+        """
+        Get adjacency matrix for the maze graph.
+
+        Returns:
+            Adjacency matrix A of shape (N, N) where:
+                A[i,j] = 1 if passage exists between cells i and j
+                A[i,j] = 0 if wall between cells (or no connection)
+
+        Note: Cells are indexed in row-major order: idx = row * cols + col
+        """
+        n_cells = self.rows * self.cols
+        adj = np.zeros((n_cells, n_cells), dtype=np.float64)
+
+        for row in self.grid.cells:
+            for cell in row:
+                cell_idx = cell.row * self.cols + cell.col
+
+                # North connection
+                if cell.north and cell.row > 0:
+                    neighbor_idx = (cell.row - 1) * self.cols + cell.col
+                    adj[cell_idx, neighbor_idx] = 1.0
+                    adj[neighbor_idx, cell_idx] = 1.0  # Symmetric
+
+                # South connection
+                if cell.south and cell.row < self.rows - 1:
+                    neighbor_idx = (cell.row + 1) * self.cols + cell.col
+                    adj[cell_idx, neighbor_idx] = 1.0
+                    adj[neighbor_idx, cell_idx] = 1.0
+
+                # West connection
+                if cell.west and cell.col > 0:
+                    neighbor_idx = cell.row * self.cols + (cell.col - 1)
+                    adj[cell_idx, neighbor_idx] = 1.0
+                    adj[neighbor_idx, cell_idx] = 1.0
+
+                # East connection
+                if cell.east and cell.col < self.cols - 1:
+                    neighbor_idx = cell.row * self.cols + (cell.col + 1)
+                    adj[cell_idx, neighbor_idx] = 1.0
+                    adj[neighbor_idx, cell_idx] = 1.0
+
+        return adj
+
+    def get_node_positions(self) -> NDArray:
+        """
+        Get physical (x, y) coordinates of maze cells.
+
+        Returns:
+            Array of shape (N, 2) with cell center positions
+
+        Note: Overrides GraphGeometry.get_node_positions() to provide
+        spatial embedding for maze.
+        """
+        return self.get_spatial_grid()
+
+    def get_maze_array(self) -> NDArray:
+        """
+        Get 2D grid array representation.
+
+        Returns:
+            2D array of shape (rows, cols) where:
+                1 = free cell (node exists)
+                0 = wall (no node)
+
+        Note: For perfect mazes, all cells are free (all 1s).
+        For mazes with obstacles, some cells would be 0.
+        """
+        # For perfect mazes, all cells are free
+        return np.ones((self.rows, self.cols), dtype=np.int32)
 
 
 def verify_perfect_maze(grid: Grid) -> dict:

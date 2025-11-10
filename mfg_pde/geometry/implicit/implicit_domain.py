@@ -17,16 +17,17 @@ References:
 - TECHNICAL_REFERENCE_HIGH_DIMENSIONAL_MFG.md Section 4
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
+from mfg_pde.geometry.base import ImplicitGeometry
 from mfg_pde.geometry.geometry_protocol import GeometryType
 
 
-class ImplicitDomain(ABC):
+class ImplicitDomain(ImplicitGeometry):
     """
     Abstract base class for n-dimensional implicit domains.
 
@@ -145,86 +146,7 @@ class ImplicitDomain(ABC):
             >>> bounds  # array([[-1, 1], [-1, 1]])
         """
 
-    def contains(self, x: NDArray[np.float64], tol: float = 0.0) -> bool | NDArray[np.bool_]:
-        """
-        Check if point(s) are inside the domain.
-
-        Args:
-            x: Point(s) to test - shape (d,) or (N, d)
-            tol: Tolerance for boundary (default 0)
-                 tol > 0 makes domain slightly larger
-                 tol < 0 makes domain slightly smaller
-
-        Returns:
-            Boolean or boolean array indicating containment
-
-        Example:
-            >>> domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
-            >>> domain.contains(np.array([0.5, 0.5]))  # True
-            >>> domain.contains(np.array([[0.5, 0.5], [1.5, 0.5]]))  # [True, False]
-        """
-        return self.signed_distance(x) <= tol
-
-    def sample_uniform(self, n_samples: int, max_attempts: int = 100, seed: int | None = None) -> NDArray[np.float64]:
-        """
-        Sample particles uniformly inside the domain via rejection sampling.
-
-        Args:
-            n_samples: Number of particles to sample
-            max_attempts: Maximum rejection sampling attempts per particle
-            seed: Random seed for reproducibility
-
-        Returns:
-            particles: Array of shape (n_samples, d) with particles inside domain
-
-        Raises:
-            RuntimeError: If rejection sampling fails to find enough valid particles
-
-        Algorithm:
-            1. Get bounding box
-            2. Sample uniformly from bounding box
-            3. Reject samples outside domain
-            4. Repeat until n_samples accepted
-
-        Example:
-            >>> domain = Hypersphere(center=[0, 0], radius=1.0)
-            >>> particles = domain.sample_uniform(1000, seed=42)
-            >>> assert particles.shape == (1000, 2)
-            >>> assert np.all(domain.contains(particles))
-        """
-        if seed is not None:
-            np.random.seed(seed)
-
-        bounds = self.get_bounding_box()
-        dim = self.dimension
-
-        particles = []
-        attempts = 0
-        max_total_attempts = n_samples * max_attempts
-
-        while len(particles) < n_samples and attempts < max_total_attempts:
-            # Sample from bounding box
-            batch_size = min(n_samples - len(particles), 1000)
-            candidates = np.random.uniform(low=bounds[:, 0], high=bounds[:, 1], size=(batch_size, dim))
-
-            # Accept particles inside domain
-            inside = self.contains(candidates)
-            if np.isscalar(inside):
-                inside = np.array([inside])
-
-            valid = candidates[inside]
-            particles.append(valid)
-
-            attempts += batch_size
-
-        if len(particles) == 0 or sum(len(p) for p in particles) < n_samples:
-            raise RuntimeError(
-                f"Rejection sampling failed: only found {sum(len(p) for p in particles)}/{n_samples} "
-                f"valid particles after {attempts} attempts. Domain may be too small or complex."
-            )
-
-        all_particles = np.vstack(particles)
-        return all_particles[:n_samples]
+    # Note: contains() and sample_uniform() now inherited from ImplicitGeometry
 
     def project_to_domain(
         self, x: NDArray[np.float64], method: Literal["simple", "gradient"] = "simple"
