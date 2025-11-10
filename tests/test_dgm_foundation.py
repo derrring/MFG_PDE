@@ -413,20 +413,5 @@ class TestDGMArchitectures:
         assert not torch.isnan(output).any()
 
 
-@pytest.mark.skipif(not pytorch_available, reason="PyTorch not available")
-class TestMFGDGMSolver:
-    """Test MFG DGM solver implementation."""
-
-    @pytest.mark.skip(reason="Solver tests need refactoring - abstract base class requires complex mocking")
-    def test_solver_initialization(self):
-        """Test solver initialization."""
-        # TODO: Refactor to test concrete solver implementation instead of base class
-
-    @pytest.mark.skip(reason="Solver tests need refactoring - abstract base class requires complex mocking")
-    def test_sampling_setup(self):
-        """Test sampling strategy setup."""
-        # TODO: Refactor to test concrete solver implementation instead of base class
-
-
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
