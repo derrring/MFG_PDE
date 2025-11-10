@@ -12,12 +12,16 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import NDArray
 
-from .base_geometry import BaseGeometry, MeshData
+from .base import CartesianGrid
+from .base_geometry import MeshData
+from .geometry_protocol import GeometryType
 
 
-class SimpleGrid2D(BaseGeometry):
+class SimpleGrid2D(CartesianGrid):
     """Simple 2D rectangular grid without external mesh dependencies."""
 
     def __init__(
@@ -30,12 +34,15 @@ class SimpleGrid2D(BaseGeometry):
             bounds: (xmin, xmax, ymin, ymax)
             resolution: (nx, ny) grid points
         """
-        super().__init__(dimension=2)
-
+        self._dimension = 2
         self.xmin, self.xmax, self.ymin, self.ymax = bounds
         self.nx, self.ny = resolution
         self._bounds = bounds
         self._mesh_data: MeshData | None = None
+
+        # Compute grid spacing
+        self.dx = (self.xmax - self.xmin) / self.nx
+        self.dy = (self.ymax - self.ymin) / self.ny
 
     @property
     def bounds(self) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
@@ -177,8 +184,153 @@ class SimpleGrid2D(BaseGeometry):
             "num_vertices": len(mesh_data.vertices),
         }
 
+    # ============================================================================
+    # Geometry ABC implementation
+    # ============================================================================
 
-class SimpleGrid3D(BaseGeometry):
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension (always 2 for SimpleGrid2D)."""
+        return self._dimension
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Type of geometry (Cartesian grid)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of grid points."""
+        return (self.nx + 1) * (self.ny + 1)
+
+    def get_spatial_grid(self) -> NDArray:
+        """Get spatial grid as (N, 2) array of vertices."""
+        if self._mesh_data is None:
+            self._mesh_data = self.generate_mesh()
+        return self._mesh_data.vertices
+
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """Get bounding box."""
+        return self.bounds
+
+    def get_problem_config(self) -> dict:
+        """Return configuration for MFGProblem."""
+        return {
+            "num_spatial_points": self.num_spatial_points,
+            "spatial_shape": (self.nx + 1, self.ny + 1),
+            "spatial_bounds": [(self.xmin, self.xmax), (self.ymin, self.ymax)],
+            "spatial_discretization": [self.nx, self.ny],
+            "legacy_1d_attrs": None,
+        }
+
+    # ============================================================================
+    # CartesianGrid ABC implementation
+    # ============================================================================
+
+    def get_grid_spacing(self) -> list[float]:
+        """Get grid spacing [dx, dy]."""
+        return [self.dx, self.dy]
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """Get grid shape (nx+1, ny+1)."""
+        return (self.nx + 1, self.ny + 1)
+
+    # ============================================================================
+    # Solver Operation Interface
+    # ============================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """Return finite difference Laplacian for 2D regular grid."""
+
+        def laplacian_2d(u: NDArray, idx: tuple[int, int]) -> float:
+            """
+            Compute 2D Laplacian using central differences.
+
+            Args:
+                u: Solution array of shape (nx+1, ny+1)
+                idx: Grid index (i, j)
+
+            Returns:
+                Laplacian value
+            """
+            i, j = idx
+            nx1, ny1 = u.shape
+
+            # Boundary clamping
+            i_plus = min(i + 1, nx1 - 1)
+            i_minus = max(i - 1, 0)
+            j_plus = min(j + 1, ny1 - 1)
+            j_minus = max(j - 1, 0)
+
+            # Central differences
+            laplacian = (u[i_plus, j] - 2.0 * u[i, j] + u[i_minus, j]) / (self.dx**2)
+            laplacian += (u[i, j_plus] - 2.0 * u[i, j] + u[i, j_minus]) / (self.dy**2)
+
+            return float(laplacian)
+
+        return laplacian_2d
+
+    def get_gradient_operator(self) -> Callable:
+        """Return finite difference gradient for 2D regular grid."""
+
+        def gradient_2d(u: NDArray, idx: tuple[int, int]) -> NDArray:
+            """
+            Compute 2D gradient using central differences.
+
+            Args:
+                u: Solution array of shape (nx+1, ny+1)
+                idx: Grid index (i, j)
+
+            Returns:
+                Gradient [du/dx, du/dy]
+            """
+            i, j = idx
+            nx1, ny1 = u.shape
+
+            # Boundary clamping
+            i_plus = min(i + 1, nx1 - 1)
+            i_minus = max(i - 1, 0)
+            j_plus = min(j + 1, ny1 - 1)
+            j_minus = max(j - 1, 0)
+
+            # Central differences
+            du_dx = (u[i_plus, j] - u[i_minus, j]) / (2.0 * self.dx)
+            du_dy = (u[i, j_plus] - u[i, j_minus]) / (2.0 * self.dy)
+
+            return np.array([du_dx, du_dy])
+
+        return gradient_2d
+
+    def get_interpolator(self) -> Callable:
+        """Return bilinear interpolator for 2D grid."""
+
+        def interpolate_2d(u: NDArray, point: NDArray) -> float:
+            """
+            Bilinear interpolation on 2D grid.
+
+            Args:
+                u: Solution array of shape (nx+1, ny+1)
+                point: Physical coordinates [x, y]
+
+            Returns:
+                Interpolated value
+            """
+            from scipy.interpolate import RegularGridInterpolator
+
+            x = np.linspace(self.xmin, self.xmax, self.nx + 1)
+            y = np.linspace(self.ymin, self.ymax, self.ny + 1)
+
+            interpolator = RegularGridInterpolator((x, y), u, method="linear", bounds_error=False, fill_value=0.0)
+            return float(interpolator(point))
+
+        return interpolate_2d
+
+    def get_boundary_handler(self):
+        """Return boundary handler (placeholder)."""
+        return {"type": "simple_grid_2d", "implementation": "placeholder"}
+
+
+class SimpleGrid3D(CartesianGrid):
     """Simple 3D rectangular grid without external mesh dependencies."""
 
     def __init__(
@@ -193,11 +345,15 @@ class SimpleGrid3D(BaseGeometry):
             bounds: (xmin, xmax, ymin, ymax, zmin, zmax)
             resolution: (nx, ny, nz) grid points
         """
-        super().__init__(dimension=3)
-
+        self._dimension = 3
         self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = bounds
         self.nx, self.ny, self.nz = resolution
         self._bounds = bounds
+
+        # Compute grid spacing
+        self.dx = (self.xmax - self.xmin) / self.nx
+        self.dy = (self.ymax - self.ymin) / self.ny
+        self.dz = (self.zmax - self.zmin) / self.nz
         self._mesh_data: MeshData | None = None
 
     @property
@@ -320,3 +476,155 @@ class SimpleGrid3D(BaseGeometry):
             "num_elements": len(mesh_data.elements),
             "num_vertices": len(mesh_data.vertices),
         }
+
+    # ============================================================================
+    # Geometry ABC implementation
+    # ============================================================================
+
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension (always 3 for SimpleGrid3D)."""
+        return self._dimension
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Type of geometry (Cartesian grid)."""
+        return GeometryType.CARTESIAN_GRID
+
+    @property
+    def num_spatial_points(self) -> int:
+        """Total number of grid points."""
+        return (self.nx + 1) * (self.ny + 1) * (self.nz + 1)
+
+    def get_spatial_grid(self) -> NDArray:
+        """Get spatial grid as (N, 3) array of vertices."""
+        if self._mesh_data is None:
+            self._mesh_data = self.generate_mesh()
+        return self._mesh_data.vertices
+
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """Get bounding box."""
+        return self.bounds
+
+    def get_problem_config(self) -> dict:
+        """Return configuration for MFGProblem."""
+        return {
+            "num_spatial_points": self.num_spatial_points,
+            "spatial_shape": (self.nx + 1, self.ny + 1, self.nz + 1),
+            "spatial_bounds": [(self.xmin, self.xmax), (self.ymin, self.ymax), (self.zmin, self.zmax)],
+            "spatial_discretization": [self.nx, self.ny, self.nz],
+            "legacy_1d_attrs": None,
+        }
+
+    # ============================================================================
+    # CartesianGrid ABC implementation
+    # ============================================================================
+
+    def get_grid_spacing(self) -> list[float]:
+        """Get grid spacing [dx, dy, dz]."""
+        return [self.dx, self.dy, self.dz]
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """Get grid shape (nx+1, ny+1, nz+1)."""
+        return (self.nx + 1, self.ny + 1, self.nz + 1)
+
+    # ============================================================================
+    # Solver Operation Interface
+    # ============================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """Return finite difference Laplacian for 3D regular grid."""
+
+        def laplacian_3d(u: NDArray, idx: tuple[int, int, int]) -> float:
+            """
+            Compute 3D Laplacian using central differences.
+
+            Args:
+                u: Solution array of shape (nx+1, ny+1, nz+1)
+                idx: Grid index (i, j, k)
+
+            Returns:
+                Laplacian value
+            """
+            i, j, k = idx
+            nx1, ny1, nz1 = u.shape
+
+            # Boundary clamping
+            i_plus = min(i + 1, nx1 - 1)
+            i_minus = max(i - 1, 0)
+            j_plus = min(j + 1, ny1 - 1)
+            j_minus = max(j - 1, 0)
+            k_plus = min(k + 1, nz1 - 1)
+            k_minus = max(k - 1, 0)
+
+            # Central differences in each dimension
+            laplacian = (u[i_plus, j, k] - 2.0 * u[i, j, k] + u[i_minus, j, k]) / (self.dx**2)
+            laplacian += (u[i, j_plus, k] - 2.0 * u[i, j, k] + u[i, j_minus, k]) / (self.dy**2)
+            laplacian += (u[i, j, k_plus] - 2.0 * u[i, j, k] + u[i, j, k_minus]) / (self.dz**2)
+
+            return float(laplacian)
+
+        return laplacian_3d
+
+    def get_gradient_operator(self) -> Callable:
+        """Return finite difference gradient for 3D regular grid."""
+
+        def gradient_3d(u: NDArray, idx: tuple[int, int, int]) -> NDArray:
+            """
+            Compute 3D gradient using central differences.
+
+            Args:
+                u: Solution array of shape (nx+1, ny+1, nz+1)
+                idx: Grid index (i, j, k)
+
+            Returns:
+                Gradient [du/dx, du/dy, du/dz]
+            """
+            i, j, k = idx
+            nx1, ny1, nz1 = u.shape
+
+            # Boundary clamping
+            i_plus = min(i + 1, nx1 - 1)
+            i_minus = max(i - 1, 0)
+            j_plus = min(j + 1, ny1 - 1)
+            j_minus = max(j - 1, 0)
+            k_plus = min(k + 1, nz1 - 1)
+            k_minus = max(k - 1, 0)
+
+            # Central differences
+            du_dx = (u[i_plus, j, k] - u[i_minus, j, k]) / (2.0 * self.dx)
+            du_dy = (u[i, j_plus, k] - u[i, j_minus, k]) / (2.0 * self.dy)
+            du_dz = (u[i, j, k_plus] - u[i, j, k_minus]) / (2.0 * self.dz)
+
+            return np.array([du_dx, du_dy, du_dz])
+
+        return gradient_3d
+
+    def get_interpolator(self) -> Callable:
+        """Return trilinear interpolator for 3D grid."""
+
+        def interpolate_3d(u: NDArray, point: NDArray) -> float:
+            """
+            Trilinear interpolation on 3D grid.
+
+            Args:
+                u: Solution array of shape (nx+1, ny+1, nz+1)
+                point: Physical coordinates [x, y, z]
+
+            Returns:
+                Interpolated value
+            """
+            from scipy.interpolate import RegularGridInterpolator
+
+            x = np.linspace(self.xmin, self.xmax, self.nx + 1)
+            y = np.linspace(self.ymin, self.ymax, self.ny + 1)
+            z = np.linspace(self.zmin, self.zmax, self.nz + 1)
+
+            interpolator = RegularGridInterpolator((x, y, z), u, method="linear", bounds_error=False, fill_value=0.0)
+            return float(interpolator(point))
+
+        return interpolate_3d
+
+    def get_boundary_handler(self):
+        """Return boundary handler (placeholder)."""
+        return {"type": "simple_grid_3d", "implementation": "placeholder"}

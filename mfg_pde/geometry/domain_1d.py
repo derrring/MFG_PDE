@@ -7,13 +7,21 @@ Boundary conditions are now managed in boundary_conditions_1d.py.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
+from .base import CartesianGrid
 from .boundary_conditions_1d import BoundaryConditions  # noqa: TC001
 from .geometry_protocol import GeometryType
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-class Domain1D:
+    from numpy.typing import NDArray
+
+
+class Domain1D(CartesianGrid):
     """
     1D domain specification for MFG problems.
 
@@ -110,3 +118,195 @@ class Domain1D:
     def __repr__(self) -> str:
         """Detailed representation of domain."""
         return f"Domain1D(xmin={self.xmin}, xmax={self.xmax}, length={self.length}, bc={self.boundary_conditions})"
+
+    # ============================================================================
+    # Geometry ABC implementation
+    # ============================================================================
+
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """
+        Return bounding box of 1D domain.
+
+        Returns:
+            (min_coords, max_coords) as 1D arrays
+        """
+        return np.array([self.xmin]), np.array([self.xmax])
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        Returns:
+            Dictionary with 1D domain configuration
+        """
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        dx = self.length / (self._cached_num_points - 1)
+
+        return {
+            "num_spatial_points": self._cached_num_points,
+            "spatial_shape": (self._cached_num_points,),
+            "spatial_bounds": [(self.xmin, self.xmax)],
+            "spatial_discretization": [self._cached_num_points - 1],  # Number of intervals
+            "legacy_1d_attrs": {
+                "xmin": self.xmin,
+                "xmax": self.xmax,
+                "Lx": self.length,
+                "Nx": self._cached_num_points - 1,
+                "dx": dx,
+                "xSpace": self.get_spatial_grid(),
+            },
+        }
+
+    # ============================================================================
+    # CartesianGrid ABC implementation
+    # ============================================================================
+
+    def get_grid_spacing(self) -> list[float]:
+        """
+        Get grid spacing.
+
+        Returns:
+            [dx] as single-element list
+
+        Raises:
+            ValueError: If grid not yet created
+        """
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        dx = self.length / (self._cached_num_points - 1)
+        return [dx]
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """
+        Get grid shape.
+
+        Returns:
+            (num_points,) as single-element tuple
+
+        Raises:
+            ValueError: If grid not yet created
+        """
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        return (self._cached_num_points,)
+
+    # ============================================================================
+    # Solver Operation Interface
+    # ============================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """
+        Return finite difference Laplacian operator for 1D.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: tuple[int]) -> float
+        """
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        dx = self.length / (self._cached_num_points - 1)
+
+        def laplacian_1d(u: NDArray, idx: tuple[int]) -> float:
+            """
+            Compute 1D Laplacian: d²u/dx².
+
+            Args:
+                u: Solution array of shape (num_points,)
+                idx: Grid index as single-element tuple (i,)
+
+            Returns:
+                Laplacian value at idx
+            """
+            i = idx[0]
+            n = len(u)
+
+            # Handle boundaries with clamping
+            i_plus = min(i + 1, n - 1)
+            i_minus = max(i - 1, 0)
+
+            # Central difference: (u[i+1] - 2*u[i] + u[i-1]) / dx²
+            laplacian = (u[i_plus] - 2.0 * u[i] + u[i_minus]) / (dx**2)
+
+            return float(laplacian)
+
+        return laplacian_1d
+
+    def get_gradient_operator(self) -> Callable:
+        """
+        Return finite difference gradient operator for 1D.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: tuple[int]) -> NDArray
+        """
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        dx = self.length / (self._cached_num_points - 1)
+
+        def gradient_1d(u: NDArray, idx: tuple[int]) -> NDArray:
+            """
+            Compute 1D gradient: du/dx.
+
+            Args:
+                u: Solution array of shape (num_points,)
+                idx: Grid index as single-element tuple (i,)
+
+            Returns:
+                Gradient as 1D array [du/dx]
+            """
+            i = idx[0]
+            n = len(u)
+
+            # Handle boundaries with clamping
+            i_plus = min(i + 1, n - 1)
+            i_minus = max(i - 1, 0)
+
+            # Central difference: (u[i+1] - u[i-1]) / (2*dx)
+            gradient = (u[i_plus] - u[i_minus]) / (2.0 * dx)
+
+            return np.array([gradient])
+
+        return gradient_1d
+
+    def get_interpolator(self) -> Callable:
+        """
+        Return linear interpolator for 1D.
+
+        Returns:
+            Function with signature: (u: NDArray, point: NDArray) -> float
+        """
+        if self._cached_grid is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        x_grid = np.array(self._cached_grid)
+
+        def interpolate_1d(u: NDArray, point: NDArray) -> float:
+            """
+            Linear interpolation in 1D.
+
+            Args:
+                u: Solution array of shape (num_points,)
+                point: Physical coordinate as array [x]
+
+            Returns:
+                Interpolated value
+            """
+            x = point[0]
+
+            # Use numpy interp for 1D linear interpolation
+            return float(np.interp(x, x_grid, u))
+
+        return interpolate_1d
+
+    def get_boundary_handler(self):
+        """
+        Return boundary condition handler for 1D domain.
+
+        Returns:
+            BoundaryConditions object for this domain
+        """
+        return self.boundary_conditions
