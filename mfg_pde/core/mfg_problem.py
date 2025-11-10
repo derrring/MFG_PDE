@@ -548,8 +548,15 @@ class MFGProblem:
         self.spatial_bounds = spatial_bounds
         self.spatial_discretization = spatial_discretization
 
-        # Spatial shape from discretization
-        self.spatial_shape = tuple(spatial_discretization)
+        # Spatial shape from geometry (actual grid size, not discretization)
+        # For grids with resolution N, actual points = N+1 per dimension
+        if dimension == 1:
+            self.spatial_shape = (spatial_discretization[0] + 1,)
+        elif dimension == 2 or dimension == 3:
+            self.spatial_shape = tuple(n + 1 for n in spatial_discretization)
+        else:
+            # For TensorProductGrid, use num_spatial_points from geometry
+            self.spatial_shape = (geometry.num_spatial_points,)
 
         # Time domain
         self.T: float = T
@@ -1248,10 +1255,18 @@ class MFGProblem:
                 self.m_init[i] = self._m_initial(self.xSpace[i])
         else:
             # n-D: Gaussian at center of domain
-            # Get grid coordinates
-            if self._grid is not None:
-                # Use TensorProductGrid
-                all_points = self._grid.flatten()  # Shape: (N_total, dimension)
+            # Use geometry interface instead of deprecated _grid
+            if hasattr(self, "geometry") and self.geometry is not None:
+                # Get spatial grid from geometry (works for all geometry types)
+                spatial_grid = self.geometry.get_spatial_grid()
+
+                # For CartesianGrid geometries, spatial_grid is already (N, d) array
+                # For other geometries, it should also be (N, d)
+                if spatial_grid.ndim == 1:
+                    # 1D case or flattened - reshape if needed
+                    all_points = spatial_grid.reshape(-1, 1)
+                else:
+                    all_points = spatial_grid
 
                 # Center of domain
                 center = np.array([(b[0] + b[1]) / 2 for b in self.spatial_bounds])
