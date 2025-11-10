@@ -79,6 +79,7 @@ from .mazes import (
     PerfectMazeGenerator,
     VoronoiMazeGenerator,
 )
+from .mesh_1d import Mesh1D
 from .mesh_2d import Mesh2D
 from .mesh_3d import Mesh3D
 from .mesh_manager import MeshManager, MeshPipeline
@@ -117,6 +118,7 @@ __all__ = [
     "DirichletBC3D",
     # Geometry components (new naming convention)
     "SimpleGrid1D",
+    "Mesh1D",
     "Mesh2D",
     "Mesh3D",
     # Backward compatibility aliases
