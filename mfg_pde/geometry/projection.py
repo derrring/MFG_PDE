@@ -44,15 +44,117 @@ References:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import NDArray
 
     from mfg_pde.backends.backend_protocol import BaseBackend
     from mfg_pde.geometry.base import BaseGeometry
+
+
+class ProjectionRegistry:
+    """
+    Registry for specialized geometry projectors with hierarchical fallback.
+
+    Allows registration of optimized projector functions for specific geometry
+    type pairs, avoiding O(N²) implementations while supporting extensibility.
+
+    Registration Pattern:
+        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D)
+        def optimized_grid2d_projector(source, target, values):
+            # Optimized 2D grid-to-grid projection
+            return projected_values
+
+    Lookup Hierarchy:
+        1. Exact type match: SimpleGrid2D → SimpleGrid2D
+        2. Category match: CartesianGrid → CartesianGrid (base classes)
+        3. None if no match found (caller uses generic fallback)
+
+    This pattern scales to O(N) specialized projectors, not O(N²).
+    """
+
+    _registry: ClassVar[dict[tuple[type, type, str], Callable]] = {}
+
+    @classmethod
+    def register(cls, source_type: type, target_type: type, direction: Literal["hjb_to_fp", "fp_to_hjb"] = "hjb_to_fp"):
+        """
+        Decorator to register a specialized projector function.
+
+        Args:
+            source_type: Source geometry type (e.g., SimpleGrid2D)
+            target_type: Target geometry type (e.g., SimpleGrid2D)
+            direction: Projection direction ("hjb_to_fp" or "fp_to_hjb")
+
+        Returns:
+            Decorator function
+
+        Example:
+            @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+            def fast_grid2d_interpolation(source, target, values, **kwargs):
+                # Optimized implementation
+                return projected_values
+        """
+
+        def decorator(func: Callable) -> Callable:
+            key = (source_type, target_type, direction)
+            cls._registry[key] = func
+            return func
+
+        return decorator
+
+    @classmethod
+    def get_projector(
+        cls, source: BaseGeometry, target: BaseGeometry, direction: Literal["hjb_to_fp", "fp_to_hjb"]
+    ) -> Callable | None:
+        """
+        Get specialized projector with hierarchical fallback.
+
+        Lookup order:
+        1. Exact type match: (type(source), type(target), direction)
+        2. Category match: isinstance checks against registered base types
+        3. None if no match
+
+        Args:
+            source: Source geometry instance
+            target: Target geometry instance
+            direction: Projection direction
+
+        Returns:
+            Projector function or None if no specialized projector found
+        """
+        # Try exact type match first
+        exact_key = (type(source), type(target), direction)
+        if exact_key in cls._registry:
+            return cls._registry[exact_key]
+
+        # Try category match (isinstance checks)
+        for (src_type, tgt_type, reg_direction), func in cls._registry.items():
+            if reg_direction == direction:
+                if isinstance(source, src_type) and isinstance(target, tgt_type):
+                    return func
+
+        # No specialized projector found
+        return None
+
+    @classmethod
+    def list_registered(cls) -> list[tuple[type, type, str]]:
+        """
+        List all registered projector type pairs.
+
+        Returns:
+            List of (source_type, target_type, direction) tuples
+        """
+        return list(cls._registry.keys())
+
+    @classmethod
+    def clear(cls) -> None:
+        """Clear all registered projectors (mainly for testing)."""
+        cls._registry.clear()
 
 
 class GeometryProjector:
@@ -93,6 +195,10 @@ class GeometryProjector:
         self._hjb_points: NDArray | None = None
         self._fp_points: NDArray | None = None
 
+        # Cache for registered projectors
+        self._hjb_to_fp_func: Callable | None = None
+        self._fp_to_hjb_func: Callable | None = None
+
         # Detect projection methods if auto
         if projection_method == "auto":
             self._setup_projection_methods()
@@ -104,24 +210,39 @@ class GeometryProjector:
         """Auto-detect appropriate projection methods based on geometry types."""
         from mfg_pde.geometry.base import CartesianGrid
 
-        hjb_is_grid = isinstance(self.hjb_geometry, CartesianGrid)
-        fp_is_grid = isinstance(self.fp_geometry, CartesianGrid)
+        # Check registry first for specialized projectors
+        self._hjb_to_fp_func = ProjectionRegistry.get_projector(self.hjb_geometry, self.fp_geometry, "hjb_to_fp")
+        self._fp_to_hjb_func = ProjectionRegistry.get_projector(self.fp_geometry, self.hjb_geometry, "fp_to_hjb")
 
-        # Check for particle-like geometry (has num_particles attribute)
-        fp_is_particles = hasattr(self.fp_geometry, "num_particles")
+        # If registered projector found, use registry method
+        if self._hjb_to_fp_func is not None:
+            self.hjb_to_fp_method = "registry"
+        if self._fp_to_hjb_func is not None:
+            self.fp_to_hjb_method = "registry"
 
-        if hjb_is_grid and fp_is_particles:
-            # Most common: Grid HJB + Particle FP
-            self.hjb_to_fp_method = "interpolation"  # Grid → Particle
-            self.fp_to_hjb_method = "kde"  # Particle → Grid
-        elif hjb_is_grid and fp_is_grid:
-            # Both grids (possibly different resolution)
-            self.hjb_to_fp_method = "grid_interpolation"
-            self.fp_to_hjb_method = "grid_restriction"
-        else:
-            # Generic fallback
-            self.hjb_to_fp_method = "interpolation"
-            self.fp_to_hjb_method = "nearest"
+        # Otherwise, fall back to auto-detection
+        if self._hjb_to_fp_func is None or self._fp_to_hjb_func is None:
+            hjb_is_grid = isinstance(self.hjb_geometry, CartesianGrid)
+            fp_is_grid = isinstance(self.fp_geometry, CartesianGrid)
+
+            # Check for particle-like geometry (has num_particles attribute)
+            fp_is_particles = hasattr(self.fp_geometry, "num_particles")
+
+            if self._hjb_to_fp_func is None:
+                if hjb_is_grid and fp_is_particles:
+                    self.hjb_to_fp_method = "interpolation"  # Grid → Particle
+                elif hjb_is_grid and fp_is_grid:
+                    self.hjb_to_fp_method = "grid_interpolation"
+                else:
+                    self.hjb_to_fp_method = "interpolation"
+
+            if self._fp_to_hjb_func is None:
+                if hjb_is_grid and fp_is_particles:
+                    self.fp_to_hjb_method = "kde"  # Particle → Grid
+                elif hjb_is_grid and fp_is_grid:
+                    self.fp_to_hjb_method = "grid_restriction"
+                else:
+                    self.fp_to_hjb_method = "nearest"
 
     def project_hjb_to_fp(self, U_on_hjb_geometry: NDArray, backend: BaseBackend | None = None) -> NDArray:
         """
@@ -148,6 +269,10 @@ class GeometryProjector:
         # Same geometry: no projection needed
         if self.hjb_geometry is self.fp_geometry:
             return U_on_hjb_geometry
+
+        # Try registered projector first
+        if self.hjb_to_fp_method == "registry" and self._hjb_to_fp_func is not None:
+            return self._hjb_to_fp_func(self.hjb_geometry, self.fp_geometry, U_on_hjb_geometry, backend=backend)
 
         # Get FP spatial points (where to evaluate U)
         if self._fp_points is None:
@@ -197,6 +322,12 @@ class GeometryProjector:
         # Same geometry: no projection needed
         if self.hjb_geometry is self.fp_geometry:
             return M_on_fp_geometry
+
+        # Try registered projector first
+        if self.fp_to_hjb_method == "registry" and self._fp_to_hjb_func is not None:
+            return self._fp_to_hjb_func(
+                self.fp_geometry, self.hjb_geometry, M_on_fp_geometry, bandwidth=bandwidth, backend=backend
+            )
 
         # Apply appropriate projection method
         if self.fp_to_hjb_method == "kde":

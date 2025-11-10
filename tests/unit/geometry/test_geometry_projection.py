@@ -291,5 +291,149 @@ class TestEdgeCases:
         np.testing.assert_allclose(U_projected, 5.0 * np.ones((11, 11)), rtol=1e-10)
 
 
+class TestProjectionRegistry:
+    """Test ProjectionRegistry functionality (Issue #257 Phase 2)."""
+
+    def setup_method(self):
+        """Clear registry before each test."""
+        from mfg_pde.geometry import ProjectionRegistry
+
+        ProjectionRegistry.clear()
+
+    def teardown_method(self):
+        """Clear registry after each test."""
+        from mfg_pde.geometry import ProjectionRegistry
+
+        ProjectionRegistry.clear()
+
+    def test_registry_registration(self):
+        """Test basic registration of custom projector."""
+        from mfg_pde.geometry import ProjectionRegistry
+
+        # Register a custom projector
+        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        def custom_projector(source, target, values, **kwargs):
+            return values * 2.0  # Double all values
+
+        # Check it's registered
+        registered = ProjectionRegistry.list_registered()
+        assert (SimpleGrid2D, SimpleGrid2D, "hjb_to_fp") in registered
+
+    def test_registry_lookup_exact_match(self):
+        """Test registry lookup with exact type match."""
+        from mfg_pde.geometry import ProjectionRegistry
+
+        # Register custom projector
+        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        def custom_projector(source, target, values, **kwargs):
+            return values * 2.0
+
+        # Create geometries
+        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+
+        # Lookup should find exact match
+        func = ProjectionRegistry.get_projector(grid1, grid2, "hjb_to_fp")
+        assert func is not None
+        assert func is custom_projector
+
+    def test_registry_integration_with_projector(self):
+        """Test that GeometryProjector uses registered projectors."""
+        from mfg_pde.geometry import GeometryProjector, ProjectionRegistry
+
+        # Register custom projector that doubles values
+        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        def double_values(source, target, values, **kwargs):
+            # Note: Must return proper shape for target geometry
+            # In this test, source and target have same resolution
+            return values * 2.0
+
+        # Create projector - should auto-detect and use registry
+        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2, projection_method="auto")
+
+        # Check that registry method is selected
+        assert projector.hjb_to_fp_method == "registry"
+
+        # Test projection uses custom function
+        U = np.ones((6, 6))
+        U_projected = projector.project_hjb_to_fp(U)
+        np.testing.assert_allclose(U_projected, 2.0 * np.ones((6, 6)))
+
+    def test_registry_fallback_to_builtin(self):
+        """Test that projector falls back to built-in methods when no registry match."""
+        from mfg_pde.geometry import GeometryProjector
+
+        # Don't register anything - registry is empty
+
+        # Create projector with different resolutions
+        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2, projection_method="auto")
+
+        # Should fall back to built-in grid_interpolation
+        assert projector.hjb_to_fp_method == "grid_interpolation"
+        assert projector.fp_to_hjb_method == "grid_restriction"
+
+    def test_registry_category_match(self):
+        """Test registry lookup with category (base class) match."""
+        from mfg_pde.geometry import ProjectionRegistry
+        from mfg_pde.geometry.base import CartesianGrid
+
+        # Register projector for CartesianGrid base class
+        @ProjectionRegistry.register(CartesianGrid, CartesianGrid, "hjb_to_fp")
+        def cartesian_projector(source, target, values, **kwargs):
+            return values * 3.0
+
+        # Test with SimpleGrid2D (which is a CartesianGrid)
+        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+
+        # Should find category match
+        func = ProjectionRegistry.get_projector(grid1, grid2, "hjb_to_fp")
+        assert func is not None
+        assert func is cartesian_projector
+
+    def test_registry_direction_specificity(self):
+        """Test that registry distinguishes between hjb_to_fp and fp_to_hjb."""
+        from mfg_pde.geometry import ProjectionRegistry
+
+        # Register different functions for each direction
+        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        def hjb_to_fp_func(source, target, values, **kwargs):
+            return values * 2.0
+
+        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "fp_to_hjb")
+        def fp_to_hjb_func(source, target, values, **kwargs):
+            return values * 3.0
+
+        grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+
+        # Check correct functions are returned for each direction
+        func_hjb = ProjectionRegistry.get_projector(grid, grid, "hjb_to_fp")
+        func_fp = ProjectionRegistry.get_projector(grid, grid, "fp_to_hjb")
+
+        assert func_hjb is hjb_to_fp_func
+        assert func_fp is fp_to_hjb_func
+
+    def test_registry_clear(self):
+        """Test clearing the registry."""
+        from mfg_pde.geometry import ProjectionRegistry
+
+        # Register something
+        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        def temp_func(source, target, values, **kwargs):
+            return values
+
+        assert len(ProjectionRegistry.list_registered()) > 0
+
+        # Clear
+        ProjectionRegistry.clear()
+
+        # Should be empty
+        assert len(ProjectionRegistry.list_registered()) == 0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -96,7 +96,7 @@ from .network_geometry import (
 )
 
 # Geometry projection for hybrid solvers (Issue #257)
-from .projection import GeometryProjector
+from .projection import GeometryProjector, ProjectionRegistry
 from .simple_grid import SimpleGrid2D, SimpleGrid3D
 from .simple_grid_1d import SimpleGrid1D
 from .tensor_product_grid import TensorProductGrid
@@ -137,6 +137,7 @@ __all__ = [
     "GeometryType",
     # Geometry projection (Issue #257)
     "GeometryProjector",
+    "ProjectionRegistry",
     "GridNetwork",
     "Interval1D",
     "MFGBoundaryHandler2D",
