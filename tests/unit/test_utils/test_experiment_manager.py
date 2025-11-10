@@ -87,8 +87,8 @@ def create_mock_problem():
     problem.T = 1.0
     problem.Nx = 11
     problem.Nt = 21
-    problem.Dx = 0.1
-    problem.Dt = 0.05
+    problem.dx = 0.1
+    problem.dt = 0.05
     problem.xmin = 0.0
     problem.xmax = 1.0
     problem.sigma = 0.1

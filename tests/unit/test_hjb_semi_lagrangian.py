@@ -65,8 +65,8 @@ class TestHJBSemiLagrangianInitialization:
         assert hasattr(solver, "dt")
         assert hasattr(solver, "dx")
         assert len(solver.x_grid) == problem.Nx + 1
-        assert np.isclose(solver.dt, problem.Dt)
-        assert np.isclose(solver.dx, problem.Dx)
+        assert np.isclose(solver.dt, problem.dt)
+        assert np.isclose(solver.dx, problem.dx)
 
 
 class TestHJBSemiLagrangianSolveHJBSystem:

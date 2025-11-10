@@ -29,7 +29,7 @@ def test_kde_normalization():
     U_zero = np.zeros((problem.Nt + 1, problem.Nx + 1))
     M_result1 = solver1.solve_fp_system(m_initial_condition=problem.m_init, U_solution_for_drift=U_zero)
 
-    mass1 = np.sum(M_result1 * problem.Dx, axis=1)
+    mass1 = np.sum(M_result1 * problem.dx, axis=1)
     print(f"  Initial mass: {mass1[0]:.6f}")
     print(f"  Final mass: {mass1[-1]:.6f}")
     print(f"  Mass loss: {mass1[0] - mass1[-1]:.6f} ({(mass1[0] - mass1[-1]) / mass1[0] * 100:.2f}%)")
@@ -45,7 +45,7 @@ def test_kde_normalization():
 
     M_result2 = solver2.solve_fp_system(m_initial_condition=problem.m_init, U_solution_for_drift=U_zero)
 
-    mass2 = np.sum(M_result2 * problem.Dx, axis=1)
+    mass2 = np.sum(M_result2 * problem.dx, axis=1)
     print(f"  Initial mass: {mass2[0]:.6f}")
     print(f"  Final mass: {mass2[-1]:.6f}")
     print(f"  Mass loss: {mass2[0] - mass2[-1]:.6f} ({(mass2[0] - mass2[-1]) / mass2[0] * 100:.2f}%)")
@@ -61,7 +61,7 @@ def test_kde_normalization():
 
     M_result3 = solver3.solve_fp_system(m_initial_condition=problem.m_init, U_solution_for_drift=U_zero)
 
-    mass3 = np.sum(M_result3 * problem.Dx, axis=1)
+    mass3 = np.sum(M_result3 * problem.dx, axis=1)
     print(f"  Initial mass: {mass3[0]:.6f}")
     print(f"  Final mass: {mass3[-1]:.6f}")
     print(f"  Mass loss: {mass3[0] - mass3[-1]:.6f} ({(mass3[0] - mass3[-1]) / mass3[0] * 100:.2f}%)")
