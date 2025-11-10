@@ -74,8 +74,8 @@ class GradientDescentMFGSolver:
             # Legacy 1D interface
             self.Nt = problem.Nt
             self.Nx = problem.Nx
-            self.Dt = problem.Dt
-            self.Dx = problem.Dx
+            self.Dt = problem.dt
+            self.Dx = problem.dx
             self.sigma = problem.sigma
             # Get initial/final conditions
             self.m_init = problem.get_initial_m()

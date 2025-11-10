@@ -194,7 +194,7 @@ def demonstrate_policy_iteration_structure():
     # Compute optimal policy from value function
     Nt, Nx_plus_1 = U_value.shape
     Nx = Nx_plus_1 - 1
-    dx = problem.Dx
+    dx = problem.dx
 
     policy_from_value = np.zeros_like(U_value)
 

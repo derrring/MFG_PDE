@@ -335,7 +335,7 @@ def create_budget_aware_initial_guess(problem: LagrangianMFGProblem) -> np.ndarr
 
             # Interpolate from initial distribution
             if problem.xmin <= x_original <= problem.xmax:
-                idx = (x_original - problem.xmin) / problem.Dx
+                idx = (x_original - problem.xmin) / problem.dx
                 i_idx = int(idx)
                 alpha = idx - i_idx
 
