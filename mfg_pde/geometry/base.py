@@ -705,6 +705,213 @@ class UnstructuredMesh(Geometry):
         }
 
 
+class ImplicitGeometry(Geometry):
+    """
+    Abstract base class for implicit geometries via signed distance functions (SDFs).
+
+    Implicit geometries represent domains D ⊂ ℝ^d by a function φ: ℝ^d → ℝ where:
+        φ(x) < 0  ⟺  x ∈ D    (interior)
+        φ(x) = 0  ⟺  x ∈ ∂D   (boundary)
+        φ(x) > 0  ⟺  x ∉ D    (exterior)
+
+    Advantages:
+        - Memory: O(d) parameters instead of O(N^d) mesh vertices
+        - Dimension-agnostic: Same code works for 2D, 3D, ..., 100D
+        - Obstacles: Free via CSG operations (union, intersection, difference)
+        - Particle-friendly: Natural sampling and boundary handling
+
+    Solver Methods:
+        - Meshfree collocation methods (RBF, SPH)
+        - Particle methods (Lagrangian)
+        - Level set methods
+
+    Use Cases:
+        - High-dimensional MFG (d > 3)
+        - Problems with complex obstacles
+        - Particle-based simulations
+        - Moving boundary problems
+
+    Subclasses must implement:
+        - signed_distance(x): Core SDF evaluation
+        - get_bounding_box(): For rejection sampling
+
+    Examples:
+        >>> from mfg_pde.geometry.implicit import Hyperrectangle
+        >>> domain = Hyperrectangle(bounds=np.array([[0, 1], [0, 1]]))
+        >>> domain.contains(np.array([0.5, 0.5]))  # True
+        >>> particles = domain.sample_uniform(1000)
+    """
+
+    @abstractmethod
+    def signed_distance(self, x: NDArray) -> float | NDArray:
+        """
+        Compute signed distance function φ(x).
+
+        Convention: φ(x) < 0 inside, φ(x) = 0 on boundary, φ(x) > 0 outside
+
+        Args:
+            x: Point(s) to evaluate - shape (d,) or (N, d)
+
+        Returns:
+            Signed distance(s) - scalar or array of shape (N,)
+        """
+
+    @abstractmethod
+    def get_bounding_box(self) -> NDArray:
+        """
+        Get axis-aligned bounding box.
+
+        Returns:
+            bounds: Array of shape (d, 2) where bounds[i] = [min_i, max_i]
+        """
+
+    def contains(self, x: NDArray, tol: float = 0.0) -> bool | NDArray:
+        """Check if point(s) are inside domain."""
+        return self.signed_distance(x) <= tol
+
+    def sample_uniform(self, n_samples: int, max_attempts: int = 100, seed: int | None = None) -> NDArray:
+        """
+        Sample particles uniformly inside domain via rejection sampling.
+
+        Args:
+            n_samples: Number of particles to sample
+            max_attempts: Maximum rejection attempts per particle
+            seed: Random seed for reproducibility
+
+        Returns:
+            particles: Array of shape (n_samples, d)
+        """
+        if seed is not None:
+            np.random.seed(seed)
+
+        bounds = self.get_bounding_box()
+        dim = self.dimension
+
+        particles = []
+        attempts = 0
+        max_total_attempts = n_samples * max_attempts
+
+        while len(particles) < n_samples and attempts < max_total_attempts:
+            batch_size = min(n_samples - len(particles), 1000)
+            candidates = np.random.uniform(low=bounds[:, 0], high=bounds[:, 1], size=(batch_size, dim))
+
+            inside = self.contains(candidates)
+            if np.isscalar(inside):
+                inside = np.array([inside])
+
+            valid = candidates[inside]
+            particles.append(valid)
+            attempts += batch_size
+
+        if len(particles) == 0 or sum(len(p) for p in particles) < n_samples:
+            raise RuntimeError(
+                f"Rejection sampling failed: only found {sum(len(p) for p in particles)}/{n_samples} "
+                f"valid particles after {attempts} attempts"
+            )
+
+        all_particles = np.vstack(particles)
+        return all_particles[:n_samples]
+
+    # ============================================================================
+    # Geometry ABC implementation
+    # ============================================================================
+
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """Return bounding box as (min_coords, max_coords)."""
+        bounds = self.get_bounding_box()
+        return bounds[:, 0], bounds[:, 1]
+
+    def get_problem_config(self) -> dict:
+        """Return configuration dict for MFGProblem initialization."""
+        n_points = self.num_spatial_points
+        bounds = self.get_bounding_box()
+
+        return {
+            "num_spatial_points": n_points,
+            "spatial_shape": (n_points,),  # Flattened for implicit
+            "spatial_bounds": [tuple(b) for b in bounds],
+            "spatial_discretization": None,  # No regular grid
+            "implicit_domain": True,
+        }
+
+    # ============================================================================
+    # Solver Operation Interface (Meshfree methods)
+    # ============================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """
+        Return Laplacian operator for meshfree methods.
+
+        For implicit geometries, this uses finite differences on sampled
+        collocation points or radial basis function (RBF) approximations.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: tuple[int, ...]) -> float
+
+        Note: This is a placeholder. Full RBF implementation requires
+        assembling differentiation matrices.
+        """
+
+        def laplacian_meshfree(u: NDArray, idx: tuple[int, ...]) -> float:
+            """
+            Placeholder Laplacian for meshfree methods.
+
+            TODO: Implement proper RBF-based Laplacian
+            """
+            raise NotImplementedError(
+                "Meshfree Laplacian requires RBF differentiation matrices. Use particle-collocation solvers instead."
+            )
+
+        return laplacian_meshfree
+
+    def get_gradient_operator(self) -> Callable:
+        """
+        Return gradient operator for meshfree methods.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: tuple[int, ...]) -> NDArray
+        """
+
+        def gradient_meshfree(u: NDArray, idx: tuple[int, ...]) -> NDArray:
+            """
+            Placeholder gradient for meshfree methods.
+
+            TODO: Implement proper RBF-based gradient
+            """
+            raise NotImplementedError(
+                "Meshfree gradient requires RBF differentiation matrices. Use particle-collocation solvers instead."
+            )
+
+        return gradient_meshfree
+
+    def get_interpolator(self) -> Callable:
+        """
+        Return RBF interpolator for meshfree methods.
+
+        Returns:
+            Function with signature: (u: NDArray, point: NDArray) -> float
+        """
+
+        def interpolate_rbf(u: NDArray, point: NDArray) -> float:
+            """
+            Placeholder RBF interpolation.
+
+            TODO: Implement proper RBF interpolation
+            """
+            raise NotImplementedError("RBF interpolation not yet implemented. Use nearest-neighbor as fallback.")
+
+        return interpolate_rbf
+
+    def get_boundary_handler(self):
+        """
+        Return SDF-based boundary condition handler.
+
+        For implicit domains, boundary handling uses the signed distance
+        function to project particles back into the domain.
+        """
+        return {"type": "sdf_projection", "sdf": self.signed_distance}
+
+
 class NetworkGraph(Geometry):
     """
     Abstract base class for network/graph geometries.
