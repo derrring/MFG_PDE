@@ -1247,6 +1247,11 @@ class MFGProblem:
         if integral_m_init > 1e-10:
             self.m_init /= integral_m_init
 
+    @property
+    def dt(self) -> float:
+        """Time step size (lowercase alias for Dt for solver compatibility)."""
+        return self.Dt
+
     def _setup_default_initial_density(self) -> None:
         """Setup default initial density (Gaussian at center for n-D problems)."""
         if self.dimension == 1:

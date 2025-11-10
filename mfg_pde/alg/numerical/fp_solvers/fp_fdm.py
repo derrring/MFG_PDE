@@ -34,18 +34,15 @@ class FPFDMSolver(BaseFPSolver):
         int
             Problem dimension (1, 2, 3, ...)
         """
-        # Check for GridBasedMFGProblem with TensorProductGrid
-        if hasattr(problem, "geometry") and hasattr(problem.geometry, "grid"):
-            if hasattr(problem.geometry.grid, "dimension"):
-                return problem.geometry.grid.dimension
-            if hasattr(problem.geometry.grid, "ndim"):
-                return problem.geometry.grid.ndim
+        # Try geometry.dimension first (unified interface)
+        if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
+            return problem.geometry.dimension
 
-        # Check for explicit dimension attribute
+        # Fall back to problem.dimension
         if hasattr(problem, "dimension"):
             return problem.dimension
 
-        # Check for 1D attributes (Nx but no Ny)
+        # Legacy 1D detection
         if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
             return 1
 
@@ -94,16 +91,16 @@ class FPFDMSolver(BaseFPSolver):
         self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
     ) -> np.ndarray:
         """Original 1D FP solver implementation."""
-        # Handle both old 1D interface and new GridBasedMFGProblem interface
+        # Handle both old 1D interface and new geometry-based interface
         if getattr(self.problem, "Nx", None) is not None:
             # Old 1D interface
             Nx = self.problem.Nx + 1
             Dx = self.problem.Dx
             Dt = self.problem.Dt
         else:
-            # GridBasedMFGProblem interface
-            Nx = self.problem.geometry.grid.num_points[0]
-            Dx = self.problem.geometry.grid.spacing[0]
+            # Geometry-based interface (CartesianGrid)
+            Nx = self.problem.geometry.get_grid_shape()[0]
+            Dx = self.problem.geometry.get_grid_spacing()[0]
             Dt = self.problem.dt
 
         Nt = self.problem.Nt + 1
@@ -444,15 +441,15 @@ def _solve_fp_nd_full_system(
     """
     # Get problem dimensions
     Nt = problem.Nt + 1
-    ndim = problem.geometry.grid.dimension
-    shape = tuple(problem.geometry.grid.num_points)
+    ndim = problem.geometry.dimension
+    shape = tuple(problem.geometry.get_grid_shape())
     dt = problem.dt
     sigma = problem.sigma
     coupling_coefficient = getattr(problem, "coupling_coefficient", 1.0)
 
-    # Get grid spacing
-    spacing = problem.geometry.grid.spacing
-    grid = problem.geometry.grid
+    # Get grid spacing and geometry
+    spacing = problem.geometry.get_grid_spacing()
+    grid = problem.geometry  # Geometry IS the grid
 
     # Validate input shapes
     assert m_initial_condition.shape == shape, (

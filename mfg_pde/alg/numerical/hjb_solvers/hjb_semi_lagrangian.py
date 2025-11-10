@@ -130,16 +130,18 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             self.dx = problem.Dx
             self.grid = None  # No TensorProductGrid for 1D
         else:
-            # nD problem: Use TensorProductGrid
-            if not hasattr(problem, "geometry") or not hasattr(problem.geometry, "grid"):
+            # nD problem: Use CartesianGrid interface
+            from mfg_pde.geometry.base import CartesianGrid
+
+            if not isinstance(problem.geometry, CartesianGrid):
                 raise ValueError(
-                    f"Multi-dimensional problem must have geometry.grid (TensorProductGrid). "
+                    f"Multi-dimensional problem must have CartesianGrid geometry (SimpleGrid2D/3D or TensorProductGrid). "
                     f"Got dimension={self.dimension}"
                 )
-            self.grid = problem.geometry.grid
+            self.grid = problem.geometry  # Geometry IS the grid
             self.dt = problem.dt
             # Grid spacing: vector of spacings in each dimension
-            self.spacing = np.array(self.grid.spacing)
+            self.spacing = np.array(self.grid.get_grid_spacing())
             self.x_grid = None  # Not used for nD
 
         # Setup JAX functions if available
@@ -177,18 +179,17 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Raises:
             ValueError: If dimension cannot be determined
         """
-        # Check if it's a GridBasedMFGProblem with explicit dimension
-        if hasattr(problem, "geometry") and hasattr(problem.geometry, "grid"):
-            if hasattr(problem.geometry.grid, "dimension"):
-                return problem.geometry.grid.dimension
+        # Try geometry.dimension first (unified interface)
+        if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
+            return problem.geometry.dimension
 
-        # Check for 1D MFGProblem (has Nx but not Ny)
-        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
-            return 1
-
-        # Check for explicit dimension attribute
+        # Fall back to problem.dimension
         if hasattr(problem, "dimension"):
             return problem.dimension
+
+        # Legacy 1D detection
+        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
+            return 1
 
         # If we can't determine dimension, raise error
         raise ValueError(
