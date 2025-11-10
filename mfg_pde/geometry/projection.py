@@ -535,3 +535,172 @@ class GeometryProjector:
 # class GridToParticleProjector(GeometryProjector):
 #     """Optimized projector for grid → particle conversions."""
 #     ...
+
+
+# =============================================================================
+# FEM Mesh Projections (Delaunay Interpolation)
+# =============================================================================
+
+
+def _mesh_to_grid_delaunay(mesh_geo: BaseGeometry, grid_geo: BaseGeometry, mesh_values: NDArray, **kwargs) -> NDArray:
+    """
+    Project from FEM unstructured mesh to regular grid using Delaunay interpolation.
+
+    This provides higher accuracy than nearest neighbor by respecting the mesh's
+    triangulation structure for linear interpolation.
+
+    Mathematical Formulation:
+        For mesh vertices V = {v_i} with values u_i, project to grid points G = {g_j}:
+        u(g_j) = ∑_i λ_i(g_j) u_i  where λ_i are barycentric coordinates
+
+    Args:
+        mesh_geo: Source FEM mesh (Mesh2D, Mesh3D, etc.)
+        grid_geo: Target regular grid (SimpleGrid2D, SimpleGrid3D, etc.)
+        mesh_values: Values at mesh vertices (N_vertices,)
+        **kwargs: Additional arguments (unused)
+
+    Returns:
+        Values on grid (nx+1, ny+1, ...) or (N_grid,)
+
+    Raises:
+        ImportError: If scipy not available
+
+    Notes:
+        - Uses scipy.interpolate.LinearNDInterpolator internally
+        - Points outside mesh convex hull use nearest neighbor extrapolation
+        - Complexity: O(N log N) setup + O(log N) per query
+        - Preserves C⁰ continuity (unlike nearest neighbor)
+
+    Examples:
+        >>> from mfg_pde.geometry import Mesh2D, SimpleGrid2D
+        >>> mesh = Mesh2D(domain_type="rectangle", bounds=(0,1,0,1), mesh_size=0.05)
+        >>> mesh.generate_mesh()
+        >>> grid = SimpleGrid2D(bounds=(0,1,0,1), resolution=(50,50))
+        >>> U_mesh = ...  # Values at mesh vertices
+        >>> U_grid = _mesh_to_grid_delaunay(mesh, grid, U_mesh)
+    """
+    try:
+        from scipy.interpolate import LinearNDInterpolator
+        from scipy.spatial import KDTree
+    except ImportError as e:
+        raise ImportError(
+            "scipy required for Delaunay interpolation. "
+            "Install: pip install scipy. "
+            "Alternatively, use nearest neighbor fallback (automatic)."
+        ) from e
+
+    # Get mesh vertex positions
+    vertices = mesh_geo.get_spatial_grid()  # (N_vertices, dimension)
+
+    # Create Delaunay interpolator
+    # LinearNDInterpolator automatically uses Delaunay triangulation
+    interpolator = LinearNDInterpolator(vertices, mesh_values)
+
+    # Evaluate at grid points
+    grid_points = grid_geo.get_spatial_grid()  # (N_grid, dimension)
+    grid_values_flat = interpolator(grid_points)
+
+    # Handle extrapolation: points outside mesh convex hull return NaN
+    # Use nearest neighbor for these points
+    nan_mask = np.isnan(grid_values_flat)
+    if np.any(nan_mask):
+        tree = KDTree(vertices)
+        _, nearest_indices = tree.query(grid_points[nan_mask])
+        grid_values_flat[nan_mask] = mesh_values[nearest_indices]
+
+    # Reshape to grid shape if target is CartesianGrid
+    from mfg_pde.geometry.base import CartesianGrid
+
+    if isinstance(grid_geo, CartesianGrid):
+        grid_shape = grid_geo.get_grid_shape()
+        return grid_values_flat.reshape(grid_shape)
+
+    return grid_values_flat
+
+
+def _grid_to_mesh_interpolation(
+    grid_geo: BaseGeometry, mesh_geo: BaseGeometry, grid_values: NDArray, **kwargs
+) -> NDArray:
+    """
+    Project from regular grid to FEM mesh using bilinear/trilinear interpolation.
+
+    This is optimal - grid's built-in interpolator is already efficient for
+    evaluating at arbitrary points.
+
+    Mathematical Formulation:
+        For grid with bilinear/trilinear basis functions φ_i(x):
+        u(v_j) = ∑_i u_i φ_i(v_j)  where v_j are mesh vertices
+
+    Args:
+        grid_geo: Source regular grid (SimpleGrid2D, SimpleGrid3D, etc.)
+        mesh_geo: Target FEM mesh (Mesh2D, Mesh3D, etc.)
+        grid_values: Values on grid (nx+1, ny+1, ...) or (N_grid,)
+        **kwargs: Additional arguments (unused)
+
+    Returns:
+        Values at mesh vertices (N_vertices,)
+
+    Notes:
+        - Uses grid's built-in RegularGridInterpolator
+        - Complexity: O(log N) per query with regular grid structure
+        - Bilinear (2D) or trilinear (3D) interpolation
+        - Points outside grid domain use fill_value=0.0
+
+    Examples:
+        >>> from mfg_pde.geometry import SimpleGrid2D, Mesh2D
+        >>> grid = SimpleGrid2D(bounds=(0,1,0,1), resolution=(50,50))
+        >>> mesh = Mesh2D(domain_type="rectangle", bounds=(0,1,0,1), mesh_size=0.05)
+        >>> mesh.generate_mesh()
+        >>> U_grid = ...  # Values on grid
+        >>> U_mesh = _grid_to_mesh_interpolation(grid, mesh, U_grid)
+    """
+    # Get mesh vertex positions
+    vertices = mesh_geo.get_spatial_grid()  # (N_vertices, dimension)
+
+    # Use grid's built-in interpolator (bilinear/trilinear)
+    interpolator = grid_geo.get_interpolator()
+
+    # Evaluate at mesh vertices
+    mesh_values = interpolator(grid_values, vertices)
+
+    return mesh_values
+
+
+# Automatic registration of FEM mesh projections if scipy available
+def _register_fem_mesh_projections():
+    """
+    Automatically register specialized FEM mesh projections.
+
+    This function is called on module import if scipy is available.
+    It registers Delaunay-based projections for all UnstructuredMesh types
+    (Mesh2D, Mesh3D, TriangularAMRMesh, etc.).
+
+    Registered Projections:
+        - UnstructuredMesh → CartesianGrid: Delaunay interpolation
+        - CartesianGrid → UnstructuredMesh: Bilinear/trilinear interpolation
+
+    Notes:
+        - Uses category-based registration (isinstance checks)
+        - Falls back to nearest neighbor if scipy not available
+        - Silent failure if scipy missing (uses existing fallbacks)
+    """
+    try:
+        # Only register if scipy available
+        import scipy.interpolate
+        import scipy.spatial  # noqa: F401
+
+        from mfg_pde.geometry.base import CartesianGrid, UnstructuredMesh
+
+        # Register mesh → grid (Delaunay interpolation)
+        ProjectionRegistry.register(UnstructuredMesh, CartesianGrid, "fp_to_hjb")(_mesh_to_grid_delaunay)
+
+        # Register grid → mesh (bilinear/trilinear interpolation)
+        ProjectionRegistry.register(CartesianGrid, UnstructuredMesh, "hjb_to_fp")(_grid_to_mesh_interpolation)
+
+    except ImportError:
+        # scipy not available - will use fallback methods
+        pass
+
+
+# Register on module import
+_register_fem_mesh_projections()
