@@ -228,7 +228,7 @@ class HJBWenoSolver(BaseHJBSolver):
         elif self.dimension == 1:
             if getattr(self.problem, "Nx", None) is not None:
                 self.num_grid_points_x = self.problem.Nx + 1
-                self.grid_spacing_x = self.problem.Dx
+                self.grid_spacing_x = self.problem.dx
             else:
                 self.num_grid_points_x = getattr(self.problem, "nx", 64) + 1
                 self.grid_spacing_x = getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
