@@ -458,25 +458,211 @@ class GeometryProjector:
         """
         Restrict values from fine grid to coarse grid.
 
-        Uses averaging for mass-conserving restriction.
+        Uses conservative averaging for mass-conserving restriction when
+        going from fine to coarse, or high-order interpolation when going
+        from coarse to fine (prolongation).
+
+        Parameters
+        ----------
+        values_on_fine_grid : NDArray
+            Values on the source grid
+
+        Returns
+        -------
+        NDArray
+            Values on the target grid
+
+        Notes
+        -----
+        Direction is determined by comparing grid sizes:
+        - Fine → Coarse: Conservative restriction (volume-weighted averaging)
+        - Coarse → Fine: Prolongation (high-order interpolation)
         """
         from mfg_pde.geometry.base import CartesianGrid
 
         if not (isinstance(self.fp_geometry, CartesianGrid) and isinstance(self.hjb_geometry, CartesianGrid)):
             raise ValueError("Both geometries must be CartesianGrid for grid restriction")
 
-        # For now, use interpolation (proper restriction operator would be more accurate)
-        # TODO: Implement proper restriction/prolongation operators
-        target_points = self.hjb_geometry.get_spatial_grid()
-        interpolator = self.fp_geometry.get_interpolator()
-        values_flat = interpolator(values_on_fine_grid, target_points)
+        source_shape = self.fp_geometry.get_grid_shape()
+        target_shape = self.hjb_geometry.get_grid_shape()
 
-        # Reshape to target grid shape
-        if isinstance(self.hjb_geometry, CartesianGrid):
-            target_shape = self.hjb_geometry.get_grid_shape()
-            return values_flat.reshape(target_shape)
+        # Determine direction: restriction (fine→coarse) or prolongation (coarse→fine)
+        source_size = np.prod(source_shape)
+        target_size = np.prod(target_shape)
 
-        return values_flat
+        if source_size > target_size:
+            # Restriction: fine → coarse (use conservative averaging)
+            return self._conservative_restriction(values_on_fine_grid, source_shape, target_shape)
+        else:
+            # Prolongation: coarse → fine (use high-order interpolation)
+            return self._prolongation(values_on_fine_grid, source_shape, target_shape)
+
+    def _conservative_restriction(
+        self, fine_values: NDArray, fine_shape: tuple[int, ...], coarse_shape: tuple[int, ...]
+    ) -> NDArray:
+        """
+        Conservative restriction operator: fine grid → coarse grid.
+
+        Averages fine grid cells into coarse grid cells while preserving
+        total mass (integral). For each coarse cell, computes volume-weighted
+        average of all overlapping fine cells.
+
+        Mathematical formulation:
+            u_coarse[I] = (1/V_I) ∫_{Ω_I} u_fine(x) dx
+                        ≈ (1/|S_I|) Σ_{i ∈ S_I} u_fine[i]
+
+        where S_I is the set of fine cells overlapping coarse cell I,
+        and |S_I| is the number of such cells.
+
+        Parameters
+        ----------
+        fine_values : NDArray
+            Values on fine grid, shape fine_shape
+        fine_shape : tuple
+            Shape of fine grid (Nx_fine, Ny_fine, ...)
+        coarse_shape : tuple
+            Shape of coarse grid (Nx_coarse, Ny_coarse, ...)
+
+        Returns
+        -------
+        NDArray
+            Averaged values on coarse grid, shape coarse_shape
+
+        Notes
+        -----
+        Preserves total mass: ∫ u_coarse = ∫ u_fine (up to discretization error)
+
+        References
+        ----------
+        - Briggs et al. (2000). A Multigrid Tutorial, 2nd ed.
+        - Trottenberg et al. (2001). Multigrid
+        """
+        dimension = len(fine_shape)
+
+        # Compute refinement ratio per dimension
+        ratios = [fine_shape[d] // coarse_shape[d] for d in range(dimension)]
+
+        # Check if refinement is uniform
+        for d in range(dimension):
+            if fine_shape[d] % coarse_shape[d] != 0:
+                # Non-uniform refinement: fall back to interpolation
+                # (Conservative restriction requires uniform refinement)
+                from scipy.interpolate import RegularGridInterpolator
+
+                # Create fine grid coordinates
+                fine_coords = [np.arange(fine_shape[d]) for d in range(dimension)]
+                interpolator = RegularGridInterpolator(fine_coords, fine_values, method="linear")
+
+                # Create coarse grid coordinates (scaled to fine grid indices)
+                coarse_coords_scaled = [np.linspace(0, fine_shape[d] - 1, coarse_shape[d]) for d in range(dimension)]
+                coarse_points = np.meshgrid(*coarse_coords_scaled, indexing="ij")
+                coarse_points_flat = np.column_stack([c.ravel() for c in coarse_points])
+
+                return interpolator(coarse_points_flat).reshape(coarse_shape)
+
+        # Conservative restriction for uniform refinement
+        coarse_values = np.zeros(coarse_shape)
+
+        if dimension == 1:
+            # 1D case: simple averaging
+            r = ratios[0]
+            for i_coarse in range(coarse_shape[0]):
+                coarse_values[i_coarse] = np.mean(fine_values[i_coarse * r : (i_coarse + 1) * r])
+
+        elif dimension == 2:
+            # 2D case: average over blocks
+            rx, ry = ratios
+            for i_coarse in range(coarse_shape[0]):
+                for j_coarse in range(coarse_shape[1]):
+                    block = fine_values[i_coarse * rx : (i_coarse + 1) * rx, j_coarse * ry : (j_coarse + 1) * ry]
+                    coarse_values[i_coarse, j_coarse] = np.mean(block)
+
+        elif dimension == 3:
+            # 3D case: average over blocks
+            rx, ry, rz = ratios
+            for i_coarse in range(coarse_shape[0]):
+                for j_coarse in range(coarse_shape[1]):
+                    for k_coarse in range(coarse_shape[2]):
+                        block = fine_values[
+                            i_coarse * rx : (i_coarse + 1) * rx,
+                            j_coarse * ry : (j_coarse + 1) * ry,
+                            k_coarse * rz : (k_coarse + 1) * rz,
+                        ]
+                        coarse_values[i_coarse, j_coarse, k_coarse] = np.mean(block)
+
+        else:
+            # Higher dimensions: general case
+            # Create index mapping from coarse to fine
+            for idx in np.ndindex(coarse_shape):
+                # Compute fine cell ranges
+                fine_slices = tuple(slice(idx[d] * ratios[d], (idx[d] + 1) * ratios[d]) for d in range(dimension))
+                coarse_values[idx] = np.mean(fine_values[fine_slices])
+
+        return coarse_values
+
+    def _prolongation(
+        self, coarse_values: NDArray, coarse_shape: tuple[int, ...], fine_shape: tuple[int, ...]
+    ) -> NDArray:
+        """
+        Prolongation operator: coarse grid → fine grid.
+
+        Uses high-order interpolation (bilinear in 2D, trilinear in 3D)
+        to transfer values from coarse grid to fine grid.
+
+        This operator is NOT conservative (does not preserve mass). It is
+        intended for prolongating HJB value functions, not densities.
+
+        Mathematical formulation:
+            u_fine(x) ≈ Σ_I u_coarse[I] φ_I(x)
+
+        where φ_I are interpolation basis functions (linear, bilinear, etc.).
+
+        Parameters
+        ----------
+        coarse_values : NDArray
+            Values on coarse grid, shape coarse_shape
+        coarse_shape : tuple
+            Shape of coarse grid (Nx_coarse, Ny_coarse, ...)
+        fine_shape : tuple
+            Shape of fine grid (Nx_fine, Ny_fine, ...)
+
+        Returns
+        -------
+        NDArray
+            Interpolated values on fine grid, shape fine_shape
+
+        Notes
+        -----
+        Uses scipy RegularGridInterpolator with linear interpolation.
+
+        References
+        ----------
+        - Briggs et al. (2000). A Multigrid Tutorial, 2nd ed.
+        - Press et al. (2007). Numerical Recipes, 3rd ed.
+        """
+        from scipy.interpolate import RegularGridInterpolator
+
+        dimension = len(coarse_shape)
+
+        # Create coarse grid coordinates
+        coarse_coords = [np.arange(coarse_shape[d]) for d in range(dimension)]
+
+        # Create interpolator (linear for smoothness)
+        interpolator = RegularGridInterpolator(
+            coarse_coords, coarse_values, method="linear", bounds_error=False, fill_value=None
+        )
+
+        # Create fine grid coordinates (scaled to coarse grid indices)
+        fine_coords_scaled = [np.linspace(0, coarse_shape[d] - 1, fine_shape[d]) for d in range(dimension)]
+
+        # Create meshgrid for fine points
+        fine_points = np.meshgrid(*fine_coords_scaled, indexing="ij")
+        fine_points_flat = np.column_stack([f.ravel() for f in fine_points])
+
+        # Interpolate
+        fine_values = interpolator(fine_points_flat).reshape(fine_shape)
+
+        return fine_values
 
     def _nearest_neighbor_projection(self, source_values: NDArray, target_points: NDArray) -> NDArray:
         """
