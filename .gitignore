@@ -881,3 +881,6 @@ benchmarks/history/
 docs/theory/private/
 docs/development/private/
 examples/outputs/
+# Obsolete planning documents (superseded)
+docs/development/AGGRESSIVE_NAMING_MIGRATION_PLAN.md
+docs/development/REVISED_PROTOCOL_COMPLIANCE_PLAN.md
