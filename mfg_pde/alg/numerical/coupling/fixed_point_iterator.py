@@ -144,8 +144,8 @@ class FixedPointIterator(BaseMFGSolver):
         if hasattr(self.problem, "Nx"):
             # Old 1D interface
             shape = (self.problem.Nx + 1,)
-            grid_spacing = self.problem.Dx  # Renamed from Dx
-            time_step = self.problem.Dt  # Renamed from Dt
+            grid_spacing = self.problem.dx  # Renamed from Dx
+            time_step = self.problem.dt  # Renamed from Dt
         elif hasattr(self.problem, "geometry"):
             # New geometry-based interface (CartesianGrid)
             from mfg_pde.geometry.base import CartesianGrid

@@ -446,12 +446,12 @@ class MFGProblem:
         self.xmax: float = xmax_scalar
         self.Lx: float = xmax_scalar - xmin_scalar
         self.Nx: int = Nx_scalar
-        self.Dx: float = dx
+        self.dx: float = dx  # Lowercase (official naming convention)
 
         # Time domain
         self.T: float = T
         self.Nt: int = Nt
-        self.Dt: float = T / Nt if Nt > 0 else 0.0
+        self.dt: float = T / Nt if Nt > 0 else 0.0  # Lowercase (official naming convention)
 
         # Grid arrays (from geometry)
         self.xSpace: np.ndarray = geometry.get_spatial_grid()
@@ -538,7 +538,7 @@ class MFGProblem:
             self.xmax = spatial_bounds[0][1]
             self.Lx = self.xmax - self.xmin
             self.Nx = spatial_discretization[0]
-            self.Dx = dx
+            self.dx = dx  # Lowercase (official naming convention)
             self.xSpace = geometry.get_spatial_grid()
 
         elif dimension == 2:
@@ -559,7 +559,7 @@ class MFGProblem:
             self.xmax = None
             self.Lx = None
             self.Nx = None
-            self.Dx = None
+            self.dx = None  # Lowercase (official naming convention)
             self.xSpace = None
 
         elif dimension == 3:
@@ -582,7 +582,7 @@ class MFGProblem:
             self.xmax = None
             self.Lx = None
             self.Nx = None
-            self.Dx = None
+            self.dx = None  # Lowercase (official naming convention)
             self.xSpace = None
 
         else:
@@ -596,7 +596,7 @@ class MFGProblem:
             self.xmax = None
             self.Lx = None
             self.Nx = None
-            self.Dx = None
+            self.dx = None  # Lowercase (official naming convention)
             self.xSpace = None
 
         # Store geometry for unified interface
@@ -622,7 +622,7 @@ class MFGProblem:
         # Time domain
         self.T: float = T
         self.Nt: int = Nt
-        self.Dt: float = T / Nt if Nt > 0 else 0.0
+        self.dt: float = T / Nt if Nt > 0 else 0.0  # Lowercase (official naming convention)
         self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Coefficients
@@ -798,7 +798,7 @@ class MFGProblem:
         # Time domain
         self.T = T
         self.Nt = Nt
-        self.Dt = T / Nt if Nt > 0 else 0.0
+        self.dt = T / Nt if Nt > 0 else 0.0  # Lowercase (official naming convention)
         self.tSpace = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Physical parameters
@@ -827,8 +827,8 @@ class MFGProblem:
                 self.xmax = legacy["xmax"]
                 self.Lx = legacy["Lx"]
                 self.Nx = legacy["Nx"]
-                # Handle both "Dx" and "dx" for backward compatibility
-                self.Dx = legacy.get("Dx") or legacy.get("dx")
+                # Handle both "Dx" and "dx" for backward compatibility during migration
+                self.dx = legacy.get("dx") or legacy.get("Dx")  # Lowercase (official naming convention)
                 self.xSpace = legacy["xSpace"]
             else:
                 # AMR or higher dimensional grids
@@ -836,7 +836,7 @@ class MFGProblem:
                 self.xmax = None
                 self.Lx = None
                 self.Nx = None
-                self.Dx = None
+                self.dx = None  # Lowercase (official naming convention)
                 self.xSpace = None
 
             self.domain_type = "grid"
@@ -858,7 +858,7 @@ class MFGProblem:
             self.xmax = None
             self.Lx = None
             self.Nx = None
-            self.Dx = None
+            self.dx = None  # Lowercase (official naming convention)
             self.xSpace = None
 
             self.domain_type = "mesh"
@@ -877,7 +877,7 @@ class MFGProblem:
             self.xmax = None
             self.Lx = None
             self.Nx = None
-            self.Dx = None
+            self.dx = None  # Lowercase (official naming convention)
             self.xSpace = None
 
             self.domain_type = "implicit"
@@ -896,7 +896,7 @@ class MFGProblem:
             self.xmax = None
             self.Lx = None
             self.Nx = None
-            self.Dx = None
+            self.dx = None  # Lowercase (official naming convention)
             self.xSpace = None
 
             self.domain_type = str(geometry.geometry_type.value)
@@ -941,7 +941,7 @@ class MFGProblem:
         # Time domain
         self.T = T
         self.Nt = Nt
-        self.Dt = T / Nt if Nt > 0 else 0.0
+        self.dt = T / Nt if Nt > 0 else 0.0  # Lowercase (official naming convention)
         self.tSpace = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Physical parameters
@@ -958,7 +958,7 @@ class MFGProblem:
         self.xmax = None
         self.Lx = None
         self.Nx = None
-        self.Dx = None
+        self.dx = None  # Lowercase (official naming convention)
         self.xSpace = None
         self._grid = None
         self.geometry = None
@@ -1288,7 +1288,7 @@ class MFGProblem:
         # Normalize initial density
         if self.dimension == 1:
             # 1D normalization (original)
-            integral_m_init = np.sum(self.m_init) * self.Dx
+            integral_m_init = np.sum(self.m_init) * self.dx
         elif self.spatial_bounds is not None and self.spatial_discretization is not None:
             # n-D normalization (integrate over all dimensions)
             # For tensor product grid: integral = sum(m) * prod(dx_i)
@@ -1307,11 +1307,6 @@ class MFGProblem:
 
         if integral_m_init > 1e-10:
             self.m_init /= integral_m_init
-
-    @property
-    def dt(self) -> float:
-        """Time step size (lowercase alias for Dt for solver compatibility)."""
-        return self.Dt
 
     def _setup_default_initial_density(self) -> None:
         """Setup default initial density (Gaussian at center for n-D problems)."""
@@ -1727,14 +1722,14 @@ class MFGProblem:
         # Default Jacobian implementation (only for non-custom problems)
         if not self.is_custom:
             Nx = self.Nx + 1
-            Dx = self.Dx
+            dx = self.dx
             coupling_coefficient = self.coupling_coefficient
 
             J_D_H = np.zeros(Nx)
             J_L_H = np.zeros(Nx)
             J_U_H = np.zeros(Nx)
 
-            if abs(Dx) < 1e-14 or Nx <= 1:
+            if abs(dx) < 1e-14 or Nx <= 1:
                 return J_D_H, J_L_H, J_U_H
 
             U_curr = U_for_jacobian_terms
@@ -1744,12 +1739,12 @@ class MFGProblem:
                 im1 = (i - 1 + Nx) % Nx
 
                 # Derivatives of U_curr
-                p1_i = (U_curr[ip1] - U_curr[i]) / Dx
-                p2_i = (U_curr[i] - U_curr[im1]) / Dx
+                p1_i = (U_curr[ip1] - U_curr[i]) / dx
+                p2_i = (U_curr[i] - U_curr[im1]) / dx
 
-                J_D_H[i] = coupling_coefficient * (npart(p1_i) + ppart(p2_i)) / (Dx**2)
-                J_L_H[i] = -coupling_coefficient * ppart(p2_i) / (Dx**2)
-                J_U_H[i] = -coupling_coefficient * npart(p1_i) / (Dx**2)
+                J_D_H[i] = coupling_coefficient * (npart(p1_i) + ppart(p2_i)) / (dx**2)
+                J_L_H[i] = -coupling_coefficient * ppart(p2_i) / (dx**2)
+                J_U_H[i] = -coupling_coefficient * npart(p1_i) / (dx**2)
 
             return J_D_H, J_L_H, J_U_H
 
@@ -1863,6 +1858,56 @@ class MFGProblem:
                 "time": {"T": self.T, "Nt": self.Nt},
                 "coefficients": {"sigma": self.sigma, "coupling_coefficient": self.coupling_coefficient},
             }
+
+    # ============================================================================
+    # Deprecated Properties for Backward Compatibility (v0.12.0)
+    # ============================================================================
+
+    @property
+    def Dt(self) -> float:
+        """
+        DEPRECATED: Use dt (lowercase) instead.
+
+        Time step size Δt. This property exists for backward compatibility only.
+        Will be removed in v1.0.0.
+
+        Returns:
+            float: Time step size (same as self.dt)
+
+        Warnings:
+            DeprecationWarning: Emitted on access. Use dt instead.
+        """
+        import warnings
+
+        warnings.warn(
+            "Dt is deprecated. Use dt (lowercase) instead. Backward compatibility will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.dt
+
+    @property
+    def Dx(self) -> float | None:
+        """
+        DEPRECATED: Use dx (lowercase) instead.
+
+        Grid spacing Δx for 1D problems. This property exists for backward
+        compatibility only. Will be removed in v1.0.0.
+
+        Returns:
+            float | None: Grid spacing (same as self.dx), or None for non-1D problems
+
+        Warnings:
+            DeprecationWarning: Emitted on access. Use dx instead.
+        """
+        import warnings
+
+        warnings.warn(
+            "Dx is deprecated. Use dx (lowercase) instead. Backward compatibility will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.dx
 
 
 # ============================================================================

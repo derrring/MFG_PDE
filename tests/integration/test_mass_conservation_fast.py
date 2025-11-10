@@ -76,7 +76,7 @@ def main():
         _ = False  # converged
 
     # Compute mass conservation
-    dx = problem.Dx
+    dx = problem.dx
     masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
 
     print("\n" + "=" * 80)
@@ -119,7 +119,7 @@ def main():
 
     # 2. Mass over time
     ax = axes[0, 1]
-    time_steps = np.arange(len(masses)) * problem.Dt
+    time_steps = np.arange(len(masses)) * problem.dt
     ax.plot(time_steps, masses, "b-", linewidth=2, label="Total mass ∫m dx")
     ax.axhline(y=masses[0], color="r", linestyle="--", linewidth=1, alpha=0.7, label=f"Initial = {masses[0]:.6f}")
     ax.fill_between(time_steps, masses[0] - 0.02, masses[0] + 0.02, alpha=0.2, color="gray", label="±2% bound")

@@ -166,7 +166,7 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
                 break
 
     # Compute masses
-    dx = problem.Dx
+    dx = problem.dx
     masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
 
     # Create result object
@@ -212,7 +212,7 @@ def visualize_stochastic_convergence(result, masses, problem, monitor):
 
     # 3. Mass conservation
     ax3 = fig.add_subplot(gs[0, 2])
-    time_steps = np.arange(len(masses)) * problem.Dt
+    time_steps = np.arange(len(masses)) * problem.dt
     ax3.plot(time_steps, masses, "b-", linewidth=2, label="Total mass")
     ax3.axhline(y=masses[0], color="r", linestyle="--", linewidth=1, label=f"Initial = {masses[0]:.6f}")
     ax3.set_xlabel("Time t")

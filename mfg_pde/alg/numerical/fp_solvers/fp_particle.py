@@ -229,7 +229,7 @@ class FPParticleSolver(BaseFPSolver):
         xSpace = self.problem.xSpace
         xmin = self.problem.xmin
         xmax = self.problem.xmax
-        Dx = self.problem.Dx
+        Dx = self.problem.dx
 
         if self.num_particles == 0 or len(particles_at_time_t) == 0:
             return np.zeros(Nx)
@@ -367,8 +367,8 @@ class FPParticleSolver(BaseFPSolver):
         # print(f"****** Solving FP ({self.fp_method_name}) with {self.num_particles} particles ******")
         Nx = self.problem.Nx + 1
         Nt = self.problem.Nt + 1
-        Dx = self.problem.Dx
-        Dt = self.problem.Dt
+        Dx = self.problem.dx
+        Dt = self.problem.dt
         sigma_sde = self.problem.sigma
         coupling_coefficient = self.problem.coupling_coefficient
         x_grid = self.problem.xSpace
@@ -497,8 +497,8 @@ class FPParticleSolver(BaseFPSolver):
         # Problem parameters
         Nx = self.problem.Nx + 1
         Nt = self.problem.Nt + 1
-        Dx = self.problem.Dx
-        Dt = self.problem.Dt
+        Dx = self.problem.dx
+        Dt = self.problem.dt
         sigma_sde = self.problem.sigma
         coupling_coefficient = self.problem.coupling_coefficient
         x_grid = self.problem.xSpace

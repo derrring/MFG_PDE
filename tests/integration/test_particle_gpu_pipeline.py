@@ -47,7 +47,7 @@ class TestParticleGPUPipeline:
         # Initial condition: Gaussian
         x = problem.xSpace
         m_initial = np.exp(-((x - 0.5) ** 2) / 0.1)
-        m_initial = m_initial / (np.sum(m_initial) * problem.Dx)
+        m_initial = m_initial / (np.sum(m_initial) * problem.dx)
 
         # Drift field: simple linear
         U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
@@ -83,16 +83,16 @@ class TestParticleGPUPipeline:
         assert M_cpu.shape == (problem.Nt + 1, problem.Nx + 1)
 
         # Mass conservation (both should integrate to ~1)
-        mass_cpu = np.sum(M_cpu, axis=1) * problem.Dx
-        mass_gpu = np.sum(M_gpu, axis=1) * problem.Dx
+        mass_cpu = np.sum(M_cpu, axis=1) * problem.dx
+        mass_gpu = np.sum(M_gpu, axis=1) * problem.dx
 
         np.testing.assert_allclose(mass_cpu, 1.0, rtol=0.2)  # Within 20%
         np.testing.assert_allclose(mass_gpu, 1.0, rtol=0.2)
 
         # Distributions should be similar (allow stochastic variation)
         # Compare mean particle positions over time
-        mean_cpu = np.sum(M_cpu * x[None, :], axis=1) * problem.Dx
-        mean_gpu = np.sum(M_gpu * x[None, :], axis=1) * problem.Dx
+        mean_cpu = np.sum(M_cpu * x[None, :], axis=1) * problem.dx
+        mean_gpu = np.sum(M_gpu * x[None, :], axis=1) * problem.dx
 
         # Means should track similarly (within 20% relative difference)
         np.testing.assert_allclose(mean_cpu, mean_gpu, rtol=0.3, atol=0.1)
@@ -109,7 +109,7 @@ class TestParticleGPUPipeline:
         )
 
         m_initial = np.exp(-(problem.xSpace**2) / 0.2)
-        m_initial = m_initial / (np.sum(m_initial) * problem.Dx)
+        m_initial = m_initial / (np.sum(m_initial) * problem.dx)
 
         U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
 
@@ -130,7 +130,7 @@ class TestParticleGPUPipeline:
         assert np.all(np.isfinite(M_gpu))  # No NaN/Inf
 
         # Mass conservation
-        mass = np.sum(M_gpu, axis=1) * problem.Dx
+        mass = np.sum(M_gpu, axis=1) * problem.dx
         np.testing.assert_allclose(mass, 1.0, rtol=0.3)
 
     def test_boundary_conditions_gpu(self):
@@ -184,7 +184,7 @@ class TestGPUPerformance:
         )
 
         m_initial = np.exp(-((problem.xSpace - 0.5) ** 2) / 0.1)
-        m_initial = m_initial / (np.sum(m_initial) * problem.Dx)
+        m_initial = m_initial / (np.sum(m_initial) * problem.dx)
 
         U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
 

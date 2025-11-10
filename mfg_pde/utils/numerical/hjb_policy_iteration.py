@@ -269,7 +269,7 @@ class LQPolicyIterationHelper:
         """
         Nt, Nx_plus_1 = U.shape
         Nx = Nx_plus_1 - 1
-        dx = self.hjb_solver.problem.Dx
+        dx = self.hjb_solver.problem.dx
 
         # Compute gradient ∂u/∂x using central differences
         policy_improved = np.zeros_like(U)

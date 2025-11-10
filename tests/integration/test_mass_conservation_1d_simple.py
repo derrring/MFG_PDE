@@ -94,7 +94,7 @@ class TestMassConservation1DSimple:
         m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # Compute mass at each time step
-        dx = problem.Dx
+        dx = problem.dx
         masses = []
         for t_idx in range(problem.Nt + 1):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
@@ -167,7 +167,7 @@ class TestMassConservation1DSimple:
         m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # Compute mass at each time step
-        dx = problem.Dx
+        dx = problem.dx
         masses = []
         for t_idx in range(problem.Nt + 1):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
@@ -237,7 +237,7 @@ class TestMassConservation1DSimple:
         assert result_2.converged
 
         # Compute masses for both methods
-        dx = problem.Dx
+        dx = problem.dx
         masses_fdm = []
         masses_gfdm = []
 

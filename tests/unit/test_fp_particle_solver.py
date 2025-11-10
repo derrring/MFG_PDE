@@ -170,7 +170,7 @@ class TestFPParticleSolverSolveFPSystem:
         # Create inputs with specific initial condition
         x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
-        m_initial = m_initial / np.sum(m_initial * problem.Dx)
+        m_initial = m_initial / np.sum(m_initial * problem.dx)
         U_solution = np.zeros((Nt, Nx))
 
         # Solve
@@ -178,8 +178,8 @@ class TestFPParticleSolverSolveFPSystem:
 
         # Check that center of mass is approximately preserved
         # (KDE introduces smoothing but should preserve location)
-        cm_initial = np.sum(x_coords * m_initial * problem.Dx)
-        cm_solution = np.sum(x_coords * M_solution[0, :] * problem.Dx)
+        cm_initial = np.sum(x_coords * m_initial * problem.dx)
+        cm_solution = np.sum(x_coords * M_solution[0, :] * problem.dx)
         assert np.isclose(cm_initial, cm_solution, rtol=0.2)
 
     def test_solve_with_zero_drift(self):
@@ -311,7 +311,7 @@ class TestFPParticleSolverNumericalProperties:
 
         x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
-        m_initial = m_initial / np.sum(m_initial * problem.Dx)
+        m_initial = m_initial / np.sum(m_initial * problem.dx)
         U_solution = np.zeros((Nt, Nx))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
@@ -330,7 +330,7 @@ class TestFPParticleSolverNumericalProperties:
         # Concentrated initial condition
         x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.01**2))
-        m_initial = m_initial / np.sum(m_initial * problem.Dx)
+        m_initial = m_initial / np.sum(m_initial * problem.dx)
 
         U_solution = np.zeros((Nt, Nx))
 
@@ -349,7 +349,7 @@ class TestFPParticleSolverNumericalProperties:
 
         Nt = problem.Nt + 1
         Nx = problem.Nx + 1
-        Dx = problem.Dx
+        Dx = problem.dx
 
         x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
@@ -453,7 +453,7 @@ class TestFPParticleSolverHelperMethods:
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
         U_array = x_coords**2
 
-        gradient = solver._compute_gradient(U_array, problem.Dx, use_backend=False)
+        gradient = solver._compute_gradient(U_array, problem.dx, use_backend=False)
 
         # Should return finite gradient
         assert np.all(np.isfinite(gradient))
@@ -479,7 +479,7 @@ class TestFPParticleSolverHelperMethods:
 
         M_array = np.random.rand(problem.Nx + 1) * 2.0  # Random unnormalized density
 
-        normalized = solver._normalize_density(M_array, problem.Dx, use_backend=False)
+        normalized = solver._normalize_density(M_array, problem.dx, use_backend=False)
 
         # Should not normalize (return as-is)
         assert np.allclose(normalized, M_array)
@@ -493,12 +493,12 @@ class TestFPParticleSolverHelperMethods:
 
         # First call (time step 0) - should normalize
         solver._time_step_counter = 0
-        normalized_0 = solver._normalize_density(M_array, problem.Dx, use_backend=False)
-        assert np.isclose(np.sum(normalized_0 * problem.Dx), 1.0, rtol=0.1)
+        normalized_0 = solver._normalize_density(M_array, problem.dx, use_backend=False)
+        assert np.isclose(np.sum(normalized_0 * problem.dx), 1.0, rtol=0.1)
 
         # Second call (time step 1) - should not normalize
         solver._time_step_counter = 1
-        normalized_1 = solver._normalize_density(M_array, problem.Dx, use_backend=False)
+        normalized_1 = solver._normalize_density(M_array, problem.dx, use_backend=False)
         assert np.allclose(normalized_1, M_array)
 
     def test_normalize_density_all(self):
@@ -511,8 +511,8 @@ class TestFPParticleSolverHelperMethods:
         # Should normalize at any time step
         for t in [0, 1, 5, 10]:
             solver._time_step_counter = t
-            normalized = solver._normalize_density(M_array, problem.Dx, use_backend=False)
-            assert np.isclose(np.sum(normalized * problem.Dx), 1.0, rtol=0.1)
+            normalized = solver._normalize_density(M_array, problem.dx, use_backend=False)
+            assert np.isclose(np.sum(normalized * problem.dx), 1.0, rtol=0.1)
 
 
 if __name__ == "__main__":

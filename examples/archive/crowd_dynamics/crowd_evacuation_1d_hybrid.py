@@ -93,7 +93,7 @@ def create_crowd_evacuation_problem() -> MFGProblem:
     initial_density = np.exp(-((x - x_center) ** 2) / (2 * sigma_x**2))
 
     # Normalize to probability distribution
-    dx = problem.Dx
+    dx = problem.dx
     total_mass = np.trapezoid(initial_density, dx=dx)
     initial_density = initial_density / total_mass
 
@@ -169,7 +169,7 @@ def solve_with_hybrid_solver(problem: MFGProblem, verbose: bool = True):
             print()
 
             # Mass conservation check
-            dx = problem.Dx
+            dx = problem.dx
             initial_mass = np.trapezoid(M[0], dx=dx)
             final_mass = np.trapezoid(M[-1], dx=dx)
             mass_loss = initial_mass - final_mass
@@ -242,7 +242,7 @@ def visualize_results(problem: MFGProblem, U, M, info, save_path: str | None = N
 
     # Plot 4: Mass conservation over time
     ax4 = plt.subplot(2, 3, 4)
-    dx = problem.Dx
+    dx = problem.dx
     masses = np.array([np.trapezoid(M[t], dx=dx) for t in range(Nt)])
     ax4.plot(time_vec, masses, "b-", linewidth=2, label="Total mass")
     ax4.axhline(y=masses[0], color="r", linestyle="--", label="Initial mass")

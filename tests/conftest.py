@@ -454,9 +454,9 @@ def validate_mfg_solution(U, M, problem):
     assert np.all(M >= -1e-10), f"M contains negative values: min={np.min(M)}"
 
     # Check mass conservation (approximately)
-    initial_mass = np.sum(problem.m_init) * problem.Dx
+    initial_mass = np.sum(problem.m_init) * problem.dx
     for t in range(problem.Nt + 1):
-        current_mass = np.sum(M[t, :]) * problem.Dx
+        current_mass = np.sum(M[t, :]) * problem.dx
         mass_error = abs(current_mass - initial_mass)
         assert mass_error < 0.1, f"Mass conservation violated at t={t}: error={mass_error}"
 

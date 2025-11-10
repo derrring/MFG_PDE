@@ -103,7 +103,7 @@ class TestHybridMassConservation:
         assert M.shape == (Nt, Nx), f"Expected M shape {(Nt, Nx)}, got {M.shape}"
 
         # Compute mass at each time step
-        dx = simple_1d_problem.Dx
+        dx = simple_1d_problem.dx
         masses = np.array([compute_total_mass(M[t, :], dx) for t in range(Nt)])
 
         # Initial and final masses
@@ -167,7 +167,7 @@ class TestHybridMassConservation:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 
         # Compute masses
-        dx = simple_1d_problem.Dx
+        dx = simple_1d_problem.dx
         Nt = simple_1d_problem.Nt + 1
         masses = np.array([compute_total_mass(M[t, :], dx) for t in range(Nt)])
 
@@ -219,7 +219,7 @@ class TestHybridMassConservationFast:
         assert np.all(np.isfinite(U)), "Non-finite value function"
 
         # Basic mass conservation check
-        dx = problem.Dx
+        dx = problem.dx
         initial_mass = compute_total_mass(M[0, :], dx)
         final_mass = compute_total_mass(M[-1, :], dx)
 

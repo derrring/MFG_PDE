@@ -83,12 +83,12 @@ def test_mfg_problem_default_initialization():
     assert problem.xmax == 1.0
     assert problem.Lx == 1.0
     assert problem.Nx == 51
-    assert problem.Dx == pytest.approx(1.0 / 51)
+    assert problem.dx == pytest.approx(1.0 / 51)
 
     # Time parameters
     assert problem.T == 1.0
     assert problem.Nt == 51
-    assert problem.Dt == pytest.approx(1.0 / 51)
+    assert problem.dt == pytest.approx(1.0 / 51)
 
     # Physical parameters
     assert problem.sigma == 1.0
@@ -108,7 +108,7 @@ def test_mfg_problem_custom_domain():
     assert problem.xmax == 2.0
     assert problem.Lx == 3.0
     assert problem.Nx == 100
-    assert problem.Dx == pytest.approx(3.0 / 100)
+    assert problem.dx == pytest.approx(3.0 / 100)
     assert len(problem.xSpace) == 101  # Nx + 1
 
 
@@ -119,7 +119,7 @@ def test_mfg_problem_custom_time():
 
     assert problem.T == 2.0
     assert problem.Nt == 100
-    assert problem.Dt == pytest.approx(2.0 / 100)
+    assert problem.dt == pytest.approx(2.0 / 100)
     assert len(problem.tSpace) == 101  # Nt + 1
 
 
@@ -237,7 +237,7 @@ def test_mfg_problem_with_custom_initial_density():
     # Check initial density was set using custom function and normalized
     expected_unnormalized = np.exp(-10 * (problem.xSpace - 0.5) ** 2)
     # Normalize expected (same way as in MFGProblem.__init__)
-    integral = np.sum(expected_unnormalized) * problem.Dx
+    integral = np.sum(expected_unnormalized) * problem.dx
     expected = expected_unnormalized / integral
     assert np.allclose(problem.m_init, expected)
 
@@ -546,7 +546,7 @@ def test_mfg_problem_zero_nx():
     problem = MFGProblem(Nx=0)
 
     assert problem.Nx == 0
-    assert problem.Dx == 0.0
+    assert problem.dx == 0.0
     assert len(problem.xSpace) == 1
 
 
@@ -556,7 +556,7 @@ def test_mfg_problem_zero_nt():
     problem = MFGProblem(Nt=0)
 
     assert problem.Nt == 0
-    assert problem.Dt == 0.0
+    assert problem.dt == 0.0
     assert len(problem.tSpace) == 1
 
 

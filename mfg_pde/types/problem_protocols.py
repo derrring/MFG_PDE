@@ -158,13 +158,13 @@ class GridProblem(Protocol):
     xmin: float
     xmax: float
     Nx: int
-    Dx: float
+    dx: float  # Lowercase (official naming convention)
     xSpace: NDArray
 
     # Temporal structure
     T: float
     Nt: int
-    Dt: float
+    dt: float  # Lowercase (official naming convention)
     tSpace: NDArray
 
     # Physical parameters
@@ -263,8 +263,8 @@ class DirectAccessProblem(Protocol):
 
     sigma: float
     coupling_coefficient: float
-    Dx: float
-    Dt: float
+    dx: float  # Lowercase (official naming convention)
+    dt: float  # Lowercase (official naming convention)
     xSpace: NDArray
 
 

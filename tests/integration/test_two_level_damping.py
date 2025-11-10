@@ -83,7 +83,7 @@ def run_solver(name: str, use_anderson: bool, damping_factor: float, anderson_be
     iterations = mfg_solver.iterations_run if hasattr(mfg_solver, "iterations_run") else 0
 
     # Mass conservation
-    dx = problem.Dx
+    dx = problem.dx
     masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
 
     mass_dev = np.max(np.abs(masses - masses[0]))

@@ -5,6 +5,40 @@ All notable changes to MFG_PDE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Deprecated
+
+- **`Dt` attribute**: Use lowercase `dt` instead (Issue #245). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
+- **`Dx` attribute**: Use lowercase `dx` instead (Issue #245). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
+
+### Changed
+
+- **Primary time step attribute**: Changed from `Dt` to `dt` throughout codebase (46 files, ~102 references) following official naming conventions (`docs/NAMING_CONVENTIONS.md` lines 24, 262)
+  - Core: `mfg_pde/core/mfg_problem.py`, `mfg_pde/types/problem_protocols.py`
+  - Solvers: All HJB, FP, and coupling solvers updated
+  - Utilities: `experiment_manager.py`, `hjb_policy_iteration.py`
+  - Tests: 15 test files (59 references)
+  - Examples: 5 example files (8 references)
+  - Benchmarks: 3 benchmark files (4 references)
+
+- **Primary spatial spacing attribute**: Changed from `Dx` to `dx` for 1D problems (same scope as above)
+
+### Migration Guide
+
+**For users**: Update your code to use lowercase attributes:
+```python
+# OLD (deprecated but works with warnings in v0.12.0)
+dt = problem.Dt
+dx = problem.Dx
+
+# NEW (recommended)
+dt = problem.dt
+dx = problem.dx
+```
+
+**For developers**: The deprecated uppercase properties will be completely removed in v1.0.0.
+
 ## [0.11.0] - 2025-11-10
 
 **Major Release: Dual Geometry Architecture**

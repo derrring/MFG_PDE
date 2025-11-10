@@ -95,8 +95,8 @@ class FPFDMSolver(BaseFPSolver):
         if getattr(self.problem, "Nx", None) is not None:
             # Old 1D interface
             Nx = self.problem.Nx + 1
-            Dx = self.problem.Dx
-            Dt = self.problem.Dt
+            Dx = self.problem.dx
+            Dt = self.problem.dt
         else:
             # Geometry-based interface (CartesianGrid)
             Nx = self.problem.geometry.get_grid_shape()[0]
@@ -889,8 +889,8 @@ if __name__ == "__main__":
     assert np.all(M_solution >= 0), "Density must be non-negative"
 
     # Check mass conservation (integral of density)
-    initial_mass = np.trapz(M_solution[0], dx=problem.Dx)
-    final_mass = np.trapz(M_solution[-1], dx=problem.Dx)
+    initial_mass = np.trapz(M_solution[0], dx=problem.dx)
+    final_mass = np.trapz(M_solution[-1], dx=problem.dx)
     mass_drift = abs(final_mass - initial_mass) / initial_mass
 
     print("  FDM solver converged")

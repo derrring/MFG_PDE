@@ -88,7 +88,7 @@ def run_solver(use_anderson: bool = False, backend: str | None = None):
     iterations = mfg_solver.iterations_run if hasattr(mfg_solver, "iterations_run") else 0
 
     # Mass conservation
-    dx = problem.Dx
+    dx = problem.dx
     masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
 
     print(f"Iterations: {iterations}")

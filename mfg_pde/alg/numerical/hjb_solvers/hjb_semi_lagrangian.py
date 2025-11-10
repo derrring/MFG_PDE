@@ -126,8 +126,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if self.dimension == 1:
             # 1D problem: Use legacy attributes
             self.x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
-            self.dt = problem.Dt
-            self.dx = problem.Dx
+            self.dt = problem.dt
+            self.dx = problem.dx
             self.grid = None  # No TensorProductGrid for 1D
         else:
             # nD problem: Use CartesianGrid interface

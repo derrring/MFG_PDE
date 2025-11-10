@@ -253,7 +253,7 @@ def example_3_nonlocal_coupling():
                 for j in range(len(problem.xSpace)):
                     y_j = problem.xSpace[j]
                     kernel_value = np.exp(-abs(x_position - y_j) / sigma_kernel)
-                    nonlocal_term += kernel_value * problem._current_density[j] * problem.Dx
+                    nonlocal_term += kernel_value * problem._current_density[j] * problem.dx
             else:
                 # Fallback to local term
                 nonlocal_term = m_at_x

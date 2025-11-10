@@ -291,7 +291,7 @@ class TestFPFDMSolverEdgeCases:
     def test_zero_diffusion_timestep(self):
         """Test behavior when Dt is extremely small."""
         problem = ExampleMFGProblem()
-        problem.Dt = 1e-20  # Very small timestep
+        problem.dt = 1e-20  # Very small timestep
         solver = FPFDMSolver(problem)
 
         Nx = problem.Nx + 1
@@ -308,7 +308,7 @@ class TestFPFDMSolverEdgeCases:
     def test_zero_spatial_step(self):
         """Test behavior when Dx is extremely small (but Nx > 1)."""
         problem = ExampleMFGProblem()
-        problem.Dx = 1e-20  # Very small spatial step
+        problem.dx = 1e-20  # Very small spatial step
         solver = FPFDMSolver(problem)
 
         Nx = problem.Nx + 1

@@ -106,7 +106,7 @@ def run_hybrid_solver_with_monitoring(problem, bc, max_iterations=100, verbose=T
         iterations.append(iteration)
 
         # Compute mass at each time step
-        dx = problem.Dx
+        dx = problem.dx
         mass_at_t = np.array([float(np.trapz(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
         masses.append(mass_at_t)
 
