@@ -424,7 +424,7 @@ if __name__ == "__main__":
     # U_sol = np.random.rand(dummy_problem.Nt, dummy_problem.Nx)
     # M_sol = np.random.rand(dummy_problem.Nt, dummy_problem.Nx)
     # M_sol[0,:] = dummy_problem.get_initial_m() # Make it somewhat consistent
-    # for t in range(dummy_problem.Nt): M_sol[t,:] /= (np.sum(M_sol[t,:])*dummy_problem.Dx if dummy_problem.Dx >0 else 1)
+    # for t in range(dummy_problem.Nt): M_sol[t,:] /= (np.sum(M_sol[t,:])*dummy_problem.dx if dummy_problem.dx >0 else 1)
 
     # iterations = 10
     # rel_U = np.geomspace(1, 1e-5, iterations)
@@ -449,7 +449,7 @@ if __name__ == "__main__":
     # U_sol2 = U_sol * 0.9
     # M_sol2 = M_sol * 1.1
     # M_sol2[0,:] = dummy_problem.get_initial_m()
-    # for t in range(dummy_problem.Nt): M_sol2[t,:] /= (np.sum(M_sol2[t,:])*dummy_problem.Dx if dummy_problem.Dx >0 else 1)
+    # for t in range(dummy_problem.Nt): M_sol2[t,:] /= (np.sum(M_sol2[t,:])*dummy_problem.dx if dummy_problem.dx >0 else 1)
 
     # filepath2 = save_experiment_data(
     #     problem=dummy_problem,

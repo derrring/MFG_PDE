@@ -272,7 +272,7 @@ class StochasticMFGProblem(MFGProblem):
 
             # Get scalar values from grid-based inputs
             x = x_position if x_position is not None else self.xSpace[x_idx]
-            t = current_time if current_time is not None else t_idx * self.Dt
+            t = current_time if current_time is not None else t_idx * self.dt
             m = m_at_x
 
             # Extract gradient from p_values dict (use average of forward/backward)
@@ -295,7 +295,7 @@ class StochasticMFGProblem(MFGProblem):
 
             # Get scalar values
             x = x_position if x_position is not None else self.xSpace[x_idx]
-            t = current_time if current_time is not None else t_idx * self.Dt
+            t = current_time if current_time is not None else t_idx * self.dt
             m = m_at_x
 
             # Extract gradient

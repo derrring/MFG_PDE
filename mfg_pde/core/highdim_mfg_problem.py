@@ -423,10 +423,7 @@ class GridBasedMFGProblem(MFGProblem):
 
             # Remove 1D attributes for nD problems to ensure solvers use geometry path
             # FixedPointIterator checks hasattr(problem, "Nx"), which returns True even when Nx=None
-            del self.Nx, self.xmin, self.xmax, self.Dx, self.Lx, self.xSpace
-
-        # Add lowercase dt alias (some solvers expect lowercase)
-        self.dt = self.Dt
+            del self.Nx, self.xmin, self.xmax, self.dx, self.Lx, self.xSpace
 
 
 class HybridMFGSolver:

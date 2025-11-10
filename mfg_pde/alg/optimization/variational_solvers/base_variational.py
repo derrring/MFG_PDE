@@ -90,8 +90,8 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         self.t_grid = problem.t
         self.Nx = problem.Nx
         self.Nt = problem.Nt
-        self.dx = problem.Dx
-        self.dt = problem.Dt
+        self.dx = problem.dx
+        self.dt = problem.dt
 
         logger.info(f"Initialized {self.solver_name} solver")
         logger.info(f"  Problem: {problem.components.description}")
