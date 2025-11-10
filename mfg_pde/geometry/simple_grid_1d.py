@@ -284,21 +284,34 @@ class SimpleGrid1D(CartesianGrid):
 
         x_grid = np.array(self._cached_grid)
 
-        def interpolate_1d(u: NDArray, point: NDArray) -> float:
+        def interpolate_1d(u: NDArray, points: NDArray) -> NDArray | float:
             """
             Linear interpolation in 1D.
 
             Args:
                 u: Solution array of shape (num_points,)
-                point: Physical coordinate as array [x]
+                points: Physical coordinate(s) - scalar, array [x], or array of coords (N,)
 
             Returns:
-                Interpolated value
+                Interpolated value(s) - float if single point, array if multiple
             """
-            x = point[0]
+            # Handle different input shapes
+            if points.ndim == 0:  # Scalar
+                x = float(points)
+                return float(np.interp(x, x_grid, u))
+            elif points.shape == (1,):  # Single point [x]
+                x = points[0]
+                return float(np.interp(x, x_grid, u))
+            else:  # Multiple points (N,) or (N, 1)
+                if points.ndim == 2:
+                    # (N, 1) case - flatten to (N,)
+                    x = points[:, 0]
+                else:
+                    # (N,) case
+                    x = points
 
-            # Use numpy interp for 1D linear interpolation
-            return float(np.interp(x, x_grid, u))
+                # Vectorized interpolation
+                return np.interp(x, x_grid, u)
 
         return interpolate_1d
 

@@ -316,16 +316,16 @@ class SimpleGrid2D(CartesianGrid):
     def get_interpolator(self) -> Callable:
         """Return bilinear interpolator for 2D grid."""
 
-        def interpolate_2d(u: NDArray, point: NDArray) -> float:
+        def interpolate_2d(u: NDArray, points: NDArray) -> NDArray | float:
             """
             Bilinear interpolation on 2D grid.
 
             Args:
                 u: Solution array of shape (nx+1, ny+1)
-                point: Physical coordinates [x, y]
+                points: Physical coordinates [x, y] or array of points (N, 2)
 
             Returns:
-                Interpolated value
+                Interpolated value(s) - float if single point, array if multiple
             """
             from scipy.interpolate import RegularGridInterpolator
 
@@ -333,7 +333,14 @@ class SimpleGrid2D(CartesianGrid):
             y = np.linspace(self.ymin, self.ymax, self.ny + 1)
 
             interpolator = RegularGridInterpolator((x, y), u, method="linear", bounds_error=False, fill_value=0.0)
-            return float(interpolator(point))
+
+            # Handle both single point and multiple points
+            result = interpolator(points)
+
+            # Return scalar for single point, array for multiple
+            if result.shape == ():
+                return float(result)
+            return result
 
         return interpolate_2d
 
@@ -628,16 +635,16 @@ class SimpleGrid3D(CartesianGrid):
     def get_interpolator(self) -> Callable:
         """Return trilinear interpolator for 3D grid."""
 
-        def interpolate_3d(u: NDArray, point: NDArray) -> float:
+        def interpolate_3d(u: NDArray, points: NDArray) -> NDArray | float:
             """
             Trilinear interpolation on 3D grid.
 
             Args:
                 u: Solution array of shape (nx+1, ny+1, nz+1)
-                point: Physical coordinates [x, y, z]
+                points: Physical coordinates [x, y, z] or array of points (N, 3)
 
             Returns:
-                Interpolated value
+                Interpolated value(s) - float if single point, array if multiple
             """
             from scipy.interpolate import RegularGridInterpolator
 
@@ -646,7 +653,14 @@ class SimpleGrid3D(CartesianGrid):
             z = np.linspace(self.zmin, self.zmax, self.nz + 1)
 
             interpolator = RegularGridInterpolator((x, y, z), u, method="linear", bounds_error=False, fill_value=0.0)
-            return float(interpolator(point))
+
+            # Handle both single point and multiple points
+            result = interpolator(points)
+
+            # Return scalar for single point, array for multiple
+            if result.shape == ():
+                return float(result)
+            return result
 
         return interpolate_3d
 
