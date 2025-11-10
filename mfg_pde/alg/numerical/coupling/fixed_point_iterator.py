@@ -146,13 +146,18 @@ class FixedPointIterator(BaseMFGSolver):
             shape = (self.problem.Nx + 1,)
             grid_spacing = self.problem.Dx  # Renamed from Dx
             time_step = self.problem.Dt  # Renamed from Dt
-        elif hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
-            # New GridBasedMFGProblem interface (nD)
-            shape = tuple(self.problem.geometry.grid.num_points)
-            grid_spacing = self.problem.geometry.grid.spacing[0]  # For compatibility
-            time_step = self.problem.dt
+        elif hasattr(self.problem, "geometry"):
+            # New geometry-based interface (CartesianGrid)
+            from mfg_pde.geometry.base import CartesianGrid
+
+            if isinstance(self.problem.geometry, CartesianGrid):
+                shape = tuple(self.problem.geometry.get_grid_shape())
+                grid_spacing = self.problem.geometry.get_grid_spacing()[0]  # For compatibility
+                time_step = self.problem.dt
+            else:
+                raise ValueError("Problem geometry must be CartesianGrid (SimpleGrid2D/3D or TensorProductGrid)")
         else:
-            raise ValueError("Problem must have either (Nx, Dx, Dt) or (geometry.grid) attributes")
+            raise ValueError("Problem must have either (Nx, Dx, Dt) or geometry attributes")
 
         # Initialize arrays (cold start or warm start)
         warm_start = self.get_warm_start_data()
@@ -174,7 +179,8 @@ class FixedPointIterator(BaseMFGSolver):
                 final_u_cost = self.problem.get_final_u()
             else:
                 # New nD interface - evaluate on grid
-                x_grid = self.problem.geometry.grid.flatten()
+                x_grid = self.problem.geometry.get_spatial_grid()
+                # Evaluate functions on spatial grid
                 initial_m_dist = self.problem.initial_density(x_grid).reshape(shape)
                 final_u_cost = self.problem.terminal_cost(x_grid).reshape(shape)
                 # Note: initial_density() should already return normalized density

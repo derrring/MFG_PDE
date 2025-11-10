@@ -51,6 +51,18 @@ class SimpleGrid2D(CartesianGrid):
         max_coords = np.array([self.xmax, self.ymax])
         return min_coords, max_coords
 
+    @property
+    def coordinates(self) -> list[NDArray]:
+        """
+        Get coordinate arrays for each dimension (TensorProductGrid compatible).
+
+        Returns:
+            List of 1D coordinate arrays [x_coords, y_coords]
+        """
+        x = np.linspace(self.xmin, self.xmax, self.nx + 1)
+        y = np.linspace(self.ymin, self.ymax, self.ny + 1)
+        return [x, y]
+
     def create_gmsh_geometry(self):
         """Not implemented for simple grid - raises NotImplementedError."""
         raise NotImplementedError("SimpleGrid2D does not use Gmsh")
@@ -362,6 +374,19 @@ class SimpleGrid3D(CartesianGrid):
         min_coords = np.array([self.xmin, self.ymin, self.zmin])
         max_coords = np.array([self.xmax, self.ymax, self.zmax])
         return min_coords, max_coords
+
+    @property
+    def coordinates(self) -> list[NDArray]:
+        """
+        Get coordinate arrays for each dimension (TensorProductGrid compatible).
+
+        Returns:
+            List of 1D coordinate arrays [x_coords, y_coords, z_coords]
+        """
+        x = np.linspace(self.xmin, self.xmax, self.nx + 1)
+        y = np.linspace(self.ymin, self.ymax, self.ny + 1)
+        z = np.linspace(self.zmin, self.zmax, self.nz + 1)
+        return [x, y, z]
 
     def create_gmsh_geometry(self):
         """Not implemented for simple grid - raises NotImplementedError."""

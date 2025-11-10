@@ -191,12 +191,14 @@ class HJBWenoSolver(BaseHJBSolver):
 
     def _setup_dimensional_grid(self) -> None:
         """Setup grid information based on problem dimension (dimension-agnostic)."""
-        # Try GridBasedMFGProblem first (supports arbitrary nD)
-        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "grid"):
-            grid_obj = self.problem.geometry.grid
+        # Try CartesianGrid geometry first (supports arbitrary nD)
+        from mfg_pde.geometry.base import CartesianGrid
+
+        if isinstance(getattr(self.problem, "geometry", None), CartesianGrid):
+            grid_obj = self.problem.geometry  # Geometry IS the grid
             # Store as lists for dimension-agnostic access
-            self.num_grid_points = list(grid_obj.num_points)
-            self.grid_spacing = list(grid_obj.spacing)
+            self.num_grid_points = list(grid_obj.get_grid_shape())
+            self.grid_spacing = list(grid_obj.get_grid_spacing())
 
             # Backward compatibility: set _x, _y, _z attributes for legacy code
             if self.dimension >= 1:

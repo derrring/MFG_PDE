@@ -117,12 +117,17 @@ class HJBFDMSolver(BaseHJBSolver):
 
         # For nD, extract grid info and create nonlinear solver
         if self.dimension > 1:
-            if not (hasattr(problem, "geometry") and hasattr(problem.geometry, "grid")):
-                raise ValueError("nD FDM requires GridBasedMFGProblem with TensorProductGrid")
+            # Import at runtime to avoid circular dependency
+            from mfg_pde.geometry.base import CartesianGrid
 
-            self.grid = problem.geometry.grid
-            self.shape = tuple(self.grid.num_points)
-            self.spacing = self.grid.spacing
+            if not isinstance(problem.geometry, CartesianGrid):
+                raise ValueError(
+                    "nD FDM requires problem with CartesianGrid geometry (SimpleGrid2D/3D or TensorProductGrid)"
+                )
+
+            self.grid = problem.geometry  # Geometry IS the grid
+            self.shape = tuple(self.grid.get_grid_shape())
+            self.spacing = self.grid.get_grid_spacing()
             self.N_total = int(np.prod(self.shape))
             self.dt = problem.dt
 
@@ -151,10 +156,13 @@ class HJBFDMSolver(BaseHJBSolver):
 
     def _detect_dimension(self, problem) -> int:
         """Detect spatial dimension."""
-        if hasattr(problem, "geometry") and hasattr(problem.geometry, "grid"):
-            return getattr(problem.geometry.grid, "dimension", getattr(problem.geometry.grid, "ndim", 1))
+        # Try geometry.dimension first (unified interface)
+        if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
+            return problem.geometry.dimension
+        # Fall back to problem.dimension
         if hasattr(problem, "dimension"):
             return problem.dimension
+        # Legacy 1D detection
         if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
             return 1
         raise ValueError("Cannot determine problem dimension")
