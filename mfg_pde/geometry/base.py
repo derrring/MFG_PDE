@@ -912,42 +912,342 @@ class ImplicitGeometry(Geometry):
         return {"type": "sdf_projection", "sdf": self.signed_distance}
 
 
-class NetworkGraph(Geometry):
+class GraphGeometry(Geometry):
     """
-    Abstract base class for network/graph geometries.
+    Abstract base class for graph geometries (networks and mazes).
 
-    Extends Geometry with graph-specific properties for MFG problems
-    on discrete network topologies.
+    Unified interface for both abstract networks and spatially-embedded graphs
+    (mazes, grid graphs). Distinction between discrete/continuous state spaces
+    should be handled by solvers, not geometry.
 
     Graph Properties:
         - Node connectivity via adjacency matrix
-        - Graph Laplacian for diffusion
+        - Graph Laplacian for diffusion: L = D - A
         - Edge weights for transport costs
-        - Network topology (grid, scale-free, small-world, etc.)
+        - Optional spatial embedding (x,y coordinates)
+        - Optional grid structure (for mazes)
 
     Use Cases:
-        - MFG on networks
-        - Traffic flow on road networks
-        - Opinion dynamics on social networks
-        - Multi-agent systems on graphs
+        - MFG on abstract networks (social, transportation)
+        - MFG on spatial graphs (mazes, grid worlds)
+        - Discrete navigation problems
+        - Continuous diffusion on graphs
+
+    Design Philosophy:
+        - Mazes ARE graphs (grid graphs with some edges removed)
+        - Networks ARE graphs (abstract or spatially embedded)
+        - Solver decides discrete vs continuous treatment
+        - Geometry provides graph structure + optional spatial info
 
     Examples:
-        >>> if isinstance(geometry, NetworkGraph):
-        ...     adj_matrix = geometry.network_data.adjacency_matrix
-        ...     laplacian = geometry.network_data.laplacian_matrix
+        >>> # Abstract network (no spatial embedding)
+        >>> network = SomeNetworkGraph(...)
+        >>> adj = network.get_adjacency_matrix()
+        >>> pos = network.get_node_positions()  # Returns None
+        >>>
+        >>> # Maze (spatially embedded grid graph)
+        >>> maze = SomeMazeGraph(...)
+        >>> adj = maze.get_adjacency_matrix()
+        >>> pos = maze.get_node_positions()  # Returns (N, 2) array
+        >>> grid = maze.get_maze_array()  # Returns 2D grid array
     """
 
     @property
     def dimension(self) -> int:
         """
-        Dimension for networks (convention: 0).
+        Dimension for graphs (convention: 0).
 
         Returns:
-            0 (networks don't have Euclidean dimension)
+            0 (graphs don't have Euclidean dimension as primary structure)
+
+        Note: Spatially-embedded graphs may have node positions in ℝ^d,
+        but graph structure is topological (dimension 0).
         """
         return 0
 
     @property
     def geometry_type(self) -> GeometryType:
-        """Type of geometry (always NETWORK for graphs)."""
+        """Type of geometry (always NETWORK for all graph types)."""
         return GeometryType.NETWORK
+
+    # ============================================================================
+    # GeometryProtocol implementation
+    # ============================================================================
+
+    @property
+    @abstractmethod
+    def num_spatial_points(self) -> int:
+        """Total number of nodes in the graph."""
+        ...
+
+    @abstractmethod
+    def get_spatial_grid(self) -> NDArray:
+        """
+        Get node representation.
+
+        Returns:
+            For spatially-embedded graphs: (N, d) array of node positions
+            For abstract graphs: (N,) array of node indices
+
+        Note: For abstract graphs without spatial embedding, return node indices.
+        """
+        ...
+
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """
+        Get bounding box for spatially-embedded graphs.
+
+        Returns:
+            (min_coords, max_coords) tuple
+
+        Raises:
+            NotImplementedError: If graph has no spatial embedding
+        """
+        positions = self.get_node_positions()
+        if positions is None:
+            raise NotImplementedError("Abstract graphs have no spatial bounds")
+
+        min_coords = np.min(positions, axis=0)
+        max_coords = np.max(positions, axis=0)
+        return min_coords, max_coords
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration for MFGProblem.
+
+        Returns:
+            Dictionary with graph configuration
+        """
+        config = {
+            "num_spatial_points": self.num_spatial_points,
+            "spatial_shape": (self.num_spatial_points,),
+            "spatial_discretization": None,
+            "legacy_1d_attrs": None,
+            "graph_data": {
+                "adjacency_matrix": self.get_adjacency_matrix(),
+                "laplacian_matrix": self.get_graph_laplacian(),
+            },
+        }
+
+        # Add spatial bounds if embedded
+        positions = self.get_node_positions()
+        if positions is not None:
+            min_coords, max_coords = self.get_bounds()
+            config["spatial_bounds"] = list(zip(min_coords, max_coords, strict=True))
+            config["graph_data"]["node_positions"] = positions
+        else:
+            config["spatial_bounds"] = None
+
+        # Add maze array if grid-based
+        maze_array = self.get_maze_array()
+        if maze_array is not None:
+            config["graph_data"]["maze_array"] = maze_array
+
+        return config
+
+    # ============================================================================
+    # Graph-specific abstract methods
+    # ============================================================================
+
+    @abstractmethod
+    def get_adjacency_matrix(self) -> NDArray:
+        """
+        Get adjacency matrix for the graph.
+
+        Returns:
+            Adjacency matrix A of shape (N, N) where:
+                A[i,j] = weight of edge from node i to node j
+                A[i,j] = 0 if no edge exists
+
+        Note: For unweighted graphs, use A[i,j] = 1 for edges.
+        """
+        ...
+
+    # ============================================================================
+    # Optional methods for different graph types
+    # ============================================================================
+
+    def get_node_positions(self) -> NDArray | None:
+        """
+        Get physical coordinates for spatially-embedded graphs.
+
+        Returns:
+            (N, d) array of node positions in ℝ^d, or None if abstract graph
+
+        Note: Override this for spatially-embedded graphs (mazes, road networks).
+        Abstract graphs (social networks, etc.) return None.
+        """
+        return None
+
+    def get_maze_array(self) -> NDArray | None:
+        """
+        Get 2D grid array for grid-based graphs (mazes).
+
+        Returns:
+            2D array where:
+                0 = wall (no node)
+                1 = free space (node exists)
+            Or None if not a grid-based graph
+
+        Note: Override this for maze-type graphs that have grid structure.
+        """
+        return None
+
+    # ============================================================================
+    # Graph utilities (concrete implementations)
+    # ============================================================================
+
+    def get_graph_laplacian(self, normalized: bool = False) -> NDArray:
+        """
+        Compute graph Laplacian matrix.
+
+        Args:
+            normalized: If True, compute normalized Laplacian L_norm = D^(-1/2) L D^(-1/2)
+
+        Returns:
+            Laplacian matrix L = D - A of shape (N, N)
+
+        Note: Graph Laplacian is used for diffusion on graphs:
+            ∂m/∂t = -L m (diffusion equation on graph)
+        """
+        A = self.get_adjacency_matrix()
+        D = np.diag(np.sum(A, axis=1))  # Degree matrix
+
+        if normalized:
+            # Normalized Laplacian: L_norm = I - D^(-1/2) A D^(-1/2)
+            D_sqrt_inv = np.diag(1.0 / np.sqrt(np.diag(D) + 1e-10))
+            L_norm = np.eye(len(D)) - D_sqrt_inv @ A @ D_sqrt_inv
+            return L_norm
+        else:
+            # Standard Laplacian: L = D - A
+            return D - A
+
+    def get_neighbors(self, node_idx: int) -> list[int]:
+        """
+        Get neighbor indices for a node.
+
+        Args:
+            node_idx: Node index
+
+        Returns:
+            List of neighbor node indices
+        """
+        A = self.get_adjacency_matrix()
+        return [int(j) for j in range(len(A)) if A[node_idx, j] > 0]
+
+    # ============================================================================
+    # Solver Operation Interface (graph-specific)
+    # ============================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """
+        Return graph Laplacian operator for discrete diffusion.
+
+        Returns:
+            Function with signature: (u: NDArray, node_idx: int) -> float
+            Computing: (L u)[node_idx] = sum_j L[node_idx, j] * u[j]
+        """
+        L = self.get_graph_laplacian()
+
+        def graph_laplacian_op(u: NDArray, node_idx: int) -> float:
+            """
+            Apply graph Laplacian to node.
+
+            Args:
+                u: Solution vector at nodes (N,)
+                node_idx: Node index
+
+            Returns:
+                Laplacian value: (L u)[node_idx]
+            """
+            return float(np.dot(L[node_idx, :], u))
+
+        return graph_laplacian_op
+
+    def get_gradient_operator(self) -> Callable:
+        """
+        Return discrete gradient operator for graphs.
+
+        Returns:
+            Function with signature: (u: NDArray, node_idx: int) -> NDArray
+            Computing: ∇u[node_idx] ≈ differences to neighbors
+        """
+        A = self.get_adjacency_matrix()
+
+        def graph_gradient_op(u: NDArray, node_idx: int) -> NDArray:
+            """
+            Compute discrete gradient on graph (differences to neighbors).
+
+            Args:
+                u: Solution vector at nodes (N,)
+                node_idx: Node index
+
+            Returns:
+                Gradient as 1D array with differences to each neighbor
+            """
+            neighbors = [j for j in range(len(A)) if A[node_idx, j] > 0]
+            if not neighbors:
+                return np.array([0.0])
+
+            # Compute differences to neighbors
+            diffs = np.array([u[j] - u[node_idx] for j in neighbors])
+            return diffs
+
+        return graph_gradient_op
+
+    def get_interpolator(self) -> Callable:
+        """
+        Return interpolator for graphs (nearest neighbor or barycentric).
+
+        Returns:
+            Function with signature: (u: NDArray, point: NDArray) -> float
+        """
+        positions = self.get_node_positions()
+
+        if positions is not None:
+            # Spatially-embedded graph: use nearest neighbor in physical space
+            def interpolate_nearest_neighbor(u: NDArray, point: NDArray) -> float:
+                """
+                Nearest-neighbor interpolation for spatially-embedded graph.
+
+                Args:
+                    u: Solution vector at nodes (N,)
+                    point: Physical coordinates
+
+                Returns:
+                    Value at nearest node
+                """
+                distances = np.linalg.norm(positions - point, axis=1)
+                nearest_idx = int(np.argmin(distances))
+                return float(u[nearest_idx])
+
+            return interpolate_nearest_neighbor
+        else:
+            # Abstract graph: interpret point as node index
+            def interpolate_node_index(u: NDArray, point: NDArray) -> float:
+                """
+                Interpolation for abstract graph (point = node index).
+
+                Args:
+                    u: Solution vector at nodes (N,)
+                    point: Node index as array [idx]
+
+                Returns:
+                    Value at node
+                """
+                node_idx = int(point[0])
+                return float(u[node_idx])
+
+            return interpolate_node_index
+
+    def get_boundary_handler(self):
+        """
+        Return boundary condition handler for graphs.
+
+        Returns:
+            Dict with boundary information
+
+        Note: For graphs, "boundary" typically means boundary nodes
+        (nodes with fewer connections, or explicitly marked boundary nodes).
+        """
+        return {"type": "graph", "implementation": "none"}
