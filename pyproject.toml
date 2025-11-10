@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.10.0" # v0.10.0: Geometry-first API with GeometryProtocol and unified geometry system
+version = "0.10.1" # v0.10.1: Phase 4 complete - ImplicitGeometry and unified GraphGeometry
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
