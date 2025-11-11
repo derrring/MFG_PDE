@@ -229,6 +229,66 @@ type FlexibleInput = (
 )
 """Flexible input type that accepts multiple input formats"""
 
+# === Structured Result Types ===
+
+
+@dataclass
+class NetworkSolveResult:
+    """
+    Result from network MFG equilibrium computation.
+
+    This lightweight dataclass is used for network-based MFG problems where
+    solution is computed directly from trajectory measures or other network-specific
+    methods (not iterative solvers with convergence info).
+
+    Attributes:
+        U: Value function on network nodes, shape (Nt+1, num_nodes)
+        M: Density function on network nodes, shape (Nt+1, num_nodes)
+        metadata: Optional metadata about the computation
+
+    Usage:
+        >>> result = NetworkSolveResult(U=u_array, M=m_array)
+        >>> # Backward compatible unpacking
+        >>> u, m = result
+
+    Mathematical Context:
+        For network MFG problems, the state space is discrete (network nodes)
+        rather than continuous. The value function U[t, i] represents the value
+        at node i and time t, while M[t, i] represents the population density.
+
+    See Also:
+        - SolverResult: Full solver result with convergence information
+        - NetworkMFGProblem.compute_relaxed_equilibrium: Uses this return type
+    """
+
+    U: NDArray  # Value function u(t, node)
+    M: NDArray  # Density function m(t, node)
+    metadata: dict[str, Any] | None = None
+
+    def __post_init__(self):
+        """Validate result data after initialization."""
+        if self.U.shape != self.M.shape:
+            raise ValueError(f"U and M shapes must match: U{self.U.shape} vs M{self.M.shape}")
+
+        if self.metadata is None:
+            self.metadata = {}
+
+    # Backward compatibility: allow tuple-like unpacking
+    def __iter__(self):
+        """Enable tuple-like unpacking: u, m = result"""
+        yield self.U
+        yield self.M
+
+    def __len__(self):
+        """Return tuple length for compatibility."""
+        return 2
+
+    def __getitem__(self, index):
+        """Enable indexing like a tuple for backward compatibility."""
+        tuple_representation = (self.U, self.M)
+        return tuple_representation[index]
+
+
 # === Error Classes ===
 
 

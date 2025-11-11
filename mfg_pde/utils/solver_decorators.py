@@ -9,8 +9,52 @@ modern features to MFG solver classes.
 from __future__ import annotations
 
 import functools
+from enum import Flag, auto
 
 from .progress import IterationProgress, SolverTimer, time_solver_operation
+
+
+class SolverMonitoringOptions(Flag):
+    """
+    Flags for solver monitoring and enhancement features.
+
+    These flags can be combined using bitwise OR (|) to enable multiple features:
+
+    Modes:
+        NONE: No monitoring or enhancements
+        CONVERGENCE: Enable convergence monitoring
+        PROGRESS: Enable progress bars
+        TIMING: Enable timing information
+        ALL: Enable all monitoring features (CONVERGENCE | PROGRESS | TIMING)
+
+    Examples:
+        >>> # Enable only progress bars
+        >>> options = SolverMonitoringOptions.PROGRESS
+        >>>
+        >>> # Enable progress and timing
+        >>> options = SolverMonitoringOptions.PROGRESS | SolverMonitoringOptions.TIMING
+        >>>
+        >>> # Enable all features
+        >>> options = SolverMonitoringOptions.ALL
+        >>>
+        >>> # Check if timing is enabled
+        >>> if SolverMonitoringOptions.TIMING in options:
+        ...     print("Timing enabled")
+
+    Usage in decorator:
+        >>> @enhanced_solver_method(options=SolverMonitoringOptions.PROGRESS | SolverMonitoringOptions.TIMING)
+        ... def solve(self):
+        ...     ...
+
+    Backward compatibility:
+        Old boolean parameters are still supported with deprecation warnings.
+    """
+
+    NONE = 0
+    CONVERGENCE = auto()  # monitor_convergence=True
+    PROGRESS = auto()  # auto_progress=True
+    TIMING = auto()  # timing=True
+    ALL = CONVERGENCE | PROGRESS | TIMING
 
 
 def with_progress_monitoring(
@@ -112,15 +156,61 @@ def with_progress_monitoring(
     return decorator
 
 
-def enhanced_solver_method(monitor_convergence: bool = True, auto_progress: bool = True, timing: bool = True):
+def enhanced_solver_method(
+    options: SolverMonitoringOptions | None = None,
+    *,
+    monitor_convergence: bool | None = None,
+    auto_progress: bool | None = None,
+    timing: bool | None = None,
+):
     """
     Comprehensive decorator for enhancing solver methods with modern features.
 
     Args:
-        monitor_convergence: Add convergence monitoring
-        auto_progress: Automatically add progress bars
-        timing: Add timing information
+        options: Solver monitoring options (Flag enum). Recommended over boolean parameters.
+        monitor_convergence: DEPRECATED. Use options=SolverMonitoringOptions.CONVERGENCE
+        auto_progress: DEPRECATED. Use options=SolverMonitoringOptions.PROGRESS
+        timing: DEPRECATED. Use options=SolverMonitoringOptions.TIMING
+
+    Examples:
+        >>> # New API (recommended)
+        >>> @enhanced_solver_method(options=SolverMonitoringOptions.PROGRESS | SolverMonitoringOptions.TIMING)
+        ... def solve(self):
+        ...     ...
+        >>>
+        >>> # Enable all features
+        >>> @enhanced_solver_method(options=SolverMonitoringOptions.ALL)
+        ... def solve(self):
+        ...     ...
+        >>>
+        >>> # Old API (deprecated but still works)
+        >>> @enhanced_solver_method(auto_progress=True, timing=True)
+        ... def solve(self):
+        ...     ...
     """
+    # Handle backward compatibility
+    if monitor_convergence is not None or auto_progress is not None or timing is not None:
+        import warnings
+
+        warnings.warn(
+            "Parameters 'monitor_convergence', 'auto_progress', and 'timing' are deprecated. "
+            "Use 'options' parameter instead: SolverMonitoringOptions.CONVERGENCE, .PROGRESS, .TIMING, or .ALL",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        # Convert old API to new
+        flags = SolverMonitoringOptions.NONE
+        if monitor_convergence:
+            flags |= SolverMonitoringOptions.CONVERGENCE
+        if auto_progress:
+            flags |= SolverMonitoringOptions.PROGRESS
+        if timing:
+            flags |= SolverMonitoringOptions.TIMING
+        options = flags
+    elif options is None:
+        # Default: all features enabled for backward compatibility
+        options = SolverMonitoringOptions.ALL
 
     def decorator(solve_method):
         @functools.wraps(solve_method)
@@ -128,11 +218,16 @@ def enhanced_solver_method(monitor_convergence: bool = True, auto_progress: bool
             # Get solver configuration
             kwargs.get("verbose", True)
 
+            # Check which features are enabled
+            enable_progress = SolverMonitoringOptions.PROGRESS in options
+            enable_timing = SolverMonitoringOptions.TIMING in options
+            # NOTE: CONVERGENCE monitoring is not yet implemented, reserved for future use
+
             # Apply progress monitoring if enabled
-            if auto_progress:
-                enhanced_method = with_progress_monitoring(show_progress=True, show_timing=timing)(solve_method)
+            if enable_progress:
+                enhanced_method = with_progress_monitoring(show_progress=True, show_timing=enable_timing)(solve_method)
                 return enhanced_method(self, *args, **kwargs)
-            elif timing:
+            elif enable_timing:
                 # Just add timing without progress bars
                 enhanced_method = time_solver_operation(solve_method)
                 return enhanced_method(self, *args, **kwargs)

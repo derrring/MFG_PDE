@@ -176,8 +176,8 @@ final_result = state.to_result()
 result = solver.solve(problem)
 
 # Solution data
-u = result.u                   # u(t,x) - value function
-m = result.m                   # m(t,x) - population density
+U = result.U                   # u(t,x) - value function
+M = result.M                   # m(t,x) - population density
 t_grid = result.t_grid         # Time points
 x_grid = result.x_grid         # Spatial points
 
