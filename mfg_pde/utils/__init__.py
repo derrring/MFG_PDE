@@ -198,7 +198,7 @@ AVAILABLE_MODULES = {
 }
 
 # Public API - Core utilities always available
-# ruff: noqa: RUF022  # Keep organized with comments, don't auto-sort
+# Keep organized with comments, don't auto-sort
 __all__ = [
     # Availability flags
     "AVAILABLE_MODULES",

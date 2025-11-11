@@ -19,7 +19,6 @@ Reference:
 """
 
 import numpy as np
-import pytest
 
 
 def test_tuple_keys_are_hashable_and_immutable():
@@ -38,7 +37,7 @@ def test_tuple_keys_are_hashable_and_immutable():
 
     # Tuples have clear structure
     assert len((1, 0)) == 2  # 2D
-    assert len((1,)) == 1    # 1D
+    assert len((1,)) == 1  # 1D
     assert len((1, 0, 0)) == 3  # 3D
 
     print("✓ Tuple keys are hashable and immutable")
@@ -49,21 +48,21 @@ def test_dimension_agnostic_notation():
 
     # 1D: u(x)
     derivs_1d = {
-        (0,): 1.0,    # u
-        (1,): 0.5,    # du/dx
-        (2,): -0.1,   # d²u/dx²
+        (0,): 1.0,  # u
+        (1,): 0.5,  # du/dx
+        (2,): -0.1,  # d²u/dx²
     }
     assert derivs_1d[(1,)] == 0.5
     assert len((1,)) == 1  # Dimension = 1
 
     # 2D: u(x, y)
     derivs_2d = {
-        (0, 0): 1.0,     # u
-        (1, 0): 0.5,     # du/dx
-        (0, 1): 0.3,     # du/dy
-        (2, 0): -0.1,    # d²u/dx²
-        (0, 2): -0.2,    # d²u/dy²
-        (1, 1): 0.05,    # d²u/dxdy
+        (0, 0): 1.0,  # u
+        (1, 0): 0.5,  # du/dx
+        (0, 1): 0.3,  # du/dy
+        (2, 0): -0.1,  # d²u/dx²
+        (0, 2): -0.2,  # d²u/dy²
+        (1, 1): 0.05,  # d²u/dxdy
     }
     assert derivs_2d[(1, 0)] == 0.5
     assert derivs_2d[(0, 1)] == 0.3
@@ -71,12 +70,12 @@ def test_dimension_agnostic_notation():
 
     # 3D: u(x, y, z)
     derivs_3d = {
-        (0, 0, 0): 1.0,      # u
-        (1, 0, 0): 0.5,      # du/dx
-        (0, 1, 0): 0.3,      # du/dy
-        (0, 0, 1): 0.2,      # du/dz
-        (2, 0, 0): -0.1,     # d²u/dx²
-        (1, 1, 0): 0.05,     # d²u/dxdy
+        (0, 0, 0): 1.0,  # u
+        (1, 0, 0): 0.5,  # du/dx
+        (0, 1, 0): 0.3,  # du/dy
+        (0, 0, 1): 0.2,  # du/dz
+        (2, 0, 0): -0.1,  # d²u/dx²
+        (1, 1, 0): 0.05,  # d²u/dxdy
     }
     assert derivs_3d[(1, 0, 0)] == 0.5
     assert derivs_3d[(0, 1, 0)] == 0.3
@@ -162,11 +161,7 @@ def test_laplacian_computation():
 
     # 3D: Δu = d²u/dx² + d²u/dy² + d²u/dz²
     derivs_3d = {(2, 0, 0): -0.1, (0, 2, 0): -0.2, (0, 0, 2): -0.15}
-    laplacian_3d = (
-        derivs_3d.get((2, 0, 0), 0.0) +
-        derivs_3d.get((0, 2, 0), 0.0) +
-        derivs_3d.get((0, 0, 2), 0.0)
-    )
+    laplacian_3d = derivs_3d.get((2, 0, 0), 0.0) + derivs_3d.get((0, 2, 0), 0.0) + derivs_3d.get((0, 0, 2), 0.0)
     assert np.isclose(laplacian_3d, -0.45)
 
     print("✓ Laplacian computation from tuple-indexed derivatives")
@@ -182,19 +177,12 @@ def test_gradient_extraction():
 
     # 2D gradient
     derivs_2d = {(1, 0): 0.5, (0, 1): 0.3}
-    grad_2d = np.array([
-        derivs_2d.get((1, 0), 0.0),
-        derivs_2d.get((0, 1), 0.0)
-    ])
+    grad_2d = np.array([derivs_2d.get((1, 0), 0.0), derivs_2d.get((0, 1), 0.0)])
     assert np.allclose(grad_2d, [0.5, 0.3])
 
     # 3D gradient
     derivs_3d = {(1, 0, 0): 0.5, (0, 1, 0): 0.3, (0, 0, 1): 0.2}
-    grad_3d = np.array([
-        derivs_3d.get((1, 0, 0), 0.0),
-        derivs_3d.get((0, 1, 0), 0.0),
-        derivs_3d.get((0, 0, 1), 0.0)
-    ])
+    grad_3d = np.array([derivs_3d.get((1, 0, 0), 0.0), derivs_3d.get((0, 1, 0), 0.0), derivs_3d.get((0, 0, 1), 0.0)])
     assert np.allclose(grad_3d, [0.5, 0.3, 0.2])
 
     print("✓ Gradient extraction from tuple-indexed derivatives")
@@ -205,12 +193,12 @@ def test_no_string_keys_in_derivs():
 
     # Good: tuple keys
     derivs_good = {(1, 0): 0.5, (0, 1): 0.3}
-    for key in derivs_good.keys():
+    for key in derivs_good:
         assert isinstance(key, tuple), f"Expected tuple key, got {type(key)}"
 
     # Bad: string keys (Bug #13 anti-pattern)
     derivs_bad = {"dx": 0.5, "dy": 0.3}
-    has_string_keys = any(isinstance(k, str) for k in derivs_bad.keys())
+    has_string_keys = any(isinstance(k, str) for k in derivs_bad)
     assert has_string_keys, "Test setup error"
 
     # This test ensures new code uses tuple keys
@@ -252,7 +240,7 @@ def test_bug13_scenario_prevented():
     # Wrong tuple keys raise KeyError (not silent failure)
     derivs_typo = {(10,): 1.5, (1,): 2.3}  # Wrong dimension!
     try:
-        H_typo = hamiltonian_tuple_keys(derivs_typo)
+        hamiltonian_tuple_keys(derivs_typo)
         assert False, "Should have raised KeyError"
     except KeyError:
         pass  # Expected - fail fast, not silent!
@@ -265,10 +253,10 @@ def test_higher_order_derivatives():
 
     # Third derivatives in 2D
     derivs = {
-        (3, 0): 0.1,    # ∂³u/∂x³
-        (2, 1): 0.05,   # ∂³u/∂x²∂y
-        (1, 2): 0.03,   # ∂³u/∂x∂y²
-        (0, 3): 0.02,   # ∂³u/∂y³
+        (3, 0): 0.1,  # ∂³u/∂x³
+        (2, 1): 0.05,  # ∂³u/∂x²∂y
+        (1, 2): 0.03,  # ∂³u/∂x∂y²
+        (0, 3): 0.02,  # ∂³u/∂y³
     }
 
     # Verify derivative orders
@@ -277,11 +265,11 @@ def test_higher_order_derivatives():
 
     # Fourth derivatives
     derivs_4th = {
-        (4, 0): 0.01,    # ∂⁴u/∂x⁴
-        (2, 2): 0.005,   # ∂⁴u/∂x²∂y²
+        (4, 0): 0.01,  # ∂⁴u/∂x⁴
+        (2, 2): 0.005,  # ∂⁴u/∂x²∂y²
     }
 
-    for key in derivs_4th.keys():
+    for key in derivs_4th:
         assert sum(key) == 4
 
     print("✓ Higher-order derivatives supported with tuple notation")
@@ -295,16 +283,9 @@ def test_extraction_utility_function():
         if dimension == 1:
             return np.array([derivs.get((1,), 0.0)])
         elif dimension == 2:
-            return np.array([
-                derivs.get((1, 0), 0.0),
-                derivs.get((0, 1), 0.0)
-            ])
+            return np.array([derivs.get((1, 0), 0.0), derivs.get((0, 1), 0.0)])
         elif dimension == 3:
-            return np.array([
-                derivs.get((1, 0, 0), 0.0),
-                derivs.get((0, 1, 0), 0.0),
-                derivs.get((0, 0, 1), 0.0)
-            ])
+            return np.array([derivs.get((1, 0, 0), 0.0), derivs.get((0, 1, 0), 0.0), derivs.get((0, 0, 1), 0.0)])
         else:
             raise NotImplementedError(f"Dimension {dimension} not implemented")
 
@@ -340,11 +321,11 @@ def test_hjb_gfdm_compliance():
 
     # Example 2D derivative dictionary (as returned by hjb_gfdm)
     derivs = {
-        (0, 0): 1.0,    # Function value
-        (1, 0): 0.5,    # ∂u/∂x
-        (0, 1): 0.3,    # ∂u/∂y
-        (2, 0): -0.1,   # ∂²u/∂x²
-        (0, 2): -0.2,   # ∂²u/∂y²
+        (0, 0): 1.0,  # Function value
+        (1, 0): 0.5,  # ∂u/∂x
+        (0, 1): 0.3,  # ∂u/∂y
+        (2, 0): -0.1,  # ∂²u/∂x²
+        (0, 2): -0.2,  # ∂²u/∂y²
     }
 
     # Verify tuple keys exist
@@ -355,9 +336,8 @@ def test_hjb_gfdm_compliance():
     assert (0, 1) in derivs, "Expected ∂u/∂y key (0,1)"
 
     # Verify no string keys (anti-pattern from Bug #13)
-    for key in derivs.keys():
-        assert isinstance(key, tuple), \
-            f"hjb_gfdm should use tuple keys, found {type(key)}: {key}"
+    for key in derivs:
+        assert isinstance(key, tuple), f"hjb_gfdm should use tuple keys, found {type(key)}: {key}"
 
     # Verify gradient extraction works
     p_x = derivs.get((1, 0), 0.0)

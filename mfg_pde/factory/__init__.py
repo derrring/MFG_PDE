@@ -56,7 +56,7 @@ from .solver_factory import (
     create_standard_solver,
 )
 
-__all__ = [  # noqa: RUF022 - Intentionally organized by category, not alphabetically
+__all__ = [
     # =========================================================================
     # NEW UNIFIED PROBLEM FACTORIES (Phase 3.3 - RECOMMENDED)
     # =========================================================================

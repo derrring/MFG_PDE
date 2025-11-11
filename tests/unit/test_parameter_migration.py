@@ -155,7 +155,7 @@ def test_parameter_migrator_has_standard_mappings():
     old_names = [m.old_name for m in migrator.mappings]
     assert "NiterNewton" in old_names
     assert "max_iterations" in old_names
-    assert "coupling_coefficient" in old_names
+    assert "coefCT" in old_names  # Old name for coupling_coefficient
 
 
 # ===================================================================

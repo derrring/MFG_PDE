@@ -84,6 +84,14 @@ class ParameterMigrator:
         )
 
         self.add_mapping(
+            old_name="max_iterations",
+            new_name="max_picard_iterations",
+            deprecation_version="1.3.0",
+            removal_version="2.0.0",
+            description="Maximum number of Picard iterations (generic alias)",
+        )
+
+        self.add_mapping(
             old_name="l2errBoundPicard",
             new_name="picard_tolerance",
             deprecation_version="1.3.0",
