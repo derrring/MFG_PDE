@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from mfg_pde.utils.solver_decorators import (
+    SolverMonitoringOptions,
     SolverProgressMixin,
     enhanced_solver_method,
     format_solver_summary,
@@ -30,6 +31,119 @@ class DummySolver:
         iterations = max_iterations or self.max_iterations
         time.sleep(0.01)
         return {"iterations": iterations, "converged": True}
+
+
+class TestSolverMonitoringOptions:
+    """Test SolverMonitoringOptions Flag enum."""
+
+    def test_enum_values_exist(self):
+        """Test all expected enum values are defined."""
+        assert hasattr(SolverMonitoringOptions, "NONE")
+        assert hasattr(SolverMonitoringOptions, "CONVERGENCE")
+        assert hasattr(SolverMonitoringOptions, "PROGRESS")
+        assert hasattr(SolverMonitoringOptions, "TIMING")
+        assert hasattr(SolverMonitoringOptions, "ALL")
+
+    def test_none_value(self):
+        """Test NONE flag has value 0."""
+        assert SolverMonitoringOptions.NONE.value == 0
+
+    def test_flag_combination_with_or(self):
+        """Test flags can be combined with bitwise OR."""
+        combined = SolverMonitoringOptions.PROGRESS | SolverMonitoringOptions.TIMING
+        assert isinstance(combined, SolverMonitoringOptions)
+        assert SolverMonitoringOptions.PROGRESS in combined
+        assert SolverMonitoringOptions.TIMING in combined
+        assert SolverMonitoringOptions.CONVERGENCE not in combined
+
+    def test_all_flag_includes_all_options(self):
+        """Test ALL flag includes all monitoring options."""
+        all_options = SolverMonitoringOptions.ALL
+        assert SolverMonitoringOptions.CONVERGENCE in all_options
+        assert SolverMonitoringOptions.PROGRESS in all_options
+        assert SolverMonitoringOptions.TIMING in all_options
+
+    def test_membership_checking(self):
+        """Test membership checking with 'in' operator."""
+        options = SolverMonitoringOptions.PROGRESS | SolverMonitoringOptions.TIMING
+
+        assert SolverMonitoringOptions.PROGRESS in options
+        assert SolverMonitoringOptions.TIMING in options
+        assert SolverMonitoringOptions.CONVERGENCE not in options
+
+    def test_single_flag(self):
+        """Test single flag works correctly."""
+        options = SolverMonitoringOptions.PROGRESS
+        assert SolverMonitoringOptions.PROGRESS in options
+        assert SolverMonitoringOptions.TIMING not in options
+        assert SolverMonitoringOptions.CONVERGENCE not in options
+
+    def test_triple_combination(self):
+        """Test combining three flags."""
+        options = (
+            SolverMonitoringOptions.CONVERGENCE | SolverMonitoringOptions.PROGRESS | SolverMonitoringOptions.TIMING
+        )
+        assert SolverMonitoringOptions.CONVERGENCE in options
+        assert SolverMonitoringOptions.PROGRESS in options
+        assert SolverMonitoringOptions.TIMING in options
+
+    def test_enhanced_solver_with_new_enum_api(self):
+        """Test enhanced_solver_method with new enum-based API."""
+
+        @enhanced_solver_method(options=SolverMonitoringOptions.PROGRESS | SolverMonitoringOptions.TIMING)
+        def solve(self, max_iterations=10, verbose=False, **kwargs):
+            time.sleep(0.01)
+            return {"converged": True}
+
+        solver = DummySolver()
+        with patch("sys.stdout", new=StringIO()):
+            result = solve(solver)
+
+        assert result["converged"] is True
+        # Timing should be enabled
+        assert "execution_time" in result
+
+    def test_enhanced_solver_with_all_flag(self):
+        """Test enhanced_solver_method with ALL flag."""
+
+        @enhanced_solver_method(options=SolverMonitoringOptions.ALL)
+        def solve(self, max_iterations=10, verbose=False, **kwargs):
+            time.sleep(0.01)
+            return {"converged": True}
+
+        solver = DummySolver()
+        with patch("sys.stdout", new=StringIO()):
+            result = solve(solver)
+
+        assert result["converged"] is True
+
+    def test_enhanced_solver_with_none_flag(self):
+        """Test enhanced_solver_method with NONE flag."""
+
+        @enhanced_solver_method(options=SolverMonitoringOptions.NONE)
+        def solve(self, max_iterations=10, verbose=True, **kwargs):
+            return {"converged": True}
+
+        solver = DummySolver()
+        result = solve(solver)
+
+        assert result["converged"] is True
+        assert "execution_time" not in result
+
+    def test_backward_compatibility_deprecation_warning(self):
+        """Test deprecated boolean parameters trigger warnings."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            @enhanced_solver_method(auto_progress=True, timing=True)
+            def solve(self, max_iterations=10, verbose=False, **kwargs):
+                return {"converged": True}
+
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "deprecated" in str(w[0].message).lower()
 
 
 class TestWithProgressMonitoring:
