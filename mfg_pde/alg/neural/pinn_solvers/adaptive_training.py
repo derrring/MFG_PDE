@@ -28,7 +28,9 @@ Applications:
 from __future__ import annotations
 
 import logging
+import warnings
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -50,6 +52,26 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class AdaptiveTrainingMode(str, Enum):
+    """
+    Adaptive training strategy for PINN solvers.
+
+    Determines which adaptive training techniques are enabled during
+    physics-informed neural network training.
+
+    Attributes:
+        BASIC: Standard training without adaptive features
+        CURRICULUM: Progressive complexity training
+        MULTISCALE: Multi-resolution hierarchical training
+        FULL_ADAPTIVE: All adaptive features (curriculum + multiscale + refinement)
+    """
+
+    BASIC = "basic"
+    CURRICULUM = "curriculum"
+    MULTISCALE = "multiscale"
+    FULL_ADAPTIVE = "full_adaptive"
+
+
 @dataclass
 class AdaptiveTrainingConfig:
     """Configuration for adaptive training strategies."""
@@ -60,14 +82,20 @@ class AdaptiveTrainingConfig:
     max_adaptive_points: int = 10000  # Maximum points to add adaptively
     importance_exponent: float = 0.5  # p(x) ∝ |R(x)|^α
 
+    # Training strategy (replaces enable_curriculum, enable_multiscale, enable_refinement)
+    training_mode: AdaptiveTrainingMode = AdaptiveTrainingMode.FULL_ADAPTIVE
+
+    # Deprecated parameters (kept for backward compatibility)
+    enable_curriculum: bool | None = None  # Deprecated: use training_mode
+    enable_multiscale: bool | None = None  # Deprecated: use training_mode
+    enable_refinement: bool | None = None  # Deprecated: use training_mode
+
     # Curriculum learning
-    enable_curriculum: bool = True
     curriculum_epochs: int = 5000  # Epochs for curriculum progression
     initial_complexity: float = 0.1  # Start with 10% of full problem
     complexity_growth: str = "linear"  # "linear" | "exponential" | "sigmoid"
 
     # Multi-scale training
-    enable_multiscale: bool = True
     num_scales: int = 3  # Number of resolution scales
     scale_transition_epochs: int = 2000  # Epochs between scale transitions
     coarse_to_fine: bool = True  # Start coarse and refine
@@ -79,7 +107,6 @@ class AdaptiveTrainingConfig:
     gradient_balance: bool = True  # Balance gradients across loss terms
 
     # Residual-based refinement
-    enable_refinement: bool = True
     refinement_frequency: int = 500  # Refine mesh every N epochs
     refinement_factor: float = 1.5  # Factor to increase points in high-residual regions
     max_refinement_levels: int = 5  # Maximum refinement levels
@@ -88,6 +115,61 @@ class AdaptiveTrainingConfig:
     monitor_convergence: bool = True
     stagnation_patience: int = 1000  # Epochs to wait before intervention
     stagnation_threshold: float = 1e-6  # Minimum improvement threshold
+
+    def __post_init__(self):
+        """Handle deprecated parameters with backward compatibility."""
+        # Check if any deprecated boolean parameters were used
+        deprecated_params_used = any(
+            param is not None for param in [self.enable_curriculum, self.enable_multiscale, self.enable_refinement]
+        )
+
+        if deprecated_params_used:
+            warnings.warn(
+                "Parameters 'enable_curriculum', 'enable_multiscale', and 'enable_refinement' "
+                "are deprecated and will be removed in v1.0.0. Use 'training_mode' instead.\n\n"
+                "Migration guide:\n"
+                "  Old: AdaptiveTrainingConfig(enable_curriculum=True, enable_multiscale=True, enable_refinement=True)\n"
+                "  New: AdaptiveTrainingConfig(training_mode=AdaptiveTrainingMode.FULL_ADAPTIVE)\n\n"
+                "Available modes:\n"
+                "  - BASIC: No adaptive features\n"
+                "  - CURRICULUM: Curriculum learning only\n"
+                "  - MULTISCALE: Multi-resolution training only\n"
+                "  - FULL_ADAPTIVE: All features (default)",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+            # Map deprecated booleans to training mode (only if training_mode not explicitly set)
+            if self.training_mode == AdaptiveTrainingMode.FULL_ADAPTIVE:  # Default value
+                # Determine mode from boolean combination
+                curriculum = self.enable_curriculum if self.enable_curriculum is not None else True
+                multiscale = self.enable_multiscale if self.enable_multiscale is not None else True
+                refinement = self.enable_refinement if self.enable_refinement is not None else True
+
+                if not (curriculum or multiscale or refinement):
+                    self.training_mode = AdaptiveTrainingMode.BASIC
+                elif curriculum and not multiscale and not refinement:
+                    self.training_mode = AdaptiveTrainingMode.CURRICULUM
+                elif multiscale and not curriculum and not refinement:
+                    self.training_mode = AdaptiveTrainingMode.MULTISCALE
+                else:
+                    # Any combination with 2+ features enabled → FULL_ADAPTIVE
+                    self.training_mode = AdaptiveTrainingMode.FULL_ADAPTIVE
+
+    @property
+    def uses_curriculum(self) -> bool:
+        """Whether curriculum learning is enabled."""
+        return self.training_mode in (AdaptiveTrainingMode.CURRICULUM, AdaptiveTrainingMode.FULL_ADAPTIVE)
+
+    @property
+    def uses_multiscale(self) -> bool:
+        """Whether multiscale training is enabled."""
+        return self.training_mode in (AdaptiveTrainingMode.MULTISCALE, AdaptiveTrainingMode.FULL_ADAPTIVE)
+
+    @property
+    def uses_refinement(self) -> bool:
+        """Whether residual-based refinement is enabled."""
+        return self.training_mode == AdaptiveTrainingMode.FULL_ADAPTIVE
 
 
 @dataclass

@@ -25,6 +25,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -66,6 +67,24 @@ except ImportError:
     TensorDataset = None
 
 
+class NormalizationType(str, Enum):
+    """
+    Normalization layer type for PINN neural networks.
+
+    Determines which normalization technique is applied to network layers
+    to stabilize training and improve convergence.
+
+    Attributes:
+        NONE: No normalization (standard feed-forward network)
+        BATCH: Batch normalization after each hidden layer
+        LAYER: Layer normalization after each hidden layer
+    """
+
+    NONE = "none"
+    BATCH = "batch"
+    LAYER = "layer"
+
+
 @dataclass
 class PINNConfig:
     """
@@ -80,8 +99,13 @@ class PINNConfig:
     hidden_layers: list[int] = field(default_factory=lambda: [50, 50, 50])
     activation: str = "tanh"  # "tanh", "relu", "swish", "sine", "gelu"
     initialization: str = "xavier_normal"  # "xavier_normal", "xavier_uniform", "kaiming"
-    use_batch_norm: bool = False
-    use_layer_norm: bool = False
+
+    # Normalization strategy (replaces use_batch_norm, use_layer_norm)
+    normalization: NormalizationType = NormalizationType.NONE
+
+    # Deprecated parameters (kept for backward compatibility)
+    use_batch_norm: bool | None = None  # Deprecated: use normalization
+    use_layer_norm: bool | None = None  # Deprecated: use normalization
 
     # Training parameters
     learning_rate: float = 1e-3
@@ -142,6 +166,30 @@ class PINNConfig:
         """Validate configuration parameters."""
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch is required for PINN functionality. Install with: pip install torch torchvision")
+
+        # Handle deprecated normalization parameters
+        if self.use_batch_norm is not None or self.use_layer_norm is not None:
+            warnings.warn(
+                "Parameters 'use_batch_norm' and 'use_layer_norm' are deprecated "
+                "and will be removed in v1.0.0. Use 'normalization' instead.\n\n"
+                "Migration guide:\n"
+                "  Old: PINNConfig(use_batch_norm=True)\n"
+                "  New: PINNConfig(normalization=NormalizationType.BATCH)\n\n"
+                "Available normalization types:\n"
+                "  - NONE: No normalization (default)\n"
+                "  - BATCH: Batch normalization\n"
+                "  - LAYER: Layer normalization",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+            # Map deprecated booleans to normalization enum
+            if self.normalization == NormalizationType.NONE:  # Only if not explicitly set
+                if self.use_batch_norm:
+                    self.normalization = NormalizationType.BATCH
+                elif self.use_layer_norm:
+                    self.normalization = NormalizationType.LAYER
+                # If both False or both True, keep NONE (invalid config will be caught by validation)
 
         # Validation checks
         if self.learning_rate <= 0:
