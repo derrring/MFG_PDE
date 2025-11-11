@@ -20,11 +20,12 @@ Internal Types (use with caution):
 # Re-export the most commonly needed types
 from .arrays import SolutionArray, SpatialGrid, TimeGrid
 from .protocols import MFGProblem, MFGResult, MFGSolver, SolverConfig
-from .solver_types import SolverReturnTuple
+from .solver_types import HamiltonianJacobians, SolverReturnTuple
 from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
     "ConvergenceInfo",
+    "HamiltonianJacobians",
     "MFGProblem",
     "MFGResult",
     "MFGSolver",
