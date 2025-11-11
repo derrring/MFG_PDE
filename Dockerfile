@@ -49,7 +49,7 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update && apt-get install -y \
     libblas3 \
     liblapack3 \
-    libopenmpi3 \
+    libopenmpi40 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
