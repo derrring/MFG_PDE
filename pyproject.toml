@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.11.0" # v0.11.0: Dual geometry architecture with FEM mesh support
+version = "0.12.0" # v0.12.0: Advanced projection methods & API modernization
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

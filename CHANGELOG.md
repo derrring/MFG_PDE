@@ -7,10 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-11-11
+
+**Feature Release: Advanced Projection Methods & API Modernization**
+
+This release adds advanced particle-to-grid projection methods (GPU KDE, multigrid operators), completes the Dx/Dt→dx/dt migration, implements adaptive hybrid CPU/GPU strategies, and introduces enum-based configuration with full backward compatibility.
+
+### Added
+
+**Advanced Projection Operators (PRs #269, #270, Issue #265)**
+
+- **Multi-dimensional GPU KDE** for particle-to-grid projection
+  - GPU-accelerated kernel density estimation for 1D/2D/3D
+  - Scott's rule and Silverman's rule for automatic bandwidth selection
+  - Memory-efficient implementation for large particle systems
+  - Fallback to CPU implementation when GPU unavailable
+  - Significantly improves accuracy over histogram-based projection
+
+- **Conservative restriction and prolongation operators** for multigrid methods
+  - Conservative restriction: Fine → coarse grid with exact mass conservation
+  - High-order prolongation: Bilinear/bicubic interpolation for coarse → fine
+  - Supports 1D/2D/3D grids with arbitrary refinement ratios
+  - Essential for multigrid acceleration of MFG solvers
+
+**Adaptive Hybrid Strategies (PR #268, Issue #262)**
+
+- **Intelligent CPU/GPU backend selection** for particle methods
+  - Automatic threshold-based selection (10,000 particles)
+  - Performance-optimized decision making based on problem size
+  - Graceful handling of backend=None (automatic selection)
+  - Reduces GPU overhead for small problems, leverages GPU for large ones
+
+**GFDM Gradient Operators (PR #267, Issue #261)**
+
+- **Full drift computation** in particle FP solver: `α = -∇U`
+  - Implements GFDM-based gradient operator for arbitrary grids
+  - Replaces zero-drift placeholder with proper physics
+  - All 36 particle FP tests pass with realistic dynamics
+
+**Modern Configuration with Enums (PR #283, Issue #277 Phase 2)**
+
+- **AdaptiveTrainingMode** enum for PINN adaptive training strategies
+  - Values: `BASIC`, `CURRICULUM`, `MULTISCALE`, `FULL_ADAPTIVE`
+  - Replaces boolean triplet: `enable_curriculum`, `enable_multiscale`, `enable_refinement`
+  - Backward compatible via `__post_init__` deprecation handling
+
+- **NormalizationType** enum for PINN normalization methods
+  - Values: `NONE`, `INPUT`, `LOSS`, `BOTH`
+  - Replaces boolean pair: `normalize_input`, `normalize_loss`
+
+- **VarianceReductionMethod** enum for DGM variance reduction
+  - Values: `NONE`, `BASELINE`, `CONTROL_VARIATE`, `BOTH`
+  - Replaces boolean pair: `use_baseline`, `use_control_variates`
+
+**Enhanced Dependency Management (PR #279, Issue #278)**
+
+- Improved error messages when optional dependencies missing
+- Better diagnostics for installation issues
+- User-friendly guidance for installing GPU backends
+
+**Examples Reorganization (PR #275)**
+
+- Elevated `tutorials/` to peer level with `basic/` and `advanced/`
+- Hierarchical organization: `applications/`, `notebooks/`, `plugins/`
+- Enhanced tutorial content (tutorials 04 and 05)
+- Cleaner examples directory structure
+
 ### Deprecated
 
-- **`Dt` attribute**: Use lowercase `dt` instead (Issue #245). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
-- **`Dx` attribute**: Use lowercase `dx` instead (Issue #245). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
+- **`Dt` attribute**: Use lowercase `dt` instead (Issue #245, PR #259, #274). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
+- **`Dx` attribute**: Use lowercase `dx` instead (Issue #245, PR #259, #274). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
+- **Boolean configuration parameters**: Replaced with enums (Issue #277, PR #283). Old parameters still work with deprecation warnings. Will be removed in v1.0.0.
+- **GridBasedMFGProblem**: Use `MFGProblem` directly instead. Will be removed in v2.0.0.
 
 ### Changed
 
@@ -23,6 +91,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Benchmarks: 3 benchmark files (4 references)
 
 - **Primary spatial spacing attribute**: Changed from `Dx` to `dx` for 1D problems (same scope as above)
+
+### Fixed
+
+- Test collection errors (PR #266): Removed 2,280 lines of obsolete test code
+- Flaky TD3 test (Issue #237): Made `test_soft_update_all_target_networks` deterministic
+- Parameter migration system: Added missing `max_iterations → max_picard_iterations` mapping
+
+### Documentation
+
+- API violations audit (PR #282, Issue #277 Phase 1)
+- Array-based notation standard (Issue #243 Phase 1)
+- Comprehensive dual geometry example
+
+### Issues Closed
+
+9 issues closed: #278, #277 (Phase 2), #273, #265, #262, #261, #260, #259, #243 (Phase 1), #237
 
 ### Migration Guide
 
@@ -37,7 +121,23 @@ dt = problem.dt
 dx = problem.dx
 ```
 
-**For developers**: The deprecated uppercase properties will be completely removed in v1.0.0.
+**For enum configurations**:
+```python
+# OLD (deprecated but works with warnings)
+config = AdaptiveTrainingConfig(
+    enable_curriculum=True,
+    enable_multiscale=True,
+    enable_refinement=True
+)
+
+# NEW (recommended)
+from mfg_pde.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingMode
+config = AdaptiveTrainingConfig(
+    training_mode=AdaptiveTrainingMode.FULL_ADAPTIVE
+)
+```
+
+**For developers**: The deprecated properties and parameters will be completely removed in v1.0.0.
 
 ## [0.11.0] - 2025-11-10
 
