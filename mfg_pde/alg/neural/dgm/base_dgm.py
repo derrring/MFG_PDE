@@ -21,8 +21,10 @@ Key Features:
 from __future__ import annotations
 
 import logging
+import warnings
 from abc import abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -35,6 +37,26 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 logger = logging.getLogger(__name__)
+
+
+class VarianceReductionMethod(str, Enum):
+    """
+    Variance reduction technique for DGM Monte Carlo sampling.
+
+    Determines which statistical methods are used to reduce variance in
+    high-dimensional Monte Carlo integration for PDE residuals.
+
+    Attributes:
+        NONE: Standard Monte Carlo (no variance reduction)
+        CONTROL_VARIATES: Control variates using baseline function
+        IMPORTANCE_SAMPLING: Importance sampling based on residuals
+        BOTH: Both control variates and importance sampling
+    """
+
+    NONE = "none"
+    CONTROL_VARIATES = "control_variates"
+    IMPORTANCE_SAMPLING = "importance_sampling"
+    BOTH = "both"
 
 
 @dataclass
@@ -60,9 +82,13 @@ class DGMConfig:
     num_initial_points: int = 2000  # Initial condition sampling
     sampling_strategy: str = "monte_carlo"  # "monte_carlo" | "quasi_monte_carlo"
 
-    # Variance reduction
-    use_control_variates: bool = True
-    use_importance_sampling: bool = False
+    # Variance reduction (replaces use_control_variates, use_importance_sampling)
+    variance_reduction: VarianceReductionMethod = VarianceReductionMethod.CONTROL_VARIATES
+
+    # Deprecated parameters (kept for backward compatibility)
+    use_control_variates: bool | None = None  # Deprecated: use variance_reduction
+    use_importance_sampling: bool | None = None  # Deprecated: use variance_reduction
+
     baseline_function: str | None = None  # Reference solution for variance reduction
 
     # Adaptive sampling
@@ -87,7 +113,39 @@ class DGMConfig:
     num_workers: int = 4  # Data loading workers
 
     def __post_init__(self) -> None:
-        """Set default hidden layers for high-dimensional problems."""
+        """Set default hidden layers and handle deprecated parameters."""
+        # Handle deprecated variance reduction parameters
+        if self.use_control_variates is not None or self.use_importance_sampling is not None:
+            warnings.warn(
+                "Parameters 'use_control_variates' and 'use_importance_sampling' are deprecated "
+                "and will be removed in v1.0.0. Use 'variance_reduction' instead.\n\n"
+                "Migration guide:\n"
+                "  Old: DGMConfig(use_control_variates=True, use_importance_sampling=False)\n"
+                "  New: DGMConfig(variance_reduction=VarianceReductionMethod.CONTROL_VARIATES)\n\n"
+                "Available variance reduction methods:\n"
+                "  - NONE: No variance reduction\n"
+                "  - CONTROL_VARIATES: Control variates only\n"
+                "  - IMPORTANCE_SAMPLING: Importance sampling only\n"
+                "  - BOTH: Both techniques",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+            # Map deprecated booleans to variance reduction enum
+            if self.variance_reduction == VarianceReductionMethod.CONTROL_VARIATES:  # Default value
+                cv = self.use_control_variates if self.use_control_variates is not None else True
+                imp = self.use_importance_sampling if self.use_importance_sampling is not None else False
+
+                if cv and imp:
+                    self.variance_reduction = VarianceReductionMethod.BOTH
+                elif cv and not imp:
+                    self.variance_reduction = VarianceReductionMethod.CONTROL_VARIATES
+                elif not cv and imp:
+                    self.variance_reduction = VarianceReductionMethod.IMPORTANCE_SAMPLING
+                else:
+                    self.variance_reduction = VarianceReductionMethod.NONE
+
+        # Set default hidden layers for high-dimensional problems
         if self.hidden_layers is None:
             # Default architecture for high-dimensional approximation
             self.hidden_layers = [256, 256, 256, 256]
