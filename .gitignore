@@ -839,11 +839,13 @@ demo_benchmark_results/
 #===============================================
 
 # Examples outputs (regenerable from scripts)
+examples/outputs/tutorials/
 examples/outputs/basic/
 examples/outputs/advanced/
 
-# Track reference outputs for comparison and CI/CD
+# Track reference outputs and documentation
 !examples/outputs/reference/
+!examples/outputs/README.md
 
 # Track notebooks with cleared outputs
 !examples/**/*.ipynb
@@ -880,7 +882,6 @@ benchmarks/history/
 # Private directories (simpler: exclude everything)
 docs/theory/private/
 docs/development/private/
-examples/outputs/
 # Obsolete planning documents (superseded)
 docs/development/AGGRESSIVE_NAMING_MIGRATION_PLAN.md
 docs/development/REVISED_PROTOCOL_COMPLIANCE_PLAN.md

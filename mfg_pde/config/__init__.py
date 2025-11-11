@@ -133,7 +133,7 @@ except ImportError:
 # PUBLIC API
 # =============================================================================
 
-__all__ = [  # noqa: RUF022 - Intentionally organized by category, not alphabetically
+__all__ = [
     # -------------------------------------------------------------------------
     # NEW UNIFIED CONFIG SYSTEM (RECOMMENDED)
     # -------------------------------------------------------------------------

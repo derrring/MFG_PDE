@@ -7,8 +7,9 @@ gradient notation and standard tuple multi-index notation.
 
 import warnings
 
-import numpy as np
 import pytest
+
+import numpy as np
 
 from mfg_pde.compat.gradient_notation import (
     check_derivs_format,

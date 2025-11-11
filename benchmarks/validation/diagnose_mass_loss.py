@@ -266,10 +266,10 @@ def main():
     print("=" * 70)
 
     # Diagnosis 1: Initial density normalization
-    problem, initial_m = diagnose_initial_density()
+    _, _initial_m = diagnose_initial_density()
 
     # Diagnosis 2: Mass during solve
-    result, masses = diagnose_mass_during_solve()
+    _result, _masses = diagnose_mass_during_solve()
 
     # Diagnosis 3: Mass computation correctness
     diagnose_mass_computation()
