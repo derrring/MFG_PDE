@@ -2,11 +2,17 @@
 
 A structured 5-step learning path for getting started with Mean Field Games in Python.
 
+## Format
+
+Each tutorial is available in two formats:
+- **Jupyter Notebook** (`.ipynb`) - **Recommended** for interactive learning with inline explanations
+- **Python Script** (`.py`) - For command-line execution and integration into workflows
+
 ## Learning Path
 
 Complete these tutorials in order to build a solid foundation:
 
-### 01. [Hello MFG](./01_hello_mfg.py)
+### 01. [Hello MFG](./01_hello_mfg.ipynb) | [script](./01_hello_mfg.py)
 **Difficulty**: Beginner
 **Time**: 10 minutes
 
@@ -22,7 +28,7 @@ Your first Mean Field Game using the simplest possible setup.
 
 ---
 
-### 02. [Custom Hamiltonian](./02_custom_hamiltonian.py)
+### 02. [Custom Hamiltonian](./02_custom_hamiltonian.ipynb) | [script](./02_custom_hamiltonian.py)
 **Difficulty**: Beginner
 **Time**: 15 minutes
 
@@ -38,7 +44,7 @@ Learn to define your own MFG problems from scratch.
 
 ---
 
-### 03. [2D Geometry](./03_2d_geometry.py)
+### 03. [2D Geometry](./03_2d_geometry.ipynb) | [script](./03_2d_geometry.py)
 **Difficulty**: Intermediate
 **Time**: 20 minutes
 
@@ -54,7 +60,7 @@ Move from 1D to 2D spatial domains.
 
 ---
 
-### 04. [Particle Methods](./04_particle_methods.py)
+### 04. [Particle Methods](./04_particle_methods.ipynb) | [script](./04_particle_methods.py)
 **Difficulty**: Intermediate
 **Time**: 25 minutes
 
@@ -70,7 +76,7 @@ Explore alternative solver backends using particle-based methods.
 
 ---
 
-### 05. [ConfigBuilder System](./05_config_system.py)
+### 05. [ConfigBuilder System](./05_config_system.ipynb) | [script](./05_config_system.py)
 **Difficulty**: Intermediate
 **Time**: 20 minutes
 
