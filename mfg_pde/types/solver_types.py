@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
@@ -158,6 +159,50 @@ type DensityFunction = Callable[[float], float]
 
 type ValueFunction = Callable[[float], float]
 """Value function g(x) -> float"""
+
+
+# === Hamiltonian Jacobian Types ===
+
+
+@dataclass
+class HamiltonianJacobians:
+    """
+    Jacobian components of Hamiltonian H(x,p,m) with respect to momentum p = ∇U.
+
+    In finite difference discretizations of the HJB equation, the Hamiltonian's
+    Jacobian forms a tridiagonal coefficient matrix for Newton/policy iteration.
+
+    Mathematical Context:
+        For HJB equation: ∂U/∂t + H(x, ∇U, m) = 0
+
+        The Jacobian ∂H/∂p (where p = ∇U) gives linearization:
+        H(x, p + δp, m) ≈ H(x, p, m) + ∂H/∂p · δp
+
+        In 1D finite differences with central/upwind schemes:
+        - diagonal: coefficient for p_i (current point)
+        - lower: coefficient for p_{i-1} (left neighbor)
+        - upper: coefficient for p_{i+1} (right neighbor)
+
+    Usage:
+        >>> jacobians = problem.compute_hjb_jacobian_terms(U, M, t)
+        >>> # Access components with clear names
+        >>> A_diag = jacobians.diagonal
+        >>> A_lower = jacobians.lower
+        >>> A_upper = jacobians.upper
+
+    Attributes:
+        diagonal: Diagonal Jacobian coefficients J_D_H, shape (Nx,)
+        lower: Lower-diagonal Jacobian coefficients J_L_H, shape (Nx,)
+        upper: Upper-diagonal Jacobian coefficients J_U_H, shape (Nx,)
+
+    See Also:
+        mfg_pde.core.mfg_problem.MFGProblem.compute_hjb_jacobian_terms
+    """
+
+    diagonal: NDArray  # J_D_H
+    lower: NDArray  # J_L_H
+    upper: NDArray  # J_U_H
+
 
 # === Solver Component Protocols ===
 

@@ -5,12 +5,33 @@ This module implements automatic selection of optimal computational strategy
 based on backend capabilities, problem size, and runtime profiling.
 """
 
+from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional
 
 from .particle_strategies import CPUParticleStrategy, GPUParticleStrategy, HybridParticleStrategy, ParticleStrategy
 
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
+
+
+class ProfilingMode(Enum):
+    """
+    Profiling and logging mode for strategy selection.
+
+    Modes:
+        DISABLED: No profiling or logging
+        SILENT: Profile and log selection history, but don't print to console
+        VERBOSE: Profile, log, and print selection decisions to console
+
+    Examples:
+        >>> selector = StrategySelector(profiling_mode=ProfilingMode.VERBOSE)
+        >>> selector = StrategySelector(profiling_mode=ProfilingMode.SILENT)
+        >>> selector = StrategySelector(profiling_mode=ProfilingMode.DISABLED)
+    """
+
+    DISABLED = auto()  # No profiling: enable_profiling=False
+    SILENT = auto()  # Profiling without console output: enable_profiling=True, verbose=False
+    VERBOSE = auto()  # Profiling with console output: enable_profiling=True, verbose=True
 
 
 class StrategySelector:
@@ -35,19 +56,66 @@ class StrategySelector:
     'gpu-mps'
     """
 
-    def __init__(self, enable_profiling: bool = True, verbose: bool = False):
+    def __init__(
+        self,
+        profiling_mode: ProfilingMode | str = ProfilingMode.SILENT,
+        *,
+        enable_profiling: bool | None = None,
+        verbose: bool | None = None,
+    ):
         """
         Initialize strategy selector.
 
         Parameters
         ----------
-        enable_profiling : bool
-            Enable logging of strategy selection decisions
-        verbose : bool
-            Print selection decisions to console
+        profiling_mode : ProfilingMode or str, default=ProfilingMode.SILENT
+            Profiling mode: ProfilingMode.DISABLED, .SILENT, or .VERBOSE
+            Can also pass strings: "disabled", "silent", "verbose"
+        enable_profiling : bool, optional (deprecated)
+            Deprecated: Use profiling_mode instead
+        verbose : bool, optional (deprecated)
+            Deprecated: Use profiling_mode instead
+
+        Examples
+        --------
+        >>> # New API (recommended)
+        >>> selector = StrategySelector(profiling_mode=ProfilingMode.VERBOSE)
+        >>> selector = StrategySelector(profiling_mode="silent")
+        >>>
+        >>> # Old API (deprecated but still works)
+        >>> selector = StrategySelector(enable_profiling=True, verbose=False)
         """
-        self.enable_profiling = enable_profiling
-        self.verbose = verbose
+        # Handle backward compatibility
+        if enable_profiling is not None or verbose is not None:
+            import warnings
+
+            warnings.warn(
+                "Parameters 'enable_profiling' and 'verbose' are deprecated. "
+                "Use 'profiling_mode' instead: ProfilingMode.DISABLED, .SILENT, or .VERBOSE",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # Convert old API to new
+            if enable_profiling is False:
+                profiling_mode = ProfilingMode.DISABLED
+            elif verbose is True:
+                profiling_mode = ProfilingMode.VERBOSE
+            else:
+                profiling_mode = ProfilingMode.SILENT
+
+        # Handle string mode
+        if isinstance(profiling_mode, str):
+            mode_map = {
+                "disabled": ProfilingMode.DISABLED,
+                "silent": ProfilingMode.SILENT,
+                "verbose": ProfilingMode.VERBOSE,
+            }
+            profiling_mode = mode_map.get(profiling_mode.lower(), ProfilingMode.SILENT)
+
+        self.profiling_mode = profiling_mode
+        # Maintain internal boolean state for compatibility with existing code
+        self.enable_profiling = profiling_mode != ProfilingMode.DISABLED
+        self.verbose = profiling_mode == ProfilingMode.VERBOSE
         self.selection_history: list[dict] = []
 
     def select_strategy(
@@ -232,8 +300,14 @@ class AdaptiveStrategySelector(StrategySelector):
     NOTE: This is a placeholder for future implementation.
     """
 
-    def __init__(self, enable_profiling: bool = True, verbose: bool = False):
-        super().__init__(enable_profiling, verbose)
+    def __init__(
+        self,
+        profiling_mode: ProfilingMode | str = ProfilingMode.SILENT,
+        *,
+        enable_profiling: bool | None = None,
+        verbose: bool | None = None,
+    ):
+        super().__init__(profiling_mode, enable_profiling=enable_profiling, verbose=verbose)
         self.performance_history: dict[str, list[float]] = {}
 
     def record_performance(self, strategy_name: str, problem_size: tuple, elapsed_time: float):

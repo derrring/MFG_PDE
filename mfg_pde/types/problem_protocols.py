@@ -139,7 +139,7 @@ class GridProblem(Protocol):
         >>> class MyGridProblem:
         ...     def __init__(self):
         ...         self.xmin, self.xmax, self.Nx = 0.0, 1.0, 50
-        ...         self.Dx = (self.xmax - self.xmin) / self.Nx
+        ...         self.dx = (self.xmax - self.xmin) / self.Nx
         ...         self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1)
         ...         self.sigma = 0.1  # Float attribute
         ...         self.coupling_coefficient = 0.5
@@ -251,8 +251,8 @@ class DirectAccessProblem(Protocol):
         ...     def __init__(self):
         ...         self.sigma = 0.1
         ...         self.coupling_coefficient = 0.5
-        ...         self.Dx = 0.02
-        ...         self.Dt = 0.01
+        ...         self.dx = 0.02
+        ...         self.dt = 0.01
         ...         self.xSpace = np.linspace(0, 1, 51)
 
     See Also:

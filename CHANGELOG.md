@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2025-11-11
+
+**Patch Release: API Consistency Improvements (Week 1)**
+
+This patch release implements Week 1 quick wins from Issue #277 (API Consistency Audit), converting boolean pairs to enums and tuple returns to dataclasses for improved API clarity and type safety.
+
+### Changed
+
+**API Modernization (Issue #277 Phase 2 Week 1)**
+
+- **HamiltonianJacobians dataclass** replaces tuple return in `MFGProblem.get_hjb_hamiltonian_jacobian_contrib()`
+  - Self-documenting API: `jacobians.diagonal` instead of `result[0]`
+  - Type-safe structured return with named fields
+  - Updated HJB solver to use dataclass attributes
+
+- **ProfilingMode enum** replaces `enable_profiling`/`verbose` boolean pair in `StrategySelector`
+  - Three clear states: `DISABLED`, `SILENT`, `VERBOSE`
+  - String support: `profiling_mode="verbose"`
+  - Full backward compatibility with deprecation warnings
+
+- **MeshVisualizationMode enum** replaces `show_edges`/`show_quality` boolean pair in `visualize_mesh()`
+  - Four visualization modes: `SURFACE`, `WITH_EDGES`, `QUALITY`, `QUALITY_WITH_EDGES`
+  - String shortcuts for quick usage
+  - Applies to both `base_geometry.py` and `base.py`
+
+### Fixed
+
+- Docstring examples now use correct lowercase `.dx`/`.dt` convention (2 violations fixed in `problem_protocols.py`)
+
+### Deprecated
+
+- `StrategySelector(enable_profiling=..., verbose=...)` → Use `profiling_mode=ProfilingMode.SILENT` instead
+- `visualize_mesh(show_edges=..., show_quality=...)` → Use `mode=MeshVisualizationMode.WITH_EDGES` instead
+- Old APIs remain functional with deprecation warnings until v2.0.0
+
 ## [0.12.0] - 2025-11-11
 
 **Feature Release: Advanced Projection Methods & API Modernization**

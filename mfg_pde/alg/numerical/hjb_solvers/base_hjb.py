@@ -488,10 +488,9 @@ def compute_hjb_jacobian(
     )
 
     if hamiltonian_jac_contrib is not None:
-        J_D_H, J_L_H, J_U_H = hamiltonian_jac_contrib
-        J_D += J_D_H
-        J_L += J_L_H
-        J_U += J_U_H
+        J_D += hamiltonian_jac_contrib.diagonal
+        J_L += hamiltonian_jac_contrib.lower
+        J_U += hamiltonian_jac_contrib.upper
     else:
         # Fallback to numerical Jacobian for H-part, using NumPy version
         for i in range(Nx):

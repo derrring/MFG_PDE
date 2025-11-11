@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.types import HamiltonianJacobians
 
 # Import npart and ppart from the utils module
 from mfg_pde.utils.aux_func import npart, ppart
@@ -1702,9 +1703,27 @@ class MFGProblem:
         self,
         U_for_jacobian_terms: np.ndarray,
         t_idx_n: int,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    ) -> HamiltonianJacobians | None:
         """
-        Optional Jacobian contribution for advanced solvers.
+        Compute Hamiltonian Jacobian components for advanced HJB solvers.
+
+        Returns structured Jacobian coefficients (diagonal, lower, upper) that form
+        a tridiagonal matrix for Newton/policy iteration schemes.
+
+        Args:
+            U_for_jacobian_terms: Current value function estimate, shape (Nx,)
+            t_idx_n: Time index for evaluation
+
+        Returns:
+            HamiltonianJacobians dataclass with diagonal, lower, upper components,
+            or None if not applicable (e.g., custom problem without Jacobian).
+
+        Example:
+            >>> jacobians = problem.get_hjb_hamiltonian_jacobian_contrib(U, t=10)
+            >>> if jacobians is not None:
+            ...     A_diag = jacobians.diagonal
+            ...     A_lower = jacobians.lower
+            ...     A_upper = jacobians.upper
         """
         # Use custom Jacobian if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_jacobian_func is not None:
@@ -1730,7 +1749,7 @@ class MFGProblem:
             J_U_H = np.zeros(Nx)
 
             if abs(dx) < 1e-14 or Nx <= 1:
-                return J_D_H, J_L_H, J_U_H
+                return HamiltonianJacobians(diagonal=J_D_H, lower=J_L_H, upper=J_U_H)
 
             U_curr = U_for_jacobian_terms
 
@@ -1746,7 +1765,7 @@ class MFGProblem:
                 J_L_H[i] = -coupling_coefficient * ppart(p2_i) / (dx**2)
                 J_U_H[i] = -coupling_coefficient * npart(p1_i) / (dx**2)
 
-            return J_D_H, J_L_H, J_U_H
+            return HamiltonianJacobians(diagonal=J_D_H, lower=J_L_H, upper=J_U_H)
 
         return None
 
