@@ -86,17 +86,47 @@ def test_check_dependency_missing_known_package():
 
 @pytest.mark.unit
 @pytest.mark.fast
-def test_check_dependency_with_feature_description():
-    """Test check_dependency() includes feature in error message."""
+def test_check_dependency_with_purpose_description():
+    """Test check_dependency() includes purpose in error message."""
     from mfg_pde.utils.dependencies import check_dependency
 
     try:
-        check_dependency("nonexistent_package_xyz", feature="test feature")
+        check_dependency("nonexistent_package_xyz", purpose="test feature")
         pytest.fail("Expected ImportError")
     except ImportError as e:
         error_msg = str(e)
-        # Should include feature description
+        # Should include purpose description
         assert "test feature" in error_msg
+
+
+@pytest.mark.unit
+@pytest.mark.fast
+def test_check_dependency_raise_on_missing_false():
+    """Test check_dependency() returns False when raise_on_missing=False."""
+    from mfg_pde.utils.dependencies import check_dependency
+
+    # Should return False instead of raising
+    result = check_dependency("nonexistent_package_xyz", raise_on_missing=False)
+    assert result is False
+
+    # Should return True for available packages
+    result = check_dependency("numpy", raise_on_missing=False)
+    assert result is True
+
+
+@pytest.mark.unit
+@pytest.mark.fast
+def test_check_dependency_custom_install_command():
+    """Test check_dependency() uses custom install command."""
+    from mfg_pde.utils.dependencies import check_dependency
+
+    try:
+        check_dependency("nonexistent_xyz", install_command="conda install nonexistent_xyz")
+        pytest.fail("Expected ImportError")
+    except ImportError as e:
+        error_msg = str(e)
+        # Should include custom install command
+        assert "conda install nonexistent_xyz" in error_msg
 
 
 @pytest.mark.unit
@@ -105,9 +135,9 @@ def test_check_dependency_known_package_error_format():
     """Test error message format for known optional dependencies."""
     from mfg_pde.utils.dependencies import DEPENDENCY_MAP, check_dependency
 
-    # Pick a known package from DEPENDENCY_MAP
-    known_packages = list(DEPENDENCY_MAP.keys())
-    test_package = known_packages[0]  # e.g., 'torch'
+    # Pick a known optional package (not core) from DEPENDENCY_MAP
+    optional_packages = [pkg for pkg, info in DEPENDENCY_MAP.items() if not info.get("required", False)]
+    test_package = optional_packages[0] if optional_packages else "cupy"
 
     # If package is not available, check error message format
     from mfg_pde.utils.dependencies import is_available
@@ -119,7 +149,6 @@ def test_check_dependency_known_package_error_format():
         except ImportError as e:
             error_msg = str(e)
             # Should contain structured error message
-            assert "Used by:" in error_msg
             assert "Install options:" in error_msg
             assert "pip install" in error_msg
 
@@ -290,11 +319,31 @@ def test_show_optional_features_format(capsys):
 
     # Should contain section headers
     assert "MFG_PDE Optional Features" in captured.out
-    assert "Installation options:" in captured.out
+    assert "Installation Options:" in captured.out
 
-    # Should contain feature names
-    assert "pytorch" in captured.out or "PyTorch" in captured.out
-    assert "jax" in captured.out or "JAX" in captured.out
+    # Should contain category headers
+    assert "Core (always available):" in captured.out or "Neural Methods:" in captured.out
+
+    # Should contain package names
+    assert "numpy" in captured.out
+    assert "torch" in captured.out or "jax" in captured.out
+
+
+@pytest.mark.unit
+@pytest.mark.fast
+def test_get_package_version():
+    """Test get_package_version returns correct format."""
+    from mfg_pde.utils.dependencies import get_package_version
+
+    # Core packages should have versions
+    numpy_version = get_package_version("numpy")
+    assert numpy_version is not None
+    assert isinstance(numpy_version, str)
+    assert len(numpy_version) > 0
+
+    # Nonexistent package should return None
+    fake_version = get_package_version("nonexistent_package_xyz")
+    assert fake_version is None
 
 
 # ============================================================================
@@ -333,8 +382,8 @@ def test_dependency_map_structure():
     # Should be a dictionary
     assert isinstance(DEPENDENCY_MAP, dict)
 
-    # Should contain key packages
-    expected_packages = ["torch", "jax", "gymnasium", "plotly", "networkx"]
+    # Should contain key packages (both core and optional)
+    expected_packages = ["numpy", "scipy", "matplotlib", "torch", "jax", "gymnasium", "plotly", "networkx"]
     for package in expected_packages:
         assert package in DEPENDENCY_MAP
 
@@ -343,11 +392,15 @@ def test_dependency_map_structure():
         assert "install_group" in info
         assert "install_cmd" in info
         assert "alternative" in info
-        assert "used_by" in info
+        assert "description" in info
+        assert "required" in info
 
-        # used_by should be a list
-        assert isinstance(info["used_by"], list)
-        assert len(info["used_by"]) > 0
+        # description should be a string
+        assert isinstance(info["description"], str)
+        assert len(info["description"]) > 0
+
+        # required should be a boolean
+        assert isinstance(info["required"], bool)
 
 
 @pytest.mark.unit
