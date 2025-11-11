@@ -4,11 +4,11 @@
 [![CI/CD](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/github/derrring/MFG_PDE/graph/badge.svg?token=HGZFRSF5V6)](https://codecov.io/github/derrring/MFG_PDE)
 [![Release](https://img.shields.io/github/v/release/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/releases)
-[![License](https://img.shields.io/github/license/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/derrring/MFG_PDE/blob/main/LICENSE)
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **✨ v0.11.0 In Progress** - [What's New](#whats-new-in-v0110): Dual Geometry Support, FEM Mesh Integration, Multi-Resolution Methods
+> **✨ v0.12.0 Released** - [What's New](#whats-new-in-v0120): Advanced Projection Methods, Enum-Based Config, API Modernization
 
 ---
 
