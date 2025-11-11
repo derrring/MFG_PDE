@@ -290,7 +290,7 @@ class NetworkMFGProblem(MFGProblem):
 
         return total_cost
 
-    def compute_relaxed_equilibrium(self, trajectory_measures: list[Callable]) -> tuple[np.ndarray, np.ndarray]:
+    def compute_relaxed_equilibrium(self, trajectory_measures: list[Callable]):
         """
         Compute relaxed equilibrium as probability measures on trajectories.
 
@@ -300,7 +300,10 @@ class NetworkMFGProblem(MFGProblem):
             trajectory_measures: List of probability measures on trajectory space
 
         Returns:
-            (u, m) where u is value function and m is density
+            NetworkSolveResult with U (value function) and M (density)
+
+        Note:
+            Backward compatible: Supports tuple unpacking via `u, m = result`
         """
         # This is a placeholder for advanced trajectory measure computation
         # Full implementation would require sophisticated measure theory
@@ -327,7 +330,9 @@ class NetworkMFGProblem(MFGProblem):
             if total > 1e-12:
                 m[t_idx, :] /= total
 
-        return u, m
+        from mfg_pde.types.solver_types import NetworkSolveResult
+
+        return NetworkSolveResult(U=u, M=m)
 
     def node_potential(self, node: int, t: float) -> float:
         """Potential function at network nodes."""
