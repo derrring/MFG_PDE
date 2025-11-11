@@ -188,7 +188,7 @@ def test_computational_warnings():
     print("\n  Creating 5D problem (should warn about high dimension)...")
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        problem_5d = MFGProblem(
+        _problem_5d = MFGProblem(
             spatial_bounds=[(0, 1)] * 5,
             spatial_discretization=[10] * 5,
             Nt=10,
@@ -204,7 +204,7 @@ def test_computational_warnings():
     print("\n  Creating large 2D grid (should warn about memory)...")
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        problem_large = MFGProblem(
+        _problem_large = MFGProblem(
             spatial_bounds=[(0, 1), (0, 1)],
             spatial_discretization=[2000, 2000],  # 4M spatial points
             Nt=1000,
@@ -217,7 +217,7 @@ def test_computational_warnings():
     print("\n  Creating 5D with suppress_warnings=True (should NOT warn)...")
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        problem_suppressed = MFGProblem(
+        _problem_suppressed = MFGProblem(
             spatial_bounds=[(0, 1)] * 5,
             spatial_discretization=[10] * 5,
             Nt=10,
@@ -284,12 +284,12 @@ def test_error_handling():
     # Test ambiguous initialization
     print("  Testing ambiguous initialization (both Nx and spatial_bounds)...")
     try:
-        problem = MFGProblem(
+        MFGProblem(
             Nx=100,
             spatial_bounds=[(0, 1)],
             spatial_discretization=[100],
         )
-        assert False, "Should have raised ValueError for ambiguous initialization"
+        raise AssertionError("Should have raised ValueError for ambiguous initialization")
     except ValueError as e:
         assert "Ambiguous initialization" in str(e)
         print("    Correctly raised ValueError: OK")
@@ -297,11 +297,11 @@ def test_error_handling():
     # Test mismatched dimensions
     print("  Testing mismatched dimensions...")
     try:
-        problem = MFGProblem(
+        MFGProblem(
             spatial_bounds=[(0, 1), (0, 1)],  # 2D
             spatial_discretization=[100],  # 1D
         )
-        assert False, "Should have raised ValueError for mismatched dimensions"
+        raise AssertionError("Should have raised ValueError for mismatched dimensions")
     except ValueError as e:
         assert "must have 2 elements" in str(e)
         print("    Correctly raised ValueError: OK")

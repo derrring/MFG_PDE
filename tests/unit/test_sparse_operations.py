@@ -122,7 +122,7 @@ class TestSparseMatrixBuilder:
         Gx = builder.build_gradient(direction=0, order=2)
 
         # Test on u(x,y) = x^2
-        X, Y = grid.meshgrid()
+        X, _Y = grid.meshgrid()
         u = (X**2).flatten()
         du_dx = Gx @ u
 
