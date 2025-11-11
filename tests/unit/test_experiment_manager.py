@@ -49,8 +49,8 @@ class MockMFGProblem:
         self.xmin = xmin
         self.xmax = xmax
         self.Nx = Nx
-        self.Dx = (xmax - xmin) / (Nx - 1) if Nx > 1 else 0.0
-        self.Dt = T / (Nt - 1) if Nt > 1 else 0.0
+        self.dx = (xmax - xmin) / (Nx - 1) if Nx > 1 else 0.0
+        self.dt = T / (Nt - 1) if Nt > 1 else 0.0
         self.sigma = sigma
         self.coupling_coefficient = coupling_coefficient
         self.tSpace = np.linspace(0, T, Nt)
