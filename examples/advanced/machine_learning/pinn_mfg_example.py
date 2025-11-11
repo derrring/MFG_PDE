@@ -209,9 +209,7 @@ def demonstrate_fp_pinn(problem: MFGProblem, config: PINNConfig) -> dict:
     return fp_results
 
 
-def demonstrate_coupled_mfg_pinn(
-    problem: MFGProblem, config: PINNConfig, alternating_training: bool = False
-) -> dict:
+def demonstrate_coupled_mfg_pinn(problem: MFGProblem, config: PINNConfig, alternating_training: bool = False) -> dict:
     """
     Demonstrate coupled MFG PINN solver.
 

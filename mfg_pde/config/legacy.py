@@ -269,7 +269,7 @@ def educational_config(*args, **kwargs) -> SolverConfig:
     return educational_solver()
 
 
-__all__ = [  # noqa: RUF022 - Intentionally organized by category, not alphabetically
+__all__ = [
     # Dataclass-style (solver_config.py)
     "create_fast_config",
     "create_accurate_config",

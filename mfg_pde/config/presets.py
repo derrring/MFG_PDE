@@ -435,7 +435,7 @@ def default_solver() -> SolverConfig:
 
 
 # Export all presets
-__all__ = [  # noqa: RUF022 - Intentionally organized by category, not alphabetically
+__all__ = [
     # General-purpose
     "fast_solver",
     "accurate_solver",

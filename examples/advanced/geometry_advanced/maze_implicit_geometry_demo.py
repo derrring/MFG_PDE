@@ -168,11 +168,7 @@ def combine_maze_and_obstacles(
             return False
 
         # Check spherical obstacles (continuous)
-        for center in obstacle_centers:
-            if np.linalg.norm(point - center) <= obstacle_radius:
-                return False
-
-        return True
+        return all(np.linalg.norm(point - center) > obstacle_radius for center in obstacle_centers)
 
     return combined_grid, contains
 

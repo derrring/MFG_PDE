@@ -20,11 +20,11 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 
-from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig
-from mfg_pde.core.mfg_problem import BoundaryConditions, MFGProblem
+from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig  # noqa: E402
+from mfg_pde.core.mfg_problem import BoundaryConditions, MFGProblem  # noqa: E402
 
 # Check if PyTorch is available
 try:

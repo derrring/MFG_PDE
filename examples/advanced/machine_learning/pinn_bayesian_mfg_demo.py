@@ -32,16 +32,16 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 
-import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 
-from mfg_pde.alg.neural.pinn.adaptive_training import (
+from mfg_pde.alg.neural.pinn.adaptive_training import (  # noqa: E402
     AdaptiveTrainingConfig,
     create_adaptive_strategy,
 )
-from mfg_pde.alg.neural.pinn.base_pinn import PINNConfig
-from mfg_pde.core.mfg_problem import BoundaryConditions, MFGProblem
-from mfg_pde.utils.mcmc import MCMCConfig
+from mfg_pde.alg.neural.pinn.base_pinn import PINNConfig  # noqa: E402
+from mfg_pde.core.mfg_problem import BoundaryConditions, MFGProblem  # noqa: E402
+from mfg_pde.utils.mcmc import MCMCConfig  # noqa: E402
 
 # Check if PyTorch is available
 try:
