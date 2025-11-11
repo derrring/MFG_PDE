@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+from .base_geometry import MeshVisualizationMode
 from .geometry_protocol import GeometryType
 
 
@@ -617,8 +618,35 @@ class UnstructuredMesh(Geometry):
         """
         ...
 
-    def visualize_mesh(self, show_edges: bool = True, show_quality: bool = False):
-        """Visualize mesh using PyVista."""
+    def visualize_mesh(
+        self,
+        mode: MeshVisualizationMode | str = MeshVisualizationMode.WITH_EDGES,
+        *,
+        show_edges: bool | None = None,
+        show_quality: bool | None = None,
+    ):
+        """
+        Visualize mesh using PyVista.
+
+        Parameters
+        ----------
+        mode : MeshVisualizationMode or str, default=WITH_EDGES
+            Visualization mode: SURFACE, WITH_EDGES, QUALITY, or QUALITY_WITH_EDGES
+            Can pass strings: "surface", "with_edges", "quality", "quality_with_edges"
+        show_edges : bool, optional (deprecated)
+            Deprecated: Use mode parameter instead
+        show_quality : bool, optional (deprecated)
+            Deprecated: Use mode parameter instead
+
+        Examples
+        --------
+        >>> # New API (recommended)
+        >>> geom.visualize_mesh(mode=MeshVisualizationMode.QUALITY_WITH_EDGES)
+        >>> geom.visualize_mesh(mode="quality")
+        >>>
+        >>> # Old API (deprecated but still works)
+        >>> geom.visualize_mesh(show_edges=True, show_quality=False)
+        """
         if self.mesh_data is None:
             self.generate_mesh()
 
@@ -629,18 +657,56 @@ class UnstructuredMesh(Geometry):
 
         if self.mesh_data is None:
             raise RuntimeError("Mesh data is None")
+
+        # Handle backward compatibility
+        if show_edges is not None or show_quality is not None:
+            import warnings
+
+            warnings.warn(
+                "Parameters 'show_edges' and 'show_quality' are deprecated. "
+                "Use 'mode' parameter instead: MeshVisualizationMode.SURFACE, .WITH_EDGES, "
+                ".QUALITY, or .QUALITY_WITH_EDGES",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # Convert old API to new
+            edges = show_edges if show_edges is not None else True
+            quality = show_quality if show_quality is not None else False
+            if quality and edges:
+                mode = MeshVisualizationMode.QUALITY_WITH_EDGES
+            elif quality:
+                mode = MeshVisualizationMode.QUALITY
+            elif edges:
+                mode = MeshVisualizationMode.WITH_EDGES
+            else:
+                mode = MeshVisualizationMode.SURFACE
+
+        # Handle string mode
+        if isinstance(mode, str):
+            mode_map = {
+                "surface": MeshVisualizationMode.SURFACE,
+                "with_edges": MeshVisualizationMode.WITH_EDGES,
+                "quality": MeshVisualizationMode.QUALITY,
+                "quality_with_edges": MeshVisualizationMode.QUALITY_WITH_EDGES,
+            }
+            mode = mode_map.get(mode.lower(), MeshVisualizationMode.WITH_EDGES)
+
+        # Determine display settings from mode
+        show_edges_flag = mode in (MeshVisualizationMode.WITH_EDGES, MeshVisualizationMode.QUALITY_WITH_EDGES)
+        show_quality_flag = mode in (MeshVisualizationMode.QUALITY, MeshVisualizationMode.QUALITY_WITH_EDGES)
+
         mesh = self.mesh_data.to_pyvista()
         plotter = pv.Plotter()
 
-        if show_quality:
+        if show_quality_flag:
             # Color by mesh quality if available
             if self.mesh_data.quality_metrics and "quality" in self.mesh_data.quality_metrics:
                 mesh.cell_data["quality"] = self.mesh_data.quality_metrics["quality"]
-                plotter.add_mesh(mesh, scalars="quality", show_edges=show_edges)
+                plotter.add_mesh(mesh, scalars="quality", show_edges=show_edges_flag)
             else:
-                plotter.add_mesh(mesh, show_edges=show_edges)
+                plotter.add_mesh(mesh, show_edges=show_edges_flag)
         else:
-            plotter.add_mesh(mesh, show_edges=show_edges)
+            plotter.add_mesh(mesh, show_edges=show_edges_flag)
 
         plotter.show()
 
