@@ -50,7 +50,6 @@ print("Problem created:")
 print(f"  Domain: [{problem.xmin}, {problem.xmax}]")
 print(f"  Grid: {problem.Nx} spatial points, {problem.Nt} time steps")
 print(f"  Diffusion σ = {problem.sigma}")
-print(f"  Congestion λ = {problem.lam}")
 print()
 
 # ==============================================================================
@@ -85,7 +84,7 @@ print()
 
 print(f"Converged: {result.converged}")
 print(f"Iterations: {result.iterations}")
-print(f"Final residual: {result.residual:.6e}")
+print(f"Final error: {result.max_error:.6e}")
 print()
 
 # Solution arrays are (Nt+1, Nx) shaped grids

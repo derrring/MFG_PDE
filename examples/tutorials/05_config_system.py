@@ -177,7 +177,7 @@ print(f"{'Configuration':<25} {'Converged':<12} {'Iterations':<12} {'Residual':<
 print("-" * 70)
 
 for name, result in configurations.items():
-    print(f"{name:<25} {result.converged!s:<12} {result.iterations:<12} {result.residual:.4e}")
+    print(f"{name:<25} {result.converged!s:<12} {result.iterations:<12} {result.max_error:.4e}")
 
 print()
 
