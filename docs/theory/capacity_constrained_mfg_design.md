@@ -1,9 +1,15 @@
-# Capacity-Constrained Mean Field Games: Mathematical Framework and Design
+# Capacity-Constrained Mean Field Games: Example Pattern
 
 **Author**: MFG_PDE Development Team
 **Date**: 2025-11-12
-**Status**: ✅ IMPLEMENTED
-**Related Issues**: Maze navigation with congestion modeling
+**Status**: ✅ IMPLEMENTED AS EXAMPLE
+**Location**: `examples/advanced/capacity_constrained_mfg/`
+**Related Issues**: Capacity-constrained MFG, maze navigation, congestion modeling
+
+**Architecture Note**: This implementation demonstrates how to extend the MFG_PDE framework
+with application-specific features. It resides in `examples/` rather than `mfg_pde/core/`
+to keep the core framework minimal. Users can adapt this pattern for their own
+capacity-constrained or congestion-aware MFG applications.
 
 ## Table of Contents
 
@@ -104,15 +110,31 @@ This couples the density back into the FP equation, creating a **nonlinear drift
 
 ## Architectural Design
 
-### Design Principles
+### Framework Philosophy: Minimal Core
+
+**Why Examples, Not Core?**
+
+The capacity-constrained MFG infrastructure resides in `examples/advanced/` rather than
+`mfg_pde/core/` to maintain a **minimal framework design**:
+
+**Rationale**:
+1. **Framework minimalism**: Core provides base classes (`MFGProblem`, protocols, solvers)
+2. **Application-specific**: Capacity constraints are problem context, not universal infrastructure
+3. **User extensibility**: Examples serve as templates users can adapt and customize
+4. **Reduced coupling**: Core remains focused on essential MFG machinery
+
+**User Decision**: "Core is rather minimal framework. Even congestion is a very important
+application, but apart from our example, users can also build their own based on core."
+
+### Design Pattern: Composition
 
 The implementation follows **composition over inheritance**:
 
 ```
-CapacityConstrainedMFGProblem
-    ├─ Extends: MFGProblem (standard framework)
-    ├─ Composes: CapacityField (domain property)
-    └─ Composes: CongestionModel (cost function)
+CapacityConstrainedMFGProblem (Example)
+    ├─ Extends: MFGProblem (Core framework)
+    ├─ Composes: CapacityField (Application-specific)
+    └─ Composes: CongestionModel (Application-specific)
 ```
 
 **Why Not Extend Geometry?**
@@ -125,11 +147,11 @@ CapacityAwareGeometry extends BaseGeometry
 
 **Reasons for separate classes**:
 
-1. **Separation of concerns**: Capacity is a **physical property** of the domain (like diffusion coefficient), not a geometric structure
+1. **Separation of concerns**: Capacity is **problem context**, not geometry structure
 2. **Reusability**: CapacityField can work with any geometry (SimpleGrid, Mesh, PointCloud)
 3. **Orthogonality**: Not all geometries need capacity constraints
 4. **Protocol compliance**: Doesn't pollute GeometryProtocol with maze-specific features
-5. **Flexibility**: Can swap congestion models without changing geometry
+5. **Flexibility**: Users can swap congestion models without changing core framework
 
 ### Component Architecture
 
@@ -171,7 +193,7 @@ CapacityAwareGeometry extends BaseGeometry
 
 ### 1. CapacityField
 
-**File**: `mfg_pde/geometry/mazes/capacity_field.py` (479 lines)
+**File**: `examples/advanced/capacity_constrained_mfg/capacity_field.py` (479 lines)
 
 **Core Functionality**:
 
@@ -227,7 +249,7 @@ This creates a "minimum capacity" everywhere, ensuring numerical stability while
 
 ### 2. CongestionModel Hierarchy
 
-**File**: `mfg_pde/core/congestion.py` (557 lines)
+**File**: `examples/advanced/capacity_constrained_mfg/congestion.py` (557 lines)
 
 **Abstract Base Class**:
 
@@ -302,7 +324,7 @@ class LogBarrierCongestion(CongestionModel):
 
 ### 3. CapacityConstrainedMFGProblem
 
-**File**: `mfg_pde/core/capacity_constrained_problem.py` (426 lines)
+**File**: `examples/advanced/capacity_constrained_mfg/problem.py` (426 lines)
 
 **Class Definition**:
 
@@ -378,8 +400,12 @@ def get_congestion_ratio(self, density, positions):
 ### Basic Usage
 
 ```python
-from mfg_pde.geometry.mazes import create_perfect_maze, CapacityField
-from mfg_pde.core import CapacityConstrainedMFGProblem, QuadraticCongestion
+from mfg_pde.geometry.mazes import PerfectMazeGenerator, MazeConfig
+from examples.advanced.capacity_constrained_mfg import (
+    CapacityField,
+    CapacityConstrainedMFGProblem,
+    QuadraticCongestion,
+)
 
 # 1. Generate maze
 maze = create_perfect_maze(rows=20, cols=20, wall_thickness=3)
@@ -413,7 +439,7 @@ result = solve_mfg(problem, method="semi_lagrangian")
 ### Advanced: Custom Congestion Model
 
 ```python
-from mfg_pde.core import LogBarrierCongestion
+from examples.advanced.capacity_constrained_mfg import LogBarrierCongestion
 
 # Strong barrier near capacity
 congestion_model = LogBarrierCongestion(
@@ -432,7 +458,7 @@ problem = CapacityConstrainedMFGProblem(
 ### Visualization
 
 ```python
-from mfg_pde.geometry.mazes import visualize_capacity_field
+from examples.advanced.capacity_constrained_mfg import visualize_capacity_field
 
 # Visualize capacity with maze overlay
 visualize_capacity_field(capacity, maze_array, figsize=(12, 5))
@@ -554,14 +580,17 @@ The capacity-constrained framework is compatible with:
 
 | Component | File | Lines | Status |
 |:----------|:-----|------:|:-------|
-| CapacityField | `mfg_pde/geometry/mazes/capacity_field.py` | 479 | ✅ Complete |
-| CongestionModel | `mfg_pde/core/congestion.py` | 557 | ✅ Complete |
-| CapacityConstrainedMFGProblem | `mfg_pde/core/capacity_constrained_problem.py` | 426 | ✅ Complete |
-| Tests | `tests/unit/test_geometry/test_capacity_field.py` | - | ⏳ TODO |
-| Tests | `tests/unit/test_core/test_congestion.py` | - | ⏳ TODO |
-| Example | `examples/advanced/maze_navigation_capacity.py` | - | ⏳ TODO |
+| Package Init | `examples/advanced/capacity_constrained_mfg/__init__.py` | 84 | ✅ Complete |
+| CapacityField | `examples/advanced/capacity_constrained_mfg/capacity_field.py` | 479 | ✅ Complete |
+| CongestionModel | `examples/advanced/capacity_constrained_mfg/congestion.py` | 557 | ✅ Complete |
+| CapacityConstrainedMFGProblem | `examples/advanced/capacity_constrained_mfg/problem.py` | 426 | ✅ Complete |
+| Example Script | `examples/advanced/capacity_constrained_mfg/example_maze_mfg.py` | 333 | ✅ Complete |
 
-**Total Implementation**: ~1,460 lines (core infrastructure complete)
+**Total Implementation**: ~1,879 lines (example pattern complete)
+
+**Note**: This is an example implementation residing in `examples/` to demonstrate
+how users can extend the MFG_PDE framework with application-specific features.
+Users can adapt this pattern for their own capacity-constrained problems.
 
 ---
 
@@ -595,5 +624,6 @@ The capacity-constrained framework is compatible with:
 ---
 
 **Last Updated**: 2025-11-12
-**Implementation Status**: Core infrastructure complete (5/8 tasks)
-**Next**: MazeNavigationMFG with auto-detection of entry/exit points
+**Implementation Status**: ✅ Complete as example pattern
+**Architecture**: Minimal core framework - capacity constraints as extensible example
+**Next**: Users can adapt this pattern for custom capacity-constrained MFG applications
