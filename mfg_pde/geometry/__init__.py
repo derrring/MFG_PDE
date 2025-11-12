@@ -95,6 +95,9 @@ from .network_geometry import (
     create_network,
 )
 
+# Point cloud geometry for particle-based solvers (Issue #269)
+from .point_cloud import PointCloudGeometry
+
 # Geometry projection for hybrid solvers (Issue #257)
 from .projection import GeometryProjector, ProjectionRegistry
 from .simple_grid import SimpleGrid2D, SimpleGrid3D
@@ -158,6 +161,7 @@ __all__ = [
     "OperationType",
     "PeriodicBC2D",
     "PeriodicBC3D",
+    "PointCloudGeometry",
     "RandomNetwork",
     "RobinBC2D",
     "RobinBC3D",

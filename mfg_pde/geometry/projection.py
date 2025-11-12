@@ -209,6 +209,7 @@ class GeometryProjector:
     def _setup_projection_methods(self) -> None:
         """Auto-detect appropriate projection methods based on geometry types."""
         from mfg_pde.geometry.base import CartesianGrid
+        from mfg_pde.geometry.point_cloud import PointCloudGeometry
 
         # Check registry first for specialized projectors
         self._hjb_to_fp_func = ProjectionRegistry.get_projector(self.hjb_geometry, self.fp_geometry, "hjb_to_fp")
@@ -225,24 +226,53 @@ class GeometryProjector:
             hjb_is_grid = isinstance(self.hjb_geometry, CartesianGrid)
             fp_is_grid = isinstance(self.fp_geometry, CartesianGrid)
 
-            # Check for particle-like geometry (has num_particles attribute)
-            fp_is_particles = hasattr(self.fp_geometry, "num_particles")
+            # Check for particle-like geometry (has num_particles attribute or is PointCloudGeometry)
+            hjb_is_particles = isinstance(self.hjb_geometry, PointCloudGeometry) or (
+                hasattr(self.hjb_geometry, "num_particles") and not hjb_is_grid
+            )
+            fp_is_particles = isinstance(self.fp_geometry, PointCloudGeometry) or (
+                hasattr(self.fp_geometry, "num_particles") and not fp_is_grid
+            )
 
             if self._hjb_to_fp_func is None:
-                if hjb_is_grid and fp_is_particles:
+                if hjb_is_particles and fp_is_particles:
+                    # Particle → Particle: Check if same point set (identity) or different (RBF)
+                    if isinstance(self.hjb_geometry, PointCloudGeometry) and isinstance(
+                        self.fp_geometry, PointCloudGeometry
+                    ):
+                        # Check for co-moving particles (identity case)
+                        if self.hjb_geometry.is_same_pointset(self.fp_geometry):
+                            self.hjb_to_fp_method = "identity"
+                        else:
+                            self.hjb_to_fp_method = "particle_rbf"  # Different particles, use RBF
+                    else:
+                        self.hjb_to_fp_method = "particle_rbf"  # Generic particle-particle
+                elif hjb_is_grid and fp_is_particles:
                     self.hjb_to_fp_method = "interpolation"  # Grid → Particle
                 elif hjb_is_grid and fp_is_grid:
-                    self.hjb_to_fp_method = "grid_interpolation"
+                    self.hjb_to_fp_method = "grid_interpolation"  # Grid → Grid
                 else:
-                    self.hjb_to_fp_method = "interpolation"
+                    self.hjb_to_fp_method = "interpolation"  # Fallback
 
             if self._fp_to_hjb_func is None:
-                if hjb_is_grid and fp_is_particles:
+                if hjb_is_particles and fp_is_particles:
+                    # Particle → Particle: Check if same point set (identity) or different (KDE)
+                    if isinstance(self.hjb_geometry, PointCloudGeometry) and isinstance(
+                        self.fp_geometry, PointCloudGeometry
+                    ):
+                        # Check for co-moving particles (identity case)
+                        if self.fp_geometry.is_same_pointset(self.hjb_geometry):
+                            self.fp_to_hjb_method = "identity"
+                        else:
+                            self.fp_to_hjb_method = "particle_kde"  # Different particles, use KDE
+                    else:
+                        self.fp_to_hjb_method = "particle_kde"  # Generic particle-particle
+                elif hjb_is_grid and fp_is_particles:
                     self.fp_to_hjb_method = "kde"  # Particle → Grid
                 elif hjb_is_grid and fp_is_grid:
-                    self.fp_to_hjb_method = "grid_restriction"
+                    self.fp_to_hjb_method = "grid_restriction"  # Grid → Grid
                 else:
-                    self.fp_to_hjb_method = "nearest"
+                    self.fp_to_hjb_method = "nearest"  # Fallback
 
     def project_hjb_to_fp(self, U_on_hjb_geometry: NDArray, backend: BaseBackend | None = None) -> NDArray:
         """
@@ -279,7 +309,13 @@ class GeometryProjector:
             self._fp_points = self.fp_geometry.get_spatial_grid()
 
         # Apply appropriate projection method
-        if self.hjb_to_fp_method == "interpolation":
+        if self.hjb_to_fp_method == "identity":
+            # Co-moving particles: identity projection
+            return U_on_hjb_geometry
+        elif self.hjb_to_fp_method == "particle_rbf":
+            # Particle → Particle: RBF interpolation
+            return self._interpolate_particles_to_particles_rbf(U_on_hjb_geometry)
+        elif self.hjb_to_fp_method == "interpolation":
             return self._interpolate_grid_to_points(U_on_hjb_geometry, self._fp_points)
         elif self.hjb_to_fp_method == "grid_interpolation":
             return self._interpolate_grid_to_grid(U_on_hjb_geometry)
@@ -330,7 +366,13 @@ class GeometryProjector:
             )
 
         # Apply appropriate projection method
-        if self.fp_to_hjb_method == "kde":
+        if self.fp_to_hjb_method == "identity":
+            # Co-moving particles: identity projection
+            return M_on_fp_geometry
+        elif self.fp_to_hjb_method == "particle_kde":
+            # Particle → Particle: KDE projection
+            return self._project_particles_to_particles_kde(M_on_fp_geometry, bandwidth, backend)
+        elif self.fp_to_hjb_method == "kde":
             return self._project_particles_to_grid_kde(M_on_fp_geometry, bandwidth, backend)
         elif self.fp_to_hjb_method == "grid_restriction":
             return self._restrict_grid_to_grid(M_on_fp_geometry)
@@ -467,6 +509,155 @@ class GeometryProjector:
         else:
             # Uniform density if no particles
             return np.ones(grid_shape) / (np.prod(grid_shape) * cell_volume)
+
+    def _interpolate_particles_to_particles_rbf(self, values_on_source_particles: NDArray) -> NDArray:
+        """
+        Interpolate values from source particles to target particles using RBF.
+
+        This method handles particle-to-particle projection for value functions (U)
+        when HJB and FP solvers use different particle sets (e.g., GFDM collocation
+        points vs. FP evolving particles).
+
+        Uses Radial Basis Function (RBF) interpolation for smooth, accurate
+        reconstruction of the value function at new particle locations.
+
+        Parameters
+        ----------
+        values_on_source_particles : NDArray
+            Value function at source particle locations, shape (N_source,)
+
+        Returns
+        -------
+        NDArray
+            Value function at target particle locations, shape (N_target,)
+
+        Examples
+        --------
+        >>> # GFDM collocation (500 points) → FP particles (1000 points)
+        >>> hjb_geom = PointCloudGeometry(collocation_points)  # (500, 2)
+        >>> fp_geom = PointCloudGeometry(evolving_particles)    # (1000, 2)
+        >>> projector = GeometryProjector(hjb_geom, fp_geom)
+        >>> U_on_collocation = hjb_solver.solve()  # (500,)
+        >>> U_on_particles = projector.project_hjb_to_fp(U_on_collocation)  # (1000,)
+
+        Notes
+        -----
+        Uses scipy.interpolate.RBFInterpolator with thin-plate spline kernel
+        for smooth interpolation. For very large particle sets (>10k points),
+        consider using nearest neighbor or hybrid approaches for efficiency.
+
+        References
+        ----------
+        - Wright, G. B. (2003). "Radial Basis Function Interpolation: Numerical
+          and Analytical Developments". PhD thesis, University of Colorado.
+        """
+        from scipy.interpolate import RBFInterpolator
+
+        from mfg_pde.geometry.point_cloud import PointCloudGeometry
+
+        if not isinstance(self.hjb_geometry, PointCloudGeometry):
+            raise ValueError("Source geometry must be PointCloudGeometry for particle-particle RBF projection")
+        if not isinstance(self.fp_geometry, PointCloudGeometry):
+            raise ValueError("Target geometry must be PointCloudGeometry for particle-particle RBF projection")
+
+        source_positions = self.hjb_geometry.positions  # (N_source, dimension)
+        target_positions = self.fp_geometry.positions  # (N_target, dimension)
+
+        # Create RBF interpolator
+        # thin_plate_spline: good default for smooth functions
+        # multiquadric: alternative for less smooth data
+        rbf = RBFInterpolator(source_positions, values_on_source_particles, kernel="thin_plate_spline")
+
+        # Evaluate at target positions
+        return rbf(target_positions)
+
+    def _project_particles_to_particles_kde(
+        self, particle_masses_source: NDArray, bandwidth: str | float, backend: BaseBackend | None
+    ) -> NDArray:
+        """
+        Project particle density from source particles to target particles using KDE.
+
+        This method handles particle-to-particle projection for density functions (m)
+        when HJB and FP solvers use different particle sets.
+
+        Uses Kernel Density Estimation to evaluate the density represented by
+        source particles at the target particle locations.
+
+        Parameters
+        ----------
+        particle_masses_source : NDArray
+            Particle masses/weights at source locations, shape (N_source,)
+        bandwidth : str | float
+            KDE bandwidth selection:
+            - "scott": Scott's rule (default)
+            - "silverman": Silverman's rule
+            - float: Manual bandwidth factor
+        backend : BaseBackend | None
+            Optional backend for accelerated KDE computation
+
+        Returns
+        -------
+        NDArray
+            Density evaluated at target particle locations, shape (N_target,)
+
+        Examples
+        --------
+        >>> # FP particles (1000 points) → GFDM collocation (500 points)
+        >>> hjb_geom = PointCloudGeometry(collocation_points)  # (500, 2)
+        >>> fp_geom = PointCloudGeometry(evolving_particles)    # (1000, 2)
+        >>> projector = GeometryProjector(hjb_geom, fp_geom)
+        >>> M_on_particles = fp_solver.get_density()  # (1000,)
+        >>> M_on_collocation = projector.project_fp_to_hjb(M_on_particles)  # (500,)
+
+        Notes
+        -----
+        For particle-particle KDE, we:
+        1. Weight each source particle by its mass
+        2. Place a Gaussian kernel at each source particle location
+        3. Evaluate the sum of weighted kernels at each target particle location
+
+        This is equivalent to evaluating the KDE density field at scattered points
+        rather than on a regular grid.
+
+        The computational cost is O(N_source × N_target), which can be expensive
+        for large particle sets. For >10k particles, consider using fast KDE
+        algorithms (e.g., tree-based methods) or hybrid approaches.
+
+        References
+        ----------
+        - Scott, D. W. (1992). "Multivariate Density Estimation: Theory,
+          Practice, and Visualization". Wiley.
+        - Silverman, B. W. (1986). "Density Estimation for Statistics and
+          Data Analysis". Chapman & Hall.
+        """
+        from scipy.stats import gaussian_kde
+
+        from mfg_pde.geometry.point_cloud import PointCloudGeometry
+        from mfg_pde.utils.numerical import estimate_kde_bandwidth
+
+        if not isinstance(self.fp_geometry, PointCloudGeometry):
+            raise ValueError("Source geometry must be PointCloudGeometry for particle-particle KDE projection")
+        if not isinstance(self.hjb_geometry, PointCloudGeometry):
+            raise ValueError("Target geometry must be PointCloudGeometry for particle-particle KDE projection")
+
+        source_positions = self.fp_geometry.positions  # (N_source, dimension)
+        target_positions = self.hjb_geometry.positions  # (N_target, dimension)
+
+        # Estimate bandwidth if needed
+        if isinstance(bandwidth, str):
+            bw_factor = estimate_kde_bandwidth(source_positions, method=bandwidth)
+        else:
+            bw_factor = bandwidth
+
+        # Create weighted KDE
+        # scipy's gaussian_kde expects (dimension, N_samples)
+        kde = gaussian_kde(source_positions.T, bw_method=bw_factor, weights=particle_masses_source)
+
+        # Evaluate at target positions
+        # kde expects (dimension, N_eval_points)
+        density_at_targets = kde(target_positions.T)
+
+        return density_at_targets
 
     def _restrict_grid_to_grid(self, values_on_fine_grid: NDArray) -> NDArray:
         """
