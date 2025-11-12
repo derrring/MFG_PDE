@@ -22,6 +22,14 @@ __all__ = [
     "MFGProblemBuilder",
     # Legacy alias
     "ExampleMFGProblem",
+    # Capacity-constrained MFG
+    "CapacityConstrainedMFGProblem",
+    "CongestionModel",
+    "QuadraticCongestion",
+    "ExponentialCongestion",
+    "LogBarrierCongestion",
+    "PiecewiseCongestion",
+    "create_congestion_model",
     # Factory
     "create_mfg_problem",
 ]
