@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.12.1" # v0.12.1: API consistency improvements (enum conversions, dataclass returns)
+version = "0.12.2" # v0.12.2: Particle-particle projection support for hybrid solvers
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
