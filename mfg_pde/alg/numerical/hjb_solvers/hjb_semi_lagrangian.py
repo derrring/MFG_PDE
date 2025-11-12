@@ -104,6 +104,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         super().__init__(problem)
         self.hjb_method_name = "Semi-Lagrangian"
 
+        # EXPERIMENTAL: Known convergence issues (Issue #298)
+        logger.warning(
+            "HJBSemiLagrangianSolver has known convergence issues (Issue #298). "
+            "The solver may not converge or produce incorrect results for standard MFG problems. "
+            "Use HJBFiniteDifferenceSolver or HJBGFDMSolver instead. "
+            "This solver is EXPERIMENTAL and requires further research to fix characteristic tracing."
+        )
+
         # Solver configuration
         self.interpolation_method = interpolation_method
         self.optimization_method = optimization_method
