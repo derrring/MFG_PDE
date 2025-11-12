@@ -30,36 +30,57 @@ if CORE_DEPENDENCIES_AVAILABLE:
         RLSolverResult,
     )
 
-    try:  # pragma: no cover - optional module
-        from .environments import (  # type: ignore[import-not-found]
-            ContinuousMFGEnv,
-            MFGEnvironment,
-            NetworkMFGEnv,
-        )
-    except ImportError:
-        ContinuousMFGEnv = None
-        MFGEnvironment = None
-        NetworkMFGEnv = None
+    # TODO: The following modules do not exist yet but are planned for future implementation:
+    # - environments.py: MFG environment wrappers (MFGEnvironment, ContinuousMFGEnv, NetworkMFGEnv)
+    # - population_state.py: Population state tracking (PopulationState, PopulationTracker, PopulationMetrics)
+    # - training_loops.py: Training infrastructure (MFRLTrainingLoop, PopulationTrainingManager)
+    #
+    # These placeholders enable forward-compatible API design. When implementing:
+    # 1. Create the module file
+    # 2. Uncomment the corresponding import block below
+    # 3. Remove the placeholder None assignment
+    #
+    # Placeholder assignments (will be replaced by actual imports when modules are implemented):
+    ContinuousMFGEnv = None
+    MFGEnvironment = None
+    NetworkMFGEnv = None
+    PopulationMetrics = None
+    PopulationState = None
+    PopulationTracker = None
+    MFRLTrainingLoop = None
+    PopulationTrainingManager = None
 
-    try:  # pragma: no cover - optional module
-        from .population_state import (  # type: ignore[import-not-found]
-            PopulationMetrics,
-            PopulationState,
-            PopulationTracker,
-        )
-    except ImportError:
-        PopulationMetrics = None
-        PopulationState = None
-        PopulationTracker = None
-
-    try:  # pragma: no cover - optional module
-        from .training_loops import (  # type: ignore[import-not-found]
-            MFRLTrainingLoop,
-            PopulationTrainingManager,
-        )
-    except ImportError:
-        MFRLTrainingLoop = None
-        PopulationTrainingManager = None
+    # Commented out until modules are implemented:
+    # try:  # pragma: no cover - optional module
+    #     from .environments import (
+    #         ContinuousMFGEnv,
+    #         MFGEnvironment,
+    #         NetworkMFGEnv,
+    #     )
+    # except ImportError:
+    #     ContinuousMFGEnv = None
+    #     MFGEnvironment = None
+    #     NetworkMFGEnv = None
+    #
+    # try:  # pragma: no cover - optional module
+    #     from .population_state import (
+    #         PopulationMetrics,
+    #         PopulationState,
+    #         PopulationTracker,
+    #     )
+    # except ImportError:
+    #     PopulationMetrics = None
+    #     PopulationState = None
+    #     PopulationTracker = None
+    #
+    # try:  # pragma: no cover - optional module
+    #     from .training_loops import (
+    #         MFRLTrainingLoop,
+    #         PopulationTrainingManager,
+    #     )
+    # except ImportError:
+    #     MFRLTrainingLoop = None
+    #     PopulationTrainingManager = None
 
     __all__ = [
         # Base MFRL Components

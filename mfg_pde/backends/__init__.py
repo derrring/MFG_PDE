@@ -234,11 +234,19 @@ except ImportError:
     pass  # JAX is optional
 
 
-# Backward compatibility functions for legacy code
+# Backward compatibility functions for legacy code (DEPRECATED - will be removed in v0.12.0)
 def get_legacy_backend_list():
-    """Legacy function for backward compatibility."""
+    """
+    Legacy function for backward compatibility.
+
+    .. deprecated:: v0.10.0
+        `get_legacy_backend_list` is deprecated and will be removed in v0.12.0.
+        Use :func:`get_available_backends` instead.
+    """
     warnings.warn(
-        "get_legacy_backend_list is deprecated. Use get_available_backends() instead.", DeprecationWarning, stacklevel=2
+        "get_legacy_backend_list is deprecated and will be removed in v0.12.0. Use get_available_backends() instead.",
+        DeprecationWarning,
+        stacklevel=2,
     )
     return get_available_backends()
 

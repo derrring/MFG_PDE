@@ -64,9 +64,6 @@ from .geometry.network_geometry import (  # noqa: E402
 )
 from .solve_mfg import solve_mfg  # noqa: E402
 
-# Simple API removed - use factory API instead
-# from .simple import ...
-
 # Geometry system for 2D/3D complex domains (optional dependency)
 try:
     from .geometry import (
