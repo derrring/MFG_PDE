@@ -1,45 +1,27 @@
+"""
+Minimal core infrastructure for MFG problems.
+
+This module provides only the essential base classes and protocols.
+Framework extensions (network, variational, multi-population) are in mfg_pde.extensions.
+"""
+
 from mfg_pde.geometry import BoundaryConditions
 
 from .base_problem import CartesianGridMFGProtocol, MFGProblemProtocol
 from .mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem
-from .multi_population import MultiPopulationMFGProblem, MultiPopulationMFGProtocol
-from .network_mfg_problem import (
-    NetworkMFGComponents,
-    NetworkMFGProblem,
-    create_grid_mfg_problem,
-    create_random_mfg_problem,
-    create_scale_free_mfg_problem,
-)
-from .variational_mfg_problem import (
-    VariationalMFGComponents,
-    VariationalMFGProblem,
-    create_obstacle_variational_mfg,
-    create_quadratic_variational_mfg,
-)
 
 __all__ = [
     # Geometry
     "BoundaryConditions",
-    # Core MFG components
-    "CartesianGridMFGProtocol",
-    "ExampleMFGProblem",
-    "MFGComponents",
-    "MFGProblem",
-    "MFGProblemBuilder",
+    # Core protocols
     "MFGProblemProtocol",
-    # Multi-population MFG
-    "MultiPopulationMFGProblem",
-    "MultiPopulationMFGProtocol",
-    # Network MFG
-    "NetworkMFGComponents",
-    "NetworkMFGProblem",
-    # Variational MFG
-    "VariationalMFGComponents",
-    "VariationalMFGProblem",
-    "create_grid_mfg_problem",
+    "CartesianGridMFGProtocol",
+    # Base MFG problem
+    "MFGProblem",
+    "MFGComponents",
+    "MFGProblemBuilder",
+    # Legacy alias
+    "ExampleMFGProblem",
+    # Factory
     "create_mfg_problem",
-    "create_obstacle_variational_mfg",
-    "create_quadratic_variational_mfg",
-    "create_random_mfg_problem",
-    "create_scale_free_mfg_problem",
 ]

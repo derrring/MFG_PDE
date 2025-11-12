@@ -20,14 +20,14 @@ from .core.mfg_problem import (  # noqa: E402
     MFGProblemBuilder,
     create_mfg_problem,
 )
-from .core.network_mfg_problem import (  # noqa: E402
+from .extensions.network import (  # noqa: E402
     NetworkMFGComponents,
     NetworkMFGProblem,
     create_grid_mfg_problem,
     create_random_mfg_problem,
     create_scale_free_mfg_problem,
 )
-from .core.variational_mfg_problem import (  # noqa: E402
+from .extensions.variational import (  # noqa: E402
     VariationalMFGComponents,
     VariationalMFGProblem,
     create_obstacle_variational_mfg,

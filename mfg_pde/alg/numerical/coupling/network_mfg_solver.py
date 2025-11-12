@@ -26,7 +26,7 @@ from mfg_pde.alg.numerical.fp_solvers.fp_network import FPNetworkSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_network import NetworkHJBSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.extensions.network import NetworkMFGProblem
 
 
 def create_network_mfg_solver(

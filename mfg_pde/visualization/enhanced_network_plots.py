@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
-    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.extensions.network import NetworkMFGProblem
     from mfg_pde.geometry.network_geometry import NetworkData
 
 

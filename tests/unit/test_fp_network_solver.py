@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_network import FPNetworkSolver
-from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+from mfg_pde.extensions.network import NetworkMFGProblem
 from mfg_pde.geometry.network_geometry import GridNetwork
 
 # Skip all tests if igraph is not available (network backend dependency)

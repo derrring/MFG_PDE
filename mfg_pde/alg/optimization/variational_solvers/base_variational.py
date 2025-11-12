@@ -21,7 +21,7 @@ from mfg_pde.utils.numerical.integration import trapezoid
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from mfg_pde.core.variational_mfg_problem import VariationalMFGProblem
+    from mfg_pde.extensions.variational import VariationalMFGProblem
 
 logger = logging.getLogger(__name__)
 

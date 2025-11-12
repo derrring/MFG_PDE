@@ -27,7 +27,7 @@ from . import NETWORKX_AVAILABLE, PLOTLY_AVAILABLE, go, make_subplots, nx, px
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
-    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.extensions.network import NetworkMFGProblem
     from mfg_pde.geometry.network_geometry import NetworkData
 
 
