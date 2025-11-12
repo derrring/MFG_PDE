@@ -1,0 +1,41 @@
+# Codecov Configuration for MFG_PDE
+# See: https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%  # Allow 1% drop in overall coverage
+        if_ci_failed: error
+
+    patch:
+      default:
+        target: 70%  # Require 70% coverage for new code
+        threshold: 5%  # Allow some flexibility for refactoring
+        if_ci_failed: error
+        # Be lenient with import-only files
+        informational: true
+
+  # Ignore patterns for coverage calculation
+  ignore:
+    - "tests/"
+    - "benchmarks/"
+    - "examples/"
+    - "docs/"
+    - "scripts/"
+    - "archive/"
+    - "**/__pycache__"
+    - "setup.py"
+    - "**/__main__.py"
+
+comment:
+  layout: "header, diff, files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+# GitHub integration
+github_checks:
+  annotations: true
