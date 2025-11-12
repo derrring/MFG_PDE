@@ -20,7 +20,6 @@ Examples
 >>> # Use maze to define obstacles in domain
 """
 
-from .capacity_field import CapacityField, visualize_capacity_field
 from .cellular_automata import CellularAutomataConfig, CellularAutomataGenerator
 from .hybrid_maze import HybridMazeGenerator
 from .maze_config import MazeConfig
@@ -44,7 +43,4 @@ __all__ = [
     "RecursiveDivisionConfig",
     "RecursiveDivisionGenerator",
     "VoronoiMazeGenerator",
-    # Capacity field for congestion modeling
-    "CapacityField",
-    "visualize_capacity_field",
 ]

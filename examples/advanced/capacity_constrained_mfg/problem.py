@@ -43,9 +43,10 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.core.congestion import CongestionModel
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.mazes.capacity_field import CapacityField
+from mfg_pde.core import MFGProblem
+
+from .capacity_field import CapacityField
+from .congestion import CongestionModel
 
 if TYPE_CHECKING:
     from typing import Any
@@ -308,7 +309,7 @@ if __name__ == "__main__":
     capacity_array = np.random.uniform(0.5, 1.0, (50, 50))
     capacity = CapacityField(capacity=capacity_array, epsilon=0.01)
 
-    from mfg_pde.core.congestion import QuadraticCongestion
+    from .congestion import QuadraticCongestion
 
     problem = CapacityConstrainedMFGProblem(
         capacity_field=capacity,
@@ -375,7 +376,7 @@ if __name__ == "__main__":
 
     # Test 7: LogBarrier congestion (stability at high density)
     print("\n7. LogBarrier congestion (high density stability)...")
-    from mfg_pde.core.congestion import LogBarrierCongestion
+    from .congestion import LogBarrierCongestion
 
     problem_logbarrier = CapacityConstrainedMFGProblem(
         capacity_field=capacity,
