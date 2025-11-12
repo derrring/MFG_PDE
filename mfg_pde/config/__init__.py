@@ -40,6 +40,9 @@ Configuration is for SOLVERS (how to solve), not PROBLEMS (what to solve):
 
 # Core configuration classes
 # Presets module (use via: from mfg_pde.config import presets)
+# Issue deprecation warnings for old configuration systems
+import warnings as _warnings
+
 from . import presets
 
 # =============================================================================
@@ -85,11 +88,11 @@ from .legacy import (
     traffic_config,
 )
 
-# Old modern_config.py (Phase 3.2 replaces these)
+# Old modern_config.py (DEPRECATED - Phase 3.2 replaces these, will be removed in v0.12.0)
 from .modern_config import PresetConfig, create_config
 from .modern_config import SolverConfig as ModernSolverConfig
 
-# Old Pydantic-based configurations (Phase 3.2 replaces these)
+# Old Pydantic-based configurations (DEPRECATED - Phase 3.2 replaces these, will be removed in v0.12.0)
 from .pydantic_config import FPConfig as PydanticFPConfig
 from .pydantic_config import GFDMConfig as PydanticGFDMConfig
 from .pydantic_config import HJBConfig as PydanticHJBConfig
@@ -102,7 +105,7 @@ from .pydantic_config import NewtonConfig as PydanticNewtonConfig
 from .pydantic_config import ParticleConfig as PydanticParticleConfig
 from .pydantic_config import PicardConfig as PydanticPicardConfig
 
-# Old dataclass-based configurations
+# Old dataclass-based configurations (DEPRECATED - will be removed in v0.12.0)
 from .solver_config import FPConfig as DataclassFPConfig
 from .solver_config import GFDMConfig as DataclassGFDMConfig
 from .solver_config import HJBConfig as DataclassHJBConfig
@@ -114,6 +117,17 @@ from .solver_config import create_accurate_config as create_accurate_config_data
 from .solver_config import create_default_config as create_default_config_dataclass
 from .solver_config import create_fast_config as create_fast_config_dataclass
 from .solver_config import create_research_config as create_research_config_dataclass
+
+_warnings.warn(
+    "The following legacy configuration imports are deprecated and will be removed in v0.12.0:\n"
+    "  - modern_config: PresetConfig, create_config, ModernSolverConfig\n"
+    "  - pydantic_config: PydanticFPConfig, PydanticGFDMConfig, PydanticHJBConfig, etc.\n"
+    "  - solver_config: DataclassFPConfig, DataclassGFDMConfig, DataclassHJBConfig, etc.\n"
+    "Please migrate to the unified Phase 3.2 configuration system:\n"
+    "  from mfg_pde.config import SolverConfig, FPConfig, HJBConfig, create_solver_config",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # OmegaConf-based configuration management (optional, specialized)
 try:

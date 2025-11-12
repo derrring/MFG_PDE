@@ -16,6 +16,8 @@ Organization:
 - data/: Data handling and validation
 """
 
+import warnings as _warnings
+
 # Core utility functions (non-plotting)
 from .aux_func import npart, ppart
 
@@ -113,8 +115,17 @@ from .sparse_operations import (
     sparse_matmul,
 )
 
-# Backward compatibility alias (deprecated, use estimate_kde_bandwidth)
+# Backward compatibility alias (DEPRECATED - will be removed in v0.12.0)
 adaptive_bandwidth_selection = estimate_kde_bandwidth
+
+# Issue deprecation warning for adaptive_bandwidth_selection alias
+_warnings.warn(
+    "adaptive_bandwidth_selection is deprecated and will be removed in v0.12.0. "
+    "Please use estimate_kde_bandwidth directly:\n"
+    "  from mfg_pde.utils import estimate_kde_bandwidth",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # Optional modules with graceful handling
 try:

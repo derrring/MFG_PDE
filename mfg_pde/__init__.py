@@ -64,9 +64,6 @@ from .solvers.variational import (  # noqa: E402
     create_quadratic_variational_mfg,
 )
 
-# Simple API removed - use factory API instead
-# from .simple import ...
-
 # Geometry system for 2D/3D complex domains (optional dependency)
 try:
     from .geometry import (
