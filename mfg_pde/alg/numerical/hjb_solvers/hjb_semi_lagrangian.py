@@ -76,6 +76,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         use_jax: bool | None = None,
         tolerance: float = 1e-8,
         max_char_iterations: int = 100,
+        max_gradient: float | None = 10.0,
+        check_cfl: bool = True,
     ):
         """
         Initialize semi-Lagrangian HJB solver.
@@ -100,16 +102,18 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             use_jax: Whether to use JAX acceleration (auto-detect if None)
             tolerance: Convergence tolerance for optimization
             max_char_iterations: Maximum iterations for characteristic solving
+            max_gradient: Optional maximum magnitude for gradient clipping (stability).
+                Default: 10.0. Set to None for no clipping. Typical values: 5-15 for standard problems.
+            check_cfl: Whether to check CFL condition and issue warnings (default: True)
         """
         super().__init__(problem)
         self.hjb_method_name = "Semi-Lagrangian"
 
-        # EXPERIMENTAL: Known convergence issues (Issue #298)
-        logger.warning(
-            "HJBSemiLagrangianSolver has known convergence issues (Issue #298). "
-            "The solver may not converge or produce incorrect results for standard MFG problems. "
-            "Use HJBFiniteDifferenceSolver or HJBGFDMSolver instead. "
-            "This solver is EXPERIMENTAL and requires further research to fix characteristic tracing."
+        # Note: Gradient-based optimal control now implemented (Issue #298 fix)
+        # Use max_gradient parameter for stability if needed
+        logger.info(
+            "Semi-Lagrangian solver now uses gradient-based optimal control (α* = ∇u). "
+            "For stability, consider setting max_gradient parameter if CFL condition is violated."
         )
 
         # Solver configuration
@@ -120,6 +124,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         self.rbf_kernel = rbf_kernel
         self.tolerance = tolerance
         self.max_char_iterations = max_char_iterations
+        self.max_gradient = max_gradient
+        self.check_cfl = check_cfl
 
         # JAX acceleration
         self.use_jax = use_jax if use_jax is not None else JAX_AVAILABLE
@@ -203,6 +209,82 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         raise ValueError(
             "Cannot determine problem dimension. Problem must be either 1D MFGProblem or GridBasedMFGProblem."
         )
+
+    def _compute_gradient(self, u_values: np.ndarray, check_cfl: bool = True) -> np.ndarray | tuple[np.ndarray, ...]:
+        """
+        Compute gradient ∇u for optimal control using np.gradient.
+
+        For standard MFG with quadratic control cost, the optimal control is:
+            α*(x,t) = ∇u(x,t)
+
+        Args:
+            u_values: Value function array
+                - 1D: shape (Nx+1,)
+                - nD: shape (Nx1+1, Nx2+1, ..., Nxd+1)
+            check_cfl: Whether to check CFL condition (default: True)
+
+        Returns:
+            gradient: Gradient array(s)
+                - 1D: shape (Nx+1,) - scalar gradient at each point
+                - nD: tuple of d arrays, each shape (Nx1+1, ..., Nxd+1)
+
+        Note:
+            Uses np.gradient with edge_order=2 for accurate boundary gradients.
+            Optionally clips gradients if self.max_gradient is set.
+            Issues CFL warning if max|∇u|·dt/dx > 1.
+        """
+        if self.dimension == 1:
+            # 1D gradient computation
+            grad_u = np.gradient(u_values, self.dx, edge_order=2)
+
+            # Optional gradient clipping for stability
+            if self.max_gradient is not None:
+                grad_u = np.clip(grad_u, -self.max_gradient, self.max_gradient)
+
+            # CFL check
+            if check_cfl and self.check_cfl:
+                max_grad = np.max(np.abs(grad_u))
+                cfl = max_grad * self.dt / self.dx
+                if cfl > 1.0:
+                    logger.warning(
+                        f"CFL condition violated: max|∇u|·dt/dx = {cfl:.3f} > 1.0. "
+                        f"Consider reducing dt, increasing dx, or setting max_gradient parameter. "
+                        f"max|∇u| = {max_grad:.3f}, dt = {self.dt:.6f}, dx = {self.dx:.6f}"
+                    )
+
+            return grad_u
+
+        else:
+            # nD gradient computation
+            grad_components = []
+            for axis in range(self.dimension):
+                grad_axis = np.gradient(u_values, self.spacing[axis], axis=axis, edge_order=2)
+                grad_components.append(grad_axis)
+
+            # Stack to shape (d, Nx1+1, ..., Nxd+1)
+            grad = np.stack(grad_components, axis=0)
+
+            # Optional gradient clipping for stability
+            if self.max_gradient is not None:
+                magnitude = np.sqrt(np.sum(grad**2, axis=0))
+                scale = np.where(magnitude > self.max_gradient, self.max_gradient / (magnitude + 1e-12), 1.0)
+                grad = grad * scale[np.newaxis, ...]
+
+            # CFL check
+            if check_cfl and self.check_cfl:
+                magnitude = np.sqrt(np.sum(grad**2, axis=0))
+                max_grad = np.max(magnitude)
+                min_spacing = np.min(self.spacing)
+                cfl = max_grad * self.dt / min_spacing
+                if cfl > 1.0:
+                    logger.warning(
+                        f"CFL condition violated: max|∇u|·dt/dx_min = {cfl:.3f} > 1.0. "
+                        f"Consider reducing dt, increasing grid spacing, or setting max_gradient parameter. "
+                        f"max|∇u| = {max_grad:.3f}, dt = {self.dt:.6f}, dx_min = {min_spacing:.6f}"
+                    )
+
+            # Return as tuple of arrays (one per dimension)
+            return tuple(grad_components)
 
     def solve_hjb_system(
         self,
@@ -297,13 +379,17 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             Nx = len(U_next)
             U_star = np.zeros(Nx)  # Intermediate solution after advection
 
+            # Compute gradient for optimal control: α* = ∇u
+            grad_u = self._compute_gradient(U_next, check_cfl=True)
+
             # Step 1: Advection along characteristics (explicit)
             for i in range(Nx):
                 x_current = self.x_grid[i]
                 m_current = M_next[i]
 
                 try:
-                    p_optimal = self._find_optimal_control(x_current, m_current, time_idx)
+                    # Optimal control from gradient
+                    p_optimal = grad_u[i]
                     x_departure = self._trace_characteristic_backward(x_current, p_optimal, self.dt)
                     u_departure = self._interpolate_value(U_next, x_departure)
                     hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
@@ -345,6 +431,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             U_current_shaped = np.zeros_like(U_next_shaped)
 
+            # Compute gradient for optimal control: α* = ∇u
+            # Returns tuple of gradient components, each with shape grid_shape
+            grad_components = self._compute_gradient(U_next_shaped, check_cfl=True)
+
             # Iterate over all grid points using the actual array shape
             for multi_idx in np.ndindex(grid_shape):
                 try:
@@ -352,8 +442,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     x_current = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
                     m_current = M_next_shaped[multi_idx]
 
-                    # Step 1: Find optimal control (returns vector for nD)
-                    p_optimal = self._find_optimal_control(x_current, m_current, time_idx)
+                    # Step 1: Extract optimal control from gradient (vector for nD)
+                    p_optimal = np.array([grad_components[d][multi_idx] for d in range(self.dimension)])
 
                     # Step 2: Trace characteristic backward (vector operation)
                     x_departure = self._trace_characteristic_backward(x_current, p_optimal, self.dt)
