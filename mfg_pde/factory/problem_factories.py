@@ -214,7 +214,7 @@ def create_mfg_problem(
         )
 
         if problem_type == "network":
-            from mfg_pde.extensions.network import NetworkMFGProblem
+            from mfg_pde.extensions.topology import NetworkMFGProblem
 
             return NetworkMFGProblem(
                 geometry=geometry,
@@ -224,7 +224,7 @@ def create_mfg_problem(
                 **kwargs,
             )
         elif problem_type == "variational":
-            from mfg_pde.extensions.variational import VariationalMFGProblem
+            from mfg_pde.solvers.variational import VariationalMFGProblem
 
             return VariationalMFGProblem(
                 geometry=geometry,
