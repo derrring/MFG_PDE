@@ -31,7 +31,7 @@ from scipy.sparse.linalg import spsolve
 from .base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+    from mfg_pde.extensions.topology import NetworkMFGProblem
 
 
 class NetworkHJBSolver(BaseHJBSolver):

@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .mfg_problem import MFGProblem
+from mfg_pde.core.mfg_problem import MFGProblem
 
 if TYPE_CHECKING:
     from collections.abc import Callable

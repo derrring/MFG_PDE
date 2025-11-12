@@ -496,7 +496,7 @@ class VariationalMFGProblem:
         Returns:
             MFGProblem instance with Hamiltonian derived from this Lagrangian
         """
-        from .mfg_problem import MFGComponents, MFGProblem
+        from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
 
         # Convert to Hamiltonian formulation
         hamiltonian_funcs = self.convert_to_hamiltonian()

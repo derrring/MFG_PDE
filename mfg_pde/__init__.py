@@ -20,18 +20,12 @@ from .core.mfg_problem import (  # noqa: E402
     MFGProblemBuilder,
     create_mfg_problem,
 )
-from .core.network_mfg_problem import (  # noqa: E402
+from .extensions.topology import (  # noqa: E402
     NetworkMFGComponents,
     NetworkMFGProblem,
     create_grid_mfg_problem,
     create_random_mfg_problem,
     create_scale_free_mfg_problem,
-)
-from .core.variational_mfg_problem import (  # noqa: E402
-    VariationalMFGComponents,
-    VariationalMFGProblem,
-    create_obstacle_variational_mfg,
-    create_quadratic_variational_mfg,
 )
 from .factory import (  # noqa: E402
     SolverFactory,
@@ -63,6 +57,12 @@ from .geometry.network_geometry import (  # noqa: E402
     create_network,
 )
 from .solve_mfg import solve_mfg  # noqa: E402
+from .solvers.variational import (  # noqa: E402
+    VariationalMFGComponents,
+    VariationalMFGProblem,
+    create_obstacle_variational_mfg,
+    create_quadratic_variational_mfg,
+)
 
 # Simple API removed - use factory API instead
 # from .simple import ...
