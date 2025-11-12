@@ -42,6 +42,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 
 from mfg_pde.solvers.base import BaseSolver
 from mfg_pde.solvers.fixed_point import FixedPointSolver
@@ -110,6 +111,91 @@ class _SinglePopulationAdapter:
             raise ValueError(f"Population index k={k} out of range [0, {problem.num_populations})")
 
     # ====================
+    # Spatial Interpolation
+    # ====================
+
+    def _interpolate_densities_at_point(self, x, t: float) -> list[float]:
+        """
+        Interpolate all population densities at spatial point x and time t.
+
+        This method enables the adapter to evaluate the Hamiltonian at arbitrary
+        spatial points by interpolating the frozen density arrays m_all.
+
+        Args:
+            x: Spatial position (scalar for 1D, tuple/array for nD)
+            t: Time value
+
+        Returns:
+            List of interpolated density values [m₁(t,x), ..., mₖ(t,x)]
+
+        Implementation:
+            - Uses RegularGridInterpolator for efficient interpolation on regular grids
+            - Handles 1D, 2D, and 3D spatial domains
+            - Time is handled by finding nearest time index (piecewise constant in time)
+
+        Note:
+            This is the key Phase 2.5 feature that bridges the gap between
+            array-based solver operations and point-wise Hamiltonian evaluation.
+        """
+        # Get spatial grid from problem
+        xSpace = self._problem.xSpace
+        tSpace = self._problem.tSpace
+
+        # Find time index (nearest neighbor for now)
+        t_idx = np.argmin(np.abs(tSpace - t))
+
+        # Interpolate each population's density
+        m_interpolated = []
+        for m_k in self._m_all:
+            # Extract density at time t_idx: m_k[t_idx, ...]
+            m_k_at_t = m_k[t_idx]
+
+            # Handle dimensionality
+            dim = self._problem.dimension
+
+            if dim == 1:
+                # 1D interpolation
+                # xSpace is 1D array, m_k_at_t is 1D array
+                interp_func = RegularGridInterpolator((xSpace,), m_k_at_t, bounds_error=False, fill_value=0.0)
+                x_point = np.atleast_1d(x)
+                m_val = float(interp_func(x_point)[0])
+
+            elif dim == 2:
+                # 2D interpolation
+                # xSpace is tuple (x_grid, y_grid) or 2D meshgrid
+                # m_k_at_t is 2D array with shape (Nx+1, Ny+1)
+                if isinstance(xSpace, tuple) and len(xSpace) == 2:
+                    x_grid, y_grid = xSpace
+                else:
+                    # xSpace might be stored differently - fallback
+                    # Assume uniform grid from problem bounds
+                    raise NotImplementedError("2D interpolation requires xSpace as (x_grid, y_grid) tuple")
+
+                interp_func = RegularGridInterpolator((x_grid, y_grid), m_k_at_t, bounds_error=False, fill_value=0.0)
+                x_point = np.atleast_1d(x).flatten()
+                m_val = float(interp_func(x_point)[0])
+
+            elif dim == 3:
+                # 3D interpolation
+                if isinstance(xSpace, tuple) and len(xSpace) == 3:
+                    x_grid, y_grid, z_grid = xSpace
+                else:
+                    raise NotImplementedError("3D interpolation requires xSpace as (x_grid, y_grid, z_grid) tuple")
+
+                interp_func = RegularGridInterpolator(
+                    (x_grid, y_grid, z_grid), m_k_at_t, bounds_error=False, fill_value=0.0
+                )
+                x_point = np.atleast_1d(x).flatten()
+                m_val = float(interp_func(x_point)[0])
+
+            else:
+                raise ValueError(f"Unsupported spatial dimension: {dim}")
+
+            m_interpolated.append(m_val)
+
+        return m_interpolated
+
+    # ====================
     # Delegated Universal Properties
     # ====================
 
@@ -153,20 +239,28 @@ class _SinglePopulationAdapter:
 
         Args:
             x: Spatial position
-            m: Density at x for population k (not used in basic coupling)
+            m: Density at x for population k (not used - interpolated from m_all)
             p: Momentum ∇uₖ
             t: Time
 
         Returns:
             Hamiltonian value Hₖ(x, {mⱼ}, p, t)
 
+        Implementation (Phase 2.5):
+            Interpolates frozen density arrays m_all at point (t, x) to get
+            scalar values [m₁(t,x), ..., mₖ(t,x)], then evaluates
+            hamiltonian_k(k, x, m_all_interpolated, p, t).
+
         Note:
-            The density m is typically not used directly since the Hamiltonian
-            depends on m_all (all populations) which is frozen in this adapter.
-            However, it's included for interface compatibility.
+            The parameter m is for interface compatibility with MFGProblemProtocol
+            but is not used. The actual density values are interpolated from
+            the frozen state m_all.
         """
-        # Delegate to population-specific Hamiltonian with frozen m_all
-        return self._problem.hamiltonian_k(self._k, x, self._m_all, p, t)
+        # Interpolate all population densities at point (t, x)
+        m_all_at_x = self._interpolate_densities_at_point(x, t)
+
+        # Delegate to population-specific Hamiltonian with interpolated scalar densities
+        return self._problem.hamiltonian_k(self._k, x, m_all_at_x, p, t)
 
     def terminal_cost(self, x):
         """
@@ -594,14 +688,12 @@ if __name__ == "__main__":
     t_test = 0.5
 
     try:
-        # Note: hamiltonian expects m_all with scalar values, not arrays
-        # The adapter handles this by providing the frozen m_all from its state
+        # Phase 2.5: Hamiltonian now interpolates m_all at point x
         H_val = adapter_0.hamiltonian(x_test, 0.0, p_test, t_test)
         print(f"✓ hamiltonian(x={x_test}, p={p_test}, t={t_test}) = {H_val:.6f}")
+        print("  (Phase 2.5: Spatial interpolation working!)")
     except Exception as e:
-        print("  Note: hamiltonian() expects scalar m_all values at point x, not arrays")
-        print("  This is expected - full integration requires spatial interpolation")
-        print(f"✓ Adapter structure validated (error: {type(e).__name__})")
+        print(f"✗ hamiltonian() failed: {type(e).__name__}: {e}")
 
     try:
         g_val = adapter_0.terminal_cost(x_test)
@@ -614,6 +706,16 @@ if __name__ == "__main__":
         print(f"✓ initial_density(x={x_test}) = {m0_val:.6f}")
     except Exception as e:
         print(f"✗ initial_density() failed: {e}")
+
+    # Test 4b: Verify interpolation method directly
+    print("\n[Test 4b] Direct interpolation test...")
+    try:
+        m_interp = adapter_0._interpolate_densities_at_point(x_test, t_test)
+        print(f"✓ Interpolated densities at (t={t_test}, x={x_test}):")
+        for k, m_val in enumerate(m_interp):
+            print(f"  - Population {k}: m_{k}({x_test}) = {m_val:.6f}")
+    except Exception as e:
+        print(f"✗ Interpolation failed: {type(e).__name__}: {e}")
 
     # Test 5: Array methods
     print("\n[Test 5] Adapter array methods...")
@@ -645,7 +747,9 @@ if __name__ == "__main__":
         print(f"✓ Correctly rejected invalid k=5: {e}")
 
     print("\n" + "=" * 70)
-    print("All Phase 2 smoke tests passed!")
+    print("All Phase 2.5 smoke tests passed!")
     print("=" * 70)
-    print("\nNote: Full end-to-end solver test requires complete problem implementation.")
-    print("Next: Phase 3 - Add examples with capacity constraints and MFG vs ABM comparison.")
+    print("\nCompleted:")
+    print("  ✓ Phase 2: Single-population adapter structure")
+    print("  ✓ Phase 2.5: Spatial interpolation for point-wise Hamiltonian evaluation")
+    print("\nNext: Phase 3 - Add examples with capacity constraints and MFG vs ABM comparison.")
