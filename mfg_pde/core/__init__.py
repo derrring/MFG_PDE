@@ -2,6 +2,7 @@ from mfg_pde.geometry import BoundaryConditions
 
 from .base_problem import CartesianGridMFGProtocol, MFGProblemProtocol
 from .mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem
+from .multi_population import MultiPopulationMFGProblem, MultiPopulationMFGProtocol
 from .network_mfg_problem import (
     NetworkMFGComponents,
     NetworkMFGProblem,
@@ -26,14 +27,9 @@ __all__ = [
     "MFGProblem",
     "MFGProblemBuilder",
     "MFGProblemProtocol",
-    # Capacity-constrained MFG
-    "CapacityConstrainedMFGProblem",
-    "CongestionModel",
-    "QuadraticCongestion",
-    "ExponentialCongestion",
-    "LogBarrierCongestion",
-    "PiecewiseCongestion",
-    "create_congestion_model",
+    # Multi-population MFG
+    "MultiPopulationMFGProblem",
+    "MultiPopulationMFGProtocol",
     # Network MFG
     "NetworkMFGComponents",
     "NetworkMFGProblem",
