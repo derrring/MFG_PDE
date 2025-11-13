@@ -99,9 +99,6 @@ from .graph import (
     maze_VoronoiGenerator,
 )
 
-# Grid geometry
-from .grids import SimpleGrid1D, SimpleGrid2D, TensorProductGrid
-
 # Implicit geometry
 from .implicit import (
     ComplementDomain,
@@ -139,9 +136,14 @@ from .protocol import (
     is_geometry_compatible,
     validate_geometry,
 )
+from .simple_grid import SimpleGrid2D, SimpleGrid3D
+
+# Grid geometry
+# Import from old file locations for backward compatibility (Phase 1)
+from .simple_grid_1d import SimpleGrid1D
+from .tensor_product_grid import TensorProductGrid
 
 # Legacy grid imports (from old file names)
-from .simple_grid import SimpleGrid3D
 
 # Backward compatibility aliases (DEPRECATED - will be removed in v0.12.0)
 Domain1D = SimpleGrid1D  # Use SimpleGrid1D instead
