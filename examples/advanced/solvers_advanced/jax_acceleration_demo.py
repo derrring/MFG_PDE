@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # MFG_PDE imports
+from mfg_pde.backends import create_backend
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.factory import create_backend, print_backend_info
+from mfg_pde.factory import print_backend_info
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.numpy_compat import trapezoid
 
