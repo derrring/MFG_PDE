@@ -67,7 +67,30 @@ High-order GFDM naturally produces **non-monotone stencils** (negative weights) 
 
 **Status**: Theoretical design (Issue #271)
 
-### 03. Implementation Reference (Development)
+### 03. Perron-Frobenius Theory and M-Matrices
+
+**File**: `03_perron_frobenius_theory.md`
+
+**Content**:
+- Perron-Frobenius theorem for non-negative matrices
+- M-matrix classification and spectral properties
+- Inverse properties and maximum principles
+- Iterative method convergence (Jacobi, Gauss-Seidel, SOR)
+- Application to GFDM Laplacian discretization
+- Stability analysis and CFL conditions
+- Connection to monotone schemes and Barles-Souganidis convergence
+
+**Prerequisites**: Linear algebra, spectral theory
+
+**Key Results**:
+- Non-negative irreducible matrices have positive dominant eigenvalue
+- M-matrices ensure maximum principles and iterative convergence
+- Spectral radius $\rho(T_J) < 1$ guarantees convergence
+- M-matrix structure implies monotonicity → viscosity solution convergence
+
+**Status**: Spectral foundation for M-matrix monotonicity
+
+### 04. Implementation Reference (Development)
 
 **File**: `../../development/GFDM_QP_MONOTONICITY_IMPLEMENTATION.md`
 
@@ -99,12 +122,20 @@ High-order GFDM naturally produces **non-monotone stencils** (negative weights) 
        ┌──────┴──────┐
        │             │
        ▼             ▼
-┌──────────┐   ┌──────────────┐
-│ M-Matrix │   │  Hamiltonian │
-│ Property │   │  Monotonicity│
-└─────┬────┘   └──────┬───────┘
-      │               │
-      ▼               ▼
+┌──────────────┐   ┌──────────────┐
+│  M-Matrix    │   │  Hamiltonian │
+│  Property    │   │ Monotonicity │
+└──────┬───────┘   └──────┬───────┘
+       │                  │
+       ▼                  │
+┌──────────────┐          │
+│ Perron-      │          │
+│ Frobenius    │          │
+│ Theory       │          │
+│ (spectral)   │          │
+└──────┬───────┘          │
+       │                  │
+       ▼                  ▼
 ┌──────────┐   ┌──────────────┐
 │ Indirect │   │    Direct    │
 │  (impl.) │   │  (proposed)  │
@@ -162,7 +193,16 @@ Then $u_h \to u$ (viscosity solution) as $h \to 0$.
 
 **Reference**: Barles & Souganidis (1991), *Asymptotic Analysis*, 4(3):271-283.
 
-### Theorem 2: M-Matrix Monotonicity
+### Theorem 2: Perron-Frobenius Theorem
+
+**Statement**: Let $A \geq 0$ be a non-negative irreducible matrix. Then:
+1. Spectral radius $\rho(A)$ is a **simple positive eigenvalue**
+2. Dominant eigenvector $v_1 > 0$ is **strictly positive**
+3. All other eigenvalues satisfy $|\lambda_k| < \rho(A)$
+
+**Reference**: Perron (1907), Frobenius (1912); see `03_perron_frobenius_theory.md`
+
+### Theorem 3: M-Matrix Monotonicity
 
 **Statement**: A linear scheme $F_j(\mathbf{u}) = \sum_k w_{j,k} u_k$ is monotone if and only if:
 
@@ -172,7 +212,7 @@ $$
 
 **Reference**: Varga (2009), *Matrix Iterative Analysis*, Springer.
 
-### Theorem 3: Hamiltonian Monotonicity (Proposed)
+### Theorem 4: Hamiltonian Monotonicity (Proposed)
 
 **Statement**: For Hamiltonian $H_h = \frac{1+2\gamma m}{2}|\nabla_h u|^2 + V$, monotonicity requires:
 
@@ -222,11 +262,16 @@ $$
    - Graduate-level PDE and numerical analysis background assumed
    - Self-contained mathematical derivations
 
-2. **Implementation focus**: Jump to `../../development/GFDM_QP_MONOTONICITY_IMPLEMENTATION.md`
+2. **Spectral theory**: Read `03_perron_frobenius_theory.md`
+   - Spectral foundation for M-matrix convergence
+   - Iterative method analysis
+   - Maximum principles
+
+3. **Implementation focus**: Jump to `../../development/GFDM_QP_MONOTONICITY_IMPLEMENTATION.md`
    - Practical examples and code references
    - Usage patterns and benchmarks
 
-3. **Advanced theory**: Read `02_hamiltonian_constraints.md`
+4. **Advanced theory**: Read `02_hamiltonian_constraints.md`
    - Cutting-edge approach (not yet implemented)
    - Open research questions
 
