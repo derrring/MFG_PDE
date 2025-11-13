@@ -140,11 +140,22 @@ class FPParticleSolver(BaseFPSolver):
         self.strategy_selector = StrategySelector(enable_profiling=True, verbose=False)
         self.current_strategy = None  # Will be set in solve_fp_system
 
-        # Default to periodic boundaries for backward compatibility
-        if boundary_conditions is None:
-            self.boundary_conditions = BoundaryConditions(type="periodic")
-        else:
+        # Boundary condition resolution hierarchy:
+        # 1. Explicit boundary_conditions parameter (highest priority)
+        # 2. Grid geometry boundary handler (if available)
+        # 3. Default periodic BC (fallback for backward compatibility)
+        if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
+        elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
+            # Try to get BC from grid geometry (Phase 2 integration)
+            try:
+                self.boundary_conditions = problem.geometry.get_boundary_handler(bc_type="periodic")
+            except Exception:
+                # Fallback if geometry BC retrieval fails
+                self.boundary_conditions = BoundaryConditions(type="periodic")
+        else:
+            # Default to periodic boundaries for backward compatibility
+            self.boundary_conditions = BoundaryConditions(type="periodic")
 
     def _compute_gradient(self, U_array, Dx: float, use_backend: bool = False):
         """
