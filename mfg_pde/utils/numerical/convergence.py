@@ -1259,3 +1259,75 @@ create_default_monitor = create_default_monitor
 StochasticConvergenceMonitor = StochasticConvergenceMonitor
 create_stochastic_monitor = create_stochastic_monitor
 calculate_l2_convergence_metrics = calculate_l2_convergence_metrics
+
+
+# =============================================================================
+# SMOKE TEST
+# =============================================================================
+
+if __name__ == "__main__":
+    """Quick smoke test for convergence utilities."""
+    print("Testing convergence utilities...")
+
+    # Test DistributionComparator
+    x = np.linspace(0, 1, 100)
+    p = np.exp(-((x - 0.4) ** 2) / 0.02)
+    q = np.exp(-((x - 0.5) ** 2) / 0.02)
+    p = p / np.sum(p)
+    q = q / np.sum(q)
+
+    comparator = DistributionComparator()
+    wass_dist = comparator.wasserstein_1d(p, q, x)
+    kl_div = comparator.kl_divergence(p, q)
+    moments = comparator.statistical_moments(p, x)
+
+    assert 0 < wass_dist < 1, f"Wasserstein distance out of range: {wass_dist}"
+    assert 0 < kl_div < 10, f"KL divergence out of range: {kl_div}"
+    assert "mean" in moments
+    assert "variance" in moments
+    print(f"✓ DistributionComparator works (Wasserstein={wass_dist:.4f}, KL={kl_div:.4f})")
+
+    # Test OscillationDetector
+    detector = OscillationDetector(history_length=5)
+    for error in [0.1, 0.09, 0.11, 0.095, 0.105]:
+        detector.add_sample(error)
+
+    stabilized, diag = detector.is_stabilized(magnitude_threshold=0.2, stability_threshold=0.01)
+    assert isinstance(stabilized, bool)
+    assert "mean_error" in diag
+    print(f"✓ OscillationDetector works (stabilized={stabilized})")
+
+    # Test StochasticConvergenceMonitor
+    stoch_monitor = create_stochastic_monitor(window_size=5, median_tolerance=1e-3)
+    for i in range(10):
+        stoch_monitor.add_iteration(error_u=0.01 / (i + 1), error_m=0.01 / (i + 1))
+
+    converged, diagnostics = stoch_monitor.check_convergence()
+    assert isinstance(converged, bool)
+    assert "status" in diagnostics
+    print(f"✓ StochasticConvergenceMonitor works (converged={converged})")
+
+    # Test AdvancedConvergenceMonitor
+    advanced_monitor = create_default_monitor()
+    u_current = np.random.randn(100)
+    u_previous = u_current + 0.01 * np.random.randn(100)
+    m_current = np.abs(np.random.randn(100))
+    m_current = m_current / np.sum(m_current)
+
+    diag = advanced_monitor.update(u_current, u_previous, m_current, x)
+    assert "iteration" in diag
+    assert "converged" in diag
+    print(f"✓ AdvancedConvergenceMonitor works (iteration={diag['iteration']})")
+
+    # Test L2 convergence metrics helper
+    U_new = np.random.randn(10, 10)
+    U_old = U_new + 0.01 * np.random.randn(10, 10)
+    M_new = np.abs(np.random.randn(10, 10))
+    M_old = M_new + 0.01 * np.random.randn(10, 10)
+
+    metrics = calculate_l2_convergence_metrics(U_new, U_old, M_new, M_old, Dx=0.1, Dt=0.1)
+    assert all(key in metrics for key in ["l2distu_abs", "l2distu_rel", "l2distm_abs", "l2distm_rel"])
+    assert all(metrics[key] >= 0 for key in metrics)
+    print(f"✓ calculate_l2_convergence_metrics works (U_rel={metrics['l2distu_rel']:.2e})")
+
+    print("\nAll smoke tests passed!")
