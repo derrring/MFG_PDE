@@ -615,10 +615,10 @@ class TensorProductGrid(CartesianGrid):
 
     def get_boundary_handler(self, bc_type: str = "periodic", custom_conditions: dict | None = None):
         """
-        Create boundary condition handler for this tensor product grid.
+        Create dimension-agnostic boundary condition handler.
 
-        Integrates with existing boundary condition infrastructure to provide
-        proper BC handling for 1D, 2D, and 3D grids.
+        Automatically selects appropriate BC infrastructure based on grid dimension
+        without hard-coded if-elif chains. Extensible for arbitrary dimensions.
 
         Args:
             bc_type: Standard boundary condition type:
@@ -631,71 +631,78 @@ class TensorProductGrid(CartesianGrid):
             custom_conditions: Optional dict with custom BC specifications
 
         Returns:
-            Boundary condition handler:
-                - 1D: BoundaryConditions dataclass
-                - 2D: BoundaryConditionManager2D
-                - 3D: BoundaryConditionManager3D
-                - >3D: Placeholder dict with warning
+            Boundary condition handler appropriate for grid dimension
 
         Example:
-            >>> grid = TensorProductGrid(2, [(0, 1), (0, 1)], [11, 11])
-            >>> bc_handler = grid.get_boundary_handler("dirichlet_zero")
-            >>> # Use with solver
-            >>> matrix_bc, rhs_bc = bc_handler.apply_all_conditions(matrix, rhs, mesh)
+            >>> # Works for any dimension without code changes
+            >>> for D in [1, 2, 3, 4]:
+            ...     grid = TensorProductGrid(D, [(0, 1)] * D, [11] * D)
+            ...     bc = grid.get_boundary_handler("dirichlet_zero")
+
+        Note:
+            Boundary regions indexed 0 to 2D-1:
+            - Region 2i: x_i_min (left hyperface in dimension i)
+            - Region 2i+1: x_i_max (right hyperface in dimension i)
         """
+        # Special case: 1D uses different BC interface
         if self._dimension == 1:
-            # Use simple 1D BoundaryConditions dataclass
-            from .boundary_conditions_1d import BoundaryConditions
+            return self._create_bc_1d(bc_type, custom_conditions)
 
-            if bc_type == "periodic":
-                return BoundaryConditions(type="periodic")
-            elif bc_type == "dirichlet_zero":
-                return BoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
-            elif bc_type == "neumann_zero" or bc_type == "no_flux":
-                return BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
-            else:
-                # Custom conditions via dict
-                if custom_conditions:
-                    return BoundaryConditions(**custom_conditions)
-                return BoundaryConditions(type="periodic")  # Safe default
+        # Generic nD dispatch (D >= 2)
+        return self._create_bc_nd(bc_type)
 
-        elif self._dimension == 2:
-            # Use 2D boundary condition manager
-            from .boundary_conditions_2d import create_rectangle_boundary_conditions
+    def _create_bc_1d(self, bc_type: str, custom_conditions: dict | None):
+        """Create 1D boundary conditions (uses dataclass interface)."""
+        from .boundary_conditions_1d import BoundaryConditions
 
-            bounds_2d = (
-                self.bounds[0][0],
-                self.bounds[0][1],  # x_min, x_max
-                self.bounds[1][0],
-                self.bounds[1][1],  # y_min, y_max
-            )
-            return create_rectangle_boundary_conditions(bounds_2d, bc_type)
+        bc_map = {
+            "periodic": {"type": "periodic"},
+            "dirichlet_zero": {"type": "dirichlet", "left_value": 0.0, "right_value": 0.0},
+            "neumann_zero": {"type": "neumann", "left_value": 0.0, "right_value": 0.0},
+            "no_flux": {"type": "neumann", "left_value": 0.0, "right_value": 0.0},
+        }
 
-        elif self._dimension == 3:
-            # Use 3D boundary condition manager
-            from .boundary_conditions_3d import create_box_boundary_conditions
-
-            bounds_3d = (
-                self.bounds[0][0],
-                self.bounds[0][1],  # x_min, x_max
-                self.bounds[1][0],
-                self.bounds[1][1],  # y_min, y_max
-                self.bounds[2][0],
-                self.bounds[2][1],  # z_min, z_max
-            )
-            return create_box_boundary_conditions(bounds_3d, bc_type)
-
+        if bc_type in bc_map:
+            return BoundaryConditions(**bc_map[bc_type])
+        elif custom_conditions:
+            return BoundaryConditions(**custom_conditions)
         else:
-            # High-dimensional grids (d > 3)
-            import warnings
+            return BoundaryConditions(type="periodic")  # Safe default
 
-            warnings.warn(
-                f"Boundary handler not fully implemented for dimension={self._dimension}. "
-                "Returning placeholder. Consider using dimension-specific BC handling.",
-                UserWarning,
-                stacklevel=2,
-            )
-            return {"type": bc_type, "implementation": "placeholder", "dimension": self._dimension}
+    def _create_bc_nd(self, bc_type: str):
+        """
+        Create nD boundary conditions (D >= 2) using factory pattern.
+
+        Dimension-agnostic: Flattens bounds and dispatches to appropriate factory.
+        """
+        # Flatten bounds to tuple format expected by factories
+        flat_bounds = tuple(coord for min_max in self.bounds for coord in min_max)
+
+        # Dimension-specific factory dispatch
+        factory_map = {
+            2: ("boundary_conditions_2d", "create_rectangle_boundary_conditions"),
+            3: ("boundary_conditions_3d", "create_box_boundary_conditions"),
+        }
+
+        if self._dimension in factory_map:
+            module_name, factory_name = factory_map[self._dimension]
+            module = __import__(f"mfg_pde.geometry.{module_name}", fromlist=[factory_name])
+            factory = getattr(module, factory_name)
+            return factory(flat_bounds, bc_type)
+
+        # Dimension > 3: Use 3D infrastructure as fallback (generalizes to nD hyperboxes)
+        import warnings
+
+        warnings.warn(
+            f"Using 3D BC manager as fallback for dimension={self._dimension}. "
+            f"BC handler will treat {self._dimension}D hypercube as generalized 3D box. "
+            "This works for rectangular domains but may not handle all nD edge cases.",
+            UserWarning,
+            stacklevel=2,
+        )
+        from .boundary_conditions_3d import BoundaryConditionManager3D
+
+        return BoundaryConditionManager3D()
 
     def __repr__(self) -> str:
         """String representation of grid."""
