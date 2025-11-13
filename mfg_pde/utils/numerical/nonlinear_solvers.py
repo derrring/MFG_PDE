@@ -158,7 +158,7 @@ class FixedPointSolver(NonlinearSolver):
         self.tolerance = tolerance
         self.norm_type = norm_type
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         G: Callable[[NDArray], NDArray],
         x0: NDArray,
@@ -174,6 +174,10 @@ class FixedPointSolver(NonlinearSolver):
         Returns:
             x: Solution (same shape as x0)
             info: Convergence information
+
+        Note:
+            Parameter name 'G' intentionally differs from base class 'func'
+            for better API clarity in fixed-point context.
         """
         import time
 
@@ -297,7 +301,7 @@ class NewtonSolver(NonlinearSolver):
         self.line_search = line_search
         self.epsilon = finite_diff_epsilon
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         F: Callable[[NDArray], NDArray],
         x0: NDArray,
@@ -315,6 +319,10 @@ class NewtonSolver(NonlinearSolver):
         Returns:
             x: Solution (same shape as x0)
             info: Convergence information
+
+        Note:
+            Parameter names 'F' and 'jacobian' intentionally differ from
+            base class 'func' for better API clarity in Newton context.
         """
         import time
 
@@ -524,7 +532,7 @@ class PolicyIterationSolver(NonlinearSolver):
         self.max_iterations = max_iterations
         self.tolerance = tolerance
 
-    def solve(
+    def solve(  # type: ignore[override]
         self,
         policy_eval: Callable[[NDArray], NDArray],
         policy_improve: Callable[[NDArray], NDArray],
@@ -543,6 +551,11 @@ class PolicyIterationSolver(NonlinearSolver):
             value: Optimal value function
             policy: Optimal policy
             info: Convergence information
+
+        Note:
+            Signature intentionally differs from base class (returns 3 values
+            instead of 2, has 2 callables instead of 1) for policy iteration
+            API clarity.
         """
         import time
 
