@@ -9,16 +9,34 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.simple_grid_1d import SimpleGrid1D
+
+
+@pytest.fixture
+def standard_problem():
+    """Create standard 1D MFG problem using modern geometry-first API.
+
+    Equivalent to legacy ExampleMFGProblem() with defaults:
+    - Domain: [0, 1] with 51 grid points
+    - Time: T=1.0 with 51 time steps
+    - Diffusion: sigma=1.0
+    - Boundary: Periodic
+    """
+    boundary_conditions = BoundaryConditions(type="periodic")
+    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
+    domain.create_grid(num_points=51)
+    return MFGProblem(geometry=domain, T=1.0, Nt=51, sigma=1.0)
 
 
 class TestHJBGFDMSolverInitialization:
     """Test HJBGFDMSolver initialization and setup."""
 
-    def test_basic_initialization(self):
+    def test_basic_initialization(self, standard_problem):
         """Test basic solver initialization."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -30,9 +48,9 @@ class TestHJBGFDMSolverInitialization:
         assert solver.delta == 0.1
         assert solver.taylor_order == 2
 
-    def test_custom_parameters(self):
+    def test_custom_parameters(self, standard_problem):
         """Test initialization with custom parameters."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 20)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -51,9 +69,9 @@ class TestHJBGFDMSolverInitialization:
         assert solver.max_newton_iterations == 50
         assert solver.newton_tolerance == 1e-8
 
-    def test_deprecated_parameters(self):
+    def test_deprecated_parameters(self, standard_problem):
         """Test backward compatibility with deprecated parameter names."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -65,9 +83,9 @@ class TestHJBGFDMSolverInitialization:
         assert solver.NiterNewton == 40
         assert solver.l2errBoundNewton == 1e-5
 
-    def test_qp_optimization_levels(self):
+    def test_qp_optimization_levels(self, standard_problem):
         """Test different QP optimization levels."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -84,9 +102,9 @@ class TestHJBGFDMSolverInitialization:
 class TestHJBGFDMSolverNeighborhoods:
     """Test neighborhood structure building."""
 
-    def test_neighborhood_structure(self):
+    def test_neighborhood_structure(self, standard_problem):
         """Test that neighborhoods are built correctly."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -105,9 +123,9 @@ class TestHJBGFDMSolverNeighborhoods:
             # Point should be in its own neighborhood
             assert i in neighborhood["indices"]
 
-    def test_neighborhood_delta_radius(self):
+    def test_neighborhood_delta_radius(self, standard_problem):
         """Test that delta parameter controls neighborhood size."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 20)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -127,9 +145,9 @@ class TestHJBGFDMSolverNeighborhoods:
 class TestHJBGFDMSolverTaylorExpansion:
     """Test Taylor expansion and multi-index generation."""
 
-    def test_multi_index_1d_order_1(self):
+    def test_multi_index_1d_order_1(self, standard_problem):
         """Test 1D multi-index generation for order 1."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -139,9 +157,9 @@ class TestHJBGFDMSolverTaylorExpansion:
         assert solver.multi_indices == expected
         assert solver.n_derivatives == 1
 
-    def test_multi_index_1d_order_2(self):
+    def test_multi_index_1d_order_2(self, standard_problem):
         """Test 1D multi-index generation for order 2."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -151,9 +169,9 @@ class TestHJBGFDMSolverTaylorExpansion:
         assert solver.multi_indices == expected
         assert solver.n_derivatives == 2
 
-    def test_taylor_matrices_computed(self):
+    def test_taylor_matrices_computed(self, standard_problem):
         """Test that Taylor matrices are precomputed."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -172,9 +190,9 @@ class TestHJBGFDMSolverTaylorExpansion:
 class TestHJBGFDMSolverWeightFunctions:
     """Test weight function computation."""
 
-    def test_weight_function_wendland(self):
+    def test_weight_function_wendland(self, standard_problem):
         """Test Wendland weight function."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -188,9 +206,9 @@ class TestHJBGFDMSolverWeightFunctions:
         # Weights at delta should be near zero
         assert weights[-1] < weights[0] * 0.1
 
-    def test_weight_function_gaussian(self):
+    def test_weight_function_gaussian(self, standard_problem):
         """Test Gaussian weight function."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -204,9 +222,9 @@ class TestHJBGFDMSolverWeightFunctions:
         # Weight at zero should be 1
         assert np.isclose(weights[0], 1.0)
 
-    def test_weight_function_uniform(self):
+    def test_weight_function_uniform(self, standard_problem):
         """Test uniform weight function."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -218,9 +236,9 @@ class TestHJBGFDMSolverWeightFunctions:
         # Uniform weights should all be 1
         assert np.allclose(weights, 1.0)
 
-    def test_invalid_weight_function(self):
+    def test_invalid_weight_function(self, standard_problem):
         """Test that invalid weight function raises error."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -233,9 +251,9 @@ class TestHJBGFDMSolverWeightFunctions:
 class TestHJBGFDMSolverDerivativeApproximation:
     """Test derivative approximation using GFDM."""
 
-    def test_approximate_derivatives_linear_function(self):
+    def test_approximate_derivatives_linear_function(self, standard_problem):
         """Test derivative approximation on a linear function."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 20)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -256,9 +274,9 @@ class TestHJBGFDMSolverDerivativeApproximation:
         if (2,) in derivs:
             assert np.isclose(derivs[(2,)], 0.0, atol=0.1)
 
-    def test_approximate_derivatives_quadratic_function(self):
+    def test_approximate_derivatives_quadratic_function(self, standard_problem):
         """Test derivative approximation on a quadratic function."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 30)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -285,9 +303,9 @@ class TestHJBGFDMSolverDerivativeApproximation:
 class TestHJBGFDMSolverMappingMethods:
     """Test grid-collocation mapping methods."""
 
-    def test_map_grid_to_collocation(self):
+    def test_map_grid_to_collocation(self, standard_problem):
         """Test mapping from grid to collocation points."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -301,9 +319,9 @@ class TestHJBGFDMSolverMappingMethods:
         assert u_collocation.shape == (problem.Nx,)
         assert np.allclose(u_collocation, u_grid)
 
-    def test_map_collocation_to_grid(self):
+    def test_map_collocation_to_grid(self, standard_problem):
         """Test mapping from collocation points to grid."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -317,9 +335,9 @@ class TestHJBGFDMSolverMappingMethods:
         assert u_grid.shape == (problem.Nx,)
         assert np.allclose(u_grid, u_collocation)
 
-    def test_batch_mapping_consistency(self):
+    def test_batch_mapping_consistency(self, standard_problem):
         """Test that batch mapping is consistent with single mapping."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -341,9 +359,9 @@ class TestHJBGFDMSolverMappingMethods:
 class TestHJBGFDMSolverSolveHJBSystem:
     """Test the main solve_hjb_system method."""
 
-    def test_solve_hjb_system_shape(self):
+    def test_solve_hjb_system_shape(self, standard_problem):
         """Test that solve_hjb_system returns correct shape."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -365,9 +383,9 @@ class TestHJBGFDMSolverSolveHJBSystem:
             # If it fails due to problem setup, that's okay for this test
             pytest.skip("Solver setup issue - shape test inconclusive")
 
-    def test_solve_hjb_system_final_condition(self):
+    def test_solve_hjb_system_final_condition(self, standard_problem):
         """Test that final condition is preserved."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -392,9 +410,9 @@ class TestHJBGFDMSolverSolveHJBSystem:
 class TestHJBGFDMSolverIntegration:
     """Integration tests with actual MFG problems."""
 
-    def test_solver_with_example_problem(self):
+    def test_solver_with_example_problem(self, standard_problem):
         """Test solver works with ExampleMFGProblem."""
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -405,12 +423,12 @@ class TestHJBGFDMSolverIntegration:
         assert hasattr(solver, "solve_hjb_system")
         assert callable(solver.solve_hjb_system)
 
-    def test_solver_not_abstract(self):
+    def test_solver_not_abstract(self, standard_problem):
         """Test that HJBGFDMSolver can be instantiated (is concrete)."""
         import inspect
 
         # Should be instantiable (not abstract)
-        problem = ExampleMFGProblem()
+        problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
