@@ -107,7 +107,6 @@ class TestFPFDMSolverBasicSolution:
         # Initial condition should be preserved (approximately, after non-negativity enforcement)
         assert np.allclose(m_result[0, :], m_initial, rtol=0.1)
 
-    @pytest.mark.xfail(reason="Edge case: FDM solver doesn't handle Nt=0 (IndexError: index 0 out of bounds)")
     def test_solve_fp_system_zero_timesteps(self, standard_problem):
         """Test behavior with zero time steps (Nt=0)."""
         # Create problem with Nt=0 (results in 0 time steps)
@@ -126,7 +125,6 @@ class TestFPFDMSolverBasicSolution:
 
         assert m_result.shape == (0, Nx)
 
-    @pytest.mark.xfail(reason="Edge case: FDM solver doesn't handle Nt=1 (IndexError: index 1 out of bounds)")
     def test_solve_fp_system_one_timestep(self, standard_problem):
         """Test behavior with single time step (Nt=1)."""
         # Create problem with Nt=1 (results in 1 time step)

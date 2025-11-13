@@ -115,7 +115,9 @@ class FPFDMSolver(BaseFPSolver):
             Dx = self.problem.geometry.get_grid_spacing()[0]
             Dt = self.problem.dt
 
-        Nt = self.problem.Nt + 1
+        # Infer number of timesteps from U_solution shape, not problem.Nt
+        # This allows tests to pass edge cases like Nt=0 or Nt=1
+        Nt = U_solution_for_drift.shape[0]
         sigma = self.problem.sigma
         coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
 
