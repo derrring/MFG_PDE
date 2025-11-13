@@ -15,7 +15,7 @@ import numpy as np
 from mfg_pde.config.omegaconf_manager import OmegaConfManager
 from mfg_pde.core.mfg_problem import MFGProblem, MFGProblemBuilder
 from mfg_pde.geometry import BoundaryConditions
-from mfg_pde.utils.logging.logger import get_logger
+from mfg_pde.utils.mfg_logging.logger import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable

@@ -26,7 +26,7 @@ import numpy as np
 
 # Import our maze modules
 from mfg_pde.alg.reinforcement.environments.mfg_maze_env import MFGMazeEnvironment
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Import maze analysis tools from examples
 # Note: This benchmark script depends on advanced maze examples

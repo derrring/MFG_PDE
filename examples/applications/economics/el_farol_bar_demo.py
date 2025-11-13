@@ -47,7 +47,7 @@ import scipy.sparse as sp
 from mfg_pde.alg.numerical.coupling.network_mfg_solver import create_simple_network_solver
 from mfg_pde.extensions.topology import NetworkMFGComponents, NetworkMFGProblem
 from mfg_pde.geometry.network_geometry import BaseNetworkGeometry, NetworkData, NetworkType
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("el_farol_bar_demo", level="INFO")

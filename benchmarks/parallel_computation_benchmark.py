@@ -25,7 +25,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
 from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.workflow.parameter_sweep import ParameterSweep, SweepConfiguration
 
 # Configure logging

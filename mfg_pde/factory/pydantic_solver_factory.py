@@ -29,7 +29,7 @@ from mfg_pde.config.pydantic_config import (
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
-from mfg_pde.utils.logging.logger import get_logger
+from mfg_pde.utils.mfg_logging.logger import get_logger
 
 SolverType = Literal["fixed_point"]
 # Note: "particle_collocation" has been removed from core package

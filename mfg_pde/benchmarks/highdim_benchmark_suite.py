@@ -19,7 +19,7 @@ import psutil
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.utils.logging.logger import get_logger
+from mfg_pde.utils.mfg_logging.logger import get_logger
 from mfg_pde.utils.performance.optimization import PerformanceMonitor
 
 if TYPE_CHECKING:

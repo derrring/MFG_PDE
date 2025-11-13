@@ -27,7 +27,7 @@ import numpy as np
 
 from mfg_pde import ExampleMFGProblem, MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging for research session
 configure_research_logging("weno_family_comparison", level="INFO")

@@ -41,7 +41,7 @@ except ImportError:
 
 # Import MFG_PDE components
 from mfg_pde.alg.neural import AdaptiveTrainingConfig, AdaptiveTrainingStrategy, PhysicsGuidedSampler
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 
 def demonstrate_adaptive_configuration():

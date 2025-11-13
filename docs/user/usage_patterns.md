@@ -76,7 +76,7 @@ class MFGConfig(ScientificConfig):
 #### What Made This Successful:
 ```python
 # MFG_PDE Success Pattern
-from mfg_pde.utils.logging import configure_research_logging, log_convergence_analysis
+from mfg_pde.utils.mfg_logging import configure_research_logging, log_convergence_analysis
 
 # Professional logging setup
 logger = configure_research_logging("experiment_name", level="INFO", include_debug=True)

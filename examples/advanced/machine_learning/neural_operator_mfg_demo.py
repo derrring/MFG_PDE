@@ -40,7 +40,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Standard imports for MFG problems
-from mfg_pde.utils.logging import configure_research_logging, get_logger  # noqa: E402
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger  # noqa: E402
 
 # Check if PyTorch is available
 try:

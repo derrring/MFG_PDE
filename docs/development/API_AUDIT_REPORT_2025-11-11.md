@@ -101,7 +101,7 @@ Systematic audit of MFG_PDE codebase for API consistency violations. This report
 
 #### Medium Priority (Utilities)
 
-4. **Logging Configuration** (`utils/logging/logger.py`)
+4. **Logging Configuration** (`utils/mfg_logging/logger.py`)
    ```python
    # Current
    def __init__(self, use_colors: bool = False, include_location: bool = False)

@@ -51,7 +51,7 @@ import warnings
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
-from mfg_pde.utils.logging.logger import get_logger
+from mfg_pde.utils.mfg_logging.logger import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable

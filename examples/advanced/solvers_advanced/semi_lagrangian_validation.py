@@ -20,7 +20,7 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.factory import create_semi_lagrangian_solver
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("semi_lagrangian_validation", level="INFO")
