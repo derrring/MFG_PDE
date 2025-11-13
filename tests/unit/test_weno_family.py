@@ -18,17 +18,22 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.simple_grid_1d import SimpleGrid1D
 
 
 class TestWenoFamilySolver:
     """Test suite for WENO Family HJB Solver."""
 
     @pytest.fixture
-    def simple_problem(self) -> ExampleMFGProblem:
-        """Create simple MFG problem for testing."""
-        return ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=32, T=0.1, Nt=10, sigma=0.1)
+    def simple_problem(self) -> MFGProblem:
+        """Create simple MFG problem for testing using modern geometry-first API."""
+        boundary_conditions = BoundaryConditions(type="periodic")
+        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
+        domain.create_grid(num_points=33)  # Nx=32 -> 33 points
+        return MFGProblem(geometry=domain, T=0.1, Nt=10, sigma=0.1)
 
     @pytest.fixture
     def test_values(self) -> np.ndarray:
@@ -286,9 +291,12 @@ class TestWenoSolverIntegration:
     """Integration tests for WENO solver solve_hjb_system method."""
 
     @pytest.fixture
-    def integration_problem(self) -> ExampleMFGProblem:
-        """Create MFG problem for integration testing."""
-        return ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30, sigma=0.1)
+    def integration_problem(self) -> MFGProblem:
+        """Create MFG problem for integration testing using modern geometry-first API."""
+        boundary_conditions = BoundaryConditions(type="periodic")
+        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
+        domain.create_grid(num_points=41)  # Nx=40 -> 41 points
+        return MFGProblem(geometry=domain, T=1.0, Nt=30, sigma=0.1)
 
     def test_solve_hjb_system_shape(self, integration_problem):
         """Test that solve_hjb_system returns correct shape."""
