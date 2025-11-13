@@ -613,23 +613,89 @@ class TensorProductGrid(CartesianGrid):
 
         return interpolate_linear
 
-    def get_boundary_handler(self):
+    def get_boundary_handler(self, bc_type: str = "periodic", custom_conditions: dict | None = None):
         """
-        Return boundary condition handler.
+        Create boundary condition handler for this tensor product grid.
+
+        Integrates with existing boundary condition infrastructure to provide
+        proper BC handling for 1D, 2D, and 3D grids.
+
+        Args:
+            bc_type: Standard boundary condition type:
+                - "dirichlet_zero": Zero Dirichlet on all boundaries
+                - "neumann_zero": Zero Neumann (no-flux) on all boundaries
+                - "periodic": Periodic on all boundaries
+                - "periodic_x", "periodic_y", "periodic_z": Periodic in one direction
+                - "periodic_both": Periodic in all directions (2D/3D)
+                - "mixed": Mixed conditions (implementation-dependent)
+            custom_conditions: Optional dict with custom BC specifications
 
         Returns:
-            Boundary condition handler object (currently placeholder dict)
+            Boundary condition handler:
+                - 1D: BoundaryConditions dataclass
+                - 2D: BoundaryConditionManager2D
+                - 3D: BoundaryConditionManager3D
+                - >3D: Placeholder dict with warning
 
-        Note: Currently returns a placeholder. Full BC handler implementation
-        depends on boundary condition infrastructure being finalized.
-
-        TODO: Implement proper boundary handler that can:
-            - Apply Dirichlet, Neumann, periodic, Robin BCs
-            - Handle multi-dimensional boundaries
-            - Integrate with solver operations
+        Example:
+            >>> grid = TensorProductGrid(2, [(0, 1), (0, 1)], [11, 11])
+            >>> bc_handler = grid.get_boundary_handler("dirichlet_zero")
+            >>> # Use with solver
+            >>> matrix_bc, rhs_bc = bc_handler.apply_all_conditions(matrix, rhs, mesh)
         """
-        # Placeholder - return simple dict until BC infrastructure is complete
-        return {"type": "periodic", "implementation": "placeholder"}
+        if self._dimension == 1:
+            # Use simple 1D BoundaryConditions dataclass
+            from .boundary_conditions_1d import BoundaryConditions
+
+            if bc_type == "periodic":
+                return BoundaryConditions(type="periodic")
+            elif bc_type == "dirichlet_zero":
+                return BoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
+            elif bc_type == "neumann_zero" or bc_type == "no_flux":
+                return BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
+            else:
+                # Custom conditions via dict
+                if custom_conditions:
+                    return BoundaryConditions(**custom_conditions)
+                return BoundaryConditions(type="periodic")  # Safe default
+
+        elif self._dimension == 2:
+            # Use 2D boundary condition manager
+            from .boundary_conditions_2d import create_rectangle_boundary_conditions
+
+            bounds_2d = (
+                self.bounds[0][0],
+                self.bounds[0][1],  # x_min, x_max
+                self.bounds[1][0],
+                self.bounds[1][1],  # y_min, y_max
+            )
+            return create_rectangle_boundary_conditions(bounds_2d, bc_type)
+
+        elif self._dimension == 3:
+            # Use 3D boundary condition manager
+            from .boundary_conditions_3d import create_box_boundary_conditions
+
+            bounds_3d = (
+                self.bounds[0][0],
+                self.bounds[0][1],  # x_min, x_max
+                self.bounds[1][0],
+                self.bounds[1][1],  # y_min, y_max
+                self.bounds[2][0],
+                self.bounds[2][1],  # z_min, z_max
+            )
+            return create_box_boundary_conditions(bounds_3d, bc_type)
+
+        else:
+            # High-dimensional grids (d > 3)
+            import warnings
+
+            warnings.warn(
+                f"Boundary handler not fully implemented for dimension={self._dimension}. "
+                "Returning placeholder. Consider using dimension-specific BC handling.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return {"type": bc_type, "implementation": "placeholder", "dimension": self._dimension}
 
     def __repr__(self) -> str:
         """String representation of grid."""
