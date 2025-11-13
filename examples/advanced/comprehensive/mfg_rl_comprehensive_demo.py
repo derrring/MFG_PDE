@@ -37,7 +37,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from examples.advanced.mfg_rl_experiment_suite import ExperimentConfig, MFGRLExperimentSuite
 
 from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 logger = get_logger(__name__)
 

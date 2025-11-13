@@ -615,7 +615,7 @@ import numpy as np
 
 from mfg_pde import ExampleMFGProblem  # Or relevant imports
 from mfg_pde.factory import create_standard_solver
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("example_name", level="INFO")

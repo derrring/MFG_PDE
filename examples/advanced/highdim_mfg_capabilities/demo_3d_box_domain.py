@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from mfg_pde import MFGComponents
 from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem, HybridMFGSolver
 from mfg_pde.geometry import Domain3D
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("3d_box_demo", level="INFO")

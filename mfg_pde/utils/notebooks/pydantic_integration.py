@@ -18,7 +18,7 @@ try:
 except ImportError:
     PYDANTIC_AVAILABLE = False
 
-from .logging import get_logger
+from .mfg_logging import get_logger
 from .notebook_reporting import MFGNotebookReporter, NotebookReportError
 
 # Import Pydantic configurations if available

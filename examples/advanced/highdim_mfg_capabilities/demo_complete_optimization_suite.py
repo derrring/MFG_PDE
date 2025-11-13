@@ -26,7 +26,7 @@ from mfg_pde.geometry.boundary_conditions_3d import (
 )
 from mfg_pde.geometry.domain_3d import Domain3D
 from mfg_pde.geometry.tetrahedral_amr import TetrahedralAMRMesh
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.performance_optimization import AdvancedSparseOperations, PerformanceMonitor, SparseMatrixOptimizer
 
 # Configure logging

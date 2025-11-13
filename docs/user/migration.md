@@ -223,7 +223,7 @@ result = solver.solve(problem, hooks=CustomHook())
 ```python
 # Old: Manual logging setup
 import logging
-from mfg_pde.utils.logging import configure_research_logging
+from mfg_pde.utils.mfg_logging import configure_research_logging
 
 configure_research_logging("debug_session", level="DEBUG")
 logger = logging.getLogger(__name__)

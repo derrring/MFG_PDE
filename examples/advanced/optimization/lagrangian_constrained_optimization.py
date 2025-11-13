@@ -31,7 +31,7 @@ from mfg_pde.core.lagrangian_mfg_problem import (
     LagrangianMFGProblem,
     create_obstacle_lagrangian_mfg,
 )
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.numpy_compat import trapezoid
 
 # Configure logging

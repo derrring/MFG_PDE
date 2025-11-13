@@ -38,7 +38,7 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-from mfg_pde.utils.logging.logger import get_logger
+from mfg_pde.utils.mfg_logging.logger import get_logger
 
 logger = get_logger(__name__)
 

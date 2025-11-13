@@ -24,7 +24,7 @@ from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import (
 )
 from mfg_pde.core.mfg_problem import ExampleMFGProblem
 from mfg_pde.factory.solver_factory import create_solver
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("hybrid_fp_particle_hjb_fdm_demo", level="INFO")

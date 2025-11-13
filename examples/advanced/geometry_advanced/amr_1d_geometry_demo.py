@@ -30,7 +30,7 @@ from mfg_pde import ExampleMFGProblem
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.geometry.amr_1d import AMRRefinementCriteria, OneDimensionalAMRMesh
 from mfg_pde.geometry.domain_1d import Domain1D
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("amr_1d_demo", level="INFO")

@@ -29,7 +29,7 @@ except ImportError:
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("semi_lagrangian_2d", level="INFO")

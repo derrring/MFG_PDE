@@ -39,7 +39,7 @@ try:
 except ImportError:
     PLOTLY_AVAILABLE = False
 
-from mfg_pde.utils.logging import get_logger
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.visualization import MFGMathematicalVisualizer
 
 

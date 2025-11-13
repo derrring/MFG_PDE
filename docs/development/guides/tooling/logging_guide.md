@@ -67,7 +67,7 @@ configure_logging(
 
 #### 1. Research Configuration (Recommended for Scientific Work)
 ```python
-from mfg_pde.utils.logging import configure_research_logging
+from mfg_pde.utils.mfg_logging import configure_research_logging
 
 # Optimized for research sessions with experiment tracking
 log_file = configure_research_logging(
@@ -80,7 +80,7 @@ log_file = configure_research_logging(
 
 #### 2. Development Configuration (Full Debugging)
 ```python
-from mfg_pde.utils.logging import configure_development_logging
+from mfg_pde.utils.mfg_logging import configure_development_logging
 
 # Full debugging with file:line information
 configure_development_logging(include_location=True)
@@ -88,7 +88,7 @@ configure_development_logging(include_location=True)
 
 #### 3. Production Configuration (Minimal Logging)
 ```python
-from mfg_pde.utils.logging import configure_production_logging
+from mfg_pde.utils.mfg_logging import configure_production_logging
 
 # WARNING level and above only, clean output
 configure_production_logging(log_file="/var/log/mfg_pde.log")
@@ -96,7 +96,7 @@ configure_production_logging(log_file="/var/log/mfg_pde.log")
 
 #### 4. Performance Configuration (Performance Analysis)
 ```python
-from mfg_pde.utils.logging import configure_performance_logging
+from mfg_pde.utils.mfg_logging import configure_performance_logging
 
 # Focus on timing and performance metrics
 log_file = configure_performance_logging()
@@ -189,7 +189,7 @@ with solver.log_operation("Complex calculation"):
 ### Enhanced Mathematical Analysis Logging
 
 ```python
-from mfg_pde.utils.logging import (
+from mfg_pde.utils.mfg_logging import (
     log_solver_configuration, log_convergence_analysis, 
     log_mass_conservation, log_performance_metric
 )
@@ -225,7 +225,7 @@ log_performance_metric(
 )
 
 # Memory usage tracking (requires psutil)
-from mfg_pde.utils.logging import log_memory_usage
+from mfg_pde.utils.mfg_logging import log_memory_usage
 log_memory_usage(logger, "Large array allocation", peak_memory_mb=512.3)
 ```
 
@@ -398,7 +398,7 @@ class ExistingSolver:
 ### Method 2: Decorator-Based Integration
 
 ```python
-from mfg_pde.utils.logging_decorators import logged_solver_method, LoggingMixin
+from mfg_pde.utils.mfg_logging_decorators import logged_solver_method, LoggingMixin
 
 # Easy integration with decorators
 class EnhancedSolver(LoggingMixin):
@@ -411,7 +411,7 @@ class EnhancedSolver(LoggingMixin):
 ### Method 3: Retrofit Existing Classes
 
 ```python
-from mfg_pde.utils.logging_decorators import add_logging_to_class
+from mfg_pde.utils.mfg_logging_decorators import add_logging_to_class
 
 # Dynamically add logging to existing solver class
 LoggedSolver = add_logging_to_class(OriginalSolver, "enhanced_solver")
@@ -499,7 +499,7 @@ monitor.check_regression(
 
 ```python
 # Complete research session setup
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Start research session
 log_file = configure_research_logging("semi_lagrangian_analysis")
@@ -537,7 +537,7 @@ except Exception as e:
 1. **No colored output**: 
    ```bash
    pip install colorlog
-   # Or check: COLORLOG_AVAILABLE in mfg_pde.utils.logging
+   # Or check: COLORLOG_AVAILABLE in mfg_pde.utils.mfg_logging
    ```
 
 2. **Log file not created**: 
@@ -570,7 +570,7 @@ except Exception as e:
 
 ```python
 # Comprehensive logging system diagnostics
-from mfg_pde.utils.logging import MFGLogger
+from mfg_pde.utils.mfg_logging import MFGLogger
 
 # Test logging configuration
 logger = get_logger("debug_test")
@@ -588,7 +588,7 @@ for name in sorted(logging.Logger.manager.loggerDict.keys()):
         print(f"  {name}: level={logger_obj.level}, handlers={len(logger_obj.handlers)}")
 
 # Check color support
-from mfg_pde.utils.logging import COLORLOG_AVAILABLE
+from mfg_pde.utils.mfg_logging import COLORLOG_AVAILABLE
 print(f"Color support available: {COLORLOG_AVAILABLE}")
 ```
 

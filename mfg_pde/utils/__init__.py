@@ -18,6 +18,10 @@ Organization:
 
 import warnings as _warnings
 
+# Backward compatibility alias for logging module rename (DEPRECATED - will be removed in v0.13.0)
+# The logging module was renamed to mfg_logging to avoid shadowing Python's stdlib logging
+from . import mfg_logging as logging  # noqa: F401
+
 # Core utility functions (non-plotting)
 from .aux_func import npart, ppart
 
@@ -58,7 +62,7 @@ from .geometry import (
     create_sphere_obstacle,
 )
 from .hamiltonian_adapter import HamiltonianAdapter, adapt_hamiltonian, create_hamiltonian_adapter
-from .logging.decorators import (
+from .mfg_logging.decorators import (
     LoggingMixin,
     add_logging_to_class,
     logged_operation,
@@ -66,7 +70,7 @@ from .logging.decorators import (
     logged_validation,
     performance_logged,
 )
-from .logging.logger import (
+from .mfg_logging.logger import (
     LoggedOperation,
     MFGLogger,
     configure_logging,
@@ -123,6 +127,17 @@ _warnings.warn(
     "adaptive_bandwidth_selection is deprecated and will be removed in v0.12.0. "
     "Please use estimate_kde_bandwidth directly:\n"
     "  from mfg_pde.utils import estimate_kde_bandwidth",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Issue deprecation warning for logging module rename
+_warnings.warn(
+    "Importing from 'mfg_pde.utils.logging' is deprecated and will be removed in v0.13.0. "
+    "The module has been renamed to avoid shadowing Python's stdlib. Please update:\n"
+    "  from mfg_pde.utils.mfg_logging import get_logger, configure_logging\n"
+    "Or import from mfg_pde.utils directly:\n"
+    "  from mfg_pde.utils import get_logger, configure_logging",
     DeprecationWarning,
     stacklevel=2,
 )

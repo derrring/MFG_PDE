@@ -15,7 +15,7 @@ import numpy as np
 # MFG_PDE imports
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.factory import create_backend, print_backend_info
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.numpy_compat import trapezoid
 
 # Configure logging

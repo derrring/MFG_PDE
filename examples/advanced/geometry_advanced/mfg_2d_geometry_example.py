@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from mfg_pde.config import OmegaConfManager
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryManager, Domain2D, MeshPipeline
-from mfg_pde.utils.logging import configure_research_logging, get_logger
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.polars_integration import create_analysis_dataframe
 
 # Configure logging
