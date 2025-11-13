@@ -31,12 +31,15 @@ from __future__ import annotations
 
 import warnings as _warnings
 
-# AMR imports (from old file names for backward compatibility)
-from .amr_1d import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
-from .amr_triangular_2d import (
+# AMR imports - now from amr subdirectory (Phase 1 completion)
+from .amr import (
+    Interval1D,
+    OneDimensionalAMRMesh,
+    OneDimensionalErrorEstimator,
     TriangleElement,
     TriangularAMRMesh,
     TriangularMeshErrorEstimator,
+    create_1d_amr_mesh,
     create_triangular_amr_mesh,
 )
 
@@ -99,6 +102,9 @@ from .graph import (
     maze_VoronoiGenerator,
 )
 
+# Grid geometry - now importing from grids subdirectory (Phase 1 completion)
+from .grids import SimpleGrid1D, SimpleGrid2D, TensorProductGrid
+
 # Implicit geometry
 from .implicit import (
     ComplementDomain,
@@ -136,12 +142,13 @@ from .protocol import (
     is_geometry_compatible,
     validate_geometry,
 )
-from .simple_grid import SimpleGrid2D, SimpleGrid3D
 
-# Grid geometry
-# Import from old file locations for backward compatibility (Phase 1)
-from .simple_grid_1d import SimpleGrid1D
-from .tensor_product_grid import TensorProductGrid
+# SimpleGrid3D is a special case - check if it exists in grids or elsewhere
+try:
+    from .grids import SimpleGrid3D
+except ImportError:
+    # Fallback to old location if not in grids yet
+    from .simple_grid import SimpleGrid3D
 
 # Legacy grid imports (from old file names)
 
