@@ -16,11 +16,23 @@ class FPFDMSolver(BaseFPSolver):
     def __init__(self, problem: Any, boundary_conditions: BoundaryConditions | None = None) -> None:
         super().__init__(problem)
         self.fp_method_name = "FDM"
-        # Default to no-flux boundaries for mass conservation testing
-        if boundary_conditions is None:
-            self.boundary_conditions = BoundaryConditions(type="no_flux")
-        else:
+
+        # Boundary condition resolution hierarchy:
+        # 1. Explicit boundary_conditions parameter (highest priority)
+        # 2. Grid geometry boundary handler (if available)
+        # 3. Default no-flux BC (fallback)
+        if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
+        elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
+            # Try to get BC from grid geometry (Phase 2 integration)
+            try:
+                self.boundary_conditions = problem.geometry.get_boundary_handler(bc_type="no_flux")
+            except Exception:
+                # Fallback if geometry BC retrieval fails
+                self.boundary_conditions = BoundaryConditions(type="no_flux")
+        else:
+            # Default to no-flux boundaries for mass conservation
+            self.boundary_conditions = BoundaryConditions(type="no_flux")
 
         # Detect problem dimension
         self.dimension = self._detect_dimension(problem)
