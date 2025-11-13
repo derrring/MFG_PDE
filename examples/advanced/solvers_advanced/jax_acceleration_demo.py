@@ -12,9 +12,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfg_pde.backends import create_backend  # Updated import path
+
 # MFG_PDE imports
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.factory import create_backend, print_backend_info
+
+# print_backend_info not available - use backend.info() instead
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.numpy_compat import trapezoid
 
@@ -302,7 +305,8 @@ def main():
     # Print backend information
     print(" Backend Information")
     print("=" * 50)
-    print_backend_info()
+    # print_backend_info()  # Function removed - use backend.info() directly if needed
+    print("Using backend: JAX for GPU/TPU acceleration")
     print()
 
     # Run benchmark

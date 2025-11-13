@@ -34,7 +34,7 @@ from mfg_pde.alg.neural.pinn_solvers import (  # noqa: E402
     HJBPINNSolver,
     MFGPINNSolver,
     PINNConfig,
-    print_system_info,
+    # print_system_info,  # Function removed from API
 )
 from mfg_pde.core.mfg_problem import ExampleMFGProblem, MFGProblem  # noqa: E402
 
@@ -367,7 +367,8 @@ def main():
     print("=" * 60)
 
     # Check system capabilities
-    print_system_info()
+    # print_system_info()  # Function removed from API
+    print("PINN MFG Example - System ready")
 
     # Create problem and configuration
     print("\nSetting up MFG problem...")
