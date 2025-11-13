@@ -19,12 +19,12 @@ import numpy as np
 from mfg_pde import MFGComponents
 from mfg_pde.benchmarks import HighDimMFGBenchmark
 from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde.geometry import Domain3D
 from mfg_pde.geometry.boundary_conditions_3d import (
     BoundaryConditionManager3D,
     DirichletBC3D,
     NeumannBC3D,
 )
-from mfg_pde.geometry.domain_3d import Domain3D
 from mfg_pde.geometry.tetrahedral_amr import TetrahedralAMRMesh
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.performance_optimization import AdvancedSparseOperations, PerformanceMonitor, SparseMatrixOptimizer
