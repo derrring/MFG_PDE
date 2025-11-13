@@ -523,7 +523,7 @@ from mfg_pde.core.highdim_mfg_problem import (
 
 **Geometry**:
 ```python
-from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 # Works for any dimension
 grid_2d = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[50, 50])

@@ -37,7 +37,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+    from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 
 class MultiDimVisualizer:

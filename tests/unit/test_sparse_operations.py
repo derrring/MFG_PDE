@@ -9,7 +9,7 @@ import pytest
 import numpy as np
 import scipy.sparse as sp
 
-from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 from mfg_pde.utils.sparse_operations import SparseMatrixBuilder, SparseSolver, estimate_sparsity, sparse_matmul
 
 

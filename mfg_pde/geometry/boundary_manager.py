@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .simple_grid_1d import BoundaryConditions
+from .boundary_conditions_1d import BoundaryConditions
 
 if TYPE_CHECKING:
     from collections.abc import Callable

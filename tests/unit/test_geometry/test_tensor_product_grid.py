@@ -15,7 +15,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 # ============================================================================
 # Test Initialization and Validation
