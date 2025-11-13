@@ -49,16 +49,24 @@ def demo_particle_interpolation():
     print("\n2. Particles → Grid (2D density estimation)")
     particles_2d = np.random.randn(500, 2) * 0.1 + 0.5  # Gaussian blob at (0.5, 0.5)
 
-    x = np.linspace(0, 1, 30)
-    y = np.linspace(0, 1, 30)
-    density = interpolate_particles_to_grid(particles_2d, (x, y), method="kde")
+    # For density estimation from particles (uniform weight = 1.0 for each particle)
+    particle_weights = np.ones(len(particles_2d))
+    density = interpolate_particles_to_grid(
+        particle_values=particle_weights,
+        particle_positions=particles_2d,
+        grid_shape=(30, 30),
+        grid_bounds=((0, 1), (0, 1)),
+        method="kde",
+    )
 
     print(f"   Particles: {len(particles_2d)}")
-    print(f"   Grid: {len(x)} × {len(y)} = {density.size} points")
-    print(f"   Density integral: {np.sum(density) * (x[1] - x[0]) * (y[1] - y[0]):.3f} (should be ≈ 1.0)")
-    print(
-        f"   Max density at: ({x[np.argmax(np.max(density, axis=1))]:.2f}, {y[np.argmax(np.max(density, axis=0))]:.2f})"
-    )
+    print(f"   Grid: {density.shape[0]} × {density.shape[1]} = {density.size} points")
+    dx = dy = 1.0 / (density.shape[0] - 1)
+    print(f"   Density integral: {np.sum(density) * dx * dy:.3f} (should be ≈ 1.0)")
+    max_i, max_j = np.unravel_index(np.argmax(density), density.shape)
+    max_x = max_i * dx
+    max_y = max_j * dy
+    print(f"   Max density at: ({max_x:.2f}, {max_y:.2f})")
 
 
 def demo_geometry_utilities():
