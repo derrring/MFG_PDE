@@ -34,7 +34,6 @@ from mfg_pde.alg.neural.pinn_solvers import (  # noqa: E402
     HJBPINNSolver,
     MFGPINNSolver,
     PINNConfig,
-    print_system_info,
 )
 from mfg_pde.core.mfg_problem import ExampleMFGProblem, MFGProblem  # noqa: E402
 
@@ -365,9 +364,6 @@ def main():
     """Main demonstration function."""
     print("Physics-Informed Neural Networks for Mean Field Games")
     print("=" * 60)
-
-    # Check system capabilities
-    print_system_info()
 
     # Create problem and configuration
     print("\nSetting up MFG problem...")
