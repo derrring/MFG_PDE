@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.geometry.base import CartesianGrid
-from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions  # noqa: TC001
-from mfg_pde.geometry.protocol import GeometryType
+from ..base import CartesianGrid  # noqa: TID252
+from ..boundary_conditions_1d import BoundaryConditions  # noqa: TC001, TID252
+from ..protocol import GeometryType  # noqa: TID252
 
 if TYPE_CHECKING:
     from collections.abc import Callable

@@ -16,9 +16,9 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-from mfg_pde.geometry.base import CartesianGrid
-from mfg_pde.geometry.base_geometry import MeshData
-from mfg_pde.geometry.protocol import GeometryType
+from ..base import CartesianGrid  # noqa: TID252
+from ..base_geometry import MeshData  # noqa: TID252
+from ..protocol import GeometryType  # noqa: TID252
 
 
 class SimpleGrid2D(CartesianGrid):

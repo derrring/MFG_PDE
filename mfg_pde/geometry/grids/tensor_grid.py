@@ -23,8 +23,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.geometry.base import CartesianGrid
-from mfg_pde.geometry.protocol import GeometryType
+from ..base import CartesianGrid  # noqa: TID252
+from ..protocol import GeometryType  # noqa: TID252
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -653,7 +653,7 @@ class TensorProductGrid(CartesianGrid):
 
     def _create_bc_1d(self, bc_type: str, custom_conditions: dict | None):
         """Create 1D boundary conditions (uses dataclass interface)."""
-        from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+        from ..boundary_conditions_1d import BoundaryConditions  # noqa: TID252
 
         bc_map = {
             "periodic": {"type": "periodic"},
@@ -700,7 +700,7 @@ class TensorProductGrid(CartesianGrid):
             UserWarning,
             stacklevel=2,
         )
-        from mfg_pde.geometry.boundary_conditions_3d import BoundaryConditionManager3D
+        from ..boundary_conditions_3d import BoundaryConditionManager3D  # noqa: TID252
 
         return BoundaryConditionManager3D()
 
