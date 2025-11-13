@@ -115,7 +115,61 @@ selector = StrategySelector(profiling_mode=ProfilingMode.SILENT)
 
 ---
 
-## 4. Legacy Problem Classes (Low Priority)
+## 4. solve_mfg() Method Parameter (Medium Priority)
+
+### Deprecated Pattern
+
+```python
+from mfg_pde import solve_mfg
+
+# Ambiguous "method" parameter
+result = solve_mfg(problem, method='accurate')
+```
+
+**Issues**:
+- Ambiguous name: "method" could mean algorithm, coupling scheme, or preset
+- Hidden complexity: Single parameter controls multiple settings
+- Redundant: Users can already set `max_iterations` and `tolerance` directly
+- Opaque: Doesn't show what's actually being configured
+
+### Modern Pattern
+
+```python
+from mfg_pde.factory import create_accurate_solver
+
+# Explicit factory function + direct parameter control
+solver = create_accurate_solver(
+    problem,
+    max_iterations=500,  # Clear and explicit
+    tolerance=1e-6
+)
+result = solver.solve()
+```
+
+**What the presets actually do**:
+- `method='fast'`: Uses `create_standard_solver()`, max_iterations=100
+- `method='accurate'`: Uses `create_accurate_solver()`, max_iterations=500
+- `method='research'`: Uses `create_research_solver()`, max_iterations=1000, auto-creates HJB/FP solvers
+
+### Benefits of Modern Pattern
+
+- ✅ **Explicit**: Clear which factory function is used
+- ✅ **Transparent**: All parameters visible at call site
+- ✅ **Flexible**: Direct control over all solver settings
+- ✅ **Discoverable**: IDE autocomplete shows available factories
+- ✅ **No magic**: User controls solver selection, not hidden preset
+
+### Migration Strategy
+
+**Phase 1** (v0.x.x): Keep `method` parameter with deprecation warning
+
+**Phase 2** (v1.0.0): Remove `method` parameter, force explicit factory usage
+
+**For now**: Document modern pattern, update examples to use factory functions directly
+
+---
+
+## 5. Legacy Problem Classes (Low Priority)
 
 ### Deprecated Classes
 
@@ -192,6 +246,7 @@ class MyCustomProblem(MFGProblem):
 |:-----------|:-------|:---------|
 | `ExampleMFGProblem(Nx=50, ...)` | `MFGProblem(geometry=domain, ...)` | High |
 | `Nx=50` (scalar) | `Nx=[50]` (array) | Medium |
+| `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium |
 | `enable_profiling=True` | `profiling_mode=ProfilingMode.SILENT` | Low |
 | Legacy problem classes | `MFGProblem` + geometry | Low |
 
