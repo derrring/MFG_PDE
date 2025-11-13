@@ -13,7 +13,7 @@ import numpy as np
 
 from .base import CartesianGrid
 from .boundary_conditions_1d import BoundaryConditions  # noqa: TC001
-from .geometry_protocol import GeometryType
+from .protocol import GeometryType
 
 if TYPE_CHECKING:
     from collections.abc import Callable

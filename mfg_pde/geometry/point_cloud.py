@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .geometry_protocol import GeometryProtocol, GeometryType
+from .protocol import GeometryProtocol, GeometryType
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
