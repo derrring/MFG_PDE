@@ -6,6 +6,11 @@ in MFG research projects, including particle interpolation, signed distance
 functions, spatial operations, and computational utilities.
 """
 
+from mfg_pde.utils.numerical.hjb_policy_iteration import (
+    HJBPolicyProblem,
+    create_lq_policy_problem,
+    policy_iteration_hjb,
+)
 from mfg_pde.utils.numerical.nonlinear_solvers import FixedPointSolver, NewtonSolver, PolicyIterationSolver, SolverInfo
 from mfg_pde.utils.numerical.particle_interpolation import (
     estimate_kde_bandwidth,
@@ -25,6 +30,10 @@ from mfg_pde.utils.numerical.sdf_utils import (
 )
 
 __all__ = [
+    # HJB policy iteration
+    "HJBPolicyProblem",
+    "create_lq_policy_problem",
+    "policy_iteration_hjb",
     # Nonlinear solvers
     "FixedPointSolver",
     "NewtonSolver",
