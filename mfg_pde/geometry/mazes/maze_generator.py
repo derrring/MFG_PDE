@@ -232,6 +232,34 @@ class Grid:
 
         return np.column_stack([x_coords, y_coords])
 
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        This polymorphic method provides maze Grid-specific configuration
+        for MFGProblem, treating the maze as a 2D discrete spatial domain.
+
+        Returns:
+            Dictionary with keys:
+                - num_spatial_points: Total number of maze cells
+                - spatial_shape: Shape tuple (rows, cols)
+                - spatial_bounds: Bounds [(xmin, xmax), (ymin, ymax)]
+                - spatial_discretization: Grid resolution (rows, cols)
+                - legacy_1d_attrs: None (maze is 2D)
+
+        Note: Spatial bounds use cell center coordinates convention:
+            x ∈ [0.5, cols-0.5], y ∈ [0.5, rows-0.5]
+
+        Added in v0.11.0 for GeometryProtocol compliance.
+        """
+        return {
+            "num_spatial_points": self.rows * self.cols,
+            "spatial_shape": (self.rows, self.cols),
+            "spatial_bounds": [(0.0, float(self.cols)), (0.0, float(self.rows))],
+            "spatial_discretization": (self.rows, self.cols),
+            "legacy_1d_attrs": None,
+        }
+
 
 class PerfectMazeGenerator(GraphGeometry):
     """
