@@ -49,13 +49,12 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-# Optional dependencies
+# Optional dependencies - runtime imports
 try:
     from scipy.optimize import minimize
 
     SCIPY_AVAILABLE = True
 except ImportError:
-    minimize = None  # type: ignore[assignment]
     SCIPY_AVAILABLE = False
 
 try:
@@ -65,9 +64,10 @@ try:
 
     OSQP_AVAILABLE = True
 except ImportError:
-    osqp = None  # type: ignore[assignment]
-    sp = None  # type: ignore[assignment]
     OSQP_AVAILABLE = False
+
+# Type-checking imports are handled above in runtime imports
+# No separate TYPE_CHECKING block needed - using runtime availability checks
 
 
 # =============================================================================
@@ -416,6 +416,10 @@ class QPSolver:
         if not OSQP_AVAILABLE:
             raise RuntimeError("OSQP not available")
 
+        # Type narrowing for mypy
+        assert osqp is not None
+        assert sp is not None
+
         self.stats["osqp_solves"] += 1
         n = len(x0)
 
@@ -506,6 +510,9 @@ class QPSolver:
         if not SCIPY_AVAILABLE:
             raise RuntimeError("scipy not available")
 
+        # Type narrowing for mypy
+        assert minimize is not None
+
         self.stats["lbfgsb_solves"] += 1
 
         # Handle weights
@@ -571,6 +578,9 @@ class QPSolver:
         """Solve using scipy SLSQP (general constraints)."""
         if not SCIPY_AVAILABLE:
             raise RuntimeError("scipy not available")
+
+        # Type narrowing for mypy
+        assert minimize is not None
 
         self.stats["slsqp_solves"] += 1
 
