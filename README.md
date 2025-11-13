@@ -222,7 +222,7 @@ If you use MFG_PDE in your research:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={0.11.0},
+  version={0.12.3},
   url={https://github.com/derrring/MFG_PDE}
 }
 ```
