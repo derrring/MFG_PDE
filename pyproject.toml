@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.12.3" # v0.12.3: Multi-population MFG + minimal core architecture refactor
+version = "0.12.4" # v0.12.4: Add inline smoke tests to utility modules
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
