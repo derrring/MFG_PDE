@@ -21,15 +21,15 @@ from typing import Any
 import numpy as np
 from scipy.sparse import csr_matrix, diags
 
-# Import geometry protocol
-from .geometry_protocol import GeometryType
-
 # Import unified backend system
 from .network_backend import (
     NetworkBackendType,
     OperationType,
     get_backend_manager,
 )
+
+# Import geometry protocol
+from .protocol import GeometryType
 
 # Legacy compatibility - keep old imports for fallback
 try:

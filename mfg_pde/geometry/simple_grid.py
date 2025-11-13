@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 from .base import CartesianGrid
 from .base_geometry import MeshData
-from .geometry_protocol import GeometryType
+from .protocol import GeometryType
 
 
 class SimpleGrid2D(CartesianGrid):

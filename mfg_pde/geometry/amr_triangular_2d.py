@@ -16,7 +16,7 @@ import numpy as np
 
 from .amr_quadtree_2d import AMRRefinementCriteria, BaseErrorEstimator
 from .base_geometry import MeshData
-from .geometry_protocol import GeometryType
+from .protocol import GeometryType
 
 logger = logging.getLogger(__name__)
 

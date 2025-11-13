@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 from .base_geometry import MeshVisualizationMode
-from .geometry_protocol import GeometryType
+from .protocol import GeometryType
 
 
 class Geometry(ABC):

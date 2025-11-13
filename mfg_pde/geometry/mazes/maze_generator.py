@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mfg_pde.geometry.base import GraphGeometry
-from mfg_pde.geometry.geometry_protocol import GeometryType
+from mfg_pde.geometry.protocol import GeometryType
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
