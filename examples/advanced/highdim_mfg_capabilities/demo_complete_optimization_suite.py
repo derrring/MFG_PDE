@@ -20,12 +20,12 @@ from mfg_pde import MFGComponents
 from mfg_pde.benchmarks import HighDimMFGBenchmark
 from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 from mfg_pde.geometry import Domain3D  # Backward compatibility alias for Mesh3D
+from mfg_pde.geometry.amr_tetrahedral_3d import TetrahedralAMRMesh
 from mfg_pde.geometry.boundary_conditions_3d import (
     BoundaryConditionManager3D,
     DirichletBC3D,
     NeumannBC3D,
 )
-from mfg_pde.geometry.tetrahedral_amr import TetrahedralAMRMesh
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.performance_optimization import AdvancedSparseOperations, PerformanceMonitor, SparseMatrixOptimizer
 
@@ -46,7 +46,7 @@ def demo_3d_geometry_with_boundary_conditions():
             logger.info(f"✅ Created 3D domain with {len(mesh_data.vertices)} vertices")
         except Exception as e:
             logger.warning(f"Gmsh not available, using simple grid: {e}")
-            from mfg_pde.geometry.simple_grid import SimpleGrid3D
+            from mfg_pde.geometry import SimpleGrid3D
 
             domain = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(16, 16, 16))
             mesh_data = domain.generate_mesh()
