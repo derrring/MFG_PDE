@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import warnings as _warnings
 
+# AMR imports (from old file names for backward compatibility)
 from .amr_1d import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
 from .amr_triangular_2d import (
     TriangleElement,
@@ -38,8 +39,19 @@ from .amr_triangular_2d import (
     TriangularMeshErrorEstimator,
     create_triangular_amr_mesh,
 )
+
+# Base geometry classes
 from .base_geometry import BaseGeometry, MeshData
-from .boundary_conditions_1d import BoundaryConditions, dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
+
+# Boundary conditions from subdirectories
+from .boundary import (
+    BoundaryConditions,
+    BoundaryManager,
+    GeometricBoundaryCondition,
+)
+
+# Legacy boundary condition imports (from old file names)
+from .boundary_conditions_1d import dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
 from .boundary_conditions_2d import (
     BoundaryCondition2D,
     BoundaryConditionManager2D,
@@ -62,10 +74,65 @@ from .boundary_conditions_3d import (
     create_box_boundary_conditions,
     create_sphere_boundary_conditions,
 )
-from .boundary_manager import BoundaryManager, GeometricBoundaryCondition
+
+# Graph-based geometry (networks + mazes)
+from .graph import (
+    BaseNetworkGeometry,
+    GridNetwork,
+    HybridMazeGenerator,
+    MazeAlgorithm,
+    MazeConfig,
+    NetworkData,
+    NetworkType,
+    PerfectMazeGenerator,
+    RandomNetwork,
+    ScaleFreeNetwork,
+    VoronoiMazeGenerator,
+    maze_Algorithm,
+    maze_CellularAutomataConfig,
+    maze_CellularAutomataGenerator,
+    maze_Config,
+    maze_HybridGenerator,
+    maze_PerfectMazeGenerator,
+    maze_RecursiveDivisionConfig,
+    maze_RecursiveDivisionGenerator,
+    maze_VoronoiGenerator,
+)
+
+# Grid geometry
+from .grids import SimpleGrid1D, SimpleGrid2D, TensorProductGrid
+
+# Implicit geometry
+from .implicit import (
+    ComplementDomain,
+    DifferenceDomain,
+    Hyperrectangle,
+    Hypersphere,
+    ImplicitDomain,
+    IntersectionDomain,
+    UnionDomain,
+)
+
+# Mesh geometry
+from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshManager, MeshPipeline
+
+# Network backend
+from .network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
+
+# Legacy network imports (from old file names)
+from .network_geometry import compute_network_statistics, create_network
+
+# Geometric operators
+from .operators import GeometryProjector
+
+# Point cloud geometry for particle-based solvers (Issue #269)
+from .point_cloud import PointCloudGeometry
+
+# Legacy projection imports (from old file names)
+from .projection import ProjectionRegistry
 
 # Unified geometry protocol
-from .geometry_protocol import (
+from .protocol import (
     GeometryProtocol,
     GeometryType,
     detect_geometry_type,
@@ -73,38 +140,8 @@ from .geometry_protocol import (
     validate_geometry,
 )
 
-# Maze generation (moved from alg.reinforcement.environments)
-from .mazes import (
-    HybridMazeGenerator,
-    MazeAlgorithm,
-    MazeConfig,
-    PerfectMazeGenerator,
-    VoronoiMazeGenerator,
-)
-from .mesh_1d import Mesh1D
-from .mesh_2d import Mesh2D
-from .mesh_3d import Mesh3D
-from .mesh_manager import MeshManager, MeshPipeline
-from .network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
-from .network_geometry import (
-    BaseNetworkGeometry,
-    GridNetwork,
-    NetworkData,
-    NetworkType,
-    RandomNetwork,
-    ScaleFreeNetwork,
-    compute_network_statistics,
-    create_network,
-)
-
-# Point cloud geometry for particle-based solvers (Issue #269)
-from .point_cloud import PointCloudGeometry
-
-# Geometry projection for hybrid solvers (Issue #257)
-from .projection import GeometryProjector, ProjectionRegistry
-from .simple_grid import SimpleGrid2D, SimpleGrid3D
-from .simple_grid_1d import SimpleGrid1D
-from .tensor_product_grid import TensorProductGrid
+# Legacy grid imports (from old file names)
+from .simple_grid import SimpleGrid3D
 
 # Backward compatibility aliases (DEPRECATED - will be removed in v0.12.0)
 Domain1D = SimpleGrid1D  # Use SimpleGrid1D instead
@@ -130,7 +167,11 @@ __all__ = [
     "BoundaryConditionManager2D",
     "BoundaryConditionManager3D",
     "BoundaryConditions",
+    "BoundaryConditions2D",
+    "BoundaryConditions3D",
     "BoundaryManager",
+    "BoundaryRegion2D",
+    "BoundaryRegion3D",
     # Specific boundary condition types
     "DirichletBC2D",
     "DirichletBC3D",
@@ -166,7 +207,7 @@ __all__ = [
     "NetworkType",
     "NeumannBC2D",
     "NeumannBC3D",
-    # 1D AMR components
+    # AMR components (legacy names from old file structure)
     "OneDimensionalAMRMesh",
     "OneDimensionalErrorEstimator",
     "OperationType",
@@ -179,9 +220,18 @@ __all__ = [
     "ScaleFreeNetwork",
     "TensorProductGrid",
     "TriangleElement",
-    # Triangular AMR components
+    # Legacy triangular AMR components
     "TriangularAMRMesh",
     "TriangularMeshErrorEstimator",
+    # Implicit geometry (CSG operations)
+    "ComplementDomain",
+    "DifferenceDomain",
+    "Hyperrectangle",
+    "Hypersphere",
+    "ImplicitDomain",
+    "IntersectionDomain",
+    "UnionDomain",
+    # Factory and utility functions
     "compute_network_statistics",
     "create_1d_amr_mesh",
     # Boundary condition factory functions
@@ -195,12 +245,22 @@ __all__ = [
     "dirichlet_bc",
     "get_backend_manager",
     "is_geometry_compatible",
-    # Maze generation
+    # Maze generation (original names for backward compatibility)
     "HybridMazeGenerator",
     "MazeAlgorithm",
     "MazeConfig",
     "PerfectMazeGenerator",
     "VoronoiMazeGenerator",
+    # Maze generation (with maze_ prefix)
+    "maze_Algorithm",
+    "maze_CellularAutomataConfig",
+    "maze_CellularAutomataGenerator",
+    "maze_Config",
+    "maze_HybridGenerator",
+    "maze_PerfectMazeGenerator",
+    "maze_RecursiveDivisionConfig",
+    "maze_RecursiveDivisionGenerator",
+    "maze_VoronoiGenerator",
     "neumann_bc",
     "no_flux_bc",
     "periodic_bc",
