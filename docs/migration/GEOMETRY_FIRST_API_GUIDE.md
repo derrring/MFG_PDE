@@ -140,7 +140,7 @@ All geometry objects implement the `GeometryProtocol`:
 ```python
 from typing import Protocol
 from numpy.typing import NDArray
-from mfg_pde.geometry.geometry_protocol import GeometryType
+from mfg_pde.geometry.protocol import GeometryType
 
 class GeometryProtocol(Protocol):
     """Protocol for geometry objects usable in MFGProblem."""
@@ -220,7 +220,7 @@ You can create custom geometry types by implementing `GeometryProtocol`:
 from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
-from mfg_pde.geometry.geometry_protocol import GeometryType
+from mfg_pde.geometry.protocol import GeometryType
 
 @dataclass
 class MyCustomGeometry:

@@ -24,11 +24,11 @@ from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMR
 from mfg_pde.geometry.amr.amr_quadtree_2d import AdaptiveMesh
 from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
 from mfg_pde.geometry.domain_1d import Domain1D
-from mfg_pde.geometry.geometry_protocol import (
+from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+from mfg_pde.geometry.protocol import (
     is_geometry_compatible,
     validate_geometry,
 )
-from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 
 def demonstrate_protocol_compliance():
