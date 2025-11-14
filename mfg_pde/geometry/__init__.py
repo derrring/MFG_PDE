@@ -31,9 +31,9 @@ from __future__ import annotations
 
 import warnings as _warnings
 
-# AMR imports (from old file names for backward compatibility)
-from .amr_1d import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
-from .amr_triangular_2d import (
+# AMR imports (from subdirectory - canonical locations)
+from .amr.amr_1d import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
+from .amr.amr_triangular_2d import (
     TriangleElement,
     TriangularAMRMesh,
     TriangularMeshErrorEstimator,

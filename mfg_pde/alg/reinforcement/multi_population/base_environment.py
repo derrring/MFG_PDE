@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
-    from mfg_pde.geometry.mesh_2d import Mesh2D
+    from mfg_pde.geometry.meshes.mesh_2d import Mesh2D
 
     from .population_config import PopulationConfig
 
