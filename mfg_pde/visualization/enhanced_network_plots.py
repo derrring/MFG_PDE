@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from mfg_pde.extensions.topology import NetworkMFGProblem
-    from mfg_pde.geometry.graph.network import NetworkData
+    from mfg_pde.geometry.graph.network_geometry import NetworkData
 
 
 class EnhancedNetworkMFGVisualizer(NetworkMFGVisualizer):

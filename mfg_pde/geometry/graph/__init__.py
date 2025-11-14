@@ -7,11 +7,19 @@ including network topologies and maze-based domains.
 
 # Network geometry
 # Maze generation
-from .cellular_automata import CellularAutomataConfig, CellularAutomataGenerator
-from .hybrid_maze import HybridMazeGenerator
+from .maze_cellular_automata import CellularAutomataConfig, CellularAutomataGenerator
 from .maze_config import MazeConfig
 from .maze_generator import MazeAlgorithm, PerfectMazeGenerator
-from .network import (
+from .maze_hybrid import HybridMazeGenerator
+from .maze_recursive_division import RecursiveDivisionConfig, RecursiveDivisionGenerator
+from .maze_voronoi import VoronoiMazeGenerator
+from .network_backend import (
+    NetworkBackendType,
+    OperationType,
+    get_backend_manager,
+    set_preferred_backend,
+)
+from .network_geometry import (
     BaseNetworkGeometry,
     GridNetwork,
     NetworkData,
@@ -21,14 +29,6 @@ from .network import (
     compute_network_statistics,
     create_network,
 )
-from .network_backend import (
-    NetworkBackendType,
-    OperationType,
-    get_backend_manager,
-    set_preferred_backend,
-)
-from .recursive_division import RecursiveDivisionConfig, RecursiveDivisionGenerator
-from .voronoi_maze import VoronoiMazeGenerator
 
 # Add maze_ prefixes for clarity
 maze_PerfectMazeGenerator = PerfectMazeGenerator

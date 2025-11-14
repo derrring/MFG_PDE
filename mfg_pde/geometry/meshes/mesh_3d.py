@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 
 from mfg_pde.geometry.base import UnstructuredMesh
-from mfg_pde.geometry.base_geometry import MeshData
+from mfg_pde.geometry.meshes.mesh_data import MeshData
 
 
 class Mesh3D(UnstructuredMesh):

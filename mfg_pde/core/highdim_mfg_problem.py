@@ -16,7 +16,7 @@ import numpy as np
 from .mfg_problem import MFGComponents, MFGProblem
 
 if TYPE_CHECKING:
-    from mfg_pde.geometry.base_geometry import BaseGeometry
+    from mfg_pde.geometry.meshes.mesh_data import BaseGeometry
 
 
 class _TensorGridGeometry:
@@ -39,7 +39,7 @@ class _TensorGridGeometry:
 
     def generate_mesh(self):
         """Generate MeshData from grid points."""
-        from mfg_pde.geometry.base_geometry import MeshData
+        from mfg_pde.geometry.meshes.mesh_data import MeshData
 
         # Get all grid points as (N, d) array
         points = self.grid.flatten()

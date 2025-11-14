@@ -410,7 +410,7 @@ class MFGProblem:
         import warnings
 
         from mfg_pde.geometry import SimpleGrid1D
-        from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+        from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
 
         # Emit deprecation warning for manual grid construction pattern
         warnings.warn(
@@ -528,7 +528,7 @@ class MFGProblem:
         if dimension == 1:
             # 1D case: use SimpleGrid1D
             from mfg_pde.geometry import SimpleGrid1D
-            from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+            from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
 
             bc = BoundaryConditions(type="periodic")
             geometry = SimpleGrid1D(xmin=spatial_bounds[0][0], xmax=spatial_bounds[0][1], boundary_conditions=bc)

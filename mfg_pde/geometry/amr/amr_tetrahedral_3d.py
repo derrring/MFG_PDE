@@ -15,7 +15,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-from mfg_pde.geometry.base_geometry import MeshData
+from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
 

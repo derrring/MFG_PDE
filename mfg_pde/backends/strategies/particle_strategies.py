@@ -14,7 +14,7 @@ import numpy as np
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
     from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+    from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
 
 
 class ParticleStrategy(ABC):

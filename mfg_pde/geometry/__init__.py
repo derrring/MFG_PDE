@@ -15,7 +15,7 @@ Key Components:
   - Hyperrectangle: Axis-aligned boxes (O(d) sampling, no rejection!)
   - Hypersphere: Balls/circles for obstacles
   - CSG operations: Union, Intersection, Difference for complex domains
-- BaseGeometry: Abstract base class for all geometry types
+- Geometry: Unified ABC for all geometry types (in base.py)
 - MeshData: Universal mesh data container
 - MeshPipeline: Complete Gmsh → Meshio → PyVista workflow orchestration
 - MeshManager: High-level mesh management for multiple geometries
@@ -40,9 +40,6 @@ from .amr.amr_triangular_2d import (
     create_triangular_amr_mesh,
 )
 
-# Base geometry classes
-from .base_geometry import BaseGeometry, MeshData
-
 # Boundary conditions from subdirectories
 from .boundary import (
     BoundaryConditions,
@@ -50,9 +47,11 @@ from .boundary import (
     GeometricBoundaryCondition,
 )
 
-# Legacy boundary condition imports (from old file names)
-from .boundary_conditions_1d import dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
-from .boundary_conditions_2d import (
+# 1D boundary condition helper functions
+from .boundary.bc_1d import dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
+
+# 2D boundary condition classes and helpers
+from .boundary.bc_2d import (
     BoundaryCondition2D,
     BoundaryConditionManager2D,
     DirichletBC2D,
@@ -63,7 +62,9 @@ from .boundary_conditions_2d import (
     create_circle_boundary_conditions,
     create_rectangle_boundary_conditions,
 )
-from .boundary_conditions_3d import (
+
+# 3D boundary condition classes and helpers
+from .boundary.bc_3d import (
     BoundaryCondition3D,
     BoundaryConditionManager3D,
     DirichletBC3D,
@@ -99,15 +100,16 @@ from .graph import (
     maze_VoronoiGenerator,
 )
 
-# Legacy network imports (from old file names - now in graph subdirectory)
-from .graph.network import compute_network_statistics, create_network
-
 # Network backend (from graph subdirectory - canonical location)
 from .graph.network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
 
+# Legacy network imports (from old file names - now in graph subdirectory)
+from .graph.network_geometry import compute_network_statistics, create_network
+
 # Grid geometry - Import from subdirectories (canonical locations)
 from .grids.grid_1d import SimpleGrid1D
-from .grids.grid_2d import SimpleGrid2D, SimpleGrid3D
+from .grids.grid_2d import SimpleGrid2D
+from .grids.grid_3d import SimpleGrid3D
 from .grids.tensor_grid import TensorProductGrid
 
 # Implicit geometry
@@ -118,20 +120,19 @@ from .implicit import (
     Hypersphere,
     ImplicitDomain,
     IntersectionDomain,
+    PointCloudGeometry,
     UnionDomain,
 )
 
+# Mesh data structures (from meshes subdirectory)
 # Mesh geometry
-from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshManager, MeshPipeline
+from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshData, MeshManager, MeshPipeline, MeshVisualizationMode
 
 # Geometric operators
 from .operators import GeometryProjector
 
 # Legacy projection imports (from old file names - now in operators subdirectory)
 from .operators.projection import ProjectionRegistry
-
-# Point cloud geometry for particle-based solvers (Issue #269)
-from .point_cloud import PointCloudGeometry
 
 # Unified geometry protocol
 from .protocol import (
@@ -160,7 +161,6 @@ _warnings.warn(
 
 __all__ = [
     # Multi-dimensional geometry components
-    "BaseGeometry",
     "BaseNetworkGeometry",
     # Boundary condition components
     "BoundaryCondition2D",
@@ -201,6 +201,7 @@ __all__ = [
     "MeshData",
     "MeshManager",
     "MeshPipeline",
+    "MeshVisualizationMode",
     # Network backend components
     "NetworkBackendType",
     # Network geometry components

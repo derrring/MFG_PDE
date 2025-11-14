@@ -29,15 +29,6 @@ from mfg_pde.alg.reinforcement.environments.recursive_division import (
     add_loops,
     create_room_based_config,
 )
-from mfg_pde.geometry.graph.hybrid_maze import (
-    AlgorithmSpec,
-    HybridMazeConfig,
-    HybridMazeGenerator,
-    HybridStrategy,
-    create_campus_hybrid,
-    create_museum_hybrid,
-    create_office_hybrid,
-)
 from mfg_pde.geometry.graph.maze_config import (
     MazeConfig,
     MazeTopology,
@@ -55,7 +46,16 @@ from mfg_pde.geometry.graph.maze_generator import (
     generate_maze,
     verify_perfect_maze,
 )
-from mfg_pde.geometry.graph.voronoi_maze import (
+from mfg_pde.geometry.graph.maze_hybrid import (
+    AlgorithmSpec,
+    HybridMazeConfig,
+    HybridMazeGenerator,
+    HybridStrategy,
+    create_campus_hybrid,
+    create_museum_hybrid,
+    create_office_hybrid,
+)
+from mfg_pde.geometry.graph.maze_voronoi import (
     VoronoiMazeConfig,
     VoronoiMazeGenerator,
 )

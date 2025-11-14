@@ -209,7 +209,7 @@ class GeometryProjector:
     def _setup_projection_methods(self) -> None:
         """Auto-detect appropriate projection methods based on geometry types."""
         from mfg_pde.geometry.base import CartesianGrid
-        from mfg_pde.geometry.point_cloud import PointCloudGeometry
+        from mfg_pde.geometry.implicit.point_cloud import PointCloudGeometry
 
         # Check registry first for specialized projectors
         self._hjb_to_fp_func = ProjectionRegistry.get_projector(self.hjb_geometry, self.fp_geometry, "hjb_to_fp")
@@ -553,7 +553,7 @@ class GeometryProjector:
         """
         from scipy.interpolate import RBFInterpolator
 
-        from mfg_pde.geometry.point_cloud import PointCloudGeometry
+        from mfg_pde.geometry.implicit.point_cloud import PointCloudGeometry
 
         if not isinstance(self.hjb_geometry, PointCloudGeometry):
             raise ValueError("Source geometry must be PointCloudGeometry for particle-particle RBF projection")
@@ -632,7 +632,7 @@ class GeometryProjector:
         """
         from scipy.stats import gaussian_kde
 
-        from mfg_pde.geometry.point_cloud import PointCloudGeometry
+        from mfg_pde.geometry.implicit.point_cloud import PointCloudGeometry
         from mfg_pde.utils.numerical import estimate_kde_bandwidth
 
         if not isinstance(self.fp_geometry, PointCloudGeometry):

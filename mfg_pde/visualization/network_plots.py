@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from mfg_pde.extensions.topology import NetworkMFGProblem
-    from mfg_pde.geometry.graph.network import NetworkData
+    from mfg_pde.geometry.graph.network_geometry import NetworkData
 
 
 class NetworkMFGVisualizer:
@@ -521,7 +521,7 @@ class NetworkMFGVisualizer:
         save_path: str | None = None,
     ) -> go.Figure:
         """Create interactive dashboard using Plotly."""
-        from mfg_pde.geometry.graph.network import compute_network_statistics
+        from mfg_pde.geometry.graph.network_geometry import compute_network_statistics
 
         # Network statistics
         stats = compute_network_statistics(self.network_data)
@@ -642,7 +642,7 @@ class NetworkMFGVisualizer:
 
         # Network properties (top-left)
         ax = axes[0, 0]
-        from mfg_pde.geometry.graph.network import compute_network_statistics
+        from mfg_pde.geometry.graph.network_geometry import compute_network_statistics
 
         stats = compute_network_statistics(self.network_data)
 
