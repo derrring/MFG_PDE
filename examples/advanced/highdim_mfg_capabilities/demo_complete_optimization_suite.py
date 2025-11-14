@@ -46,7 +46,7 @@ def demo_3d_geometry_with_boundary_conditions():
             logger.info(f"✅ Created 3D domain with {len(mesh_data.vertices)} vertices")
         except Exception as e:
             logger.warning(f"Gmsh not available, using simple grid: {e}")
-            from mfg_pde.geometry.simple_grid import SimpleGrid3D
+            from mfg_pde.geometry.grids.grid_2d import SimpleGrid3D
 
             domain = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(16, 16, 16))
             mesh_data = domain.generate_mesh()
@@ -79,7 +79,7 @@ def demo_adaptive_mesh_refinement():
 
     try:
         # Create initial coarse mesh
-        from mfg_pde.geometry.simple_grid import SimpleGrid3D
+        from mfg_pde.geometry.grids.grid_2d import SimpleGrid3D
 
         domain = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(8, 8, 8))
         mesh_data = domain.generate_mesh()

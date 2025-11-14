@@ -27,9 +27,8 @@ if TYPE_CHECKING:
     from jax import jit
 
     from mfg_pde.backends.base_backend import BaseBackend
+    from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
     from mfg_pde.types.solver_types import JAXArray
-
-    from .simple_grid_1d import SimpleGrid1D
 
 # Always define JAX_AVAILABLE at module level
 try:

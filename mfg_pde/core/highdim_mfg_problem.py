@@ -29,7 +29,7 @@ class _TensorGridGeometry:
 
     def __init__(self, grid):
         """Initialize with TensorProductGrid."""
-        from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+        from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
         if not isinstance(grid, TensorProductGrid):
             raise TypeError(f"Expected TensorProductGrid, got {type(grid)}")

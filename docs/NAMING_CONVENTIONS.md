@@ -450,7 +450,7 @@ All geometry classes implement:
 **Example**:
 ```python
 from mfg_pde import ExampleMFGProblem
-from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 # Geometry-first API (v0.10.0+)
 geometry = TensorProductGrid(

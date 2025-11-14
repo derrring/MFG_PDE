@@ -21,7 +21,7 @@ import numpy as np
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import BoundaryConditions
-from mfg_pde.geometry.simple_grid_1d import SimpleGrid1D
+from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
 
 
 class TestWenoFamilySolver:

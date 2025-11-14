@@ -28,7 +28,7 @@ from mfg_pde.geometry.geometry_protocol import (
     is_geometry_compatible,
     validate_geometry,
 )
-from mfg_pde.geometry.tensor_product_grid import TensorProductGrid
+from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 
 def demonstrate_protocol_compliance():
