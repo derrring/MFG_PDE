@@ -13,7 +13,6 @@ import pytest
 import numpy as np
 from scipy.sparse import csr_matrix, eye
 
-from mfg_pde.geometry.base_geometry import MeshData
 from mfg_pde.geometry.boundary_conditions_3d import (
     BoundaryCondition3D,
     BoundaryConditionManager3D,
@@ -24,6 +23,7 @@ from mfg_pde.geometry.boundary_conditions_3d import (
     create_box_boundary_conditions,
     create_sphere_boundary_conditions,
 )
+from mfg_pde.geometry.meshes.mesh_data import MeshData
 
 # ============================================================================
 # Test Fixtures - Create reusable test meshes

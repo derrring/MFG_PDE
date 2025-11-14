@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.geometry.base import UnstructuredMesh
-from mfg_pde.geometry.base_geometry import MeshData
+from mfg_pde.geometry.meshes.mesh_data import MeshData
 
 if TYPE_CHECKING:
     from collections.abc import Callable

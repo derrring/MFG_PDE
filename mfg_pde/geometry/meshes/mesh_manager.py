@@ -16,7 +16,7 @@ import numpy as np
 from .mesh_2d import Mesh2D
 
 if TYPE_CHECKING:
-    from mfg_pde.geometry.base_geometry import BaseGeometry, MeshData
+    from mfg_pde.geometry.meshes.mesh_data import BaseGeometry, MeshData
 
 logger = logging.getLogger(__name__)
 

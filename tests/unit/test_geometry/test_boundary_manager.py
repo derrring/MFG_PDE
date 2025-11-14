@@ -16,9 +16,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.base_geometry import MeshData
 from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
 from mfg_pde.geometry.boundary_manager import BoundaryManager, GeometricBoundaryCondition
+from mfg_pde.geometry.meshes.mesh_data import MeshData
 
 # ===================================================================
 # Test GeometricBoundaryCondition Initialization and Validation

@@ -40,9 +40,6 @@ from .amr.amr_triangular_2d import (
     create_triangular_amr_mesh,
 )
 
-# Base geometry classes
-from .base_geometry import MeshData
-
 # Boundary conditions from subdirectories
 from .boundary import (
     BoundaryConditions,
@@ -126,8 +123,9 @@ from .implicit import (
     UnionDomain,
 )
 
+# Mesh data structures (from meshes subdirectory)
 # Mesh geometry
-from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshManager, MeshPipeline
+from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshData, MeshManager, MeshPipeline, MeshVisualizationMode
 
 # Geometric operators
 from .operators import GeometryProjector
@@ -202,6 +200,7 @@ __all__ = [
     "MeshData",
     "MeshManager",
     "MeshPipeline",
+    "MeshVisualizationMode",
     # Network backend components
     "NetworkBackendType",
     # Network geometry components

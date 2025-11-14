@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-from .base_geometry import MeshVisualizationMode
+from .meshes.mesh_data import MeshVisualizationMode
 from .protocol import GeometryType
 
 
@@ -387,7 +387,7 @@ class UnstructuredMesh(Geometry):
             dimension: Spatial dimension (2 or 3)
         """
         self._dimension = dimension
-        self.mesh_data: Any | None = None  # MeshData from base_geometry
+        self.mesh_data: Any | None = None  # MeshData from meshes.mesh_data
         self._gmsh_model: Any = None
 
     @property

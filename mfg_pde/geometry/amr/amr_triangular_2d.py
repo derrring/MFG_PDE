@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.geometry.base_geometry import MeshData
+from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
 from .amr_quadtree_2d import AMRRefinementCriteria, BaseErrorEstimator

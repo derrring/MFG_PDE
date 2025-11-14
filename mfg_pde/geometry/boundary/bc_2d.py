@@ -17,7 +17,7 @@ from scipy.sparse import csr_matrix
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from mfg_pde.geometry.base_geometry import MeshData
+    from mfg_pde.geometry.meshes.mesh_data import MeshData
 
 
 class BoundaryCondition2D(ABC):
