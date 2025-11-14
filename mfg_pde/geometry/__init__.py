@@ -99,6 +99,12 @@ from .graph import (
     maze_VoronoiGenerator,
 )
 
+# Legacy network imports (from old file names - now in graph subdirectory)
+from .graph.network import compute_network_statistics, create_network
+
+# Network backend (from graph subdirectory - canonical location)
+from .graph.network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
+
 # Grid geometry - Import from subdirectories (canonical locations)
 from .grids.grid_1d import SimpleGrid1D
 from .grids.grid_2d import SimpleGrid2D, SimpleGrid3D
@@ -117,12 +123,6 @@ from .implicit import (
 
 # Mesh geometry
 from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshManager, MeshPipeline
-
-# Network backend
-from .network_backend import NetworkBackendType, OperationType, get_backend_manager, set_preferred_backend
-
-# Legacy network imports (from old file names)
-from .network_geometry import compute_network_statistics, create_network
 
 # Geometric operators
 from .operators import GeometryProjector

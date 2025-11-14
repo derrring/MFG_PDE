@@ -18,6 +18,14 @@ from .network import (
     NetworkType,
     RandomNetwork,
     ScaleFreeNetwork,
+    compute_network_statistics,
+    create_network,
+)
+from .network_backend import (
+    NetworkBackendType,
+    OperationType,
+    get_backend_manager,
+    set_preferred_backend,
 )
 from .recursive_division import RecursiveDivisionConfig, RecursiveDivisionGenerator
 from .voronoi_maze import VoronoiMazeGenerator
@@ -41,6 +49,13 @@ __all__ = [
     "GridNetwork",
     "RandomNetwork",
     "ScaleFreeNetwork",
+    "compute_network_statistics",
+    "create_network",
+    # Network backend
+    "NetworkBackendType",
+    "OperationType",
+    "get_backend_manager",
+    "set_preferred_backend",
     # Maze generation (with maze_ prefix)
     "maze_PerfectMazeGenerator",
     "maze_Algorithm",

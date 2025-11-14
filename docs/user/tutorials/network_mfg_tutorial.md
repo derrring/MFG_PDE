@@ -106,7 +106,7 @@ class NetworkData:
 ### Creating Networks
 
 ```python
-from mfg_pde.geometry.network_geometry import create_network
+from mfg_pde.geometry.graph.network import create_network
 
 # Grid network
 grid_network = create_network("grid", num_nodes=25, width=5, height=5)
@@ -332,7 +332,7 @@ print(f"Final error: {info['final_error']:.2e}")
 ### Network Comparison Study
 
 ```python
-from mfg_pde.geometry.network_geometry import create_network
+from mfg_pde.geometry.graph.network import create_network
 from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
 
 # Compare different network topologies
