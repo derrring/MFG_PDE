@@ -127,11 +127,11 @@ from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshManager, MeshPipeline
 # Geometric operators
 from .operators import GeometryProjector
 
+# Legacy projection imports (from old file names - now in operators subdirectory)
+from .operators.projection import ProjectionRegistry
+
 # Point cloud geometry for particle-based solvers (Issue #269)
 from .point_cloud import PointCloudGeometry
-
-# Legacy projection imports (from old file names)
-from .projection import ProjectionRegistry
 
 # Unified geometry protocol
 from .protocol import (
