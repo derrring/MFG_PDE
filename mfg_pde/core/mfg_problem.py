@@ -774,7 +774,7 @@ class MFGProblem:
         """
         # Import geometry protocol
         try:
-            from mfg_pde.geometry.geometry_protocol import GeometryProtocol, validate_geometry
+            from mfg_pde.geometry import GeometryProtocol, validate_geometry
         except ImportError as err:
             raise ImportError(
                 "Geometry mode requires geometry module. Install with: pip install mfg_pde[geometry]"
@@ -807,7 +807,7 @@ class MFGProblem:
         self.coupling_coefficient = coupling_coefficient
 
         # Initialize spatial discretization based on geometry type
-        from mfg_pde.geometry.geometry_protocol import GeometryType
+        from mfg_pde.geometry import GeometryType
 
         if geometry.geometry_type == GeometryType.CARTESIAN_GRID:
             # CARTESIAN_GRID: Can be TensorProductGrid or AMR mesh
