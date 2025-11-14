@@ -15,7 +15,7 @@ import numpy as np
 # Add MFG_PDE to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mfg_pde.geometry import BaseGeometry, BoundaryManager, Domain2D, MeshData
+from mfg_pde.geometry import BoundaryManager, Domain2D, MeshData
 
 
 class TestMeshData:
@@ -255,7 +255,6 @@ def test_geometry_package_import():
     from mfg_pde.geometry import BoundaryManager, Domain2D, MeshData
 
     # Test that classes are available
-    assert BaseGeometry is not None
     assert MeshData is not None
     assert Domain2D is not None
     assert BoundaryManager is not None
