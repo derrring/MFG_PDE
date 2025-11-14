@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.12.4" # v0.12.4: Add inline smoke tests to utility modules
+version = "0.12.5" # v0.12.5: Complete geometry module reorganization (Issue #320)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
