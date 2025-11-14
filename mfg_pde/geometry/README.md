@@ -6,6 +6,73 @@ Comprehensive geometry and mesh generation support for Mean Field Games.
 
 The geometry module provides domain definitions, boundary conditions, and mesh generation capabilities for 2D and 3D MFG problems through the **Gmsh → Meshio → PyVista** pipeline.
 
+## Module Organization
+
+The geometry module is organized into specialized subdirectories:
+
+### Subdirectory Structure
+
+- **`meshes/`** - Mesh generation and data structures
+  - `mesh_data.py` - Universal mesh data containers (`MeshData`, `MeshVisualizationMode`)
+  - `mesh_1d.py`, `mesh_2d.py`, `mesh_3d.py` - Dimension-specific mesh implementations
+  - `mesh_manager.py` - Mesh lifecycle management
+  - `mesh_pipeline.py` - Gmsh → Meshio → PyVista integration
+
+- **`grids/`** - Simple Cartesian grid geometries (no external dependencies)
+  - `grid_1d.py` - 1D grids (`SimpleGrid1D`)
+  - `grid_2d.py` - 2D grids (`SimpleGrid2D`)
+  - `grid_3d.py` - 3D grids (`SimpleGrid3D`)
+  - `tensor_grid.py` - Tensor product grids (`TensorProductGrid`)
+
+- **`graph/`** - Network and maze geometries
+  - **Network geometries**: `network_geometry.py` - Graph-based domains (`BaseNetworkGeometry`, `GridNetwork`)
+  - **Maze generators**:
+    - `maze_cellular_automata.py` - Cellular automata maze generation
+    - `maze_recursive_division.py` - Recursive division algorithm
+    - `maze_hybrid.py` - Hybrid maze strategies
+    - `maze_voronoi.py` - Voronoi-based maze generation
+
+- **`boundary/`** - Boundary condition management
+  - `bc_1d.py`, `bc_2d.py`, `bc_3d.py` - Dimension-specific boundary conditions
+  - `bc_manager.py` - Unified boundary condition management
+  - `mfg_bc_handler_2d.py`, `mfg_bc_handler_3d.py` - MFG-specific handlers
+
+- **`implicit/`** - Implicit geometry definitions
+  - `implicit_geometry.py` - Level-set based geometry representation
+  - Support for complex geometries defined by implicit functions
+
+- **`amr/`** - Adaptive mesh refinement
+  - `amr_1d.py`, `amr_triangular_2d.py`, `amr_tetrahedral_3d.py` - AMR implementations
+  - `amr_manager.py` - AMR lifecycle management
+
+### File Naming Conventions
+
+- **Grid files**: Organized by dimension (`grid_1d.py`, `grid_2d.py`, `grid_3d.py`)
+- **Maze files**: Prefixed with `maze_` (`maze_cellular_automata.py`, `maze_hybrid.py`)
+- **Network files**: Prefixed with `network_` (`network_geometry.py`)
+- **Boundary files**: Prefixed with `bc_` (`bc_2d.py`, `bc_manager.py`)
+
+### Import Patterns
+
+```python
+# Public API imports (recommended)
+from mfg_pde.geometry import (
+    SimpleGrid2D,
+    SimpleGrid3D,
+    TensorProductGrid,
+    BaseNetworkGeometry,
+    GridNetwork,
+    MeshData,
+    MeshVisualizationMode,
+)
+
+# Direct submodule imports (when needed)
+from mfg_pde.geometry.grids import SimpleGrid2D
+from mfg_pde.geometry.graph import BaseNetworkGeometry
+from mfg_pde.geometry.meshes import MeshData
+from mfg_pde.geometry.boundary import BoundaryConditionManager2D
+```
+
 ## Domain Types
 
 ### 2D Domains (`Domain2D`)
@@ -265,10 +332,34 @@ print(f"Average element quality: {quality['avg_quality']}")
 
 ## See Also
 
-- `mfg_pde.geometry.base_geometry`: Abstract base classes and data structures
-- `mfg_pde.geometry.domain_2d`: 2D domain implementations
-- `mfg_pde.geometry.domain_3d`: 3D domain implementations
-- `mfg_pde.geometry.boundary_conditions_2d`: 2D boundary condition classes
-- `mfg_pde.geometry.boundary_conditions_3d`: 3D boundary condition classes
-- `examples/basic/`: Simple geometry examples
-- `examples/advanced/`: Complex multi-domain examples
+### Module References
+
+- **Meshes**: `mfg_pde.geometry.meshes` - Mesh data structures and generation
+  - `meshes.mesh_data`: Universal mesh containers
+  - `meshes.mesh_manager`: Mesh lifecycle management
+  - `meshes.mesh_pipeline`: Gmsh integration pipeline
+
+- **Grids**: `mfg_pde.geometry.grids` - Cartesian grid geometries
+  - `grids.grid_1d`, `grids.grid_2d`, `grids.grid_3d`: Dimension-specific grids
+  - `grids.tensor_grid`: Tensor product grids
+
+- **Graphs**: `mfg_pde.geometry.graph` - Network and maze geometries
+  - `graph.network_geometry`: Network-based domains
+  - `graph.maze_*`: Maze generation algorithms
+
+- **Boundaries**: `mfg_pde.geometry.boundary` - Boundary condition management
+  - `boundary.bc_2d`, `boundary.bc_3d`: Dimension-specific boundary conditions
+  - `boundary.bc_manager`: Unified boundary management
+  - `boundary.mfg_bc_handler_*`: MFG-specific handlers
+
+- **Implicit**: `mfg_pde.geometry.implicit` - Level-set based geometries
+  - `implicit.implicit_geometry`: Implicit geometry definitions
+
+- **AMR**: `mfg_pde.geometry.amr` - Adaptive mesh refinement
+  - `amr.amr_*`: Dimension-specific AMR implementations
+
+### Examples
+
+- `examples/basic/geometry/`: Simple geometry demonstrations
+- `examples/advanced/geometry/`: Complex multi-domain examples
+- `examples/tutorials/`: Step-by-step geometry tutorials
