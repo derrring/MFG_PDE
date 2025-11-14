@@ -29,7 +29,7 @@ from mfg_pde.alg.reinforcement.environments.recursive_division import (
     add_loops,
     create_room_based_config,
 )
-from mfg_pde.geometry.mazes.hybrid_maze import (
+from mfg_pde.geometry.graph.hybrid_maze import (
     AlgorithmSpec,
     HybridMazeConfig,
     HybridMazeGenerator,
@@ -38,7 +38,7 @@ from mfg_pde.geometry.mazes.hybrid_maze import (
     create_museum_hybrid,
     create_office_hybrid,
 )
-from mfg_pde.geometry.mazes.maze_config import (
+from mfg_pde.geometry.graph.maze_config import (
     MazeConfig,
     MazeTopology,
     PhysicalDimensions,
@@ -47,7 +47,7 @@ from mfg_pde.geometry.mazes.maze_config import (
     create_default_config,
     create_multi_goal_config,
 )
-from mfg_pde.geometry.mazes.maze_generator import (
+from mfg_pde.geometry.graph.maze_generator import (
     Cell,
     Grid,
     MazeAlgorithm,
@@ -55,14 +55,14 @@ from mfg_pde.geometry.mazes.maze_generator import (
     generate_maze,
     verify_perfect_maze,
 )
-from mfg_pde.geometry.mazes.voronoi_maze import (
+from mfg_pde.geometry.graph.voronoi_maze import (
     VoronoiMazeConfig,
     VoronoiMazeGenerator,
 )
 
 # Maze utilities (connectivity analysis)
 try:
-    from mfg_pde.geometry.mazes.maze_utils import (
+    from mfg_pde.geometry.graph.maze_utils import (
         analyze_maze_connectivity,
         compute_adaptive_door_width,
         connect_regions_adaptive,
@@ -81,7 +81,7 @@ except ImportError:
 
 # Maze post-processing (smoothing, enhancement, refinement)
 try:
-    from mfg_pde.geometry.mazes.maze_postprocessing import (
+    from mfg_pde.geometry.graph.maze_postprocessing import (
         adaptive_door_carving,
         enhance_organic_maze,
         normalize_wall_thickness,

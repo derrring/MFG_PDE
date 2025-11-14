@@ -45,7 +45,7 @@ from examples.advanced.capacity_constrained_mfg import (
     create_congestion_model,
     visualize_capacity_field,
 )
-from mfg_pde.geometry.mazes import MazeConfig, PerfectMazeGenerator
+from mfg_pde.geometry.graph import MazeConfig, PerfectMazeGenerator
 
 
 def generate_maze_with_capacity(

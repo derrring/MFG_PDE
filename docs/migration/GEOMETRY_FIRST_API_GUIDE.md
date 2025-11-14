@@ -107,7 +107,7 @@ problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
 ### 4. Maze Geometry
 
 ```python
-from mfg_pde.geometry.mazes import PerfectMazeGenerator
+from mfg_pde.geometry.graph import PerfectMazeGenerator
 from mfg_pde.core import MFGProblem
 
 # Generate 10×10 maze

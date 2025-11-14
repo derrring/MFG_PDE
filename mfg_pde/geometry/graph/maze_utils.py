@@ -59,8 +59,8 @@ def smooth_walls_morphological(
         - "both": Apply both operations
 
     Example:
-        >>> from mfg_pde.geometry.mazes import CellularAutomataGenerator
-        >>> from mfg_pde.geometry.mazes.maze_utils import smooth_walls_morphological
+        >>> from mfg_pde.geometry.graph import CellularAutomataGenerator
+        >>> from mfg_pde.geometry.graph.maze_utils import smooth_walls_morphological
         >>>
         >>> maze = generator.generate()
         >>> smoothed = smooth_walls_morphological(maze, iterations=2)
@@ -282,8 +282,8 @@ def connect_regions_adaptive(
         Connected maze
 
     Example:
-        >>> from mfg_pde.geometry.mazes import CellularAutomataGenerator
-        >>> from mfg_pde.geometry.mazes.maze_utils import connect_regions_adaptive
+        >>> from mfg_pde.geometry.graph import CellularAutomataGenerator
+        >>> from mfg_pde.geometry.graph.maze_utils import connect_regions_adaptive
         >>>
         >>> config = CellularAutomataConfig(rows=60, cols=60, ensure_connectivity=False)
         >>> maze = generator.generate()
@@ -431,7 +431,7 @@ def analyze_maze_connectivity(maze: NDArray) -> dict:
         - is_connected: True if maze has single connected component
 
     Example:
-        >>> from mfg_pde.geometry.mazes.maze_utils import analyze_maze_connectivity
+        >>> from mfg_pde.geometry.graph.maze_utils import analyze_maze_connectivity
         >>>
         >>> analysis = analyze_maze_connectivity(maze)
         >>> print(f"Regions: {analysis['num_regions']}")
