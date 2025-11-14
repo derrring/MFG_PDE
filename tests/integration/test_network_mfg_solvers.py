@@ -15,7 +15,7 @@ from mfg_pde.alg.numerical.coupling.network_mfg_solver import (
     create_simple_network_solver,
 )
 from mfg_pde.extensions.topology import NetworkMFGComponents, NetworkMFGProblem
-from mfg_pde.geometry.network_geometry import GridNetwork
+from mfg_pde.geometry.graph.network import GridNetwork
 
 # Skip all tests if igraph is not available (network backend dependency)
 igraph = pytest.importorskip("igraph")

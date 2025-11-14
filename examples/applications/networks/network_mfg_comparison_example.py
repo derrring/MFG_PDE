@@ -25,7 +25,7 @@ from mfg_pde.alg.numerical.coupling.network_mfg_solver import create_network_mfg
 
 # MFG_PDE imports
 from mfg_pde.extensions.topology import NetworkMFGComponents, NetworkMFGProblem
-from mfg_pde.geometry.network_geometry import (
+from mfg_pde.geometry.graph.network import (
     GridNetwork,
     RandomNetwork,
     ScaleFreeNetwork,

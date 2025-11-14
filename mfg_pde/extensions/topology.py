@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
     from scipy.sparse import csr_matrix
 
-    from mfg_pde.geometry.network_geometry import BaseNetworkGeometry
+    from mfg_pde.geometry.graph.network import BaseNetworkGeometry
 
 
 @dataclass
@@ -519,7 +519,7 @@ class NetworkMFGProblem(MFGProblem):
 
     def get_network_statistics(self) -> dict[str, Any]:
         """Get comprehensive network statistics."""
-        from mfg_pde.geometry.network_geometry import compute_network_statistics
+        from mfg_pde.geometry.graph.network import compute_network_statistics
 
         if self.network_data is None:
             raise ValueError("Network data not initialized")
@@ -572,7 +572,7 @@ def create_grid_mfg_problem(
     **kwargs: Any,
 ) -> NetworkMFGProblem:
     """Create MFG problem on grid network."""
-    from mfg_pde.geometry.network_geometry import GridNetwork
+    from mfg_pde.geometry.graph.network import GridNetwork
 
     height = height or width
     network = GridNetwork(width, height, periodic)
@@ -598,7 +598,7 @@ def create_random_mfg_problem(
     **kwargs: Any,
 ) -> NetworkMFGProblem:
     """Create MFG problem on random network."""
-    from mfg_pde.geometry.network_geometry import RandomNetwork
+    from mfg_pde.geometry.graph.network import RandomNetwork
 
     network = RandomNetwork(num_nodes, connection_prob)
     network.create_network(seed=seed)
@@ -623,7 +623,7 @@ def create_scale_free_mfg_problem(
     **kwargs: Any,
 ) -> NetworkMFGProblem:
     """Create MFG problem on scale-free network."""
-    from mfg_pde.geometry.network_geometry import ScaleFreeNetwork
+    from mfg_pde.geometry.graph.network import ScaleFreeNetwork
 
     network = ScaleFreeNetwork(num_nodes, num_edges_per_node)
     network.create_network(seed=seed)
