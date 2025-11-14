@@ -400,7 +400,7 @@ def get_congestion_ratio(self, density, positions):
 ### Basic Usage
 
 ```python
-from mfg_pde.geometry.mazes import PerfectMazeGenerator, MazeConfig
+from mfg_pde.geometry.graph import PerfectMazeGenerator, MazeConfig
 from examples.advanced.capacity_constrained_mfg import (
     CapacityField,
     CapacityConstrainedMFGProblem,

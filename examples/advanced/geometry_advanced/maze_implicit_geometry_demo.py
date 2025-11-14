@@ -23,8 +23,8 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfg_pde.geometry.graph.maze_generator import generate_maze
 from mfg_pde.geometry.implicit import DifferenceDomain, Hyperrectangle, Hypersphere
-from mfg_pde.geometry.mazes.maze_generator import generate_maze
 
 print("=" * 70)
 print("MAZE + IMPLICIT GEOMETRY INTEGRATION")

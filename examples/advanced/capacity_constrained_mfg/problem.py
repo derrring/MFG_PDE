@@ -71,8 +71,8 @@ class CapacityConstrainedMFGProblem(MFGProblem):
         congestion_weight: Weight parameter γ for congestion cost
 
     Examples:
-        >>> from mfg_pde.geometry.mazes import create_perfect_maze
-        >>> from mfg_pde.geometry.mazes import CapacityField
+        >>> from mfg_pde.geometry.graph import create_perfect_maze
+        >>> from mfg_pde.geometry.graph import CapacityField
         >>> from mfg_pde.core.congestion import QuadraticCongestion
         >>>
         >>> # Generate maze and compute capacity
