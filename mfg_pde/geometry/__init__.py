@@ -108,7 +108,8 @@ from .graph.network_geometry import compute_network_statistics, create_network
 
 # Grid geometry - Import from subdirectories (canonical locations)
 from .grids.grid_1d import SimpleGrid1D
-from .grids.grid_2d import SimpleGrid2D, SimpleGrid3D
+from .grids.grid_2d import SimpleGrid2D
+from .grids.grid_3d import SimpleGrid3D
 from .grids.tensor_grid import TensorProductGrid
 
 # Implicit geometry
