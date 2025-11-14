@@ -40,21 +40,19 @@ from .factory.general_mfg_factory import (  # noqa: E402
     create_general_mfg_problem,
     get_general_factory,
 )
-from .geometry import BoundaryConditions  # noqa: E402
-from .geometry.network_backend import (  # noqa: E402
-    NetworkBackendType,
-    OperationType,
-    get_backend_manager,
-    set_preferred_backend,
-)
-from .geometry.network_geometry import (  # noqa: E402
+from .geometry import (  # noqa: E402
+    BoundaryConditions,
     GridNetwork,
+    NetworkBackendType,
     NetworkData,
     NetworkType,
+    OperationType,
     RandomNetwork,
     ScaleFreeNetwork,
     compute_network_statistics,
     create_network,
+    get_backend_manager,
+    set_preferred_backend,
 )
 from .solve_mfg import solve_mfg  # noqa: E402
 from .solvers.variational import (  # noqa: E402
