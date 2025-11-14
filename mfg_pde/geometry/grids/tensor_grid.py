@@ -653,7 +653,7 @@ class TensorProductGrid(CartesianGrid):
 
     def _create_bc_1d(self, bc_type: str, custom_conditions: dict | None):
         """Create 1D boundary conditions (uses dataclass interface)."""
-        from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+        from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
 
         bc_map = {
             "periodic": {"type": "periodic"},
@@ -700,7 +700,7 @@ class TensorProductGrid(CartesianGrid):
             UserWarning,
             stacklevel=2,
         )
-        from mfg_pde.geometry.boundary_conditions_3d import BoundaryConditionManager3D
+        from mfg_pde.geometry.boundary.bc_3d import BoundaryConditionManager3D
 
         return BoundaryConditionManager3D()
 

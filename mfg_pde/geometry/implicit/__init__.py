@@ -76,6 +76,7 @@ from .csg_operations import (
 from .hyperrectangle import Hyperrectangle
 from .hypersphere import Hypersphere
 from .implicit_domain import ImplicitDomain
+from .point_cloud import PointCloudGeometry
 
 __all__ = [
     "ComplementDomain",
@@ -84,6 +85,7 @@ __all__ = [
     "Hypersphere",
     "ImplicitDomain",
     "IntersectionDomain",
+    "PointCloudGeometry",
     "UnionDomain",
 ]
 

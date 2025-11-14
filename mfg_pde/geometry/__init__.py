@@ -15,7 +15,7 @@ Key Components:
   - Hyperrectangle: Axis-aligned boxes (O(d) sampling, no rejection!)
   - Hypersphere: Balls/circles for obstacles
   - CSG operations: Union, Intersection, Difference for complex domains
-- BaseGeometry: Abstract base class for all geometry types
+- Geometry: Unified ABC for all geometry types (in base.py)
 - MeshData: Universal mesh data container
 - MeshPipeline: Complete Gmsh → Meshio → PyVista workflow orchestration
 - MeshManager: High-level mesh management for multiple geometries
@@ -41,7 +41,7 @@ from .amr.amr_triangular_2d import (
 )
 
 # Base geometry classes
-from .base_geometry import BaseGeometry, MeshData
+from .base_geometry import MeshData
 
 # Boundary conditions from subdirectories
 from .boundary import (
@@ -50,9 +50,11 @@ from .boundary import (
     GeometricBoundaryCondition,
 )
 
-# Legacy boundary condition imports (from old file names)
-from .boundary_conditions_1d import dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
-from .boundary_conditions_2d import (
+# 1D boundary condition helper functions
+from .boundary.bc_1d import dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
+
+# 2D boundary condition classes and helpers
+from .boundary.bc_2d import (
     BoundaryCondition2D,
     BoundaryConditionManager2D,
     DirichletBC2D,
@@ -63,7 +65,9 @@ from .boundary_conditions_2d import (
     create_circle_boundary_conditions,
     create_rectangle_boundary_conditions,
 )
-from .boundary_conditions_3d import (
+
+# 3D boundary condition classes and helpers
+from .boundary.bc_3d import (
     BoundaryCondition3D,
     BoundaryConditionManager3D,
     DirichletBC3D,
@@ -118,6 +122,7 @@ from .implicit import (
     Hypersphere,
     ImplicitDomain,
     IntersectionDomain,
+    PointCloudGeometry,
     UnionDomain,
 )
 
@@ -129,9 +134,6 @@ from .operators import GeometryProjector
 
 # Legacy projection imports (from old file names - now in operators subdirectory)
 from .operators.projection import ProjectionRegistry
-
-# Point cloud geometry for particle-based solvers (Issue #269)
-from .point_cloud import PointCloudGeometry
 
 # Unified geometry protocol
 from .protocol import (
@@ -160,7 +162,6 @@ _warnings.warn(
 
 __all__ = [
     # Multi-dimensional geometry components
-    "BaseGeometry",
     "BaseNetworkGeometry",
     # Boundary condition components
     "BoundaryCondition2D",
