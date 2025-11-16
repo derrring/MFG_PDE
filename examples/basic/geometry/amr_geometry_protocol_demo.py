@@ -20,10 +20,10 @@ Part of: v0.10.1 AMR GeometryProtocol support
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfg_pde.geometry import SimpleGrid1D
 from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRMesh
 from mfg_pde.geometry.amr.amr_quadtree_2d import AdaptiveMesh
 from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
-from mfg_pde.geometry.domain_1d import Domain1D
 from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 from mfg_pde.geometry.protocol import (
     is_geometry_compatible,
@@ -47,7 +47,7 @@ def demonstrate_protocol_compliance():
 
     # 2. 1D AMR mesh
     print("2. Creating 1D AMR mesh...")
-    base_domain = Domain1D(
+    base_domain = SimpleGrid1D(
         xmin=0.0,
         xmax=1.0,
         boundary_conditions=BoundaryConditions(type="periodic"),
@@ -110,7 +110,7 @@ def demonstrate_polymorphic_config():
     # Create different geometries
     grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[50])
 
-    base_domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
+    base_domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
     refinement_criteria = AMRRefinementCriteria(max_refinement_levels=2)
     amr_1d = OneDimensionalAMRMesh(
         domain_1d=base_domain, initial_num_intervals=20, refinement_criteria=refinement_criteria
@@ -143,7 +143,7 @@ def visualize_amr_structure():
     print("=" * 70)
 
     # Create 1D AMR mesh
-    base_domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
+    base_domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
     refinement_criteria = AMRRefinementCriteria(
         max_refinement_levels=3, gradient_threshold=0.3, coarsening_threshold=0.15, min_cell_size=0.001
     )

@@ -10,11 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Import existing geometry infrastructure
-from mfg_pde.geometry import Domain2D, MeshData
-
 # Import existing AMR infrastructure
 # Import new triangular AMR
-from mfg_pde.geometry.triangular_amr import TriangularMeshErrorEstimator, create_triangular_amr_mesh
+from mfg_pde.geometry import Domain2D, MeshData, TriangularMeshErrorEstimator, create_triangular_amr_mesh
 
 
 def create_sample_triangular_mesh() -> MeshData:
