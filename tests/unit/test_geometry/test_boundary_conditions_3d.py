@@ -13,7 +13,7 @@ import pytest
 import numpy as np
 from scipy.sparse import csr_matrix, eye
 
-from mfg_pde.geometry.boundary_conditions_3d import (
+from mfg_pde.geometry.boundary.bc_3d import (
     BoundaryCondition3D,
     BoundaryConditionManager3D,
     DirichletBC3D,

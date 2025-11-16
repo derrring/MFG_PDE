@@ -819,7 +819,14 @@ def compute_curl_gfdm(vector_field: np.ndarray, points: np.ndarray, k: int | Non
             W = np.diag(np.sqrt(weights))
 
             # Helper function to compute partial derivative
-            def compute_partial(component_idx: int, coord_idx: int) -> float:
+            def compute_partial(
+                component_idx: int,
+                coord_idx: int,
+                delta_x=delta_x,
+                alpha_nbrs=alpha_nbrs,
+                alpha_i=alpha_i,
+                W=W,
+            ) -> float:
                 A = delta_x[:, coord_idx].reshape(-1, 1)
                 b = alpha_nbrs[:, component_idx] - alpha_i[component_idx]
                 A_w = W @ A

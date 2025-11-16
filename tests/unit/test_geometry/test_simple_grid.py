@@ -13,7 +13,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D, SimpleGrid3D
+from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
+from mfg_pde.geometry.grids.grid_3d import SimpleGrid3D
 
 # ============================================================================
 # Test: SimpleGrid2D - Initialization

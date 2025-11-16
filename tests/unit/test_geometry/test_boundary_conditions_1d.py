@@ -7,7 +7,7 @@ including initialization, validation, type checking, matrix sizing, and edge cas
 
 import pytest
 
-from mfg_pde.geometry.boundary_conditions_1d import (
+from mfg_pde.geometry.boundary.bc_1d import (
     BoundaryConditions,
     dirichlet_bc,
     neumann_bc,
