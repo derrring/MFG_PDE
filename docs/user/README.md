@@ -94,13 +94,7 @@ class MyCustomSolver(BaseHJBSolver):
 
 #### **Start Here**
 1. **[Factory API Quickstart](quickstart.md)** - 5-minute tutorial
-2. **[Solver Selection Guide](SOLVER_SELECTION_GUIDE.md)** - Choosing solver tiers
-3. **[Factory API Reference](factory_api_reference.md)** - All `create_*_solver()` functions
-
-#### **Core Guides**
-- **[Custom Problems](custom_problems.md)** - Define your own MFG formulations
-- **[Solver Comparison](solver_comparison.md)** - Benchmarking different methods
-- **[Configuration Guide](configuration.md)** - Fine-tune solver parameters
+2. **[Core Objects Guide](core_objects.md)** - Understanding Problem, Solver, Result classes
 
 #### **Examples**
 - **[Basic Examples](../../examples/basic/)** - Single-concept demonstrations
@@ -109,10 +103,10 @@ class MyCustomSolver(BaseHJBSolver):
 
 ### **For Developers (Core Contributors)**
 
-- **[Core API Reference](../development/CORE_API_REFERENCE.md)** - Base classes
-- **[Adding New Solvers](../development/adding_new_solvers.md)** - Extension guide
-- **[Infrastructure](../development/infrastructure.md)** - Architecture details
-- **[Factory Registration](../development/factory_registration.md)** - Integrating new solvers
+See **[Development Documentation](../development/)** for:
+- Consistency guide and code standards
+- Strategic development roadmap
+- Type system documentation
 
 ---
 
@@ -129,7 +123,7 @@ You need factory API if you want to:
 - ✅ Specify custom geometries and boundary conditions
 
 ### **Package Development (5% of users)**
-→ Read [Developer Guide](../development/adding_new_solvers.md)
+→ Read [Development Documentation](../development/)
 
 You need developer API if you want to:
 - ✅ Implement new numerical methods
@@ -212,7 +206,7 @@ result = solver.solve()
 
 ## 🔄 **Migration from Old API**
 
-Already using MFG_PDE? See the [Migration Guide](migration.md) for upgrade instructions.
+Already using MFG_PDE? The new API is backward compatible. See [quickstart](quickstart.md) for the latest patterns.
 
 ---
 
