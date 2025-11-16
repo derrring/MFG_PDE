@@ -20,7 +20,7 @@ from mfg_pde import MFGComponents
 from mfg_pde.benchmarks import HighDimMFGBenchmark
 from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 from mfg_pde.geometry import Domain3D
-from mfg_pde.geometry.boundary_conditions_3d import (
+from mfg_pde.geometry.boundary.bc_3d import (
     BoundaryConditionManager3D,
     DirichletBC3D,
     NeumannBC3D,
