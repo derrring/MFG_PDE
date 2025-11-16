@@ -8,7 +8,7 @@
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **✨ v0.12.5 Released** - Geometry Module Reorganization: Clean directory structure, reduced code duplication (~2,300 lines removed)
+> **✨ v0.12.6 Released** - Documentation cleanup, code quality improvements, and repository organization
 
 ---
 
