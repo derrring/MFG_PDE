@@ -908,7 +908,7 @@ U, M, info = solver.solve()     # Just works
 **Question**: How are BCs handled in `GridBasedMFGProblem`? Are they compatible with dimensional splitting?
 
 **Investigation Results**:
-- **Comprehensive 2D/3D Infrastructure** (`mfg_pde/geometry/boundary_conditions_2d.py`):
+- **Comprehensive 2D/3D Infrastructure** (`mfg_pde/geometry/boundary/bc_2d.py`):
   - `DirichletBC2D`: Apply value constraints to system matrices
   - `NeumannBC2D`: Apply flux constraints to system matrices
   - `RobinBC2D`: Mixed boundary conditions

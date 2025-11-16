@@ -195,9 +195,9 @@ delta = np.column_stack([U_new - U_old])  # Breaks on 1D
 | Network | Node-based, Edge-based | Graph algorithms (different abstraction) |
 
 **Current Code Has**:
-- `boundary_conditions_1d.py`
-- `boundary_conditions_2d.py`
-- `boundary_conditions_3d.py`
+- `boundary/bc_1d.py`
+- `boundary/bc_2d.py`
+- `boundary/bc_3d.py`
 - `boundary_manager.py` (dimension-agnostic interface)
 
 **Proposal Gap**: How does unified Domain handle dimension-specific BC logic?

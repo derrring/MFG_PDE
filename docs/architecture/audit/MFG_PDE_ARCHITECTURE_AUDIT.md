@@ -330,19 +330,19 @@ def create_solver(problem, solver_type, config=None, backend="auto"):
 ```python
 # mfg_pde/geometry/
 ├── base_geometry.py           # Abstract base
-├── domain_1d.py              # 1D domains (current MFGProblem)
-├── domain_2d.py              # 2D domains (triangle meshes via Gmsh)
-├── domain_3d.py              # 3D domains (tetrahedral meshes)
+├── grids/grid_1d.py          # 1D grids (formerly domain_1d)
+├── meshes/mesh_2d.py         # 2D domains (triangle meshes via Gmsh)
+├── meshes/mesh_3d.py         # 3D domains (tetrahedral meshes)
 ├── tensor_product_grid.py    # Structured N-D grids
 ├── network_geometry.py       # Graph/network domains
 ├── simple_grid.py            # Uniform Cartesian grids
-├── amr_1d.py                 # Adaptive mesh refinement (1D)
-├── amr_triangular_2d.py      # AMR (2D triangles)
-├── amr_quadtree_2d.py        # AMR (2D quadtree)
-├── amr_tetrahedral_3d.py     # AMR (3D tetrahedra)
-├── boundary_manager.py       # Boundary condition management
+├── amr/amr_1d.py             # Adaptive mesh refinement (1D)
+├── amr/amr_triangular_2d.py  # AMR (2D triangles)
+├── amr/amr_quadtree_2d.py    # AMR (2D quadtree)
+├── amr/amr_tetrahedral_3d.py # AMR (3D tetrahedra)
+├── boundary/bc_manager.py    # Boundary condition management
 ├── mesh_manager.py           # Mesh I/O and refinement
-└── boundary_conditions_*.py  # Dimension-specific BC handling
+└── boundary/bc_*.py          # Dimension-specific BC handling
 ```
 
 **Key Insight**: Geometry is **not** a simple base class. It's a complex subsystem with:

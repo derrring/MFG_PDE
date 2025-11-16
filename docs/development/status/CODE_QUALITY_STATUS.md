@@ -22,10 +22,10 @@ Found 3 errors.
 
 These are **not actual code quality issues**. They are artifacts of how ruff processes noqa comments under different rule configurations:
 
-#### 1. **TCH001 → TC001 redirect** (`mfg_pde/geometry/domain_1d.py:10`)
+#### 1. **TCH001 → TC001 redirect** (`mfg_pde/geometry/grids/grid_1d.py:10`)
 
 ```python
-from .boundary_conditions_1d import BoundaryConditions  # noqa: TCH001
+from .boundary.bc_1d import BoundaryConditions  # noqa: TCH001
 ```
 
 **Why TCH001 instead of TC001?**

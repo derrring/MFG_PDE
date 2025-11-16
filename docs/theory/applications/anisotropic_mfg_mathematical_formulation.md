@@ -434,8 +434,8 @@ for some constant $\lambda$ (average cost)[^20].
 - `mfg_pde/alg/mfg_solvers/` - Coupled MFG fixed-point iteration
 
 **Geometry**:
-- `mfg_pde/geometry/domain_2d.py` - 2D domain representation with barriers
-- `mfg_pde/geometry/boundary_conditions_2d.py` - No-flux, Dirichlet, and obstacle conditions
+- `mfg_pde/geometry/meshes/mesh_2d.py` - 2D domain representation with barriers
+- `mfg_pde/geometry/boundary/bc_2d.py` - No-flux, Dirichlet, and obstacle conditions
 
 ### Validation
 

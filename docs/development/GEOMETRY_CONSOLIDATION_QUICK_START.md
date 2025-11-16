@@ -219,7 +219,7 @@ class TensorProductGrid(CartesianGrid):  # Was: no inheritance
     def get_boundary_handler(self):
         """Return boundary condition handler."""
         # Placeholder - implement based on BC type
-        from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+        from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
         return BoundaryConditions(bc_type="periodic")  # Default
 
     def get_bounds(self) -> tuple[NDArray, NDArray]:
