@@ -637,7 +637,7 @@ When designing or reviewing API, ask:
 
 ## Related Documentation
 
-- **Consistency Guide**: `docs/development/CONSISTENCY_GUIDE.md`
+- **Consistency Guide**: `docs/development/guides/CONSISTENCY_GUIDE.md`
 - **Type Checking Philosophy**: See `CLAUDE.md` section
 - **Modern Python Typing**: See `CLAUDE.md` section on `@overload`, `isinstance()`, `cast()`
 

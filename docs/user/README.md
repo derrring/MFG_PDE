@@ -103,9 +103,9 @@ class MyCustomSolver(BaseHJBSolver):
 - **[Configuration Guide](configuration.md)** - Fine-tune solver parameters
 
 #### **Examples**
-- **[Basic Examples](../examples/basic/)** - Single-concept demonstrations
-- **[Advanced Examples](../examples/advanced/)** - Research-grade problems
-- **[Notebooks](../examples/notebooks/)** - Interactive tutorials
+- **[Basic Examples](../../examples/basic/)** - Single-concept demonstrations
+- **[Advanced Examples](../../examples/advanced/)** - Research-grade problems
+- **[Notebooks](../../examples/notebooks/)** - Interactive tutorials
 
 ### **For Developers (Core Contributors)**
 
@@ -232,7 +232,7 @@ MFG_PDE assumes you understand:
 
 If you need mathematical background, see:
 - **[Theory Guide](../theory/)** - Mathematical formulations
-- **[Notebooks](../examples/notebooks/)** - Interactive tutorials with explanations
+- **[Notebooks](../../examples/notebooks/)** - Interactive tutorials with explanations
 
 ---
 

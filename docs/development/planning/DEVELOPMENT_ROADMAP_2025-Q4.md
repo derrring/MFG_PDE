@@ -317,7 +317,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 ## 🔗 Related Documents
 
 - **Strategic Development**: `STRATEGIC_DEVELOPMENT_ROADMAP_2026.md` (long-term vision)
-- **API Guidelines**: `docs/development/CONSISTENCY_GUIDE.md`
+- **API Guidelines**: `docs/development/guides/CONSISTENCY_GUIDE.md`
 - **Testing Strategy**: Issue #124 (Test Coverage Expansion)
 - **Configuration**: Issue #113 (Config Unification)
 - **Rust Plans**: Issue #123 (Performance Acceleration)

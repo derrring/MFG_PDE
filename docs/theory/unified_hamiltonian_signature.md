@@ -591,7 +591,7 @@ solve_mfg(sparse_hamiltonian, ...)  # nu=0.1, alpha=0.5
 
 - **Implicit Geometry**: `docs/theory/implicit_geometry_mathematical_formulation.md`
 - **Particle Methods**: `docs/theory/particle_collocation_methods.md`
-- **API Design**: `docs/development/CONSISTENCY_GUIDE.md`
+- **API Design**: `docs/development/guides/CONSISTENCY_GUIDE.md`
 - **Examples**: `examples/advanced/arbitrary_nd_geometry_demo.py`
 
 ---

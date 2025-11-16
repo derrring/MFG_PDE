@@ -15,7 +15,7 @@ MFG_PDE assumes you understand:
 - **Numerical PDEs**: Finite difference methods, stability
 - **Python**: NumPy and basic scientific computing
 
-If you need background, see the [Theory Guide](../theory/) and [Notebooks](../examples/notebooks/).
+If you need background, see the [Theory Guide](../theory/) and [Notebooks](../../../examples/notebooks/).
 
 ---
 
@@ -252,9 +252,9 @@ result = solver.solve()
 ### **Examples**
 
 Browse working examples:
-- **[Basic Examples](../examples/basic/)** - Single-concept demonstrations
-- **[Advanced Examples](../examples/advanced/)** - Research-grade problems
-- **[Notebooks](../examples/notebooks/)** - Interactive tutorials
+- **[Basic Examples](../../examples/basic/)** - Single-concept demonstrations
+- **[Advanced Examples](../../examples/advanced/)** - Research-grade problems
+- **[Notebooks](../../examples/notebooks/)** - Interactive tutorials
 
 ### **Custom MFG Problems**
 

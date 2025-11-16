@@ -28,12 +28,10 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 
 ### **For Developers**
 - **[Development Documentation](development/)** - Development process and standards
-  - **[Consistency Guide](development/CONSISTENCY_GUIDE.md)** - Code standards (most referenced)
-  - **[Strategic Roadmap 2026](development/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md)** - Primary strategic plan
-  - **[Architectural Changes](development/ARCHITECTURAL_CHANGES.md)** - Change history
+  - **[Consistency Guide](development/guides/CONSISTENCY_GUIDE.md)** - Code standards (most referenced)
+  - **[Strategic Roadmap 2026](development/planning/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md)** - Primary strategic plan
 - **[Planning & Roadmaps](planning/)** - Strategic planning and project management
   - **[Roadmaps](planning/roadmaps/)** - Feature roadmaps and development plans
-  - **[Completed Work](planning/completed/)** - Finished features and milestones
   - **[Quality Reports](planning/reports/)** - Assessments and status reports
 - **[Reference Documentation](reference/)** - Quick references and lookup guides
   - **[Python Typing](reference/python_typing.md)** - Modern typing guide

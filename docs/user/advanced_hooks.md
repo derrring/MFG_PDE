@@ -669,7 +669,7 @@ The hooks system provides unlimited extensibility while maintaining clean interf
 
 ## What's Next?
 
-- **Need examples?** → Check [Hooks Examples Gallery](../examples/hooks/)
+- **Need examples?** → Check [Hooks Examples Gallery](../../examples/hooks/)
 - **Building custom solvers?** → See [Solver Development Guide](../development/custom_solvers.md)
 - **Performance optimization?** → Read [Performance Guide](performance.md)
 - **Contributing hooks?** → See [Contributing Guide](../development/contributing.md)
