@@ -18,6 +18,8 @@ Reference:
     docs/gradient_notation_standard.md
 """
 
+import pytest
+
 import numpy as np
 
 
@@ -27,7 +29,7 @@ def test_tuple_keys_are_hashable_and_immutable():
     t = (1, 0)
     try:
         t[0] = 2  # Should fail
-        assert False, "Tuples should be immutable"
+        pytest.fail("Tuples should be immutable")
     except TypeError:
         pass  # Expected
 
@@ -105,7 +107,7 @@ def test_no_silent_failures_with_typo():
     # RECOMMENDED: Use KeyError for required derivatives (no silent failures)
     try:
         _ = derivs[(10,)]  # Raises KeyError
-        assert False, "Should have raised KeyError for wrong key"
+        pytest.fail("Should have raised KeyError for wrong key")
     except KeyError:
         pass  # Expected - fail fast!
 
@@ -241,7 +243,7 @@ def test_bug13_scenario_prevented():
     derivs_typo = {(10,): 1.5, (1,): 2.3}  # Wrong dimension!
     try:
         hamiltonian_tuple_keys(derivs_typo)
-        assert False, "Should have raised KeyError"
+        pytest.fail("Should have raised KeyError")
     except KeyError:
         pass  # Expected - fail fast, not silent!
 
@@ -260,7 +262,7 @@ def test_higher_order_derivatives():
     }
 
     # Verify derivative orders
-    for key, val in derivs.items():
+    for key in derivs:
         assert sum(key) == 3, f"Expected 3rd derivative, got order {sum(key)}"
 
     # Fourth derivatives
