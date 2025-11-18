@@ -16,6 +16,30 @@ if TYPE_CHECKING:
 
 
 class FPFDMSolver(BaseFPSolver):
+    """
+    Finite Difference Method (FDM) solver for Fokker-Planck equations.
+
+    Supports general FP equation: ∂m/∂t + ∇·(α m) = σ²/2 Δm
+
+    Equation Types:
+        1. Advection-diffusion (σ>0, α≠0): Standard MFG (stable)
+        2. Pure diffusion (σ>0, α=0): Heat equation (stable)
+        3. Pure advection (σ=0, α≠0): Transport equation (works but may be unstable
+           for sharp fronts; consider WENO/SL solvers for better stability)
+
+    Numerical Scheme:
+        - Implicit timestepping for stability
+        - Upwind scheme for advection terms
+        - Central differences for diffusion terms
+        - Supports periodic, Dirichlet, and no-flux boundary conditions
+
+    Note:
+        FPFDMSolver handles σ=0 (pure advection) algebraically correctly, but
+        upwind discretization may exhibit numerical diffusion or instability for
+        advection-dominated flows. For pure advection problems, WENO or
+        Semi-Lagrangian solvers provide better accuracy and stability.
+    """
+
     def __init__(self, problem: Any, boundary_conditions: BoundaryConditions | None = None) -> None:
         super().__init__(problem)
         self.fp_method_name = "FDM"

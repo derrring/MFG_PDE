@@ -21,7 +21,7 @@ class BaseFPSolver(ABC):
     where:
         m(t,x): probability density
         α(t,x): drift field (from various sources)
-        σ²: diffusion coefficient
+        σ²: diffusion coefficient (set via problem.sigma)
 
     Drift Sources:
         The drift α can come from multiple sources:
@@ -30,13 +30,23 @@ class BaseFPSolver(ABC):
         - Prescribed field: α = v(t,x) (wind, currents)
         - Custom: User-provided function
 
+    Diffusion Control:
+        Set problem.sigma to control diffusion strength:
+        - σ > 0: Standard advection-diffusion (MFG typical)
+        - σ = 0: Pure advection (requires specialized schemes like WENO, SL)
+
     This base class provides a general, powerful interface supporting all drift types
     while maintaining backward compatibility with MFG-centric usage.
 
     Design Philosophy:
         Make simple cases simple (MFG with U), make complex cases possible
-        (custom drift sources). The solver handles drift computation internally
-        based on provided parameters.
+        (custom drift sources, pure advection). The solver handles drift computation
+        internally based on provided parameters.
+
+    Note for Implementers:
+        When implementing concrete solvers, ensure σ=0 (pure advection) is handled
+        correctly. FDM with upwind may be unstable; consider WENO, Semi-Lagrangian,
+        or flux-limiting schemes for advection-dominated flows.
     """
 
     def __init__(self, problem: MFGProblem):
@@ -109,10 +119,23 @@ class BaseFPSolver(ABC):
         This method computes density evolution M(t,x) from t=0 to t=T under
         the specified drift. Supports multiple drift sources for generality.
 
+        Equation Types Supported:
+            The general FP equation is: ∂m/∂t + ∇·(α m) = σ²/2 Δm
+
+            Three equation types are accessible via parameter combinations:
+            1. Advection-diffusion (σ>0, α≠0): Standard MFG
+            2. Pure diffusion (σ>0, α=0): Heat equation
+            3. Pure advection (σ=0, α≠0): Transport equation (WENO/SL recommended)
+
         Drift Specification (in priority order):
             1. U_solution_for_drift: MFG optimal control drift α = -∇U
             2. drift_field: Prescribed drift (array or callable)
-            3. None: Pure diffusion (heat equation) α = 0
+            3. None: Zero drift α = 0
+
+        Diffusion Control:
+            Set problem.sigma to control diffusion:
+            - σ > 0: Diffusion active (standard MFG)
+            - σ = 0: Pure advection (ensure solver supports this!)
 
         Args:
             m_initial_condition: Initial density M(0,x) at t=0
@@ -139,17 +162,22 @@ class BaseFPSolver(ABC):
             Shape: (Nt, Nx) or (Nt, Nx, Ny) etc.
 
         Examples:
-            # MFG optimal control (backward compatible)
+            # MFG optimal control (backward compatible, σ>0, α=-∇U)
             >>> M = solver.solve_fp_system(m0, U_solution_for_drift=U_hjb)
 
-            # Pure diffusion (heat equation)
+            # Pure diffusion (heat equation, σ>0, α=0)
             >>> M = solver.solve_fp_system(m0)
 
-            # Prescribed wind field
+            # Pure advection (transport equation, σ=0, α=-∇U)
+            >>> problem = MFGProblem(..., sigma=0.0)  # No diffusion
+            >>> solver = FPWENOSolver(problem)  # Use WENO for stability
+            >>> M = solver.solve_fp_system(m0, U_solution_for_drift=U)
+
+            # Prescribed wind field (σ>0, α=v(t,x))
             >>> wind = lambda t, x, m: np.array([1.0, 0.5])
             >>> M = solver.solve_fp_system(m0, drift_field=wind)
 
-            # Precomputed drift
+            # Precomputed drift (σ>0, α from array)
             >>> alpha = compute_custom_drift(...)  # (Nt, Nx, 2)
             >>> M = solver.solve_fp_system(m0, drift_field=alpha)
 
