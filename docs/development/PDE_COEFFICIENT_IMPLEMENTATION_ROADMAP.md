@@ -1,945 +1,150 @@
 # PDE Coefficient Implementation Roadmap
 
-**Status**: Phase 1 Complete ✅
-**Last Updated**: 2025-11-18
+**Status**: Phase 1 Complete ✅ | Phase 2 In Progress 🔄
+**Last Updated**: 2025-11-19
 **Branch**: `feature/drift-strategy-pattern`
 
-## Overview
+## Purpose
 
-This document tracks the implementation of flexible drift and diffusion coefficients in MFG_PDE, enabling:
-1. State-dependent (nonlinear) PDEs: α(t,x,m), D(t,x,m)
-2. Multi-dimensional (nD) support: 1D, 2D, 3D, arbitrary dimension
-3. Advanced noise structures: Lévy processes, common noise, fractional diffusion
+This document provides **status tracking and task checklists** for implementing flexible drift and diffusion coefficients in MFG_PDE.
+
+**For detailed technical specifications, algorithms, and implementation guides**, see:
+- **`PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md`** - Complete implementation spec (1,380 lines)
+  - Section 2: Array diffusion algorithms
+  - Section 3: Callable evaluation with bootstrap strategy
+  - Section 4: MFG coupling integration
+  - Section 5: Testing strategy
+  - Section 6: Performance analysis
+  - Appendices: Math formulations, examples, limitations
 
 ---
 
 ## Phase 1: Foundation (✅ COMPLETED)
 
-### Objectives
-Build type-safe, extensible base classes that can accommodate future features without breaking changes.
+### Deliverables Status
 
-### Deliverables
+| Feature | Status | Files | Commit |
+|:--------|:-------|:------|:-------|
+| Unified drift API | ✅ | FP solvers (base + FDM/particle/network) | `9dd182b` |
+| Variable diffusion API | ✅ | FP/HJB solvers (all base classes) | `1c26f13` |
+| Type protocols | ✅ | `types/pde_coefficients.py` | `dcf1a51` |
+| HJB diffusion broadcasting | ✅ | `hjb_solvers/base_hjb.py` | `5cbd263` |
+| Coupling compatibility | ✅ | `coupling/fixed_point_iterator.py` | `9dd182b` |
 
-#### 1. Unified Drift API (✅ Complete)
-- **PR**: Feature drift-strategy-pattern
-- **Files Modified**:
-  - `mfg_pde/alg/numerical/fp_solvers/base_fp.py`
-  - `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
-  - `mfg_pde/alg/numerical/fp_solvers/fp_particle.py`
-  - `mfg_pde/alg/numerical/fp_solvers/fp_network.py`
+### Implementation Coverage
 
-**Changes**:
-```python
-# BEFORE: MFG-specific parameter
-def solve_fp_system(
-    self,
-    m_initial_condition: np.ndarray,
-    U_solution_for_drift: np.ndarray,  # ❌ Too specific
-)
+**FP Solvers**:
+- FP-FDM 1D: ✅ Array diffusion (Phase 2.1 complete) | ⏳ Callable (Phase 2.2)
+- FP-Particle: ✅ Constant diffusion | ⏳ Array diffusion (Phase 2)
+- FP-Network: ✅ Variable diffusion
 
-# AFTER: General PDE parameter
-def solve_fp_system(
-    self,
-    m_initial_condition: np.ndarray,
-    drift_field: np.ndarray | Callable | None = None,  # ✅ General
-)
-```
+**HJB Solvers**:
+- HJB-FDM 1D: ✅ Array diffusion | ⏳ Callable (Phase 2.2)
+- HJB-FDM nD: ⏳ Phase 2.4
+- Other HJB: ⏳ Phase 2 (API added, implementation pending)
 
-**Benefits**:
-- MFG case: `drift_field = U_hjb` (same as before)
-- Pure diffusion: `drift_field = None`
-- Custom drift: `drift_field = velocity_field`
-- State-dependent: `drift_field = lambda t, x, m: -grad_potential(x)`
-
-#### 2. Variable Diffusion API (✅ Complete)
-
-**Files Modified**:
-- `mfg_pde/alg/numerical/fp_solvers/base_fp.py` (all solvers)
-- `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py` (all solvers)
-
-**Changes**:
-```python
-def solve_fp_system(
-    ...,
-    diffusion_field: float | np.ndarray | Callable | None = None,  # NEW
-)
-
-def solve_hjb_system(
-    ...,
-    diffusion_field: float | np.ndarray | None = None,  # NEW
-)
-```
-
-**Implementation Status**:
-- FP-FDM 1D: ⏳ Constant diffusion only (Phase 2 for arrays)
-- FP-Particle: ⏳ Constant diffusion only (Phase 2 for arrays)
-- FP-Network: ✅ Variable diffusion_coefficient
-- HJB-FDM 1D: ✅ Full support for array diffusion
-- HJB-FDM nD: ⏳ Phase 2
-- Other HJB: ⏳ Phase 2 (parameter added)
-
-#### 3. Type Protocols (✅ Complete)
-
-**New File**: `mfg_pde/types/pde_coefficients.py`
-
-```python
-@runtime_checkable
-class DriftCallable(Protocol):
-    """α(t, x, m) -> drift vector"""
-    def __call__(
-        self,
-        t: float,
-        x: NDArray[np.floating],
-        m: NDArray[np.floating],
-    ) -> NDArray[np.floating]: ...
-
-@runtime_checkable
-class DiffusionCallable(Protocol):
-    """D(t, x, m) -> diffusion coefficient/tensor"""
-    def __call__(
-        self,
-        t: float,
-        x: NDArray[np.floating],
-        m: NDArray[np.floating],
-    ) -> NDArray[np.floating] | float: ...
-```
-
-**Features**:
-- Runtime type checking
-- Comprehensive documentation
-- Dimension-agnostic design
-- Grid-format agnostic
-
-#### 4. Coupling Solver Compatibility (✅ Complete)
-
-**Files Modified**:
-- `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` (positional args, compatible)
-- `mfg_pde/alg/numerical/coupling/hybrid_fp_particle_hjb_fdm.py` (updated to `drift_field`)
-
-**Status**: MFG coupling works with new API ✅
-
-### Summary: Phase 1 Achievements
-
-| Feature | Status | Coverage |
-|:--------|:-------|:---------|
-| Drift field API | ✅ Complete | All FP/HJB solvers |
-| Diffusion field API | ✅ Complete | All FP/HJB solvers |
-| Type protocols | ✅ Complete | Runtime checkable |
-| 1D FDM variable diffusion | ✅ Implemented | HJB (FP in Phase 2) |
-| Backward compatibility | ✅ Maintained | All existing code works |
-| Documentation | ✅ Complete | Docstrings + examples |
-
-**Commits**: 4 major commits
-1. Unified drift+diffusion API in FP solvers
-2. Added diffusion_field to HJB solvers
-3. Type protocols for state-dependent coefficients
-4. Simplified diffusion_field broadcasting in HJB (removed redundant flag)
+**Key Commits**: 5 major commits
+1. `9dd182b` - Unified drift+diffusion API in FP solvers
+2. `1c26f13` - Added diffusion_field to HJB solvers
+3. `dcf1a51` - Type protocols for state-dependent coefficients
+4. `5cbd263` - Simplified HJB diffusion_field broadcasting
+5. `36730de` - Array diffusion in FP-FDM solver (Phase 2.1)
 
 ---
 
-## Phase 2: State-Dependent & nD (🔄 NEXT)
+## Phase 2: State-Dependent & nD (🔄 IN PROGRESS)
 
-**Detailed Design**: See `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` for:
-- Comprehensive implementation algorithms with pseudocode
-- Testing strategy and specific test cases
-- Performance analysis and optimization strategies
-- API design principles and error handling
-- Mathematical formulations and discretization schemes
-- Complete example use cases (porous medium, crowd avoidance)
+**Design Doc**: `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` (see for algorithms)
 
-### Objectives
-1. Implement array (spatially varying) diffusion in FP solvers
-2. Implement callable (state-dependent) coefficient evaluation
-3. MFG coupling integration for state-dependent coefficients
-4. Complete nD support for all major solver types (deferred to Phase 2.4)
-5. Add anisotropic diffusion tensor support (Phase 3)
+### 2.1: Array Diffusion in FP Solvers (✅ COMPLETED)
 
-### 2.1: Array Diffusion in FP Solvers
+**Priority**: High | **Effort**: 1 day | **Status**: ✅ Complete | **Commit**: `36730de`
 
-**Priority**: High
-**Estimated Effort**: Small (1 day)
+**Completed Tasks**:
+- [x] Remove NotImplementedError for array diffusion in `FPFDMSolver`
+- [x] Add diffusion array indexing in matrix assembly (`fp_fdm.py:_solve_fp_1d()`)
+- [x] Add 5 unit tests (spatially varying, spatiotemporal, advection, mass conservation, validation)
+- [x] Update docstrings with array diffusion examples
 
-#### Implementation Plan
+**Test Coverage**: Spatial σ(x), spatiotemporal σ(t,x), combined with advection, error handling
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+### 2.2: Callable Evaluation (Drift & Diffusion)
 
-Update `_solve_fp_1d()` to handle spatially/temporally varying diffusion:
+**Priority**: High | **Effort**: 2-3 days | **Status**: ⏳ After 2.1
 
-```python
-def _solve_fp_1d(
-    self,
-    m_initial_condition: np.ndarray,
-    U_solution_for_drift: np.ndarray,
-    show_progress: bool = True,
-) -> np.ndarray:
-    # ... existing code ...
+**Strategy**: Bootstrap evaluation (use m[k] to compute m[k+1]) - see Design Doc Section 3.2
 
-    for k_idx_fp in timestep_range:
-        u_at_tk = U_solution_for_drift[k_idx_fp, :]
+**Tasks**:
 
-        # Extract diffusion at current timestep
-        if isinstance(sigma, np.ndarray):
-            # Spatially varying: sigma[k, i]
-            sigma_at_tk = sigma[k_idx_fp, :]
-        else:
-            # Constant: broadcast scalar
-            sigma_at_tk = sigma
+**FP-FDM**:
+- [ ] Add `_solve_fp_1d_with_callable()` method
+- [ ] Add `_validate_callable_output()` helper
+- [ ] Route to appropriate solver based on coefficient type
+- [ ] Unit tests: porous medium (D=σ²m), crowd avoidance (α=-∇m)
 
-        # Build matrix with spatially varying coefficients
-        for i in range(Nx):
-            # Use sigma_at_tk[i] for point i
-            val_A_ii += sigma_at_tk[i]**2 / Dx**2
-            val_A_i_im1 = -(sigma_at_tk[i]**2) / (2 * Dx**2)
-            # ... etc
-```
+**HJB-FDM**:
+- [ ] Add callable evaluation in `solve_hjb_system_backward()`
+- [ ] Re-evaluate per Picard iteration with M_density
+- [ ] Unit tests: state-dependent diffusion
 
-**Key changes**:
-- Remove `NotImplementedError` for array diffusion_field
-- Index into diffusion array per gridpoint and timestep
-- Follow same pattern as HJB solvers (base_hjb.py:943-950)
+**FP-Particle & FP-Network**:
+- [ ] Similar callable handling
+- [ ] Integration tests
 
-#### Tasks
-
-- [ ] Remove NotImplementedError for array diffusion in FPFDMSolver
-- [ ] Add diffusion array indexing in matrix assembly
-- [ ] Handle both scalar and array diffusion correctly
-- [ ] Add unit tests with spatially varying diffusion
-- [ ] Test mass conservation with variable diffusion
-- [ ] Update docstrings and examples
-
-**Test Case**:
-```python
-# Spatially varying diffusion: higher at boundaries
-Nt, Nx = problem.Nt + 1, problem.Nx + 1
-x_grid = np.linspace(0, 1, Nx)
-diffusion_field = np.zeros((Nt, Nx))
-for t in range(Nt):
-    diffusion_field[t, :] = 0.1 + 0.2 * np.abs(x_grid - 0.5)  # Higher at edges
-
-solver = FPFDMSolver(problem)
-M = solver.solve_fp_system(m0, drift_field=U, diffusion_field=diffusion_field)
-```
-
-### 2.2: Callable Evaluation in FP Solvers
-
-**Priority**: High
-**Estimated Effort**: Medium (2-3 days)
-
-**Detailed Design**: See `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` Section 3 for:
-- Complete algorithm with validation
-- Bootstrap vs implicit evaluation strategies
-- Refactoring plan for code reuse
-
-#### Implementation Plan
-
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
-
-**Strategy**: Bootstrap evaluation (evaluate callable per timestep using `m[k]` to compute `m[k+1]`)
-
-Key insight: Solve forward in time, evaluate callable at each timestep using computed density:
-
-```python
-def _solve_fp_1d_with_callable(
-    self,
-    m_initial: np.ndarray,
-    U_drift: np.ndarray,
-    diffusion_func: DiffusionCallable,
-    show_progress: bool = True,
-) -> np.ndarray:
-    """Solve FP with callable diffusion (bootstrap strategy)."""
-
-    Nt, Nx = U_drift.shape
-    x_grid = np.linspace(self.problem.xmin, self.problem.xmax, Nx)
-
-    m_solution = np.zeros((Nt, Nx))
-    m_solution[0, :] = m_initial
-
-    for k in range(Nt - 1):
-        # Evaluate diffusion at CURRENT state (causal, no circular dependency)
-        t_current = k * self.problem.dt
-        m_current = m_solution[k, :]  # ← Use computed m[k]
-
-        sigma_array = diffusion_func(t_current, x_grid, m_current)
-
-        # Validate callable output
-        sigma_array = self._validate_callable_output(
-            sigma_array, expected_shape=(Nx,), param_name="diffusion_field"
-        )
-
-        # Solve single timestep with evaluated diffusion
-        m_solution[k + 1, :] = self._solve_single_timestep_fp(
-            m_current,
-            U_drift[k, :],
-            sigma_array,
-            self.problem.dt,
-            self.problem.dx,
-        )
-
-    return m_solution
-```
-
-**Refactoring Required**:
-1. Extract `_solve_single_timestep_fp()` from existing loop (enables reuse)
-2. Add `_validate_callable_output()` helper (shape, NaN/Inf checking)
-3. Route to appropriate solver in `solve_fp_system()` based on coefficient type
-
-**Challenges**:
-- Circular dependency resolution: Use bootstrap (m[k] → m[k+1]) not upfront evaluation
-- Fixed-point coupling: Re-evaluate callable at each Picard iteration
-- Performance: Vectorized callable evaluation preferred (~10-20% overhead)
-
-#### Tasks
-
-- [ ] Add `_evaluate_drift_callable()` helper to FPFDMSolver
-- [ ] Add `_evaluate_diffusion_callable()` helper to FPFDMSolver
-- [ ] Update `solve_fp_system()` to handle callables
-- [ ] Add validation using protocols
-- [ ] Write unit tests with state-dependent examples
-- [ ] Update FPParticleSolver similarly
-- [ ] Update FPNetworkSolver similarly
-
-**Test Cases**:
-```python
-# Test 1: Porous medium equation (nonlinear diffusion)
-def porous_medium_diffusion(t, x, m):
-    return 0.1 * m  # D(m) = σ² m
-
-# Test 2: Crowd avoidance (state-dependent drift)
-def crowd_avoidance(t, x, m):
-    grad_m = np.gradient(m, x)
-    return -grad_m  # Drift away from crowds
-
-# Test 3: Combined (nonlinear FP equation)
-solver = FPFDMSolver(problem)
-M = solver.solve_fp_system(
-    m0,
-    drift_field=crowd_avoidance,
-    diffusion_field=porous_medium_diffusion
-)
-```
+**Test Cases**: Porous medium equation, crowd avoidance, combined nonlinear
 
 ### 2.3: MFG Coupling Integration
 
-**Priority**: High
-**Estimated Effort**: Small (1 day)
+**Priority**: High | **Effort**: 1 day | **Status**: ⏳ After 2.2
 
-**Detailed Design**: See `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` Section 4
+**File**: `coupling/fixed_point_iterator.py`
 
-#### Overview
-
-Integrate callable coefficients into `FixedPointIterator` to enable MFG with state-dependent PDEs:
-- Pass `diffusion_field` parameter through to HJB/FP solvers
-- Re-evaluate callables each Picard iteration (necessary for state-dependence)
-- Support both drift and diffusion overrides
-
-#### Implementation Plan
-
-**File**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
-
-```python
-class FixedPointIterator(BaseMFGSolver):
-    def __init__(
-        self,
-        problem: MFGProblem,
-        hjb_solver: BaseHJBSolver,
-        fp_solver: BaseFPSolver,
-        # NEW: Optional coefficient overrides
-        diffusion_field: DiffusionField = None,
-        drift_field: DriftField = None,
-        **kwargs,
-    ):
-        self.diffusion_field_override = diffusion_field
-        self.drift_field_override = drift_field
-
-    def solve(self, ...) -> SolverResult:
-        for picard_iter in range(max_iterations):
-            # Re-evaluate callable with current M_old
-            if callable(self.diffusion_field_override):
-                diffusion_for_hjb = self._evaluate_diffusion_for_hjb(
-                    self.diffusion_field_override, M_old
-                )
-            else:
-                diffusion_for_hjb = self.diffusion_field_override
-
-            # HJB solve with evaluated diffusion
-            U_new = self.hjb_solver.solve_hjb_system(
-                M_old, U_terminal, U_old, diffusion_field=diffusion_for_hjb
-            )
-
-            # FP solve (callable evaluated per timestep internally)
-            M_new = self.fp_solver.solve_fp_system(
-                m_initial,
-                drift_field=self.drift_field_override or U_new,
-                diffusion_field=self.diffusion_field_override,
-            )
-```
-
-#### Tasks
-
-- [ ] Add `diffusion_field` parameter to `FixedPointIterator.__init__()`
-- [ ] Add `drift_field` parameter for non-MFG drift override
+**Tasks**:
+- [ ] Add `diffusion_field` and `drift_field` to `__init__()`
 - [ ] Implement `_evaluate_diffusion_for_hjb()` helper
-- [ ] Re-evaluate callable with `M_old` each Picard iteration
-- [ ] Pass evaluated diffusion to HJB solver
-- [ ] Pass callable diffusion to FP solver (FP evaluates per timestep)
-- [ ] Add integration tests for MFG with callable coefficients
-- [ ] Document usage examples (porous medium MFG, crowd avoidance)
+- [ ] Re-evaluate callables each Picard iteration
+- [ ] Pass evaluated diffusion to HJB, callable to FP
+- [ ] Integration tests: MFG with callable coefficients
+- [ ] Example: porous medium MFG, crowd avoidance MFG
 
-### 2.4: Callable Evaluation in HJB Solvers (Part of 2.2)
+**Key Design**: See Design Doc Section 4 for algorithm
 
-**Note**: This is implemented as part of Phase 2.2, not separate.
+### 2.4: Complete nD Support
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py`
+**Priority**: High | **Effort**: 1-2 weeks | **Status**: ⏳ Deferred
 
-Update Newton solver to handle callable diffusion:
+**Modules Required**: See Design Doc Section 2.5
 
-```python
-def solve_hjb_system_backward(
-    ...,
-    diffusion_field: DiffusionField = None,
-) -> np.ndarray:
-    # NEW: Evaluate callable if provided
-    if callable(diffusion_field):
-        # Use M_density from previous Picard iteration
-        sigma_array = np.zeros((Nt, Nx))
-        for t_idx in range(Nt):
-            t = t_idx * problem.dt
-            m_at_t = M_density_from_prev_picard[t_idx, :]
-            sigma_array[t_idx, :] = diffusion_field(t, x_grid, m_at_t)
-    else:
-        sigma_array = diffusion_field
-
-    # Pass to timestep solver
-    for n_idx in range(Nt - 2, -1, -1):
-        sigma_at_n = sigma_array[n_idx, :] if sigma_array is not None else None
-        U_new_n = solve_hjb_timestep_newton(..., sigma_at_n=sigma_at_n)
-```
-
-### 2.5: Complete nD Support (DEFERRED)
-
-**Priority**: High
-**Estimated Effort**: Large (1-2 weeks)
-
-#### Current nD Status
-
-**HJB-FDM**:
-- 1D: ✅ Full support
-- nD: ⏳ Basic structure exists (`_solve_hjb_nd()`), needs:
-  - nD gradients/Laplacians
-  - nD Hamiltonian evaluation
-  - nD boundary conditions
-  - Variable diffusion support
-
-**FP-FDM**:
-- 1D: ✅ Full support
-- nD: ❌ Needs implementation
-
-#### Implementation Tasks
-
-**A. nD Differential Operators**
-
-Create `mfg_pde/utils/numerical/operators_nd.py`:
-
-```python
-def gradient_nd(
-    u: np.ndarray,  # Shape: (*spatial_shape,)
-    grid_spacing: tuple[float, ...],
-) -> np.ndarray:
-    """
-    Compute gradient ∇u in nD.
-
-    Returns: Array of shape (*spatial_shape, d)
-    """
-    d = len(grid_spacing)
-    grad = np.zeros((*u.shape, d))
-
-    for dim in range(d):
-        grad[..., dim] = np.gradient(u, grid_spacing[dim], axis=dim)
-
-    return grad
-
-def laplacian_nd(
-    u: np.ndarray,  # Shape: (*spatial_shape,)
-    grid_spacing: tuple[float, ...],
-) -> np.ndarray:
-    """
-    Compute Laplacian Δu in nD.
-
-    Returns: Array of shape (*spatial_shape,)
-    """
-    laplacian = np.zeros_like(u)
-
-    for dim, dx in enumerate(grid_spacing):
-        # Second derivative in dimension dim
-        laplacian += np.gradient(np.gradient(u, dx, axis=dim), dx, axis=dim)
-
-    return laplacian
-
-def divergence_nd(
-    v: np.ndarray,  # Shape: (*spatial_shape, d)
-    grid_spacing: tuple[float, ...],
-) -> np.ndarray:
-    """
-    Compute divergence ∇·v in nD.
-
-    Returns: Array of shape (*spatial_shape,)
-    """
-    d = len(grid_spacing)
-    div = np.zeros(v.shape[:-1])
-
-    for dim in range(d):
-        div += np.gradient(v[..., dim], grid_spacing[dim], axis=dim)
-
-    return div
-```
-
-**B. nD HJB Implementation**
-
-Update `HJBFDMSolver._solve_hjb_nd()`:
-
-```python
-def _solve_hjb_nd(
-    self,
-    M_density: NDArray,
-    U_final: NDArray,
-    U_prev: NDArray,
-    diffusion_field: DiffusionField = None,
-) -> NDArray:
-    """Solve nD HJB using centralized nonlinear solvers."""
-
-    # Import nD operators
-    from mfg_pde.utils.numerical.operators_nd import gradient_nd, laplacian_nd
-
-    # Get problem dimensions
-    spatial_shape = self.shape
-    d = len(spatial_shape)
-    Nt = self.problem.Nt + 1
-
-    # Allocate solution
-    U_solution = np.zeros((Nt, *spatial_shape))
-    U_solution[Nt - 1] = U_final.copy()
-
-    # Backward iteration
-    for n in range(Nt - 2, -1, -1):
-        # Get diffusion at current time
-        if diffusion_field is None:
-            sigma = self.problem.sigma
-        elif isinstance(diffusion_field, (int, float)):
-            sigma = diffusion_field
-        else:
-            sigma = diffusion_field[n, ...]  # Spatially varying
-
-        # Compute HJB residual in nD
-        U_n = self._solve_hjb_timestep_nd(
-            U_solution[n + 1],
-            M_density[n],
-            U_prev[n],
-            sigma,
-        )
-        U_solution[n] = U_n
-
-    return U_solution
-
-def _solve_hjb_timestep_nd(
-    self,
-    U_next: NDArray,
-    M_current: NDArray,
-    U_prev: NDArray,
-    sigma: float | NDArray,
-) -> NDArray:
-    """Solve single HJB timestep in nD using Newton iteration."""
-
-    from mfg_pde.utils.numerical.operators_nd import gradient_nd, laplacian_nd
-
-    # Newton iteration
-    U_current = U_next.copy()
-
-    for _ in range(self.max_newton_iterations):
-        # Compute gradient and Laplacian
-        grad_U = gradient_nd(U_current, self.grid_spacing)
-        laplacian_U = laplacian_nd(U_current, self.grid_spacing)
-
-        # HJB residual: -∂u/∂t + H(∇u, m) - σ²/2 Δu
-        time_deriv = (U_current - U_next) / self.problem.dt
-
-        # Hamiltonian evaluation (nD)
-        H_values = self._evaluate_hamiltonian_nd(grad_U, M_current)
-
-        # Diffusion term
-        if isinstance(sigma, (int, float)):
-            diffusion_term = -(sigma**2 / 2.0) * laplacian_U
-        else:
-            # Spatially varying
-            diffusion_term = -(sigma**2 / 2.0) * laplacian_U
-
-        residual = time_deriv + H_values + diffusion_term
-
-        # Newton update (simplified - full version needs Jacobian)
-        U_current -= 0.5 * residual  # Damped update
-
-        # Check convergence
-        if np.max(np.abs(residual)) < self.newton_tolerance:
-            break
-
-    return U_current
-```
-
-**C. nD FP Implementation**
-
-Create `FPFDMSolver._solve_fp_nd()`:
-
-```python
-def _solve_fp_nd(
-    self,
-    m_initial_condition: NDArray,
-    drift_field: DriftField,
-    diffusion_field: DiffusionField,
-) -> NDArray:
-    """Solve nD FP equation forward in time."""
-
-    from mfg_pde.utils.numerical.operators_nd import divergence_nd, laplacian_nd
-
-    # Get dimensions
-    spatial_shape = m_initial_condition.shape
-    Nt = self.problem.Nt + 1
-
-    # Allocate solution
-    M = np.zeros((Nt, *spatial_shape))
-    M[0] = m_initial_condition.copy()
-
-    # Forward iteration
-    for n in range(Nt - 1):
-        t = n * self.problem.dt
-
-        # Get drift at current time
-        if drift_field is None:
-            alpha = np.zeros((*spatial_shape, len(spatial_shape)))
-        elif isinstance(drift_field, np.ndarray):
-            alpha = drift_field[n, ...]
-        elif callable(drift_field):
-            x_grid = self._get_spatial_grid_nd()
-            alpha = drift_field(t, x_grid, M[n])
-
-        # Get diffusion at current time
-        if diffusion_field is None:
-            sigma = self.problem.sigma
-        elif isinstance(diffusion_field, (int, float)):
-            sigma = diffusion_field
-        elif isinstance(diffusion_field, np.ndarray):
-            sigma = diffusion_field[n, ...]
-        elif callable(diffusion_field):
-            x_grid = self._get_spatial_grid_nd()
-            sigma = diffusion_field(t, x_grid, M[n])
-
-        # FP time step: ∂m/∂t = -∇·(α m) + ∇·(D ∇m)
-        # Advection term
-        advection = -divergence_nd(alpha * M[n][..., None], self.grid_spacing)
-
-        # Diffusion term
-        if isinstance(sigma, (int, float)):
-            diffusion = (sigma**2 / 2.0) * laplacian_nd(M[n], self.grid_spacing)
-        else:
-            # Spatially varying: ∇·(D ∇m)
-            grad_m = gradient_nd(M[n], self.grid_spacing)
-            diffusion = divergence_nd(sigma[..., None] * grad_m, self.grid_spacing)
-
-        # Forward Euler (for simplicity - can improve with implicit schemes)
-        M[n + 1] = M[n] + self.problem.dt * (advection + diffusion)
-
-        # Enforce non-negativity and mass conservation
-        M[n + 1] = np.maximum(M[n + 1], 0)
-        M[n + 1] /= np.sum(M[n + 1])
-
-    return M
-```
-
-#### Tasks
-
-- [ ] Create `mfg_pde/utils/numerical/operators_nd.py`
-- [ ] Implement `gradient_nd`, `laplacian_nd`, `divergence_nd`
-- [ ] Update `HJBFDMSolver._solve_hjb_nd()` with variable diffusion
+**Tasks**:
+- [ ] Create `utils/numerical/operators_nd.py` (gradient_nd, laplacian_nd, divergence_nd)
+- [ ] Implement `HJBFDMSolver._solve_hjb_nd()` with variable diffusion
 - [ ] Create `FPFDMSolver._solve_fp_nd()`
-- [ ] Add nD Hamiltonian evaluation
-- [ ] Add nD boundary condition handling
-- [ ] Write nD test cases (2D, 3D)
+- [ ] nD Hamiltonian evaluation
+- [ ] nD boundary conditions
+- [ ] Unit tests: 2D, 3D problems
 - [ ] Performance benchmarks
 
-### 2.4: Anisotropic Diffusion Tensors
+### 2.5: Anisotropic Diffusion Tensors
 
-**Priority**: Medium
-**Estimated Effort**: Medium (3-5 days)
+**Priority**: Medium | **Effort**: 3-5 days | **Status**: ⏳ After nD
 
-Support diffusion tensors D(x) instead of just scalars:
-
-```python
-# 2D anisotropic diffusion
-D = np.zeros((Nx, Ny, 2, 2))
-D[..., 0, 0] = 0.1  # σ_x²
-D[..., 1, 1] = 0.5  # σ_y²
-D[..., 0, 1] = D[..., 1, 0] = 0.02  # Cross-diffusion
-
-M = solver.solve_fp_system(m0, diffusion_field=D)
-```
-
-**PDE formulation**:
-```
-∂m/∂t = ∇·(D ∇m) where D is a d×d tensor
-```
-
-#### Implementation
-
-Update operators to handle tensors:
-
-```python
-def divergence_tensor_diffusion(
-    m: NDArray,  # Density
-    D: NDArray,  # Diffusion tensor (*spatial_shape, d, d)
-    grid_spacing: tuple[float, ...],
-) -> NDArray:
-    """Compute ∇·(D ∇m) for tensor D."""
-    grad_m = gradient_nd(m, grid_spacing)  # (*spatial_shape, d)
-
-    # D @ ∇m at each point
-    D_grad_m = np.einsum('...ij,...j->...i', D, grad_m)
-
-    # ∇·(D ∇m)
-    div = divergence_nd(D_grad_m, grid_spacing)
-
-    return div
-```
-
-### Phase 2 Deliverables
-
-- [ ] Callable drift/diffusion evaluation in all FP solvers
-- [ ] Callable diffusion evaluation in all HJB solvers
-- [ ] Complete nD FDM solvers (FP + HJB)
-- [ ] Anisotropic diffusion tensor support
-- [ ] Comprehensive test suite (unit + integration)
-- [ ] Examples gallery (nonlinear PDEs, nD problems)
-- [ ] Performance benchmarks
-- [ ] Updated documentation
-
-**Target Completion**: Q1 2026
+**Tasks**:
+- [ ] Extend operators to handle diffusion tensors D(x)
+- [ ] Implement `divergence_tensor_diffusion()`
+- [ ] Update FP/HJB solvers to accept tensor diffusion_field
+- [ ] Unit tests: diagonal tensors, cross-diffusion
+- [ ] Example: anisotropic crowd dynamics
 
 ---
 
 ## Phase 3: Advanced Features (🔮 FUTURE)
 
-### 3.1: Lévy Processes (Jump-Diffusion)
+**Features**:
+- 3.1: Lévy Processes (Jump-Diffusion)
+- 3.2: Common Noise (Extended MFG)
+- 3.3: Fractional Diffusion
 
-Add support for non-local operators:
-
-```python
-from mfg_pde.types.noise_operators import PoissonJumpOperator
-
-jump_op = PoissonJumpOperator(
-    intensity=lambda z: 0.1 * np.exp(-z**2 / 2),
-    jump_size=lambda x, z: z,
-    z_grid=np.linspace(-5, 5, 100),
-)
-
-M = solver.solve_fp_system(
-    m0,
-    drift_field=drift,
-    diffusion_field=0.1,
-    jump_operator=jump_op,  # NEW
-)
-```
-
-**PDE**:
-```
-∂m/∂t + ∇·(α m) = ∇·(D ∇m) + ∫[m(x-γ)J - mJ]dz
-```
-
-### 3.2: Common Noise (Extended MFG)
-
-Support shared randomness across agents:
-
-```python
-from mfg_pde.types.noise_operators import CommonNoiseField
-
-common = CommonNoiseField(
-    common_volatility=0.5,
-    y_dim=1,
-    y_grid=np.linspace(-3, 3, 50),
-)
-
-from mfg_pde.alg.numerical.fp_solvers import FPExtendedMFGSolver
-
-solver = FPExtendedMFGSolver(problem, common_noise=common)
-M = solver.solve_fp_system(m0)  # Returns (Nt, Nx, Ny)
-```
-
-**PDE**: Master equation on extended state space (x,y)
-
-### 3.3: Fractional Diffusion
-
-Anomalous diffusion with fractional Laplacian:
-
-```python
-from mfg_pde.types.noise_operators import FractionalDiffusion
-
-frac = FractionalDiffusion(
-    fractional_order=0.7,  # α ∈ (0, 1)
-    discretization="spectral",
-)
-
-M = solver.solve_fp_system(
-    m0,
-    fractional_diffusion=frac,  # NEW
-)
-```
-
-**PDE**:
-```
-∂m/∂t = σ² (-Δ)^α m  for α ∈ (0, 1)
-```
-
----
-
-## Testing Strategy
-
-### Unit Tests
-
-**File**: `tests/unit/test_state_dependent_coefficients.py`
-
-```python
-class TestStateDependentDrift:
-    """Test callable drift field evaluation."""
-
-    def test_linear_drift_1d(self):
-        """Test α(x) = -x in 1D."""
-        def drift(t, x, m):
-            return -x
-
-        problem = ExampleMFGProblem(Nx=50)
-        solver = FPFDMSolver(problem)
-        M = solver.solve_fp_system(m0, drift_field=drift)
-
-        assert M.shape == (51, 51)
-        assert np.all(M >= 0)
-        assert np.allclose(np.sum(M, axis=1), 1.0)
-
-    def test_crowd_avoidance_drift(self):
-        """Test state-dependent drift: α = -∇m."""
-        def crowd_avoidance(t, x, m):
-            return -np.gradient(m, x)
-
-        # Run and verify
-        ...
-
-    def test_porous_medium_diffusion(self):
-        """Test nonlinear diffusion: D(m) = m."""
-        def diffusion(t, x, m):
-            return 0.1 * m
-
-        # Run and verify
-        ...
-
-class TestNDSupport:
-    """Test multi-dimensional solvers."""
-
-    def test_fp_2d_constant_coefficients(self):
-        """Test 2D FP with constant drift and diffusion."""
-        ...
-
-    def test_hjb_2d_variable_diffusion(self):
-        """Test 2D HJB with spatially varying σ(x,y)."""
-        ...
-
-    def test_fp_3d_anisotropic_diffusion(self):
-        """Test 3D FP with diagonal diffusion tensor."""
-        ...
-```
-
-### Integration Tests
-
-**File**: `tests/integration/test_nonlinear_mfg.py`
-
-```python
-def test_mfg_with_state_dependent_coefficients():
-    """Test full MFG coupling with state-dependent drift and diffusion."""
-
-    # Define nonlinear problem
-    def density_diffusion(t, x, m):
-        return 0.1 * (1.0 + m)
-
-    problem = ExampleMFGProblem()
-    hjb_solver = HJBFDMSolver(problem)
-    fp_solver = FPFDMSolver(problem)
-
-    coupling_solver = FixedPointIterator(
-        problem,
-        hjb_solver,
-        fp_solver,
-    )
-
-    result = coupling_solver.solve(max_iterations=50)
-
-    assert result.converged
-    assert result.iterations < 50
-```
-
-### Performance Benchmarks
-
-**File**: `benchmarks/notebooks/state_dependent_performance.ipynb`
-
-Compare:
-- Array vs callable evaluation overhead
-- Vectorized vs pointwise callable evaluation
-- 1D vs 2D vs 3D scaling
-- Sparse vs dense matrix formulations
-
----
-
-## Documentation Updates
-
-### User Guide
-
-**File**: `docs/user_guide/advanced_pde_features.md`
-
-Sections:
-1. State-dependent coefficients
-2. Multi-dimensional problems
-3. Anisotropic diffusion
-4. Nonlinear PDE examples
-5. Performance tips
-
-### API Reference
-
-Update docstrings in:
-- `BaseFPSolver.solve_fp_system()`
-- `BaseHJBSolver.solve_hjb_system()`
-- Add examples to type protocols
-
-### Examples Gallery
-
-Create:
-- `examples/advanced/state_dependent_drift.py`
-- `examples/advanced/porous_medium_equation.py`
-- `examples/advanced/crowd_dynamics_2d.py`
-- `examples/advanced/anisotropic_diffusion.py`
-
----
-
-## Migration Guide
-
-### For Users with Existing Code
-
-**Breaking changes**: None! All existing code continues to work.
-
-**New features** (opt-in):
-
-```python
-# OLD (still works)
-M = solver.solve_fp_system(m0, U_hjb)
-
-# NEW (more expressive)
-M = solver.solve_fp_system(m0, drift_field=U_hjb)
-
-# NEW (state-dependent)
-M = solver.solve_fp_system(m0, drift_field=my_callable)
-```
+**Status**: Planning only
 
 ---
 
@@ -961,54 +166,32 @@ M = solver.solve_fp_system(m0, drift_field=my_callable)
 
 ---
 
-## References
+## Quick Reference
 
-### Mathematical Background
+### Current API
 
-1. **Nonlinear PDEs**: Vázquez, "The Porous Medium Equation" (2007)
-2. **nD MFG**: Achdou & Capuzzo-Dolcetta, "Mean Field Games: Numerical Methods" (2010)
-3. **Anisotropic Diffusion**: Weickert, "Anisotropic Diffusion in Image Processing" (1998)
+```python
+# Array diffusion (Phase 2.1)
+M = solver.solve_fp_system(m0, drift_field=U, diffusion_field=sigma_array)
 
-### Implementation References
+# Callable coefficients (Phase 2.2)
+def porous_medium(t, x, m):
+    return 0.1 * m
 
-1. **nD Operators**: SciPy gradient/divergence implementations
-2. **Sparse Solvers**: PyAMG, PETSc integration patterns
-3. **Vectorization**: NumPy einsum for tensor operations
+M = solver.solve_fp_system(m0, diffusion_field=porous_medium)
 
----
+# MFG with callable (Phase 2.3)
+coupling = FixedPointIterator(problem, hjb, fp, diffusion_field=porous_medium)
+result = coupling.solve()
+```
 
-## Appendix: Design Decisions
+### Type Protocols
 
-### Why Type Protocols?
-
-- **Runtime checking**: Validate user callables
-- **IDE support**: Autocomplete and type hints
-- **Documentation**: Clear contract for callable signatures
-- **Extensibility**: Easy to add new protocol types
-
-### Why Vectorized Evaluation?
-
-- **Performance**: 10-100x faster than pointwise loops
-- **NumPy-native**: Leverages BLAS/LAPACK
-- **Maintainable**: Clean, readable code
-- **Flexible**: Falls back to pointwise if needed
-
-### Why Separate drift_field and diffusion_field?
-
-- **Clarity**: Clear separation of advection vs diffusion
-- **Flexibility**: Can vary independently
-- **Physical meaning**: Matches mathematical formulation
-- **Type safety**: Different return types (vector vs scalar)
-
-### Why Not Merge with problem.sigma?
-
-- **Separation of concerns**: Problem vs solver parameters
-- **Flexibility**: Same problem, different diffusion scenarios
-- **Backward compatible**: Existing code unchanged
-- **Optional**: Can still use problem.sigma as default
+See `mfg_pde/types/pde_coefficients.py`:
+- `DriftCallable`: α(t, x, m) -> drift vector
+- `DiffusionCallable`: D(t, x, m) -> diffusion coefficient/tensor
 
 ---
 
-**Status**: Ready for Phase 2 implementation ✅
-**Next Steps**: Begin callable evaluation in FP solvers
-**Questions**: Contact maintainers via GitHub issues
+**Next Action**: Start Phase 2.1 (array diffusion in FP-FDM)
+**Questions**: GitHub issues or Design Doc
