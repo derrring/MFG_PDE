@@ -360,17 +360,14 @@ def compute_hjb_residual(
     dx = problem.dx
     dt = problem.dt
 
-    # Handle diffusion field
+    # Handle diffusion field - NumPy will broadcast scalar automatically
     if sigma_at_n is None:
-        sigma = problem.sigma  # Backward compatible
-        sigma_is_scalar = True
+        sigma = problem.sigma  # Backward compatible (scalar)
     elif isinstance(sigma_at_n, (int, float)):
-        sigma = float(sigma_at_n)
-        sigma_is_scalar = True
+        sigma = sigma_at_n  # Keep as scalar (not float()) for broadcasting
     else:
-        # Spatially varying diffusion
+        # Spatially varying diffusion array
         sigma = sigma_at_n
-        sigma_is_scalar = False
 
     if backend is not None:
         Phi_U = backend.zeros((Nx,))
@@ -420,12 +417,9 @@ def compute_hjb_residual(
             Phi_U[:] = np.nan
             return Phi_U
 
-        # Apply diffusion term with spatially varying sigma if needed
-        if sigma_is_scalar:
-            Phi_U += -(sigma**2 / 2.0) * U_xx
-        else:
-            # Spatially varying: -(sigma(x)^2/2) * U_xx(x)
-            Phi_U += -(sigma**2 / 2.0) * U_xx
+        # Apply diffusion term (NumPy broadcasts scalar automatically)
+        # Works for both constant σ (scalar) and σ(x,t) (array)
+        Phi_U += -(sigma**2 / 2.0) * U_xx
 
     # For m-coupling term, original notebook passed gradUkn, gradUknim1 (from prev Picard iter)
     # but mdmH_withM itself didn't use them. We'll pass an empty dict for now.
@@ -490,17 +484,14 @@ def compute_hjb_jacobian(
     dt = problem.dt
     eps = 1e-7
 
-    # Handle diffusion field
+    # Handle diffusion field - NumPy will broadcast scalar automatically
     if sigma_at_n is None:
-        sigma = problem.sigma  # Backward compatible
-        sigma_is_scalar = True
+        sigma = problem.sigma  # Backward compatible (scalar)
     elif isinstance(sigma_at_n, (int, float)):
-        sigma = float(sigma_at_n)
-        sigma_is_scalar = True
+        sigma = sigma_at_n  # Keep as scalar (not float()) for broadcasting
     else:
-        # Spatially varying diffusion
+        # Spatially varying diffusion array
         sigma = sigma_at_n
-        sigma_is_scalar = False
 
     # For Jacobian, we always need NumPy arrays for scipy.sparse
     # Convert backend arrays to NumPy if needed
@@ -523,19 +514,16 @@ def compute_hjb_jacobian(
         J_D += 1.0 / dt
 
     # Diffusion part: d/dU_n_current[j] of -(sigma^2/2) * (U_n_current)_xx[i]
+    # NumPy broadcasts scalar σ automatically to match array shapes
     if abs(dx) > 1e-14 and Nx > 1:
-        if sigma_is_scalar:
-            J_D += sigma**2 / dx**2
-            val_off_diag_diff = -(sigma**2) / (2 * dx**2)
-            J_L += val_off_diag_diff
-            J_U += val_off_diag_diff
-        else:
-            # Spatially varying diffusion: need to handle sigma(x)^2 at each point
-            # For simplicity, use pointwise diffusion in Jacobian
-            # More accurate: consider derivatives of sigma(x) as well (future extension)
-            J_D += sigma**2 / dx**2
-            J_L += -(sigma**2) / (2 * dx**2)
-            J_U += -(sigma**2) / (2 * dx**2)
+        # Diagonal: ∂/∂U[i] of -(σ²/2)(U[i-1] - 2U[i] + U[i+1])/dx² = σ²/dx²
+        J_D += sigma**2 / dx**2
+        # Off-diagonal: coefficient for U[i±1] terms
+        val_off_diag_diff = -(sigma**2) / (2 * dx**2)
+        J_L += val_off_diag_diff
+        J_U += val_off_diag_diff
+        # Note: For spatially varying σ(x), this assumes σ is smooth.
+        # More accurate treatment would include ∂σ/∂x terms (Phase 3 extension)
 
     # Hamiltonian part & m-coupling term's Jacobian contribution
     # Try to get analytical/specific Jacobian contributions from the problem for H-part
