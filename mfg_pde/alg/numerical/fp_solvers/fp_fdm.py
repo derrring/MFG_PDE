@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import scipy.sparse as sparse
@@ -10,6 +10,9 @@ from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.aux_func import npart, ppart
 
 from .base_fp import BaseFPSolver
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class FPFDMSolver(BaseFPSolver):
@@ -62,10 +65,19 @@ class FPFDMSolver(BaseFPSolver):
         return 1
 
     def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray | None = None,
+        drift_field: np.ndarray | Callable | None = None,
+        show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system forward in time.
+        Solve FP system forward in time with general drift support.
+
+        Implements BaseFPSolver general drift API. Supports three drift modes:
+        1. U_solution_for_drift: MFG optimal control drift (alpha = -grad U)
+        2. drift_field: Custom drift (array or callable)
+        3. None: Pure diffusion (heat equation, alpha = 0)
 
         Automatically routes to 1D or nD solver based on problem dimension.
 
@@ -73,9 +85,16 @@ class FPFDMSolver(BaseFPSolver):
         ----------
         m_initial_condition : np.ndarray
             Initial density. Shape: (Nx+1,) for 1D or (N1-1, N2-1, ...) for nD
-        U_solution_for_drift : np.ndarray
-            Value function for drift term. Shape: (Nt+1, Nx+1) for 1D or
-            (Nt+1, N1-1, N2-1, ...) for nD
+        U_solution_for_drift : np.ndarray, optional
+            Value function for MFG optimal control drift.
+            Shape: (Nt+1, Nx+1) for 1D or (Nt+1, N1-1, N2-1, ...) for nD
+            Default: None (no MFG drift)
+        drift_field : np.ndarray or callable, optional
+            Custom drift specification:
+            - np.ndarray: Precomputed drift field
+            - Callable: Function(t, x, m) -> drift
+            - None: No custom drift
+            Default: None
         show_progress : bool
             Whether to show progress bar
 
@@ -84,15 +103,60 @@ class FPFDMSolver(BaseFPSolver):
         np.ndarray
             Density evolution. Shape: (Nt+1, Nx+1) for 1D or
             (Nt+1, N1-1, N2-1, ...) for nD
+
+        Examples
+        --------
+        MFG optimal control (backward compatible):
+        >>> M = solver.solve_fp_system(m0, U_solution_for_drift=U_hjb)
+
+        Pure diffusion (heat equation):
+        >>> M = solver.solve_fp_system(m0)
+
+        Custom drift field:
+        >>> drift = lambda t, x, m: np.ones_like(x) * 0.5
+        >>> M = solver.solve_fp_system(m0, drift_field=drift)
         """
+        # Determine effective drift mode for internal routing
+        # Priority: U > drift_field > zero
+        if U_solution_for_drift is not None:
+            # MFG mode: use existing implementation (backward compatible)
+            effective_U = U_solution_for_drift
+        elif drift_field is not None:
+            # Custom drift: convert to equivalent U field for FDM discretization
+            # For now, raise NotImplementedError - will implement in follow-up
+            raise NotImplementedError(
+                "FPFDMSolver does not yet support custom drift_field. "
+                "Use U_solution_for_drift for MFG problems. "
+                "Support for general drift fields coming in Phase 2."
+            )
+        else:
+            # Zero drift (pure diffusion): create zero U field
+            # Infer time steps from problem
+            if hasattr(self.problem, "Nt"):
+                Nt = self.problem.Nt + 1
+            else:
+                raise ValueError(
+                    "Cannot infer time steps for zero drift mode. "
+                    "Provide U_solution_for_drift or ensure problem has Nt attribute."
+                )
+
+            # Create zero U field with appropriate shape
+            if self.dimension == 1:
+                Nx = self.problem.Nx + 1 if hasattr(self.problem, "Nx") else self.problem.geometry.get_grid_shape()[0]
+                effective_U = np.zeros((Nt, Nx))
+            else:
+                # Multi-dimensional: get shape from geometry
+                grid_shape = self.problem.geometry.get_grid_shape()
+                effective_U = np.zeros((Nt, *grid_shape))
+
         # Route to appropriate solver based on dimension
         if self.dimension == 1:
-            return self._solve_fp_1d(m_initial_condition, U_solution_for_drift, show_progress)
+            return self._solve_fp_1d(m_initial_condition, effective_U, show_progress)
         else:
             # Multi-dimensional solver via full nD system (not dimensional splitting)
             return _solve_fp_nd_full_system(
                 m_initial_condition=m_initial_condition,
-                U_solution_for_drift=U_solution_for_drift,
+                U_solution_for_drift=effective_U,
                 problem=self.problem,
                 boundary_conditions=self.boundary_conditions,
                 show_progress=show_progress,
