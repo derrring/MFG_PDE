@@ -71,8 +71,8 @@ def solve_hjb_system(
 ```
 
 **Implementation Status**:
-- FP-FDM 1D: ✅ Full support for array diffusion
-- FP-Particle: ✅ Constant diffusion only (Phase 2 for arrays)
+- FP-FDM 1D: ⏳ Constant diffusion only (Phase 2 for arrays)
+- FP-Particle: ⏳ Constant diffusion only (Phase 2 for arrays)
 - FP-Network: ✅ Variable diffusion_coefficient
 - HJB-FDM 1D: ✅ Full support for array diffusion
 - HJB-FDM nD: ⏳ Phase 2
@@ -125,25 +125,93 @@ class DiffusionCallable(Protocol):
 | Drift field API | ✅ Complete | All FP/HJB solvers |
 | Diffusion field API | ✅ Complete | All FP/HJB solvers |
 | Type protocols | ✅ Complete | Runtime checkable |
-| 1D FDM variable diffusion | ✅ Implemented | FP + HJB |
+| 1D FDM variable diffusion | ✅ Implemented | HJB (FP in Phase 2) |
 | Backward compatibility | ✅ Maintained | All existing code works |
 | Documentation | ✅ Complete | Docstrings + examples |
 
-**Commits**: 3 major commits
+**Commits**: 4 major commits
 1. Unified drift+diffusion API in FP solvers
 2. Added diffusion_field to HJB solvers
 3. Type protocols for state-dependent coefficients
+4. Simplified diffusion_field broadcasting in HJB (removed redundant flag)
 
 ---
 
 ## Phase 2: State-Dependent & nD (🔄 NEXT)
 
 ### Objectives
-1. Implement callable (state-dependent) coefficient evaluation
-2. Complete nD support for all major solver types
-3. Add anisotropic diffusion tensor support
+1. Implement array (spatially varying) diffusion in FP solvers
+2. Implement callable (state-dependent) coefficient evaluation
+3. Complete nD support for all major solver types
+4. Add anisotropic diffusion tensor support
 
-### 2.1: Callable Evaluation in FP Solvers
+### 2.1: Array Diffusion in FP Solvers
+
+**Priority**: High
+**Estimated Effort**: Small (1 day)
+
+#### Implementation Plan
+
+**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+
+Update `_solve_fp_1d()` to handle spatially/temporally varying diffusion:
+
+```python
+def _solve_fp_1d(
+    self,
+    m_initial_condition: np.ndarray,
+    U_solution_for_drift: np.ndarray,
+    show_progress: bool = True,
+) -> np.ndarray:
+    # ... existing code ...
+
+    for k_idx_fp in timestep_range:
+        u_at_tk = U_solution_for_drift[k_idx_fp, :]
+
+        # Extract diffusion at current timestep
+        if isinstance(sigma, np.ndarray):
+            # Spatially varying: sigma[k, i]
+            sigma_at_tk = sigma[k_idx_fp, :]
+        else:
+            # Constant: broadcast scalar
+            sigma_at_tk = sigma
+
+        # Build matrix with spatially varying coefficients
+        for i in range(Nx):
+            # Use sigma_at_tk[i] for point i
+            val_A_ii += sigma_at_tk[i]**2 / Dx**2
+            val_A_i_im1 = -(sigma_at_tk[i]**2) / (2 * Dx**2)
+            # ... etc
+```
+
+**Key changes**:
+- Remove `NotImplementedError` for array diffusion_field
+- Index into diffusion array per gridpoint and timestep
+- Follow same pattern as HJB solvers (base_hjb.py:943-950)
+
+#### Tasks
+
+- [ ] Remove NotImplementedError for array diffusion in FPFDMSolver
+- [ ] Add diffusion array indexing in matrix assembly
+- [ ] Handle both scalar and array diffusion correctly
+- [ ] Add unit tests with spatially varying diffusion
+- [ ] Test mass conservation with variable diffusion
+- [ ] Update docstrings and examples
+
+**Test Case**:
+```python
+# Spatially varying diffusion: higher at boundaries
+Nt, Nx = problem.Nt + 1, problem.Nx + 1
+x_grid = np.linspace(0, 1, Nx)
+diffusion_field = np.zeros((Nt, Nx))
+for t in range(Nt):
+    diffusion_field[t, :] = 0.1 + 0.2 * np.abs(x_grid - 0.5)  # Higher at edges
+
+solver = FPFDMSolver(problem)
+M = solver.solve_fp_system(m0, drift_field=U, diffusion_field=diffusion_field)
+```
+
+### 2.2: Callable Evaluation in FP Solvers
 
 **Priority**: High
 **Estimated Effort**: Medium (2-3 days)
@@ -228,7 +296,7 @@ M = solver.solve_fp_system(
 )
 ```
 
-### 2.2: Callable Evaluation in HJB Solvers
+### 2.3: Callable Evaluation in HJB Solvers
 
 **Priority**: High
 **Estimated Effort**: Medium (2-3 days)
@@ -269,7 +337,7 @@ def solve_hjb_system_backward(
 - [ ] Write unit tests
 - [ ] Document state-dependent HJB examples
 
-### 2.3: Complete nD Support
+### 2.4: Complete nD Support
 
 **Priority**: High
 **Estimated Effort**: Large (1-2 weeks)
