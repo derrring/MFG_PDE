@@ -27,14 +27,33 @@ where **Σ** is a d×d positive semi-definite diffusion tensor:
     [σₐ₁  σₐ₂  ...  σₐₐ]
 ```
 
-**Notation Note**:
+**Notation Conventions**:
 - Scalar diffusion: σ² (lowercase sigma squared)
 - Tensor diffusion: **Σ** (capital Sigma matrix)
-- Isotropic case: **Σ = σ²I** (scalar diffusion coefficient times identity)
+
+**Three Interpretations of Diffusion**:
+
+1. **Isotropic (scalar → tensor)**: σ² → **Σ = σ²I**
+   - Same diffusion in all directions
+   - Example: Σ = 0.1·I in 2D gives uniform diffusion
+
+2. **Diagonal anisotropic (vector → tensor)**: σ = [σ₁, σ₂, ...] → **Σ = diag(σ₁², σ₂², ...)**
+   - Different diffusion per direction, no cross-terms
+   - Can also view as Σ = σσᵀ for diagonal σ
+   - Example: σ = [0.2, 0.05] → Σ = diag([0.04, 0.0025])
+
+3. **General anisotropic (full tensor)**: **Σ** directly specified
+   - Arbitrary symmetric positive semi-definite matrix
+   - Includes cross-diffusion terms σᵢⱼ
+   - Example: Σ = [[0.1, 0.02], [0.02, 0.05]]
 
 **Connection to SDEs**:
 If the underlying stochastic process is dX = α dt + σ̃ dW where σ̃ is a d×d diffusion matrix,
-then the Fokker-Planck diffusion tensor is **Σ = σ̃σ̃ᵀ/2**.
+then the Fokker-Planck diffusion tensor is **Σ = (σ̃σ̃ᵀ)/2**.
+
+In particular:
+- If σ̃ is diagonal, then Σ = (σ̃σ̃ᵀ)/2 is also diagonal
+- If σ̃ is a scaled identity σ̃ = σI, then Σ = σ²I/2
 
 However, in our PDE-based framework, users specify **Σ** directly without referencing σ̃.
 
@@ -317,10 +336,30 @@ class CoefficientField:
             Σ = σ²I, a d×d isotropic diffusion tensor
 
         Note:
-            This is NOT σσᵀ (outer product). The input is already σ² (variance),
-            and we simply scale the identity matrix.
+            In 1D: σ²I = σ² (scalar), which equals σσᵀ (1×1 outer product)
+            In nD: σ²I = diag([σ², σ², ...]), isotropic diffusion
+
+            This is equivalent to the SDE interpretation with σ̃ = σI:
+                Σ = (σ̃σ̃ᵀ)/2 = (σI)(σI)ᵀ/2 = σ²I/2
+            (We absorb the factor of 1/2 into the convention.)
         """
         return sigma_squared * np.eye(d)
+
+    def _vector_to_diagonal_tensor(self, sigma_vector):
+        """
+        Convert vector σ to diagonal tensor Σ = diag(σ₁², σ₂², ...).
+
+        Args:
+            sigma_vector: 1D array of diffusion coefficients per dimension
+
+        Returns:
+            Σ = diag([σ₁², σ₂², ...]), a diagonal diffusion tensor
+
+        Note:
+            This can also be viewed as Σ = σσᵀ where σ is diagonal.
+            Allows different diffusion per direction without cross-terms.
+        """
+        return np.diag(sigma_vector ** 2)
 ```
 
 ### Task 3: Update FP Solvers
