@@ -209,7 +209,7 @@ class FPFDMSolver(BaseFPSolver):
             # Shape: (Nt, Nx) for spatiotemporal or broadcastable
             effective_sigma = diffusion_field
         elif callable(diffusion_field):
-            # State-dependent diffusion - Phase 2.2
+            # State-dependent diffusion - Phase 2.2/2.4
             # Route to callable solver (no need to set effective_sigma)
             if self.dimension == 1:
                 return self._solve_fp_1d_with_callable(
@@ -219,38 +219,38 @@ class FPFDMSolver(BaseFPSolver):
                     show_progress=show_progress,
                 )
             else:
-                raise NotImplementedError(
-                    "Callable diffusion_field not yet supported for nD problems. "
-                    "Currently only 1D (dimension=1) is supported. "
-                    "nD support coming in Phase 2.4."
-                )
+                # nD callable diffusion (Phase 2.4)
+                # Pass to nD solver - will be evaluated per timestep
+                effective_sigma = diffusion_field
         else:
             raise TypeError(
                 f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
             )
 
-        # Temporarily override problem.sigma if custom diffusion provided
-        original_sigma = self.problem.sigma
-        if diffusion_field is not None and not callable(diffusion_field):
-            self.problem.sigma = effective_sigma
+        # Route to appropriate solver based on dimension and coefficient type
+        if self.dimension == 1:
+            # Temporarily override problem.sigma if custom diffusion provided (1D only)
+            original_sigma = self.problem.sigma
+            if diffusion_field is not None and not callable(diffusion_field):
+                self.problem.sigma = effective_sigma
 
-        try:
-            # Route to appropriate solver based on dimension and coefficient type
-            if self.dimension == 1:
+            try:
                 return self._solve_fp_1d(m_initial_condition, effective_U, show_progress)
-            else:
-                # Multi-dimensional solver via full nD system (not dimensional splitting)
-                return _solve_fp_nd_full_system(
-                    m_initial_condition=m_initial_condition,
-                    U_solution_for_drift=effective_U,
-                    problem=self.problem,
-                    boundary_conditions=self.boundary_conditions,
-                    show_progress=show_progress,
-                    backend=self.backend,
-                )
-        finally:
-            # Restore original sigma
-            self.problem.sigma = original_sigma
+            finally:
+                # Restore original sigma
+                self.problem.sigma = original_sigma
+        else:
+            # Multi-dimensional solver via full nD system (not dimensional splitting)
+            # Pass diffusion_field directly (handles callable, array, scalar)
+            return _solve_fp_nd_full_system(
+                m_initial_condition=m_initial_condition,
+                U_solution_for_drift=effective_U,
+                problem=self.problem,
+                boundary_conditions=self.boundary_conditions,
+                show_progress=show_progress,
+                backend=self.backend,
+                diffusion_field=effective_sigma if diffusion_field is not None else None,
+            )
 
     def _solve_fp_1d(
         self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
@@ -772,6 +772,7 @@ def _solve_fp_nd_full_system(
     boundary_conditions: BoundaryConditions | None = None,
     show_progress: bool = True,
     backend: Any | None = None,
+    diffusion_field: float | np.ndarray | Any | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -797,6 +798,12 @@ def _solve_fp_nd_full_system(
         Whether to display progress bar
     backend : Any | None
         Array backend (currently unused, NumPy only)
+    diffusion_field : float | np.ndarray | Callable | None
+        Optional diffusion override (Phase 2.4):
+        - None: Use problem.sigma
+        - float: Constant diffusion
+        - ndarray: Spatially/temporally varying diffusion
+        - Callable: State-dependent diffusion D(t, x, m) -> float | ndarray
 
     Returns
     -------
@@ -828,12 +835,25 @@ def _solve_fp_nd_full_system(
     ndim = problem.geometry.dimension
     shape = tuple(problem.geometry.get_grid_shape())
     dt = problem.dt
-    sigma = problem.sigma
     coupling_coefficient = getattr(problem, "coupling_coefficient", 1.0)
 
     # Get grid spacing and geometry
     spacing = problem.geometry.get_grid_spacing()
     grid = problem.geometry  # Geometry IS the grid
+
+    # Handle diffusion field (Phase 2.4)
+    if diffusion_field is None:
+        sigma_base = problem.sigma
+    elif isinstance(diffusion_field, (int, float)):
+        sigma_base = float(diffusion_field)
+    elif callable(diffusion_field):
+        # Callable: will be evaluated per timestep
+        sigma_base = diffusion_field
+    elif isinstance(diffusion_field, np.ndarray):
+        # Array: spatially or spatiotemporally varying
+        sigma_base = diffusion_field
+    else:
+        sigma_base = problem.sigma
 
     # Validate input shapes
     assert m_initial_condition.shape == shape, (
@@ -876,13 +896,47 @@ def _solve_fp_nd_full_system(
         M_current = M_solution[k]
         U_current = U_solution_for_drift[k]
 
+        # Determine diffusion at current timestep
+        if callable(sigma_base):
+            # Evaluate callable at current time and state
+            t_current = k * dt
+            sigma_at_k = sigma_base(t_current, grid.coordinates, M_current)
+
+            # Validate callable output
+            if isinstance(sigma_at_k, (int, float)):
+                sigma_at_k = float(sigma_at_k)
+            elif isinstance(sigma_at_k, np.ndarray):
+                if sigma_at_k.shape != shape:
+                    raise ValueError(
+                        f"Callable diffusion_field returned array with shape {sigma_at_k.shape}, "
+                        f"expected {shape} (matching grid shape)"
+                    )
+                # Check for NaN/Inf
+                if np.any(np.isnan(sigma_at_k)) or np.any(np.isinf(sigma_at_k)):
+                    raise ValueError(f"Callable diffusion_field returned NaN/Inf at timestep {k}")
+            else:
+                raise TypeError(f"Callable diffusion_field must return float or ndarray, got {type(sigma_at_k)}")
+        elif isinstance(sigma_base, np.ndarray):
+            # Extract from array
+            if sigma_base.ndim == ndim:
+                # Spatially varying only
+                sigma_at_k = sigma_base
+            elif sigma_base.ndim == ndim + 1:
+                # Spatiotemporal
+                sigma_at_k = sigma_base[k, ...]
+            else:
+                sigma_at_k = sigma_base
+        else:
+            # Scalar
+            sigma_at_k = sigma_base
+
         # Build and solve full nD system
         M_next = _solve_timestep_full_nd(
             M_current,
             U_current,
             problem,
             dt,
-            sigma,
+            sigma_at_k,
             coupling_coefficient,
             spacing,
             grid,
