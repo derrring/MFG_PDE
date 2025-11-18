@@ -1,6 +1,6 @@
 # PDE Coefficient Implementation Roadmap
 
-**Status**: Phase 1 Complete ✅ | Phase 2 In Progress 🔄
+**Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅
 **Last Updated**: 2025-11-19
 **Branch**: `feature/drift-strategy-pattern`
 
@@ -34,16 +34,17 @@ This document provides **status tracking and task checklists** for implementing 
 ### Implementation Coverage
 
 **FP Solvers**:
-- FP-FDM 1D: ✅ Callable diffusion (Phase 2.1-2.2 complete)
+- FP-FDM 1D: ✅ Array + callable diffusion (Phase 2.1-2.2 complete)
+- FP-FDM nD: ✅ Array + callable diffusion (Phase 2.4 complete)
 - FP-Particle: ✅ Constant diffusion | ⏳ Array/callable diffusion (Phase 2)
 - FP-Network: ✅ Variable diffusion
 
 **HJB Solvers**:
 - HJB-FDM 1D: ✅ Array + callable diffusion (Phase 2.1-2.2 complete)
-- HJB-FDM nD: ⏳ Phase 2.4
+- HJB-FDM nD: ✅ Array + callable diffusion (Phase 2.4 complete)
 - Other HJB: ⏳ Phase 2 (API added, implementation pending)
 
-**Key Commits**: 8 major commits
+**Key Commits**: 9 major commits
 1. `9dd182b` - Unified drift+diffusion API in FP solvers
 2. `1c26f13` - Added diffusion_field to HJB solvers
 3. `dcf1a51` - Type protocols for state-dependent coefficients
@@ -51,11 +52,12 @@ This document provides **status tracking and task checklists** for implementing 
 5. `36730de` - Array diffusion in FP-FDM solver (Phase 2.1)
 6. `c82bfcf` - Callable diffusion in FP-FDM solver (Phase 2.2 FP side)
 7. `4aa7d6a` - MFG coupling integration (Phase 2.3)
-8. (pending) - Callable diffusion in HJB-FDM solver (Phase 2.2 HJB side)
+8. `7b85a73` - Callable diffusion in HJB-FDM solver (Phase 2.2 HJB side)
+9. `3650df2` - nD callable diffusion in HJB/FP-FDM (Phase 2.4)
 
 ---
 
-## Phase 2: State-Dependent & nD (🔄 IN PROGRESS)
+## Phase 2: State-Dependent & nD (✅ COMPLETED)
 
 **Design Doc**: `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` (see for algorithms)
 
@@ -112,20 +114,32 @@ This document provides **status tracking and task checklists** for implementing 
 
 **Note**: Infrastructure complete. Array diffusion verified working in MFG. Callable diffusion requires HJB callable support (Phase 2.2 HJB side, remaining work)
 
-### 2.4: Complete nD Support
+### 2.4: Complete nD Support (✅ COMPLETED)
 
-**Priority**: High | **Effort**: 1-2 weeks | **Status**: ⏳ Deferred
+**Priority**: High | **Effort**: 1 day | **Status**: ✅ Complete | **Commit**: `3650df2`
 
-**Modules Required**: See Design Doc Section 2.5
+**Completed Tasks (HJB-FDM nD)**:
+- [x] Add callable evaluation in `_solve_hjb_nd()` (lines 245-282)
+- [x] Evaluate D(t, x, m) per timestep with current density
+- [x] Pass diffusion to `_solve_single_timestep()` and `_evaluate_hamiltonian_nd()`
+- [x] Temporarily override problem.sigma for Hamiltonian evaluation
 
-**Tasks**:
-- [ ] Create `utils/numerical/operators_nd.py` (gradient_nd, laplacian_nd, divergence_nd)
-- [ ] Implement `HJBFDMSolver._solve_hjb_nd()` with variable diffusion
-- [ ] Create `FPFDMSolver._solve_fp_nd()`
-- [ ] nD Hamiltonian evaluation
-- [ ] nD boundary conditions
-- [ ] Unit tests: 2D, 3D problems
-- [ ] Performance benchmarks
+**Completed Tasks (FP-FDM nD)**:
+- [x] Remove NotImplementedError for callable diffusion in nD
+- [x] Add diffusion_field parameter to `_solve_fp_nd_full_system()`
+- [x] Evaluate callable D(t, x, m) per timestep (lines 900-931)
+- [x] Validate callable output (shape, NaN/Inf checking)
+
+**Features**:
+- ✅ Scalar diffusion: Constant across space and time
+- ✅ Array diffusion: Spatially varying or spatiotemporal
+- ✅ Callable diffusion: State-dependent D(t, x, m)
+- ✅ Validation: Shape checking, NaN/Inf detection
+- ✅ Both HJB and FP nD solvers support all modes
+
+**Remaining (Lower Priority)**:
+- [ ] nD integration tests (2D/3D MFG with callable coefficients)
+- [ ] Performance benchmarks for nD callable evaluation
 
 ### 2.5: Anisotropic Diffusion Tensors
 
@@ -196,5 +210,5 @@ See `mfg_pde/types/pde_coefficients.py`:
 
 ---
 
-**Next Action**: Complete Phase 2.2 HJB side (callable support in HJB solvers) OR proceed to Phase 2.4 (nD support)
+**Next Action**: Phase 2 complete! Consider Phase 2.5 (anisotropic tensors) or Phase 3 (advanced features)
 **Questions**: GitHub issues or Design Doc
