@@ -139,11 +139,20 @@ class DiffusionCallable(Protocol):
 
 ## Phase 2: State-Dependent & nD (🔄 NEXT)
 
+**Detailed Design**: See `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` for:
+- Comprehensive implementation algorithms with pseudocode
+- Testing strategy and specific test cases
+- Performance analysis and optimization strategies
+- API design principles and error handling
+- Mathematical formulations and discretization schemes
+- Complete example use cases (porous medium, crowd avoidance)
+
 ### Objectives
 1. Implement array (spatially varying) diffusion in FP solvers
 2. Implement callable (state-dependent) coefficient evaluation
-3. Complete nD support for all major solver types
-4. Add anisotropic diffusion tensor support
+3. MFG coupling integration for state-dependent coefficients
+4. Complete nD support for all major solver types (deferred to Phase 2.4)
+5. Add anisotropic diffusion tensor support (Phase 3)
 
 ### 2.1: Array Diffusion in FP Solvers
 
@@ -216,55 +225,68 @@ M = solver.solve_fp_system(m0, drift_field=U, diffusion_field=diffusion_field)
 **Priority**: High
 **Estimated Effort**: Medium (2-3 days)
 
+**Detailed Design**: See `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` Section 3 for:
+- Complete algorithm with validation
+- Bootstrap vs implicit evaluation strategies
+- Refactoring plan for code reuse
+
 #### Implementation Plan
 
 **File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
 
-Add callable evaluation in `_solve_fp_1d()`:
+**Strategy**: Bootstrap evaluation (evaluate callable per timestep using `m[k]` to compute `m[k+1]`)
+
+Key insight: Solve forward in time, evaluate callable at each timestep using computed density:
 
 ```python
-def _solve_fp_1d(
+def _solve_fp_1d_with_callable(
     self,
-    m_initial_condition: np.ndarray,
-    drift_field: DriftField,
+    m_initial: np.ndarray,
+    U_drift: np.ndarray,
+    diffusion_func: DiffusionCallable,
     show_progress: bool = True,
 ) -> np.ndarray:
-    # Current: Only handles arrays
-    if isinstance(drift_field, np.ndarray):
-        effective_U = drift_field
-    elif callable(drift_field):
-        # NEW: Evaluate callable at each timestep
-        effective_U = self._evaluate_drift_callable(drift_field, ...)
+    """Solve FP with callable diffusion (bootstrap strategy)."""
 
-    # Rest of solver
-    ...
+    Nt, Nx = U_drift.shape
+    x_grid = np.linspace(self.problem.xmin, self.problem.xmax, Nx)
 
-def _evaluate_drift_callable(
-    self,
-    drift_func: DriftCallable,
-    m_evolution: np.ndarray,  # (Nt+1, Nx)
-) -> np.ndarray:
-    """
-    Evaluate state-dependent drift at all timesteps.
+    m_solution = np.zeros((Nt, Nx))
+    m_solution[0, :] = m_initial
 
-    Returns: Array of shape (Nt+1, Nx)
-    """
-    Nt, Nx = m_evolution.shape
-    x_grid = self.problem.get_spatial_grid()  # (Nx,) for 1D
+    for k in range(Nt - 1):
+        # Evaluate diffusion at CURRENT state (causal, no circular dependency)
+        t_current = k * self.problem.dt
+        m_current = m_solution[k, :]  # ← Use computed m[k]
 
-    drift_array = np.zeros((Nt, Nx))
-    for t_idx in range(Nt):
-        t = t_idx * self.problem.dt
-        m_current = m_evolution[t_idx, :]
-        drift_array[t_idx, :] = drift_func(t, x_grid, m_current)
+        sigma_array = diffusion_func(t_current, x_grid, m_current)
 
-    return drift_array
+        # Validate callable output
+        sigma_array = self._validate_callable_output(
+            sigma_array, expected_shape=(Nx,), param_name="diffusion_field"
+        )
+
+        # Solve single timestep with evaluated diffusion
+        m_solution[k + 1, :] = self._solve_single_timestep_fp(
+            m_current,
+            U_drift[k, :],
+            sigma_array,
+            self.problem.dt,
+            self.problem.dx,
+        )
+
+    return m_solution
 ```
 
+**Refactoring Required**:
+1. Extract `_solve_single_timestep_fp()` from existing loop (enables reuse)
+2. Add `_validate_callable_output()` helper (shape, NaN/Inf checking)
+3. Route to appropriate solver in `solve_fp_system()` based on coefficient type
+
 **Challenges**:
-- Fixed-point coupling: Density `m` evolves during Picard iterations
-- Solution: Re-evaluate callable at each Picard iteration
-- Performance: Cache when possible, vectorize evaluation
+- Circular dependency resolution: Use bootstrap (m[k] → m[k+1]) not upfront evaluation
+- Fixed-point coupling: Re-evaluate callable at each Picard iteration
+- Performance: Vectorized callable evaluation preferred (~10-20% overhead)
 
 #### Tasks
 
@@ -296,12 +318,76 @@ M = solver.solve_fp_system(
 )
 ```
 
-### 2.3: Callable Evaluation in HJB Solvers
+### 2.3: MFG Coupling Integration
 
 **Priority**: High
-**Estimated Effort**: Medium (2-3 days)
+**Estimated Effort**: Small (1 day)
+
+**Detailed Design**: See `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` Section 4
+
+#### Overview
+
+Integrate callable coefficients into `FixedPointIterator` to enable MFG with state-dependent PDEs:
+- Pass `diffusion_field` parameter through to HJB/FP solvers
+- Re-evaluate callables each Picard iteration (necessary for state-dependence)
+- Support both drift and diffusion overrides
 
 #### Implementation Plan
+
+**File**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
+
+```python
+class FixedPointIterator(BaseMFGSolver):
+    def __init__(
+        self,
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
+        # NEW: Optional coefficient overrides
+        diffusion_field: DiffusionField = None,
+        drift_field: DriftField = None,
+        **kwargs,
+    ):
+        self.diffusion_field_override = diffusion_field
+        self.drift_field_override = drift_field
+
+    def solve(self, ...) -> SolverResult:
+        for picard_iter in range(max_iterations):
+            # Re-evaluate callable with current M_old
+            if callable(self.diffusion_field_override):
+                diffusion_for_hjb = self._evaluate_diffusion_for_hjb(
+                    self.diffusion_field_override, M_old
+                )
+            else:
+                diffusion_for_hjb = self.diffusion_field_override
+
+            # HJB solve with evaluated diffusion
+            U_new = self.hjb_solver.solve_hjb_system(
+                M_old, U_terminal, U_old, diffusion_field=diffusion_for_hjb
+            )
+
+            # FP solve (callable evaluated per timestep internally)
+            M_new = self.fp_solver.solve_fp_system(
+                m_initial,
+                drift_field=self.drift_field_override or U_new,
+                diffusion_field=self.diffusion_field_override,
+            )
+```
+
+#### Tasks
+
+- [ ] Add `diffusion_field` parameter to `FixedPointIterator.__init__()`
+- [ ] Add `drift_field` parameter for non-MFG drift override
+- [ ] Implement `_evaluate_diffusion_for_hjb()` helper
+- [ ] Re-evaluate callable with `M_old` each Picard iteration
+- [ ] Pass evaluated diffusion to HJB solver
+- [ ] Pass callable diffusion to FP solver (FP evaluates per timestep)
+- [ ] Add integration tests for MFG with callable coefficients
+- [ ] Document usage examples (porous medium MFG, crowd avoidance)
+
+### 2.4: Callable Evaluation in HJB Solvers (Part of 2.2)
+
+**Note**: This is implemented as part of Phase 2.2, not separate.
 
 **File**: `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py`
 
@@ -314,11 +400,12 @@ def solve_hjb_system_backward(
 ) -> np.ndarray:
     # NEW: Evaluate callable if provided
     if callable(diffusion_field):
-        # Need M_density at each timestep for state-dependence
-        sigma_array = self._evaluate_diffusion_callable(
-            diffusion_field,
-            M_density_from_prev_picard,
-        )
+        # Use M_density from previous Picard iteration
+        sigma_array = np.zeros((Nt, Nx))
+        for t_idx in range(Nt):
+            t = t_idx * problem.dt
+            m_at_t = M_density_from_prev_picard[t_idx, :]
+            sigma_array[t_idx, :] = diffusion_field(t, x_grid, m_at_t)
     else:
         sigma_array = diffusion_field
 
@@ -328,16 +415,7 @@ def solve_hjb_system_backward(
         U_new_n = solve_hjb_timestep_newton(..., sigma_at_n=sigma_at_n)
 ```
 
-#### Tasks
-
-- [ ] Add `_evaluate_diffusion_callable()` to base_hjb.py
-- [ ] Update `solve_hjb_system_backward()` to handle callables
-- [ ] Ensure consistency with FP callable evaluation
-- [ ] Add validation for symmetric/positive-definite tensors
-- [ ] Write unit tests
-- [ ] Document state-dependent HJB examples
-
-### 2.4: Complete nD Support
+### 2.5: Complete nD Support (DEFERRED)
 
 **Priority**: High
 **Estimated Effort**: Large (1-2 weeks)
