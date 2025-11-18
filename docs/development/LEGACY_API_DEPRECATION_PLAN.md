@@ -1,8 +1,8 @@
 # Legacy 1D API Deprecation Plan
 
-**Status**: Planning
+**Status**: Phase 1 In Progress
 **Target Removal**: v1.0.0
-**Current Version**: v0.11.x
+**Current Version**: v0.12.6
 **Created**: 2025-11-19
 
 ## Executive Summary
@@ -65,9 +65,9 @@ problem = MFGProblem(
 
 ## Deprecation Timeline
 
-### Phase 1: Soft Deprecation (v0.11.x - v0.12.x) ✅ **CURRENT**
+### Phase 1: Soft Deprecation (v0.12.x - v0.13.x) ✅ **CURRENT**
 
-**Status**: In progress
+**Status**: In progress (v0.12.6)
 **Goal**: Warn users but maintain full backward compatibility
 
 **Completed**:
@@ -82,9 +82,9 @@ problem = MFGProblem(
 - [ ] Update all examples to use geometry-based API
 - [ ] Add "See Also" links from legacy API docs to modern API
 
-### Phase 2: Hard Deprecation (v0.13.x - v0.14.x)
+### Phase 2: Hard Deprecation (v0.14.x - v0.15.x)
 
-**Status**: Planned
+**Status**: Planned (target: Q2 2026)
 **Goal**: Restrict legacy API usage, provide automatic migration tools
 
 **Tasks**:
@@ -96,7 +96,7 @@ problem = MFGProblem(
 
 ### Phase 3: Removal (v1.0.0)
 
-**Status**: Target
+**Status**: Target (Q4 2026 - Q1 2027)
 **Goal**: Remove legacy API entirely
 
 **Tasks**:
@@ -305,7 +305,7 @@ pytest tests/
 
 ## Communication Plan
 
-### Version 0.12.0 Release Notes
+### Version 0.13.0 Release Notes (Target)
 
 ```markdown
 ## Deprecations
@@ -349,19 +349,19 @@ See `docs/migration/LEGACY_TO_GEOMETRY_API.md` for full migration guide.
 
 ## Success Metrics
 
-### Phase 1 (Soft Deprecation)
+### Phase 1: Soft Deprecation (v0.12.x - v0.13.x)
 - [x] All new examples use geometry-based API
 - [ ] Documentation shows geometry-first as primary
 - [ ] <10% of examples use legacy API
 - [ ] Migration guide published
 
-### Phase 2 (Hard Deprecation)
+### Phase 2: Hard Deprecation (v0.14.x - v0.15.x)
 - [ ] Automated migration tool available
 - [ ] CI tests pass with `strict_mode=True`
 - [ ] All maintained examples migrated
 - [ ] <5% of user code uses legacy API (based on issue reports)
 
-### Phase 3 (Removal)
+### Phase 3: Removal (v1.0.0)
 - [ ] Legacy API code removed from codebase
 - [ ] All tests use geometry-based API
 - [ ] No backward compatibility shims remain
