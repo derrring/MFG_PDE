@@ -172,11 +172,18 @@ class HJBFDMSolver(BaseHJBSolver):
         M_density_evolution: NDArray,
         U_final_condition: NDArray,
         U_from_prev_picard: NDArray,
+        diffusion_field: float | NDArray | None = None,
     ) -> NDArray:
         """
         Solve HJB system backward in time.
 
         Automatically routes to 1D or nD solver based on dimension.
+
+        Args:
+            M_density_evolution: Density field from FP solver
+            U_final_condition: Terminal condition at T
+            U_from_prev_picard: Previous Picard iterate
+            diffusion_field: Diffusion coefficient (None uses problem.sigma)
         """
         if self.dimension == 1:
             # Use optimized 1D solver
@@ -188,18 +195,24 @@ class HJBFDMSolver(BaseHJBSolver):
                 max_newton_iterations=self.max_newton_iterations,
                 newton_tolerance=self.newton_tolerance,
                 backend=self.backend,
+                diffusion_field=diffusion_field,
             )
         else:
             # Use nD solver with centralized nonlinear solver
-            return self._solve_hjb_nd(M_density_evolution, U_final_condition, U_from_prev_picard)
+            return self._solve_hjb_nd(M_density_evolution, U_final_condition, U_from_prev_picard, diffusion_field)
 
     def _solve_hjb_nd(
         self,
         M_density: NDArray,
         U_final: NDArray,
         U_prev: NDArray,
+        diffusion_field: float | NDArray | None = None,
     ) -> NDArray:
-        """Solve nD HJB using centralized nonlinear solvers."""
+        """Solve nD HJB using centralized nonlinear solvers.
+
+        Note: Variable diffusion support for nD HJB is Phase 2.
+        Currently uses problem.sigma (ignores diffusion_field parameter).
+        """
         # Validate shapes
         Nt = self.problem.Nt + 1
         expected_shape = (Nt, *self.shape)

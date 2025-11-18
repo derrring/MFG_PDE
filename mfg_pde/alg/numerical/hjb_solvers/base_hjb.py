@@ -171,11 +171,20 @@ class BaseHJBSolver(BaseNumericalSolver):
         M_density_evolution_from_FP: np.ndarray,
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray,
+        diffusion_field: float | np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve the HJB system given density evolution and boundary conditions.
 
         This is the main method that specific HJB solvers must implement.
+
+        The HJB equation is:
+            -∂u/∂t + H(∇u, x, t, m) - σ²(x,t)/2 Δu = 0
+
+        where σ²(x,t) is the diffusion coefficient that can be:
+        - Constant (scalar): σ² = constant (classical MFG)
+        - Spatially varying: σ²(x,t) varies in space/time
+        - None: Use problem.sigma (backward compatible)
 
         Args:
             M_density_evolution_from_FP: Density field m(t,x) from Fokker-Planck equation
@@ -185,9 +194,19 @@ class BaseHJBSolver(BaseNumericalSolver):
             U_from_prev_picard: Value function from previous Picard iteration
                                For MFG: actual previous iterate U^{k-1}
                                For standalone: initial guess (zeros, terminal condition, etc.)
+            diffusion_field: Diffusion coefficient specification (optional):
+                - None: Use problem.sigma (backward compatible)
+                - float: Constant diffusion σ²
+                - np.ndarray: Spatially/temporally varying diffusion σ²(t,x)
+                  Shape: (Nt+1, Nx+1) for 1D, (Nt+1, Nx+1, Ny+1) for 2D, etc.
+                Default: None
 
         Returns:
             np.ndarray: Value function U(t,x) solution
+
+        Note:
+            For MFG consistency, the same diffusion_field should be used in both
+            HJB and FP solvers. The coupling solver handles this synchronization.
         """
 
 
@@ -335,11 +354,24 @@ def compute_hjb_residual(
     problem: MFGProblem,
     t_idx_n: int,  # Time index for U_n
     backend=None,  # Backend for MPS/CUDA support
+    sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
 ) -> np.ndarray:
     Nx = problem.Nx + 1
     dx = problem.dx
     dt = problem.dt
-    sigma = problem.sigma
+
+    # Handle diffusion field
+    if sigma_at_n is None:
+        sigma = problem.sigma  # Backward compatible
+        sigma_is_scalar = True
+    elif isinstance(sigma_at_n, (int, float)):
+        sigma = float(sigma_at_n)
+        sigma_is_scalar = True
+    else:
+        # Spatially varying diffusion
+        sigma = sigma_at_n
+        sigma_is_scalar = False
+
     if backend is not None:
         Phi_U = backend.zeros((Nx,))
     else:
@@ -387,7 +419,13 @@ def compute_hjb_residual(
                 return backend.full((Nx,), float("nan"))
             Phi_U[:] = np.nan
             return Phi_U
-        Phi_U += -(sigma**2 / 2.0) * U_xx
+
+        # Apply diffusion term with spatially varying sigma if needed
+        if sigma_is_scalar:
+            Phi_U += -(sigma**2 / 2.0) * U_xx
+        else:
+            # Spatially varying: -(sigma(x)^2/2) * U_xx(x)
+            Phi_U += -(sigma**2 / 2.0) * U_xx
 
     # For m-coupling term, original notebook passed gradUkn, gradUknim1 (from prev Picard iter)
     # but mdmH_withM itself didn't use them. We'll pass an empty dict for now.
@@ -445,12 +483,24 @@ def compute_hjb_jacobian(
     problem: MFGProblem,
     t_idx_n: int,
     backend=None,  # Backend for MPS/CUDA support
+    sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
 ) -> sparse.csr_matrix:
     Nx = problem.Nx + 1
     dx = problem.dx
     dt = problem.dt
-    sigma = problem.sigma
     eps = 1e-7
+
+    # Handle diffusion field
+    if sigma_at_n is None:
+        sigma = problem.sigma  # Backward compatible
+        sigma_is_scalar = True
+    elif isinstance(sigma_at_n, (int, float)):
+        sigma = float(sigma_at_n)
+        sigma_is_scalar = True
+    else:
+        # Spatially varying diffusion
+        sigma = sigma_at_n
+        sigma_is_scalar = False
 
     # For Jacobian, we always need NumPy arrays for scipy.sparse
     # Convert backend arrays to NumPy if needed
@@ -474,10 +524,18 @@ def compute_hjb_jacobian(
 
     # Diffusion part: d/dU_n_current[j] of -(sigma^2/2) * (U_n_current)_xx[i]
     if abs(dx) > 1e-14 and Nx > 1:
-        J_D += sigma**2 / dx**2
-        val_off_diag_diff = -(sigma**2) / (2 * dx**2)
-        J_L += val_off_diag_diff
-        J_U += val_off_diag_diff
+        if sigma_is_scalar:
+            J_D += sigma**2 / dx**2
+            val_off_diag_diff = -(sigma**2) / (2 * dx**2)
+            J_L += val_off_diag_diff
+            J_U += val_off_diag_diff
+        else:
+            # Spatially varying diffusion: need to handle sigma(x)^2 at each point
+            # For simplicity, use pointwise diffusion in Jacobian
+            # More accurate: consider derivatives of sigma(x) as well (future extension)
+            J_D += sigma**2 / dx**2
+            J_L += -(sigma**2) / (2 * dx**2)
+            J_U += -(sigma**2) / (2 * dx**2)
 
     # Hamiltonian part & m-coupling term's Jacobian contribution
     # Try to get analytical/specific Jacobian contributions from the problem for H-part
@@ -635,6 +693,7 @@ def newton_hjb_step(
     problem: MFGProblem,
     t_idx_n: int,
     backend=None,  # Add backend parameter for MPS/CUDA support
+    sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
 ) -> tuple[np.ndarray, float]:
     dx_norm = problem.dx if abs(problem.dx) > 1e-12 else 1.0
 
@@ -648,6 +707,7 @@ def newton_hjb_step(
         problem,
         t_idx_n,
         backend,
+        sigma_at_n,
     )
     if has_nan_or_inf(residual_F_U, backend):
         return U_n_current_newton_iterate, np.inf
@@ -660,6 +720,7 @@ def newton_hjb_step(
         problem,
         t_idx_n,
         backend,
+        sigma_at_n,
     )
     if np.any(np.isnan(jacobian_J_U.data)) or np.any(np.isinf(jacobian_J_U.data)):
         return U_n_current_newton_iterate, np.inf
@@ -708,6 +769,7 @@ def solve_hjb_timestep_newton(
     NiterNewton: int | None = None,
     l2errBoundNewton: float | None = None,
     backend: BaseBackend | None = None,
+    sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
@@ -773,6 +835,7 @@ def solve_hjb_timestep_newton(
             problem,
             t_idx_n,
             backend,  # Pass backend for MPS/CUDA support
+            sigma_at_n,  # Pass diffusion field
         )
 
         if has_nan_or_inf(U_n_next_newton_iterate, backend):
@@ -805,6 +868,7 @@ def solve_hjb_system_backward(
     NiterNewton: int | None = None,
     l2errBoundNewton: float | None = None,
     backend: BaseBackend | None = None,
+    diffusion_field: float | np.ndarray | None = None,  # Diffusion field
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.
@@ -888,6 +952,15 @@ def solve_hjb_system_backward(
             backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), float("nan"), backend)
             continue
 
+        # Extract diffusion at current time if spatially varying
+        if diffusion_field is None:
+            sigma_at_n = None
+        elif isinstance(diffusion_field, (int, float)):
+            sigma_at_n = diffusion_field
+        else:
+            # Spatially/temporally varying: extract at time n_idx_hjb
+            sigma_at_n = diffusion_field[n_idx_hjb, :]
+
         U_new_n = solve_hjb_timestep_newton(
             U_n_plus_1_current_picard,  # U_new[n+1]
             U_n_prev_picard,  # U_k[n] (for Jacobian)
@@ -897,6 +970,7 @@ def solve_hjb_system_backward(
             newton_tolerance=newton_tolerance,
             t_idx_n=n_idx_hjb,
             backend=backend,  # Pass backend for acceleration
+            sigma_at_n=sigma_at_n,  # Pass diffusion at time n
         )
         backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
 
