@@ -44,7 +44,7 @@ This document provides **status tracking and task checklists** for implementing 
 - HJB-FDM nD: ✅ Array + callable diffusion (Phase 2.4 complete)
 - Other HJB: ⏳ Phase 2 (API added, implementation pending)
 
-**Key Commits**: 11 major commits
+**Key Commits**: 12 major commits
 1. `9dd182b` - Unified drift+diffusion API in FP solvers
 2. `1c26f13` - Added diffusion_field to HJB solvers
 3. `dcf1a51` - Type protocols for state-dependent coefficients
@@ -56,6 +56,7 @@ This document provides **status tracking and task checklists** for implementing 
 9. `3650df2` - nD callable diffusion in HJB/FP-FDM (Phase 2.4)
 10. `01e6027` - CoefficientField abstraction (Code quality refactoring)
 11. `b963fbb` - Use CoefficientField in all solvers (Eliminated 100 lines duplication)
+12. `50ad514` - Comprehensive unit tests for CoefficientField (27 tests)
 
 ---
 
@@ -202,10 +203,13 @@ Created `mfg_pde/utils/pde_coefficients.py` with two utilities:
 ### Testing Verification
 
 All existing tests pass without modification:
-- ✅ 5 MFG callable coefficient integration tests
+- ✅ 5 MFG callable coefficient integration tests (1D)
 - ✅ 12 FP-FDM diffusion unit tests
 - ✅ 22 HJB-FDM unit tests
 - ✅ 16 FDM MFG integration tests
+- ✅ 27 CoefficientField unit tests (comprehensive validation)
+
+**Total**: 82 passing tests, zero regressions.
 
 No regressions introduced.
 
