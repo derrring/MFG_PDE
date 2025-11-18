@@ -105,21 +105,25 @@ def corridor_diffusion(t, x, m):
 
 ## Design Decisions
 
-### 1. Tensor Representation
+### 1. Unified PSD Validation (No Special Cases)
 
-**Options**:
-- (A) Full tensor: d×d array
-- (B) Symmetric tensor: Store only upper/lower triangle
-- (C) Diagonal tensor: Store only diagonal entries
-- (D) Eigenvalue decomposition: Store eigenvalues + rotation
+**Design Principle**: Treat all inputs uniformly as tensors, validate PSD property.
 
-**Decision**: Use **(A) Full tensor** initially, optimize later if needed.
+**Automatic Interpretation**:
+- Scalar σ² → interpreted as Σ = σ²I (1×1 or d×d identity scaling)
+- 1D array [σ₁², σ₂², ...] → interpreted as diag(σ₁², σ₂², ...)
+- 2D array (d, d) → used directly as Σ
+- Callable → returns any of the above
+
+**Single Validation Rule**:
+- Check that eigenvalues(Σ) ≥ 0 (with numerical tolerance)
+- No need for separate code paths!
 
 **Rationale**:
-- Simple to implement and understand
-- Allows arbitrary positive semi-definite tensors
-- Memory overhead is O(d²) which is acceptable for d ≤ 10
-- Can add optimized paths for diagonal/symmetric cases later
+- Simpler implementation (one validation path)
+- Mathematically unified (everything is a tensor)
+- Scalar/diagonal cases are just special PSD matrices
+- NumPy already handles scalar → matrix broadcasting naturally
 
 ### 2. Callable Tensor API
 
@@ -285,81 +289,92 @@ class CoefficientField:
         Evaluate coefficient at specific timestep and state.
 
         Returns:
-            - Scalar diffusion: float or (Nx,) array
-            - Tensor diffusion: (d, d) or (..., d, d) array
+            - Scalar: float (treated as Σ = σ²I in solvers)
+            - 1D array: Interpreted as diagonal tensor
+            - 2D array (d, d): Full tensor Σ
+            - nD array (..., d, d): Spatially-varying tensor
         """
-        if self.is_tensor:
-            return self._evaluate_tensor(timestep_idx, grid, density, dt)
-        else:
-            # Existing scalar evaluation logic
-            ...
-
-    def _evaluate_tensor(self, timestep_idx, grid, density, dt):
-        """Evaluate tensor diffusion field."""
+        # Get raw coefficient (scalar, array, or from callable)
         if self._is_callable:
-            # Call user function
-            D = self.field(t, grid, density)
-            # Validate tensor shape and properties
-            self._validate_tensor_output(D, density.shape)
-            return D
+            sigma = self.field(t, grid, density)
         elif self._is_array:
-            # Extract from precomputed tensor array
-            return self._extract_tensor_from_array(timestep_idx, density.shape)
+            sigma = self._extract_from_array(timestep_idx, density.shape)
+        elif self._is_none:
+            sigma = self.default
         else:
-            # Scalar or constant tensor
-            return self._scalar_to_isotropic_tensor(self.field, self.dimension)
+            sigma = self.field
 
-    def _validate_tensor_output(self, sigma_tensor, grid_shape):
+        # Validate if tensor (2D or higher)
+        if isinstance(sigma, np.ndarray) and sigma.ndim >= 2:
+            self._validate_psd(sigma, density.shape)
+
+        return sigma
+
+    def _validate_psd(self, sigma_tensor, grid_shape):
         """
-        Validate tensor diffusion output.
+        Validate that diffusion tensor is positive semi-definite.
 
         Args:
-            sigma_tensor: Diffusion tensor Σ (capital Sigma)
+            sigma_tensor: Diffusion tensor Σ
+                - (d, d): Constant tensor
+                - (..., d, d): Spatially varying tensor
 
         Checks:
-        - Shape: (d, d) or (N₁, ..., Nₐ, d, d)
-        - Symmetry: Σ = Σᵀ (within tolerance)
-        - Positive semi-definite: eigenvalues ≥ 0
+        - Symmetry: Σ = Σᵀ (within tolerance ε = 1e-10)
+        - Positive semi-definite: min(eigenvalues(Σ)) ≥ -ε
         - No NaN/Inf
-        """
-        ...
-
-    def _scalar_to_isotropic_tensor(self, sigma_squared, d):
-        """
-        Convert scalar σ² to isotropic tensor Σ = σ²I.
-
-        Args:
-            sigma_squared: Scalar diffusion coefficient (σ²)
-            d: Spatial dimension
-
-        Returns:
-            Σ = σ²I, a d×d isotropic diffusion tensor
 
         Note:
-            In 1D: σ²I = σ² (scalar), which equals σσᵀ (1×1 outer product)
-            In nD: σ²I = diag([σ², σ², ...]), isotropic diffusion
-
-            This is equivalent to the SDE interpretation with σ̃ = σI:
-                Σ = (σ̃σ̃ᵀ)/2 = (σI)(σI)ᵀ/2 = σ²I/2
-            (We absorb the factor of 1/2 into the convention.)
+            This single validation works for ALL cases:
+            - Scalar σ² (always PSD)
+            - Diagonal (always PSD if entries ≥ 0)
+            - Full tensor (check eigenvalues)
         """
-        return sigma_squared * np.eye(d)
+        # Check for NaN/Inf
+        if not np.all(np.isfinite(sigma_tensor)):
+            raise ValueError(f"{self.name} contains NaN or Inf values")
 
-    def _vector_to_diagonal_tensor(self, sigma_vector):
-        """
-        Convert vector σ to diagonal tensor Σ = diag(σ₁², σ₂², ...).
+        # Get last two dimensions (tensor dimensions)
+        d = sigma_tensor.shape[-1]
 
-        Args:
-            sigma_vector: 1D array of diffusion coefficients per dimension
+        # Check symmetry
+        if sigma_tensor.shape[-2] != d:
+            raise ValueError(f"{self.name} must be square matrix, got shape {sigma_tensor.shape}")
 
-        Returns:
-            Σ = diag([σ₁², σ₂², ...]), a diagonal diffusion tensor
+        symmetric_diff = np.abs(sigma_tensor - np.swapaxes(sigma_tensor, -2, -1))
+        if np.max(symmetric_diff) > 1e-10:
+            raise ValueError(f"{self.name} must be symmetric (max asymmetry: {np.max(symmetric_diff)})")
 
-        Note:
-            This can also be viewed as Σ = σσᵀ where σ is diagonal.
-            Allows different diffusion per direction without cross-terms.
-        """
-        return np.diag(sigma_vector ** 2)
+        # Check PSD via eigenvalues
+        # For constant tensor: sigma_tensor is (d, d)
+        # For spatially varying: need to check each point
+        min_eigenvalue = self._compute_min_eigenvalue(sigma_tensor)
+
+        if min_eigenvalue < -1e-10:
+            raise ValueError(
+                f"{self.name} must be positive semi-definite "
+                f"(min eigenvalue: {min_eigenvalue})"
+            )
+
+    def _compute_min_eigenvalue(self, sigma_tensor):
+        """Compute minimum eigenvalue of tensor(s)."""
+        if sigma_tensor.ndim == 2:
+            # Constant tensor: single eigenvalue computation
+            eigenvalues = np.linalg.eigvalsh(sigma_tensor)
+            return np.min(eigenvalues)
+        else:
+            # Spatially varying: check all points
+            # Reshape to (n_points, d, d)
+            spatial_shape = sigma_tensor.shape[:-2]
+            n_points = np.prod(spatial_shape)
+            reshaped = sigma_tensor.reshape(n_points, *sigma_tensor.shape[-2:])
+
+            min_eig = float('inf')
+            for i in range(n_points):
+                eigs = np.linalg.eigvalsh(reshaped[i])
+                min_eig = min(min_eig, np.min(eigs))
+
+            return min_eig
 ```
 
 ### Task 3: Update FP Solvers
@@ -391,20 +406,31 @@ def _solve_fp_nd_full_system(
     )
 
     for k in range(Nt):
-        # Evaluate diffusion (scalar σ² or tensor Σ)
+        # Evaluate diffusion (automatically validated as PSD if tensor)
         sigma_at_k = diffusion.evaluate_at(k, grid.coordinates, M_current, dt)
 
-        # Choose appropriate operator
-        if isinstance(sigma_at_k, np.ndarray) and sigma_at_k.ndim > 1:
-            # Tensor diffusion: Use tensor divergence operator
-            diffusion_term = divergence_tensor_diffusion_nd(
-                M_current, sigma_at_k, dx, boundary_conditions
-            )
+        # Dispatch to appropriate operator based on shape
+        if isinstance(sigma_at_k, np.ndarray):
+            if sigma_at_k.ndim >= 2 and sigma_at_k.shape[-2:] == (ndim, ndim):
+                # Full tensor Σ (d, d) or spatially varying (..., d, d)
+                diffusion_term = divergence_tensor_diffusion_nd(
+                    M_current, sigma_at_k, dx, boundary_conditions
+                )
+            elif sigma_at_k.ndim == 1:
+                # Diagonal tensor: use optimized diagonal operator
+                diffusion_term = divergence_diagonal_diffusion_nd(
+                    M_current, sigma_at_k, dx, boundary_conditions
+                )
+            else:
+                # Scalar array (spatially varying but isotropic)
+                diffusion_term = laplacian_nd(M_current, sigma_at_k, dx, boundary_conditions)
         else:
-            # Scalar diffusion: Use existing scalar operator
+            # Scalar: Use existing scalar operator (Σ = σ²I implicitly)
             diffusion_term = laplacian_nd(M_current, sigma_at_k, dx, boundary_conditions)
 
         # ... rest of FP solver logic ...
+
+    # Note: No special cases needed! PSD validation already ensures correctness.
 ```
 
 ### Task 4: Update HJB Solvers
