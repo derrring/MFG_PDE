@@ -1,6 +1,6 @@
 # PDE Coefficient Implementation Roadmap
 
-**Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅
+**Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Code Quality: Refactored ✅
 **Last Updated**: 2025-11-19
 **Branch**: `feature/drift-strategy-pattern`
 
@@ -44,7 +44,7 @@ This document provides **status tracking and task checklists** for implementing 
 - HJB-FDM nD: ✅ Array + callable diffusion (Phase 2.4 complete)
 - Other HJB: ⏳ Phase 2 (API added, implementation pending)
 
-**Key Commits**: 9 major commits
+**Key Commits**: 11 major commits
 1. `9dd182b` - Unified drift+diffusion API in FP solvers
 2. `1c26f13` - Added diffusion_field to HJB solvers
 3. `dcf1a51` - Type protocols for state-dependent coefficients
@@ -54,6 +54,8 @@ This document provides **status tracking and task checklists** for implementing 
 7. `4aa7d6a` - MFG coupling integration (Phase 2.3)
 8. `7b85a73` - Callable diffusion in HJB-FDM solver (Phase 2.2 HJB side)
 9. `3650df2` - nD callable diffusion in HJB/FP-FDM (Phase 2.4)
+10. `01e6027` - CoefficientField abstraction (Code quality refactoring)
+11. `b963fbb` - Use CoefficientField in all solvers (Eliminated 100 lines duplication)
 
 ---
 
@@ -151,6 +153,61 @@ This document provides **status tracking and task checklists** for implementing 
 - [ ] Update FP/HJB solvers to accept tensor diffusion_field
 - [ ] Unit tests: diagonal tensors, cross-diffusion
 - [ ] Example: anisotropic crowd dynamics
+
+---
+
+## Code Quality Refactoring (✅ COMPLETED)
+
+**Status**: Complete | **Date**: 2025-11-19 | **Commits**: `01e6027`, `b963fbb`
+
+### Problem
+After Phase 2 completion, code review identified ~100 lines of duplicated coefficient extraction logic across `base_hjb.py`, `hjb_fdm.py`, and `fp_fdm.py`. Each solver reimplemented:
+- Type checking (None, scalar, array, callable)
+- Grid construction for callable evaluation
+- Array extraction (spatial vs spatiotemporal)
+- Callable validation (shape, NaN/Inf checking)
+
+### Solution: CoefficientField Abstraction
+
+Created `mfg_pde/utils/pde_coefficients.py` with two utilities:
+
+1. **`CoefficientField` class** (245 lines):
+   - Unified interface for scalar/array/callable coefficients
+   - `evaluate_at(timestep_idx, grid, density, dt)` - Extract coefficient at specific state
+   - `_validate_callable_output()` - Consistent validation
+   - `_extract_from_array()` - Handle spatial/spatiotemporal arrays
+   - Type helpers: `is_callable()`, `is_constant()`, `is_array()`
+
+2. **`get_spatial_grid()` function** (25 lines):
+   - Unified grid access for legacy 1D API and geometry-based API
+   - Eliminates 3 different grid construction patterns
+
+### Refactoring Results
+
+| File | Before | After | Reduction |
+|:-----|:-------|:------|:----------|
+| `base_hjb.py` (1D HJB) | 37 lines | 10 lines | **-73%** |
+| `hjb_fdm.py` (nD HJB) | 38 lines | 4 lines | **-89%** |
+| `fp_fdm.py` (nD FP) | 33 lines | 2 lines | **-94%** |
+| **Total** | **108 lines** | **16 lines** | **-85%** |
+
+### Benefits
+
+1. **Single Source of Truth**: All coefficient extraction uses same validation logic
+2. **Consistent Error Messages**: Same error format across all solvers
+3. **Easier Extension**: Adding anisotropic tensors requires changes in one place only
+4. **Better Testability**: CoefficientField can be unit tested independently
+5. **Reduced Maintenance**: Bug fixes propagate to all solvers automatically
+
+### Testing Verification
+
+All existing tests pass without modification:
+- ✅ 5 MFG callable coefficient integration tests
+- ✅ 12 FP-FDM diffusion unit tests
+- ✅ 22 HJB-FDM unit tests
+- ✅ 16 FDM MFG integration tests
+
+No regressions introduced.
 
 ---
 
