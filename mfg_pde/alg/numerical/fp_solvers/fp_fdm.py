@@ -115,8 +115,9 @@ class FPFDMSolver(BaseFPSolver):
             Diffusion specification:
             - None: Use problem.sigma (backward compatible)
             - float: Constant isotropic diffusion
-            - np.ndarray: Spatially varying diffusion (Phase 2)
-            - Callable: Function D(t, x, m) -> diffusion (Phase 2)
+            - np.ndarray: Spatially/temporally varying diffusion
+              Shape: (Nx,) for spatial only, (Nt, Nx) for spatiotemporal
+            - Callable: Function D(t, x, m) -> diffusion (Phase 2.2)
             Default: None
         show_progress : bool
             Whether to show progress bar
@@ -138,6 +139,18 @@ class FPFDMSolver(BaseFPSolver):
 
         Custom diffusion coefficient:
         >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.5)
+
+        Spatially varying diffusion (higher at boundaries):
+        >>> x_grid = np.linspace(0, 1, problem.Nx + 1)
+        >>> diffusion_array = 0.1 + 0.2 * np.abs(x_grid - 0.5)
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=diffusion_array)
+
+        Spatiotemporal diffusion (time and space dependent):
+        >>> Nt, Nx = problem.Nt + 1, problem.Nx + 1
+        >>> diffusion_field = np.zeros((Nt, Nx))
+        >>> for t in range(Nt):
+        ...     diffusion_field[t, :] = 0.1 * (1 + 0.5 * t / Nt)  # Increasing over time
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=diffusion_field)
 
         Pure advection (zero diffusion):
         >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.0)
@@ -180,18 +193,15 @@ class FPFDMSolver(BaseFPSolver):
             # Constant isotropic diffusion
             effective_sigma = float(diffusion_field)
         elif isinstance(diffusion_field, np.ndarray):
-            # Spatially varying diffusion - Phase 2
-            raise NotImplementedError(
-                "FPFDMSolver does not yet support spatially varying diffusion_field (np.ndarray). "
-                "Pass constant diffusion as float or use problem.sigma. "
-                "Support for spatially varying diffusion coming in Phase 2."
-            )
+            # Spatially/temporally varying diffusion - Phase 2.1
+            # Shape: (Nt, Nx) for spatiotemporal or broadcastable
+            effective_sigma = diffusion_field
         elif callable(diffusion_field):
-            # State-dependent diffusion - Phase 2
+            # State-dependent diffusion - Phase 2.2
             raise NotImplementedError(
                 "FPFDMSolver does not yet support callable diffusion_field. "
-                "Pass constant diffusion as float or use problem.sigma. "
-                "Support for state-dependent diffusion coming in Phase 2."
+                "Pass constant diffusion as float, array as np.ndarray, or use problem.sigma. "
+                "Support for state-dependent diffusion coming in Phase 2.2."
             )
         else:
             raise TypeError(
@@ -240,7 +250,7 @@ class FPFDMSolver(BaseFPSolver):
         # Infer number of timesteps from U_solution shape, not problem.Nt
         # This allows tests to pass edge cases like Nt=0 or Nt=1
         Nt = U_solution_for_drift.shape[0]
-        sigma = self.problem.sigma
+        sigma_base = self.problem.sigma  # Base diffusion (scalar or array)
         coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
 
         if Nt == 0:
@@ -298,6 +308,24 @@ class FPFDMSolver(BaseFPSolver):
 
             u_at_tk = U_solution_for_drift[k_idx_fp, :]
 
+            # Extract diffusion coefficient at current timestep
+            # Handle scalar (constant) or array (spatially/temporally varying)
+            if isinstance(sigma_base, np.ndarray):
+                # Array diffusion: shape (Nt, Nx) or broadcastable
+                if sigma_base.ndim == 1:
+                    # Spatially varying only: sigma.shape = (Nx,)
+                    sigma_at_k = sigma_base
+                elif sigma_base.ndim == 2:
+                    # Spatiotemporal: sigma.shape = (Nt, Nx)
+                    sigma_at_k = sigma_base[k_idx_fp, :]
+                else:
+                    raise ValueError(
+                        f"diffusion_field array must be 1D (Nx,) or 2D (Nt, Nx), got shape {sigma_base.shape}"
+                    )
+            else:
+                # Scalar diffusion (constant)
+                sigma_at_k = sigma_base
+
             row_indices.clear()
             col_indices.clear()
             data_values.clear()
@@ -306,10 +334,13 @@ class FPFDMSolver(BaseFPSolver):
             if self.boundary_conditions.type == "periodic":
                 # Original periodic boundary implementation
                 for i in range(Nx):
+                    # Get diffusion at point i (scalar or array)
+                    sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
+
                     # Diagonal term for m_i^{k+1}
                     val_A_ii = 1.0 / Dt
                     if Nx > 1:
-                        val_A_ii += sigma**2 / Dx**2
+                        val_A_ii += sigma_i**2 / Dx**2
                         # Advection part of diagonal (outflow from cell i)
                         ip1 = (i + 1) % Nx
                         im1 = (i - 1 + Nx) % Nx
@@ -326,7 +357,7 @@ class FPFDMSolver(BaseFPSolver):
                     if Nx > 1:
                         # Lower diagonal term
                         im1 = (i - 1 + Nx) % Nx  # Previous cell index (periodic)
-                        val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(im1)
@@ -334,7 +365,7 @@ class FPFDMSolver(BaseFPSolver):
 
                         # Upper diagonal term
                         ip1 = (i + 1) % Nx  # Next cell index (periodic)
-                        val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(ip1)
@@ -349,10 +380,13 @@ class FPFDMSolver(BaseFPSolver):
                         col_indices.append(i)
                         data_values.append(1.0)
                     else:
+                        # Get diffusion at point i (scalar or array)
+                        sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
+
                         # Interior points: standard FDM discretization
                         val_A_ii = 1.0 / Dt
                         if Nx > 1:
-                            val_A_ii += sigma**2 / Dx**2
+                            val_A_ii += sigma_i**2 / Dx**2
                             # Advection part (no wrapping for interior points)
                             if i > 0 and i < Nx - 1:
                                 val_A_ii += float(
@@ -367,7 +401,7 @@ class FPFDMSolver(BaseFPSolver):
 
                         if Nx > 1 and i > 0:
                             # Lower diagonal term (flux from left)
-                            val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
+                            val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
                             val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i - 1)
@@ -375,7 +409,7 @@ class FPFDMSolver(BaseFPSolver):
 
                         if Nx > 1 and i < Nx - 1:
                             # Upper diagonal term (flux from right)
-                            val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
+                            val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
                             val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i + 1)
@@ -388,12 +422,15 @@ class FPFDMSolver(BaseFPSolver):
                 # Accept ~1-2% FDM discretization error as normal
 
                 for i in range(Nx):
+                    # Get diffusion at point i (scalar or array)
+                    sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
+
                     if i == 0:
                         # Left boundary: include both diffusion AND advection
                         # Use one-sided (forward) stencil for velocity gradient
 
                         # Diagonal term: time + diffusion + advection (upwind)
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
 
                         # Add advection contribution (one-sided upwind scheme)
                         # For left boundary, use forward difference for velocity
@@ -406,7 +443,7 @@ class FPFDMSolver(BaseFPSolver):
                         data_values.append(val_A_ii)
 
                         # Coupling to m[1]: diffusion + advection
-                        val_A_i_ip1 = -(sigma**2) / Dx**2
+                        val_A_i_ip1 = -(sigma_i**2) / Dx**2
                         if Nx > 1:
                             val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
 
@@ -419,7 +456,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Use one-sided (backward) stencil for velocity gradient
 
                         # Diagonal term: time + diffusion + advection (upwind)
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
 
                         # Add advection contribution (one-sided upwind scheme)
                         # For right boundary, use backward difference for velocity
@@ -432,7 +469,7 @@ class FPFDMSolver(BaseFPSolver):
                         data_values.append(val_A_ii)
 
                         # Coupling to m[N-2]: diffusion + advection
-                        val_A_i_im1 = -(sigma**2) / Dx**2
+                        val_A_i_im1 = -(sigma_i**2) / Dx**2
                         if Nx > 1:
                             val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
 
@@ -442,7 +479,7 @@ class FPFDMSolver(BaseFPSolver):
 
                     else:
                         # Interior points: standard conservative FDM discretization
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
 
                         val_A_ii += float(
                             coupling_coefficient
@@ -455,14 +492,14 @@ class FPFDMSolver(BaseFPSolver):
                         data_values.append(val_A_ii)
 
                         # Lower diagonal term
-                        val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i - 1)
                         data_values.append(val_A_i_im1)
 
                         # Upper diagonal term
-                        val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i + 1)
