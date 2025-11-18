@@ -92,14 +92,13 @@ class FPFDMSolver(BaseFPSolver):
         self,
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system forward in time with general drift support.
+        Solve FP system forward in time with general drift and diffusion support.
 
-        Implements BaseFPSolver unified drift API. The drift_field parameter
-        handles all drift sources in a clean, general way.
-
+        Implements BaseFPSolver unified API for both drift and diffusion.
         Automatically routes to 1D or nD solver based on problem dimension.
 
         Parameters
@@ -109,9 +108,15 @@ class FPFDMSolver(BaseFPSolver):
         drift_field : np.ndarray or callable, optional
             Drift field specification:
             - None: Zero drift (pure diffusion)
-            - np.ndarray: Precomputed drift field α(t,x)
-              For MFG: pass -∇U/λ computed externally
+            - np.ndarray: Precomputed drift α(t,x), e.g., -∇U/λ for MFG
             - Callable: Function α(t, x, m) -> drift (Phase 2)
+            Default: None
+        diffusion_field : float, np.ndarray, or callable, optional
+            Diffusion specification:
+            - None: Use problem.sigma (backward compatible)
+            - float: Constant isotropic diffusion
+            - np.ndarray: Spatially varying diffusion (Phase 2)
+            - Callable: Function D(t, x, m) -> diffusion (Phase 2)
             Default: None
         show_progress : bool
             Whether to show progress bar
@@ -131,9 +136,11 @@ class FPFDMSolver(BaseFPSolver):
         >>> drift = -problem.compute_gradient(U_hjb) / problem.control_cost
         >>> M = solver.solve_fp_system(m0, drift_field=drift)
 
-        Custom drift field:
-        >>> drift = lambda t, x, m: np.ones_like(x) * 0.5
-        >>> M = solver.solve_fp_system(m0, drift_field=drift)
+        Custom diffusion coefficient:
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.5)
+
+        Pure advection (zero diffusion):
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.0)
         """
         # Handle drift_field parameter
         if drift_field is None:
@@ -165,19 +172,54 @@ class FPFDMSolver(BaseFPSolver):
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
-        # Route to appropriate solver based on dimension
-        if self.dimension == 1:
-            return self._solve_fp_1d(m_initial_condition, effective_U, show_progress)
-        else:
-            # Multi-dimensional solver via full nD system (not dimensional splitting)
-            return _solve_fp_nd_full_system(
-                m_initial_condition=m_initial_condition,
-                U_solution_for_drift=effective_U,
-                problem=self.problem,
-                boundary_conditions=self.boundary_conditions,
-                show_progress=show_progress,
-                backend=self.backend,
+        # Handle diffusion_field parameter
+        if diffusion_field is None:
+            # Use problem.sigma (backward compatible)
+            effective_sigma = self.problem.sigma
+        elif isinstance(diffusion_field, (int, float)):
+            # Constant isotropic diffusion
+            effective_sigma = float(diffusion_field)
+        elif isinstance(diffusion_field, np.ndarray):
+            # Spatially varying diffusion - Phase 2
+            raise NotImplementedError(
+                "FPFDMSolver does not yet support spatially varying diffusion_field (np.ndarray). "
+                "Pass constant diffusion as float or use problem.sigma. "
+                "Support for spatially varying diffusion coming in Phase 2."
             )
+        elif callable(diffusion_field):
+            # State-dependent diffusion - Phase 2
+            raise NotImplementedError(
+                "FPFDMSolver does not yet support callable diffusion_field. "
+                "Pass constant diffusion as float or use problem.sigma. "
+                "Support for state-dependent diffusion coming in Phase 2."
+            )
+        else:
+            raise TypeError(
+                f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
+            )
+
+        # Temporarily override problem.sigma if custom diffusion provided
+        original_sigma = self.problem.sigma
+        if diffusion_field is not None:
+            self.problem.sigma = effective_sigma
+
+        try:
+            # Route to appropriate solver based on dimension
+            if self.dimension == 1:
+                return self._solve_fp_1d(m_initial_condition, effective_U, show_progress)
+            else:
+                # Multi-dimensional solver via full nD system (not dimensional splitting)
+                return _solve_fp_nd_full_system(
+                    m_initial_condition=m_initial_condition,
+                    U_solution_for_drift=effective_U,
+                    problem=self.problem,
+                    boundary_conditions=self.boundary_conditions,
+                    show_progress=show_progress,
+                    backend=self.backend,
+                )
+        finally:
+            # Restore original sigma
+            self.problem.sigma = original_sigma
 
     def _solve_fp_1d(
         self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True

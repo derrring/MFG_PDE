@@ -327,10 +327,11 @@ class FPParticleSolver(BaseFPSolver):
         self,
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system using particle method with unified drift API.
+        Solve FP system using particle method with unified API.
 
         Modes:
         - HYBRID (default): Sample own particles, output to grid via KDE
@@ -344,6 +345,10 @@ class FPParticleSolver(BaseFPSolver):
                 - None: Zero drift (pure diffusion)
                 - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
                 - Callable: Function α(t, x, m) -> drift (Phase 2)
+            diffusion_field: Diffusion specification (optional):
+                - None: Use problem.sigma (backward compatible)
+                - float: Constant isotropic diffusion
+                - np.ndarray/Callable: Phase 2
             show_progress: Display progress bar (hybrid mode only)
 
         Returns:
@@ -374,36 +379,64 @@ class FPParticleSolver(BaseFPSolver):
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
+        # Handle diffusion_field parameter
+        if diffusion_field is None:
+            # Use problem.sigma (backward compatible)
+            effective_sigma = self.problem.sigma
+        elif isinstance(diffusion_field, (int, float)):
+            # Constant isotropic diffusion
+            effective_sigma = float(diffusion_field)
+        elif isinstance(diffusion_field, np.ndarray) or callable(diffusion_field):
+            # Spatially varying or state-dependent - Phase 2
+            raise NotImplementedError(
+                "FPParticleSolver does not yet support spatially varying or callable diffusion_field. "
+                "Pass constant diffusion as float or use problem.sigma. "
+                "Support coming in Phase 2."
+            )
+        else:
+            raise TypeError(
+                f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
+            )
+
+        # Temporarily override problem.sigma if custom diffusion provided
+        original_sigma = self.problem.sigma
+        if diffusion_field is not None:
+            self.problem.sigma = effective_sigma
+
         # Reset time step counter for normalization logic
         self._time_step_counter = 0
 
         # Store show_progress for use in methods
         self._show_progress = show_progress
 
-        # Route to appropriate solver based on mode
-        if self.mode == ParticleMode.COLLOCATION:
-            # Collocation mode: particles → particles (no KDE)
-            return self._solve_fp_system_collocation(m_initial_condition, effective_U)
-        else:
-            # Hybrid mode: particles → grid (existing behavior with strategy selection)
-            # Determine problem size for strategy selection
-            Nt = self.problem.Nt + 1
-            Nx = self.problem.Nx + 1
-            problem_size = (self.num_particles, Nx, Nt)
-
-            # Select optimal strategy (GPU vs CPU vs Hybrid)
-            self.current_strategy = self.strategy_selector.select_strategy(
-                backend=self.backend if (self.backend is not None and self.backend.name != "numpy") else None,
-                problem_size=problem_size,
-                strategy_hint="auto",  # Can be overridden to "cpu", "gpu", "hybrid"
-            )
-
-            # Execute using selected strategy's pipeline
-            if self.current_strategy.name == "cpu":
-                return self._solve_fp_system_cpu(m_initial_condition, effective_U)
+        try:
+            # Route to appropriate solver based on mode
+            if self.mode == ParticleMode.COLLOCATION:
+                # Collocation mode: particles → particles (no KDE)
+                return self._solve_fp_system_collocation(m_initial_condition, effective_U)
             else:
-                # GPU or Hybrid strategy (both use GPU pipeline)
-                return self._solve_fp_system_gpu(m_initial_condition, effective_U)
+                # Hybrid mode: particles → grid (existing behavior with strategy selection)
+                # Determine problem size for strategy selection
+                Nt = self.problem.Nt + 1
+                Nx = self.problem.Nx + 1
+                problem_size = (self.num_particles, Nx, Nt)
+
+                # Select optimal strategy (GPU vs CPU vs Hybrid)
+                self.current_strategy = self.strategy_selector.select_strategy(
+                    backend=self.backend if (self.backend is not None and self.backend.name != "numpy") else None,
+                    problem_size=problem_size,
+                    strategy_hint="auto",  # Can be overridden to "cpu", "gpu", "hybrid"
+                )
+
+                # Execute using selected strategy's pipeline
+                if self.current_strategy.name == "cpu":
+                    return self._solve_fp_system_cpu(m_initial_condition, effective_U)
+                else:
+                    # GPU or Hybrid strategy (both use GPU pipeline)
+                    return self._solve_fp_system_gpu(m_initial_condition, effective_U)
+        finally:
+            # Restore original sigma
+            self.problem.sigma = original_sigma
 
     def _solve_fp_system_cpu(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """CPU pipeline - existing NumPy implementation."""

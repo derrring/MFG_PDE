@@ -16,37 +16,39 @@ class BaseFPSolver(ABC):
     Abstract Base Class for Fokker-Planck (FP) equation solvers.
 
     The FP equation describes density evolution:
-        ∂m/∂t + ∇·(α m) = σ²/2 Δm
+        ∂m/∂t + ∇·(α m) = ∇·(D ∇m)
 
     where:
         m(t,x): probability density
-        α(t,x): drift field (from various sources)
-        σ²: diffusion coefficient (set via problem.sigma)
+        α(t,x,m): drift field (from various sources)
+        D(t,x,m): diffusion tensor (isotropic, anisotropic, or state-dependent)
 
-    Drift Sources:
-        The drift α can come from multiple sources:
+    Drift Sources (controlled by drift_field parameter):
+        - Zero: α = 0 (pure diffusion)
         - Optimal control (MFG): α = -∇U (most common)
-        - Zero (heat equation): α = 0
         - Prescribed field: α = v(t,x) (wind, currents)
-        - Custom: User-provided function
+        - Custom/state-dependent: α = f(t,x,m)
 
-    Diffusion Control:
-        Set problem.sigma to control diffusion strength:
-        - σ > 0: Standard advection-diffusion (MFG typical)
-        - σ = 0: Pure advection (requires specialized schemes like WENO, SL)
+    Diffusion Types (controlled by diffusion_field parameter):
+        - Constant isotropic: D = σ²/2 (scalar, same in all directions)
+        - Anisotropic: D = diag(σ₁², σ₂², ...) (different per direction)
+        - Spatially varying: D(t,x) (depends on location)
+        - State-dependent: D(t,x,m) (nonlinear, depends on density)
+        - Zero: D = 0 (pure advection, requires WENO/SL)
 
-    This base class provides a general, powerful interface supporting all drift types
-    while maintaining backward compatibility with MFG-centric usage.
+    This base class provides a general, powerful interface supporting all drift and
+    diffusion types while maintaining backward compatibility with MFG-centric usage.
 
     Design Philosophy:
-        Make simple cases simple (MFG with U), make complex cases possible
-        (custom drift sources, pure advection). The solver handles drift computation
-        internally based on provided parameters.
+        Make simple cases simple (MFG with constant diffusion), make complex cases
+        possible (anisotropic, state-dependent, spatially varying). The solver
+        handles drift and diffusion computation based on provided parameters.
 
     Note for Implementers:
-        When implementing concrete solvers, ensure σ=0 (pure advection) is handled
-        correctly. FDM with upwind may be unstable; consider WENO, Semi-Lagrangian,
-        or flux-limiting schemes for advection-dominated flows.
+        When implementing concrete solvers:
+        - Handle D=0 (pure advection) carefully - FDM may be unstable, use WENO/SL
+        - Support anisotropic diffusion tensors for realistic applications
+        - Enable state-dependent coefficients for nonlinear PDEs
     """
 
     def __init__(self, problem: MFGProblem):
@@ -110,43 +112,59 @@ class BaseFPSolver(ABC):
         self,
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
     ) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.
 
         This method computes density evolution M(t,x) from t=0 to t=T under
-        the specified drift field.
+        the specified drift and diffusion.
+
+        General FP Equation:
+            ∂m/∂t + ∇·(α m) = ∇·(D ∇m)
+
+            where:
+            - α(t,x,m): drift field (controlled by drift_field)
+            - D(t,x,m): diffusion tensor (controlled by diffusion_field)
 
         Equation Types Supported:
-            The general FP equation is: ∂m/∂t + ∇·(α m) = σ²/2 Δm
-
-            Three equation types are accessible via parameters:
-            1. Advection-diffusion (σ>0, α≠0): Standard MFG, transport with diffusion
-            2. Pure diffusion (σ>0, α=0): Heat equation
-            3. Pure advection (σ=0, α≠0): Transport equation (WENO/SL recommended)
+            1. Advection-diffusion (D>0, α≠0): Standard MFG, transport with diffusion
+            2. Pure diffusion (D>0, α=0): Heat equation
+            3. Pure advection (D=0, α≠0): Transport equation (WENO/SL recommended)
+            4. Anisotropic diffusion (D is tensor): Different diffusion in each direction
+            5. State-dependent (D or α depend on m): Nonlinear PDEs
 
         Drift Specification:
             drift_field can be:
             - None: Zero drift α = 0 (pure diffusion)
             - np.ndarray: Precomputed drift field α(t,x)
-              Shape: (Nt, Nx) for 1D scalar drift, (Nt, Nx, d) for d-dimensional vector drift
+              Shape: (Nt, Nx) for 1D scalar, (Nt, Nx, d) for d-dim vector
             - Callable: Function α(t, x, m) -> drift
-              Signature: (float, ndarray, ndarray) -> ndarray
 
-        Diffusion Control:
-            Set problem.sigma to control diffusion:
-            - σ > 0: Diffusion active (standard MFG)
-            - σ = 0: Pure advection (ensure solver supports this!)
+        Diffusion Specification:
+            diffusion_field can be:
+            - None: Use problem.sigma (backward compatible)
+            - float: Constant isotropic diffusion D = σ²/2
+            - np.ndarray: Spatially varying diffusion D(t,x)
+              Shape: (Nt, Nx) for scalar, (Nt, Nx, d, d) for tensor
+            - Callable: Function D(t, x, m) -> diffusion
 
         Args:
             m_initial_condition: Initial density M(0,x) at t=0
                 Shape: (Nx,) for 1D, (Nx, Ny) for 2D, etc.
 
             drift_field: Drift field specification (optional):
-                - None: Zero drift (pure diffusion)
+                - None: Zero drift
                 - np.ndarray: Precomputed drift α(t,x)
                 - Callable: Function α(t, x, m) -> drift
+                Default: None
+
+            diffusion_field: Diffusion specification (optional):
+                - None: Use problem.sigma
+                - float: Constant isotropic diffusion
+                - np.ndarray: Spatially varying diffusion
+                - Callable: Function D(t, x, m) -> diffusion
                 Default: None
 
             show_progress: Display progress bar for timesteps
@@ -157,30 +175,31 @@ class BaseFPSolver(ABC):
             Shape: (Nt, Nx) or (Nt, Nx, Ny) etc.
 
         Examples:
-            # Pure diffusion (heat equation, σ>0, α=0)
+            # Pure diffusion (heat equation, D>0, α=0)
             >>> M = solver.solve_fp_system(m0)
 
-            # MFG optimal control (σ>0, α=-∇U)
+            # MFG optimal control (isotropic diffusion)
             >>> drift = -problem.compute_gradient(U_hjb) / problem.control_cost
             >>> M = solver.solve_fp_system(m0, drift_field=drift)
 
-            # Pure advection (transport equation, σ=0, α≠0)
-            >>> problem = MFGProblem(..., sigma=0.0)
-            >>> solver = FPWENOSolver(problem)
-            >>> drift = compute_advection_field(...)
-            >>> M = solver.solve_fp_system(m0, drift_field=drift)
+            # Anisotropic diffusion
+            >>> D = np.diag([0.1, 0.5])  # Different in x,y directions
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=D)
 
-            # Prescribed wind field (σ>0, α=v(t,x))
-            >>> wind = lambda t, x, m: np.array([1.0, 0.5])
-            >>> M = solver.solve_fp_system(m0, drift_field=wind)
+            # State-dependent diffusion
+            >>> D_func = lambda t, x, m: 0.1 * (1 + m)  # Increases with density
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=D_func)
 
-            # Custom drift function
-            >>> def custom_drift(t, x, m):
-            ...     return -np.gradient(potential(x)) + wind_field(t, x)
-            >>> M = solver.solve_fp_system(m0, drift_field=custom_drift)
+            # Pure advection (D=0, α≠0)
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.0)
+
+            # Spatially varying diffusion
+            >>> D_field = create_spatially_varying_diffusion(...)  # (Nt, Nx)
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=D_field)
 
         Note:
-            For MFG problems, users compute drift from value function externally:
-            drift = -∇U / λ, where U is from HJB solver and λ is control cost.
-            This gives full control over gradient computation method.
+            For MFG problems:
+            - drift = -∇U / λ (user computes externally)
+            - diffusion = problem.sigma (default) or custom
+            This gives full control over both drift and diffusion.
         """
