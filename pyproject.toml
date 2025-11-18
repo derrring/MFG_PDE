@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.12.6" # v0.12.6: Documentation cleanup and code quality improvements
+version = "0.13.0" # v0.13.0: Phase 2 complete - State-dependent PDE coefficients with callable diffusion
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
