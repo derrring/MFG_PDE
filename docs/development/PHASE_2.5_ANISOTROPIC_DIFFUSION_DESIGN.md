@@ -17,20 +17,25 @@ where σ² is a scalar coefficient (possibly state-dependent).
 
 #### Tensor Diffusion (Phase 2.5 - Target)
 ```
-∂m/∂t = ∇ · (D ∇m) - ∇ · (α m)
+∂m/∂t = ∇ · (Σ ∇m) - ∇ · (α m)
 ```
-where **D** is a d×d positive semi-definite diffusion tensor:
+where **Σ** is a d×d positive semi-definite diffusion tensor:
 ```
-D = [D₁₁  D₁₂  ...  D₁ₐ]
-    [D₂₁  D₂₂  ...  D₂ₐ]
+Σ = [σ₁₁  σ₁₂  ...  σ₁ₐ]
+    [σ₂₁  σ₂₂  ...  σ₂ₐ]
     [... ...  ... ...]
-    [Dₐ₁  Dₐ₂  ...  Dₐₐ]
+    [σₐ₁  σₐ₂  ...  σₐₐ]
 ```
 
+**Notation Note**:
+- Scalar diffusion: σ² (lowercase sigma squared)
+- Tensor diffusion: **Σ** (capital Sigma matrix)
+- Isotropic case: Σ = σ²**I** (relates to scalar)
+
 **Key Properties**:
-- **Symmetry**: D = Dᵀ (for physical realizability)
-- **Positive semi-definite**: xᵀDx ≥ 0 for all x (ensures well-posedness)
-- **State-dependent**: D = D(t, x, m) (supports callable tensors)
+- **Symmetry**: Σ = Σᵀ (for physical realizability)
+- **Positive semi-definite**: xᵀΣx ≥ 0 for all x (ensures well-posedness)
+- **State-dependent**: Σ = Σ(t, x, m) (supports callable tensors)
 
 ## Motivation
 
@@ -38,18 +43,18 @@ D = [D₁₁  D₁₂  ...  D₁ₐ]
 
 1. **Anisotropic Crowd Dynamics**
    - Pedestrians move more easily along corridors than perpendicular
-   - D₁₁ > D₂₂ in corridor direction
+   - σ₁₁ > σ₂₂ in corridor direction
 
 2. **Traffic Flow with Lane Structure**
    - Cars move faster along lanes than across lanes
-   - Cross-diffusion D₁₂ captures lane-changing behavior
+   - Cross-diffusion σ₁₂ captures lane-changing behavior
 
 3. **Environmental Heterogeneity**
    - Terrain with ridges (preferential movement along ridges)
    - Porous media with directional permeability
 
 4. **Multi-Population Segregation**
-   - Cross-diffusion terms D₁₂ model inter-population interactions
+   - Cross-diffusion terms σ₁₂ model inter-population interactions
    - Competitive or cooperative dynamics
 
 ### Example: Pedestrian Corridor
@@ -61,13 +66,15 @@ def corridor_diffusion(t, x, m):
 
     Assume x[0] = longitudinal (along corridor)
            x[1] = lateral (across corridor)
+
+    Returns Σ matrix (capital Sigma, not to be confused with scalar σ²).
     """
-    D_parallel = 0.2   # High diffusion along corridor
-    D_perpendicular = 0.05  # Low diffusion across corridor
+    sigma_parallel = 0.2   # High diffusion along corridor
+    sigma_perpendicular = 0.05  # Low diffusion across corridor
 
     return np.array([
-        [D_parallel, 0.0],
-        [0.0, D_perpendicular]
+        [sigma_parallel, 0.0],
+        [0.0, sigma_perpendicular]
     ])
 ```
 
@@ -95,7 +102,7 @@ def corridor_diffusion(t, x, m):
 ```python
 def diffusion_tensor(t: float, x: NDArray, m: NDArray) -> NDArray:
     """
-    Compute diffusion tensor at given state.
+    Compute diffusion tensor Σ at given state.
 
     Args:
         t: Current time (scalar)
@@ -106,8 +113,8 @@ def diffusion_tensor(t: float, x: NDArray, m: NDArray) -> NDArray:
         m: Current density (same shape as spatial grid)
 
     Returns:
-        Diffusion tensor D with shape:
-        - Scalar: float (isotropic)
+        Diffusion tensor Σ (capital Sigma) with shape:
+        - Scalar: float (isotropic, Σ = σ²I)
         - 1D: (Nx,) array (spatially varying scalar)
         - 2D: (2, 2) or (Nx, Ny, 2, 2) tensor
         - nD: (d, d) or (Nx₁, ..., Nxₐ, d, d) tensor
@@ -169,34 +176,47 @@ DiffusionField = Union[
 ```python
 def divergence_tensor_diffusion_2d(
     m: NDArray,
-    D: NDArray,  # Shape: (2, 2) or (Nx, Ny, 2, 2)
+    sigma_tensor: NDArray,  # Shape: (2, 2) or (Nx, Ny, 2, 2)
     dx: float,
     dy: float,
     boundary_conditions: BoundaryConditions
 ) -> NDArray:
     """
-    Compute ∇ · (D ∇m) in 2D with tensor diffusion.
+    Compute ∇ · (Σ ∇m) in 2D with tensor diffusion.
+
+    Args:
+        m: Density field (Nx, Ny)
+        sigma_tensor: Diffusion tensor Σ
+            - Constant: (2, 2) array
+            - Spatially varying: (Nx, Ny, 2, 2) array
+        dx, dy: Grid spacing
+        boundary_conditions: BC specification
 
     Discretization:
-        ∇ · (D ∇m) = ∂/∂x(D₁₁ ∂m/∂x + D₁₂ ∂m/∂y)
-                    + ∂/∂y(D₂₁ ∂m/∂x + D₂₂ ∂m/∂y)
+        ∇ · (Σ ∇m) = ∂/∂x(σ₁₁ ∂m/∂x + σ₁₂ ∂m/∂y)
+                    + ∂/∂y(σ₂₁ ∂m/∂x + σ₂₂ ∂m/∂y)
 
     Uses central differences with ghost cells for boundary conditions.
     """
     # Compute gradients: ∇m = (∂m/∂x, ∂m/∂y)
-    # Compute flux: F = D ∇m = (D₁₁ ∂m/∂x + D₁₂ ∂m/∂y,
-    #                            D₂₁ ∂m/∂x + D₂₂ ∂m/∂y)
+    # Compute flux: F = Σ ∇m = (σ₁₁ ∂m/∂x + σ₁₂ ∂m/∂y,
+    #                            σ₂₁ ∂m/∂x + σ₂₂ ∂m/∂y)
     # Compute divergence: ∇ · F
     ...
 
 def divergence_tensor_diffusion_nd(
     m: NDArray,
-    D: NDArray,  # Shape: (d, d) or (N₁, ..., Nₐ, d, d)
+    sigma_tensor: NDArray,  # Shape: (d, d) or (N₁, ..., Nₐ, d, d)
     dx: tuple[float, ...],
     boundary_conditions: BoundaryConditions
 ) -> NDArray:
     """
-    Compute ∇ · (D ∇m) in arbitrary dimensions.
+    Compute ∇ · (Σ ∇m) in arbitrary dimensions.
+
+    Args:
+        sigma_tensor: Diffusion tensor Σ (capital Sigma)
+            - Constant: (d, d) array
+            - Spatially varying: (N₁, ..., Nₐ, d, d) array
 
     Generalization of 2D formula to d dimensions.
     """
@@ -264,21 +284,24 @@ class CoefficientField:
             # Scalar or constant tensor
             return self._scalar_to_isotropic_tensor(self.field, self.dimension)
 
-    def _validate_tensor_output(self, D, grid_shape):
+    def _validate_tensor_output(self, sigma_tensor, grid_shape):
         """
         Validate tensor diffusion output.
 
+        Args:
+            sigma_tensor: Diffusion tensor Σ (capital Sigma)
+
         Checks:
         - Shape: (d, d) or (N₁, ..., Nₐ, d, d)
-        - Symmetry: D = Dᵀ (within tolerance)
+        - Symmetry: Σ = Σᵀ (within tolerance)
         - Positive semi-definite: eigenvalues ≥ 0
         - No NaN/Inf
         """
         ...
 
-    def _scalar_to_isotropic_tensor(self, sigma, d):
-        """Convert scalar σ² to isotropic tensor D = σ²I."""
-        return sigma * np.eye(d)
+    def _scalar_to_isotropic_tensor(self, sigma_squared, d):
+        """Convert scalar σ² to isotropic tensor Σ = σ²I."""
+        return sigma_squared * np.eye(d)
 ```
 
 ### Task 3: Update FP Solvers
@@ -310,18 +333,18 @@ def _solve_fp_nd_full_system(
     )
 
     for k in range(Nt):
-        # Evaluate diffusion (scalar or tensor)
-        D_at_k = diffusion.evaluate_at(k, grid.coordinates, M_current, dt)
+        # Evaluate diffusion (scalar σ² or tensor Σ)
+        sigma_at_k = diffusion.evaluate_at(k, grid.coordinates, M_current, dt)
 
         # Choose appropriate operator
-        if isinstance(D_at_k, np.ndarray) and D_at_k.ndim > 1:
+        if isinstance(sigma_at_k, np.ndarray) and sigma_at_k.ndim > 1:
             # Tensor diffusion: Use tensor divergence operator
             diffusion_term = divergence_tensor_diffusion_nd(
-                M_current, D_at_k, dx, boundary_conditions
+                M_current, sigma_at_k, dx, boundary_conditions
             )
         else:
             # Scalar diffusion: Use existing scalar operator
-            diffusion_term = laplacian_nd(M_current, D_at_k, dx, boundary_conditions)
+            diffusion_term = laplacian_nd(M_current, sigma_at_k, dx, boundary_conditions)
 
         # ... rest of FP solver logic ...
 ```
@@ -331,8 +354,8 @@ def _solve_fp_nd_full_system(
 **File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 **Challenges**:
-- HJB with tensor diffusion: H(x, p, D) = -½ pᵀ D p + ...
-- Tensor D affects Hamiltonian evaluation
+- HJB with tensor diffusion: H(x, p, Σ) = -½ pᵀ Σ p + ...
+- Tensor Σ affects Hamiltonian evaluation
 - May require iterative methods for nonlinear HJB
 
 **Initial Approach**: Support tensor diffusion in FP only, keep HJB scalar.
@@ -351,31 +374,32 @@ def _solve_fp_nd_full_system(
 1. **Diagonal Tensor = Scalar**:
    ```python
    def test_diagonal_tensor_matches_scalar():
-       """D = σ²I should match scalar diffusion σ²."""
-       D = 0.1 * np.eye(2)
-       # Compare FP solution with tensor D vs scalar 0.1
+       """Σ = σ²I should match scalar diffusion σ²."""
+       sigma_tensor = 0.1 * np.eye(2)  # Isotropic Σ
+       # Compare FP solution with tensor Σ vs scalar σ² = 0.1
    ```
 
 2. **Anisotropic 2D**:
    ```python
    def test_anisotropic_2d_diffusion():
-       """Test D = diag(0.2, 0.05) in 2D."""
+       """Test Σ = diag(0.2, 0.05) in 2D."""
        # Higher diffusion in x than y
+       sigma_tensor = np.diag([0.2, 0.05])
    ```
 
 3. **Cross-Diffusion**:
    ```python
    def test_cross_diffusion_2d():
-       """Test off-diagonal terms D₁₂ ≠ 0."""
-       D = [[0.1, 0.02],
-            [0.02, 0.1]]
+       """Test off-diagonal terms σ₁₂ ≠ 0."""
+       sigma_tensor = np.array([[0.1, 0.02],
+                                 [0.02, 0.1]])
        # Verify coupling between dimensions
    ```
 
 4. **Callable Tensor**:
    ```python
    def test_callable_tensor_diffusion():
-       """Test state-dependent tensor D(t, x, m)."""
+       """Test state-dependent tensor Σ(t, x, m)."""
        def density_dependent_anisotropy(t, x, m):
            # Higher anisotropy in high-density regions
            alpha = 0.5 * np.max(m)
@@ -401,28 +425,31 @@ def _solve_fp_nd_full_system(
 ```python
 def corridor_tensor_diffusion(t, x, m):
     """
-    Anisotropic diffusion in corridor.
+    Anisotropic diffusion tensor Σ for corridor flow.
 
     High diffusion along corridor (x), low across (y).
     Density-dependent: more anisotropic in high-density regions.
+
+    Returns:
+        Σ: Diffusion tensor (capital Sigma), shape (Nx, Ny, 2, 2)
     """
     # Grid coordinates
     X, Y = x  # Assume 2D grid
 
-    # Base anisotropy
-    D_parallel = 0.2
-    D_perpendicular = 0.05
+    # Base diffusion coefficients
+    sigma_parallel = 0.2        # Along corridor
+    sigma_perpendicular = 0.05  # Across corridor
 
     # Density-dependent enhancement
     m_max = np.max(m) if np.max(m) > 0 else 1.0
     anisotropy_factor = 1.0 + 2.0 * (m / m_max)  # More anisotropic when crowded
 
-    # Construct tensor at each grid point
-    D = np.zeros((*m.shape, 2, 2))
-    D[..., 0, 0] = D_parallel * anisotropy_factor
-    D[..., 1, 1] = D_perpendicular / anisotropy_factor
+    # Construct tensor Σ at each grid point
+    sigma_tensor = np.zeros((*m.shape, 2, 2))
+    sigma_tensor[..., 0, 0] = sigma_parallel * anisotropy_factor
+    sigma_tensor[..., 1, 1] = sigma_perpendicular / anisotropy_factor
 
-    return D
+    return sigma_tensor
 ```
 
 ## Success Metrics
