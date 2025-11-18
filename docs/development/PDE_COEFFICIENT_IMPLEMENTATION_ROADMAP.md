@@ -34,8 +34,8 @@ This document provides **status tracking and task checklists** for implementing 
 ### Implementation Coverage
 
 **FP Solvers**:
-- FP-FDM 1D: ✅ Array diffusion (Phase 2.1 complete) | ⏳ Callable (Phase 2.2)
-- FP-Particle: ✅ Constant diffusion | ⏳ Array diffusion (Phase 2)
+- FP-FDM 1D: ✅ Callable diffusion (Phase 2.1-2.2 complete)
+- FP-Particle: ✅ Constant diffusion | ⏳ Array/callable diffusion (Phase 2)
 - FP-Network: ✅ Variable diffusion
 
 **HJB Solvers**:
@@ -43,12 +43,13 @@ This document provides **status tracking and task checklists** for implementing 
 - HJB-FDM nD: ⏳ Phase 2.4
 - Other HJB: ⏳ Phase 2 (API added, implementation pending)
 
-**Key Commits**: 5 major commits
+**Key Commits**: 6 major commits
 1. `9dd182b` - Unified drift+diffusion API in FP solvers
 2. `1c26f13` - Added diffusion_field to HJB solvers
 3. `dcf1a51` - Type protocols for state-dependent coefficients
 4. `5cbd263` - Simplified HJB diffusion_field broadcasting
 5. `36730de` - Array diffusion in FP-FDM solver (Phase 2.1)
+6. `c82bfcf` - Callable diffusion in FP-FDM solver (Phase 2.2)
 
 ---
 
@@ -68,30 +69,22 @@ This document provides **status tracking and task checklists** for implementing 
 
 **Test Coverage**: Spatial σ(x), spatiotemporal σ(t,x), combined with advection, error handling
 
-### 2.2: Callable Evaluation (Drift & Diffusion)
+### 2.2: Callable Evaluation - FP Side (✅ COMPLETED)
 
-**Priority**: High | **Effort**: 2-3 days | **Status**: ⏳ After 2.1
+**Priority**: High | **Effort**: 1 day | **Status**: ✅ Complete | **Commit**: `c82bfcf`
 
-**Strategy**: Bootstrap evaluation (use m[k] to compute m[k+1]) - see Design Doc Section 3.2
+**Completed Tasks (FP-FDM)**:
+- [x] Add `_solve_fp_1d_with_callable()` method (bootstrap strategy)
+- [x] Add `_validate_callable_output()` helper (shape, NaN/Inf checking)
+- [x] Route callable to appropriate solver in `solve_fp_system()`
+- [x] 6 unit tests: porous medium, crowd dynamics, combined, validation
 
-**Tasks**:
+**Test Coverage**: D(m) = σ²m, D(m) = D₀+D₁(1-m/m_max), scalar return, error handling
 
-**FP-FDM**:
-- [ ] Add `_solve_fp_1d_with_callable()` method
-- [ ] Add `_validate_callable_output()` helper
-- [ ] Route to appropriate solver based on coefficient type
-- [ ] Unit tests: porous medium (D=σ²m), crowd avoidance (α=-∇m)
-
-**HJB-FDM**:
+**Remaining (HJB-FDM)**: ⏳
 - [ ] Add callable evaluation in `solve_hjb_system_backward()`
 - [ ] Re-evaluate per Picard iteration with M_density
 - [ ] Unit tests: state-dependent diffusion
-
-**FP-Particle & FP-Network**:
-- [ ] Similar callable handling
-- [ ] Integration tests
-
-**Test Cases**: Porous medium equation, crowd avoidance, combined nonlinear
 
 ### 2.3: MFG Coupling Integration
 
