@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
+from mfg_pde.utils.pde_coefficients import CoefficientField
 
 from . import base_hjb
 from .base_hjb import BaseHJBSolver
@@ -242,44 +243,13 @@ class HJBFDMSolver(BaseHJBSolver):
             M_next = M_density[n + 1]
             U_guess = U_prev[n]
 
-            # Extract or evaluate diffusion at current timestep
-            if diffusion_field is None:
-                sigma_at_n = None
-            elif isinstance(diffusion_field, (int, float)):
-                sigma_at_n = diffusion_field
-            elif callable(diffusion_field):
-                # State-dependent diffusion: evaluate at current time and state
-                t_current = n * self.problem.dt
-                sigma_at_n = diffusion_field(t_current, self.grid.coordinates, M_next)
-
-                # Validate callable output
-                if isinstance(sigma_at_n, (int, float)):
-                    # Scalar return: use as constant
-                    sigma_at_n = float(sigma_at_n)
-                elif isinstance(sigma_at_n, np.ndarray):
-                    if sigma_at_n.shape != self.shape:
-                        raise ValueError(
-                            f"Callable diffusion_field returned array with shape {sigma_at_n.shape}, "
-                            f"expected {self.shape} (matching grid shape)"
-                        )
-                    # Check for NaN/Inf
-                    if np.any(np.isnan(sigma_at_n)) or np.any(np.isinf(sigma_at_n)):
-                        raise ValueError(f"Callable diffusion_field returned NaN/Inf at timestep {n}")
-                else:
-                    raise TypeError(f"Callable diffusion_field must return float or ndarray, got {type(sigma_at_n)}")
-            else:
-                # Array diffusion: spatially/temporally varying
-                if diffusion_field.ndim == self.dimension:
-                    # Spatially varying only: diffusion.shape = grid shape
-                    sigma_at_n = diffusion_field
-                elif diffusion_field.ndim == self.dimension + 1:
-                    # Spatiotemporal: diffusion.shape = (Nt, *grid_shape)
-                    sigma_at_n = diffusion_field[n, ...]
-                else:
-                    raise ValueError(
-                        f"Array diffusion_field must have shape {self.shape} (spatial) or "
-                        f"{expected_shape} (spatiotemporal), got {diffusion_field.shape}"
-                    )
+            # Extract or evaluate diffusion using CoefficientField abstraction
+            diffusion = CoefficientField(
+                diffusion_field, self.problem.sigma, "diffusion_field", dimension=self.dimension
+            )
+            sigma_at_n = diffusion.evaluate_at(
+                timestep_idx=n, grid=self.grid.coordinates, density=M_next, dt=self.problem.dt
+            )
 
             # Solve nonlinear system using centralized solver
             U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess, sigma_at_n)

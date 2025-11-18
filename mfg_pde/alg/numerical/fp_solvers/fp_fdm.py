@@ -8,6 +8,7 @@ import scipy.sparse as sparse
 from mfg_pde.backends.compat import has_nan_or_inf
 from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.aux_func import npart, ppart
+from mfg_pde.utils.pde_coefficients import CoefficientField
 
 from .base_fp import BaseFPSolver
 
@@ -896,39 +897,9 @@ def _solve_fp_nd_full_system(
         M_current = M_solution[k]
         U_current = U_solution_for_drift[k]
 
-        # Determine diffusion at current timestep
-        if callable(sigma_base):
-            # Evaluate callable at current time and state
-            t_current = k * dt
-            sigma_at_k = sigma_base(t_current, grid.coordinates, M_current)
-
-            # Validate callable output
-            if isinstance(sigma_at_k, (int, float)):
-                sigma_at_k = float(sigma_at_k)
-            elif isinstance(sigma_at_k, np.ndarray):
-                if sigma_at_k.shape != shape:
-                    raise ValueError(
-                        f"Callable diffusion_field returned array with shape {sigma_at_k.shape}, "
-                        f"expected {shape} (matching grid shape)"
-                    )
-                # Check for NaN/Inf
-                if np.any(np.isnan(sigma_at_k)) or np.any(np.isinf(sigma_at_k)):
-                    raise ValueError(f"Callable diffusion_field returned NaN/Inf at timestep {k}")
-            else:
-                raise TypeError(f"Callable diffusion_field must return float or ndarray, got {type(sigma_at_k)}")
-        elif isinstance(sigma_base, np.ndarray):
-            # Extract from array
-            if sigma_base.ndim == ndim:
-                # Spatially varying only
-                sigma_at_k = sigma_base
-            elif sigma_base.ndim == ndim + 1:
-                # Spatiotemporal
-                sigma_at_k = sigma_base[k, ...]
-            else:
-                sigma_at_k = sigma_base
-        else:
-            # Scalar
-            sigma_at_k = sigma_base
+        # Determine diffusion at current timestep using CoefficientField abstraction
+        diffusion = CoefficientField(sigma_base, problem.sigma, "diffusion_field", dimension=ndim)
+        sigma_at_k = diffusion.evaluate_at(timestep_idx=k, grid=grid.coordinates, density=M_current, dt=dt)
 
         # Build and solve full nD system
         M_next = _solve_timestep_full_nd(
