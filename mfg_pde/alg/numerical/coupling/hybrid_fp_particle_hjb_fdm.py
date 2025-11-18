@@ -307,7 +307,7 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             try:
                 M_new = self.fp_solver.solve_fp_system(
                     m_initial_condition=initial_density,
-                    U_solution_for_drift=U_current,
+                    drift_field=U_current,
                 )
 
                 # Apply damping

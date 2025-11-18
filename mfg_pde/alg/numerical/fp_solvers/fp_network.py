@@ -32,6 +32,8 @@ from scipy.sparse.linalg import spsolve
 from .base_fp import BaseFPSolver
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mfg_pde.extensions.topology import NetworkMFGProblem
 
 
@@ -108,68 +110,124 @@ class FPNetworkSolver(BaseFPSolver):
                 print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
 
     def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+        self,
+        m_initial_condition: np.ndarray,
+        drift_field: np.ndarray | Callable | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,
+        show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system on network with given control field.
+        Solve FP system on network with unified drift and diffusion API.
 
         Args:
             m_initial_condition: Initial density m_0(i)
-            U_solution_for_drift: (Nt+1, num_nodes) value function for drift
+            drift_field: Drift field specification (optional):
+                - None: Zero drift (pure diffusion on network)
+                - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
+                - Callable: Function α(t, x, m) -> drift (Phase 2)
+            diffusion_field: Diffusion specification (optional):
+                - None: Use self.diffusion_coefficient (backward compatible)
+                - float: Constant diffusion on network
+                - np.ndarray/Callable: Phase 2
             show_progress: Whether to display progress bar for timesteps
 
         Returns:
             (Nt+1, num_nodes) density evolution
         """
-        Nt = self.network_problem.Nt
-        M = np.zeros((Nt + 1, self.num_nodes))
+        # Handle drift_field parameter
+        if drift_field is None:
+            # Zero drift (pure diffusion): create zero U field for internal use
+            Nt = self.network_problem.Nt
+            effective_U = np.zeros((Nt + 1, self.num_nodes))
+        elif isinstance(drift_field, np.ndarray):
+            # Precomputed drift field (including MFG drift = -∇U/λ)
+            effective_U = drift_field
+        elif callable(drift_field):
+            # Custom drift function - Phase 2
+            raise NotImplementedError(
+                "FPNetworkSolver does not yet support callable drift_field. "
+                "Pass precomputed drift as np.ndarray. "
+                "Support for callable drift coming in Phase 2."
+            )
+        else:
+            raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
-        # Set initial condition
-        M[0, :] = m_initial_condition
-
-        # Normalize initial condition if needed
-        if self.enforce_mass_conservation:
-            total_mass = np.sum(M[0, :])
-            if total_mass > 1e-12:
-                M[0, :] /= total_mass
-
-        # Forward time stepping with progress bar
-        from mfg_pde.utils.progress import tqdm
-
-        timestep_range = range(Nt)
-        if show_progress:
-            timestep_range = tqdm(
-                timestep_range,
-                desc="FP (forward)",
-                unit="step",
-                disable=False,
+        # Handle diffusion_field parameter
+        if diffusion_field is None:
+            # Use self.diffusion_coefficient (backward compatible)
+            effective_diffusion = self.diffusion_coefficient
+        elif isinstance(diffusion_field, (int, float)):
+            # Constant diffusion
+            effective_diffusion = float(diffusion_field)
+        elif isinstance(diffusion_field, np.ndarray) or callable(diffusion_field):
+            # Spatially varying or state-dependent - Phase 2
+            raise NotImplementedError(
+                "FPNetworkSolver does not yet support spatially varying or callable diffusion_field. "
+                "Pass constant diffusion as float. Support coming in Phase 2."
+            )
+        else:
+            raise TypeError(
+                f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
             )
 
-        for n in timestep_range:
-            t = self.times[n]
+        # Temporarily override diffusion_coefficient if custom diffusion provided
+        original_diffusion = self.diffusion_coefficient
+        if diffusion_field is not None:
+            self.diffusion_coefficient = effective_diffusion
 
-            # Current value function for drift computation
-            u_current = U_solution_for_drift[n, :]
+        try:
+            Nt = self.network_problem.Nt
+            M = np.zeros((Nt + 1, self.num_nodes))
 
-            # Solve single time step
-            if self.scheme == "explicit":
-                M[n + 1, :] = self._explicit_step(M[n, :], u_current, t)
-            elif self.scheme == "implicit":
-                M[n + 1, :] = self._implicit_step(M[n, :], u_current, t)
-            elif self.scheme == "upwind":
-                M[n + 1, :] = self._upwind_step(M[n, :], u_current, t)
-            else:
-                raise ValueError(f"Unknown scheme: {self.scheme}")
+            # Set initial condition
+            M[0, :] = m_initial_condition
 
-            # Enforce non-negativity and mass conservation
-            M[n + 1, :] = np.maximum(M[n + 1, :], 0)
-
+            # Normalize initial condition if needed
             if self.enforce_mass_conservation:
-                total_mass = np.sum(M[n + 1, :])
+                total_mass = np.sum(M[0, :])
                 if total_mass > 1e-12:
-                    M[n + 1, :] /= total_mass
+                    M[0, :] /= total_mass
 
-        return M
+            # Forward time stepping with progress bar
+            from mfg_pde.utils.progress import tqdm
+
+            timestep_range = range(Nt)
+            if show_progress:
+                timestep_range = tqdm(
+                    timestep_range,
+                    desc="FP (forward)",
+                    unit="step",
+                    disable=False,
+                )
+
+            for n in timestep_range:
+                t = self.times[n]
+
+                # Current value function for drift computation
+                u_current = effective_U[n, :]
+
+                # Solve single time step
+                if self.scheme == "explicit":
+                    M[n + 1, :] = self._explicit_step(M[n, :], u_current, t)
+                elif self.scheme == "implicit":
+                    M[n + 1, :] = self._implicit_step(M[n, :], u_current, t)
+                elif self.scheme == "upwind":
+                    M[n + 1, :] = self._upwind_step(M[n, :], u_current, t)
+                else:
+                    raise ValueError(f"Unknown scheme: {self.scheme}")
+
+                # Enforce non-negativity and mass conservation
+                M[n + 1, :] = np.maximum(M[n + 1, :], 0)
+
+                if self.enforce_mass_conservation:
+                    total_mass = np.sum(M[n + 1, :])
+                    if total_mass > 1e-12:
+                        M[n + 1, :] /= total_mass
+
+            return M
+        finally:
+            # Restore original diffusion coefficient
+            self.diffusion_coefficient = original_diffusion
 
     def _explicit_step(self, m_current: np.ndarray, u_current: np.ndarray, t: float) -> np.ndarray:
         """Explicit time step for network FP equation."""

@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
+from mfg_pde.utils.pde_coefficients import CoefficientField
 
 from . import base_hjb
 from .base_hjb import BaseHJBSolver
@@ -172,11 +173,18 @@ class HJBFDMSolver(BaseHJBSolver):
         M_density_evolution: NDArray,
         U_final_condition: NDArray,
         U_from_prev_picard: NDArray,
+        diffusion_field: float | NDArray | None = None,
     ) -> NDArray:
         """
         Solve HJB system backward in time.
 
         Automatically routes to 1D or nD solver based on dimension.
+
+        Args:
+            M_density_evolution: Density field from FP solver
+            U_final_condition: Terminal condition at T
+            U_from_prev_picard: Previous Picard iterate
+            diffusion_field: Diffusion coefficient (None uses problem.sigma)
         """
         if self.dimension == 1:
             # Use optimized 1D solver
@@ -188,18 +196,23 @@ class HJBFDMSolver(BaseHJBSolver):
                 max_newton_iterations=self.max_newton_iterations,
                 newton_tolerance=self.newton_tolerance,
                 backend=self.backend,
+                diffusion_field=diffusion_field,
             )
         else:
             # Use nD solver with centralized nonlinear solver
-            return self._solve_hjb_nd(M_density_evolution, U_final_condition, U_from_prev_picard)
+            return self._solve_hjb_nd(M_density_evolution, U_final_condition, U_from_prev_picard, diffusion_field)
 
     def _solve_hjb_nd(
         self,
         M_density: NDArray,
         U_final: NDArray,
         U_prev: NDArray,
+        diffusion_field: float | NDArray | None = None,
     ) -> NDArray:
-        """Solve nD HJB using centralized nonlinear solvers."""
+        """Solve nD HJB using centralized nonlinear solvers with variable diffusion support.
+
+        Supports scalar, array, and callable diffusion coefficients.
+        """
         # Validate shapes
         Nt = self.problem.Nt + 1
         expected_shape = (Nt, *self.shape)
@@ -230,23 +243,39 @@ class HJBFDMSolver(BaseHJBSolver):
             M_next = M_density[n + 1]
             U_guess = U_prev[n]
 
+            # Extract or evaluate diffusion using CoefficientField abstraction
+            diffusion = CoefficientField(
+                diffusion_field, self.problem.sigma, "diffusion_field", dimension=self.dimension
+            )
+            sigma_at_n = diffusion.evaluate_at(
+                timestep_idx=n, grid=self.grid.coordinates, density=M_next, dt=self.problem.dt
+            )
+
             # Solve nonlinear system using centralized solver
-            U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess)
+            U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess, sigma_at_n)
 
         return U_solution
 
-    def _solve_single_timestep(self, U_next: NDArray, M_next: NDArray, U_guess: NDArray) -> NDArray:
+    def _solve_single_timestep(
+        self, U_next: NDArray, M_next: NDArray, U_guess: NDArray, sigma_at_n: float | NDArray | None = None
+    ) -> NDArray:
         """
         Solve single HJB timestep using centralized nonlinear solver.
 
         For fixed-point: Solves u = G(u) where G(u) = u_next - dt·H(∇u, m)
         For Newton: Solves F(u) = 0 where F(u) = (u - u_next)/dt + H(∇u, m)
+
+        Args:
+            U_next: Value function at next timestep
+            M_next: Density at next timestep
+            U_guess: Initial guess for current timestep
+            sigma_at_n: Diffusion coefficient at current timestep (None, float, or array)
         """
         if self.solver_type == "fixed_point":
             # Define fixed-point map G: u → u
             def G(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U)
-                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients)
+                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n)
                 return U_next - self.dt * H_values
 
             U_solution, info = self.nonlinear_solver.solve(G, U_guess)
@@ -255,7 +284,7 @@ class HJBFDMSolver(BaseHJBSolver):
             # Define residual F: u → residual
             def F(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U)
-                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients)
+                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n)
                 return (U - U_next) / self.dt + H_values
 
             U_solution, info = self.nonlinear_solver.solve(F, U_guess)
@@ -307,28 +336,59 @@ class HJBFDMSolver(BaseHJBSolver):
 
         return gradients
 
-    def _evaluate_hamiltonian_nd(self, U: NDArray, M: NDArray, gradients: dict) -> NDArray:
-        """Evaluate Hamiltonian at all grid points."""
+    def _evaluate_hamiltonian_nd(
+        self, U: NDArray, M: NDArray, gradients: dict, sigma_at_n: float | NDArray | None = None
+    ) -> NDArray:
+        """Evaluate Hamiltonian at all grid points with variable diffusion support.
+
+        Args:
+            U: Value function at current timestep
+            M: Density at current timestep
+            gradients: Dictionary of gradient arrays
+            sigma_at_n: Diffusion coefficient (None uses problem.sigma, float is constant, array is spatially varying)
+        """
         H_values = np.zeros(self.shape, dtype=np.float64)
+
+        # Determine sigma to use
+        if sigma_at_n is None:
+            sigma_base = self.problem.sigma
+        else:
+            sigma_base = sigma_at_n
 
         for multi_idx in np.ndindex(self.shape):
             x_coords = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
             m_at_point = M[multi_idx]
             derivs_at_point = {key: grad_array[multi_idx] for key, grad_array in gradients.items()}
 
-            # Call problem Hamiltonian (try both interfaces)
-            if hasattr(self.problem, "hamiltonian"):
-                p = np.array(
-                    [
-                        derivs_at_point.get(tuple(1 if i == d else 0 for i in range(self.dimension)), 0.0)
-                        for d in range(self.dimension)
-                    ]
-                )
-                H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
-            elif hasattr(self.problem, "H"):
-                H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs_at_point)
+            # Get diffusion at this point
+            if isinstance(sigma_base, (int, float)):
+                sigma_at_point = sigma_base
+            elif isinstance(sigma_base, np.ndarray):
+                sigma_at_point = sigma_base[multi_idx]
             else:
-                raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
+                sigma_at_point = self.problem.sigma
+
+            # Temporarily override problem.sigma for Hamiltonian evaluation
+            original_sigma = self.problem.sigma
+            self.problem.sigma = sigma_at_point
+
+            try:
+                # Call problem Hamiltonian (try both interfaces)
+                if hasattr(self.problem, "hamiltonian"):
+                    p = np.array(
+                        [
+                            derivs_at_point.get(tuple(1 if i == d else 0 for i in range(self.dimension)), 0.0)
+                            for d in range(self.dimension)
+                        ]
+                    )
+                    H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
+                elif hasattr(self.problem, "H"):
+                    H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs_at_point)
+                else:
+                    raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
+            finally:
+                # Restore original sigma
+                self.problem.sigma = original_sigma
 
         return H_values
 

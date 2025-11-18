@@ -1484,6 +1484,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray,
         show_progress: bool = True,
+        diffusion_field: float | np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve the HJB system using GFDM collocation method.

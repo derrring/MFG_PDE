@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import scipy.sparse as sparse
@@ -8,11 +8,39 @@ import scipy.sparse as sparse
 from mfg_pde.backends.compat import has_nan_or_inf
 from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.aux_func import npart, ppart
+from mfg_pde.utils.pde_coefficients import CoefficientField
 
 from .base_fp import BaseFPSolver
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 class FPFDMSolver(BaseFPSolver):
+    """
+    Finite Difference Method (FDM) solver for Fokker-Planck equations.
+
+    Supports general FP equation: ∂m/∂t + ∇·(α m) = σ²/2 Δm
+
+    Equation Types:
+        1. Advection-diffusion (σ>0, α≠0): Standard MFG (stable)
+        2. Pure diffusion (σ>0, α=0): Heat equation (stable)
+        3. Pure advection (σ=0, α≠0): Transport equation (works but may be unstable
+           for sharp fronts; consider WENO/SL solvers for better stability)
+
+    Numerical Scheme:
+        - Implicit timestepping for stability
+        - Upwind scheme for advection terms
+        - Central differences for diffusion terms
+        - Supports periodic, Dirichlet, and no-flux boundary conditions
+
+    Note:
+        FPFDMSolver handles σ=0 (pure advection) algebraically correctly, but
+        upwind discretization may exhibit numerical diffusion or instability for
+        advection-dominated flows. For pure advection problems, WENO or
+        Semi-Lagrangian solvers provide better accuracy and stability.
+    """
+
     def __init__(self, problem: Any, boundary_conditions: BoundaryConditions | None = None) -> None:
         super().__init__(problem)
         self.fp_method_name = "FDM"
@@ -62,20 +90,38 @@ class FPFDMSolver(BaseFPSolver):
         return 1
 
     def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+        self,
+        m_initial_condition: np.ndarray,
+        drift_field: np.ndarray | Callable | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,
+        show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system forward in time.
+        Solve FP system forward in time with general drift and diffusion support.
 
+        Implements BaseFPSolver unified API for both drift and diffusion.
         Automatically routes to 1D or nD solver based on problem dimension.
 
         Parameters
         ----------
         m_initial_condition : np.ndarray
             Initial density. Shape: (Nx+1,) for 1D or (N1-1, N2-1, ...) for nD
-        U_solution_for_drift : np.ndarray
-            Value function for drift term. Shape: (Nt+1, Nx+1) for 1D or
-            (Nt+1, N1-1, N2-1, ...) for nD
+        drift_field : np.ndarray or callable, optional
+            Drift field specification:
+            - None: Zero drift (pure diffusion)
+            - np.ndarray: Precomputed drift α(t,x), e.g., -∇U/λ for MFG
+            - Callable: Function α(t, x, m) -> drift (Phase 2)
+            Default: None
+        diffusion_field : float, np.ndarray, or callable, optional
+            Diffusion specification:
+            - None: Use problem.sigma (backward compatible)
+            - float: Constant isotropic diffusion
+            - np.ndarray: Spatially/temporally varying diffusion
+              Shape: (Nx,) for spatial only, (Nt, Nx) for spatiotemporal
+            - Callable: State-dependent diffusion D(t, x, m) -> float | ndarray
+              Signature: (t: float, x: ndarray, m: ndarray) -> float | ndarray
+              Evaluated per timestep using bootstrap strategy
+            Default: None
         show_progress : bool
             Whether to show progress bar
 
@@ -84,19 +130,127 @@ class FPFDMSolver(BaseFPSolver):
         np.ndarray
             Density evolution. Shape: (Nt+1, Nx+1) for 1D or
             (Nt+1, N1-1, N2-1, ...) for nD
+
+        Examples
+        --------
+        Pure diffusion (heat equation):
+        >>> M = solver.solve_fp_system(m0)
+
+        MFG optimal control:
+        >>> drift = -problem.compute_gradient(U_hjb) / problem.control_cost
+        >>> M = solver.solve_fp_system(m0, drift_field=drift)
+
+        Custom diffusion coefficient:
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.5)
+
+        Spatially varying diffusion (higher at boundaries):
+        >>> x_grid = np.linspace(0, 1, problem.Nx + 1)
+        >>> diffusion_array = 0.1 + 0.2 * np.abs(x_grid - 0.5)
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=diffusion_array)
+
+        Spatiotemporal diffusion (time and space dependent):
+        >>> Nt, Nx = problem.Nt + 1, problem.Nx + 1
+        >>> diffusion_field = np.zeros((Nt, Nx))
+        >>> for t in range(Nt):
+        ...     diffusion_field[t, :] = 0.1 * (1 + 0.5 * t / Nt)  # Increasing over time
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=diffusion_field)
+
+        State-dependent diffusion (porous medium equation):
+        >>> def porous_medium(t, x, m):
+        ...     return 0.1 * m  # Diffusion proportional to density
+        >>> M = solver.solve_fp_system(m0, diffusion_field=porous_medium)
+
+        Density-dependent diffusion with drift:
+        >>> def crowd_diffusion(t, x, m):
+        ...     return 0.05 + 0.15 * (1 - m / np.max(m))  # Lower diffusion in crowds
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=crowd_diffusion)
+
+        Pure advection (zero diffusion):
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.0)
         """
-        # Route to appropriate solver based on dimension
+        # Handle drift_field parameter
+        if drift_field is None:
+            # Zero drift (pure diffusion): create zero U field for internal use
+            if hasattr(self.problem, "Nt"):
+                Nt = self.problem.Nt + 1
+            else:
+                raise ValueError("Cannot infer time steps. Ensure problem has Nt attribute.")
+
+            # Create zero U field with appropriate shape
+            if self.dimension == 1:
+                Nx = self.problem.Nx + 1 if hasattr(self.problem, "Nx") else self.problem.geometry.get_grid_shape()[0]
+                effective_U = np.zeros((Nt, Nx))
+            else:
+                grid_shape = self.problem.geometry.get_grid_shape()
+                effective_U = np.zeros((Nt, *grid_shape))
+
+        elif isinstance(drift_field, np.ndarray):
+            # Precomputed drift field (including MFG drift = -∇U/λ)
+            # For FDM, we interpret scalar drift as -∇U and use existing upwind scheme
+            effective_U = drift_field
+        elif callable(drift_field):
+            # Custom drift function - Phase 2
+            raise NotImplementedError(
+                "FPFDMSolver does not yet support callable drift_field. "
+                "Pass precomputed drift as np.ndarray. "
+                "Support for callable drift coming in Phase 2."
+            )
+        else:
+            raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
+
+        # Handle diffusion_field parameter
+        if diffusion_field is None:
+            # Use problem.sigma (backward compatible)
+            effective_sigma = self.problem.sigma
+        elif isinstance(diffusion_field, (int, float)):
+            # Constant isotropic diffusion
+            effective_sigma = float(diffusion_field)
+        elif isinstance(diffusion_field, np.ndarray):
+            # Spatially/temporally varying diffusion - Phase 2.1
+            # Shape: (Nt, Nx) for spatiotemporal or broadcastable
+            effective_sigma = diffusion_field
+        elif callable(diffusion_field):
+            # State-dependent diffusion - Phase 2.2/2.4
+            # Route to callable solver (no need to set effective_sigma)
+            if self.dimension == 1:
+                return self._solve_fp_1d_with_callable(
+                    m_initial_condition=m_initial_condition,
+                    drift_field=effective_U,
+                    diffusion_callable=diffusion_field,
+                    show_progress=show_progress,
+                )
+            else:
+                # nD callable diffusion (Phase 2.4)
+                # Pass to nD solver - will be evaluated per timestep
+                effective_sigma = diffusion_field
+        else:
+            raise TypeError(
+                f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
+            )
+
+        # Route to appropriate solver based on dimension and coefficient type
         if self.dimension == 1:
-            return self._solve_fp_1d(m_initial_condition, U_solution_for_drift, show_progress)
+            # Temporarily override problem.sigma if custom diffusion provided (1D only)
+            original_sigma = self.problem.sigma
+            if diffusion_field is not None and not callable(diffusion_field):
+                self.problem.sigma = effective_sigma
+
+            try:
+                return self._solve_fp_1d(m_initial_condition, effective_U, show_progress)
+            finally:
+                # Restore original sigma
+                self.problem.sigma = original_sigma
         else:
             # Multi-dimensional solver via full nD system (not dimensional splitting)
+            # Pass diffusion_field directly (handles callable, array, scalar)
             return _solve_fp_nd_full_system(
                 m_initial_condition=m_initial_condition,
-                U_solution_for_drift=U_solution_for_drift,
+                U_solution_for_drift=effective_U,
                 problem=self.problem,
                 boundary_conditions=self.boundary_conditions,
                 show_progress=show_progress,
                 backend=self.backend,
+                diffusion_field=effective_sigma if diffusion_field is not None else None,
             )
 
     def _solve_fp_1d(
@@ -118,7 +272,7 @@ class FPFDMSolver(BaseFPSolver):
         # Infer number of timesteps from U_solution shape, not problem.Nt
         # This allows tests to pass edge cases like Nt=0 or Nt=1
         Nt = U_solution_for_drift.shape[0]
-        sigma = self.problem.sigma
+        sigma_base = self.problem.sigma  # Base diffusion (scalar or array)
         coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
 
         if Nt == 0:
@@ -176,6 +330,24 @@ class FPFDMSolver(BaseFPSolver):
 
             u_at_tk = U_solution_for_drift[k_idx_fp, :]
 
+            # Extract diffusion coefficient at current timestep
+            # Handle scalar (constant) or array (spatially/temporally varying)
+            if isinstance(sigma_base, np.ndarray):
+                # Array diffusion: shape (Nt, Nx) or broadcastable
+                if sigma_base.ndim == 1:
+                    # Spatially varying only: sigma.shape = (Nx,)
+                    sigma_at_k = sigma_base
+                elif sigma_base.ndim == 2:
+                    # Spatiotemporal: sigma.shape = (Nt, Nx)
+                    sigma_at_k = sigma_base[k_idx_fp, :]
+                else:
+                    raise ValueError(
+                        f"diffusion_field array must be 1D (Nx,) or 2D (Nt, Nx), got shape {sigma_base.shape}"
+                    )
+            else:
+                # Scalar diffusion (constant)
+                sigma_at_k = sigma_base
+
             row_indices.clear()
             col_indices.clear()
             data_values.clear()
@@ -184,10 +356,13 @@ class FPFDMSolver(BaseFPSolver):
             if self.boundary_conditions.type == "periodic":
                 # Original periodic boundary implementation
                 for i in range(Nx):
+                    # Get diffusion at point i (scalar or array)
+                    sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
+
                     # Diagonal term for m_i^{k+1}
                     val_A_ii = 1.0 / Dt
                     if Nx > 1:
-                        val_A_ii += sigma**2 / Dx**2
+                        val_A_ii += sigma_i**2 / Dx**2
                         # Advection part of diagonal (outflow from cell i)
                         ip1 = (i + 1) % Nx
                         im1 = (i - 1 + Nx) % Nx
@@ -204,7 +379,7 @@ class FPFDMSolver(BaseFPSolver):
                     if Nx > 1:
                         # Lower diagonal term
                         im1 = (i - 1 + Nx) % Nx  # Previous cell index (periodic)
-                        val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[im1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(im1)
@@ -212,7 +387,7 @@ class FPFDMSolver(BaseFPSolver):
 
                         # Upper diagonal term
                         ip1 = (i + 1) % Nx  # Next cell index (periodic)
-                        val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[ip1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(ip1)
@@ -227,10 +402,13 @@ class FPFDMSolver(BaseFPSolver):
                         col_indices.append(i)
                         data_values.append(1.0)
                     else:
+                        # Get diffusion at point i (scalar or array)
+                        sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
+
                         # Interior points: standard FDM discretization
                         val_A_ii = 1.0 / Dt
                         if Nx > 1:
-                            val_A_ii += sigma**2 / Dx**2
+                            val_A_ii += sigma_i**2 / Dx**2
                             # Advection part (no wrapping for interior points)
                             if i > 0 and i < Nx - 1:
                                 val_A_ii += float(
@@ -245,7 +423,7 @@ class FPFDMSolver(BaseFPSolver):
 
                         if Nx > 1 and i > 0:
                             # Lower diagonal term (flux from left)
-                            val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
+                            val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
                             val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i - 1)
@@ -253,7 +431,7 @@ class FPFDMSolver(BaseFPSolver):
 
                         if Nx > 1 and i < Nx - 1:
                             # Upper diagonal term (flux from right)
-                            val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
+                            val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
                             val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                             row_indices.append(i)
                             col_indices.append(i + 1)
@@ -266,12 +444,15 @@ class FPFDMSolver(BaseFPSolver):
                 # Accept ~1-2% FDM discretization error as normal
 
                 for i in range(Nx):
+                    # Get diffusion at point i (scalar or array)
+                    sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
+
                     if i == 0:
                         # Left boundary: include both diffusion AND advection
                         # Use one-sided (forward) stencil for velocity gradient
 
                         # Diagonal term: time + diffusion + advection (upwind)
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
 
                         # Add advection contribution (one-sided upwind scheme)
                         # For left boundary, use forward difference for velocity
@@ -284,7 +465,7 @@ class FPFDMSolver(BaseFPSolver):
                         data_values.append(val_A_ii)
 
                         # Coupling to m[1]: diffusion + advection
-                        val_A_i_ip1 = -(sigma**2) / Dx**2
+                        val_A_i_ip1 = -(sigma_i**2) / Dx**2
                         if Nx > 1:
                             val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
 
@@ -297,7 +478,7 @@ class FPFDMSolver(BaseFPSolver):
                         # Use one-sided (backward) stencil for velocity gradient
 
                         # Diagonal term: time + diffusion + advection (upwind)
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
 
                         # Add advection contribution (one-sided upwind scheme)
                         # For right boundary, use backward difference for velocity
@@ -310,7 +491,7 @@ class FPFDMSolver(BaseFPSolver):
                         data_values.append(val_A_ii)
 
                         # Coupling to m[N-2]: diffusion + advection
-                        val_A_i_im1 = -(sigma**2) / Dx**2
+                        val_A_i_im1 = -(sigma_i**2) / Dx**2
                         if Nx > 1:
                             val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
 
@@ -320,7 +501,7 @@ class FPFDMSolver(BaseFPSolver):
 
                     else:
                         # Interior points: standard conservative FDM discretization
-                        val_A_ii = 1.0 / Dt + sigma**2 / Dx**2
+                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
 
                         val_A_ii += float(
                             coupling_coefficient
@@ -333,14 +514,14 @@ class FPFDMSolver(BaseFPSolver):
                         data_values.append(val_A_ii)
 
                         # Lower diagonal term
-                        val_A_i_im1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i - 1)
                         data_values.append(val_A_i_im1)
 
                         # Upper diagonal term
-                        val_A_i_ip1 = -(sigma**2) / (2 * Dx**2)
+                        val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
                         val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
                         row_indices.append(i)
                         col_indices.append(i + 1)
@@ -389,6 +570,196 @@ class FPFDMSolver(BaseFPSolver):
 
         return m
 
+    def _validate_callable_output(
+        self,
+        output: np.ndarray | float,
+        expected_shape: tuple,
+        param_name: str,
+        timestep: int | None = None,
+    ) -> np.ndarray:
+        """
+        Validate callable coefficient output.
+
+        Parameters
+        ----------
+        output : np.ndarray or float
+            Output from callable (diffusion or drift)
+        expected_shape : tuple
+            Expected shape for spatial array
+        param_name : str
+            Parameter name for error messages
+        timestep : int, optional
+            Current timestep (for error messages)
+
+        Returns
+        -------
+        np.ndarray
+            Validated array (converts scalar to array if needed)
+
+        Raises
+        ------
+        ValueError
+            If output shape is incorrect or contains NaN/Inf
+        TypeError
+            If output type is incorrect
+        """
+        # Convert scalar to array
+        if isinstance(output, (int, float)):
+            output = np.full(expected_shape, float(output))
+        elif isinstance(output, np.ndarray):
+            # Validate shape
+            if output.shape != expected_shape:
+                raise ValueError(
+                    f"{param_name} callable returned array with shape {output.shape}, "
+                    f"expected {expected_shape} at timestep {timestep}"
+                )
+        else:
+            raise TypeError(
+                f"{param_name} callable must return float or np.ndarray, got {type(output)} at timestep {timestep}"
+            )
+
+        # Check for NaN/Inf
+        if has_nan_or_inf(output, self.backend):
+            raise ValueError(f"{param_name} callable returned NaN or Inf at timestep {timestep}")
+
+        return output
+
+    def _solve_fp_1d_with_callable(
+        self,
+        m_initial_condition: np.ndarray,
+        drift_field: np.ndarray | None,
+        diffusion_callable: callable,
+        show_progress: bool = True,
+    ) -> np.ndarray:
+        """
+        Solve 1D FP equation with callable (state-dependent) diffusion.
+
+        Uses bootstrap strategy: evaluate callable at each timestep using
+        the already-computed density m[k] to solve for m[k+1].
+
+        Parameters
+        ----------
+        m_initial_condition : np.ndarray
+            Initial density, shape (Nx,)
+        drift_field : np.ndarray or None
+            Precomputed drift field, shape (Nt, Nx), or None for zero drift
+        diffusion_callable : callable
+            Function D(t, x, m) -> diffusion coefficient
+            Signature: (float, np.ndarray, np.ndarray) -> float | np.ndarray
+        show_progress : bool
+            Show progress bar
+
+        Returns
+        -------
+        np.ndarray
+            Density evolution, shape (Nt, Nx)
+        """
+        from mfg_pde.types.pde_coefficients import DiffusionCallable
+
+        # Validate callable signature using protocol
+        if not isinstance(diffusion_callable, DiffusionCallable):
+            raise TypeError(
+                "diffusion_field callable does not match DiffusionCallable protocol. "
+                "Expected signature: (t: float, x: ndarray, m: ndarray) -> float | ndarray"
+            )
+
+        # Get problem dimensions
+        if getattr(self.problem, "Nx", None) is not None:
+            Nx = self.problem.Nx + 1
+            Dt = self.problem.dt
+            xmin, xmax = self.problem.xmin, self.problem.xmax
+        else:
+            Nx = self.problem.geometry.get_grid_shape()[0]
+            Dt = self.problem.dt
+            domain = self.problem.geometry.domain
+            xmin, xmax = domain[0][0], domain[0][1]
+
+        # Infer Nt from drift_field if provided, else use problem.Nt
+        if drift_field is not None:
+            Nt = drift_field.shape[0]
+        else:
+            Nt = self.problem.Nt + 1
+
+        # Create spatial grid for callable evaluation
+        x_grid = np.linspace(xmin, xmax, Nx)
+
+        # Allocate solution array
+        if self.backend is not None:
+            m_solution = self.backend.zeros((Nt, Nx))
+        else:
+            m_solution = np.zeros((Nt, Nx))
+
+        m_solution[0, :] = m_initial_condition
+        m_solution[0, :] = np.maximum(m_solution[0, :], 0)
+
+        # Apply boundary conditions to initial condition
+        if self.boundary_conditions.type == "dirichlet":
+            m_solution[0, 0] = self.boundary_conditions.left_value
+            m_solution[0, -1] = self.boundary_conditions.right_value
+
+        # Progress bar
+        from mfg_pde.utils.progress import tqdm
+
+        timestep_range = range(Nt - 1)
+        if show_progress:
+            timestep_range = tqdm(
+                timestep_range,
+                desc="FP (callable diffusion)",
+                unit="step",
+                disable=False,
+            )
+
+        # Bootstrap forward iteration: use m[k] to evaluate callable and compute m[k+1]
+        for k in timestep_range:
+            t_current = k * Dt
+            m_current = m_solution[k, :]
+
+            # Evaluate diffusion callable at current state
+            diffusion_at_k = diffusion_callable(t_current, x_grid, m_current)
+
+            # Validate callable output
+            diffusion_at_k = self._validate_callable_output(
+                diffusion_at_k,
+                expected_shape=(Nx,),
+                param_name="diffusion_field",
+                timestep=k,
+            )
+
+            # Temporarily set sigma to evaluated diffusion for this timestep
+            original_sigma = self.problem.sigma
+            self.problem.sigma = diffusion_at_k
+
+            try:
+                # Get drift at current timestep (or zero)
+                if drift_field is not None:
+                    U_at_k = drift_field[k, :]
+                else:
+                    U_at_k = np.zeros(Nx)
+
+                # Solve single timestep using _solve_fp_1d machinery
+                # Create temporary arrays for single-step solve
+                m_temp = np.zeros((2, Nx))
+                m_temp[0, :] = m_current
+                U_temp = np.zeros((2, Nx))
+                U_temp[0, :] = U_at_k
+
+                # Call _solve_fp_1d for single timestep (Nt=2 gives one step)
+                # This reuses all the boundary condition logic
+                m_result = self._solve_fp_1d(
+                    m_initial_condition=m_current,
+                    U_solution_for_drift=U_temp,
+                    show_progress=False,
+                )
+
+                # Extract result at next timestep
+                m_solution[k + 1, :] = m_result[1, :]
+
+            finally:
+                # Restore original sigma
+                self.problem.sigma = original_sigma
+
+        return m_solution
+
 
 # ============================================================================
 # Multi-dimensional FP solver using full nD system (no dimensional splitting)
@@ -402,6 +773,7 @@ def _solve_fp_nd_full_system(
     boundary_conditions: BoundaryConditions | None = None,
     show_progress: bool = True,
     backend: Any | None = None,
+    diffusion_field: float | np.ndarray | Any | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -427,6 +799,12 @@ def _solve_fp_nd_full_system(
         Whether to display progress bar
     backend : Any | None
         Array backend (currently unused, NumPy only)
+    diffusion_field : float | np.ndarray | Callable | None
+        Optional diffusion override (Phase 2.4):
+        - None: Use problem.sigma
+        - float: Constant diffusion
+        - ndarray: Spatially/temporally varying diffusion
+        - Callable: State-dependent diffusion D(t, x, m) -> float | ndarray
 
     Returns
     -------
@@ -458,12 +836,25 @@ def _solve_fp_nd_full_system(
     ndim = problem.geometry.dimension
     shape = tuple(problem.geometry.get_grid_shape())
     dt = problem.dt
-    sigma = problem.sigma
     coupling_coefficient = getattr(problem, "coupling_coefficient", 1.0)
 
     # Get grid spacing and geometry
     spacing = problem.geometry.get_grid_spacing()
     grid = problem.geometry  # Geometry IS the grid
+
+    # Handle diffusion field (Phase 2.4)
+    if diffusion_field is None:
+        sigma_base = problem.sigma
+    elif isinstance(diffusion_field, (int, float)):
+        sigma_base = float(diffusion_field)
+    elif callable(diffusion_field):
+        # Callable: will be evaluated per timestep
+        sigma_base = diffusion_field
+    elif isinstance(diffusion_field, np.ndarray):
+        # Array: spatially or spatiotemporally varying
+        sigma_base = diffusion_field
+    else:
+        sigma_base = problem.sigma
 
     # Validate input shapes
     assert m_initial_condition.shape == shape, (
@@ -506,13 +897,17 @@ def _solve_fp_nd_full_system(
         M_current = M_solution[k]
         U_current = U_solution_for_drift[k]
 
+        # Determine diffusion at current timestep using CoefficientField abstraction
+        diffusion = CoefficientField(sigma_base, problem.sigma, "diffusion_field", dimension=ndim)
+        sigma_at_k = diffusion.evaluate_at(timestep_idx=k, grid=grid.coordinates, density=M_current, dt=dt)
+
         # Build and solve full nD system
         M_next = _solve_timestep_full_nd(
             M_current,
             U_current,
             problem,
             dt,
-            sigma,
+            sigma_at_k,
             coupling_coefficient,
             spacing,
             grid,

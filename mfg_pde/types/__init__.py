@@ -19,12 +19,17 @@ Internal Types (use with caution):
 
 # Re-export the most commonly needed types
 from .arrays import SolutionArray, SpatialGrid, TimeGrid
+from .pde_coefficients import DiffusionCallable, DiffusionField, DriftCallable, DriftField
 from .protocols import MFGProblem, MFGResult, MFGSolver, SolverConfig
 from .solver_types import HamiltonianJacobians, SolverReturnTuple
 from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
     "ConvergenceInfo",
+    "DiffusionCallable",
+    "DiffusionField",
+    "DriftCallable",
+    "DriftField",
     "HamiltonianJacobians",
     "MFGProblem",
     "MFGResult",

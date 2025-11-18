@@ -291,6 +291,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         M_density_evolution_from_FP: np.ndarray,
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray,
+        diffusion_field: float | np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve the HJB system using semi-Lagrangian method.

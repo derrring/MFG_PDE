@@ -41,6 +41,7 @@ class FixedPointIterator(BaseMFGSolver):
     - GPU/CPU backend support
     - Structured SolverResult output (tuple output for legacy compatibility)
     - Warm start support
+    - State-dependent coefficients (Phase 2.3)
 
     Args:
         problem: MFG problem definition
@@ -52,6 +53,15 @@ class FixedPointIterator(BaseMFGSolver):
         anderson_depth: Anderson acceleration memory depth
         anderson_beta: Anderson acceleration mixing parameter
         backend: Backend name ('numpy', 'torch', 'jax', etc.)
+        diffusion_field: Optional diffusion override (float, array, or callable)
+            - None: Use problem.sigma (default)
+            - float: Constant diffusion
+            - ndarray: Spatially/temporally varying diffusion
+            - Callable: State-dependent diffusion D(t, x, m) -> float | ndarray
+        drift_field: Optional drift override for non-MFG problems (array or callable)
+            - None: Use MFG drift (default, drift from U)
+            - ndarray: Precomputed drift field
+            - Callable: State-dependent drift α(t, x, m) -> ndarray
     """
 
     def __init__(
@@ -65,12 +75,18 @@ class FixedPointIterator(BaseMFGSolver):
         anderson_depth: int = 5,
         anderson_beta: float = 1.0,
         backend: str | None = None,
+        diffusion_field: float | np.ndarray | Any | None = None,  # Phase 2.3
+        drift_field: np.ndarray | Any | None = None,  # Phase 2.3
     ):
         super().__init__(problem)
         self.backend = backend
         self.hjb_solver = hjb_solver
         self.fp_solver = fp_solver
         self.config = config
+
+        # PDE coefficient overrides (Phase 2.3)
+        self.diffusion_field = diffusion_field
+        self.drift_field = drift_field
 
         # Anderson acceleration support
         self.use_anderson = use_anderson
@@ -235,30 +251,55 @@ class FixedPointIterator(BaseMFGSolver):
             # 1. Solve HJB backward with current M (disable inner progress bar when verbose)
             show_hjb_progress = not verbose
             if hasattr(self.hjb_solver, "solve_hjb_system"):
-                # Check if solve_hjb_system accepts show_progress parameter
+                # Check if solve_hjb_system accepts show_progress and diffusion_field parameters
                 import inspect
 
                 sig = inspect.signature(self.hjb_solver.solve_hjb_system)
+                kwargs = {}
                 if "show_progress" in sig.parameters:
-                    U_new = self.hjb_solver.solve_hjb_system(
-                        M_old, final_u_cost, U_old, show_progress=show_hjb_progress
-                    )
-                else:
-                    U_new = self.hjb_solver.solve_hjb_system(M_old, final_u_cost, U_old)
+                    kwargs["show_progress"] = show_hjb_progress
+                if "diffusion_field" in sig.parameters and self.diffusion_field is not None:
+                    kwargs["diffusion_field"] = self.diffusion_field
+
+                U_new = self.hjb_solver.solve_hjb_system(M_old, final_u_cost, U_old, **kwargs)
             else:
                 U_new = self.hjb_solver.solve_hjb_system(M_old, final_u_cost, U_old)
 
             # 2. Solve FP forward with new U (disable inner progress bar when verbose)
             show_fp_progress = not verbose
             if hasattr(self.fp_solver, "solve_fp_system"):
-                # Check if solve_fp_system accepts show_progress parameter
+                # Check if solve_fp_system accepts show_progress, drift_field, diffusion_field parameters
                 import inspect
 
                 sig = inspect.signature(self.fp_solver.solve_fp_system)
+                kwargs = {}
                 if "show_progress" in sig.parameters:
-                    M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new, show_progress=show_fp_progress)
+                    kwargs["show_progress"] = show_fp_progress
+
+                # Determine drift field: override or MFG drift from U
+                if self.drift_field is not None:
+                    # User-provided drift override (for non-MFG problems)
+                    effective_drift = self.drift_field
                 else:
-                    M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new)
+                    # Standard MFG: drift from U
+                    effective_drift = U_new
+
+                if "drift_field" in sig.parameters:
+                    kwargs["drift_field"] = effective_drift
+                else:
+                    # Legacy: positional argument for U
+                    # solve_fp_system(m_initial, U_drift, **kwargs)
+                    pass  # Will use positional argument below
+
+                if "diffusion_field" in sig.parameters and self.diffusion_field is not None:
+                    kwargs["diffusion_field"] = self.diffusion_field
+
+                # Call with appropriate arguments
+                if "drift_field" in sig.parameters:
+                    M_new = self.fp_solver.solve_fp_system(initial_m_dist, **kwargs)
+                else:
+                    # Legacy interface: second positional arg is U for drift
+                    M_new = self.fp_solver.solve_fp_system(initial_m_dist, effective_drift, **kwargs)
             else:
                 M_new = self.fp_solver.solve_fp_system(initial_m_dist, U_new)
 

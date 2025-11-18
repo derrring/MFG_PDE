@@ -105,6 +105,7 @@ class NetworkHJBSolver(BaseHJBSolver):
         M_density_evolution: np.ndarray,
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray | None = None,
+        diffusion_field: float | np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve HJB system on network with given density evolution.
@@ -280,6 +281,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         M_density_evolution: np.ndarray,
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray | None = None,
+        diffusion_field: float | np.ndarray | None = None,
     ) -> np.ndarray:
         """Solve HJB using policy iteration."""
         Nt = self.network_problem.Nt
