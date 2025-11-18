@@ -109,7 +109,6 @@ class BaseFPSolver(ABC):
     def solve_fp_system(
         self,
         m_initial_condition: np.ndarray,
-        U_solution_for_drift: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         show_progress: bool = True,
     ) -> np.ndarray:
@@ -117,20 +116,23 @@ class BaseFPSolver(ABC):
         Solves the full Fokker-Planck (FP) system forward in time.
 
         This method computes density evolution M(t,x) from t=0 to t=T under
-        the specified drift. Supports multiple drift sources for generality.
+        the specified drift field.
 
         Equation Types Supported:
             The general FP equation is: ∂m/∂t + ∇·(α m) = σ²/2 Δm
 
-            Three equation types are accessible via parameter combinations:
-            1. Advection-diffusion (σ>0, α≠0): Standard MFG
+            Three equation types are accessible via parameters:
+            1. Advection-diffusion (σ>0, α≠0): Standard MFG, transport with diffusion
             2. Pure diffusion (σ>0, α=0): Heat equation
             3. Pure advection (σ=0, α≠0): Transport equation (WENO/SL recommended)
 
-        Drift Specification (in priority order):
-            1. U_solution_for_drift: MFG optimal control drift α = -∇U
-            2. drift_field: Prescribed drift (array or callable)
-            3. None: Zero drift α = 0
+        Drift Specification:
+            drift_field can be:
+            - None: Zero drift α = 0 (pure diffusion)
+            - np.ndarray: Precomputed drift field α(t,x)
+              Shape: (Nt, Nx) for 1D scalar drift, (Nt, Nx, d) for d-dimensional vector drift
+            - Callable: Function α(t, x, m) -> drift
+              Signature: (float, ndarray, ndarray) -> ndarray
 
         Diffusion Control:
             Set problem.sigma to control diffusion:
@@ -141,17 +143,10 @@ class BaseFPSolver(ABC):
             m_initial_condition: Initial density M(0,x) at t=0
                 Shape: (Nx,) for 1D, (Nx, Ny) for 2D, etc.
 
-            U_solution_for_drift: Value function for MFG optimal control drift.
-                If provided: drift α = -∇U / λ (standard MFG)
-                Shape: (Nt, Nx) or (Nt, Nx, Ny) etc.
-                Default: None
-
-            drift_field: Alternative drift specification (if U not provided):
-                - np.ndarray: Precomputed drift field α(t,x)
-                  Shape: (Nt, Nx, d) where d is spatial dimension
-                - Callable: Function α(t, x, m) -> drift vector
-                  Signature: (float, ndarray, ndarray) -> ndarray
+            drift_field: Drift field specification (optional):
                 - None: Zero drift (pure diffusion)
+                - np.ndarray: Precomputed drift α(t,x)
+                - Callable: Function α(t, x, m) -> drift
                 Default: None
 
             show_progress: Display progress bar for timesteps
@@ -162,26 +157,30 @@ class BaseFPSolver(ABC):
             Shape: (Nt, Nx) or (Nt, Nx, Ny) etc.
 
         Examples:
-            # MFG optimal control (backward compatible, σ>0, α=-∇U)
-            >>> M = solver.solve_fp_system(m0, U_solution_for_drift=U_hjb)
-
             # Pure diffusion (heat equation, σ>0, α=0)
             >>> M = solver.solve_fp_system(m0)
 
-            # Pure advection (transport equation, σ=0, α=-∇U)
-            >>> problem = MFGProblem(..., sigma=0.0)  # No diffusion
-            >>> solver = FPWENOSolver(problem)  # Use WENO for stability
-            >>> M = solver.solve_fp_system(m0, U_solution_for_drift=U)
+            # MFG optimal control (σ>0, α=-∇U)
+            >>> drift = -problem.compute_gradient(U_hjb) / problem.control_cost
+            >>> M = solver.solve_fp_system(m0, drift_field=drift)
+
+            # Pure advection (transport equation, σ=0, α≠0)
+            >>> problem = MFGProblem(..., sigma=0.0)
+            >>> solver = FPWENOSolver(problem)
+            >>> drift = compute_advection_field(...)
+            >>> M = solver.solve_fp_system(m0, drift_field=drift)
 
             # Prescribed wind field (σ>0, α=v(t,x))
             >>> wind = lambda t, x, m: np.array([1.0, 0.5])
             >>> M = solver.solve_fp_system(m0, drift_field=wind)
 
-            # Precomputed drift (σ>0, α from array)
-            >>> alpha = compute_custom_drift(...)  # (Nt, Nx, 2)
-            >>> M = solver.solve_fp_system(m0, drift_field=alpha)
+            # Custom drift function
+            >>> def custom_drift(t, x, m):
+            ...     return -np.gradient(potential(x)) + wind_field(t, x)
+            >>> M = solver.solve_fp_system(m0, drift_field=custom_drift)
 
         Note:
-            Subclasses must implement drift computation logic. If both U and
-            drift_field are provided, U takes precedence (MFG is primary use case).
+            For MFG problems, users compute drift from value function externally:
+            drift = -∇U / λ, where U is from HJB solver and λ is control cost.
+            This gives full control over gradient computation method.
         """

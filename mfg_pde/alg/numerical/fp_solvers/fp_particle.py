@@ -326,17 +326,11 @@ class FPParticleSolver(BaseFPSolver):
     def solve_fp_system(
         self,
         m_initial_condition: np.ndarray,
-        U_solution_for_drift: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system using particle method with general drift support.
-
-        Implements BaseFPSolver general drift API. Supports three drift modes:
-        1. U_solution_for_drift: MFG optimal control drift (alpha = -grad U)
-        2. drift_field: Custom drift (array or callable)
-        3. None: Pure diffusion (heat equation, alpha = 0)
+        Solve FP system using particle method with unified drift API.
 
         Modes:
         - HYBRID (default): Sample own particles, output to grid via KDE
@@ -346,8 +340,10 @@ class FPParticleSolver(BaseFPSolver):
 
         Args:
             m_initial_condition: Initial density (grid or particle-based depending on mode)
-            U_solution_for_drift: Value function for MFG optimal control drift (optional)
-            drift_field: Custom drift specification (optional, Phase 2)
+            drift_field: Drift field specification (optional):
+                - None: Zero drift (pure diffusion)
+                - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
+                - Callable: Function α(t, x, m) -> drift (Phase 2)
             show_progress: Display progress bar (hybrid mode only)
 
         Returns:
@@ -355,17 +351,9 @@ class FPParticleSolver(BaseFPSolver):
                 - HYBRID mode: (Nt, Nx) on grid
                 - COLLOCATION mode: (Nt, N_particles) on particles
         """
-        # Handle general drift API
-        if U_solution_for_drift is not None:
-            effective_U = U_solution_for_drift
-        elif drift_field is not None:
-            raise NotImplementedError(
-                "FPParticleSolver does not yet support custom drift_field. "
-                "Use U_solution_for_drift for MFG problems. "
-                "Support for general drift fields coming in Phase 2."
-            )
-        else:
-            # Zero drift (pure diffusion): create zero U field
+        # Handle drift_field parameter
+        if drift_field is None:
+            # Zero drift (pure diffusion): create zero U field for internal use
             Nt = self.problem.Nt + 1
             if self.mode == ParticleMode.COLLOCATION:
                 N_points = len(self.collocation_points)
@@ -373,6 +361,18 @@ class FPParticleSolver(BaseFPSolver):
             else:
                 Nx = self.problem.Nx + 1
                 effective_U = np.zeros((Nt, Nx))
+        elif isinstance(drift_field, np.ndarray):
+            # Precomputed drift field (including MFG drift = -∇U/λ)
+            effective_U = drift_field
+        elif callable(drift_field):
+            # Custom drift function - Phase 2
+            raise NotImplementedError(
+                "FPParticleSolver does not yet support callable drift_field. "
+                "Pass precomputed drift as np.ndarray. "
+                "Support for callable drift coming in Phase 2."
+            )
+        else:
+            raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
         # Reset time step counter for normalization logic
         self._time_step_counter = 0

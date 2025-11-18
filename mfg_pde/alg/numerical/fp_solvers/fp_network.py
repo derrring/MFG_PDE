@@ -112,40 +112,40 @@ class FPNetworkSolver(BaseFPSolver):
     def solve_fp_system(
         self,
         m_initial_condition: np.ndarray,
-        U_solution_for_drift: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system on network with general drift support.
-
-        Implements BaseFPSolver general drift API. Supports three drift modes:
-        1. U_solution_for_drift: MFG optimal control drift (alpha = -grad U)
-        2. drift_field: Custom drift (array or callable)
-        3. None: Pure diffusion (heat equation, alpha = 0)
+        Solve FP system on network with unified drift API.
 
         Args:
             m_initial_condition: Initial density m_0(i)
-            U_solution_for_drift: (Nt+1, num_nodes) value function for drift (optional)
-            drift_field: Custom drift specification (optional, Phase 2)
+            drift_field: Drift field specification (optional):
+                - None: Zero drift (pure diffusion on network)
+                - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
+                - Callable: Function α(t, x, m) -> drift (Phase 2)
             show_progress: Whether to display progress bar for timesteps
 
         Returns:
             (Nt+1, num_nodes) density evolution
         """
-        # Handle general drift API
-        if U_solution_for_drift is not None:
-            effective_U = U_solution_for_drift
-        elif drift_field is not None:
-            raise NotImplementedError(
-                "FPNetworkSolver does not yet support custom drift_field. "
-                "Use U_solution_for_drift for MFG problems. "
-                "Support for general drift fields coming in Phase 2."
-            )
-        else:
-            # Zero drift (pure diffusion): create zero U field
+        # Handle drift_field parameter
+        if drift_field is None:
+            # Zero drift (pure diffusion): create zero U field for internal use
             Nt = self.network_problem.Nt
             effective_U = np.zeros((Nt + 1, self.num_nodes))
+        elif isinstance(drift_field, np.ndarray):
+            # Precomputed drift field (including MFG drift = -∇U/λ)
+            effective_U = drift_field
+        elif callable(drift_field):
+            # Custom drift function - Phase 2
+            raise NotImplementedError(
+                "FPNetworkSolver does not yet support callable drift_field. "
+                "Pass precomputed drift as np.ndarray. "
+                "Support for callable drift coming in Phase 2."
+            )
+        else:
+            raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
         Nt = self.network_problem.Nt
         M = np.zeros((Nt + 1, self.num_nodes))
 
