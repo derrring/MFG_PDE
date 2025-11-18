@@ -111,6 +111,9 @@ from .numerical.sdf_utils import (
     sdf_sphere,
     sdf_union,
 )
+
+# PDE coefficient handling
+from .pde_coefficients import CoefficientField, get_spatial_grid
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .sparse_operations import (
     SparseMatrixBuilder,
@@ -234,6 +237,9 @@ __all__ = [
     "NOTEBOOK_REPORTING_AVAILABLE",
     "PERFORMANCE_MONITORING_AVAILABLE",
     "POLARS_AVAILABLE",
+    # PDE coefficient handling
+    "CoefficientField",
+    "get_spatial_grid",
     # Convergence monitoring
     "AdaptiveConvergenceWrapper",
     "AdvancedConvergenceMonitor",
