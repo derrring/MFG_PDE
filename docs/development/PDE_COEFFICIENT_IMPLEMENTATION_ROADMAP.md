@@ -39,18 +39,19 @@ This document provides **status tracking and task checklists** for implementing 
 - FP-Network: ✅ Variable diffusion
 
 **HJB Solvers**:
-- HJB-FDM 1D: ✅ Array diffusion | ⏳ Callable (Phase 2.2)
+- HJB-FDM 1D: ✅ Array + callable diffusion (Phase 2.1-2.2 complete)
 - HJB-FDM nD: ⏳ Phase 2.4
 - Other HJB: ⏳ Phase 2 (API added, implementation pending)
 
-**Key Commits**: 7 major commits
+**Key Commits**: 8 major commits
 1. `9dd182b` - Unified drift+diffusion API in FP solvers
 2. `1c26f13` - Added diffusion_field to HJB solvers
 3. `dcf1a51` - Type protocols for state-dependent coefficients
 4. `5cbd263` - Simplified HJB diffusion_field broadcasting
 5. `36730de` - Array diffusion in FP-FDM solver (Phase 2.1)
-6. `c82bfcf` - Callable diffusion in FP-FDM solver (Phase 2.2)
-7. (pending) - MFG coupling integration (Phase 2.3)
+6. `c82bfcf` - Callable diffusion in FP-FDM solver (Phase 2.2 FP side)
+7. `4aa7d6a` - MFG coupling integration (Phase 2.3)
+8. (pending) - Callable diffusion in HJB-FDM solver (Phase 2.2 HJB side)
 
 ---
 
@@ -70,22 +71,30 @@ This document provides **status tracking and task checklists** for implementing 
 
 **Test Coverage**: Spatial σ(x), spatiotemporal σ(t,x), combined with advection, error handling
 
-### 2.2: Callable Evaluation - FP Side (✅ COMPLETED)
+### 2.2: Callable Evaluation (✅ COMPLETED)
 
-**Priority**: High | **Effort**: 1 day | **Status**: ✅ Complete | **Commit**: `c82bfcf`
+**Priority**: High | **Effort**: 2 days | **Status**: ✅ Complete | **Commits**: `c82bfcf`, (pending)
 
-**Completed Tasks (FP-FDM)**:
+**Completed Tasks (FP-FDM 1D)**:
 - [x] Add `_solve_fp_1d_with_callable()` method (bootstrap strategy)
 - [x] Add `_validate_callable_output()` helper (shape, NaN/Inf checking)
 - [x] Route callable to appropriate solver in `solve_fp_system()`
 - [x] 6 unit tests: porous medium, crowd dynamics, combined, validation
 
-**Test Coverage**: D(m) = σ²m, D(m) = D₀+D₁(1-m/m_max), scalar return, error handling
+**Completed Tasks (HJB-FDM 1D)**:
+- [x] Add callable evaluation in `solve_hjb_system_backward()` (base_hjb.py:948-973)
+- [x] Re-evaluate per timestep with M_density
+- [x] Validate callable output (shape, NaN/Inf checking)
+- [x] Integration tests verified: All 5 MFG callable tests passing
 
-**Remaining (HJB-FDM)**: ⏳
-- [ ] Add callable evaluation in `solve_hjb_system_backward()`
-- [ ] Re-evaluate per Picard iteration with M_density
-- [ ] Unit tests: state-dependent diffusion
+**Test Coverage**:
+- FP: D(m) = σ²m, D(m) = D₀+D₁(1-m/m_max), scalar return, error handling
+- HJB: State-dependent diffusion in MFG coupling
+- MFG: Porous medium, crowd dynamics, constant comparison
+
+**Remaining (nD - Phase 2.4)**: ⏳
+- [ ] HJB-FDM nD callable evaluation
+- [ ] FP-FDM nD callable evaluation
 
 ### 2.3: MFG Coupling Integration (✅ COMPLETED)
 

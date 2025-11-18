@@ -940,13 +940,42 @@ def solve_hjb_system_backward(
             backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), float("nan"), backend)
             continue
 
-        # Extract diffusion at current time if spatially varying
+        # Extract diffusion at current time (array) or evaluate callable
         if diffusion_field is None:
             sigma_at_n = None
         elif isinstance(diffusion_field, (int, float)):
             sigma_at_n = diffusion_field
+        elif callable(diffusion_field):
+            # State-dependent diffusion: evaluate at current time and state
+            t_current = n_idx_hjb * problem.dt
+            # Create spatial grid
+            if hasattr(problem, "xmin") and hasattr(problem, "xmax"):
+                # 1D problem with old API
+                Nx = problem.Nx + 1 if hasattr(problem, "Nx") else M_n_prev_picard.shape[0]
+                x_grid = np.linspace(problem.xmin, problem.xmax, Nx)
+            else:
+                # Geometry-based API
+                x_grid = problem.geometry.coordinates[0]
+            sigma_at_n = diffusion_field(t_current, x_grid, M_n_prev_picard)
+
+            # Validate callable output
+            expected_shape = M_n_prev_picard.shape
+            if isinstance(sigma_at_n, (int, float)):
+                # Scalar return: broadcast to array
+                sigma_at_n = float(sigma_at_n)
+            elif isinstance(sigma_at_n, np.ndarray):
+                if sigma_at_n.shape != expected_shape:
+                    raise ValueError(
+                        f"Callable diffusion_field returned array with shape {sigma_at_n.shape}, "
+                        f"expected {expected_shape} (matching M_density)"
+                    )
+                # Check for NaN/Inf
+                if has_nan_or_inf(sigma_at_n, backend):
+                    raise ValueError(f"Callable diffusion_field returned NaN/Inf at timestep {n_idx_hjb}")
+            else:
+                raise TypeError(f"Callable diffusion_field must return float or ndarray, got {type(sigma_at_n)}")
         else:
-            # Spatially/temporally varying: extract at time n_idx_hjb
+            # Array diffusion: spatially/temporally varying
             sigma_at_n = diffusion_field[n_idx_hjb, :]
 
         U_new_n = solve_hjb_timestep_newton(

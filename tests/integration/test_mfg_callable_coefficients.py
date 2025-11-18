@@ -19,13 +19,11 @@ from mfg_pde.core.mfg_problem import MFGProblem
 class TestMFGCallableCoefficients:
     """Integration tests for MFG with callable coefficients (Phase 2.3).
 
-    Note: Phase 2.3 passes callable coefficients through FixedPointIterator,
-    but HJB callable support is pending (Phase 2.2 HJB side). Currently only
-    FP-FDM supports callables, so these tests focus on array diffusion in MFG.
-    Callable tests are marked as xfail pending HJB callable implementation.
+    Tests the full MFG coupling with state-dependent diffusion and drift,
+    verifying that callable coefficients work correctly in fixed-point iteration.
+    Both HJB-FDM and FP-FDM now support callable diffusion for 1D problems.
     """
 
-    @pytest.mark.xfail(reason="HJB callable support pending (Phase 2.2 HJB side)")
     def test_mfg_with_callable_diffusion(self):
         """Test MFG with state-dependent diffusion: porous medium."""
         # Create problem
@@ -58,7 +56,6 @@ class TestMFGCallableCoefficients:
         assert M.shape == (problem.Nt + 1, problem.Nx + 1)
         assert np.all(M >= 0)  # Non-negative density
 
-    @pytest.mark.xfail(reason="HJB callable support pending (Phase 2.2 HJB side)")
     def test_mfg_with_density_dependent_diffusion(self):
         """Test MFG with crowd dynamics: D(m) = D0 + D1(1 - m/m_max)."""
         # Create problem
@@ -91,7 +88,6 @@ class TestMFGCallableCoefficients:
         assert M.shape == (problem.Nt + 1, problem.Nx + 1)
         assert np.all(M >= 0)
 
-    @pytest.mark.xfail(reason="HJB callable support pending (Phase 2.2 HJB side)")
     def test_mfg_callable_vs_constant_convergence(self):
         """Test that callable returning constant matches constant diffusion."""
         # Create problem
@@ -169,7 +165,6 @@ class TestMFGCallableCoefficients:
         assert M.shape == (Nt, Nx)
         assert np.all(M >= 0)
 
-    @pytest.mark.xfail(reason="HJB callable support pending (Phase 2.2 HJB side)")
     def test_mfg_callable_with_small_iterations(self):
         """Test that callable diffusion works with few Picard iterations."""
         # Create small problem
