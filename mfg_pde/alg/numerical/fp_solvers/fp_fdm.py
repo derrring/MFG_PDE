@@ -117,7 +117,9 @@ class FPFDMSolver(BaseFPSolver):
             - float: Constant isotropic diffusion
             - np.ndarray: Spatially/temporally varying diffusion
               Shape: (Nx,) for spatial only, (Nt, Nx) for spatiotemporal
-            - Callable: Function D(t, x, m) -> diffusion (Phase 2.2)
+            - Callable: State-dependent diffusion D(t, x, m) -> float | ndarray
+              Signature: (t: float, x: ndarray, m: ndarray) -> float | ndarray
+              Evaluated per timestep using bootstrap strategy
             Default: None
         show_progress : bool
             Whether to show progress bar
@@ -151,6 +153,16 @@ class FPFDMSolver(BaseFPSolver):
         >>> for t in range(Nt):
         ...     diffusion_field[t, :] = 0.1 * (1 + 0.5 * t / Nt)  # Increasing over time
         >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=diffusion_field)
+
+        State-dependent diffusion (porous medium equation):
+        >>> def porous_medium(t, x, m):
+        ...     return 0.1 * m  # Diffusion proportional to density
+        >>> M = solver.solve_fp_system(m0, diffusion_field=porous_medium)
+
+        Density-dependent diffusion with drift:
+        >>> def crowd_diffusion(t, x, m):
+        ...     return 0.05 + 0.15 * (1 - m / np.max(m))  # Lower diffusion in crowds
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=crowd_diffusion)
 
         Pure advection (zero diffusion):
         >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.0)
@@ -198,11 +210,20 @@ class FPFDMSolver(BaseFPSolver):
             effective_sigma = diffusion_field
         elif callable(diffusion_field):
             # State-dependent diffusion - Phase 2.2
-            raise NotImplementedError(
-                "FPFDMSolver does not yet support callable diffusion_field. "
-                "Pass constant diffusion as float, array as np.ndarray, or use problem.sigma. "
-                "Support for state-dependent diffusion coming in Phase 2.2."
-            )
+            # Route to callable solver (no need to set effective_sigma)
+            if self.dimension == 1:
+                return self._solve_fp_1d_with_callable(
+                    m_initial_condition=m_initial_condition,
+                    drift_field=effective_U,
+                    diffusion_callable=diffusion_field,
+                    show_progress=show_progress,
+                )
+            else:
+                raise NotImplementedError(
+                    "Callable diffusion_field not yet supported for nD problems. "
+                    "Currently only 1D (dimension=1) is supported. "
+                    "nD support coming in Phase 2.4."
+                )
         else:
             raise TypeError(
                 f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
@@ -210,11 +231,11 @@ class FPFDMSolver(BaseFPSolver):
 
         # Temporarily override problem.sigma if custom diffusion provided
         original_sigma = self.problem.sigma
-        if diffusion_field is not None:
+        if diffusion_field is not None and not callable(diffusion_field):
             self.problem.sigma = effective_sigma
 
         try:
-            # Route to appropriate solver based on dimension
+            # Route to appropriate solver based on dimension and coefficient type
             if self.dimension == 1:
                 return self._solve_fp_1d(m_initial_condition, effective_U, show_progress)
             else:
@@ -547,6 +568,196 @@ class FPFDMSolver(BaseFPSolver):
                 m[k_idx_fp + 1, :] = np.maximum(m[k_idx_fp + 1, :], 0)
 
         return m
+
+    def _validate_callable_output(
+        self,
+        output: np.ndarray | float,
+        expected_shape: tuple,
+        param_name: str,
+        timestep: int | None = None,
+    ) -> np.ndarray:
+        """
+        Validate callable coefficient output.
+
+        Parameters
+        ----------
+        output : np.ndarray or float
+            Output from callable (diffusion or drift)
+        expected_shape : tuple
+            Expected shape for spatial array
+        param_name : str
+            Parameter name for error messages
+        timestep : int, optional
+            Current timestep (for error messages)
+
+        Returns
+        -------
+        np.ndarray
+            Validated array (converts scalar to array if needed)
+
+        Raises
+        ------
+        ValueError
+            If output shape is incorrect or contains NaN/Inf
+        TypeError
+            If output type is incorrect
+        """
+        # Convert scalar to array
+        if isinstance(output, (int, float)):
+            output = np.full(expected_shape, float(output))
+        elif isinstance(output, np.ndarray):
+            # Validate shape
+            if output.shape != expected_shape:
+                raise ValueError(
+                    f"{param_name} callable returned array with shape {output.shape}, "
+                    f"expected {expected_shape} at timestep {timestep}"
+                )
+        else:
+            raise TypeError(
+                f"{param_name} callable must return float or np.ndarray, got {type(output)} at timestep {timestep}"
+            )
+
+        # Check for NaN/Inf
+        if has_nan_or_inf(output, self.backend):
+            raise ValueError(f"{param_name} callable returned NaN or Inf at timestep {timestep}")
+
+        return output
+
+    def _solve_fp_1d_with_callable(
+        self,
+        m_initial_condition: np.ndarray,
+        drift_field: np.ndarray | None,
+        diffusion_callable: callable,
+        show_progress: bool = True,
+    ) -> np.ndarray:
+        """
+        Solve 1D FP equation with callable (state-dependent) diffusion.
+
+        Uses bootstrap strategy: evaluate callable at each timestep using
+        the already-computed density m[k] to solve for m[k+1].
+
+        Parameters
+        ----------
+        m_initial_condition : np.ndarray
+            Initial density, shape (Nx,)
+        drift_field : np.ndarray or None
+            Precomputed drift field, shape (Nt, Nx), or None for zero drift
+        diffusion_callable : callable
+            Function D(t, x, m) -> diffusion coefficient
+            Signature: (float, np.ndarray, np.ndarray) -> float | np.ndarray
+        show_progress : bool
+            Show progress bar
+
+        Returns
+        -------
+        np.ndarray
+            Density evolution, shape (Nt, Nx)
+        """
+        from mfg_pde.types.pde_coefficients import DiffusionCallable
+
+        # Validate callable signature using protocol
+        if not isinstance(diffusion_callable, DiffusionCallable):
+            raise TypeError(
+                "diffusion_field callable does not match DiffusionCallable protocol. "
+                "Expected signature: (t: float, x: ndarray, m: ndarray) -> float | ndarray"
+            )
+
+        # Get problem dimensions
+        if getattr(self.problem, "Nx", None) is not None:
+            Nx = self.problem.Nx + 1
+            Dt = self.problem.dt
+            xmin, xmax = self.problem.xmin, self.problem.xmax
+        else:
+            Nx = self.problem.geometry.get_grid_shape()[0]
+            Dt = self.problem.dt
+            domain = self.problem.geometry.domain
+            xmin, xmax = domain[0][0], domain[0][1]
+
+        # Infer Nt from drift_field if provided, else use problem.Nt
+        if drift_field is not None:
+            Nt = drift_field.shape[0]
+        else:
+            Nt = self.problem.Nt + 1
+
+        # Create spatial grid for callable evaluation
+        x_grid = np.linspace(xmin, xmax, Nx)
+
+        # Allocate solution array
+        if self.backend is not None:
+            m_solution = self.backend.zeros((Nt, Nx))
+        else:
+            m_solution = np.zeros((Nt, Nx))
+
+        m_solution[0, :] = m_initial_condition
+        m_solution[0, :] = np.maximum(m_solution[0, :], 0)
+
+        # Apply boundary conditions to initial condition
+        if self.boundary_conditions.type == "dirichlet":
+            m_solution[0, 0] = self.boundary_conditions.left_value
+            m_solution[0, -1] = self.boundary_conditions.right_value
+
+        # Progress bar
+        from mfg_pde.utils.progress import tqdm
+
+        timestep_range = range(Nt - 1)
+        if show_progress:
+            timestep_range = tqdm(
+                timestep_range,
+                desc="FP (callable diffusion)",
+                unit="step",
+                disable=False,
+            )
+
+        # Bootstrap forward iteration: use m[k] to evaluate callable and compute m[k+1]
+        for k in timestep_range:
+            t_current = k * Dt
+            m_current = m_solution[k, :]
+
+            # Evaluate diffusion callable at current state
+            diffusion_at_k = diffusion_callable(t_current, x_grid, m_current)
+
+            # Validate callable output
+            diffusion_at_k = self._validate_callable_output(
+                diffusion_at_k,
+                expected_shape=(Nx,),
+                param_name="diffusion_field",
+                timestep=k,
+            )
+
+            # Temporarily set sigma to evaluated diffusion for this timestep
+            original_sigma = self.problem.sigma
+            self.problem.sigma = diffusion_at_k
+
+            try:
+                # Get drift at current timestep (or zero)
+                if drift_field is not None:
+                    U_at_k = drift_field[k, :]
+                else:
+                    U_at_k = np.zeros(Nx)
+
+                # Solve single timestep using _solve_fp_1d machinery
+                # Create temporary arrays for single-step solve
+                m_temp = np.zeros((2, Nx))
+                m_temp[0, :] = m_current
+                U_temp = np.zeros((2, Nx))
+                U_temp[0, :] = U_at_k
+
+                # Call _solve_fp_1d for single timestep (Nt=2 gives one step)
+                # This reuses all the boundary condition logic
+                m_result = self._solve_fp_1d(
+                    m_initial_condition=m_current,
+                    U_solution_for_drift=U_temp,
+                    show_progress=False,
+                )
+
+                # Extract result at next timestep
+                m_solution[k + 1, :] = m_result[1, :]
+
+            finally:
+                # Restore original sigma
+                self.problem.sigma = original_sigma
+
+        return m_solution
 
 
 # ============================================================================

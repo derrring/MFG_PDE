@@ -555,5 +555,145 @@ class TestFPFDMSolverArrayDiffusion:
             solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=diffusion_3d)
 
 
+class TestFPFDMSolverCallableDiffusion:
+    """Test callable (state-dependent) diffusion support (Phase 2.2)."""
+
+    def test_porous_medium_equation(self, standard_problem):
+        """Test porous medium equation: D(m) = σ² m."""
+        solver = FPFDMSolver(standard_problem)
+
+        Nx = standard_problem.Nx + 1
+        Nt = standard_problem.Nt + 1
+
+        # Porous medium diffusion: D = σ² m
+        def porous_medium_diffusion(t, x, m):
+            return 0.1 * m  # Diffusion proportional to density
+
+        # Initial condition (Gaussian)
+        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Zero drift
+        U_solution = np.zeros((Nt, Nx))
+
+        # Solve with callable diffusion
+        M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=porous_medium_diffusion)
+
+        assert M.shape == (Nt, Nx)
+        assert np.all(M >= 0)
+        # Verify solution stability
+        assert np.all(np.sum(M, axis=1) > 0.5)
+        assert np.all(np.sum(M, axis=1) < 2.0)
+
+    def test_density_dependent_diffusion(self, standard_problem):
+        """Test density-dependent diffusion: D = D0 + D1 * (1 - m/m_max)."""
+        solver = FPFDMSolver(standard_problem)
+
+        Nx = standard_problem.Nx + 1
+        Nt = standard_problem.Nt + 1
+
+        # Crowd diffusion: lower diffusion in high-density regions
+        def crowd_diffusion(t, x, m):
+            m_max = np.max(m) if np.max(m) > 0 else 1.0
+            return 0.05 + 0.15 * (1 - m / m_max)
+
+        # Initial condition
+        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Zero drift
+        U_solution = np.zeros((Nt, Nx))
+
+        # Solve
+        M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=crowd_diffusion)
+
+        assert M.shape == (Nt, Nx)
+        assert np.all(M >= 0)
+        assert np.all(np.sum(M, axis=1) > 0.5)
+
+    def test_callable_with_drift(self, standard_problem):
+        """Test callable diffusion combined with drift field."""
+        solver = FPFDMSolver(standard_problem)
+
+        Nx = standard_problem.Nx + 1
+        Nt = standard_problem.Nt + 1
+
+        # State-dependent diffusion
+        def state_diffusion(t, x, m):
+            return 0.1 + 0.05 * m
+
+        # Initial condition
+        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        m_initial = np.exp(-((x_grid - 0.3) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Drift field
+        U_solution = np.zeros((Nt, Nx))
+        for t in range(Nt):
+            U_solution[t, :] = -0.1 * x_grid
+
+        # Solve
+        M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=state_diffusion)
+
+        assert M.shape == (Nt, Nx)
+        assert np.all(M >= 0)
+
+    def test_callable_scalar_return(self, standard_problem):
+        """Test callable that returns scalar (constant diffusion)."""
+        solver = FPFDMSolver(standard_problem)
+
+        Nx = standard_problem.Nx + 1
+        Nt = standard_problem.Nt + 1
+
+        # Callable returning scalar
+        def constant_diffusion(t, x, m):
+            return 0.2  # Constant for all x
+
+        # Initial condition
+        m_initial = np.ones(Nx) / Nx
+
+        # Solve
+        M = solver.solve_fp_system(m_initial, diffusion_field=constant_diffusion)
+
+        assert M.shape == (Nt, Nx)
+        assert np.all(M >= 0)
+
+    def test_callable_validation_wrong_shape(self, standard_problem):
+        """Test that callable returning wrong shape raises error."""
+        solver = FPFDMSolver(standard_problem)
+
+        Nx = standard_problem.Nx + 1
+
+        # Callable returning wrong shape
+        def bad_diffusion(t, x, m):
+            return np.ones(Nx + 10)  # Wrong shape
+
+        m_initial = np.ones(Nx) / Nx
+
+        # Should raise ValueError about shape
+        with pytest.raises(ValueError, match="returned array with shape"):
+            solver.solve_fp_system(m_initial, diffusion_field=bad_diffusion)
+
+    def test_callable_validation_nan(self, standard_problem):
+        """Test that callable returning NaN raises error."""
+        solver = FPFDMSolver(standard_problem)
+
+        Nx = standard_problem.Nx + 1
+
+        # Callable returning NaN
+        def nan_diffusion(t, x, m):
+            result = 0.1 * m
+            result[0] = np.nan  # Introduce NaN
+            return result
+
+        m_initial = np.ones(Nx) / Nx
+
+        # Should raise ValueError about NaN
+        with pytest.raises(ValueError, match="NaN or Inf"):
+            solver.solve_fp_system(m_initial, diffusion_field=nan_diffusion)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
