@@ -5,6 +5,9 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 try:  # pragma: no cover - optional SciPy dependency
     import scipy.interpolate as _scipy_interpolate
     from scipy.stats import gaussian_kde
@@ -321,10 +324,19 @@ class FPParticleSolver(BaseFPSolver):
             return m_density_estimated  # Return raw KDE output on grid
 
     def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray | None = None,
+        drift_field: np.ndarray | Callable | None = None,
+        show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system using particle method with dual-mode support.
+        Solve FP system using particle method with general drift support.
+
+        Implements BaseFPSolver general drift API. Supports three drift modes:
+        1. U_solution_for_drift: MFG optimal control drift (alpha = -grad U)
+        2. drift_field: Custom drift (array or callable)
+        3. None: Pure diffusion (heat equation, alpha = 0)
 
         Modes:
         - HYBRID (default): Sample own particles, output to grid via KDE
@@ -334,7 +346,8 @@ class FPParticleSolver(BaseFPSolver):
 
         Args:
             m_initial_condition: Initial density (grid or particle-based depending on mode)
-            U_solution_for_drift: Value function for drift computation
+            U_solution_for_drift: Value function for MFG optimal control drift (optional)
+            drift_field: Custom drift specification (optional, Phase 2)
             show_progress: Display progress bar (hybrid mode only)
 
         Returns:
@@ -342,6 +355,25 @@ class FPParticleSolver(BaseFPSolver):
                 - HYBRID mode: (Nt, Nx) on grid
                 - COLLOCATION mode: (Nt, N_particles) on particles
         """
+        # Handle general drift API
+        if U_solution_for_drift is not None:
+            effective_U = U_solution_for_drift
+        elif drift_field is not None:
+            raise NotImplementedError(
+                "FPParticleSolver does not yet support custom drift_field. "
+                "Use U_solution_for_drift for MFG problems. "
+                "Support for general drift fields coming in Phase 2."
+            )
+        else:
+            # Zero drift (pure diffusion): create zero U field
+            Nt = self.problem.Nt + 1
+            if self.mode == ParticleMode.COLLOCATION:
+                N_points = len(self.collocation_points)
+                effective_U = np.zeros((Nt, N_points))
+            else:
+                Nx = self.problem.Nx + 1
+                effective_U = np.zeros((Nt, Nx))
+
         # Reset time step counter for normalization logic
         self._time_step_counter = 0
 
@@ -351,7 +383,7 @@ class FPParticleSolver(BaseFPSolver):
         # Route to appropriate solver based on mode
         if self.mode == ParticleMode.COLLOCATION:
             # Collocation mode: particles → particles (no KDE)
-            return self._solve_fp_system_collocation(m_initial_condition, U_solution_for_drift)
+            return self._solve_fp_system_collocation(m_initial_condition, effective_U)
         else:
             # Hybrid mode: particles → grid (existing behavior with strategy selection)
             # Determine problem size for strategy selection
@@ -368,10 +400,10 @@ class FPParticleSolver(BaseFPSolver):
 
             # Execute using selected strategy's pipeline
             if self.current_strategy.name == "cpu":
-                return self._solve_fp_system_cpu(m_initial_condition, U_solution_for_drift)
+                return self._solve_fp_system_cpu(m_initial_condition, effective_U)
             else:
                 # GPU or Hybrid strategy (both use GPU pipeline)
-                return self._solve_fp_system_gpu(m_initial_condition, U_solution_for_drift)
+                return self._solve_fp_system_gpu(m_initial_condition, effective_U)
 
     def _solve_fp_system_cpu(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """CPU pipeline - existing NumPy implementation."""

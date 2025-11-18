@@ -32,6 +32,8 @@ from scipy.sparse.linalg import spsolve
 from .base_fp import BaseFPSolver
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mfg_pde.extensions.topology import NetworkMFGProblem
 
 
@@ -108,19 +110,42 @@ class FPNetworkSolver(BaseFPSolver):
                 print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
 
     def solve_fp_system(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray | None = None,
+        drift_field: np.ndarray | Callable | None = None,
+        show_progress: bool = True,
     ) -> np.ndarray:
         """
-        Solve FP system on network with given control field.
+        Solve FP system on network with general drift support.
+
+        Implements BaseFPSolver general drift API. Supports three drift modes:
+        1. U_solution_for_drift: MFG optimal control drift (alpha = -grad U)
+        2. drift_field: Custom drift (array or callable)
+        3. None: Pure diffusion (heat equation, alpha = 0)
 
         Args:
             m_initial_condition: Initial density m_0(i)
-            U_solution_for_drift: (Nt+1, num_nodes) value function for drift
+            U_solution_for_drift: (Nt+1, num_nodes) value function for drift (optional)
+            drift_field: Custom drift specification (optional, Phase 2)
             show_progress: Whether to display progress bar for timesteps
 
         Returns:
             (Nt+1, num_nodes) density evolution
         """
+        # Handle general drift API
+        if U_solution_for_drift is not None:
+            effective_U = U_solution_for_drift
+        elif drift_field is not None:
+            raise NotImplementedError(
+                "FPNetworkSolver does not yet support custom drift_field. "
+                "Use U_solution_for_drift for MFG problems. "
+                "Support for general drift fields coming in Phase 2."
+            )
+        else:
+            # Zero drift (pure diffusion): create zero U field
+            Nt = self.network_problem.Nt
+            effective_U = np.zeros((Nt + 1, self.num_nodes))
         Nt = self.network_problem.Nt
         M = np.zeros((Nt + 1, self.num_nodes))
 
@@ -149,7 +174,7 @@ class FPNetworkSolver(BaseFPSolver):
             t = self.times[n]
 
             # Current value function for drift computation
-            u_current = U_solution_for_drift[n, :]
+            u_current = effective_U[n, :]
 
             # Solve single time step
             if self.scheme == "explicit":
