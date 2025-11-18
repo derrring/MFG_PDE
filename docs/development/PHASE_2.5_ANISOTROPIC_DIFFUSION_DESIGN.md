@@ -30,7 +30,13 @@ where **Σ** is a d×d positive semi-definite diffusion tensor:
 **Notation Note**:
 - Scalar diffusion: σ² (lowercase sigma squared)
 - Tensor diffusion: **Σ** (capital Sigma matrix)
-- Isotropic case: Σ = σ²**I** (relates to scalar)
+- Isotropic case: **Σ = σ²I** (scalar diffusion coefficient times identity)
+
+**Connection to SDEs**:
+If the underlying stochastic process is dX = α dt + σ̃ dW where σ̃ is a d×d diffusion matrix,
+then the Fokker-Planck diffusion tensor is **Σ = σ̃σ̃ᵀ/2**.
+
+However, in our PDE-based framework, users specify **Σ** directly without referencing σ̃.
 
 **Key Properties**:
 - **Symmetry**: Σ = Σᵀ (for physical realizability)
@@ -300,7 +306,20 @@ class CoefficientField:
         ...
 
     def _scalar_to_isotropic_tensor(self, sigma_squared, d):
-        """Convert scalar σ² to isotropic tensor Σ = σ²I."""
+        """
+        Convert scalar σ² to isotropic tensor Σ = σ²I.
+
+        Args:
+            sigma_squared: Scalar diffusion coefficient (σ²)
+            d: Spatial dimension
+
+        Returns:
+            Σ = σ²I, a d×d isotropic diffusion tensor
+
+        Note:
+            This is NOT σσᵀ (outer product). The input is already σ² (variance),
+            and we simply scale the identity matrix.
+        """
         return sigma_squared * np.eye(d)
 ```
 
