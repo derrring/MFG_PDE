@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.13.2" # v0.13.2: Phase 3.1 complete - Diagonal tensor HJB support + MFG coupling
+version = "0.13.3" # v0.13.3: Phase 3.4 complete - Numba JIT optimization for tensor operators (2-3.4x speedup)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
