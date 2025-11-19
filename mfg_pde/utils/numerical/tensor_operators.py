@@ -71,21 +71,25 @@ def divergence_tensor_diffusion_2d(
 
     # Compute gradients using central differences
     # Note: gradients are at cell faces (staggered grid)
+    # m_padded shape: (Ny+2, Nx+2)
+    # For Nx cells, we have Nx+1 x-faces (including boundaries)
 
-    # ∂m/∂x at faces (i+1/2, j)
-    dm_dx_x = (m_padded[1:-1, 2:] - m_padded[1:-1, 1:-1]) / dx  # Shape: (Ny, Nx+1)
+    # ∂m/∂x at x-faces (i, j+1/2) - Nx+1 faces in x-direction
+    dm_dx_x = (m_padded[1:-1, 1:] - m_padded[1:-1, :-1]) / dx  # Shape: (Ny, Nx+1)
 
-    # ∂m/∂y at faces (i, j+1/2)
-    dm_dy_y = (m_padded[2:, 1:-1] - m_padded[1:-1, 1:-1]) / dy  # Shape: (Ny+1, Nx)
+    # ∂m/∂y at y-faces (i+1/2, j) - Ny+1 faces in y-direction
+    dm_dy_y = (m_padded[1:, 1:-1] - m_padded[:-1, 1:-1]) / dy  # Shape: (Ny+1, Nx)
 
-    # ∂m/∂x at y-faces (i, j+1/2) - need to average in y
-    dm_dx_y = (m_padded[1:, 1:-1] + m_padded[:-1, 1:-1] - m_padded[1:, :-2] - m_padded[:-1, :-2]) / (
-        2 * dx
+    # ∂m/∂x at y-faces (i+1/2, j) - need to average in y
+    # Average of central differences at (i+1/2, j)
+    dm_dx_y = (
+        0.5 * ((m_padded[1:, 2:] - m_padded[1:, :-2]) + (m_padded[:-1, 2:] - m_padded[:-1, :-2])) / (2 * dx)
     )  # Shape: (Ny+1, Nx)
 
-    # ∂m/∂y at x-faces (i+1/2, j) - need to average in x
-    dm_dy_x = (m_padded[1:-1, 1:] + m_padded[1:-1, :-1] - m_padded[:-2, 1:] - m_padded[:-2, :-1]) / (
-        2 * dy
+    # ∂m/∂y at x-faces (i, j+1/2) - need to average in x
+    # Average of central differences at (i, j+1/2)
+    dm_dy_x = (
+        0.5 * ((m_padded[2:, 1:] - m_padded[:-2, 1:]) + (m_padded[2:, :-1] - m_padded[:-2, :-1])) / (2 * dy)
     )  # Shape: (Ny, Nx+1)
 
     # Compute fluxes F = Σ ∇m at cell faces
@@ -93,15 +97,21 @@ def divergence_tensor_diffusion_2d(
     # Fy = (σ₂₁ ∂m/∂x + σ₂₂ ∂m/∂y) at y-faces
 
     # Average Σ to faces
-    # Σ at x-faces (i+1/2, j): average in x
-    Sigma_x = 0.5 * (Sigma[:, 1:, :, :] + Sigma[:, :-1, :, :])  # Shape: (Ny, Nx+1, 2, 2)
+    # Σ at x-faces (i, j+1/2): average in x-direction (Nx+1 faces)
+    Sigma_x_faces = np.zeros((Ny, Nx + 1, 2, 2))
+    Sigma_x_faces[:, 1:-1, :, :] = 0.5 * (Sigma[:, 1:, :, :] + Sigma[:, :-1, :, :])
+    Sigma_x_faces[:, 0, :, :] = Sigma[:, 0, :, :]  # Boundary face
+    Sigma_x_faces[:, -1, :, :] = Sigma[:, -1, :, :]  # Boundary face
 
-    # Σ at y-faces (i, j+1/2): average in y
-    Sigma_y = 0.5 * (Sigma[1:, :, :, :] + Sigma[:-1, :, :, :])  # Shape: (Ny+1, Nx, 2, 2)
+    # Σ at y-faces (i+1/2, j): average in y-direction (Ny+1 faces)
+    Sigma_y_faces = np.zeros((Ny + 1, Nx, 2, 2))
+    Sigma_y_faces[1:-1, :, :, :] = 0.5 * (Sigma[1:, :, :, :] + Sigma[:-1, :, :, :])
+    Sigma_y_faces[0, :, :, :] = Sigma[0, :, :, :]  # Boundary face
+    Sigma_y_faces[-1, :, :, :] = Sigma[-1, :, :, :]  # Boundary face
 
     # Compute fluxes
-    Fx = Sigma_x[:, :, 0, 0] * dm_dx_x + Sigma_x[:, :, 0, 1] * dm_dy_x  # Shape: (Ny, Nx+1)
-    Fy = Sigma_y[:, :, 1, 0] * dm_dx_y + Sigma_y[:, :, 1, 1] * dm_dy_y  # Shape: (Ny+1, Nx)
+    Fx = Sigma_x_faces[:, :, 0, 0] * dm_dx_x + Sigma_x_faces[:, :, 0, 1] * dm_dy_x  # Shape: (Ny, Nx+1)
+    Fy = Sigma_y_faces[:, :, 1, 0] * dm_dx_y + Sigma_y_faces[:, :, 1, 1] * dm_dy_y  # Shape: (Ny+1, Nx)
 
     # Compute divergence: ∇ · F = ∂Fx/∂x + ∂Fy/∂y
     div_x = (Fx[:, 1:] - Fx[:, :-1]) / dx  # Shape: (Ny, Nx)
@@ -150,23 +160,36 @@ def divergence_diagonal_diffusion_2d(
     m_padded = _apply_bc_2d(m, boundary_conditions)
 
     # Compute ∂/∂x(σₓ² ∂m/∂x)
-    # Gradient at faces
-    dm_dx = (m_padded[1:-1, 2:] - m_padded[1:-1, 1:-1]) / dx  # At (i+1/2, j)
+    # Gradient at x-faces (Nx+1 faces)
+    dm_dx = (m_padded[1:-1, 1:] - m_padded[1:-1, :-1]) / dx  # Shape: (Ny, Nx+1)
 
-    # Average σₓ² to faces
-    sigma_x_face = 0.5 * (sigma_x[:, 1:] + sigma_x[:, :-1])
+    # Average σₓ² to x-faces
+    sigma_x_face = np.zeros((Ny, Nx + 1))
+    sigma_x_face[:, 1:-1] = 0.5 * (sigma_x[:, 1:] + sigma_x[:, :-1])
+    sigma_x_face[:, 0] = sigma_x[:, 0]
+    sigma_x_face[:, -1] = sigma_x[:, -1]
 
-    # Flux
-    Fx = sigma_x_face * dm_dx
+    # Flux at x-faces
+    Fx = sigma_x_face * dm_dx  # Shape: (Ny, Nx+1)
 
     # Divergence in x
-    div_x = (Fx[:, 1:] - Fx[:, :-1]) / dx
+    div_x = (Fx[:, 1:] - Fx[:, :-1]) / dx  # Shape: (Ny, Nx)
 
     # Compute ∂/∂y(σᵧ² ∂m/∂y) similarly
-    dm_dy = (m_padded[2:, 1:-1] - m_padded[1:-1, 1:-1]) / dy
-    sigma_y_face = 0.5 * (sigma_y[1:, :] + sigma_y[:-1, :])
-    Fy = sigma_y_face * dm_dy
-    div_y = (Fy[1:, :] - Fy[:-1, :]) / dy
+    # Gradient at y-faces (Ny+1 faces)
+    dm_dy = (m_padded[1:, 1:-1] - m_padded[:-1, 1:-1]) / dy  # Shape: (Ny+1, Nx)
+
+    # Average σᵧ² to y-faces
+    sigma_y_face = np.zeros((Ny + 1, Nx))
+    sigma_y_face[1:-1, :] = 0.5 * (sigma_y[1:, :] + sigma_y[:-1, :])
+    sigma_y_face[0, :] = sigma_y[0, :]
+    sigma_y_face[-1, :] = sigma_y[-1, :]
+
+    # Flux at y-faces
+    Fy = sigma_y_face * dm_dy  # Shape: (Ny+1, Nx)
+
+    # Divergence in y
+    div_y = (Fy[1:, :] - Fy[:-1, :]) / dy  # Shape: (Ny, Nx)
 
     return div_x + div_y
 
@@ -263,25 +286,59 @@ def _divergence_tensor_1d(
     dx: float,
     boundary_conditions: BoundaryConditions,
 ) -> NDArray[np.floating]:
-    """1D tensor diffusion (reduces to scalar diffusion)."""
+    """
+    1D tensor diffusion (reduces to scalar diffusion).
+
+    Implements ∂/∂x(σ² ∂m/∂x) in 1D using finite differences.
+    """
     # In 1D, Σ is just a scalar (1×1 matrix)
     if isinstance(sigma_tensor, np.ndarray):
         if sigma_tensor.ndim == 2:
             # Extract scalar from (1, 1) matrix
-            sigma = sigma_tensor[0, 0]
+            sigma_sq = sigma_tensor[0, 0]
         elif sigma_tensor.ndim == 1:
             # Already a scalar array
-            sigma = sigma_tensor
+            sigma_sq = sigma_tensor
         else:
             # Spatially varying (Nx, 1, 1)
-            sigma = sigma_tensor[:, 0, 0]
+            sigma_sq = sigma_tensor[:, 0, 0]
     else:
-        sigma = sigma_tensor
+        sigma_sq = sigma_tensor
 
-    # Use standard 1D laplacian
-    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import _apply_diffusion_1d
+    # Apply boundary conditions
+    bc_type = boundary_conditions.type.lower()
+    if bc_type == "periodic":
+        m_padded = np.pad(m, 1, mode="wrap")
+    elif bc_type == "dirichlet":
+        m_padded = np.pad(m, 1, mode="constant", constant_values=0.0)
+    elif bc_type in ["no_flux", "neumann"]:
+        m_padded = np.pad(m, 1, mode="edge")
+    else:
+        raise ValueError(f"Unsupported boundary condition: {bc_type}")
 
-    return _apply_diffusion_1d(m, sigma, dx, boundary_conditions)
+    Nx = len(m)
+
+    # Handle constant vs spatially-varying diffusion
+    if np.isscalar(sigma_sq) or (isinstance(sigma_sq, np.ndarray) and sigma_sq.ndim == 0):
+        # Constant diffusion: σ² ∂²m/∂x²
+        laplacian = (m_padded[2:] - 2 * m_padded[1:-1] + m_padded[:-2]) / dx**2
+        return sigma_sq * laplacian
+    else:
+        # Spatially-varying: ∂/∂x(σ²(x) ∂m/∂x)
+        # Gradient at faces
+        dm_dx = (m_padded[1:] - m_padded[:-1]) / dx  # Nx+1 faces
+
+        # Average σ² to faces
+        sigma_face = np.zeros(Nx + 1)
+        sigma_face[1:-1] = 0.5 * (sigma_sq[1:] + sigma_sq[:-1])
+        sigma_face[0] = sigma_sq[0]
+        sigma_face[-1] = sigma_sq[-1]
+
+        # Flux
+        flux = sigma_face * dm_dx
+
+        # Divergence
+        return (flux[1:] - flux[:-1]) / dx
 
 
 def _divergence_tensor_general_nd(
