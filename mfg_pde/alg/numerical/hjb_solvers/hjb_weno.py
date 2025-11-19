@@ -1174,3 +1174,38 @@ class HJBWenoSolver(BaseHJBSolver):
         }
 
         return variant_info[self.weno_variant]
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing HJBWenoSolver...")
+
+    import numpy as np
+
+    from mfg_pde import ExampleMFGProblem
+
+    # Test 1D problem
+    problem_1d = ExampleMFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+
+    # Test standard WENO variant
+    solver_1d = HJBWenoSolver(problem_1d, weno_variant="weno-z")
+
+    # Test solver initialization
+    assert solver_1d.dimension == 1
+    assert solver_1d.weno_variant == "weno-z"
+    print("  Solver initialized")
+    print(f"  Variant: {solver_1d.weno_variant}, Method: {solver_1d.hjb_method_name}")
+
+    # Test solve_hjb_system with trivial inputs
+    M_test = np.ones((problem_1d.Nt + 1, problem_1d.Nx + 1)) * 0.5
+    U_final = np.zeros(problem_1d.Nx + 1)
+    U_prev = np.zeros((problem_1d.Nt + 1, problem_1d.Nx + 1))
+
+    U_solution = solver_1d.solve_hjb_system(M_test, U_final, U_prev)
+
+    assert U_solution.shape == (problem_1d.Nt + 1, problem_1d.Nx + 1)
+    assert not np.any(np.isnan(U_solution))
+    assert not np.any(np.isinf(U_solution))
+    print(f"  Solver converged, U range: [{U_solution.min():.3f}, {U_solution.max():.3f}]")
+
+    print("Smoke tests passed!")

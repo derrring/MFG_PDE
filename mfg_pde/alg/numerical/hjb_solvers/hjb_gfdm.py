@@ -1916,3 +1916,37 @@ class MonotonicityStats:
             "num_violating_points": num_violating_points,
             "max_violation_severity": max_violation,
         }
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing HJBGFDMSolver...")
+
+    import numpy as np
+
+    from mfg_pde import ExampleMFGProblem
+
+    # Test 1D problem with uniform collocation points matching problem grid
+    problem_1d = ExampleMFGProblem(Nx=20, Nt=10, T=1.0, sigma=0.1)
+
+    # Use problem grid points as collocation points to avoid index mismatch
+    collocation_points = problem_1d.xSpace.reshape(-1, 1)
+
+    solver_1d = HJBGFDMSolver(
+        problem_1d,
+        collocation_points=collocation_points,
+        delta=0.15,
+        taylor_order=2,
+        weight_function="wendland",
+    )
+
+    # Test solver initialization
+    assert solver_1d.dimension == 1
+    assert solver_1d.n_points == problem_1d.Nx + 1
+    assert solver_1d.delta == 0.15
+    assert solver_1d.taylor_order == 2
+    assert solver_1d.hjb_method_name == "GFDM"
+    print("  Solver initialized")
+    print(f"  Collocation points: {solver_1d.n_points}, Delta: {solver_1d.delta}")
+
+    print("Smoke tests passed!")

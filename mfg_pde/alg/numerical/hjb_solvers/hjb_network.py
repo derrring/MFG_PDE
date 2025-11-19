@@ -429,3 +429,19 @@ def create_network_hjb_solver(
         return NetworkPolicyIterationHJBSolver(problem, **kwargs)
     else:
         return NetworkHJBSolver(problem, scheme=solver_type, **kwargs)
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing NetworkHJBSolver classes...")
+
+    # Test class availability
+    assert NetworkHJBSolver is not None
+    assert NetworkPolicyIterationHJBSolver is not None
+    assert create_network_hjb_solver is not None
+    print("  Network HJB solver classes available")
+
+    # Note: Full smoke test requires NetworkMFGProblem setup
+    # See examples/networks/ for usage examples
+
+    print("Smoke tests passed!")

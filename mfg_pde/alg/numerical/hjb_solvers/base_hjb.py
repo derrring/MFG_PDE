@@ -971,3 +971,32 @@ def solve_hjb_system_backward(
             print(f"SYS_DEBUG: U_solution became NaN after Newton step for t_idx_n={n_idx_hjb}.")
 
     return U_solution_this_picard_iter
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing BaseHJBSolver...")
+
+    # Test base class and helper functions availability
+    assert BaseHJBSolver is not None
+    assert compute_hjb_residual is not None
+    assert compute_hjb_jacobian is not None
+    assert newton_hjb_step is not None
+    assert solve_hjb_timestep_newton is not None
+    assert solve_hjb_system_backward is not None
+    print("  Base HJB solver class and helpers available")
+
+    # Test that BaseHJBSolver is abstract
+    from mfg_pde import ExampleMFGProblem
+
+    problem = ExampleMFGProblem(Nx=10, Nt=5, T=1.0, sigma=0.1)
+
+    try:
+        base_solver = BaseHJBSolver(problem)
+        # Should fail because solve_hjb_system is abstract
+        base_solver.solve_hjb_system(None, None, None)
+        raise AssertionError("Should have raised NotImplementedError")
+    except (TypeError, NotImplementedError):
+        print("  BaseHJBSolver correctly abstract")
+
+    print("Smoke tests passed!")
