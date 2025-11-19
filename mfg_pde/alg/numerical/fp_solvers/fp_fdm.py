@@ -94,6 +94,7 @@ class FPFDMSolver(BaseFPSolver):
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,
+        tensor_diffusion_field: np.ndarray | Callable | None = None,
         show_progress: bool = True,
     ) -> np.ndarray:
         """
@@ -122,6 +123,17 @@ class FPFDMSolver(BaseFPSolver):
               Signature: (t: float, x: ndarray, m: ndarray) -> float | ndarray
               Evaluated per timestep using bootstrap strategy
             Default: None
+            Note: Cannot be used with tensor_diffusion_field
+        tensor_diffusion_field : np.ndarray or callable, optional
+            Tensor diffusion specification (Phase 3.0):
+            - None: Use scalar diffusion_field instead
+            - np.ndarray: Constant or spatially-varying tensor
+              Shape: (d, d) for constant, (Ny, Nx, d, d) for 2D spatially-varying
+            - Callable: State-dependent tensor Σ(t, x, m) -> (d, d) array
+              Signature: (t: float, x: ndarray, m: ndarray) -> (d, d) ndarray
+              Must return symmetric positive semi-definite matrix
+            Default: None
+            Note: Cannot be used with diffusion_field (mutually exclusive)
         show_progress : bool
             Whether to show progress bar
 
@@ -167,6 +179,24 @@ class FPFDMSolver(BaseFPSolver):
 
         Pure advection (zero diffusion):
         >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.0)
+
+        Anisotropic tensor diffusion (Phase 3.0):
+        >>> # Diagonal tensor: faster horizontal diffusion
+        >>> Sigma = np.diag([0.2, 0.05])  # σ_x=0.2, σ_y=0.05
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, tensor_diffusion_field=Sigma)
+
+        Full tensor with cross-diffusion:
+        >>> # 2x2 symmetric tensor
+        >>> Sigma = np.array([[0.2, 0.05], [0.05, 0.1]])
+        >>> M = solver.solve_fp_system(m0, drift_field=drift, tensor_diffusion_field=Sigma)
+
+        State-dependent tensor diffusion:
+        >>> def anisotropic_crowd(t, x, m):
+        ...     # Reduce perpendicular diffusion in crowds
+        ...     sigma_parallel = 0.2
+        ...     sigma_perp = 0.05 * (1 - m / np.max(m))
+        ...     return np.diag([sigma_parallel, sigma_perp])
+        >>> M = solver.solve_fp_system(m0, tensor_diffusion_field=anisotropic_crowd)
         """
         # Handle drift_field parameter
         if drift_field is None:
@@ -198,7 +228,44 @@ class FPFDMSolver(BaseFPSolver):
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
-        # Handle diffusion_field parameter
+        # Validate mutual exclusivity of diffusion_field and tensor_diffusion_field
+        if diffusion_field is not None and tensor_diffusion_field is not None:
+            raise ValueError(
+                "Cannot specify both diffusion_field and tensor_diffusion_field. "
+                "Use diffusion_field for scalar diffusion or tensor_diffusion_field for anisotropic diffusion."
+            )
+
+        # Handle tensor_diffusion_field (Phase 3.0)
+        if tensor_diffusion_field is not None:
+            # Tensor diffusion path - only supported for nD
+            if self.dimension == 1:
+                raise NotImplementedError(
+                    "Tensor diffusion not yet implemented for 1D problems. "
+                    "Use diffusion_field for scalar diffusion in 1D."
+                )
+
+            # Validate and pass to nD solver
+            # Note: PSD validation will be done by CoefficientField in nD solver
+            if not isinstance(tensor_diffusion_field, (np.ndarray, type(lambda: None))) and not callable(
+                tensor_diffusion_field
+            ):
+                raise TypeError(
+                    f"tensor_diffusion_field must be np.ndarray or Callable, got {type(tensor_diffusion_field)}"
+                )
+
+            # Route to nD solver with tensor diffusion
+            return _solve_fp_nd_full_system(
+                m_initial_condition=m_initial_condition,
+                U_solution_for_drift=effective_U,
+                problem=self.problem,
+                boundary_conditions=self.boundary_conditions,
+                show_progress=show_progress,
+                backend=self.backend,
+                diffusion_field=None,
+                tensor_diffusion_field=tensor_diffusion_field,
+            )
+
+        # Handle diffusion_field parameter (scalar diffusion)
         if diffusion_field is None:
             # Use problem.sigma (backward compatible)
             effective_sigma = self.problem.sigma
@@ -774,6 +841,7 @@ def _solve_fp_nd_full_system(
     show_progress: bool = True,
     backend: Any | None = None,
     diffusion_field: float | np.ndarray | Any | None = None,
+    tensor_diffusion_field: np.ndarray | Callable | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
