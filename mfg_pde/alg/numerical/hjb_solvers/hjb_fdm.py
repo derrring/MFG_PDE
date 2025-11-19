@@ -174,6 +174,7 @@ class HJBFDMSolver(BaseHJBSolver):
         U_final_condition: NDArray,
         U_from_prev_picard: NDArray,
         diffusion_field: float | NDArray | None = None,
+        tensor_diffusion_field: NDArray | None = None,
     ) -> NDArray:
         """
         Solve HJB system backward in time.
@@ -185,7 +186,30 @@ class HJBFDMSolver(BaseHJBSolver):
             U_final_condition: Terminal condition at T
             U_from_prev_picard: Previous Picard iterate
             diffusion_field: Diffusion coefficient (None uses problem.sigma)
+            tensor_diffusion_field: Tensor diffusion (Phase 3.0, not yet fully implemented)
+                Note: Currently a placeholder. Full tensor diffusion support in HJB
+                requires problem Hamiltonians to handle tensor-valued diffusion.
         """
+        # Validate mutual exclusivity
+        if diffusion_field is not None and tensor_diffusion_field is not None:
+            raise ValueError(
+                "Cannot specify both diffusion_field and tensor_diffusion_field. "
+                "Use diffusion_field for scalar or tensor_diffusion_field for anisotropic."
+            )
+
+        # Warn if tensor requested (not fully implemented yet)
+        if tensor_diffusion_field is not None:
+            import warnings
+
+            warnings.warn(
+                "tensor_diffusion_field in HJB solver is not yet fully implemented. "
+                "The parameter is accepted for API compatibility but tensor diffusion "
+                "effects are not yet incorporated into the Hamiltonian evaluation. "
+                "Full support requires problem.hamiltonian() to handle tensor diffusion.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         if self.dimension == 1:
             # Use optimized 1D solver
             return base_hjb.solve_hjb_system_backward(
@@ -200,7 +224,9 @@ class HJBFDMSolver(BaseHJBSolver):
             )
         else:
             # Use nD solver with centralized nonlinear solver
-            return self._solve_hjb_nd(M_density_evolution, U_final_condition, U_from_prev_picard, diffusion_field)
+            return self._solve_hjb_nd(
+                M_density_evolution, U_final_condition, U_from_prev_picard, diffusion_field, tensor_diffusion_field
+            )
 
     def _solve_hjb_nd(
         self,
@@ -208,10 +234,13 @@ class HJBFDMSolver(BaseHJBSolver):
         U_final: NDArray,
         U_prev: NDArray,
         diffusion_field: float | NDArray | None = None,
+        tensor_diffusion_field: NDArray | None = None,
     ) -> NDArray:
         """Solve nD HJB using centralized nonlinear solvers with variable diffusion support.
 
         Supports scalar, array, and callable diffusion coefficients.
+
+        Note: tensor_diffusion_field is accepted but not yet fully implemented.
         """
         # Validate shapes
         Nt = self.problem.Nt + 1
