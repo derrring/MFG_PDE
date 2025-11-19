@@ -1,7 +1,8 @@
 # Phase 2.5: Anisotropic Diffusion Tensors
 
-**Status**: Planning | **Priority**: Medium | **Effort**: 3-5 days
-**Created**: 2025-11-19 | **Branch**: `feature/anisotropic-diffusion-tensors`
+**Status**: ✅ COMPLETE | **Priority**: Medium | **Actual Effort**: 1 day
+**Created**: 2025-11-19 | **Completed**: 2025-11-19
+**Branch**: `feature/anisotropic-diffusion-tensors`
 
 ## Overview
 
@@ -600,6 +601,68 @@ def corridor_tensor_diffusion(t, x, m):
 
 ---
 
-**Next Action**: Implement tensor diffusion operators in 2D
-**Dependencies**: Phase 2 complete ✅
-**Estimated Completion**: 5 days after start
+## Implementation Summary (2025-11-19)
+
+### Completed Deliverables
+
+| Component | Status | Files | Commit |
+|:----------|:-------|:------|:-------|
+| Tensor operators (2D) | ✅ | `mfg_pde/utils/numerical/tensor_operators.py` | `361cd65` |
+| Diagonal optimization | ✅ | `divergence_diagonal_diffusion_2d()` | `361cd65` |
+| nD dispatcher | ✅ | `divergence_tensor_diffusion_nd()` | `361cd65` |
+| 1D fallback | ✅ | `_divergence_tensor_1d()` | `361cd65` |
+| Unit tests | ✅ | `tests/unit/test_tensor_operators.py` (14 tests) | `361cd65` |
+| PSD validation | ✅ | `CoefficientField.validate_tensor_psd()` | `2cf174c` |
+| Example | ✅ | `examples/basic/anisotropic_corridor.py` | `2d24715` |
+
+### Implementation Decisions
+
+1. **Staggered Grid Approach**: Cell-centered density with face-centered fluxes
+   - For Nx cells, compute Nx+1 x-faces and Ny+1 y-faces
+   - Tensor averaged to faces using boundary value replication
+   - Divergence from flux differences
+
+2. **Unified PSD Validation**: Single `validate_tensor_psd()` method for all input types
+   - Scalar: Check σ² ≥ 0
+   - Diagonal: Check all entries ≥ 0
+   - Full tensor: Check symmetry |Σ - Σᵀ| < ε and eigenvalues ≥ -ε
+   - Spatially varying: Validate at each grid point with location-specific errors
+
+3. **MFG Coupling Deferred**: Full MFG solver integration requires refactoring
+   - Current FP-FDM uses implicit sparse matrix assembly
+   - Tensor support requires component-wise flux construction
+   - Example demonstrates operators in isolation (forward evolution only)
+
+### Test Coverage
+
+- ✅ Isotropic Σ = σ²I matches scalar Laplacian (polynomial test)
+- ✅ Diagonal tensor component-wise Laplacian
+- ✅ Anisotropic tensors (constant and spatially varying)
+- ✅ Cross-diffusion with symmetric tensors
+- ✅ Rotated diffusion (R D Rᵀ structure)
+- ✅ Boundary conditions (periodic, Dirichlet, no-flux)
+- ✅ nD dispatch (1D, 2D, 3D NotImplementedError)
+- ✅ Mass conservation (divergence theorem)
+- ✅ Polynomial Laplacian accuracy
+
+### Performance
+
+- 14/14 tests passing
+- No performance overhead (operator-based, no matrix assembly)
+- Mass conservation exact to machine precision
+- Numerical accuracy validated against analytical solutions
+
+### Scope Changes
+
+**Not Implemented** (deferred to future work):
+- Full MFG coupling with tensor diffusion (requires FP-FDM refactoring)
+- 3D tensor operators (placeholder raises NotImplementedError)
+- Callable tensor-valued coefficients Σ(t, x, m) (infrastructure ready, not tested)
+
+**Rationale**: Core tensor operators and validation infrastructure complete. Example demonstrates correctness. Full integration requires non-trivial solver refactoring beyond Phase 2.5 scope.
+
+---
+
+**Phase 2.5 Status**: ✅ **COMPLETE**
+**Actual Effort**: 1 day (original estimate: 3-5 days)
+**Next Steps**: Merge to main, consider Phase 3 advanced features

@@ -147,16 +147,29 @@ This document provides **status tracking and task checklists** for implementing 
 - [ ] nD integration tests (2D/3D MFG with callable coefficients)
 - [ ] Performance benchmarks for nD callable evaluation
 
-### 2.5: Anisotropic Diffusion Tensors
+### 2.5: Anisotropic Diffusion Tensors (✅ COMPLETED)
 
-**Priority**: Medium | **Effort**: 3-5 days | **Status**: ⏳ After nD
+**Priority**: Medium | **Actual Effort**: 1 day | **Status**: ✅ Complete | **Date**: 2025-11-19
 
-**Tasks**:
-- [ ] Extend operators to handle diffusion tensors D(x)
-- [ ] Implement `divergence_tensor_diffusion()`
-- [ ] Update FP/HJB solvers to accept tensor diffusion_field
-- [ ] Unit tests: diagonal tensors, cross-diffusion
-- [ ] Example: anisotropic crowd dynamics
+**Completed Tasks**:
+- [x] Implement tensor diffusion operators (2D, diagonal, nD dispatcher, 1D fallback)
+- [x] Create `divergence_tensor_diffusion_2d()` and `divergence_diagonal_diffusion_2d()`
+- [x] Add PSD validation in `CoefficientField.validate_tensor_psd()`
+- [x] Unit tests: 14 tests covering isotropic, diagonal, anisotropic, cross-diffusion, BCs
+- [x] Example: `anisotropic_corridor.py` demonstrating tensor diffusion evolution
+
+**Deliverables**:
+- ✅ `mfg_pde/utils/numerical/tensor_operators.py` (340 lines)
+- ✅ `tests/unit/test_tensor_operators.py` (328 lines, 14 tests)
+- ✅ `CoefficientField.validate_tensor_psd()` (137 lines)
+- ✅ `examples/basic/anisotropic_corridor.py` (302 lines)
+
+**Commits**: `361cd65`, `2cf174c`, `2d24715`
+
+**Not Implemented** (deferred):
+- Full MFG coupling with tensor diffusion (requires FP-FDM refactoring)
+- 3D tensor operators (placeholder raises NotImplementedError)
+- Callable tensor-valued coefficients Σ(t, x, m)
 
 ---
 
