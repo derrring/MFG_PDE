@@ -370,5 +370,220 @@ class TestHJBFDMSolverNotAbstract:
         assert not inspect.isabstract(HJBFDMSolver)
 
 
+class TestHJBFDMSolverDiagonalTensor:
+    """Test HJBFDMSolver with diagonal tensor diffusion (Phase 3.1)."""
+
+    def test_diagonal_tensor_2d(self):
+        """Test HJB solver with constant diagonal tensor in 2D."""
+        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
+
+        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(15, 10))
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1)
+
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        # Get grid shape
+        Nx, Ny = domain.get_grid_shape()
+        Nt = problem.Nt + 1
+
+        # Create dummy density and initial conditions
+        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt, Nx, Ny))
+
+        # Diagonal tensor: fast horizontal, slow vertical
+        Sigma = np.diag([0.15, 0.05])
+
+        # Should not warn for diagonal tensor
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=Sigma)
+
+            # Check that no warning was raised for diagonal tensor
+            tensor_warnings = [warning for warning in w if "tensor_diffusion_field" in str(warning.message)]
+            assert len(tensor_warnings) == 0, "Should not warn for diagonal tensor"
+
+        # Verify solution shape and validity
+        assert U_solution.shape == (Nt, Nx, Ny)
+        assert not np.any(np.isnan(U_solution))
+        assert not np.any(np.isinf(U_solution))
+
+    def test_non_diagonal_tensor_warning(self):
+        """Test that HJB solver warns for non-diagonal tensor."""
+        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
+
+        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(15, 10))
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1)
+
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        # Get grid shape
+        Nx, Ny = domain.get_grid_shape()
+        Nt = problem.Nt + 1
+
+        # Create dummy density and initial conditions
+        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt, Nx, Ny))
+
+        # Non-diagonal tensor with off-diagonal elements
+        Sigma = np.array([[0.15, 0.02], [0.02, 0.05]])
+
+        # Should warn for non-diagonal tensor
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=Sigma)
+
+            # Check that warning was raised
+            tensor_warnings = [warning for warning in w if "non-diagonal" in str(warning.message).lower()]
+            assert len(tensor_warnings) > 0, "Should warn for non-diagonal tensor"
+
+        # Solution should still be computed (fallback to diagonal)
+        assert U_solution.shape == (Nt, Nx, Ny)
+        assert not np.any(np.isnan(U_solution))
+
+    def test_diagonal_tensor_is_diagonal_helper(self):
+        """Test is_diagonal_tensor helper function."""
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import is_diagonal_tensor
+
+        # Test diagonal tensor
+        Sigma_diag = np.diag([0.15, 0.05])
+        assert is_diagonal_tensor(Sigma_diag), "Should detect diagonal tensor"
+
+        # Test non-diagonal tensor
+        Sigma_full = np.array([[0.15, 0.02], [0.02, 0.05]])
+        assert not is_diagonal_tensor(Sigma_full), "Should detect non-diagonal tensor"
+
+        # Test nearly-diagonal tensor (within tolerance)
+        Sigma_nearly = np.diag([0.15, 0.05])
+        Sigma_nearly[0, 1] = 1e-12  # Very small off-diagonal
+        Sigma_nearly[1, 0] = 1e-12
+        assert is_diagonal_tensor(Sigma_nearly), "Should treat nearly-diagonal as diagonal"
+
+        # Test spatially-varying diagonal tensor
+        Sigma_spatial = np.zeros((10, 10, 2, 2))
+        for i in range(10):
+            for j in range(10):
+                Sigma_spatial[i, j] = np.diag([0.15, 0.05])
+        assert is_diagonal_tensor(Sigma_spatial), "Should detect spatially-varying diagonal"
+
+    def test_diagonal_tensor_spatially_varying(self):
+        """Test HJB solver with spatially-varying diagonal tensor."""
+        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
+
+        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(15, 10))
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
+
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        # Get grid shape
+        Nx, Ny = domain.get_grid_shape()
+        Nt = problem.Nt + 1
+
+        # Create dummy density and initial conditions
+        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt, Nx, Ny))
+
+        # Spatially-varying diagonal tensor
+        Sigma_spatial = np.zeros((Nx, Ny, 2, 2))
+        for i in range(Nx):
+            for j in range(Ny):
+                # Vary diffusion based on position
+                sigma_x = 0.1 + 0.1 * (i / Nx)
+                sigma_y = 0.05
+                Sigma_spatial[i, j] = np.diag([sigma_x**2, sigma_y**2])
+
+        # Should not warn for spatially-varying diagonal tensor
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=Sigma_spatial)
+
+            # No warnings for spatially-varying diagonal
+            tensor_warnings = [warning for warning in w if "tensor_diffusion_field" in str(warning.message)]
+            assert len(tensor_warnings) == 0, "Should not warn for spatially-varying diagonal tensor"
+
+        # Verify solution
+        assert U_solution.shape == (Nt, Nx, Ny)
+        assert not np.any(np.isnan(U_solution))
+
+    def test_diagonal_tensor_callable(self):
+        """Test HJB solver with callable diagonal tensor Σ(t, x, m)."""
+        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
+
+        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(10, 8))
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
+
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        # Get grid shape
+        Nx, Ny = domain.get_grid_shape()
+        Nt = problem.Nt + 1
+
+        # Create dummy density and initial conditions
+        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt, Nx, Ny))
+
+        # Callable diagonal tensor that varies with density
+        def tensor_func(t, x, m):
+            sigma_x = 0.15
+            sigma_y = 0.05 * (1.0 + 0.5 * m)  # Increases with density
+            return np.diag([sigma_x**2, sigma_y**2])
+
+        # Should warn for callable (can't check if diagonal without evaluation)
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=tensor_func)
+
+            # Callable tensors should produce a warning
+            tensor_warnings = [warning for warning in w if "callable" in str(warning.message).lower()]
+            assert len(tensor_warnings) > 0, "Should warn for callable tensor"
+
+        # Verify solution
+        assert U_solution.shape == (Nt, Nx, Ny)
+        assert not np.any(np.isnan(U_solution))
+
+    def test_diagonal_tensor_mutual_exclusivity(self):
+        """Test that tensor_diffusion_field and diffusion_field are mutually exclusive."""
+        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
+
+        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(10, 8))
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
+
+        solver = HJBFDMSolver(problem, solver_type="newton")
+
+        # Get grid shape
+        Nx, Ny = domain.get_grid_shape()
+        Nt = problem.Nt + 1
+
+        # Create dummy density and initial conditions
+        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt, Nx, Ny))
+
+        # Both tensor and scalar diffusion
+        Sigma = np.diag([0.15, 0.05])
+        sigma_scalar = 0.2
+
+        # Should raise ValueError
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            solver.solve_hjb_system(
+                M_density, U_final, U_prev, diffusion_field=sigma_scalar, tensor_diffusion_field=Sigma
+            )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
