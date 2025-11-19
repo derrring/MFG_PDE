@@ -243,14 +243,173 @@ Comprehensive benchmarks (`benchmarks/benchmark_callable_coefficients.py`):
 
 ---
 
-## Phase 3: Advanced Features (🔮 FUTURE)
+## Phase 3: Advanced Features
 
-**Features**:
-- 3.1: Lévy Processes (Jump-Diffusion)
-- 3.2: Common Noise (Extended MFG)
-- 3.3: Fractional Diffusion
+**Updated**: 2025-11-19 (Post-Phase 2.5 analysis)
+**Analysis**: `/tmp/phase_3_comparison_analysis.md`
 
-**Status**: Planning only
+### Phase 3 Overview
+
+Phase 2.5 completed anisotropic tensor diffusion **operators** but did not integrate them into MFG solvers. Phase 3 priorities have been revised to:
+
+1. **Phase 3.0**: Complete tensor diffusion integration (HIGH priority)
+2. **Phase 3.4**: Performance optimization (MEDIUM-HIGH priority)
+3. **Phase 3.1-3.3**: Advanced physics (MEDIUM-LOW priority)
+
+---
+
+### 3.0: Tensor Diffusion Integration (🎯 HIGH PRIORITY)
+
+**Motivation**: Phase 2.5 built tensor operators but stopped before MFG integration
+
+**Priority**: High | **Effort**: 6-10 days | **Status**: ⏳ Not started
+
+**Tasks**:
+- [ ] Integrate tensor operators into FP-FDM solver (1-2 days)
+  - Replace scalar Laplacian with `divergence_tensor_diffusion_2d()` calls
+  - Support spatially-varying tensors Σ(x, y)
+  - Explicit time stepping (infrastructure ready)
+
+- [ ] Integrate tensor operators into HJB-FDM solver (1-2 days)
+  - Modify Hamiltonian: H = (1/2)(∇u)ᵀ Σ (∇u) + other terms
+  - Handle tensor cross-terms: σ₁₁(∂u/∂x)² + 2σ₁₂(∂u/∂x)(∂u/∂y) + σ₂₂(∂u/∂y)²
+  - See `/tmp/tensor_diffusion_integration_analysis.md` for approach
+
+- [ ] MFG coupling with tensor diffusion (1 day)
+  - Pass tensor diffusion through `FixedPointIterator`
+  - End-to-end test: 2D MFG with anisotropic diffusion
+  - Example: Anisotropic crowd dynamics in corridor
+
+- [ ] 3D tensor operators (1 day)
+  - Implement `_divergence_tensor_diffusion_3d()`
+  - Extend staggered grid logic to 3D
+  - Unit tests for 3D isotropic/diagonal/anisotropic
+
+- [ ] Callable tensor-valued coefficients (2-3 days)
+  - Support Σ(t, x, m) - density-dependent anisotropy
+  - Bootstrap evaluation: Evaluate at m[k], use for timestep k→k+1
+  - Example: Anisotropy increases with density (crowd panic model)
+
+**Deliverables**:
+- Full MFG support for anisotropic diffusion
+- 3D tensor operators
+- Callable tensor coefficients Σ(t, x, m)
+
+**Blockers**: None (Phase 2.5 infrastructure complete)
+
+---
+
+### 3.1: Lévy Processes (Jump-Diffusion) (⏳ MEDIUM PRIORITY)
+
+**Description**: Mixed diffusion-jump dynamics for finance/insurance applications
+
+**Priority**: Medium | **Effort**: 2-3 weeks | **Status**: Planning only
+
+**PDE Form**:
+```
+∂m/∂t = ∇·(σ² ∇m) - ∇·(α m) + ∫[m(x-z) - m(x)] ν(dz)
+```
+
+**Tasks**:
+- [ ] Design jump integral discretization (quadrature vs FFT)
+- [ ] Implement jump term in FP equation
+- [ ] Modify HJB Hamiltonian with non-local term
+- [ ] Handle small jump vs large jump regimes
+- [ ] MFG coupling with jumps
+- [ ] Example: Option pricing with jumps
+
+**Phase 2.5 Synergy**: ✅ Can combine tensor diffusion + jumps (independent features)
+
+---
+
+### 3.2: Common Noise (Extended MFG) (⏳ MEDIUM PRIORITY)
+
+**Description**: Shared randomness affecting all agents (systemic risk)
+
+**Priority**: Medium | **Effort**: 2-3 weeks | **Status**: Planning only
+
+**Extended MFG Form**:
+```
+dX_i = α(t, X_i, m) dt + σ(t, X_i, m) dW_i + γ(t, X_i, m) dB
+```
+where B is common Brownian motion, W_i are idiosyncratic.
+
+**Tasks**:
+- [ ] Design extended state space (individual + common noise)
+- [ ] Modify FP equation for joint distribution
+- [ ] Update HJB with conditional expectation
+- [ ] Discretize higher-dimensional problem
+- [ ] Example: Bank run with correlated shocks
+
+**Phase 2.5 Synergy**: ✅ Tensor diffusion works in extended state space
+
+---
+
+### 3.3: Fractional Diffusion (⏳ LOW PRIORITY)
+
+**Description**: Non-local diffusion via fractional Laplacian (anomalous transport)
+
+**Priority**: Low | **Effort**: 3-4 weeks | **Status**: Planning only
+
+**PDE Form**:
+```
+∂m/∂t = (-Δ)^(α/2) m - ∇·(α m)
+```
+where (-Δ)^(α/2) is fractional Laplacian (0 < α < 2).
+
+**Tasks**:
+- [ ] Choose discretization (FFT vs matrix vs finite difference)
+- [ ] Implement fractional Laplacian operator
+- [ ] Integrate into FP solver
+- [ ] Modify HJB for fractional diffusion
+- [ ] Example: Lévy flight migration
+
+**Phase 2.5 Synergy**: ⚠️ Fractional anisotropic operators are research-level math
+
+---
+
+### 3.4: Performance Optimization (🎯 MEDIUM-HIGH PRIORITY)
+
+**Description**: JIT compilation and GPU acceleration for tensor operators
+
+**Priority**: Medium-High | **Effort**: 4-6 days | **Status**: ⏳ Not started
+
+**Motivation**: Tensor operators involve 7 array operations per grid point (vs 1 for scalar Laplacian). For 100×100×100 timesteps: 7M operations (vs 1M scalar).
+
+**Tasks**:
+- [ ] Numba JIT compilation (1 day)
+  - Compile `divergence_tensor_diffusion_2d()` with `@njit`
+  - Handle NumPy broadcasting in compiled code
+  - Benchmark speedup (expect 10-50x)
+
+- [ ] JAX GPU acceleration (2-3 days)
+  - Rewrite operators using `jax.numpy`
+  - Automatic differentiation for gradients
+  - GPU acceleration for large grids
+  - Benchmark on V100/A100 GPUs
+
+- [ ] Sparse matrix caching (1 day)
+  - Pre-compute stencil weights for constant tensors
+  - Reuse sparse matrices across timesteps
+  - Memory vs speed tradeoff analysis
+
+**Deliverables**: 10-100x speedup for tensor diffusion operations
+
+**Blockers**: None (can start immediately)
+
+---
+
+### Recommended Phase 3 Sequence
+
+**Phase 3.0 → Phase 3.4 → Phase 3.1 → Phase 3.2 → Phase 3.3**
+
+**Rationale**:
+1. Complete tensor integration before adding new features (finish what we started)
+2. Optimize performance before large-scale use
+3. Add advanced physics (jumps, common noise) after infrastructure is solid
+4. Fractional diffusion is specialized and can wait
+
+**Total Phase 3 Effort**: 4-8 weeks (depending on scope)
 
 ---
 
