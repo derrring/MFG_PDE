@@ -258,22 +258,31 @@ Phase 2.5 completed anisotropic tensor diffusion **operators** but did not integ
 
 ---
 
-### 3.0: Tensor Diffusion Integration (🎯 HIGH PRIORITY)
+### 3.0: Tensor Diffusion Integration (🎯 HIGH PRIORITY → ✅ PARTIAL COMPLETE)
 
 **Motivation**: Phase 2.5 built tensor operators but stopped before MFG integration
 
-**Priority**: High | **Effort**: 6-10 days | **Status**: ⏳ Not started
+**Priority**: High | **Effort**: 6-10 days | **Actual**: 1.5 days | **Status**: ✅ FP-FDM complete, HJB API only
 
-**Tasks**:
-- [ ] Integrate tensor operators into FP-FDM solver (1-2 days)
-  - Replace scalar Laplacian with `divergence_tensor_diffusion_2d()` calls
-  - Support spatially-varying tensors Σ(x, y)
-  - Explicit time stepping (infrastructure ready)
+**Completed Tasks** (2025-11-19):
+- [x] Integrate tensor operators into FP-FDM solver (1 day) ✅ **PRODUCTION-READY**
+  - Replaced scalar Laplacian with `divergence_tensor_diffusion_nd()` calls
+  - Supports constant, spatially-varying, and callable tensors Σ(t, x, m)
+  - Explicit Forward Euler timestepping with CFL stability
+  - 9 comprehensive unit tests (all passing, 0.27s runtime)
+  - Standalone example: `examples/basic/tensor_diffusion_simple.py`
+  - **PR**: #338 (open)
 
-- [ ] Integrate tensor operators into HJB-FDM solver (1-2 days)
+- [x] HJB-FDM API compatibility (0.5 days) ⚠️ **PLACEHOLDER ONLY**
+  - Added `tensor_diffusion_field` parameter (accepts but doesn't use)
+  - Warns when used (full support deferred to Phase 3.1)
+  - Enables MFG coupling without errors
+
+**Remaining Tasks** (Phase 3.1):
+- [ ] Complete HJB-FDM tensor support (2-3 days)
   - Modify Hamiltonian: H = (1/2)(∇u)ᵀ Σ (∇u) + other terms
   - Handle tensor cross-terms: σ₁₁(∂u/∂x)² + 2σ₁₂(∂u/∂x)(∂u/∂y) + σ₂₂(∂u/∂y)²
-  - See `/tmp/tensor_diffusion_integration_analysis.md` for approach
+  - Requires problem.hamiltonian() refactoring for tensor viscosity
 
 - [ ] MFG coupling with tensor diffusion (1 day)
   - Pass tensor diffusion through `FixedPointIterator`
@@ -285,17 +294,21 @@ Phase 2.5 completed anisotropic tensor diffusion **operators** but did not integ
   - Extend staggered grid logic to 3D
   - Unit tests for 3D isotropic/diagonal/anisotropic
 
-- [ ] Callable tensor-valued coefficients (2-3 days)
-  - Support Σ(t, x, m) - density-dependent anisotropy
-  - Bootstrap evaluation: Evaluate at m[k], use for timestep k→k+1
-  - Example: Anisotropy increases with density (crowd panic model)
+- [ ] Implicit timestepping option (2-3 days)
+  - Sparse matrix assembly for constant/spatial tensors
+  - Keep explicit for callable Σ(t, x, m) (avoid Newton complexity)
+  - Allow larger timesteps
 
 **Deliverables**:
-- Full MFG support for anisotropic diffusion
-- 3D tensor operators
-- Callable tensor coefficients Σ(t, x, m)
+- ✅ FP-FDM tensor diffusion (production-ready)
+- ⚠️ HJB-FDM API compatibility (placeholder)
+- ⏳ Full MFG coupling (requires HJB completion)
+- ⏳ 3D tensor operators
+- ⏳ Implicit timestepping
 
-**Blockers**: None (Phase 2.5 infrastructure complete)
+**Documentation**: `docs/development/PHASE_3.0_FP_TENSOR_COMPLETION.md`
+
+**Blockers**: None (can use FP-FDM immediately; HJB requires Hamiltonian refactoring)
 
 ---
 
