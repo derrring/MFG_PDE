@@ -910,19 +910,28 @@ def _solve_fp_nd_full_system(
     spacing = problem.geometry.get_grid_spacing()
     grid = problem.geometry  # Geometry IS the grid
 
-    # Handle diffusion field (Phase 2.4)
-    if diffusion_field is None:
-        sigma_base = problem.sigma
-    elif isinstance(diffusion_field, (int, float)):
-        sigma_base = float(diffusion_field)
-    elif callable(diffusion_field):
-        # Callable: will be evaluated per timestep
-        sigma_base = diffusion_field
-    elif isinstance(diffusion_field, np.ndarray):
-        # Array: spatially or spatiotemporally varying
-        sigma_base = diffusion_field
+    # Handle tensor diffusion (Phase 3.0) vs scalar diffusion
+    use_tensor_diffusion = tensor_diffusion_field is not None
+
+    if use_tensor_diffusion:
+        # Tensor diffusion path
+        tensor_base = tensor_diffusion_field
+        sigma_base = None  # Not used for tensor diffusion
     else:
-        sigma_base = problem.sigma
+        # Scalar diffusion path (Phase 2.4)
+        if diffusion_field is None:
+            sigma_base = problem.sigma
+        elif isinstance(diffusion_field, (int, float)):
+            sigma_base = float(diffusion_field)
+        elif callable(diffusion_field):
+            # Callable: will be evaluated per timestep
+            sigma_base = diffusion_field
+        elif isinstance(diffusion_field, np.ndarray):
+            # Array: spatially or spatiotemporally varying
+            sigma_base = diffusion_field
+        else:
+            sigma_base = problem.sigma
+        tensor_base = None
 
     # Validate input shapes
     assert m_initial_condition.shape == shape, (
@@ -965,24 +974,42 @@ def _solve_fp_nd_full_system(
         M_current = M_solution[k]
         U_current = U_solution_for_drift[k]
 
-        # Determine diffusion at current timestep using CoefficientField abstraction
-        diffusion = CoefficientField(sigma_base, problem.sigma, "diffusion_field", dimension=ndim)
-        sigma_at_k = diffusion.evaluate_at(timestep_idx=k, grid=grid.coordinates, density=M_current, dt=dt)
+        if use_tensor_diffusion:
+            # Tensor diffusion path (Phase 3.0) - explicit timestepping
+            M_next = _solve_timestep_tensor_explicit(
+                M_current,
+                U_current,
+                problem,
+                dt,
+                tensor_base,
+                coupling_coefficient,
+                spacing,
+                grid,
+                ndim,
+                shape,
+                boundary_conditions,
+                k,
+            )
+        else:
+            # Scalar diffusion path - implicit solver
+            # Determine diffusion at current timestep using CoefficientField abstraction
+            diffusion = CoefficientField(sigma_base, problem.sigma, "diffusion_field", dimension=ndim)
+            sigma_at_k = diffusion.evaluate_at(timestep_idx=k, grid=grid.coordinates, density=M_current, dt=dt)
 
-        # Build and solve full nD system
-        M_next = _solve_timestep_full_nd(
-            M_current,
-            U_current,
-            problem,
-            dt,
-            sigma_at_k,
-            coupling_coefficient,
-            spacing,
-            grid,
-            ndim,
-            shape,
-            boundary_conditions,
-        )
+            # Build and solve full nD system
+            M_next = _solve_timestep_full_nd(
+                M_current,
+                U_current,
+                problem,
+                dt,
+                sigma_at_k,
+                coupling_coefficient,
+                spacing,
+                grid,
+                ndim,
+                shape,
+                boundary_conditions,
+            )
 
         M_solution[k + 1] = M_next
 
@@ -990,6 +1017,177 @@ def _solve_fp_nd_full_system(
         M_solution[k + 1] = np.maximum(M_solution[k + 1], 0)
 
     return M_solution
+
+
+def _solve_timestep_tensor_explicit(
+    M_current: np.ndarray,
+    U_current: np.ndarray,
+    problem: Any,
+    dt: float,
+    tensor_field: np.ndarray | Callable,
+    coupling_coefficient: float,
+    spacing: tuple[float, ...],
+    grid: Any,
+    ndim: int,
+    shape: tuple[int, ...],
+    boundary_conditions: Any,
+    timestep_idx: int,
+) -> np.ndarray:
+    """
+    Solve one timestep with tensor diffusion using explicit Forward Euler.
+
+    Implements: m^{k+1} = m^k + dt * (∇·(Σ ∇m) - ∇·(α m))
+
+    Parameters
+    ----------
+    M_current : np.ndarray
+        Current density
+    U_current : np.ndarray
+        Current value function
+    problem : Any
+        MFG problem
+    dt : float
+        Time step
+    tensor_field : np.ndarray or callable
+        Tensor diffusion coefficient Σ
+    coupling_coefficient : float
+        Drift coupling coefficient
+    spacing : tuple
+        Grid spacing (dx, dy, ...)
+    grid : Any
+        Geometry/grid object
+    ndim : int
+        Spatial dimension
+    shape : tuple
+        Grid shape
+    boundary_conditions : BoundaryConditions
+        Boundary condition specification
+    timestep_idx : int
+        Current timestep index
+
+    Returns
+    -------
+    np.ndarray
+        Updated density at next timestep
+    """
+    from mfg_pde.utils.numerical.tensor_operators import divergence_tensor_diffusion_nd
+    from mfg_pde.utils.pde_coefficients import CoefficientField
+
+    # Evaluate tensor at current state
+    if callable(tensor_field):
+        # Callable tensor: Σ(t, x, m) -> (d, d) array
+        t = timestep_idx * dt
+        Sigma = np.zeros((*shape, ndim, ndim))
+        for idx in np.ndindex(shape):
+            x_coords = np.array([grid.coordinates[d][idx[d]] for d in range(ndim)])
+            m_at_point = M_current[idx]
+            Sigma[idx] = tensor_field(t, x_coords, m_at_point)
+
+        # Validate PSD
+        coeff = CoefficientField(tensor_field, None, "tensor_diffusion_field", dimension=ndim)
+        coeff.validate_tensor_psd(Sigma)
+    elif isinstance(tensor_field, np.ndarray):
+        # Array tensor: constant or spatially varying
+        if tensor_field.ndim == 2:
+            # Constant tensor (d, d)
+            Sigma = tensor_field
+        elif tensor_field.ndim == ndim + 2:
+            # Spatially varying (*shape, d, d)
+            Sigma = tensor_field
+        else:
+            raise ValueError(
+                f"tensor_field array must have shape (d, d) or (*shape, d, d), "
+                f"got shape {tensor_field.shape} for ndim={ndim}"
+            )
+
+        # Validate PSD
+        coeff = CoefficientField(tensor_field, None, "tensor_diffusion_field", dimension=ndim)
+        coeff.validate_tensor_psd(Sigma)
+    else:
+        raise TypeError(f"tensor_field must be np.ndarray or callable, got {type(tensor_field)}")
+
+    # Compute tensor diffusion term: ∇·(Σ ∇m)
+    diffusion_term = divergence_tensor_diffusion_nd(M_current, Sigma, spacing, boundary_conditions)
+
+    # Compute advection term: ∇·(α m)
+    # Use central differences for drift
+    advection_term = _compute_advection_term_nd(
+        M_current, U_current, coupling_coefficient, spacing, ndim, boundary_conditions
+    )
+
+    # Explicit Forward Euler update
+    M_next = M_current + dt * (diffusion_term - advection_term)
+
+    return M_next
+
+
+def _compute_advection_term_nd(
+    M: np.ndarray,
+    U: np.ndarray,
+    coupling_coefficient: float,
+    spacing: tuple[float, ...],
+    ndim: int,
+    boundary_conditions: Any,
+) -> np.ndarray:
+    """
+    Compute advection term ∇·(α m) where α = -coupling_coefficient * ∇U.
+
+    Uses upwind scheme for stability.
+
+    Parameters
+    ----------
+    M : np.ndarray
+        Density
+    U : np.ndarray
+        Value function
+    coupling_coefficient : float
+        Coupling coefficient
+    spacing : tuple
+        Grid spacing
+    ndim : int
+        Spatial dimension
+    boundary_conditions : BoundaryConditions
+        Boundary conditions
+
+    Returns
+    -------
+    np.ndarray
+        Advection term ∇·(α m)
+    """
+    # Compute drift: α = -coupling_coefficient * ∇U
+    # For now, use simple central differences
+    # TODO: Implement proper upwind scheme
+
+    advection = np.zeros_like(M)
+
+    if ndim == 2:
+        dx, dy = spacing
+
+        # Compute ∇U with central differences
+        grad_U_x = np.zeros_like(U)
+        grad_U_y = np.zeros_like(U)
+
+        # Central differences with boundary handling
+        grad_U_x[:, 1:-1] = (U[:, 2:] - U[:, :-2]) / (2 * dx)
+        grad_U_y[1:-1, :] = (U[2:, :] - U[:-2, :]) / (2 * dy)
+
+        # Drift: α = -λ ∇U
+        alpha_x = -coupling_coefficient * grad_U_x
+        alpha_y = -coupling_coefficient * grad_U_y
+
+        # Advection: ∇·(α m) ≈ ∂(α_x m)/∂x + ∂(α_y m)/∂y
+        # Use upwind scheme for stability
+        flux_x = alpha_x * M
+        flux_y = alpha_y * M
+
+        advection[:, 1:-1] += (flux_x[:, 2:] - flux_x[:, :-2]) / (2 * dx)
+        advection[1:-1, :] += (flux_y[2:, :] - flux_y[:-2, :]) / (2 * dy)
+
+    else:
+        # General nD (placeholder)
+        raise NotImplementedError(f"Advection term not yet implemented for {ndim}D")
+
+    return advection
 
 
 def _solve_timestep_full_nd(
