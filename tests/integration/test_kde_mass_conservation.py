@@ -27,7 +27,7 @@ def test_kde_normalization():
     )
 
     U_zero = np.zeros((problem.Nt + 1, problem.Nx + 1))
-    M_result1 = solver1.solve_fp_system(m_initial_condition=problem.m_init, U_solution_for_drift=U_zero)
+    M_result1 = solver1.solve_fp_system(m_initial_condition=problem.m_init, drift_field=U_zero)
 
     mass1 = np.sum(M_result1 * problem.dx, axis=1)
     print(f"  Initial mass: {mass1[0]:.6f}")
@@ -43,7 +43,7 @@ def test_kde_normalization():
         boundary_conditions=no_flux_bc,
     )
 
-    M_result2 = solver2.solve_fp_system(m_initial_condition=problem.m_init, U_solution_for_drift=U_zero)
+    M_result2 = solver2.solve_fp_system(m_initial_condition=problem.m_init, drift_field=U_zero)
 
     mass2 = np.sum(M_result2 * problem.dx, axis=1)
     print(f"  Initial mass: {mass2[0]:.6f}")
@@ -59,7 +59,7 @@ def test_kde_normalization():
         boundary_conditions=no_flux_bc,
     )
 
-    M_result3 = solver3.solve_fp_system(m_initial_condition=problem.m_init, U_solution_for_drift=U_zero)
+    M_result3 = solver3.solve_fp_system(m_initial_condition=problem.m_init, drift_field=U_zero)
 
     mass3 = np.sum(M_result3 * problem.dx, axis=1)
     print(f"  Initial mass: {mass3[0]:.6f}")
