@@ -22,6 +22,36 @@ from mfg_pde.utils.pde_coefficients import CoefficientField
 from . import base_hjb
 from .base_hjb import BaseHJBSolver
 
+
+def is_diagonal_tensor(Sigma: NDArray, rtol: float = 1e-10) -> bool:
+    """
+    Check if tensor is diagonal (off-diagonal elements near zero).
+
+    Args:
+        Sigma: Tensor array, either (d, d) or (*shape, d, d)
+        rtol: Relative tolerance for off-diagonal elements
+
+    Returns:
+        True if diagonal, False otherwise
+    """
+    # Handle both single tensor and spatially-varying tensors
+    if Sigma.ndim == 2:
+        # Single (d, d) tensor
+        d = Sigma.shape[0]
+        off_diag_sum = np.sum(np.abs(Sigma)) - np.sum(np.abs(np.diag(Sigma)))
+        diag_sum = np.sum(np.abs(np.diag(Sigma)))
+        return off_diag_sum < rtol * diag_sum if diag_sum > 0 else off_diag_sum < rtol
+    else:
+        # Spatially-varying (*shape, d, d)
+        d = Sigma.shape[-1]
+        diag_mask = np.eye(d, dtype=bool)
+        off_diag_elements = Sigma[..., ~diag_mask]
+        diag_elements = Sigma[..., diag_mask]
+        off_diag_norm = np.linalg.norm(off_diag_elements)
+        diag_norm = np.linalg.norm(diag_elements)
+        return off_diag_norm < rtol * diag_norm if diag_norm > 0 else off_diag_norm < rtol
+
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -197,18 +227,28 @@ class HJBFDMSolver(BaseHJBSolver):
                 "Use diffusion_field for scalar or tensor_diffusion_field for anisotropic."
             )
 
-        # Warn if tensor requested (not fully implemented yet)
+        # Check tensor type and warn if non-diagonal (not fully implemented yet)
         if tensor_diffusion_field is not None:
             import warnings
 
-            warnings.warn(
-                "tensor_diffusion_field in HJB solver is not yet fully implemented. "
-                "The parameter is accepted for API compatibility but tensor diffusion "
-                "effects are not yet incorporated into the Hamiltonian evaluation. "
-                "Full support requires problem.hamiltonian() to handle tensor diffusion.",
-                UserWarning,
-                stacklevel=2,
-            )
+            # Check if diagonal
+            if callable(tensor_diffusion_field):
+                # Cannot easily check callable tensors without evaluation
+                warnings.warn(
+                    "Callable tensor_diffusion_field in HJB solver is not yet fully implemented. "
+                    "If the tensor is diagonal, it will be handled correctly. "
+                    "Full tensor (non-diagonal) support requires Hamiltonian refactoring.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            elif not is_diagonal_tensor(tensor_diffusion_field):
+                warnings.warn(
+                    "Full tensor (non-diagonal) diffusion in HJB solver is not yet implemented. "
+                    "The parameter is accepted for API compatibility but only diagonal tensors "
+                    "are currently supported. Full tensor support requires Hamiltonian refactoring.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         if self.dimension == 1:
             # Use optimized 1D solver
@@ -273,20 +313,45 @@ class HJBFDMSolver(BaseHJBSolver):
             U_guess = U_prev[n]
 
             # Extract or evaluate diffusion using CoefficientField abstraction
-            diffusion = CoefficientField(
-                diffusion_field, self.problem.sigma, "diffusion_field", dimension=self.dimension
-            )
-            sigma_at_n = diffusion.evaluate_at(
-                timestep_idx=n, grid=self.grid.coordinates, density=M_next, dt=self.problem.dt
-            )
+            if tensor_diffusion_field is not None:
+                # Evaluate tensor at current timestep
+                if callable(tensor_diffusion_field):
+                    # Callable: Σ(t, x, m)
+                    t = n * self.problem.dt
+                    Sigma_at_n = np.zeros((*self.shape, self.dimension, self.dimension))
+                    for idx in np.ndindex(self.shape):
+                        x_coords = np.array([self.grid.coordinates[d][idx[d]] for d in range(self.dimension)])
+                        m_at_point = M_next[idx]
+                        Sigma_at_n[idx] = tensor_diffusion_field(t, x_coords, m_at_point)
+                else:
+                    # Constant or spatially-varying
+                    Sigma_at_n = tensor_diffusion_field
+            else:
+                Sigma_at_n = None
+
+            # Handle scalar diffusion_field
+            if diffusion_field is not None or Sigma_at_n is None:
+                diffusion = CoefficientField(
+                    diffusion_field, self.problem.sigma, "diffusion_field", dimension=self.dimension
+                )
+                sigma_at_n = diffusion.evaluate_at(
+                    timestep_idx=n, grid=self.grid.coordinates, density=M_next, dt=self.problem.dt
+                )
+            else:
+                sigma_at_n = None
 
             # Solve nonlinear system using centralized solver
-            U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess, sigma_at_n)
+            U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess, sigma_at_n, Sigma_at_n)
 
         return U_solution
 
     def _solve_single_timestep(
-        self, U_next: NDArray, M_next: NDArray, U_guess: NDArray, sigma_at_n: float | NDArray | None = None
+        self,
+        U_next: NDArray,
+        M_next: NDArray,
+        U_guess: NDArray,
+        sigma_at_n: float | NDArray | None = None,
+        Sigma_at_n: NDArray | None = None,
     ) -> NDArray:
         """
         Solve single HJB timestep using centralized nonlinear solver.
@@ -298,13 +363,14 @@ class HJBFDMSolver(BaseHJBSolver):
             U_next: Value function at next timestep
             M_next: Density at next timestep
             U_guess: Initial guess for current timestep
-            sigma_at_n: Diffusion coefficient at current timestep (None, float, or array)
+            sigma_at_n: Scalar diffusion coefficient at current timestep (None, float, or array)
+            Sigma_at_n: Tensor diffusion coefficient at current timestep (None or tensor array)
         """
         if self.solver_type == "fixed_point":
             # Define fixed-point map G: u → u
             def G(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U)
-                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n)
+                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
                 return U_next - self.dt * H_values
 
             U_solution, info = self.nonlinear_solver.solve(G, U_guess)
@@ -313,7 +379,7 @@ class HJBFDMSolver(BaseHJBSolver):
             # Define residual F: u → residual
             def F(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U)
-                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n)
+                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
                 return (U - U_next) / self.dt + H_values
 
             U_solution, info = self.nonlinear_solver.solve(F, U_guess)
@@ -366,58 +432,139 @@ class HJBFDMSolver(BaseHJBSolver):
         return gradients
 
     def _evaluate_hamiltonian_nd(
-        self, U: NDArray, M: NDArray, gradients: dict, sigma_at_n: float | NDArray | None = None
+        self,
+        U: NDArray,
+        M: NDArray,
+        gradients: dict,
+        sigma_at_n: float | NDArray | None = None,
+        Sigma_at_n: NDArray | None = None,
     ) -> NDArray:
         """Evaluate Hamiltonian at all grid points with variable diffusion support.
+
+        Supports scalar and diagonal tensor diffusion.
 
         Args:
             U: Value function at current timestep
             M: Density at current timestep
             gradients: Dictionary of gradient arrays
-            sigma_at_n: Diffusion coefficient (None uses problem.sigma, float is constant, array is spatially varying)
+            sigma_at_n: Scalar diffusion coefficient (None uses problem.sigma, float is constant, array is spatially varying)
+            Sigma_at_n: Tensor diffusion coefficient (None or tensor array). If provided and diagonal, computes
+                        H_viscosity = (1/2) Σᵢ σᵢ² pᵢ² separately and adds to running cost.
         """
         H_values = np.zeros(self.shape, dtype=np.float64)
 
-        # Determine sigma to use
-        if sigma_at_n is None:
-            sigma_base = self.problem.sigma
-        else:
-            sigma_base = sigma_at_n
+        # Determine which diffusion mode to use
+        use_tensor_diffusion = Sigma_at_n is not None
+
+        if not use_tensor_diffusion:
+            # Scalar diffusion mode
+            if sigma_at_n is None:
+                sigma_base = self.problem.sigma
+            else:
+                sigma_base = sigma_at_n
 
         for multi_idx in np.ndindex(self.shape):
             x_coords = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
             m_at_point = M[multi_idx]
             derivs_at_point = {key: grad_array[multi_idx] for key, grad_array in gradients.items()}
 
-            # Get diffusion at this point
-            if isinstance(sigma_base, (int, float)):
-                sigma_at_point = sigma_base
-            elif isinstance(sigma_base, np.ndarray):
-                sigma_at_point = sigma_base[multi_idx]
-            else:
-                sigma_at_point = self.problem.sigma
+            # Extract gradient p
+            p = np.array(
+                [
+                    derivs_at_point.get(tuple(1 if i == d else 0 for i in range(self.dimension)), 0.0)
+                    for d in range(self.dimension)
+                ]
+            )
 
-            # Temporarily override problem.sigma for Hamiltonian evaluation
-            original_sigma = self.problem.sigma
-            self.problem.sigma = sigma_at_point
-
-            try:
-                # Call problem Hamiltonian (try both interfaces)
-                if hasattr(self.problem, "hamiltonian"):
-                    p = np.array(
-                        [
-                            derivs_at_point.get(tuple(1 if i == d else 0 for i in range(self.dimension)), 0.0)
-                            for d in range(self.dimension)
-                        ]
-                    )
-                    H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
-                elif hasattr(self.problem, "H"):
-                    H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs_at_point)
+            if use_tensor_diffusion:
+                # Tensor diffusion mode
+                # Get tensor at this point
+                if Sigma_at_n.ndim == 2:
+                    # Constant tensor
+                    Sigma_point = Sigma_at_n
                 else:
-                    raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
-            finally:
-                # Restore original sigma
-                self.problem.sigma = original_sigma
+                    # Spatially-varying tensor
+                    Sigma_point = Sigma_at_n[multi_idx]
+
+                # Check if diagonal (should be, given warning in solve_hjb_system)
+                if is_diagonal_tensor(Sigma_point):
+                    # Extract diagonal elements: σᵢ²
+                    sigma_squared = np.diag(Sigma_point)
+
+                    # Compute viscosity term: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
+                    H_viscosity = 0.5 * np.sum(sigma_squared * p**2)
+
+                    # Compute running cost manually without viscosity term
+                    # Standard MFG: H = (coupling/2)|p|² + (sigma²/2)|p|² + V(x) + F(m)
+                    # We want:      H_running = (coupling/2)|p|² + V(x) + F(m)
+                    #               H_total = H_viscosity + H_running
+
+                    # Control cost (always present)
+                    p_squared_norm = np.sum(p**2)
+                    H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
+
+                    # Coupling term F(m) - typically G(m) where G'(m) = g(m)
+                    # For standard MFG: F(m) = 0 (coupling is only through g(m) in FP)
+                    # If custom components have coupling, it would be included
+                    H_coupling_m = 0.0
+
+                    # Potential V(x) if present
+                    # For now, assume V=0 unless custom components specify
+                    H_potential = 0.0
+
+                    H_running = H_control + H_coupling_m + H_potential
+                    H_values[multi_idx] = H_viscosity + H_running
+                else:
+                    # Non-diagonal tensor - not fully supported yet
+                    # Fall back to treating as diagonal (ignoring off-diagonal terms)
+                    import warnings
+
+                    warnings.warn(
+                        "Non-diagonal tensor detected during HJB evaluation. "
+                        "Full tensor support not implemented. Using diagonal approximation (ignoring off-diagonal terms).",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    # Extract diagonal elements and ignore off-diagonal
+                    sigma_squared = np.diag(Sigma_point)
+
+                    # Compute viscosity with diagonal only: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
+                    H_viscosity = 0.5 * np.sum(sigma_squared * p**2)
+
+                    # Compute running cost manually (same as diagonal case)
+                    p_squared_norm = np.sum(p**2)
+                    H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
+                    H_coupling_m = 0.0
+                    H_potential = 0.0
+
+                    H_running = H_control + H_coupling_m + H_potential
+                    H_values[multi_idx] = H_viscosity + H_running
+
+            else:
+                # Scalar diffusion mode (original code)
+                # Get diffusion at this point
+                if isinstance(sigma_base, (int, float)):
+                    sigma_at_point = sigma_base
+                elif isinstance(sigma_base, np.ndarray):
+                    sigma_at_point = sigma_base[multi_idx]
+                else:
+                    sigma_at_point = self.problem.sigma
+
+                # Temporarily override problem.sigma for Hamiltonian evaluation
+                original_sigma = self.problem.sigma
+                self.problem.sigma = sigma_at_point
+
+                try:
+                    # Call problem Hamiltonian (try both interfaces)
+                    if hasattr(self.problem, "hamiltonian"):
+                        H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
+                    elif hasattr(self.problem, "H"):
+                        H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs_at_point)
+                    else:
+                        raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
+                finally:
+                    # Restore original sigma
+                    self.problem.sigma = original_sigma
 
         return H_values
 
