@@ -19,17 +19,24 @@ Internal Types (use with caution):
 
 # Re-export the most commonly needed types
 from .arrays import SolutionArray, SpatialGrid, TimeGrid
+from .callable_protocols import (
+    CoefficientFieldType,
+    DiffusionFieldCallable,
+    DriftFieldCallable,
+    FinalValueCallable,
+    HamiltonianCallable,
+    HamiltonianDerivativeCallable,
+    InitialDensityCallable,
+    PotentialCallable,
+)
 from .pde_coefficients import DiffusionCallable, DiffusionField, DriftCallable, DriftField
 from .protocols import MFGProblem, MFGResult, MFGSolver, SolverConfig
 from .solver_types import HamiltonianJacobians, SolverReturnTuple
 from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
+    # Core types
     "ConvergenceInfo",
-    "DiffusionCallable",
-    "DiffusionField",
-    "DriftCallable",
-    "DriftField",
     "HamiltonianJacobians",
     "MFGProblem",
     "MFGResult",
@@ -40,6 +47,20 @@ __all__ = [
     "SpatialGrid",
     "SpatialTemporalState",
     "TimeGrid",
+    # Legacy coefficient types (kept for backward compatibility)
+    "DiffusionCallable",
+    "DiffusionField",
+    "DriftCallable",
+    "DriftField",
+    # New callable protocols (Phase 3.5 - enhanced type hints)
+    "CoefficientFieldType",
+    "DiffusionFieldCallable",
+    "DriftFieldCallable",
+    "FinalValueCallable",
+    "HamiltonianCallable",
+    "HamiltonianDerivativeCallable",
+    "InitialDensityCallable",
+    "PotentialCallable",
 ]
 
 # Array types available via explicit import:
