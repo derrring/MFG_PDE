@@ -279,10 +279,12 @@ Phase 2.5 completed anisotropic tensor diffusion **operators** but did not integ
   - Enables MFG coupling without errors
 
 **Remaining Tasks** (Phase 3.1):
-- [ ] Complete HJB-FDM tensor support (2-3 days)
-  - Modify Hamiltonian: H = (1/2)(∇u)ᵀ Σ (∇u) + other terms
-  - Handle tensor cross-terms: σ₁₁(∂u/∂x)² + 2σ₁₂(∂u/∂x)(∂u/∂y) + σ₂₂(∂u/∂y)²
-  - Requires problem.hamiltonian() refactoring for tensor viscosity
+- [ ] Complete HJB-FDM tensor support (⚠️ **ARCHITECTURE ISSUE IDENTIFIED** - 2025-11-19)
+  - **Problem**: Current architecture has `problem.hamiltonian()` compute viscosity term using `self.sigma`
+  - **Blocker**: Cannot simply override `sigma` for tensor - need `(1/2) pᵀ Σ p` vs `(σ²/2)|p|²`
+  - **Required refactoring**: Split Hamiltonian into running cost (problem) + viscosity term (solver)
+  - **Coordination**: Should be done alongside drift strategy pattern (Issue #335)
+  - **Revised estimate**: 5-7 days (requires Hamiltonian architecture redesign)
 
 - [ ] MFG coupling with tensor diffusion (1 day)
   - Pass tensor diffusion through `FixedPointIterator`
