@@ -255,6 +255,143 @@ class CoefficientField:
         """Check if coefficient is precomputed array."""
         return self._is_array
 
+    def validate_tensor_psd(
+        self,
+        sigma_tensor: float | np.ndarray,
+        tolerance: float = 1e-10,
+    ) -> None:
+        """
+        Validate that diffusion tensor is positive semi-definite (PSD).
+
+        Works for all coefficient types:
+        - Scalar σ²: Always PSD (if ≥ 0)
+        - 1D tensor (1×1 matrix): Check value ≥ 0
+        - Diagonal tensor: Check all diagonal entries ≥ 0
+        - Full tensor (d×d): Check symmetry and eigenvalues ≥ 0
+
+        Parameters
+        ----------
+        sigma_tensor : float | ndarray
+            Diffusion coefficient or tensor to validate:
+            - Scalar: σ² ≥ 0
+            - Constant tensor: (d, d) array
+            - Spatially varying: (N1, ..., Nd, d, d) array
+            - Spatiotemporal: (Nt, N1, ..., Nd, d, d) array
+        tolerance : float, optional
+            Numerical tolerance for eigenvalue checking (default: 1e-10)
+
+        Raises
+        ------
+        ValueError
+            If tensor contains NaN/Inf, is not symmetric, or has negative eigenvalues
+
+        Examples
+        --------
+        Scalar diffusion:
+        >>> field = CoefficientField(0.1, 0.05, "diffusion_field", dimension=2)
+        >>> field.validate_tensor_psd(0.1)  # Pass
+
+        Full tensor:
+        >>> Sigma = np.array([[0.1, 0.02], [0.02, 0.1]])
+        >>> field.validate_tensor_psd(Sigma)  # Pass (symmetric PSD)
+        """
+        # Scalar case: just check non-negative
+        if isinstance(sigma_tensor, (int, float)):
+            if sigma_tensor < 0:
+                raise ValueError(f"{self.name} scalar must be non-negative, got {sigma_tensor}")
+            return
+
+        # Array case
+        if not isinstance(sigma_tensor, np.ndarray):
+            raise TypeError(f"{self.name} must be float or ndarray, got {type(sigma_tensor)}")
+
+        # Check for NaN/Inf
+        if not np.all(np.isfinite(sigma_tensor)):
+            raise ValueError(f"{self.name} contains NaN or Inf values")
+
+        # Determine tensor structure from shape
+        shape = sigma_tensor.shape
+
+        # Scalar-like array (0D or shape ())
+        if sigma_tensor.ndim == 0 or shape == ():
+            if sigma_tensor < 0:
+                raise ValueError(f"{self.name} must be non-negative, got {sigma_tensor}")
+            return
+
+        # Single tensor: shape (d, d)
+        if sigma_tensor.ndim == 2:
+            self._check_single_tensor_psd(sigma_tensor, tolerance)
+            return
+
+        # Spatially varying or spatiotemporal: shape (..., d, d)
+        if sigma_tensor.ndim >= 3 and shape[-2] == shape[-1]:
+            tensor_dim = shape[-1]
+            # Flatten spatial/temporal dimensions
+            num_tensors = np.prod(shape[:-2])
+            reshaped = sigma_tensor.reshape(num_tensors, tensor_dim, tensor_dim)
+
+            # Check each tensor at each grid point
+            for idx in range(num_tensors):
+                try:
+                    self._check_single_tensor_psd(reshaped[idx], tolerance)
+                except ValueError as e:
+                    # Add location information to error
+                    multi_idx = np.unravel_index(idx, shape[:-2])
+                    raise ValueError(f"{self.name} at grid point {multi_idx}: {e}") from None
+            return
+
+        # 1D array of diagonal values (for diagonal tensors): shape (d,)
+        if sigma_tensor.ndim == 1:
+            if np.any(sigma_tensor < 0):
+                neg_indices = np.where(sigma_tensor < 0)[0]
+                raise ValueError(
+                    f"{self.name} diagonal entries must be non-negative. "
+                    f"Found negative values at indices {neg_indices.tolist()}"
+                )
+            return
+
+        # Spatially varying diagonal: shape (N1, ..., Nd, d)
+        # Just check all values are non-negative
+        if np.any(sigma_tensor < 0):
+            raise ValueError(f"{self.name} contains negative values (all entries must be ≥ 0)")
+
+    def _check_single_tensor_psd(self, tensor: np.ndarray, tolerance: float) -> None:
+        """
+        Check that a single d×d tensor is symmetric and positive semi-definite.
+
+        Parameters
+        ----------
+        tensor : ndarray
+            Tensor of shape (d, d)
+        tolerance : float
+            Numerical tolerance for symmetry and eigenvalue checks
+
+        Raises
+        ------
+        ValueError
+            If tensor is not symmetric or has negative eigenvalues
+        """
+        # Check symmetry
+        symmetric_diff = np.abs(tensor - tensor.T)
+        max_asymmetry = np.max(symmetric_diff)
+
+        if max_asymmetry > tolerance:
+            raise ValueError(
+                f"{self.name} must be symmetric. "
+                f"Max asymmetry |Σ - Σᵀ| = {max_asymmetry:.2e} > tolerance {tolerance:.2e}"
+            )
+
+        # Check positive semi-definite via eigenvalues
+        eigenvalues = np.linalg.eigvalsh(tensor)  # Hermitian/symmetric eigenvalues
+        min_eigenvalue = np.min(eigenvalues)
+
+        if min_eigenvalue < -tolerance:
+            raise ValueError(
+                f"{self.name} must be positive semi-definite. "
+                f"Found negative eigenvalue: λ_min = {min_eigenvalue:.6e} < 0. "
+                f"All eigenvalues: {eigenvalues}"
+            )
+
 
 def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]:
     """
