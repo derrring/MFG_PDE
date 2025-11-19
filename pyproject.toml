@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.13.3" # v0.13.3: Phase 3.4 complete - Numba JIT optimization for tensor operators (2-3.4x speedup)
+version = "0.13.4" # v0.13.4: Phase 3.5 complete - Protocol type hints + coefficient field tutorial
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
