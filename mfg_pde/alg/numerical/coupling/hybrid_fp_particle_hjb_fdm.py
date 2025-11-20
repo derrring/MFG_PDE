@@ -411,3 +411,17 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
                 "damping_parameter": self.damping_parameter,
             },
         }
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing HybridFPParticleHJBFDM...")
+
+    # Test class availability
+    assert HybridFPParticleHJBFDM is not None
+    print("  HybridFPParticleHJBFDM class available")
+
+    # Full smoke test requires complete solver setup
+    # See examples/advanced/ for usage examples
+
+    print("Smoke tests passed!")

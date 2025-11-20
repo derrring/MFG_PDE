@@ -123,3 +123,17 @@ class BaseMFGSolver(ABC):
     def is_solved(self) -> bool:
         """Check if the solver has computed a solution."""
         return self._solution_computed
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing BaseMFGSolver...")
+
+    # Test base class availability
+    assert BaseMFGSolver is not None
+    print("  BaseMFGSolver class available")
+
+    # Note: BaseMFGSolver is abstract and requires implementation
+    # See FixedPointMFGSolver for concrete implementation
+
+    print("Smoke tests passed!")
