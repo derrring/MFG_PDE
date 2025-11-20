@@ -202,6 +202,22 @@ class BaseFPSolver(ABC):
             - drift = -∇U / λ (user computes externally)
             - diffusion = problem.sigma (default) or custom
             This gives full control over both drift and diffusion.
+
+        Helper Functions (Phase 2):
+            For convenience and clarity, drift helper functions are available:
+
+            >>> from mfg_pde.utils import (
+            ...     zero_drift,
+            ...     optimal_control_drift,
+            ...     prescribed_drift,
+            ...     density_dependent_drift,
+            ...     composite_drift,
+            ... )
+
+            These helpers return callables with clear intent. Callable drift support
+            is planned for Phase 2. Current solvers (v0.13) support None and np.ndarray.
+
+            See mfg_pde.utils.drift_helpers for details.
         """
 
 

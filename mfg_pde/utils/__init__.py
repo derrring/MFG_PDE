@@ -32,6 +32,15 @@ from .data.validation import (
     validate_mfg_solution,
     validate_solution_array,
 )
+
+# Drift field helpers for FP solvers
+from .drift_helpers import (
+    composite_drift,
+    density_dependent_drift,
+    optimal_control_drift,
+    prescribed_drift,
+    zero_drift,
+)
 from .exceptions import (
     ConfigurationError,
     ConvergenceError,
@@ -240,6 +249,12 @@ __all__ = [
     # PDE coefficient handling
     "CoefficientField",
     "get_spatial_grid",
+    # Drift field helpers for FP solvers
+    "zero_drift",
+    "optimal_control_drift",
+    "prescribed_drift",
+    "density_dependent_drift",
+    "composite_drift",
     # Convergence monitoring
     "AdaptiveConvergenceWrapper",
     "AdvancedConvergenceMonitor",
