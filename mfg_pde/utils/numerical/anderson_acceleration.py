@@ -247,3 +247,31 @@ def create_anderson_accelerator(
         regularization=regularization,
         **kwargs,
     )
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing Anderson acceleration...")
+
+    import numpy as np
+
+    # Test Anderson acceleration API works without errors
+    accel = AndersonAccelerator(depth=5)
+
+    # Simulate a few iterations of a fixed-point method
+    x = np.array([1.0, 2.0, 3.0])
+    for iteration in range(5):
+        # Mock residual (would normally be f(x) - x for fixed point)
+        fx = x + 0.1 * np.sin(x)  # Simple perturbation
+
+        x_new = accel.update(x, fx)
+
+        # Verify output is valid
+        assert not np.any(np.isnan(x_new)), f"NaN at iteration {iteration}"
+        assert not np.any(np.isinf(x_new)), f"Inf at iteration {iteration}"
+        assert x_new.shape == x.shape, "Shape mismatch"
+
+        x = x_new
+
+    print(f"  Anderson acceleration: {iteration + 1} iterations, output shape {x.shape}, no NaNs/Infs")
+    print("Smoke tests passed!")

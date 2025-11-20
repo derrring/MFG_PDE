@@ -712,3 +712,39 @@ __all__ = [
     "QPCache",
     "QPSolver",
 ]
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing QP utilities...")
+
+    import numpy as np
+
+    # Test weighted least squares: min ||Ax - b||_W^2
+    # Simple problem: find x such that 2x ≈ 4, solution x ≈ 2
+    A = np.array([[2.0]])
+    b = np.array([4.0])
+    W = np.array([[1.0]])  # Weight matrix
+
+    solver = QPSolver()
+    x = solver.solve_weighted_least_squares(A, b, W)
+
+    assert x is not None, "QP solver returned None"
+    assert x.shape == (1,), f"Wrong shape: {x.shape}"
+    assert abs(x[0] - 2.0) < 1e-3, f"QP solution {x[0]} != 2.0"
+
+    print(f"  Weighted least squares: x = {x[0]:.6f} (expected 2.0)")
+
+    # Test cache
+    cache = QPCache(max_size=2)
+
+    # Store a solution
+    cache.put(A, b, W, x)
+
+    # Retrieve it
+    x_cached = cache.get(A, b, W)
+    assert x_cached is not None, "Cache retrieval failed"
+    assert np.allclose(x_cached, x), "Cached solution mismatch"
+
+    print(f"  QP cache: hit rate = {cache.hit_rate:.1%}, size = {cache.size}")
+    print("Smoke tests passed!")
