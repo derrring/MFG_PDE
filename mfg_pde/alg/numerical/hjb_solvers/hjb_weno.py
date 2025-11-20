@@ -157,9 +157,6 @@ class HJBWenoSolver(BaseHJBSolver):
         # Setup dimension-specific grid information
         self._setup_dimensional_grid()
 
-        # Warn about isotropy assumption for custom Hamiltonians
-        self._check_isotropy_assumption()
-
         # Setup WENO coefficients (shared across variants)
         self._setup_weno_coefficients()
 
@@ -178,32 +175,6 @@ class HJBWenoSolver(BaseHJBSolver):
 
         if self.splitting_method not in ["strang", "godunov"]:
             raise ValueError(f"Unknown splitting method: {self.splitting_method}")
-
-    def _check_isotropy_assumption(self) -> None:
-        """Warn if using custom Hamiltonian with dimensional splitting in multi-D."""
-        if self.dimension <= 1:
-            return  # No splitting in 1D, isotropy irrelevant
-
-        # Check if problem has custom Hamiltonian
-        has_custom_hamiltonian = False
-        if hasattr(self.problem, "custom_hamiltonian"):
-            if self.problem.custom_hamiltonian is not None:
-                has_custom_hamiltonian = True
-
-        if has_custom_hamiltonian:
-            import warnings
-
-            warnings.warn(
-                f"Using custom Hamiltonian with {self.dimension}D WENO dimensional splitting. "
-                "For best accuracy, ensure Hamiltonian is approximately isotropic "
-                "(no strong directional preference). "
-                "Anisotropic Hamiltonians (e.g., H = ∇u·Q·∇u with Q ≠ I) may introduce "
-                "larger splitting errors. Consider: (1) running convergence tests with "
-                "Δt, Δt/2, Δt/4, (2) using smaller CFL number, or (3) switching to "
-                "HJBFDMSolver (no splitting) for highly anisotropic problems.",
-                UserWarning,
-                stacklevel=3,
-            )
 
     def _detect_problem_dimension(self) -> int:
         """Detect the spatial dimension of the MFG problem."""
