@@ -66,6 +66,30 @@ class HJBWenoSolver(BaseHJBSolver):
     2. Central differences for diffusion term -(σ²/2)Δu
     3. TVD-RK3 or explicit Euler time integration
     4. Hamiltonian splitting for nonlinear terms
+    5. Dimensional splitting (Strang/Godunov) for multi-dimensional problems
+
+    Dimensional Splitting for Multi-D:
+        For 2D/3D problems, uses operator splitting to reduce to 1D sweeps:
+        - Strang splitting (default): X → Y → X (2nd order accurate)
+        - Godunov splitting: X → Y (1st order accurate)
+
+        **Isotropy Assumption**: Dimensional splitting works best when the Hamiltonian
+        is approximately isotropic (no strong directional preference).
+
+        ✅ Works excellently for:
+        - Standard MFG: H = (1/2)|∇u|² + V(x) + F(m) (isotropic, default)
+        - Isotropic control costs: H = (1/p)|∇u|^p + ...
+        - Smooth solutions with moderate CFL numbers
+
+        ⚠️ May introduce larger errors for:
+        - Anisotropic Hamiltonians: H = (1/2)∇u·Q·∇u with Q ≠ I
+        - Traffic/network problems with directional flow
+        - Strong cross-derivative coupling
+
+        For anisotropic problems, consider:
+        1. Run convergence tests (solve with Δt, Δt/2, Δt/4)
+        2. Use smaller CFL number (reduce from 0.3 to 0.1-0.2)
+        3. Alternative: HJBFDMSolver (no splitting) or HJBSemiLagrangianSolver
 
     Performance Guide:
     - Use "weno5" for general problems and benchmarking
