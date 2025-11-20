@@ -203,3 +203,27 @@ class BaseFPSolver(ABC):
             - diffusion = problem.sigma (default) or custom
             This gives full control over both drift and diffusion.
         """
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing BaseFPSolver...")
+
+    # Test base class availability
+    assert BaseFPSolver is not None
+    print("  BaseFPSolver class available")
+
+    # Test that BaseFPSolver is abstract (cannot be instantiated)
+    from mfg_pde import ExampleMFGProblem
+
+    problem = ExampleMFGProblem(Nx=20, Nt=10, T=1.0, sigma=0.1)
+
+    try:
+        # This should fail because BaseFPSolver is abstract
+        base_solver = BaseFPSolver(problem)
+        raise AssertionError("Should have raised TypeError for abstract class")
+    except TypeError:
+        # Expected - abstract class cannot be instantiated
+        print("  BaseFPSolver correctly abstract")
+
+    print("Smoke tests passed!")
