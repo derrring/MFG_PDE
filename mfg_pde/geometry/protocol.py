@@ -2,10 +2,15 @@
 """
 Unified geometry protocol for MFG problems.
 
-This module defines the protocol that all geometry objects must satisfy,
-along with type enumeration and detection utilities.
+This module defines the protocols that all geometry objects must satisfy:
+- GeometryProtocol: Core geometry interface (dimension, points, grid)
+- BoundaryAwareProtocol: Boundary information interface (detection, normals, projection)
+
+The separation allows BC applicators to work with any geometry that provides
+boundary information, while keeping geometry definition and BC application separate.
 
 Created: 2025-11-05
+Updated: 2025-11-27 - Added BoundaryAwareProtocol for unified BC handling
 Part of: Unified Geometry Parameter Design
 """
 
@@ -16,6 +21,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import numpy as np
+    from numpy.typing import NDArray
 
 
 class GeometryType(Enum):
@@ -46,15 +52,30 @@ class GeometryProtocol(Protocol):
     """
     Protocol that all geometry objects must satisfy.
 
-    This defines the minimal interface required for a geometry to be used
-    with MFGProblem solvers.
+    This defines the complete interface required for a geometry to be used
+    with MFGProblem solvers, including boundary information.
 
-    All geometry classes must implement:
+    Every domain has a boundary (even "unbounded" is a boundary type).
+    Boundary methods are MANDATORY - they enable unified BC handling.
+
+    Core geometry methods:
         - dimension: int - Spatial dimension
         - geometry_type: GeometryType - Type of geometry
         - num_spatial_points: int - Total number of discrete spatial points
         - get_spatial_grid() - Returns grid/mesh representation
+        - get_bounds() - Returns bounding box
+
+    Boundary methods (mandatory - every domain has boundary):
+        - is_on_boundary() - Check if points are on boundary
+        - get_boundary_normal() - Get outward normal at boundary points
+        - project_to_boundary() - Project points onto boundary
+        - project_to_interior() - Project outside points back into domain
+        - get_boundary_regions() - Get named boundary regions for mixed BCs
     """
+
+    # =========================================================================
+    # Core Geometry Methods
+    # =========================================================================
 
     @property
     def dimension(self) -> int:
@@ -82,6 +103,17 @@ class GeometryProtocol(Protocol):
         """
         ...
 
+    def get_bounds(self) -> tuple[NDArray[np.floating], NDArray[np.floating]] | None:
+        """
+        Get bounding box of the domain.
+
+        Returns:
+            (min_coords, max_coords) tuple of arrays, or None if unbounded
+            - min_coords: Array of shape (d,) with minimum coordinates
+            - max_coords: Array of shape (d,) with maximum coordinates
+        """
+        ...
+
     def get_problem_config(self) -> dict:
         """
         Return configuration dict for MFGProblem initialization.
@@ -100,6 +132,170 @@ class GeometryProtocol(Protocol):
         Added in v0.10.1 for polymorphic geometry handling.
         """
         ...
+
+    # =========================================================================
+    # Boundary Methods (mandatory - every domain has boundary)
+    # =========================================================================
+
+    def is_on_boundary(
+        self,
+        points: NDArray[np.floating],
+        tolerance: float = 1e-10,
+    ) -> NDArray[np.bool_]:
+        """
+        Check if points are on the domain boundary.
+
+        Args:
+            points: Array of shape (n, d) - points to check
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            Boolean array of shape (n,) - True if point is on boundary
+
+        Notes:
+            - For bounded domains: points at domain edges
+            - For unbounded domains: returns all False
+            - For periodic domains: returns all False (no real boundary)
+        """
+        ...
+
+    def get_boundary_normal(
+        self,
+        points: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """
+        Get outward normal vectors at boundary points.
+
+        Args:
+            points: Array of shape (n, d) - boundary points
+
+        Returns:
+            Array of shape (n, d) - unit outward normal at each point
+
+        Notes:
+            - For non-boundary points, behavior is undefined
+            - For implicit domains: gradient of SDF
+            - For grids: axis-aligned normals
+        """
+        ...
+
+    def project_to_boundary(
+        self,
+        points: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """
+        Project points onto the domain boundary.
+
+        Args:
+            points: Array of shape (n, d) - points to project
+
+        Returns:
+            Array of shape (n, d) - projected points on boundary
+        """
+        ...
+
+    def project_to_interior(
+        self,
+        points: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """
+        Project points outside the domain back into the interior.
+
+        For points already inside, returns them unchanged.
+        For points outside, projects to nearest boundary point.
+
+        Args:
+            points: Array of shape (n, d) - points to project
+
+        Returns:
+            Array of shape (n, d) - points guaranteed to be inside domain
+        """
+        ...
+
+    def get_boundary_regions(self) -> dict[str, dict]:
+        """
+        Get information about distinct boundary regions.
+
+        Returns:
+            Dictionary mapping region names to region info:
+            {
+                "x_min": {"axis": 0, "side": "min", "value": 0.0},
+                "x_max": {"axis": 0, "side": "max", "value": 1.0},
+                "all": {},  # For simple domains with uniform BC
+            }
+
+        For simple domains, returns {"all": {}}.
+        For complex domains, returns distinct regions for mixed BCs.
+        """
+        ...
+
+
+# =============================================================================
+# Backward Compatibility Alias
+# =============================================================================
+
+# BoundaryAwareProtocol is now merged into GeometryProtocol
+# Every domain has a boundary - boundary methods are mandatory
+BoundaryAwareProtocol = GeometryProtocol  # Deprecated alias
+
+
+# =============================================================================
+# Boundary Type Enumeration
+# =============================================================================
+
+
+class BoundaryType(Enum):
+    """Type of boundary geometry."""
+
+    POINT = "point"  # 0D boundary (1D domain endpoints)
+    EDGE = "edge"  # 1D boundary (2D domain edges)
+    FACE = "face"  # 2D boundary (3D domain faces)
+    IMPLICIT = "implicit"  # SDF-defined boundary (any dimension)
+    NODE = "node"  # Graph node boundary
+
+
+def is_boundary_aware(geometry: object) -> bool:
+    """
+    Check if an object implements GeometryProtocol (which includes boundary methods).
+
+    Since boundary methods are now mandatory in GeometryProtocol, this is
+    equivalent to is_geometry_compatible().
+
+    Args:
+        geometry: Object to check
+
+    Returns:
+        True if object implements GeometryProtocol, False otherwise
+
+    Examples:
+        >>> from mfg_pde.geometry import SimpleGrid1D, Hyperrectangle
+        >>> is_boundary_aware(SimpleGrid1D(0, 1, 10))
+        True
+        >>> is_boundary_aware(Hyperrectangle([[0, 1], [0, 1]]))
+        True
+    """
+    return isinstance(geometry, GeometryProtocol)
+
+
+def validate_boundary_aware(geometry: object) -> None:
+    """
+    Validate that an object implements GeometryProtocol (including boundary methods).
+
+    Since boundary methods are now mandatory, this validates the full protocol.
+
+    Args:
+        geometry: Object to validate
+
+    Raises:
+        TypeError: If geometry does not implement the protocol
+    """
+    if not is_boundary_aware(geometry):
+        raise TypeError(
+            f"Object of type {type(geometry).__name__} does not implement "
+            f"GeometryProtocol. Required methods include: dimension, get_bounds, "
+            f"is_on_boundary, get_boundary_normal, project_to_boundary, "
+            f"project_to_interior, get_boundary_regions"
+        )
 
 
 def detect_geometry_type(geometry: object) -> GeometryType:

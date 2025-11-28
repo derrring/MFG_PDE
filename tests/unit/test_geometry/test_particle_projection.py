@@ -46,7 +46,7 @@ class TestPointCloudGeometry:
 
     def test_geometry_protocol_compliance(self):
         """Test that PointCloudGeometry implements GeometryProtocol."""
-        from mfg_pde.geometry.geometry_protocol import GeometryProtocol
+        from mfg_pde.geometry.protocol import GeometryProtocol
 
         positions = np.random.uniform(0, 1, (100, 2))
         geom = PointCloudGeometry(positions)

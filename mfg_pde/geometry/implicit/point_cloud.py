@@ -136,6 +136,105 @@ class PointCloudGeometry:
         """Bounding box of the point cloud: (min_coords, max_coords)."""
         return np.min(self.positions, axis=0), np.max(self.positions, axis=0)
 
+    def get_bounds(self) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+        """Get bounding box of the point cloud."""
+        return self.bounds
+
+    # =========================================================================
+    # Boundary Methods (required by GeometryProtocol)
+    # =========================================================================
+
+    def is_on_boundary(
+        self,
+        points: NDArray[np.floating],
+        tolerance: float = 1e-10,
+    ) -> NDArray[np.bool_]:
+        """Check if points are on the bounding box boundary."""
+        points = np.atleast_2d(points)
+        min_coords, max_coords = self.bounds
+        on_boundary = np.zeros(len(points), dtype=bool)
+
+        for i, p in enumerate(points):
+            for d in range(self.dimension):
+                if abs(p[d] - min_coords[d]) < tolerance or abs(p[d] - max_coords[d]) < tolerance:
+                    on_boundary[i] = True
+                    break
+
+        return on_boundary
+
+    def get_boundary_normal(
+        self,
+        points: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """Get outward normal at boundary points (axis-aligned for bounding box)."""
+        points = np.atleast_2d(points)
+        normals = np.zeros_like(points)
+        min_coords, max_coords = self.bounds
+        tolerance = 1e-10
+
+        for i, p in enumerate(points):
+            for d in range(self.dimension):
+                if abs(p[d] - min_coords[d]) < tolerance:
+                    normals[i, d] = -1.0
+                    break
+                elif abs(p[d] - max_coords[d]) < tolerance:
+                    normals[i, d] = 1.0
+                    break
+
+        return normals
+
+    def project_to_boundary(
+        self,
+        points: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """Project points to nearest bounding box boundary."""
+        points = np.atleast_2d(points)
+        min_coords, max_coords = self.bounds
+        projected = points.copy()
+
+        for i, p in enumerate(points):
+            min_dist = float("inf")
+            best_proj = p.copy()
+
+            for d in range(self.dimension):
+                dist_min = abs(p[d] - min_coords[d])
+                if dist_min < min_dist:
+                    min_dist = dist_min
+                    best_proj = p.copy()
+                    best_proj[d] = min_coords[d]
+
+                dist_max = abs(p[d] - max_coords[d])
+                if dist_max < min_dist:
+                    min_dist = dist_max
+                    best_proj = p.copy()
+                    best_proj[d] = max_coords[d]
+
+            projected[i] = best_proj
+
+        return projected
+
+    def project_to_interior(
+        self,
+        points: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """Project points to interior (clip to bounding box)."""
+        points = np.atleast_2d(points)
+        min_coords, max_coords = self.bounds
+        return np.clip(points, min_coords, max_coords)
+
+    def get_boundary_regions(self) -> dict[str, dict]:
+        """Get boundary regions (axis-aligned for bounding box)."""
+        min_coords, max_coords = self.bounds
+        regions = {}
+        axis_names = ["x", "y", "z", "w", "v"]
+
+        for d in range(self.dimension):
+            axis = axis_names[d] if d < len(axis_names) else f"dim{d}"
+            regions[f"{axis}_min"] = {"axis": d, "side": "min", "value": float(min_coords[d])}
+            regions[f"{axis}_max"] = {"axis": d, "side": "max", "value": float(max_coords[d])}
+
+        return regions
+
     def is_same_pointset(self, other: PointCloudGeometry, tol: float = 1e-10) -> bool:
         """
         Check if two point clouds represent the same particle set.

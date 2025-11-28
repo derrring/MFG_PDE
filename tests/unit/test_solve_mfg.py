@@ -18,7 +18,7 @@ import pytest
 
 from mfg_pde import MFGProblem, solve_mfg
 from mfg_pde.geometry import SimpleGrid1D
-from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 
 @pytest.fixture

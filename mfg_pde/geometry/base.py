@@ -296,6 +296,184 @@ class Geometry(ABC):
         """
         return None
 
+    # ============================================================================
+    # Boundary Methods (mandatory - every domain has boundary)
+    # ============================================================================
+
+    def is_on_boundary(
+        self,
+        points: NDArray,
+        tolerance: float = 1e-10,
+    ) -> NDArray:
+        """
+        Check if points are on the domain boundary.
+
+        Args:
+            points: Array of shape (n, d) - points to check
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            Boolean array of shape (n,) - True if point is on boundary
+
+        Default implementation uses bounds-based detection.
+        Override for more accurate geometry-specific detection.
+        """
+        points = np.atleast_2d(points)
+        bounds_result = self.get_bounds()
+        if bounds_result is None:
+            # Unbounded domain - no boundary
+            return np.zeros(len(points), dtype=bool)
+
+        min_coords, max_coords = bounds_result
+        on_boundary = np.zeros(len(points), dtype=bool)
+
+        for i, p in enumerate(points):
+            for d in range(self.dimension):
+                if abs(p[d] - min_coords[d]) < tolerance or abs(p[d] - max_coords[d]) < tolerance:
+                    on_boundary[i] = True
+                    break
+
+        return on_boundary
+
+    def get_boundary_normal(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Get outward normal vectors at boundary points.
+
+        Args:
+            points: Array of shape (n, d) - boundary points
+
+        Returns:
+            Array of shape (n, d) - unit outward normal at each point
+
+        Default implementation assumes axis-aligned boundaries.
+        Override for curved or complex boundaries.
+        """
+        points = np.atleast_2d(points)
+        normals = np.zeros_like(points)
+        bounds_result = self.get_bounds()
+
+        if bounds_result is None:
+            return normals
+
+        min_coords, max_coords = bounds_result
+        tolerance = 1e-10
+
+        for i, p in enumerate(points):
+            for d in range(self.dimension):
+                if abs(p[d] - min_coords[d]) < tolerance:
+                    normals[i, d] = -1.0  # Outward normal at min boundary
+                    break
+                elif abs(p[d] - max_coords[d]) < tolerance:
+                    normals[i, d] = 1.0  # Outward normal at max boundary
+                    break
+
+        return normals
+
+    def project_to_boundary(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Project points onto the domain boundary.
+
+        Args:
+            points: Array of shape (n, d) - points to project
+
+        Returns:
+            Array of shape (n, d) - projected points on boundary
+
+        Default implementation projects to nearest axis-aligned boundary.
+        Override for curved or complex boundaries.
+        """
+        points = np.atleast_2d(points)
+        bounds_result = self.get_bounds()
+
+        if bounds_result is None:
+            return points.copy()
+
+        min_coords, max_coords = bounds_result
+        projected = points.copy()
+
+        for i, p in enumerate(points):
+            # Find nearest boundary
+            min_dist = float("inf")
+            best_proj = p.copy()
+
+            for d in range(self.dimension):
+                # Distance to min boundary
+                dist_min = abs(p[d] - min_coords[d])
+                if dist_min < min_dist:
+                    min_dist = dist_min
+                    best_proj = p.copy()
+                    best_proj[d] = min_coords[d]
+
+                # Distance to max boundary
+                dist_max = abs(p[d] - max_coords[d])
+                if dist_max < min_dist:
+                    min_dist = dist_max
+                    best_proj = p.copy()
+                    best_proj[d] = max_coords[d]
+
+            projected[i] = best_proj
+
+        return projected
+
+    def project_to_interior(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Project points outside the domain back into the interior.
+
+        For points already inside, returns them unchanged.
+        For points outside, clips to domain bounds.
+
+        Args:
+            points: Array of shape (n, d) - points to project
+
+        Returns:
+            Array of shape (n, d) - points guaranteed to be inside domain
+
+        Default implementation clips to bounding box.
+        Override for non-convex or implicit domains.
+        """
+        points = np.atleast_2d(points)
+        bounds_result = self.get_bounds()
+
+        if bounds_result is None:
+            return points.copy()
+
+        min_coords, max_coords = bounds_result
+        return np.clip(points, min_coords, max_coords)
+
+    def get_boundary_regions(self) -> dict[str, dict]:
+        """
+        Get information about distinct boundary regions.
+
+        Returns:
+            Dictionary mapping region names to region info.
+
+        Default implementation returns axis-aligned boundary regions.
+        Override for complex domain boundaries.
+        """
+        bounds_result = self.get_bounds()
+        if bounds_result is None:
+            return {"all": {}}
+
+        min_coords, max_coords = bounds_result
+        regions = {}
+
+        axis_names = ["x", "y", "z", "w", "v"]  # Extend as needed
+        for d in range(self.dimension):
+            axis = axis_names[d] if d < len(axis_names) else f"dim{d}"
+            regions[f"{axis}_min"] = {"axis": d, "side": "min", "value": float(min_coords[d])}
+            regions[f"{axis}_max"] = {"axis": d, "side": "max", "value": float(max_coords[d])}
+
+        return regions
+
 
 # ============================================================================
 # Intermediate Abstract Base Classes

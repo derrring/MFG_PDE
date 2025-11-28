@@ -1,9 +1,10 @@
 """
-1D Boundary Conditions for MFG Problems.
+1D FDM Boundary Conditions for MFG Problems.
 
-This module provides boundary condition management for 1D MFG problems,
-serving as the foundation for the geometry system and maintaining compatibility
-with existing solvers.
+This module provides simple boundary condition specification for 1D finite
+difference methods. Uses left/right value pattern for 1D domain endpoints.
+
+For multi-dimensional or segment-based BC specification, use conditions.py.
 """
 
 from __future__ import annotations

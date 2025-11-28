@@ -48,7 +48,7 @@ class TestGrid1DProjections:
 
     def test_grid_to_grid_1d_interpolation(self):
         """Test 1D grid → grid interpolation."""
-        from mfg_pde.geometry import BoundaryConditions
+        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
         bc = BoundaryConditions(type="periodic")
 
@@ -78,7 +78,7 @@ class TestGrid1DProjections:
 
     def test_grid_to_grid_1d_conservation(self):
         """Test that grid→grid projection preserves integral."""
-        from mfg_pde.geometry import BoundaryConditions
+        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
         bc = BoundaryConditions(type="periodic")
 

@@ -41,39 +41,43 @@ from .amr.amr_triangular_2d import (
 )
 
 # Boundary conditions from subdirectories
+# Factory functions for uniform BCs
+# FEM boundary condition classes (2D/3D)
 from .boundary import (
+    BCSegment,
+    BCType,
+    # 2D aliases
+    BoundaryCondition2D,
+    # 3D aliases
+    BoundaryCondition3D,
+    # Base FEM class
+    BoundaryConditionFEM,
+    BoundaryConditionManager2D,
+    BoundaryConditionManager3D,
     BoundaryConditions,
     BoundaryManager,
-    GeometricBoundaryCondition,
-)
-
-# 1D boundary condition helper functions
-from .boundary.bc_1d import dirichlet_bc, neumann_bc, no_flux_bc, periodic_bc, robin_bc
-
-# 2D boundary condition classes and helpers
-from .boundary.bc_2d import (
-    BoundaryCondition2D,
-    BoundaryConditionManager2D,
     DirichletBC2D,
-    MFGBoundaryHandler2D,
-    NeumannBC2D,
-    PeriodicBC2D,
-    RobinBC2D,
-    create_circle_boundary_conditions,
-    create_rectangle_boundary_conditions,
-)
-
-# 3D boundary condition classes and helpers
-from .boundary.bc_3d import (
-    BoundaryCondition3D,
-    BoundaryConditionManager3D,
     DirichletBC3D,
+    GeometricBoundaryCondition,
+    MFGBoundaryHandler2D,
     MFGBoundaryHandler3D,
+    MixedBoundaryConditions,
+    NeumannBC2D,
     NeumannBC3D,
+    PeriodicBC2D,
     PeriodicBC3D,
+    RobinBC2D,
     RobinBC3D,
     create_box_boundary_conditions,
+    create_circle_boundary_conditions,
+    create_rectangle_boundary_conditions,
     create_sphere_boundary_conditions,
+    create_standard_boundary_names,
+    dirichlet_bc,
+    neumann_bc,
+    no_flux_bc,
+    periodic_bc,
+    robin_bc,
 )
 
 # Graph-based geometry (networks + mazes)
@@ -136,10 +140,16 @@ from .operators.projection import ProjectionRegistry
 
 # Unified geometry protocol
 from .protocol import (
+    # Boundary-aware protocol (for unified BC handling)
+    BoundaryAwareProtocol,
+    BoundaryType,
+    # Core geometry protocol
     GeometryProtocol,
     GeometryType,
     detect_geometry_type,
+    is_boundary_aware,
     is_geometry_compatible,
+    validate_boundary_aware,
     validate_geometry,
 )
 
@@ -163,16 +173,15 @@ __all__ = [
     # Multi-dimensional geometry components
     "BaseNetworkGeometry",
     # Boundary condition components
+    "BCSegment",
+    "BCType",
     "BoundaryCondition2D",
     "BoundaryCondition3D",
+    "BoundaryConditionFEM",
     "BoundaryConditionManager2D",
     "BoundaryConditionManager3D",
     "BoundaryConditions",
-    "BoundaryConditions2D",
-    "BoundaryConditions3D",
     "BoundaryManager",
-    "BoundaryRegion2D",
-    "BoundaryRegion3D",
     # Specific boundary condition types
     "DirichletBC2D",
     "DirichletBC3D",
@@ -191,6 +200,11 @@ __all__ = [
     # Unified geometry protocol
     "GeometryProtocol",
     "GeometryType",
+    # Boundary-aware protocol
+    "BoundaryAwareProtocol",
+    "BoundaryType",
+    "is_boundary_aware",
+    "validate_boundary_aware",
     # Geometry projection (Issue #257)
     "GeometryProjector",
     "ProjectionRegistry",
@@ -202,6 +216,7 @@ __all__ = [
     "MeshManager",
     "MeshPipeline",
     "MeshVisualizationMode",
+    "MixedBoundaryConditions",
     # Network backend components
     "NetworkBackendType",
     # Network geometry components
@@ -242,6 +257,7 @@ __all__ = [
     "create_network",
     "create_rectangle_boundary_conditions",
     "create_sphere_boundary_conditions",
+    "create_standard_boundary_names",
     "create_triangular_amr_mesh",
     "detect_geometry_type",
     "dirichlet_bc",

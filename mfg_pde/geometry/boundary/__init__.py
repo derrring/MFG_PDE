@@ -4,21 +4,263 @@ Boundary condition management for MFG problems.
 This module provides boundary condition specifications for 1D, 2D, and 3D domains,
 supporting Dirichlet, Neumann, Robin, periodic, and no-flux conditions.
 
-Note: Boundary condition classes are currently imported directly from the old file
-locations in the main geometry/__init__.py for backward compatibility.
+Architecture:
+- **Specification Layer** (dimension-agnostic):
+  - types.py: BCType enum, BCSegment dataclass
+  - conditions.py: Unified BoundaryConditions class and factory functions
+
+- **Application Layer** (dimension-specific for performance):
+  - applicator_base.py: Abstract protocols and base classes
+  - applicator_fdm.py: FDM ghost cell BC application (1D/2D/3D/nD)
+  - applicator_fem.py: FEM mesh-based BC application (2D/3D)
+  - bc_2d.py: Optimized 2D FEM classes
+  - bc_3d.py: Optimized 3D FEM classes
+
+- **Legacy**:
+  - legacy.py: Legacy 1D BoundaryConditions for backward compatibility
+
+Usage:
+    # Uniform BC (same type on all boundaries)
+    bc = neumann_bc(dimension=2)
+
+    # Mixed BC (different types on different segments)
+    exit = BCSegment(name="exit", bc_type=BCType.DIRICHLET, boundary="x_max")
+    wall = BCSegment(name="wall", bc_type=BCType.NEUMANN)
+    bc = mixed_bc([exit, wall], dimension=2, domain_bounds=bounds)
+
+    # FDM application
+    padded = apply_boundary_conditions_2d(field, bc, bounds)
+    # or
+    applicator = FDMApplicator(dimension=2)
+    padded = applicator.apply(field, bc, domain_bounds=bounds)
+
+    # FEM application
+    applicator = FEMApplicator(dimension=2)
+    applicator.add_dirichlet(region=0, value=0.0)
+    matrix, rhs = applicator.apply(matrix, rhs, mesh)
 """
 
-# Import the basic 1D boundary conditions
-from .bc_1d import BoundaryConditions
+# =============================================================================
+# Base Classes and Protocols (applicator hierarchy)
+# =============================================================================
 
-# Import boundary manager
-from .bc_manager import BoundaryManager, GeometricBoundaryCondition
+from .applicator_base import (
+    # Base classes
+    BaseBCApplicator,
+    BaseGraphApplicator,
+    BaseMeshfreeApplicator,
+    BaseStructuredApplicator,
+    BaseUnstructuredApplicator,
+    # Protocol
+    BCApplicatorProtocol,
+    # Enums
+    DiscretizationType,
+    GridType,
+    # Ghost cell helpers
+    ghost_cell_dirichlet,
+    ghost_cell_neumann,
+    ghost_cell_robin,
+)
 
-# Note: 2D and 3D boundary condition classes (BoundaryCondition2D, BoundaryCondition3D, etc.)
-# are still imported from the old file locations for now.
+# =============================================================================
+# FDM Applicator (ghost cell method for structured grids)
+# =============================================================================
+from .applicator_fdm import (
+    FDMApplicator,
+    GhostCellConfig,
+    apply_boundary_conditions_1d,
+    apply_boundary_conditions_2d,
+    apply_boundary_conditions_3d,
+    apply_boundary_conditions_nd,
+    create_boundary_mask_2d,
+)
+
+# =============================================================================
+# FEM Applicator (mesh-based method for unstructured grids)
+# =============================================================================
+from .applicator_fem import (
+    # 1D classes (optimized, from fem_bc_1d.py)
+    BoundaryCondition1D,
+    # 2D classes (optimized, from fem_bc_2d.py)
+    BoundaryCondition2D,
+    # 3D classes (optimized, from fem_bc_3d.py)
+    BoundaryCondition3D,
+    # Base FEM class alias
+    BoundaryConditionFEM,
+    BoundaryConditionManager1D,
+    BoundaryConditionManager2D,
+    BoundaryConditionManager3D,
+    # Geometric BC manager
+    BoundaryManager,
+    DirichletBC1D,
+    DirichletBC2D,
+    DirichletBC3D,
+    # Unified dispatchers
+    FEMApplicator,
+    GeometricBoundaryCondition,
+    MFGBoundaryHandler1D,
+    MFGBoundaryHandler2D,
+    MFGBoundaryHandler3D,
+    MFGBoundaryHandlerFEM,
+    NeumannBC1D,
+    NeumannBC2D,
+    NeumannBC3D,
+    PeriodicBC1D,
+    PeriodicBC2D,
+    PeriodicBC3D,
+    RobinBC1D,
+    RobinBC2D,
+    RobinBC3D,
+    create_box_boundary_conditions,
+    create_circle_boundary_conditions,
+    create_interval_boundary_conditions,
+    create_rectangle_boundary_conditions,
+    create_sphere_boundary_conditions,
+    # Helper functions
+    get_bc_class,
+    get_manager_class,
+)
+
+# =============================================================================
+# Graph Applicator (graph, network, and maze domains)
+# =============================================================================
+from .applicator_graph import (
+    EdgeBC,
+    GraphApplicator,
+    GraphBCConfig,
+    GraphBCType,
+    NodeBC,
+    create_graph_applicator,
+    create_maze_applicator,
+)
+
+# =============================================================================
+# Meshfree Applicator (particle and collocation methods)
+# =============================================================================
+from .applicator_meshfree import (
+    MeshfreeApplicator,
+    ParticleReflector,
+)
+
+# Unified BoundaryConditions class and factory functions
+from .conditions import (
+    BoundaryConditions,
+    MixedBoundaryConditions,  # Alias for backward compatibility
+    dirichlet_bc,
+    mixed_bc,
+    neumann_bc,
+    no_flux_bc,
+    periodic_bc,
+    robin_bc,
+    uniform_bc,
+)
+
+# =============================================================================
+# Legacy (backward compatibility)
+# =============================================================================
+# 1D FDM boundary conditions (simple left/right specification)
+from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
+
+# =============================================================================
+# Core Types (dimension-agnostic BC specification)
+# =============================================================================
+from .types import (
+    BCSegment,
+    BCType,
+    create_standard_boundary_names,
+)
+
+# Backward compatibility alias
+LegacyBoundaryConditions1D = BoundaryConditions1DFDM
 
 __all__ = [
+    # Base classes and protocols
+    "DiscretizationType",
+    "GridType",
+    "BCApplicatorProtocol",
+    "BaseBCApplicator",
+    "BaseStructuredApplicator",
+    "BaseUnstructuredApplicator",
+    "BaseMeshfreeApplicator",
+    "BaseGraphApplicator",
+    "ghost_cell_dirichlet",
+    "ghost_cell_neumann",
+    "ghost_cell_robin",
+    # Core types
+    "BCType",
+    "BCSegment",
+    "create_standard_boundary_names",
+    # Unified BC class
     "BoundaryConditions",
+    "MixedBoundaryConditions",
+    # Factory functions (uniform BCs)
+    "uniform_bc",
+    "periodic_bc",
+    "dirichlet_bc",
+    "neumann_bc",
+    "no_flux_bc",
+    "robin_bc",
+    "mixed_bc",
+    # FDM Applicator
+    "FDMApplicator",
+    "GhostCellConfig",
+    "apply_boundary_conditions_1d",
+    "apply_boundary_conditions_2d",
+    "apply_boundary_conditions_3d",
+    "apply_boundary_conditions_nd",
+    "create_boundary_mask_2d",
+    # FEM Applicator - dispatchers
+    "FEMApplicator",
+    "MFGBoundaryHandlerFEM",
+    # FEM base class alias
+    "BoundaryConditionFEM",
+    # FEM Applicator - managers
     "BoundaryManager",
     "GeometricBoundaryCondition",
+    # FEM 1D classes
+    "BoundaryCondition1D",
+    "BoundaryConditionManager1D",
+    "DirichletBC1D",
+    "NeumannBC1D",
+    "RobinBC1D",
+    "PeriodicBC1D",
+    "MFGBoundaryHandler1D",
+    "create_interval_boundary_conditions",
+    # FEM 2D classes
+    "BoundaryCondition2D",
+    "BoundaryConditionManager2D",
+    "DirichletBC2D",
+    "NeumannBC2D",
+    "RobinBC2D",
+    "PeriodicBC2D",
+    "MFGBoundaryHandler2D",
+    "create_rectangle_boundary_conditions",
+    "create_circle_boundary_conditions",
+    # FEM 3D classes
+    "BoundaryCondition3D",
+    "BoundaryConditionManager3D",
+    "DirichletBC3D",
+    "NeumannBC3D",
+    "RobinBC3D",
+    "PeriodicBC3D",
+    "MFGBoundaryHandler3D",
+    "create_box_boundary_conditions",
+    "create_sphere_boundary_conditions",
+    # Helper functions
+    "get_bc_class",
+    "get_manager_class",
+    # Meshfree Applicator
+    "MeshfreeApplicator",
+    "ParticleReflector",
+    # Graph Applicator
+    "GraphApplicator",
+    "GraphBCConfig",
+    "GraphBCType",
+    "NodeBC",
+    "EdgeBC",
+    "create_graph_applicator",
+    "create_maze_applicator",
+    # 1D FDM boundary conditions
+    "BoundaryConditions1DFDM",
+    "LegacyBoundaryConditions1D",  # Backward compat alias
 ]

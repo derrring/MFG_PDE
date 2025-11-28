@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.config.omegaconf_manager import OmegaConfManager
-from mfg_pde.core.mfg_problem import MFGProblem, MFGProblemBuilder
+from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
 from mfg_pde.geometry import BoundaryConditions
 from mfg_pde.utils.mfg_logging.logger import get_logger
 
@@ -63,40 +63,46 @@ class GeneralMFGFactory:
             solver_config: Solver parameters {"sigma": ..., "coupling_coefficient": ...}
             **optional_components: Additional components (potential_func, etc.)
         """
-
-        builder = (
-            MFGProblemBuilder()
-            .hamiltonian(hamiltonian_func, hamiltonian_dm_func)
-            .domain(**domain_config)
-            .time(**time_config)
-        )
-
-        if solver_config:
-            builder.coefficients(**solver_config)
+        # Build MFGComponents
+        component_kwargs = {
+            "hamiltonian_func": hamiltonian_func,
+            "hamiltonian_dm_func": hamiltonian_dm_func,
+        }
 
         # Add optional components
-        for key, value in optional_components.items():
-            if key == "potential_func" and value is not None:
-                builder.potential(value)
-            elif key == "initial_density_func" and value is not None:
-                builder.initial_density(value)
-            elif key == "final_value_func" and value is not None:
-                builder.final_value(value)
-            elif key == "boundary_conditions" and value is not None:
-                if isinstance(value, dict):
-                    builder.boundary_conditions(BoundaryConditions(**value))
-                else:
-                    builder.boundary_conditions(value)
-            elif key == "jacobian_func" and value is not None:
-                builder.jacobian(value)
-            elif key == "coupling_func" and value is not None:
-                builder.coupling(value)
-            elif key == "parameters" and value is not None:
-                builder.parameters(**value)
-            elif key == "description" and value is not None:
-                builder.description(value)
+        if "potential_func" in optional_components:
+            component_kwargs["potential_func"] = optional_components["potential_func"]
+        if "initial_density_func" in optional_components:
+            component_kwargs["initial_density_func"] = optional_components["initial_density_func"]
+        if "final_value_func" in optional_components:
+            component_kwargs["final_value_func"] = optional_components["final_value_func"]
+        if "jacobian_func" in optional_components:
+            component_kwargs["jacobian_func"] = optional_components["jacobian_func"]
+        if "coupling_func" in optional_components:
+            component_kwargs["coupling_func"] = optional_components["coupling_func"]
+        if "description" in optional_components:
+            component_kwargs["description"] = optional_components["description"]
+        if "parameters" in optional_components:
+            component_kwargs["parameters"] = optional_components["parameters"]
 
-        return builder.build()
+        components = MFGComponents(**component_kwargs)
+
+        # Build MFGProblem
+        problem_kwargs = {**domain_config, **time_config}
+        if solver_config:
+            problem_kwargs.update(solver_config)
+
+        # Handle boundary conditions
+        if "boundary_conditions" in optional_components:
+            bc = optional_components["boundary_conditions"]
+            if isinstance(bc, dict):
+                problem_kwargs["boundary_conditions"] = BoundaryConditions(**bc)
+            else:
+                problem_kwargs["boundary_conditions"] = bc
+
+        problem_kwargs["components"] = components
+
+        return MFGProblem(**problem_kwargs)
 
     def create_from_config_file(self, config_path: str) -> MFGProblem:
         """

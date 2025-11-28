@@ -35,7 +35,7 @@ from mfg_pde.alg.neural.pinn_solvers import (  # noqa: E402
     MFGPINNSolver,
     PINNConfig,
 )
-from mfg_pde.core.mfg_problem import ExampleMFGProblem, MFGProblem  # noqa: E402
+from mfg_pde.core.mfg_problem import MFGProblem  # noqa: E402
 
 try:
     torch_spec = importlib.util.find_spec("torch")
@@ -69,7 +69,7 @@ def create_mfg_problem() -> MFGProblem:
         return gaussian / np.trapz(gaussian, x)
 
     # Create MFG problem
-    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, T=1.0, sigma=0.1, Nx=64)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, T=1.0, sigma=0.1, Nx=64)
 
     # Set terminal and initial conditions
     problem.terminal_condition = terminal_condition

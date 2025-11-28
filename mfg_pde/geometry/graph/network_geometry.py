@@ -398,6 +398,222 @@ class BaseNetworkGeometry(ABC):
 
         # Implementation will be in visualization module
 
+    # =========================================================================
+    # Boundary Methods (GeometryProtocol - mandatory)
+    # =========================================================================
+
+    def get_bounds(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """
+        Get bounding box for spatially-embedded networks.
+
+        Returns:
+            (min_coords, max_coords) tuple, or None if abstract network
+        """
+        if self.network_data is None:
+            return None
+
+        positions = self.network_data.node_positions
+        if positions is None:
+            return None
+
+        min_coords = np.min(positions, axis=0)
+        max_coords = np.max(positions, axis=0)
+        return min_coords, max_coords
+
+    def get_problem_config(self) -> dict:
+        """
+        Return configuration dict for MFGProblem initialization.
+
+        Returns:
+            Dictionary with network-specific configuration
+        """
+        config = {
+            "num_spatial_points": self.num_spatial_points,
+            "spatial_shape": (self.num_spatial_points,),
+            "spatial_discretization": None,
+            "legacy_1d_attrs": None,
+        }
+
+        bounds = self.get_bounds()
+        if bounds is not None:
+            min_coords, max_coords = bounds
+            config["spatial_bounds"] = tuple(
+                (float(mn), float(mx)) for mn, mx in zip(min_coords, max_coords, strict=True)
+            )
+        else:
+            config["spatial_bounds"] = None
+
+        return config
+
+    def is_on_boundary(
+        self,
+        points: np.ndarray,
+        tolerance: float = 1e-10,
+    ) -> np.ndarray:
+        """
+        Check if points are on the network boundary.
+
+        For networks, boundary nodes are typically:
+        - Leaf nodes (degree 1) for tree-like networks
+        - Nodes on the spatial bounding box (if spatially embedded)
+
+        Args:
+            points: Array of shape (n, d) - points to check
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            Boolean array of shape (n,) - True if point is on boundary
+        """
+        points = np.atleast_2d(points)
+        bounds = self.get_bounds()
+
+        if bounds is None:
+            # Abstract network: no spatial boundary
+            return np.zeros(len(points), dtype=bool)
+
+        min_coords, max_coords = bounds
+        on_boundary = np.zeros(len(points), dtype=bool)
+
+        for i, p in enumerate(points):
+            for d in range(len(min_coords)):
+                if abs(p[d] - min_coords[d]) < tolerance or abs(p[d] - max_coords[d]) < tolerance:
+                    on_boundary[i] = True
+                    break
+
+        return on_boundary
+
+    def get_boundary_normal(
+        self,
+        points: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Get outward normal vectors at boundary points.
+
+        For networks with spatial embedding, returns axis-aligned normals.
+
+        Args:
+            points: Array of shape (n, d) - boundary points
+
+        Returns:
+            Array of shape (n, d) - unit outward normal at each point
+        """
+        points = np.atleast_2d(points)
+        bounds = self.get_bounds()
+
+        if bounds is None:
+            # Abstract network: return zero normals
+            return np.zeros_like(points)
+
+        min_coords, max_coords = bounds
+        normals = np.zeros_like(points)
+        tolerance = 1e-10
+
+        for i, p in enumerate(points):
+            for d in range(len(min_coords)):
+                if abs(p[d] - min_coords[d]) < tolerance:
+                    normals[i, d] = -1.0
+                    break
+                elif abs(p[d] - max_coords[d]) < tolerance:
+                    normals[i, d] = 1.0
+                    break
+
+        return normals
+
+    def project_to_boundary(
+        self,
+        points: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Project points onto the network boundary.
+
+        For networks with spatial embedding, projects to nearest bounding box face.
+
+        Args:
+            points: Array of shape (n, d) - points to project
+
+        Returns:
+            Array of shape (n, d) - projected points on boundary
+        """
+        points = np.atleast_2d(points)
+        bounds = self.get_bounds()
+
+        if bounds is None:
+            return points.copy()
+
+        min_coords, max_coords = bounds
+        projected = points.copy()
+
+        for i, p in enumerate(points):
+            min_dist = float("inf")
+            best_proj = p.copy()
+
+            for d in range(len(min_coords)):
+                dist_min = abs(p[d] - min_coords[d])
+                if dist_min < min_dist:
+                    min_dist = dist_min
+                    best_proj = p.copy()
+                    best_proj[d] = min_coords[d]
+
+                dist_max = abs(p[d] - max_coords[d])
+                if dist_max < min_dist:
+                    min_dist = dist_max
+                    best_proj = p.copy()
+                    best_proj[d] = max_coords[d]
+
+            projected[i] = best_proj
+
+        return projected
+
+    def project_to_interior(
+        self,
+        points: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Project points outside the network domain back into the interior.
+
+        For networks with spatial embedding, clips to bounding box.
+
+        Args:
+            points: Array of shape (n, d) - points to project
+
+        Returns:
+            Array of shape (n, d) - points guaranteed to be inside domain
+        """
+        points = np.atleast_2d(points)
+        bounds = self.get_bounds()
+
+        if bounds is None:
+            return points.copy()
+
+        min_coords, max_coords = bounds
+        return np.clip(points, min_coords, max_coords)
+
+    def get_boundary_regions(self) -> dict[str, dict]:
+        """
+        Get information about distinct boundary regions.
+
+        For networks with spatial embedding, returns axis-aligned boundary regions.
+        For abstract networks, returns empty dict.
+
+        Returns:
+            Dictionary mapping region names to region info
+        """
+        bounds = self.get_bounds()
+
+        if bounds is None:
+            return {}
+
+        min_coords, max_coords = bounds
+        regions = {}
+        axis_names = ["x", "y", "z", "w", "v"]
+
+        for d in range(len(min_coords)):
+            axis = axis_names[d] if d < len(axis_names) else f"dim{d}"
+            regions[f"{axis}_min"] = {"axis": d, "side": "min", "value": float(min_coords[d])}
+            regions[f"{axis}_max"] = {"axis": d, "side": "max", "value": float(max_coords[d])}
+
+        return regions
+
 
 class GridNetwork(BaseNetworkGeometry):
     """Grid/lattice network for MFG problems."""

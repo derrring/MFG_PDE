@@ -20,7 +20,9 @@ import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+
+# Use legacy 1D BoundaryConditions for 1D HJB solvers
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
 
 

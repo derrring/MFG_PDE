@@ -12,7 +12,9 @@ import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver, KDENormalization
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+
+# Use legacy 1D BoundaryConditions for 1D FP solvers
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 
 class TestFPParticleSolverInitialization:

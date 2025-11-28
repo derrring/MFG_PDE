@@ -10,15 +10,16 @@ Tests MFG problem base class including:
 - Hamiltonian methods
 - Boundary conditions
 - Getter methods
-- MFGProblemBuilder pattern
 """
 
 import pytest
 
 import numpy as np
 
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem, MFGProblemBuilder
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
+
+# Use legacy 1D BoundaryConditions for 1D MFG problems
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 # ===================================================================
 # Test MFGComponents Dataclass
@@ -418,124 +419,6 @@ def test_get_problem_info():
 
 
 # ===================================================================
-# Test MFGProblemBuilder
-# ===================================================================
-
-
-@pytest.mark.unit
-def test_problem_builder_basic():
-    """Test MFGProblemBuilder basic usage without Hamiltonian (default problem)."""
-    builder = MFGProblemBuilder()
-    problem = builder.domain(0.0, 1.0, 50).time(1.0, 100).coefficients(sigma=0.5).build()
-
-    assert isinstance(problem, MFGProblem)
-    assert problem.xmin == 0.0
-    assert problem.xmax == 1.0
-    assert problem.Nx == 50
-    assert problem.T == 1.0
-    assert problem.Nt == 100
-    assert problem.sigma == 0.5
-    # Default problem (no custom components) - should work
-    assert problem.is_custom is False
-
-
-@pytest.mark.unit
-def test_problem_builder_hamiltonian():
-    """Test MFGProblemBuilder with custom Hamiltonian."""
-
-    def custom_h(x_idx, m_at_x, p_values, t_idx, **kwargs):
-        p_forward = p_values.get("forward", 0.0)
-        p_backward = p_values.get("backward", 0.0)
-        return p_forward**2 + p_backward**2
-
-    def custom_dh(x_idx, m_at_x, p_values, t_idx, **kwargs):
-        return 0.0
-
-    builder = MFGProblemBuilder()
-    problem = builder.hamiltonian(custom_h, custom_dh).build()
-
-    assert isinstance(problem, MFGProblem)
-    assert problem.is_custom is True
-    assert problem.components.hamiltonian_func == custom_h
-    assert problem.components.hamiltonian_dm_func == custom_dh
-
-
-@pytest.mark.unit
-def test_problem_builder_potential():
-    """Test MFGProblemBuilder with custom potential (no Hamiltonian needed)."""
-
-    def custom_potential(x, t):
-        return x**2
-
-    builder = MFGProblemBuilder()
-    problem = builder.potential(custom_potential).build()
-
-    assert isinstance(problem, MFGProblem)
-    # Custom potential makes it a custom problem, but without Hamiltonian it uses defaults
-    assert problem.is_custom is True
-    assert problem.components.potential_func == custom_potential
-
-
-@pytest.mark.unit
-def test_problem_builder_chaining():
-    """Test MFGProblemBuilder method chaining (without Hamiltonian uses defaults)."""
-
-    def custom_initial(x):
-        return np.exp(-10 * x**2)
-
-    def custom_final(x):
-        return np.sin(x)
-
-    builder = MFGProblemBuilder()
-    problem = (
-        builder.domain(-1.0, 1.0, 100)
-        .time(2.0, 200)
-        .coefficients(sigma=0.8, coupling_coefficient=0.3)
-        .initial_density(custom_initial)
-        .final_value(custom_final)
-        .description("Test Problem", "test")
-        .build()
-    )
-
-    assert isinstance(problem, MFGProblem)
-    assert problem.xmin == -1.0
-    assert problem.xmax == 1.0
-    assert problem.Nx == 100
-    assert problem.T == 2.0
-    assert problem.Nt == 200
-    assert problem.sigma == 0.8
-    assert problem.coupling_coefficient == 0.3
-    assert problem.is_custom is True
-    assert problem.components.description == "Test Problem"
-
-
-@pytest.mark.unit
-def test_problem_builder_boundary_conditions():
-    """Test MFGProblemBuilder with custom boundary conditions (no Hamiltonian needed)."""
-    custom_bc = BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
-    builder = MFGProblemBuilder()
-    problem = builder.boundary_conditions(custom_bc).build()
-
-    assert isinstance(problem, MFGProblem)
-    assert problem.is_custom is True
-    bc = problem.get_boundary_conditions()
-    assert bc.type == "neumann"
-
-
-@pytest.mark.unit
-def test_problem_builder_parameters():
-    """Test MFGProblemBuilder with custom parameters."""
-    builder = MFGProblemBuilder()
-    problem = builder.parameters(alpha=1.5, beta=0.3).build()
-
-    assert isinstance(problem, MFGProblem)
-    assert problem.is_custom is True
-    assert "alpha" in problem.components.parameters
-    assert problem.components.parameters["alpha"] == 1.5
-    assert problem.components.parameters["beta"] == 0.3
-
-
-# ===================================================================
 # Test Edge Cases
 # ===================================================================
 
@@ -577,7 +460,6 @@ def test_module_exports_classes():
 
     assert hasattr(mfg_problem, "MFGComponents")
     assert hasattr(mfg_problem, "MFGProblem")
-    assert hasattr(mfg_problem, "MFGProblemBuilder")
 
 
 @pytest.mark.unit
@@ -585,7 +467,6 @@ def test_module_exports_are_classes():
     """Test exported objects are actually classes."""
     assert isinstance(MFGComponents, type)
     assert isinstance(MFGProblem, type)
-    assert isinstance(MFGProblemBuilder, type)
 
 
 # ===================================================================
@@ -687,7 +568,8 @@ def test_dual_geometry_projector_attributes():
 @pytest.mark.unit
 def test_dual_geometry_with_1d_grids():
     """Test dual geometry with 1D grids."""
-    from mfg_pde.geometry import BoundaryConditions, SimpleGrid1D
+    from mfg_pde.geometry import SimpleGrid1D
+    from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
     bc = BoundaryConditions(type="periodic")
 

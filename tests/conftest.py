@@ -14,7 +14,7 @@ import pytest
 import numpy as np
 
 # Import main package components
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.config.pydantic_config import create_accurate_config, create_fast_config, create_research_config
 
 # =============================================================================
@@ -59,25 +59,25 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture
 def tiny_problem():
     """Very small problem for quick tests."""
-    return ExampleMFGProblem(Nx=5, Nt=3, T=0.1)
+    return MFGProblem(Nx=5, Nt=3, T=0.1)
 
 
 @pytest.fixture
 def small_problem():
     """Small problem for unit tests."""
-    return ExampleMFGProblem(Nx=10, Nt=5, T=0.5)
+    return MFGProblem(Nx=10, Nt=5, T=0.5)
 
 
 @pytest.fixture
 def medium_problem():
     """Medium problem for integration tests."""
-    return ExampleMFGProblem(Nx=25, Nt=12, T=1.0)
+    return MFGProblem(Nx=25, Nt=12, T=1.0)
 
 
 @pytest.fixture
 def large_problem():
     """Large problem for performance tests."""
-    return ExampleMFGProblem(Nx=50, Nt=25, T=2.0)
+    return MFGProblem(Nx=50, Nt=25, T=2.0)
 
 
 @pytest.fixture(
@@ -89,7 +89,7 @@ def large_problem():
 )
 def parametrized_problem(request):
     """Parametrized problem fixture for testing multiple configurations."""
-    return ExampleMFGProblem(**request.param)
+    return MFGProblem(**request.param)
 
 
 @pytest.fixture(params=[0.1, 0.5, 1.0, 2.0])

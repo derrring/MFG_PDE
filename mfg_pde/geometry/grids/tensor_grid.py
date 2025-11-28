@@ -653,7 +653,7 @@ class TensorProductGrid(CartesianGrid):
 
     def _create_bc_1d(self, bc_type: str, custom_conditions: dict | None):
         """Create 1D boundary conditions (uses dataclass interface)."""
-        from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
         bc_map = {
             "periodic": {"type": "periodic"},
@@ -680,8 +680,8 @@ class TensorProductGrid(CartesianGrid):
 
         # Dimension-specific factory dispatch
         factory_map = {
-            2: ("boundary_conditions_2d", "create_rectangle_boundary_conditions"),
-            3: ("boundary_conditions_3d", "create_box_boundary_conditions"),
+            2: ("boundary.fem_bc_2d", "create_rectangle_boundary_conditions"),
+            3: ("boundary.fem_bc_3d", "create_box_boundary_conditions"),
         }
 
         if self._dimension in factory_map:
@@ -700,7 +700,7 @@ class TensorProductGrid(CartesianGrid):
             UserWarning,
             stacklevel=2,
         )
-        from mfg_pde.geometry.boundary.bc_3d import BoundaryConditionManager3D
+        from mfg_pde.geometry.boundary.fem_bc_3d import BoundaryConditionManager3D
 
         return BoundaryConditionManager3D()
 

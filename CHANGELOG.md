@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed - API Simplification (2025-11-23)
+
+**BREAKING CHANGES**: Removed unnecessary API layers to enforce clean 2-level architecture (Factory vs Expert).
+
+- **Removed `ExampleMFGProblem`** (deprecated since v0.12.0)
+  - Migration: Use `MFGProblem` directly
+  - Old: `problem = ExampleMFGProblem(dimension=2, X=X, t=t, g=g, H=H)`
+  - New: `components = MFGComponents(hamiltonian_func=H, final_value_func=g); problem = MFGProblem(spatial_bounds=..., components=components)`
+
+- **Removed `MFGProblemBuilder`**
+  - Redundant builder pattern that added cognitive load without benefit
+  - Migration: Use `MFGProblem` with `MFGComponents` directly
+  - Old: `problem = MFGProblemBuilder().hamiltonian(H, dH).domain(0,10,100).build()`
+  - New: `components = MFGComponents(hamiltonian_func=H, hamiltonian_dm_func=dH); problem = MFGProblem(xmin=0, xmax=10, Nx=100, components=components)`
+
+- **Removed `create_mfg_problem()` convenience function**
+  - Redundant wrapper around `MFGProblem` constructor
+  - Migration: Use `MFGProblem` with `MFGComponents` directly
+  - Old: `problem = create_mfg_problem(H, dH, xmin=0, xmax=10, Nx=100)`
+  - New: `components = MFGComponents(hamiltonian_func=H, hamiltonian_dm_func=dH); problem = MFGProblem(xmin=0, xmax=10, Nx=100, components=components)`
+
+**Rationale**: Enforces clear 2-level architecture:
+- **Level 1 (Factory)**: Pre-configured problems via `create_*_problem()` functions
+- **Level 2 (Expert)**: Direct `MFGProblem` + `MFGComponents` for full control
+
+See `docs/development/API_SIMPLIFICATION_PROPOSAL.md` for details.
+
+### Fixed - 2D/nD Support (2025-11-23)
+
+- **Fixed Gap 1**: `H()` and `dH_dm()` now handle 2D/nD tuple indices `(i,j)` correctly
+  - No longer crashes with `TypeError: 'NoneType' object is not subscriptable`
+  - Proper multi-dimensional indexing via `np.ravel_multi_index()`
+
+- **Fixed Gap 2**: `_setup_custom_final_value()` now works for nD problems
+  - Uses `geometry.get_spatial_grid()` for nD instead of assuming 1D `xSpace`
+  - Custom terminal conditions work in 2D and higher dimensions
+
 ## [0.12.1] - 2025-11-11
 
 **Patch Release: API Consistency Improvements (Week 1)**

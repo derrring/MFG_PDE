@@ -17,7 +17,10 @@ from mfg_pde.factory import (
     create_standard_problem,
     create_stochastic_problem,
 )
-from mfg_pde.geometry import BoundaryConditions, Domain1D, Domain2D
+
+# Use legacy 1D BoundaryConditions for Domain1D/2D
+from mfg_pde.geometry import Domain1D, Domain2D
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 
 @pytest.fixture

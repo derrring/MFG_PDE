@@ -17,6 +17,7 @@ References:
 - TECHNICAL_REFERENCE_HIGH_DIMENSIONAL_MFG.md Section 4
 """
 
+import warnings
 from abc import abstractmethod
 from typing import Literal
 
@@ -218,6 +219,10 @@ class ImplicitDomain(ImplicitGeometry):
         """
         Apply boundary conditions to particles that left the domain.
 
+        .. deprecated:: 0.12.0
+            Use :class:`MeshfreeApplicator` from ``mfg_pde.geometry.boundary`` instead.
+            This provides a unified interface for all geometry types.
+
         Args:
             particles: Particle positions - shape (N, d)
             bc_type: Boundary condition type
@@ -229,11 +234,24 @@ class ImplicitDomain(ImplicitGeometry):
             Updated particle positions (may have fewer particles for "absorbing")
 
         Example:
+            >>> # Deprecated usage:
             >>> domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
-            >>> particles = np.array([[0.5, 0.5], [1.2, 0.5]])  # One outside
             >>> particles_updated = domain.apply_boundary_conditions(particles, "reflecting")
-            >>> assert np.all(domain.contains(particles_updated))
+            >>>
+            >>> # New preferred usage:
+            >>> from mfg_pde.geometry.boundary import MeshfreeApplicator
+            >>> applicator = MeshfreeApplicator(domain)
+            >>> particles_updated = applicator.apply_particle_bc(particles, "reflecting")
         """
+        warnings.warn(
+            "ImplicitDomain.apply_boundary_conditions() is deprecated. "
+            "Use MeshfreeApplicator from mfg_pde.geometry.boundary instead:\n"
+            "  from mfg_pde.geometry.boundary import MeshfreeApplicator\n"
+            "  applicator = MeshfreeApplicator(domain)\n"
+            "  particles_updated = applicator.apply_particle_bc(particles, bc_type)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if bc_type == "reflecting":
             return self.project_to_domain(particles, method="simple")
 

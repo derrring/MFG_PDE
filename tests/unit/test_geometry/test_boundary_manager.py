@@ -16,8 +16,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
-from mfg_pde.geometry.boundary.bc_manager import BoundaryManager, GeometricBoundaryCondition
+from mfg_pde.geometry.boundary.applicator_fem import BoundaryManager, GeometricBoundaryCondition
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 
 # ===================================================================

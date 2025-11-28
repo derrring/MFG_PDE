@@ -126,7 +126,7 @@ def solve_mfg_with_amr(
 
     # Create base domain
     logger.info("Creating base 1D domain [0,1]")
-    from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+    from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
     domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
 
@@ -207,7 +207,7 @@ def solve_mfg_uniform(Nx: int = 100, T: float = 1.0, Nt: int = 50, sigma: float 
 
     # Create uniform domain
     logger.info(f"Creating 1D uniform domain ({Nx} points)")
-    from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+    from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
     domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=BoundaryConditions(type="periodic"))
 

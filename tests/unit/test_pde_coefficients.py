@@ -307,7 +307,7 @@ class TestGetSpatialGrid:
 
     def test_geometry_based_api_1d(self):
         """Test grid extraction with geometry-based API (1D)."""
-        from mfg_pde.geometry import BoundaryConditions
+        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
         bc = BoundaryConditions(type="periodic")
         domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)

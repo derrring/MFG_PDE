@@ -20,6 +20,7 @@ References:
 - TECHNICAL_REFERENCE_HIGH_DIMENSIONAL_MFG.md Section 4.1
 """
 
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -182,6 +183,10 @@ class Hyperrectangle(ImplicitDomain):
         """
         Apply boundary conditions (specialized for hyperrectangle).
 
+        .. deprecated:: 0.12.0
+            Use :class:`MeshfreeApplicator` from ``mfg_pde.geometry.boundary`` instead.
+            This provides a unified interface for all geometry types.
+
         Args:
             particles: Particle positions - shape (N, d)
             bc_type: Boundary condition type
@@ -193,12 +198,24 @@ class Hyperrectangle(ImplicitDomain):
             Updated particle positions
 
         Example:
+            >>> # Deprecated usage:
             >>> domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
-            >>> particles = np.array([[1.2, 0.5], [-0.1, 0.5]])
             >>> particles_reflected = domain.apply_boundary_conditions(particles, "reflecting")
-            >>> # [1.2, 0.5] → [0.8, 0.5] (reflected from right wall)
-            >>> # [-0.1, 0.5] → [0.1, 0.5] (reflected from left wall)
+            >>>
+            >>> # New preferred usage:
+            >>> from mfg_pde.geometry.boundary import MeshfreeApplicator
+            >>> applicator = MeshfreeApplicator(domain)
+            >>> particles_reflected = applicator.apply_particle_bc(particles, "reflecting")
         """
+        warnings.warn(
+            "Hyperrectangle.apply_boundary_conditions() is deprecated. "
+            "Use MeshfreeApplicator from mfg_pde.geometry.boundary instead:\n"
+            "  from mfg_pde.geometry.boundary import MeshfreeApplicator\n"
+            "  applicator = MeshfreeApplicator(domain)\n"
+            "  particles_updated = applicator.apply_particle_bc(particles, bc_type)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         particles = particles.copy()
 
         if bc_type == "reflecting":

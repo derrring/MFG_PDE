@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.geometry import BoundaryConditions
+# Use 1D FDM BoundaryConditions for MFGProblem (1D-focused class)
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 from mfg_pde.types import HamiltonianJacobians
 
 # Import npart and ppart from the utils module
@@ -410,7 +411,7 @@ class MFGProblem:
         import warnings
 
         from mfg_pde.geometry import SimpleGrid1D
-        from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
         # Emit deprecation warning for manual grid construction pattern
         warnings.warn(
@@ -528,7 +529,7 @@ class MFGProblem:
         if dimension == 1:
             # 1D case: use SimpleGrid1D
             from mfg_pde.geometry import SimpleGrid1D
-            from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+            from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
             bc = BoundaryConditions(type="periodic")
             geometry = SimpleGrid1D(xmin=spatial_bounds[0][0], xmax=spatial_bounds[0][1], boundary_conditions=bc)
@@ -1446,9 +1447,31 @@ class MFGProblem:
 
         final_func = self.components.final_value_func
 
-        for i in range(self.Nx + 1):
-            x_i = self.xSpace[i]
-            self.u_fin[i] = final_func(x_i)
+        # Handle both 1D and nD cases
+        if self.dimension == 1 and self.Nx is not None:
+            # 1D case: use xSpace array
+            for i in range(self.Nx + 1):
+                x_i = self.xSpace[i]
+                self.u_fin[i] = final_func(x_i)
+        elif hasattr(self, "geometry") and self.geometry is not None:
+            # nD case: use geometry spatial grid
+            spatial_grid = self.geometry.get_spatial_grid()  # Shape: (N, d)
+            num_points = spatial_grid.shape[0]
+
+            # Apply function to each spatial point
+            for i in range(num_points):
+                x_i = spatial_grid[i]  # Point in d-dimensional space
+                self.u_fin.flat[i] = final_func(x_i)
+        else:
+            # Fallback: leave u_fin as initialized (zeros)
+            import warnings
+
+            warnings.warn(
+                "Cannot setup custom final value: dimension not 1D and no geometry available. "
+                "Using default u_fin initialization.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     def H(
         self,
@@ -1504,7 +1527,27 @@ class MFGProblem:
 
         # Compute x_position and current_time if not provided
         if x_position is None:
-            x_position = self.xSpace[x_idx]
+            # Handle both 1D (scalar index) and nD (tuple index) cases
+            if isinstance(x_idx, tuple):
+                # nD case: x_idx is multi-index like (i, j) for 2D
+                # Use geometry to get position if available
+                if hasattr(self, "geometry") and self.geometry is not None:
+                    # Convert multi-index to flat index
+                    if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+                        # Compute flat index from multi-index
+                        flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
+                        spatial_grid = self.geometry.get_spatial_grid()
+                        x_position = spatial_grid[flat_idx]
+                    else:
+                        x_position = None  # Custom Hamiltonian should not need it
+                else:
+                    x_position = None  # Will be passed to custom Hamiltonian
+            elif self.xSpace is not None:
+                # 1D case: xSpace is 1D array, x_idx is scalar
+                x_position = self.xSpace[x_idx]
+            else:
+                x_position = None
+
         if current_time is None and t_idx is not None:
             current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
 
@@ -1578,7 +1621,15 @@ class MFGProblem:
         if np.isinf(hamiltonian_control_part) or np.isnan(hamiltonian_control_part):
             return np.nan
 
-        potential_cost_V_x = self.f_potential[x_idx]
+        # Get potential value (handle both 1D and nD indexing)
+        if isinstance(x_idx, tuple) and hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+            # nD case: convert multi-index to flat index
+            flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
+            potential_cost_V_x = self.f_potential.flat[flat_idx]
+        else:
+            # 1D case: direct indexing
+            potential_cost_V_x = self.f_potential[x_idx]
+
         coupling_density_m_x = m_at_x**2
 
         if (
@@ -1647,7 +1698,27 @@ class MFGProblem:
 
         # Compute x_position and current_time if not provided
         if x_position is None:
-            x_position = self.xSpace[x_idx]
+            # Handle both 1D (scalar index) and nD (tuple index) cases
+            if isinstance(x_idx, tuple):
+                # nD case: x_idx is multi-index like (i, j) for 2D
+                # Use geometry to get position if available
+                if hasattr(self, "geometry") and self.geometry is not None:
+                    # Convert multi-index to flat index
+                    if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+                        # Compute flat index from multi-index
+                        flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
+                        spatial_grid = self.geometry.get_spatial_grid()
+                        x_position = spatial_grid[flat_idx]
+                    else:
+                        x_position = None  # Custom Hamiltonian should not need it
+                else:
+                    x_position = None  # Will be passed to custom Hamiltonian
+            elif self.xSpace is not None:
+                # 1D case: xSpace is 1D array, x_idx is scalar
+                x_position = self.xSpace[x_idx]
+            else:
+                x_position = None
+
         if current_time is None and t_idx is not None:
             current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
 
@@ -1930,199 +2001,20 @@ class MFGProblem:
 
 
 # ============================================================================
-# Builder Pattern for Easy Problem Construction
+# Backward Compatibility Notes
 # ============================================================================
 
-
-class MFGProblemBuilder:
-    """
-    Builder class for constructing MFG problems step by step.
-
-    This class provides a fluent interface for building custom MFG problems.
-    """
-
-    def __init__(self):
-        """Initialize empty builder."""
-        self.components = MFGComponents()
-        self.domain_params = {}
-        self.time_params = {}
-        self.solver_params = {}
-
-    def hamiltonian(self, hamiltonian_func: Callable, hamiltonian_dm_func: Callable) -> MFGProblemBuilder:
-        """
-        Set custom Hamiltonian and its derivative.
-
-        Args:
-            hamiltonian_func: H(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem) -> float
-            hamiltonian_dm_func: dH/dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem) -> float
-        """
-        self.components.hamiltonian_func = hamiltonian_func
-        self.components.hamiltonian_dm_func = hamiltonian_dm_func
-        return self
-
-    def potential(self, potential_func: Callable) -> MFGProblemBuilder:
-        """
-        Set custom potential function.
-
-        Args:
-            potential_func: V(x, t=None) -> float
-        """
-        self.components.potential_func = potential_func
-        return self
-
-    def initial_density(self, initial_func: Callable) -> MFGProblemBuilder:
-        """
-        Set custom initial density function.
-
-        Args:
-            initial_func: m_0(x) -> float
-        """
-        self.components.initial_density_func = initial_func
-        return self
-
-    def final_value(self, final_func: Callable) -> MFGProblemBuilder:
-        """
-        Set custom final value function.
-
-        Args:
-            final_func: u_T(x) -> float
-        """
-        self.components.final_value_func = final_func
-        return self
-
-    def boundary_conditions(self, bc: BoundaryConditions) -> MFGProblemBuilder:
-        """Set boundary conditions."""
-        self.components.boundary_conditions = bc
-        return self
-
-    def jacobian(self, jacobian_func: Callable) -> MFGProblemBuilder:
-        """Set optional Jacobian function for advanced solvers."""
-        self.components.hamiltonian_jacobian_func = jacobian_func
-        return self
-
-    def coupling(self, coupling_func: Callable) -> MFGProblemBuilder:
-        """Set optional coupling function."""
-        self.components.coupling_func = coupling_func
-        return self
-
-    def domain(self, xmin: float, xmax: float, Nx: int) -> MFGProblemBuilder:
-        """Set spatial domain parameters."""
-        self.domain_params = {"xmin": xmin, "xmax": xmax, "Nx": Nx}
-        return self
-
-    def time(self, T: float, Nt: int) -> MFGProblemBuilder:
-        """Set time domain parameters."""
-        self.time_params = {"T": T, "Nt": Nt}
-        return self
-
-    def coefficients(self, sigma: float = 1.0, coupling_coefficient: float = 0.5) -> MFGProblemBuilder:
-        """Set solver coefficients."""
-        self.solver_params.update({"sigma": sigma, "coupling_coefficient": coupling_coefficient})
-        return self
-
-    def parameters(self, **params: Any) -> MFGProblemBuilder:
-        """Set additional problem parameters."""
-        self.components.parameters.update(params)
-        return self
-
-    def description(self, desc: str, problem_type: str = "custom") -> MFGProblemBuilder:
-        """Set problem description and type."""
-        self.components.description = desc
-        self.components.problem_type = problem_type
-        return self
-
-    def build(self) -> MFGProblem:
-        """Build the MFG problem."""
-        # Validate Hamiltonians if both are provided
-        has_hamiltonian = self.components.hamiltonian_func is not None
-        has_hamiltonian_dm = self.components.hamiltonian_dm_func is not None
-
-        if has_hamiltonian and not has_hamiltonian_dm:
-            raise ValueError("Hamiltonian derivative function is required when Hamiltonian function is provided")
-        if has_hamiltonian_dm and not has_hamiltonian:
-            raise ValueError("Hamiltonian function is required when Hamiltonian derivative function is provided")
-
-        # Set default domain if not specified
-        if not self.domain_params:
-            self.domain_params = {"xmin": 0.0, "xmax": 1.0, "Nx": 51}
-
-        # Set default time domain if not specified
-        if not self.time_params:
-            self.time_params = {"T": 1.0, "Nt": 51}
-
-        # Combine all parameters
-        all_params = {**self.domain_params, **self.time_params, **self.solver_params}
-
-        # Check if components are actually customized (any non-default value set)
-        is_customized = (
-            self.components.hamiltonian_func is not None
-            or self.components.hamiltonian_dm_func is not None
-            or self.components.hamiltonian_jacobian_func is not None
-            or self.components.potential_func is not None
-            or self.components.initial_density_func is not None
-            or self.components.final_value_func is not None
-            or self.components.boundary_conditions is not None
-            or self.components.coupling_func is not None
-            or len(self.components.parameters) > 0
-            or self.components.description != "MFG Problem"
-            or self.components.problem_type != "mfg"
-        )
-
-        # Create and return problem - with components only if customized
-        if is_customized:
-            return MFGProblem(components=self.components, **all_params)
-        else:
-            # No customization - create default problem without components
-            return MFGProblem(**all_params)
-
-
-# ============================================================================
-# Convenience Functions and Backward Compatibility
-# ============================================================================
-
-
-def ExampleMFGProblem(**kwargs: Any) -> MFGProblem:
-    """
-    Create an MFG problem with default Hamiltonian (backward compatibility).
-
-    This function provides backward compatibility for code that used
-    the old ExampleMFGProblem class.
-    """
-    return MFGProblem(**kwargs)
-
-
-def create_mfg_problem(hamiltonian_func: Callable, hamiltonian_dm_func: Callable, **kwargs: Any) -> MFGProblem:
-    """
-    Convenience function to create custom MFG problem.
-
-    Args:
-        hamiltonian_func: Custom Hamiltonian function
-        hamiltonian_dm_func: Hamiltonian derivative function
-        **kwargs: Domain, time, and solver parameters
-    """
-    # Extract configurations
-    domain_config = {
-        "xmin": kwargs.pop("xmin", 0.0),
-        "xmax": kwargs.pop("xmax", 1.0),
-        "Nx": kwargs.pop("Nx", 51),
-    }
-
-    time_config = {"T": kwargs.pop("T", 1.0), "Nt": kwargs.pop("Nt", 51)}
-
-    solver_config = {
-        "sigma": kwargs.pop("sigma", 1.0),
-        "coupling_coefficient": kwargs.pop("coupling_coefficient", 0.5),
-    }
-
-    # Create components
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-        **{k: v for k, v in kwargs.items() if k.endswith("_func")},
-        parameters={k: v for k, v in kwargs.items() if not k.endswith("_func")},
-    )
-
-    return MFGProblem(components=components, **domain_config, **time_config, **solver_config)
+# ExampleMFGProblem has been removed as of v0.13.0
+# Use MFGProblem directly instead:
+#   from mfg_pde import MFGProblem
+#   problem = MFGProblem(...)
+#
+# MFGProblemBuilder and create_mfg_problem() have been removed as of v0.13.0
+# Use MFGProblem with MFGComponents directly:
+#   components = MFGComponents(hamiltonian_func=..., hamiltonian_dm_func=...)
+#   problem = MFGProblem(xmin=0, xmax=10, Nx=100, components=components)
+#
+# See docs/migration/LEGACY_API_DEPRECATION_PLAN.md for migration guide
 
 
 # Test comment

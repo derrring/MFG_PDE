@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.geometry import BoundaryConditions
+    from mfg_pde.geometry.boundary import MixedBoundaryConditions
 
 
 # ============================================================================
@@ -286,7 +287,9 @@ def divergence_tensor_diffusion_2d(
     sigma_tensor: NDArray[np.floating],
     dx: float,
     dy: float,
-    boundary_conditions: BoundaryConditions,
+    boundary_conditions: BoundaryConditions | MixedBoundaryConditions,
+    domain_bounds: NDArray[np.floating] | None = None,
+    time: float = 0.0,
 ) -> NDArray[np.floating]:
     """
     Compute ∇ · (Σ ∇m) in 2D with tensor diffusion.
@@ -304,7 +307,9 @@ def divergence_tensor_diffusion_2d(
             - Spatially varying: (Ny, Nx, 2, 2) array
         dx: Grid spacing in x-direction
         dy: Grid spacing in y-direction
-        boundary_conditions: Boundary condition specification
+        boundary_conditions: Boundary condition specification (uniform or mixed)
+        domain_bounds: Domain bounds array (2, 2) for mixed BCs
+        time: Current time for time-dependent BCs
 
     Returns:
         Diffusion term ∇ · (Σ ∇m) with same shape as m
@@ -324,7 +329,7 @@ def divergence_tensor_diffusion_2d(
         Sigma = sigma_tensor
 
     # Apply boundary conditions (add ghost cells)
-    m_padded = _apply_bc_2d(m, boundary_conditions)
+    m_padded = _apply_bc_2d(m, boundary_conditions, domain_bounds, time)
 
     # Use JIT kernel if available and enabled
     if USE_NUMBA and NUMBA_AVAILABLE:
@@ -387,7 +392,9 @@ def divergence_diagonal_diffusion_2d(
     sigma_diag: NDArray[np.floating],
     dx: float,
     dy: float,
-    boundary_conditions: BoundaryConditions,
+    boundary_conditions: BoundaryConditions | MixedBoundaryConditions,
+    domain_bounds: NDArray[np.floating] | None = None,
+    time: float = 0.0,
 ) -> NDArray[np.floating]:
     """
     Optimized divergence for diagonal diffusion tensor.
@@ -403,7 +410,9 @@ def divergence_diagonal_diffusion_2d(
             - Constant: (2,) array [σₓ², σᵧ²]
             - Spatially varying: (Ny, Nx, 2) array
         dx, dy: Grid spacing
-        boundary_conditions: BC specification
+        boundary_conditions: BC specification (uniform or mixed)
+        domain_bounds: Domain bounds array (2, 2) for mixed BCs
+        time: Current time for time-dependent BCs
 
     Returns:
         Diffusion term with shape matching m
@@ -419,7 +428,7 @@ def divergence_diagonal_diffusion_2d(
         sigma_y = sigma_diag[:, :, 1]
 
     # Apply boundary conditions
-    m_padded = _apply_bc_2d(m, boundary_conditions)
+    m_padded = _apply_bc_2d(m, boundary_conditions, domain_bounds, time)
 
     # Use JIT kernel if available and enabled
     if USE_NUMBA and NUMBA_AVAILABLE:
@@ -463,41 +472,67 @@ def divergence_diagonal_diffusion_2d(
 
 def _apply_bc_2d(
     m: NDArray[np.floating],
-    boundary_conditions: BoundaryConditions,
+    boundary_conditions: BoundaryConditions | MixedBoundaryConditions,
+    domain_bounds: NDArray[np.floating] | None = None,
+    time: float = 0.0,
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions by padding array with ghost cells.
 
+    Supports both uniform BCs (BoundaryConditions) and mixed BCs
+    (MixedBoundaryConditions) with different BC types on different
+    boundary segments.
+
     Args:
         m: Interior field (Ny, Nx)
-        boundary_conditions: BC specification
+        boundary_conditions: BC specification (uniform or mixed)
+        domain_bounds: Domain bounds array (2, 2) for mixed BCs
+                      Can be omitted if provided in MixedBoundaryConditions
+        time: Current time for time-dependent BCs
 
     Returns:
         Padded field (Ny+2, Nx+2) with ghost cells
 
     Supported BC types:
         - periodic: Wrap-around boundaries
-        - dirichlet: Zero boundary values
-        - no_flux (Neumann): Zero normal derivative
+        - dirichlet: Specified boundary values
+        - no_flux/neumann: Zero normal derivative
+        - robin: alpha*u + beta*du/dn = g
     """
+    # Import here to avoid circular imports
+    from mfg_pde.geometry.boundary import MixedBoundaryConditions
+    from mfg_pde.geometry.boundary.applicator_fdm import apply_boundary_conditions_2d
+
+    # Check if using new mixed BC system
+    if isinstance(boundary_conditions, MixedBoundaryConditions):
+        return apply_boundary_conditions_2d(
+            field=m,
+            boundary_conditions=boundary_conditions,
+            domain_bounds=domain_bounds,
+            time=time,
+        )
+
+    # Legacy uniform BC handling (fast path for simple cases)
     bc_type = boundary_conditions.type.lower()
 
     if bc_type == "periodic":
         # Periodic: wrap around
-        m_padded = np.pad(m, 1, mode="wrap")
+        return np.pad(m, 1, mode="wrap")
 
     elif bc_type == "dirichlet":
-        # Dirichlet: zero at boundaries
-        m_padded = np.pad(m, 1, mode="constant", constant_values=0.0)
+        # Use the new BC applicator for correct ghost cell formula
+        return apply_boundary_conditions_2d(
+            field=m,
+            boundary_conditions=boundary_conditions,
+            time=time,
+        )
 
     elif bc_type in ["no_flux", "neumann"]:
         # No-flux: zero normal derivative (reflective)
-        m_padded = np.pad(m, 1, mode="edge")
+        return np.pad(m, 1, mode="edge")
 
     else:
         raise ValueError(f"Unsupported boundary condition type: {bc_type}")
-
-    return m_padded
 
 
 # ============================================================================

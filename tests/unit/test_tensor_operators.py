@@ -15,7 +15,11 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary import (
+    dirichlet_bc,
+    no_flux_bc,
+    periodic_bc,
+)
 from mfg_pde.utils.numerical.tensor_operators import (
     divergence_diagonal_diffusion_2d,
     divergence_tensor_diffusion_2d,
@@ -45,7 +49,7 @@ class TestDiagonalTensorEqualsScalar:
         # Scalar diffusion: Σ = σ²I
         sigma_tensor = sigma_squared * np.eye(2)  # (2, 2) constant tensor
 
-        bc = BoundaryConditions(type="dirichlet")
+        bc = dirichlet_bc(dimension=2)
 
         # Compute tensor diffusion
         result_tensor = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
@@ -73,7 +77,7 @@ class TestDiagonalTensorEqualsScalar:
         sigma_y = 0.05
 
         sigma_diag = np.array([sigma_x, sigma_y])
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         result_diag = divergence_diagonal_diffusion_2d(m, sigma_diag, dx, dy, bc)
 
@@ -97,7 +101,7 @@ class TestAnisotropic2D:
         # Anisotropic: higher diffusion in x than y, no cross-terms
         sigma_tensor = np.array([[0.2, 0.0], [0.0, 0.05]])
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -119,7 +123,7 @@ class TestAnisotropic2D:
                 sigma_local = 0.05 + 0.1 * (i / Nx)
                 sigma_tensor[i, j] = sigma_local * np.eye(2)
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -146,7 +150,7 @@ class TestCrossDiffusion:
         eigenvalues = np.linalg.eigvalsh(sigma_tensor)
         assert np.all(eigenvalues >= -1e-10)
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -173,7 +177,7 @@ class TestCrossDiffusion:
         Nx, Ny = 8, 8
         m = np.random.rand(Nx, Ny)
         dx, dy = 0.1, 0.1
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -191,7 +195,7 @@ class TestBoundaryConditions:
         dx, dy = 0.1, 0.1
         sigma_tensor = 0.1 * np.eye(2)
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -206,7 +210,7 @@ class TestBoundaryConditions:
         dx, dy = 0.1, 0.1
         sigma_tensor = 0.1 * np.eye(2)
 
-        bc = BoundaryConditions(type="dirichlet")
+        bc = dirichlet_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -220,7 +224,7 @@ class TestBoundaryConditions:
         dx, dy = 0.1, 0.1
         sigma_tensor = 0.1 * np.eye(2)
 
-        bc = BoundaryConditions(type="no_flux")
+        bc = no_flux_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -240,7 +244,7 @@ class TestNDDispatcher:
         # 1D "tensor" is just a scalar
         sigma_tensor = 0.1
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         # This should work (fallback to 1D laplacian)
         result = divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
@@ -255,7 +259,7 @@ class TestNDDispatcher:
         dx = (0.1, 0.1)
         sigma_tensor = 0.1 * np.eye(2)
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         result = divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
 
@@ -268,7 +272,7 @@ class TestNDDispatcher:
         dx = (0.1, 0.1, 0.1)
         sigma_tensor = 0.1 * np.eye(3)
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         with pytest.raises(NotImplementedError, match="General nD tensor diffusion"):
             divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
@@ -292,7 +296,7 @@ class TestMassConservation:
         dy = y[1] - y[0]
         sigma_tensor = 0.1 * np.eye(2)
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=2)
 
         diffusion_term = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 
@@ -321,7 +325,7 @@ class TestNumericalAccuracy:
         sigma_squared = 0.1
         sigma_tensor = sigma_squared * np.eye(2)
 
-        bc = BoundaryConditions(type="dirichlet")
+        bc = dirichlet_bc(dimension=2)
 
         result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
 

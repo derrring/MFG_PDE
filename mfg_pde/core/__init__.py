@@ -8,7 +8,7 @@ Framework extensions (network, variational, multi-population) are in mfg_pde.ext
 from mfg_pde.geometry import BoundaryConditions
 
 from .base_problem import CartesianGridMFGProtocol, MFGProblemProtocol
-from .mfg_problem import ExampleMFGProblem, MFGComponents, MFGProblem, MFGProblemBuilder, create_mfg_problem
+from .mfg_problem import MFGComponents, MFGProblem
 
 __all__ = [
     # Geometry
@@ -19,9 +19,6 @@ __all__ = [
     # Base MFG problem
     "MFGProblem",
     "MFGComponents",
-    "MFGProblemBuilder",
-    # Legacy alias
-    "ExampleMFGProblem",
     # Capacity-constrained MFG
     "CapacityConstrainedMFGProblem",
     "CongestionModel",
@@ -30,6 +27,4 @@ __all__ = [
     "LogBarrierCongestion",
     "PiecewiseCongestion",
     "create_congestion_model",
-    # Factory
-    "create_mfg_problem",
 ]

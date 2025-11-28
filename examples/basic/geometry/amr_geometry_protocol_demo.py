@@ -23,7 +23,7 @@ import numpy as np
 from mfg_pde.geometry import SimpleGrid1D
 from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRMesh
 from mfg_pde.geometry.amr.amr_quadtree_2d import AdaptiveMesh
-from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 from mfg_pde.geometry.protocol import (
     is_geometry_compatible,

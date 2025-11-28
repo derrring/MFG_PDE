@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mfg_pde.geometry.base import CartesianGrid
-from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions  # noqa: TC001
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions  # noqa: TC001
 from mfg_pde.geometry.protocol import GeometryType
 
 if TYPE_CHECKING:
