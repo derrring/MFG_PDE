@@ -26,7 +26,7 @@ def _compute_sdf_gradient(
     epsilon: float = 1e-5,
 ) -> np.ndarray:
     """
-    Compute SDF gradient using central finite differences.
+    Compute SDF gradient using central finite differences with adaptive scaling.
 
     The gradient of an SDF points in the direction of steepest increase,
     which is the outward normal direction at the boundary.
@@ -34,22 +34,77 @@ def _compute_sdf_gradient(
     Args:
         point: Point at which to evaluate gradient (1D array)
         sdf_func: SDF function
-        epsilon: Finite difference step size
+        epsilon: Base finite difference step size (will be scaled adaptively)
 
     Returns:
         Gradient vector (same shape as point)
+
+    Raises:
+        ValueError: If SDF returns invalid (non-finite) values
+
+    Note:
+        Uses adaptive epsilon scaling based on point coordinates to handle
+        both small and large domain scales. Validates SDF values at each
+        evaluation point.
     """
     point = np.asarray(point, dtype=float)
     d = len(point)
+
+    # Validate input point
+    if not np.all(np.isfinite(point)):
+        raise ValueError(f"SDF gradient: Point contains non-finite values: {point}")
+
+    # Evaluate SDF at center point for validation
+    phi0 = sdf_func(point)
+    if not np.isfinite(phi0):
+        raise ValueError(f"SDF returned non-finite value {phi0} at point {point}")
+
+    # Adaptive epsilon based on domain scale
+    # Scale by characteristic length to handle both small and large domains
+    point_scale = np.maximum(np.abs(point), 1.0)
+    characteristic_length = np.linalg.norm(point_scale) / max(d, 1)
+    adaptive_eps = epsilon * characteristic_length
+
     grad = np.zeros(d)
 
     for i in range(d):
         point_plus = point.copy()
         point_minus = point.copy()
-        point_plus[i] += epsilon
-        point_minus[i] -= epsilon
+        point_plus[i] += adaptive_eps
+        point_minus[i] -= adaptive_eps
 
-        grad[i] = (sdf_func(point_plus) - sdf_func(point_minus)) / (2 * epsilon)
+        # Evaluate SDF at perturbed points
+        phi_plus = sdf_func(point_plus)
+        phi_minus = sdf_func(point_minus)
+
+        # Validate SDF values
+        if not np.isfinite(phi_plus):
+            raise ValueError(
+                f"SDF returned non-finite value {phi_plus} at perturbed point {point_plus} (axis {i}, positive)"
+            )
+        if not np.isfinite(phi_minus):
+            raise ValueError(
+                f"SDF returned non-finite value {phi_minus} at perturbed point {point_minus} (axis {i}, negative)"
+            )
+
+        # Compute gradient component
+        grad[i] = (phi_plus - phi_minus) / (2 * adaptive_eps)
+
+    # Validate gradient
+    if not np.all(np.isfinite(grad)):
+        raise ValueError(f"SDF gradient contains non-finite values: {grad}")
+
+    # Warn if gradient is suspiciously small (possible degenerate SDF)
+    grad_norm = np.linalg.norm(grad)
+    if grad_norm < 1e-10:
+        import warnings
+
+        warnings.warn(
+            f"SDF gradient has very small magnitude {grad_norm:.2e} at point {point}. "
+            f"This may indicate a degenerate SDF or a point far from the boundary.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     return grad
 
@@ -175,7 +230,32 @@ class BCSegment:
 
         Returns:
             True if this BC segment applies to the given point
+
+        Raises:
+            ValueError: If point is empty or domain_bounds are invalid
         """
+        # Input validation
+        point = np.asarray(point, dtype=float)
+        if point.size == 0:
+            raise ValueError(f"BCSegment '{self.name}': Point array cannot be empty")
+
+        if domain_bounds is not None:
+            domain_bounds = np.asarray(domain_bounds, dtype=float)
+            if domain_bounds.ndim != 2 or domain_bounds.shape[1] != 2:
+                raise ValueError(
+                    f"BCSegment '{self.name}': domain_bounds must have shape (dimension, 2), got {domain_bounds.shape}"
+                )
+            if not (domain_bounds[:, 0] <= domain_bounds[:, 1]).all():
+                raise ValueError(
+                    f"BCSegment '{self.name}': domain_bounds must have min <= max for all axes. "
+                    f"Got bounds where min > max: {domain_bounds}"
+                )
+            if point.shape[0] != domain_bounds.shape[0]:
+                raise ValueError(
+                    f"BCSegment '{self.name}': Point dimension {point.shape[0]} "
+                    f"does not match domain_bounds dimension {domain_bounds.shape[0]}"
+                )
+
         # Method 1: Check boundary identifier match (rectangular domains)
         if self.boundary is not None and self.boundary != "all":
             if boundary_id is None or self.boundary != boundary_id:
@@ -240,17 +320,57 @@ class BCSegment:
 
         Returns:
             BC value at this point and time
+
+        Note:
+            For callable values, tries multiple signature patterns:
+            1. value(point, t) - generic array interface
+            2. value(*point, t) - coordinate expansion
+            3. value(point) - no time dependency
+            4. Falls back to 0.0 if all fail
         """
         if callable(self.value):
-            # Call with (*point, t) for compatibility
-            if len(point) == 1:
-                return self.value(point[0], t)
-            elif len(point) == 2:
-                return self.value(point[0], point[1], t)
-            elif len(point) == 3:
-                return self.value(point[0], point[1], point[2], t)
-            else:
-                return self.value(point, t)
+            # Strategy 1: Try generic array interface first (safest)
+            try:
+                result = self.value(point, t)
+                return float(result)
+            except (TypeError, ValueError):
+                pass
+
+            # Strategy 2: Try coordinate expansion (*point, t)
+            # Works for value(x, t), value(x, y, t), value(x, y, z, t), etc.
+            try:
+                coords = (*tuple(point), t)
+                result = self.value(*coords)
+                return float(result)
+            except (TypeError, ValueError):
+                pass
+
+            # Strategy 3: Try without time (stationary BC)
+            try:
+                result = self.value(point)
+                return float(result)
+            except (TypeError, ValueError):
+                pass
+
+            # Strategy 4: Try coordinate expansion without time
+            try:
+                result = self.value(*point)
+                return float(result)
+            except (TypeError, ValueError):
+                pass
+
+            # If all strategies fail, return zero and warn
+            import warnings
+
+            warnings.warn(
+                f"BCSegment '{self.name}': Could not evaluate callable value. "
+                f"Tried signatures: value(point, t), value(*point, t), value(point), value(*point). "
+                f"Returning 0.0 as fallback.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return 0.0
+
         return float(self.value)
 
     def __str__(self) -> str:

@@ -68,6 +68,8 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from .types import BCSegment
+
 
 @dataclass
 class GhostCellConfig:
@@ -439,6 +441,13 @@ def _apply_boundary_ghost_cells(
     n_points = len(coords)
     domain_bounds = mixed_bc.domain_bounds
 
+    # Validate domain_bounds is available (required for rectangular domain BCs)
+    if domain_bounds is None:
+        raise ValueError(
+            "domain_bounds is required for applying boundary conditions on structured grids. "
+            "Ensure BoundaryConditions object was created with domain_bounds specified."
+        )
+
     for i in range(n_points):
         # Construct point on boundary
         if boundary_axis == 0:  # x-boundary (left/right)
@@ -482,7 +491,7 @@ def _apply_boundary_ghost_cells(
 
 
 def _compute_ghost_value_enhanced(
-    bc_segment,
+    bc_segment: BCSegment,
     interior_val: float,
     grid_spacing: float,
     boundary_side: str,

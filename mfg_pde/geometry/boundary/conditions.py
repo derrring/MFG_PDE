@@ -390,6 +390,54 @@ class BoundaryConditions:
             if len(group) > 1:
                 warnings.append(f"Multiple segments with priority {priority}: {[s.name for s in group]}")
 
+        # Check boundary coverage for rectangular domains
+        # Warn if no segments cover certain boundaries (may indicate incomplete BC specification)
+        if self.domain_bounds is not None and not self.is_uniform:
+            # Map axis index to standard names
+            axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
+
+            for axis_idx in range(self.dimension):
+                axis_name = axis_names.get(axis_idx, f"axis{axis_idx}")
+
+                # Check if min and max boundaries on this axis have at least one segment
+                # A segment covers a boundary if:
+                # 1. boundary is None (applies to all boundaries)
+                # 2. boundary explicitly names this boundary (e.g., "x_min", "left")
+                # 3. No region constraint (applies to entire boundary)
+
+                min_boundary_names = {f"{axis_name}_min", "left", "bottom", "front"}
+                max_boundary_names = {f"{axis_name}_max", "right", "top", "back"}
+
+                has_min_coverage = any(
+                    seg.boundary is None
+                    or seg.boundary == "all"
+                    or (axis_idx == 0 and seg.boundary in min_boundary_names)
+                    or (axis_idx == 1 and seg.boundary in min_boundary_names)
+                    or (axis_idx == 2 and seg.boundary in min_boundary_names)
+                    for seg in self.segments
+                )
+
+                has_max_coverage = any(
+                    seg.boundary is None
+                    or seg.boundary == "all"
+                    or (axis_idx == 0 and seg.boundary in max_boundary_names)
+                    or (axis_idx == 1 and seg.boundary in max_boundary_names)
+                    or (axis_idx == 2 and seg.boundary in max_boundary_names)
+                    for seg in self.segments
+                )
+
+                # If no explicit segment coverage, default BC will be used - issue info warning
+                if not has_min_coverage:
+                    warnings.append(
+                        f"No explicit BC segment for {axis_name}_min boundary. "
+                        f"Default BC ({self.default_bc.value}) will be used."
+                    )
+                if not has_max_coverage:
+                    warnings.append(
+                        f"No explicit BC segment for {axis_name}_max boundary. "
+                        f"Default BC ({self.default_bc.value}) will be used."
+                    )
+
         is_valid = len(warnings) == 0
         return is_valid, warnings
 
