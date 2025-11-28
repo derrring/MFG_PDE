@@ -1271,7 +1271,12 @@ def _solve_timestep_full_nd(
         # Check if this is a boundary point
         is_boundary = _is_boundary_point(multi_idx, shape, ndim)
 
-        if boundary_conditions.type == "no_flux" and is_boundary:
+        # Determine BC type - for mixed BC, default to no-flux behavior
+        is_no_flux = boundary_conditions.is_uniform and boundary_conditions.type == "no_flux"
+
+        # For mixed BC (not uniform), treat boundaries with default no-flux behavior
+        # The actual BC application will be handled by tensor_operators
+        if (is_no_flux or not boundary_conditions.is_uniform) and is_boundary:
             # Boundary point with no-flux condition
             _add_boundary_no_flux_entries(
                 row_indices,
@@ -1371,7 +1376,9 @@ def _add_interior_entries(
         multi_idx_minus[d] = multi_idx[d] - 1
 
         # Handle boundary wrapping for periodic BC
-        if boundary_conditions.type == "periodic":
+        is_periodic = boundary_conditions.is_uniform and boundary_conditions.type == "periodic"
+
+        if is_periodic:
             multi_idx_plus[d] = multi_idx_plus[d] % shape[d]
             multi_idx_minus[d] = multi_idx_minus[d] % shape[d]
 
@@ -1379,13 +1386,13 @@ def _add_interior_entries(
         has_plus = multi_idx_plus[d] < shape[d]
         has_minus = multi_idx_minus[d] >= 0
 
-        if has_plus or boundary_conditions.type == "periodic":
+        if has_plus or is_periodic:
             flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
             u_plus = u_flat[flat_idx_plus]
         else:
             u_plus = u_flat[flat_idx]  # Use current value at boundary
 
-        if has_minus or boundary_conditions.type == "periodic":
+        if has_minus or is_periodic:
             flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
             u_minus = u_flat[flat_idx_minus]
         else:
@@ -1397,7 +1404,7 @@ def _add_interior_entries(
         # -σ²/(2dx²) * (m_{i+1} - 2m_i + m_{i-1})
         diagonal_value += sigma**2 / dx_sq
 
-        if has_plus or boundary_conditions.type == "periodic":
+        if has_plus or is_periodic:
             # Coupling to m_{i+1,j}
             coeff_plus = -(sigma**2) / (2 * dx_sq)
 
@@ -1413,7 +1420,7 @@ def _add_interior_entries(
             # Add advection contribution to diagonal
             diagonal_value += float(coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
 
-        if has_minus or boundary_conditions.type == "periodic":
+        if has_minus or is_periodic:
             # Coupling to m_{i-1,j}
             coeff_minus = -(sigma**2) / (2 * dx_sq)
 
