@@ -63,6 +63,32 @@ class SimpleGrid2D(CartesianGrid):
         y = np.linspace(self.ymin, self.ymax, self.ny + 1)
         return [x, y]
 
+    def get_multi_index(self, flat_index: int) -> tuple[int, int]:
+        """
+        Convert flat index to 2D grid indices (i, j).
+
+        Assumes C-order (row-major) indexing where the grid is shaped (nx+1, ny+1).
+
+        Args:
+            flat_index: Flat index in [0, (nx+1)*(ny+1))
+
+        Returns:
+            Tuple (i, j) of grid indices
+
+        Example:
+            >>> grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(10, 10))
+            >>> i, j = grid.get_multi_index(53)  # Convert flat index to (i,j)
+        """
+        total_points = (self.nx + 1) * (self.ny + 1)
+        if flat_index < 0 or flat_index >= total_points:
+            raise ValueError(f"flat_index {flat_index} out of range [0, {total_points})")
+
+        # C-order (row-major): index = i * (ny+1) + j
+        i = flat_index // (self.ny + 1)
+        j = flat_index % (self.ny + 1)
+
+        return i, j
+
     def create_gmsh_geometry(self):
         """Not implemented for simple grid - raises NotImplementedError."""
         raise NotImplementedError("SimpleGrid2D does not use Gmsh")

@@ -67,6 +67,37 @@ class SimpleGrid3D(CartesianGrid):
         z = np.linspace(self.zmin, self.zmax, self.nz + 1)
         return [x, y, z]
 
+    def get_multi_index(self, flat_index: int) -> tuple[int, int, int]:
+        """
+        Convert flat index to 3D grid indices (i, j, k).
+
+        Assumes C-order (row-major) indexing where the grid is shaped (nx+1, ny+1, nz+1).
+
+        Args:
+            flat_index: Flat index in [0, (nx+1)*(ny+1)*(nz+1))
+
+        Returns:
+            Tuple (i, j, k) of grid indices
+
+        Example:
+            >>> grid = SimpleGrid3D(bounds=(0, 1, 0, 1, 0, 1), resolution=(10, 10, 10))
+            >>> i, j, k = grid.get_multi_index(537)  # Convert flat index to (i,j,k)
+        """
+        total_points = (self.nx + 1) * (self.ny + 1) * (self.nz + 1)
+        if flat_index < 0 or flat_index >= total_points:
+            raise ValueError(f"flat_index {flat_index} out of range [0, {total_points})")
+
+        # C-order (row-major): index = i * (ny+1)*(nz+1) + j * (nz+1) + k
+        stride_y = (self.ny + 1) * (self.nz + 1)
+        stride_z = self.nz + 1
+
+        i = flat_index // stride_y
+        remaining = flat_index % stride_y
+        j = remaining // stride_z
+        k = remaining % stride_z
+
+        return i, j, k
+
     def create_gmsh_geometry(self):
         """Not implemented for simple grid - raises NotImplementedError."""
         raise NotImplementedError("SimpleGrid3D does not use Gmsh")
