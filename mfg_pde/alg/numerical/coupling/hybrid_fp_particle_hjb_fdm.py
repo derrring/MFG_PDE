@@ -290,9 +290,9 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             # Step 1: Solve HJB equation using FDM with current density
             try:
                 U_new = self.hjb_solver.solve_hjb_system(
-                    M_density_evolution=M_current,
-                    U_final_condition=terminal_condition,
-                    U_from_prev_picard=U_current,
+                    M_density=M_current,
+                    U_terminal=terminal_condition,
+                    U_coupling_prev=U_current,
                 )
 
                 # Apply damping
@@ -306,7 +306,7 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             # Step 2: Solve FP equation using particles with updated control
             try:
                 M_new = self.fp_solver.solve_fp_system(
-                    m_initial_condition=initial_density,
+                    M_initial=initial_density,
                     drift_field=U_current,
                 )
 

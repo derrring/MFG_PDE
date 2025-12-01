@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -7,6 +8,9 @@ import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry import BoundaryConditions
 
 try:  # pragma: no cover - optional SciPy dependency
     import scipy.interpolate as _scipy_interpolate
@@ -18,12 +22,9 @@ except Exception:  # pragma: no cover - graceful fallback when SciPy missing
     gaussian_kde = None
     SCIPY_AVAILABLE = False
 
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.conditions import periodic_bc
 
 from .base_fp import BaseFPSolver
-
-if TYPE_CHECKING:
-    from mfg_pde.core.mfg_problem import MFGProblem
 
 
 class KDENormalization(str, Enum):
@@ -152,13 +153,84 @@ class FPParticleSolver(BaseFPSolver):
         elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
             # Try to get BC from grid geometry (Phase 2 integration)
             try:
-                self.boundary_conditions = problem.geometry.get_boundary_handler(bc_type="periodic")
+                self.boundary_conditions = problem.geometry.get_boundary_handler()
             except Exception:
                 # Fallback if geometry BC retrieval fails
-                self.boundary_conditions = BoundaryConditions(type="periodic")
+                self.boundary_conditions = periodic_bc(dimension=1)
         else:
             # Default to periodic boundaries for backward compatibility
-            self.boundary_conditions = BoundaryConditions(type="periodic")
+            self.boundary_conditions = periodic_bc(dimension=1)
+
+    def _get_grid_params(self) -> dict:
+        """
+        Extract grid parameters from geometry (preferred) or legacy problem API.
+
+        Returns dict with: Nx, Nt, Dx, Dt, xmin, xmax, Lx, xSpace, sigma, coupling_coefficient
+        Supports both geometry-first API and legacy MFGProblem.Nx style.
+        """
+        # Try geometry-first API
+        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
+            geom = self.problem.geometry
+            grid_shape = geom.get_grid_shape()
+            Nx = grid_shape[0]  # Already includes +1 for grid points
+
+            # Get spacing
+            spacing = geom.get_grid_spacing()
+            Dx = spacing[0] if spacing else 0.0
+
+            # Get bounds - try multiple methods
+            if hasattr(geom, "xmin") and hasattr(geom, "xmax"):
+                xmin, xmax = geom.xmin, geom.xmax
+            elif hasattr(geom, "bounds"):
+                xmin, xmax = geom.bounds[0]
+            elif hasattr(geom, "coordinates") and len(geom.coordinates) > 0:
+                coords = geom.coordinates[0]
+                xmin, xmax = coords[0], coords[-1]
+            else:
+                xmin, xmax = 0.0, 1.0
+
+            Lx = xmax - xmin
+
+            # Get coordinate array
+            if hasattr(geom, "coordinates") and len(geom.coordinates) > 0:
+                xSpace = np.array(geom.coordinates[0])
+            else:
+                xSpace = np.linspace(xmin, xmax, Nx)
+
+        # Fallback to legacy API
+        elif self.problem.Nx is not None:
+            Nx = self.problem.Nx + 1
+            Dx = self.problem.dx if self.problem.dx is not None else 0.0
+            xmin = self.problem.xmin if self.problem.xmin is not None else 0.0
+            xmax = self.problem.xmax if self.problem.xmax is not None else 1.0
+            Lx = self.problem.Lx if self.problem.Lx is not None else (xmax - xmin)
+            xSpace = self.problem.xSpace if self.problem.xSpace is not None else np.linspace(xmin, xmax, Nx)
+        else:
+            raise ValueError(
+                "FPParticleSolver requires either a geometry object or legacy problem.Nx. "
+                "Create MFGProblem with geometry=SimpleGrid1D(...) or with Nx=... parameter."
+            )
+
+        # Time parameters (always from problem)
+        Nt = self.problem.Nt + 1
+        Dt = self.problem.dt if self.problem.dt is not None else (self.problem.T / (Nt - 1) if Nt > 1 else 0.0)
+        sigma = self.problem.sigma if self.problem.sigma is not None else 0.1
+        coupling_coefficient = (
+            self.problem.coupling_coefficient if self.problem.coupling_coefficient is not None else 1.0
+        )
+
+        return {
+            "Nx": Nx,
+            "Nt": Nt,
+            "Dx": Dx,
+            "Dt": Dt,
+            "xmin": xmin,
+            "xmax": xmax,
+            "Lx": Lx,
+            "xSpace": xSpace,
+            "sigma": sigma,
+            "coupling_coefficient": coupling_coefficient,
+        }
 
     def _compute_gradient(self, U_array, Dx: float, use_backend: bool = False):
         """
@@ -239,11 +311,13 @@ class FPParticleSolver(BaseFPSolver):
             return M_array * 0  # Return zeros
 
     def _estimate_density_from_particles(self, particles_at_time_t: np.ndarray) -> np.ndarray:
-        Nx = self.problem.Nx + 1
-        xSpace = self.problem.xSpace
-        xmin = self.problem.xmin
-        xmax = self.problem.xmax
-        Dx = self.problem.dx
+        # Use geometry-aware parameter extraction
+        params = self._get_grid_params()
+        Nx = params["Nx"]
+        xSpace = params["xSpace"]
+        xmin = params["xmin"]
+        xmax = params["xmax"]
+        Dx = params["Dx"]
 
         if self.num_particles == 0 or len(particles_at_time_t) == 0:
             return np.zeros(Nx)
@@ -289,16 +363,23 @@ class FPParticleSolver(BaseFPSolver):
                 else:
                     raise RuntimeError("SciPy not available for KDE")
 
-            except Exception:
-                # Fallback to peak approximation on error
-                m_density_estimated = np.zeros(Nx)
-                if len(particles_at_time_t) > 0:
-                    mean_pos = np.mean(particles_at_time_t)
-                    closest_idx = np.argmin(np.abs(xSpace - mean_pos))
-                    if Dx > 1e-14:
-                        m_density_estimated[closest_idx] = 1.0 / Dx
-                    elif Nx == 1:
-                        m_density_estimated[closest_idx] = 1.0
+            except Exception as e:
+                error_msg = (
+                    f"KDE density estimation failed in FPParticleSolver: {e}\n"
+                    f"Number of particles: {len(particles_at_time_t)}\n"
+                    f"Grid size: {Nx}\n"
+                    f"Bandwidth: {self.kde_bandwidth}\n"
+                    "Possible causes:\n"
+                    "  1. Too few particles for reliable KDE (need at least 10-20)\n"
+                    "  2. Bandwidth selection failed (try fixed bandwidth like 0.1)\n"
+                    "  3. Particles outside domain bounds\n"
+                    "  4. GPU/SciPy library issues\n"
+                    "Suggestions:\n"
+                    "  - Increase number of particles (Np > 100 recommended)\n"
+                    "  - Use fixed bandwidth: kde_bandwidth=0.1\n"
+                    "  - Check particle initialization and drift/diffusion"
+                )
+                raise RuntimeError(error_msg) from e
 
         # Normalization step (conditional based on kde_normalization strategy)
         if self.kde_normalization == KDENormalization.NONE:
@@ -325,10 +406,12 @@ class FPParticleSolver(BaseFPSolver):
 
     def solve_fp_system(
         self,
-        m_initial_condition: np.ndarray,
+        M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        # Deprecated parameter name for backward compatibility
+        m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve FP system using particle method with unified API.
@@ -340,7 +423,8 @@ class FPParticleSolver(BaseFPSolver):
           Returns density on collocation points (true meshfree representation)
 
         Args:
-            m_initial_condition: Initial density (grid or particle-based depending on mode)
+            M_initial: Initial density m₀(x) (grid or particle-based depending on mode)
+            m_initial_condition: DEPRECATED, use M_initial
             drift_field: Drift field specification (optional):
                 - None: Zero drift (pure diffusion)
                 - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
@@ -356,15 +440,34 @@ class FPParticleSolver(BaseFPSolver):
                 - HYBRID mode: (Nt, Nx) on grid
                 - COLLOCATION mode: (Nt, N_particles) on particles
         """
+        # Handle deprecated parameter name
+        if m_initial_condition is not None:
+            if M_initial is not None:
+                raise ValueError(
+                    "Cannot specify both M_initial and m_initial_condition. "
+                    "Use M_initial (m_initial_condition is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_initial = m_initial_condition
+
+        # Validate required parameter
+        if M_initial is None:
+            raise ValueError("M_initial is required")
+
         # Handle drift_field parameter
         if drift_field is None:
             # Zero drift (pure diffusion): create zero U field for internal use
-            Nt = self.problem.Nt + 1
+            params = self._get_grid_params()
+            Nt = params["Nt"]
             if self.mode == ParticleMode.COLLOCATION:
                 N_points = len(self.collocation_points)
                 effective_U = np.zeros((Nt, N_points))
             else:
-                Nx = self.problem.Nx + 1
+                Nx = params["Nx"]
                 effective_U = np.zeros((Nt, Nx))
         elif isinstance(drift_field, np.ndarray):
             # Precomputed drift field (including MFG drift = -∇U/λ)
@@ -413,12 +516,13 @@ class FPParticleSolver(BaseFPSolver):
             # Route to appropriate solver based on mode
             if self.mode == ParticleMode.COLLOCATION:
                 # Collocation mode: particles → particles (no KDE)
-                return self._solve_fp_system_collocation(m_initial_condition, effective_U)
+                return self._solve_fp_system_collocation(M_initial, effective_U)
             else:
                 # Hybrid mode: particles → grid (existing behavior with strategy selection)
                 # Determine problem size for strategy selection
-                Nt = self.problem.Nt + 1
-                Nx = self.problem.Nx + 1
+                params = self._get_grid_params()
+                Nt = params["Nt"]
+                Nx = params["Nx"]
                 problem_size = (self.num_particles, Nx, Nt)
 
                 # Select optimal strategy (GPU vs CPU vs Hybrid)
@@ -430,26 +534,27 @@ class FPParticleSolver(BaseFPSolver):
 
                 # Execute using selected strategy's pipeline
                 if self.current_strategy.name == "cpu":
-                    return self._solve_fp_system_cpu(m_initial_condition, effective_U)
+                    return self._solve_fp_system_cpu(M_initial, effective_U)
                 else:
                     # GPU or Hybrid strategy (both use GPU pipeline)
-                    return self._solve_fp_system_gpu(m_initial_condition, effective_U)
+                    return self._solve_fp_system_gpu(M_initial, effective_U)
         finally:
             # Restore original sigma
             self.problem.sigma = original_sigma
 
     def _solve_fp_system_cpu(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """CPU pipeline - existing NumPy implementation."""
-        # print(f"****** Solving FP ({self.fp_method_name}) with {self.num_particles} particles ******")
-        Nx = self.problem.Nx + 1
-        Nt = self.problem.Nt + 1
-        Dx = self.problem.dx
-        Dt = self.problem.dt
-        sigma_sde = self.problem.sigma
-        coupling_coefficient = self.problem.coupling_coefficient
-        x_grid = self.problem.xSpace
-        xmin = self.problem.xmin
-        Lx = self.problem.Lx
+        # Use geometry-aware parameter extraction
+        params = self._get_grid_params()
+        Nx = params["Nx"]
+        Nt = params["Nt"]
+        Dx = params["Dx"]
+        Dt = params["Dt"]
+        sigma_sde = params["sigma"]
+        coupling_coefficient = params["coupling_coefficient"]
+        x_grid = params["xSpace"]
+        xmin = params["xmin"]
+        Lx = params["Lx"]
 
         if Nt == 0:
             return np.zeros((0, Nx))
@@ -570,17 +675,18 @@ class FPParticleSolver(BaseFPSolver):
             sample_from_density_gpu,
         )
 
-        # Problem parameters
-        Nx = self.problem.Nx + 1
-        Nt = self.problem.Nt + 1
-        Dx = self.problem.dx
-        Dt = self.problem.dt
-        sigma_sde = self.problem.sigma
-        coupling_coefficient = self.problem.coupling_coefficient
-        x_grid = self.problem.xSpace
-        xmin = self.problem.xmin
-        xmax = xmin + self.problem.Lx
-        Lx = self.problem.Lx
+        # Use geometry-aware parameter extraction
+        params = self._get_grid_params()
+        Nx = params["Nx"]
+        Nt = params["Nt"]
+        Dx = params["Dx"]
+        Dt = params["Dt"]
+        sigma_sde = params["sigma"]
+        coupling_coefficient = params["coupling_coefficient"]
+        x_grid = params["xSpace"]
+        xmin = params["xmin"]
+        xmax = params["xmax"]
+        Lx = params["Lx"]
 
         if Nt == 0:
             return np.zeros((0, Nx))
@@ -807,10 +913,10 @@ if __name__ == "__main__":
     """Quick smoke test for development."""
     print("Testing FPParticleSolver...")
 
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
 
     # Test 1D problem with particle solver
-    problem = ExampleMFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
     solver = FPParticleSolver(problem, num_particles=1000, mode="hybrid")
 
     # Test solver initialization
@@ -824,7 +930,7 @@ if __name__ == "__main__":
     U_test = np.zeros((problem.Nt + 1, problem.Nx + 1))
     M_init = problem.m_init
 
-    M_solution = solver.solve_fp_system(M_init, U_test)
+    M_solution = solver.solve_fp_system(M_initial=M_init, drift_field=U_test)
 
     assert M_solution.shape == (problem.Nt + 1, problem.Nx + 1)
     assert not np.any(np.isnan(M_solution))

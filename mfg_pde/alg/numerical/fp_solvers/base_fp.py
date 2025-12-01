@@ -230,9 +230,9 @@ if __name__ == "__main__":
     print("  BaseFPSolver class available")
 
     # Test that BaseFPSolver is abstract (cannot be instantiated)
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
 
-    problem = ExampleMFGProblem(Nx=20, Nt=10, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=20, Nt=10, T=1.0, sigma=0.1)
 
     try:
         # This should fail because BaseFPSolver is abstract

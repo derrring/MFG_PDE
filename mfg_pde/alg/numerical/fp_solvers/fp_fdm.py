@@ -66,7 +66,7 @@ class FPFDMSolver(BaseFPSolver):
         elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
             # Try to get BC from grid geometry (Phase 2 integration)
             try:
-                self.boundary_conditions = problem.geometry.get_boundary_handler(bc_type="no_flux")
+                self.boundary_conditions = problem.geometry.get_boundary_handler()
             except Exception:
                 # Fallback if geometry BC retrieval fails
                 from mfg_pde.geometry.boundary import no_flux_bc
@@ -104,11 +104,13 @@ class FPFDMSolver(BaseFPSolver):
 
     def solve_fp_system(
         self,
-        m_initial_condition: np.ndarray,
+        M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,
         tensor_diffusion_field: np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        # Deprecated parameter name for backward compatibility
+        m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve FP system forward in time with general drift and diffusion support.
@@ -118,8 +120,10 @@ class FPFDMSolver(BaseFPSolver):
 
         Parameters
         ----------
+        M_initial : np.ndarray
+            Initial density m₀(x). Shape: (Nx+1,) for 1D or (N1-1, N2-1, ...) for nD
         m_initial_condition : np.ndarray
-            Initial density. Shape: (Nx+1,) for 1D or (N1-1, N2-1, ...) for nD
+            DEPRECATED, use M_initial
         drift_field : np.ndarray or callable, optional
             Drift field specification:
             - None: Zero drift (pure diffusion)
@@ -211,6 +215,26 @@ class FPFDMSolver(BaseFPSolver):
         ...     return np.diag([sigma_parallel, sigma_perp])
         >>> M = solver.solve_fp_system(m0, tensor_diffusion_field=anisotropic_crowd)
         """
+        import warnings
+
+        # Handle deprecated parameter name
+        if m_initial_condition is not None:
+            if M_initial is not None:
+                raise ValueError(
+                    "Cannot specify both M_initial and m_initial_condition. "
+                    "Use M_initial (m_initial_condition is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_initial = m_initial_condition
+
+        # Validate required parameter
+        if M_initial is None:
+            raise ValueError("M_initial is required")
+
         # Handle drift_field parameter
         if drift_field is None:
             # Zero drift (pure diffusion): create zero U field for internal use
@@ -268,7 +292,7 @@ class FPFDMSolver(BaseFPSolver):
 
             # Route to nD solver with tensor diffusion
             return _solve_fp_nd_full_system(
-                m_initial_condition=m_initial_condition,
+                m_initial_condition=M_initial,
                 U_solution_for_drift=effective_U,
                 problem=self.problem,
                 boundary_conditions=self.boundary_conditions,
@@ -294,7 +318,7 @@ class FPFDMSolver(BaseFPSolver):
             # Route to callable solver (no need to set effective_sigma)
             if self.dimension == 1:
                 return self._solve_fp_1d_with_callable(
-                    m_initial_condition=m_initial_condition,
+                    m_initial_condition=M_initial,
                     drift_field=effective_U,
                     diffusion_callable=diffusion_field,
                     show_progress=show_progress,
@@ -316,7 +340,7 @@ class FPFDMSolver(BaseFPSolver):
                 self.problem.sigma = effective_sigma
 
             try:
-                return self._solve_fp_1d(m_initial_condition, effective_U, show_progress)
+                return self._solve_fp_1d(M_initial, effective_U, show_progress)
             finally:
                 # Restore original sigma
                 self.problem.sigma = original_sigma
@@ -324,7 +348,7 @@ class FPFDMSolver(BaseFPSolver):
             # Multi-dimensional solver via full nD system (not dimensional splitting)
             # Pass diffusion_field directly (handles callable, array, scalar)
             return _solve_fp_nd_full_system(
-                m_initial_condition=m_initial_condition,
+                m_initial_condition=M_initial,
                 U_solution_for_drift=effective_U,
                 problem=self.problem,
                 boundary_conditions=self.boundary_conditions,
@@ -872,7 +896,7 @@ def _solve_fp_nd_full_system(
     U_solution_for_drift : np.ndarray
         Value function over time-space grid. Shape: (Nt+1, N₁, N₂, ..., Nₐ)
         Used to compute drift velocity v = -coupling_coefficient ∇U
-    problem : GridBasedMFGProblem
+    problem : MFGProblem
         The MFG problem definition with geometry and parameters
     boundary_conditions : BoundaryConditions | None
         Boundary condition specification (default: no-flux)
@@ -1227,7 +1251,7 @@ def _solve_timestep_full_nd(
         Current density field. Shape: (N₁, N₂, ..., Nₐ)
     U_current : np.ndarray
         Current value function. Shape: (N₁, N₂, ..., Nₐ)
-    problem : GridBasedMFGProblem
+    problem : MFGProblem
         Problem definition
     dt : float
         Time step
@@ -1561,10 +1585,10 @@ if __name__ == "__main__":
     """Quick smoke test for development."""
     print("Testing FPFDMSolver...")
 
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
 
     # Test 1D problem
-    problem = ExampleMFGProblem(Nx=40, Nt=25, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=40, Nt=25, T=1.0, sigma=0.1)
     solver = FPFDMSolver(problem, boundary_conditions=BoundaryConditions(type="no_flux"))
 
     # Test solver initialization

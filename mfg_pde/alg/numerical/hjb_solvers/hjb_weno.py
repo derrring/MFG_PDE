@@ -1,6 +1,8 @@
 """
 WENO Family HJB Solvers for Mean Field Games
 
+NOTE: API parameter names updated in v0.11.0. See docs/NAMING_CONVENTIONS.md for details.
+
 This module implements the complete family of WENO (Weighted Essentially Non-Oscillatory)
 schemes for solving Hamilton-Jacobi-Bellman equations in Mean Field Games.
 
@@ -35,6 +37,7 @@ References:
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -602,10 +605,14 @@ class HJBWenoSolver(BaseHJBSolver):
 
     def solve_hjb_system(
         self,
-        M_density_evolution_from_FP: np.ndarray,
-        U_final_condition_at_T: np.ndarray,
-        U_from_prev_picard: np.ndarray,
+        M_density: np.ndarray | None = None,
+        U_terminal: np.ndarray | None = None,
+        U_coupling_prev: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | None = None,
+        # Deprecated parameter names for backward compatibility
+        M_density_evolution_from_FP: np.ndarray | None = None,
+        U_final_condition_at_T: np.ndarray | None = None,
+        U_from_prev_picard: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve the complete HJB system using WENO spatial discretization.
@@ -615,22 +622,63 @@ class HJBWenoSolver(BaseHJBSolver):
         - 2D/3D/nD: Dimensional splitting with WENO in each direction
 
         Args:
-            M_density_evolution_from_FP: Density evolution m(t,x[,y[,z[,...]]) from FP solver
-            U_final_condition_at_T: Terminal condition u(T,x[,y[,z[,...]]])
-            U_from_prev_picard: Value function from previous Picard iteration
+            M_density: Density m(t,x) from FP solver
+            U_terminal: Terminal condition u(T,x)
+            U_coupling_prev: Value function from previous coupling iteration
+            diffusion_field: Optional diffusion coefficient override
 
         Returns:
-            U_solved: Complete solution u(t,x[,y[,z[,...]]]) over time domain
+            U_solved: Complete solution u(t,x) over time domain
         """
+        # Handle deprecated parameter names with warnings
+        if M_density_evolution_from_FP is not None:
+            if M_density is not None:
+                raise ValueError("Cannot specify both 'M_density' and deprecated 'M_density_evolution_from_FP'")
+            warnings.warn(
+                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution_from_FP
+
+        if U_final_condition_at_T is not None:
+            if U_terminal is not None:
+                raise ValueError("Cannot specify both 'U_terminal' and deprecated 'U_final_condition_at_T'")
+            warnings.warn(
+                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_terminal = U_final_condition_at_T
+
+        if U_from_prev_picard is not None:
+            if U_coupling_prev is not None:
+                raise ValueError("Cannot specify both 'U_coupling_prev' and deprecated 'U_from_prev_picard'")
+            warnings.warn(
+                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_coupling_prev = U_from_prev_picard
+
+        # Validate required parameters
+        if M_density is None:
+            raise ValueError("M_density is required")
+        if U_terminal is None:
+            raise ValueError("U_terminal is required")
+        if U_coupling_prev is None:
+            raise ValueError("U_coupling_prev is required")
+
+        # Dispatch to dimensional solvers (using internal variable names)
         if self.dimension == 1:
-            return self._solve_hjb_system_1d(M_density_evolution_from_FP, U_final_condition_at_T, U_from_prev_picard)
+            return self._solve_hjb_system_1d(M_density, U_terminal, U_coupling_prev)
         elif self.dimension == 2:
-            return self._solve_hjb_system_2d(M_density_evolution_from_FP, U_final_condition_at_T, U_from_prev_picard)
+            return self._solve_hjb_system_2d(M_density, U_terminal, U_coupling_prev)
         elif self.dimension == 3:
-            return self._solve_hjb_system_3d(M_density_evolution_from_FP, U_final_condition_at_T, U_from_prev_picard)
+            return self._solve_hjb_system_3d(M_density, U_terminal, U_coupling_prev)
         else:
             # Use generalized nD solver for dimensions > 3
-            return self._solve_hjb_system_nd(M_density_evolution_from_FP, U_final_condition_at_T, U_from_prev_picard)
+            return self._solve_hjb_system_nd(M_density, U_terminal, U_coupling_prev)
 
     def _solve_hjb_system_1d(
         self,
@@ -1206,10 +1254,10 @@ if __name__ == "__main__":
 
     import numpy as np
 
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
 
     # Test 1D problem
-    problem_1d = ExampleMFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    problem_1d = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
 
     # Test standard WENO variant
     solver_1d = HJBWenoSolver(problem_1d, weno_variant="weno-z")

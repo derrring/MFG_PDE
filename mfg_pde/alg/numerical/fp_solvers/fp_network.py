@@ -111,16 +111,19 @@ class FPNetworkSolver(BaseFPSolver):
 
     def solve_fp_system(
         self,
-        m_initial_condition: np.ndarray,
+        M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        # Deprecated parameter name for backward compatibility
+        m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve FP system on network with unified drift and diffusion API.
 
         Args:
-            m_initial_condition: Initial density m_0(i)
+            M_initial: Initial density m₀(i)
+            m_initial_condition: DEPRECATED, use M_initial
             drift_field: Drift field specification (optional):
                 - None: Zero drift (pure diffusion on network)
                 - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
@@ -134,6 +137,26 @@ class FPNetworkSolver(BaseFPSolver):
         Returns:
             (Nt+1, num_nodes) density evolution
         """
+        import warnings
+
+        # Handle deprecated parameter name
+        if m_initial_condition is not None:
+            if M_initial is not None:
+                raise ValueError(
+                    "Cannot specify both M_initial and m_initial_condition. "
+                    "Use M_initial (m_initial_condition is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_initial = m_initial_condition
+
+        # Validate required parameter
+        if M_initial is None:
+            raise ValueError("M_initial is required")
+
         # Handle drift_field parameter
         if drift_field is None:
             # Zero drift (pure diffusion): create zero U field for internal use
@@ -180,7 +203,7 @@ class FPNetworkSolver(BaseFPSolver):
             M = np.zeros((Nt + 1, self.num_nodes))
 
             # Set initial condition
-            M[0, :] = m_initial_condition
+            M[0, :] = M_initial
 
             # Normalize initial condition if needed
             if self.enforce_mass_conservation:

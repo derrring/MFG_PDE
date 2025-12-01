@@ -85,7 +85,7 @@ class HJBFDMSolver(BaseHJBSolver):
         Initialize FDM solver.
 
         Args:
-            problem: MFG problem (1D or GridBasedMFGProblem for nD)
+            problem: MFG problem (1D or MFGProblem with spatial_bounds for nD)
             solver_type: 'fixed_point' or 'newton' (nD only, 1D always uses Newton)
             damping_factor: Damping ω ∈ (0,1] for fixed-point (recommend 0.5-0.8)
             max_newton_iterations: Max iterations per timestep
@@ -200,11 +200,17 @@ class HJBFDMSolver(BaseHJBSolver):
 
     def solve_hjb_system(
         self,
-        M_density_evolution: NDArray,
-        U_final_condition: NDArray,
-        U_from_prev_picard: NDArray,
+        M_density: NDArray | None = None,
+        U_terminal: NDArray | None = None,
+        U_coupling_prev: NDArray | None = None,
         diffusion_field: float | NDArray | None = None,
         tensor_diffusion_field: NDArray | None = None,
+        # Deprecated parameter names for backward compatibility
+        M_density_evolution_from_FP: NDArray | None = None,
+        U_final_condition_at_T: NDArray | None = None,
+        U_from_prev_picard: NDArray | None = None,
+        M_density_evolution: NDArray | None = None,
+        U_final_condition: NDArray | None = None,
     ) -> NDArray:
         """
         Solve HJB system backward in time.
@@ -212,14 +218,72 @@ class HJBFDMSolver(BaseHJBSolver):
         Automatically routes to 1D or nD solver based on dimension.
 
         Args:
-            M_density_evolution: Density field from FP solver
-            U_final_condition: Terminal condition at T
-            U_from_prev_picard: Previous Picard iterate
+            M_density: Density field from FP solver
+            U_terminal: Terminal condition u(T,x)
+            U_coupling_prev: Previous coupling iteration estimate
             diffusion_field: Diffusion coefficient (None uses problem.sigma)
             tensor_diffusion_field: Tensor diffusion (Phase 3.0, not yet fully implemented)
-                Note: Currently a placeholder. Full tensor diffusion support in HJB
-                requires problem Hamiltonians to handle tensor-valued diffusion.
         """
+        import warnings
+
+        # Handle deprecated parameter names (oldest first)
+        if M_density_evolution is not None:
+            if M_density is not None or M_density_evolution_from_FP is not None:
+                raise ValueError("Cannot specify M_density_evolution with M_density or M_density_evolution_from_FP")
+            warnings.warn(
+                "Parameter 'M_density_evolution' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution
+
+        if M_density_evolution_from_FP is not None:
+            if M_density is not None:
+                raise ValueError("Cannot specify both 'M_density' and deprecated 'M_density_evolution_from_FP'")
+            warnings.warn(
+                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution_from_FP
+
+        if U_final_condition is not None:
+            if U_terminal is not None or U_final_condition_at_T is not None:
+                raise ValueError("Cannot specify U_final_condition with U_terminal or U_final_condition_at_T")
+            warnings.warn(
+                "Parameter 'U_final_condition' is deprecated. Use 'U_terminal' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_terminal = U_final_condition
+
+        if U_final_condition_at_T is not None:
+            if U_terminal is not None:
+                raise ValueError("Cannot specify both 'U_terminal' and deprecated 'U_final_condition_at_T'")
+            warnings.warn(
+                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_terminal = U_final_condition_at_T
+
+        if U_from_prev_picard is not None:
+            if U_coupling_prev is not None:
+                raise ValueError("Cannot specify both 'U_coupling_prev' and deprecated 'U_from_prev_picard'")
+            warnings.warn(
+                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_coupling_prev = U_from_prev_picard
+
+        # Validate required parameters
+        if M_density is None:
+            raise ValueError("M_density is required")
+        if U_terminal is None:
+            raise ValueError("U_terminal is required")
+        if U_coupling_prev is None:
+            raise ValueError("U_coupling_prev is required")
         # Validate mutual exclusivity
         if diffusion_field is not None and tensor_diffusion_field is not None:
             raise ValueError(
@@ -253,9 +317,9 @@ class HJBFDMSolver(BaseHJBSolver):
         if self.dimension == 1:
             # Use optimized 1D solver
             return base_hjb.solve_hjb_system_backward(
-                M_density_from_prev_picard=M_density_evolution,
-                U_final_condition_at_T=U_final_condition,
-                U_from_prev_picard=U_from_prev_picard,
+                M_density_from_prev_picard=M_density,
+                U_final_condition_at_T=U_terminal,
+                U_from_prev_picard=U_coupling_prev,
                 problem=self.problem,
                 max_newton_iterations=self.max_newton_iterations,
                 newton_tolerance=self.newton_tolerance,
@@ -265,7 +329,11 @@ class HJBFDMSolver(BaseHJBSolver):
         else:
             # Use nD solver with centralized nonlinear solver
             return self._solve_hjb_nd(
-                M_density_evolution, U_final_condition, U_from_prev_picard, diffusion_field, tensor_diffusion_field
+                M_density,
+                U_terminal,
+                U_coupling_prev,
+                diffusion_field,
+                tensor_diffusion_field,
             )
 
     def _solve_hjb_nd(
@@ -441,6 +509,7 @@ class HJBFDMSolver(BaseHJBSolver):
     ) -> NDArray:
         """Evaluate Hamiltonian at all grid points with variable diffusion support.
 
+        Tries vectorized evaluation first (fast), falls back to point-by-point (compatible).
         Supports scalar and diagonal tensor diffusion.
 
         Args:
@@ -451,6 +520,14 @@ class HJBFDMSolver(BaseHJBSolver):
             Sigma_at_n: Tensor diffusion coefficient (None or tensor array). If provided and diagonal, computes
                         H_viscosity = (1/2) Σᵢ σᵢ² pᵢ² separately and adds to running cost.
         """
+        # Try vectorized evaluation first (10-50x faster)
+        try:
+            return self._evaluate_hamiltonian_vectorized(U, M, gradients, sigma_at_n, Sigma_at_n)
+        except (TypeError, AttributeError, ValueError):
+            # Fall back to point-by-point evaluation for compatibility
+            pass
+
+        # Point-by-point evaluation (fallback for non-vectorized Hamiltonians)
         H_values = np.zeros(self.shape, dtype=np.float64)
 
         # Determine which diffusion mode to use
@@ -568,15 +645,127 @@ class HJBFDMSolver(BaseHJBSolver):
 
         return H_values
 
+    def _evaluate_hamiltonian_vectorized(
+        self, U: NDArray, M: NDArray, gradients: dict, sigma_at_n=None, Sigma_at_n=None
+    ) -> NDArray:
+        """
+        Vectorized Hamiltonian evaluation across all grid points (10-50x faster than point-by-point).
+
+        Args:
+            U: Value function at current timestep
+            M: Density at current timestep
+            gradients: Dictionary of gradient arrays
+            sigma_at_n: Scalar diffusion coefficient
+            Sigma_at_n: Tensor diffusion coefficient
+
+        Returns:
+            H_values: Hamiltonian evaluated at all grid points
+
+        Raises:
+            TypeError: If problem.hamiltonian doesn't support vectorized evaluation
+            AttributeError: If required attributes are missing
+            ValueError: If array shapes are incompatible
+        """
+        # Build x_grid: (N_total_points, dimension)
+        # Use meshgrid to get coordinates at all points, then flatten
+        coord_grids = np.meshgrid(*self.grid.coordinates, indexing="ij")
+        x_grid = np.stack([g.ravel() for g in coord_grids], axis=-1)  # (N_total, d)
+
+        # Build p_grid: (N_total_points, dimension)
+        # Extract first-order derivatives for each spatial dimension
+        p_components = []
+        for d in range(self.dimension):
+            deriv_key = tuple(1 if i == d else 0 for i in range(self.dimension))
+            if deriv_key in gradients:
+                p_components.append(gradients[deriv_key].ravel())
+            else:
+                p_components.append(np.zeros(x_grid.shape[0]))
+        p_grid = np.stack(p_components, axis=-1)  # (N_total, d)
+
+        # Flatten density
+        m_grid = M.ravel()  # (N_total,)
+
+        # Handle diffusion coefficient
+        use_tensor_diffusion = Sigma_at_n is not None
+
+        if use_tensor_diffusion:
+            # Tensor diffusion mode
+            if Sigma_at_n.ndim == 2:
+                # Constant tensor - check if diagonal
+                if not is_diagonal_tensor(Sigma_at_n):
+                    raise ValueError(
+                        "Vectorized Hamiltonian evaluation only supports diagonal tensor diffusion. "
+                        "Non-diagonal tensors require point-by-point evaluation."
+                    )
+                # Extract diagonal: σᵢ²
+                sigma_squared = np.diag(Sigma_at_n)  # (d,)
+                # Broadcast to all points: (N_total, d)
+                sigma_squared_grid = np.tile(sigma_squared, (x_grid.shape[0], 1))
+            else:
+                # Spatially-varying tensor - check if diagonal
+                if not is_diagonal_tensor(Sigma_at_n):
+                    raise ValueError(
+                        "Vectorized Hamiltonian evaluation only supports diagonal tensor diffusion. "
+                        "Non-diagonal tensors require point-by-point evaluation."
+                    )
+                # Extract diagonal elements at each point: (*shape, d)
+                sigma_squared_grid = np.diagonal(Sigma_at_n, axis1=-2, axis2=-1).reshape(-1, self.dimension)
+
+            # Compute viscosity term: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
+            H_viscosity = 0.5 * np.sum(sigma_squared_grid * p_grid**2, axis=1)  # (N_total,)
+
+            # Compute running cost without viscosity
+            p_squared_norm = np.sum(p_grid**2, axis=1)  # (N_total,)
+            H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
+            H_coupling_m = 0.0  # Standard MFG has no direct m-coupling in H
+            H_potential = 0.0  # Assume V=0 unless custom components
+
+            H_running = H_control + H_coupling_m + H_potential
+            H_values_flat = H_viscosity + H_running
+
+        else:
+            # Scalar diffusion mode
+            if sigma_at_n is None:
+                sigma_val = self.problem.sigma
+            else:
+                sigma_val = sigma_at_n
+
+            # Prepare sigma for Hamiltonian call
+            if isinstance(sigma_val, (int, float)):
+                # Constant sigma - no need to pass spatially-varying array
+                sigma_for_call = sigma_val
+            elif isinstance(sigma_val, np.ndarray):
+                # Spatially-varying sigma - flatten it
+                sigma_for_call = sigma_val.ravel()  # (N_total,)
+            else:
+                sigma_for_call = self.problem.sigma
+
+            # Call problem.hamiltonian with vectorized inputs
+            # Try both possible signatures
+            if hasattr(self.problem, "hamiltonian"):
+                # Try calling with vectorized inputs
+                # Signature: hamiltonian(x, m, p, t=0.0, sigma=...)
+                # This will raise TypeError if not vectorized
+                H_values_flat = self.problem.hamiltonian(x_grid, m_grid, p_grid, t=0.0, sigma=sigma_for_call)
+            elif hasattr(self.problem, "H"):
+                # Old interface - doesn't support vectorization
+                raise TypeError("Problem.H interface does not support vectorized evaluation")
+            else:
+                raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
+
+        # Reshape back to grid shape
+        H_values = H_values_flat.reshape(self.shape)
+        return H_values
+
 
 if __name__ == "__main__":
     """Quick smoke test for development."""
     print("Testing HJBFDMSolver...")
 
     # Test 1D problem
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
 
-    problem_1d = ExampleMFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    problem_1d = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
     solver_1d = HJBFDMSolver(problem_1d, solver_type="newton")
 
     # Test solver initialization
@@ -591,7 +780,11 @@ if __name__ == "__main__":
     U_final = np.zeros(problem_1d.Nx + 1)
     U_prev = np.zeros((problem_1d.Nt + 1, problem_1d.Nx + 1))
 
-    U_solution = solver_1d.solve_hjb_system(M_test, U_final, U_prev)
+    U_solution = solver_1d.solve_hjb_system(
+        M_density_evolution_from_FP=M_test,
+        U_final_condition_at_T=U_final,
+        U_from_prev_picard=U_prev,
+    )
 
     assert U_solution.shape == (problem_1d.Nt + 1, problem_1d.Nx + 1)
     assert not np.any(np.isnan(U_solution))

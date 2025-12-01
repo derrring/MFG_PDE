@@ -424,7 +424,7 @@ def compute_hjb_residual(
 
     # For m-coupling term, original notebook passed gradUkn, gradUknim1 (from prev Picard iter)
     # but mdmH_withM itself didn't use them. We'll pass an empty dict for now.
-    U_n_derivatives_for_m_coupling: dict[str, Any] = {}  # Not used by ExampleMFGProblem's term
+    U_n_derivatives_for_m_coupling: dict[str, Any] = {}  # Not used by MFGProblem's term
 
     for i in range(Nx):
         # Get scalar value for nan check (works for both NumPy and PyTorch)
@@ -528,7 +528,7 @@ def compute_hjb_jacobian(
 
     # Hamiltonian part & m-coupling term's Jacobian contribution
     # Try to get analytical/specific Jacobian contributions from the problem for H-part
-    # Crucially, pass U_k_n_from_prev_picard for ExampleMFGProblem's specific Jacobian
+    # Crucially, pass U_k_n_from_prev_picard for MFGProblem's specific Jacobian
     hamiltonian_jac_contrib = problem.get_hjb_hamiltonian_jacobian_contrib(
         U_k_n_from_prev_picard,
         t_idx_n,  # This is Uoldn from original notebook
@@ -987,9 +987,9 @@ if __name__ == "__main__":
     print("  Base HJB solver class and helpers available")
 
     # Test that BaseHJBSolver is abstract
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
 
-    problem = ExampleMFGProblem(Nx=10, Nt=5, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=10, Nt=5, T=1.0, sigma=0.1)
 
     try:
         base_solver = BaseHJBSolver(problem)

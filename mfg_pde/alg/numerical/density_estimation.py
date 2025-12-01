@@ -115,9 +115,12 @@ def gaussian_kde_gpu(
     kernel_vals = kernel_vals / normalization
 
     # Sum over particles, normalize by N
-    if hasattr(kernel_vals, "sum"):  # PyTorch
+    # Check for PyTorch tensor specifically (has 'dim' parameter)
+    try:
+        # PyTorch tensors use dim= parameter
         density_tensor = kernel_vals.sum(dim=1) / N
-    else:  # JAX
+    except TypeError:
+        # NumPy/JAX arrays use axis= parameter
         density_tensor = kernel_vals.sum(axis=1) / N
 
     # Convert back to NumPy
@@ -186,9 +189,12 @@ def gaussian_kde_gpu_internal(
     kernel_vals = kernel_vals / normalization
 
     # Sum over particles, normalize by N
-    if hasattr(kernel_vals, "sum"):  # PyTorch
+    # Check for PyTorch tensor specifically (has 'dim' parameter)
+    try:
+        # PyTorch tensors use dim= parameter
         density_tensor = kernel_vals.sum(dim=1) / N
-    else:  # JAX
+    except TypeError:
+        # NumPy/JAX arrays use axis= parameter
         density_tensor = kernel_vals.sum(axis=1) / N
 
     return density_tensor

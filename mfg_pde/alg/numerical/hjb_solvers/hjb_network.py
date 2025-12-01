@@ -102,34 +102,105 @@ class NetworkHJBSolver(BaseHJBSolver):
 
     def solve_hjb_system(
         self,
-        M_density_evolution: np.ndarray,
-        U_final_condition_at_T: np.ndarray,
-        U_from_prev_picard: np.ndarray | None = None,
+        M_density: np.ndarray | None = None,
+        U_terminal: np.ndarray | None = None,
+        U_coupling_prev: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | None = None,
+        # Deprecated parameter names for backward compatibility
+        M_density_evolution_from_FP: np.ndarray | None = None,
+        U_final_condition_at_T: np.ndarray | None = None,
+        U_from_prev_picard: np.ndarray | None = None,
+        M_density_evolution: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve HJB system on network with given density evolution.
 
         Args:
-            M_density_evolution: (Nt+1, num_nodes) density evolution from FP
-            U_final_condition_at_T: Terminal condition u(T, i)
-            U_from_prev_picard: Previous Picard iterate for Jacobian
+            M_density: (Nt+1, num_nodes) density evolution from FP solver
+            U_terminal: Terminal condition u(T, i)
+            U_coupling_prev: Previous Picard iterate for coupling
+            diffusion_field: Diffusion coefficient (not yet used in network solver)
+            M_density_evolution_from_FP: DEPRECATED, use M_density
+            U_final_condition_at_T: DEPRECATED, use U_terminal
+            U_from_prev_picard: DEPRECATED, use U_coupling_prev
+            M_density_evolution: DEPRECATED, use M_density
 
         Returns:
             (Nt+1, num_nodes) value function evolution
         """
+        import warnings
+
+        # Handle deprecated parameter names
+        if M_density_evolution_from_FP is not None:
+            if M_density is not None:
+                raise ValueError(
+                    "Cannot specify both M_density and M_density_evolution_from_FP. "
+                    "Use M_density (M_density_evolution_from_FP is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution_from_FP
+
+        if M_density_evolution is not None:
+            if M_density is not None:
+                raise ValueError(
+                    "Cannot specify both M_density and M_density_evolution. "
+                    "Use M_density (M_density_evolution is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'M_density_evolution' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution
+
+        if U_final_condition_at_T is not None:
+            if U_terminal is not None:
+                raise ValueError(
+                    "Cannot specify both U_terminal and U_final_condition_at_T. "
+                    "Use U_terminal (U_final_condition_at_T is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_terminal = U_final_condition_at_T
+
+        if U_from_prev_picard is not None:
+            if U_coupling_prev is not None:
+                raise ValueError(
+                    "Cannot specify both U_coupling_prev and U_from_prev_picard. "
+                    "Use U_coupling_prev (U_from_prev_picard is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_coupling_prev = U_from_prev_picard
+
+        # Validate required parameters
+        if M_density is None:
+            raise ValueError("M_density is required")
+        if U_terminal is None:
+            raise ValueError("U_terminal is required")
+
         Nt = self.network_problem.Nt
         U = np.zeros((Nt + 1, self.num_nodes))
 
         # Set terminal condition
-        U[Nt, :] = U_final_condition_at_T
+        U[Nt, :] = U_terminal
 
         # Backward time stepping
         for n in range(Nt - 1, -1, -1):
             t = self.times[n]
 
             # Current density
-            m_current = M_density_evolution[n, :]
+            m_current = M_density[n, :]
 
             # Solve single time step
             if self.scheme == "explicit":
@@ -205,9 +276,16 @@ class NetworkHJBSolver(BaseHJBSolver):
 
             try:
                 u_current = spsolve(system_matrix, u_current)
-            except Exception:
-                # Fallback to explicit if implicit solve fails
-                u_current = u_current - self.dt * diffusion_coeff * (L @ u_current)
+            except Exception as e:
+                error_msg = (
+                    f"Implicit diffusion solve failed in HJBNetworkSolver: {e}\n"
+                    "Possible causes:\n"
+                    "  1. System matrix is singular or poorly conditioned\n"
+                    "  2. Graph structure has numerical issues\n"
+                    "  3. Time step dt too large for diffusion coefficient\n"
+                    "Suggestion: Try reducing dt or checking graph connectivity"
+                )
+                raise RuntimeError(error_msg) from e
 
         return np.asarray(u_current)
 
@@ -278,22 +356,88 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
     def solve_hjb_system(
         self,
-        M_density_evolution: np.ndarray,
-        U_final_condition_at_T: np.ndarray,
-        U_from_prev_picard: np.ndarray | None = None,
+        M_density: np.ndarray | None = None,
+        U_terminal: np.ndarray | None = None,
+        U_coupling_prev: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | None = None,
+        # Deprecated parameter names for backward compatibility
+        M_density_evolution_from_FP: np.ndarray | None = None,
+        U_final_condition_at_T: np.ndarray | None = None,
+        U_from_prev_picard: np.ndarray | None = None,
+        M_density_evolution: np.ndarray | None = None,
     ) -> np.ndarray:
         """Solve HJB using policy iteration."""
+        import warnings
+
+        # Handle deprecated parameter names
+        if M_density_evolution_from_FP is not None:
+            if M_density is not None:
+                raise ValueError(
+                    "Cannot specify both M_density and M_density_evolution_from_FP. "
+                    "Use M_density (M_density_evolution_from_FP is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution_from_FP
+
+        if M_density_evolution is not None:
+            if M_density is not None:
+                raise ValueError(
+                    "Cannot specify both M_density and M_density_evolution. "
+                    "Use M_density (M_density_evolution is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'M_density_evolution' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution
+
+        if U_final_condition_at_T is not None:
+            if U_terminal is not None:
+                raise ValueError(
+                    "Cannot specify both U_terminal and U_final_condition_at_T. "
+                    "Use U_terminal (U_final_condition_at_T is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_terminal = U_final_condition_at_T
+
+        if U_from_prev_picard is not None:
+            if U_coupling_prev is not None:
+                raise ValueError(
+                    "Cannot specify both U_coupling_prev and U_from_prev_picard. "
+                    "Use U_coupling_prev (U_from_prev_picard is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_coupling_prev = U_from_prev_picard
+
+        # Validate required parameters
+        if M_density is None:
+            raise ValueError("M_density is required")
+        if U_terminal is None:
+            raise ValueError("U_terminal is required")
+
         Nt = self.network_problem.Nt
         U = np.zeros((Nt + 1, self.num_nodes))
 
         # Set terminal condition
-        U[Nt, :] = U_final_condition_at_T
+        U[Nt, :] = U_terminal
 
         # Backward time stepping with policy iteration
         for n in range(Nt - 1, -1, -1):
             t = self.times[n]
-            m_current = M_density_evolution[n, :]
+            m_current = M_density[n, :]
 
             U[n, :] = self._policy_iteration_step(U[n + 1, :], m_current, t)
 

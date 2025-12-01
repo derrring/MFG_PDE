@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import math
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -212,6 +213,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         self.adaptive_neighborhoods = adaptive_neighborhoods
         self.max_delta_multiplier = max_delta_multiplier
 
+        # Cache grid size info from geometry (handles nD cases where problem.Nx may be None)
+        self._n_spatial_grid_points = self._compute_n_spatial_grid_points()
+
         # Compute k_min from Taylor order if not provided
         from math import comb
 
@@ -244,6 +248,24 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Pre-compute GFDM structure
         self._build_neighborhood_structure()
         self._build_taylor_matrices()
+
+    def _compute_n_spatial_grid_points(self) -> int:
+        """Compute total number of spatial grid points from geometry.
+
+        Handles nD cases where problem.Nx may be None by using geometry info.
+        """
+        # First try to get from problem.Nx (1D case)
+        Nx = getattr(self.problem, "Nx", None)
+        if Nx is not None:
+            return Nx
+
+        # For nD cases, use geometry
+        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
+            grid_shape = self.problem.geometry.get_grid_shape()
+            return int(np.prod(grid_shape))
+
+        # Fallback: use number of collocation points
+        return self.n_points
 
     def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
         """Helper method to get boundary condition properties from either dict or dataclass."""
@@ -1480,43 +1502,88 @@ class HJBGFDMSolver(BaseHJBSolver):
 
     def solve_hjb_system(
         self,
-        M_density_evolution_from_FP: np.ndarray,
-        U_final_condition_at_T: np.ndarray,
-        U_from_prev_picard: np.ndarray,
+        M_density: np.ndarray | None = None,
+        U_terminal: np.ndarray | None = None,
+        U_coupling_prev: np.ndarray | None = None,
         show_progress: bool = True,
         diffusion_field: float | np.ndarray | None = None,
+        # Deprecated parameter names for backward compatibility
+        M_density_evolution_from_FP: np.ndarray | None = None,
+        U_final_condition_at_T: np.ndarray | None = None,
+        U_from_prev_picard: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve the HJB system using GFDM collocation method.
 
         Args:
-            M_density_evolution_from_FP: (Nt, ...) density evolution from FP solver (nD spatial grid)
-            U_final_condition_at_T: (...,) final condition for value function (nD spatial grid)
-            U_from_prev_picard: (Nt, ...) value function from previous Picard iteration (nD spatial grid)
+            M_density: (Nt, *spatial_shape) density from FP solver
+            U_terminal: (*spatial_shape,) terminal condition u(T,x)
+            U_coupling_prev: (Nt, *spatial_shape) previous coupling iteration estimate
             show_progress: Whether to display progress bar for timesteps
+            diffusion_field: Optional diffusion coefficient override
 
         Returns:
-            (Nt, ...) solution array (nD spatial grid)
+            (Nt, *spatial_shape) solution array
         """
+        # Handle deprecated parameter names with warnings
+        if M_density_evolution_from_FP is not None:
+            if M_density is not None:
+                raise ValueError("Cannot specify both 'M_density' and deprecated 'M_density_evolution_from_FP'")
+            warnings.warn(
+                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            M_density = M_density_evolution_from_FP
+
+        if U_final_condition_at_T is not None:
+            if U_terminal is not None:
+                raise ValueError("Cannot specify both 'U_terminal' and deprecated 'U_final_condition_at_T'")
+            warnings.warn(
+                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_terminal = U_final_condition_at_T
+
+        if U_from_prev_picard is not None:
+            if U_coupling_prev is not None:
+                raise ValueError("Cannot specify both 'U_coupling_prev' and deprecated 'U_from_prev_picard'")
+            warnings.warn(
+                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            U_coupling_prev = U_from_prev_picard
+
+        # Validate required parameters
+        if M_density is None:
+            raise ValueError("M_density is required")
+        if U_terminal is None:
+            raise ValueError("U_terminal is required")
+        if U_coupling_prev is None:
+            raise ValueError("U_coupling_prev is required")
+
         from mfg_pde.utils.progress import tqdm
 
         # Extract time dimension (works for arbitrary spatial dimensions)
-        Nt = M_density_evolution_from_FP.shape[0]
+        Nt = M_density.shape[0]
 
         # Store original spatial shape for reshaping output
-        self._output_spatial_shape = M_density_evolution_from_FP.shape[1:]
+        self._output_spatial_shape = M_density.shape[1:]
 
         # For GFDM, we work directly with collocation points
         # Map grid data to collocation points
-        U_solution_collocation = np.zeros((Nt, self.n_points))
-        M_collocation = self._map_grid_to_collocation_batch(M_density_evolution_from_FP)
-        U_prev_collocation = self._map_grid_to_collocation_batch(U_from_prev_picard)
+        # Output shape: (Nt + 1, n_points) to include terminal condition at t=T
+        U_solution_collocation = np.zeros((Nt + 1, self.n_points))
+        M_collocation = self._map_grid_to_collocation_batch(M_density)
+        U_prev_collocation = self._map_grid_to_collocation_batch(U_coupling_prev)
 
-        # Set final condition (flatten if nD)
-        U_solution_collocation[Nt - 1, :] = self._map_grid_to_collocation(U_final_condition_at_T.flatten())
+        # Set final condition at t=T (index Nt)
+        U_solution_collocation[Nt, :] = self._map_grid_to_collocation(U_terminal.flatten())
 
-        # Backward time stepping with progress bar
-        timestep_range = range(Nt - 2, -1, -1)
+        # Backward time stepping with progress bar (from Nt-1 down to 0)
+        timestep_range = range(Nt - 1, -1, -1)
         if show_progress:
             timestep_range = tqdm(
                 timestep_range,
@@ -1784,7 +1851,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         # If collocation points match grid size (including boundaries), return directly
         # Otherwise, map to grid interior points (Nx)
-        Nx_grid = getattr(self.problem, "Nx", self.n_points)
+        Nx_grid = self._n_spatial_grid_points
 
         # Check if collocation includes boundaries (Nx+1 points)
         if self.n_points == Nx_grid + 1:
@@ -1843,7 +1910,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             n_spatial_points = np.prod(spatial_shape)
         else:
             # Fallback for 1D case
-            Nx_grid = getattr(self.problem, "Nx", self.n_points)
+            Nx_grid = self._n_spatial_grid_points
             if self.n_points == Nx_grid + 1:
                 n_spatial_points = Nx_grid + 1
             else:
@@ -1867,7 +1934,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         Placeholder: Assumes collocation points are aligned with grid.
         """
         # Simple 1D mapping
-        Nx = getattr(self.problem, "Nx", self.n_points)
+        Nx = self._n_spatial_grid_points
         if self.n_points == Nx:
             return collocation_idx
         else:
@@ -1924,10 +1991,10 @@ if __name__ == "__main__":
 
     import numpy as np
 
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
 
     # Test 1D problem with uniform collocation points matching problem grid
-    problem_1d = ExampleMFGProblem(Nx=20, Nt=10, T=1.0, sigma=0.1)
+    problem_1d = MFGProblem(Nx=20, Nt=10, T=1.0, sigma=0.1)
 
     # Use problem grid points as collocation points to avoid index mismatch
     collocation_points = problem_1d.xSpace.reshape(-1, 1)
