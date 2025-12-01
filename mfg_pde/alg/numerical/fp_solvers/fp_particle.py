@@ -884,8 +884,13 @@ class FPParticleSolver(BaseFPSolver):
         Nt = params["Nt"]
         Dx = params["Dx"]
         Dt = params["Dt"]
-        sigma_sde = params["sigma"]
+        sigma = params["sigma"]
         coupling_coefficient = params["coupling_coefficient"]
+
+        # FP equation: dm/dt + div(m*alpha) = sigma * Laplacian(m)
+        # SDE: dX = alpha*dt + sqrt(2*sigma)*dW
+        # Convention: problem.sigma is the diffusion coefficient in FP equation
+        sigma_sde = np.sqrt(2.0 * sigma) if sigma > 1e-14 else 0.0
         x_grid = params["xSpace"]
         xmin = params["xmin"]
         Lx = params["Lx"]
@@ -1024,10 +1029,10 @@ class FPParticleSolver(BaseFPSolver):
         if Nt == 0:
             return np.zeros((0, *tuple(grid_shape)))
 
-        # Use sigma directly as the SDE noise coefficient (consistent with 1D solver)
-        # Convention: problem.sigma is the noise coefficient in dX = alpha*dt + sigma*dW
-        # The FP diffusion coefficient is D = sigma^2/2
-        sigma_sde = sigma
+        # FP equation: dm/dt + div(m*alpha) = sigma * Laplacian(m)
+        # SDE: dX = alpha*dt + sqrt(2*sigma)*dW
+        # Convention: problem.sigma is the diffusion coefficient in FP equation
+        sigma_sde = np.sqrt(2.0 * sigma) if sigma > 1e-14 else 0.0
 
         # Allocate arrays
         M_density_on_grid = np.zeros((Nt, *tuple(grid_shape)))
