@@ -103,7 +103,7 @@ from .numerical.convergence import (
     wrap_solver_with_adaptive_convergence,
 )
 from .numerical.integration import get_integration_info, trapezoid
-from .numerical.particle_interpolation import (
+from .numerical.particle.interpolation import (
     estimate_kde_bandwidth,
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
@@ -122,7 +122,7 @@ from .numerical.sdf_utils import (
 )
 
 # PDE coefficient handling
-from .pde_coefficients import CoefficientField, get_spatial_grid
+from .pde_coefficients import CoefficientField, CoefficientMode, check_adi_compatibility, get_spatial_grid
 from .solver_result import ConvergenceResult, MFGSolverResult, SolverResult, create_solver_result
 from .sparse_operations import (
     SparseMatrixBuilder,
@@ -248,6 +248,8 @@ __all__ = [
     "POLARS_AVAILABLE",
     # PDE coefficient handling
     "CoefficientField",
+    "CoefficientMode",
+    "check_adi_compatibility",
     "get_spatial_grid",
     # Drift field helpers for FP solvers
     "zero_drift",
