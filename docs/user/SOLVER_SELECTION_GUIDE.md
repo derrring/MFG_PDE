@@ -6,11 +6,11 @@
 ## Quick Start
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 
 # For most applications - use the default
-problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
+problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
@@ -169,10 +169,10 @@ When in doubt → Use Tier 2 (create_standard_solver) ✅
 
 ### Step 1: Start with Standard (Tier 2)
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 
-problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
+problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 
 # Use the default - works great!
 solver = create_standard_solver(problem, "fixed_point")

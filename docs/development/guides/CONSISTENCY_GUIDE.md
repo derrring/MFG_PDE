@@ -620,7 +620,7 @@ def __init__(self, problem, NiterNewton=None, max_newton_iterations=None, **kwar
 """MFG_PDE: Numerical Solvers for Mean Field Games"""
 
 # Core exports (most commonly used)
-from .core.mfg_problem import MFGProblem, ExampleMFGProblem
+from .core.mfg_problem import MFGProblem, MFGProblem
 from .core.boundaries import BoundaryConditions
 
 # Commonly used solvers (not all solvers)
@@ -637,7 +637,7 @@ __author__ = "MFG_PDE Development Team"
 
 # All exports for * imports (discouraged but needed)
 __all__ = [
-    "MFGProblem", "ExampleMFGProblem", "BoundaryConditions",
+    "MFGProblem", "MFGProblem", "BoundaryConditions",
     "ParticleCollocationSolver", "SilentAdaptiveParticleCollocationSolver", 
     "create_standard_solver", "create_accurate_solver", "create_research_solver",
     "MFGSolverConfig", "create_fast_config", "create_accurate_config"

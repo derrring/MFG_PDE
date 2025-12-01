@@ -51,7 +51,7 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.utils.numerical import create_lq_policy_problem
 
@@ -101,7 +101,7 @@ def solve_lq_mfg_with_value_iteration():
     print("=" * 80)
 
     # Create 1D LQ-MFG problem
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         Nx=100,  # Spatial grid points
         Nt=50,  # Time steps
         T=1.0,  # Time horizon

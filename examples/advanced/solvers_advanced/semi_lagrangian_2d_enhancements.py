@@ -26,9 +26,9 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -36,7 +36,7 @@ configure_research_logging("semi_lagrangian_2d", level="INFO")
 logger = get_logger(__name__)
 
 
-class Simple2DCrowdNavigationProblem(GridBasedMFGProblem):
+class Simple2DCrowdNavigationProblem(MFGProblem):
     """
     Simple 2D crowd navigation problem for demonstrating enhancements.
 
@@ -48,13 +48,20 @@ class Simple2DCrowdNavigationProblem(GridBasedMFGProblem):
 
     def __init__(
         self,
-        domain_bounds=(0.0, 1.0, 0.0, 1.0),
         grid_resolution=15,
-        time_domain=(0.5, 25),
-        diffusion_coeff=0.05,
+        time_horizon=0.5,
+        num_timesteps=25,
+        diffusion=0.05,
         coupling_strength=0.5,
     ):
-        super().__init__(domain_bounds, grid_resolution, time_domain, diffusion_coeff)
+        super().__init__(
+            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
+            spatial_discretization=[grid_resolution, grid_resolution],
+            T=time_horizon,
+            Nt=num_timesteps,
+            sigma=diffusion,
+        )
+        self.grid_resolution = grid_resolution
         self.coupling_strength = coupling_strength
         self.goal_position = np.array([0.8, 0.8])
         self.initial_position = np.array([0.2, 0.2])

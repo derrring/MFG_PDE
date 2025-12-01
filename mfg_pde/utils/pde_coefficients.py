@@ -7,6 +7,7 @@ eliminating code duplication across HJB, FP, and coupling solvers.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -15,6 +16,36 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from mfg_pde.core.mfg_problem import MFGProblem
+
+
+class CoefficientMode(Enum):
+    """
+    Specifies which variables a callable coefficient depends on.
+
+    Use this when your coefficient function doesn't depend on all (t, x, m) variables.
+
+    Examples
+    --------
+    Time-only diffusion:
+    >>> sigma_t = lambda t: 0.1 + 0.05 * t
+    >>> field = CoefficientField(sigma_t, 0.1, "diffusion", mode=CoefficientMode.TIME)
+
+    Space-only diffusion:
+    >>> sigma_x = lambda x: 0.1 * np.exp(-np.linalg.norm(x)**2)
+    >>> field = CoefficientField(sigma_x, 0.1, "diffusion", mode=CoefficientMode.SPACE)
+
+    Density-dependent (degenerate) diffusion:
+    >>> sigma_m = lambda m: 0.1 * np.sqrt(m + 1e-6)
+    >>> field = CoefficientField(sigma_m, 0.1, "diffusion", mode=CoefficientMode.DENSITY)
+    """
+
+    FULL = "full"  # σ(t, x, m) - all three variables
+    TIME = "time"  # σ(t) - time only
+    SPACE = "space"  # σ(x) - space only
+    DENSITY = "density"  # σ(m) - density only
+    TIME_SPACE = "time_space"  # σ(t, x) - time and space
+    TIME_DENSITY = "time_density"  # σ(t, m) - time and density
+    SPACE_DENSITY = "space_density"  # σ(x, m) - space and density
 
 
 class CoefficientField:
@@ -32,12 +63,16 @@ class CoefficientField:
         - float: Constant coefficient
         - ndarray: Precomputed spatially/temporally varying coefficient
         - Callable: State-dependent coefficient with signature (t, x, m) -> float | ndarray
+                   OR with keyword-only signature (*, t, x, m) for explicit dependencies
     default_value : float | ndarray
         Default value to use when field is None (typically problem.sigma or problem.drift)
     field_name : str
         Name of coefficient for error messages (e.g., "diffusion_field", "drift_field")
     dimension : int
         Spatial dimension (1 for 1D, 2 for 2D, etc.)
+    mode : CoefficientMode | str | None, optional
+        Specifies which variables the callable depends on. Required for legacy positional
+        callables that don't use all (t, x, m) arguments. Not needed for keyword-only callables.
 
     Examples
     --------
@@ -50,9 +85,19 @@ class CoefficientField:
     >>> field = CoefficientField(sigma_array, problem.sigma, "diffusion_field", dimension=1)
     >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
 
-    Callable diffusion:
-    >>> def porous_medium(t, x, m):
-    ...     return 0.1 * m
+    Callable diffusion (modern keyword-only style):
+    >>> sigma_tm = lambda *, t, m: 0.1 * t * np.sqrt(m)
+    >>> field = CoefficientField(sigma_tm, problem.sigma, "diffusion_field", dimension=1)
+    >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
+
+    Callable diffusion (legacy positional style with mode):
+    >>> sigma_t = lambda t: 0.1 + 0.05 * t
+    >>> field = CoefficientField(sigma_t, problem.sigma, "diffusion", mode="time")
+    >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
+
+    Porous medium diffusion:
+    >>> def porous_medium(*, m):
+    ...     return 0.1 * np.sqrt(m + 1e-6)
     >>> field = CoefficientField(porous_medium, problem.sigma, "diffusion_field", dimension=1)
     >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
     """
@@ -63,11 +108,13 @@ class CoefficientField:
         default_value: float | np.ndarray,
         field_name: str = "coefficient",
         dimension: int = 1,
+        mode: CoefficientMode | str | None = None,
     ):
         self.field = field
         self.default = default_value
         self.name = field_name
         self.dimension = dimension
+        self.mode = CoefficientMode(mode) if isinstance(mode, str) else mode
 
         # Cache type checks
         self._is_none = field is None
@@ -125,18 +172,62 @@ class CoefficientField:
         density: np.ndarray,
         dt: float | None,
     ) -> float | np.ndarray:
-        """Evaluate callable coefficient with validation."""
+        """
+        Evaluate callable coefficient with flexible signature support.
+
+        Tries keyword-only arguments first (modern style), then falls back to
+        mode-based positional arguments (legacy style).
+        """
         # Compute physical time
         t_current = timestep_idx * dt if dt is not None else timestep_idx
 
-        # Call the coefficient function
-        result = self.field(t_current, grid, density)
+        # Try keyword-only arguments first (modern, preferred style)
+        try:
+            result = self.field(t=t_current, x=grid, m=density)
+            return self._validate_callable_output(result, density.shape, timestep_idx)
+        except TypeError as e:
+            # Check if it's a keyword-only callable that needs partial arguments
+            error_msg = str(e)
+            if "unexpected keyword argument" in error_msg or "missing" in error_msg:
+                # Keyword-only callable - infer which arguments it needs
+                # Try different combinations
+                for args_dict in [
+                    {"t": t_current, "m": density},
+                    {"t": t_current, "x": grid},
+                    {"x": grid, "m": density},
+                    {"t": t_current},
+                    {"x": grid},
+                    {"m": density},
+                ]:
+                    try:
+                        result = self.field(**args_dict)
+                        return self._validate_callable_output(result, density.shape, timestep_idx)
+                    except TypeError:
+                        continue
+            # Not keyword-only, fall through to mode-based evaluation
 
-        # Validate and convert output
-        expected_shape = density.shape
-        validated_result = self._validate_callable_output(result, expected_shape, timestep_idx)
+        # Mode-based evaluation (legacy positional arguments)
+        if self.mode is None:
+            # Default: assume full signature for backward compatibility
+            result = self.field(t_current, grid, density)
+        elif self.mode == CoefficientMode.FULL:
+            result = self.field(t_current, grid, density)
+        elif self.mode == CoefficientMode.TIME:
+            result = self.field(t_current)
+        elif self.mode == CoefficientMode.SPACE:
+            result = self.field(grid)
+        elif self.mode == CoefficientMode.DENSITY:
+            result = self.field(density)
+        elif self.mode == CoefficientMode.TIME_SPACE:
+            result = self.field(t_current, grid)
+        elif self.mode == CoefficientMode.TIME_DENSITY:
+            result = self.field(t_current, density)
+        elif self.mode == CoefficientMode.SPACE_DENSITY:
+            result = self.field(grid, density)
+        else:
+            raise ValueError(f"Unknown coefficient mode: {self.mode}")
 
-        return validated_result
+        return self._validate_callable_output(result, density.shape, timestep_idx)
 
     def _validate_callable_output(self, output: Any, expected_shape: tuple, timestep_idx: int) -> float | np.ndarray:
         """
@@ -355,6 +446,84 @@ class CoefficientField:
         if np.any(sigma_tensor < 0):
             raise ValueError(f"{self.name} contains negative values (all entries must be ≥ 0)")
 
+    def has_mixed_derivatives(
+        self,
+        sigma_tensor: float | np.ndarray,
+        tolerance: float = 1e-10,
+    ) -> bool:
+        """
+        Check if diffusion tensor has off-diagonal terms (mixed derivatives).
+
+        Standard ADI methods cannot handle mixed derivatives (∂²u/∂x∂y terms).
+        Use this to detect when Craig-Sneyd or Hundsdorfer-Verwer schemes are needed.
+
+        Parameters
+        ----------
+        sigma_tensor : float | ndarray
+            Diffusion coefficient or tensor:
+            - Scalar: No mixed derivatives (isotropic)
+            - Diagonal vector (d,): No mixed derivatives
+            - Full tensor (d, d): Check off-diagonal entries
+            - Spatially varying (..., d, d): Check all tensors
+        tolerance : float, optional
+            Threshold for considering off-diagonal entries as zero (default: 1e-10)
+
+        Returns
+        -------
+        bool
+            True if tensor has significant off-diagonal terms (mixed derivatives)
+            False if scalar, diagonal, or nearly-diagonal
+
+        Examples
+        --------
+        Isotropic diffusion (no mixed):
+        >>> field.has_mixed_derivatives(0.1)
+        False
+
+        Diagonal anisotropic (no mixed):
+        >>> field.has_mixed_derivatives(np.array([0.1, 0.2]))
+        False
+
+        Full tensor with correlation (has mixed):
+        >>> Sigma = np.array([[0.1, 0.02], [0.02, 0.1]])
+        >>> field.has_mixed_derivatives(Sigma)
+        True
+        """
+        # Scalar: isotropic, no mixed derivatives
+        if isinstance(sigma_tensor, (int, float)):
+            return False
+
+        if not isinstance(sigma_tensor, np.ndarray):
+            return False
+
+        # 0D array: scalar-like
+        if sigma_tensor.ndim == 0:
+            return False
+
+        # 1D array: diagonal entries only, no mixed derivatives
+        if sigma_tensor.ndim == 1:
+            return False
+
+        # 2D array: single (d, d) tensor
+        if sigma_tensor.ndim == 2:
+            return self._tensor_has_off_diagonal(sigma_tensor, tolerance)
+
+        # Higher dimensional: spatially varying tensors (..., d, d)
+        if sigma_tensor.ndim >= 3 and sigma_tensor.shape[-2] == sigma_tensor.shape[-1]:
+            tensor_dim = sigma_tensor.shape[-1]
+            num_tensors = int(np.prod(sigma_tensor.shape[:-2]))
+            reshaped = sigma_tensor.reshape(num_tensors, tensor_dim, tensor_dim)
+
+            # Check if ANY tensor has off-diagonal terms
+            return any(self._tensor_has_off_diagonal(reshaped[idx], tolerance) for idx in range(num_tensors))
+
+        return False
+
+    def _tensor_has_off_diagonal(self, tensor: np.ndarray, tolerance: float) -> bool:
+        """Check if a single (d, d) tensor has significant off-diagonal entries."""
+        off_diag = tensor - np.diag(np.diag(tensor))
+        return np.max(np.abs(off_diag)) > tolerance
+
     def _check_single_tensor_psd(self, tensor: np.ndarray, tolerance: float) -> None:
         """
         Check that a single d×d tensor is symmetric and positive semi-definite.
@@ -391,6 +560,96 @@ class CoefficientField:
                 f"Found negative eigenvalue: λ_min = {min_eigenvalue:.6e} < 0. "
                 f"All eigenvalues: {eigenvalues}"
             )
+
+
+def check_adi_compatibility(
+    sigma: float | np.ndarray,
+    tolerance: float = 1e-10,
+) -> tuple[bool, str]:
+    """
+    Check if diffusion coefficient is compatible with standard ADI schemes.
+
+    Standard ADI (Alternating Direction Implicit) cannot handle mixed derivatives
+    (off-diagonal diffusion tensor terms like ∂²u/∂x∂y). This function detects
+    when modified schemes (Craig-Sneyd, Hundsdorfer-Verwer) are needed.
+
+    Parameters
+    ----------
+    sigma : float | ndarray
+        Diffusion coefficient:
+        - Scalar: σ² (isotropic) - ADI OK
+        - Vector (d,): diagonal [σ₁², σ₂², ...] - ADI OK
+        - Matrix (d, d): full tensor Σ - check off-diagonal
+        - Spatially varying (..., d, d): check all tensors
+    tolerance : float, optional
+        Threshold for off-diagonal entries (default: 1e-10)
+
+    Returns
+    -------
+    tuple[bool, str]
+        (is_compatible, message)
+        - is_compatible: True if standard ADI can be used
+        - message: Description of diffusion type
+
+    Examples
+    --------
+    >>> ok, msg = check_adi_compatibility(0.1)
+    >>> print(ok, msg)
+    True isotropic (scalar σ²)
+
+    >>> ok, msg = check_adi_compatibility(np.array([0.1, 0.2]))
+    >>> print(ok, msg)
+    True diagonal anisotropic
+
+    >>> Sigma = np.array([[0.1, 0.02], [0.02, 0.1]])
+    >>> ok, msg = check_adi_compatibility(Sigma)
+    >>> print(ok, msg)
+    False full tensor with off-diagonal terms (mixed derivatives)
+    """
+    # Scalar
+    if isinstance(sigma, (int, float)):
+        return True, "isotropic (scalar σ²)"
+
+    if not isinstance(sigma, np.ndarray):
+        return True, f"unknown type {type(sigma)}, assuming compatible"
+
+    # 0D array
+    if sigma.ndim == 0:
+        return True, "isotropic (scalar σ²)"
+
+    # 1D array: diagonal
+    if sigma.ndim == 1:
+        return True, "diagonal anisotropic"
+
+    # 2D array: (d, d) tensor
+    if sigma.ndim == 2:
+        off_diag = sigma - np.diag(np.diag(sigma))
+        max_off = np.max(np.abs(off_diag))
+        if max_off <= tolerance:
+            return True, "diagonal tensor"
+        else:
+            return False, f"full tensor with off-diagonal terms (max={max_off:.2e}, mixed derivatives)"
+
+    # Higher dimensional: spatially varying
+    if sigma.ndim >= 3 and sigma.shape[-2] == sigma.shape[-1]:
+        tensor_dim = sigma.shape[-1]
+        num_tensors = int(np.prod(sigma.shape[:-2]))
+        reshaped = sigma.reshape(num_tensors, tensor_dim, tensor_dim)
+
+        max_off_diag = 0.0
+        for idx in range(num_tensors):
+            off_diag = reshaped[idx] - np.diag(np.diag(reshaped[idx]))
+            max_off_diag = max(max_off_diag, np.max(np.abs(off_diag)))
+
+        if max_off_diag <= tolerance:
+            return True, "spatially varying diagonal tensor"
+        else:
+            return (
+                False,
+                f"spatially varying tensor with off-diagonal terms (max={max_off_diag:.2e}, mixed derivatives)",
+            )
+
+    return True, f"unknown structure (shape={sigma.shape}), assuming compatible"
 
 
 def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]:

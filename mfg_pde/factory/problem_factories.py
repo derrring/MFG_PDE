@@ -37,9 +37,9 @@ See examples/basic/custom_hamiltonian_derivs_demo.py for complete examples.
 
 Usage
 -----
->>> # For simple examples, use ExampleMFGProblem
->>> from mfg_pde import ExampleMFGProblem
->>> problem = ExampleMFGProblem()
+>>> # For simple examples, use MFGProblem
+>>> from mfg_pde import MFGProblem
+>>> problem = MFGProblem()
 >>>
 >>> # For custom problems, see custom_hamiltonian_derivs_demo.py
 >>> # Factory functions are provided but require the complex signature above
@@ -244,9 +244,9 @@ def create_mfg_problem(
                 **kwargs,
             )
         elif problem_type == "highdim":
-            from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-
-            return GridBasedMFGProblem(
+            # GridBasedMFGProblem was removed in v0.14.0
+            # Use MFGProblem with spatial_bounds and spatial_discretization instead
+            return MFGProblem(
                 geometry=geometry,
                 time_horizon=time_horizon,
                 num_timesteps=num_timesteps,
@@ -666,11 +666,11 @@ def create_highdim_problem(
     num_timesteps : int, default=100
         Number of time steps
     use_unified : bool, default=True
-        Use unified MFGProblem (True) or GridBasedMFGProblem (False)
+        Use unified MFGProblem (recommended)
 
     Returns
     -------
-    MFGProblem or GridBasedMFGProblem
+    MFGProblem
         Problem instance
 
     Examples

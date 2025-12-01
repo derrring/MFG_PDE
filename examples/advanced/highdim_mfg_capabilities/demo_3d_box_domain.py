@@ -1,22 +1,36 @@
 """
 3D MFG Demonstration: Crowd Dynamics in a Box Domain
 
+**DEPRECATED**: This example uses HighDimMFGProblem which has been removed in v0.14.0.
+For 3D problems on tensor product grids, use MFGProblem with spatial_bounds and
+spatial_discretization parameters instead.
+
+For unstructured mesh-based 3D problems (like this example), a future implementation
+will provide mesh-based MFG support.
+
 This example demonstrates solving a 3D Mean Field Game using the new high-dimensional
 capabilities of MFG_PDE. We model crowd evacuation in a 3D box with obstacles.
 """
 
-import sys
-from pathlib import Path
+raise NotImplementedError(
+    "This example uses HighDimMFGProblem which was removed in v0.14.0. "
+    "For 3D tensor product grids, use MFGProblem with spatial_bounds=[(x0,x1), (y0,y1), (z0,z1)] "
+    "and spatial_discretization=[Nx, Ny, Nz]. "
+    "For unstructured mesh-based 3D problems, a future implementation is planned."
+)
 
-import numpy as np
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+import numpy as np  # noqa: E402
 
 # Add MFG_PDE to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from mfg_pde import MFGComponents
-from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem, HybridMFGSolver
-from mfg_pde.geometry import Domain3D
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfg_pde import MFGComponents  # noqa: E402
+from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem, HybridMFGSolver  # noqa: E402
+from mfg_pde.geometry import Domain3D  # noqa: E402
+from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger  # noqa: E402
 
 # Configure logging
 configure_research_logging("3d_box_demo", level="INFO")

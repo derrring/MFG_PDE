@@ -13,7 +13,7 @@ from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.alg.numerical.mfg_solvers.fixed_point_iterator import FixedPointIterator
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary import neumann_bc
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
     # Setup
     np.random.seed(42)
     problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=51, T=1.0, Nt=51, sigma=1.0, coupling_coefficient=0.5)
-    bc = BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
+    bc = neumann_bc(dimension=1, value=0.0)
 
     fp_solver = FPParticleSolver(problem, num_particles=1000, normalize_kde_output=True, boundary_conditions=bc)
     hjb_solver = HJBFDMSolver(problem)

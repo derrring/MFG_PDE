@@ -780,14 +780,14 @@ Speedup ≈ 1/(0.1 + 0.9/4) = 1/0.325 ≈ 3.1×
 ### Basic AMR Usage
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_amr_solver
 from mfg_pde.geometry import Domain1D, periodic_bc
 
 ### 1D AMR Example ###
 # Create 1D problem
 domain_1d = Domain1D(0.0, 2.0, periodic_bc())
-problem_1d = ExampleMFGProblem(T=1.0, xmin=0.0, xmax=2.0, Nx=50, Nt=20)
+problem_1d = MFGProblem(T=1.0, xmin=0.0, xmax=2.0, Nx=50, Nt=20)
 problem_1d.domain = domain_1d
 problem_1d.dimension = 1
 
@@ -813,7 +813,7 @@ print(f"Final mesh size: {len(result.get('grid_points', []))}")
 
 ### 2D AMR Example ###
 # Create 2D problem
-problem_2d = ExampleMFGProblem(T=1.0, xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0,
+problem_2d = MFGProblem(T=1.0, xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0,
                                Nx=32, Ny=32, Nt=20)
 problem_2d.dimension = 2
 
@@ -889,14 +889,14 @@ The AMR enhancement works consistently across all problem dimensions:
 from mfg_pde.geometry import Domain1D, periodic_bc
 
 domain_1d = Domain1D(0.0, 1.0, periodic_bc())
-problem_1d = ExampleMFGProblem(T=1.0, xmin=0.0, xmax=1.0, Nx=50, Nt=20)
+problem_1d = MFGProblem(T=1.0, xmin=0.0, xmax=1.0, Nx=50, Nt=20)
 problem_1d.domain = domain_1d
 problem_1d.dimension = 1
 
 amr_1d = create_amr_solver(problem_1d, base_solver_type="fixed_point")
 
 # 2D Structured AMR - quadtree-based refinement
-problem_2d = ExampleMFGProblem(T=1.0, xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0,
+problem_2d = MFGProblem(T=1.0, xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0,
                                Nx=32, Ny=32, Nt=20)
 problem_2d.dimension = 2
 

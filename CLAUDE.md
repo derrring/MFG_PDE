@@ -88,7 +88,7 @@ Pragmatic approach optimized for research:
 
 ### **Import Style**
 ```python
-from mfg_pde import ExampleMFGProblem, BoundaryConditions
+from mfg_pde import MFGProblem, BoundaryConditions
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.utils.logging import get_logger, configure_research_logging
 ```
@@ -147,7 +147,7 @@ Claude Code must proactively check at these triggers:
 ### **Logging and Progress Bars**
 ```python
 from mfg_pde.utils.logging import get_logger, configure_research_logging
-from tqdm import tqdm
+from mfg_pde.utils.progress import tqdm  # Uses rich (preferred) with tqdm fallback
 
 configure_research_logging("session_name", level="INFO")
 logger = get_logger(__name__)
@@ -155,6 +155,8 @@ logger = get_logger(__name__)
 for iteration in tqdm(range(max_iterations), desc="Solving MFG"):
     # solver logic
 ```
+
+**Progress Bar Backend**: Rich only. No fallback - if rich is not installed, ImportError is raised.
 
 ---
 
@@ -228,13 +230,13 @@ class MySolver:
 
 if __name__ == "__main__":
     """Quick smoke test for development."""
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
     import matplotlib.pyplot as plt
 
     print("Testing MySolver...")
 
     # Basic convergence test
-    problem = ExampleMFGProblem()
+    problem = MFGProblem()
     solver = MySolver(problem)
     result = solver.solve()
 
@@ -466,7 +468,7 @@ Use targeted patterns preserving valuable code:
 **Dependencies**:
 - **Core**: numpy, scipy, matplotlib
 - **Interactive**: plotly, jupyter, nbformat (with fallbacks)
-- **Progress**: tqdm
+- **Progress**: rich
 - **Optional**: psutil
 
 **Installation**: Support both development (`pip install -e .`) and user installation.

@@ -16,20 +16,11 @@ Expected results:
 
 import numpy as np
 
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_basic_solver
-from mfg_pde.geometry import BoundaryConditions, TensorProductGrid
 
 
-class SimpleGeometry:
-    """Simple geometry wrapper for GridBasedMFGProblem."""
-
-    def __init__(self, grid, boundary_conditions):
-        self.grid = grid
-        self.boundary_conditions = boundary_conditions
-
-
-class CrowdMotion2D(GridBasedMFGProblem):
+class CrowdMotion2D(MFGProblem):
     """
     2D crowd motion problem for testing full nD solver.
 
@@ -44,27 +35,18 @@ class CrowdMotion2D(GridBasedMFGProblem):
         num_timesteps: int = 15,
         diffusion: float = 0.05,
     ):
-        # Create 2D tensor product grid
-        grid = TensorProductGrid(
-            dimension=2,
-            bounds=[(0.0, 1.0), (0.0, 1.0)],
-            num_points=[grid_resolution, grid_resolution],
-        )
-
-        # Create simple geometry with no-flux boundaries
-        domain = SimpleGeometry(grid=grid, boundary_conditions=BoundaryConditions(type="no_flux"))
-
-        # Problem parameters
-        self.start = np.array([0.2, 0.2])
-        self.goal = np.array([0.8, 0.8])
-
         super().__init__(
-            geometry=domain,
+            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
+            spatial_discretization=[grid_resolution, grid_resolution],
             T=time_horizon,
             Nt=num_timesteps,
             sigma=diffusion,
             coupling_coefficient=1.0,
         )
+
+        # Problem parameters
+        self.start = np.array([0.2, 0.2])
+        self.goal = np.array([0.8, 0.8])
 
     def initial_density(self, x):
         """Gaussian blob centered at start position."""
@@ -86,7 +68,7 @@ class CrowdMotion2D(GridBasedMFGProblem):
         return control_cost + congestion_cost
 
 
-class PureDiffusion2D(GridBasedMFGProblem):
+class PureDiffusion2D(MFGProblem):
     """
     Pure diffusion test (no advection) for baseline comparison.
 
@@ -101,26 +83,17 @@ class PureDiffusion2D(GridBasedMFGProblem):
         num_timesteps: int = 15,
         diffusion: float = 0.05,
     ):
-        # Create 2D tensor product grid
-        grid = TensorProductGrid(
-            dimension=2,
-            bounds=[(0.0, 1.0), (0.0, 1.0)],
-            num_points=[grid_resolution, grid_resolution],
-        )
-
-        # Create simple geometry with no-flux boundaries
-        domain = SimpleGeometry(grid=grid, boundary_conditions=BoundaryConditions(type="no_flux"))
-
-        # Center point for Gaussian
-        self.center = np.array([0.5, 0.5])
-
         super().__init__(
-            geometry=domain,
+            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
+            spatial_discretization=[grid_resolution, grid_resolution],
             T=time_horizon,
             Nt=num_timesteps,
             sigma=diffusion,
             coupling_coefficient=1.0,
         )
+
+        # Center point for Gaussian
+        self.center = np.array([0.5, 0.5])
 
     def initial_density(self, x):
         """Gaussian blob centered at domain center."""
@@ -178,8 +151,8 @@ def test_pure_diffusion():
 
     print("Running FP solver...")
     M_solution = fp_solver.solve_fp_system(
-        m_initial_condition=m0,
-        U_solution_for_drift=U_zero,
+        M_initial=m0,
+        drift_field=U_zero,
         show_progress=True,
     )
 

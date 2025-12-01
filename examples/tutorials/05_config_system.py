@@ -14,7 +14,7 @@ The ConfigBuilder provides a fluent API for creating solver configurations.
 It's the recommended way to configure solve_mfg().
 """
 
-from mfg_pde import ExampleMFGProblem, solve_mfg
+from mfg_pde import MFGProblem, solve_mfg
 from mfg_pde.factory import ConfigBuilder
 
 # ==============================================================================
@@ -26,7 +26,7 @@ print("TUTORIAL 05: ConfigBuilder System")
 print("=" * 70)
 print()
 
-problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=0.1, lam=0.5)
+problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=0.1, coupling_coefficient=0.5)
 
 print("METHOD 1: Default configuration (implicit)")
 print("-" * 70)

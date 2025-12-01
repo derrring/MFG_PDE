@@ -12,7 +12,7 @@ import numpy as np
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.backends.torch_backend import TorchBackend
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.boundary_conditions_1d import BoundaryConditions
+from mfg_pde.geometry.boundary import periodic_bc
 
 print("=" * 80)
 print("Track B Phase 2.1: GPU Speedup Analysis")
@@ -50,7 +50,7 @@ def benchmark_particle_solver(Nx: int, Nt: int, N_particles: int, device: str = 
         problem,
         num_particles=N_particles,
         kde_bandwidth=0.1,
-        boundary_conditions=BoundaryConditions(type="periodic"),
+        boundary_conditions=periodic_bc(dimension=1),
     )
     solver_cpu.backend = None
 
@@ -64,7 +64,7 @@ def benchmark_particle_solver(Nx: int, Nt: int, N_particles: int, device: str = 
         problem,
         num_particles=N_particles,
         kde_bandwidth=0.1,
-        boundary_conditions=BoundaryConditions(type="periodic"),
+        boundary_conditions=periodic_bc(dimension=1),
     )
     solver_gpu.backend = backend_gpu
 

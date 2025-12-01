@@ -24,7 +24,7 @@ This example uses the current API. See drift_helpers.py for future usage.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 
 
@@ -37,7 +37,7 @@ def main():
     print("This demonstrates FP solvers as general PDE tools, not just MFG-specific.")
 
     # Setup problem (using MFGProblem infrastructure for grid/time)
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         Nx=60,
         Nt=50,
         T=2.0,
@@ -66,7 +66,7 @@ def main():
     # Solve pure diffusion: drift_field=None means zero drift
     print("\nSolving pure diffusion (no advection)...")
     M_solution = solver.solve_fp_system(
-        m_initial_condition=m0,
+        M_initial=m0,
         drift_field=None,  # Zero drift (pure diffusion)
         show_progress=True,
     )

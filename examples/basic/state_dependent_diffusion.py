@@ -23,7 +23,8 @@ from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.geometry import BoundaryConditions, SimpleGrid1D
+from mfg_pde.geometry import SimpleGrid1D
+from mfg_pde.geometry.boundary.fdm_bc_1d import periodic_bc
 
 
 def scenario_porous_medium():
@@ -45,7 +46,7 @@ def scenario_porous_medium():
         return 0.1 * m
 
     # Create problem with geometry-based API
-    bc = BoundaryConditions(type="periodic")
+    bc = periodic_bc()
     domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
     domain.create_grid(num_points=101)
 
@@ -107,7 +108,7 @@ def scenario_crowd_dynamics():
         return D_min + (D_max - D_min) * (1 - m / m_max)
 
     # Create problem
-    bc = BoundaryConditions(type="periodic")
+    bc = periodic_bc()
     domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
     domain.create_grid(num_points=101)
 
@@ -163,7 +164,7 @@ def scenario_spatially_varying():
         return 0.05 + 0.1 * x
 
     # Create problem
-    bc = BoundaryConditions(type="periodic")
+    bc = periodic_bc()
     domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
     domain.create_grid(num_points=101)
 

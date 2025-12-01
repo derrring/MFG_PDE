@@ -22,7 +22,7 @@ from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
 def standard_problem():
     """Create standard 1D MFG problem using modern geometry-first API.
 
-    Equivalent to legacy ExampleMFGProblem() with defaults:
+    Standard MFGProblem configuration:
     - Domain: [0, 1] with 51 grid points
     - Time: T=1.0 with 51 time steps
     - Diffusion: sigma=1.0
@@ -401,7 +401,7 @@ class TestFPFDMSolverIntegration:
     """Integration tests with actual MFG problems."""
 
     def test_solver_with_example_problem(self, standard_problem):
-        """Test solver works with ExampleMFGProblem."""
+        """Test solver works with standard MFGProblem."""
         solver = FPFDMSolver(standard_problem)
 
         assert solver is not None

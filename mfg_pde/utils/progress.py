@@ -3,196 +3,210 @@
 Progress Monitoring Utilities for MFG_PDE
 
 Provides elegant progress bars, timing, and performance monitoring for long-running
-solver operations using modern tools like rich (preferred) or tqdm (fallback).
+solver operations using rich.
+
+Usage:
+    # Simple tqdm-like interface
+    from mfg_pde.utils.progress import tqdm, trange
+    for i in tqdm(range(100), desc="Processing"):
+        ...
+
+    # Advanced rich features (panels, tables, live displays)
+    from mfg_pde.utils.progress import console, Progress, Panel, Table
+    with Progress() as progress:
+        task = progress.add_task("Solving...", total=100)
+        ...
+
+    # Solver-specific utilities
+    from mfg_pde.utils.progress import solver_progress, SolverTimer
 """
 
 from __future__ import annotations
 
 import functools
 import time
-import warnings
 from contextlib import contextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-# Try rich first (preferred), then tqdm, then fallback
-PROGRESS_BACKEND = None
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
-try:
-    from rich.console import Console
-    from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
+# Rich is required
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
+from rich.table import Table
 
-    PROGRESS_BACKEND = "rich"
-    RICH_AVAILABLE = True
-    TQDM_AVAILABLE = False  # Rich is preferred, so tqdm not used
-    console = Console()
+console = Console()
 
-except ImportError:
-    RICH_AVAILABLE = False
-    console = None
+__all__ = [
+    # Rich components
+    "console",
+    "Progress",
+    "Panel",
+    "Table",
+    # tqdm-like interface
+    "tqdm",
+    "trange",
+    "RichProgressBar",
+    # Solver utilities
+    "SolverTimer",
+    "IterationProgress",
+    "solver_progress",
+    "timed_operation",
+    "time_solver_operation",
+    "progress_context",
+]
 
-    try:
-        from tqdm import tqdm as _tqdm_real
-        from tqdm import trange as _trange_real
 
-        PROGRESS_BACKEND = "tqdm"
-        TQDM_AVAILABLE = True
-        tqdm = _tqdm_real
-        trange = _trange_real
-    except ImportError:
-        PROGRESS_BACKEND = "fallback"
-        TQDM_AVAILABLE = False
-
-
-# Rich-based progress bar wrapper
 class RichProgressBar:
-    """Rich progress bar that mimics tqdm interface."""
+    """
+    Rich-based progress bar with tqdm-compatible interface.
 
-    def __init__(self, iterable=None, total=None, desc=None, disable=False, **kwargs):
+    Provides familiar tqdm API while using rich's rendering.
+    For advanced rich features, use Progress directly.
+    """
+
+    def __init__(
+        self,
+        iterable: Any = None,
+        total: int | None = None,
+        desc: str | None = None,
+        disable: bool = False,
+        **kwargs: Any,
+    ):
         self.iterable = iterable
         self.total = total or (len(iterable) if iterable and hasattr(iterable, "__len__") else None)
         self.desc = desc or ""
         self.disable = disable
         self.n = 0
-        self.progress = None
-        self.task_id = None
-        self.postfix_data = {}
+        self.progress: Progress | None = None
+        self.task_id: int | None = None
+        self.postfix_data: dict[str, Any] = {}
+        self._started = False
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         if self.iterable is None:
             return iter([])
-        for item in self.iterable:
-            yield item
-            self.update(1)
 
-    def __enter__(self):
-        if not self.disable and RICH_AVAILABLE:
-            self.progress = Progress(
-                TextColumn("[bold blue]{task.description}"),
-                BarColumn(),
-                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                TextColumn("•"),
-                TextColumn("{task.completed}/{task.total}"),
-                TimeElapsedColumn(),
-                TextColumn("•"),
-                TimeRemainingColumn(),
-                console=console,
-            )
-            self.progress.__enter__()
-            self.task_id = self.progress.add_task(self.desc, total=self.total or 100)
-        return self
+        if self.disable:
+            yield from self.iterable
+            return
 
-    def __exit__(self, *args):
-        if self.progress:
-            self.progress.__exit__(*args)
-
-    def update(self, n=1):
-        self.n += n
-        if not self.disable and self.progress and self.task_id is not None:
-            # Update with postfix if available
-            desc = self.desc
-            if self.postfix_data:
-                postfix_str = ", ".join(f"{k}={v}" for k, v in self.postfix_data.items())
-                desc = f"{self.desc} [{postfix_str}]"
-            self.progress.update(self.task_id, advance=n, description=desc)
-
-    def set_postfix(self, **kwargs):
-        self.postfix_data.update(kwargs)
-        if not self.disable and self.progress and self.task_id is not None:
-            postfix_str = ", ".join(f"{k}={v}" for k, v in self.postfix_data.items())
-            self.progress.update(self.task_id, description=f"{self.desc} [{postfix_str}]")
-
-    def set_description(self, desc: str):
-        self.desc = desc
-        if not self.disable and self.progress and self.task_id is not None:
-            self.progress.update(self.task_id, description=desc)
-
-    def close(self):
-        if self.progress:
-            self.progress.stop()
-
-
-# Unified interface
-if PROGRESS_BACKEND == "rich":
-    tqdm = RichProgressBar
-
-    def trange(n: int, **kwargs) -> RichProgressBar:
-        return RichProgressBar(range(n), total=n, **kwargs)
-
-elif PROGRESS_BACKEND == "tqdm":
-    # tqdm already imported above
-    pass
-
-else:
-    # Fallback simple progress implementation
-    class tqdm:  # noqa: N801
-        def __init__(self, iterable=None, total=None, desc=None, disable=False, **kwargs):
-            self.iterable = iterable or range(total or 0)
-            self.total = total or (len(iterable) if iterable else 0)
-            self.desc = desc or ""
-            self.disable = disable
-            self.n = 0
-
-        def __iter__(self):
+        # Auto-start progress for iteration
+        with self:
             for item in self.iterable:
                 yield item
                 self.update(1)
 
-        def __enter__(self):
-            if not self.disable:
-                print(f"Starting {self.desc}..." if self.desc else "Starting...")
-            return self
+    def __enter__(self) -> RichProgressBar:
+        if not self.disable:
+            self.progress = Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(bar_width=40),
+                TaskProgressColumn(),
+                TextColumn("({task.completed}/{task.total})"),
+                TimeElapsedColumn(),
+                TextColumn("ETA:"),
+                TimeRemainingColumn(),
+                console=console,
+                transient=False,
+            )
+            self.progress.__enter__()
+            self.task_id = self.progress.add_task(self.desc, total=self.total or 100)
+            self._started = True
+        return self
 
-        def __exit__(self, *args: Any) -> None:
-            if not self.disable:
-                print(f"Completed {self.desc}!" if self.desc else "Completed!")
+    def __exit__(self, *args: Any) -> None:
+        if self.progress:
+            self.progress.__exit__(*args)
+            self._started = False
 
-        def update(self, n=1):
-            self.n += n
-            if not self.disable and self.total > 0:
-                progress = (self.n / self.total) * 100
-                if self.n % max(1, self.total // 10) == 0:  # Update every 10%
-                    print(f"Progress: {progress:.1f}% ({self.n}/{self.total})")
+    def update(self, n: int = 1) -> None:
+        """Advance progress by n steps."""
+        self.n += n
+        if not self.disable and self.progress and self.task_id is not None:
+            desc = self._format_description()
+            self.progress.update(self.task_id, advance=n, description=desc)
 
-        def set_postfix(self, **kwargs: Any) -> None:
-            pass  # Simple fallback ignores postfix
+    def set_postfix(self, **kwargs: Any) -> None:
+        """Set postfix values to display."""
+        self.postfix_data.update(kwargs)
+        if not self.disable and self.progress and self.task_id is not None:
+            desc = self._format_description()
+            self.progress.update(self.task_id, description=desc)
 
-        def close(self) -> None:
-            pass  # Simple fallback ignores close
+    def set_description(self, desc: str) -> None:
+        """Update the progress bar description."""
+        self.desc = desc
+        if not self.disable and self.progress and self.task_id is not None:
+            self.progress.update(self.task_id, description=self._format_description())
 
-        def set_description(self, desc: str) -> None:
-            self.desc = desc
+    def _format_description(self) -> str:
+        """Format description with postfix data."""
+        if self.postfix_data:
+            postfix_str = ", ".join(f"{k}={v}" for k, v in self.postfix_data.items())
+            return f"{self.desc} [{postfix_str}]"
+        return self.desc
 
-    def trange(n: int, **kwargs: Any) -> tqdm:  # type: ignore[name-defined]
-        return tqdm(range(n), **kwargs)
+    def close(self) -> None:
+        """Close the progress bar."""
+        if self.progress and self._started:
+            self.progress.stop()
+            self._started = False
+
+
+# tqdm-like interface using rich
+tqdm = RichProgressBar
+
+
+def trange(n: int, **kwargs: Any) -> RichProgressBar:
+    """Create progress bar over range(n)."""
+    return tqdm(range(n), total=n, **kwargs)
 
 
 class SolverTimer:
     """
     Context manager for timing solver operations with detailed statistics.
+
+    Example:
+        with SolverTimer("HJB solve") as timer:
+            result = solver.solve()
+        print(f"Took {timer.duration:.2f}s")
     """
 
     def __init__(self, description: str = "Operation", verbose: bool = True):
         self.description = description
         self.verbose = verbose
-        self.start_time = None
-        self.end_time = None
-        self.duration = None
+        self.start_time: float | None = None
+        self.end_time: float | None = None
+        self.duration: float | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> SolverTimer:
         self.start_time = time.perf_counter()
         if self.verbose:
-            print(f"Starting {self.description}...")
+            console.print(f"[bold blue]Starting {self.description}...[/]")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.end_time = time.perf_counter()
         self.duration = self.end_time - (self.start_time or 0)
 
         if self.verbose:
+            formatted = self.format_duration()
             if exc_type is None:
-                print(f"SUCCESS: {self.description} completed in {self.format_duration()}")
+                console.print(f"[bold green]SUCCESS:[/] {self.description} completed in {formatted}")
             else:
-                print(f"ERROR: {self.description} failed after {self.format_duration()}")
+                console.print(f"[bold red]ERROR:[/] {self.description} failed after {formatted}")
 
     def format_duration(self) -> str:
         """Format duration in human-readable form."""
@@ -217,63 +231,55 @@ class SolverTimer:
 class IterationProgress:
     """
     Advanced progress tracking for iterative solvers with convergence monitoring.
+
+    Example:
+        with IterationProgress(100, "Newton iteration") as progress:
+            for i in range(100):
+                error = solver.step()
+                progress.update(1, error=error)
+                if error < tol:
+                    break
     """
 
     def __init__(
         self,
         max_iterations: int,
         description: str = "Solver Iterations",
-        show_rate: bool = True,
-        show_eta: bool = True,
         update_frequency: int = 1,
         disable: bool = False,
     ):
         self.max_iterations = max_iterations
         self.description = description
-        self.show_rate = show_rate
-        self.show_eta = show_eta
         self.update_frequency = update_frequency
         self.disable = disable
 
-        # Progress bar configuration
-        self.pbar = None
-        self.start_time = None
+        self.pbar: RichProgressBar | None = None
+        self.start_time: float | None = None
         self.current_iteration = 0
 
-    def __enter__(self):
+    def __enter__(self) -> IterationProgress:
         if self.disable:
             return self
 
         self.start_time = time.perf_counter()
-
-        # Configure progress bar
-        bar_format = "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}"
-        if self.show_rate:
-            bar_format += " [{rate_fmt}"
-        if self.show_eta:
-            bar_format += ", {remaining}"
-        if self.show_rate or self.show_eta:
-            bar_format += "]"
-
         self.pbar = tqdm(
             total=self.max_iterations,
             desc=self.description,
-            bar_format=bar_format,
             disable=self.disable,
         )
-
+        self.pbar.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.pbar and hasattr(self.pbar, "close"):
-            self.pbar.close()
+    def __exit__(self, *args: Any) -> None:
+        if self.pbar:
+            self.pbar.__exit__(*args)
 
     def update(
         self,
         n: int = 1,
         error: float | None = None,
         additional_info: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Update progress with optional convergence information.
 
@@ -289,21 +295,44 @@ class IterationProgress:
 
         # Update every update_frequency iterations or on final iteration
         if self.current_iteration % self.update_frequency == 0 or self.current_iteration >= self.max_iterations:
-            # Prepare postfix information
-            postfix = {}
+            postfix: dict[str, Any] = {}
             if error is not None:
-                postfix["error"] = f"{error:.2e}"
+                postfix["err"] = f"{error:.2e}"
             if additional_info:
                 postfix.update(additional_info)
 
             self.pbar.update(n)
-            if postfix and hasattr(self.pbar, "set_postfix"):
+            if postfix:
                 self.pbar.set_postfix(**postfix)
 
-    def set_description(self, desc: str):
+    def set_description(self, desc: str) -> None:
         """Update the progress bar description."""
-        if self.pbar and hasattr(self.pbar, "set_description"):
+        if self.pbar:
             self.pbar.set_description(desc)
+
+
+def solver_progress(
+    max_iterations: int,
+    description: str = "Solver Progress",
+    **kwargs: Any,
+) -> IterationProgress:
+    """
+    Create progress tracker optimized for solver iterations.
+
+    Args:
+        max_iterations: Maximum number of iterations
+        description: Progress description
+        **kwargs: Additional arguments for IterationProgress
+
+    Returns:
+        Configured IterationProgress instance
+    """
+    return IterationProgress(
+        max_iterations=max_iterations,
+        description=description,
+        update_frequency=max(1, max_iterations // 100),  # Update every 1%
+        **kwargs,
+    )
 
 
 def timed_operation(description: str | None = None, verbose: bool = True):
@@ -334,108 +363,6 @@ def timed_operation(description: str | None = None, verbose: bool = True):
     return decorator
 
 
-@contextmanager
-def progress_context(
-    iterable: Any,
-    description: str = "Processing",
-    show_rate: bool = True,
-    disable: bool = False,
-):
-    """
-    Context manager for easy progress tracking of iterables.
-
-    Args:
-        iterable: Iterable to track progress for
-        description: Description to show
-        show_rate: Whether to show processing rate
-        disable: Whether to disable progress bar
-
-    Yields:
-        tqdm progress bar wrapped iterable
-    """
-    try:
-        # Determine total if possible
-        try:
-            total = len(iterable) if hasattr(iterable, "__len__") else None
-        except (TypeError, AttributeError):
-            total = None
-
-        with tqdm(
-            iterable,
-            desc=description,
-            total=total,
-            disable=disable,
-            unit="it",
-            unit_scale=show_rate,
-        ) as pbar:
-            yield pbar
-
-    except Exception as e:
-        if not disable:
-            print(f"Progress tracking error: {e}")
-        # Fallback to plain iteration
-        yield iterable
-
-
-def check_progress_backend() -> str:
-    """
-    Check which progress backend is being used.
-
-    Returns:
-        Backend name: "rich", "tqdm", or "fallback"
-    """
-    if PROGRESS_BACKEND == "fallback":
-        warnings.warn(
-            "Neither rich nor tqdm is available. For enhanced progress bars, install with:\n"
-            "  pip install rich  (recommended, modern)\n"
-            "  pip install tqdm  (alternative)\n"
-            "Falling back to basic progress indication.",
-            UserWarning,
-            stacklevel=2,
-        )
-    return PROGRESS_BACKEND
-
-
-def check_tqdm_availability() -> bool:
-    """
-    Check if tqdm is available (deprecated: use check_progress_backend instead).
-
-    Returns:
-        True if any progress backend is available
-    """
-    warnings.warn(
-        "check_tqdm_availability() is deprecated. Use check_progress_backend() instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return PROGRESS_BACKEND in ("rich", "tqdm")
-
-
-# Convenience functions for common patterns
-
-
-def solver_progress(max_iterations: int, description: str = "Solver Progress", **kwargs) -> IterationProgress:
-    """
-    Create progress tracker optimized for solver iterations.
-
-    Args:
-        max_iterations: Maximum number of iterations
-        description: Progress description
-        **kwargs: Additional arguments for IterationProgress
-
-    Returns:
-        Configured IterationProgress instance
-    """
-    return IterationProgress(
-        max_iterations=max_iterations,
-        description=description,
-        show_rate=True,
-        show_eta=True,
-        update_frequency=max(1, max_iterations // 100),  # Update every 1%
-        **kwargs,
-    )
-
-
 def time_solver_operation(func):
     """
     Decorator specifically for timing solver operations.
@@ -445,25 +372,56 @@ def time_solver_operation(func):
     return timed_operation(description=f"Solver operation '{func.__name__}'", verbose=True)(func)
 
 
-# Example usage demonstrations
+@contextmanager
+def progress_context(
+    iterable: Any,
+    description: str = "Processing",
+    disable: bool = False,
+):
+    """
+    Context manager for easy progress tracking of iterables.
+
+    Args:
+        iterable: Iterable to track progress for
+        description: Description to show
+        disable: Whether to disable progress bar
+
+    Yields:
+        Progress bar wrapped iterable
+    """
+    try:
+        total = len(iterable) if hasattr(iterable, "__len__") else None
+    except (TypeError, AttributeError):
+        total = None
+
+    with tqdm(iterable, desc=description, total=total, disable=disable) as pbar:
+        yield pbar
+
+
+# Smoke test
 if __name__ == "__main__":
     import numpy as np
 
-    print("🧪 Testing MFG_PDE Progress Utilities")
+    print("Testing MFG_PDE Progress Utilities (Rich)")
     print("=" * 50)
 
     # Test basic timing
-    with SolverTimer("Matrix multiplication", verbose=True):
-        time.sleep(0.1)  # Simulate work
+    with SolverTimer("Matrix multiplication"):
+        time.sleep(0.1)
         result = np.random.rand(100, 100) @ np.random.rand(100, 100)
 
     # Test iteration progress
     print("\nTesting iteration progress:")
     with solver_progress(20, "Sample Solver") as progress:
         for i in range(20):
-            time.sleep(0.02)  # Simulate solver iteration
-            error = 1.0 / (i + 1)  # Decreasing error
-            progress.update(1, error=error, additional_info={"iteration": i + 1})
+            time.sleep(0.02)
+            error = 1.0 / (i + 1)
+            progress.update(1, error=error, additional_info={"iter": i + 1})
+
+    # Test simple tqdm-like iteration
+    print("\nTesting tqdm-like iteration:")
+    for _i in tqdm(range(10), desc="Simple loop"):
+        time.sleep(0.02)
 
     # Test timed decorator
     @time_solver_operation
@@ -474,5 +432,17 @@ if __name__ == "__main__":
     print("\nTesting timed decorator:")
     result = sample_computation()
     print(f"Result: {result}")
+
+    # Test advanced rich features
+    print("\nTesting advanced rich features:")
+    console.print(Panel("Rich panel works!", title="Test"))
+
+    table = Table(title="Solver Results")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="green")
+    table.add_row("Iterations", "42")
+    table.add_row("Final Error", "1.23e-06")
+    table.add_row("Time", "2.5s")
+    console.print(table)
 
     print("\nProgress utilities test completed!")

@@ -6,20 +6,21 @@ This test determines if mass loss occurs in the pure FP solver or in the MFG ite
 
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm_multid import solve_fp_nd_dimensional_splitting
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde import MFGProblem
+from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
-class Simple2DFPProblem(GridBasedMFGProblem):
+class Simple2DFPProblem(MFGProblem):
     """Minimal 2D problem for testing FP solver in isolation."""
 
     def __init__(self, N=8, T=0.4, Nt=10, sigma=0.1):
         super().__init__(
-            domain_bounds=(0.0, 1.0, 0.0, 1.0),
-            grid_resolution=N,
-            time_domain=(T, Nt),
-            diffusion_coeff=sigma,
+            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
+            spatial_discretization=[N, N],
+            T=T,
+            Nt=Nt,
+            sigma=sigma,
         )
 
     def initial_density(self, x):
@@ -87,13 +88,12 @@ def test_pure_diffusion():
     print("Running 2D FP solver (pure diffusion, zero velocity)...")
     print()
 
-    # Call the multidimensional FP solver directly
-    boundary_conditions = BoundaryConditions(type="no_flux")
-    M_solution = solve_fp_nd_dimensional_splitting(
-        m_initial_condition=m0,
-        U_solution_for_drift=U_zero,
-        problem=problem,
-        boundary_conditions=boundary_conditions,
+    # Call the FP FDM solver directly
+    boundary_conditions = no_flux_bc(dimension=2)
+    fp_solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
+    M_solution = fp_solver.solve_fp_system(
+        M_initial=m0,
+        drift_field=U_zero,
         show_progress=True,
     )
 
@@ -187,13 +187,12 @@ def test_with_constant_velocity():
     print("Running 2D FP solver (with advection, constant velocity field)...")
     print()
 
-    # Call the multidimensional FP solver directly
-    boundary_conditions = BoundaryConditions(type="no_flux")
-    M_solution = solve_fp_nd_dimensional_splitting(
-        m_initial_condition=m0,
-        U_solution_for_drift=U_linear,
-        problem=problem,
-        boundary_conditions=boundary_conditions,
+    # Call the FP FDM solver directly
+    boundary_conditions = no_flux_bc(dimension=2)
+    fp_solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
+    M_solution = fp_solver.solve_fp_system(
+        M_initial=m0,
+        drift_field=U_linear,
         show_progress=True,
     )
 
@@ -265,13 +264,13 @@ if __name__ == "__main__":
     print()
 
     if loss1 < 1e-6 and loss2 < 1e-6:
-        print("✓ CONCLUSION: 2D FP solver conserves mass in isolation")
-        print("  → Mass loss in full MFG solver must be from coupling/normalization")
+        print("CONCLUSION: 2D FP solver conserves mass in isolation")
+        print("  -> Mass loss in full MFG solver must be from coupling/normalization")
     elif loss1 < 1e-6 and loss2 > 0.1:
-        print("⚠ CONCLUSION: 2D FP advection has mass loss issue")
-        print("  → Check boundary discretization with advection terms")
+        print("CONCLUSION: 2D FP advection has mass loss issue")
+        print("  -> Check boundary discretization with advection terms")
     else:
-        print("✗ CONCLUSION: 2D FP dimensional splitting loses mass")
-        print("  → Check how 1D slices are combined in Strang splitting")
+        print("CONCLUSION: 2D FP FDM solver loses mass")
+        print("  -> Check numerical scheme and boundary handling")
 
     print()

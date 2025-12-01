@@ -506,10 +506,10 @@ if __name__ == "__main__":
     print("=" * 70)
 
     # Create test problem using modern API
-    from mfg_pde import ExampleMFGProblem
+    from mfg_pde import MFGProblem
     from mfg_pde.core.plugin_system import get_plugin_manager
 
-    problem = ExampleMFGProblem()  # Uses default 1D problem
+    problem = MFGProblem()  # Uses default 1D problem
     print(f"\nTest problem: 1D, Nx={problem.Nx}, Nt={problem.Nt}, T={problem.T}")
 
     # Register plugin manually for testing

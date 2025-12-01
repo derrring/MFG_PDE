@@ -252,7 +252,7 @@ def integration_with_existing_config():
 
     # Create configuration that includes geometry
     config_dict = {
-        "problem": {"type": "ExampleMFGProblem", "T": 1.0, "Nt": 51, "sigma": 0.5, "coupling_coefficient": 1.0},
+        "problem": {"type": "MFGProblem", "T": 1.0, "Nt": 51, "sigma": 0.5, "coupling_coefficient": 1.0},
         "geometry": {
             "dimension": 2,
             "domain_type": "rectangle",

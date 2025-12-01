@@ -112,11 +112,11 @@ DEPENDENCY_MAP = {
         "required": False,
     },
     # Progress/workflow
-    "tqdm": {
+    "rich": {
         "install_group": "core",
         "install_cmd": "pip install mfg-pde",
-        "alternative": "pip install tqdm",
-        "description": "Progress bars",
+        "alternative": "pip install rich",
+        "description": "Progress bars and console output",
         "required": True,
     },
     "omegaconf": {
@@ -344,7 +344,7 @@ def show_optional_features() -> None:
 
         # Map install_group to display category
         if group == "core":
-            if pkg_name in ["tqdm", "omegaconf"]:
+            if pkg_name in ["rich", "omegaconf"]:
                 category = "Workflow"
             else:
                 category = "Core (always available)"

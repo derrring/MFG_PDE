@@ -18,12 +18,11 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import MFGComponents
+from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver, HJBSemiLagrangianSolver
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 
 
-class Simple2DMFGProblem(GridBasedMFGProblem):
+class Simple2DMFGProblem(MFGProblem):
     """
     Simple 2D MFG problem for validation testing.
 
@@ -34,14 +33,21 @@ class Simple2DMFGProblem(GridBasedMFGProblem):
 
     def __init__(
         self,
-        domain_bounds=(0.0, 1.0, 0.0, 1.0),
         grid_resolution=25,
-        time_domain=(1.0, 20),  # (T_final, N_timesteps)
-        diffusion_coeff=0.1,
+        time_horizon=1.0,
+        num_timesteps=20,
+        diffusion=0.1,
         coupling_strength=0.5,
         goal_position=None,
     ):
-        super().__init__(domain_bounds, grid_resolution, time_domain, diffusion_coeff)
+        super().__init__(
+            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
+            spatial_discretization=[grid_resolution, grid_resolution],
+            T=time_horizon,
+            Nt=num_timesteps,
+            sigma=diffusion,
+        )
+        self.grid_resolution = grid_resolution
         self.coupling_strength = coupling_strength
         self.goal_position = goal_position if goal_position is not None else [0.5, 0.5]
 
@@ -125,7 +131,8 @@ class TestSemiLagrangian2DInitialization:
         """Test that Semi-Lagrangian solver initializes correctly for 2D problems."""
         problem = Simple2DMFGProblem(
             grid_resolution=15,
-            time_domain=(1.0, 10),
+            time_horizon=1.0,
+            num_timesteps=10,
         )
 
         solver = HJBSemiLagrangianSolver(problem)
@@ -145,18 +152,18 @@ class TestSemiLagrangian2DInitialization:
     def test_2d_grid_parameters(self):
         """Test that 2D grid parameters are computed correctly."""
         problem = Simple2DMFGProblem(
-            domain_bounds=(0.0, 2.0, 0.0, 3.0),
             grid_resolution=20,
-            time_domain=(1.0, 10),
+            time_horizon=1.0,
+            num_timesteps=10,
         )
 
         solver = HJBSemiLagrangianSolver(problem)
 
         # Check grid spacing
         assert len(solver.spacing) == 2
-        # For grid_resolution=20, spacing = (xmax-xmin)/(N-1) = 2.0/19 ≈ 0.1053
-        expected_dx = 2.0 / (20 - 1)
-        expected_dy = 3.0 / (20 - 1)  # Same resolution in both dimensions
+        # For grid_resolution=20 on [0,1], spacing = 1.0/(N-1) = 1.0/19 ≈ 0.0526
+        expected_dx = 1.0 / (20 - 1)
+        expected_dy = 1.0 / (20 - 1)
         assert np.isclose(solver.spacing[0], expected_dx, rtol=1e-5)
         assert np.isclose(solver.spacing[1], expected_dy, rtol=1e-5)
 

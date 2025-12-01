@@ -1,6 +1,6 @@
 # MFG_PDE Naming Conventions
 
-**Last Updated**: 2025-11-10
+**Last Updated**: 2025-12-01
 **Status**: Current reference document
 **Related**: See sections on gradient notation for derivative indexing and array-based notation standard
 
@@ -252,20 +252,51 @@ dx = (xmax[0] - xmin[0]) / Nx[0]
 
 ## Discretization Parameters
 
+### ⚠️ CRITICAL CONVENTION: `N_*` Always Means Intervals, Never Points
+
+**Universal Rule**: All variables named `N_*` (e.g., `Nx`, `Ny`, `Nt`) represent **number of intervals**, not number of points/knots.
+
+**Grid Point Count**: Number of points = `N + 1` (includes both endpoints)
+
+| Dimension | Variable | Meaning | Points | Example |
+|-----------|----------|---------|--------|---------|
+| Time | `Nt` | Number of time **intervals** | `Nt + 1` time points | `Nt=100` → 101 time points |
+| Space (1D) | `Nx` (as array) | Number of spatial **intervals** | `Nx[0] + 1` points | `Nx=[50]` → 51 spatial points |
+| Space (2D) | `Nx` (as array) | Number of **intervals** per dim | `(Nx[0]+1, Nx[1]+1)` points | `Nx=[50, 30]` → 51×31 = 1,581 points |
+
+**Common Mistake**:
+```python
+# ❌ WRONG: Using Nx to mean number of points
+Nx = 51  # 51 points
+dx = (xmax - xmin) / (Nx - 1)  # Incorrect!
+
+# ✅ CORRECT: Nx means intervals, points = Nx + 1
+Nx = 50  # 50 intervals → 51 points
+dx = (xmax - xmin) / Nx  # Correct!
+num_points = Nx + 1  # 51 points
+```
+
+**Why This Matters**:
+- **Consistency**: Finite difference stencils assume `N` intervals
+- **Grid spacing**: `dx = L / Nx` (NOT `L / (Nx-1)`)
+- **Arrays**: Solution arrays have shape `(Nt+1, Nx[0]+1, Nx[1]+1, ...)`
+- **Interoperability**: All MFG_PDE solvers assume this convention
+
 ### Spatial Discretization
 
 | Parameter | Type | Meaning | Math | Example |
 |-----------|------|---------|------|---------|
-| `Nx` | **list[int]** | Number of intervals per dimension: `[Nx1, Nx2, ..., Nxd]` | N | `[50, 30]` |
+| `Nx` | **list[int]** | Number of **intervals** per dimension: `[Nx1, Nx2, ..., Nxd]` | N | `[50, 30]` |
 | `xmin` | **list[float]** | Domain lower bounds | x_min | `[0.0, 0.0]` |
 | `xmax` | **list[float]** | Domain upper bounds | x_max | `[1.0, 1.0]` |
 | `dx` | **list[float]** | Grid spacing per dimension: `[dx1, dx2, ..., dxd]` | Δx | `[0.02, 0.033]` |
 | `Lx` | **list[float]** | Domain length per dimension: `[Lx1, Lx2, ..., Lxd]` | L | `[1.0, 1.0]` |
 
 **Grid Convention**:
-- `Nxi` intervals → `Nxi+1` grid points (for each dimension i)
+- `Nxi` **intervals** → `Nxi+1` **grid points** (for each dimension i)
 - Grid spacing: `dxi = (xmax[i] - xmin[i]) / Nxi`
 - Arrays include both boundaries
+- **Never** use `Nx` to represent number of points
 
 **Example (2D)**:
 ```python
@@ -292,15 +323,23 @@ problem = MFGProblem(
 
 | Parameter | Type | Meaning | Math |
 |-----------|------|---------|------|
-| `Nt` | int | Number of time intervals | N_t |
+| `Nt` | int | Number of time **intervals** | N_t |
 | `T` | float | Terminal time | T |
 | `dt` | float | Time step size | Δt |
 | `tSpace` | ndarray | Time grid array | t_i |
 
 **Grid Convention**:
-- `Nt` intervals → `Nt+1` time points
-- Time step: `dt = T / Nt`
-- Time grid: `tSpace = [0, dt, 2*dt, ..., T]`
+- `Nt` **intervals** → `Nt+1` **time points** (includes t=0 and t=T)
+- Time step: `dt = T / Nt` (interval length)
+- Time grid: `tSpace = [0, dt, 2*dt, ..., T]` with `len(tSpace) = Nt + 1`
+
+**Example**:
+```python
+Nt = 100  # 100 time intervals
+T = 1.0   # Final time
+dt = T / Nt  # = 0.01 (interval size)
+tSpace = np.linspace(0, T, Nt + 1)  # 101 time points
+```
 
 ---
 
@@ -325,6 +364,177 @@ solver = FixedPointIterator(
     tolerance=1e-6
 )
 ```
+
+---
+
+## Solver Method API Conventions (v0.11.0+)
+
+### MFG Coupling Data Flow
+
+The MFG system couples HJB and FP solvers through an iterative process. Understanding the data flow clarifies parameter naming:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         COUPLING ITERATION                              │
+│                                                                         │
+│  Initial: M_initial ─────────────────────────────────────────────────┐  │
+│                                                                      │  │
+│      ┌──────────────┐                      ┌──────────────┐          │  │
+│      │              │     M_density        │              │          │  │
+│      │  FP Solver   │ ──────────────────>  │  HJB Solver  │          │  │
+│      │              │                      │              │          │  │
+│      │  solve_fp_   │                      │  solve_hjb_  │          │  │
+│      │  system()    │  <──────────────────  │  system()    │          │  │
+│      │              │    drift_field       │              │          │  │
+│      └──────────────┘    (from ∇U)         └──────────────┘          │  │
+│            │                                      │                  │  │
+│            v                                      v                  │  │
+│        (output)                            U_coupling_prev           │  │
+│                                            (for next iter)           │  │
+│                                                                      │  │
+│  Terminal: U_terminal ───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Data Transfers**:
+- **FP → HJB**: `M_density` (density field computed by FP solver)
+- **HJB → FP**: `drift_field` (velocity field derived from ∇U via optimal control)
+- **Coupling state**: `U_coupling_prev` (from previous outer iteration)
+
+### HJB Solver API
+
+```python
+def solve_hjb_system(
+    self,
+    M_density: NDArray,              # Density from FP solver
+    U_terminal: NDArray,             # Terminal condition u(T,x)
+    U_coupling_prev: NDArray,        # Previous coupling iteration estimate
+    diffusion_field: float | NDArray | None = None,
+) -> NDArray:
+    """Solve HJB equation backward in time.
+
+    Returns:
+        U: Value function u(t,x) of shape (Nt+1, *spatial_shape)
+    """
+```
+
+| Parameter | Shape | Source | Description |
+|-----------|-------|--------|-------------|
+| `M_density` | `(Nt+1, *spatial)` | FP solver output | Density distribution m(t,x) |
+| `U_terminal` | `(*spatial,)` | Problem definition | Terminal cost g(x) |
+| `U_coupling_prev` | `(Nt+1, *spatial)` | Previous iteration | Prior estimate for damping/warm-start |
+| `diffusion_field` | scalar or `(*spatial,)` | Problem/coupling | σ² diffusion coefficient |
+
+### FP Solver API
+
+```python
+def solve_fp_system(
+    self,
+    M_initial: NDArray,              # Initial density m(0,x)
+    drift_field: NDArray | None,     # Velocity/drift field v(t,x) from HJB
+    diffusion_field: float | NDArray | None = None,
+    show_progress: bool = True,
+) -> NDArray:
+    """Solve Fokker-Planck equation forward in time.
+
+    Returns:
+        M: Density function m(t,x) of shape (Nt+1, *spatial_shape)
+    """
+```
+
+| Parameter | Shape | Source | Description |
+|-----------|-------|--------|-------------|
+| `M_initial` | `(*spatial,)` | Problem definition | Initial density m₀(x) |
+| `drift_field` | `(Nt+1, *spatial)` or `None` | HJB coupling module | Velocity/advection v = -∇_p H(x, ∇u, m) or None for pure diffusion |
+| `diffusion_field` | scalar, `(*spatial,)`, or callable | Problem/coupling | σ² diffusion coefficient |
+| `show_progress` | `bool` | User preference | Whether to display progress bar |
+
+### Design Principles
+
+**1. Source-based naming over role-based naming**
+
+Prefer names that indicate where data comes from, not what it's used for:
+
+```python
+# ✅ Good: Source-based
+M_density          # Density (data type)
+U_terminal         # Value function at terminal time
+drift_field        # Velocity/advection field
+
+# ❌ Avoid: Role-based with redundant suffixes
+M_density_evolution_from_FP   # Redundant: density always from FP
+U_final_condition_at_T        # Redundant: terminal implies at T
+```
+
+**2. Suffixes only when disambiguation is needed**
+
+Add suffixes only when parameter names would otherwise be ambiguous:
+
+```python
+# ✅ Needed: Distinguishes coupling iteration from solver internal iteration
+U_coupling_prev    # Previous outer (Picard) iteration
+M_coupling_prev    # Previous outer (Picard) iteration
+
+# ❌ Unnecessary: Already unambiguous
+U_from_prev_picard    # "coupling" is clearer than "picard"
+U_prev_picard_iter    # Over-specified
+```
+
+**3. Separation of concerns**
+
+FP solver receives `drift_field` directly, not `U`:
+
+```python
+# ✅ Good: FP solver is independent of HJB details
+fp_solver.solve_fp_system(
+    M_initial=m0,
+    drift_field=v,  # Pre-computed by coupling layer (also called advection)
+    ...
+)
+
+# ❌ Avoid: FP solver computing velocity from U
+fp_solver.solve_fp_system(
+    M_initial=m0,
+    U_from_hjb=U,       # FP shouldn't need to know about HJB
+    ...
+)
+```
+
+**Rationale**: The coupling layer (not FP solver) handles the physics of computing v from ∇U:
+- `v = -∇_p H(x, ∇u, m)` depends on Hamiltonian form
+- Different MFG formulations have different velocity formulas
+- FP solver only needs to advect density by given velocity field
+
+### Iteration Level Terminology
+
+| Level | Name | Scope | Example Parameter |
+|-------|------|-------|-------------------|
+| Outer | Coupling iteration | HJB ↔ FP cycle | `U_coupling_prev`, `M_coupling_prev` |
+| Middle | Newton iteration | Within single PDE solve | `U_newton_prev` (internal) |
+| Inner | Timestep | Single time integration step | `U_n`, `U_n_plus_1` (internal) |
+
+**Usage**:
+- Public API uses `_coupling_prev` suffix for outer iteration state
+- Internal solver variables use `_newton_prev` or time indices (`_n`, `_n_plus_1`)
+- Avoid exposing internal iteration state in public API
+
+### Backward Compatibility
+
+Existing solvers may use deprecated parameter names. These emit `DeprecationWarning`:
+
+| Deprecated | New Name | Migration |
+|------------|----------|-----------|
+| `M_density_evolution_from_FP` | `M_density` | v0.12.0+ |
+| `U_final_condition_at_T` | `U_terminal` | v0.12.0+ |
+| `U_from_prev_picard` | `U_coupling_prev` | v0.12.0+ |
+| `M_density_evolution` | `M_density` | v0.12.0+ |
+| `U_final_condition` | `U_terminal` | v0.12.0+ |
+| `m_initial_condition` | `M_initial` | v0.12.0+ |
+
+**Timeline**:
+- **v0.11.0**: New names added, old names deprecated with warnings
+- **v0.12.0+**: Continued deprecation warnings
+- **v1.0.0**: Deprecated names removed
 
 ### AMR (Adaptive Mesh Refinement)
 
@@ -449,7 +659,7 @@ All geometry classes implement:
 
 **Example**:
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 # Geometry-first API (v0.10.0+)
@@ -458,7 +668,7 @@ geometry = TensorProductGrid(
     bounds=[(0.0, 1.0), (0.0, 1.0)],
     num_points=[51, 51]
 )
-problem = ExampleMFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
+problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
 
 # Geometry provides configuration
 assert geometry.dimension == 2
@@ -674,7 +884,8 @@ When adding new parameters:
 - **Tensor Grids**: `mfg_pde/geometry/tensor_product_grid.py`
 - **Config Classes**: `mfg_pde/config/solver_config.py` (NewtonConfig, PicardConfig)
 - **Fixed Point Iterator**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
-- **HJB FDM Solver**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+- **HJB Solvers**: `mfg_pde/alg/numerical/hjb_solvers/` (hjb_fdm.py, hjb_semi_lagrangian.py, hjb_weno.py, hjb_gfdm.py, hjb_network.py)
+- **FP Solvers**: `mfg_pde/alg/numerical/fp_solvers/` (fp_fdm.py, fp_particle.py, fp_network.py)
 
 ---
 

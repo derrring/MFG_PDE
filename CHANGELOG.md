@@ -150,7 +150,7 @@ This release adds advanced particle-to-grid projection methods (GPU KDE, multigr
 - **`Dt` attribute**: Use lowercase `dt` instead (Issue #245, PR #259, #274). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
 - **`Dx` attribute**: Use lowercase `dx` instead (Issue #245, PR #259, #274). Backward compatibility maintained via deprecated property that emits `DeprecationWarning`. Will be removed in v1.0.0.
 - **Boolean configuration parameters**: Replaced with enums (Issue #277, PR #283). Old parameters still work with deprecation warnings. Will be removed in v1.0.0.
-- **GridBasedMFGProblem**: Use `MFGProblem` directly instead. Will be removed in v2.0.0.
+- **GridBasedMFGProblem**: Removed. Use `MFGProblem` with `spatial_bounds` and `spatial_discretization` for nD problems.
 
 ### Changed
 

@@ -196,10 +196,10 @@ def performance_benchmark_workflow(problem_sizes: list[tuple], solver_types: lis
     def benchmark_performance(params):
         import time
 
-        from mfg_pde import ExampleMFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem, create_fast_solver
 
         Nx, Nt = params["problem_size"]
-        problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=1.0)
+        problem = MFGProblem(Nx=Nx, Nt=Nt, T=1.0)
 
         # Use string directly as create_fast_solver handles conversion internally
         solver = create_fast_solver(problem, params["solver_type"])

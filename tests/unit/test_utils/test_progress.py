@@ -10,8 +10,6 @@ from mfg_pde.utils.progress import (
     IterationProgress,
     RichProgressBar,
     SolverTimer,
-    check_progress_backend,
-    check_tqdm_availability,
     progress_context,
     solver_progress,
     time_solver_operation,
@@ -269,18 +267,14 @@ class TestProgressContext:
             assert total == 45  # sum(0..9)
 
 
-class TestBackendDetection:
-    """Test backend detection functions."""
+class TestRichRequirement:
+    """Test that rich is required."""
 
-    def test_check_progress_backend(self):
-        """Test check_progress_backend returns valid backend."""
-        backend = check_progress_backend()
-        assert backend in ["rich", "tqdm", "fallback"]
+    def test_rich_is_available(self):
+        """Test that rich module is available (required dependency)."""
+        import rich
 
-    def test_check_tqdm_availability(self):
-        """Test check_tqdm_availability returns boolean."""
-        available = check_tqdm_availability()
-        assert isinstance(available, bool)
+        assert rich is not None
 
 
 class TestSolverProgress:
@@ -363,25 +357,23 @@ class TestTimeSolverOperationDecorator:
         assert result == (1, 2, 3)
 
 
-class TestFallbackImplementation:
-    """Test fallback progress bar when rich/tqdm unavailable."""
+class TestRichProgressBarAdvanced:
+    """Test advanced RichProgressBar features."""
 
-    def test_fallback_tqdm_initialization(self):
-        """Test fallback tqdm class initialization."""
-        # Import the fallback tqdm directly by mocking availability
-        from mfg_pde.utils import progress as progress_module
+    def test_rich_progress_format_description_with_postfix(self):
+        """Test description formatting with postfix data."""
+        pbar = RichProgressBar(total=10, desc="Test", disable=True)
+        pbar.postfix_data = {"loss": 0.5, "acc": 0.9}
+        formatted = pbar._format_description()
+        assert "Test" in formatted
+        assert "loss=0.5" in formatted
+        assert "acc=0.9" in formatted
 
-        # Save original backend
-        original_backend = progress_module.PROGRESS_BACKEND
-
-        # Test would need to mock PROGRESS_BACKEND = "fallback"
-        # For now, just ensure the test structure exists
-        assert original_backend in ["rich", "tqdm", "fallback"]
-
-    def test_fallback_tqdm_iteration(self):
-        """Test fallback tqdm iteration."""
-        # This would test the fallback implementation
-        # Skipping detailed test as it requires mocking import system
+    def test_rich_progress_empty_iterable(self):
+        """Test RichProgressBar with empty iterable."""
+        pbar = RichProgressBar(iterable=None, disable=True)
+        result = list(pbar)
+        assert result == []
 
 
 class TestIntegration:

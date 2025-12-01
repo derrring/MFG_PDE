@@ -32,10 +32,10 @@ pip install mfg-pde
 **New in v0.8**: One-line solver with automatic configuration:
 
 ```python
-from mfg_pde import ExampleMFGProblem, solve_mfg
+from mfg_pde import MFGProblem, solve_mfg
 
 # Create and solve in one line
-problem = ExampleMFGProblem()
+problem = MFGProblem()
 result = solve_mfg(problem)
 
 # Access results
@@ -89,11 +89,11 @@ result = solve_mfg(
 ### Step 1: Import and Create Problem
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 
 # Create a standard MFG problem
-problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
+problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 ```
 
 ### Step 2: Create Solver
@@ -185,11 +185,11 @@ Use for specialized requirements (high-order accuracy, large time steps, high di
 ### Workflow 1: Standard Research Problem
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 
 # Define problem
-problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
+problem = MFGProblem(Nx=100, Nt=50, T=1.0)
 
 # Solve with default
 solver = create_standard_solver(problem, "fixed_point")
@@ -370,7 +370,7 @@ plt.show()
 2. **Tier 2 is default** - `create_standard_solver()` for most uses
 3. **Three lines to solve**:
    ```python
-   problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
+   problem = MFGProblem(Nx=50, Nt=20, T=1.0)
    solver = create_standard_solver(problem, "fixed_point")
    result = solver.solve()
    ```

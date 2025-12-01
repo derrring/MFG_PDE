@@ -16,12 +16,11 @@ import time
 
 import numpy as np
 
-from mfg_pde import MFGComponents
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.factory import create_basic_solver
 
 
-class Simple1DMFG(GridBasedMFGProblem):
+class Simple1DMFG(MFGProblem):
     """Simplest possible 1D MFG for mass conservation testing."""
 
     def __init__(
@@ -32,11 +31,13 @@ class Simple1DMFG(GridBasedMFGProblem):
         diffusion=0.05,
     ):
         super().__init__(
-            domain_bounds=(0.0, 1.0),
-            grid_resolution=grid_resolution,
-            time_domain=(time_horizon, num_timesteps),
-            diffusion_coeff=diffusion,
+            spatial_bounds=[(0.0, 1.0)],
+            spatial_discretization=[grid_resolution],
+            T=time_horizon,
+            Nt=num_timesteps,
+            sigma=diffusion,
         )
+        self.grid_resolution = grid_resolution  # Store for convenience
         self.center = 0.3  # Initial density center
         self.goal = 0.7  # Terminal cost goal
 

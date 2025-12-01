@@ -4,7 +4,7 @@ Tutorial 03: 2D Geometry
 Learn how to work with 2D spatial domains in MFG_PDE.
 
 What you'll learn:
-- How to use GridBasedMFGProblem for nD problems
+- How to use MFGProblem for nD problems
 - How to define 2D Hamiltonians with gradient vectors
 - How to visualize 2D density evolution
 - How mass conservation works in 2D
@@ -19,7 +19,7 @@ Mathematical Problem:
 
 import numpy as np
 
-from mfg_pde import GridBasedMFGProblem, solve_mfg
+from mfg_pde import MFGProblem, solve_mfg
 
 # ==============================================================================
 # Step 1: Create 2D Problem
@@ -31,27 +31,30 @@ print("=" * 70)
 print()
 
 
-class TargetAttraction2D(GridBasedMFGProblem):
+class TargetAttraction2D(MFGProblem):
     """
     2D MFG: Agents navigate toward a target in a square room.
 
     Key differences from 1D:
-    - domain_bounds is a tuple of (xmin, xmax, ymin, ymax)
+    - spatial_bounds is a list of (min, max) tuples per dimension
     - p is now a 2D gradient vector [px, py]
     - Density m(t,x,y) is a 3D array
     """
 
     def __init__(self, target_location=(5.0, 5.0), congestion_weight=1.0):
-        # Initialize 2D grid-based problem
+        # Initialize 2D problem using MFGProblem
         super().__init__(
-            domain_bounds=(0.0, 10.0, 0.0, 10.0),  # (xmin, xmax, ymin, ymax)
-            grid_resolution=30,  # 30×30 spatial grid
-            time_domain=(4.0, 40),  # (T, Nt) - 4 seconds, 40 timesteps
-            diffusion_coeff=0.2,  # σ
+            spatial_bounds=[(0.0, 10.0), (0.0, 10.0)],  # [(xmin, xmax), (ymin, ymax)]
+            spatial_discretization=[30, 30],  # 30×30 spatial grid
+            T=4.0,  # Terminal time
+            Nt=40,  # Number of time steps
+            sigma=0.2,  # Diffusion coefficient
         )
 
         self.target = np.array(target_location)
         self.congestion_weight = congestion_weight
+        # Store grid resolution for convenience
+        self.grid_resolution = self.spatial_discretization[0]
 
     def hamiltonian(self, x, m, p, t):
         """
@@ -115,8 +118,8 @@ class TargetAttraction2D(GridBasedMFGProblem):
         grid_shape = (self.grid_resolution, self.grid_resolution)
         density_2d = density.reshape(grid_shape)
 
-        dx = (self.spatial_bounds[0, 1] - self.spatial_bounds[0, 0]) / (self.grid_resolution - 1)
-        dy = (self.spatial_bounds[1, 1] - self.spatial_bounds[1, 0]) / (self.grid_resolution - 1)
+        dx = (self.spatial_bounds[0][1] - self.spatial_bounds[0][0]) / (self.grid_resolution - 1)
+        dy = (self.spatial_bounds[1][1] - self.spatial_bounds[1][0]) / (self.grid_resolution - 1)
 
         total_mass = np.trapz(np.trapz(density_2d, dx=dy, axis=0), dx=dx)
 
@@ -155,13 +158,13 @@ print("=" * 70)
 print()
 
 # In 2D, mass conservation requires 2D integration
-dx = (problem.spatial_bounds[0, 1] - problem.spatial_bounds[0, 0]) / (problem.grid_resolution - 1)
-dy = (problem.spatial_bounds[1, 1] - problem.spatial_bounds[1, 0]) / (problem.grid_resolution - 1)
+dx = (problem.spatial_bounds[0][1] - problem.spatial_bounds[0][0]) / (problem.grid_resolution - 1)
+dy = (problem.spatial_bounds[1][1] - problem.spatial_bounds[1][0]) / (problem.grid_resolution - 1)
 
 # Check mass at each timestep
 grid_shape = (problem.grid_resolution, problem.grid_resolution)
 masses = []
-for t_idx in range(len(problem.time_grid)):
+for t_idx in range(len(problem.tSpace)):
     m_2d = result.M[t_idx].reshape(grid_shape)
     mass = np.trapz(np.trapz(m_2d, dx=dy, axis=0), dx=dx)
     masses.append(mass)
@@ -184,12 +187,12 @@ try:
     grid_shape = (problem.grid_resolution, problem.grid_resolution)
 
     # Create spatial grids
-    x_1d = np.linspace(problem.spatial_bounds[0, 0], problem.spatial_bounds[0, 1], problem.grid_resolution)
-    y_1d = np.linspace(problem.spatial_bounds[1, 0], problem.spatial_bounds[1, 1], problem.grid_resolution)
+    x_1d = np.linspace(problem.spatial_bounds[0][0], problem.spatial_bounds[0][1], problem.grid_resolution)
+    y_1d = np.linspace(problem.spatial_bounds[1][0], problem.spatial_bounds[1][1], problem.grid_resolution)
     X, Y = np.meshgrid(x_1d, y_1d)
 
     # Plot snapshots at different times
-    times_to_plot = [0, len(problem.time_grid) // 3, 2 * len(problem.time_grid) // 3, -1]
+    times_to_plot = [0, len(problem.tSpace) // 3, 2 * len(problem.tSpace) // 3, -1]
 
     for idx, t_idx in enumerate(times_to_plot, 1):
         ax = fig.add_subplot(2, 2, idx)
@@ -201,7 +204,7 @@ try:
         ax.plot(*problem.target, "r*", markersize=20, label="Target")
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ax.set_title(f"Density at t={problem.time_grid[t_idx]:.2f}s")
+        ax.set_title(f"Density at t={problem.tSpace[t_idx]:.2f}s")
         ax.set_aspect("equal")
         plt.colorbar(contour, ax=ax)
         ax.legend()
@@ -224,13 +227,14 @@ print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
 print("What you learned:")
-print("  1. How to use GridBasedMFGProblem for nD problems")
+print("  1. How to use MFGProblem for nD problems")
 print("  2. How to work with 2D gradients p = [px, py]")
 print("  3. How to compute 2D integrals for mass conservation")
 print("  4. How to visualize 2D density evolution")
 print()
 print("Key differences from 1D:")
-print("  - domain_bounds: (xmin, xmax, ymin, ymax) instead of xmin/xmax")
+print("  - spatial_bounds: [(xmin, xmax), (ymin, ymax)] list of tuples")
+print("  - spatial_discretization: [Nx, Ny] grid points per dimension")
 print("  - p is a vector: shape (N, 2) instead of (N,)")
 print("  - Integration: Use nested trapz() for 2D")
 print()

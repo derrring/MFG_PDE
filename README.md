@@ -30,9 +30,9 @@ pip install -e .
 ### Your First MFG Solution (2 lines)
 
 ```python
-from mfg_pde import solve_mfg, ExampleMFGProblem
+from mfg_pde import solve_mfg, MFGProblem
 
-result = solve_mfg(ExampleMFGProblem(), config="fast")
+result = solve_mfg(MFGProblem(), config="fast")
 ```
 
 **That's it.** Check convergence with `result.converged` and visualize with `result.plot()`.

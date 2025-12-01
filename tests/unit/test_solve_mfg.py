@@ -25,7 +25,7 @@ from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 def example_problem():
     """Create standard 1D MFG problem using modern geometry-first API.
 
-    Equivalent to legacy ExampleMFGProblem() with defaults:
+    Standard MFGProblem configuration:
     - Domain: [0, 1] with 51 grid points
     - Time: T=1.0 with 51 time steps
     - Diffusion: sigma=1.0

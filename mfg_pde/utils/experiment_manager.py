@@ -416,9 +416,9 @@ if __name__ == "__main__":
     print("--- Example: Testing Experiment Manager ---")
 
     # Create a dummy MFGProblem instance (requires MFGProblem to be importable)
-    # from mfg_pde.core.mfg_problem import ExampleMFGProblem
+    # from mfg_pde.core.mfg_problem import MFGProblem
     # dummy_problem_params = {"Nx": 11, "Nt": 11, "T": 0.1, "sigma":1.0, "coupling_coefficient":0.5}
-    # dummy_problem = ExampleMFGProblem(**dummy_problem_params)
+    # dummy_problem = MFGProblem(**dummy_problem_params)
 
     # Dummy data
     # U_sol = np.random.rand(dummy_problem.Nt, dummy_problem.Nx)
@@ -482,4 +482,4 @@ if __name__ == "__main__":
     #     print("No experiment data loaded for plotting.")
 
     print("Experiment manager module can be tested by uncommenting and running the example usage section.")
-    print("Ensure MFGProblem/ExampleMFGProblem is importable if running this block.")
+    print("Ensure MFGProblem is importable if running this block.")

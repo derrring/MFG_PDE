@@ -47,14 +47,14 @@ config = presets.accurate_solver()
 ### Inline Usage
 
 ```python
-from mfg_pde import solve_mfg, ExampleMFGProblem
+from mfg_pde import solve_mfg, MFGProblem
 
 # Simplest: Use preset string
-result = solve_mfg(ExampleMFGProblem(), preset="fast")
+result = solve_mfg(MFGProblem(), preset="fast")
 
 # Or: Use preset object
 from mfg_pde.config import presets
-result = solve_mfg(ExampleMFGProblem(), config=presets.accurate_solver())
+result = solve_mfg(MFGProblem(), config=presets.accurate_solver())
 ```
 
 **When to use**: Quick prototyping, most production code, when defaults are good enough.

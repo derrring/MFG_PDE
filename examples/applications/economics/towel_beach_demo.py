@@ -43,7 +43,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
@@ -79,7 +79,7 @@ def create_towel_beach_problem(
         sigma: Diffusion coefficient
 
     Returns:
-        ExampleMFGProblem for spatial competition
+        MFGProblem for spatial competition
     """
 
     def hamiltonian(x, p, m):
@@ -112,7 +112,7 @@ def create_towel_beach_problem(
         return 1.0 + 0.1 * np.cos(2 * np.pi * x / beach_length)
 
     # Create problem
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         xmin=0.0,
         xmax=beach_length,
         Nx=Nx,

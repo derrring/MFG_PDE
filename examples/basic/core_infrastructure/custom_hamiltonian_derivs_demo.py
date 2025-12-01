@@ -16,7 +16,7 @@ Mathematical Formulation:
 Key Features:
     - Demonstrates new `derivs` parameter with tuple notation
     - Shows how to access derivatives: (0,) for u, (1,) for ∂u/∂x
-    - Compares with simplified ExampleMFGProblem interface
+    - Compares with simplified MFGProblem interface
     - Validates both approaches produce same results
 
 Usage:
@@ -32,7 +32,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
 from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
 from mfg_pde.factory import create_standard_solver
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
@@ -166,7 +165,7 @@ def create_custom_problem_advanced(
 
 
 # ==============================================================================
-# Method 2: Simplified API with ExampleMFGProblem (for comparison)
+# Method 2: Simplified API with MFGProblem (for comparison)
 # ==============================================================================
 
 
@@ -187,7 +186,7 @@ def create_custom_problem_simple(
     Note: hamiltonian signature is simpler: just (x, p, m).
 
     Returns:
-        ExampleMFGProblem with custom Hamiltonian (simplified signature)
+        MFGProblem with custom Hamiltonian (simplified signature)
     """
 
     def hamiltonian(x, p, m):
@@ -219,7 +218,7 @@ def create_custom_problem_simple(
         return np.exp(-((x - 0.5) ** 2) / 0.5)
 
     # Create problem with simplified API
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         xmin=0.0,
         xmax=L,
         Nx=Nx,
@@ -240,7 +239,7 @@ def create_custom_problem_simple(
 
 def compare_approaches():
     """
-    Compare advanced (derivs) vs simplified (ExampleMFGProblem) approaches.
+    Compare advanced (derivs) vs simplified (MFGProblem) approaches.
     """
     logger.info("=" * 70)
     logger.info("Custom Hamiltonian Demo: Tuple Notation vs Simplified API")
@@ -273,7 +272,7 @@ def compare_approaches():
     # =========================================================================
     logger.info("\n[2/4] Creating problem with simplified API...")
     problem_simple = create_custom_problem_simple(L=L, target_x=target_x, Nx=Nx, T=T, Nt=Nt)
-    logger.info("  Using: ExampleMFGProblem")
+    logger.info("  Using: MFGProblem")
     logger.info("  Hamiltonian signature: hamiltonian(x, p, m)")
     logger.info("  Gradient access: p directly (no dictionary)")
 
@@ -383,11 +382,11 @@ def compare_approaches():
     logger.info("=" * 70)
     logger.info("\nKey Takeaways:")
     logger.info("  1. Advanced API: Full control via MFGComponents and derivs parameter")
-    logger.info("  2. Simplified API: Easy to use via ExampleMFGProblem")
+    logger.info("  2. Simplified API: Easy to use via MFGProblem")
     logger.info("  3. Both approaches produce equivalent results")
     logger.info("  4. Tuple notation (derivs) is dimension-agnostic and type-safe")
     logger.info("\nRecommendation:")
-    logger.info("  - Use ExampleMFGProblem for most applications")
+    logger.info("  - Use MFGProblem for most applications")
     logger.info("  - Use MFGProblem + derivs for advanced control or 2D/3D problems")
     logger.info("\nSee Also:")
     logger.info("  - docs/migration_guides/phase3_gradient_notation_migration.md")

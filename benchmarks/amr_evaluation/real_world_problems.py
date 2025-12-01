@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 
 # MFG_PDE imports
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.geometry import Domain1D, dirichlet_bc, periodic_bc
 
 
@@ -39,7 +39,7 @@ class ProblemSpecification:
     physical_interpretation: str
 
 
-class TrafficFlowProblem(ExampleMFGProblem):
+class TrafficFlowProblem(MFGProblem):
     """
     Traffic flow with varying road capacity and bottlenecks.
 
@@ -109,7 +109,7 @@ class TrafficFlowProblem(ExampleMFGProblem):
         return inflow
 
 
-class FinancialMarketProblem(ExampleMFGProblem):
+class FinancialMarketProblem(MFGProblem):
     """
     Financial market with volatility clustering and liquidity shocks.
 
@@ -165,7 +165,7 @@ class FinancialMarketProblem(ExampleMFGProblem):
         return np.maximum(base_liquidity, 0.1)  # Minimum liquidity floor
 
 
-class CrowdDynamicsProblem(ExampleMFGProblem):
+class CrowdDynamicsProblem(MFGProblem):
     """
     Crowd evacuation with obstacles and multiple exits.
 
@@ -228,7 +228,7 @@ class CrowdDynamicsProblem(ExampleMFGProblem):
         return attraction
 
 
-class EnergyTradingProblem(ExampleMFGProblem):
+class EnergyTradingProblem(MFGProblem):
     """
     Electricity market with renewable intermittency and demand shocks.
 
@@ -285,7 +285,7 @@ class EnergyTradingProblem(ExampleMFGProblem):
         return total_demand
 
 
-class EpidemicSpreadProblem(ExampleMFGProblem):
+class EpidemicSpreadProblem(MFGProblem):
     """
     Epidemic spreading with population heterogeneity and control measures.
 
@@ -404,7 +404,7 @@ class RealWorldMFGProblems:
             ),
         }
 
-    def create_problem(self, problem_type: str, **kwargs) -> ExampleMFGProblem:
+    def create_problem(self, problem_type: str, **kwargs) -> MFGProblem:
         """Create a specific real-world MFG problem."""
 
         if problem_type == "traffic_flow":
@@ -430,7 +430,7 @@ class RealWorldMFGProblems:
         """List all available problem types."""
         return list(self.problems.keys())
 
-    def create_benchmark_suite(self) -> dict[str, ExampleMFGProblem]:
+    def create_benchmark_suite(self) -> dict[str, MFGProblem]:
         """Create the complete benchmark suite with default parameters."""
         suite = {}
 

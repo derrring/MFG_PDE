@@ -19,7 +19,7 @@ from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.fdm_bc_1d import no_flux_bc
 
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
@@ -55,7 +55,7 @@ class TestMassConservation1DSimple:
     @pytest.fixture
     def boundary_conditions(self):
         """No-flux Neumann boundary conditions."""
-        return BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
+        return no_flux_bc()
 
     @pytest.mark.slow
     def test_fp_particle_hjb_fdm_mass_conservation(self, problem, boundary_conditions):

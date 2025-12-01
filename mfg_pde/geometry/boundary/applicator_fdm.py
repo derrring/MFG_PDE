@@ -325,8 +325,9 @@ def _apply_mixed_bc_2d(
     Returns:
         Padded field (Ny+2, Nx+2)
     """
-    Ny, Nx = field.shape
-    padded = np.zeros((Ny + 2, Nx + 2), dtype=field.dtype)
+    # Extract number of grid points from field shape (not intervals!)
+    num_y_points, num_x_points = field.shape
+    padded = np.zeros((num_y_points + 2, num_x_points + 2), dtype=field.dtype)
 
     # Copy interior
     padded[1:-1, 1:-1] = field
@@ -334,11 +335,11 @@ def _apply_mixed_bc_2d(
     # Compute grid coordinates and spacing
     x_min, x_max = domain_bounds[0]
     y_min, y_max = domain_bounds[1]
-    dx = (x_max - x_min) / (Nx - 1) if Nx > 1 else 1.0
-    dy = (y_max - y_min) / (Ny - 1) if Ny > 1 else 1.0
+    dx = (x_max - x_min) / (num_x_points - 1) if num_x_points > 1 else 1.0
+    dy = (y_max - y_min) / (num_y_points - 1) if num_y_points > 1 else 1.0
 
-    x_coords = np.linspace(x_min, x_max, Nx)
-    y_coords = np.linspace(y_min, y_max, Ny)
+    x_coords = np.linspace(x_min, x_max, num_x_points)
+    y_coords = np.linspace(y_min, y_max, num_y_points)
 
     # Ensure domain_bounds is set on mixed_bc
     if mixed_bc.domain_bounds is None:

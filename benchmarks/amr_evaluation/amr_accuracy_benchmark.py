@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # MFG_PDE imports
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_amr_solver, create_solver
 from mfg_pde.geometry import Domain1D, periodic_bc
 
@@ -85,13 +85,13 @@ class AMRAccuracyBenchmark:
 
         return U, M
 
-    def create_manufactured_problem_1d(self, nx: int = 64) -> ExampleMFGProblem:
+    def create_manufactured_problem_1d(self, nx: int = 64) -> MFGProblem:
         """Create 1D problem with manufactured solution for accuracy testing."""
 
         domain = Domain1D(0.0, 1.0, periodic_bc())
 
         # Create problem with moderate parameters
-        problem = ExampleMFGProblem(
+        problem = MFGProblem(
             T=0.5,  # Shorter time for clearer comparison
             xmin=0.0,
             xmax=1.0,
@@ -113,12 +113,12 @@ class AMRAccuracyBenchmark:
 
         return problem
 
-    def create_sharp_feature_problem_1d(self, nx: int = 64) -> ExampleMFGProblem:
+    def create_sharp_feature_problem_1d(self, nx: int = 64) -> MFGProblem:
         """Create 1D problem with sharp features to test AMR effectiveness."""
 
         domain = Domain1D(-2.0, 2.0, periodic_bc())
 
-        problem = ExampleMFGProblem(
+        problem = MFGProblem(
             T=1.0,
             xmin=-2.0,
             xmax=2.0,

@@ -368,11 +368,11 @@ Is problem 1D?
 ### Complete 1D Example
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 
 # Create problem
-problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
+problem = MFGProblem(Nx=100, Nt=50, T=1.0)
 
 # Create solver (Newton for 1D)
 solver = HJBFDMSolver(
@@ -395,31 +395,32 @@ print(f"Solved! Shape: {U_solution.shape}")
 ### Complete 2D Example
 
 ```python
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 import numpy as np
 
-# Define 2D problem
-class My2DProblem(GridBasedMFGProblem):
+# Define 2D problem using modern API
+class My2DProblem(MFGProblem):
     def __init__(self):
         super().__init__(
-            domain_bounds=(-1, 1, -1, 1),
-            grid_resolution=20,
-            time_domain=(1.0, 20),
-            diffusion_coeff=0.01,
+            spatial_bounds=[(-1, 1), (-1, 1)],  # 2D domain
+            spatial_discretization=[20, 20],     # Grid resolution
+            T=1.0,
+            Nt=20,
+            sigma=0.01,
         )
 
     def hamiltonian(self, x, m, p, t):
         return 0.5 * np.sum(p**2) + 0.5 * np.sum(x**2)
 
     def terminal_cost(self, x):
-        return 0.5 * np.sum(x**2)
+        return 0.5 * np.sum(x**2, axis=1)
 
     def initial_density(self, x):
-        return np.exp(-5 * np.sum(x**2))
+        return np.exp(-5 * np.sum(x**2, axis=1))
 
     def running_cost(self, x, m, t):
-        return 0.5 * np.sum(x**2)
+        return 0.5 * np.sum(x**2, axis=1)
 
     def setup_components(self):
         pass

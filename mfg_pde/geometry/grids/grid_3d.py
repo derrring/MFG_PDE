@@ -34,7 +34,7 @@ class SimpleGrid3D(CartesianGrid):
 
         Args:
             bounds: (xmin, xmax, ymin, ymax, zmin, zmax)
-            resolution: (nx, ny, nz) grid points
+            resolution: (nx, ny, nz) number of intervals (grid points = nx+1, ny+1, nz+1)
         """
         self._dimension = 3
         self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = bounds

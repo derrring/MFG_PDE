@@ -22,7 +22,7 @@ Our codebase follows a strict organizational pattern:
 ### Import Conventions
 ```python
 # Preferred imports for MFG_PDE
-from mfg_pde import ExampleMFGProblem, BoundaryConditions
+from mfg_pde import MFGProblem, BoundaryConditions
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.config import create_fast_config
 from mfg_pde.utils.logging import get_logger, configure_research_logging

@@ -7,11 +7,11 @@
 ## 🚀 **Get Started in 5 Minutes**
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 
 # Create problem
-problem = ExampleMFGProblem(Nx=50, Nt=20, T=1.0)
+problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 
 # Solve with standard solver (mass-conserving, robust)
 solver = create_standard_solver(problem, "fixed_point")
@@ -137,11 +137,11 @@ You need developer API if you want to:
 
 ### **Example 1: Standard Workflow**
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 
 # Define problem
-problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
+problem = MFGProblem(Nx=100, Nt=50, T=1.0)
 
 # Solve with default (Tier 2: Hybrid, mass-conserving)
 solver = create_standard_solver(problem, "fixed_point")

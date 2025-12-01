@@ -354,10 +354,10 @@ backend = create_backend("numba")
 ### **Automatic Backend Selection (Recommended)**
 ```python
 # Let MFG_PDE choose the best backend
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_solver
 
-problem = ExampleMFGProblem(Nx=100, Nt=50)
+problem = MFGProblem(Nx=100, Nt=50)
 solver = create_solver(problem, method="auto", backend="auto")
 result = solver.solve()
 ```

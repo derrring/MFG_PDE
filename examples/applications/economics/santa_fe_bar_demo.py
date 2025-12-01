@@ -38,7 +38,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
@@ -76,7 +76,7 @@ def create_santa_fe_problem(
         sigma: Preference diffusion
 
     Returns:
-        ExampleMFGProblem for continuous coordination game
+        MFGProblem for continuous coordination game
     """
 
     def compute_attendance_fraction(m_distribution, theta_grid):
@@ -148,7 +148,7 @@ def create_santa_fe_problem(
         return np.exp(-0.5 * (theta / 1.0) ** 2)
 
     # Create problem
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         xmin=-theta_max,
         xmax=theta_max,
         Nx=Nx,

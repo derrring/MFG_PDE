@@ -45,7 +45,7 @@ class TensorProductGrid(CartesianGrid):
     Attributes:
         dimension: Spatial dimension (any positive integer)
         bounds: List of (min, max) tuples for each dimension
-        num_points: List of grid points along each dimension
+        num_points: Number of grid points along each dimension (not intervals)
         coordinates: List of 1D coordinate arrays
         spacing: Grid spacing along each dimension (if uniform)
         is_uniform: Whether grid has uniform spacing in each dimension
@@ -84,7 +84,8 @@ class TensorProductGrid(CartesianGrid):
                 Note: For d>3, grid requires O(N^d) memory/computation.
                 Consider meshfree methods for high-dimensional problems.
             bounds: List of (min, max) bounds for each dimension
-            num_points: Number of grid points along each dimension
+            num_points: Number of grid points along each dimension (not intervals).
+                For example, num_points=[101, 51] creates 100×50 intervals.
             spacing_type: "uniform" or "custom"
             custom_coordinates: Optional list of 1D coordinate arrays
 

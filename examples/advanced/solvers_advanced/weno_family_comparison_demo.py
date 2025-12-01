@@ -25,7 +25,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem, MFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
@@ -41,7 +41,7 @@ def create_challenging_mfg_problem() -> MFGProblem:
     - Low diffusion (sharp gradients)
     - High congestion (nonlinear effects)
     """
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         xmin=0.0,
         xmax=1.0,
         Nx=128,  # Fine grid for high resolution

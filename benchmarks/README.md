@@ -122,11 +122,11 @@ mkdir benchmarks/new_category/
 ### Evaluate AMR on Custom Problem
 ```python
 from amr_evaluation.comprehensive_benchmark import ComprehensiveAMRBenchmark
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 
 # Create problem with sharp features
 def create_sharp_problem():
-    return ExampleMFGProblem(
+    return MFGProblem(
         T=1.0, Nx=64, sigma=0.01,  # Low diffusion = sharp features
         coupling_coefficient=3.0  # High congestion = localized dynamics
     )

@@ -18,11 +18,11 @@ The `solve_mfg()` function provides a one-line interface for solving MFG problem
 
 **Before (Factory API - ~30 lines)**:
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 from mfg_pde.config import create_fast_config
 
-problem = ExampleMFGProblem()
+problem = MFGProblem()
 config = create_fast_config()
 config.max_iterations = 100
 config.tolerance_U = 1e-5
@@ -36,9 +36,9 @@ result = solver.solve(verbose=True)
 
 **After (solve_mfg() - 1 line)**:
 ```python
-from mfg_pde import ExampleMFGProblem, solve_mfg
+from mfg_pde import MFGProblem, solve_mfg
 
-problem = ExampleMFGProblem()
+problem = MFGProblem()
 result = solve_mfg(problem, method='fast')
 ```
 

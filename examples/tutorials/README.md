@@ -19,7 +19,7 @@ Complete these tutorials in order to build a solid foundation:
 Your first Mean Field Game using the simplest possible setup.
 
 **You'll learn**:
-- How to create an MFG problem with `ExampleMFGProblem`
+- How to create an MFG problem with `MFGProblem`
 - How to solve it using `solve_mfg()`
 - How to inspect solutions (U, M, convergence)
 - How to check mass conservation
@@ -51,7 +51,7 @@ Learn to define your own MFG problems from scratch.
 Move from 1D to 2D spatial domains.
 
 **You'll learn**:
-- How to use `GridBasedMFGProblem` for nD problems
+- How to use `MFGProblem` for nD problems with `spatial_bounds` and `spatial_discretization`
 - How to work with 2D gradients p = [px, py]
 - How to compute 2D integrals for mass conservation
 - How to visualize 2D density evolution

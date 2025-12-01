@@ -22,7 +22,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_standard_solver
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
@@ -43,7 +43,7 @@ def create_test_problem():
         """Simple LQ Hamiltonian: H = (1/2)p² + (1/2)x² + m"""
         return 0.5 * p**2 + 0.5 * x**2 + m
 
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         xmin=-5.0,
         xmax=5.0,
         Nx=50,  # Reduced for faster convergence

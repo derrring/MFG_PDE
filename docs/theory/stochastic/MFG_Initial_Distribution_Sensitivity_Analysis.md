@@ -92,11 +92,11 @@ The coupling term $\kappa m(x)^2$ creates **feedback loops**:
 
 **Computational Verification** (MFG_PDE):
 ```python
-from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfg_pde import MFGProblem, create_fast_solver
 import numpy as np
 
 # Traffic flow problem
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     xmin=0.0, xmax=1.0, Nx=100,
     T=1.0, Nt=50,
     sigma=0.1,    # Low diffusion
@@ -153,7 +153,7 @@ where $K(x,y)$ represents accessibility kernel and $\rho_{\text{customers}}(y)$ 
 **Computational Implementation**:
 ```python
 # Ice-cream stall problem (modified MFG)
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     xmin=0.0, xmax=1.0, Nx=50,
     T=0.5, Nt=25,     # Short time horizon
     sigma=0.05,       # Very low diffusion (precise positioning)
@@ -618,7 +618,7 @@ Run with: uv run python sensitivity_analysis_complete.py
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfg_pde import MFGProblem, create_fast_solver
 from mfg_pde.config import create_research_config
 
 def analyze_m0_sensitivity():
@@ -653,7 +653,7 @@ def analyze_m0_sensitivity():
     for problem_name, params in problems.items():
         print(f"\n=== {params['description']} ===")
         
-        problem = ExampleMFGProblem(
+        problem = MFGProblem(
             xmin=0.0, xmax=1.0, Nx=100,
             Nt=50, **params
         )
@@ -721,7 +721,7 @@ def generate_phase_diagram():
     for i, alpha in enumerate(spatial_forcing):
         for j, kappa in enumerate(density_coupling):
             # Create custom problem
-            problem = ExampleMFGProblem(
+            problem = MFGProblem(
                 xmin=0.0, xmax=1.0, Nx=50,
                 T=0.5, Nt=25,
                 sigma=0.1,

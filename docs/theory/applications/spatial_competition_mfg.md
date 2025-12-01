@@ -447,10 +447,10 @@ $$L(x, u, m, m_{\text{hist}}) = |x - x_{\text{stall}}| + \lambda \ln(m) + \beta 
 
 **Problem Definition**:
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 
 # Define towel-on-beach problem
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     domain_type="1D",
     domain_bounds=(0, 1),
     stall_location=0.5,

@@ -17,7 +17,7 @@ before full MFG solver integration (Phase 3.0).
 import numpy as np
 from matplotlib import pyplot as plt
 
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.conditions import BoundaryConditions, no_flux_bc
 from mfg_pde.utils.numerical.tensor_operators import divergence_tensor_diffusion_2d
 
 
@@ -125,7 +125,7 @@ def main():
     print()
 
     # Boundary conditions
-    bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc(dimension=2)
 
     # CFL condition check
     max_sigma = max(sigma_parallel, sigma_perp)

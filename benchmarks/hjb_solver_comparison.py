@@ -16,21 +16,22 @@ import pandas as pd
 
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 
 
-class QuadraticHamiltonian2D(GridBasedMFGProblem):
+class QuadraticHamiltonian2D(MFGProblem):
     """2D LQ problem for benchmarking."""
 
     def __init__(self, N=20, T=1.0, Nt=20, nu=0.01):
         super().__init__(
-            domain_bounds=(-1, 1, -1, 1),
-            grid_resolution=N,
-            time_domain=(T, Nt),
-            diffusion_coeff=nu,
+            spatial_bounds=[(-1, 1), (-1, 1)],
+            spatial_discretization=[N, N],
+            T=T,
+            Nt=Nt,
+            sigma=nu,
         )
+        self.grid_resolution = N
 
     def hamiltonian(self, x, m, p, t):
         return 0.5 * np.sum(p**2) + 0.5 * np.sum(x**2)
@@ -50,7 +51,7 @@ class QuadraticHamiltonian2D(GridBasedMFGProblem):
 
 def benchmark_1d_solver(Nx=100, Nt=50, solver_type="newton"):
     """Benchmark 1D HJB solver."""
-    problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, T=1.0)
+    problem = MFGProblem(Nx=Nx, Nt=Nt, T=1.0)
 
     if solver_type == "fixed_point":
         solver = HJBFDMSolver(

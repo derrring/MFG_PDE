@@ -4,21 +4,21 @@ Tutorial 01: Hello Mean Field Games
 This is the simplest possible MFG example using the Linear-Quadratic (LQ) framework.
 
 What you'll learn:
-- How to define an MFG problem using ExampleMFGProblem
+- How to define an MFG problem using MFGProblem
 - How to solve it using the solve_mfg() function
 - How to inspect the solution
 
 Mathematical Problem:
     A Linear-Quadratic Mean Field Game on [0,1] with:
     - Hamiltonian: H(p) = (1/2)|p|^2
-    - Coupling: λ * m (congestion cost)
+    - Coupling: lambda * m (congestion cost)
     - Initial density: Gaussian centered at 0.5
     - Terminal cost: Quadratic penalty g(x) = (1/2)(x - 0.5)^2
 """
 
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem, solve_mfg
+from mfg_pde import MFGProblem, solve_mfg
 
 # ==============================================================================
 # Step 1: Create the Problem
@@ -29,21 +29,21 @@ print("TUTORIAL 01: Hello Mean Field Games")
 print("=" * 70)
 print()
 
-# The ExampleMFGProblem is a pre-configured Linear-Quadratic MFG problem
+# MFGProblem with default parameters creates a Linear-Quadratic MFG problem
 # It's the simplest way to get started with MFG_PDE
 
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     # Spatial domain: [0, 1]
     xmin=0.0,
     xmax=1.0,
-    Nx=50,  # Number of spatial grid points
+    Nx=50,  # Number of spatial intervals (51 grid points)
     # Time horizon: [0, 1]
     T=1.0,
-    Nt=50,  # Number of time steps
+    Nt=50,  # Number of time intervals (51 time points)
     # Diffusion coefficient (controls agent randomness)
     sigma=0.1,
     # Congestion parameter (controls interaction strength)
-    lam=0.5,
+    coupling_coefficient=0.5,
 )
 
 print("Problem created:")
@@ -145,7 +145,7 @@ print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
 print("What you learned:")
-print("  1. How to create an MFG problem using ExampleMFGProblem")
+print("  1. How to create an MFG problem using MFGProblem")
 print("  2. How to solve it with solve_mfg()")
 print("  3. How to inspect the solution (U, M, convergence)")
 print("  4. How to check mass conservation")

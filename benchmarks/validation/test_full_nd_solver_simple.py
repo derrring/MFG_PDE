@@ -21,7 +21,8 @@ def test_fp_2d_pure_diffusion():
 
     # Import after printing header (cleaner output)
     from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-    from mfg_pde.geometry import BoundaryConditions, TensorProductGrid
+    from mfg_pde.geometry import TensorProductGrid
+    from mfg_pde.geometry.boundary.conditions import no_flux_bc
 
     # Create 2D grid
     grid = TensorProductGrid(
@@ -40,7 +41,7 @@ def test_fp_2d_pure_diffusion():
                     self.boundary_conditions = boundary_conditions
                     self.dimension = grid.dimension
 
-            self.geometry = SimpleGeometry(grid, BoundaryConditions(type="no_flux"))
+            self.geometry = SimpleGeometry(grid, no_flux_bc(dimension=2))
             self.T = T
             self.Nt = Nt
             self.sigma = sigma
@@ -70,8 +71,8 @@ def test_fp_2d_pure_diffusion():
 
     print("Running FP solver (pure diffusion)...")
     M_solution = fp_solver.solve_fp_system(
-        m_initial_condition=m0,
-        U_solution_for_drift=U_zero,
+        M_initial=m0,
+        drift_field=U_zero,
         show_progress=True,
     )
 
@@ -109,7 +110,8 @@ def test_fp_2d_with_advection():
 
     # Import after printing header
     from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-    from mfg_pde.geometry import BoundaryConditions, TensorProductGrid
+    from mfg_pde.geometry import TensorProductGrid
+    from mfg_pde.geometry.boundary.conditions import no_flux_bc
 
     # Create 2D grid
     grid = TensorProductGrid(
@@ -127,7 +129,7 @@ def test_fp_2d_with_advection():
                     self.boundary_conditions = boundary_conditions
                     self.dimension = grid.dimension
 
-            self.geometry = SimpleGeometry(grid, BoundaryConditions(type="no_flux"))
+            self.geometry = SimpleGeometry(grid, no_flux_bc(dimension=2))
             self.T = T
             self.Nt = Nt
             self.sigma = sigma
@@ -162,8 +164,8 @@ def test_fp_2d_with_advection():
 
     print("Running FP solver (with advection)...")
     M_solution = fp_solver.solve_fp_system(
-        m_initial_condition=m0,
-        U_solution_for_drift=U_velocity,
+        M_initial=m0,
+        drift_field=U_velocity,
         show_progress=True,
     )
 

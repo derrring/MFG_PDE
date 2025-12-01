@@ -16,9 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 import numpy as np
 
-from mfg_pde import MFGComponents
+from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.benchmarks import HighDimMFGBenchmark
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
 from mfg_pde.geometry import Domain3D
 from mfg_pde.geometry.amr.amr_tetrahedral_3d import TetrahedralAMRMesh
 from mfg_pde.geometry.boundary.fem_bc_3d import (
@@ -158,14 +157,31 @@ def demo_performance_optimization():
         return None
 
 
-class SimpleMFGProblem(GridBasedMFGProblem):
+class SimpleMFGProblem(MFGProblem):
     """Simple MFG problem implementation for demonstration."""
 
     def __init__(self, domain_bounds, grid_resolution, time_domain=(1.0, 11)):
+        # Convert domain_bounds tuple to spatial_bounds list of tuples
+        dimension = len(domain_bounds) // 2
+        spatial_bounds = [(domain_bounds[2 * i], domain_bounds[2 * i + 1]) for i in range(dimension)]
+
+        # Convert grid_resolution
+        if isinstance(grid_resolution, int):
+            spatial_discretization = [grid_resolution] * dimension
+        else:
+            spatial_discretization = list(grid_resolution)
+
+        T, Nt = time_domain
+
         super().__init__(
-            domain_bounds=domain_bounds, grid_resolution=grid_resolution, time_domain=time_domain, diffusion_coeff=0.1
+            spatial_bounds=spatial_bounds,
+            spatial_discretization=spatial_discretization,
+            T=T,
+            Nt=Nt,
+            sigma=0.1,
         )
-        self.dimension = len(grid_resolution)
+        self.dimension = dimension
+        self.grid_resolution = grid_resolution
 
     def setup_components(self) -> MFGComponents:
         """Setup simple MFG components."""

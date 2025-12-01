@@ -271,39 +271,24 @@ class TestBackwardCompatibility:
         assert hasattr(problem, "Nt")
         assert hasattr(problem, "sigma")
 
-    @pytest.mark.skip(
-        reason="GridBasedMFGProblem is deprecated (removal in v2.0.0) and initialization is broken. "
-        "Test is no longer relevant as this class should not be used. "
-        "Use MFGProblem() directly instead. See highdim_mfg_problem.py:351-390 for deprecation details."
-    )
-    def test_grid_based_mfg_problem_factory(self):
-        """Test GridBasedMFGProblem factory function."""
-        from mfg_pde import GridBasedMFGProblem
+    def test_2d_problem_via_mfgproblem(self):
+        """Test 2D problem creation via MFGProblem (replaces deprecated GridBasedMFGProblem)."""
+        # Create 2D problem directly with MFGProblem
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)],
+            spatial_discretization=[50, 50],
+            T=1.0,
+            Nt=100,
+            sigma=0.1,
+        )
 
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            problem = GridBasedMFGProblem(
-                domain_bounds=(0, 1, 0, 1),
-                grid_resolution=50,
-                time_domain=(1.0, 100),
-                diffusion_coeff=0.1,
-            )
-
-            # Should emit deprecation warning
-            deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-            assert len(deprecation_warnings) >= 1
-            assert "deprecated" in str(deprecation_warnings[0].message).lower()
-
-        # Should create valid problem
+        # Should create valid 2D problem
         assert problem.dimension == 2
         assert problem.T == 1.0
         assert problem.Nt == 100
         assert problem.sigma == 0.1
-
-        # Should have legacy attributes
-        assert hasattr(problem, "domain_bounds")
-        assert hasattr(problem, "grid_resolution")
-        assert problem.domain_bounds == (0, 1, 0, 1)
+        assert problem.spatial_bounds == [(0, 1), (0, 1)]
+        assert problem.spatial_discretization == [50, 50]
 
 
 class TestComplexityEstimation:

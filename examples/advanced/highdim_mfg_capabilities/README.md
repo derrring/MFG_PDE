@@ -1,16 +1,16 @@
 # High-Dimensional MFG Capabilities
 
-> **⚠️ NOTE**: Particle-collocation methods mentioned in this README have been removed from core package. MFG_PDE now focuses on fixed-point methods for high-dimensional problems.
+> **⚠️ DEPRECATED (v0.14.0)**: `GridBasedMFGProblem`, `HighDimMFGProblem`, and `HybridMFGSolver` have been removed. Use `MFGProblem` with `spatial_bounds` and `spatial_discretization` parameters for nD problems on tensor product grids.
 
-This directory demonstrates the extended high-dimensional capabilities of the MFG_PDE package, including 2D, 3D, and nD Mean Field Games with advanced solver methods.
+This directory demonstrates the extended high-dimensional capabilities of the MFG_PDE package, including 2D, 3D, and nD Mean Field Games.
 
 ## 🎯 **Key Features Implemented**
 
-### **New High-Dimensional Infrastructure**
-- **`Domain3D`**: Complete 3D geometry with tetrahedral mesh generation
-- **`HighDimMFGProblem`**: Abstract base for multi-dimensional MFG problems
-- **`GridBasedMFGProblem`**: Simplified interface for rectangular domains
-- **`HybridMFGSolver`**: Multi-strategy solver using adaptive fixed-point methods
+### **Multi-Dimensional Infrastructure (v0.14.0+)**
+- **`MFGProblem`**: Unified class supporting 1D, 2D, 3D, and nD problems
+- **`spatial_bounds`**: List of tuples defining domain bounds per dimension
+- **`spatial_discretization`**: List of grid points per dimension
+- **`Domain3D`**: (Future) Complete 3D geometry with tetrahedral mesh generation
 
 ### **Solver Capabilities**
 - **Damped Fixed Point**: Multi-dimensional ready (using existing `FixedPointIterator`)
@@ -34,60 +34,56 @@ highdim_mfg_capabilities/
 
 ## 🚀 **Quick Start Examples**
 
-### **2D Complex Geometry MFG**
+### **2D Grid-Based MFG (Modern API)**
 ```python
-from mfg_pde.geometry import Domain2D
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_basic_solver
 
-# Create 2D domain with holes
-geometry = Domain2D(
-    domain_type="rectangle",
-    bounds=(0, 2, 0, 1),
-    holes=[
-        {"type": "circle", "center": (0.5, 0.5), "radius": 0.2},
-        {"type": "circle", "center": (1.5, 0.5), "radius": 0.15}
-    ]
+# 2D problem on tensor product grid
+problem = MFGProblem(
+    spatial_bounds=[(0, 2), (0, 1)],  # 2D domain
+    spatial_discretization=[64, 32],   # 64x32 grid
+    T=1.0,
+    Nt=100,
+    sigma=0.1,
 )
 
 # Solve MFG problem
-problem = CustomMFG2D(geometry, time_domain=(1.0, 100))
-result = problem.solve_with_damped_fixed_point()
+solver = create_basic_solver(problem)
+result = solver.solve()
 ```
 
-### **3D Crowd Dynamics**
+### **3D Grid-Based MFG (Modern API)**
 ```python
-from mfg_pde.geometry import Domain3D
-from mfg_pde.core.highdim_mfg_problem import HybridMFGSolver
-
-# Create 3D sphere domain
-geometry = Domain3D(
-    domain_type="sphere",
-    center=(0, 0, 0),
-    radius=1.0,
-    mesh_size=0.1
-)
-
-# Hybrid solver approach
-problem = CrowdDynamics3D(geometry)
-solver = HybridMFGSolver(problem)
-result = solver.solve(strategy="adaptive")
-```
-
-### **High-Performance Grid-Based**
-```python
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_basic_solver
 
 # 3D box domain with regular grid
-problem = GridBasedMFGProblem(
-    domain_bounds=(0, 1, 0, 1, 0, 1),  # 3D unit cube
-    grid_resolution=(32, 32, 32),      # 32³ grid points
-    time_domain=(1.0, 50)
+problem = MFGProblem(
+    spatial_bounds=[(0, 1), (0, 1), (0, 1)],  # 3D unit cube
+    spatial_discretization=[32, 32, 32],       # 32³ grid points
+    T=1.0,
+    Nt=50,
+    sigma=0.1,
 )
 
-# Fast solution with optimized damping
-result = problem.solve_with_damped_fixed_point(
-    damping_factor=0.6,
-    max_iterations=30
+# Solve with factory
+solver = create_basic_solver(problem, damping=0.6, max_iterations=30)
+result = solver.solve()
+```
+
+### **High-Performance nD Problems**
+```python
+from mfg_pde import MFGProblem
+
+# Any-dimensional problem via spatial_bounds
+# Example: 4D problem
+problem = MFGProblem(
+    spatial_bounds=[(0, 1), (0, 1), (0, 1), (0, 1)],  # 4D hypercube
+    spatial_discretization=[16, 16, 16, 16],          # 16^4 grid
+    T=1.0,
+    Nt=50,
+    sigma=0.05,
 )
 ```
 

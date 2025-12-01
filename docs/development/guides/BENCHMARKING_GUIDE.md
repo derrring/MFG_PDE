@@ -144,7 +144,7 @@ The framework architecture supports future benchmark categories:
 
 **Example Design:**
 ```python
-class TrafficFlowProblem(ExampleMFGProblem):
+class TrafficFlowProblem(MFGProblem):
     """Traffic with bottlenecks - designed for AMR validation"""
     def __init__(self):
         # Sharp density changes at bottlenecks

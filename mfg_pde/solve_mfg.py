@@ -6,9 +6,9 @@ Provides a simple, one-line interface for solving MFG problems with automatic
 configuration and method selection.
 
 Example:
-    >>> from mfg_pde import ExampleMFGProblem, solve_mfg
+    >>> from mfg_pde import MFGProblem, solve_mfg
     >>>
-    >>> problem = ExampleMFGProblem()
+    >>> problem = MFGProblem()
     >>> result = solve_mfg(problem, method="auto", resolution=50)
     >>> U, M = result.U, result.M
 """
@@ -81,10 +81,10 @@ def solve_mfg(
         RuntimeError: If solver fails to converge
 
     Example:
-        >>> from mfg_pde import ExampleMFGProblem, solve_mfg
+        >>> from mfg_pde import MFGProblem, solve_mfg
         >>>
         >>> # Simple usage with defaults
-        >>> problem = ExampleMFGProblem()
+        >>> problem = MFGProblem()
         >>> result = solve_mfg(problem)
         >>> U, M = result.U, result.M
         >>> print(f"Converged in {result.iterations} iterations")

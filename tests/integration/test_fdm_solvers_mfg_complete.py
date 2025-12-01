@@ -14,7 +14,7 @@ from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.fdm_bc_1d import dirichlet_bc, no_flux_bc, periodic_bc
 
 
 class TestFDMSolversMFGIntegration:
@@ -46,7 +46,7 @@ class TestFDMSolversMFGIntegration:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30)
 
         # Use no-flux boundary conditions for mass conservation
-        bc = BoundaryConditions(type="no_flux")
+        bc = no_flux_bc()
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
 
         # Create initial density
@@ -111,7 +111,7 @@ class TestFDMSolversMFGIntegration:
         """Test FDM solution with periodic boundary conditions."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30)
 
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc()
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
         hjb_solver = HJBFDMSolver(problem)
 
@@ -129,7 +129,7 @@ class TestFDMSolversMFGIntegration:
         """Test FDM solution with Dirichlet boundary conditions."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30)
 
-        bc = BoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
+        bc = dirichlet_bc(left_value=0.0, right_value=0.0)
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
         hjb_solver = HJBFDMSolver(problem)
 

@@ -6,16 +6,16 @@ Test to verify KDE mass conservation issue
 import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver as ParticleFPSolver
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry.boundary.fdm_bc_1d import no_flux_bc
 
 
 def test_kde_normalization():
     print("=== Testing KDE Mass Conservation ===")
 
-    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, sigma=1.0, coupling_coefficient=0.5)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, sigma=1.0, coupling_coefficient=0.5)
 
-    no_flux_bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc()
 
     print("Test 1: With normalize_kde_output=False (current)")
     solver1 = ParticleFPSolver(
@@ -23,11 +23,11 @@ def test_kde_normalization():
         num_particles=200,
         kde_bandwidth="scott",
         normalize_kde_output=False,  # This is the issue!
-        boundary_conditions=no_flux_bc,
+        boundary_conditions=bc,
     )
 
     U_zero = np.zeros((problem.Nt + 1, problem.Nx + 1))
-    M_result1 = solver1.solve_fp_system(m_initial_condition=problem.m_init, drift_field=U_zero)
+    M_result1 = solver1.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero)
 
     mass1 = np.sum(M_result1 * problem.dx, axis=1)
     print(f"  Initial mass: {mass1[0]:.6f}")
@@ -40,10 +40,10 @@ def test_kde_normalization():
         num_particles=200,
         kde_bandwidth="scott",
         normalize_kde_output=True,  # This should help!
-        boundary_conditions=no_flux_bc,
+        boundary_conditions=bc,
     )
 
-    M_result2 = solver2.solve_fp_system(m_initial_condition=problem.m_init, drift_field=U_zero)
+    M_result2 = solver2.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero)
 
     mass2 = np.sum(M_result2 * problem.dx, axis=1)
     print(f"  Initial mass: {mass2[0]:.6f}")
@@ -56,10 +56,10 @@ def test_kde_normalization():
         num_particles=200,
         kde_bandwidth=0.05,  # Fixed bandwidth
         normalize_kde_output=True,
-        boundary_conditions=no_flux_bc,
+        boundary_conditions=bc,
     )
 
-    M_result3 = solver3.solve_fp_system(m_initial_condition=problem.m_init, drift_field=U_zero)
+    M_result3 = solver3.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero)
 
     mass3 = np.sum(M_result3 * problem.dx, axis=1)
     print(f"  Initial mass: {mass3[0]:.6f}")

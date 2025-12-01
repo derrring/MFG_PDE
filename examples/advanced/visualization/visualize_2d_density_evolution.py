@@ -25,14 +25,13 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfg_pde import MFGComponents
+from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.conditions import no_flux_bc
 
 
-class SimpleCoupledMFGProblem(GridBasedMFGProblem):
+class SimpleCoupledMFGProblem(MFGProblem):
     """
     Simple coupled MFG problem for visualization.
 
@@ -48,7 +47,18 @@ class SimpleCoupledMFGProblem(GridBasedMFGProblem):
         coupling_strength=1.0,
         goal_position=None,
     ):
-        super().__init__(domain_bounds, grid_resolution, time_domain, diffusion_coeff)
+        # Convert domain_bounds to spatial_bounds
+        spatial_bounds = [(domain_bounds[0], domain_bounds[1]), (domain_bounds[2], domain_bounds[3])]
+        T, Nt = time_domain
+
+        super().__init__(
+            spatial_bounds=spatial_bounds,
+            spatial_discretization=[grid_resolution, grid_resolution],
+            T=T,
+            Nt=Nt,
+            sigma=diffusion_coeff,
+        )
+        self.grid_resolution = grid_resolution
         self.coupling_strength = coupling_strength
         self.goal_position = goal_position if goal_position is not None else [0.7, 0.7]
 
@@ -182,7 +192,7 @@ def solve_mfg_with_enhancements(use_enhancements=True):
         )
 
     # Create FP solver
-    fp_solver = FPFDMSolver(problem, boundary_conditions=BoundaryConditions(type="no_flux"))
+    fp_solver = FPFDMSolver(problem, boundary_conditions=no_flux_bc(dimension=2))
 
     # Setup
     grid = problem.geometry.grid
@@ -223,16 +233,16 @@ def solve_mfg_with_enhancements(use_enhancements=True):
         # Solve HJB backward in time
         U_prev = U.copy()
         U = hjb_solver.solve_hjb_system(
-            M_density_evolution_from_FP=M,
-            U_final_condition_at_T=u_final,
-            U_from_prev_picard=U_prev,
+            M_density=M,
+            U_terminal=u_final,
+            U_coupling_prev=U_prev,
         )
 
         # Solve FP forward in time (if not last iteration)
         if iteration < 2:
             M = fp_solver.solve_fp_system(
-                m_initial_condition=m_init,
-                U_solution_for_drift=U,
+                M_initial=m_init,
+                drift_field=U,
                 show_progress=False,
             )
 

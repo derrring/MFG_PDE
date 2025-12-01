@@ -28,7 +28,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.conditions import no_flux_bc
 from mfg_pde.utils.numerical.tensor_operators import (
     divergence_tensor_diffusion_2d,
 )
@@ -180,7 +180,7 @@ def test_tensor_diffusion_evolution():
     Sigma = create_corridor_diffusion_tensor(X, Y, sigma_parallel=0.15, sigma_perp=0.03, rotation_angle=0.0)
 
     # Boundary conditions
-    bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc(dimension=2)
 
     # Time evolution parameters
     dt = 0.001

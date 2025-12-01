@@ -32,7 +32,7 @@ class SimpleGrid2D(CartesianGrid):
 
         Args:
             bounds: (xmin, xmax, ymin, ymax)
-            resolution: (nx, ny) grid points
+            resolution: (nx, ny) number of intervals (grid points = nx+1, ny+1)
         """
         self._dimension = 2
         self.xmin, self.xmax, self.ymin, self.ymax = bounds

@@ -23,7 +23,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.mfg_solvers import HybridFPParticleHJBFDM, ParticleCollocationSolver
 
 
@@ -31,7 +31,7 @@ from mfg_pde.alg.numerical.mfg_solvers import HybridFPParticleHJBFDM, ParticleCo
 @pytest.fixture
 def small_problem():
     """Small problem for quick regression testing (suitable for CI)."""
-    return ExampleMFGProblem(
+    return MFGProblem(
         xmin=0.0,
         xmax=1.0,
         Nx=20,  # Small grid
@@ -45,7 +45,7 @@ def small_problem():
 @pytest.fixture
 def medium_problem():
     """Medium problem for comprehensive benchmarking."""
-    return ExampleMFGProblem(
+    return MFGProblem(
         xmin=0.0,
         xmax=1.0,
         Nx=40,  # Medium grid
@@ -162,7 +162,7 @@ def test_solver_creation_overhead(benchmark):
     Measures the time to create solver instances, which should be
     negligible compared to solve time.
     """
-    problem = ExampleMFGProblem(Nx=20, Nt=30)
+    problem = MFGProblem(Nx=20, Nt=30)
     x_collocation = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
 
     def create_solver():
@@ -186,7 +186,7 @@ def test_problem_creation_overhead(benchmark):
     """
 
     def create_problem():
-        return ExampleMFGProblem(
+        return MFGProblem(
             xmin=0.0,
             xmax=1.0,
             Nx=40,

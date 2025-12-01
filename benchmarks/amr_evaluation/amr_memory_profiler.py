@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # MFG_PDE imports
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_amr_solver, create_solver
 from mfg_pde.geometry import Domain1D, periodic_bc
 
@@ -165,7 +165,7 @@ class AMRMemoryProfiler:
 
             # Create 1D problem
             domain = Domain1D(0.0, 1.0, periodic_bc())
-            problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=size, Nt=20, sigma=0.1, coupling_coefficient=1.0)
+            problem = MFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=size, Nt=20, sigma=0.1, coupling_coefficient=1.0)
             problem.domain = domain
             problem.dimension = 1
 
@@ -282,7 +282,7 @@ class AMRMemoryProfiler:
 
         # Create a moderate-size problem
         domain = Domain1D(0.0, 1.0, periodic_bc())
-        problem = ExampleMFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=128, Nt=20, sigma=0.1, coupling_coefficient=1.0)
+        problem = MFGProblem(T=0.5, xmin=0.0, xmax=1.0, Nx=128, Nt=20, sigma=0.1, coupling_coefficient=1.0)
         problem.domain = domain
         problem.dimension = 1
 
@@ -365,7 +365,7 @@ class AMRMemoryProfiler:
 
         # Create test problem
         domain = Domain1D(0.0, 1.0, periodic_bc())
-        problem = ExampleMFGProblem(
+        problem = MFGProblem(
             T=0.5,
             xmin=0.0,
             xmax=1.0,

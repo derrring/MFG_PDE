@@ -7,11 +7,11 @@
 
 ### Basic Usage
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_amr_solver
 
 # Create problem
-problem = ExampleMFGProblem(Nx=32, Nt=50, T=1.0)
+problem = MFGProblem(Nx=32, Nt=50, T=1.0)
 
 # Create AMR solver
 amr_solver = create_amr_solver(
@@ -252,7 +252,7 @@ amr_solver = create_amr_solver(problem, error_threshold=1e-5)  # Lower threshold
 amr_solver = create_amr_solver(problem, max_levels=5)  # Allow more levels
 
 # Check: Solution too smooth?
-problem = ExampleMFGProblem(sigma=0.05)  # Reduce diffusion for sharper features
+problem = MFGProblem(sigma=0.05)  # Reduce diffusion for sharper features
 ```
 
 ### Issue: Excessive Memory Usage

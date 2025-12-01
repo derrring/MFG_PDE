@@ -11,12 +11,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from mfg_pde import MFGComponents
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.factory import create_basic_solver
 
 
-class CrowdMotion2D(GridBasedMFGProblem):
+class CrowdMotion2D(MFGProblem):
     """2D crowd motion MFG problem for diagnosis."""
 
     def __init__(
@@ -30,11 +29,13 @@ class CrowdMotion2D(GridBasedMFGProblem):
         start=(0.2, 0.2),
     ):
         super().__init__(
-            domain_bounds=(0.0, 1.0, 0.0, 1.0),
-            grid_resolution=grid_resolution,
-            time_domain=(time_horizon, num_timesteps),
-            diffusion_coeff=diffusion,
+            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
+            spatial_discretization=[grid_resolution, grid_resolution],
+            T=time_horizon,
+            Nt=num_timesteps,
+            sigma=diffusion,
         )
+        self.grid_resolution = grid_resolution  # Store for convenience
         self.congestion_weight = congestion_weight
         self.goal = np.array(goal)
         self.start = np.array(start)

@@ -26,7 +26,7 @@ import numpy as np
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.conditions import no_flux_bc
 from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
 
 print("=" * 70)
@@ -115,7 +115,7 @@ print()
 print("Creating HJB and FP solvers...")
 print()
 
-boundary_conditions = BoundaryConditions(type="no_flux")
+boundary_conditions = no_flux_bc(dimension=2)
 
 hjb_solver = HJBFDMSolver(
     problem,
@@ -159,15 +159,15 @@ for iteration in range(max_iterations):
 
     # Solve HJB with diagonal tensor
     U_new = hjb_solver.solve_hjb_system(
-        M_density_evolution=M,
-        U_final_condition=U[-1],
-        U_from_prev_picard=U,
+        M_density=M,
+        U_terminal=U[-1],
+        U_coupling_prev=U,
         tensor_diffusion_field=Sigma,
     )
 
     # Solve FP with diagonal tensor
     M_new = fp_solver.solve_fp_system(
-        m_initial_condition=m0,
+        M_initial=m0,
         drift_field=U_new,
         tensor_diffusion_field=Sigma,
         show_progress=False,

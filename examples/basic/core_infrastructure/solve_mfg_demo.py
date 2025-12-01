@@ -15,7 +15,7 @@ Run:
     python examples/basic/solve_mfg_demo.py
 """
 
-from mfg_pde import ExampleMFGProblem, solve_mfg
+from mfg_pde import MFGProblem, solve_mfg
 from mfg_pde.config import ConfigBuilder, presets
 
 
@@ -25,7 +25,7 @@ def demo_simple_usage():
     print("Demo 1: Simplest Usage (Auto Configuration)")
     print("=" * 60)
 
-    problem = ExampleMFGProblem()
+    problem = MFGProblem()
 
     # One-line solve with new API!
     result = solve_mfg(problem)
@@ -46,7 +46,7 @@ def demo_new_config_api():
     print("Demo 2: New Config API (Phase 3.3 - RECOMMENDED)")
     print("=" * 60)
 
-    problem = ExampleMFGProblem()
+    problem = MFGProblem()
 
     # Method 1: Preset objects (recommended)
     print("\n1. Using preset objects:")
@@ -93,7 +93,7 @@ def demo_preset_comparison():
     print("Demo 3: Preset Comparison")
     print("=" * 60)
 
-    problem = ExampleMFGProblem()
+    problem = MFGProblem()
 
     # Fast preset
     print("\n1. Fast preset (optimized for speed)")
@@ -130,7 +130,7 @@ def demo_custom_parameters():
     print("Demo 4: Custom Parameters with Presets")
     print("=" * 60)
 
-    problem = ExampleMFGProblem()
+    problem = MFGProblem()
 
     # Start with preset, override specific parameters
     result = solve_mfg(
@@ -158,7 +158,7 @@ def demo_legacy_api():
     print("Demo 5: Legacy API (Deprecated)")
     print("=" * 60)
 
-    problem = ExampleMFGProblem()
+    problem = MFGProblem()
 
     print("\nLegacy API (still works but deprecated):")
     print("  result = solve_mfg(problem, method='fast')")

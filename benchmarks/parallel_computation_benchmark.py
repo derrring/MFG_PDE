@@ -40,10 +40,10 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # Simple test function for parameter sweeps (not a pytest test)
 def mfg_solve_function(Nx, Nt, sigma):
     """Simple MFG solve for benchmarking."""
-    from mfg_pde.core.mfg_problem import ExampleMFGProblem
+    from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.factory import create_fast_solver
 
-    problem = ExampleMFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
+    problem = MFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
     solver = create_fast_solver(problem)
     result = solver.solve()
 

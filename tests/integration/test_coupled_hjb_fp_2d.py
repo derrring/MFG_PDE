@@ -3,9 +3,6 @@ Integration test for coupled HJB-FP system in 2D.
 
 Tests that nD HJB and FP solvers work together to solve a simple MFG problem
 using Picard iteration (fixed-point iteration).
-
-NOTE: These tests use deprecated GridBasedMFGProblem API and require
-comprehensive refactoring. Tracked in Issue #277 (API Consistency Audit).
 """
 
 import pytest
@@ -15,7 +12,8 @@ import numpy as np
 from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.geometry import BoundaryConditions, TensorProductGrid
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary.conditions import no_flux_bc
 
 
 class SimpleCoupledMFGProblem(MFGProblem):
@@ -157,7 +155,7 @@ def solve_mfg_picard_2d(problem, max_iterations=10, tolerance=1e-3, verbose=True
     """
     # Initialize solvers (use 2D-capable Semi-Lagrangian solver)
     hjb_solver = HJBSemiLagrangianSolver(problem)
-    fp_solver = FPFDMSolver(problem, boundary_conditions=BoundaryConditions(type="no_flux"))
+    fp_solver = FPFDMSolver(problem, boundary_conditions=no_flux_bc(dimension=2))
 
     # Get problem dimensions
     Nt = problem.Nt + 1
@@ -200,15 +198,15 @@ def solve_mfg_picard_2d(problem, max_iterations=10, tolerance=1e-3, verbose=True
     for iteration in range(max_iterations):
         # Step 1: Solve HJB backward with M_current fixed
         U_new = hjb_solver.solve_hjb_system(
-            M_density_evolution_from_FP=M_current,
-            U_final_condition_at_T=u_final,
-            U_from_prev_picard=U_current,
+            M_density=M_current,
+            U_terminal=u_final,
+            U_coupling_prev=U_current,
         )
 
         # Step 2: Solve FP forward with U_new fixed
         M_new = fp_solver.solve_fp_system(
-            m_initial_condition=m_init,
-            U_solution_for_drift=U_new,
+            M_initial=m_init,
+            drift_field=U_new,
             show_progress=False,
         )
 

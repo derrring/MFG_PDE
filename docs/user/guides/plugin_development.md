@@ -336,14 +336,14 @@ Create comprehensive tests:
 
 ```python
 import pytest
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.core.plugin_system import get_plugin_manager
 from your_plugin_package import CustomSolverPlugin
 
 class TestCustomSolverPlugin:
     def setup_method(self):
         self.plugin = CustomSolverPlugin()
-        self.problem = ExampleMFGProblem(Nx=20, Nt=10, T=1.0)
+        self.problem = MFGProblem(Nx=20, Nt=10, T=1.0)
     
     def test_plugin_metadata(self):
         metadata = self.plugin.metadata
@@ -384,14 +384,14 @@ class TestCustomSolverPlugin:
 
 ```python
 from mfg_pde.core.plugin_system import discover_and_load_plugins
-from mfg_pde import ExampleMFGProblem, create_solver_with_plugins
+from mfg_pde import MFGProblem, create_solver_with_plugins
 
 # Discover and load all available plugins
 plugin_results = discover_and_load_plugins()
 print("Loaded plugins:", plugin_results)
 
 # Create problem
-problem = ExampleMFGProblem(Nx=30, Nt=15, T=1.0)
+problem = MFGProblem(Nx=30, Nt=15, T=1.0)
 
 # Use plugin-provided solver
 solver = create_solver_with_plugins(
@@ -516,7 +516,7 @@ class YourSolver:
         convergence_history (List[float]): History of convergence errors
         
     Examples:
-        >>> problem = ExampleMFGProblem(Nx=20, Nt=10)
+        >>> problem = MFGProblem(Nx=20, Nt=10)
         >>> solver = YourSolver(problem, learning_rate=0.05)
         >>> result = solver.solve()
         >>> print(f"Converged: {result.converged}")

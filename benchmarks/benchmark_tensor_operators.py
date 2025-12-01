@@ -18,7 +18,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary import no_flux_bc
 
 # Import to check Numba availability
 from mfg_pde.utils.numerical.tensor_operators import (
@@ -146,7 +146,7 @@ def benchmark_full_tensor_constant(Ny: int, Nx: int) -> dict:
     m = create_test_density(Ny, Nx)
     Sigma = create_constant_tensor_2d()
     dx = dy = 1.0 / Nx
-    bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc(dimension=2)
 
     stats = benchmark_function(divergence_tensor_diffusion_2d, m, Sigma, dx, dy, bc)
 
@@ -162,7 +162,7 @@ def benchmark_full_tensor_varying(Ny: int, Nx: int) -> dict:
     m = create_test_density(Ny, Nx)
     Sigma = create_spatially_varying_tensor_2d(Ny, Nx)
     dx = dy = 1.0 / Nx
-    bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc(dimension=2)
 
     stats = benchmark_function(divergence_tensor_diffusion_2d, m, Sigma, dx, dy, bc)
 
@@ -178,7 +178,7 @@ def benchmark_diagonal_constant(Ny: int, Nx: int) -> dict:
     m = create_test_density(Ny, Nx)
     sigma_diag = create_diagonal_tensor_constant()
     dx = dy = 1.0 / Nx
-    bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc(dimension=2)
 
     stats = benchmark_function(divergence_diagonal_diffusion_2d, m, sigma_diag, dx, dy, bc)
 
@@ -194,7 +194,7 @@ def benchmark_diagonal_varying(Ny: int, Nx: int) -> dict:
     m = create_test_density(Ny, Nx)
     sigma_diag = create_diagonal_tensor_varying(Ny, Nx)
     dx = dy = 1.0 / Nx
-    bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc(dimension=2)
 
     stats = benchmark_function(divergence_diagonal_diffusion_2d, m, sigma_diag, dx, dy, bc)
 

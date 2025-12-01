@@ -112,7 +112,7 @@ class SolverFactory:
         if problem is None:
             raise ValueError(
                 "Problem cannot be None. Please provide a valid MFGProblem instance.\n"
-                "Example: problem = ExampleMFGProblem(Nx=50, Nt=100, T=1.0)"
+                "Example: problem = MFGProblem(Nx=50, Nt=100, T=1.0)"
             )
 
         # Validate solver type with helpful suggestions

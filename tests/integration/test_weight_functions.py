@@ -6,20 +6,20 @@ Test different weight functions in GFDM solver
 import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry.boundary.fdm_bc_1d import no_flux_bc
 
 
 def test_weight_functions():
     print("=== Testing Different Weight Functions in GFDM ===")
 
     # Simple problem
-    problem = ExampleMFGProblem(xmin=0.0, xmax=1.0, Nx=10, T=0.02, Nt=2, sigma=0.1, coupling_coefficient=0.1)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=10, T=0.02, Nt=2, sigma=0.1, coupling_coefficient=0.1)
 
     num_collocation_points = 5
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
     boundary_indices = np.array([0, num_collocation_points - 1])
-    no_flux_bc = BoundaryConditions(type="no_flux")
+    bc = no_flux_bc()
 
     # Test data
     M_simple = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.5
@@ -42,11 +42,11 @@ def test_weight_functions():
                 max_newton_iterations=5,
                 newton_tolerance=1e-3,
                 boundary_indices=boundary_indices,
-                boundary_conditions=no_flux_bc,
+                boundary_conditions=bc,
             )
 
             U_solution = hjb_solver.solve_hjb_system(
-                M_density_evolution_from_FP=M_simple, U_final_condition_at_T=U_terminal, U_from_prev_picard=U_initial
+                M_density=M_simple, U_terminal=U_terminal, U_coupling_prev=U_initial
             )
 
             max_val = np.max(np.abs(U_solution))

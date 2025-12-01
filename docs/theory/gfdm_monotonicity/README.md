@@ -90,7 +90,29 @@ High-order GFDM naturally produces **non-monotone stencils** (negative weights) 
 
 **Status**: Spectral foundation for M-matrix monotonicity
 
-### 04. Implementation Reference (Development)
+### 04. Computational Optimization
+
+**File**: `04_computational_optimization.md`
+
+**Content**:
+- Current implementation bottlenecks analysis
+- Neighbor search strategies: KDTree vs Cell Lists vs Brute Force
+- Sparse matrix opportunities for large-scale problems
+- Dimension-dependent algorithm selection
+- Static (GFDM) vs moving points (FP Particle) considerations
+- Implementation priority recommendations
+
+**Prerequisites**: Basic understanding of computational complexity, sparse matrices
+
+**Key Results**:
+- Sparse global operators can provide 10-20x speedup per timestep
+- KDTree can provide 10-100x speedup for initialization when $N > 10^4$
+- Cell Lists preferred for FP particle solvers (moving points)
+- Current implementation acceptable for $N < 10^3$
+
+**Status**: Analysis complete, optimizations proposed (not implemented)
+
+### 05. Implementation Reference (Development)
 
 **File**: `../../development/GFDM_QP_MONOTONICITY_IMPLEMENTATION.md`
 
@@ -335,15 +357,16 @@ $$
 
 ## Maintenance
 
-**Last Updated**: 2025-11-13
+**Last Updated**: 2025-12-01
 
 **Maintainers**: MFG_PDE Development Team
 
 **Status**:
 - ✅ Mathematical foundation documented
 - ✅ Indirect constraints implemented (production)
+- ✅ Computational optimization analysis complete
 - 🔬 Direct constraints designed (theory)
-- 📋 Open research questions identified
+- 📋 Performance optimizations proposed (KDTree, sparse matrices)
 
 ---
 

@@ -23,7 +23,7 @@ from mfg_pde.utils.mfg_logging.logger import get_logger
 from mfg_pde.utils.performance.optimization import PerformanceMonitor
 
 if TYPE_CHECKING:
-    from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+    from mfg_pde import MFGProblem
 
 logger = get_logger(__name__)
 
@@ -276,18 +276,18 @@ class HighDimMFGBenchmark:
 
     def _create_2d_test_problem(self, grid_size: tuple[int, int]):
         """Create standardized 2D test problem."""
-        from mfg_pde import MFGComponents
-        from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+        from mfg_pde import MFGComponents, MFGProblem
 
-        class SimpleBenchmarkProblem(GridBasedMFGProblem):
-            def __init__(self, domain_bounds, grid_resolution, time_domain):
+        class SimpleBenchmarkProblem(MFGProblem):
+            def __init__(self, spatial_bounds, grid_resolution, T, Nt):
                 super().__init__(
-                    domain_bounds=domain_bounds,
-                    grid_resolution=grid_resolution,
-                    time_domain=time_domain,
-                    diffusion_coeff=0.1,
+                    spatial_bounds=spatial_bounds,
+                    spatial_discretization=list(grid_resolution),
+                    T=T,
+                    Nt=Nt,
+                    sigma=0.1,
                 )
-                self.dimension = len(grid_resolution)
+                self.grid_resolution = grid_resolution
 
             def setup_components(self):
                 def simple_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -378,24 +378,22 @@ class HighDimMFGBenchmark:
             def running_cost(self, x_idx, x_position, m_at_x, t_idx, current_time, problem, **kwargs):
                 return 0.01
 
-        return SimpleBenchmarkProblem(
-            domain_bounds=(0.0, 1.0, 0.0, 1.0), grid_resolution=grid_size, time_domain=(1.0, 21)
-        )
+        return SimpleBenchmarkProblem(spatial_bounds=[(0.0, 1.0), (0.0, 1.0)], grid_resolution=grid_size, T=1.0, Nt=21)
 
     def _create_3d_test_problem(self, grid_size: tuple[int, int, int]):
         """Create standardized 3D test problem."""
-        from mfg_pde import MFGComponents
-        from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
+        from mfg_pde import MFGComponents, MFGProblem
 
-        class SimpleBenchmarkProblem(GridBasedMFGProblem):
-            def __init__(self, domain_bounds, grid_resolution, time_domain):
+        class SimpleBenchmarkProblem(MFGProblem):
+            def __init__(self, spatial_bounds, grid_resolution, T, Nt):
                 super().__init__(
-                    domain_bounds=domain_bounds,
-                    grid_resolution=grid_resolution,
-                    time_domain=time_domain,
-                    diffusion_coeff=0.1,
+                    spatial_bounds=spatial_bounds,
+                    spatial_discretization=list(grid_resolution),
+                    T=T,
+                    Nt=Nt,
+                    sigma=0.1,
                 )
-                self.dimension = len(grid_resolution)
+                self.grid_resolution = grid_resolution
 
             def setup_components(self):
                 def simple_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -487,12 +485,12 @@ class HighDimMFGBenchmark:
                 return 0.01
 
         return SimpleBenchmarkProblem(
-            domain_bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), grid_resolution=grid_size, time_domain=(1.0, 21)
+            spatial_bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], grid_resolution=grid_size, T=1.0, Nt=21
         )
 
     def _run_single_benchmark(
         self,
-        problem: GridBasedMFGProblem,
+        problem: MFGProblem,
         method: str,
         test_name: str,
         grid_size: tuple[int, ...],

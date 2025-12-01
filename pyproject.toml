@@ -44,8 +44,7 @@ dependencies = [
     "seaborn>=0.13",        # Statistical plotting
 
     # Progress and utilities
-    "rich>=13.0",           # Modern progress bars and console output (preferred)
-    "tqdm>=4.0",            # Legacy progress bars (fallback)
+    "rich>=13.0",           # Progress bars and console output (required)
     "psutil>=5.9",          # System monitoring
 
     # Data validation
@@ -162,7 +161,6 @@ gpu = [
 
 # Typing support
 typing = [
-    "types-tqdm",
     "types-setuptools",
     "types-psutil",
     # rich has built-in type hints, no stub package needed
@@ -262,7 +260,6 @@ module = [
     "jax.*",
     "jaxlib.*",
     "numba.*",
-    "tqdm.*",
     "rich.*",            # rich has type hints but allow ignore for flexibility
     "nbformat.*",
     "jupyter.*",

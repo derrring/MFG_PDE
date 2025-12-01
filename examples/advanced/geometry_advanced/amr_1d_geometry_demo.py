@@ -26,7 +26,7 @@ Part of: v0.10.1 AMR GeometryProtocol support
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.geometry import SimpleGrid1D
 from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRMesh
@@ -149,7 +149,7 @@ def solve_mfg_with_amr(
 
     # Create MFG problem using geometry-first API (v0.10.0+)
     logger.info("\nCreating MFG problem with AMR geometry...")
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         geometry=amr_mesh,  # GeometryProtocol-compliant AMR mesh
         T=T,
         Nt=Nt,
@@ -213,7 +213,7 @@ def solve_mfg_uniform(Nx: int = 100, T: float = 1.0, Nt: int = 50, sigma: float 
 
     # Create MFG problem using geometry-first API
     logger.info("Creating MFG problem with uniform geometry...")
-    problem = ExampleMFGProblem(geometry=domain, T=T, Nt=Nt, sigma=sigma)
+    problem = MFGProblem(geometry=domain, T=T, Nt=Nt, sigma=sigma)
 
     # Set same terminal and running costs
     problem.gT = create_terminal_cost(target_x=0.5, sigma=0.05)

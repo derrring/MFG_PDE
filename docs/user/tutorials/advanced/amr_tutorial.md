@@ -77,7 +77,7 @@ Let's start with a simple example that demonstrates AMR capabilities:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_amr_solver, create_solver
 from mfg_pde.geometry import Domain1D, periodic_bc
 
@@ -87,7 +87,7 @@ def basic_amr_example():
     print("=== Basic AMR Enhancement Tutorial ===\n")
     
     # Step 1: Create a problem with localized features
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         Nx=32,           # Start with coarse base grid
         Nt=50,
         xmin=-2.0,
@@ -148,7 +148,7 @@ def basic_amr_example():
     
     # Create 1D problem
     domain_1d = Domain1D(0.0, 2.0, periodic_bc())
-    problem_1d = ExampleMFGProblem(T=1.0, xmin=0.0, xmax=2.0, Nx=32, Nt=20)
+    problem_1d = MFGProblem(T=1.0, xmin=0.0, xmax=2.0, Nx=32, Nt=20)
     problem_1d.domain = domain_1d
     problem_1d.dimension = 1
     
@@ -355,7 +355,7 @@ amr_solver = create_amr_solver(problem, max_amr_cycles=5)
 def parameter_study():
     """Study the effect of different AMR parameters."""
     
-    problem = ExampleMFGProblem(Nx=32, Nt=50, sigma=0.05)
+    problem = MFGProblem(Nx=32, Nt=50, sigma=0.05)
     
     # Define parameter combinations
     configs = [
@@ -417,7 +417,7 @@ def amr_vs_uniform_comparison():
     import time
     
     # Test problem with known sharp features
-    problem = ExampleMFGProblem(
+    problem = MFGProblem(
         Nx=32,    # Base resolution
         Nt=50,
         xmin=-3.0, xmax=3.0,
@@ -434,7 +434,7 @@ def amr_vs_uniform_comparison():
     
     print("Testing uniform grids...")
     for nx in uniform_tests:
-        problem_uniform = ExampleMFGProblem(
+        problem_uniform = MFGProblem(
             Nx=nx, Nt=50, xmin=-3.0, xmax=3.0, T=1.0, sigma=0.02, coupling_coefficient=2.0
         )
         
@@ -532,7 +532,7 @@ from mfg_pde.alg.mfg_solvers.amr_mfg_solver import AMRMFGSolver
 def advanced_amr_configuration():
     """Demonstrate advanced AMR configuration options."""
     
-    problem = ExampleMFGProblem(Nx=32, Nt=50, T=1.0)
+    problem = MFGProblem(Nx=32, Nt=50, T=1.0)
     
     # Create custom refinement criteria
     custom_criteria = AMRRefinementCriteria(
@@ -616,7 +616,7 @@ def advanced_amr_configuration():
 def backend_optimized_amr():
     """Demonstrate backend-specific AMR optimization."""
     
-    problem = ExampleMFGProblem(Nx=64, Nt=100, T=2.0)
+    problem = MFGProblem(Nx=64, Nt=100, T=2.0)
     
     # JAX-optimized configuration (for GPU)
     jax_solver = create_amr_solver(
@@ -732,7 +732,7 @@ balanced_amr_solver = create_amr_solver(
 def monitor_amr_performance():
     """Monitor and analyze AMR performance characteristics."""
     
-    problem = ExampleMFGProblem(Nx=32, Nt=50, T=1.0)
+    problem = MFGProblem(Nx=32, Nt=50, T=1.0)
     
     # Create AMR solver with monitoring
     amr_solver = create_amr_solver(
@@ -809,9 +809,9 @@ amr_solver = create_amr_solver(problem, max_levels=1)  # Too restrictive!
 amr_solver = create_amr_solver(problem, max_levels=4)  # Better
 
 # Problem: Solution too smooth
-problem = ExampleMFGProblem(sigma=1.0)  # High diffusion = smooth
+problem = MFGProblem(sigma=1.0)  # High diffusion = smooth
 # Solution: Create sharper features
-problem = ExampleMFGProblem(sigma=0.05)  # Low diffusion = sharp
+problem = MFGProblem(sigma=0.05)  # Low diffusion = sharp
 ```
 
 ### Issue 2: Excessive Refinement
@@ -954,7 +954,7 @@ def traffic_flow_amr_example():
     """Traffic flow problem with localized congestion."""
     
     # Problem with sharp congestion near city center
-    class TrafficFlowProblem(ExampleMFGProblem):
+    class TrafficFlowProblem(MFGProblem):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.city_center = 0.0  # Congestion at x=0
@@ -1007,7 +1007,7 @@ def traffic_flow_amr_example():
 def financial_market_amr_example():
     """Financial market with sharp price movements."""
     
-    class FinancialMarketProblem(ExampleMFGProblem):
+    class FinancialMarketProblem(MFGProblem):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.volatility_shock = True
@@ -1060,7 +1060,7 @@ def financial_market_amr_example():
 def epidemic_spread_amr_example():
     """Epidemic spread with localized outbreaks."""
     
-    class EpidemicSpreadProblem(ExampleMFGProblem):
+    class EpidemicSpreadProblem(MFGProblem):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.outbreak_centers = [-1.5, 1.5]  # Multiple outbreak locations

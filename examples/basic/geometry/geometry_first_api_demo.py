@@ -55,10 +55,11 @@ def demo_domain_1d():
     print("=" * 70)
 
     from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.geometry import BoundaryConditions, Domain1D
+    from mfg_pde.geometry import Domain1D
+    from mfg_pde.geometry.boundary.fdm_bc_1d import periodic_bc
 
     # Create 1D periodic domain with proper BoundaryConditions object
-    bc = BoundaryConditions(type="periodic")
+    bc = periodic_bc()
     domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
     domain.create_grid(num_points=101)
 

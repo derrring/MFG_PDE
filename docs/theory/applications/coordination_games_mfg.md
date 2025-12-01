@@ -495,9 +495,9 @@ m_equilibrium = result.M  # Attendance trajectory
 
 **Use Existing Framework**:
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     domain_type="1D",
     domain_bounds=(0, 1),
     # Define L(x, m) with crowd aversion

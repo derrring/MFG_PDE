@@ -25,7 +25,7 @@ import psutil
 import numpy as np
 
 # MFG_PDE imports
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.factory import create_amr_solver, create_solver
 from mfg_pde.geometry import Domain1D, periodic_bc
 
@@ -331,7 +331,7 @@ class AMRBenchmarkSuite:
 
         def create_1d_congestion_problem(nx=64):
             domain = Domain1D(0.0, 2.0, periodic_bc())
-            problem = ExampleMFGProblem(
+            problem = MFGProblem(
                 T=1.0,
                 xmin=0.0,
                 xmax=2.0,
@@ -364,7 +364,7 @@ class AMRBenchmarkSuite:
         print("\n🌐 Benchmark 2: 2D Problem Comparison")
 
         def create_2d_problem():
-            problem = ExampleMFGProblem(
+            problem = MFGProblem(
                 T=1.0, xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0, Nx=32, Ny=32, Nt=30, sigma=0.1, coupling_coefficient=1.5
             )
             problem.dimension = 2

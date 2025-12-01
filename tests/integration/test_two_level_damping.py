@@ -19,7 +19,7 @@ from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterat
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.fdm_bc_1d import no_flux_bc
 
 
 def run_solver(name: str, use_anderson: bool, damping_factor: float, anderson_beta: float | None = None):
@@ -36,7 +36,7 @@ def run_solver(name: str, use_anderson: bool, damping_factor: float, anderson_be
         sigma=1.0,
         coupling_coefficient=0.5,
     )
-    bc = BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
+    bc = no_flux_bc()
 
     # Solvers
     fp_solver = FPParticleSolver(

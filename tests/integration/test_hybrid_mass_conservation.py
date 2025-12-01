@@ -19,7 +19,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary.fdm_bc_1d import no_flux_bc
 
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
@@ -72,8 +72,8 @@ class TestHybridMassConservation:
 
         This is the fundamental test for numerical mass conservation.
         """
-        # Create boundary conditions
-        bc = BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
+        # Create boundary conditions (no-flux = Neumann with zero gradient)
+        bc = no_flux_bc()
 
         # Override problem BC if needed
         simple_1d_problem.boundary_conditions = bc
@@ -149,7 +149,7 @@ class TestHybridMassConservation:
         Mass should be monotonically conserved or slightly decrease
         (due to numerical diffusion), but never increase beyond tolerance.
         """
-        bc = BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
+        bc = no_flux_bc()
         simple_1d_problem.boundary_conditions = bc
 
         solver = HybridFPParticleHJBFDM(
@@ -197,7 +197,7 @@ class TestHybridMassConservationFast:
         """
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=10, sigma=0.1)
 
-        bc = BoundaryConditions(type="neumann", left_value=0.0, right_value=0.0)
+        bc = no_flux_bc()
         problem.boundary_conditions = bc
 
         solver = HybridFPParticleHJBFDM(

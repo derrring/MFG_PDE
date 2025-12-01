@@ -193,7 +193,7 @@ class TestBug15CallableSigma:
 
     def test_no_sigma_fallback(self):
         """Test fallback when no sigma/nu attribute exists."""
-        # ExampleMFGProblem has sigma attribute, so create one without
+        # MFGProblem has sigma attribute, so create one without
 
         class MinimalProblem:
             d = 1

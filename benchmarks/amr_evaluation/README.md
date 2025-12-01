@@ -1,5 +1,10 @@
 # AMR Evaluation Benchmarks
 
+> **EXPERIMENTAL** - The AMR module infrastructure exists but solver integration is incomplete.
+> These benchmarks test the AMR data structures and refinement operations, NOT actual MFG solving
+> on adaptive meshes. Use uniform grids for production MFG work until solver integration is complete.
+> Status updated: 2025-12
+
 This directory contains comprehensive benchmarking tools for evaluating **Adaptive Mesh Refinement (AMR)** effectiveness in MFG solvers.
 
 ## 🎯 **Purpose**
@@ -175,11 +180,11 @@ problem_sizes = [32, 64, 128, 256]  # Grid sizes to benchmark
 ### Custom AMR Problem Evaluation
 ```python
 from comprehensive_benchmark import ComprehensiveAMRBenchmark
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 
 # Create custom problem with sharp features
 def create_sharp_problem():
-    return ExampleMFGProblem(
+    return MFGProblem(
         T=1.0, Nx=64, sigma=0.01,  # Low diffusion = sharp features
         coupling_coefficient=3.0  # High congestion = localized dynamics
     )

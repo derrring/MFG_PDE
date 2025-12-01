@@ -19,7 +19,7 @@ Mathematical Background:
 
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem, solve_mfg
+from mfg_pde import MFGProblem, solve_mfg
 from mfg_pde.factory import ConfigBuilder
 
 # ==============================================================================
@@ -32,14 +32,14 @@ print("=" * 70)
 print()
 
 # Create a simple 1D problem
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     xmin=0.0,
     xmax=1.0,
     Nx=50,
     T=1.0,
     Nt=50,
     sigma=0.15,
-    lam=0.3,
+    coupling_coefficient=0.3,
 )
 
 print("Solving with GRID-BASED methods (default)...")

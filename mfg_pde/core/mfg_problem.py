@@ -74,7 +74,7 @@ class MFGProblem:
     Unified MFG problem class that can handle both predefined and custom formulations.
 
     This class serves as the single constructor for all MFG problems:
-    - Default usage: Uses built-in Hamiltonian (equivalent to old ExampleMFGProblem)
+    - Default usage: Uses built-in Hamiltonian (standard MFG formulation)
     - Custom usage: Accepts MFGComponents for full mathematical control
     """
 

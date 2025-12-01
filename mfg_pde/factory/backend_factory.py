@@ -240,9 +240,9 @@ if __name__ == "__main__":
     print_backend_info()
 
     # Create a test problem
-    from mfg_pde.core.mfg_problem import ExampleMFGProblem
+    from mfg_pde.core.mfg_problem import MFGProblem
 
-    problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=50)
+    problem = MFGProblem(T=1.0, Nx=100, Nt=50)
 
     print("\n Backend Recommendations for Test Problem:")
     recommendations = BackendFactory.get_backend_recommendations(problem)

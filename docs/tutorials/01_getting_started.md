@@ -48,15 +48,15 @@ print(mfg_pde.__version__)  # Should print: 0.9.0 (or later)
 Let's solve a simple Mean Field Game in just 3 lines of code:
 
 ```python
-from mfg_pde import solve_mfg, ExampleMFGProblem
+from mfg_pde import solve_mfg, MFGProblem
 
-problem = ExampleMFGProblem()
+problem = MFGProblem()
 result = solve_mfg(problem, preset="fast")
 ```
 
 That's it! You've just solved an MFG problem. Let's break down what happened:
 
-1. **Import**: We imported `solve_mfg` (the solver) and `ExampleMFGProblem` (a pre-configured problem)
+1. **Import**: We imported `solve_mfg` (the solver) and `MFGProblem` (a pre-configured problem)
 2. **Problem**: We created a default MFG problem instance
 3. **Solve**: We solved it using the "fast" preset configuration
 
@@ -119,9 +119,9 @@ This creates 4 plots:
 A **Problem** defines the Mean Field Game mathematically:
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfg_pde import MFGProblem
 
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     nx=100,        # Spatial grid points
     nt=100,        # Time grid points
     T=1.0,         # Time horizon
@@ -136,7 +136,7 @@ problem = ExampleMFGProblem(
 - **Initial Distribution**: Where agents start ($m_0$)
 - **Terminal Cost**: Cost at final time ($g(x)$)
 
-The `ExampleMFGProblem` provides reasonable defaults for all of these, so you can start quickly.
+The `MFGProblem` provides reasonable defaults for all of these, so you can start quickly.
 
 ---
 
@@ -218,12 +218,12 @@ Solves a Linear-Quadratic Mean Field Game where agents:
 - Interact through mean-field coupling
 """
 
-from mfg_pde import solve_mfg, ExampleMFGProblem
+from mfg_pde import solve_mfg, MFGProblem
 from mfg_pde.visualization import plot_results
 import matplotlib.pyplot as plt
 
 # Step 1: Define the problem
-problem = ExampleMFGProblem(
+problem = MFGProblem(
     nx=100,   # 100 spatial points
     nt=100,   # 100 time steps
     T=1.0,    # Time horizon: [0, 1]
@@ -287,7 +287,7 @@ Generating plots...
 
 ```python
 # Use fewer grid points
-problem = ExampleMFGProblem(nx=50, nt=50)
+problem = MFGProblem(nx=50, nt=50)
 
 # Use fast preset
 result = solve_mfg(problem, preset="fast")
@@ -297,7 +297,7 @@ result = solve_mfg(problem, preset="fast")
 
 ```python
 # Use more grid points
-problem = ExampleMFGProblem(nx=200, nt=200)
+problem = MFGProblem(nx=200, nt=200)
 
 # Use accurate preset
 result = solve_mfg(problem, preset="accurate")
@@ -311,7 +311,7 @@ from mfg_pde.geometry import Domain2D
 # Create 2D domain
 domain = Domain2D(xmin=-1, xmax=1, ymin=-1, ymax=1, nx=50, ny=50, nt=50)
 
-problem = ExampleMFGProblem(domain=domain, T=1.0)
+problem = MFGProblem(domain=domain, T=1.0)
 result = solve_mfg(problem, preset="fast")
 ```
 
@@ -339,7 +339,7 @@ result = solve_mfg(problem, preset="fast")
 
 3. Use smaller grid (fewer points, easier to converge):
    ```python
-   problem = ExampleMFGProblem(nx=50, nt=50)
+   problem = MFGProblem(nx=50, nt=50)
    ```
 
 ---
@@ -356,7 +356,7 @@ result = solve_mfg(problem, preset="fast")
 
 2. Reduce grid size:
    ```python
-   problem = ExampleMFGProblem(nx=50, nt=50)  # Smaller grid
+   problem = MFGProblem(nx=50, nt=50)  # Smaller grid
    ```
 
 3. Use GPU backend (if available):
@@ -425,7 +425,7 @@ Now that you've solved your first MFG problem, here's what to explore next:
 
 **You've learned**:
 - ✅ How to install MFG_PDE
-- ✅ How to solve an MFG problem in 3 lines: `problem = ExampleMFGProblem()` → `result = solve_mfg(problem, preset="fast")`
+- ✅ How to solve an MFG problem in 3 lines: `problem = MFGProblem()` → `result = solve_mfg(problem, preset="fast")`
 - ✅ How to access and visualize results
 - ✅ The three core concepts: Problems (what), Configs (how), Results (output)
 - ✅ Common troubleshooting techniques
@@ -438,11 +438,11 @@ Now that you've solved your first MFG problem, here's what to explore next:
 
 ```python
 # Minimal example
-from mfg_pde import solve_mfg, ExampleMFGProblem
-result = solve_mfg(ExampleMFGProblem(), preset="fast")
+from mfg_pde import solve_mfg, MFGProblem
+result = solve_mfg(MFGProblem(), preset="fast")
 
 # Custom grid size
-problem = ExampleMFGProblem(nx=100, nt=100, T=1.0)
+problem = MFGProblem(nx=100, nt=100, T=1.0)
 result = solve_mfg(problem, preset="accurate")
 
 # Check results

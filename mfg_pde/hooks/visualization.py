@@ -423,14 +423,15 @@ class ProgressBarHook(SolverHooks):
         self.pbar = None
         self.tqdm_available = False
 
-        # Try to import tqdm
+        # Import progress bar (requires rich)
         try:
-            from tqdm import tqdm
+            from mfg_pde.utils.progress import tqdm
 
             self.tqdm = tqdm
             self.tqdm_available = True
         except ImportError:
-            print("Warning: tqdm not available for progress bars")
+            self.tqdm_available = False
+            print("Warning: Progress bar not available (install rich)")
 
     def on_solve_start(self, initial_state: SpatialTemporalState) -> None:
         """Initialize progress bar."""
