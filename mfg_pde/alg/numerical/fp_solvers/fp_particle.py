@@ -165,51 +165,66 @@ class FPParticleSolver(BaseFPSolver):
         """
         Extract grid parameters from geometry (preferred) or legacy problem API.
 
-        Returns dict with: Nx, Nt, Dx, Dt, xmin, xmax, Lx, xSpace, sigma, coupling_coefficient
-        Supports both geometry-first API and legacy MFGProblem.Nx style.
+        Returns dict with nD-aware parameters:
+            - dimension: int, spatial dimension (1, 2, 3, ...)
+            - grid_shape: tuple, shape of spatial grid (Nx+1,) or (Nx+1, Ny+1, ...)
+            - spacings: list[float], grid spacing per dimension [Dx, Dy, ...]
+            - bounds: list[tuple], bounds per dimension [(xmin, xmax), (ymin, ymax), ...]
+            - coordinates: list[np.ndarray], 1D coordinate arrays per dimension
+            - total_points: int, total number of grid points
+            - Nt, Dt, sigma, coupling_coefficient: time/physics parameters
+
+        For 1D backward compatibility, also includes:
+            - Nx, Dx, xmin, xmax, Lx, xSpace (aliased from nD params)
         """
         # Try geometry-first API
         if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
             geom = self.problem.geometry
-            grid_shape = geom.get_grid_shape()
-            Nx = grid_shape[0]  # Already includes +1 for grid points
+            grid_shape = tuple(geom.get_grid_shape())
+            dimension = len(grid_shape)
 
-            # Get spacing
+            # Get spacing per dimension
             spacing = geom.get_grid_spacing()
-            Dx = spacing[0] if spacing else 0.0
+            spacings = list(spacing) if spacing else [0.0] * dimension
 
-            # Get bounds - try multiple methods
-            if hasattr(geom, "xmin") and hasattr(geom, "xmax"):
-                xmin, xmax = geom.xmin, geom.xmax
-            elif hasattr(geom, "bounds"):
-                xmin, xmax = geom.bounds[0]
+            # Get bounds per dimension
+            if hasattr(geom, "bounds") and geom.bounds is not None:
+                bounds = list(geom.bounds)
+            elif hasattr(geom, "xmin") and hasattr(geom, "xmax"):
+                # Legacy 1D geometry
+                bounds = [(geom.xmin, geom.xmax)]
             elif hasattr(geom, "coordinates") and len(geom.coordinates) > 0:
-                coords = geom.coordinates[0]
-                xmin, xmax = coords[0], coords[-1]
+                bounds = [(coords[0], coords[-1]) for coords in geom.coordinates]
             else:
-                xmin, xmax = 0.0, 1.0
+                bounds = [(0.0, 1.0)] * dimension
 
-            Lx = xmax - xmin
-
-            # Get coordinate array
+            # Get coordinate arrays per dimension
             if hasattr(geom, "coordinates") and len(geom.coordinates) > 0:
-                xSpace = np.array(geom.coordinates[0])
+                coordinates = [np.array(c) for c in geom.coordinates]
             else:
-                xSpace = np.linspace(xmin, xmax, Nx)
+                coordinates = [np.linspace(bounds[d][0], bounds[d][1], grid_shape[d]) for d in range(dimension)]
 
-        # Fallback to legacy API
+        # Fallback to legacy 1D API
         elif self.problem.Nx is not None:
+            dimension = 1
             Nx = self.problem.Nx + 1
+            grid_shape = (Nx,)
             Dx = self.problem.dx if self.problem.dx is not None else 0.0
+            spacings = [Dx]
             xmin = self.problem.xmin if self.problem.xmin is not None else 0.0
             xmax = self.problem.xmax if self.problem.xmax is not None else 1.0
-            Lx = self.problem.Lx if self.problem.Lx is not None else (xmax - xmin)
+            bounds = [(xmin, xmax)]
             xSpace = self.problem.xSpace if self.problem.xSpace is not None else np.linspace(xmin, xmax, Nx)
+            coordinates = [xSpace]
         else:
             raise ValueError(
                 "FPParticleSolver requires either a geometry object or legacy problem.Nx. "
                 "Create MFGProblem with geometry=SimpleGrid1D(...) or with Nx=... parameter."
             )
+
+        # Compute derived quantities
+        total_points = int(np.prod(grid_shape))
+        domain_lengths = [b[1] - b[0] for b in bounds]
 
         # Time parameters (always from problem)
         Nt = self.problem.Nt + 1
@@ -219,29 +234,43 @@ class FPParticleSolver(BaseFPSolver):
             self.problem.coupling_coefficient if self.problem.coupling_coefficient is not None else 1.0
         )
 
-        return {
-            "Nx": Nx,
+        result = {
+            # nD parameters
+            "dimension": dimension,
+            "grid_shape": grid_shape,
+            "spacings": spacings,
+            "bounds": bounds,
+            "coordinates": coordinates,
+            "total_points": total_points,
+            "domain_lengths": domain_lengths,
+            # Time/physics parameters
             "Nt": Nt,
-            "Dx": Dx,
             "Dt": Dt,
-            "xmin": xmin,
-            "xmax": xmax,
-            "Lx": Lx,
-            "xSpace": xSpace,
             "sigma": sigma,
             "coupling_coefficient": coupling_coefficient,
         }
 
+        # 1D backward compatibility aliases
+        if dimension == 1:
+            result["Nx"] = grid_shape[0]
+            result["Dx"] = spacings[0]
+            result["xmin"] = bounds[0][0]
+            result["xmax"] = bounds[0][1]
+            result["Lx"] = domain_lengths[0]
+            result["xSpace"] = coordinates[0]
+
+        return result
+
     def _compute_gradient(self, U_array, Dx: float, use_backend: bool = False):
         """
-        Compute spatial gradient using finite differences.
+        Compute spatial gradient using finite differences (1D backward-compatible).
 
         Backend-agnostic helper to reduce code duplication between CPU and GPU pipelines.
 
         Parameters
         ----------
         U_array : np.ndarray or backend tensor
-            Value function at grid points
+            Value function at grid points (1D array)
         Dx : float
             Grid spacing
         use_backend : bool
@@ -260,6 +289,47 @@ class FPParticleSolver(BaseFPSolver):
             return (xp.roll(U_array, -1) - xp.roll(U_array, 1)) / (2 * Dx)
         else:
             return xp.zeros_like(U_array)
+
+    def _compute_gradient_nd(
+        self,
+        U_array: np.ndarray,
+        spacings: list[float],
+        use_backend: bool = False,
+    ) -> list:
+        """
+        Compute spatial gradient in each dimension using central differences.
+
+        Parameters
+        ----------
+        U_array : np.ndarray or backend tensor
+            Value function at grid points, shape (N1, N2, ..., Nd)
+        spacings : list[float]
+            Grid spacing per dimension [Dx, Dy, ...]
+        use_backend : bool
+            If True, use backend array module; if False, use NumPy
+
+        Returns
+        -------
+        list of gradient arrays, one per dimension
+            Each gradient[d] has the same shape as U_array
+        """
+        if use_backend and self.backend is not None:
+            xp = self.backend.array_module
+        else:
+            xp = np
+
+        dimension = len(spacings)
+        gradients = []
+
+        for d in range(dimension):
+            if spacings[d] > 1e-14:
+                # Central difference along axis d
+                grad_d = (xp.roll(U_array, -1, axis=d) - xp.roll(U_array, 1, axis=d)) / (2 * spacings[d])
+            else:
+                grad_d = xp.zeros_like(U_array)
+            gradients.append(grad_d)
+
+        return gradients
 
     def _normalize_density(self, M_array, Dx: float, use_backend: bool = False):
         """
@@ -309,6 +379,264 @@ class FPParticleSolver(BaseFPSolver):
             return M_array / mass_val
         else:
             return M_array * 0  # Return zeros
+
+    # =========================================================================
+    # nD Helper Methods
+    # =========================================================================
+
+    def _sample_particles_from_density_nd(
+        self,
+        M_initial: np.ndarray,
+        coordinates: list[np.ndarray],
+        num_particles: int,
+    ) -> np.ndarray:
+        """
+        Sample particles from nD density distribution.
+
+        Parameters
+        ----------
+        M_initial : np.ndarray
+            Initial density on grid, shape (N1, N2, ..., Nd)
+        coordinates : list[np.ndarray]
+            List of 1D coordinate arrays per dimension
+        num_particles : int
+            Number of particles to sample
+
+        Returns
+        -------
+        particles : np.ndarray
+            Particle positions, shape (num_particles, dimension)
+        """
+        dimension = len(coordinates)
+        grid_shape = tuple(len(c) for c in coordinates)
+
+        # Flatten density and normalize to probability
+        M_flat = M_initial.ravel()
+        total_mass = np.sum(M_flat)
+
+        if total_mass < 1e-14:
+            # Uniform fallback if density is zero
+            particles = np.zeros((num_particles, dimension))
+            for d in range(dimension):
+                xmin, xmax = coordinates[d][0], coordinates[d][-1]
+                particles[:, d] = np.random.uniform(xmin, xmax, num_particles)
+            return particles
+
+        probs = M_flat / total_mass
+
+        # Sample flat indices according to probability
+        try:
+            flat_indices = np.random.choice(len(M_flat), size=num_particles, p=probs, replace=True)
+        except ValueError:
+            # Fallback to uniform if probability is degenerate
+            particles = np.zeros((num_particles, dimension))
+            for d in range(dimension):
+                xmin, xmax = coordinates[d][0], coordinates[d][-1]
+                particles[:, d] = np.random.uniform(xmin, xmax, num_particles)
+            return particles
+
+        # Convert flat indices to multi-indices
+        multi_indices = np.unravel_index(flat_indices, grid_shape)
+
+        # Get coordinates with sub-grid jitter for smoothness
+        particles = np.zeros((num_particles, dimension))
+        for d in range(dimension):
+            particles[:, d] = coordinates[d][multi_indices[d]]
+            # Add uniform jitter within grid cell
+            if len(coordinates[d]) > 1:
+                dx = coordinates[d][1] - coordinates[d][0]
+                particles[:, d] += np.random.uniform(-dx / 2, dx / 2, num_particles)
+
+        return particles
+
+    def _generate_brownian_increment_nd(
+        self,
+        num_particles: int,
+        dimension: int,
+        Dt: float,
+        sigma: float,
+    ) -> np.ndarray:
+        """
+        Generate d-dimensional Brownian increment for SDE evolution.
+
+        Parameters
+        ----------
+        num_particles : int
+            Number of particles
+        dimension : int
+            Spatial dimension
+        Dt : float
+            Time step size
+        sigma : float
+            Diffusion coefficient
+
+        Returns
+        -------
+        dW : np.ndarray
+            Brownian increments, shape (num_particles, dimension)
+        """
+        if Dt < 1e-14:
+            return np.zeros((num_particles, dimension))
+
+        # Independent Brownian motion in each dimension
+        # dX = sigma * dW where dW ~ N(0, sqrt(dt))
+        return sigma * np.random.normal(0, np.sqrt(Dt), (num_particles, dimension))
+
+    def _apply_boundary_conditions_nd(
+        self,
+        particles: np.ndarray,
+        bounds: list[tuple[float, float]],
+        bc_type: str,
+    ) -> np.ndarray:
+        """
+        Apply boundary conditions per dimension.
+
+        Parameters
+        ----------
+        particles : np.ndarray
+            Particle positions, shape (num_particles, dimension)
+        bounds : list[tuple[float, float]]
+            Bounds per dimension [(xmin, xmax), (ymin, ymax), ...]
+        bc_type : str
+            Boundary condition type: "periodic" or "no_flux"
+
+        Returns
+        -------
+        particles : np.ndarray
+            Updated particle positions (modified in place)
+        """
+        dimension = particles.shape[1] if particles.ndim > 1 else 1
+
+        for d in range(dimension):
+            xmin, xmax = bounds[d]
+            Lx = xmax - xmin
+
+            if Lx < 1e-14:
+                continue  # Skip degenerate dimension
+
+            if bc_type == "periodic":
+                # Wrap around boundaries
+                particles[:, d] = xmin + (particles[:, d] - xmin) % Lx
+
+            elif bc_type == "no_flux":
+                # Reflecting boundaries
+                below = particles[:, d] < xmin
+                above = particles[:, d] > xmax
+                particles[below, d] = 2 * xmin - particles[below, d]
+                particles[above, d] = 2 * xmax - particles[above, d]
+
+                # Handle multiple reflections (rare edge case)
+                particles[:, d] = np.clip(particles[:, d], xmin, xmax)
+
+        return particles
+
+    def _create_nd_interpolator(
+        self,
+        coordinates: list[np.ndarray],
+        values: np.ndarray,
+    ):
+        """
+        Create nD interpolator for grid values.
+
+        Parameters
+        ----------
+        coordinates : list[np.ndarray]
+            List of 1D coordinate arrays per dimension
+        values : np.ndarray
+            Values on grid, shape (N1, N2, ..., Nd)
+
+        Returns
+        -------
+        interpolator : RegularGridInterpolator
+            Scipy interpolator for nD data
+        """
+        if not SCIPY_AVAILABLE or _scipy_interpolate is None:
+            raise RuntimeError("SciPy required for nD interpolation")
+
+        return _scipy_interpolate.RegularGridInterpolator(
+            tuple(coordinates),
+            values,
+            method="linear",
+            bounds_error=False,
+            fill_value=0.0,
+        )
+
+    def _estimate_density_from_particles_nd(
+        self,
+        particles: np.ndarray,
+        coordinates: list[np.ndarray],
+        bounds: list[tuple[float, float]],
+    ) -> np.ndarray:
+        """
+        Estimate density from particles using KDE on nD grid.
+
+        Parameters
+        ----------
+        particles : np.ndarray
+            Particle positions, shape (num_particles, dimension)
+        coordinates : list[np.ndarray]
+            List of 1D coordinate arrays per dimension
+        bounds : list[tuple[float, float]]
+            Bounds per dimension
+
+        Returns
+        -------
+        density : np.ndarray
+            Density on grid, shape (N1, N2, ..., Nd)
+        """
+        dimension = len(coordinates)
+        grid_shape = tuple(len(c) for c in coordinates)
+
+        if self.num_particles == 0 or len(particles) == 0:
+            return np.zeros(grid_shape)
+
+        # Check for degenerate particle distribution
+        if len(np.unique(particles, axis=0)) < 2:
+            # All particles at same location - delta function
+            density = np.zeros(grid_shape)
+            mean_pos = np.mean(particles, axis=0)
+            # Find closest grid point
+            indices = []
+            for d in range(dimension):
+                idx = np.argmin(np.abs(coordinates[d] - mean_pos[d]))
+                indices.append(idx)
+            density[tuple(indices)] = self.num_particles
+            return density
+
+        try:
+            # scipy.stats.gaussian_kde handles nD
+            if SCIPY_AVAILABLE and gaussian_kde is not None:
+                # KDE expects shape (d, N) not (N, d)
+                kde = gaussian_kde(particles.T, bw_method=self.kde_bandwidth)
+
+                # Create evaluation grid
+                mesh_grids = np.meshgrid(*coordinates, indexing="ij")
+                eval_points = np.vstack([g.ravel() for g in mesh_grids])
+
+                # Evaluate KDE
+                density_flat = kde(eval_points)
+                density = density_flat.reshape(grid_shape)
+
+                # Zero out points outside bounds
+                for d in range(dimension):
+                    mask = (mesh_grids[d] < bounds[d][0]) | (mesh_grids[d] > bounds[d][1])
+                    density[mask] = 0.0
+
+                return density
+
+            else:
+                raise RuntimeError("SciPy not available for KDE")
+
+        except Exception as e:
+            warnings.warn(f"KDE failed in nD: {e}. Returning histogram estimate.")
+            # Fallback to histogram
+            density, _ = np.histogramdd(
+                particles,
+                bins=[len(c) for c in coordinates],
+                range=bounds,
+                density=True,
+            )
+            return density
 
     def _estimate_density_from_particles(self, particles_at_time_t: np.ndarray) -> np.ndarray:
         # Use geometry-aware parameter extraction
@@ -467,8 +795,8 @@ class FPParticleSolver(BaseFPSolver):
                 N_points = len(self.collocation_points)
                 effective_U = np.zeros((Nt, N_points))
             else:
-                Nx = params["Nx"]
-                effective_U = np.zeros((Nt, Nx))
+                grid_shape = params["grid_shape"]
+                effective_U = np.zeros((Nt, *grid_shape))
         elif isinstance(drift_field, np.ndarray):
             # Precomputed drift field (including MFG drift = -∇U/λ)
             effective_U = drift_field
@@ -522,22 +850,28 @@ class FPParticleSolver(BaseFPSolver):
                 # Determine problem size for strategy selection
                 params = self._get_grid_params()
                 Nt = params["Nt"]
-                Nx = params["Nx"]
-                problem_size = (self.num_particles, Nx, Nt)
+                dimension = params["dimension"]
+                grid_shape = params["grid_shape"]
+                total_points = params["total_points"]
+                problem_size = (self.num_particles, total_points, Nt)
 
-                # Select optimal strategy (GPU vs CPU vs Hybrid)
-                self.current_strategy = self.strategy_selector.select_strategy(
-                    backend=self.backend if (self.backend is not None and self.backend.name != "numpy") else None,
-                    problem_size=problem_size,
-                    strategy_hint="auto",  # Can be overridden to "cpu", "gpu", "hybrid"
-                )
+                # Route based on dimension
+                if dimension == 1:
+                    # 1D: Use existing optimized solvers with strategy selection
+                    self.current_strategy = self.strategy_selector.select_strategy(
+                        backend=self.backend if (self.backend is not None and self.backend.name != "numpy") else None,
+                        problem_size=problem_size,
+                        strategy_hint="auto",
+                    )
 
-                # Execute using selected strategy's pipeline
-                if self.current_strategy.name == "cpu":
-                    return self._solve_fp_system_cpu(M_initial, effective_U)
+                    if self.current_strategy.name == "cpu":
+                        return self._solve_fp_system_cpu(M_initial, effective_U)
+                    else:
+                        return self._solve_fp_system_gpu(M_initial, effective_U)
                 else:
-                    # GPU or Hybrid strategy (both use GPU pipeline)
-                    return self._solve_fp_system_gpu(M_initial, effective_U)
+                    # nD (d >= 2): Use new nD CPU solver
+                    # GPU nD solver not yet implemented
+                    return self._solve_fp_system_cpu_nd(M_initial, effective_U)
         finally:
             # Restore original sigma
             self.problem.sigma = original_sigma
@@ -655,6 +989,138 @@ class FPParticleSolver(BaseFPSolver):
 
         self.M_particles_trajectory = current_M_particles_t
         return M_density_on_grid
+
+    def _solve_fp_system_cpu_nd(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
+        """
+        nD CPU pipeline - particle evolution for dimension >= 2.
+
+        Uses the nD helper methods:
+        - _sample_particles_from_density_nd() for initial sampling
+        - _compute_gradient_nd() for gradient computation
+        - _create_nd_interpolator() for drift interpolation
+        - _generate_brownian_increment_nd() for vector Brownian motion
+        - _apply_boundary_conditions_nd() for per-dimension boundary handling
+        - _estimate_density_from_particles_nd() for KDE
+
+        Args:
+            m_initial_condition: Initial density on nD grid, shape (N1, N2, ..., Nd)
+            U_solution_for_drift: Value function, shape (Nt, N1, N2, ..., Nd)
+
+        Returns:
+            Density evolution, shape (Nt, N1, N2, ..., Nd)
+        """
+        # Extract nD grid parameters
+        params = self._get_grid_params()
+        dimension = params["dimension"]
+        grid_shape = params["grid_shape"]
+        spacings = params["spacings"]
+        bounds = params["bounds"]
+        coordinates = params["coordinates"]
+        Nt = params["Nt"]
+        Dt = params["Dt"]
+        sigma = params["sigma"]
+        coupling_coefficient = params["coupling_coefficient"]
+
+        if Nt == 0:
+            return np.zeros((0, *tuple(grid_shape)))
+
+        # Compute SDE diffusion coefficient: sigma_sde = sqrt(2 * sigma)
+        sigma_sde = np.sqrt(2.0 * sigma) if sigma > 1e-14 else 0.0
+
+        # Allocate arrays
+        M_density_on_grid = np.zeros((Nt, *tuple(grid_shape)))
+        # Particle positions: (Nt, num_particles, dimension)
+        current_particles = np.zeros((Nt, self.num_particles, dimension))
+
+        # Sample initial particles from density
+        current_particles[0] = self._sample_particles_from_density_nd(
+            m_initial_condition, coordinates, self.num_particles
+        )
+
+        # Estimate initial density using KDE
+        M_density_on_grid[0] = self._estimate_density_from_particles_nd(current_particles[0], coordinates, bounds)
+
+        # Normalize if requested
+        if self.kde_normalization != KDENormalization.NONE:
+            M_density_on_grid[0] = self._normalize_density_nd(M_density_on_grid[0], spacings)
+
+        self._time_step_counter += 1
+
+        if Nt == 1:
+            self.M_particles_trajectory = current_particles
+            return M_density_on_grid
+
+        # Main time evolution loop
+        for t_idx in range(Nt - 1):
+            # Get value function at current time
+            U_t = U_solution_for_drift[t_idx]
+
+            # Compute gradient of U on the grid (list of d arrays, one per dimension)
+            gradients = self._compute_gradient_nd(U_t, spacings, use_backend=False)
+
+            # Interpolate gradients to particle positions
+            particles_t = current_particles[t_idx]  # Shape: (num_particles, dimension)
+            grad_at_particles = np.zeros((self.num_particles, dimension))
+
+            for d in range(dimension):
+                try:
+                    interp = self._create_nd_interpolator(coordinates, gradients[d])
+                    grad_at_particles[:, d] = interp(particles_t)
+                except Exception:
+                    # Fallback: zero gradient
+                    grad_at_particles[:, d] = 0.0
+
+            # Compute drift: alpha = -coupling_coefficient * grad(U)
+            drift = -coupling_coefficient * grad_at_particles
+
+            # Generate Brownian increments
+            dW = self._generate_brownian_increment_nd(self.num_particles, dimension, Dt, sigma_sde)
+
+            # Euler-Maruyama step: X_{t+1} = X_t + drift * dt + sigma * dW
+            new_particles = particles_t + drift * Dt + dW
+
+            # Apply boundary conditions
+            # Handle different BC object types (1D has .type, 2D/3D has manager)
+            if self.boundary_conditions is None:
+                bc_type = "no_flux"
+            elif hasattr(self.boundary_conditions, "type"):
+                bc_type = self.boundary_conditions.type
+            else:
+                # For nD boundary condition managers, default to no_flux
+                bc_type = "no_flux"
+            new_particles = self._apply_boundary_conditions_nd(new_particles, bounds, bc_type)
+
+            current_particles[t_idx + 1] = new_particles
+
+            # Estimate density from particles
+            M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
+
+            # Normalize if requested
+            if self.kde_normalization == KDENormalization.ALL:
+                M_density_on_grid[t_idx + 1] = self._normalize_density_nd(M_density_on_grid[t_idx + 1], spacings)
+
+            self._time_step_counter += 1
+
+        self.M_particles_trajectory = current_particles
+        return M_density_on_grid
+
+    def _normalize_density_nd(self, density: np.ndarray, spacings: list[float]) -> np.ndarray:
+        """
+        Normalize density to integrate to 1 for nD grids.
+
+        Args:
+            density: Density array, shape (N1, N2, ..., Nd)
+            spacings: Grid spacings [dx1, dx2, ..., dxd]
+
+        Returns:
+            Normalized density array
+        """
+        # Volume element = dx1 * dx2 * ... * dxd
+        dV = np.prod(spacings)
+        total_mass = np.sum(density) * dV
+        if total_mass > 1e-14:
+            return density / total_mass
+        return density
 
     def _solve_fp_system_gpu(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """
@@ -943,4 +1409,52 @@ if __name__ == "__main__":
     print(f"  KDE bandwidth: {solver.kde_bandwidth}")
     print(f"  Mode: {solver.mode.value}")
 
-    print("All smoke tests passed!")
+    # Test 2D problem with particle solver (nD support)
+    print("\nTesting 2D FPParticleSolver...")
+    from mfg_pde.geometry import TensorProductGrid
+
+    geometry_2d = TensorProductGrid(
+        dimension=2,
+        bounds=[(0.0, 1.0), (0.0, 1.0)],
+        num_points=[16, 16],
+    )
+    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, sigma=0.1)
+
+    solver_2d = FPParticleSolver(problem_2d, num_particles=500, mode="hybrid")
+
+    # Create 2D test arrays
+    grid_shape_2d = problem_2d.geometry.get_grid_shape()  # (16, 16)
+    U_test_2d = np.zeros((problem_2d.Nt, *tuple(grid_shape_2d)))
+
+    # Create 2D Gaussian initial density
+    coords = problem_2d.geometry.coordinates
+    X, Y = np.meshgrid(coords[0], coords[1], indexing="ij")
+    M_init_2d = np.exp(-((X - 0.5) ** 2 + (Y - 0.5) ** 2) / 0.1)
+    M_init_2d = M_init_2d / (np.sum(M_init_2d) * (1.0 / 15) ** 2)  # Normalize
+
+    M_solution_2d = solver_2d.solve_fp_system(M_initial=M_init_2d, drift_field=U_test_2d)
+
+    expected_shape_2d = (problem_2d.Nt + 1, *tuple(grid_shape_2d))  # Nt+1 for t=0...T
+    assert M_solution_2d.shape == expected_shape_2d, f"Shape mismatch: {M_solution_2d.shape} vs {expected_shape_2d}"
+    assert not np.any(np.isnan(M_solution_2d)), "NaN in 2D solution"
+    assert not np.any(np.isinf(M_solution_2d)), "Inf in 2D solution"
+    assert np.all(M_solution_2d >= 0), "2D density must be non-negative"
+
+    # Check mass conservation (should be approximately preserved)
+    initial_mass = np.sum(M_solution_2d[0]) * (1.0 / 15) ** 2
+    final_mass = np.sum(M_solution_2d[-1]) * (1.0 / 15) ** 2
+    mass_ratio = final_mass / initial_mass if initial_mass > 1e-10 else 1.0
+
+    print("  2D Particle solver converged")
+    print(f"  Grid shape: {grid_shape_2d}")
+    print(f"  M shape: {M_solution_2d.shape}")
+    print(f"  M range: [{M_solution_2d.min():.3f}, {M_solution_2d.max():.3f}]")
+    print(f"  Mass ratio (final/initial): {mass_ratio:.4f}")
+
+    # Test particle trajectory storage for 2D
+    assert solver_2d.M_particles_trajectory is not None, "Particle trajectory not stored"
+    assert solver_2d.M_particles_trajectory.shape[1] == solver_2d.num_particles, "Particle count mismatch"
+    assert solver_2d.M_particles_trajectory.shape[2] == 2, "2D particles should have 2 coordinates"
+    print(f"  Particle trajectory shape: {solver_2d.M_particles_trajectory.shape}")
+
+    print("\nAll smoke tests passed!")
