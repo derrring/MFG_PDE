@@ -1024,8 +1024,10 @@ class FPParticleSolver(BaseFPSolver):
         if Nt == 0:
             return np.zeros((0, *tuple(grid_shape)))
 
-        # Compute SDE diffusion coefficient: sigma_sde = sqrt(2 * sigma)
-        sigma_sde = np.sqrt(2.0 * sigma) if sigma > 1e-14 else 0.0
+        # Use sigma directly as the SDE noise coefficient (consistent with 1D solver)
+        # Convention: problem.sigma is the noise coefficient in dX = alpha*dt + sigma*dW
+        # The FP diffusion coefficient is D = sigma^2/2
+        sigma_sde = sigma
 
         # Allocate arrays
         M_density_on_grid = np.zeros((Nt, *tuple(grid_shape)))
@@ -1050,8 +1052,20 @@ class FPParticleSolver(BaseFPSolver):
             self.M_particles_trajectory = current_particles
             return M_density_on_grid
 
+        # Progress bar for particle timesteps (consistent with 1D solver)
+        from mfg_pde.utils.progress import tqdm
+
+        timestep_range = range(Nt - 1)
+        if self._show_progress:
+            timestep_range = tqdm(
+                timestep_range,
+                desc=f"FP {dimension}D (forward)",
+                unit="step",
+                disable=False,
+            )
+
         # Main time evolution loop
-        for t_idx in range(Nt - 1):
+        for t_idx in timestep_range:
             # Get value function at current time
             U_t = U_solution_for_drift[t_idx]
 
