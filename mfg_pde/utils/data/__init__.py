@@ -1,22 +1,86 @@
-"""
-Data utilities for MFG_PDE.
+"""Data handling utilities for MFG experiments.
 
-This module provides data handling and validation tools:
-- polars_integration: Polars DataFrame integration
-- validation: Data validation utilities
+This module provides:
+- Data recording with pluggable backends (NPZ, HDF5, future: Parquet, DB)
+- Data validation utilities
+- Polars integration for large-scale analysis (optional)
+
+Usage:
+    from mfg_pde.utils.data import create_recorder, load_experiment
+
+    # Record experiment with HDF5 backend (incremental saves)
+    with create_recorder('results/exp.h5', config) as rec:
+        rec.save_grid(X=X, Y=Y)
+        for k in range(max_iter):
+            rec.save_iteration(k, U=U, M=M, error_U=err)
+        rec.save_final(U, M, converged=True)
+
+    # Load experiment data
+    data = load_experiment('results/exp.h5')
 """
 
 from __future__ import annotations
 
-# Re-export from submodules
-from .validation import safe_solution_return, validate_mfg_solution
+# Data recorder with pluggable backends
+from .recorder import (
+    BaseRecorder,
+    DataRecorderProtocol,
+    HDF5Recorder,
+    NPZRecorder,
+    create_recorder,
+    get_convergence_history,
+    inspect_experiment,
+    load_experiment,
+)
 
-__all__ = ["safe_solution_return", "validate_mfg_solution"]
+# Re-export validation utilities
+from .validation import (
+    safe_solution_return,
+    validate_convergence_parameters,
+    validate_mfg_solution,
+    validate_solution_array,
+)
+
+__all__ = [
+    # Recorder protocol and base
+    "DataRecorderProtocol",
+    "BaseRecorder",
+    # Backend implementations
+    "NPZRecorder",
+    "HDF5Recorder",
+    # Factory and utilities
+    "create_recorder",
+    "load_experiment",
+    "get_convergence_history",
+    "inspect_experiment",
+    # Validation utilities
+    "safe_solution_return",
+    "validate_convergence_parameters",
+    "validate_mfg_solution",
+    "validate_solution_array",
+]
 
 # Optional polars integration
 try:
-    from .polars_integration import MFGDataFrame  # noqa: F401
+    from .polars_integration import (
+        MFGDataFrame,  # noqa: F401
+        benchmark_polars_vs_pandas,  # noqa: F401
+        create_data_exporter,  # noqa: F401
+        create_mfg_dataframe,  # noqa: F401
+        create_parameter_sweep_analyzer,  # noqa: F401
+        create_time_series_analyzer,  # noqa: F401
+    )
 
-    __all__.append("MFGDataFrame")
+    __all__.extend(
+        [
+            "MFGDataFrame",
+            "benchmark_polars_vs_pandas",
+            "create_data_exporter",
+            "create_mfg_dataframe",
+            "create_parameter_sweep_analyzer",
+            "create_time_series_analyzer",
+        ]
+    )
+    POLARS_AVAILABLE = True
 except ImportError:
-    pass
+    POLARS_AVAILABLE = False

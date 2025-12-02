@@ -201,6 +201,26 @@ try:
 except ImportError:
     EXPERIMENT_MANAGER_AVAILABLE = False
 
+# Data recorder with pluggable backends (NPZ, HDF5)
+try:
+    from .data.recorder import (
+        BaseRecorder,  # noqa: F401
+        DataRecorderProtocol,  # noqa: F401
+        HDF5Recorder,  # noqa: F401
+        NPZRecorder,  # noqa: F401
+        create_recorder,  # noqa: F401
+        get_convergence_history,  # noqa: F401
+        inspect_experiment,  # noqa: F401
+        load_experiment,  # noqa: F401
+    )
+
+    DATA_RECORDER_AVAILABLE = True
+except ImportError:
+    DATA_RECORDER_AVAILABLE = False
+
+# HDF5_RECORDER_AVAILABLE deprecated - use DATA_RECORDER_AVAILABLE instead
+HDF5_RECORDER_AVAILABLE = DATA_RECORDER_AVAILABLE  # Backward compatibility alias
+
 try:
     from .memory_management import (
         MemoryMonitor,  # noqa: F401
@@ -231,6 +251,8 @@ AVAILABLE_MODULES = {
     "polars_integration": POLARS_AVAILABLE,
     "cli": CLI_AVAILABLE,
     "experiment_manager": EXPERIMENT_MANAGER_AVAILABLE,
+    "data_recorder": DATA_RECORDER_AVAILABLE,
+    "hdf5_recorder": HDF5_RECORDER_AVAILABLE,  # Deprecated, use data_recorder
     "memory_management": MEMORY_MANAGEMENT_AVAILABLE,
     "performance_monitoring": PERFORMANCE_MONITORING_AVAILABLE,
 }
@@ -242,6 +264,7 @@ __all__ = [
     "AVAILABLE_MODULES",
     "CLI_AVAILABLE",
     "EXPERIMENT_MANAGER_AVAILABLE",
+    "HDF5_RECORDER_AVAILABLE",
     "MEMORY_MANAGEMENT_AVAILABLE",
     "NOTEBOOK_REPORTING_AVAILABLE",
     "PERFORMANCE_MONITORING_AVAILABLE",
@@ -359,6 +382,8 @@ __all__ = [
     "create_circle_obstacle",
     "create_rectangle_obstacle",
     "create_sphere_obstacle",
+    # Data recorder availability
+    "DATA_RECORDER_AVAILABLE",
 ]
 
 # Add optional modules to public API if available
@@ -418,5 +443,19 @@ if PERFORMANCE_MONITORING_AVAILABLE:
             "benchmark_solver",
             "get_performance_report",
             "performance_tracked",
+        ]
+    )
+
+if DATA_RECORDER_AVAILABLE:
+    __all__.extend(
+        [
+            "BaseRecorder",
+            "DataRecorderProtocol",
+            "HDF5Recorder",
+            "NPZRecorder",
+            "create_recorder",
+            "load_experiment",
+            "get_convergence_history",
+            "inspect_experiment",
         ]
     )
