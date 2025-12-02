@@ -1296,11 +1296,18 @@ def _solve_timestep_full_nd(
         is_boundary = _is_boundary_point(multi_idx, shape, ndim)
 
         # Determine BC type - for mixed BC, default to no-flux behavior
-        is_no_flux = boundary_conditions.is_uniform and boundary_conditions.type == "no_flux"
+        # Handle both legacy BC interface and new BoundaryConditionManager2D
+        if hasattr(boundary_conditions, "is_uniform") and hasattr(boundary_conditions, "type"):
+            is_no_flux = boundary_conditions.is_uniform and boundary_conditions.type == "no_flux"
+            is_uniform = boundary_conditions.is_uniform
+        else:
+            # For BoundaryConditionManager2D or unknown types, default to no-flux
+            is_no_flux = True
+            is_uniform = False
 
         # For mixed BC (not uniform), treat boundaries with default no-flux behavior
         # The actual BC application will be handled by tensor_operators
-        if (is_no_flux or not boundary_conditions.is_uniform) and is_boundary:
+        if (is_no_flux or not is_uniform) and is_boundary:
             # Boundary point with no-flux condition
             _add_boundary_no_flux_entries(
                 row_indices,
@@ -1400,7 +1407,12 @@ def _add_interior_entries(
         multi_idx_minus[d] = multi_idx[d] - 1
 
         # Handle boundary wrapping for periodic BC
-        is_periodic = boundary_conditions.is_uniform and boundary_conditions.type == "periodic"
+        # Handle both legacy BC interface and new BoundaryConditionManager2D
+        if hasattr(boundary_conditions, "is_uniform") and hasattr(boundary_conditions, "type"):
+            is_periodic = boundary_conditions.is_uniform and boundary_conditions.type == "periodic"
+        else:
+            # For BoundaryConditionManager2D or unknown types, default to non-periodic
+            is_periodic = False
 
         if is_periodic:
             multi_idx_plus[d] = multi_idx_plus[d] % shape[d]

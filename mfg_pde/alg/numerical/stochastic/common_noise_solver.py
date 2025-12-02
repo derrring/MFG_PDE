@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.utils.numerical.monte_carlo import MCConfig, QuasiMCSampler
+from mfg_pde.utils.numerical.particle.sampling import MCConfig, QuasiMCSampler
 
 if TYPE_CHECKING:
     from collections.abc import Callable
