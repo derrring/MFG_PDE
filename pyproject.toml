@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.13.4" # v0.13.4: Phase 3.5 complete - Protocol type hints + coefficient field tutorial
+version = "0.13.5" # v0.13.5: Pluggable data recorder with NPZ/HDF5 backends
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
