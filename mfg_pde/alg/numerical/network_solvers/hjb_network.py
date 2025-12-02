@@ -28,7 +28,7 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 
-from .base_hjb import BaseHJBSolver
+from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:
     from mfg_pde.extensions.topology import NetworkMFGProblem

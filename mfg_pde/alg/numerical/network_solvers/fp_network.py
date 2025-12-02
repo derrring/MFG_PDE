@@ -29,7 +29,7 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 
-from .base_fp import BaseFPSolver
+from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
 
 if TYPE_CHECKING:
     from collections.abc import Callable

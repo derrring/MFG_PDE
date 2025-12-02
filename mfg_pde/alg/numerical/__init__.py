@@ -2,8 +2,9 @@
 Numerical methods paradigm for MFG problems.
 
 This module contains classical numerical analysis approaches:
-- hjb_solvers: Individual HJB equation solvers
-- fp_solvers: Individual Fokker-Planck solvers
+- hjb_solvers: Individual HJB equation solvers (grid-based)
+- fp_solvers: Individual Fokker-Planck solvers (grid-based)
+- network_solvers: HJB and FP solvers for graph/network domains
 - coupling: MFG coupling methods (Picard, Policy iteration, etc.)
 
 All methods are based on discretization and convergence analysis.
@@ -24,7 +25,7 @@ from .coupling import (
 from .fp_solvers import (
     BaseFPSolver,
     FPFDMSolver,
-    FPNetworkSolver,
+    FPNetworkSolver,  # Re-exported for backward compat (now in network_solvers)
     FPParticleSolver,
 )
 
@@ -37,22 +38,32 @@ from .hjb_solvers import (
     HJBWenoSolver,
 )
 
+# Import Network solvers (graph-based MFG problems)
+from .network_solvers import (
+    HJBNetworkSolver,
+    NetworkHJBSolver,
+)
+
 __all__ = [
-    # FP Solvers
+    # Base Classes
     "BaseFPSolver",
-    # HJB Solvers
     "BaseHJBSolver",
-    # MFG Solvers (coupled system solvers)
     "BaseMFGSolver",
     "BaseNumericalSolver",
+    # FP Solvers (grid-based)
     "FPFDMSolver",
-    "FPNetworkSolver",
     "FPParticleSolver",
-    "FixedPointIterator",
+    # HJB Solvers (grid-based)
     "HJBFDMSolver",
     "HJBGFDMSolver",
     "HJBSemiLagrangianSolver",
     "HJBWenoSolver",
+    # Network Solvers (graph-based)
+    "FPNetworkSolver",  # Also in fp_solvers for backward compat
+    "HJBNetworkSolver",  # Alias for NetworkHJBSolver
+    "NetworkHJBSolver",
+    # Coupling Methods
+    "FixedPointIterator",
     "HybridFPParticleHJBFDM",
     # Note: ParticleCollocationSolver has been removed from core package
 ]
