@@ -18,24 +18,24 @@ if TYPE_CHECKING:
 def initialize_cold_start(
     U: np.ndarray,
     M: np.ndarray,
-    initial_m_dist: np.ndarray,
-    final_u_cost: np.ndarray,
+    M_initial: np.ndarray,
+    U_terminal: np.ndarray,
     Nt: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Initialize U and M arrays for cold start (no warm start provided).
 
     Cold start initialization sets:
-    - U[Nt-1, :] = final_u_cost (terminal condition)
-    - M[0, :] = initial_m_dist (initial condition)
-    - U[0:Nt-1, :] = final_u_cost (interior initialized with terminal condition)
-    - M[1:Nt, :] = initial_m_dist (interior initialized with initial condition)
+    - U[Nt-1, :] = U_terminal (terminal condition)
+    - M[0, :] = M_initial (initial condition)
+    - U[0:Nt-1, :] = U_terminal (interior initialized with terminal condition)
+    - M[1:Nt, :] = M_initial (interior initialized with initial condition)
 
     Args:
         U: Value function array to initialize (modified in-place)
         M: Density array to initialize (modified in-place)
-        initial_m_dist: Initial density distribution
-        final_u_cost: Final cost/terminal condition for value function
+        M_initial: Initial density distribution m_0(x)
+        U_terminal: Terminal condition g(x) for value function
         Nt: Number of time steps
 
     Returns:
@@ -46,14 +46,14 @@ def initialize_cold_start(
         Interior points are set to boundary conditions as a simple initial guess.
     """
     # Set boundary conditions
-    U[Nt - 1, :] = final_u_cost
-    M[0, :] = initial_m_dist
+    U[Nt - 1, :] = U_terminal
+    M[0, :] = M_initial
 
     # Initialize interior with boundary conditions
     for n_time_idx in range(Nt - 1):
-        U[n_time_idx, :] = final_u_cost
+        U[n_time_idx, :] = U_terminal
     for n_time_idx in range(1, Nt):
-        M[n_time_idx, :] = initial_m_dist
+        M[n_time_idx, :] = M_initial
 
     return U, M
 
@@ -193,26 +193,53 @@ def check_convergence_criteria(
         return False, ""
 
 
-def preserve_boundary_conditions(
+def preserve_initial_condition(
     M: np.ndarray,
-    initial_m_dist: np.ndarray,
+    M_initial: np.ndarray,
 ) -> np.ndarray:
     """
-    Preserve initial boundary condition for density after updates.
+    Preserve initial condition for density after updates.
 
     After damping or Anderson acceleration, M[0, :] may be modified,
     but the initial condition must remain fixed.
 
     Args:
         M: Density array (modified in-place)
-        initial_m_dist: Initial density distribution (boundary condition)
+        M_initial: Initial density distribution m_0(x)
 
     Returns:
-        Modified M with preserved boundary condition
+        Modified M with preserved initial condition
 
     Note:
         This is critical for maintaining physical correctness of the solution.
         The initial density distribution is a boundary condition that must not change.
     """
-    M[0, :] = initial_m_dist
+    M[0, :] = M_initial
     return M
+
+
+def preserve_terminal_condition(
+    U: np.ndarray,
+    U_terminal: np.ndarray,
+) -> np.ndarray:
+    """
+    Preserve terminal condition for value function after updates.
+
+    After damping or Anderson acceleration, U[-1, :] may be modified,
+    but the terminal condition must remain fixed.
+
+    Args:
+        U: Value function array (modified in-place)
+        U_terminal: Terminal condition g(x) at t=T
+
+    Returns:
+        Modified U with preserved terminal condition
+
+    Note:
+        This is critical for maintaining physical correctness of the solution.
+        The terminal condition is a boundary condition that must not change.
+        Without this, damping dilutes the terminal condition, causing the
+        value function gradient to vanish and agents to not move toward targets.
+    """
+    U[-1] = U_terminal
+    return U

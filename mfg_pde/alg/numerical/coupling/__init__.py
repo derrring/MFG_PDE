@@ -20,7 +20,8 @@ from .fixed_point_utils import (
     check_convergence_criteria,
     construct_solver_result,
     initialize_cold_start,
-    preserve_boundary_conditions,
+    preserve_initial_condition,
+    preserve_terminal_condition,
 )
 from .hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 
@@ -34,7 +35,8 @@ __all__ = [
     "check_convergence_criteria",
     "construct_solver_result",
     "initialize_cold_start",
-    "preserve_boundary_conditions",
+    "preserve_initial_condition",
+    "preserve_terminal_condition",
 ]
 
 # Solver categories for factory selection
