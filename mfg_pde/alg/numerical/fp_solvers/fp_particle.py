@@ -519,14 +519,18 @@ class FPParticleSolver(BaseFPSolver):
                 particles[:, d] = xmin + (particles[:, d] - xmin) % Lx
 
             elif bc_type == "no_flux":
-                # Reflecting boundaries
-                below = particles[:, d] < xmin
-                above = particles[:, d] > xmax
-                particles[below, d] = 2 * xmin - particles[below, d]
-                particles[above, d] = 2 * xmax - particles[above, d]
-
-                # Handle multiple reflections (rare edge case)
-                particles[:, d] = np.clip(particles[:, d], xmin, xmax)
+                # Reflecting boundaries: use modular reflection for arbitrary displacement
+                # This handles particles that travel multiple domain widths in one step
+                # Uses "fold" reflection: position bounces back and forth within domain
+                shifted = particles[:, d] - xmin
+                period = 2 * Lx
+                # Position within one period [0, 2*Lx)
+                pos_in_period = shifted % period
+                # If in second half of period, reflect back
+                in_second_half = pos_in_period > Lx
+                pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
+                # Shift back to original domain
+                particles[:, d] = xmin + pos_in_period
 
         return particles
 
@@ -972,17 +976,24 @@ class FPParticleSolver(BaseFPSolver):
                 # Periodic boundaries: wrap around
                 current_M_particles_t[n_time_idx + 1, :] = xmin + (current_M_particles_t[n_time_idx + 1, :] - xmin) % Lx
             elif self.boundary_conditions.type == "no_flux":
-                # Reflecting boundaries: bounce particles back
-                xmax = xmin + Lx
-                particles = current_M_particles_t[n_time_idx + 1, :]
+                # Reflecting boundaries: use modular reflection for arbitrary displacement
+                # This handles particles that travel multiple domain widths in one step
+                particles = current_M_particles_t[n_time_idx + 1, :].copy()
 
-                # Reflect particles that go beyond left boundary
-                left_violations = particles < xmin
-                particles[left_violations] = 2 * xmin - particles[left_violations]
-
-                # Reflect particles that go beyond right boundary
-                right_violations = particles > xmax
-                particles[right_violations] = 2 * xmax - particles[right_violations]
+                if Lx > 1e-14:
+                    # Normalize position relative to domain [0, 2*Lx] with reflection at Lx
+                    # This uses the "fold" reflection: position bounces back and forth
+                    # First shift to [0, ...], then fold within [0, 2*Lx], then map to [0, Lx]
+                    shifted = particles - xmin
+                    # Number of complete round-trips through domain
+                    period = 2 * Lx
+                    # Position within one period [0, 2*Lx)
+                    pos_in_period = shifted % period
+                    # If in second half of period, reflect back
+                    in_second_half = pos_in_period > Lx
+                    pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
+                    # Shift back to original domain
+                    particles = xmin + pos_in_period
 
                 current_M_particles_t[n_time_idx + 1, :] = particles
 
