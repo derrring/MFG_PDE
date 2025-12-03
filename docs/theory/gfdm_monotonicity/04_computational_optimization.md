@@ -304,19 +304,22 @@ test_configs = [
 
 ## 8. Code References
 
-- **Current implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
-  - Neighborhood: lines 281-428
-  - Taylor matrices: lines 449-549
-  - Derivative computation: lines 587-700
+- **Base GFDM**: `mfg_pde/utils/numerical/gfdm_operators.py`
+  - `GFDMOperator` class: neighborhoods, Taylor matrices, derivatives
+  - Reusable for FP solvers, general meshfree computation
 
-- **Weight kernels**: `mfg_pde/utils/numerical/smoothing_kernels.py`
-  - Wendland, Gaussian implementations
+- **HJB Solver**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+  - `HJBGFDMSolver` class: composes GFDMOperator
+  - Adds: ghost particles, adaptive delta, QP constraints
+
+- **Weight kernels**: `mfg_pde/utils/numerical/kernels.py`
+  - Wendland, Gaussian implementations (general numerical kernels)
 
 ---
 
 ## Maintenance
 
-**Last Updated**: 2025-12-01
+**Last Updated**: 2025-12-03
 
 **Status**:
 - Current implementation documented

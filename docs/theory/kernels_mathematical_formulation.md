@@ -1,7 +1,7 @@
 # Smoothing Kernels: Mathematical Formulation
 
-**Module**: `mfg_pde.utils.numerical.smoothing_kernels`
-**Date**: 2025-11-04
+**Module**: `mfg_pde.utils.numerical.kernels`
+**Date**: 2025-12-03
 **Status**: ✅ COMPLETE
 
 ---
@@ -43,7 +43,7 @@ where $k: [0, \infty) \to \mathbb{R}$ is the **kernel profile function**.
 Define normalized variable $q = r/h$, then:
 $$K_h(r) = \frac{1}{h^d} k(q), \quad q = \frac{r}{h}$$
 
-This form is used in the `smoothing_kernels` module:
+This form is used in the `kernels` module:
 ```python
 kernel(r, h) = (1/h^d) * k(r/h)
 ```
@@ -171,7 +171,7 @@ $$\Delta K_h(r) = \frac{1}{h^{d+2}} \left[ k''(q) + \frac{d-1}{q} k'(q) \right],
 - Used in weighted least squares reconstruction: `mfg_pde.utils.numerical.gfdm_operators`
 
 **Kernel Derivatives in Code**:
-The `smoothing_kernels` module provides `evaluate_with_derivative()` method returning both $k(q)$ and $k'(q)$, which can be used to construct $\nabla K$ and $\Delta K$ using the formulas above.
+The `kernels` module provides `evaluate_with_derivative()` method returning both $k(q)$ and $k'(q)$, which can be used to construct $\nabla K$ and $\Delta K$ using the formulas above.
 
 ---
 
@@ -275,7 +275,7 @@ $$K_h(r) = \frac{1}{(\pi h^2)^{d/2}} \exp\left(-\frac{r^2}{h^2}\right)$$
 - Infinite support (practically zero for $r > 3h$)
 - Fourier transform: Gaussian (ideal low-pass filter)
 
-**MFG_PDE Implementation**: `GaussianKernel()` in `smoothing_kernels.py`
+**MFG_PDE Implementation**: `GaussianKernel()` in `mfg_pde.utils.numerical.kernels`
 
 ### 6.2 Wendland Kernels (Compact Support)
 
@@ -577,7 +577,7 @@ u_interp = Σ_i w_i u_i / Σ_i w_i
 
 ## Summary
 
-This document provides the mathematical foundation for the `smoothing_kernels` module in MFG_PDE. Key concepts:
+This document provides the mathematical foundation for the `kernels` module in MFG_PDE. Key concepts:
 
 1. **Kernels** are normalized, non-negative functions for smoothing and approximation
 2. **Mollifiers** are $C^\infty$ compactly supported kernels for regularization
@@ -590,4 +590,4 @@ This document provides the mathematical foundation for the `smoothing_kernels` m
 
 All kernels in the module satisfy normalization $\int K_h = 1$ and converge to Dirac delta as $h \to 0$, making them suitable for numerical PDE methods.
 
-**Code Reference**: `mfg_pde/utils/numerical/smoothing_kernels.py:1-850`
+**Code Reference**: `mfg_pde/utils/numerical/kernels.py`

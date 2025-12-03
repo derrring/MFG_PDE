@@ -5,44 +5,52 @@ This submodule provides tools for particle-based methods including:
 - Monte Carlo sampling and integration
 - MCMC and Hamiltonian Monte Carlo sampling
 - Particle-grid interpolation
-- Smoothing kernels for GFDM, SPH, KDE
+- Boundary condition handling for particles
+- Density-based adaptive sampling
+
+Note: Kernel functions (Gaussian, Wendland, etc.) have been moved to
+mfg_pde.utils.numerical.kernels as they are general numerical functions.
+Re-exported here for backward compatibility.
 
 Organization:
-- sampling: Monte Carlo integration and variance reduction
+- sampling: Monte Carlo integration, variance reduction, density-based sampling
 - mcmc: MCMC samplers (Metropolis-Hastings, HMC, NUTS, Langevin)
 - interpolation: Particle-grid conversion utilities
-- kernels: Smoothing kernel functions (Gaussian, Wendland, splines)
+- boundary: Particle boundary condition application
 
 Typical Usage:
     from mfg_pde.utils.numerical.particle import (
-        # Kernels
-        GaussianKernel,
-        WendlandKernel,
-        CubicSplineKernel,
-        create_kernel,
         # Interpolation
         interpolate_grid_to_particles,
         interpolate_particles_to_grid,
+        interpolate_1d_gpu,
+        interpolate_1d_numpy,
         estimate_kde_bandwidth,
         # Monte Carlo
         monte_carlo_integrate,
         MCConfig,
         MCResult,
+        # Density-based sampling
+        DensityBasedSampler,
+        AdaptiveCollocationStrategy,
+        sample_from_density_gpu,
+        sample_from_density_numpy,
+        # Boundary conditions
+        apply_boundary_conditions_gpu,
+        apply_boundary_conditions_numpy,
         # MCMC
         MetropolisHastings,
         HamiltonianMonteCarlo,
         MCMCConfig,
     )
+
+    # For kernels, prefer the new location:
+    from mfg_pde.utils.numerical.kernels import GaussianKernel, WendlandKernel
 """
 
-# Kernels (smoothing_kernels.py -> kernels.py)
-# Interpolation (particle_interpolation.py -> interpolation.py)
-from mfg_pde.utils.numerical.particle.interpolation import (
-    estimate_kde_bandwidth,
-    interpolate_grid_to_particles,
-    interpolate_particles_to_grid,
-)
-from mfg_pde.utils.numerical.particle.kernels import (
+# Boundary conditions
+# Kernels - re-export from new location for backward compatibility
+from mfg_pde.utils.numerical.kernels import (
     CubicKernel,
     CubicSplineKernel,
     GaussianKernel,
@@ -51,6 +59,19 @@ from mfg_pde.utils.numerical.particle.kernels import (
     QuinticSplineKernel,
     WendlandKernel,
     create_kernel,
+)
+from mfg_pde.utils.numerical.particle.boundary import (
+    apply_boundary_conditions_gpu,
+    apply_boundary_conditions_numpy,
+)
+
+# Interpolation
+from mfg_pde.utils.numerical.particle.interpolation import (
+    estimate_kde_bandwidth,
+    interpolate_1d_gpu,
+    interpolate_1d_numpy,
+    interpolate_grid_to_particles,
+    interpolate_particles_to_grid,
 )
 
 # MCMC sampling (mcmc.py -> mcmc.py)
@@ -70,7 +91,10 @@ from mfg_pde.utils.numerical.particle.mcmc import (
 
 # Monte Carlo sampling (monte_carlo.py -> sampling.py)
 from mfg_pde.utils.numerical.particle.sampling import (
+    # Density-based sampling
+    AdaptiveCollocationStrategy,
     ControlVariates,
+    DensityBasedSampler,
     ImportanceMCSampler,
     MCConfig,
     MCResult,
@@ -82,6 +106,8 @@ from mfg_pde.utils.numerical.particle.sampling import (
     estimate_expectation,
     integrate_gaussian_quadrature_mc,
     monte_carlo_integrate,
+    sample_from_density_gpu,
+    sample_from_density_numpy,
 )
 
 __all__ = [
@@ -97,7 +123,12 @@ __all__ = [
     # Interpolation
     "interpolate_grid_to_particles",
     "interpolate_particles_to_grid",
+    "interpolate_1d_gpu",
+    "interpolate_1d_numpy",
     "estimate_kde_bandwidth",
+    # Boundary conditions
+    "apply_boundary_conditions_gpu",
+    "apply_boundary_conditions_numpy",
     # Monte Carlo
     "MCConfig",
     "MCResult",
@@ -111,6 +142,11 @@ __all__ = [
     "adaptive_monte_carlo",
     "integrate_gaussian_quadrature_mc",
     "estimate_expectation",
+    # Density-based sampling
+    "DensityBasedSampler",
+    "AdaptiveCollocationStrategy",
+    "sample_from_density_gpu",
+    "sample_from_density_numpy",
     # MCMC
     "MCMCConfig",
     "MCMCResult",

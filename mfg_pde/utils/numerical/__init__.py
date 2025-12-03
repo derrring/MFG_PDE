@@ -2,25 +2,33 @@
 Numerical utilities for MFG computations.
 
 This module provides numerical algorithms and helper functions commonly needed
-in MFG research projects, including particle interpolation, signed distance
-functions, spatial operations, and computational utilities.
+in MFG research projects, including kernel functions, GFDM operators, particle
+interpolation, signed distance functions, and computational utilities.
 
 Submodules:
-- particle: Particle-based methods (Monte Carlo, MCMC, kernels, interpolation)
+- kernels: Kernel functions (Gaussian, Wendland, B-spline) for GFDM, KDE, SPH
+- gfdm_operators: GFDM differential operators (GFDMOperator class)
+- particle: Particle-based methods (Monte Carlo, MCMC, interpolation)
 """
 
+from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
 from mfg_pde.utils.numerical.hjb_policy_iteration import (
     HJBPolicyProblem,
     create_lq_policy_problem,
     policy_iteration_hjb,
 )
+
+# Kernels - general numerical functions (not particle-specific)
+from mfg_pde.utils.numerical.kernels import (
+    CubicSplineKernel,
+    GaussianKernel,
+    WendlandKernel,
+    create_kernel,
+)
 from mfg_pde.utils.numerical.nonlinear_solvers import FixedPointSolver, NewtonSolver, PolicyIterationSolver, SolverInfo
 
-# Re-export commonly used particle utilities for convenience
+# Re-export particle utilities for convenience
 from mfg_pde.utils.numerical.particle import (
-    CubicSplineKernel,
-    # Kernels
-    GaussianKernel,
     HamiltonianMonteCarlo,
     # Monte Carlo
     MCConfig,
@@ -29,8 +37,6 @@ from mfg_pde.utils.numerical.particle import (
     MCMCResult,
     MCResult,
     MetropolisHastings,
-    WendlandKernel,
-    create_kernel,
     monte_carlo_integrate,
 )
 
@@ -53,6 +59,8 @@ from mfg_pde.utils.numerical.sdf_utils import (
 )
 
 __all__ = [
+    # GFDM operators
+    "GFDMOperator",
     # HJB policy iteration
     "HJBPolicyProblem",
     "create_lq_policy_problem",
