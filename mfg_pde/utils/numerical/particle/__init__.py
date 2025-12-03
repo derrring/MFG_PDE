@@ -23,18 +23,11 @@ Typical Usage:
         # Interpolation
         interpolate_grid_to_particles,
         interpolate_particles_to_grid,
-        interpolate_1d_gpu,
-        interpolate_1d_numpy,
         estimate_kde_bandwidth,
         # Monte Carlo
         monte_carlo_integrate,
         MCConfig,
         MCResult,
-        # Density-based sampling
-        DensityBasedSampler,
-        AdaptiveCollocationStrategy,
-        sample_from_density_gpu,
-        sample_from_density_numpy,
         # Boundary conditions
         apply_boundary_conditions_gpu,
         apply_boundary_conditions_numpy,
@@ -68,8 +61,6 @@ from mfg_pde.utils.numerical.particle.boundary import (
 # Interpolation
 from mfg_pde.utils.numerical.particle.interpolation import (
     estimate_kde_bandwidth,
-    interpolate_1d_gpu,
-    interpolate_1d_numpy,
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
 )
@@ -91,10 +82,7 @@ from mfg_pde.utils.numerical.particle.mcmc import (
 
 # Monte Carlo sampling (monte_carlo.py -> sampling.py)
 from mfg_pde.utils.numerical.particle.sampling import (
-    # Density-based sampling
-    AdaptiveCollocationStrategy,
     ControlVariates,
-    DensityBasedSampler,
     ImportanceMCSampler,
     MCConfig,
     MCResult,
@@ -106,8 +94,6 @@ from mfg_pde.utils.numerical.particle.sampling import (
     estimate_expectation,
     integrate_gaussian_quadrature_mc,
     monte_carlo_integrate,
-    sample_from_density_gpu,
-    sample_from_density_numpy,
 )
 
 __all__ = [
@@ -123,8 +109,6 @@ __all__ = [
     # Interpolation
     "interpolate_grid_to_particles",
     "interpolate_particles_to_grid",
-    "interpolate_1d_gpu",
-    "interpolate_1d_numpy",
     "estimate_kde_bandwidth",
     # Boundary conditions
     "apply_boundary_conditions_gpu",
@@ -142,11 +126,6 @@ __all__ = [
     "adaptive_monte_carlo",
     "integrate_gaussian_quadrature_mc",
     "estimate_expectation",
-    # Density-based sampling
-    "DensityBasedSampler",
-    "AdaptiveCollocationStrategy",
-    "sample_from_density_gpu",
-    "sample_from_density_numpy",
     # MCMC
     "MCMCConfig",
     "MCMCResult",
