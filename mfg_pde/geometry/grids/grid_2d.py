@@ -396,3 +396,38 @@ class SimpleGrid2D(CartesianGrid):
     def get_boundary_handler(self):
         """Return boundary handler (placeholder)."""
         return {"type": "simple_grid_2d", "implementation": "placeholder"}
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing SimpleGrid2D...")
+
+    import numpy as np
+
+    # Test grid creation
+    grid = SimpleGrid2D(bounds=(0.0, 10.0, 0.0, 5.0), resolution=(11, 6))
+
+    assert grid.dimension == 2
+    assert grid.nx == 11
+    assert grid.ny == 6
+    assert np.isclose(grid.dx, 10.0 / 11)
+    assert np.isclose(grid.dy, 5.0 / 6)
+
+    print(f"  Grid: {grid.nx}×{grid.ny}, spacing dx={grid.dx:.3f}, dy={grid.dy:.3f}")
+
+    # Test coordinates
+    coords = grid.coordinates
+    assert len(coords) == 2
+    assert coords[0].shape == (grid.nx + 1,)
+    assert coords[1].shape == (grid.ny + 1,)
+
+    print(f"  Coordinates: x has {coords[0].shape[0]} points, y has {coords[1].shape[0]} points")
+
+    # Test bounds
+    min_coords, max_coords = grid.bounds
+    assert np.allclose(min_coords, [0.0, 0.0])
+    assert np.allclose(max_coords, [10.0, 5.0])
+
+    print(f"  Bounds: [{min_coords[0]:.1f}, {max_coords[0]:.1f}] × [{min_coords[1]:.1f}, {max_coords[1]:.1f}]")
+
+    print("Smoke tests passed!")

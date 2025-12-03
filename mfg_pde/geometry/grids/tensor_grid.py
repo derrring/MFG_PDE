@@ -716,3 +716,44 @@ class TensorProductGrid(CartesianGrid):
             f"  total_points={self.total_points()}\n"
             f")"
         )
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing TensorProductGrid...")
+
+    import numpy as np
+
+    # Test 2D grid creation
+    grid_2d = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], num_points=[11, 6])
+
+    assert grid_2d.dimension == 2
+    assert grid_2d.total_points() == 11 * 6
+    assert len(grid_2d.coordinates) == 2
+
+    print(f"  2D grid: {grid_2d.num_points[0]}×{grid_2d.num_points[1]} = {grid_2d.total_points()} points")
+
+    # Test meshgrid
+    X, Y = grid_2d.meshgrid()
+    assert X.shape == (11, 6)
+    assert Y.shape == (11, 6)
+    assert X[0, 0] == 0.0
+    assert X[-1, 0] == 10.0
+    assert Y[0, 0] == 0.0
+    assert Y[0, -1] == 5.0
+
+    print(f"  Meshgrid: X shape {X.shape}, range [{X.min():.1f}, {X.max():.1f}]")
+
+    # Test flatten
+    points = grid_2d.flatten()
+    assert points.shape == (66, 2)
+
+    print(f"  Flattened: {points.shape[0]} points in {points.shape[1]}D")
+
+    # Test spacing
+    assert np.allclose(grid_2d.spacing[0], 1.0)  # 10/(11-1) = 1.0
+    assert np.allclose(grid_2d.spacing[1], 1.0)  # 5/(6-1) = 1.0
+
+    print(f"  Spacing: dx={grid_2d.spacing[0]:.2f}, dy={grid_2d.spacing[1]:.2f}")
+
+    print("Smoke tests passed!")
