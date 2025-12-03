@@ -156,9 +156,10 @@ from .conditions import (
 )
 
 # =============================================================================
-# Legacy (backward compatibility)
+# Legacy/Deprecated (backward compatibility - will be removed in v1.0.0)
 # =============================================================================
 # 1D FDM boundary conditions (simple left/right specification)
+# DEPRECATED: Use conditions.BoundaryConditions with dimension=1 instead
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
 
 # =============================================================================
@@ -170,7 +171,7 @@ from .types import (
     create_standard_boundary_names,
 )
 
-# Backward compatibility alias
+# Backward compatibility alias (DEPRECATED)
 LegacyBoundaryConditions1D = BoundaryConditions1DFDM
 
 __all__ = [

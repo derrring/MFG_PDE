@@ -1,6 +1,21 @@
 """
 1D FDM Boundary Conditions for MFG Problems.
 
+.. deprecated:: 0.14.0
+    This module is deprecated. Use the unified boundary condition API instead:
+
+    **Old (deprecated):**
+        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions, periodic_bc
+        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc()
+
+    **New (recommended):**
+        from mfg_pde.geometry import periodic_bc
+        bc = periodic_bc(dimension=1)
+
+    The unified API from conditions.py supports all dimensions and mixed BCs.
+    This module will be removed in v1.0.0.
+
 This module provides simple boundary condition specification for 1D finite
 difference methods. Uses left/right value pattern for 1D domain endpoints.
 
@@ -9,13 +24,30 @@ For multi-dimensional or segment-based BC specification, use conditions.py.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
+
+
+def _emit_deprecation_warning(func_name: str = "BoundaryConditions") -> None:
+    """Emit deprecation warning for fdm_bc_1d module usage."""
+    warnings.warn(
+        f"mfg_pde.geometry.boundary.fdm_bc_1d.{func_name} is deprecated. "
+        "Use the unified API instead:\n"
+        "  from mfg_pde.geometry import periodic_bc, dirichlet_bc, neumann_bc\n"
+        "  bc = periodic_bc(dimension=1)\n"
+        "This module will be removed in v1.0.0.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 @dataclass
 class BoundaryConditions:
     """
     Boundary condition configuration for 1D MFG problems.
+
+    .. deprecated:: 0.14.0
+        Use :class:`mfg_pde.geometry.boundary.conditions.BoundaryConditions` instead.
 
     This class defines boundary conditions for the spatial domain boundaries,
     specifying how the solution should behave at the domain endpoints.
@@ -147,22 +179,42 @@ class BoundaryConditions:
 
 # Convenience functions for common boundary condition types
 def periodic_bc() -> BoundaryConditions:
-    """Create periodic boundary conditions."""
+    """Create periodic boundary conditions.
+
+    .. deprecated:: 0.14.0
+        Use ``from mfg_pde.geometry import periodic_bc; bc = periodic_bc(dimension=1)``
+    """
+    _emit_deprecation_warning("periodic_bc")
     return BoundaryConditions(type="periodic")
 
 
 def dirichlet_bc(left_value: float, right_value: float) -> BoundaryConditions:
-    """Create Dirichlet boundary conditions."""
+    """Create Dirichlet boundary conditions.
+
+    .. deprecated:: 0.14.0
+        Use ``from mfg_pde.geometry import dirichlet_bc; bc = dirichlet_bc(value=..., dimension=1)``
+    """
+    _emit_deprecation_warning("dirichlet_bc")
     return BoundaryConditions(type="dirichlet", left_value=left_value, right_value=right_value)
 
 
 def neumann_bc(left_gradient: float, right_gradient: float) -> BoundaryConditions:
-    """Create Neumann boundary conditions."""
+    """Create Neumann boundary conditions.
+
+    .. deprecated:: 0.14.0
+        Use ``from mfg_pde.geometry import neumann_bc; bc = neumann_bc(value=..., dimension=1)``
+    """
+    _emit_deprecation_warning("neumann_bc")
     return BoundaryConditions(type="neumann", left_value=left_gradient, right_value=right_gradient)
 
 
 def no_flux_bc() -> BoundaryConditions:
-    """Create no-flux boundary conditions."""
+    """Create no-flux boundary conditions.
+
+    .. deprecated:: 0.14.0
+        Use ``from mfg_pde.geometry import no_flux_bc; bc = no_flux_bc(dimension=1)``
+    """
+    _emit_deprecation_warning("no_flux_bc")
     return BoundaryConditions(type="no_flux")
 
 
@@ -174,7 +226,12 @@ def robin_bc(
     right_beta: float,
     right_value: float,
 ) -> BoundaryConditions:
-    """Create Robin boundary conditions."""
+    """Create Robin boundary conditions.
+
+    .. deprecated:: 0.14.0
+        Use ``from mfg_pde.geometry import robin_bc; bc = robin_bc(alpha=..., beta=..., dimension=1)``
+    """
+    _emit_deprecation_warning("robin_bc")
     return BoundaryConditions(
         type="robin",
         left_alpha=left_alpha,
