@@ -176,7 +176,7 @@ __all__ = [
     # Presets (use via: presets.fast_solver(), etc.)
     "presets",
     # -------------------------------------------------------------------------
-    # LEGACY COMPATIBILITY (DEPRECATED - will be removed in v2.0.0)
+    # LEGACY COMPATIBILITY (DEPRECATED - will be removed in v1.0.0)
     # -------------------------------------------------------------------------
     # Dataclass-style (with deprecation warnings)
     "create_fast_config",

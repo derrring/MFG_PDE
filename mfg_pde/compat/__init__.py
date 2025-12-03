@@ -4,13 +4,13 @@ Compatibility layer for old MFG_PDE API
 This module provides deprecation warnings and compatibility wrappers
 to help users migrate from the old API to the new progressive disclosure API.
 
-These functions will be removed in v2.0.
+These functions will be removed in v1.0.0.
 """
 
 import warnings
 
 
-def deprecated(reason: str, removal_version: str = "2.0"):
+def deprecated(reason: str, removal_version: str = "1.0.0"):
     """
     Decorator to mark functions as deprecated.
 

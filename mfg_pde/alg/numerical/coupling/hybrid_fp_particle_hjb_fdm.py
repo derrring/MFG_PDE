@@ -2,7 +2,7 @@
 Hybrid FP-Particle + HJB-FDM Solver for Mean Field Games.
 
 .. deprecated:: 0.9.0
-    This class is deprecated and will be removed in v2.0.0.
+    This class is deprecated and will be removed in v1.0.0.
     Use :class:`FixedPointIterator` with modular HJB/FP solvers instead.
 
     Migration example::

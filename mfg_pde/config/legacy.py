@@ -2,13 +2,7 @@
 Legacy configuration support for backward compatibility.
 
 This module provides compatibility shims for old configuration functions.
-All functions here are deprecated and will be removed in v2.0.0.
-
-Migration Path
---------------
-v0.9.0 (current): Deprecation warnings added
-v1.0.0 (+3 months): Warnings become prominent
-v2.0.0 (+6 months): Old functions removed
+All functions here are deprecated and will be removed in v1.0.0.
 
 Users should migrate to:
 - Presets: from mfg_pde.config import presets
@@ -28,7 +22,7 @@ def create_fast_config(*args, **kwargs) -> SolverConfig:
     """
     DEPRECATED: Create fast solver configuration.
 
-    This function is deprecated and will be removed in v2.0.0.
+    This function is deprecated and will be removed in v1.0.0.
     Use presets.fast_solver() instead.
 
     Returns
@@ -46,7 +40,7 @@ def create_fast_config(*args, **kwargs) -> SolverConfig:
     >>> config = presets.fast_solver()
     """
     warn(
-        "create_fast_config() is deprecated and will be removed in v2.0.0. "
+        "create_fast_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.fast_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -58,7 +52,7 @@ def create_accurate_config(*args, **kwargs) -> SolverConfig:
     """
     DEPRECATED: Create accurate solver configuration.
 
-    This function is deprecated and will be removed in v2.0.0.
+    This function is deprecated and will be removed in v1.0.0.
     Use presets.accurate_solver() instead.
 
     Returns
@@ -76,7 +70,7 @@ def create_accurate_config(*args, **kwargs) -> SolverConfig:
     >>> config = presets.accurate_solver()
     """
     warn(
-        "create_accurate_config() is deprecated and will be removed in v2.0.0. "
+        "create_accurate_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.accurate_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -88,7 +82,7 @@ def create_research_config(*args, **kwargs) -> SolverConfig:
     """
     DEPRECATED: Create research solver configuration.
 
-    This function is deprecated and will be removed in v2.0.0.
+    This function is deprecated and will be removed in v1.0.0.
     Use presets.research_solver() instead.
 
     Returns
@@ -106,7 +100,7 @@ def create_research_config(*args, **kwargs) -> SolverConfig:
     >>> config = presets.research_solver()
     """
     warn(
-        "create_research_config() is deprecated and will be removed in v2.0.0. "
+        "create_research_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.research_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -118,7 +112,7 @@ def create_default_config(*args, **kwargs) -> SolverConfig:
     """
     DEPRECATED: Create default solver configuration.
 
-    This function is deprecated and will be removed in v2.0.0.
+    This function is deprecated and will be removed in v1.0.0.
     Use presets.fast_solver() or presets.default_solver() instead.
 
     Returns
@@ -136,7 +130,7 @@ def create_default_config(*args, **kwargs) -> SolverConfig:
     >>> config = presets.default_solver()
     """
     warn(
-        "create_default_config() is deprecated and will be removed in v2.0.0. "
+        "create_default_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.default_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -148,7 +142,7 @@ def create_default_config(*args, **kwargs) -> SolverConfig:
 def fast_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.fast_solver() instead."""
     warn(
-        "fast_config() is deprecated and will be removed in v2.0.0. "
+        "fast_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.fast_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -159,7 +153,7 @@ def fast_config(*args, **kwargs) -> SolverConfig:
 def accurate_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.accurate_solver() instead."""
     warn(
-        "accurate_config() is deprecated and will be removed in v2.0.0. "
+        "accurate_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.accurate_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -170,7 +164,7 @@ def accurate_config(*args, **kwargs) -> SolverConfig:
 def research_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.research_solver() instead."""
     warn(
-        "research_config() is deprecated and will be removed in v2.0.0. "
+        "research_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.research_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -181,7 +175,7 @@ def research_config(*args, **kwargs) -> SolverConfig:
 def crowd_dynamics_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.crowd_dynamics_solver() instead."""
     warn(
-        "crowd_dynamics_config() is deprecated and will be removed in v2.0.0. "
+        "crowd_dynamics_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.crowd_dynamics_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -194,7 +188,7 @@ def crowd_dynamics_config(*args, **kwargs) -> SolverConfig:
 def traffic_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.traffic_flow_solver() instead."""
     warn(
-        "traffic_config() is deprecated and will be removed in v2.0.0. "
+        "traffic_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.traffic_flow_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -207,7 +201,7 @@ def traffic_config(*args, **kwargs) -> SolverConfig:
 def epidemic_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.epidemic_solver() instead."""
     warn(
-        "epidemic_config() is deprecated and will be removed in v2.0.0. "
+        "epidemic_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.epidemic_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -220,7 +214,7 @@ def epidemic_config(*args, **kwargs) -> SolverConfig:
 def financial_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.financial_solver() instead."""
     warn(
-        "financial_config() is deprecated and will be removed in v2.0.0. "
+        "financial_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.financial_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -233,7 +227,7 @@ def financial_config(*args, **kwargs) -> SolverConfig:
 def large_scale_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.large_scale_solver() instead."""
     warn(
-        "large_scale_config() is deprecated and will be removed in v2.0.0. "
+        "large_scale_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.large_scale_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -246,7 +240,7 @@ def large_scale_config(*args, **kwargs) -> SolverConfig:
 def production_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.production_solver() instead."""
     warn(
-        "production_config() is deprecated and will be removed in v2.0.0. "
+        "production_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.production_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
@@ -259,7 +253,7 @@ def production_config(*args, **kwargs) -> SolverConfig:
 def educational_config(*args, **kwargs) -> SolverConfig:
     """DEPRECATED: Use presets.educational_solver() instead."""
     warn(
-        "educational_config() is deprecated and will be removed in v2.0.0. "
+        "educational_config() is deprecated and will be removed in v1.0.0. "
         "Use 'from mfg_pde.config import presets; config = presets.educational_solver()' instead.",
         DeprecationWarning,
         stacklevel=2,
