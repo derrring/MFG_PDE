@@ -93,7 +93,7 @@ jobs:
         echo "🧠 Testing memory usage with small problem..."
         python -c "
         from mfg_pde import MFGProblem, create_fast_solver
-        from mfg_pde.geometry import SimpleGrid1D, BoundaryConditions
+        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         from mfg_pde.utils.memory_management import MemoryMonitor
         import psutil
 
@@ -101,7 +101,7 @@ jobs:
         monitor = MemoryMonitor(max_memory_gb=2.0)
 
         # Create problem with modern API
-        bc = BoundaryConditions(type='periodic')
+        bc = periodic_bc(dimension=1)
         domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
         domain.create_grid(num_points=21)  # Nx+1
         problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.5)
@@ -146,11 +146,11 @@ jobs:
         echo "⚡ Testing performance regression..."
         python -c "
         from mfg_pde import MFGProblem, create_fast_solver
-        from mfg_pde.geometry import SimpleGrid1D, BoundaryConditions
+        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         import time
 
         # Create problem with modern API
-        bc = BoundaryConditions(type='periodic')
+        bc = periodic_bc(dimension=1)
         domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
         domain.create_grid(num_points=31)  # Nx+1
         problem = MFGProblem(geometry=domain, T=1.0, Nt=20, sigma=0.5)
@@ -245,7 +245,7 @@ jobs:
         echo "⚡ Quick performance regression test..."
         python -c "
         from mfg_pde import MFGProblem, create_fast_solver
-        from mfg_pde.geometry import SimpleGrid1D, BoundaryConditions
+        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         import time
         import psutil
         import os
@@ -255,7 +255,7 @@ jobs:
         start_memory = process.memory_info().rss / 1024 / 1024  # MB
 
         # Create problem with modern API
-        bc = BoundaryConditions(type='periodic')
+        bc = periodic_bc(dimension=1)
         domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
         domain.create_grid(num_points=26)  # Nx+1
         problem = MFGProblem(geometry=domain, T=1.0, Nt=15, sigma=0.5)
