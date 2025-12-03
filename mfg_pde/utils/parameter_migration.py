@@ -421,7 +421,7 @@ Migration Strategy:
 1. Replace deprecated parameters with modern equivalents
 2. Update any configuration files or scripts
 3. Test functionality with new parameter names
-4. Remove deprecated parameter usage before v2.0.0
+4. Remove deprecated parameter usage before v1.0.0
 
 For automatic migration, use the @migrate_parameters decorator:
 
