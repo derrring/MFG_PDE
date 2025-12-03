@@ -119,11 +119,52 @@ High-order GFDM naturally produces **non-monotone stencils** (negative weights) 
 **Content**:
 - Practical implementation in `hjb_gfdm.py`
 - Indirect constraint implementation (IMPLEMENTED)
-- QP optimization levels: `none`, `basic`, `smart`, `tuned`
+- QP optimization levels: `none`, `auto`, `always`
 - Adaptive threshold algorithm
 - Usage examples and benchmarks
 
-**Status**: Production code (lines 799-925 in `hjb_gfdm.py`)
+**Status**: Production code in `hjb_gfdm.py`
+
+### 06. Code Architecture (Updated 2025-12-03)
+
+The GFDM implementation follows a **composition pattern**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       HJBGFDMSolver                             │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              GFDMOperator (composed)                    │    │
+│  │   • neighborhoods (δ-ball search via KDTree)            │    │
+│  │   • taylor_matrices (SVD-based weighted least squares)  │    │
+│  │   • gradient(), laplacian(), hessian(), divergence()    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  HJB-Specific Extensions:                                       │
+│  + Ghost particles (for no-flux boundary conditions)            │
+│  + Adaptive delta (enlargement for sparse regions)              │
+│  + QP constraints (M-matrix monotonicity preservation)          │
+│  + Newton iteration for nonlinear HJB                           │
+│  + Time stepping (backward Euler)                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Files**:
+- `mfg_pde/utils/numerical/gfdm_operators.py`: `GFDMOperator` class (general GFDM)
+- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`: `HJBGFDMSolver` class (HJB-specific)
+
+**Fast Path (no QP, no ghost particles)**:
+```python
+# HJBGFDMSolver.approximate_derivatives() delegates to GFDMOperator
+if qp_level == "none" and not has_ghost:
+    return self._gfdm_operator.approximate_derivatives_at_point(u, point_idx)
+```
+
+**QP Path (monotonicity constraints)**:
+```python
+# HJBGFDMSolver applies QP constraints on top
+if qp_level in ["auto", "always"]:
+    # Check M-matrix violation, solve constrained QP if needed
+```
 
 ---
 
@@ -305,8 +346,9 @@ $$
 - Optimization (convex QP, constraint construction)
 
 **Code**:
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`: Main implementation
-- `mfg_pde/geometry/tensor_product_grid.py`: Grid structure
+- `mfg_pde/utils/numerical/gfdm_operators.py`: `GFDMOperator` class (base GFDM)
+- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`: `HJBGFDMSolver` class (HJB solver)
+- `mfg_pde/utils/numerical/kernels.py`: Weight kernels (Gaussian, Wendland)
 
 ---
 
@@ -357,7 +399,7 @@ $$
 
 ## Maintenance
 
-**Last Updated**: 2025-12-01
+**Last Updated**: 2025-12-03
 
 **Maintainers**: MFG_PDE Development Team
 
@@ -365,6 +407,7 @@ $$
 - ✅ Mathematical foundation documented
 - ✅ Indirect constraints implemented (production)
 - ✅ Computational optimization analysis complete
+- ✅ Code architecture refactored (GFDMOperator composition)
 - 🔬 Direct constraints designed (theory)
 - 📋 Performance optimizations proposed (KDTree, sparse matrices)
 
@@ -372,4 +415,6 @@ $$
 
 **For implementation details, see**: `docs/development/GFDM_QP_MONOTONICITY_IMPLEMENTATION.md`
 
-**For code reference, see**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:799-925`
+**For code reference, see**:
+- Base GFDM: `mfg_pde/utils/numerical/gfdm_operators.py` (`GFDMOperator` class)
+- HJB Solver: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py` (`HJBGFDMSolver` class)

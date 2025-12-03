@@ -9,6 +9,8 @@ import numpy as np
 from scipy.linalg import lstsq
 from scipy.spatial.distance import cdist
 
+from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
+
 from .base_hjb import BaseHJBSolver
 
 # Optional QP solver imports
@@ -18,7 +20,6 @@ OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
-    from mfg_pde.types.solver_types import MultiIndexTuple
 
 
 class HJBGFDMSolver(BaseHJBSolver):
@@ -216,6 +217,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Cache grid size info from geometry (handles nD cases where problem.Nx may be None)
         self._n_spatial_grid_points = self._compute_n_spatial_grid_points()
 
+        # Cache domain bounds from geometry or legacy attributes
+        self.domain_bounds = self._get_domain_bounds()
+
         # Compute k_min from Taylor order if not provided
         from math import comb
 
@@ -245,8 +249,24 @@ class HJBGFDMSolver(BaseHJBSolver):
             "max_delta_used": delta,
         }
 
-        # Pre-compute GFDM structure
+        # Create GFDMOperator for base derivative computation (composition pattern)
+        # This eliminates code duplication between GFDMOperator and HJBGFDMSolver
+        self._gfdm_operator = GFDMOperator(
+            points=collocation_points,
+            delta=delta,
+            taylor_order=taylor_order,
+            weight_function=weight_function,
+            weight_scale=weight_scale,
+        )
+
+        # Get multi-indices from GFDMOperator
+        self.multi_indices = self._gfdm_operator.get_multi_indices()
+        self.n_derivatives = len(self.multi_indices)
+
+        # Build neighborhood structure (extends GFDMOperator with ghost particles and adaptive delta)
         self._build_neighborhood_structure()
+
+        # Build Taylor matrices for extended neighborhoods (with ghost particles)
         self._build_taylor_matrices()
 
     def _compute_n_spatial_grid_points(self) -> int:
@@ -254,17 +274,17 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         Handles nD cases where problem.Nx may be None by using geometry info.
         """
-        # First try to get from problem.Nx (1D case)
-        Nx = getattr(self.problem, "Nx", None)
-        if Nx is not None:
-            return Nx
-
-        # For nD cases, use geometry
+        # For nD cases, prefer geometry (most reliable)
         if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
             grid_shape = self.problem.geometry.get_grid_shape()
             return int(np.prod(grid_shape))
 
-        # Fallback: use number of collocation points
+        # Fallback to problem.Nx (1D case only)
+        Nx = getattr(self.problem, "Nx", None)
+        if Nx is not None:
+            return Nx
+
+        # Last resort: use number of collocation points
         return self.n_points
 
     def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
@@ -278,26 +298,67 @@ class HJBGFDMSolver(BaseHJBSolver):
         else:
             return default
 
+    def _get_domain_bounds(self) -> list[tuple[float, float]]:
+        """Get domain bounds from geometry or legacy xmin/xmax attributes.
+
+        Returns:
+            List of (min, max) tuples for each dimension.
+        """
+        # Prefer geometry (modern interface)
+        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
+            geom = self.problem.geometry
+            # Use get_bounds() method which returns (min_coords, max_coords) arrays
+            if hasattr(geom, "get_bounds"):
+                bounds_result = geom.get_bounds()
+                if bounds_result is not None:
+                    min_coords, max_coords = bounds_result
+                    return [(float(min_coords[d]), float(max_coords[d])) for d in range(len(min_coords))]
+            # Fallback to .bounds property if available
+            if hasattr(geom, "bounds"):
+                return list(geom.bounds)
+
+        # Fallback to legacy 1D xmin/xmax
+        xmin = getattr(self.problem, "xmin", None)
+        xmax = getattr(self.problem, "xmax", None)
+        if xmin is not None and xmax is not None:
+            return [(float(xmin), float(xmax))]
+
+        # Last resort: infer from collocation points
+        return [
+            (float(self.collocation_points[:, d].min()), float(self.collocation_points[:, d].max()))
+            for d in range(self.dimension)
+        ]
+
     def _build_neighborhood_structure(self):
-        """Build δ-neighborhood structure for all collocation points with ghost particles for boundaries."""
+        """
+        Build δ-neighborhood structure for all collocation points.
+
+        Extends GFDMOperator's neighborhoods with:
+        - Ghost particles for boundary conditions
+        - Adaptive delta enlargement for insufficient neighbors
+        """
         self.neighborhoods = {}
 
-        # Compute pairwise distances
-        distances = cdist(self.collocation_points, self.collocation_points)
+        # For adaptive delta, we need pairwise distances
+        if self.adaptive_neighborhoods:
+            distances = cdist(self.collocation_points, self.collocation_points)
+        else:
+            distances = None
 
         for i in range(self.n_points):
-            # Find neighbors within delta radius (with adaptive enlargement if enabled)
+            # Start with GFDMOperator's neighborhood as base
+            base_neighborhood = self._gfdm_operator.get_neighborhood(i)
+            neighbor_indices = base_neighborhood["indices"].copy()
+            neighbor_points = base_neighborhood["points"].copy()
+            neighbor_distances = base_neighborhood["distances"].copy()
+            n_neighbors = len(neighbor_indices)
+
             delta_current = self.delta
             delta_multiplier = 1.0
             was_adapted = False
 
-            # Standard delta-radius neighborhood
-            neighbor_mask = distances[i, :] < delta_current
-            neighbor_indices = np.where(neighbor_mask)[0]
-            n_neighbors = len(neighbor_indices)
-
             # Adaptive delta enlargement if enabled and insufficient neighbors
-            if self.adaptive_neighborhoods and n_neighbors < self.k_min:
+            if self.adaptive_neighborhoods and n_neighbors < self.k_min and distances is not None:
                 max_delta = self.delta * self.max_delta_multiplier
 
                 while n_neighbors < self.k_min and delta_current < max_delta:
@@ -305,11 +366,16 @@ class HJBGFDMSolver(BaseHJBSolver):
                     delta_multiplier *= 1.2
                     delta_current = self.delta * delta_multiplier
 
-                    # Recompute neighborhood
+                    # Recompute neighborhood with enlarged delta
                     neighbor_mask = distances[i, :] < delta_current
                     neighbor_indices = np.where(neighbor_mask)[0]
                     n_neighbors = len(neighbor_indices)
                     was_adapted = True
+
+                # Update neighborhood data for enlarged delta
+                if was_adapted:
+                    neighbor_points = self.collocation_points[neighbor_indices]
+                    neighbor_distances = distances[i, neighbor_indices]
 
                 # Track maximum delta used
                 if delta_current > self.adaptive_stats["max_delta_used"]:
@@ -330,19 +396,15 @@ class HJBGFDMSolver(BaseHJBSolver):
 
                 # Warn if still insufficient neighbors
                 if n_neighbors < self.k_min:
-                    import warnings
+                    import warnings as _warnings  # Local import to avoid ruff F823 false positive
 
-                    warnings.warn(
+                    _warnings.warn(
                         f"Point {i}: Could not find {self.k_min} neighbors even with "
                         f"delta={delta_current:.4f} ({delta_multiplier:.2f}x base). "
                         f"Only found {n_neighbors} neighbors. GFDM approximation may be poor.",
                         UserWarning,
                         stacklevel=3,
                     )
-
-            # Extract final neighborhood
-            neighbor_points = self.collocation_points[neighbor_indices]
-            neighbor_distances = distances[i, neighbor_indices]
 
             # Check if this is a boundary point and add ghost particles if needed
             is_boundary_point = i in self.boundary_indices
@@ -360,13 +422,14 @@ class HJBGFDMSolver(BaseHJBSolver):
                 # For 1D case, add ghost particles beyond boundaries
                 if self.dimension == 1:
                     x = current_point[0]
+                    xmin, xmax = self.domain_bounds[0]
 
                     # Check if near left boundary
-                    if abs(x - self.problem.xmin) < 1e-10:
+                    if abs(x - xmin) < 1e-10:
                         # Add ghost particle symmetrically reflected across left boundary
                         # For a point at x=0, place ghost at x = -h where h is a small distance
                         h = 0.1 * self.delta  # Distance from boundary
-                        ghost_x = self.problem.xmin - h
+                        ghost_x = xmin - h
                         ghost_point = np.array([ghost_x])
                         ghost_distance = h
 
@@ -375,11 +438,11 @@ class HJBGFDMSolver(BaseHJBSolver):
                             ghost_distances.append(ghost_distance)
 
                     # Check if near right boundary
-                    if abs(x - self.problem.xmax) < 1e-10:
+                    if abs(x - xmax) < 1e-10:
                         # Add ghost particle symmetrically reflected across right boundary
                         # For a point at x=1, place ghost at x = 1+h
                         h = 0.1 * self.delta  # Distance from boundary
-                        ghost_x = self.problem.xmax + h
+                        ghost_x = xmax + h
                         ghost_point = np.array([ghost_x])
                         ghost_distance = h
 
@@ -427,30 +490,16 @@ class HJBGFDMSolver(BaseHJBSolver):
                     stacklevel=2,
                 )
 
-    def _get_multi_index_set(self, d: int, p: int) -> list[MultiIndexTuple]:
-        """Generate multi-index set B(d,p) = {β ∈ N^d : 0 < |β| ≤ p} with lexicographical ordering."""
-        multi_indices = []
-
-        def generate_indices(current_index, remaining_dims, remaining_order):
-            if remaining_dims == 0:
-                if sum(current_index) > 0 and sum(current_index) <= p:
-                    multi_indices.append(tuple(current_index))
-                return
-
-            for i in range(remaining_order + 1):
-                generate_indices([*current_index, i], remaining_dims - 1, remaining_order - i)
-
-        generate_indices([], d, p)
-
-        # Sort by lexicographical ordering: first by order |β|, then lexicographically
-        multi_indices.sort(key=lambda beta: (sum(beta), beta))
-        return multi_indices
-
     def _build_taylor_matrices(self):
-        """Pre-compute Taylor expansion matrices A for all collocation points."""
+        """
+        Pre-compute Taylor expansion matrices A for all collocation points.
+
+        Uses self.multi_indices and self.n_derivatives set from GFDMOperator in __init__.
+        This method is still needed because HJBGFDMSolver's neighborhoods may include
+        ghost particles (for boundary conditions) that GFDMOperator doesn't handle.
+        """
         self.taylor_matrices: dict[int, np.ndarray] = {}
-        self.multi_indices = self._get_multi_index_set(self.dimension, self.taylor_order)
-        self.n_derivatives = len(self.multi_indices)
+        # Note: self.multi_indices and self.n_derivatives are set in __init__ from GFDMOperator
 
         for i in range(self.n_points):
             neighborhood = self.neighborhoods[i]
@@ -552,9 +601,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         Compute weights based on distance and weight function using smoothing kernels.
 
-        Uses the kernel API from mfg_pde.utils.numerical.particle.kernels.
+        Uses the unified kernel API from mfg_pde.utils.numerical.kernels.
         """
-        from mfg_pde.utils.numerical.particle.kernels import (
+        from mfg_pde.utils.numerical.kernels import (
             GaussianKernel,
             WendlandKernel,
         )
@@ -598,11 +647,20 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Track current point for debugging/statistics
         self._current_point_idx = point_idx
 
+        # Get QP level and check for ghost particles
+        qp_level = getattr(self, "qp_optimization_level", "none")
+        neighborhood = self.neighborhoods[point_idx]
+        has_ghost = neighborhood.get("has_ghost", False)
+
+        # Fast path: delegate to GFDMOperator when no ghost particles and no QP needed
+        if qp_level == "none" and not has_ghost:
+            return self._gfdm_operator.approximate_derivatives_at_point(u_values, point_idx)
+
+        # Slow path: handle ghost particles and/or QP constraints
         if self.taylor_matrices[point_idx] is None:
             return {}
 
         taylor_data = self.taylor_matrices[point_idx]
-        neighborhood = self.neighborhoods[point_idx]
 
         # Extract function values at neighborhood points, handling ghost particles
         neighbor_indices = neighborhood["indices"]
@@ -624,10 +682,6 @@ class HJBGFDMSolver(BaseHJBSolver):
         # u(x_j) - u(x_0) ≈ ∇u·(x_j - x_0) where A matrix uses (x_j - x_0)
         # For ghost particles: u_ghost = u_center → b = 0, enforcing ∂u/∂n = 0
         b = u_neighbors - u_center
-
-        # Solve weighted least squares with optional monotonicity constraints
-        # Single source of truth: qp_optimization_level
-        qp_level = getattr(self, "qp_optimization_level", "none")
 
         if qp_level == "always":
             # "always" level: Force QP at every point without checking M-matrix
@@ -695,12 +749,65 @@ class HJBGFDMSolver(BaseHJBSolver):
             else:
                 derivative_coeffs = np.zeros(len(b))
 
+        # Handle case where coefficient computation failed
+        if derivative_coeffs is None:
+            derivative_coeffs = np.zeros(len(self.multi_indices))
+
         # Map coefficients to multi-indices
         derivatives = {}
         for k, beta in enumerate(self.multi_indices):
             derivatives[beta] = derivative_coeffs[k]
 
         return derivatives
+
+    def compute_all_derivatives(
+        self, u: np.ndarray, use_qp: bool | None = None
+    ) -> dict[int, dict[tuple[int, ...], float]]:
+        """
+        Compute derivatives at all collocation points using precomputed Taylor matrices.
+
+        When to use this vs GFDMOperator:
+        - Use this method when you need QP constraints for monotonicity (M-matrix)
+        - Use GFDMOperator for general GFDM needs (FP solver, one-off computations)
+
+        Example:
+            # For QP-constrained derivatives (HJB specific):
+            solver = HJBGFDMSolver(problem, points, qp_optimization_level="auto")
+            derivs = solver.compute_all_derivatives(u, use_qp=True)
+
+            # For general GFDM (simpler, no QP):
+            from mfg_pde.utils.numerical import GFDMOperator
+            gfdm = GFDMOperator(points, delta=0.1)
+            grad = gfdm.gradient(u)
+            lap = gfdm.laplacian(u)
+
+        Args:
+            u: Function values at collocation points, shape (n_points,)
+            use_qp: Override QP constraint behavior for this call.
+                None: Use solver's qp_optimization_level setting
+                True: Force QP constraints at all points
+                False: Disable QP constraints for this call
+
+        Returns:
+            Dictionary mapping point index to derivative dictionary.
+            derivatives[i] = {(1,): du/dx, (2,): d²u/dx², ...} for 1D
+            derivatives[i] = {(1,0): du/dx, (0,1): du/dy, (2,0): d²u/dx², ...} for 2D
+        """
+        # Optionally override QP level for this computation
+        saved_qp_level = None
+        if use_qp is not None:
+            saved_qp_level = self.qp_optimization_level
+            self.qp_optimization_level = "always" if use_qp else "none"
+
+        try:
+            all_derivatives: dict[int, dict[tuple[int, ...], float]] = {}
+            for i in range(self.n_points):
+                all_derivatives[i] = self.approximate_derivatives(u, i)
+            return all_derivatives
+        finally:
+            # Restore QP level if overridden
+            if saved_qp_level is not None:
+                self.qp_optimization_level = saved_qp_level
 
     def _solve_monotone_constrained_qp(self, taylor_data: dict, b: np.ndarray, point_idx: int) -> np.ndarray:
         """
@@ -792,10 +899,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Only add monotonicity constraints when they are really needed
         # Check if this point is near boundaries or critical regions
         center_point = self.collocation_points[point_idx]
-        near_boundary = (
-            abs(center_point[0] - self.problem.xmin) < 0.1 * self.delta
-            or abs(center_point[0] - self.problem.xmax) < 0.1 * self.delta
-        )
+        xmin, xmax = self.domain_bounds[0]
+        near_boundary = abs(center_point[0] - xmin) < 0.1 * self.delta or abs(center_point[0] - xmax) < 0.1 * self.delta
 
         # Add conservative constraint only if near boundary and needed
         if near_boundary and self.dimension == 1:
@@ -2013,7 +2118,68 @@ if __name__ == "__main__":
     assert solver_1d.delta == 0.15
     assert solver_1d.taylor_order == 2
     assert solver_1d.hjb_method_name == "GFDM"
-    print("  Solver initialized")
-    print(f"  Collocation points: {solver_1d.n_points}, Delta: {solver_1d.delta}")
+    print("  [1D] Solver initialized")
+    print(f"       Collocation points: {solver_1d.n_points}, Delta: {solver_1d.delta}")
 
+    # Test derivative computation API (1D)
+    # f(x) = x^2 -> df/dx = 2x, d²f/dx² = 2
+    x = collocation_points[:, 0]
+    u_1d = x**2
+
+    # Test compute_all_derivatives
+    all_derivs_1d = solver_1d.compute_all_derivatives(u_1d)
+    assert len(all_derivs_1d) == solver_1d.n_points
+    # Interior points should have derivatives
+    mid_idx = solver_1d.n_points // 2
+    assert (1,) in all_derivs_1d[mid_idx], f"Missing gradient key (1,) at point {mid_idx}"
+    print(f"  [1D] compute_all_derivatives: {len(all_derivs_1d)} points")
+    print(f"       Multi-indices: {solver_1d.multi_indices}")
+
+    # Test 2D problem
+    print("\n  [2D] Testing 2D solver...")
+
+    # Create 2D collocation points (grid)
+    Nx_2d = 10
+    x_grid = np.linspace(0, 1, Nx_2d)
+    y_grid = np.linspace(0, 1, Nx_2d)
+    xx, yy = np.meshgrid(x_grid, y_grid)
+    points_2d = np.column_stack([xx.ravel(), yy.ravel()])
+
+    problem_2d = MFGProblem(Nx=Nx_2d, Nt=5, T=1.0, sigma=0.1, dimension=2)
+
+    solver_2d = HJBGFDMSolver(
+        problem_2d,
+        collocation_points=points_2d,
+        delta=0.2,
+        taylor_order=2,
+        weight_function="wendland",
+    )
+    print(f"       Collocation points: {solver_2d.n_points}, Delta: {solver_2d.delta}")
+    print(f"       Multi-indices: {solver_2d.multi_indices}")
+
+    # f(x,y) = x² + y² -> gradient = [2x, 2y], laplacian = 4
+    u_2d = points_2d[:, 0] ** 2 + points_2d[:, 1] ** 2
+
+    # Test compute_all_derivatives
+    all_derivs_2d = solver_2d.compute_all_derivatives(u_2d)
+    assert len(all_derivs_2d) == solver_2d.n_points
+
+    # Find interior point (center of grid)
+    mid_idx_2d = 55  # Center of 10x10 grid
+    derivs_mid = all_derivs_2d[mid_idx_2d]
+    print(f"  [2D] Derivatives at interior point {mid_idx_2d}:")
+    print(f"       Keys: {list(derivs_mid.keys())}")
+
+    # Check expected derivatives for f(x,y) = x² + y² at interior point
+    if derivs_mid:
+        grad_x = derivs_mid.get((1, 0), 0.0)
+        grad_y = derivs_mid.get((0, 1), 0.0)
+        lap_xx = derivs_mid.get((2, 0), 0.0)
+        lap_yy = derivs_mid.get((0, 2), 0.0)
+        print(f"       du/dx = {grad_x:.4f} (expected: {2 * points_2d[mid_idx_2d, 0]:.4f})")
+        print(f"       du/dy = {grad_y:.4f} (expected: {2 * points_2d[mid_idx_2d, 1]:.4f})")
+        print(f"       d²u/dx² = {lap_xx:.4f} (expected: 2.0)")
+        print(f"       d²u/dy² = {lap_yy:.4f} (expected: 2.0)")
+
+    print("\nNote: For gradient/laplacian utilities, use mfg_pde.utils.numerical.gfdm_operators")
     print("Smoke tests passed!")
