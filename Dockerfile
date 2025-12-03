@@ -86,7 +86,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 WORKDIR /app
 
 # Default command - run basic example
-CMD ["python", "-c", "from mfg_pde import ExampleMFGProblem, create_fast_solver; print('MFG_PDE container ready')"]
+CMD ["python", "-c", "from mfg_pde import MFGProblem, create_fast_solver; print('MFG_PDE container ready')"]
 
 # Expose port for potential web interface (if added later)
 EXPOSE 8080
