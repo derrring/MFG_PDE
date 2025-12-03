@@ -567,19 +567,19 @@ class TestLegacyParameterExtraction:
         assert "picard_tolerance" not in remaining
 
     def test_extract_legacy_parameters_deprecated_niter_max(self):
-        """Test extraction of deprecated max_iterations parameter."""
+        """Test extraction of deprecated Niter_max parameter."""
         config = create_default_config()
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            remaining = extract_legacy_parameters(config, max_iterations=100)
+            remaining = extract_legacy_parameters(config, Niter_max=100)
 
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
-            assert "max_iterations" in str(w[0].message)
+            assert "Niter_max" in str(w[0].message)
 
         assert config.picard.max_iterations == 100
-        assert "max_iterations" not in remaining
+        assert "Niter_max" not in remaining
 
     def test_extract_legacy_parameters_deprecated_l2errBoundPicard(self):
         """Test extraction of deprecated l2errBoundPicard parameter."""

@@ -11,7 +11,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGResult, CommonNoiseMFGSolver
 from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.utils.numerical.monte_carlo import MCConfig
+from mfg_pde.utils.numerical.particle.sampling import MCConfig
 
 
 class TestCommonNoiseMFGResultDataclass:
