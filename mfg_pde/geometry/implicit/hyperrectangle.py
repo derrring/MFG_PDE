@@ -219,15 +219,21 @@ class Hyperrectangle(ImplicitDomain):
         particles = particles.copy()
 
         if bc_type == "reflecting":
-            # Reflect particles at each boundary
+            # Reflect particles using modular fold reflection
+            # This handles particles that travel multiple domain widths in one step
             for dim in range(self.dimension):
-                # Reflect from lower boundary
-                below = particles[:, dim] < self.bounds[dim, 0]
-                particles[below, dim] = 2 * self.bounds[dim, 0] - particles[below, dim]
+                xmin = self.bounds[dim, 0]
+                xmax = self.bounds[dim, 1]
+                Lx = xmax - xmin
 
-                # Reflect from upper boundary
-                above = particles[:, dim] > self.bounds[dim, 1]
-                particles[above, dim] = 2 * self.bounds[dim, 1] - particles[above, dim]
+                if Lx > 1e-14:
+                    # Modular fold reflection: position bounces back and forth with period 2*Lx
+                    shifted = particles[:, dim] - xmin
+                    period = 2 * Lx
+                    pos_in_period = shifted % period
+                    in_second_half = pos_in_period > Lx
+                    pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
+                    particles[:, dim] = xmin + pos_in_period
 
             return particles
 

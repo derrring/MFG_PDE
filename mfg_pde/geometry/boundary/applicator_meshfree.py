@@ -123,7 +123,38 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
         self,
         particles: NDArray[np.floating],
     ) -> NDArray[np.floating]:
-        """Project particles outside domain back to interior."""
+        """
+        Reflect particles outside domain back to interior.
+
+        For bounded domains (hyperrectangles), uses modular fold reflection
+        which correctly handles particles that travel multiple domain widths.
+
+        For other domains, falls back to projection to interior.
+        """
+        bounds = self.geometry.get_bounds()
+
+        if bounds is not None:
+            # For bounded domains, use modular fold reflection
+            # This is physically correct for elastic boundaries
+            min_coords, max_coords = bounds
+            result = particles.copy()
+
+            for d in range(self.dimension):
+                xmin, xmax = min_coords[d], max_coords[d]
+                Lx = xmax - xmin
+
+                if Lx > 1e-14:
+                    # Modular fold: position bounces back and forth with period 2*Lx
+                    shifted = result[:, d] - xmin
+                    period = 2 * Lx
+                    pos_in_period = shifted % period
+                    in_second_half = pos_in_period > Lx
+                    pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
+                    result[:, d] = xmin + pos_in_period
+
+            return result
+
+        # Fallback for unbounded/complex domains: project to interior
         return self.geometry.project_to_interior(particles)
 
     def _apply_absorbing_bc(
