@@ -663,3 +663,42 @@ def _divergence_tensor_general_nd(
         "For higher dimensions, consider using diagonal diffusion or "
         "implementing problem-specific operators."
     )
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing tensor diffusion operators...")
+
+    import numpy as np
+
+    from mfg_pde.geometry import BoundaryConditions
+
+    # Test 2D diagonal diffusion (isotropic case)
+    Nx, Ny = 20, 15
+    dx, dy = 0.1, 0.1
+
+    # Create a Gaussian density
+    x = np.linspace(0, (Nx - 1) * dx, Nx)
+    y = np.linspace(0, (Ny - 1) * dy, Ny)
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    m = np.exp(-((X - 1.0) ** 2 + (Y - 0.75) ** 2) / 0.1)
+
+    # Diagonal tensor (isotropic diffusion)
+    sigma_diag = np.array([0.1, 0.1])
+
+    # Periodic boundary conditions
+    bc = BoundaryConditions(type="periodic")
+
+    # Compute divergence
+    div_m = divergence_diagonal_diffusion_2d(m, sigma_diag, dx, dy, bc)
+
+    assert div_m.shape == m.shape, f"Shape mismatch: {div_m.shape} vs {m.shape}"
+    assert not np.any(np.isnan(div_m)), "NaN values in divergence"
+    assert not np.any(np.isinf(div_m)), "Inf values in divergence"
+
+    print(f"  2D diagonal diffusion: shape {div_m.shape}, range [{div_m.min():.3e}, {div_m.max():.3e}]")
+
+    # Test that Laplacian of Gaussian is negative (diffusion smooths peaks)
+    assert div_m.sum() < 0, "Laplacian of Gaussian should be negative at peak"
+
+    print("Smoke tests passed!")
