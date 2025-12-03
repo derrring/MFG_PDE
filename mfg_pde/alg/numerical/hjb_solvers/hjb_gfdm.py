@@ -552,9 +552,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         Compute weights based on distance and weight function using smoothing kernels.
 
-        Uses the unified smoothing kernel API from mfg_pde.utils.numerical.smoothing_kernels.
+        Uses the kernel API from mfg_pde.utils.numerical.particle.kernels.
         """
-        from mfg_pde.utils.numerical.smoothing_kernels import (
+        from mfg_pde.utils.numerical.particle.kernels import (
             GaussianKernel,
             WendlandKernel,
         )

@@ -153,7 +153,7 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
     """
     Gaussian RBF (Radial Basis Function) weight for GFDM.
 
-    This is a convenience wrapper around GaussianKernel from the smoothing_kernels module.
+    This is a convenience wrapper around GaussianKernel from the kernels module.
 
     Weight function: w(r) = exp(-(r/h)²)
 
@@ -172,15 +172,15 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
 
     Notes
     -----
-    Uses GaussianKernel from mfg_pde.utils.numerical.smoothing_kernels with proper
+    Uses GaussianKernel from mfg_pde.utils.numerical.particle.kernels with proper
     normalization for arbitrary dimensions.
 
-    Alternative weight functions available in smoothing_kernels module:
+    Alternative weight functions available in kernels module:
     - WendlandKernel(k=0,1,2,3): Compact support, C^0, C^2, C^4, C^6 smoothness
     - CubicSplineKernel, QuinticSplineKernel: SPH B-spline kernels
     - CubicKernel, QuarticKernel: Simple polynomial kernels
 
-    See mfg_pde.utils.numerical.smoothing_kernels for full kernel API.
+    See mfg_pde.utils.numerical.particle.kernels for full kernel API.
 
     Examples
     --------
@@ -189,7 +189,7 @@ def gaussian_rbf_weight(r: np.ndarray, h: float) -> np.ndarray:
     >>> w
     array([1.        , 0.77880078, 0.36787944, 0.01831564])
     """
-    from mfg_pde.utils.numerical.smoothing_kernels import GaussianKernel
+    from mfg_pde.utils.numerical.particle.kernels import GaussianKernel
 
     kernel = GaussianKernel()
     return kernel(r, h=h)
@@ -950,7 +950,7 @@ def compute_kernel_density_gfdm(
     Notes
     -----
     This is a simplified KDE using Gaussian RBF weights from GFDM.
-    For more sophisticated kernel options, see mfg_pde.utils.numerical.smoothing_kernels.
+    For more sophisticated kernel options, see mfg_pde.utils.numerical.particle.kernels.
 
     The bandwidth h is chosen adaptively as the maximum neighbor distance.
 

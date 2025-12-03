@@ -52,7 +52,7 @@ Properties of Good Kernels:
 
 Usage Examples:
 --------------
-    from mfg_pde.utils.numerical.smoothing_kernels import (
+    from mfg_pde.utils.numerical.particle.kernels import (
         GaussianKernel,
         WendlandKernel,
         CubicSplineKernel,
