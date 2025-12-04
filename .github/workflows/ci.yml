@@ -254,7 +254,7 @@ jobs:
       run: |
         echo "🧠 Testing memory usage with controlled problem size..."
         python -c "
-        from mfg_pde import MFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem
         from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         import time
         import psutil
@@ -269,10 +269,9 @@ jobs:
         domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
         domain.create_grid(num_points=26)  # Nx+1
         problem = MFGProblem(geometry=domain, T=1.0, Nt=15, sigma=0.5)
-        solver = create_fast_solver(problem, 'fixed_point')
 
         start_time = time.time()
-        result = solver.solve()
+        result = problem.solve()
         execution_time = time.time() - start_time
 
         final_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -393,7 +392,7 @@ jobs:
       run: |
         echo "🧪 Running integration tests for Python ${{ matrix.python-version }}..."
         python -c "
-        from mfg_pde import MFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem
         from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         import time
 
@@ -403,18 +402,12 @@ jobs:
         domain.create_grid(num_points=21)  # Nx+1
         problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.5)
 
-        # Test multiple solver types
-        solver_types = ['fixed_point', 'particle_collocation']
-
-        for solver_type in solver_types:
-            print(f'Testing {solver_type} solver...')
-            solver = create_fast_solver(problem, solver_type)
-
-            start_time = time.time()
-            result = solver.solve()
-            duration = time.time() - start_time
-
-            print(f'  ✅ {solver_type}: {duration:.2f}s')
+        # Test problem.solve() API
+        print('Testing problem.solve() API...')
+        start_time = time.time()
+        result = problem.solve()
+        duration = time.time() - start_time
+        print(f'  ✅ problem.solve(): {duration:.2f}s')
 
         print('🎉 All integration tests passed!')
         "
@@ -461,14 +454,13 @@ jobs:
         print(f'✅ Successfully imported mfg_pde version {mfg_pde.__version__}')
 
         # Quick smoke test with modern API
-        from mfg_pde import MFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem
         from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         bc = periodic_bc(dimension=1)
         domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
         domain.create_grid(num_points=11)  # Nx+1
         problem = MFGProblem(geometry=domain, T=1.0, Nt=5, sigma=0.5)
-        solver = create_fast_solver(problem, 'fixed_point')
-        result = solver.solve()
+        result = problem.solve()
         print('✅ Package installation and basic functionality verified')
         "
 
