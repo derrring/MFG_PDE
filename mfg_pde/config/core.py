@@ -21,6 +21,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+# Type alias for solver configuration base class
+# All solver configs inherit from Pydantic BaseModel
+BaseConfig = BaseModel
+
+
 class LoggingConfig(BaseModel):
     """
     Configuration for logging and progress reporting.

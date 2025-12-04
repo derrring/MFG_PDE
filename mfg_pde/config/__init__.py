@@ -59,7 +59,7 @@ from .array_validation import (
 
 # Builder API
 from .builder import ConfigBuilder
-from .core import BackendConfig, LoggingConfig, PicardConfig, SolverConfig
+from .core import BackendConfig, BaseConfig, LoggingConfig, PicardConfig, SolverConfig
 
 # FP solver configurations
 from .fp_configs import FDMFPConfig, FPConfig, NetworkConfig, ParticleConfig
@@ -152,6 +152,7 @@ __all__ = [
     # NEW UNIFIED CONFIG SYSTEM (RECOMMENDED)
     # -------------------------------------------------------------------------
     # Core classes
+    "BaseConfig",  # Type alias for base configuration class (Pydantic BaseModel)
     "SolverConfig",
     "PicardConfig",
     "BackendConfig",
