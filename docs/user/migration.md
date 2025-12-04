@@ -1,5 +1,10 @@
 # Migration Guide - Upgrading to the Factory API
 
+> **⚠️ Note**: This guide contains some outdated information. The primary API is now:
+> - `solve_mfg(problem, method="fast")` - High-level one-liner
+> - `create_standard_solver(problem, "fixed_point")` - Factory API
+> See [quickstart.md](quickstart.md) for current usage patterns.
+
 **Smooth transition from old MFG_PDE API to the two-level factory-based API**
 
 ## Overview
@@ -344,55 +349,58 @@ result.plot_value_function()
 result.plot_convergence()
 ```
 
-### Interactive Analysis
+### Visualization
+
 ```python
-# Old: Manual interactive setup
-from mfg_pde.visualization.interactive_plots import create_interactive_dashboard
+# Use matplotlib for plotting
+import matplotlib.pyplot as plt
 
-dashboard = create_interactive_dashboard(solution)
-dashboard.add_parameter_slider('crowd_size', [50, 100, 200, 500])
-dashboard.add_time_slider()
-dashboard.launch()
+result = solver.solve()
 
-# New: Built-in interactivity
-result = solve_mfg("crowd_dynamics")
-result.create_interactive_dashboard()  # Automatic dashboard
-result.plot(interactive=True)          # Interactive plots
+# Plot value function and density
+plt.figure(figsize=(12, 4))
+plt.subplot(121)
+plt.imshow(result.U, aspect='auto', cmap='viridis')
+plt.title('Value Function u(t,x)')
+plt.colorbar()
+
+plt.subplot(122)
+plt.imshow(result.M, aspect='auto', cmap='hot')
+plt.title('Density m(t,x)')
+plt.colorbar()
+plt.show()
+
+# For interactive plots, use Plotly visualizers
+from mfg_pde.visualization.interactive_plots import create_plotly_visualizer
 ```
 
 ## Breaking Changes and Compatibility
 
-### Removed Functions (v1.4+)
-
-The following "simple API" functions have been **removed** as of v1.4:
+### Current API
 
 ```python
-# REMOVED - Use factory API instead
-from mfg_pde import solve_mfg               # ❌ REMOVED
-from mfg_pde import create_mfg_problem      # ❌ REMOVED
-from mfg_pde import get_available_problems  # ❌ REMOVED
+# Primary high-level API (RECOMMENDED)
+from mfg_pde import solve_mfg, MFGProblem
 
-# NEW - Use factory API
-from mfg_pde.factory import create_fast_solver     # ✅ USE THIS
-from mfg_pde.factory import create_accurate_solver # ✅ USE THIS
-from mfg_pde import MFGProblem                      # ✅ USE THIS
+problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+result = solve_mfg(problem, method="fast")  # ✅ USE THIS
+
+# Factory API for more control
+from mfg_pde.factory import create_fast_solver, create_standard_solver
+
+solver = create_standard_solver(problem, "fixed_point")  # ✅ USE THIS
+result = solver.solve()
 ```
-
-**Why removed?** MFG_PDE is research-grade software. Users are assumed to understand MFG theory and should define problems explicitly rather than using pre-canned "crowd_dynamics" strings.
 
 ### Compatibility Layer
 
-For gradual migration, import the compatibility layer:
+The `mfg_pde.compat` module provides utilities for backward compatibility:
 
 ```python
-# Temporary compatibility (will be removed in v2.0)
-from mfg_pde.compat import LegacyMFGSolver
+from mfg_pde.compat import deprecated, gradient_notation
 
-# Your old code continues to work
-solver = LegacyMFGSolver(old_config)
-result = solver.solve(old_problem)
-
-# But you get deprecation warnings guiding you to new API
+# Gradient notation conversion utilities
+from mfg_pde.compat.gradient_notation import derivs_to_gradient_array
 ```
 
 ## Migration Timeline
@@ -411,30 +419,6 @@ result = solver.solve(old_problem)
 - 🚫 Old API removed
 - ✅ New API is the only way
 - ✅ Cleaner, simpler codebase
-
-## Migration Tools
-
-### Automatic Migration Script
-
-```bash
-# Automatic code migration tool
-python -m mfg_pde.migrate --input my_old_script.py --output my_new_script.py
-
-# Check compatibility
-python -m mfg_pde.check_compatibility my_project/
-```
-
-### Interactive Migration Assistant
-
-```python
-# Interactive migration help
-from mfg_pde.migration import MigrationAssistant
-
-assistant = MigrationAssistant()
-assistant.analyze_code("my_old_script.py")
-assistant.suggest_migration()
-assistant.generate_new_code()
-```
 
 ## Common Migration Patterns
 
@@ -461,14 +445,15 @@ for crowd_size in [100, 200, 500]:
     solution = solver.solve(problem)
     results[crowd_size] = solution
 
-# After: Built-in parameter sweep
-from mfg_pde.parallel import ParameterSweep
+# After: Simple loop with factory API
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_fast_solver
 
-sweep = ParameterSweep.from_problem_type(
-    "crowd_dynamics",
-    parameter_ranges={'crowd_size': [100, 200, 500]}
-)
-results = sweep.execute()
+results = {}
+for crowd_size in [100, 200, 500]:
+    problem = MFGProblem(Nx=crowd_size, Nt=20, T=1.0)
+    solver = create_fast_solver(problem, "fixed_point")
+    results[crowd_size] = solver.solve()
 ```
 
 ### Pattern 3: Custom Algorithm Development
