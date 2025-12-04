@@ -10,7 +10,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.hjb_solvers.hjb_network import NetworkHJBSolver
+from mfg_pde.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
 from mfg_pde.extensions.topology import NetworkMFGProblem
 from mfg_pde.geometry.graph.network_geometry import GridNetwork
 

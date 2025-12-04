@@ -10,7 +10,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_network import FPNetworkSolver
+from mfg_pde.alg.numerical.network_solvers.fp_network import FPNetworkSolver
 from mfg_pde.extensions.topology import NetworkMFGProblem
 from mfg_pde.geometry.graph.network_geometry import GridNetwork
 

@@ -92,14 +92,19 @@ jobs:
       run: |
         echo "🧠 Testing memory usage with small problem..."
         python -c "
-        from mfg_pde import ExampleMFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem, create_fast_solver
+        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         from mfg_pde.utils.memory_management import MemoryMonitor
         import psutil
 
         # Test with small problem to ensure memory monitoring works
         monitor = MemoryMonitor(max_memory_gb=2.0)
 
-        problem = ExampleMFGProblem(Nx=20, Nt=10)
+        # Create problem with modern API
+        bc = periodic_bc(dimension=1)
+        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+        domain.create_grid(num_points=21)  # Nx+1
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.5)
         solver = create_fast_solver(problem, 'fixed_point')
 
         initial_memory = monitor.get_current_memory_gb()
@@ -140,11 +145,15 @@ jobs:
       run: |
         echo "⚡ Testing performance regression..."
         python -c "
-        from mfg_pde import ExampleMFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem, create_fast_solver
+        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         import time
 
-        # Benchmark small problem
-        problem = ExampleMFGProblem(Nx=30, Nt=20)
+        # Create problem with modern API
+        bc = periodic_bc(dimension=1)
+        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+        domain.create_grid(num_points=31)  # Nx+1
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=20, sigma=0.5)
         solver = create_fast_solver(problem, 'fixed_point')
 
         start_time = time.time()
@@ -235,7 +244,8 @@ jobs:
       run: |
         echo "⚡ Quick performance regression test..."
         python -c "
-        from mfg_pde import ExampleMFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem, create_fast_solver
+        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
         import time
         import psutil
         import os
@@ -244,8 +254,11 @@ jobs:
         process = psutil.Process(os.getpid())
         start_memory = process.memory_info().rss / 1024 / 1024  # MB
 
-        # Quick solver test
-        problem = ExampleMFGProblem(Nx=25, Nt=15)
+        # Create problem with modern API
+        bc = periodic_bc(dimension=1)
+        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+        domain.create_grid(num_points=26)  # Nx+1
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=15, sigma=0.5)
         solver = create_fast_solver(problem, 'fixed_point')
 
         start_time = time.time()

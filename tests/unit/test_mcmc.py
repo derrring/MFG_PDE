@@ -1,7 +1,7 @@
 """
 Unit tests for MCMC and Hamiltonian Monte Carlo utilities.
 
-Tests for mfg_pde/utils/numerical/mcmc.py covering:
+Tests for mfg_pde.utils.numerical.particle.mcmc.py covering:
 - MCMCConfig and MCMCResult dataclasses
 - Metropolis-Hastings sampler
 - Hamiltonian Monte Carlo (HMC) with leapfrog integration
@@ -15,7 +15,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical.mcmc import (
+from mfg_pde.utils.numerical.particle.mcmc import (
     HamiltonianMonteCarlo,
     LangevinDynamics,
     MCMCConfig,

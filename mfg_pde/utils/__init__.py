@@ -18,7 +18,7 @@ Organization:
 
 import warnings as _warnings
 
-# Backward compatibility alias for logging module rename (DEPRECATED - will be removed in v0.13.0)
+# Backward compatibility alias for logging module rename (DEPRECATED - will be removed in v0.15.0)
 # The logging module was renamed to mfg_logging to avoid shadowing Python's stdlib logging
 from . import mfg_logging as logging  # noqa: F401
 
@@ -131,12 +131,12 @@ from .sparse_operations import (
     sparse_matmul,
 )
 
-# Backward compatibility alias (DEPRECATED - will be removed in v0.12.0)
+# Backward compatibility alias (DEPRECATED - will be removed in v0.15.0)
 adaptive_bandwidth_selection = estimate_kde_bandwidth
 
 # Issue deprecation warning for adaptive_bandwidth_selection alias
 _warnings.warn(
-    "adaptive_bandwidth_selection is deprecated and will be removed in v0.12.0. "
+    "adaptive_bandwidth_selection is deprecated and will be removed in v0.15.0. "
     "Please use estimate_kde_bandwidth directly:\n"
     "  from mfg_pde.utils import estimate_kde_bandwidth",
     DeprecationWarning,
@@ -145,7 +145,7 @@ _warnings.warn(
 
 # Issue deprecation warning for logging module rename
 _warnings.warn(
-    "Importing from 'mfg_pde.utils.logging' is deprecated and will be removed in v0.13.0. "
+    "Importing from 'mfg_pde.utils.logging' is deprecated and will be removed in v0.15.0. "
     "The module has been renamed to avoid shadowing Python's stdlib. Please update:\n"
     "  from mfg_pde.utils.mfg_logging import get_logger, configure_logging\n"
     "Or import from mfg_pde.utils directly:\n"

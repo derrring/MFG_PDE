@@ -348,6 +348,37 @@ class BoundaryConditions:
 
         return None
 
+    def validate_values(self) -> None:
+        """
+        Validate that required values are provided for boundary condition segments.
+
+        For uniform BCs, checks that the segment has appropriate values set.
+        For mixed BCs, validates each segment individually.
+
+        Raises:
+            ValueError: If required values are missing for a BC type.
+
+        Note:
+            This method provides backward compatibility with the old
+            fdm_bc_1d.BoundaryConditions.validate_values() method.
+        """
+        for segment in self.segments:
+            bc_type = segment.bc_type
+
+            if bc_type in (BCType.DIRICHLET, BCType.NEUMANN, BCType.NO_FLUX):
+                # These types require a value (can be 0.0 which is valid)
+                if segment.value is None:
+                    raise ValueError(f"Segment '{segment.name}' with {bc_type.value} BC requires a value")
+
+            elif bc_type == BCType.ROBIN:
+                # Robin requires alpha, beta, and value
+                if segment.alpha is None or segment.beta is None:
+                    raise ValueError(f"Segment '{segment.name}' with Robin BC requires alpha and beta coefficients")
+                if segment.value is None:
+                    raise ValueError(f"Segment '{segment.name}' with Robin BC requires a value")
+
+            # Periodic BC doesn't require values - it's handled by wrapping
+
     def validate(self) -> tuple[bool, list[str]]:
         """
         Validate the mixed BC configuration.

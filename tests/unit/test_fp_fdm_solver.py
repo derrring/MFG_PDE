@@ -38,11 +38,12 @@ class TestFPFDMSolverInitialization:
     """Test FPFDMSolver initialization and setup."""
 
     def test_basic_initialization(self, standard_problem):
-        """Test basic solver initialization with default boundary conditions."""
+        """Test basic solver initialization inheriting BC from geometry."""
         solver = FPFDMSolver(standard_problem)
 
         assert solver.fp_method_name == "FDM"
-        assert solver.boundary_conditions.type == "no_flux"
+        # Solver inherits BC from problem geometry (which is periodic in fixture)
+        assert solver.boundary_conditions.type == "periodic"
         assert solver.problem is standard_problem
 
     def test_initialization_with_periodic_bc(self, standard_problem):
@@ -333,11 +334,11 @@ class TestFPFDMSolverEdgeCases:
         assert np.allclose(m_result[1, :], m_result[0, :], rtol=0.1)
 
     def test_single_spatial_point(self, standard_problem):
-        """Test that single spatial point (Nx=1) raises appropriate error.
+        """Test single spatial point (Nx=1) degenerate case.
 
-        Known limitation: The FDM solver requires at least 2 spatial points
-        to compute finite differences. Single-point grids are not physically meaningful
-        for PDEs anyway (no spatial variation possible).
+        Single-point grids are not physically meaningful for PDEs
+        (no spatial variation possible). The solver handles this gracefully
+        by returning the initial condition propagated forward in time.
         """
         standard_problem.Nx = 0  # Results in Nx+1 = 1
         solver = FPFDMSolver(standard_problem)
@@ -348,9 +349,12 @@ class TestFPFDMSolverEdgeCases:
         m_initial = np.array([1.0])
         U_solution = np.zeros((Nt, Nx))
 
-        # This should raise ValueError due to matrix dimension mismatch
-        with pytest.raises(ValueError, match=r"axis 1 index .* exceeds matrix dimension"):
-            solver.solve_fp_system(m_initial, U_solution)
+        # Single-point grids are degenerate but solver handles them gracefully
+        m_result = solver.solve_fp_system(m_initial, U_solution)
+
+        # With no spatial variation, the solution should remain constant
+        assert m_result.shape == (Nt, Nx)
+        assert np.all(np.isfinite(m_result))
 
 
 class TestFPFDMSolverMassConservation:

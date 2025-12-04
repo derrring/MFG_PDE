@@ -22,8 +22,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
-from mfg_pde.alg.numerical.fp_solvers.fp_network import FPNetworkSolver
-from mfg_pde.alg.numerical.hjb_solvers.hjb_network import NetworkHJBSolver
+from mfg_pde.alg.numerical.network_solvers.fp_network import FPNetworkSolver
+from mfg_pde.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
 
 if TYPE_CHECKING:
     from mfg_pde.extensions.topology import NetworkMFGProblem

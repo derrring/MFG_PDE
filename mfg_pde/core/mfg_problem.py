@@ -1950,7 +1950,7 @@ class MFGProblem:
             }
 
     # ============================================================================
-    # Deprecated Properties for Backward Compatibility (v0.12.0)
+    # Deprecated Properties for Backward Compatibility (will be removed in v1.0.0)
     # ============================================================================
 
     @property

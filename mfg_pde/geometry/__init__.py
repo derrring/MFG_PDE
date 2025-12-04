@@ -155,14 +155,14 @@ from .protocol import (
 
 # Legacy grid imports (from old file names)
 
-# Backward compatibility aliases (DEPRECATED - will be removed in v0.12.0)
+# Backward compatibility aliases (DEPRECATED - will be removed in v0.15.0)
 Domain1D = SimpleGrid1D  # Use SimpleGrid1D instead
 Domain2D = Mesh2D  # Use Mesh2D instead
 Domain3D = Mesh3D  # Use Mesh3D instead
 
 # Issue deprecation warning for Domain* aliases
 _warnings.warn(
-    "Domain1D, Domain2D, and Domain3D aliases are deprecated and will be removed in v0.12.0. "
+    "Domain1D, Domain2D, and Domain3D aliases are deprecated and will be removed in v0.15.0. "
     "Please use SimpleGrid1D, Mesh2D, and Mesh3D directly:\n"
     "  from mfg_pde.geometry import SimpleGrid1D, Mesh2D, Mesh3D",
     DeprecationWarning,

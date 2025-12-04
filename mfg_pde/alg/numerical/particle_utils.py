@@ -173,19 +173,20 @@ def apply_boundary_conditions_gpu(particles, xmin: float, xmax: float, bc_type: 
         particles = xmin + ((particles - xmin) % Lx)
 
     elif bc_type == "no_flux":
-        # Reflecting boundaries
-        # Left violation: x < xmin → reflect to 2*xmin - x
-        # Right violation: x > xmax → reflect to 2*xmax - x
-
-        # Use where (ternary) for GPU efficiency
-        left_violations = particles < xmin
-        right_violations = particles > xmax
-
-        # Reflect left
-        particles = xp.where(left_violations, 2 * xmin - particles, particles)
-
-        # Reflect right
-        particles = xp.where(right_violations, 2 * xmax - particles, particles)
+        # Reflecting boundaries using modular "fold" reflection
+        # This handles particles that travel multiple domain widths in one step
+        # Algorithm: position bounces back and forth with period 2*Lx
+        if Lx > 1e-14:
+            shifted = particles - xmin
+            period = 2 * Lx
+            pos_in_period = shifted % period
+            in_second_half = pos_in_period > Lx
+            # Reflect back: positions in [Lx, 2*Lx] map to [Lx, 0]
+            particles = xp.where(
+                in_second_half,
+                xmin + period - pos_in_period,
+                xmin + pos_in_period,
+            )
 
     elif bc_type == "dirichlet":
         # Absorbing: clamp to domain
@@ -227,11 +228,16 @@ def apply_boundary_conditions_numpy(particles: np.ndarray, xmin: float, xmax: fl
         particles = xmin + ((particles - xmin) % Lx)
 
     elif bc_type == "no_flux":
-        left_violations = particles < xmin
-        right_violations = particles > xmax
-
-        particles[left_violations] = 2 * xmin - particles[left_violations]
-        particles[right_violations] = 2 * xmax - particles[right_violations]
+        # Reflecting boundaries using modular "fold" reflection
+        # This handles particles that travel multiple domain widths in one step
+        Lx = xmax - xmin
+        if Lx > 1e-14:
+            shifted = particles - xmin
+            period = 2 * Lx
+            pos_in_period = shifted % period
+            in_second_half = pos_in_period > Lx
+            pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
+            particles = xmin + pos_in_period
 
     elif bc_type == "dirichlet":
         particles = np.clip(particles, xmin, xmax)
