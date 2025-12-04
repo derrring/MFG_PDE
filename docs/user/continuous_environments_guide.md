@@ -575,9 +575,8 @@ pip install gymnasium
 
 ## Related Documentation
 
-- [Reinforcement Learning Theory](../theory/reinforcement_learning/)
-- [Continuous Control Algorithms](continuous_control_guide.md)
-- [Algorithm Benchmarking](../development/benchmarking_guide.md)
+- [Quickstart Guide](quickstart.md) - Getting started with MFG_PDE
+- [Advanced Examples](../../examples/advanced/) - More complex examples
 
 ---
 
