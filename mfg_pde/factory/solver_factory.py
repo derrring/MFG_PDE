@@ -2,8 +2,7 @@
 """
 MFG Solver Factory
 
-Provides factory patterns for creating optimized solver configurations with
-sensible defaults for different use cases.
+Provides factory for creating MFG solvers with default configuration.
 """
 
 from __future__ import annotations
@@ -11,31 +10,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-if TYPE_CHECKING:
-    import numpy as np
-    from numpy.typing import NDArray
-
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.config.pydantic_config import (
-    FPConfig,
-    GFDMConfig,
-    HJBConfig,
-    MFGSolverConfig,
-    NewtonConfig,
-    ParticleConfig,
-    PicardConfig,
-)
+from mfg_pde.config.pydantic_config import MFGSolverConfig
 
 if TYPE_CHECKING:
     from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
     from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
-
-    # AMR Enhancement moved to experimental features
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-SolverType = Literal["fixed_point", "monitored_particle", "adaptive_particle"]
-# Note: "particle_collocation" has been removed from core package
+SolverType = Literal["fixed_point"]
 
 
 @dataclass
@@ -43,9 +27,6 @@ class SolverFactoryConfig:
     """Configuration for solver factory behavior."""
 
     solver_type: SolverType = "fixed_point"
-    config_preset: str = "balanced"  # fast, accurate, research, balanced
-    return_structured: bool = True
-    warm_start: bool = False
     custom_config: MFGSolverConfig | None = None
     solver_kwargs: dict[str, Any] | None = None
 
@@ -55,52 +36,34 @@ class SolverFactoryConfig:
 
 
 class SolverFactory:
-    """
-    Factory for creating MFG solvers with optimized configurations.
-
-    Provides easy creation patterns for different use cases:
-    - Fast: Optimized for speed with reasonable accuracy
-    - Accurate: High precision configurations
-    - Research: Comprehensive monitoring and analysis
-    - Custom: User-defined configurations
-    """
+    """Factory for creating MFG solvers with default configuration."""
 
     @staticmethod
     def create_solver(
         problem: MFGProblem,
         solver_type: SolverType = "fixed_point",
-        config_preset: str = "balanced",
         hjb_solver: BaseHJBSolver | None = None,
         fp_solver: BaseFPSolver | None = None,
-        collocation_points: NDArray[np.floating] | None = None,
-        custom_config: MFGSolverConfig | None = None,
-        enable_amr: bool = False,
-        amr_config: dict[str, Any] | None = None,
+        config: MFGSolverConfig | None = None,
         **kwargs: Any,
     ) -> FixedPointIterator:
         """
-        Create an MFG solver with optimized configuration.
+        Create an MFG solver.
 
         Args:
             problem: MFG problem to solve
             solver_type: Type of solver to create
-            config_preset: Configuration preset (fast, accurate, research, balanced)
-            hjb_solver: HJB solver instance (for fixed_point type)
-            fp_solver: FP solver instance (for fixed_point type)
-            collocation_points: Spatial points (for particle types)
-            custom_config: Custom configuration (overrides preset)
-            enable_amr: Enable adaptive mesh refinement enhancement
-            amr_config: AMR configuration parameters
+            hjb_solver: HJB solver instance
+            fp_solver: FP solver instance
+            config: Solver configuration (uses defaults if None)
             **kwargs: Additional solver-specific parameters
 
         Returns:
-            Configured solver instance (optionally AMR-enhanced)
+            Configured solver instance
         """
         # Get configuration
-        if custom_config is not None:
-            config = custom_config
-        else:
-            config = SolverFactory._get_config_by_preset(config_preset)
+        if config is None:
+            config = MFGSolverConfig()
 
         # Update config with any kwargs
         config = SolverFactory._update_config_with_kwargs(config, **kwargs)
@@ -133,67 +96,7 @@ class SolverFactory:
                 f"Available types: ['fixed_point']"
             )
 
-        # Enhance with AMR if requested
-        if enable_amr:
-            # AMR enhancement is currently experimental
-            import warnings
-
-            warnings.warn(
-                "AMR enhancement is currently experimental and not available in the new paradigm structure. "
-                "Using base solver without AMR.",
-                UserWarning,
-            )
-
-        # Note: AMR enhancement not available in new paradigm
         return base_solver
-
-    @staticmethod
-    def _get_config_by_preset(preset: str) -> MFGSolverConfig:
-        """Get configuration by preset name."""
-        valid_presets = ["fast", "accurate", "research", "balanced"]
-        if preset not in valid_presets:
-            suggestions = "\n".join([f"  • {p}" for p in valid_presets])
-            raise ValueError(
-                f"Unknown config preset: '{preset}'\n\n"
-                f"Valid presets are:\n{suggestions}\n\n"
-                f"Example: create_fast_solver(problem, config_preset='fast')"
-            )
-
-        if preset == "fast":
-            return MFGSolverConfig(
-                convergence_tolerance=1e-3,
-                strict_convergence_errors=False,
-            )
-        elif preset == "accurate":
-            return MFGSolverConfig(
-                convergence_tolerance=1e-7,
-                strict_convergence_errors=True,
-            )
-        elif preset == "research":
-            return MFGSolverConfig(
-                convergence_tolerance=1e-8,
-                enable_warm_start=True,
-                strict_convergence_errors=True,
-            )
-        elif preset == "balanced":
-            # Balanced configuration between speed and accuracy
-            return MFGSolverConfig(
-                picard=PicardConfig(max_iterations=25, tolerance=1e-4, damping_factor=0.6),
-                hjb=HJBConfig(
-                    newton=NewtonConfig(max_iterations=25, tolerance=1e-5),
-                    gfdm=GFDMConfig(delta=0.3, taylor_order=2, weight_function="gaussian"),
-                ),
-                fp=FPConfig(
-                    particle=ParticleConfig(
-                        num_particles=3000,
-                        kde_bandwidth=0.05,
-                        boundary_treatment="absorption",
-                    )
-                ),
-                return_structured=True,
-            )
-        else:
-            raise ValueError(f"Unknown preset: {preset}. Use 'fast', 'accurate', 'research', or 'balanced'")
 
     @staticmethod
     def _update_config_with_kwargs(config: MFGSolverConfig, **kwargs: Any) -> MFGSolverConfig:
@@ -263,108 +166,88 @@ class SolverFactory:
     # Particle-collocation methods have been removed from core package.
 
 
-# Convenience functions for common use cases
+# Convenience function
 
 
 def create_solver(
     problem: MFGProblem,
-    solver_type: SolverType = "fixed_point",
-    preset: str = "balanced",
     hjb_solver: BaseHJBSolver | None = None,
     fp_solver: BaseFPSolver | None = None,
+    config: MFGSolverConfig | None = None,
     **kwargs: Any,
 ) -> FixedPointIterator:
     """
-    Create an MFG solver with specified type and preset.
+    Create an MFG solver.
 
-    This is the main entry point for creating solvers. For most use cases,
-    use problem.solve() directly instead.
+    For most use cases, use problem.solve() directly instead.
 
     Args:
         problem: MFG problem to solve
-        solver_type: Type of solver ("fixed_point")
-        preset: Configuration preset ("fast", "accurate", "research", "balanced")
-        hjb_solver: Optional HJB solver instance
-        fp_solver: Optional FP solver instance
-        **kwargs: Additional parameters passed to the solver
+        hjb_solver: HJB solver instance
+        fp_solver: FP solver instance
+        config: Solver configuration (uses defaults if None)
+        **kwargs: Additional parameters
 
     Returns:
         Configured solver instance
 
     Example:
-        >>> from mfg_pde import MFGProblem, create_solver
+        >>> from mfg_pde import MFGProblem
         >>> problem = MFGProblem(Nx=50, Nt=20, T=1.0)
-        >>> solver = create_solver(problem, preset="balanced")
-        >>> result = solver.solve()
+        >>> result = problem.solve()  # Preferred
 
     Note:
-        For simple cases, prefer problem.solve() which handles solver creation internally.
+        Prefer problem.solve() which handles solver creation internally.
     """
     return SolverFactory.create_solver(
         problem=problem,
-        solver_type=solver_type,
-        config_preset=preset,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
+        config=config,
         **kwargs,
     )
 
 
 # =============================================================================
-# REMOVED CONVENIENCE FUNCTIONS (v0.15.0)
-# =============================================================================
-# The following functions were removed to simplify the API:
-# - create_basic_solver() - Use create_solver(preset="fast") or problem.solve()
-# - create_standard_solver() - Use create_solver(preset="balanced") or problem.solve()
-# - create_fast_solver() - Use create_solver(preset="fast") or problem.solve()
-# - create_accurate_solver() - Use create_solver(preset="accurate") or problem.solve()
-# - create_research_solver() - Use create_solver(preset="research") or problem.solve()
-# - create_semi_lagrangian_solver() - Instantiate HJBSemiLagrangianSolver directly
-# - create_amr_solver() - AMR moved to experimental features
-#
-# Migration: Use problem.solve() or create_solver() with appropriate preset.
+# REMOVED FUNCTIONS - Use problem.solve() or create_solver() instead
 # =============================================================================
 
 
-# Legacy alias for backward compatibility - will be removed in v1.0.0
 def _removed_function_error(name: str) -> None:
     """Raise informative error for removed functions."""
-    raise NotImplementedError(
-        f"{name}() has been removed. Use create_solver(preset=...) or problem.solve() instead. "
-        f"See migration guide: docs/migration/PHASE_3_2_CONFIG_MIGRATION.md"
-    )
+    raise NotImplementedError(f"{name}() has been removed. Use create_solver() or problem.solve() instead.")
 
 
 def create_basic_solver(*args: Any, **kwargs: Any) -> Any:
-    """Removed: Use create_solver(preset='fast') or problem.solve()."""
+    """Removed: Use problem.solve()."""
     _removed_function_error("create_basic_solver")
 
 
 def create_standard_solver(*args: Any, **kwargs: Any) -> Any:
-    """Removed: Use create_solver(preset='balanced') or problem.solve()."""
+    """Removed: Use problem.solve()."""
     _removed_function_error("create_standard_solver")
 
 
 def create_fast_solver(*args: Any, **kwargs: Any) -> Any:
-    """Removed: Use create_solver(preset='fast') or problem.solve()."""
+    """Removed: Use problem.solve()."""
     _removed_function_error("create_fast_solver")
 
 
 def create_accurate_solver(*args: Any, **kwargs: Any) -> Any:
-    """Removed: Use create_solver(preset='accurate') or problem.solve()."""
+    """Removed: Use problem.solve()."""
     _removed_function_error("create_accurate_solver")
 
 
 def create_research_solver(*args: Any, **kwargs: Any) -> Any:
-    """Removed: Use create_solver(preset='research') or problem.solve()."""
+    """Removed: Use problem.solve()."""
     _removed_function_error("create_research_solver")
 
 
 def create_semi_lagrangian_solver(*args: Any, **kwargs: Any) -> Any:
-    """Removed: Instantiate HJBSemiLagrangianSolver directly."""
+    """Removed: Use problem.solve()."""
     _removed_function_error("create_semi_lagrangian_solver")
 
 
 def create_amr_solver(*args: Any, **kwargs: Any) -> Any:
-    """Removed: AMR moved to experimental features."""
+    """Removed: Use problem.solve()."""
     _removed_function_error("create_amr_solver")

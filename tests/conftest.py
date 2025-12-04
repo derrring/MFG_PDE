@@ -198,13 +198,10 @@ def solver_type(request):
 def solver_factory():
     """Factory function for creating solvers."""
 
-    def _create_solver(problem, solver_type="fixed_point", config=None):
+    def _create_solver(problem, config=None):
         from mfg_pde.factory import create_solver
 
-        if config is None:
-            return create_solver(problem, solver_type=solver_type, preset="fast")
-        else:
-            return create_solver(problem, solver_type=solver_type, custom_config=config)
+        return create_solver(problem, config=config)
 
     return _create_solver
 
