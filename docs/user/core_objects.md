@@ -427,6 +427,6 @@ print(f"Core objects test: {result.converged}, {result.iterations} iterations")
 ## What's Next?
 
 - **Need algorithm-level control?** → See [Advanced Hooks Guide](advanced_hooks.md)
-- **Want to implement custom solvers?** → Check [Developer Guide](../development/custom_solvers.md)
-- **Performance issues?** → Read [Performance Optimization Guide](performance.md)
-- **Complex geometries?** → Explore [Geometry and Domains Guide](geometry.md)
+- **Want to implement custom solvers?** → Check [Solver Selection Guide](SOLVER_SELECTION_GUIDE.md)
+- **Performance issues?** → Read [Multidimensional MFG Guide](multidimensional_mfg_guide.md)
+- **Complex geometries?** → Explore [SDF Utilities Guide](sdf_utilities.md)

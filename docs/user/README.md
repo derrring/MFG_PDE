@@ -75,7 +75,7 @@ result_weno = solver_weno.solve()
 - **Register new solvers**: Integrate into factory system
 - **Modify infrastructure**: Add backends, geometries, boundary conditions
 
-**Get started**: [Developer Guide](../development/adding_new_solvers.md)
+**Get started**: Extend the base solver classes below
 
 ```python
 from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver

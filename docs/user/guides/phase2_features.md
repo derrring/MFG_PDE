@@ -671,7 +671,7 @@ class Difference:
 
 **See Also**:
 - [Quickstart Guide](../quickstart.md) - Getting started with solve_mfg()
-- [Factory API Reference](factory_api_reference.md) - Detailed factory function docs
+- [Solver Selection Guide](../SOLVER_SELECTION_GUIDE.md) - Choosing the right solver
 - [Examples](../../examples/) - Working demonstrations
 
 **Examples**:

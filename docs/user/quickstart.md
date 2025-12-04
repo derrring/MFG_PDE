@@ -246,8 +246,8 @@ result = solver.solve()
 ### **Learn More**
 
 1. **[Solver Selection Guide](SOLVER_SELECTION_GUIDE.md)** - When to use each tier
-2. **[Factory API Reference](factory_api_reference.md)** - All `create_*_solver()` functions
-3. **[Custom Problems](custom_problems.md)** - Define your own MFG formulations
+2. **[HJB Solver Selection Guide](HJB_SOLVER_SELECTION_GUIDE.md)** - HJB solver details
+3. **[Usage Patterns](usage_patterns.md)** - Common usage patterns and custom problems
 
 ### **Examples**
 
@@ -292,7 +292,7 @@ solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
-See [Custom Problems Guide](custom_problems.md) for details.
+See [Usage Patterns](usage_patterns.md) for details.
 
 ---
 
