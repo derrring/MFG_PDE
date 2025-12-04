@@ -128,6 +128,22 @@ from .implicit import (
     UnionDomain,
 )
 
+# Mask generation utilities
+from .masks import (
+    boundary_segment_mask,
+    circle_mask,
+    combine_masks,
+    create_mask,
+    get_boundary_mask,
+    indices_to_mask,
+    invert_mask,
+    load_mask,
+    mask_to_indices,
+    polygon_mask,
+    rectangle_mask,
+    save_mask,
+)
+
 # Mesh data structures (from meshes subdirectory)
 # Mesh geometry
 from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshData, MeshManager, MeshPipeline, MeshVisualizationMode
@@ -285,6 +301,19 @@ __all__ = [
     "robin_bc",
     "set_preferred_backend",
     "validate_geometry",
+    # Mask generation utilities
+    "boundary_segment_mask",
+    "circle_mask",
+    "combine_masks",
+    "create_mask",
+    "get_boundary_mask",
+    "indices_to_mask",
+    "invert_mask",
+    "load_mask",
+    "mask_to_indices",
+    "polygon_mask",
+    "rectangle_mask",
+    "save_mask",
 ]
 
 # Version information
