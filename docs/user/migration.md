@@ -1,7 +1,7 @@
 # Migration Guide - Upgrading to the Factory API
 
 > **⚠️ Note**: This guide contains some outdated information. The primary API is now:
-> - `solve_mfg(problem, method="fast")` - High-level one-liner
+> - `solve_mfg(problem)` - High-level one-liner
 > - `create_standard_solver(problem, "fixed_point")` - Factory API
 > See [quickstart.md](quickstart.md) for current usage patterns.
 
@@ -383,10 +383,10 @@ from mfg_pde.visualization.interactive_plots import create_plotly_visualizer
 from mfg_pde import solve_mfg, MFGProblem
 
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
-result = solve_mfg(problem, method="fast")  # ✅ USE THIS
+result = solve_mfg(problem)  # ✅ USE THIS
 
 # Factory API for more control
-from mfg_pde.factory import create_fast_solver, create_standard_solver
+from mfg_pde.factory import create_standard_solver
 
 solver = create_standard_solver(problem, "fixed_point")  # ✅ USE THIS
 result = solver.solve()

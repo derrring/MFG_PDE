@@ -39,45 +39,26 @@ result = solver.solve(verbose=True)
 from mfg_pde import MFGProblem, solve_mfg
 
 problem = MFGProblem()
-result = solve_mfg(problem, method='fast')
+result = solve_mfg(problem)
 ```
 
-### Method Presets
+### Default Parameters
 
-Four presets with automatic parameter selection:
-
-| Method | Resolution | Max Iter | Tolerance | Use Case |
-|:-------|:-----------|:---------|:----------|:---------|
-| `auto` | Auto (1D:100, 2D:50) | 100 | 1e-4 | Default (recommended) |
-| `fast` | Auto | 100 | 1e-4 | Quick prototyping |
-| `accurate` | Auto | 500 | 1e-6 | High precision |
-| `research` | Auto | 1000 | 1e-8 | Diagnostics + monitoring |
-
-**Examples**:
-```python
-# Fast solve (speed-optimized)
-result = solve_mfg(problem, method="fast")
-
-# Accurate solve (high precision)
-result = solve_mfg(problem, method="accurate")
-
-# Research solve (comprehensive diagnostics)
-result = solve_mfg(problem, method="research", verbose=True)
-```
+| Parameter | Default | Description |
+|:----------|:--------|:------------|
+| `max_iterations` | 100 | Maximum fixed-point iterations |
+| `tolerance` | 1e-6 | Convergence tolerance |
+| `verbose` | True | Show solver progress |
 
 ### Custom Parameters
 
-Override any preset parameter:
+Override defaults as needed:
 
 ```python
 result = solve_mfg(
     problem,
-    method="accurate",       # Start with accurate preset
-    resolution=150,          # Override resolution
-    max_iterations=200,      # Override max iterations
-    tolerance=1e-6,          # Override tolerance
-    damping_factor=0.3,      # Custom damping
-    backend="numpy",         # Specify backend (auto-converted)
+    max_iterations=200,      # More iterations
+    tolerance=1e-8,          # Tighter tolerance
     verbose=True
 )
 ```

@@ -50,31 +50,15 @@ print(result.M.shape)  # Density
 - Chooses resolution based on dimension (100 for 1D, 50×50 for 2D)
 - Sets sensible defaults (max_iterations=100, tolerance=1e-4)
 
-### Method Presets
-
-```python
-# Fast (optimized for speed)
-result = solve_mfg(problem, method="fast")
-
-# Accurate (high precision)
-result = solve_mfg(problem, method="accurate")
-
-# Research (comprehensive diagnostics)
-result = solve_mfg(problem, method="research")
-```
-
 ### Custom Parameters
 
 ```python
 # Override defaults
 result = solve_mfg(
     problem,
-    method="accurate",
-    resolution=150,         # Higher resolution
     max_iterations=200,     # More iterations
-    tolerance=1e-6,         # Tighter tolerance
-    damping_factor=0.3,     # Custom damping
-    backend="numpy"         # Specify backend
+    tolerance=1e-8,         # Tighter tolerance
+    verbose=True            # Show progress
 )
 ```
 

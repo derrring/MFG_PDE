@@ -85,7 +85,7 @@ problem = MFGProblem(
 )
 
 # Solve with automatic projection
-result = solve_mfg(problem, method="policy_iteration", max_iterations=50)
+result = solve_mfg(problem, max_iterations=50)
 
 print(f"HJB solution shape: {result.U.shape}")  # (201, 201)
 print(f"FP solution shape: {result.M.shape}")   # (51, 51)
@@ -543,7 +543,7 @@ problem = MFGProblem(
 )
 
 # Solve
-result = solve_mfg(problem, method="policy_iteration", max_iterations=20)
+result = solve_mfg(problem, max_iterations=20)
 
 # Visualize results
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
@@ -613,7 +613,7 @@ print(f"FP solution shape: {result.M.shape}")   # (51, 51)
 - ⚠️ Solver integration in progress (Phase 4)
 
 **Solvers with dual geometry support** (after Phase 4):
-- `solve_mfg()` with `method="policy_iteration"`
+- `solve_mfg()`
 - Custom solvers using `problem.geometry_projector` directly
 
 **Solvers without support yet**:

@@ -32,7 +32,7 @@ pip install -e .
 ```python
 from mfg_pde import solve_mfg, MFGProblem
 
-result = solve_mfg(MFGProblem(), method="fast")
+result = solve_mfg(MFGProblem())
 ```
 
 **That's it.** Check convergence with `result.converged` and access solutions via `result.U` and `result.M`.
@@ -79,7 +79,7 @@ from mfg_pde import solve_mfg, MFGProblem
 
 # Create and solve MFG problem
 problem = MFGProblem(T=1.0, Nt=50, Nx=100)
-result = solve_mfg(problem, method="accurate")
+result = solve_mfg(problem)
 
 print(f"Converged: {result.converged} in {result.iterations} iterations")
 ```
@@ -87,15 +87,14 @@ print(f"Converged: {result.converged} in {result.iterations} iterations")
 ### Configuration Options
 
 ```python
-# Method presets: "fast", "accurate", "research", "auto"
-result = solve_mfg(problem, method="fast")
+# Default settings
+result = solve_mfg(problem)
 
 # Custom parameters
 result = solve_mfg(
     problem,
-    method="accurate",
     max_iterations=200,
-    tolerance=1e-6,
+    tolerance=1e-8,
     verbose=True
 )
 
