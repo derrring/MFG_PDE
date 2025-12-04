@@ -188,7 +188,7 @@ jobs:
 
     - name: Run tests with coverage (skip slow tests on PRs)
       if: github.event_name != 'release'
-      timeout-minutes: 20
+      timeout-minutes: 30
       run: |
         pytest tests/ -v \
           --ignore=tests/unit/test_geometry/ \
