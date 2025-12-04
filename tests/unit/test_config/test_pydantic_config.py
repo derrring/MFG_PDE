@@ -15,9 +15,6 @@ from mfg_pde.config.pydantic_config import (
     MFGSolverConfig,
     NewtonConfig,
     PicardConfig,
-    create_accurate_config,
-    create_fast_config,
-    create_research_config,
 )
 
 
@@ -245,110 +242,6 @@ class TestMFGSolverConfig:
         # Test that metadata can be updated
         config.metadata["additional_info"] = "test"
         assert "additional_info" in config.metadata
-
-
-class TestConfigurationFactories:
-    """Test configuration factory functions."""
-
-    def test_fast_config_creation(self):
-        """Test fast configuration factory."""
-        config = create_fast_config()
-
-        assert isinstance(config, MFGSolverConfig)
-
-        # Fast config should have relaxed tolerances for speed
-        assert config.newton.tolerance >= 1e-6
-        assert config.picard.tolerance >= 1e-5
-        assert config.convergence_tolerance >= 1e-5
-
-        # Should have reasonable iteration limits
-        assert config.newton.max_iterations <= 30
-        assert config.picard.max_iterations <= 50
-
-    def test_accurate_config_creation(self):
-        """Test accurate configuration factory."""
-        config = create_accurate_config()
-
-        assert isinstance(config, MFGSolverConfig)
-
-        # Accurate config should have tighter tolerances
-        assert config.newton.tolerance <= 1e-7
-        assert config.picard.tolerance <= 1e-6
-        assert config.convergence_tolerance <= 1e-6
-
-        # May have higher iteration limits
-        assert config.newton.max_iterations >= 30
-        assert config.picard.max_iterations >= 50
-
-    def test_research_config_creation(self):
-        """Test research configuration factory."""
-        config = create_research_config()
-
-        assert isinstance(config, MFGSolverConfig)
-
-        # Research config should have very tight tolerances
-        assert config.newton.tolerance <= 1e-8  # Should be 1e-10
-        assert config.picard.tolerance <= 1e-5  # Should be 1e-6
-        assert config.convergence_tolerance <= 1e-7  # Should be 1e-8
-
-        # Should enable comprehensive monitoring
-        assert config.return_structured is True
-        assert config.strict_convergence_errors is True
-
-        # Should have high iteration limits for thorough convergence
-        assert config.newton.max_iterations >= 50
-        assert config.picard.max_iterations >= 100
-
-    def test_factory_config_consistency(self):
-        """Test that factory configurations are internally consistent."""
-        configs = [
-            ("fast", create_fast_config()),
-            ("accurate", create_accurate_config()),
-            ("research", create_research_config()),
-        ]
-
-        for _name, config in configs:
-            # All factory configs should be valid
-            assert isinstance(config, MFGSolverConfig)
-
-            # Tolerance hierarchy: component tolerances should be reasonable relative to global
-            # Allow component tolerances to be stricter or moderately looser than global
-            assert (
-                config.newton.tolerance <= config.convergence_tolerance * 100
-                or abs(config.newton.tolerance - config.convergence_tolerance) < 1e-10
-            )
-
-            assert (
-                config.picard.tolerance <= config.convergence_tolerance * 100
-                or abs(config.picard.tolerance - config.convergence_tolerance) < 1e-10
-            )
-
-            # Basic sanity checks
-            assert config.newton.max_iterations > 0
-            assert config.picard.max_iterations > 0
-            assert config.newton.damping_factor > 0
-            assert config.picard.damping_factor > 0
-
-    @pytest.mark.parametrize("factory_func", [create_fast_config, create_accurate_config, create_research_config])
-    def test_factory_serialization(self, factory_func):
-        """Test that factory-created configs can be serialized."""
-        config = factory_func()
-
-        # Should be able to serialize to JSON
-        json_str = config.model_dump_json()
-        assert isinstance(json_str, str)
-        assert len(json_str) > 0
-
-        # Should be able to serialize to dict
-        config_dict = config.model_dump()
-        assert isinstance(config_dict, dict)
-        assert "newton" in config_dict
-        assert "picard" in config_dict
-
-        # Should be able to reconstruct
-        reconstructed = MFGSolverConfig(**config_dict)
-        assert reconstructed.newton.tolerance == config.newton.tolerance
-        assert reconstructed.picard.tolerance == config.picard.tolerance
 
 
 class TestConfigurationEdgeCases:

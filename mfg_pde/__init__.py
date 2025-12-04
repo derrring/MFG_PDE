@@ -12,7 +12,7 @@ from .utils.numpy_compat import ensure_numpy_compatibility
 _numpy_info = ensure_numpy_compatibility()
 
 from .alg.numerical.fp_solvers.fp_particle import KDENormalization  # noqa: E402
-from .config import MFGSolverConfig, create_accurate_config, create_fast_config, create_research_config  # noqa: E402
+from .config import MFGSolverConfig  # noqa: E402
 from .core.mfg_problem import (  # noqa: E402
     MFGComponents,
     MFGProblem,
@@ -26,11 +26,7 @@ from .extensions.topology import (  # noqa: E402
 )
 from .factory import (  # noqa: E402
     SolverFactory,
-    create_accurate_solver,
-    create_fast_solver,
-    create_research_solver,
     create_solver,
-    create_standard_solver,
 )
 from .factory.general_mfg_factory import (  # noqa: E402
     GeneralMFGFactory,
@@ -146,21 +142,14 @@ __all__ = [
     "VariationalMFGComponents",
     "VariationalMFGProblem",
     "compute_network_statistics",
-    "create_accurate_config",
-    "create_accurate_solver",
-    "create_fast_config",
-    "create_fast_solver",
     "create_general_mfg_problem",
     "create_grid_mfg_problem",
     "create_network",
     "create_obstacle_variational_mfg",
     "create_quadratic_variational_mfg",
     "create_random_mfg_problem",
-    "create_research_config",
-    "create_research_solver",
     "create_scale_free_mfg_problem",
     "create_solver",
-    "create_standard_solver",
     "get_backend_manager",
     "get_general_factory",
     "set_preferred_backend",

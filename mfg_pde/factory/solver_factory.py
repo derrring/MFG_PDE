@@ -9,7 +9,7 @@ sensible defaults for different use cases.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     import numpy as np
@@ -24,9 +24,6 @@ from mfg_pde.config.pydantic_config import (
     NewtonConfig,
     ParticleConfig,
     PicardConfig,
-    create_accurate_config,
-    create_fast_config,
-    create_research_config,
 )
 
 if TYPE_CHECKING:
@@ -163,11 +160,21 @@ class SolverFactory:
             )
 
         if preset == "fast":
-            return create_fast_config()
+            return MFGSolverConfig(
+                convergence_tolerance=1e-3,
+                strict_convergence_errors=False,
+            )
         elif preset == "accurate":
-            return create_accurate_config()
+            return MFGSolverConfig(
+                convergence_tolerance=1e-7,
+                strict_convergence_errors=True,
+            )
         elif preset == "research":
-            return create_research_config()
+            return MFGSolverConfig(
+                convergence_tolerance=1e-8,
+                enable_warm_start=True,
+                strict_convergence_errors=True,
+            )
         elif preset == "balanced":
             # Balanced configuration between speed and accuracy
             return MFGSolverConfig(
@@ -263,295 +270,101 @@ def create_solver(
     problem: MFGProblem,
     solver_type: SolverType = "fixed_point",
     preset: str = "balanced",
+    hjb_solver: BaseHJBSolver | None = None,
+    fp_solver: BaseFPSolver | None = None,
     **kwargs: Any,
 ) -> FixedPointIterator:
     """
     Create an MFG solver with specified type and preset.
 
+    This is the main entry point for creating solvers. For most use cases,
+    use problem.solve() directly instead.
+
     Args:
         problem: MFG problem to solve
         solver_type: Type of solver ("fixed_point")
         preset: Configuration preset ("fast", "accurate", "research", "balanced")
-        **kwargs: Additional parameters
+        hjb_solver: Optional HJB solver instance
+        fp_solver: Optional FP solver instance
+        **kwargs: Additional parameters passed to the solver
 
     Returns:
         Configured solver instance
 
-    Note:
-        Particle-collocation methods have been removed from core package.
-    """
-    return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset=preset, **kwargs)
-
-
-def create_basic_solver(
-    problem: MFGProblem, damping: float = 0.6, max_iterations: int = 100, tolerance: float = 1e-5, **kwargs: Any
-) -> Any:
-    """
-    Create basic FDM benchmark solver (Tier 1).
-
-    Uses HJB-FDM + FP-FDM with upwind + damped fixed point.
-    Fast but approximate (1-10% mass error) - primarily for benchmarking.
-
-    This is the simplest MFG solver, useful for:
-    - Benchmarking and validating advanced methods
-    - Quick testing and prototyping
-    - Educational purposes
-    - Comparison baseline
-
-    Args:
-        problem: MFG problem to solve
-        damping: Damping factor for fixed point (0.5-0.7 recommended, default 0.6)
-        max_iterations: Maximum Picard iterations (default 100)
-        tolerance: Convergence tolerance (default 1e-5)
-        **kwargs: Additional parameters
-
-    Returns:
-        Basic FDM solver instance
-
-    Note:
-        Mass conservation is approximate (~1-10% error).
-        For production, use create_fast_solver() (Tier 2: Hybrid with particles).
-
     Example:
-        >>> solver = create_basic_solver(problem, damping=0.6)
+        >>> from mfg_pde import MFGProblem, create_solver
+        >>> problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+        >>> solver = create_solver(problem, preset="balanced")
         >>> result = solver.solve()
-    """
-    from mfg_pde.alg.numerical.coupling import FixedPointIterator
-    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-
-    hjb_solver = HJBFDMSolver(problem=problem)
-    fp_solver = FPFDMSolver(problem=problem)
-
-    return FixedPointIterator(
-        problem=problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=damping, **kwargs
-    )
-
-
-def create_standard_solver(
-    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> FixedPointIterator:
-    """
-    Create standard production MFG solver (Tier 2 - DEFAULT).
-
-    Uses HJB-FDM + FP-Particle hybrid for reliable mass conservation
-    and fast convergence. This is the recommended default solver.
-
-    Args:
-        problem: MFG problem to solve
-        solver_type: Type of solver
-        **kwargs: Additional parameters
-
-    Returns:
-        Standard-configured solver instance
 
     Note:
-        Default uses Hybrid (HJB-FDM + FP-Particle) for good quality.
-        For basic benchmark, use create_basic_solver() (Tier 1: Pure FDM).
-        For advanced methods, use create_accurate_solver() (Tier 3).
+        For simple cases, prefer problem.solve() which handles solver creation internally.
     """
-    # For fixed_point solvers, create default HJB and FP solvers if not provided
-    if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
-        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-
-        # Create stable hybrid solver: HJB-FDM + FP-Particle
-        # Particle FP naturally conserves mass, FDM HJB is efficient for value function
-        hjb_solver = HJBFDMSolver(problem=problem)
-        fp_solver = FPParticleSolver(problem=problem, num_particles=5000)
-
-        kwargs["hjb_solver"] = hjb_solver
-        kwargs["fp_solver"] = fp_solver
-
-    return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="fast", **kwargs)
-
-
-# Backward compatibility alias
-def create_fast_solver(
-    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> FixedPointIterator:
-    """
-    Deprecated: Use create_standard_solver() instead.
-
-    This function is maintained for backward compatibility only.
-    """
-    import warnings
-
-    warnings.warn(
-        "create_fast_solver() is deprecated, use create_standard_solver() instead", DeprecationWarning, stacklevel=2
-    )
-    return create_standard_solver(problem=problem, solver_type=solver_type, **kwargs)
-
-
-def create_semi_lagrangian_solver(
-    problem: MFGProblem,
-    interpolation_method: str = "linear",
-    optimization_method: str = "brent",
-    characteristic_solver: str = "explicit_euler",
-    use_jax: bool | None = None,
-    fp_solver_type: str = "fdm",
-    **kwargs: Any,
-) -> FixedPointIterator:
-    """
-    Create a fixed-point solver with semi-Lagrangian HJB method.
-
-    The semi-Lagrangian method is particularly effective for:
-    - Problems with strong convection/transport
-    - Discontinuous or non-smooth solutions
-    - Large time steps
-    - Monotone solution requirements
-
-    Args:
-        problem: MFG problem to solve
-        interpolation_method: Interpolation for departure points ('linear', 'cubic')
-        optimization_method: Hamiltonian optimization ('brent', 'golden')
-        characteristic_solver: Characteristic tracing ('explicit_euler', 'rk2')
-        use_jax: Enable JAX acceleration (auto-detect if None)
-        fp_solver_type: FP solver type ('fdm', 'particle')
-        **kwargs: Additional solver configuration
-
-    Returns:
-        Fixed-point solver with semi-Lagrangian HJB method
-
-    Example:
-        >>> # Create semi-Lagrangian solver for convection-dominated problem
-        >>> solver = create_semi_lagrangian_solver(
-        ...     problem,
-        ...     interpolation_method="cubic",
-        ...     optimization_method="brent",
-        ...     use_jax=True
-        ... )
-        >>> result = solver.solve()
-    """
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
-
-    # Create semi-Lagrangian HJB solver
-    hjb_solver = HJBSemiLagrangianSolver(
+    return SolverFactory.create_solver(
         problem=problem,
-        interpolation_method=interpolation_method,
-        optimization_method=optimization_method,
-        characteristic_solver=characteristic_solver,
-        use_jax=use_jax,
-        **{k: v for k, v in kwargs.items() if k in ["tolerance", "max_char_iterations"]},
-    )
-
-    # Create appropriate FP solver
-    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-    from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-
-    fp_solver: FPFDMSolver | FPParticleSolver
-    if fp_solver_type == "fdm":
-        fp_solver = FPFDMSolver(problem=problem)
-    elif fp_solver_type == "particle":
-        fp_solver = FPParticleSolver(problem=problem)
-    else:
-        raise ValueError(f"Unknown FP solver type: {fp_solver_type}")
-
-    # Extract relevant kwargs for fixed-point solver
-    fp_kwargs = {k: v for k, v in kwargs.items() if k not in ["tolerance", "max_char_iterations"]}
-
-    solver = create_standard_solver(
-        problem=problem,
-        solver_type="fixed_point",
+        solver_type=solver_type,
+        config_preset=preset,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
-        **fp_kwargs,
-    )
-    # Type assertion since we know this returns FixedPointIterator for fixed_point solver_type
-    return cast("FixedPointIterator", solver)
-
-
-def create_accurate_solver(
-    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> FixedPointIterator:
-    """
-    Create an accurate MFG solver optimized for precision.
-
-    Args:
-        problem: MFG problem to solve
-        solver_type: Type of solver
-        **kwargs: Additional parameters
-
-    Returns:
-        Accurate-configured solver instance
-    """
-    # For fixed_point solvers, create default HJB and FP solvers if not provided
-    if solver_type == "fixed_point" and "hjb_solver" not in kwargs and "fp_solver" not in kwargs:
-        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-
-        # Create stable hybrid solver: HJB-FDM + FP-Particle
-        # Particle FP naturally conserves mass, FDM HJB is efficient for value function
-        hjb_solver = HJBFDMSolver(problem=problem)
-        fp_solver = FPParticleSolver(problem=problem, num_particles=10000)  # More particles for accuracy
-
-        kwargs["hjb_solver"] = hjb_solver
-        kwargs["fp_solver"] = fp_solver
-
-    return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="accurate", **kwargs)
-
-
-def create_research_solver(
-    problem: MFGProblem, solver_type: SolverType = "fixed_point", **kwargs: Any
-) -> FixedPointIterator:
-    """
-    Create a research MFG solver with comprehensive monitoring.
-
-    Args:
-        problem: MFG problem to solve
-        solver_type: Type of solver
-        **kwargs: Additional parameters
-
-    Returns:
-        Research-configured solver instance
-
-    Note:
-        Particle-collocation methods have been removed from core package.
-    """
-    return SolverFactory.create_solver(problem=problem, solver_type=solver_type, config_preset="research", **kwargs)
-
-
-# Note: create_monitored_solver removed - particle-collocation removed from core package
-
-
-def create_amr_solver(
-    problem: MFGProblem,
-    base_solver_type: SolverType = "fixed_point",
-    error_threshold: float = 1e-4,
-    max_levels: int = 5,
-    **kwargs: Any,
-) -> FixedPointIterator:
-    """
-    Create an AMR-enhanced MFG solver.
-
-    NOTE: AMR enhancement moved to experimental features.
-    This function currently returns the base solver type.
-
-    Args:
-        problem: MFG problem to solve
-        base_solver_type: Base solver type to enhance with AMR
-        error_threshold: Error threshold for mesh refinement
-        max_levels: Maximum refinement levels
-        **kwargs: Additional parameters for base solver and AMR
-
-    Returns:
-        Solver (AMR enhancement currently experimental)
-
-    Example:
-        >>> # Create solver (AMR enhancement experimental)
-        >>> solver = create_amr_solver(
-        ...     problem,
-        ...     base_solver_type="fixed_point",
-        ...     error_threshold=1e-5,
-        ...     max_levels=6
-        ... )
-        >>> result = solver.solve()
-    """
-    # NOTE: AMR enhancement moved to experimental - returning base solver
-    solver = SolverFactory.create_solver(
-        problem=problem,
-        solver_type=base_solver_type,
-        config_preset="accurate",
         **kwargs,
     )
-    return solver
+
+
+# =============================================================================
+# REMOVED CONVENIENCE FUNCTIONS (v0.15.0)
+# =============================================================================
+# The following functions were removed to simplify the API:
+# - create_basic_solver() - Use create_solver(preset="fast") or problem.solve()
+# - create_standard_solver() - Use create_solver(preset="balanced") or problem.solve()
+# - create_fast_solver() - Use create_solver(preset="fast") or problem.solve()
+# - create_accurate_solver() - Use create_solver(preset="accurate") or problem.solve()
+# - create_research_solver() - Use create_solver(preset="research") or problem.solve()
+# - create_semi_lagrangian_solver() - Instantiate HJBSemiLagrangianSolver directly
+# - create_amr_solver() - AMR moved to experimental features
+#
+# Migration: Use problem.solve() or create_solver() with appropriate preset.
+# =============================================================================
+
+
+# Legacy alias for backward compatibility - will be removed in v1.0.0
+def _removed_function_error(name: str) -> None:
+    """Raise informative error for removed functions."""
+    raise NotImplementedError(
+        f"{name}() has been removed. Use create_solver(preset=...) or problem.solve() instead. "
+        f"See migration guide: docs/migration/PHASE_3_2_CONFIG_MIGRATION.md"
+    )
+
+
+def create_basic_solver(*args: Any, **kwargs: Any) -> Any:
+    """Removed: Use create_solver(preset='fast') or problem.solve()."""
+    _removed_function_error("create_basic_solver")
+
+
+def create_standard_solver(*args: Any, **kwargs: Any) -> Any:
+    """Removed: Use create_solver(preset='balanced') or problem.solve()."""
+    _removed_function_error("create_standard_solver")
+
+
+def create_fast_solver(*args: Any, **kwargs: Any) -> Any:
+    """Removed: Use create_solver(preset='fast') or problem.solve()."""
+    _removed_function_error("create_fast_solver")
+
+
+def create_accurate_solver(*args: Any, **kwargs: Any) -> Any:
+    """Removed: Use create_solver(preset='accurate') or problem.solve()."""
+    _removed_function_error("create_accurate_solver")
+
+
+def create_research_solver(*args: Any, **kwargs: Any) -> Any:
+    """Removed: Use create_solver(preset='research') or problem.solve()."""
+    _removed_function_error("create_research_solver")
+
+
+def create_semi_lagrangian_solver(*args: Any, **kwargs: Any) -> Any:
+    """Removed: Instantiate HJBSemiLagrangianSolver directly."""
+    _removed_function_error("create_semi_lagrangian_solver")
+
+
+def create_amr_solver(*args: Any, **kwargs: Any) -> Any:
+    """Removed: AMR moved to experimental features."""
+    _removed_function_error("create_amr_solver")

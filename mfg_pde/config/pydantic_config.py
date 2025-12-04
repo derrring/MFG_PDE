@@ -61,21 +61,6 @@ class _NewtonConfig(BaseModel):
             )
         return v
 
-    @classmethod
-    def fast(cls) -> _NewtonConfig:
-        """Create configuration optimized for speed."""
-        return cls(max_iterations=10, tolerance=1e-4, damping_factor=0.8, line_search=False, verbose=False)
-
-    @classmethod
-    def accurate(cls) -> _NewtonConfig:
-        """Create configuration optimized for accuracy."""
-        return cls(max_iterations=50, tolerance=1e-8, damping_factor=1.0, line_search=False, verbose=False)
-
-    @classmethod
-    def research(cls) -> _NewtonConfig:
-        """Create configuration optimized for research with detailed logging."""
-        return cls(max_iterations=100, tolerance=1e-10, damping_factor=1.0, line_search=True, verbose=True)
-
     model_config = ConfigDict(validate_assignment=True)
 
 
@@ -106,16 +91,6 @@ class _PicardConfig(BaseModel):
                 UserWarning,
             )
         return v
-
-    @classmethod
-    def fast(cls) -> _PicardConfig:
-        """Create configuration optimized for speed."""
-        return cls(max_iterations=10, tolerance=1e-2, damping_factor=0.8, adaptive_damping=False, verbose=False)
-
-    @classmethod
-    def accurate(cls) -> _PicardConfig:
-        """Create configuration optimized for accuracy."""
-        return cls(max_iterations=100, tolerance=1e-6, damping_factor=0.3, adaptive_damping=True, verbose=False)
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -414,62 +389,7 @@ class MFGSolverConfig(BaseModel):
             "enable_warm_start": self.enable_warm_start,
         }
 
-    @classmethod
-    def fast(cls) -> MFGSolverConfig:
-        """Create configuration optimized for speed."""
-        return cls(
-            newton=_NewtonConfig.fast(),
-            picard=_PicardConfig.fast(),
-            convergence_tolerance=1e-3,
-            return_structured=True,
-            enable_warm_start=False,
-            strict_convergence_errors=False,
-            experiment_name="fast_config",
-        )
-
-    @classmethod
-    def accurate(cls) -> MFGSolverConfig:
-        """Create configuration optimized for accuracy."""
-        return cls(
-            newton=_NewtonConfig.accurate(),
-            picard=_PicardConfig.accurate(),
-            convergence_tolerance=1e-7,
-            return_structured=True,
-            enable_warm_start=False,
-            strict_convergence_errors=True,
-            experiment_name="accurate_config",
-        )
-
-    @classmethod
-    def research(cls) -> MFGSolverConfig:
-        """Create configuration optimized for research."""
-        return cls(
-            newton=_NewtonConfig.research(),
-            picard=_PicardConfig.accurate(),
-            convergence_tolerance=1e-8,
-            return_structured=True,
-            enable_warm_start=True,
-            strict_convergence_errors=True,
-            experiment_name="research_config",
-        )
-
     model_config = ConfigDict(validate_assignment=True, env_prefix="MFG_")
-
-
-# Convenience factory functions for backward compatibility
-def create_fast_config() -> MFGSolverConfig:
-    """Create fast configuration using Pydantic validation."""
-    return MFGSolverConfig.fast()
-
-
-def create_accurate_config() -> MFGSolverConfig:
-    """Create accurate configuration using Pydantic validation."""
-    return MFGSolverConfig.accurate()
-
-
-def create_research_config() -> MFGSolverConfig:
-    """Create research configuration using Pydantic validation."""
-    return MFGSolverConfig.research()
 
 
 def extract_legacy_parameters(config: MFGSolverConfig, **kwargs: Any) -> dict[str, Any]:

@@ -103,7 +103,7 @@ else:
         ConfigAttributeError = Exception
         UnsupportedInterpolationType = Exception
 
-from .pydantic_config import MFGSolverConfig, create_fast_config
+from .pydantic_config import MFGSolverConfig
 from .structured_schemas import (
     BeachProblemConfig,
     MFGConfig,
@@ -366,7 +366,7 @@ class OmegaConfManager:
         except Exception as e:
             logger.warning(f"Could not create Pydantic config directly: {e}")
             # Fall back to default configuration
-            return create_fast_config()
+            return MFGSolverConfig()
 
     def _map_omega_to_pydantic(self, omega_dict: dict[str, Any]) -> dict[str, Any]:
         """Map OmegaConf structure to Pydantic structure."""

@@ -59,12 +59,9 @@ from .mfg_methods import (
     WENOConfig,
 )
 
-# Pydantic-based MFG solver config (for backward compatibility)
+# Pydantic-based MFG solver config
 from .pydantic_config import (
     MFGSolverConfig,
-    create_accurate_config,
-    create_fast_config,
-    create_research_config,
     extract_legacy_parameters,
 )
 
@@ -111,11 +108,8 @@ __all__ = [
     "load_solver_config",
     "save_solver_config",
     "validate_yaml_config",
-    # Backward compatibility
+    # MFG solver config
     "MFGSolverConfig",
-    "create_fast_config",
-    "create_accurate_config",
-    "create_research_config",
     "extract_legacy_parameters",
     # Array validation
     "ArrayValidationConfig",
