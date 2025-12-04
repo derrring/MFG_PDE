@@ -1,8 +1,17 @@
 """
 Enhanced Pydantic-based configuration classes for MFG_PDE solvers.
 
-This module provides Pydantic BaseModel configurations that replace the dataclass-based
-system with automatic validation, serialization, and advanced numerical stability checks.
+This module provides MFGSolverConfig - the master solver configuration with
+automatic validation, serialization, and advanced numerical stability checks.
+
+NOTE: The internal config classes (_NewtonConfig, _GFDMConfig, etc.) are prefixed
+with underscore to indicate they are internal to MFGSolverConfig and should not
+be used directly. For method-specific configs, use mfg_methods.py instead.
+
+The canonical config classes are:
+- mfg_pde.config.mfg_methods: Method-specific configs (FDMConfig, GFDMConfig, etc.)
+- mfg_pde.config.core: Core solver configs (SolverConfig, PicardConfig, etc.)
+- This module: MFGSolverConfig (master solver config for legacy API)
 """
 
 from __future__ import annotations
@@ -14,9 +23,11 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class NewtonConfig(BaseModel):
+class _NewtonConfig(BaseModel):
     """
-    Enhanced Newton method configuration with automatic validation.
+    Internal Newton method configuration for MFGSolverConfig.
+
+    NOTE: This is an internal class. For public API, use mfg_methods.NewtonConfig.
 
     Provides comprehensive validation for Newton iteration parameters including
     numerical stability checks and convergence criteria validation.
@@ -51,26 +62,28 @@ class NewtonConfig(BaseModel):
         return v
 
     @classmethod
-    def fast(cls) -> NewtonConfig:
+    def fast(cls) -> _NewtonConfig:
         """Create configuration optimized for speed."""
         return cls(max_iterations=10, tolerance=1e-4, damping_factor=0.8, line_search=False, verbose=False)
 
     @classmethod
-    def accurate(cls) -> NewtonConfig:
+    def accurate(cls) -> _NewtonConfig:
         """Create configuration optimized for accuracy."""
         return cls(max_iterations=50, tolerance=1e-8, damping_factor=1.0, line_search=False, verbose=False)
 
     @classmethod
-    def research(cls) -> NewtonConfig:
+    def research(cls) -> _NewtonConfig:
         """Create configuration optimized for research with detailed logging."""
         return cls(max_iterations=100, tolerance=1e-10, damping_factor=1.0, line_search=True, verbose=True)
 
     model_config = ConfigDict(validate_assignment=True)
 
 
-class PicardConfig(BaseModel):
+class _PicardConfig(BaseModel):
     """
-    Enhanced Picard iteration configuration with cross-validation.
+    Internal Picard iteration configuration for MFGSolverConfig.
+
+    NOTE: This is an internal class. For public API, use core.PicardConfig.
 
     Provides validation for Picard method parameters including convergence
     hierarchy checks and numerical stability validation.
@@ -95,21 +108,23 @@ class PicardConfig(BaseModel):
         return v
 
     @classmethod
-    def fast(cls) -> PicardConfig:
+    def fast(cls) -> _PicardConfig:
         """Create configuration optimized for speed."""
         return cls(max_iterations=10, tolerance=1e-2, damping_factor=0.8, adaptive_damping=False, verbose=False)
 
     @classmethod
-    def accurate(cls) -> PicardConfig:
+    def accurate(cls) -> _PicardConfig:
         """Create configuration optimized for accuracy."""
         return cls(max_iterations=100, tolerance=1e-6, damping_factor=0.3, adaptive_damping=True, verbose=False)
 
     model_config = ConfigDict(validate_assignment=True)
 
 
-class GFDMConfig(BaseModel):
+class _GFDMConfig(BaseModel):
     """
-    Enhanced GFDM configuration with numerical stability validation.
+    Internal GFDM configuration for MFGSolverConfig.
+
+    NOTE: This is an internal class. For public API, use mfg_methods.GFDMConfig.
 
     Provides validation for Generalized Finite Difference Method parameters
     including weight function validation and constraint checking.
@@ -146,9 +161,11 @@ class GFDMConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
-class ParticleConfig(BaseModel):
+class _ParticleConfig(BaseModel):
     """
-    Enhanced particle method configuration with validation.
+    Internal particle method configuration for MFGSolverConfig.
+
+    NOTE: This is an internal class. For public API, use mfg_methods.ParticleConfig.
 
     Provides validation for particle-based methods including count validation,
     boundary condition checking, and KDE parameter validation.
@@ -191,22 +208,24 @@ class ParticleConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
-class HJBConfig(BaseModel):
+class _HJBConfig(BaseModel):
     """
-    Enhanced HJB solver configuration with cross-validation.
+    Internal HJB solver configuration for MFGSolverConfig.
+
+    NOTE: This is an internal class. For public API, use mfg_methods.HJBConfig.
 
     Combines Newton and GFDM configurations with validation for
     compatibility and numerical stability.
     """
 
-    newton: NewtonConfig = Field(
-        default_factory=lambda: NewtonConfig(
+    newton: _NewtonConfig = Field(
+        default_factory=lambda: _NewtonConfig(
             max_iterations=30, tolerance=1e-6, damping_factor=1.0, line_search=False, verbose=False
         ),
         description="Newton method configuration",
     )
-    gfdm: GFDMConfig = Field(
-        default_factory=lambda: GFDMConfig(
+    gfdm: _GFDMConfig = Field(
+        default_factory=lambda: _GFDMConfig(
             delta=0.1, weight_function="gaussian", use_qp_constraints=True, constraint_tolerance=1e-10, max_neighbors=20
         ),
         description="GFDM configuration",
@@ -223,7 +242,7 @@ class HJBConfig(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_newton_gfdm_compatibility(self) -> HJBConfig:
+    def validate_newton_gfdm_compatibility(self) -> _HJBConfig:
         """Validate compatibility between Newton and GFDM configurations."""
         newton_config = self.newton
         gfdm_config = self.gfdm
@@ -241,16 +260,18 @@ class HJBConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
-class FPConfig(BaseModel):
+class _FPConfig(BaseModel):
     """
-    Enhanced FP solver configuration with particle validation.
+    Internal FP solver configuration for MFGSolverConfig.
+
+    NOTE: This is an internal class. For public API, use mfg_methods.FPConfig.
 
     Combines particle configuration with FP-specific parameters
     and cross-validation for numerical stability.
     """
 
-    particle: ParticleConfig = Field(
-        default_factory=lambda: ParticleConfig(
+    particle: _ParticleConfig = Field(
+        default_factory=lambda: _ParticleConfig(
             num_particles=5000,
             kde_bandwidth=0.01,
             boundary_treatment="reflection",
@@ -289,26 +310,30 @@ class MFGSolverConfig(BaseModel):
 
     Combines all solver configurations with cross-validation for
     numerical stability, convergence properties, and physical constraints.
+
+    NOTE: This class uses internal config classes (_NewtonConfig, _HJBConfig, etc.)
+    that are specific to the legacy MFGSolverConfig API. For method-specific configs,
+    use the canonical classes from mfg_methods.py (HJBConfig, FPConfig, etc.).
     """
 
-    # Core solver configurations
-    newton: NewtonConfig = Field(
-        default_factory=lambda: NewtonConfig(
+    # Core solver configurations (using internal classes)
+    newton: _NewtonConfig = Field(
+        default_factory=lambda: _NewtonConfig(
             max_iterations=30, tolerance=1e-6, damping_factor=1.0, line_search=False, verbose=False
         ),
         description="Newton method configuration",
     )
-    picard: PicardConfig = Field(
-        default_factory=lambda: PicardConfig(
+    picard: _PicardConfig = Field(
+        default_factory=lambda: _PicardConfig(
             max_iterations=20, tolerance=1e-3, damping_factor=0.5, adaptive_damping=False, verbose=False
         ),
         description="Picard iteration configuration",
     )
-    hjb: HJBConfig = Field(
-        default_factory=lambda: HJBConfig(solver_type="gfdm_qp"), description="HJB solver configuration"
+    hjb: _HJBConfig = Field(
+        default_factory=lambda: _HJBConfig(solver_type="gfdm_qp"), description="HJB solver configuration"
     )
-    fp: FPConfig = Field(
-        default_factory=lambda: FPConfig(solver_type="fdm", time_integration="implicit_euler"),
+    fp: _FPConfig = Field(
+        default_factory=lambda: _FPConfig(solver_type="fdm", time_integration="implicit_euler"),
         description="FP solver configuration",
     )
 
@@ -393,8 +418,8 @@ class MFGSolverConfig(BaseModel):
     def fast(cls) -> MFGSolverConfig:
         """Create configuration optimized for speed."""
         return cls(
-            newton=NewtonConfig.fast(),
-            picard=PicardConfig.fast(),
+            newton=_NewtonConfig.fast(),
+            picard=_PicardConfig.fast(),
             convergence_tolerance=1e-3,
             return_structured=True,
             enable_warm_start=False,
@@ -406,8 +431,8 @@ class MFGSolverConfig(BaseModel):
     def accurate(cls) -> MFGSolverConfig:
         """Create configuration optimized for accuracy."""
         return cls(
-            newton=NewtonConfig.accurate(),
-            picard=PicardConfig.accurate(),
+            newton=_NewtonConfig.accurate(),
+            picard=_PicardConfig.accurate(),
             convergence_tolerance=1e-7,
             return_structured=True,
             enable_warm_start=False,
@@ -419,8 +444,8 @@ class MFGSolverConfig(BaseModel):
     def research(cls) -> MFGSolverConfig:
         """Create configuration optimized for research."""
         return cls(
-            newton=NewtonConfig.research(),
-            picard=PicardConfig.accurate(),
+            newton=_NewtonConfig.research(),
+            picard=_PicardConfig.accurate(),
             convergence_tolerance=1e-8,
             return_structured=True,
             enable_warm_start=True,
@@ -473,3 +498,17 @@ def extract_legacy_parameters(config: MFGSolverConfig, **kwargs: Any) -> dict[st
         legacy_params[key] = value
 
     return legacy_params
+
+
+# =============================================================================
+# BACKWARD COMPATIBILITY ALIASES
+# =============================================================================
+# These aliases allow existing code to import the internal config classes
+# using their original names. New code should use mfg_methods.py classes.
+
+NewtonConfig = _NewtonConfig
+PicardConfig = _PicardConfig
+GFDMConfig = _GFDMConfig
+ParticleConfig = _ParticleConfig
+HJBConfig = _HJBConfig
+FPConfig = _FPConfig
