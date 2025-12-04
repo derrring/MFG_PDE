@@ -54,11 +54,6 @@ class TestGFDMHJBSolver:
             newton_tolerance=1e-4,
         )
 
-    @pytest.mark.skip(
-        reason="HJBGFDMSolver is abstract and cannot be instantiated directly. "
-        "This test needs refactoring to use a concrete GFDM implementation. "
-        "Issue #140 - pre-existing test failure."
-    )
     def test_initialization(self):
         """Test solver initialization."""
         assert self.solver.hjb_method_name == "GFDM"
@@ -69,11 +64,6 @@ class TestGFDMHJBSolver:
         assert len(self.solver.neighborhoods) == 10
         assert len(self.solver.taylor_matrices) == 10
 
-    @pytest.mark.skip(
-        reason="HJBGFDMSolver is abstract and cannot be instantiated directly. "
-        "This test needs refactoring to use a concrete GFDM implementation. "
-        "Issue #140 - pre-existing test failure."
-    )
     def test_neighborhood_structure(self):
         """Test neighborhood structure building."""
         # Check that each point has neighbors
@@ -88,29 +78,25 @@ class TestGFDMHJBSolver:
             # Point should be in its own neighborhood
             assert i in neighborhood["indices"]
 
-    @pytest.mark.skip(
-        reason="HJBGFDMSolver is abstract and cannot be instantiated directly. "
-        "This test needs refactoring to use a concrete GFDM implementation. "
-        "Issue #140 - pre-existing test failure."
-    )
     def test_multi_index_generation(self):
-        """Test multi-index set generation."""
-        # Test 1D case
-        multi_indices_1d = self.solver._get_multi_index_set(1, 2)
-        expected_1d = [(1,), (2,)]
-        assert sorted(multi_indices_1d) == sorted(expected_1d)
+        """Test multi-index set generation.
 
-        # Test 2D case
-        multi_indices_2d = self.solver._get_multi_index_set(2, 2)
-        expected_2d = [(0, 1), (0, 2), (1, 0), (1, 1), (2, 0)]
-        # Order doesn't matter mathematically, use set comparison
-        assert sorted(multi_indices_2d) == sorted(expected_2d)
+        The multi-indices are now pre-computed during initialization and stored
+        as solver.multi_indices. For 1D with taylor_order=2, we expect indices
+        for first and second derivatives.
+        """
+        # 1D solver with taylor_order=2
+        multi_indices = self.solver.multi_indices
 
-    @pytest.mark.skip(
-        reason="HJBGFDMSolver is abstract and cannot be instantiated directly. "
-        "This test needs refactoring to use a concrete GFDM implementation. "
-        "Issue #140 - pre-existing test failure."
-    )
+        # Should have multi-indices for derivatives up to order 2
+        # For 1D: (1,) for first derivative, (2,) for second derivative
+        assert len(multi_indices) > 0
+
+        # Verify we have first and second derivative indices
+        # The exact format depends on implementation
+        assert any(sum(idx) == 1 for idx in multi_indices), "Should have first derivative"
+        assert any(sum(idx) == 2 for idx in multi_indices), "Should have second derivative"
+
     def test_taylor_matrix_construction(self):
         """Test Taylor expansion matrix construction."""
         # Check that matrices were built for most points
@@ -132,33 +118,34 @@ class TestGFDMHJBSolver:
                 assert W.shape[0] == W.shape[1]  # Square diagonal matrix
                 break
 
-    @pytest.mark.skip(
-        reason="Legacy pure GFDM test - tests internal implementation details. "
-        "Production uses QP-constrained GFDM. Defer refactoring."
-    )
     def test_derivative_approximation(self):
-        """Test derivative approximation."""
+        """Test derivative approximation.
+
+        Uses the public approximate_derivatives() method to verify the GFDM
+        derivative approximation is working correctly for a simple polynomial.
+        """
         # Create test function u(x) = x^2
         u_values = (self.collocation_points[:, 0] ** 2).flatten()
 
-        # Test derivative approximation at a point
-        point_idx = 5  # Middle point
+        # Test derivative approximation at a middle point
+        point_idx = 5
         if self.solver.taylor_matrices[point_idx] is not None:
-            derivatives = self.solver._approximate_derivatives(u_values, point_idx)
+            derivatives = self.solver.approximate_derivatives(u_values, point_idx)
 
             # For u(x) = x^2, derivative should be approximately 2x
             x_val = self.collocation_points[point_idx, 0]
             expected_first_deriv = 2 * x_val
 
+            # Check first derivative (key format may be (1,) for 1D)
             if (1,) in derivatives:
                 actual_first_deriv = derivatives[(1,)]
-                # Allow some numerical error (derivative approximation is approximate)
-                assert abs(actual_first_deriv - expected_first_deriv) < 3.0
+                # Allow some numerical error (GFDM is approximate)
+                assert abs(actual_first_deriv - expected_first_deriv) < 1.0, (
+                    f"First derivative error too large: got {actual_first_deriv}, expected {expected_first_deriv}"
+                )
+        else:
+            pytest.skip(f"Taylor matrix not available for point {point_idx}")
 
-    @pytest.mark.skip(
-        reason="Legacy pure GFDM test - tests internal implementation details. "
-        "Production uses QP-constrained GFDM. Defer refactoring."
-    )
     def test_boundary_conditions_dirichlet(self):
         """Test Dirichlet boundary conditions."""
         # Create solver with boundary conditions
@@ -173,18 +160,18 @@ class TestGFDMHJBSolver:
             boundary_conditions=boundary_conditions,
         )
 
-        # Test applying boundary conditions
-        u_test = np.ones(10)
-        u_modified = solver_with_bc._apply_boundary_conditions(u_test, 0)
+        # Verify boundary indices are stored
+        assert solver_with_bc.boundary_indices is not None
+        assert len(solver_with_bc.boundary_indices) == 2
 
+        # Test applying boundary conditions to solution
+        u_test = np.zeros(10)
+        u_modified = solver_with_bc._apply_boundary_conditions_to_solution(u_test, 0)
+
+        # Boundary values should be set to 1.0
         assert u_modified[0] == 1.0
         assert u_modified[9] == 1.0
 
-    @pytest.mark.skip(
-        reason="HJBGFDMSolver is abstract and cannot be instantiated directly. "
-        "This test needs refactoring to use a concrete GFDM implementation. "
-        "Issue #140 - pre-existing test failure."
-    )
     def test_solve_hjb_system_shape(self):
         """Test that solve_hjb_system returns correct shape."""
         # Create test inputs
@@ -200,31 +187,27 @@ class TestGFDMHJBSolver:
             # If solver fails, that's okay for this basic test
             pytest.skip(f"Solver failed: {e}")
 
-    @pytest.mark.skip(
-        reason="Legacy pure GFDM test - tests internal implementation details. "
-        "Production uses QP-constrained GFDM. Defer refactoring."
-    )
     def test_weight_functions(self):
-        """Test different weight functions."""
+        """Test different weight functions for GFDM weighting."""
         distances = np.array([0.0, 0.1, 0.2, 0.3])
 
-        # Test Gaussian weights
-        weights_gauss = self.solver._compute_weights(distances)
-        assert len(weights_gauss) == len(distances)
-        assert weights_gauss[0] == 1.0  # Distance 0 should give weight 1
-        assert np.all(weights_gauss >= 0)
+        # Test default weight function (wendland)
+        weights = self.solver._compute_weights(distances)
+        assert len(weights) == len(distances)
+        # Distance 0 should give max weight
+        assert weights[0] >= weights[-1], "Weight should decrease with distance"
+        assert np.all(weights >= 0), "Weights should be non-negative"
 
         # Test uniform weights
         solver_uniform = GFDMHJBSolver(
-            problem=self.problem, collocation_points=self.collocation_points, weight_function="uniform"
+            problem=self.problem,
+            collocation_points=self.collocation_points,
+            delta=0.3,
+            weight_function="uniform",
         )
         weights_uniform = solver_uniform._compute_weights(distances)
-        assert np.all(weights_uniform == 1.0)
+        assert np.all(weights_uniform == 1.0), "Uniform weights should all be 1.0"
 
-    @pytest.mark.skip(
-        reason="Legacy pure GFDM test - tests internal implementation details. "
-        "Production uses QP-constrained GFDM. Defer refactoring."
-    )
     def test_grid_collocation_mapping(self):
         """Test mapping between grid and collocation points."""
         # Test when sizes match
@@ -234,6 +217,9 @@ class TestGFDMHJBSolver:
 
         u_grid_back = self.solver._map_collocation_to_grid(u_collocation)
         assert len(u_grid_back) == 10
+
+        # Verify round-trip preserves values
+        np.testing.assert_array_almost_equal(u_grid, u_grid_back)
 
 
 if __name__ == "__main__":
