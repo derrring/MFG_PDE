@@ -1958,6 +1958,7 @@ class MFGProblem:
         max_iterations: int = 100,
         tolerance: float = 1e-6,
         verbose: bool = True,
+        config: Any | None = None,
     ) -> Any:
         """
         Solve this MFG problem.
@@ -1969,6 +1970,7 @@ class MFGProblem:
             max_iterations: Maximum fixed-point iterations (default: 100)
             tolerance: Convergence tolerance (default: 1e-6)
             verbose: Show solver progress (default: True)
+            config: Optional MFGSolverConfig for advanced configuration
 
         Returns:
             SolverResult with U (value function), M (density), convergence info
@@ -1979,17 +1981,51 @@ class MFGProblem:
             >>> print(f"Converged: {result.converged}")
             >>> U, M = result.U, result.M
         """
-        from mfg_pde.config import create_fast_config
-        from mfg_pde.factory import create_standard_solver
+        import numpy as np
 
-        # Create config with specified parameters
-        config = create_fast_config()
+        from mfg_pde.alg.numerical.coupling import FixedPointIterator
+        from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+        from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+        from mfg_pde.config.pydantic_config import MFGSolverConfig
+
+        # Create or update config
+        if config is None:
+            config = MFGSolverConfig()
+
+        # Override config with explicit parameters
         config.picard.max_iterations = max_iterations
         config.picard.tolerance = tolerance
         config.picard.verbose = verbose
 
-        # Create and run solver
-        solver = create_standard_solver(problem=self, custom_config=config)
+        # Create collocation points from problem domain
+        if hasattr(self, "geometry") and self.geometry is not None:
+            # Use geometry grid if available
+            if hasattr(self.geometry, "get_spatial_grid"):
+                x = self.geometry.get_spatial_grid()
+                collocation_points = np.atleast_2d(x).T if x.ndim == 1 else x
+            elif hasattr(self.geometry, "interior_points"):
+                collocation_points = self.geometry.interior_points
+            else:
+                # Fallback to grid-based points
+                x = np.linspace(self.xmin, self.xmax, self.Nx)
+                collocation_points = x.reshape(-1, 1)
+        else:
+            # Create grid points for 1D case
+            x = np.linspace(self.xmin, self.xmax, self.Nx)
+            collocation_points = x.reshape(-1, 1)
+
+        # Create component solvers
+        hjb_solver = HJBGFDMSolver(self, collocation_points)
+        fp_solver = FPParticleSolver(self)
+
+        # Create fixed-point iterator
+        solver = FixedPointIterator(
+            problem=self,
+            hjb_solver=hjb_solver,
+            fp_solver=fp_solver,
+            config=config,
+        )
+
         return solver.solve(verbose=verbose)
 
     # ============================================================================
