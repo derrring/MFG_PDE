@@ -1950,6 +1950,49 @@ class MFGProblem:
             }
 
     # ============================================================================
+    # Solve Method - Primary API for solving MFG problems
+    # ============================================================================
+
+    def solve(
+        self,
+        max_iterations: int = 100,
+        tolerance: float = 1e-6,
+        verbose: bool = True,
+    ) -> Any:
+        """
+        Solve this MFG problem.
+
+        This is the primary API for solving MFG problems. The solver is
+        automatically selected based on problem characteristics.
+
+        Args:
+            max_iterations: Maximum fixed-point iterations (default: 100)
+            tolerance: Convergence tolerance (default: 1e-6)
+            verbose: Show solver progress (default: True)
+
+        Returns:
+            SolverResult with U (value function), M (density), convergence info
+
+        Example:
+            >>> problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+            >>> result = problem.solve()
+            >>> print(f"Converged: {result.converged}")
+            >>> U, M = result.U, result.M
+        """
+        from mfg_pde.config import create_fast_config
+        from mfg_pde.factory import create_standard_solver
+
+        # Create config with specified parameters
+        config = create_fast_config()
+        config.picard.max_iterations = max_iterations
+        config.picard.tolerance = tolerance
+        config.picard.verbose = verbose
+
+        # Create and run solver
+        solver = create_standard_solver(problem=self, custom_config=config)
+        return solver.solve(verbose=verbose)
+
+    # ============================================================================
     # Deprecated Properties for Backward Compatibility (will be removed in v1.0.0)
     # ============================================================================
 

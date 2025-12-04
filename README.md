@@ -30,9 +30,9 @@ pip install -e .
 ### Your First MFG Solution (2 lines)
 
 ```python
-from mfg_pde import solve_mfg, MFGProblem
+from mfg_pde import MFGProblem
 
-result = solve_mfg(MFGProblem())
+result = MFGProblem().solve()
 ```
 
 **That's it.** Check convergence with `result.converged` and access solutions via `result.U` and `result.M`.
@@ -75,11 +75,11 @@ result = solve_mfg(MFGProblem())
 ### Solve Any MFG Problem
 
 ```python
-from mfg_pde import solve_mfg, MFGProblem
+from mfg_pde import MFGProblem
 
 # Create and solve MFG problem
 problem = MFGProblem(T=1.0, Nt=50, Nx=100)
-result = solve_mfg(problem)
+result = problem.solve()
 
 print(f"Converged: {result.converged} in {result.iterations} iterations")
 ```
@@ -88,20 +88,14 @@ print(f"Converged: {result.converged} in {result.iterations} iterations")
 
 ```python
 # Default settings
-result = solve_mfg(problem)
+result = problem.solve()
 
 # Custom parameters
-result = solve_mfg(
-    problem,
+result = problem.solve(
     max_iterations=200,
     tolerance=1e-8,
     verbose=True
 )
-
-# Using factory API for full control
-from mfg_pde.factory import create_standard_solver
-solver = create_standard_solver(problem, "fixed_point", max_iterations=100)
-result = solver.solve()
 ```
 
 ### Essential Utilities

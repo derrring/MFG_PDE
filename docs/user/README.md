@@ -8,14 +8,10 @@
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
 
-# Create problem
+# Create and solve
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
-
-# Solve with standard solver (mass-conserving, robust)
-solver = create_standard_solver(problem, "fixed_point")
-result = solver.solve()
+result = problem.solve()
 
 # Access results
 print(result.U)  # Value function u(t,x)
@@ -138,37 +134,28 @@ You need developer API if you want to:
 ### **Example 1: Standard Workflow**
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
 
-# Define problem
+# Define and solve problem
 problem = MFGProblem(Nx=100, Nt=50, T=1.0)
-
-# Solve with default (Tier 2: Hybrid, mass-conserving)
-solver = create_standard_solver(problem, "fixed_point")
-result = solver.solve()
+result = problem.solve()
 
 # Check convergence
 print(f"Converged: {result.converged}")
 print(f"Iterations: {result.iterations}")
-print(f"Mass error: {result.mass_conservation_error:.2e}")
 ```
 
-### **Example 2: Method Comparison**
+### **Example 2: Custom Parameters**
 ```python
-from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
+from mfg_pde import MFGProblem
 
-# Compare three solver tiers
-solvers = {
-    "Basic FDM": create_basic_solver(problem),
-    "Standard (Hybrid)": create_standard_solver(problem, "fixed_point"),
-    "Accurate": create_accurate_solver(problem, "fixed_point", max_iterations=200)
-}
+problem = MFGProblem(Nx=100, Nt=50, T=1.0)
 
-results = {name: solver.solve() for name, solver in solvers.items()}
-
-# Compare mass conservation
-for name, result in results.items():
-    print(f"{name}: {result.mass_conservation_error:.2e}")
+# Solve with custom settings
+result = problem.solve(
+    max_iterations=200,
+    tolerance=1e-8,
+    verbose=True
+)
 ```
 
 ### **Example 3: Custom Problem**

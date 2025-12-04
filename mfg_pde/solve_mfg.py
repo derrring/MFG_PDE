@@ -31,51 +31,39 @@ def solve_mfg(
     """
     Solve an MFG problem using the standard fixed-point solver.
 
-    This is a convenience function that creates a solver and solves the problem.
-    For more control, use create_standard_solver() directly.
+    .. deprecated::
+        Use ``problem.solve()`` instead. This function will be removed in v1.0.0.
 
     Args:
         problem: MFG problem instance to solve
         max_iterations: Maximum iterations for fixed-point solver (default: 100)
         tolerance: Convergence tolerance (default: 1e-6)
         verbose: Print solver progress (default: True)
-        **kwargs: Additional solver-specific parameters passed to create_standard_solver
+        **kwargs: Additional solver-specific parameters (ignored, for compatibility)
 
     Returns:
-        SolverResult with attributes:
-            - U: Value function array (Nt+1, Nx+1)
-            - M: Density array (Nt+1, Nx+1)
-            - iterations: Number of iterations performed
-            - error_history_U: Convergence history for U
-            - error_history_M: Convergence history for M
-            - converged: Whether convergence was achieved
+        SolverResult with U, M, convergence info
 
     Example:
-        >>> from mfg_pde import MFGProblem, solve_mfg
-        >>>
-        >>> problem = MFGProblem()
+        >>> # Old way (deprecated)
         >>> result = solve_mfg(problem)
-        >>> print(f"Converged: {result.converged} in {result.iterations} iterations")
         >>>
-        >>> # With custom settings
-        >>> result = solve_mfg(problem, max_iterations=200, tolerance=1e-8)
+        >>> # New way (recommended)
+        >>> result = problem.solve()
     """
-    from mfg_pde.config import create_fast_config
-    from mfg_pde.factory import create_standard_solver
+    import warnings
 
-    # Create config with specified parameters
-    config = create_fast_config()
-    config.picard.max_iterations = max_iterations
-    config.picard.tolerance = tolerance
-    config.picard.verbose = verbose
+    warnings.warn(
+        "solve_mfg() is deprecated. Use problem.solve() instead. This function will be removed in v1.0.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
-    # Create solver
-    solver = create_standard_solver(problem=problem, custom_config=config, **kwargs)
-
-    # Solve
-    result = solver.solve(verbose=verbose)
-
-    return result
+    return problem.solve(
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        verbose=verbose,
+    )
 
 
 # Public API

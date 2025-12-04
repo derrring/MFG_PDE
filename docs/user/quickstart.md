@@ -2,10 +2,6 @@
 
 **Get started with MFG_PDE in 5 minutes**
 
-MFG_PDE provides two interfaces:
-1. **`solve_mfg()`** - One-line solver (NEW in v0.8+)
-2. **Factory API** - Fine-grained control with `create_*_solver()` functions
-
 ---
 
 ## Prerequisites
@@ -27,16 +23,14 @@ pip install mfg-pde
 
 ---
 
-## Simplest Example (30 seconds) - NEW!
-
-**New in v0.8**: One-line solver with automatic configuration:
+## Simplest Example (30 seconds)
 
 ```python
-from mfg_pde import MFGProblem, solve_mfg
+from mfg_pde import MFGProblem
 
-# Create and solve in one line
+# Create and solve
 problem = MFGProblem()
-result = solve_mfg(problem)
+result = problem.solve()
 
 # Access results
 print(f"Converged: {result.converged}")
@@ -54,17 +48,16 @@ print(result.M.shape)  # Density
 
 ```python
 # Override defaults
-result = solve_mfg(
-    problem,
+result = problem.solve(
     max_iterations=200,     # More iterations
     tolerance=1e-8,         # Tighter tolerance
     verbose=True            # Show progress
 )
 ```
 
-**When to use `solve_mfg()`**: Quick prototyping, standard problems, getting started
+**Primary API**: `problem.solve()` - works for all standard use cases
 
-**When to use Factory API**: Custom solvers, fine control, research comparison
+**Factory API**: For advanced users needing custom solver configurations
 
 ---
 

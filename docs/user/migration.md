@@ -1,8 +1,8 @@
 # Migration Guide - Upgrading to the Factory API
 
 > **⚠️ Note**: This guide contains some outdated information. The primary API is now:
-> - `solve_mfg(problem)` - High-level one-liner
-> - `create_standard_solver(problem, "fixed_point")` - Factory API
+> - `problem.solve()` - Primary API (on MFGProblem)
+> - `create_standard_solver(problem, "fixed_point")` - Factory API (advanced)
 > See [quickstart.md](quickstart.md) for current usage patterns.
 
 **Smooth transition from old MFG_PDE API to the two-level factory-based API**
@@ -379,16 +379,16 @@ from mfg_pde.visualization.interactive_plots import create_plotly_visualizer
 ### Current API
 
 ```python
-# Primary high-level API (RECOMMENDED)
-from mfg_pde import solve_mfg, MFGProblem
+# Primary API (RECOMMENDED)
+from mfg_pde import MFGProblem
 
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
-result = solve_mfg(problem)  # ✅ USE THIS
+result = problem.solve()  # ✅ USE THIS
 
-# Factory API for more control
+# Factory API for advanced control
 from mfg_pde.factory import create_standard_solver
 
-solver = create_standard_solver(problem, "fixed_point")  # ✅ USE THIS
+solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
