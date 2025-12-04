@@ -224,8 +224,7 @@ class SolverConfig(BaseModel):
 
 
 # Forward references will be resolved after HJBConfig and FPConfig are imported
-from .fp_configs import FPConfig  # noqa: E402
-from .hjb_configs import HJBConfig  # noqa: E402
+from .mfg_methods import FPConfig, HJBConfig  # noqa: E402
 
 # Update forward references
 SolverConfig.model_rebuild()

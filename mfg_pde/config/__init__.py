@@ -28,7 +28,6 @@ Configuration is for SOLVERS (how to solve), not PROBLEMS (what to solve):
 # CORE CONFIG CLASSES (Pydantic-based)
 # =============================================================================
 
-# Array validation (specialized utility)
 from .array_validation import (
     ArrayValidationConfig,
     CollocationConfig,
@@ -44,26 +43,21 @@ from .core import (
     SolverConfig,
 )
 
-# FP solver configurations
-from .fp_configs import (
-    FDMFPConfig,
-    FPConfig,
-    NetworkConfig,
-    ParticleConfig,
-)
+# YAML I/O
+from .io import load_solver_config, save_solver_config, validate_yaml_config
 
-# HJB solver configurations
-from .hjb_configs import (
-    FDMHJBConfig,
+# MFG method configurations (unified)
+from .mfg_methods import (
+    FDMConfig,
+    FPConfig,
     GFDMConfig,
     HJBConfig,
+    NetworkConfig,
     NewtonConfig,
+    ParticleConfig,
     SLConfig,
     WENOConfig,
 )
-
-# YAML I/O
-from .io import load_solver_config, save_solver_config, validate_yaml_config
 
 # Pydantic-based MFG solver config (for backward compatibility)
 from .pydantic_config import (
@@ -102,18 +96,17 @@ __all__ = [
     "PicardConfig",
     "BackendConfig",
     "LoggingConfig",
-    # HJB configs
-    "HJBConfig",
-    "NewtonConfig",
-    "FDMHJBConfig",
+    # Method configs (unified)
+    "FDMConfig",
     "GFDMConfig",
     "SLConfig",
     "WENOConfig",
-    # FP configs
-    "FPConfig",
-    "FDMFPConfig",
     "ParticleConfig",
     "NetworkConfig",
+    "NewtonConfig",
+    # Composite solver configs
+    "HJBConfig",
+    "FPConfig",
     # I/O
     "load_solver_config",
     "save_solver_config",
