@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.config.solver_config import (
+from mfg_pde.config.pydantic_config import (
     FPConfig,
     GFDMConfig,
     HJBConfig,
@@ -174,14 +174,13 @@ class SolverFactory:
                 picard=PicardConfig(max_iterations=25, tolerance=1e-4, damping_factor=0.6),
                 hjb=HJBConfig(
                     newton=NewtonConfig(max_iterations=25, tolerance=1e-5),
-                    gfdm=GFDMConfig(delta=0.3, taylor_order=2, weight_function="wendland"),
+                    gfdm=GFDMConfig(delta=0.3, taylor_order=2, weight_function="gaussian"),
                 ),
                 fp=FPConfig(
                     particle=ParticleConfig(
                         num_particles=3000,
-                        kde_bandwidth="scott",
-                        normalize_output=True,
-                        boundary_handling="absorbing",
+                        kde_bandwidth=0.05,
+                        boundary_treatment="absorption",
                     )
                 ),
                 return_structured=True,

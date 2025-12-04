@@ -177,7 +177,7 @@ def test_get_config_by_preset_invalid():
 @pytest.mark.unit
 def test_update_config_with_kwargs_picard():
     """Test updating Picard config parameters."""
-    from mfg_pde.config.solver_config import create_fast_config
+    from mfg_pde.config.pydantic_config import create_fast_config
 
     base_config = create_fast_config()
     updated = SolverFactory._update_config_with_kwargs(
@@ -195,7 +195,7 @@ def test_update_config_with_kwargs_picard():
 @pytest.mark.unit
 def test_update_config_with_kwargs_newton():
     """Test updating Newton config parameters."""
-    from mfg_pde.config.solver_config import create_fast_config
+    from mfg_pde.config.pydantic_config import create_fast_config
 
     base_config = create_fast_config()
     updated = SolverFactory._update_config_with_kwargs(
@@ -211,7 +211,7 @@ def test_update_config_with_kwargs_newton():
 @pytest.mark.unit
 def test_update_config_with_kwargs_particles():
     """Test updating particle config parameters."""
-    from mfg_pde.config.solver_config import create_fast_config
+    from mfg_pde.config.pydantic_config import create_fast_config
 
     base_config = create_fast_config()
     updated = SolverFactory._update_config_with_kwargs(
@@ -225,7 +225,7 @@ def test_update_config_with_kwargs_particles():
 @pytest.mark.unit
 def test_update_config_with_kwargs_return_structured():
     """Test updating return_structured flag."""
-    from mfg_pde.config.solver_config import create_fast_config
+    from mfg_pde.config.pydantic_config import create_fast_config
 
     base_config = create_fast_config()
     updated = SolverFactory._update_config_with_kwargs(
@@ -319,7 +319,7 @@ def test_create_solver_fixed_point_with_solvers():
 @pytest.mark.unit
 def test_create_solver_custom_config():
     """Test create_solver with custom configuration."""
-    from mfg_pde.config.solver_config import create_research_config
+    from mfg_pde.config.pydantic_config import create_research_config
 
     problem = MockMFGProblem()
     mock_hjb = Mock()

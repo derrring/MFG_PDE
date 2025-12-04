@@ -43,7 +43,7 @@ import numpy as np
 from .base_mfg import BaseMFGSolver
 
 if TYPE_CHECKING:
-    from mfg_pde.config.solver_config import MFGSolverConfig
+    from mfg_pde.config.pydantic_config import MFGSolverConfig
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
