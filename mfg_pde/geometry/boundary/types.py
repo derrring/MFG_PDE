@@ -110,14 +110,42 @@ def _compute_sdf_gradient(
 
 
 class BCType(Enum):
-    """Boundary condition types (dimension-agnostic)."""
+    """
+    Boundary condition types (dimension-agnostic).
+
+    Standard BC Types:
+        DIRICHLET: Fixed value at boundary (u = g)
+        NEUMANN: Fixed normal derivative at boundary (du/dn = g)
+        ROBIN: Mixed condition (alpha*u + beta*du/dn = g)
+        PERIODIC: Wrap-around boundaries (u(x_min) = u(x_max))
+
+    Impermeable Boundary Types (NO_FLUX and REFLECTING):
+        These represent the SAME physical concept - an impermeable wall where
+        no mass/probability/particles can cross - but are named differently
+        based on the discretization context:
+
+        NO_FLUX: Used for field-based methods (FDM, FEM, GFDM)
+            - Enforces zero probability flux: J dot n = 0
+            - For pure diffusion: du/dn = 0 (zero Neumann)
+            - Implementation: ghost cells via np.pad(mode="edge")
+
+        REFLECTING: Used for particle-based methods (Lagrangian FP)
+            - Enforces elastic reflection at boundary
+            - Particles bounce back into domain
+            - Implementation: modular fold reflection algorithm
+
+        Mathematically equivalent for mass conservation. Choose based on solver:
+        - FP density equation (field) -> NO_FLUX
+        - Particle simulation -> REFLECTING
+        - HJB value function -> NEUMANN (with g=0)
+    """
 
     DIRICHLET = "dirichlet"
     NEUMANN = "neumann"
     ROBIN = "robin"
     PERIODIC = "periodic"
-    REFLECTING = "reflecting"  # Alias for Neumann with zero gradient
-    NO_FLUX = "no_flux"  # No-flux for Fokker-Planck (same as reflecting)
+    REFLECTING = "reflecting"
+    NO_FLUX = "no_flux"
 
 
 @dataclass
