@@ -166,17 +166,16 @@ result = solver.solve()
 ```python
 from mfg_pde.factory import create_accurate_solver
 
-# High-order WENO
-solver_weno = create_accurate_solver(problem, solver_type="weno")
+# Accurate configuration (higher iterations, tighter tolerance)
+solver = create_accurate_solver(problem, "fixed_point", max_iterations=200)
+result = solver.solve()
 
-# Semi-Lagrangian
-solver_sl = create_accurate_solver(problem, solver_type="semi_lagrangian")
-
-# Deep Galerkin Method (DGM)
-solver_dgm = create_accurate_solver(problem, solver_type="dgm")
+# Direct access to specialized HJB solvers (advanced usage)
+from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver, HJBSemiLagrangianSolver
+# These require manual configuration - see advanced examples
 ```
 
-Use for specialized requirements (high-order accuracy, large time steps, high dimensions).
+Use for specialized requirements (high-order accuracy, research applications).
 
 ---
 

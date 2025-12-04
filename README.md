@@ -32,10 +32,10 @@ pip install -e .
 ```python
 from mfg_pde import solve_mfg, MFGProblem
 
-result = solve_mfg(MFGProblem(), config="fast")
+result = solve_mfg(MFGProblem(), method="fast")
 ```
 
-**That's it.** Check convergence with `result.converged` and visualize with `result.plot()`.
+**That's it.** Check convergence with `result.converged` and access solutions via `result.U` and `result.M`.
 
 ---
 
@@ -60,8 +60,8 @@ result = solve_mfg(MFGProblem(), config="fast")
 - [Examples](examples/) - Working code examples
 
 **Utilities & Guides**:
-- [Particle Interpolation](docs/user_guides/particle_interpolation.md) - Grid ↔ Particles
-- [SDF Utilities](docs/user_guides/sdf_utilities.md) - Geometry and obstacles
+- [Particle Interpolation](docs/user/particle_interpolation.md) - Grid ↔ Particles
+- [SDF Utilities](docs/user/sdf_utilities.md) - Geometry and obstacles
 - [Migration Guide](docs/migration/PHASE_3_MIGRATION_GUIDE.md) - Upgrading from v0.8.x
 
 **For Developers**:
@@ -75,28 +75,34 @@ result = solve_mfg(MFGProblem(), config="fast")
 ### Solve Any MFG Problem
 
 ```python
-from mfg_pde import solve_mfg, create_lq_problem
+from mfg_pde import solve_mfg, MFGProblem
 
-# Linear-Quadratic MFG
-problem = create_lq_problem(T=1.0, Nt=50, Nx=100)
-result = solve_mfg(problem, config="accurate")
+# Create and solve MFG problem
+problem = MFGProblem(T=1.0, Nt=50, Nx=100)
+result = solve_mfg(problem, method="accurate")
 
 print(f"Converged: {result.converged} in {result.iterations} iterations")
 ```
 
-### Three Configuration Patterns
+### Configuration Options
 
 ```python
-# Pattern 1: Preset strings (quickest)
-result = solve_mfg(problem, config="fast")
+# Method presets: "fast", "accurate", "research", "auto"
+result = solve_mfg(problem, method="fast")
 
-# Pattern 2: Builder API (flexible)
-from mfg_pde.config import ConfigBuilder
-config = ConfigBuilder().picard(tolerance=1e-8).build()
-result = solve_mfg(problem, config=config)
+# Custom parameters
+result = solve_mfg(
+    problem,
+    method="accurate",
+    max_iterations=200,
+    tolerance=1e-6,
+    verbose=True
+)
 
-# Pattern 3: YAML files (reproducible)
-result = solve_mfg(problem, config="experiments/config.yaml")
+# Using factory API for full control
+from mfg_pde.factory import create_standard_solver
+solver = create_standard_solver(problem, "fixed_point", max_iterations=100)
+result = solver.solve()
 ```
 
 ### Essential Utilities

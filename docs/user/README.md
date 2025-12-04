@@ -42,8 +42,8 @@ MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP system
 **Entry Point**: Factory API (`create_*_solver()`)
 
 **What you get**:
-- **Algorithm selection**: Choose from 3 solver tiers (Basic/Standard/Advanced)
-- **Method comparison**: Benchmark FDM, Hybrid, WENO, Semi-Lagrangian, etc.
+- **Algorithm selection**: Choose from 3 solver tiers (Basic/Standard/Accurate)
+- **Method comparison**: Benchmark FDM, Hybrid, and custom configurations
 - **Custom problems**: Define your own Hamiltonians, geometries, boundary conditions
 - **Full configuration**: Control tolerance, iterations, damping, backends
 
@@ -52,17 +52,17 @@ MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP system
 ```python
 from mfg_pde.factory import (
     create_basic_solver,    # Tier 1: Basic FDM (benchmark)
-    create_standard_solver,     # Tier 2: Hybrid (DEFAULT - mass-conserving)
-    create_accurate_solver  # Tier 3: Advanced (WENO, Semi-Lagrangian)
+    create_standard_solver, # Tier 2: Hybrid (DEFAULT - mass-conserving)
+    create_accurate_solver  # Tier 3: Accurate configuration
 )
 
 # Standard usage (DEFAULT)
 solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
-# Research comparison
-solver_weno = create_accurate_solver(problem, solver_type="weno")
-result_weno = solver_weno.solve()
+# Accurate configuration
+solver_accurate = create_accurate_solver(problem, "fixed_point", max_iterations=200)
+result_accurate = solver_accurate.solve()
 ```
 
 ### **🔧 Level 2: Developers - Core Contributors (5%)**
@@ -160,8 +160,8 @@ from mfg_pde.factory import create_basic_solver, create_standard_solver, create_
 # Compare three solver tiers
 solvers = {
     "Basic FDM": create_basic_solver(problem),
-    "Hybrid (Standard)": create_standard_solver(problem, "fixed_point"),
-    "WENO (Advanced)": create_accurate_solver(problem, solver_type="weno")
+    "Standard (Hybrid)": create_standard_solver(problem, "fixed_point"),
+    "Accurate": create_accurate_solver(problem, "fixed_point", max_iterations=200)
 }
 
 results = {name: solver.solve() for name, solver in solvers.items()}
@@ -194,7 +194,7 @@ result = solver.solve()
 ## 💡 **Key Features**
 
 ✅ **Research-Grade**: Publication-quality solvers with rigorous validation
-✅ **Algorithm Access**: Full control over numerical methods (FDM, WENO, Semi-Lagrangian, etc.)
+✅ **Algorithm Access**: Full control over numerical methods (FDM, Particle, WENO, Semi-Lagrangian)
 ✅ **Mass-Conserving**: Default solver achieves ~10⁻¹⁵ mass conservation error
 ✅ **Fast**: Multi-backend acceleration (PyTorch, JAX, Numba)
 ✅ **Benchmarking**: Easy comparison of multiple algorithms
