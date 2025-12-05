@@ -81,6 +81,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         tolerance: float = 1e-8,
         max_char_iterations: int = 100,
         check_cfl: bool = True,
+        enable_adaptive_substepping: bool = True,
+        max_substeps: int = 100,
+        cfl_target: float = 0.9,
     ):
         """
         Initialize semi-Lagrangian HJB solver.
@@ -107,6 +110,15 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             max_char_iterations: Maximum iterations for characteristic solving
             check_cfl: Whether to check CFL condition and issue warnings (default: True).
                 CFL = max|grad(u)| * dt / dx. Warns if CFL > 1.0.
+            enable_adaptive_substepping: Whether to automatically subdivide time steps
+                when CFL > 1.0 to maintain stability (default: True). When enabled,
+                the solver will use smaller internal time steps while preserving the
+                overall time discretization.
+            max_substeps: Maximum number of substeps per time step when adaptive
+                substepping is enabled (default: 100). If more substeps are needed,
+                a warning is issued and the solver proceeds with max_substeps.
+            cfl_target: Target CFL number for adaptive substepping (default: 0.9).
+                When CFL > 1.0, the time step is subdivided to achieve CFL ≤ cfl_target.
         """
         super().__init__(problem)
         self.hjb_method_name = "Semi-Lagrangian"
@@ -120,6 +132,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         self.tolerance = tolerance
         self.max_char_iterations = max_char_iterations
         self.check_cfl = check_cfl
+        self.enable_adaptive_substepping = enable_adaptive_substepping
+        self.max_substeps = max_substeps
+        self.cfl_target = cfl_target
 
         # JAX acceleration
         self.use_jax = use_jax if use_jax is not None else JAX_AVAILABLE
@@ -280,6 +295,68 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # Return as tuple of arrays (one per dimension)
             return tuple(grad_components)
 
+    def _compute_cfl_and_substeps(self, u_values: np.ndarray, dt_target: float) -> tuple[float, int, float]:
+        """
+        Compute CFL number and determine optimal number of substeps.
+
+        When the CFL condition (CFL = max|grad(u)| * dt / dx) exceeds 1.0,
+        this method computes how many substeps are needed to maintain
+        CFL <= cfl_target (default 0.9).
+
+        Args:
+            u_values: Current value function array
+            dt_target: Target time step (full time step to subdivide)
+
+        Returns:
+            Tuple of (cfl_number, n_substeps, dt_substep):
+                - cfl_number: The CFL number with the target dt
+                - n_substeps: Number of substeps needed (1 if CFL <= 1.0)
+                - dt_substep: Time step to use for each substep
+        """
+        if self.dimension == 1:
+            # 1D CFL computation
+            grad_u = np.gradient(u_values, self.dx, edge_order=2)
+            max_grad = np.max(np.abs(grad_u))
+            cfl = max_grad * dt_target / self.dx
+            dx_eff = self.dx
+        else:
+            # nD CFL computation
+            grad_components = []
+            for axis in range(self.dimension):
+                grad_axis = np.gradient(u_values, self.spacing[axis], axis=axis, edge_order=2)
+                grad_components.append(grad_axis)
+
+            grad = np.stack(grad_components, axis=0)
+            magnitude = np.sqrt(np.sum(grad**2, axis=0))
+            max_grad = np.max(magnitude)
+            dx_eff = np.min(self.spacing)
+            cfl = max_grad * dt_target / dx_eff
+
+        # Determine substeps needed
+        if cfl <= 1.0 or not self.enable_adaptive_substepping:
+            return cfl, 1, dt_target
+
+        # Compute substeps to achieve CFL <= cfl_target
+        n_substeps = int(np.ceil(cfl / self.cfl_target))
+        n_substeps = min(n_substeps, self.max_substeps)
+
+        if n_substeps >= self.max_substeps:
+            logger.warning(
+                f"CFL = {cfl:.2f} requires {int(np.ceil(cfl / self.cfl_target))} substeps, "
+                f"capped at max_substeps={self.max_substeps}. "
+                f"Stability may be compromised. Consider reducing dt or increasing grid resolution."
+            )
+
+        dt_substep = dt_target / n_substeps
+        actual_cfl = max_grad * dt_substep / dx_eff
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                f"Adaptive substepping: CFL={cfl:.2f} -> {actual_cfl:.2f} ({n_substeps} substeps, dt={dt_substep:.6f})"
+            )
+
+        return cfl, n_substeps, dt_substep
+
     def solve_hjb_system(
         self,
         M_density: np.ndarray | None = None,
@@ -370,6 +447,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             )
 
         # Solve backward in time using semi-Lagrangian method (from Nt-1 down to 0)
+        total_substeps_used = 0
         for n in range(Nt - 1, -1, -1):
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(f"Solving time step {n}/{Nt - 1}")
@@ -379,19 +457,48 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             m_idx = min(n + 1, Nt - 1) if n + 1 >= Nt else n + 1
             u_prev_idx = min(n, Nt - 1)
 
-            U_solution[n] = self._solve_timestep_semi_lagrangian(
-                U_solution[n + 1],  # u^{n+1} (from output array, always valid)
-                M_density[m_idx],  # m^{n+1} or last available density
-                U_coupling_prev[u_prev_idx],  # u_k^n for coupling terms
-                n,  # time index
-            )
+            # Compute CFL and determine substeps needed for this time step
+            cfl, n_substeps, dt_substep = self._compute_cfl_and_substeps(U_solution[n + 1], self.dt)
+            total_substeps_used += n_substeps
+
+            if n_substeps == 1:
+                # No substepping needed - use standard time step
+                U_solution[n] = self._solve_timestep_semi_lagrangian(
+                    U_solution[n + 1],  # u^{n+1} (from output array, always valid)
+                    M_density[m_idx],  # m^{n+1} or last available density
+                    U_coupling_prev[u_prev_idx],  # u_k^n for coupling terms
+                    n,  # time index
+                )
+            else:
+                # Adaptive substepping: subdivide the time step
+                U_current = U_solution[n + 1].copy()
+                for substep in range(n_substeps):
+                    U_current = self._solve_timestep_semi_lagrangian_with_dt(
+                        U_current,
+                        M_density[m_idx],
+                        U_coupling_prev[u_prev_idx],
+                        n,
+                        dt_substep,
+                    )
+                    # Check for numerical issues after each substep
+                    if np.any(np.isnan(U_current) | np.isinf(U_current)):
+                        error_msg = (
+                            f"Semi-Lagrangian solver failed at time step {n}/{Nt - 1}, "
+                            f"substep {substep + 1}/{n_substeps} with NaN/Inf values. "
+                            f"CFL was {cfl:.2f}, using {n_substeps} substeps with dt={dt_substep:.6f}"
+                        )
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
+                U_solution[n] = U_current
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Time step {n}: used {n_substeps} substeps (CFL={cfl:.2f})")
 
             # Check for numerical issues
             if np.any(np.isnan(U_solution[n]) | np.isinf(U_solution[n])):
                 error_msg = (
                     f"Semi-Lagrangian solver failed at time step {n}/{Nt - 1} with NaN/Inf values. "
                     "Possible causes:\n"
-                    "  1. CFL condition violated (try smaller dt or enable check_cfl=True)\n"
+                    "  1. CFL condition violated (try smaller dt or enable adaptive_substepping=True)\n"
                     "  2. Grid too coarse for solution features\n"
                     "  3. Hamiltonian evaluation issues\n"
                     "  4. Interpolation errors near boundaries"
@@ -545,6 +652,116 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             U_current_shaped = self._adi_diffusion_step(U_star, self.dt)
 
             # Return flattened if input was flattened
+            if U_next.ndim == 1:
+                return U_current_shaped.ravel()
+            else:
+                return U_current_shaped
+
+    def _solve_timestep_semi_lagrangian_with_dt(
+        self,
+        U_next: np.ndarray,
+        M_next: np.ndarray,
+        U_prev_picard: np.ndarray,
+        time_idx: int,
+        dt: float,
+    ) -> np.ndarray:
+        """
+        Solve one timestep using semi-Lagrangian method with custom time step.
+
+        This is the same as _solve_timestep_semi_lagrangian but allows specifying
+        a custom dt for adaptive substepping.
+
+        Args:
+            U_next: Value function at next time step
+            M_next: Density at next time step
+            U_prev_picard: Value from previous Picard iteration
+            time_idx: Current time index
+            dt: Time step to use (allows custom dt for substepping)
+
+        Returns:
+            Value function at current time step
+        """
+        if self.dimension == 1:
+            # 1D solve with operator splitting
+            Nx = len(U_next)
+            U_star = np.zeros(Nx)
+
+            # Compute gradient for optimal control
+            grad_u = self._compute_gradient(U_next, check_cfl=False)
+
+            # Step 1: Advection along characteristics
+            for i in range(Nx):
+                x_current = self.x_grid[i]
+                m_current = M_next[i]
+
+                try:
+                    p_optimal = grad_u[i]
+                    x_departure = self._trace_characteristic_backward(x_current, p_optimal, dt)
+                    u_departure = self._interpolate_value(U_next, x_departure)
+                    hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
+
+                    U_star[i] = u_departure - dt * hamiltonian_value
+
+                except Exception as e:
+                    logger.warning(f"Error at grid point {i}: {e}")
+                    U_star[i] = U_next[i]
+
+            # Step 2: Diffusion with custom dt
+            U_current = self._solve_crank_nicolson_diffusion(U_star, dt, self.problem.sigma)
+            return U_current
+
+        else:
+            # nD solve with operator splitting
+            if U_next.ndim == 1:
+                total_points = U_next.size
+                expected_full = int(np.prod(self._grid_shape))
+
+                if total_points == expected_full:
+                    grid_shape = tuple(self._grid_shape)
+                else:
+                    grid_shape = tuple(n - 1 for n in self._grid_shape)
+
+                U_next_shaped = U_next.reshape(grid_shape)
+                M_next_shaped = M_next.reshape(grid_shape)
+            else:
+                U_next_shaped = U_next
+                M_next_shaped = M_next
+                grid_shape = U_next_shaped.shape
+
+            U_star = np.zeros_like(U_next_shaped)
+            grad_components = self._compute_gradient(U_next_shaped, check_cfl=False)
+
+            error_count = 0
+            total_points = int(np.prod(grid_shape))
+
+            for multi_idx in np.ndindex(grid_shape):
+                x_current = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
+                m_current = M_next_shaped[multi_idx]
+                p_optimal = np.array([grad_components[d][multi_idx] for d in range(self.dimension)])
+
+                x_departure = self._trace_characteristic_backward(x_current, p_optimal, dt)
+                u_departure = self._interpolate_value(U_next_shaped, x_departure)
+                hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
+
+                u_star_val = u_departure - dt * hamiltonian_value
+
+                if np.isnan(u_star_val) or np.isinf(u_star_val):
+                    error_count += 1
+                    U_star[multi_idx] = U_next_shaped[multi_idx]
+                else:
+                    U_star[multi_idx] = u_star_val
+
+            if error_count > 0:
+                error_pct = 100 * error_count / total_points
+                if error_pct > 10:
+                    raise ValueError(
+                        f"Semi-Lagrangian advection failed: {error_count}/{total_points} points ({error_pct:.1f}%) "
+                        f"had NaN/Inf values at time step {time_idx}."
+                    )
+
+            # ADI diffusion with custom dt
+            U_current_shaped = self._adi_diffusion_step(U_star, dt)
+
             if U_next.ndim == 1:
                 return U_current_shaped.ravel()
             else:
@@ -1341,6 +1558,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             "use_jax": self.use_jax,
             "tolerance": self.tolerance,
             "max_iterations": self.max_char_iterations,
+            "adaptive_substepping": self.enable_adaptive_substepping,
+            "max_substeps": self.max_substeps,
+            "cfl_target": self.cfl_target,
         }
 
 
