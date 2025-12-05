@@ -20,6 +20,7 @@ References:
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -395,11 +396,18 @@ class NewtonSolver(NonlinearSolver):
                 try:
                     J = compute_jacobian(F, x_current, original_shape, mode="reverse")
                     jacobian_evals += 1
-                except Exception:
+                except Exception as e:
                     # JAX tracing failed (e.g., function uses numpy operations)
                     # Fall back to finite differences for this iteration
                     # and disable JAX for remaining iterations
                     use_jax_autodiff = False
+                    warnings.warn(
+                        f"JAX autodiff failed: {e!r}. "
+                        "Falling back to finite-difference Jacobian (O(N) complexity). "
+                        "For better performance, use JAX-compatible functions (jax.numpy).",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
                     J = self._finite_difference_jacobian(F, x_current, F_current)
                     jacobian_evals += 1
             else:
