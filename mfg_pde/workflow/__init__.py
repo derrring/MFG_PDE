@@ -105,12 +105,8 @@ def mfg_parameter_study(
     def solve_mfg_problem(params):
         problem = problem_factory(**params)
 
-        # Import solver dynamically to avoid circular imports
-        from mfg_pde import create_fast_solver
-
-        solver = create_fast_solver(problem, "fixed_point")
-
-        return solver.solve()
+        # Use problem.solve() API
+        return problem.solve()
 
     # Execute parameter sweep
     results = sweep.execute(solve_mfg_problem)
@@ -143,19 +139,8 @@ def convergence_analysis_workflow(problem, solver_types: list[str], tolerances: 
 
     @workflow_step(workflow)
     def analyze_convergence(params):
-        from mfg_pde import create_fast_solver
-
-        # Use string directly as create_fast_solver handles conversion internally
-        solver = create_fast_solver(problem, params["solver_type"])
-
-        # Modify solver tolerance if possible
-        if hasattr(solver, "tolerance"):
-            from contextlib import suppress
-
-            with suppress(AttributeError):
-                solver.tolerance = params["tolerance"]
-
-        result = solver.solve()
+        # Use problem.solve() API with tolerance parameter
+        result = problem.solve(tolerance=params["tolerance"])
 
         return {
             "solver_type": params["solver_type"],
@@ -196,16 +181,14 @@ def performance_benchmark_workflow(problem_sizes: list[tuple], solver_types: lis
     def benchmark_performance(params):
         import time
 
-        from mfg_pde import MFGProblem, create_fast_solver
+        from mfg_pde import MFGProblem
 
         Nx, Nt = params["problem_size"]
         problem = MFGProblem(Nx=Nx, Nt=Nt, T=1.0)
 
-        # Use string directly as create_fast_solver handles conversion internally
-        solver = create_fast_solver(problem, params["solver_type"])
-
+        # Use problem.solve() API
         start_time = time.time()
-        result = solver.solve()
+        result = problem.solve()
         execution_time = time.time() - start_time
 
         return {

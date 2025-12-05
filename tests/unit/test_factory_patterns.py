@@ -1,207 +1,197 @@
 #!/usr/bin/env python3
 """
-Factory Patterns Test Suite - Updated for Architecture Separation
+Factory Patterns Test Suite - Simplified API
 
-NOTE: Particle-collocation tests have been removed as particle-collocation methods
-have been removed from core package. This test now focuses on fixed_point
-solver factory functionality.
+Tests the simplified factory API following infrastructure cleanup.
+Removed: presets, create_fast_solver, create_accurate_solver, create_research_solver.
+Remaining: create_solver() with explicit config.
 """
 
-import os
-import sys
+from unittest.mock import Mock, patch
 
 import pytest
 
-import numpy as np
-
-# Add the parent directory to the path so we can import mfg_pde
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from mfg_pde import (
-    MFGProblem,
+from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.factory.solver_factory import (
+    SolverFactory,
     create_accurate_solver,
+    create_basic_solver,
     create_fast_solver,
     create_research_solver,
     create_solver,
 )
-from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 
 
-def create_test_problem():
-    """Create a simple test MFG problem."""
+class MockMFGProblem:
+    """Minimal mock MFG problem for testing solver factory."""
 
-    class SimpleMFGProblem(MFGProblem):
-        def __init__(self):
-            super().__init__(T=1.0, Nt=20, xmin=0.0, xmax=1.0, Nx=50)
-
-        def g(self, x):
-            return 0.5 * (x - 0.5) ** 2
-
-        def rho0(self, x):
-            return np.exp(-10 * (x - 0.3) ** 2) + np.exp(-10 * (x - 0.7) ** 2)
-
-        def f(self, x, u, m):
-            return 0.1 * u**2 + 0.05 * m
-
-        def sigma(self, x):
-            return 0.1
-
-        def H(self, x, p, m):
-            return 0.5 * p**2
-
-        def dH_dm(self, x, p, m):
-            return 0.0
-
-    return SimpleMFGProblem()
+    def __init__(
+        self,
+        T=1.0,
+        Nt=50,
+        xmin=0.0,
+        xmax=1.0,
+        Nx=100,
+        sigma=0.1,
+        coupling_coefficient=0.5,
+    ):
+        self.T = T
+        self.Nt = Nt
+        self.xmin = xmin
+        self.xmax = xmax
+        self.Nx = Nx
+        self.Dx = (xmax - xmin) / (Nx - 1) if Nx > 1 else 0.0
+        self.Dt = T / (Nt - 1) if Nt > 1 else 0.0
+        self.sigma = sigma
+        self.coupling_coefficient = coupling_coefficient
 
 
-def test_factory_creation_functions():
-    """Test factory creation functions for fixed_point solver."""
-    print("Testing factory creation functions...")
-
-    problem = create_test_problem()
-    x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-    collocation_points = x_coords.reshape(-1, 1)
-
-    results = {}
-
-    # Test convenience functions with fixed_point solver
-    functions_to_test = [
+@pytest.mark.unit
+def test_removed_functions_raise_not_implemented():
+    """Test that removed convenience functions raise NotImplementedError."""
+    removed_functions = [
         ("create_fast_solver", create_fast_solver),
         ("create_accurate_solver", create_accurate_solver),
         ("create_research_solver", create_research_solver),
+        ("create_basic_solver", create_basic_solver),
     ]
 
-    for name, func in functions_to_test:
-        try:
-            # Create required component solvers
-            hjb_solver = HJBGFDMSolver(problem, collocation_points)
-            fp_solver = FPParticleSolver(problem, collocation_points)
-
-            solver = func(problem, solver_type="fixed_point", hjb_solver=hjb_solver, fp_solver=fp_solver)
-
-            results[name] = {
-                "success": True,
-                "solver_type": type(solver).__name__,
-            }
-            print(f"  ✓ {name}: {type(solver).__name__}")
-        except Exception as e:
-            results[name] = {"success": False, "error": str(e)}
-            print(f"  ✗ {name}: {e}")
-
-    return results
+    for _name, func in removed_functions:
+        with pytest.raises(NotImplementedError) as exc_info:
+            func()
+        assert "has been removed" in str(exc_info.value)
+        assert "problem.solve()" in str(exc_info.value) or "create_solver()" in str(exc_info.value)
 
 
-def test_solver_types():
-    """Test fixed_point solver type."""
-    print("\nTesting solver types...")
+@pytest.mark.unit
+def test_create_solver_with_solvers():
+    """Test create_solver with hjb_solver and fp_solver."""
+    problem = MockMFGProblem()
+    mock_hjb = Mock()
+    mock_fp = Mock()
 
-    problem = create_test_problem()
-    x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-    collocation_points = x_coords.reshape(-1, 1)
-
-    results = {}
-
-    # Test fixed point solver
-    try:
-        hjb_solver = HJBGFDMSolver(problem, collocation_points)
-        fp_solver = FPParticleSolver(problem, collocation_points)
+    with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
+        MockIterator.return_value = Mock()
 
         solver = create_solver(
-            problem=problem, solver_type="fixed_point", preset="fast", hjb_solver=hjb_solver, fp_solver=fp_solver
+            problem=problem,
+            hjb_solver=mock_hjb,
+            fp_solver=mock_fp,
         )
 
-        results["fixed_point"] = {
-            "success": True,
-            "solver_class": type(solver).__name__,
-            "has_config": hasattr(solver, "config"),
-        }
-        print(f"  ✓ fixed_point: {type(solver).__name__}")
-    except Exception as e:
-        results["fixed_point"] = {"success": False, "error": str(e)}
-        print(f"  ✗ fixed_point: {e}")
-
-    return results
+        assert solver is not None
+        MockIterator.assert_called_once()
+        call_kwargs = MockIterator.call_args[1]
+        assert call_kwargs["problem"] == problem
+        assert call_kwargs["hjb_solver"] == mock_hjb
+        assert call_kwargs["fp_solver"] == mock_fp
 
 
-def test_configuration_presets():
-    """Test configuration presets for fixed_point solver."""
-    print("\nTesting configuration presets...")
+@pytest.mark.unit
+def test_create_solver_with_custom_config():
+    """Test create_solver with custom MFGSolverConfig."""
+    problem = MockMFGProblem()
+    mock_hjb = Mock()
+    mock_fp = Mock()
+    custom_config = MFGSolverConfig(convergence_tolerance=1e-8)
 
-    problem = create_test_problem()
-    x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-    collocation_points = x_coords.reshape(-1, 1)
+    with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
+        MockIterator.return_value = Mock()
 
-    presets = ["fast", "balanced", "accurate", "research"]
-    results = {}
+        solver = create_solver(
+            problem=problem,
+            hjb_solver=mock_hjb,
+            fp_solver=mock_fp,
+            config=custom_config,
+        )
 
-    for preset in presets:
-        try:
-            hjb_solver = HJBGFDMSolver(problem, collocation_points)
-            fp_solver = FPParticleSolver(problem, collocation_points)
-
-            solver = create_solver(
-                problem=problem,
-                solver_type="fixed_point",
-                preset=preset,
-                hjb_solver=hjb_solver,
-                fp_solver=fp_solver,
-            )
-
-            results[preset] = {
-                "success": True,
-                "has_config": hasattr(solver, "config"),
-            }
-            print(f"  ✓ {preset}: FixedPointIterator created")
-        except Exception as e:
-            results[preset] = {"success": False, "error": str(e)}
-            print(f"  ✗ {preset}: {e}")
-
-    return results
+        assert solver is not None
+        call_kwargs = MockIterator.call_args[1]
+        assert call_kwargs["config"] is not None
 
 
+@pytest.mark.unit
+def test_solver_factory_class():
+    """Test SolverFactory.create_solver directly."""
+    problem = MockMFGProblem()
+    mock_hjb = Mock()
+    mock_fp = Mock()
+
+    with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
+        MockIterator.return_value = Mock()
+
+        solver = SolverFactory.create_solver(
+            problem=problem,
+            solver_type="fixed_point",
+            hjb_solver=mock_hjb,
+            fp_solver=mock_fp,
+        )
+
+        assert solver is not None
+        MockIterator.assert_called_once()
+
+
+@pytest.mark.unit
+def test_create_solver_missing_solvers():
+    """Test create_solver raises error when hjb_solver or fp_solver missing."""
+    problem = MockMFGProblem()
+
+    with pytest.raises(ValueError) as exc_info:
+        SolverFactory.create_solver(problem=problem, solver_type="fixed_point")
+
+    assert "requires both hjb_solver and fp_solver" in str(exc_info.value)
+
+
+@pytest.mark.unit
+def test_create_solver_invalid_solver_type():
+    """Test create_solver raises error for invalid solver type."""
+    problem = MockMFGProblem()
+    mock_hjb = Mock()
+    mock_fp = Mock()
+
+    with pytest.raises(ValueError) as exc_info:
+        SolverFactory.create_solver(
+            problem=problem,
+            solver_type="invalid_type",
+            hjb_solver=mock_hjb,
+            fp_solver=mock_fp,
+        )
+
+    assert "Unknown solver type" in str(exc_info.value)
+
+
+@pytest.mark.unit
+def test_create_solver_none_problem():
+    """Test create_solver raises error for None problem."""
+    with pytest.raises(ValueError) as exc_info:
+        SolverFactory.create_solver(problem=None)
+
+    assert "Problem cannot be None" in str(exc_info.value)
+
+
+@pytest.mark.unit
 def test_type_consistency():
     """Test that factory returns expected solver types."""
-    print("\nTesting type consistency...")
+    problem = MockMFGProblem()
+    mock_hjb = Mock()
+    mock_fp = Mock()
 
-    problem = create_test_problem()
-    x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx)
-    collocation_points = x_coords.reshape(-1, 1)
-
-    results = {}
-
-    # Test fixed_point type
-    try:
-        hjb_solver = HJBGFDMSolver(problem, collocation_points)
-        fp_solver = FPParticleSolver(problem, collocation_points)
+    with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
+        mock_solver = Mock()
+        mock_solver.config = MFGSolverConfig()
+        MockIterator.return_value = mock_solver
 
         solver = create_solver(
-            problem=problem, solver_type="fixed_point", preset="fast", hjb_solver=hjb_solver, fp_solver=fp_solver
+            problem=problem,
+            hjb_solver=mock_hjb,
+            fp_solver=mock_fp,
         )
 
-        is_correct_type = isinstance(solver, FixedPointIterator)
-        results["fixed_point"] = {
-            "success": True,
-            "expected_type": "FixedPointIterator",
-            "actual_type": type(solver).__name__,
-            "type_correct": is_correct_type,
-        }
-
-        if is_correct_type:
-            print("  ✓ fixed_point: correct type FixedPointIterator")
-        else:
-            print(f"  ⚠ fixed_point: expected FixedPointIterator, got {type(solver).__name__}")
-
-    except Exception as e:
-        results["fixed_point"] = {"success": False, "error": str(e)}
-        print(f"  ✗ fixed_point: {e}")
-
-    return results
+        assert solver is not None
+        assert hasattr(solver, "config")
 
 
-@pytest.mark.skip(reason="Particle-collocation tests removed - solver removed from core package. ")
+@pytest.mark.skip(reason="Particle-collocation tests removed - solver removed from core package.")
 def test_particle_collocation_removed():
     """Placeholder indicating particle-collocation tests have been removed."""
 
@@ -209,62 +199,41 @@ def test_particle_collocation_removed():
 def run_comprehensive_test():
     """Run comprehensive factory pattern tests."""
     print("=" * 80)
-    print("FACTORY PATTERNS TEST SUITE (Fixed-Point Solvers)")
+    print("FACTORY PATTERNS TEST SUITE (Simplified API)")
     print("=" * 80)
-    print("NOTE: Particle-collocation tests removed - removed from core package")
+    print("NOTE: Convenience functions (create_fast_solver, etc.) have been removed.")
+    print("      Use create_solver() or problem.solve() instead.")
     print("=" * 80)
 
     all_results = {}
 
-    # Run all test functions
-    test_functions = [
-        ("Factory Creation Functions", test_factory_creation_functions),
-        ("Solver Types", test_solver_types),
-        ("Configuration Presets", test_configuration_presets),
-        ("Type Consistency", test_type_consistency),
+    # Test removed functions raise NotImplementedError
+    print("\n1. Testing removed functions raise NotImplementedError...")
+    removed_functions = [
+        ("create_fast_solver", create_fast_solver),
+        ("create_accurate_solver", create_accurate_solver),
+        ("create_research_solver", create_research_solver),
     ]
 
-    for test_name, test_func in test_functions:
-        print(f"\n{test_name}:")
-        print("-" * 40)
+    for name, func in removed_functions:
         try:
-            all_results[test_name] = test_func()
+            func()
+            print(f"  X {name}: Did not raise NotImplementedError!")
+            all_results[name] = {"success": False, "error": "Did not raise"}
+        except NotImplementedError:
+            print(f"  OK {name}: Correctly raises NotImplementedError")
+            all_results[name] = {"success": True}
         except Exception as e:
-            print(f"  ✗ Test suite failed: {e}")
-            all_results[test_name] = {"success": False, "error": str(e)}
+            print(f"  X {name}: Wrong exception: {e}")
+            all_results[name] = {"success": False, "error": str(e)}
 
     # Summary
     print("\n" + "=" * 80)
-    print("TEST SUMMARY")
+    print("SUMMARY")
     print("=" * 80)
-
-    total_tests = 0
-    passed_tests = 0
-
-    for _test_name, results in all_results.items():
-        if isinstance(results, dict) and "success" in results:
-            # Single test result
-            total_tests += 1
-            if results["success"]:
-                passed_tests += 1
-        else:
-            # Multiple test results
-            for _test_key, result in results.items():
-                total_tests += 1
-                if result.get("success", False):
-                    passed_tests += 1
-
-    print(f"Tests Passed: {passed_tests}/{total_tests}")
-
-    if passed_tests == total_tests:
-        print("All tests passed! Factory patterns for fixed_point solver work correctly.")
-    else:
-        print(f"  {total_tests - passed_tests} tests failed. See details above.")
-
-    print("\nFactory Pattern Features Verified (Fixed-Point Solver):")
-    print("  - Convenience creation functions")
-    print("  - Configuration presets")
-    print("  - Type consistency")
+    passed = sum(1 for r in all_results.values() if r.get("success", False))
+    total = len(all_results)
+    print(f"Passed: {passed}/{total}")
 
     return all_results
 

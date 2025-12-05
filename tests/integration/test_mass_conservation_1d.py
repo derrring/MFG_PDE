@@ -237,6 +237,7 @@ class TestMassConservation1D:
         """No-flux Neumann boundary conditions."""
         return no_flux_bc()
 
+    @pytest.mark.slow
     def test_fp_particle_hjb_fdm_mass_conservation(self, problem, boundary_conditions):
         """
         Test mass conservation for FP Particle + HJB FDM combination.
@@ -470,6 +471,7 @@ class TestMassConservation1D:
         assert np.max(error_fdm) < 0.1, f"FDM mass error too large: {np.max(error_fdm):.6e}"
         assert np.max(error_gfdm) < 0.1, f"GFDM mass error too large: {np.max(error_gfdm):.6e}"
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("num_particles", [1000, 3000, 5000])
     def test_mass_conservation_particle_count(self, problem, boundary_conditions, num_particles):
         """

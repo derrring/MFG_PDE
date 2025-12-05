@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from mfg_pde.config import BaseConfig  # type: ignore[attr-defined]
+    from mfg_pde.config import BaseConfig
     from mfg_pde.core import MFGProblem
 
 

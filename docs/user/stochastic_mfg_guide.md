@@ -1,8 +1,8 @@
 # Stochastic MFG User Guide
 
 **Target Audience**: Researchers and practitioners using MFG_PDE for stochastic problems
-**Prerequisites**: Basic understanding of Mean Field Games (see [MFG Mathematical Formulation](../theory/mean_field_games_mathematical_formulation.md))
-**Related Documentation**: [Common Noise MFG Theory](../theory/stochastic_mfg_common_noise.md)
+**Prerequisites**: Basic understanding of Mean Field Games and HJB-FP systems
+**Related Documentation**: [High Dimensional MFG](../theory/high_dimensional_mfg.md)
 
 ---
 
@@ -619,9 +619,9 @@ print(f"  Estimated total (K={solver.K}): "
 
 ## Next Steps
 
-- **Theory**: Read [Common Noise MFG Mathematical Formulation](../theory/stochastic_mfg_common_noise.md)
-- **Examples**: See `examples/advanced/common_noise_*`
-- **Advanced**: Explore Master Equation formulation (coming soon)
+- **Theory**: Read [High Dimensional MFG](../theory/high_dimensional_mfg.md)
+- **Examples**: See `examples/advanced/` for advanced examples
+- **Advanced**: Explore Master Equation formulation (planned for future)
 
 ---
 

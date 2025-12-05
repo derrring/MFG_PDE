@@ -2,42 +2,36 @@
 Legacy solver compatibility wrappers
 
 Provides compatibility for old solver APIs with deprecation warnings.
+
+DEPRECATED: This entire module is deprecated and will be removed in v1.0.0.
+Use problem.solve() API instead.
 """
 
-from mfg_pde.factory import create_fast_solver
-
-from . import DeprecatedAPI, deprecated
+from . import DeprecatedAPI
 
 
-@deprecated("Use create_fast_solver() or FixedPointSolver() instead")
 class LegacyMFGSolver(DeprecatedAPI):
     """
     DEPRECATED: Legacy MFG solver wrapper.
 
-    Use the new factory API instead:
+    Use the new problem.solve() API instead:
 
     Old:
         solver = LegacyMFGSolver(config)
         result = solver.solve(problem)
 
-    New (Factory API):
-        solver = create_fast_solver(problem, solver_type="fixed_point")
-        result = solver.solve()
-
-    New (Direct):
-        solver = FixedPointSolver()
-        result = solver.solve(problem)
+    New:
+        result = problem.solve()
     """
 
     def __init__(self, config=None):
-        super().__init__("create_fast_solver() or FixedPointSolver()")
+        super().__init__("problem.solve()")
         self.config = config or {}
 
     def solve(self, problem):
         """Solve MFG problem using legacy interface."""
-        # Use factory API as default
-        solver = create_fast_solver(problem, solver_type="fixed_point")
-        return solver.solve()
+        # Use problem.solve() API
+        return problem.solve()
 
     def _convert_config(self, config):
         """Convert legacy config to new API parameters."""
@@ -74,22 +68,18 @@ class LegacyMFGSolver(DeprecatedAPI):
         return None
 
 
-# Legacy solver class aliases with deprecation warnings
-@deprecated("Use solve_mfg() instead")
+# Legacy solver class aliases (all deprecated - use problem.solve() instead)
 class EnhancedParticleCollocationSolver(LegacyMFGSolver):
-    pass
+    """DEPRECATED: Use problem.solve() instead."""
 
 
-@deprecated("Use FixedPointSolver() instead")
 class FixedPointIterator(LegacyMFGSolver):
-    pass
+    """DEPRECATED: Use problem.solve() instead."""
 
 
-@deprecated("Use FixedPointSolver() with hooks instead")
 class AdaptiveMFGSolver(LegacyMFGSolver):
-    pass
+    """DEPRECATED: Use problem.solve() instead."""
 
 
-@deprecated("Use solve_mfg() with accuracy='research' instead")
 class DebugMFGSolver(LegacyMFGSolver):
-    pass
+    """DEPRECATED: Use problem.solve() instead."""

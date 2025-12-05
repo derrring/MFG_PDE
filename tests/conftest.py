@@ -15,7 +15,7 @@ import numpy as np
 
 # Import main package components
 from mfg_pde import MFGProblem
-from mfg_pde.config.pydantic_config import create_accurate_config, create_fast_config, create_research_config
+from mfg_pde.config.pydantic_config import MFGSolverConfig
 
 # =============================================================================
 # Test Configuration
@@ -104,32 +104,9 @@ def diffusion_coefficient(request):
 
 
 @pytest.fixture
-def fast_config():
-    """Fast configuration for testing."""
-    return create_fast_config()
-
-
-@pytest.fixture
-def accurate_config():
-    """Accurate configuration for testing."""
-    return create_accurate_config()
-
-
-@pytest.fixture
-def research_config():
-    """Research configuration for testing."""
-    return create_research_config()
-
-
-@pytest.fixture(params=["fast", "accurate", "research"])
-def any_config(request):
-    """Parametrized fixture returning different configuration types."""
-    config_factories = {
-        "fast": create_fast_config,
-        "accurate": create_accurate_config,
-        "research": create_research_config,
-    }
-    return config_factories[request.param]()
+def default_config():
+    """Default MFGSolverConfig for testing."""
+    return MFGSolverConfig()
 
 
 # =============================================================================
@@ -211,7 +188,7 @@ def test_output_dir(temp_directory):
 # =============================================================================
 
 
-@pytest.fixture(params=["fixed_point", "particle_collocation"])
+@pytest.fixture(params=["fixed_point"])
 def solver_type(request):
     """Parametrized solver type for testing."""
     return request.param
@@ -221,15 +198,10 @@ def solver_type(request):
 def solver_factory():
     """Factory function for creating solvers."""
 
-    def _create_solver(problem, solver_type="fixed_point", config=None):
-        from mfg_pde import create_fast_solver
+    def _create_solver(problem, config=None):
+        from mfg_pde.factory import create_solver
 
-        if config is None:
-            return create_fast_solver(problem, solver_type)
-        else:
-            from mfg_pde.factory import create_solver
-
-            return create_solver(problem, solver_type, config=config)
+        return create_solver(problem, config=config)
 
     return _create_solver
 

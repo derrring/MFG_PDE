@@ -621,11 +621,10 @@ class WorkflowManager:
         workflow1 = self.create_workflow("example_parameter_study", "Example parameter study workflow")
 
         def example_solve(sigma, Nx=20, Nt=10):
-            from mfg_pde import MFGProblem, create_fast_solver
+            from mfg_pde import MFGProblem
 
             problem = MFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
-            solver = create_fast_solver(problem, "fixed_point")
-            result = solver.solve()
+            result = problem.solve()
             return {
                 "converged": getattr(result, "converged", False),
                 "iterations": getattr(result, "iterations", 0),

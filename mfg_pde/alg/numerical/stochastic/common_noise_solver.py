@@ -237,10 +237,8 @@ class CommonNoiseMFGSolver:
 
         # Conditional solver factory
         if conditional_solver_factory is None:
-            # Default: use fast solver from factory
-            from mfg_pde.factory import create_fast_solver
-
-            self.conditional_solver_factory = lambda prob: create_fast_solver(prob)
+            # Default: use problem.solve() API
+            self.conditional_solver_factory = lambda prob: prob.solve(verbose=False)
         else:
             self.conditional_solver_factory = conditional_solver_factory
 

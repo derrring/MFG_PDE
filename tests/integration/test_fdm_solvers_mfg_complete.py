@@ -20,6 +20,7 @@ from mfg_pde.geometry.boundary.fdm_bc_1d import dirichlet_bc, no_flux_bc, period
 class TestFDMSolversMFGIntegration:
     """Integration tests for FDM-based MFG problem solving."""
 
+    @pytest.mark.slow
     def test_fixed_point_iterator_with_fdm(self):
         """Test FixedPointIterator with FDM HJB and FP solvers."""
         # Create problem with moderate resolution
@@ -64,6 +65,7 @@ class TestFDMSolversMFGIntegration:
             current_mass = np.sum(M_solution[t, :])
             assert np.isclose(current_mass, initial_mass, rtol=0.1), f"Mass not conserved at t={t}"
 
+    @pytest.mark.slow
     def test_fdm_convergence_with_refinement(self):
         """Test that FDM solution converges with grid refinement."""
         # Solve with coarse grid
@@ -125,6 +127,7 @@ class TestFDMSolversMFGIntegration:
         assert np.all(np.isfinite(U))
         assert np.all(np.isfinite(M))
 
+    @pytest.mark.slow
     def test_fdm_dirichlet_bc_solution(self):
         """Test FDM solution with Dirichlet boundary conditions."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30)
@@ -173,6 +176,7 @@ class TestFDMSolversCoupling:
         assert np.all(np.isfinite(U_solution))
         assert np.all(np.isfinite(M_solution))
 
+    @pytest.mark.slow
     def test_fixed_point_iteration_convergence(self):
         """Test that fixed-point iteration converges for FDM solvers."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=25, T=1.0, Nt=25)

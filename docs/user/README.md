@@ -8,14 +8,10 @@
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
 
-# Create problem
+# Create and solve
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
-
-# Solve with standard solver (mass-conserving, robust)
-solver = create_standard_solver(problem, "fixed_point")
-result = solver.solve()
+result = problem.solve()
 
 # Access results
 print(result.U)  # Value function u(t,x)
@@ -42,8 +38,8 @@ MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP system
 **Entry Point**: Factory API (`create_*_solver()`)
 
 **What you get**:
-- **Algorithm selection**: Choose from 3 solver tiers (Basic/Standard/Advanced)
-- **Method comparison**: Benchmark FDM, Hybrid, WENO, Semi-Lagrangian, etc.
+- **Algorithm selection**: Choose from 3 solver tiers (Basic/Standard/Accurate)
+- **Method comparison**: Benchmark FDM, Hybrid, and custom configurations
 - **Custom problems**: Define your own Hamiltonians, geometries, boundary conditions
 - **Full configuration**: Control tolerance, iterations, damping, backends
 
@@ -52,17 +48,17 @@ MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP system
 ```python
 from mfg_pde.factory import (
     create_basic_solver,    # Tier 1: Basic FDM (benchmark)
-    create_standard_solver,     # Tier 2: Hybrid (DEFAULT - mass-conserving)
-    create_accurate_solver  # Tier 3: Advanced (WENO, Semi-Lagrangian)
+    create_standard_solver, # Tier 2: Hybrid (DEFAULT - mass-conserving)
+    create_accurate_solver  # Tier 3: Accurate configuration
 )
 
 # Standard usage (DEFAULT)
 solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
-# Research comparison
-solver_weno = create_accurate_solver(problem, solver_type="weno")
-result_weno = solver_weno.solve()
+# Accurate configuration
+solver_accurate = create_accurate_solver(problem, "fixed_point", max_iterations=200)
+result_accurate = solver_accurate.solve()
 ```
 
 ### **🔧 Level 2: Developers - Core Contributors (5%)**
@@ -75,7 +71,7 @@ result_weno = solver_weno.solve()
 - **Register new solvers**: Integrate into factory system
 - **Modify infrastructure**: Add backends, geometries, boundary conditions
 
-**Get started**: [Developer Guide](../development/adding_new_solvers.md)
+**Get started**: Extend the base solver classes below
 
 ```python
 from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
@@ -138,37 +134,28 @@ You need developer API if you want to:
 ### **Example 1: Standard Workflow**
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
 
-# Define problem
+# Define and solve problem
 problem = MFGProblem(Nx=100, Nt=50, T=1.0)
-
-# Solve with default (Tier 2: Hybrid, mass-conserving)
-solver = create_standard_solver(problem, "fixed_point")
-result = solver.solve()
+result = problem.solve()
 
 # Check convergence
 print(f"Converged: {result.converged}")
 print(f"Iterations: {result.iterations}")
-print(f"Mass error: {result.mass_conservation_error:.2e}")
 ```
 
-### **Example 2: Method Comparison**
+### **Example 2: Custom Parameters**
 ```python
-from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
+from mfg_pde import MFGProblem
 
-# Compare three solver tiers
-solvers = {
-    "Basic FDM": create_basic_solver(problem),
-    "Hybrid (Standard)": create_standard_solver(problem, "fixed_point"),
-    "WENO (Advanced)": create_accurate_solver(problem, solver_type="weno")
-}
+problem = MFGProblem(Nx=100, Nt=50, T=1.0)
 
-results = {name: solver.solve() for name, solver in solvers.items()}
-
-# Compare mass conservation
-for name, result in results.items():
-    print(f"{name}: {result.mass_conservation_error:.2e}")
+# Solve with custom settings
+result = problem.solve(
+    max_iterations=200,
+    tolerance=1e-8,
+    verbose=True
+)
 ```
 
 ### **Example 3: Custom Problem**
@@ -194,7 +181,7 @@ result = solver.solve()
 ## 💡 **Key Features**
 
 ✅ **Research-Grade**: Publication-quality solvers with rigorous validation
-✅ **Algorithm Access**: Full control over numerical methods (FDM, WENO, Semi-Lagrangian, etc.)
+✅ **Algorithm Access**: Full control over numerical methods (FDM, Particle, WENO, Semi-Lagrangian)
 ✅ **Mass-Conserving**: Default solver achieves ~10⁻¹⁵ mass conservation error
 ✅ **Fast**: Multi-backend acceleration (PyTorch, JAX, Numba)
 ✅ **Benchmarking**: Easy comparison of multiple algorithms

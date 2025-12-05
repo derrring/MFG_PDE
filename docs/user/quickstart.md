@@ -2,10 +2,6 @@
 
 **Get started with MFG_PDE in 5 minutes**
 
-MFG_PDE provides two interfaces:
-1. **`solve_mfg()`** - One-line solver (NEW in v0.8+)
-2. **Factory API** - Fine-grained control with `create_*_solver()` functions
-
 ---
 
 ## Prerequisites
@@ -27,16 +23,14 @@ pip install mfg-pde
 
 ---
 
-## Simplest Example (30 seconds) - NEW!
-
-**New in v0.8**: One-line solver with automatic configuration:
+## Simplest Example (30 seconds)
 
 ```python
-from mfg_pde import MFGProblem, solve_mfg
+from mfg_pde import MFGProblem
 
-# Create and solve in one line
+# Create and solve
 problem = MFGProblem()
-result = solve_mfg(problem)
+result = problem.solve()
 
 # Access results
 print(f"Converged: {result.converged}")
@@ -50,37 +44,20 @@ print(result.M.shape)  # Density
 - Chooses resolution based on dimension (100 for 1D, 50×50 for 2D)
 - Sets sensible defaults (max_iterations=100, tolerance=1e-4)
 
-### Method Presets
-
-```python
-# Fast (optimized for speed)
-result = solve_mfg(problem, method="fast")
-
-# Accurate (high precision)
-result = solve_mfg(problem, method="accurate")
-
-# Research (comprehensive diagnostics)
-result = solve_mfg(problem, method="research")
-```
-
 ### Custom Parameters
 
 ```python
 # Override defaults
-result = solve_mfg(
-    problem,
-    method="accurate",
-    resolution=150,         # Higher resolution
+result = problem.solve(
     max_iterations=200,     # More iterations
-    tolerance=1e-6,         # Tighter tolerance
-    damping_factor=0.3,     # Custom damping
-    backend="numpy"         # Specify backend
+    tolerance=1e-8,         # Tighter tolerance
+    verbose=True            # Show progress
 )
 ```
 
-**When to use `solve_mfg()`**: Quick prototyping, standard problems, getting started
+**Primary API**: `problem.solve()` - works for all standard use cases
 
-**When to use Factory API**: Custom solvers, fine control, research comparison
+**Factory API**: For advanced users needing custom solver configurations
 
 ---
 
@@ -166,17 +143,16 @@ result = solver.solve()
 ```python
 from mfg_pde.factory import create_accurate_solver
 
-# High-order WENO
-solver_weno = create_accurate_solver(problem, solver_type="weno")
+# Accurate configuration (higher iterations, tighter tolerance)
+solver = create_accurate_solver(problem, "fixed_point", max_iterations=200)
+result = solver.solve()
 
-# Semi-Lagrangian
-solver_sl = create_accurate_solver(problem, solver_type="semi_lagrangian")
-
-# Deep Galerkin Method (DGM)
-solver_dgm = create_accurate_solver(problem, solver_type="dgm")
+# Direct access to specialized HJB solvers (advanced usage)
+from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver, HJBSemiLagrangianSolver
+# These require manual configuration - see advanced examples
 ```
 
-Use for specialized requirements (high-order accuracy, large time steps, high dimensions).
+Use for specialized requirements (high-order accuracy, research applications).
 
 ---
 
@@ -246,8 +222,8 @@ result = solver.solve()
 ### **Learn More**
 
 1. **[Solver Selection Guide](SOLVER_SELECTION_GUIDE.md)** - When to use each tier
-2. **[Factory API Reference](factory_api_reference.md)** - All `create_*_solver()` functions
-3. **[Custom Problems](custom_problems.md)** - Define your own MFG formulations
+2. **[HJB Solver Selection Guide](HJB_SOLVER_SELECTION_GUIDE.md)** - HJB solver details
+3. **[Usage Patterns](usage_patterns.md)** - Common usage patterns and custom problems
 
 ### **Examples**
 
@@ -292,7 +268,7 @@ solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
 
-See [Custom Problems Guide](custom_problems.md) for details.
+See [Usage Patterns](usage_patterns.md) for details.
 
 ---
 

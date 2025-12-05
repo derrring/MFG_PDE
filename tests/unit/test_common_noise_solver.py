@@ -195,9 +195,8 @@ class TestCommonNoiseSolverInitialization:
         problem = self._create_simple_problem()
 
         def custom_factory(prob):
-            from mfg_pde.factory import create_fast_solver
-
-            return create_fast_solver(prob)
+            # Use the new problem.solve() API
+            return prob.solve(verbose=False)
 
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=10, conditional_solver_factory=custom_factory)
 

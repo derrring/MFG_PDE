@@ -207,22 +207,18 @@ result.plot_solution()
 ### Comparison and Benchmarking
 
 ```python
-from mfg_pde.analysis import compare_results, benchmark_solvers
+# Compare solver results manually
+from mfg_pde.factory import create_fast_solver, create_accurate_solver
 
-# Compare multiple solutions
-configs = [fast_config(), accurate_config(), research_config()]
-results = [FixedPointSolver.from_config(c).solve(problem) for c in configs]
+problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 
-comparison = compare_results(results, metrics=['accuracy', 'speed', 'memory'])
-comparison.plot_comparison()
+# Run different configurations
+result_fast = create_fast_solver(problem, "fixed_point").solve()
+result_accurate = create_accurate_solver(problem, "fixed_point").solve()
 
-# Benchmark different solvers
-benchmark = benchmark_solvers(
-    problem=problem,
-    solvers=['fixed_point', 'newton', 'anderson'],
-    configs=[fast_config(), accurate_config()]
-)
-benchmark.print_summary()
+# Compare results
+print(f"Fast: {result_fast.iterations} iter, converged={result_fast.converged}")
+print(f"Accurate: {result_accurate.iterations} iter, converged={result_accurate.converged}")
 ```
 
 ## Problem Modification
@@ -265,39 +261,32 @@ problem_modified = (problem
 ### Robust Solving
 
 ```python
-from mfg_pde.exceptions import ConvergenceError, ConfigurationError
+from mfg_pde.utils import ConvergenceError, ConfigurationError
 
 try:
-    result = solver.solve(problem)
+    result = solver.solve()
 except ConvergenceError as e:
     print(f"Failed to converge: {e}")
-    print(f"Final residual: {e.final_residual}")
-    print(f"Iterations completed: {e.iterations}")
-
-    # Try with more relaxed settings
-    relaxed_solver = solver.with_tolerance(1e-4).with_max_iterations(1000)
-    result = relaxed_solver.solve(problem)
+    # Retry with different settings
+    solver = create_fast_solver(problem, "fixed_point", max_iterations=500)
+    result = solver.solve()
 
 except ConfigurationError as e:
     print(f"Configuration problem: {e}")
     # Fix configuration and retry
 ```
 
-### Diagnostic Tools
+### Checking Convergence
 
 ```python
-from mfg_pde.diagnostics import diagnose_problem, analyze_convergence
+# Check result attributes for convergence info
+result = solver.solve()
 
-# Analyze problem characteristics
-diagnosis = diagnose_problem(problem)
-print(f"Problem difficulty: {diagnosis.difficulty}")
-print(f"Recommended tolerance: {diagnosis.recommended_tolerance}")
-print(f"Estimated iterations: {diagnosis.estimated_iterations}")
-
-# Analyze convergence behavior
-convergence_analysis = analyze_convergence(result)
-convergence_analysis.plot_convergence_history()
-convergence_analysis.identify_convergence_issues()
+if not result.converged:
+    print(f"Did not converge in {result.iterations} iterations")
+    # Check error history if available
+    if hasattr(result, 'error_history_U'):
+        print(f"Final U error: {result.error_history_U[-1]:.2e}")
 ```
 
 ## Using Factory API with Custom Problems
@@ -361,24 +350,21 @@ fastest = min(results.items(), key=lambda x: x[1]['time'])
 print(f"Fastest backend: {fastest[0]} ({fastest[1]['time']:.2f}s)")
 ```
 
-### Parallel Processing
+### Parameter Sweeps
 
 ```python
-from mfg_pde.parallel import ParameterSweep
+# Manual parameter sweep (parallel processing planned for future)
+from mfg_pde import MFGProblem
+from mfg_pde.factory import create_fast_solver
 
-# Parallel parameter exploration
-sweep = ParameterSweep(
-    base_problem=problem,
-    parameter_ranges={
-        'crowd_size': [50, 100, 200, 500],
-        'exit_attraction': [0.5, 1.0, 1.5, 2.0]
-    },
-    solver_config=fast_config(),
-    n_workers=4
-)
+results = {}
+for nx in [25, 50, 100]:
+    problem = MFGProblem(Nx=nx, Nt=20, T=1.0)
+    solver = create_fast_solver(problem, "fixed_point")
+    result = solver.solve()
+    results[nx] = result.iterations
 
-results = sweep.execute()
-sweep.plot_parameter_space()
+print("Grid size vs iterations:", results)
 ```
 
 ## Working Examples for Tier 2
@@ -427,6 +413,6 @@ print(f"Core objects test: {result.converged}, {result.iterations} iterations")
 ## What's Next?
 
 - **Need algorithm-level control?** → See [Advanced Hooks Guide](advanced_hooks.md)
-- **Want to implement custom solvers?** → Check [Developer Guide](../development/custom_solvers.md)
-- **Performance issues?** → Read [Performance Optimization Guide](performance.md)
-- **Complex geometries?** → Explore [Geometry and Domains Guide](geometry.md)
+- **Want to implement custom solvers?** → Check [Solver Selection Guide](SOLVER_SELECTION_GUIDE.md)
+- **Performance issues?** → Read [Multidimensional MFG Guide](multidimensional_mfg_guide.md)
+- **Complex geometries?** → Explore [SDF Utilities Guide](sdf_utilities.md)

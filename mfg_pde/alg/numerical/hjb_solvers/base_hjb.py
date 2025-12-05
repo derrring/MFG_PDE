@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any
 
@@ -11,9 +12,11 @@ from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, ha
 from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
-    from mfg_pde.config import BaseConfig  # type: ignore[attr-defined]
+    from mfg_pde.config import BaseConfig
     from mfg_pde.core.mfg_problem import MFGProblem
 
     # from mfg_pde.utils.aux_func import npart, ppart # Not needed here if problem provides jacobian parts
@@ -964,11 +967,11 @@ def solve_hjb_system_backward(
         )
         backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
 
-        # Debug check for NaN introduction
+        # Check for NaN introduction during Newton step
         if has_nan_or_inf(U_solution_this_picard_iter[n_idx_hjb, :], backend) and not has_nan_or_inf(
             U_n_plus_1_current_picard, backend
         ):
-            print(f"SYS_DEBUG: U_solution became NaN after Newton step for t_idx_n={n_idx_hjb}.")
+            logger.warning("U_solution became NaN after Newton step for t_idx_n=%d", n_idx_hjb)
 
     return U_solution_this_picard_iter
 

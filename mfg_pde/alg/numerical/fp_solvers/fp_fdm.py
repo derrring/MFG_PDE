@@ -1192,15 +1192,14 @@ def _compute_advection_term_nd(
         Advection term ∇·(α m)
     """
     # Compute drift: α = -coupling_coefficient * ∇U
-    # For now, use simple central differences
-    # TODO: Implement proper upwind scheme
+    # Use upwind scheme for advection-dominated stability
 
     advection = np.zeros_like(M)
 
     if ndim == 2:
         dx, dy = spacing
 
-        # Compute ∇U with central differences
+        # Compute ∇U with central differences for velocity field
         grad_U_x = np.zeros_like(U)
         grad_U_y = np.zeros_like(U)
 
@@ -1208,17 +1207,39 @@ def _compute_advection_term_nd(
         grad_U_x[:, 1:-1] = (U[:, 2:] - U[:, :-2]) / (2 * dx)
         grad_U_y[1:-1, :] = (U[2:, :] - U[:-2, :]) / (2 * dy)
 
-        # Drift: α = -λ ∇U
+        # Drift velocity: α = -λ ∇U
         alpha_x = -coupling_coefficient * grad_U_x
         alpha_y = -coupling_coefficient * grad_U_y
 
-        # Advection: ∇·(α m) ≈ ∂(α_x m)/∂x + ∂(α_y m)/∂y
-        # Use upwind scheme for stability
+        # Upwind scheme for advection: ∇·(α m)
+        # Use one-sided differences based on flow direction
+        # Positive velocity → backward difference (upwind from left)
+        # Negative velocity → forward difference (upwind from right)
+
+        # X-direction upwind flux divergence
+        # Forward difference: (flux[i+1] - flux[i]) / dx
+        # Backward difference: (flux[i] - flux[i-1]) / dx
         flux_x = alpha_x * M
+
+        # Compute both forward and backward differences
+        d_flux_x_forward = np.zeros_like(M)
+        d_flux_x_backward = np.zeros_like(M)
+        d_flux_x_forward[:, :-1] = (flux_x[:, 1:] - flux_x[:, :-1]) / dx
+        d_flux_x_backward[:, 1:] = (flux_x[:, 1:] - flux_x[:, :-1]) / dx
+
+        # Select based on velocity direction (upwind)
+        advection += np.where(alpha_x >= 0, d_flux_x_backward, d_flux_x_forward)
+
+        # Y-direction upwind flux divergence
         flux_y = alpha_y * M
 
-        advection[:, 1:-1] += (flux_x[:, 2:] - flux_x[:, :-2]) / (2 * dx)
-        advection[1:-1, :] += (flux_y[2:, :] - flux_y[:-2, :]) / (2 * dy)
+        d_flux_y_forward = np.zeros_like(M)
+        d_flux_y_backward = np.zeros_like(M)
+        d_flux_y_forward[:-1, :] = (flux_y[1:, :] - flux_y[:-1, :]) / dy
+        d_flux_y_backward[1:, :] = (flux_y[1:, :] - flux_y[:-1, :]) / dy
+
+        # Select based on velocity direction (upwind)
+        advection += np.where(alpha_y >= 0, d_flux_y_backward, d_flux_y_forward)
 
     else:
         # General nD (placeholder)

@@ -50,6 +50,46 @@ When research matures: Add tests, write docs, ensure API consistency, open PR in
 
 ---
 
+## 🎨 **API Design Principles** ⚠️ **CRITICAL**
+
+### **No Premature Convenience**
+Do NOT add convenience wrappers, factory shortcuts, or "easy modes" until the core API is stable and mature.
+
+**Why**: Premature convenience creates technical debt, confuses users, and obscures the actual API.
+
+**Anti-patterns to avoid**:
+- ❌ Multiple ways to do the same thing (`solve_mfg()` vs `create_solver().solve()`)
+- ❌ Magic parameters (`method="fast"` vs explicit `tolerance=1e-4`)
+- ❌ Wrapper functions that hide the real API
+- ❌ Factory explosion (8 solver factories when 1 suffices)
+
+**Correct approach**:
+- ✅ One clear path: `problem.solve()`
+- ✅ Explicit parameters: `tolerance=1e-6, max_iterations=100`
+- ✅ Domain model IS the API: `MFGProblem` knows how to solve itself
+- ✅ Advanced options via composition, not factory proliferation
+
+### **Primary API Pattern**
+```python
+# The primary API is simple and direct
+problem = MFGProblem(...)
+result = problem.solve()
+
+# Customization via explicit parameters
+result = problem.solve(max_iterations=200, tolerance=1e-8)
+
+# Advanced: Factory API only when truly needed
+solver = create_standard_solver(problem, custom_config=config)
+```
+
+### **When to Add Convenience**
+Only after v1.0.0 when:
+- Core API is stable and well-tested
+- Clear user demand exists
+- The convenience doesn't obscure the primary API
+
+---
+
 ## 🏗️ **Repository Structure**
 
 ### **Top-Level Directories**

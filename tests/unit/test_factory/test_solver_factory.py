@@ -5,17 +5,15 @@ Unit tests for mfg_pde/factory/solver_factory.py
 Tests solver factory patterns including:
 - SolverFactoryConfig dataclass
 - SolverFactory class methods
-- Configuration preset validation
 - Config update with kwargs
-- Convenience factory functions
 - Error handling and validation
-- Deprecation warnings
 """
 
 from unittest.mock import Mock, patch
 
 import pytest
 
+from mfg_pde.config.pydantic_config import MFGSolverConfig
 from mfg_pde.factory.solver_factory import (
     SolverFactory,
     SolverFactoryConfig,
@@ -69,29 +67,23 @@ def test_solver_factory_config_defaults():
     config = SolverFactoryConfig()
 
     assert config.solver_type == "fixed_point"
-    assert config.config_preset == "balanced"
-    assert config.return_structured is True
-    assert config.warm_start is False
     assert config.custom_config is None
-    assert config.solver_kwargs == {}  # __post_init__ initializes empty dict
+    assert config.solver_kwargs == {}
 
 
 @pytest.mark.unit
 def test_solver_factory_config_custom_values():
     """Test SolverFactoryConfig with custom values."""
     custom_kwargs = {"max_iterations": 100}
+    custom_config = MFGSolverConfig()
     config = SolverFactoryConfig(
         solver_type="fixed_point",
-        config_preset="fast",
-        return_structured=False,
-        warm_start=True,
+        custom_config=custom_config,
         solver_kwargs=custom_kwargs,
     )
 
     assert config.solver_type == "fixed_point"
-    assert config.config_preset == "fast"
-    assert config.return_structured is False
-    assert config.warm_start is True
+    assert config.custom_config is custom_config
     assert config.solver_kwargs == custom_kwargs
 
 
@@ -103,73 +95,6 @@ def test_solver_factory_config_post_init():
 
 
 # ===================================================================
-# Test SolverFactory._get_config_by_preset
-# ===================================================================
-
-
-@pytest.mark.unit
-def test_get_config_by_preset_fast():
-    """Test getting 'fast' preset configuration."""
-    config = SolverFactory._get_config_by_preset("fast")
-
-    assert config is not None
-    assert hasattr(config, "picard")
-    assert hasattr(config, "hjb")
-    assert hasattr(config, "fp")
-
-
-@pytest.mark.unit
-def test_get_config_by_preset_accurate():
-    """Test getting 'accurate' preset configuration."""
-    config = SolverFactory._get_config_by_preset("accurate")
-
-    assert config is not None
-    assert hasattr(config, "picard")
-    assert hasattr(config, "hjb")
-    assert hasattr(config, "fp")
-
-
-@pytest.mark.unit
-def test_get_config_by_preset_research():
-    """Test getting 'research' preset configuration."""
-    config = SolverFactory._get_config_by_preset("research")
-
-    assert config is not None
-    assert hasattr(config, "picard")
-    assert hasattr(config, "hjb")
-    assert hasattr(config, "fp")
-
-
-@pytest.mark.unit
-def test_get_config_by_preset_balanced():
-    """Test getting 'balanced' preset configuration."""
-    config = SolverFactory._get_config_by_preset("balanced")
-
-    assert config is not None
-    assert hasattr(config, "picard")
-    assert hasattr(config, "hjb")
-    assert hasattr(config, "fp")
-    # Balanced has specific values
-    assert config.picard.max_iterations == 25
-    assert config.picard.tolerance == 1e-4
-    assert config.picard.damping_factor == 0.6
-
-
-@pytest.mark.unit
-def test_get_config_by_preset_invalid():
-    """Test getting invalid preset raises ValueError."""
-    with pytest.raises(ValueError) as exc_info:
-        SolverFactory._get_config_by_preset("invalid_preset")
-
-    assert "Unknown config preset" in str(exc_info.value)
-    assert "invalid_preset" in str(exc_info.value)
-    assert "fast" in str(exc_info.value)
-    assert "accurate" in str(exc_info.value)
-    assert "research" in str(exc_info.value)
-    assert "balanced" in str(exc_info.value)
-
-
-# ===================================================================
 # Test SolverFactory._update_config_with_kwargs
 # ===================================================================
 
@@ -177,9 +102,7 @@ def test_get_config_by_preset_invalid():
 @pytest.mark.unit
 def test_update_config_with_kwargs_picard():
     """Test updating Picard config parameters."""
-    from mfg_pde.config.solver_config import create_fast_config
-
-    base_config = create_fast_config()
+    base_config = MFGSolverConfig()
     updated = SolverFactory._update_config_with_kwargs(
         base_config,
         max_picard_iterations=150,
@@ -195,9 +118,7 @@ def test_update_config_with_kwargs_picard():
 @pytest.mark.unit
 def test_update_config_with_kwargs_newton():
     """Test updating Newton config parameters."""
-    from mfg_pde.config.solver_config import create_fast_config
-
-    base_config = create_fast_config()
+    base_config = MFGSolverConfig()
     updated = SolverFactory._update_config_with_kwargs(
         base_config,
         max_newton_iterations=50,
@@ -211,9 +132,7 @@ def test_update_config_with_kwargs_newton():
 @pytest.mark.unit
 def test_update_config_with_kwargs_particles():
     """Test updating particle config parameters."""
-    from mfg_pde.config.solver_config import create_fast_config
-
-    base_config = create_fast_config()
+    base_config = MFGSolverConfig()
     updated = SolverFactory._update_config_with_kwargs(
         base_config,
         num_particles=8000,
@@ -225,9 +144,7 @@ def test_update_config_with_kwargs_particles():
 @pytest.mark.unit
 def test_update_config_with_kwargs_return_structured():
     """Test updating return_structured flag."""
-    from mfg_pde.config.solver_config import create_fast_config
-
-    base_config = create_fast_config()
+    base_config = MFGSolverConfig()
     updated = SolverFactory._update_config_with_kwargs(
         base_config,
         return_structured=False,
@@ -262,17 +179,6 @@ def test_create_solver_invalid_solver_type():
     assert "Unknown solver type" in str(exc_info.value)
     assert "invalid_type" in str(exc_info.value)
     assert "fixed_point" in str(exc_info.value)
-
-
-@pytest.mark.unit
-def test_create_solver_invalid_preset():
-    """Test create_solver raises error for invalid preset."""
-    problem = MockMFGProblem()
-
-    with pytest.raises(ValueError) as exc_info:
-        SolverFactory.create_solver(problem=problem, config_preset="invalid_preset")
-
-    assert "Unknown config preset" in str(exc_info.value)
 
 
 @pytest.mark.unit
@@ -319,12 +225,10 @@ def test_create_solver_fixed_point_with_solvers():
 @pytest.mark.unit
 def test_create_solver_custom_config():
     """Test create_solver with custom configuration."""
-    from mfg_pde.config.solver_config import create_research_config
-
     problem = MockMFGProblem()
     mock_hjb = Mock()
     mock_fp = Mock()
-    custom_config = create_research_config()
+    custom_config = MFGSolverConfig(convergence_tolerance=1e-8)
 
     with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
         MockIterator.return_value = Mock()
@@ -334,35 +238,12 @@ def test_create_solver_custom_config():
             solver_type="fixed_point",
             hjb_solver=mock_hjb,
             fp_solver=mock_fp,
-            custom_config=custom_config,
+            config=custom_config,
         )
 
         assert solver is not None
         call_kwargs = MockIterator.call_args[1]
-        # Config should be the custom one (but deepcopied and updated)
         assert call_kwargs["config"] is not None
-
-
-@pytest.mark.unit
-def test_create_solver_amr_warning():
-    """Test create_solver warns about AMR being experimental."""
-    problem = MockMFGProblem()
-    mock_hjb = Mock()
-    mock_fp = Mock()
-
-    with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
-        MockIterator.return_value = Mock()
-
-        with pytest.warns(UserWarning, match="AMR enhancement is currently experimental"):
-            solver = SolverFactory.create_solver(
-                problem=problem,
-                solver_type="fixed_point",
-                hjb_solver=mock_hjb,
-                fp_solver=mock_fp,
-                enable_amr=True,
-            )
-
-        assert solver is not None
 
 
 # ===================================================================
@@ -382,8 +263,6 @@ def test_convenience_create_solver():
 
         solver = create_solver(
             problem=problem,
-            solver_type="fixed_point",
-            preset="fast",
             hjb_solver=mock_hjb,
             fp_solver=mock_fp,
         )
@@ -392,237 +271,76 @@ def test_convenience_create_solver():
         mock_create.assert_called_once()
         call_kwargs = mock_create.call_args[1]
         assert call_kwargs["problem"] == problem
-        assert call_kwargs["solver_type"] == "fixed_point"
-        assert call_kwargs["config_preset"] == "fast"
+        assert call_kwargs["hjb_solver"] == mock_hjb
+        assert call_kwargs["fp_solver"] == mock_fp
 
 
 # ===================================================================
-# Test Convenience Function: create_basic_solver
+# Test Removed Functions Raise NotImplementedError
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_create_basic_solver():
-    """Test create_basic_solver creates FDM solver."""
-    problem = MockMFGProblem()
+    """Test create_basic_solver raises NotImplementedError."""
+    with pytest.raises(NotImplementedError) as exc_info:
+        create_basic_solver()
 
-    with (
-        patch("mfg_pde.alg.numerical.hjb_solvers.hjb_fdm.HJBFDMSolver") as MockHJB,
-        patch("mfg_pde.alg.numerical.fp_solvers.fp_fdm.FPFDMSolver") as MockFP,
-        patch("mfg_pde.alg.numerical.coupling.FixedPointIterator") as MockIterator,
-    ):
-        MockHJB.return_value = Mock()
-        MockFP.return_value = Mock()
-        MockIterator.return_value = Mock()
-
-        solver = create_basic_solver(problem=problem, damping=0.7, max_iterations=150, tolerance=1e-6)
-
-        assert solver is not None
-        MockHJB.assert_called_once_with(problem=problem)
-        MockFP.assert_called_once_with(problem=problem)
-        MockIterator.assert_called_once()
-        # Check damping was passed
-        call_kwargs = MockIterator.call_args[1]
-        assert call_kwargs["damping_factor"] == 0.7
-
-
-# ===================================================================
-# Test Convenience Function: create_standard_solver
-# ===================================================================
+    assert "has been removed" in str(exc_info.value)
 
 
 @pytest.mark.unit
 def test_create_standard_solver():
-    """Test create_standard_solver creates hybrid solver."""
-    problem = MockMFGProblem()
+    """Test create_standard_solver raises NotImplementedError."""
+    with pytest.raises(NotImplementedError) as exc_info:
+        create_standard_solver()
 
-    with (
-        patch("mfg_pde.alg.numerical.hjb_solvers.hjb_fdm.HJBFDMSolver") as MockHJB,
-        patch("mfg_pde.alg.numerical.fp_solvers.fp_particle.FPParticleSolver") as MockFP,
-        patch("mfg_pde.factory.solver_factory.SolverFactory.create_solver") as mock_create,
-    ):
-        MockHJB.return_value = Mock()
-        MockFP.return_value = Mock()
-        mock_create.return_value = Mock()
-
-        solver = create_standard_solver(problem=problem)
-
-        assert solver is not None
-        # Should create default HJB-FDM and FP-Particle solvers
-        MockHJB.assert_called_once()
-        MockFP.assert_called_once()
-        # FP-Particle should have 5000 particles for standard
-        call_kwargs = MockFP.call_args[1]
-        assert call_kwargs["num_particles"] == 5000
-
-
-# ===================================================================
-# Test Convenience Function: create_fast_solver (deprecated)
-# ===================================================================
+    assert "has been removed" in str(exc_info.value)
 
 
 @pytest.mark.unit
-def test_create_fast_solver_deprecation_warning():
-    """Test create_fast_solver raises deprecation warning."""
-    problem = MockMFGProblem()
+def test_create_fast_solver_removed():
+    """Test create_fast_solver raises NotImplementedError."""
+    with pytest.raises(NotImplementedError) as exc_info:
+        create_fast_solver()
 
-    with patch("mfg_pde.factory.solver_factory.create_standard_solver") as mock_standard:
-        mock_standard.return_value = Mock()
-
-        with pytest.warns(DeprecationWarning, match="create_fast_solver.*deprecated"):
-            solver = create_fast_solver(problem=problem)
-
-        assert solver is not None
-        mock_standard.assert_called_once()
-
-
-# ===================================================================
-# Test Convenience Function: create_semi_lagrangian_solver
-# ===================================================================
+    assert "has been removed" in str(exc_info.value)
 
 
 @pytest.mark.unit
 def test_create_semi_lagrangian_solver():
-    """Test create_semi_lagrangian_solver creates SL solver."""
-    problem = MockMFGProblem()
+    """Test create_semi_lagrangian_solver raises NotImplementedError."""
+    with pytest.raises(NotImplementedError) as exc_info:
+        create_semi_lagrangian_solver()
 
-    with (
-        patch("mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian.HJBSemiLagrangianSolver") as MockHJB,
-        patch("mfg_pde.alg.numerical.fp_solvers.fp_fdm.FPFDMSolver") as MockFP,
-        patch("mfg_pde.factory.solver_factory.create_standard_solver") as mock_standard,
-    ):
-        MockHJB.return_value = Mock()
-        MockFP.return_value = Mock()
-        mock_standard.return_value = Mock()
-
-        solver = create_semi_lagrangian_solver(
-            problem=problem,
-            interpolation_method="cubic",
-            optimization_method="brent",
-        )
-
-        assert solver is not None
-        MockHJB.assert_called_once()
-        call_kwargs = MockHJB.call_args[1]
-        assert call_kwargs["interpolation_method"] == "cubic"
-        assert call_kwargs["optimization_method"] == "brent"
-
-
-@pytest.mark.unit
-def test_create_semi_lagrangian_solver_particle_fp():
-    """Test create_semi_lagrangian_solver with particle FP solver."""
-    problem = MockMFGProblem()
-
-    with (
-        patch("mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian.HJBSemiLagrangianSolver") as MockHJB,
-        patch("mfg_pde.alg.numerical.fp_solvers.fp_particle.FPParticleSolver") as MockFP,
-        patch("mfg_pde.factory.solver_factory.create_standard_solver") as mock_standard,
-    ):
-        MockHJB.return_value = Mock()
-        MockFP.return_value = Mock()
-        mock_standard.return_value = Mock()
-
-        solver = create_semi_lagrangian_solver(
-            problem=problem,
-            fp_solver_type="particle",
-        )
-
-        assert solver is not None
-        MockFP.assert_called_once_with(problem=problem)
-
-
-@pytest.mark.unit
-def test_create_semi_lagrangian_solver_invalid_fp_type():
-    """Test create_semi_lagrangian_solver raises error for invalid FP type."""
-    problem = MockMFGProblem()
-
-    with patch("mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian.HJBSemiLagrangianSolver") as MockHJB:
-        MockHJB.return_value = Mock()
-
-        with pytest.raises(ValueError) as exc_info:
-            create_semi_lagrangian_solver(
-                problem=problem,
-                fp_solver_type="invalid_type",
-            )
-
-        assert "Unknown FP solver type" in str(exc_info.value)
-
-
-# ===================================================================
-# Test Convenience Function: create_accurate_solver
-# ===================================================================
+    assert "has been removed" in str(exc_info.value)
 
 
 @pytest.mark.unit
 def test_create_accurate_solver():
-    """Test create_accurate_solver creates high-precision solver."""
-    problem = MockMFGProblem()
+    """Test create_accurate_solver raises NotImplementedError."""
+    with pytest.raises(NotImplementedError) as exc_info:
+        create_accurate_solver()
 
-    with (
-        patch("mfg_pde.alg.numerical.hjb_solvers.hjb_fdm.HJBFDMSolver") as MockHJB,
-        patch("mfg_pde.alg.numerical.fp_solvers.fp_particle.FPParticleSolver") as MockFP,
-        patch("mfg_pde.factory.solver_factory.SolverFactory.create_solver") as mock_create,
-    ):
-        MockHJB.return_value = Mock()
-        MockFP.return_value = Mock()
-        mock_create.return_value = Mock()
-
-        solver = create_accurate_solver(problem=problem)
-
-        assert solver is not None
-        # FP-Particle should have 10000 particles for accuracy
-        call_kwargs = MockFP.call_args[1]
-        assert call_kwargs["num_particles"] == 10000
-        # Should use accurate preset
-        create_kwargs = mock_create.call_args[1]
-        assert create_kwargs["config_preset"] == "accurate"
-
-
-# ===================================================================
-# Test Convenience Function: create_research_solver
-# ===================================================================
+    assert "has been removed" in str(exc_info.value)
 
 
 @pytest.mark.unit
 def test_create_research_solver():
-    """Test create_research_solver creates solver with monitoring."""
-    problem = MockMFGProblem()
+    """Test create_research_solver raises NotImplementedError."""
+    with pytest.raises(NotImplementedError) as exc_info:
+        create_research_solver()
 
-    with patch("mfg_pde.factory.solver_factory.SolverFactory.create_solver") as mock_create:
-        mock_create.return_value = Mock()
-
-        solver = create_research_solver(problem=problem)
-
-        assert solver is not None
-        # Should use research preset
-        call_kwargs = mock_create.call_args[1]
-        assert call_kwargs["config_preset"] == "research"
-
-
-# ===================================================================
-# Test Convenience Function: create_amr_solver
-# ===================================================================
+    assert "has been removed" in str(exc_info.value)
 
 
 @pytest.mark.unit
 def test_create_amr_solver():
-    """Test create_amr_solver returns base solver (AMR experimental)."""
-    problem = MockMFGProblem()
+    """Test create_amr_solver raises NotImplementedError."""
+    with pytest.raises(NotImplementedError) as exc_info:
+        create_amr_solver()
 
-    with patch("mfg_pde.factory.solver_factory.SolverFactory.create_solver") as mock_create:
-        mock_create.return_value = Mock()
-
-        solver = create_amr_solver(
-            problem=problem,
-            base_solver_type="fixed_point",
-            error_threshold=1e-5,
-            max_levels=6,
-        )
-
-        assert solver is not None
-        # Should use accurate preset
-        call_kwargs = mock_create.call_args[1]
-        assert call_kwargs["config_preset"] == "accurate"
+    assert "has been removed" in str(exc_info.value)
 
 
 # ===================================================================
