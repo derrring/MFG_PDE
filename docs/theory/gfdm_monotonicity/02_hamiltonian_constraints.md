@@ -1,9 +1,10 @@
 # GFDM Hamiltonian Gradient Constraints - Mathematical Theory
 
 **Created**: 2025-11-13
+**Updated**: 2025-12-05
 **Purpose**: Mathematical foundation for direct Hamiltonian gradient constraints in GFDM HJB solver
-**Status**: THEORETICAL DESIGN (Issue #271)
-**Related**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1370`
+**Status**: ✅ IMPLEMENTED (Issue #271, PR #376)
+**Related**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1608-1729`
 
 ---
 
@@ -303,27 +304,27 @@ def _construct_hamiltonian_gradient_constraints(
 
 ## 7. Implementation Roadmap
 
-### Phase 1: Prototype (1-2 days)
-- [ ] Extract collocation weight computation from GFDM
-- [ ] Implement `_get_collocation_weights_gradient()`
-- [ ] Unit test weight computation against known stencils
+### Phase 1: Prototype ✅ COMPLETED
+- [x] Extract collocation weight computation from GFDM
+- [x] Implement `_build_hamiltonian_gradient_constraints()` (lines 1608-1729)
+- [x] Unit test weight computation against known stencils
 
-### Phase 2: Constraint Construction (2-3 days)
-- [ ] Implement `_construct_hamiltonian_gradient_constraints()`
-- [ ] Map collocation weights to Taylor coefficient space
-- [ ] Test constraint generation on simple 1D/2D problems
+### Phase 2: Constraint Construction ✅ COMPLETED
+- [x] Implement `_build_hamiltonian_gradient_constraints()` method
+- [x] Map collocation weights to Taylor coefficient space via direction vectors
+- [x] Test constraint generation on 1D/2D problems (5 unit tests)
 
-### Phase 3: Integration (1-2 days)
-- [ ] Integrate with existing QP solver pipeline
-- [ ] Add toggle: `use_hamiltonian_constraints=True/False`
-- [ ] Benchmark against indirect approach
+### Phase 3: Integration ✅ COMPLETED
+- [x] Integrate with existing QP solver pipeline (lines 874-896)
+- [x] Add toggle: `qp_constraint_mode="indirect"|"hamiltonian"`
+- [ ] Benchmark against indirect approach (future work)
 
-### Phase 4: Validation (2-3 days)
+### Phase 4: Validation (Future Work)
 - [ ] Convergence tests on standard MFG problems
 - [ ] Compare monotonicity guarantees (direct vs indirect)
 - [ ] Performance profiling (QP solve times)
 
-**Total Estimated Effort**: 6-10 days
+**Implementation completed**: 2025-12-05 (PR #376)
 
 ---
 
@@ -397,6 +398,6 @@ Implement as **optional feature** with toggle `use_hamiltonian_constraints=True/
 
 ---
 
-**Last Updated**: 2025-11-13
-**Status**: Theoretical design complete, ready for implementation (Issue #271)
-**Code Reference**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1370`
+**Last Updated**: 2025-12-05
+**Status**: ✅ IMPLEMENTED (Issue #271, PR #376)
+**Code Reference**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1608-1729`
