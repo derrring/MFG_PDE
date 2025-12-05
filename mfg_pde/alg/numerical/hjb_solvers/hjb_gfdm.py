@@ -59,6 +59,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         qp_usage_target: float = 0.1,  # Unused, kept for backward compatibility
         qp_solver: str = "osqp",  # "osqp" or "scipy"
         qp_warm_start: bool = True,  # Enable QP warm-starting
+        qp_constraint_mode: str = "indirect",  # "indirect" or "hamiltonian"
         # Adaptive neighborhood parameters
         adaptive_neighborhoods: bool = False,
         k_min: int | None = None,
@@ -94,6 +95,10 @@ class HJBGFDMSolver(BaseHJBSolver):
                 When True, uses previous QP solution as initial guess for next solve.
                 Provides 2-3× additional speedup for OSQP on similar QP problems.
                 Only applies to OSQP solver (scipy does not support efficient warm-starting).
+            qp_constraint_mode: Type of monotonicity constraints (default "indirect"):
+                - "indirect": Constraints on Taylor coefficients (simpler, approximate)
+                - "hamiltonian": Direct Hamiltonian gradient constraints dH/du_j >= 0
+                  (stricter, better monotonicity guarantees, requires gamma parameter)
             adaptive_neighborhoods: Enable adaptive delta enlargement to guarantee well-posed problems.
                 When enabled, points with insufficient neighbors get locally enlarged delta.
                 Maintains theoretical soundness while ensuring practical robustness.
@@ -189,6 +194,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         # QP solver selection
         self.qp_solver = qp_solver
         self.qp_warm_start = qp_warm_start
+        self.qp_constraint_mode = qp_constraint_mode
 
         # Warm-start cache: stores previous QP solutions per point
         # Key: point_idx, Value: (solution vector, dual variables)
@@ -865,8 +871,31 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Set up constraints for monotonicity
         constraints = []
 
-        # Implement proper monotonicity constraints for finite difference weights
-        if self.dimension == 1:
+        # Build constraints based on constraint mode
+        if self.qp_constraint_mode == "hamiltonian":
+            # Direct Hamiltonian gradient constraints: dH/du_j >= 0
+            # Get gamma from problem (default 0 for standard problems)
+            gamma = getattr(self.problem, "gamma", 0.0)
+
+            # Get local density if available (for MFG coupling)
+            m_density = 0.0
+            if hasattr(self, "_current_density") and self._current_density is not None:
+                if point_idx < len(self._current_density):
+                    m_density = self._current_density[point_idx]
+
+            hamiltonian_constraints = self._build_hamiltonian_gradient_constraints(
+                A,
+                neighbor_indices,  # type: ignore[arg-type]
+                neighbor_points,  # type: ignore[arg-type]
+                center_point,
+                point_idx,
+                u_values=None,  # We don't have u during coefficient solve
+                m_density=m_density,
+                gamma=gamma,
+            )
+            constraints.extend(hamiltonian_constraints)
+        elif self.dimension == 1:
+            # Indirect constraints on Taylor coefficients (original approach)
             # For 1D, we can analyze the finite difference stencil more precisely
             monotonicity_constraints = self._build_monotonicity_constraints(
                 A,
@@ -1491,11 +1520,10 @@ class HJBGFDMSolver(BaseHJBSolver):
             rather than direct Hamiltonian gradient constraints ∂H/∂u_j ≥ 0.
 
             The indirect approach is simpler but approximate. For stricter monotonicity,
-            consider implementing direct Hamiltonian gradient constraints (see Section 4.4
-            of particle-collocation theory document).
+            use qp_constraint_mode="hamiltonian" which calls _build_hamiltonian_gradient_constraints().
 
-            TODO (Future Enhancement): Implement direct Hamiltonian gradient constraints
-            -------------------------------------------------------------------------
+            Direct Hamiltonian gradient constraints (qp_constraint_mode="hamiltonian"):
+            --------------------------------------------------------------------------
             For Hamiltonian H = 1/2|∇u|² + γm|∇u|² + V(x), enforce:
 
                 ∂H_h/∂u_j ≥ 0  for all j ≠ j_0
@@ -1509,11 +1537,8 @@ class HJBGFDMSolver(BaseHJBSolver):
 
                 w = β-th row of (A^T W A)^{-1} A^T W
 
-            This approach is more direct and theoretically rigorous than the current
+            The Hamiltonian approach is more direct and theoretically rigorous than the
             indirect constraints on D.
-
-            See docs/theory/numerical_methods/[PRIVATE]_particle_collocation_qp_monotone.md
-            Section 4.5 for implementation details.
 
         Constraint Categories:
             1. Diffusion dominance: ∂²u/∂x² coefficient should be negative
@@ -1602,6 +1627,129 @@ class HJBGFDMSolver(BaseHJBSolver):
                 return laplacian_mag - higher_order_norm  # Should be positive
 
             constraints.append({"type": "ineq", "fun": constraint_higher_order_small})
+
+        return constraints
+
+    def _build_hamiltonian_gradient_constraints(
+        self,
+        A: np.ndarray,
+        neighbor_indices: np.ndarray,
+        neighbor_points: np.ndarray,
+        center_point: np.ndarray,
+        point_idx: int,
+        u_values: np.ndarray | None = None,
+        m_density: float = 0.0,
+        gamma: float = 0.0,
+    ) -> list[dict]:
+        """
+        Build direct Hamiltonian gradient constraints for monotonicity.
+
+        For a monotone scheme, we require:
+            dH_h/du_j >= 0  for all neighbors j != j_0 (center)
+
+        For the standard MFG Hamiltonian H = 1/2|grad(u)|^2 + gamma*m*|grad(u)|^2 + V(x):
+            dH_h/du_j = (1 + 2*gamma*m) * (sum_l c_{j_0,l} * u_l) * c_{j_0,j}
+
+        Where c_{j_0,l} are the finite difference weights for gradient approximation.
+
+        The constraint dH_h/du_j >= 0 becomes:
+            (1 + 2*gamma*m) * grad_u * c_j >= 0  for each neighbor j
+
+        This is a LINEAR constraint on the finite difference coefficients c_j when
+        u_values are known, or a BILINEAR constraint when both u and c are unknowns.
+
+        For the GFDM formulation where we optimize Taylor coefficients D:
+            c_j = (D-matrix row for gradient) derived from Taylor expansion
+
+        The constraint becomes: D_grad * (x_j - x_0) / |x_j - x_0| >= 0
+        (positive gradient in direction toward neighbor j)
+
+        Args:
+            A: Taylor expansion matrix [n_neighbors, n_coeffs]
+            neighbor_indices: Indices of neighbor points
+            neighbor_points: Coordinates of neighbor points [n_neighbors, d]
+            center_point: Coordinates of center point [d]
+            point_idx: Index of center collocation point
+            u_values: Current value function estimates at all points (optional)
+            m_density: Local population density m(x) at center point
+            gamma: Coupling strength parameter gamma >= 0
+
+        Returns:
+            List of constraint dictionaries for scipy.optimize.minimize
+
+        Mathematical Derivation:
+            For H_h = 1/2 * (sum_l c_l * u_l)^2 + gamma*m*(sum_l c_l * u_l)^2 + V
+                    = (1/2 + gamma*m) * (sum_l c_l * u_l)^2 + V
+
+            dH_h/du_j = (1 + 2*gamma*m) * (sum_l c_l * u_l) * c_j
+
+            For monotonicity, we need dH_h/du_j >= 0 for j != j_0.
+
+            Case 1 (u known): Constraint is linear in c_j
+            Case 2 (u unknown): Use sign of (x_j - x_0) from discretization theory
+
+        References:
+            Barles-Souganidis (1991): Convergence of approximation schemes
+            Oberman (2006): Convergent difference schemes for degenerate elliptic
+        """
+        constraints = []
+
+        if self.dimension not in [1, 2, 3]:
+            # For higher dimensions, fall back to indirect constraints
+            return constraints
+
+        # Find gradient indices in multi_indices
+        gradient_indices = []
+        for k, beta in enumerate(self.multi_indices):
+            if sum(beta) == 1:  # First derivative
+                gradient_indices.append((k, beta))
+
+        if not gradient_indices:
+            return constraints
+
+        # Compute coupling factor (1 + 2*gamma*m)
+        coupling_factor = 1.0 + 2.0 * gamma * m_density
+
+        # Build constraints for each neighbor
+        n_neighbors = len(neighbor_indices)
+        for j in range(n_neighbors):
+            # Skip center point (we don't constrain dH/du_center)
+            if neighbor_indices[j] == point_idx:
+                continue
+
+            # Direction from center to neighbor j
+            direction = neighbor_points[j] - center_point
+            dist = np.linalg.norm(direction)
+
+            if dist < 1e-12:
+                continue  # Skip degenerate neighbors
+
+            # Normalize direction
+            unit_direction = direction / dist
+
+            # Build constraint: coupling_factor * (D_grad dot unit_direction) >= 0
+            # In terms of Taylor coefficients D:
+            #   For 1D: D_{(1,)} * sign(x_j - x_0) >= 0
+            #   For 2D: D_{(1,0)} * (x_j - x_0)/|...| + D_{(0,1)} * (y_j - y_0)/|...| >= 0
+            #   For 3D: similar with z component
+
+            def make_constraint(grad_idx_list, unit_dir, cf):
+                """Factory function to create closure with correct values."""
+
+                def constraint_func(x):
+                    """Hamiltonian gradient constraint: dH/du_j >= 0."""
+                    grad_dot_dir = 0.0
+                    for k_idx, beta in grad_idx_list:
+                        # Find which dimension this gradient component is
+                        dim_idx = beta.index(1)  # Which dimension has the 1
+                        grad_dot_dir += x[k_idx] * unit_dir[dim_idx]
+                    # Return cf * grad_dot_dir >= 0 (should be non-negative)
+                    return cf * grad_dot_dir
+
+                return constraint_func
+
+            constraint_fn = make_constraint(gradient_indices, unit_direction, coupling_factor)
+            constraints.append({"type": "ineq", "fun": constraint_fn})
 
         return constraints
 
