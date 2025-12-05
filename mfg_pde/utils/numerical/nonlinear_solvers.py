@@ -33,6 +33,16 @@ from scipy.sparse.linalg import spsolve
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+# Try to import JAX autodiff utilities
+_JAX_AVAILABLE = False
+try:
+    from mfg_pde.utils.acceleration import HAS_JAX
+    from mfg_pde.utils.acceleration.jax_utils import compute_jacobian
+
+    _JAX_AVAILABLE = HAS_JAX
+except ImportError:
+    pass
+
 
 class SolverInfo:
     """
@@ -274,6 +284,7 @@ class NewtonSolver(NonlinearSolver):
         sparse: bool = True,
         line_search: bool = False,
         finite_diff_epsilon: float = 1e-7,
+        use_jax_autodiff: bool | Literal["auto"] = "auto",
     ):
         """
         Initialize Newton solver.
@@ -282,10 +293,14 @@ class NewtonSolver(NonlinearSolver):
             max_iterations: Maximum Newton iterations
             tolerance: Convergence tolerance on ||F(x)||
             jacobian: Optional Jacobian function J: x → ∂F/∂x
-                     If None, uses finite differences
+                     If None, uses autodiff (if JAX available) or finite differences
             sparse: Use sparse linear solver (for large systems)
             line_search: Enable backtracking line search
             finite_diff_epsilon: Step size for finite differences
+            use_jax_autodiff: Whether to use JAX automatic differentiation:
+                - True: Use JAX autodiff (raises error if JAX not available)
+                - False: Use finite differences
+                - "auto" (default): Use JAX if available, else finite differences
         """
         if max_iterations < 1:
             raise ValueError(f"max_iterations must be >= 1, got {max_iterations}")
@@ -300,6 +315,17 @@ class NewtonSolver(NonlinearSolver):
         self.use_sparse = sparse
         self.line_search = line_search
         self.epsilon = finite_diff_epsilon
+
+        # Configure JAX autodiff
+        if use_jax_autodiff is True and not _JAX_AVAILABLE:
+            raise ImportError("JAX is required for autodiff Jacobian but not installed")
+        if use_jax_autodiff == "auto":
+            self.use_jax = _JAX_AVAILABLE
+        else:
+            self.use_jax = bool(use_jax_autodiff) and _JAX_AVAILABLE
+
+        # Cache for JIT-compiled Jacobian function
+        self._jax_jacobian_fn: Any = None
 
     def solve(  # type: ignore[override]
         self,
@@ -338,6 +364,9 @@ class NewtonSolver(NonlinearSolver):
         # Use provided jacobian or default
         jac_func = jacobian or self.jacobian_func
 
+        # Local flag for JAX usage (can be disabled if tracing fails)
+        use_jax_autodiff = self.use_jax
+
         for iteration in range(self.max_iterations):
             # Evaluate residual
             F_current = F(x_current)
@@ -361,8 +390,20 @@ class NewtonSolver(NonlinearSolver):
             if jac_func is not None:
                 J = jac_func(x_current)
                 jacobian_evals += 1
+            elif use_jax_autodiff:
+                # Use JAX automatic differentiation (O(1) Jacobian)
+                try:
+                    J = compute_jacobian(F, x_current, original_shape, mode="reverse")
+                    jacobian_evals += 1
+                except Exception:
+                    # JAX tracing failed (e.g., function uses numpy operations)
+                    # Fall back to finite differences for this iteration
+                    # and disable JAX for remaining iterations
+                    use_jax_autodiff = False
+                    J = self._finite_difference_jacobian(F, x_current, F_current)
+                    jacobian_evals += 1
             else:
-                # Automatic finite difference Jacobian
+                # Fallback: finite difference Jacobian (O(N) complexity)
                 J = self._finite_difference_jacobian(F, x_current, F_current)
                 jacobian_evals += 1
 
