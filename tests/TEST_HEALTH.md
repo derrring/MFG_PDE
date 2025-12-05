@@ -28,11 +28,11 @@ These tests are skipped when optional dependencies aren't installed:
 
 ### 2. Pre-existing Numerical Issues (Tracked)
 
-| Issue | Tests | Root Cause |
-|:------|:------|:-----------|
-| Semi-Lagrangian overflow | 17 | NaN/Inf in `_solve_crank_nicolson_diffusion` |
-| Shape mismatch (solve_mfg) | 16 | FP solver returns (Nt+1,) vs (Nt,) expected |
-| GFDM slow tests | 2 | Tests take 5+ minutes each |
+| Issue | Tests | Root Cause | Tracking |
+|:------|:------|:-----------|:---------|
+| Semi-Lagrangian overflow | 17 | CFL condition violations causing instability | [#369](https://github.com/derrring/MFG_PDE/issues/369) |
+| Shape mismatch (solve_mfg) | 16 | FP solver returns (Nt+1,) vs (Nt,) expected | #365 |
+| GFDM slow tests | 2 | Tests take 5+ minutes each | #365 |
 
 ### 3. API Migration Pending
 

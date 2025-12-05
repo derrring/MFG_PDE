@@ -27,14 +27,18 @@ from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 def simple_domain():
     """Create simple 1D domain for testing."""
     bc = BoundaryConditions("neumann", left_value=0.0, right_value=0.0)
-    return Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+    domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+    domain.create_grid(num_points=51)  # Must create grid before use
+    return domain
 
 
 @pytest.fixture
 def simple_2d_domain():
     """Create simple 2D domain for testing."""
     bc = BoundaryConditions("neumann", left_value=0.0, right_value=0.0)
-    return Domain2D(xmin=[0.0, 0.0], xmax=[1.0, 1.0], boundary_conditions=bc)
+    domain = Domain2D(xmin=[0.0, 0.0], xmax=[1.0, 1.0], boundary_conditions=bc)
+    domain.create_grid(num_points=[21, 21])  # Must create grid before use
+    return domain
 
 
 @pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
