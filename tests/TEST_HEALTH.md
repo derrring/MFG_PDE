@@ -38,7 +38,7 @@ These tests are skipped when optional dependencies aren't installed:
 
 | Issue | Tests | Target |
 |:------|:------|:-------|
-| Array validation | 11 | Phase 3.5 |
+| Array validation | ~~11~~ **0 (fixed)** | ~~Phase 3.5~~ |
 | Factory signatures | 7 | Issue #277 |
 | Voronoi maze | 1 | Module not implemented |
 
@@ -79,7 +79,7 @@ pytest tests/ --ignore=tests/unit/test_alg/test_neural
 - solve_mfg shape mismatch (#365)
 
 ### Medium Priority
-- Array validation tests need fixing
+- ~~Array validation tests need fixing~~ (fixed)
 - Factory signature validation
 
 ### Low Priority
