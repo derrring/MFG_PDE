@@ -2,12 +2,13 @@
 Numerical utilities for MFG computations.
 
 This module provides numerical algorithms and helper functions commonly needed
-in MFG research projects, including kernel functions, GFDM operators, particle
-interpolation, signed distance functions, and computational utilities.
+in MFG research projects, including kernel functions, GFDM operators, RBF operators,
+particle interpolation, signed distance functions, and computational utilities.
 
 Submodules:
 - kernels: Kernel functions (Gaussian, Wendland, B-spline) for GFDM, KDE, SPH
 - gfdm_operators: GFDM differential operators (GFDMOperator class)
+- kernel_rbf_operators: RBF-based differential operators using kernel infrastructure
 - particle: Particle-based methods (Monte Carlo, MCMC, interpolation)
 """
 
@@ -17,6 +18,7 @@ from mfg_pde.utils.numerical.hjb_policy_iteration import (
     create_lq_policy_problem,
     policy_iteration_hjb,
 )
+from mfg_pde.utils.numerical.kernel_rbf_operators import RBFOperator, create_rbf_operator
 
 # Kernels - general numerical functions (not particle-specific)
 from mfg_pde.utils.numerical.kernels import (
@@ -61,6 +63,9 @@ from mfg_pde.utils.numerical.sdf_utils import (
 __all__ = [
     # GFDM operators
     "GFDMOperator",
+    # RBF operators
+    "RBFOperator",
+    "create_rbf_operator",
     # HJB policy iteration
     "HJBPolicyProblem",
     "create_lq_policy_problem",
