@@ -48,7 +48,7 @@ def test_legacy_mfg_solver_init_warning():
         assert len(w) == 1
         assert issubclass(w[0].category, DeprecationWarning)
         assert "deprecated" in str(w[0].message).lower()
-        assert "create_fast_solver" in str(w[0].message)
+        assert "problem.solve()" in str(w[0].message)
 
 
 @pytest.mark.unit
@@ -249,7 +249,7 @@ def test_enhanced_particle_collocation_solver_deprecation():
         # Should have deprecation warning
         assert len(w) >= 1
         assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
-        assert any("solve_mfg" in str(warning.message) for warning in w)
+        assert any("problem.solve()" in str(warning.message) for warning in w)
 
 
 @pytest.mark.unit
@@ -275,7 +275,7 @@ def test_fixed_point_iterator_deprecation():
         # Should have deprecation warning
         assert len(w) >= 1
         assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
-        assert any("FixedPointSolver" in str(warning.message) for warning in w)
+        assert any("problem.solve()" in str(warning.message) for warning in w)
 
 
 @pytest.mark.unit
@@ -299,7 +299,7 @@ def test_adaptive_mfg_solver_deprecation():
         # Should have deprecation warning
         assert len(w) >= 1
         assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
-        assert any("hooks" in str(warning.message) for warning in w)
+        assert any("problem.solve()" in str(warning.message) for warning in w)
 
 
 @pytest.mark.unit
@@ -323,7 +323,7 @@ def test_debug_mfg_solver_deprecation():
         # Should have deprecation warning
         assert len(w) >= 1
         assert any(issubclass(warning.category, DeprecationWarning) for warning in w)
-        assert any("accuracy='research'" in str(warning.message) for warning in w)
+        assert any("problem.solve()" in str(warning.message) for warning in w)
 
 
 @pytest.mark.unit

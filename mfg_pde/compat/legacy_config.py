@@ -9,23 +9,18 @@ from mfg_pde.config import accurate_config, fast_config, research_config
 from . import DeprecatedAPI, deprecated
 
 
-@deprecated("Use fast_config(), accurate_config(), or research_config() with factory API instead")
+@deprecated("Use fast_config(), accurate_config(), or research_config() with problem.solve() instead")
 class LegacyConfig(DeprecatedAPI):
     """
     DEPRECATED: Legacy configuration wrapper.
 
-    Use the new factory API with config presets:
+    Use the new problem.solve() API:
 
     Old:
         config = LegacyConfig(max_iterations=500, tolerance=1e-6)
 
     New:
-        from mfg_pde.factory import create_fast_solver
-        from mfg_pde.config import accurate_config
-
-        config = accurate_config().with_max_iterations(500).with_tolerance(1e-6)
-        solver = create_fast_solver(problem, solver_type="fixed_point")
-        result = solver.solve()
+        result = problem.solve(max_iterations=500, tolerance=1e-6)
     """
 
     def __init__(self, **kwargs):
@@ -82,15 +77,15 @@ class AccurateConfig(LegacyConfig):
 
 
 # Legacy factory functions
-@deprecated("Use create_fast_solver() with automatic configuration instead")
+@deprecated("Use problem.solve() instead")
 def create_enhanced_config(**kwargs):
-    """DEPRECATED: Use factory API with automatic configuration."""
+    """DEPRECATED: Use problem.solve() API."""
     return LegacyConfig(**kwargs).to_new_config()
 
 
-@deprecated("Use factory API with backend parameter instead")
+@deprecated("Use backend parameter in problem.solve() instead")
 def configure_backend(backend_name, **kwargs):
-    """DEPRECATED: Use backend parameter in create_fast_solver() or FixedPointSolver."""
+    """DEPRECATED: Use backend parameter in problem.solve()."""
     import warnings
 
     warnings.warn(

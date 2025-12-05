@@ -404,24 +404,12 @@ class VariationalMFGSolver(BaseVariationalSolver):
         # Convert Lagrangian to Hamiltonian formulation
         hamiltonian_problem = self.problem.create_compatible_mfg_problem()
 
-        # Create HJB-FP solver for comparison
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.factory import create_fast_solver
-
-        hjb_solver = HJBFDMSolver(hamiltonian_problem)
-        fp_solver = FPFDMSolver(hamiltonian_problem)
-
-        comparison_solver = create_fast_solver(
-            hamiltonian_problem,
-            solver_type="fixed_point",
-            hjb_solver=hjb_solver,
-            fp_solver=fp_solver,
-        )
+        # Create HJB-FP solver for comparison using problem.solve() API
+        # Note: The solver is accessed via problem.solve() which creates the appropriate solver internally
 
         return {
             "hamiltonian_problem": hamiltonian_problem,
-            "hamiltonian_solver": comparison_solver,
+            "hamiltonian_solver": None,  # Use hamiltonian_problem.solve() instead
             "lagrangian_problem": self.problem,
             "lagrangian_solver": self,
         }

@@ -158,6 +158,7 @@ class TestHJBFDM2DSolving:
         # Value function should be non-negative for this problem
         assert np.all(U_solution >= -1e-6)  # Small tolerance for numerical errors
 
+    @pytest.mark.slow
     def test_2d_solve_newton(self):
         """Test solving 2D HJB with Newton solver."""
         problem = QuadraticHamiltonian2D(N=15, T=0.5, Nt=10)
@@ -195,6 +196,7 @@ class TestHJBFDM2DSolving:
 class TestHJBFDM2DConvergence:
     """Test convergence properties of 2D solver."""
 
+    @pytest.mark.slow
     def test_fixed_point_vs_newton_consistency(self):
         """Test that fixed-point and Newton give similar results."""
         problem = QuadraticHamiltonian2D(N=12, T=0.3, Nt=8)
@@ -284,6 +286,7 @@ class TestHJBFDM2DConvergence:
 class TestHJBFDM2DPhysicalProperties:
     """Test physical properties of 2D solutions."""
 
+    @pytest.mark.slow
     def test_monotonicity_in_time(self):
         """Test that value function is decreasing backward in time."""
         # N=12 gives 13 grid points
@@ -308,6 +311,7 @@ class TestHJBFDM2DPhysicalProperties:
         # Most diffs should be positive (some may be zero or slightly negative due to numerics)
         assert np.sum(diffs >= -1e-6) > 0.7 * len(diffs)
 
+    @pytest.mark.slow
     def test_symmetry(self):
         """Test that solution respects problem symmetry."""
         # N=20 gives 21 grid points

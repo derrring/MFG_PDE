@@ -41,6 +41,10 @@ from .problem_factories import (
 # Solver factory
 from .solver_factory import (
     SolverFactory,
+    create_accurate_solver,
+    create_basic_solver,
+    create_fast_solver,
+    create_research_solver,
     create_solver,
 )
 
@@ -57,6 +61,11 @@ __all__ = [
     # Solver
     "SolverFactory",
     "create_solver",
+    # Deprecated solver factories (raise NotImplementedError)
+    "create_fast_solver",
+    "create_accurate_solver",
+    "create_research_solver",
+    "create_basic_solver",
     # Backend support
     "BackendFactory",
     "create_backend_for_problem",
