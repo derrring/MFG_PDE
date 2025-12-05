@@ -190,18 +190,13 @@ class TestCommonNoiseSolverInitialization:
         assert solver.mc_config.use_control_variates is True
         assert solver.mc_config.seed == 123
 
-    @pytest.mark.xfail(
-        reason="create_fast_solver removed in infrastructure cleanup - needs update to use problem.solve()",
-        strict=False,
-    )
     def test_initialization_with_custom_solver_factory(self):
         """Test initialization with custom conditional solver factory."""
         problem = self._create_simple_problem()
 
         def custom_factory(prob):
-            from mfg_pde.factory import create_fast_solver
-
-            return create_fast_solver(prob)
+            # Use the new problem.solve() API
+            return prob.solve(verbose=False)
 
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=10, conditional_solver_factory=custom_factory)
 
