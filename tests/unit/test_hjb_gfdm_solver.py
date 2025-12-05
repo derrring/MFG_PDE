@@ -365,6 +365,7 @@ class TestHJBGFDMSolverMappingMethods:
 class TestHJBGFDMSolverSolveHJBSystem:
     """Test the main solve_hjb_system method."""
 
+    @pytest.mark.slow
     def test_solve_hjb_system_shape(self, standard_problem):
         """Test that solve_hjb_system returns correct shape."""
         problem = standard_problem
@@ -389,6 +390,7 @@ class TestHJBGFDMSolverSolveHJBSystem:
             # If it fails due to problem setup, that's okay for this test
             pytest.skip("Solver setup issue - shape test inconclusive")
 
+    @pytest.mark.slow
     def test_solve_hjb_system_final_condition(self, standard_problem):
         """Test that final condition is preserved."""
         problem = standard_problem
