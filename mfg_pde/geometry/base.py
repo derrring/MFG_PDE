@@ -784,6 +784,86 @@ class UnstructuredMesh(Geometry):
         return {"type": "unstructured_mesh", "implementation": "placeholder"}
 
     # ============================================================================
+    # Boundary Methods (FEM-specific overrides)
+    # ============================================================================
+
+    def get_boundary_normal(self, points: NDArray) -> NDArray:
+        """
+        Get outward normal vectors at boundary points for unstructured mesh.
+
+        For FEM meshes, boundary normals are computed from boundary face geometry:
+        - 2D: Normal to boundary edges
+        - 3D: Normal to boundary triangles
+
+        Args:
+            points: Array of shape (n, d) - boundary points
+
+        Returns:
+            Array of shape (n, d) - unit outward normal at each point
+
+        Note:
+            This is a placeholder implementation that falls back to the base class
+            axis-aligned normal computation. Full implementation requires:
+            1. Identify boundary faces from mesh topology
+            2. Find closest boundary face to each query point
+            3. Compute face normal from vertex positions
+
+            TODO: Implement proper mesh-based boundary normal computation
+        """
+        # Placeholder: fall back to base class axis-aligned implementation
+        return super().get_boundary_normal(points)
+
+    def project_to_boundary(self, points: NDArray) -> NDArray:
+        """
+        Project points onto the mesh boundary.
+
+        For FEM meshes, boundary projection finds the closest point on boundary faces:
+        - 2D: Project to nearest boundary edge
+        - 3D: Project to nearest boundary triangle
+
+        Args:
+            points: Array of shape (n, d) - points to project
+
+        Returns:
+            Array of shape (n, d) - projected points on boundary
+
+        Note:
+            This is a placeholder implementation that falls back to the base class
+            axis-aligned projection. Full implementation requires:
+            1. Build boundary face spatial index (e.g., BVH tree)
+            2. Find closest boundary face to each query point
+            3. Project point onto that face
+
+            TODO: Implement proper mesh-based boundary projection
+        """
+        # Placeholder: fall back to base class axis-aligned implementation
+        return super().project_to_boundary(points)
+
+    def is_on_boundary(self, points: NDArray, tolerance: float = 1e-10) -> NDArray:
+        """
+        Check if points are on the mesh boundary.
+
+        For FEM meshes, boundary detection checks distance to boundary faces.
+
+        Args:
+            points: Array of shape (n, d) - points to check
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            Boolean array of shape (n,) - True if point is on boundary
+
+        Note:
+            This is a placeholder implementation that falls back to the base class
+            bounds-based detection. Full implementation requires:
+            1. Compute distance to all boundary faces
+            2. Return True if min distance < tolerance
+
+            TODO: Implement proper mesh-based boundary detection
+        """
+        # Placeholder: fall back to base class bounds-based implementation
+        return super().is_on_boundary(points, tolerance)
+
+    # ============================================================================
     # Mesh Utilities (from old BaseGeometry)
     # ============================================================================
 
