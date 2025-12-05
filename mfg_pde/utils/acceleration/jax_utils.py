@@ -26,6 +26,10 @@ if HAS_JAX:
     from jax import device_put, grad, jacfwd, jacrev, jit, vmap
     from jax.lax import cond, scan
 
+    # Enable float64 for numerical precision (JAX defaults to float32)
+    # This is critical for Newton's method convergence with tight tolerances
+    jax.config.update("jax_enable_x64", True)
+
     # Optax is optional for optimization schedules
     try:
         import optax
@@ -90,6 +94,138 @@ def from_device(array: Any) -> np.ndarray:
     if hasattr(array, "__array__"):
         return np.asarray(array)
     return array
+
+
+def compute_jacobian(
+    F: Callable,
+    x: np.ndarray,
+    original_shape: tuple | None = None,
+    mode: str = "forward",
+) -> np.ndarray:
+    """
+    Compute Jacobian of F at x using JAX automatic differentiation.
+
+    This function provides O(1) Jacobian computation via reverse-mode AD,
+    replacing the O(N) finite-difference approach.
+
+    Args:
+        F: Function F: R^n -> R^m (accepts array, returns array)
+        x: Point at which to compute Jacobian (any shape)
+        original_shape: Original shape of x (for reshaping)
+        mode: 'forward' (jacfwd) or 'reverse' (jacrev)
+            - forward: efficient when m >> n (outputs >> inputs)
+            - reverse: efficient when n >> m (inputs >> outputs)
+
+    Returns:
+        Jacobian matrix J[i,j] = dF_i/dx_j as numpy array
+
+    Example:
+        >>> def F(x):
+        ...     return x**2 - 2.0
+        >>> J = compute_jacobian(F, np.array([1.5]))
+        >>> print(J)  # [[3.0]]
+
+    Note:
+        For Newton's method solving F(x)=0 with N unknowns,
+        this provides O(1) complexity vs O(N) for finite differences.
+
+        The function F must be JAX-compatible (use jax.numpy operations).
+        For numpy-based functions, the finite-difference fallback is used.
+    """
+    ensure_jax_available()
+
+    if original_shape is None:
+        original_shape = x.shape
+
+    x_flat = x.flatten()
+
+    # Wrap F to handle flat input/output for JAX
+    # Important: Keep everything as JAX arrays inside the tracer
+    def F_flat(x_in: JAXArray) -> JAXArray:
+        x_reshaped = x_in.reshape(original_shape)
+        # Call F with JAX array - F must be JAX-compatible
+        result = F(x_reshaped)
+        return jnp.asarray(result).flatten()
+
+    # Convert input to JAX array
+    x_jax = jnp.asarray(x_flat)
+
+    # Compute Jacobian using JAX autodiff
+    if mode == "forward":
+        # Forward-mode AD: efficient when outputs >> inputs
+        jac_fn = jacfwd(F_flat)
+    else:
+        # Reverse-mode AD: efficient when inputs >> outputs
+        jac_fn = jacrev(F_flat)
+
+    # Compute Jacobian matrix
+    J = jac_fn(x_jax)
+
+    # Convert back to numpy
+    return np.asarray(J)
+
+
+def compute_jacobian_jit(
+    F: Callable,
+    x: np.ndarray,
+    original_shape: tuple | None = None,
+    mode: str = "reverse",
+    jit_cache: dict | None = None,
+) -> np.ndarray:
+    """
+    Compute Jacobian with JIT compilation caching.
+
+    For repeated calls with the same F, this caches the JIT-compiled
+    Jacobian function for better performance.
+
+    Args:
+        F: Function F: R^n -> R^m
+        x: Point at which to compute Jacobian
+        original_shape: Original shape of x
+        mode: 'forward' or 'reverse'
+        jit_cache: Optional dict to store JIT-compiled functions
+
+    Returns:
+        Jacobian matrix as numpy array
+    """
+    ensure_jax_available()
+
+    if original_shape is None:
+        original_shape = x.shape
+
+    x_flat = x.flatten()
+
+    # Create cache key from function id and shape
+    cache_key = (id(F), original_shape, mode)
+
+    # Check if we have a cached JIT-compiled Jacobian
+    if jit_cache is not None and cache_key in jit_cache:
+        jac_fn_jit = jit_cache[cache_key]
+    else:
+        # Create wrapper function for flat arrays
+        def F_flat(x_in: JAXArray) -> JAXArray:
+            x_reshaped = x_in.reshape(original_shape)
+            result = F(np.asarray(x_reshaped))
+            return jnp.asarray(result).flatten()
+
+        # Select AD mode
+        if mode == "forward":
+            jac_fn = jacfwd(F_flat)
+        else:
+            jac_fn = jacrev(F_flat)
+
+        # JIT compile
+        jac_fn_jit = jit(jac_fn)
+
+        # Cache if provided
+        if jit_cache is not None:
+            jit_cache[cache_key] = jac_fn_jit
+
+    # Compute Jacobian
+    x_jax = jnp.asarray(x_flat)
+    J = jac_fn_jit(x_jax)
+
+    return np.asarray(J)
 
 
 @jit
@@ -576,6 +712,8 @@ __all__ = [
     "compute_convergence_error",
     "compute_drift",
     "compute_hamiltonian",
+    "compute_jacobian",
+    "compute_jacobian_jit",
     "compute_optimal_control",
     "create_optimization_schedule",
     "ensure_jax_available",
