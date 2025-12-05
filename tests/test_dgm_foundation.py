@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig, DGMResult
+from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig, DGMResult, VarianceReductionMethod
 from mfg_pde.alg.neural.dgm.sampling import (
     MonteCarloSampler,
     QuasiMonteCarloSampler,
@@ -50,7 +50,8 @@ class TestDGMConfig:
         assert config.learning_rate == 1e-3
         assert config.num_interior_points == 10000
         assert config.sampling_strategy == "monte_carlo"
-        assert config.use_control_variates is True
+        # use_control_variates is deprecated (defaults to None), use variance_reduction instead
+        assert config.variance_reduction == VarianceReductionMethod.CONTROL_VARIATES
         assert config.tolerance == 1e-5
 
     def test_custom_config(self):
