@@ -24,11 +24,23 @@ from mfg_pde.config.pydantic_config import MFGSolverConfig
 
 def pytest_configure(config):
     """Configure pytest with custom markers and settings."""
+    # Core test type markers
     config.addinivalue_line("markers", "unit: Unit tests (fast, isolated)")
     config.addinivalue_line("markers", "integration: Integration tests (slower, cross-component)")
     config.addinivalue_line("markers", "performance: Performance tests (may be slow)")
     config.addinivalue_line("markers", "mathematical: Mathematical property validation tests")
-    config.addinivalue_line("markers", "slow: Slow tests (may take >10 seconds)")
+    config.addinivalue_line("markers", "slow: Slow tests (may take >30 seconds)")
+
+    # Test tier markers (for CI pipeline control)
+    config.addinivalue_line("markers", "tier1: Fast unit tests (<1s) - run on every commit")
+    config.addinivalue_line("markers", "tier2: Medium tests (1-30s) - run on PRs")
+    config.addinivalue_line("markers", "tier3: Slow integration tests (>30s) - run on merge to main")
+    config.addinivalue_line("markers", "tier4: Performance/stress tests - run weekly or manually")
+
+    # Domain-specific markers
+    config.addinivalue_line("markers", "network: Tests requiring network/graph geometry")
+    config.addinivalue_line("markers", "stochastic: Tests for stochastic MFG solvers")
+    config.addinivalue_line("markers", "numerical: Tests for numerical algorithms")
 
 
 def pytest_collection_modifyitems(config, items):
