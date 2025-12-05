@@ -106,6 +106,186 @@ class TestHypersphere:
         assert np.abs(volume - expected) < 1e-6
 
 
+class TestBoundaryNormals:
+    """Test boundary normal computation and projection."""
+
+    def test_sphere_boundary_normal_radial(self):
+        """Test sphere normal points radially outward."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        # Point on boundary at (1, 0) - normal should be (1, 0)
+        normal = sphere.get_boundary_normal(np.array([1.0, 0.0]))
+        assert np.allclose(normal, [1.0, 0.0], atol=1e-6)
+
+        # Point on boundary at (0, 1) - normal should be (0, 1)
+        normal = sphere.get_boundary_normal(np.array([0.0, 1.0]))
+        assert np.allclose(normal, [0.0, 1.0], atol=1e-6)
+
+        # Point on boundary at (1/sqrt(2), 1/sqrt(2)) - normal should be same
+        sqrt2_inv = 1.0 / np.sqrt(2)
+        normal = sphere.get_boundary_normal(np.array([sqrt2_inv, sqrt2_inv]))
+        assert np.allclose(normal, [sqrt2_inv, sqrt2_inv], atol=1e-6)
+
+    def test_sphere_boundary_normal_interior(self):
+        """Test sphere normal from interior point."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        # Interior point at (0.5, 0) - normal still points radially
+        normal = sphere.get_boundary_normal(np.array([0.5, 0.0]))
+        assert np.allclose(normal, [1.0, 0.0], atol=1e-6)
+
+    def test_sphere_boundary_normal_batch(self):
+        """Test sphere normal computation for batch of points."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        points = np.array(
+            [
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [-1.0, 0.0],
+                [0.0, -1.0],
+            ]
+        )
+        normals = sphere.get_boundary_normal(points)
+
+        assert normals.shape == (4, 2)
+        assert np.allclose(normals[0], [1.0, 0.0], atol=1e-6)
+        assert np.allclose(normals[1], [0.0, 1.0], atol=1e-6)
+        assert np.allclose(normals[2], [-1.0, 0.0], atol=1e-6)
+        assert np.allclose(normals[3], [0.0, -1.0], atol=1e-6)
+
+    def test_rectangle_boundary_normal_faces(self):
+        """Test rectangle normal on each face."""
+        rect = Hyperrectangle(np.array([[0, 1], [0, 1]]))
+
+        # Right face at x=1 - normal should be (1, 0)
+        normal = rect.get_boundary_normal(np.array([1.0, 0.5]))
+        assert np.allclose(normal, [1.0, 0.0], atol=1e-6)
+
+        # Top face at y=1 - normal should be (0, 1)
+        normal = rect.get_boundary_normal(np.array([0.5, 1.0]))
+        assert np.allclose(normal, [0.0, 1.0], atol=1e-6)
+
+        # Left face at x=0 - normal should be (-1, 0)
+        normal = rect.get_boundary_normal(np.array([0.0, 0.5]))
+        assert np.allclose(normal, [-1.0, 0.0], atol=1e-6)
+
+        # Bottom face at y=0 - normal should be (0, -1)
+        normal = rect.get_boundary_normal(np.array([0.5, 0.0]))
+        assert np.allclose(normal, [0.0, -1.0], atol=1e-6)
+
+    def test_project_to_boundary_sphere(self):
+        """Test projection to sphere boundary."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        # Interior point
+        inside = np.array([0.5, 0.0])
+        projected = sphere.project_to_boundary(inside)
+        assert np.allclose(projected, [1.0, 0.0], atol=1e-6)
+        assert sphere.is_on_boundary(projected)
+
+        # Exterior point
+        outside = np.array([2.0, 0.0])
+        projected = sphere.project_to_boundary(outside)
+        assert np.allclose(projected, [1.0, 0.0], atol=1e-6)
+        assert sphere.is_on_boundary(projected)
+
+        # Diagonal point
+        diag_inside = np.array([0.3, 0.3])
+        projected = sphere.project_to_boundary(diag_inside)
+        # Should be on boundary (norm = 1)
+        assert np.abs(np.linalg.norm(projected) - 1.0) < 1e-6
+        assert sphere.is_on_boundary(projected)
+
+    def test_project_to_boundary_batch(self):
+        """Test projection for batch of points."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        points = np.array(
+            [
+                [0.3, 0.0],  # Interior
+                [1.5, 0.0],  # Exterior
+                [0.0, 0.4],  # Interior
+                [0.0, 2.0],  # Exterior
+            ]
+        )
+        projected = sphere.project_to_boundary(points)
+
+        assert projected.shape == (4, 2)
+        # All should be on boundary (norm = 1)
+        norms = np.linalg.norm(projected, axis=1)
+        assert np.allclose(norms, 1.0, atol=1e-6)
+        # All should be detected as on boundary
+        assert np.all(sphere.is_on_boundary(projected))
+
+    def test_is_on_boundary_sphere(self):
+        """Test boundary detection for sphere."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        # On boundary
+        assert sphere.is_on_boundary(np.array([1.0, 0.0]))
+        assert sphere.is_on_boundary(np.array([0.0, 1.0]))
+
+        # Not on boundary (interior)
+        assert not sphere.is_on_boundary(np.array([0.5, 0.0]))
+        assert not sphere.is_on_boundary(np.array([0.0, 0.0]))
+
+        # Not on boundary (exterior)
+        assert not sphere.is_on_boundary(np.array([1.5, 0.0]))
+
+    def test_is_on_boundary_batch(self):
+        """Test boundary detection for batch of points."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        points = np.array(
+            [
+                [1.0, 0.0],  # On boundary
+                [0.5, 0.0],  # Interior
+                [0.0, 1.0],  # On boundary
+                [1.5, 0.0],  # Exterior
+            ]
+        )
+        on_boundary = sphere.is_on_boundary(points)
+
+        assert on_boundary.shape == (4,)
+        assert on_boundary[0]  # On boundary
+        assert not on_boundary[1]  # Interior
+        assert on_boundary[2]  # On boundary
+        assert not on_boundary[3]  # Exterior
+
+    def test_high_dimensional_normals(self):
+        """Test boundary normals in higher dimensions."""
+        # 4D hypersphere
+        sphere = Hypersphere(center=[0, 0, 0, 0], radius=1.0)
+
+        # Point on boundary along first axis
+        point = np.array([1.0, 0.0, 0.0, 0.0])
+        normal = sphere.get_boundary_normal(point)
+
+        assert normal.shape == (4,)
+        assert np.allclose(normal, [1.0, 0.0, 0.0, 0.0], atol=1e-6)
+
+    def test_projection_convergence(self):
+        """Test that projection converges to boundary."""
+        sphere = Hypersphere(center=[0, 0], radius=1.0)
+
+        # Random interior and exterior points
+        np.random.seed(42)
+        interior = np.random.uniform(-0.9, 0.9, (10, 2))
+        exterior = np.random.uniform(1.1, 2.0, (10, 2))
+
+        # All projections should end up on boundary
+        proj_interior = sphere.project_to_boundary(interior)
+        proj_exterior = sphere.project_to_boundary(exterior)
+
+        # Check all are on boundary
+        for proj in proj_interior:
+            assert np.abs(np.linalg.norm(proj) - 1.0) < 1e-6
+
+        for proj in proj_exterior:
+            assert np.abs(np.linalg.norm(proj) - 1.0) < 1e-6
+
+
 class TestCSGOperations:
     """Test CSG operations."""
 
