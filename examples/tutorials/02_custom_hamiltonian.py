@@ -18,7 +18,7 @@ Mathematical Problem:
 
 import numpy as np
 
-from mfg_pde import MFGProblem, solve_mfg
+from mfg_pde import MFGProblem
 
 # ==============================================================================
 # Step 1: Define Custom Problem
@@ -122,7 +122,7 @@ print(f"  Congestion strength: λ = {problem.congestion_strength}")
 print()
 
 print("Solving MFG system...")
-result = solve_mfg(problem, verbose=True)
+result = problem.solve(verbose=True)
 
 print()
 print(f"Converged: {result.converged} (iterations: {result.iterations})")
@@ -140,7 +140,7 @@ print()
 # Compare with no-congestion case
 print("Solving baseline (no congestion)...")
 baseline = CrowdEvacuationMFG(congestion_strength=0.0)
-result_baseline = solve_mfg(baseline, verbose=False)
+result_baseline = baseline.solve(verbose=False)
 
 # Measure evacuation efficiency
 # How much mass reaches the exit (x > 0.9) by final time?

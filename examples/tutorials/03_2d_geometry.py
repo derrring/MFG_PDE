@@ -19,7 +19,7 @@ Mathematical Problem:
 
 import numpy as np
 
-from mfg_pde import MFGProblem, solve_mfg
+from mfg_pde import MFGProblem
 
 # ==============================================================================
 # Step 1: Create 2D Problem
@@ -142,7 +142,7 @@ print("Solving 2D MFG system...")
 print("(This may take a moment - 2D problems are more computationally intensive)")
 print()
 
-result = solve_mfg(problem, verbose=True)
+result = problem.solve(verbose=True)
 
 print()
 print(f"Converged: {result.converged} (iterations: {result.iterations})")

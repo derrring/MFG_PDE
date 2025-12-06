@@ -19,7 +19,7 @@ Mathematical Background:
 
 import numpy as np
 
-from mfg_pde import MFGProblem, solve_mfg
+from mfg_pde import MFGProblem
 from mfg_pde.factory import ConfigBuilder
 
 # ==============================================================================
@@ -48,7 +48,7 @@ print("-" * 70)
 # Default configuration: FDM for both HJB and FP
 config_grid = ConfigBuilder().picard(max_iterations=30, tolerance=1e-4).solver_hjb("fdm").solver_fp("fdm").build()
 
-result_grid = solve_mfg(problem, config=config_grid, verbose=True)
+result_grid = problem.solve(config=config_grid, verbose=True)
 
 print()
 print(f"Grid-based: Converged in {result_grid.iterations} iterations")
@@ -78,7 +78,7 @@ config_particle = (
     .build()
 )
 
-result_particle = solve_mfg(problem, config=config_particle, verbose=True)
+result_particle = problem.solve(config=config_particle, verbose=True)
 
 print()
 print(f"Particle-based: Converged in {result_particle.iterations} iterations")
@@ -139,7 +139,7 @@ for n_particles in particle_counts:
         .build()
     )
 
-    result = solve_mfg(problem, config=config, verbose=False)
+    result = problem.solve(config=config, verbose=False)
 
     error = np.linalg.norm(result.M - result_grid.M) / np.linalg.norm(result_grid.M)
     errors.append(error)

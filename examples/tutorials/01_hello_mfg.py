@@ -5,7 +5,7 @@ This is the simplest possible MFG example using the Linear-Quadratic (LQ) framew
 
 What you'll learn:
 - How to define an MFG problem using MFGProblem
-- How to solve it using the solve_mfg() function
+- How to solve it using the problem.solve() method
 - How to inspect the solution
 
 Mathematical Problem:
@@ -18,7 +18,7 @@ Mathematical Problem:
 
 import numpy as np
 
-from mfg_pde import MFGProblem, solve_mfg
+from mfg_pde import MFGProblem
 
 # ==============================================================================
 # Step 1: Create the Problem
@@ -59,10 +59,10 @@ print()
 print("Solving MFG system...")
 print()
 
-# The solve_mfg() function solves the coupled HJB-FP system
+# The problem.solve() method solves the coupled HJB-FP system
 # using a Picard fixed-point iteration (alternating HJB and FP solves)
 
-result = solve_mfg(problem, verbose=True)
+result = problem.solve(verbose=True)
 
 print()
 print("Solution completed!")
@@ -146,7 +146,7 @@ print("=" * 70)
 print()
 print("What you learned:")
 print("  1. How to create an MFG problem using MFGProblem")
-print("  2. How to solve it with solve_mfg()")
+print("  2. How to solve it with problem.solve()")
 print("  3. How to inspect the solution (U, M, convergence)")
 print("  4. How to check mass conservation")
 print()

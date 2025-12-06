@@ -47,7 +47,6 @@ from .geometry import (  # noqa: E402
     get_backend_manager,
     set_preferred_backend,
 )
-from .solve_mfg import solve_mfg  # noqa: E402
 from .solvers.variational import (  # noqa: E402
     VariationalMFGComponents,
     VariationalMFGProblem,
@@ -154,7 +153,6 @@ __all__ = [
     "get_general_factory",
     "set_preferred_backend",
     "show_optional_features",
-    "solve_mfg",
 ]
 
 # Add conditionally available imports to __all__ when available

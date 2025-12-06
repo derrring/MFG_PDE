@@ -11,10 +11,10 @@ What you'll learn:
 - How to save and load configurations
 
 The ConfigBuilder provides a fluent API for creating solver configurations.
-It's the recommended way to configure solve_mfg().
+It's the recommended way to configure problem.solve().
 """
 
-from mfg_pde import MFGProblem, solve_mfg
+from mfg_pde import MFGProblem
 from mfg_pde.factory import ConfigBuilder
 
 # ==============================================================================
@@ -31,12 +31,12 @@ problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=0.1, couplin
 print("METHOD 1: Default configuration (implicit)")
 print("-" * 70)
 
-# Without config, solve_mfg uses default:
+# Without config, problem.solve() uses default:
 # - Picard iteration
 # - FDM for both HJB and FP
 # - Standard convergence criteria
 
-result_default = solve_mfg(problem, verbose=False)
+result_default = problem.solve(verbose=False)
 print(f"  Converged: {result_default.converged}")
 print(f"  Iterations: {result_default.iterations}")
 print()
@@ -73,7 +73,7 @@ print(f"  HJB solver: {config.hjb_config.backend}")
 print(f"  FP solver: {config.fp_config.backend}")
 print()
 
-result_explicit = solve_mfg(problem, config=config, verbose=False)
+result_explicit = problem.solve(config=config, verbose=False)
 print(f"  Converged: {result_explicit.converged}")
 print(f"  Iterations: {result_explicit.iterations}")
 print()
@@ -93,7 +93,7 @@ print("-" * 70)
 
 config_gfdm = ConfigBuilder().picard(max_iterations=30, tolerance=1e-4).solver_hjb("gfdm").solver_fp("gfdm").build()
 
-result_gfdm = solve_mfg(problem, config=config_gfdm, verbose=False)
+result_gfdm = problem.solve(config=config_gfdm, verbose=False)
 print(f"  Converged: {result_gfdm.converged} in {result_gfdm.iterations} iterations")
 print()
 
@@ -109,7 +109,7 @@ config_hybrid = (
     .build()
 )
 
-result_hybrid = solve_mfg(problem, config=config_hybrid, verbose=False)
+result_hybrid = problem.solve(config=config_hybrid, verbose=False)
 print(f"  Converged: {result_hybrid.converged} in {result_hybrid.iterations} iterations")
 print()
 
@@ -119,7 +119,7 @@ print("-" * 70)
 
 config_policy = ConfigBuilder().policy_iteration(max_iterations=10, tolerance=1e-5).solver_fp("fdm").build()
 
-result_policy = solve_mfg(problem, config=config_policy, verbose=False)
+result_policy = problem.solve(config=config_policy, verbose=False)
 print(f"  Converged: {result_policy.converged} in {result_policy.iterations} iterations")
 print()
 
@@ -148,7 +148,7 @@ try:
     )
 
     print("  JAX available - acceleration enabled")
-    result_jax = solve_mfg(problem, config=config_jax, verbose=False)
+    result_jax = problem.solve(config=config_jax, verbose=False)
     print(f"  Converged: {result_jax.converged} in {result_jax.iterations} iterations")
 
 except ImportError:
