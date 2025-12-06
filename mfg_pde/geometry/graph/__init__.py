@@ -9,7 +9,7 @@ including network topologies and maze-based domains.
 # Maze generation
 from .maze_cellular_automata import CellularAutomataConfig, CellularAutomataGenerator
 from .maze_config import MazeConfig
-from .maze_generator import MazeAlgorithm, PerfectMazeGenerator
+from .maze_generator import MazeAlgorithm, MazeGeometry
 from .maze_hybrid import HybridMazeGenerator
 from .maze_recursive_division import RecursiveDivisionConfig, RecursiveDivisionGenerator
 from .maze_voronoi import VoronoiMazeGenerator
@@ -31,7 +31,7 @@ from .network_geometry import (
 )
 
 # Add maze_ prefixes for clarity
-maze_PerfectMazeGenerator = PerfectMazeGenerator
+maze_Geometry = MazeGeometry
 maze_Algorithm = MazeAlgorithm
 maze_Config = MazeConfig
 maze_CellularAutomataConfig = CellularAutomataConfig
@@ -56,18 +56,8 @@ __all__ = [
     "OperationType",
     "get_backend_manager",
     "set_preferred_backend",
-    # Maze generation (with maze_ prefix)
-    "maze_PerfectMazeGenerator",
-    "maze_Algorithm",
-    "maze_Config",
-    "maze_CellularAutomataConfig",
-    "maze_CellularAutomataGenerator",
-    "maze_HybridGenerator",
-    "maze_RecursiveDivisionConfig",
-    "maze_RecursiveDivisionGenerator",
-    "maze_VoronoiGenerator",
-    # Original names (for backward compatibility)
-    "PerfectMazeGenerator",
+    # Maze geometry (primary name)
+    "MazeGeometry",
     "MazeAlgorithm",
     "MazeConfig",
     "CellularAutomataConfig",
@@ -76,4 +66,14 @@ __all__ = [
     "RecursiveDivisionConfig",
     "RecursiveDivisionGenerator",
     "VoronoiMazeGenerator",
+    # Maze with maze_ prefix
+    "maze_Geometry",
+    "maze_Algorithm",
+    "maze_Config",
+    "maze_CellularAutomataConfig",
+    "maze_CellularAutomataGenerator",
+    "maze_HybridGenerator",
+    "maze_RecursiveDivisionConfig",
+    "maze_RecursiveDivisionGenerator",
+    "maze_VoronoiGenerator",
 ]

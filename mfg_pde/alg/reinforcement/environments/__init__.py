@@ -42,7 +42,7 @@ from mfg_pde.geometry.graph.maze_generator import (
     Cell,
     Grid,
     MazeAlgorithm,
-    PerfectMazeGenerator,
+    MazeGeometry,
     generate_maze,
     verify_perfect_maze,
 )
@@ -194,12 +194,12 @@ __all__ = [
     "HybridMazeConfig",
     "HybridMazeGenerator",
     "HybridStrategy",
-    # Perfect maze generation
+    # Maze geometry
     "MazeAlgorithm",
+    "MazeGeometry",
     # Configuration
     "MazeConfig",
     "MazeTopology",
-    "PerfectMazeGenerator",
     "PhysicalDimensions",
     "PlacementStrategy",
     # Recursive Division (variable-width mazes)

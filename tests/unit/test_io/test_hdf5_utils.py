@@ -223,7 +223,7 @@ def test_solver_result_save_hdf5(sample_solution, temp_hdf5_file):
         error_history_U=error_history_U,
         error_history_M=error_history_M,
         solver_name="TestSolver",
-        convergence_achieved=True,
+        converged=True,
         execution_time=10.5,
     )
 
@@ -258,7 +258,7 @@ def test_solver_result_load_hdf5(sample_solution, temp_hdf5_file):
         error_history_U=error_history_U,
         error_history_M=error_history_M,
         solver_name="TestSolver",
-        convergence_achieved=True,
+        converged=True,
         execution_time=10.5,
     )
     result_original.save_hdf5(temp_hdf5_file)
@@ -271,7 +271,7 @@ def test_solver_result_load_hdf5(sample_solution, temp_hdf5_file):
     np.testing.assert_array_equal(result_original.M, result_loaded.M)
     assert result_loaded.iterations == 3
     assert result_loaded.solver_name == "TestSolver"
-    assert result_loaded.convergence_achieved
+    assert result_loaded.converged
     assert result_loaded.execution_time == 10.5
     np.testing.assert_array_equal(result_original.error_history_U, result_loaded.error_history_U)
     np.testing.assert_array_equal(result_original.error_history_M, result_loaded.error_history_M)
@@ -295,7 +295,7 @@ def test_solver_result_roundtrip_with_grids(sample_solution, sample_grids, temp_
         error_history_U=error_history_U,
         error_history_M=error_history_M,
         solver_name="RoundtripTest",
-        convergence_achieved=False,
+        converged=False,
     )
 
     # Save with grids

@@ -226,7 +226,7 @@ class BaseGraphApplicator(BaseBCApplicator):
 
     Handles boundary conditions on discrete graph structures:
     - Network MFG (GridNetwork, RandomNetwork, ScaleFreeNetwork)
-    - Maze MFG (PerfectMazeGenerator, VoronoiMaze)
+    - Maze MFG (MazeGeometry, VoronoiMaze)
     - General graph domains
     """
 

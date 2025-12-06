@@ -11,7 +11,7 @@ import pytest
 
 from mfg_pde.alg.reinforcement.environments import (
     MazeConfig,
-    PerfectMazeGenerator,
+    MazeGeometry,
     PhysicalDimensions,
     PlacementStrategy,
     compute_position_metrics,
@@ -110,8 +110,9 @@ class TestPositionPlacement:
         """Setup test maze."""
         from mfg_pde.alg.reinforcement.environments import MazeAlgorithm
 
-        generator = PerfectMazeGenerator(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
-        self.grid = generator.generate(seed=42)
+        generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+        generator.generate(seed=42)
+        self.grid = generator.grid
 
     def test_random_placement(self):
         """Test random position placement."""
@@ -184,8 +185,9 @@ class TestPositionMetrics:
         """Setup test maze."""
         from mfg_pde.alg.reinforcement.environments import MazeAlgorithm
 
-        generator = PerfectMazeGenerator(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
-        self.grid = generator.generate(seed=42)
+        generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+        generator.generate(seed=42)
+        self.grid = generator.grid
 
     def test_metrics_two_positions(self):
         """Test metrics for two positions."""
@@ -238,14 +240,14 @@ class TestIntegration:
 
         config = create_multi_goal_config(20, 20, num_goals=5, goal_strategy="farthest")
 
-        generator = PerfectMazeGenerator(config.rows, config.cols, MazeAlgorithm(config.algorithm))
-        grid = generator.generate(seed=42)
+        generator = MazeGeometry(config.rows, config.cols, MazeAlgorithm(config.algorithm))
+        generator.generate(seed=42)
 
-        positions = place_positions(grid, config.num_goals, config.placement_strategy, seed=42)
+        positions = place_positions(generator.grid, config.num_goals, config.placement_strategy, seed=42)
 
         assert len(positions) == 5
 
-        metrics = compute_position_metrics(grid, positions)
+        metrics = compute_position_metrics(generator.grid, positions)
         assert metrics["min_distance"] > 5
 
 

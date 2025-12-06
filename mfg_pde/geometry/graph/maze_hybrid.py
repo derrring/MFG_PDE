@@ -375,7 +375,7 @@ class HybridMazeGenerator:
 
         elif spec.algorithm == "perfect":
             from mfg_pde.geometry.graph.maze_generator import (
-                PerfectMazeGenerator,
+                MazeGeometry,
             )
 
             # Perfect maze algorithms work on cell-based grids
@@ -383,7 +383,7 @@ class HybridMazeGenerator:
             grid_rows = region_rows // 2
             grid_cols = region_cols // 2
 
-            generator = PerfectMazeGenerator(grid_rows, grid_cols)
+            generator = MazeGeometry(grid_rows, grid_cols)
             grid = generator.generate(seed=int(self.rng.integers(0, 2**31)))
 
             # Convert to wall-based array

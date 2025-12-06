@@ -18,7 +18,7 @@ from mfg_pde.factory import (
     create_stochastic_problem,
 )
 
-# Use legacy 1D BoundaryConditions for Domain1D/2D
+# Legacy 1D BC: testing factory compatibility (deprecated in v0.14, remove in v1.0)
 from mfg_pde.geometry import Domain1D, Domain2D
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
