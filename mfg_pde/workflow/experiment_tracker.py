@@ -113,6 +113,68 @@ class Experiment:
     parameters, tracking all inputs, outputs, and execution metadata.
     """
 
+    @classmethod
+    def from_path(cls, experiment_dir: Path) -> Experiment:
+        """Load an experiment from disk without creating a new directory.
+
+        Args:
+            experiment_dir: Path to existing experiment directory
+
+        Returns:
+            Loaded Experiment instance
+
+        Raises:
+            FileNotFoundError: If experiment directory doesn't exist
+            ValueError: If directory is not a valid experiment
+        """
+        if not experiment_dir.exists():
+            raise FileNotFoundError(f"Experiment directory not found: {experiment_dir}")
+
+        metadata_file = experiment_dir / "metadata.json"
+        if not metadata_file.exists():
+            raise ValueError(f"Not a valid experiment directory (no metadata.json): {experiment_dir}")
+
+        # Create instance without normal init side effects
+        instance = object.__new__(cls)
+
+        # Set required attributes
+        instance.workspace_path = experiment_dir.parent
+        instance.experiment_dir = experiment_dir
+        instance.results = {}
+        instance.artifacts = {}
+        instance.logs = []
+        instance.execution_time = None
+        instance.error_message = None
+
+        # Load metadata first (needed for logger setup)
+        with open(metadata_file) as f:
+            metadata_dict = json.load(f)
+        instance.metadata = ExperimentMetadata(
+            id=metadata_dict["id"],
+            name=metadata_dict["name"],
+            description=metadata_dict["description"],
+            tags=metadata_dict.get("tags", []),
+            created_time=datetime.fromisoformat(metadata_dict["created_time"]),
+            started_time=(
+                datetime.fromisoformat(metadata_dict["started_time"]) if metadata_dict.get("started_time") else None
+            ),
+            completed_time=(
+                datetime.fromisoformat(metadata_dict["completed_time"]) if metadata_dict.get("completed_time") else None
+            ),
+            status=ExperimentStatus(metadata_dict["status"]),
+            parameters=metadata_dict.get("parameters", {}),
+            environment=metadata_dict.get("environment", {}),
+            git_commit=metadata_dict.get("git_commit"),
+        )
+
+        # Setup logging (uses existing log file)
+        instance.logger = instance._setup_logging()
+
+        # Load the rest of the experiment data
+        instance.load(experiment_dir)
+
+        return instance
+
     def __init__(
         self,
         name: str,
@@ -246,10 +308,21 @@ class Experiment:
             self.logger.warning(f"Artifact file not found: {file_path}")
 
     def log_message(self, level: str, message: str, **kwargs):
-        """Log message with experiment context."""
+        """Log message with experiment context.
+
+        Args:
+            level: Log level ('debug', 'info', 'warning', 'error', 'critical')
+            message: Log message
+            **kwargs: Additional data to include in log entry
+        """
+        valid_levels = {"debug", "info", "warning", "error", "critical"}
+        level_lower = level.lower()
+        if level_lower not in valid_levels:
+            raise ValueError(f"Invalid log level '{level}'. Must be one of: {valid_levels}")
+
         log_entry = {
             "timestamp": datetime.now(UTC).isoformat(),
-            "level": level,
+            "level": level_lower,
             "message": message,
             "data": kwargs,
         }
@@ -257,7 +330,7 @@ class Experiment:
         self.logs.append(log_entry)
 
         # Also log to logger
-        getattr(self.logger, level.lower())(message)
+        getattr(self.logger, level_lower)(message)
 
     def save(self):
         """Save experiment to disk."""
@@ -416,22 +489,28 @@ class Experiment:
                         / max(abs(this_result), abs(other_result), 1e-10),
                     }
                 # Array comparison
-                elif (
-                    isinstance(this_result, np.ndarray)
-                    and isinstance(other_result, np.ndarray)
-                    and this_result.shape == other_result.shape
-                ):
-                    comparison["result_differences"][result_name] = {
-                        "shape": this_result.shape,
-                        "max_absolute_difference": np.max(np.abs(this_result - other_result)),
-                        "mean_absolute_difference": np.mean(np.abs(this_result - other_result)),
-                        "relative_error": np.linalg.norm(this_result - other_result)
-                        / max(
-                            np.linalg.norm(this_result),
-                            np.linalg.norm(other_result),
-                            1e-10,
-                        ),
-                    }
+                elif isinstance(this_result, np.ndarray) and isinstance(other_result, np.ndarray):
+                    if this_result.shape == other_result.shape:
+                        comparison["result_differences"][result_name] = {
+                            "shape": this_result.shape,
+                            "max_absolute_difference": float(np.max(np.abs(this_result - other_result))),
+                            "mean_absolute_difference": float(np.mean(np.abs(this_result - other_result))),
+                            "relative_error": float(
+                                np.linalg.norm(this_result - other_result)
+                                / max(
+                                    np.linalg.norm(this_result),
+                                    np.linalg.norm(other_result),
+                                    1e-10,
+                                )
+                            ),
+                        }
+                    else:
+                        comparison["result_differences"][result_name] = {
+                            "shape_mismatch": {
+                                "this": this_result.shape,
+                                "other": other_result.shape,
+                            }
+                        }
             elif this_result is None and other_result is not None:
                 comparison["result_differences"][result_name] = {"missing_in": "this"}
             elif this_result is not None and other_result is None:
@@ -440,7 +519,7 @@ class Experiment:
         # Performance comparison
         if self.execution_time is not None and other.execution_time is not None:
             comparison["performance_comparison"] = {
-                "execution_time_ratio": self.execution_time / other.execution_time,
+                "execution_time_ratio": self.execution_time / max(other.execution_time, 1e-10),
                 "absolute_time_difference": abs(self.execution_time - other.execution_time),
             }
 
@@ -740,8 +819,7 @@ class ExperimentTracker:
         for experiment_dir in self.workspace_path.glob("experiment_*"):
             if experiment_dir.is_dir():
                 try:
-                    experiment = Experiment("temp", workspace_path=self.workspace_path)
-                    experiment.load(experiment_dir)
+                    experiment = Experiment.from_path(experiment_dir)
                     self.experiments[experiment.metadata.id] = experiment
 
                 except Exception as e:
