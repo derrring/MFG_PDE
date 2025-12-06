@@ -23,11 +23,11 @@ Examples:
     ...     QuadraticCongestion,
     ...     CapacityConstrainedMFGProblem
     ... )
-    >>> from mfg_pde.geometry.graph import PerfectMazeGenerator, MazeConfig
+    >>> from mfg_pde.geometry.graph import MazeGeometry, MazeConfig
     >>>
     >>> # Generate maze
     >>> config = MazeConfig(rows=20, cols=20, wall_thickness=3)
-    >>> maze = PerfectMazeGenerator.generate(config)
+    >>> maze = MazeGeometry.generate(config)
     >>> maze_array = maze.to_numpy_array()
     >>>
     >>> # Compute capacity field

@@ -145,11 +145,11 @@ def demo_maze_geometry():
     print("=" * 70)
 
     from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.geometry.graph import PerfectMazeGenerator
+    from mfg_pde.geometry.graph import MazeGeometry
 
     # Generate 5×5 maze
-    maze_gen = PerfectMazeGenerator(rows=5, cols=5)
-    geometry = maze_gen.generate()
+    maze = MazeGeometry(rows=5, cols=5)
+    geometry = maze.generate()
 
     print(f"\nGeometry: {geometry.geometry_type}")
     print(f"Dimension: {geometry.dimension}")

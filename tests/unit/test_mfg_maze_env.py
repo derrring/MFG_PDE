@@ -23,7 +23,7 @@ except ImportError:
 
 from mfg_pde.alg.reinforcement.environments import (
     MazeAlgorithm,
-    PerfectMazeGenerator,
+    MazeGeometry,
     RecursiveDivisionGenerator,
     create_room_based_config,
 )
@@ -297,7 +297,7 @@ class TestIntegration:
     """Integration tests with different maze generators."""
 
     def test_perfect_maze(self) -> None:
-        generator = PerfectMazeGenerator(15, 15, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+        generator = MazeGeometry(15, 15, MazeAlgorithm.RECURSIVE_BACKTRACKING)
         generator.generate(seed=21)
         maze_array = generator.to_numpy_array()
         config = MFGMazeConfig(

@@ -18,7 +18,7 @@ from mfg_pde.alg.reinforcement.environments import (
     CellularAutomataConfig,
     CellularAutomataGenerator,
     MazeAlgorithm,
-    PerfectMazeGenerator,
+    MazeGeometry,
     RecursiveDivisionConfig,
     RecursiveDivisionGenerator,
     VoronoiMazeConfig,
@@ -48,7 +48,7 @@ def visualize_all_algorithms():
 
     # Perfect Maze - Recursive Backtracking
     print("   - Recursive Backtracking...")
-    perfect_gen = PerfectMazeGenerator(size, size, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+    perfect_gen = MazeGeometry(size, size, MazeAlgorithm.RECURSIVE_BACKTRACKING)
     perfect_gen.generate(seed=seed)
     perfect_maze = perfect_gen.to_numpy_array()
 
@@ -68,7 +68,7 @@ def visualize_all_algorithms():
 
     # Wilson's Algorithm
     print("   - Wilson's Algorithm...")
-    wilson_gen = PerfectMazeGenerator(size, size, MazeAlgorithm.WILSONS)
+    wilson_gen = MazeGeometry(size, size, MazeAlgorithm.WILSONS)
     wilson_gen.generate(seed=seed)
     wilson_maze = wilson_gen.to_numpy_array()
 
@@ -272,7 +272,7 @@ def visualize_algorithm_characteristics():
 
     # Recursive Backtracking - show long paths
     print("\n1. Perfect Maze Characteristics...")
-    perfect_gen = PerfectMazeGenerator(size, size, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+    perfect_gen = MazeGeometry(size, size, MazeAlgorithm.RECURSIVE_BACKTRACKING)
     perfect_gen.generate(seed=seed)
     perfect_maze = perfect_gen.to_numpy_array()
 
@@ -282,7 +282,7 @@ def visualize_algorithm_characteristics():
     axes[0, 0].set_yticks([])
 
     # Wilson's - show unbiased
-    wilson_gen = PerfectMazeGenerator(size, size, MazeAlgorithm.WILSONS)
+    wilson_gen = MazeGeometry(size, size, MazeAlgorithm.WILSONS)
     wilson_gen.generate(seed=seed)
     wilson_maze = wilson_gen.to_numpy_array()
 

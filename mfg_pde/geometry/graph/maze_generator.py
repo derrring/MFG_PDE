@@ -233,9 +233,9 @@ class Grid:
         return np.column_stack([x_coords, y_coords])
 
 
-class PerfectMazeGenerator(GraphGeometry):
+class MazeGeometry(GraphGeometry):
     """
-    Perfect maze generator using classic algorithms.
+    Maze geometry for MFG problems on grid-based mazes.
 
     Generates mazes that are minimal spanning trees on grid graphs,
     guaranteeing connectivity and acyclicity. Inherits from GraphGeometry,
@@ -282,7 +282,7 @@ class PerfectMazeGenerator(GraphGeometry):
         # Generate maze immediately
         self.generate(seed=seed)
 
-    def generate(self, seed: int | None = None) -> PerfectMazeGenerator:
+    def generate(self, seed: int | None = None) -> MazeGeometry:
         """
         Generate a perfect maze.
 
@@ -789,7 +789,7 @@ def generate_maze(
         Maze shape: (41, 41)
     """
     alg_enum = MazeAlgorithm(algorithm)
-    generator = PerfectMazeGenerator(rows, cols, alg_enum)
+    generator = MazeGeometry(rows, cols, alg_enum)
     grid = generator.generate(seed=seed)
 
     verification = verify_perfect_maze(grid)

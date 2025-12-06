@@ -3,7 +3,7 @@ Graph/Network boundary condition applicator for discrete MFG problems.
 
 This module provides BC application for graph-based discretizations:
 - Network MFG (GridNetwork, RandomNetwork, ScaleFreeNetwork)
-- Maze MFG (PerfectMazeGenerator, VoronoiMaze, etc.)
+- Maze MFG (MazeGeometry, VoronoiMaze, etc.)
 - General graph domains (GraphGeometry)
 
 BC Types Supported:
@@ -148,7 +148,7 @@ class GraphApplicator(BaseGraphApplicator):
 
     Works with:
     - NetworkMFGProblem (GridNetwork, RandomNetwork, ScaleFreeNetwork)
-    - Maze generators (PerfectMazeGenerator, VoronoiMaze, etc.)
+    - Maze generators (MazeGeometry, VoronoiMaze, etc.)
     - General graph geometries (GraphGeometry)
 
     Examples:
@@ -780,7 +780,7 @@ def create_maze_applicator(
     Create BC applicator for maze problems.
 
     Args:
-        maze_geometry: PerfectMazeGenerator or similar maze geometry
+        maze_geometry: MazeGeometry or similar maze geometry
         exit_nodes: Explicit exit node indices
         entry_nodes: Explicit entry node indices
         auto_detect_exits: If True, detect exits as leaf nodes (degree 1)
@@ -789,7 +789,7 @@ def create_maze_applicator(
         Configured GraphApplicator for maze
 
     Example:
-        >>> maze = PerfectMazeGenerator(width=10, height=10)
+        >>> maze = MazeGeometry(width=10, height=10)
         >>> applicator = create_maze_applicator(maze, auto_detect_exits=True)
     """
     # Get number of nodes from geometry

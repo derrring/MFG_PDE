@@ -11,7 +11,7 @@ import numpy as np
 
 from mfg_pde.alg.reinforcement.environments import (
     MazeAlgorithm,
-    PerfectMazeGenerator,
+    MazeGeometry,
     generate_maze,
     verify_perfect_maze,
 )
@@ -19,7 +19,7 @@ from mfg_pde.alg.reinforcement.environments import (
 pytestmark = pytest.mark.environment
 
 
-class TestPerfectMazeGenerator:
+class TestMazeGeometry:
     """Test perfect maze generation algorithms."""
 
     @pytest.mark.parametrize(
@@ -33,7 +33,7 @@ class TestPerfectMazeGenerator:
     )
     def test_maze_is_perfect(self, algorithm):
         """Test that generated mazes are perfect (connected, no loops)."""
-        generator = PerfectMazeGenerator(10, 10, algorithm)
+        generator = MazeGeometry(10, 10, algorithm)
         grid = generator.generate(seed=42)
 
         verification = verify_perfect_maze(grid)
@@ -53,11 +53,11 @@ class TestPerfectMazeGenerator:
     )
     def test_maze_reproducibility(self, algorithm):
         """Test that same seed produces same maze."""
-        gen1 = PerfectMazeGenerator(10, 10, algorithm)
+        gen1 = MazeGeometry(10, 10, algorithm)
         gen1.generate(seed=42)
         maze1 = gen1.to_numpy_array()
 
-        gen2 = PerfectMazeGenerator(10, 10, algorithm)
+        gen2 = MazeGeometry(10, 10, algorithm)
         gen2.generate(seed=42)
         maze2 = gen2.to_numpy_array()
 
@@ -75,7 +75,7 @@ class TestPerfectMazeGenerator:
     def test_maze_dimensions(self, algorithm):
         """Test that maze has correct dimensions."""
         rows, cols = 15, 20
-        generator = PerfectMazeGenerator(rows, cols, algorithm)
+        generator = MazeGeometry(rows, cols, algorithm)
         generator.generate(seed=42)
         maze = generator.to_numpy_array(wall_thickness=1)
 
@@ -86,7 +86,7 @@ class TestPerfectMazeGenerator:
 
     def test_passage_count(self):
         """Test that perfect maze has exactly (n-1) passages for n cells."""
-        generator = PerfectMazeGenerator(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+        generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
         grid = generator.generate(seed=42)
 
         verification = verify_perfect_maze(grid)
@@ -96,7 +96,7 @@ class TestPerfectMazeGenerator:
 
     def test_connectivity(self):
         """Test that all cells are reachable from any starting cell."""
-        generator = PerfectMazeGenerator(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+        generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
         grid = generator.generate(seed=42)
 
         verification = verify_perfect_maze(grid)
@@ -107,7 +107,7 @@ class TestPerfectMazeGenerator:
     @pytest.mark.parametrize(("rows", "cols"), [(5, 5), (10, 15), (20, 20), (3, 50)])
     def test_various_sizes(self, rows, cols):
         """Test maze generation for various grid sizes."""
-        generator = PerfectMazeGenerator(rows, cols, MazeAlgorithm.RECURSIVE_BACKTRACKING)
+        generator = MazeGeometry(rows, cols, MazeAlgorithm.RECURSIVE_BACKTRACKING)
         grid = generator.generate(seed=42)
 
         verification = verify_perfect_maze(grid)
@@ -177,7 +177,7 @@ class TestMazeAlgorithmComparison:
     def test_all_algorithms_are_perfect(self):
         """Test that all algorithms produce perfect mazes."""
         for algorithm in ["recursive_backtracking", "wilsons", "ellers", "growing_tree"]:
-            generator = PerfectMazeGenerator(15, 15, MazeAlgorithm(algorithm))
+            generator = MazeGeometry(15, 15, MazeAlgorithm(algorithm))
             grid = generator.generate(seed=42)
             verification = verify_perfect_maze(grid)
 
