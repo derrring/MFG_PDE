@@ -34,9 +34,9 @@ class TestMazeGeometry:
     def test_maze_is_perfect(self, algorithm):
         """Test that generated mazes are perfect (connected, no loops)."""
         generator = MazeGeometry(10, 10, algorithm)
-        grid = generator.generate(seed=42)
+        generator.generate(seed=42)
 
-        verification = verify_perfect_maze(grid)
+        verification = verify_perfect_maze(generator.grid)
 
         assert verification["is_perfect"], f"Maze is not perfect: {verification}"
         assert verification["is_connected"], "Maze is not fully connected"
@@ -87,9 +87,9 @@ class TestMazeGeometry:
     def test_passage_count(self):
         """Test that perfect maze has exactly (n-1) passages for n cells."""
         generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
-        grid = generator.generate(seed=42)
+        generator.generate(seed=42)
 
-        verification = verify_perfect_maze(grid)
+        verification = verify_perfect_maze(generator.grid)
 
         assert verification["passage_count"] == verification["expected_passages"]
         assert verification["passage_count"] == 99  # 100 cells - 1
@@ -97,9 +97,9 @@ class TestMazeGeometry:
     def test_connectivity(self):
         """Test that all cells are reachable from any starting cell."""
         generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
-        grid = generator.generate(seed=42)
+        generator.generate(seed=42)
 
-        verification = verify_perfect_maze(grid)
+        verification = verify_perfect_maze(generator.grid)
 
         assert verification["visited_cells"] == verification["total_cells"]
         assert verification["visited_cells"] == 100
@@ -108,9 +108,9 @@ class TestMazeGeometry:
     def test_various_sizes(self, rows, cols):
         """Test maze generation for various grid sizes."""
         generator = MazeGeometry(rows, cols, MazeAlgorithm.RECURSIVE_BACKTRACKING)
-        grid = generator.generate(seed=42)
+        generator.generate(seed=42)
 
-        verification = verify_perfect_maze(grid)
+        verification = verify_perfect_maze(generator.grid)
 
         assert verification["is_perfect"]
         assert verification["total_cells"] == rows * cols
@@ -178,8 +178,8 @@ class TestMazeAlgorithmComparison:
         """Test that all algorithms produce perfect mazes."""
         for algorithm in ["recursive_backtracking", "wilsons", "ellers", "growing_tree"]:
             generator = MazeGeometry(15, 15, MazeAlgorithm(algorithm))
-            grid = generator.generate(seed=42)
-            verification = verify_perfect_maze(grid)
+            generator.generate(seed=42)
+            verification = verify_perfect_maze(generator.grid)
 
             assert verification["is_perfect"], f"{algorithm} failed perfection test"
             assert verification["is_connected"], f"{algorithm} not connected"
