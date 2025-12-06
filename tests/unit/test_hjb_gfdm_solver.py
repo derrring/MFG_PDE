@@ -12,7 +12,7 @@ import numpy as np
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 
-# Use legacy 1D BoundaryConditions for 1D HJB solvers
+# Legacy 1D BC: testing compatibility with 1D HJB solvers (deprecated in v0.14, remove in v1.0)
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
 

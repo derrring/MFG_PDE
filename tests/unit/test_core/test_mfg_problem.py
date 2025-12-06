@@ -18,7 +18,7 @@ import numpy as np
 
 from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
 
-# Use legacy 1D BoundaryConditions for 1D MFG problems
+# Legacy 1D BC: testing compatibility with 1D MFG problems (deprecated in v0.14, remove in v1.0)
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 # ===================================================================
