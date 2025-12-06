@@ -373,17 +373,18 @@ class FPFDMSolver(BaseFPSolver):
             Dx = self.problem.geometry.get_grid_spacing()[0]
             Dt = self.problem.dt
 
-        # Infer number of timesteps from U_solution shape, not problem.Nt
-        # This allows tests to pass edge cases like Nt=0 or Nt=1
-        Nt = U_solution_for_drift.shape[0]
+        # Infer number of time points from U_solution shape, not problem.Nt
+        # n_time_points = number of time knots (including t=0 and t=T)
+        # This allows tests to pass edge cases like n_time_points=0 or n_time_points=1
+        n_time_points = U_solution_for_drift.shape[0]
         sigma_base = self.problem.sigma  # Base diffusion (scalar or array)
         coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
 
-        if Nt == 0:
+        if n_time_points == 0:
             if self.backend is not None:
                 return self.backend.zeros((0, Nx))
             return np.zeros((0, Nx))
-        if Nt == 1:
+        if n_time_points == 1:
             if self.backend is not None:
                 m_sol = self.backend.zeros((1, Nx))
             else:
@@ -397,9 +398,9 @@ class FPFDMSolver(BaseFPSolver):
             return m_sol
 
         if self.backend is not None:
-            m = self.backend.zeros((Nt, Nx))
+            m = self.backend.zeros((n_time_points, Nx))
         else:
-            m = np.zeros((Nt, Nx))
+            m = np.zeros((n_time_points, Nx))
         m[0, :] = m_initial_condition
         m[0, :] = np.maximum(m[0, :], 0)
         # Apply boundary conditions to initial condition
@@ -413,11 +414,12 @@ class FPFDMSolver(BaseFPSolver):
         data_values: list[float] = []
 
         # Progress bar for forward timesteps
-        from mfg_pde.utils.progress import tqdm
+        # Forward FP loop: (n_time_points - 1) steps from index 0 to (n_time_points - 2)
+        from mfg_pde.utils.progress import RichProgressBar
 
-        timestep_range = range(Nt - 1)
+        timestep_range = range(n_time_points - 1)
         if show_progress:
-            timestep_range = tqdm(
+            timestep_range = RichProgressBar(
                 timestep_range,
                 desc="FP (forward)",
                 unit="step",
@@ -801,12 +803,13 @@ class FPFDMSolver(BaseFPSolver):
             m_solution[0, 0] = self.boundary_conditions.left_value
             m_solution[0, -1] = self.boundary_conditions.right_value
 
-        # Progress bar
-        from mfg_pde.utils.progress import tqdm
+        # Progress bar for forward timesteps with callable diffusion
+        # n_time_points - 1 steps to go from t=0 to t=T
+        from mfg_pde.utils.progress import RichProgressBar
 
         timestep_range = range(Nt - 1)
         if show_progress:
-            timestep_range = tqdm(
+            timestep_range = RichProgressBar(
                 timestep_range,
                 desc="FP (callable diffusion)",
                 unit="step",
@@ -994,12 +997,13 @@ def _solve_fp_nd_full_system(
     if boundary_conditions is None:
         boundary_conditions = BoundaryConditions(type="no_flux")
 
-    # Progress bar
-    from mfg_pde.utils.progress import tqdm
+    # Progress bar for forward timesteps
+    # n_time_points - 1 steps to go from t=0 to t=T
+    from mfg_pde.utils.progress import RichProgressBar
 
     timestep_range = range(Nt - 1)
     if show_progress:
-        timestep_range = tqdm(
+        timestep_range = RichProgressBar(
             timestep_range,
             desc=f"FP {ndim}D (full system)",
             unit="step",

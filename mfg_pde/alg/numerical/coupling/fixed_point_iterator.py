@@ -232,11 +232,11 @@ class FixedPointIterator(BaseMFGSolver):
         # M_initial already computed above
 
         # Progress bar for Picard iterations
-        from mfg_pde.utils.progress import tqdm
+        from mfg_pde.utils.progress import RichProgressBar
 
         picard_range = range(final_max_iterations)
         if verbose:
-            picard_range = tqdm(
+            picard_range = RichProgressBar(
                 picard_range,
                 desc="MFG Picard",
                 unit="iter",

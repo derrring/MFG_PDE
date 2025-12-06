@@ -1817,28 +1817,32 @@ class HJBGFDMSolver(BaseHJBSolver):
         if U_coupling_prev is None:
             raise ValueError("U_coupling_prev is required")
 
-        from mfg_pde.utils.progress import tqdm
+        from mfg_pde.utils.progress import RichProgressBar
 
-        # Extract time dimension (works for arbitrary spatial dimensions)
-        Nt = M_density.shape[0]
+        # Extract dimensions from input
+        # M_density has shape (n_time_points, *spatial) where n_time_points = problem.Nt + 1
+        # n_time_points = Nt + 1 (number of time knots including t=0 and t=T)
+        # There are Nt time intervals between the knots
+        n_time_points = M_density.shape[0]
 
         # Store original spatial shape for reshaping output
         self._output_spatial_shape = M_density.shape[1:]
 
         # For GFDM, we work directly with collocation points
         # Map grid data to collocation points
-        # Output shape: (Nt + 1, n_points) to include terminal condition at t=T
-        U_solution_collocation = np.zeros((Nt + 1, self.n_points))
+        # Output shape: (n_time_points, n_points) - same as input
+        U_solution_collocation = np.zeros((n_time_points, self.n_points))
         M_collocation = self._map_grid_to_collocation_batch(M_density)
         U_prev_collocation = self._map_grid_to_collocation_batch(U_coupling_prev)
 
-        # Set final condition at t=T (index Nt)
-        U_solution_collocation[Nt, :] = self._map_grid_to_collocation(U_terminal.flatten())
+        # Set final condition at t=T (last time index = n_time_points - 1)
+        U_solution_collocation[n_time_points - 1, :] = self._map_grid_to_collocation(U_terminal.flatten())
 
-        # Backward time stepping with progress bar (from Nt-1 down to 0)
-        timestep_range = range(Nt - 1, -1, -1)
+        # Backward time stepping: Nt steps from index (n_time_points-2) down to 0
+        # This covers all Nt intervals in the backward direction
+        timestep_range = range(n_time_points - 2, -1, -1)
         if show_progress:
-            timestep_range = tqdm(
+            timestep_range = RichProgressBar(
                 timestep_range,
                 desc="HJB (backward)",
                 unit="step",
@@ -1921,7 +1925,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Time derivative approximation (backward Euler)
         # For backward-in-time problems: ∂u/∂t ≈ (u_{n+1} - u_n) / dt
         # where t_{n+1} > t_n (future time is at n+1)
-        dt = self.problem.T / (self.problem.Nt - 1)
+        # problem.Nt = number of time intervals, so dt = T / Nt
+        dt = self.problem.T / self.problem.Nt
         u_t = (u_n_plus_1 - u_current) / dt
 
         for i in range(self.n_points):
@@ -2035,7 +2040,9 @@ class HJBGFDMSolver(BaseHJBSolver):
                 bc_value = self._get_boundary_condition_property("value", 0.0)
                 if callable(bc_value):
                     # Time-dependent or space-dependent BC
-                    current_time = self.problem.T * time_idx / (self.problem.Nt + 1)
+                    # time_idx ranges from 0 to Nt (inclusive), mapping to t=0 to t=T
+                    # current_time = T * time_idx / Nt
+                    current_time = self.problem.T * time_idx / self.problem.Nt
                     for i in self.boundary_indices:
                         u[i] = bc_value(self.collocation_points[i], current_time)
                 else:

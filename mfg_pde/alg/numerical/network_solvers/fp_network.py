@@ -160,8 +160,9 @@ class FPNetworkSolver(BaseFPSolver):
         # Handle drift_field parameter
         if drift_field is None:
             # Zero drift (pure diffusion): create zero U field for internal use
-            Nt = self.network_problem.Nt
-            effective_U = np.zeros((Nt + 1, self.num_nodes))
+            # Use n_time_points = problem.Nt + 1 for consistency
+            n_time_points = self.network_problem.Nt + 1
+            effective_U = np.zeros((n_time_points, self.num_nodes))
         elif isinstance(drift_field, np.ndarray):
             # Precomputed drift field (including MFG drift = -∇U/λ)
             effective_U = drift_field
@@ -199,8 +200,11 @@ class FPNetworkSolver(BaseFPSolver):
             self.diffusion_coefficient = effective_diffusion
 
         try:
-            Nt = self.network_problem.Nt
-            M = np.zeros((Nt + 1, self.num_nodes))
+            # n_time_points = problem.Nt + 1 (number of time knots including t=0 and t=T)
+            # n_intervals = problem.Nt (number of time intervals between knots)
+            n_intervals = self.network_problem.Nt
+            n_time_points = n_intervals + 1
+            M = np.zeros((n_time_points, self.num_nodes))
 
             # Set initial condition
             M[0, :] = M_initial
@@ -212,11 +216,12 @@ class FPNetworkSolver(BaseFPSolver):
                     M[0, :] /= total_mass
 
             # Forward time stepping with progress bar
-            from mfg_pde.utils.progress import tqdm
+            from mfg_pde.utils.progress import RichProgressBar
 
-            timestep_range = range(Nt)
+            # Forward FP loop: n_intervals steps (problem.Nt) from t=0 to t=T
+            timestep_range = range(n_intervals)
             if show_progress:
-                timestep_range = tqdm(
+                timestep_range = RichProgressBar(
                     timestep_range,
                     desc="FP (forward)",
                     unit="step",

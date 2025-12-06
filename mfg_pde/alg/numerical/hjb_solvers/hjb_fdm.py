@@ -351,25 +351,29 @@ class HJBFDMSolver(BaseHJBSolver):
         Note: tensor_diffusion_field is accepted but not yet fully implemented.
         """
         # Validate shapes
-        Nt = self.problem.Nt + 1
-        expected_shape = (Nt, *self.shape)
+        # n_time_points = problem.Nt + 1 (number of time knots including t=0 and t=T)
+        # problem.Nt = number of time intervals
+        n_time_points = self.problem.Nt + 1
+        expected_shape = (n_time_points, *self.shape)
         if M_density.shape != expected_shape:
             raise ValueError(f"M_density shape {M_density.shape} != {expected_shape}")
         if U_final.shape != self.shape:
             raise ValueError(f"U_final shape {U_final.shape} != {self.shape}")
 
-        # Allocate solution
+        # Allocate solution array with shape (n_time_points, *spatial)
         U_solution = np.zeros(expected_shape, dtype=np.float64)
-        U_solution[Nt - 1] = U_final.copy()
+        # Set terminal condition at t=T (last time index)
+        U_solution[n_time_points - 1] = U_final.copy()
 
-        if Nt <= 1:
+        if n_time_points <= 1:
             return U_solution
 
-        # Progress bar
-        from mfg_pde.utils.progress import tqdm
+        # Progress bar for backward time stepping
+        from mfg_pde.utils.progress import RichProgressBar
 
-        timestep_range = tqdm(
-            range(Nt - 2, -1, -1),
+        # Backward time loop: problem.Nt steps from index (n_time_points-2) down to 0
+        timestep_range = RichProgressBar(
+            range(n_time_points - 2, -1, -1),
             desc=f"HJB {self.dimension}D-FDM ({self.solver_type})",
             unit="step",
         )

@@ -189,14 +189,16 @@ class NetworkHJBSolver(BaseHJBSolver):
         if U_terminal is None:
             raise ValueError("U_terminal is required")
 
-        Nt = self.network_problem.Nt
-        U = np.zeros((Nt + 1, self.num_nodes))
+        # Extract dimensions from input
+        # M_density has shape (n_time_points, num_nodes) where n_time_points = problem.Nt + 1
+        n_time_points = M_density.shape[0]
+        U = np.zeros((n_time_points, self.num_nodes))
 
-        # Set terminal condition
-        U[Nt, :] = U_terminal
+        # Set terminal condition (last time index)
+        U[n_time_points - 1, :] = U_terminal
 
         # Backward time stepping
-        for n in range(Nt - 1, -1, -1):
+        for n in range(n_time_points - 2, -1, -1):
             t = self.times[n]
 
             # Current density
@@ -428,13 +430,17 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         if U_terminal is None:
             raise ValueError("U_terminal is required")
 
+        # Nt = number of time intervals
+        # n_time_points = Nt + 1 (number of time knots including t=0 and t=T)
         Nt = self.network_problem.Nt
-        U = np.zeros((Nt + 1, self.num_nodes))
+        n_time_points = Nt + 1
+        U = np.zeros((n_time_points, self.num_nodes))
 
-        # Set terminal condition
+        # Set terminal condition at index Nt (last time point)
         U[Nt, :] = U_terminal
 
         # Backward time stepping with policy iteration
+        # Nt steps from index (Nt-1) down to 0
         for n in range(Nt - 1, -1, -1):
             t = self.times[n]
             m_current = M_density[n, :]

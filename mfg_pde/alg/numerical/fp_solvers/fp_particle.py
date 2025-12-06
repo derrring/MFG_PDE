@@ -227,8 +227,14 @@ class FPParticleSolver(BaseFPSolver):
         domain_lengths = [b[1] - b[0] for b in bounds]
 
         # Time parameters (always from problem)
-        Nt = self.problem.Nt + 1
-        Dt = self.problem.dt if self.problem.dt is not None else (self.problem.T / (Nt - 1) if Nt > 1 else 0.0)
+        # n_time_points = problem.Nt + 1 (number of time knots including t=0 and t=T)
+        # problem.Nt = number of time intervals
+        n_time_points = self.problem.Nt + 1
+        Dt = (
+            self.problem.dt
+            if self.problem.dt is not None
+            else (self.problem.T / self.problem.Nt if self.problem.Nt > 0 else 0.0)
+        )
         sigma = self.problem.sigma if self.problem.sigma is not None else 0.1
         coupling_coefficient = (
             self.problem.coupling_coefficient if self.problem.coupling_coefficient is not None else 1.0
@@ -244,7 +250,8 @@ class FPParticleSolver(BaseFPSolver):
             "total_points": total_points,
             "domain_lengths": domain_lengths,
             # Time/physics parameters
-            "Nt": Nt,
+            "n_time_points": n_time_points,  # Nt + 1 (number of knots)
+            "Nt": n_time_points,  # Backward compatible alias (deprecated)
             "Dt": Dt,
             "sigma": sigma,
             "coupling_coefficient": coupling_coefficient,
@@ -926,12 +933,13 @@ class FPParticleSolver(BaseFPSolver):
             self.M_particles_trajectory = current_M_particles_t
             return M_density_on_grid
 
-        # Progress bar for particle timesteps
-        from mfg_pde.utils.progress import tqdm
+        # Progress bar for forward particle timesteps
+        # n_time_points - 1 steps to go from t=0 to t=T
+        from mfg_pde.utils.progress import RichProgressBar
 
         timestep_range = range(Nt - 1)
         if self._show_progress:
-            timestep_range = tqdm(
+            timestep_range = RichProgressBar(
                 timestep_range,
                 desc="FP (forward)",
                 unit="step",
@@ -1066,12 +1074,13 @@ class FPParticleSolver(BaseFPSolver):
             self.M_particles_trajectory = current_particles
             return M_density_on_grid
 
-        # Progress bar for particle timesteps (consistent with 1D solver)
-        from mfg_pde.utils.progress import tqdm
+        # Progress bar for forward particle timesteps (consistent with 1D solver)
+        # n_time_points - 1 steps to go from t=0 to t=T
+        from mfg_pde.utils.progress import RichProgressBar
 
         timestep_range = range(Nt - 1)
         if self._show_progress:
-            timestep_range = tqdm(
+            timestep_range = RichProgressBar(
                 timestep_range,
                 desc=f"FP {dimension}D (forward)",
                 unit="step",
@@ -1329,7 +1338,9 @@ class FPParticleSolver(BaseFPSolver):
 
             Tracking: https://github.com/your-org/MFG_PDE/issues/240
         """
-        Nt = self.problem.Nt + 1
+        # n_time_points = problem.Nt + 1 (number of time knots including t=0 and t=T)
+        # problem.Nt = number of time intervals
+        n_time_points = self.problem.Nt + 1
         N_points = len(self.collocation_points)
 
         # Validate input shapes
@@ -1338,17 +1349,18 @@ class FPParticleSolver(BaseFPSolver):
                 f"m_initial_condition shape {m_initial_condition.shape} "
                 f"must match collocation_points count ({N_points},)"
             )
-        if U_solution_for_drift.shape != (Nt, N_points):
+        if U_solution_for_drift.shape != (n_time_points, N_points):
             raise ValueError(
-                f"U_solution_for_drift shape {U_solution_for_drift.shape} must be (Nt={Nt}, N_points={N_points})"
+                f"U_solution_for_drift shape {U_solution_for_drift.shape} must be "
+                f"(n_time_points={n_time_points}, N_points={N_points})"
             )
 
         # Storage for density evolution on collocation points
-        M_solution = np.zeros((Nt, N_points))
+        M_solution = np.zeros((n_time_points, N_points))
         M_solution[0, :] = m_initial_condition.copy()
 
-        # Time step
-        dt = self.problem.T / (Nt - 1)
+        # Time step: dt = T / Nt (T divided by number of intervals)
+        dt = self.problem.T / self.problem.Nt
         sigma = self.problem.sigma
         diffusion_coeff = 0.5 * sigma**2
 
@@ -1361,7 +1373,8 @@ class FPParticleSolver(BaseFPSolver):
 
         # Solve continuity equation: ∂m/∂t + ∇·(m α) = σ²/2 Δm
         # Using GFDM operators for spatial derivatives on collocation points
-        for t_idx in range(Nt - 1):
+        # Forward FP loop: (n_time_points - 1) steps = problem.Nt intervals
+        for t_idx in range(n_time_points - 1):
             m_current = M_solution[t_idx, :]
 
             # Compute drift field α = -∇U at current time
@@ -1398,7 +1411,7 @@ class FPParticleSolver(BaseFPSolver):
                 M_solution[t_idx + 1, :] *= np.sum(m_initial_condition) / mass_current
 
         # Store particle trajectory (in collocation mode, particles are fixed)
-        self.M_particles_trajectory = np.tile(self.collocation_points, (Nt, 1, 1))
+        self.M_particles_trajectory = np.tile(self.collocation_points, (n_time_points, 1, 1))
 
         return M_solution
 
@@ -1451,8 +1464,9 @@ if __name__ == "__main__":
     solver_2d = FPParticleSolver(problem_2d, num_particles=500, mode="hybrid")
 
     # Create 2D test arrays
+    # U_test_2d has shape (n_time_points, *spatial) = (Nt + 1, *spatial)
     grid_shape_2d = problem_2d.geometry.get_grid_shape()  # (16, 16)
-    U_test_2d = np.zeros((problem_2d.Nt, *tuple(grid_shape_2d)))
+    U_test_2d = np.zeros((problem_2d.Nt + 1, *tuple(grid_shape_2d)))
 
     # Create 2D Gaussian initial density
     coords = problem_2d.geometry.coordinates

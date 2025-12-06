@@ -687,18 +687,20 @@ class HJBWenoSolver(BaseHJBSolver):
         U_from_prev_picard: np.ndarray,
     ) -> np.ndarray:
         """Solve 1D HJB system (original implementation)."""
-        Nt = self.problem.Nt
+        # Extract dimensions from input
+        # M_density has shape (n_time_points, Nx) where n_time_points = problem.Nt + 1
+        n_time_points = M_density_evolution_from_FP.shape[0]
         Nx = self.num_grid_points_x
-        dt = self.problem.T / Nt
+        dt = self.problem.T / (n_time_points - 1)  # n_time_points - 1 intervals
 
-        # Initialize solution array
-        U_solved = np.zeros((Nt + 1, Nx))
+        # Initialize solution array - same shape as input
+        U_solved = np.zeros((n_time_points, Nx))
 
-        # Set final condition
+        # Set final condition (last time index)
         U_solved[-1, :] = U_final_condition_at_T
 
         # Backward time integration
-        for t_idx in range(Nt - 1, -1, -1):
+        for t_idx in range(n_time_points - 2, -1, -1):
             # Current density at this time
             m_current = M_density_evolution_from_FP[t_idx, :]
 
@@ -720,17 +722,19 @@ class HJBWenoSolver(BaseHJBSolver):
         U_from_prev_picard: np.ndarray,
     ) -> np.ndarray:
         """Solve 2D HJB system using dimensional splitting."""
-        Nt = self.problem.Nt
-        dt = self.problem.T / Nt
+        # Extract dimensions from input
+        # M_density has shape (n_time_points, Nx, Ny) where n_time_points = problem.Nt + 1
+        n_time_points = M_density_evolution_from_FP.shape[0]
+        dt = self.problem.T / (n_time_points - 1)  # n_time_points - 1 intervals
 
-        # Initialize solution array
-        U_solved = np.zeros((Nt + 1, self.num_grid_points_x, self.num_grid_points_y))
+        # Initialize solution array - same shape as input
+        U_solved = np.zeros((n_time_points, self.num_grid_points_x, self.num_grid_points_y))
 
-        # Set final condition
+        # Set final condition (last time index)
         U_solved[-1, :, :] = U_final_condition_at_T
 
         # Backward time integration
-        for t_idx in range(Nt - 1, -1, -1):
+        for t_idx in range(n_time_points - 2, -1, -1):
             # Current density at this time
             m_current = M_density_evolution_from_FP[t_idx, :, :]
 
@@ -765,15 +769,20 @@ class HJBWenoSolver(BaseHJBSolver):
         logger = self._get_logger()
         logger.info("Starting 3D WENO HJB solver with dimensional splitting")
 
-        # Initialize solution array
-        U_solved = np.copy(U_final_condition_at_T)
+        # Extract dimensions from input
+        # M_density has shape (n_time_points, Nx, Ny, Nz) where n_time_points = problem.Nt + 1
+        n_time_points = M_density_evolution_from_FP.shape[0]
+        spatial_shape = M_density_evolution_from_FP.shape[1:]
 
-        # Time stepping parameters
-        Nt = M_density_evolution_from_FP.shape[0]
+        # Initialize solution array - same shape as input
+        U_solved = np.zeros((n_time_points, *spatial_shape))
+
+        # Set final condition (last time index)
+        U_solved[-1, :, :, :] = U_final_condition_at_T
 
         # Solve backward in time
-        for time_idx in range(Nt - 2, -1, -1):
-            logger.debug(f"  3D Time step {time_idx + 1}/{Nt - 1}")
+        for time_idx in range(n_time_points - 2, -1, -1):
+            logger.debug(f"  3D Time step {time_idx + 1}/{n_time_points - 1}")
 
             u_current = U_solved[time_idx + 1, :, :, :]
             m_current = M_density_evolution_from_FP[time_idx, :, :, :]
@@ -799,7 +808,7 @@ class HJBWenoSolver(BaseHJBSolver):
 
             # Progress logging for long computations
             if (time_idx + 1) % 20 == 0:
-                logger.info(f"    3D WENO: Completed {Nt - time_idx - 1}/{Nt - 1} time steps")
+                logger.info(f"    3D WENO: Completed {n_time_points - time_idx - 2}/{n_time_points - 1} time steps")
 
         logger.info("3D WENO HJB solver completed successfully")
         return U_solved
@@ -824,22 +833,23 @@ class HJBWenoSolver(BaseHJBSolver):
         Returns:
             U_solved: Complete solution u(t,x0,x1,...,xn) over time domain
         """
-        # Time stepping parameters
-        Nt = M_density_evolution_from_FP.shape[0]
+        # Extract dimensions from input
+        # M_density has shape (n_time_points, *spatial) where n_time_points = problem.Nt + 1
+        n_time_points = M_density_evolution_from_FP.shape[0]
 
         # Initialize solution array with time dimension
-        # Shape: (Nt, spatial_dims...)
+        # Shape: (n_time_points, spatial_dims...) - same as input
         spatial_shape = U_final_condition_at_T.shape
-        U_solved = np.zeros((Nt, *spatial_shape))
+        U_solved = np.zeros((n_time_points, *spatial_shape))
 
-        # Set final condition
+        # Set final condition (last time index)
         U_solved[-1, ...] = U_final_condition_at_T
 
-        # Get time step from problem
-        dt = self.problem.T / self.problem.Nt
+        # Get time step - n_time_points - 1 intervals
+        dt = self.problem.T / (n_time_points - 1)
 
         # Solve backward in time
-        for time_idx in range(Nt - 2, -1, -1):
+        for time_idx in range(n_time_points - 2, -1, -1):
             u_current = U_solved[time_idx + 1, ...]
             m_current = M_density_evolution_from_FP[time_idx, ...]
 

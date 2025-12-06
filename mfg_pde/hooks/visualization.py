@@ -425,9 +425,9 @@ class ProgressBarHook(SolverHooks):
 
         # Import progress bar (requires rich)
         try:
-            from mfg_pde.utils.progress import tqdm
+            from mfg_pde.utils.progress import RichProgressBar
 
-            self.tqdm = tqdm
+            self.progress_bar_class = RichProgressBar
             self.tqdm_available = True
         except ImportError:
             self.tqdm_available = False
@@ -437,7 +437,7 @@ class ProgressBarHook(SolverHooks):
         """Initialize progress bar."""
         if self.tqdm_available:
             desc = f"Solving MFG (residual: {initial_state.residual:.2e})"
-            self.pbar = self.tqdm(total=self.max_iterations, desc=desc, unit="iter", dynamic_ncols=True)
+            self.pbar = self.progress_bar_class(total=self.max_iterations, desc=desc, unit="iter", dynamic_ncols=True)
 
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None:
         """Update progress bar."""
