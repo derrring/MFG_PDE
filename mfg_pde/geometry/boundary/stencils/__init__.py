@@ -1,9 +1,9 @@
 """
-BC Stencil Library - Reusable stencil coefficients for matrix construction.
+BC Stencil Library - Generic BC transforms for matrix construction.
 
-This module provides boundary stencil coefficients that solvers can use when
-assembling matrices. It separates BC logic from solver implementation, ensuring
-consistent and correct boundary treatment across different solvers.
+This module provides generic boundary condition transformations that solvers
+can use when assembling matrices. It separates BC logic from solver
+implementation, ensuring consistent boundary treatment across different solvers.
 
 Architecture
 ============
@@ -15,14 +15,13 @@ at boundaries, avoiding combinatorial explosion of N_operators x N_bcs x N_metho
 
 - **BCTransforms**: Generic BC transformations (neumann, dirichlet, robin, no_flux)
 - **BoundaryStencil**: Dataclass containing stencil coefficients and metadata
-- **FDMBoundaryStencils**: Convenience wrappers for common operator+BC combinations
 
 Complexity: O(N_bc_types), NOT O(operators x bcs)
 
 Usage
 =====
 
-Generic transform approach (recommended)::
+::
 
     from mfg_pde.geometry.boundary.stencils import BCTransforms
 
@@ -37,17 +36,6 @@ Generic transform approach (recommended)::
     A[0, 0] = boundary_stencil.diagonal
     A[0, 1] = boundary_stencil.neighbor
 
-Convenience wrapper approach::
-
-    from mfg_pde.geometry.boundary.stencils import FDMBoundaryStencils
-
-    stencil = FDMBoundaryStencils.diffusion_laplacian(
-        bc_type=BCType.NEUMANN,
-        position="left",
-        dx=0.1,
-        diffusion_coeff=0.05,
-    )
-
 See Also
 --------
 - GitHub Issue #379: Layered BC Stencil Architecture for Matrix Construction
@@ -57,16 +45,13 @@ See Also
 from __future__ import annotations
 
 from .base import BoundaryStencil, OperatorType
-from .fdm_stencils import FDMBoundaryStencils
 from .transforms import BCTransforms, InteriorStencil
 
 __all__ = [
-    # Generic transforms (recommended API)
+    # Generic transforms
     "BCTransforms",
     "InteriorStencil",
     # Base types
     "BoundaryStencil",
     "OperatorType",
-    # Convenience wrappers (legacy API)
-    "FDMBoundaryStencils",
 ]

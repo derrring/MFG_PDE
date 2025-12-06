@@ -1571,7 +1571,9 @@ def _add_boundary_no_flux_entries(
             )
 
         elif at_left_boundary:
-            # Left boundary: use one-sided (forward) stencil
+            # Left boundary: no-flux BC using ghost point reflection
+            # For no-flux: dm/dn = 0 implies m_ghost = m_boundary
+            # This makes diffusion term: σ²/2 * (m[1] - 2*m[0] + m[0])/dx² = σ²/2 * (m[1] - m[0])/dx²
             multi_idx_plus = list(multi_idx)
             multi_idx_plus[d] = multi_idx[d] + 1
 
@@ -1579,38 +1581,44 @@ def _add_boundary_no_flux_entries(
             u_plus = u_flat[flat_idx_plus]
             u_center = u_flat[flat_idx]
 
-            # One-sided diffusion approximation
-            diagonal_value += sigma**2 / dx_sq
+            # Conservative no-flux diffusion: (m[1] - m[0])/dx² with factor σ²/2
+            # Diagonal: +σ²/(2*dx²)
+            # Off-diagonal (m[1]): -σ²/(2*dx²)
+            # Row sum for diffusion = 0 (mass conserving)
+            diagonal_value += sigma**2 / (2 * dx_sq)
 
-            coeff_plus = -(sigma**2) / dx_sq
-            coeff_plus += float(-coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
+            coeff_plus = -(sigma**2) / (2 * dx_sq)
+            # Advection: only outward flux if velocity points into domain (positive here)
+            # At left boundary with positive alpha_x, mass flows INTO domain, not out
+            # No-flux means advective flux = 0 at boundary, so we don't add advection here
+            # The upwind scheme at interior handles the inflow from boundary
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_plus)
             data_values.append(coeff_plus)
 
-            diagonal_value += float(coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
-
         elif at_right_boundary:
-            # Right boundary: use one-sided (backward) stencil
+            # Right boundary: no-flux BC using ghost point reflection
+            # For no-flux: dm/dn = 0 implies m_ghost = m_boundary
+            # This makes diffusion term: σ²/2 * (m[n-2] - 2*m[n-1] + m[n-1])/dx² = σ²/2 * (m[n-2] - m[n-1])/dx²
             multi_idx_minus = list(multi_idx)
             multi_idx_minus[d] = multi_idx[d] - 1
 
             flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
-            u_minus = u_flat[flat_idx_minus]
-            u_center = u_flat[flat_idx]
 
-            # One-sided diffusion approximation
-            diagonal_value += sigma**2 / dx_sq
+            # Conservative no-flux diffusion: (m[n-2] - m[n-1])/dx² with factor σ²/2
+            # Diagonal: +σ²/(2*dx²)
+            # Off-diagonal (m[n-2]): -σ²/(2*dx²)
+            # Row sum for diffusion = 0 (mass conserving)
+            diagonal_value += sigma**2 / (2 * dx_sq)
 
-            coeff_minus = -(sigma**2) / dx_sq
-            coeff_minus += float(-coupling_coefficient * npart(u_center - u_minus) / dx_sq)
+            coeff_minus = -(sigma**2) / (2 * dx_sq)
+            # No-flux means advective flux = 0 at boundary
+            # At right boundary, mass that would exit is reflected back
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_minus)
             data_values.append(coeff_minus)
-
-            diagonal_value += float(coupling_coefficient * npart(u_center - u_minus) / dx_sq)
 
     # Add diagonal entry
     row_indices.append(flat_idx)
