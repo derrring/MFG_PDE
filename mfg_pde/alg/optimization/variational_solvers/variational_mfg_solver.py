@@ -136,9 +136,10 @@ class VariationalMFGSolver(BaseVariationalSolver):
             if verbose:
                 logger.info("  Using Gaussian initial guess")
 
-        # Validate initial guess
-        if initial_guess.shape != (self.Nt, self.Nx + 1):
-            raise ValueError(f"Initial guess must have shape ({self.Nt}, {self.Nx + 1})")
+        # Validate initial guess: Nt+1 time points, Nx+1 space points
+        n_time_points = self.Nt + 1
+        if initial_guess.shape != (n_time_points, self.Nx + 1):
+            raise ValueError(f"Initial guess must have shape ({n_time_points}, {self.Nx + 1})")
 
         # Reset optimization state
         self.iteration_count = 0
@@ -176,8 +177,9 @@ class VariationalMFGSolver(BaseVariationalSolver):
                 callback=self._optimization_callback if verbose else None,
             )
 
-            # Extract optimal solution
-            optimal_density = result.x.reshape((self.Nt, self.Nx + 1))
+            # Extract optimal solution: Nt+1 time points, Nx+1 space points
+            n_time_points = self.Nt + 1
+            optimal_density = result.x.reshape((n_time_points, self.Nx + 1))
 
             # Compute optimal velocity field
             optimal_velocity = self._compute_velocity_from_density(optimal_density)
@@ -249,8 +251,9 @@ class VariationalMFGSolver(BaseVariationalSolver):
         Returns:
             Objective function value
         """
-        # Reshape to density field
-        density = x.reshape((self.Nt, self.Nx + 1))
+        # Reshape to density field: Nt+1 time points, Nx+1 space points
+        n_time_points = self.Nt + 1
+        density = x.reshape((n_time_points, self.Nx + 1))
 
         # Compute velocity field
         velocity = self._compute_velocity_from_density(density)
@@ -303,15 +306,16 @@ class VariationalMFGSolver(BaseVariationalSolver):
         Compute penalty terms for constraint violations.
 
         Args:
-            density: Density field shape (Nt, Nx+1)
+            density: Density field shape (Nt+1, Nx+1) - Nt+1 time points
 
         Returns:
             Total penalty value
         """
         penalty = 0.0
+        n_time_points = self.Nt + 1
 
         # Mass conservation penalty
-        for i in range(self.Nt):
+        for i in range(n_time_points):
             total_mass = trapezoid(density[i, :], x=self.x_grid)
             mass_violation = abs(total_mass - 1.0)
             penalty += self.penalty_weight * mass_violation**2
@@ -338,10 +342,11 @@ class VariationalMFGSolver(BaseVariationalSolver):
             Dictionary with constraint violation measures
         """
         violations = {}
+        n_time_points = self.Nt + 1
 
         # Mass conservation
         mass_errors = []
-        for i in range(self.Nt):
+        for i in range(n_time_points):
             total_mass = trapezoid(density[i, :], x=self.x_grid)
             mass_errors.append(abs(total_mass - 1.0))
         violations["mass_conservation"] = max(mass_errors)
@@ -363,14 +368,15 @@ class VariationalMFGSolver(BaseVariationalSolver):
         Uses the center of mass as a representative trajectory.
 
         Args:
-            density: Optimal density field
+            density: Optimal density field shape (Nt+1, Nx+1)
 
         Returns:
-            Representative trajectory x(t)
+            Representative trajectory x(t) shape (Nt+1,) - one value per time point
         """
-        trajectory = np.zeros(self.Nt)
+        n_time_points = self.Nt + 1
+        trajectory = np.zeros(n_time_points)
 
-        for i in range(self.Nt):
+        for i in range(n_time_points):
             # Compute center of mass
             total_mass = trapezoid(density[i, :], x=self.x_grid)
             if total_mass > 1e-12:

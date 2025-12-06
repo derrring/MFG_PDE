@@ -154,12 +154,13 @@ class VariationalMFGProblem:
         self.dx = self.Lx / Nx
 
         self.T = T
-        self.Nt = Nt
-        self.dt = T / (Nt - 1) if Nt > 1 else T
+        self.Nt = Nt  # Number of time intervals (NOT points)
+        # dt = T / Nt: Nt intervals means Nt+1 points from t=0 to t=T
+        self.dt = T / Nt if Nt > 0 else T
 
-        # Grid points
+        # Grid points: Nt+1 time points, Nx+1 space points
         self.x = np.linspace(xmin, xmax, Nx + 1)
-        self.t = np.linspace(0, T, Nt)
+        self.t = np.linspace(0, T, Nt + 1)
 
         # Noise/diffusion
         self.sigma = sigma
@@ -402,15 +403,16 @@ class VariationalMFGProblem:
         S[x,m] = ∫₀ᵀ L(t,x(t),ẋ(t),m(t)) dt + g(x(T))
 
         Args:
-            trajectory: x(t) trajectory shape (Nt,)
-            velocity: ẋ(t) velocity shape (Nt,)
-            density_evolution: m(t,x) density shape (Nt, Nx+1)
+            trajectory: x(t) trajectory shape (Nt+1,) - one value per time point
+            velocity: ẋ(t) velocity shape (Nt+1,) - one value per time point
+            density_evolution: m(t,x) density shape (Nt+1, Nx+1)
 
         Returns:
             Total action value
         """
-        if len(trajectory) != self.Nt or len(velocity) != self.Nt:
-            raise ValueError("Trajectory and velocity must have length Nt")
+        n_time_points = self.Nt + 1
+        if len(trajectory) != n_time_points or len(velocity) != n_time_points:
+            raise ValueError(f"Trajectory and velocity must have length Nt+1={n_time_points}")
 
         # Integrate running cost
         running_cost = 0.0
@@ -466,15 +468,16 @@ class VariationalMFGProblem:
         d/dt(∂L/∂v) - ∂L/∂x = 0
 
         Args:
-            trajectory: x(t) shape (Nt,)
-            velocity: ẋ(t) shape (Nt,)
-            acceleration: ẍ(t) shape (Nt,)
-            density_evolution: m(t,x) shape (Nt, Nx+1)
+            trajectory: x(t) shape (Nt+1,) - one value per time point
+            velocity: ẋ(t) shape (Nt+1,) - one value per time point
+            acceleration: ẍ(t) shape (Nt+1,) - one value per time point
+            density_evolution: m(t,x) shape (Nt+1, Nx+1)
 
         Returns:
-            Residual array shape (Nt,)
+            Residual array shape (Nt+1,) - one value per time point
         """
-        residual = np.zeros(self.Nt)
+        n_time_points = self.Nt + 1
+        residual = np.zeros(n_time_points)
 
         for i, (t, x, v, a) in enumerate(zip(self.t, trajectory, velocity, acceleration, strict=False)):
             # Interpolate density

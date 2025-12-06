@@ -95,7 +95,8 @@ class BaseVariationalSolver(BaseOptimizationSolver):
 
         logger.info(f"Initialized {self.solver_name} solver")
         logger.info(f"  Problem: {problem.components.description}")
-        logger.info(f"  Grid: {self.Nx + 1} × {self.Nt} (space × time)")
+        # Nt = intervals, so Nt+1 time points; Nx = intervals, so Nx+1 space points
+        logger.info(f"  Grid: {self.Nx + 1} × {self.Nt + 1} (space points × time points)")
 
     @abstractmethod
     def solve(
@@ -123,8 +124,8 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         Evaluate the cost functional J[m,v].
 
         Args:
-            density_evolution: m(t,x) density field shape (Nt, Nx+1)
-            velocity_field: v(t,x) velocity field shape (Nt, Nx+1)
+            density_evolution: m(t,x) density field shape (Nt+1, Nx+1) - one row per time point
+            velocity_field: v(t,x) velocity field shape (Nt+1, Nx+1) - one row per time point
 
         Returns:
             Total cost value
@@ -161,14 +162,15 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         can be solved for v: mv = -∫(∂m/∂t - σ²/2 Δm) dx
 
         Args:
-            density_evolution: m(t,x) shape (Nt, Nx+1)
+            density_evolution: m(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
 
         Returns:
-            velocity_field: v(t,x) shape (Nt, Nx+1)
+            velocity_field: v(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
         """
         velocity_field = np.zeros_like(density_evolution)
+        n_time_points = self.Nt + 1
 
-        for i in range(1, self.Nt):  # Skip initial time
+        for i in range(1, n_time_points):  # Skip initial time (index 0)
             for j in range(1, self.Nx):  # Skip boundaries
                 m = density_evolution[i, j]
 
@@ -198,15 +200,17 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         ||∂m/∂t + ∇·(mv) - σ²/2 Δm||₂
 
         Args:
-            density_evolution: m(t,x) shape (Nt, Nx+1)
-            velocity_field: v(t,x) shape (Nt, Nx+1)
+            density_evolution: m(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
+            velocity_field: v(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
 
         Returns:
             L2 norm of continuity equation residual
         """
-        residual = np.zeros((self.Nt - 1, self.Nx - 1))
+        n_time_points = self.Nt + 1
+        # Residual at interior points (excluding t=0 and boundary x points)
+        residual = np.zeros((n_time_points - 1, self.Nx - 1))
 
-        for i in range(1, self.Nt):
+        for i in range(1, n_time_points):
             for j in range(1, self.Nx):
                 # Time derivative
                 dm_dt = (density_evolution[i, j] - density_evolution[i - 1, j]) / self.dt
@@ -232,7 +236,7 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         Check mass conservation: ∫m(t,x)dx = constant
 
         Args:
-            density_evolution: m(t,x) shape (Nt, Nx+1)
+            density_evolution: m(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
 
         Returns:
             Maximum mass conservation error over time
@@ -253,13 +257,14 @@ class BaseVariationalSolver(BaseOptimizationSolver):
                      "random" - random perturbation of uniform
 
         Returns:
-            Initial density evolution shape (Nt, Nx+1)
+            Initial density evolution shape (Nt+1, Nx+1) - Nt+1 time points
         """
-        density_guess = np.zeros((self.Nt, self.Nx + 1))
+        n_time_points = self.Nt + 1
+        density_guess = np.zeros((n_time_points, self.Nx + 1))
 
         if strategy == "uniform":
             # Uniform density maintained over time
-            for i in range(self.Nt):
+            for i in range(n_time_points):
                 if self.problem.components.initial_density_func:
                     density_guess[i, :] = [self.problem.components.initial_density_func(x) for x in self.x_grid]
                 else:
@@ -282,7 +287,7 @@ class BaseVariationalSolver(BaseOptimizationSolver):
             # Random perturbation of uniform
             base_density = 1.0 / (self.problem.xmax - self.problem.xmin)
 
-            for i in range(self.Nt):
+            for i in range(n_time_points):
                 perturbation = 0.1 * np.random.randn(self.Nx + 1)
                 density_guess[i, :] = base_density * (1 + perturbation)
 

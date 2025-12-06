@@ -233,7 +233,8 @@ def test_1d_mass_conservation():
 
         # Print detailed info
         status = "✅" if rel_loss < 2.0 else "⚠️" if rel_loss < 10.0 else "❌"
-        dt = problem.T / (problem.Nt - 1)
+        # dt = T / Nt (number of intervals)
+        dt = problem.T / problem.Nt
         print(f"t={t_idx:2d} (t={t_idx * dt:.4f}s): mass = {mass_t:.6e}  loss = {rel_loss:6.2f}%  {status}")
 
     masses = np.array(masses)

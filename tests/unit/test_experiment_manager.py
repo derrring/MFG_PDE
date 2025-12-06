@@ -45,16 +45,19 @@ class MockMFGProblem:
         coupling_coefficient=0.5,
     ):
         self.T = T
-        self.Nt = Nt
+        self.Nt = Nt  # Number of time INTERVALS (not points)
         self.xmin = xmin
         self.xmax = xmax
-        self.Nx = Nx
-        self.dx = (xmax - xmin) / (Nx - 1) if Nx > 1 else 0.0
-        self.dt = T / (Nt - 1) if Nt > 1 else 0.0
+        self.Nx = Nx  # Number of space INTERVALS (not points)
+        # dx = domain_length / Nx (number of intervals)
+        self.dx = (xmax - xmin) / Nx if Nx > 0 else 0.0
+        # dt = T / Nt (number of intervals)
+        self.dt = T / Nt if Nt > 0 else 0.0
         self.sigma = sigma
         self.coupling_coefficient = coupling_coefficient
-        self.tSpace = np.linspace(0, T, Nt)
-        self.xSpace = np.linspace(xmin, xmax, Nx)
+        # Nt+1 time points, Nx+1 space points
+        self.tSpace = np.linspace(0, T, Nt + 1)
+        self.xSpace = np.linspace(xmin, xmax, Nx + 1)
 
 
 # ===================================================================
