@@ -72,7 +72,6 @@ class TestHJBSemiLagrangianInitialization:
 class TestHJBSemiLagrangianSolveHJBSystem:
     """Test the main solve_hjb_system method."""
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_solve_hjb_system_shape(self):
         """Test that solve_hjb_system returns correct shape."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
@@ -89,7 +88,8 @@ class TestHJBSemiLagrangianSolveHJBSystem:
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
-        assert U_solution.shape == (Nt, Nx)
+        # Output has Nt + 1 time steps (solver adds terminal condition)
+        assert U_solution.shape == (Nt + 1, Nx)
         assert np.all(np.isfinite(U_solution))
 
     def test_solve_hjb_system_final_condition(self):
@@ -179,7 +179,6 @@ class TestHJBSemiLagrangianNumericalProperties:
 class TestHJBSemiLagrangianIntegration:
     """Integration tests with actual MFG problems."""
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_solver_with_uniform_density(self):
         """Test solver with uniform density distribution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
@@ -201,9 +200,8 @@ class TestHJBSemiLagrangianIntegration:
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_solver_with_gaussian_density(self):
         """Test solver with Gaussian density distribution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
@@ -225,7 +223,7 @@ class TestHJBSemiLagrangianIntegration:
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
 
 class TestHJBSemiLagrangianSolverNotAbstract:
@@ -269,7 +267,6 @@ class TestCharacteristicTracingMethods:
 
         assert solver.characteristic_solver == "rk4"
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_euler_produces_valid_solution(self):
         """Test that explicit_euler produces valid solution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -286,9 +283,8 @@ class TestCharacteristicTracingMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_rk2_produces_valid_solution(self):
         """Test that rk2 produces valid solution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -305,9 +301,8 @@ class TestCharacteristicTracingMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_rk4_produces_valid_solution(self):
         """Test that rk4 with scipy.solve_ivp produces valid solution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -324,7 +319,7 @@ class TestCharacteristicTracingMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
     def test_rk2_consistency_with_euler(self):
         """Test that rk2 produces consistent results with euler on smooth problems."""
@@ -407,7 +402,6 @@ class TestInterpolationMethods:
 
         assert solver.interpolation_method == "cubic"
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_cubic_produces_valid_solution_1d(self):
         """Test that cubic interpolation produces valid solution in 1D."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -426,7 +420,7 @@ class TestInterpolationMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
     def test_cubic_consistency_with_linear(self):
         """Test that cubic interpolation is consistent with linear on smooth problems."""
@@ -521,7 +515,6 @@ class TestRBFInterpolationFallback:
             solver = HJBSemiLagrangianSolver(problem, use_rbf_fallback=True, rbf_kernel=kernel)
             assert solver.rbf_kernel == kernel
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_rbf_fallback_produces_valid_solution(self):
         """Test that solver with RBF fallback produces valid solution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -541,7 +534,7 @@ class TestRBFInterpolationFallback:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
     def test_rbf_consistency_with_no_fallback(self):
         """Test that RBF fallback doesn't change results on well-behaved problems."""
@@ -575,7 +568,6 @@ class TestRBFInterpolationFallback:
 class TestEnhancementsIntegration:
     """Test combinations of enhancements working together."""
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_rk4_with_cubic_interpolation(self):
         """Test RK4 characteristic tracing with cubic interpolation."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -594,9 +586,8 @@ class TestEnhancementsIntegration:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_rk4_with_rbf_fallback(self):
         """Test RK4 characteristic tracing with RBF fallback."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -615,9 +606,8 @@ class TestEnhancementsIntegration:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
-    @pytest.mark.xfail(reason="Semi-Lagrangian solver has pre-existing numerical overflow issues")
     def test_all_enhancements_together(self):
         """Test all enhancements working together: RK4 + cubic + RBF."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
@@ -641,7 +631,7 @@ class TestEnhancementsIntegration:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt + 1, Nx)
 
     def test_enhanced_vs_baseline_consistency(self):
         """Test that enhanced configuration produces consistent results with baseline."""
