@@ -16,18 +16,21 @@ Defines WHAT boundary condition is applied, not HOW:
 - **types.py**: BCType enum, BCSegment dataclass
 - **conditions.py**: Unified BoundaryConditions class and factory functions
 
-Layer 2: BC Stencil Library [PLANNED - see GitHub Issue #379]
--------------------------------------------------------------
-Reusable stencil coefficients for matrix construction:
+Layer 2: BC Transforms (see GitHub Issue #379)
+----------------------------------------------
+Generic transformations that modify any operator stencil at boundaries.
 
-- **stencils/fdm_stencils.py**: FDM boundary stencils (Laplacian, advection)
-- **stencils/fem_weak_forms.py**: FEM weak form boundary contributions
-- **stencils/meshfree_constraints.py**: Meshfree collocation constraints
+**Key principle**: Operators belong to solvers, NOT to BC module. The BC module
+provides only generic transforms, avoiding combinatorial explosion of
+N_operators x N_bcs x N_methods.
 
-This layer maps (BC type, operator type) -> coefficients, enabling:
-- Consistent BC implementation across solvers
-- Mass-conserving stencils for Fokker-Planck equations
-- Separation of BC logic from solver matrix assembly
+- **stencils/transforms.py**: Generic BC transformations
+  - ``neumann()``: Ghost point reflection for Neumann/no-flux
+  - ``dirichlet()``: DOF elimination for Dirichlet
+  - ``robin()``: Combined transformation for Robin
+  - ``periodic()``: Boundary connection for periodic
+
+Complexity: O(N_bc_types), NOT O(operators x bcs)
 
 Layer 3: BC Application (dimension-specific)
 --------------------------------------------
@@ -69,21 +72,25 @@ FEM application (DOF modification)::
     applicator.add_dirichlet(region=0, value=0.0)
     matrix, rhs = applicator.apply(matrix, rhs, mesh)
 
-Planned: Stencil Library Usage (Issue #379)::
+BC Transform Usage (Issue #379)::
 
-    from mfg_pde.geometry.boundary.stencils import FDMBoundaryStencils
+    from mfg_pde.geometry.boundary.stencils import BCTransforms
 
-    stencil = FDMBoundaryStencils.diffusion_laplacian(
-        bc_type=bc.type,
+    # Solver builds its operator stencil (operator is solver's responsibility)
+    laplacian_coeff = sigma**2 / (2 * dx**2)
+    interior_stencil = {"center": -2*laplacian_coeff, "neighbors": [laplacian_coeff]}
+
+    # BC module provides generic transform (BC is geometry's responsibility)
+    boundary_stencil = BCTransforms.neumann(
+        stencil=interior_stencil,
         position="left",
-        dx=0.1,
-        diffusion_coeff=0.05,  # sigma^2/2
+        dx=dx,
+        bc_value=0.0,  # No-flux
     )
-    # Returns: BoundaryStencil(diagonal=..., neighbor=..., preserves_conservation=True)
 
-    # Solver uses stencil for matrix assembly
-    diagonal_value += stencil.diagonal
-    off_diagonal.append(stencil.neighbor)
+    # Solver applies to matrix
+    A[0, 0] = boundary_stencil.diagonal
+    A[0, 1] = boundary_stencil.neighbor
 
 See Also
 --------
