@@ -8,7 +8,7 @@
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **✨ v0.12.6 Released** - Documentation cleanup, code quality improvements, and repository organization
+> **v0.14.0** - Production-ready MFG solver with GFDM monotonicity, RBF operators, JAX autodiff, and adaptive time-stepping
 
 ---
 
@@ -158,34 +158,30 @@ problem = MFGProblem(
 
 ---
 
-## What's New in v0.11.0
+## Numerical Methods
 
-**Dual Geometry Support** (New in v0.11.0):
-- Separate discretizations for HJB and FP solvers
-- Multi-resolution methods: 4-15× speedup with minimal accuracy loss
-- FEM mesh support: complex domains with obstacles (automatic Delaunay interpolation)
-- Hybrid methods: Grid HJB + Particle FP, or any geometry combination
-- Automatic projection with registry pattern for extensibility
+### HJB Solvers
+- **Finite Difference (FDM)** - Standard grid-based discretization
+- **GFDM with Monotonicity** - Generalized FDM with QP-based monotone scheme enforcement, direct Hamiltonian gradient constraints
+- **Semi-Lagrangian** - Adaptive time-stepping with CFL monitoring
+- **Neural (DGM, PINN)** - Deep learning approaches for high dimensions
 
-**Unified API** (Stable in v0.10.x):
-- Single `MFGProblem` class with consistent parameter interface
-- Three configuration patterns: Presets, Builder API, YAML files
-- Simplified from 10+ lines to 2 lines for typical use cases
-- Full backward compatibility with deprecation warnings
+### Fokker-Planck Solvers
+- **FDM** - Conservative finite difference schemes
+- **Particle Methods** - Monte Carlo, kernel density estimation
+- **WENO** - High-order shock-capturing schemes
 
-**Essential Utilities** (v0.9.0+):
-- Particle interpolation (grid ↔ particles, 1D/2D/3D)
-- Signed distance functions (primitives, CSG operations, smooth blending)
-- QP solver caching (2-5× GFDM speedup)
-- Convergence monitoring (plotting, stagnation detection)
+### Operator Infrastructure
+- **RBF Operators** - Radial basis function differential operators for meshless methods
+- **GFDM Operators** - Generalized finite difference with polynomial basis
+- **JAX Autodiff** - Automatic Jacobian computation for O(1) Newton iteration
 
-**Documentation**:
-- 5,000+ lines of comprehensive documentation
-- Complete migration guide with dual geometry integration
-- Working examples: multi-resolution, FEM meshes, complex domains
-- Mathematical theory and implementation guides
+### Geometry & Boundaries
+- **SDF Utilities** - Signed distance functions with CSG operations (union, intersection, difference)
+- **Boundary Normals** - SDF-based normal computation and projection
+- **Dual Geometry** - Separate HJB/FP discretizations, multi-resolution support
 
-See [Changelog](CHANGELOG.md) for full details.
+See [Changelog](CHANGELOG.md) for version history.
 
 ---
 
@@ -221,7 +217,7 @@ If you use MFG_PDE in your research:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={0.12.3},
+  version={0.14.0},
   url={https://github.com/derrring/MFG_PDE}
 }
 ```
