@@ -8,42 +8,45 @@ consistent and correct boundary treatment across different solvers.
 Architecture
 ============
 
-The stencil library maps (BC type, operator type) -> coefficients:
+**Key Principle**: Operators belong to solvers, NOT to BC module.
 
+The BC module provides GENERIC TRANSFORMS that can modify ANY operator stencil
+at boundaries, avoiding combinatorial explosion of N_operators x N_bcs x N_methods.
+
+- **BCTransforms**: Generic BC transformations (neumann, dirichlet, robin, no_flux)
 - **BoundaryStencil**: Dataclass containing stencil coefficients and metadata
-- **FDMBoundaryStencils**: FDM-specific stencils for Laplacian, advection operators
-- **FEMBoundaryWeakForms**: FEM weak form contributions (planned)
-- **MeshfreeBoundaryConstraints**: Meshfree collocation constraints (planned)
+- **FDMBoundaryStencils**: Convenience wrappers for common operator+BC combinations
 
-Key Design Principles
-=====================
-
-1. **BC module stays lightweight**: Only specifies mathematical intent
-2. **Stencil library is reusable**: Same library serves HJB, FP, Poisson solvers
-3. **Solvers remain flexible**: Can override for special cases
-4. **Conservation properties**: Stencils annotate whether they preserve mass/energy
+Complexity: O(N_bc_types), NOT O(operators x bcs)
 
 Usage
 =====
 
-FDM diffusion stencil at boundary::
+Generic transform approach (recommended)::
 
-    from mfg_pde.geometry.boundary.stencils import FDMBoundaryStencils, BoundaryStencil
+    from mfg_pde.geometry.boundary.stencils import BCTransforms
 
-    stencil: BoundaryStencil = FDMBoundaryStencils.diffusion_laplacian(
+    # Solver builds its interior stencil (solver's responsibility)
+    D = sigma**2 / 2
+    interior = {"diagonal": -2*D/dx**2, "left": D/dx**2, "right": D/dx**2}
+
+    # Apply Neumann BC transform (BC module's responsibility)
+    boundary_stencil = BCTransforms.neumann(interior, "left", dx, bc_value=0.0)
+
+    # Use in matrix assembly
+    A[0, 0] = boundary_stencil.diagonal
+    A[0, 1] = boundary_stencil.neighbor
+
+Convenience wrapper approach::
+
+    from mfg_pde.geometry.boundary.stencils import FDMBoundaryStencils
+
+    stencil = FDMBoundaryStencils.diffusion_laplacian(
         bc_type=BCType.NEUMANN,
         position="left",
         dx=0.1,
-        diffusion_coeff=0.05,  # sigma^2/2 for Fokker-Planck
+        diffusion_coeff=0.05,
     )
-
-    # Use in matrix assembly
-    diagonal_value += stencil.diagonal
-    data_values.append(stencil.neighbor)
-
-    # Check conservation property
-    if stencil.preserves_conservation:
-        # Row sum should be 0 for mass conservation
 
 See Also
 --------
@@ -55,9 +58,15 @@ from __future__ import annotations
 
 from .base import BoundaryStencil, OperatorType
 from .fdm_stencils import FDMBoundaryStencils
+from .transforms import BCTransforms, InteriorStencil
 
 __all__ = [
+    # Generic transforms (recommended API)
+    "BCTransforms",
+    "InteriorStencil",
+    # Base types
     "BoundaryStencil",
     "OperatorType",
+    # Convenience wrappers (legacy API)
     "FDMBoundaryStencils",
 ]
