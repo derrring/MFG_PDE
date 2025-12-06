@@ -153,102 +153,6 @@ class TestSolverResultInit:
 
 
 # ============================================================================
-# Test: Deprecated Parameters
-# ============================================================================
-
-
-class TestDeprecatedParameters:
-    """Test handling of deprecated parameters."""
-
-    def test_convergence_achieved_deprecated(self, sample_arrays, sample_errors):
-        """Test convergence_achieved parameter deprecation."""
-        U, M = sample_arrays
-        error_U, error_M = sample_errors
-
-        with pytest.warns(DeprecationWarning, match="convergence_achieved.*deprecated"):
-            result = SolverResult(
-                U=U,
-                M=M,
-                iterations=5,
-                error_history_U=error_U,
-                error_history_M=error_M,
-                convergence_achieved=True,
-            )
-
-        assert result.converged is True
-
-    def test_convergence_reason_deprecated(self, sample_arrays, sample_errors):
-        """Test convergence_reason parameter deprecation."""
-        U, M = sample_arrays
-        error_U, error_M = sample_errors
-
-        with pytest.warns(DeprecationWarning, match="convergence_reason.*deprecated"):
-            result = SolverResult(
-                U=U,
-                M=M,
-                iterations=5,
-                error_history_U=error_U,
-                error_history_M=error_M,
-                convergence_reason="tolerance_reached",
-            )
-
-        assert "convergence_reason" in result.metadata
-        assert result.metadata["convergence_reason"] == "tolerance_reached"
-
-    def test_diagnostics_deprecated(self, sample_arrays, sample_errors):
-        """Test diagnostics parameter deprecation."""
-        U, M = sample_arrays
-        error_U, error_M = sample_errors
-
-        diagnostics = {"step_size": 0.1, "damping": 0.5}
-
-        with pytest.warns(DeprecationWarning, match="diagnostics.*deprecated"):
-            result = SolverResult(
-                U=U,
-                M=M,
-                iterations=5,
-                error_history_U=error_U,
-                error_history_M=error_M,
-                diagnostics=diagnostics,
-            )
-
-        assert "step_size" in result.metadata
-        assert "damping" in result.metadata
-
-    def test_unknown_parameters_warning(self, sample_arrays, sample_errors):
-        """Test warning for unknown parameters."""
-        U, M = sample_arrays
-        error_U, error_M = sample_errors
-
-        with pytest.warns(DeprecationWarning, match="Unknown parameters"):
-            SolverResult(
-                U=U,
-                M=M,
-                iterations=5,
-                error_history_U=error_U,
-                error_history_M=error_M,
-                unknown_param=123,
-            )
-
-    def test_convergence_achieved_property_deprecated(self, sample_arrays, sample_errors):
-        """Test convergence_achieved property deprecation."""
-        U, M = sample_arrays
-        error_U, error_M = sample_errors
-
-        result = SolverResult(
-            U=U,
-            M=M,
-            iterations=5,
-            error_history_U=error_U,
-            error_history_M=error_M,
-            converged=True,
-        )
-
-        with pytest.warns(DeprecationWarning, match="convergence_achieved.*deprecated"):
-            assert result.convergence_achieved is True
-
-
-# ============================================================================
 # Test: Backward Compatibility
 # ============================================================================
 
@@ -532,12 +436,12 @@ class TestConvergenceResult:
             error_history_U=error_U,
             error_history_M=error_M,
             iterations_performed=5,
-            convergence_achieved=True,
+            converged=True,
             final_tolerance=1e-3,
         )
 
         assert conv.iterations_performed == 5
-        assert conv.convergence_achieved is True
+        assert conv.converged is True
         assert conv.final_tolerance == 1e-3
         assert conv.convergence_criteria == "L2_relative"
 
@@ -550,7 +454,7 @@ class TestConvergenceResult:
             error_history_U=error_U,
             error_history_M=error_M,
             iterations_performed=5,
-            convergence_achieved=True,
+            converged=True,
             final_tolerance=0.1,
         )
 
@@ -565,7 +469,7 @@ class TestConvergenceResult:
             error_history_U=error_U,
             error_history_M=error_M,
             iterations_performed=5,
-            convergence_achieved=False,
+            converged=False,
             final_tolerance=0.1,
         )
 
@@ -580,7 +484,7 @@ class TestConvergenceResult:
             error_history_U=error_U,
             error_history_M=error_M,
             iterations_performed=5,
-            convergence_achieved=False,
+            converged=False,
             final_tolerance=0.01,
         )
 
@@ -601,7 +505,7 @@ class TestConvergenceResult:
             error_history_U=error_U,
             error_history_M=error_M,
             iterations_performed=5,
-            convergence_achieved=False,
+            converged=False,
             final_tolerance=0.1,
         )
 
@@ -616,7 +520,7 @@ class TestConvergenceResult:
             error_history_U=error_U,
             error_history_M=error_M,
             iterations_performed=2,
-            convergence_achieved=False,
+            converged=False,
             final_tolerance=0.1,
         )
 
@@ -630,7 +534,7 @@ class TestConvergenceResult:
             error_history_U=errors,
             error_history_M=errors,
             iterations_performed=10,
-            convergence_achieved=True,
+            converged=True,
             final_tolerance=0.001,
         )
 
@@ -644,7 +548,7 @@ class TestConvergenceResult:
             error_history_U=np.array([1.0]),
             error_history_M=np.array([1.0]),
             iterations_performed=1,
-            convergence_achieved=False,
+            converged=False,
             final_tolerance=0.1,
         )
 
@@ -656,7 +560,7 @@ class TestConvergenceResult:
             error_history_U=np.array([0.0, 0.0, 0.0]),
             error_history_M=np.array([0.0, 0.0, 0.0]),
             iterations_performed=3,
-            convergence_achieved=True,
+            converged=True,
             final_tolerance=0.0,
         )
 
@@ -737,7 +641,7 @@ class TestCreateSolverResult:
         assert "convergence_analysis" in result.metadata
         analysis = result.metadata["convergence_analysis"]
         assert isinstance(analysis, ConvergenceResult)
-        assert analysis.convergence_achieved
+        assert analysis.converged
 
     def test_custom_metadata(self, sample_arrays, sample_errors):
         """Test custom metadata passed through."""

@@ -119,7 +119,7 @@ class TestMassConservation1DSimple:
         print("Masses over time:")
         for t_idx, mass in enumerate(masses):
             if t_idx % 5 == 0 or t_idx == len(masses) - 1:
-                print(f"  t={t_idx * problem.Dt:.2f}: {mass:.6f}")
+                print(f"  t={t_idx * problem.dt:.2f}: {mass:.6f}")
 
         # Mass should be approximately conserved
         # Particle methods with KDE normalization should preserve total mass well
@@ -192,7 +192,7 @@ class TestMassConservation1DSimple:
         print("Masses over time:")
         for t_idx, mass in enumerate(masses):
             if t_idx % 5 == 0 or t_idx == len(masses) - 1:
-                print(f"  t={t_idx * problem.Dt:.2f}: {mass:.6f}")
+                print(f"  t={t_idx * problem.dt:.2f}: {mass:.6f}")
 
         # Mass should be approximately conserved
         # GFDM particle collocation with KDE normalization should preserve total mass

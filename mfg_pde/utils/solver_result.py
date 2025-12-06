@@ -7,7 +7,6 @@ improving code readability, IDE support, and API maintainability.
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -60,14 +59,9 @@ class SolverResult:
         converged: bool = False,
         execution_time: float | None = None,
         metadata: dict[str, Any] | None = None,
-        # Deprecated parameters
-        convergence_achieved: bool | None = None,
-        convergence_reason: str | None = None,
-        diagnostics: dict[str, Any] | None = None,
-        **kwargs: Any,
     ):
         """
-        Initialize SolverResult with support for deprecated parameters.
+        Initialize SolverResult.
 
         Args:
             U: Control/value function solution array
@@ -79,49 +73,7 @@ class SolverResult:
             converged: Whether convergence was achieved
             execution_time: Total solve time in seconds
             metadata: Additional solver-specific information
-            convergence_achieved: DEPRECATED - Use converged instead
-            convergence_reason: DEPRECATED - Add to metadata instead
-            diagnostics: DEPRECATED - Add to metadata instead
         """
-        # Handle deprecated 'convergence_achieved' parameter
-        if convergence_achieved is not None:
-            warnings.warn(
-                "Parameter 'convergence_achieved' is deprecated, use 'converged' instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            converged = convergence_achieved
-
-        # Handle deprecated 'convergence_reason' parameter
-        if convergence_reason is not None:
-            warnings.warn(
-                "Parameter 'convergence_reason' is deprecated, add to metadata instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if metadata is None:
-                metadata = {}
-            metadata["convergence_reason"] = convergence_reason
-
-        # Handle deprecated 'diagnostics' parameter
-        if diagnostics is not None:
-            warnings.warn(
-                "Parameter 'diagnostics' is deprecated, add to metadata instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if metadata is None:
-                metadata = {}
-            metadata.update(diagnostics)
-
-        # Handle any other unexpected kwargs
-        if kwargs:
-            warnings.warn(
-                f"Unknown parameters: {list(kwargs.keys())}",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
         # Initialize dataclass fields
         self.U = U
         self.M = M
@@ -178,17 +130,6 @@ class SolverResult:
             self.error_history_M,
         )
         return tuple_representation[index]
-
-    # Deprecated property for backward compatibility
-    @property
-    def convergence_achieved(self) -> bool:
-        """DEPRECATED: Use converged instead."""
-        warnings.warn(
-            "Property 'convergence_achieved' is deprecated, use 'converged' instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.converged
 
     # Convenience properties
     @property
@@ -1163,7 +1104,7 @@ class ConvergenceResult:
     error_history_U: NDArray[np.floating]
     error_history_M: NDArray[np.floating]
     iterations_performed: int
-    convergence_achieved: bool
+    converged: bool
     final_tolerance: float
     convergence_criteria: str = "L2_relative"
     stagnation_detected: bool = False
@@ -1254,7 +1195,7 @@ def create_solver_result(
         error_history_U=error_history_U,
         error_history_M=error_history_M,
         iterations_performed=iterations,
-        convergence_achieved=converged,  # ConvergenceResult keeps its own naming
+        converged=converged,
         final_tolerance=tolerance or 0.0,
         convergence_rate_estimate=None,  # Will be computed on access
     )

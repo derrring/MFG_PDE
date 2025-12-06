@@ -424,7 +424,7 @@ class TestMassConservation1D:
         mfg_solver_1 = FixedPointIterator(problem, hjb_solver=hjb_solver_1, fp_solver=fp_solver_1)
 
         result_1 = mfg_solver_1.solve(max_iterations=30, tolerance=1e-5, return_structured=True)
-        if not result_1.convergence_achieved:
+        if not result_1.converged:
             pytest.skip("FDM did not converge with tight tolerances (expected for particle methods)")
 
         # Solver 2: FP Particle + HJB GFDM
@@ -440,7 +440,7 @@ class TestMassConservation1D:
 
         result_2 = mfg_solver_2.solve(max_iterations=30, tolerance=1e-5, return_structured=True)
         # Convergence might not be achieved with these tight params - gracefully handle
-        if not result_2.convergence_achieved:
+        if not result_2.converged:
             pytest.skip("GFDM did not converge with tight tolerances (expected for particle methods)")
 
         # Compute masses for both methods

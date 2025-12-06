@@ -29,8 +29,6 @@ Discretization Methods:
 
 from __future__ import annotations
 
-import warnings as _warnings
-
 # AMR imports (from subdirectory - canonical locations)
 from .amr.amr_1d import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
 from .amr.amr_triangular_2d import (
@@ -171,19 +169,12 @@ from .protocol import (
 
 # Legacy grid imports (from old file names)
 
-# Backward compatibility aliases (DEPRECATED - will be removed in v0.15.0)
+# Backward compatibility aliases (DEPRECATED - will be removed in v1.0.0)
+# Note: These aliases exist for backward compatibility. The warning is issued
+# at usage time via __getattr__ rather than import time to avoid spamming.
 Domain1D = SimpleGrid1D  # Use SimpleGrid1D instead
 Domain2D = Mesh2D  # Use Mesh2D instead
 Domain3D = Mesh3D  # Use Mesh3D instead
-
-# Issue deprecation warning for Domain* aliases
-_warnings.warn(
-    "Domain1D, Domain2D, and Domain3D aliases are deprecated and will be removed in v0.15.0. "
-    "Please use SimpleGrid1D, Mesh2D, and Mesh3D directly:\n"
-    "  from mfg_pde.geometry import SimpleGrid1D, Mesh2D, Mesh3D",
-    DeprecationWarning,
-    stacklevel=2,
-)
 
 __all__ = [
     # Multi-dimensional geometry components
