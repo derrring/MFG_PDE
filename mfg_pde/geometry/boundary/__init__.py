@@ -4,40 +4,90 @@ Boundary condition management for MFG problems.
 This module provides boundary condition specifications for 1D, 2D, and 3D domains,
 supporting Dirichlet, Neumann, Robin, periodic, and no-flux conditions.
 
-Architecture:
-- **Specification Layer** (dimension-agnostic):
-  - types.py: BCType enum, BCSegment dataclass
-  - conditions.py: Unified BoundaryConditions class and factory functions
+Architecture
+============
 
-- **Application Layer** (dimension-specific for performance):
-  - applicator_base.py: Abstract protocols and base classes
-  - applicator_fdm.py: FDM ghost cell BC application (1D/2D/3D/nD)
-  - applicator_fem.py: FEM mesh-based BC application (2D/3D)
-  - bc_2d.py: Optimized 2D FEM classes
-  - bc_3d.py: Optimized 3D FEM classes
+Three-layer design separating specification from application:
 
-- **Legacy**:
-  - legacy.py: Legacy 1D BoundaryConditions for backward compatibility
+Layer 1: BC Specification (dimension-agnostic)
+----------------------------------------------
+Defines WHAT boundary condition is applied, not HOW:
 
-Usage:
-    # Uniform BC (same type on all boundaries)
+- **types.py**: BCType enum, BCSegment dataclass
+- **conditions.py**: Unified BoundaryConditions class and factory functions
+
+Layer 2: BC Stencil Library [PLANNED - see GitHub Issue #379]
+-------------------------------------------------------------
+Reusable stencil coefficients for matrix construction:
+
+- **stencils/fdm_stencils.py**: FDM boundary stencils (Laplacian, advection)
+- **stencils/fem_weak_forms.py**: FEM weak form boundary contributions
+- **stencils/meshfree_constraints.py**: Meshfree collocation constraints
+
+This layer maps (BC type, operator type) -> coefficients, enabling:
+- Consistent BC implementation across solvers
+- Mass-conserving stencils for Fokker-Planck equations
+- Separation of BC logic from solver matrix assembly
+
+Layer 3: BC Application (dimension-specific)
+--------------------------------------------
+Field-level BC application (ghost cells, DOF elimination):
+
+- **applicator_base.py**: Abstract protocols and base classes
+- **applicator_fdm.py**: FDM ghost cell BC application (1D/2D/3D/nD)
+- **applicator_fem.py**: FEM mesh-based BC application (2D/3D)
+- **applicator_meshfree.py**: Particle reflection at boundaries
+- **applicator_graph.py**: Graph/maze boundary handling
+
+Legacy
+------
+- **fdm_bc_1d.py**: Legacy 1D BoundaryConditions (deprecated)
+
+Usage Examples
+==============
+
+Uniform BC (same type on all boundaries)::
+
     bc = neumann_bc(dimension=2)
 
-    # Mixed BC (different types on different segments)
+Mixed BC (different types on different segments)::
+
     exit = BCSegment(name="exit", bc_type=BCType.DIRICHLET, boundary="x_max")
     wall = BCSegment(name="wall", bc_type=BCType.NEUMANN)
     bc = mixed_bc([exit, wall], dimension=2, domain_bounds=bounds)
 
-    # FDM application
+FDM application (ghost cell padding)::
+
     padded = apply_boundary_conditions_2d(field, bc, bounds)
     # or
     applicator = FDMApplicator(dimension=2)
     padded = applicator.apply(field, bc, domain_bounds=bounds)
 
-    # FEM application
+FEM application (DOF modification)::
+
     applicator = FEMApplicator(dimension=2)
     applicator.add_dirichlet(region=0, value=0.0)
     matrix, rhs = applicator.apply(matrix, rhs, mesh)
+
+Planned: Stencil Library Usage (Issue #379)::
+
+    from mfg_pde.geometry.boundary.stencils import FDMBoundaryStencils
+
+    stencil = FDMBoundaryStencils.diffusion_laplacian(
+        bc_type=bc.type,
+        position="left",
+        dx=0.1,
+        diffusion_coeff=0.05,  # sigma^2/2
+    )
+    # Returns: BoundaryStencil(diagonal=..., neighbor=..., preserves_conservation=True)
+
+    # Solver uses stencil for matrix assembly
+    diagonal_value += stencil.diagonal
+    off_diagonal.append(stencil.neighbor)
+
+See Also
+--------
+- GitHub Issue #379: Layered BC Stencil Architecture for Matrix Construction
 """
 
 # =============================================================================
