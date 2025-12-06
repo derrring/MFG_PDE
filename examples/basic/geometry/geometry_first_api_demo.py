@@ -56,7 +56,7 @@ def demo_domain_1d():
 
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import Domain1D
-    from mfg_pde.geometry.boundary.fdm_bc_1d import periodic_bc
+    from mfg_pde.geometry.boundary import periodic_bc
 
     # Create 1D periodic domain with proper BoundaryConditions object
     bc = periodic_bc()

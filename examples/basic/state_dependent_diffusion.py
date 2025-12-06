@@ -24,7 +24,7 @@ from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.geometry import SimpleGrid1D
-from mfg_pde.geometry.boundary.fdm_bc_1d import periodic_bc
+from mfg_pde.geometry.boundary import periodic_bc
 
 
 def scenario_porous_medium():
