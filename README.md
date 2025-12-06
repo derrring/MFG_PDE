@@ -164,12 +164,12 @@ problem = MFGProblem(
 - **Finite Difference (FDM)** - Standard grid-based discretization
 - **GFDM with Monotonicity** - Generalized FDM with QP-based monotone scheme enforcement, direct Hamiltonian gradient constraints
 - **Semi-Lagrangian** - Adaptive time-stepping with CFL monitoring
+- **WENO** - High-order shock-capturing schemes for non-smooth solutions
 - **Neural (DGM, PINN)** - Deep learning approaches for high dimensions
 
 ### Fokker-Planck Solvers
 - **FDM** - Conservative finite difference schemes
 - **Particle Methods** - Monte Carlo, kernel density estimation
-- **WENO** - High-order shock-capturing schemes
 
 ### Operator Infrastructure
 - **RBF Operators** - Radial basis function differential operators for meshless methods
