@@ -884,6 +884,30 @@ class MFGProblem:
 
             self.domain_type = "implicit"
 
+        elif geometry.geometry_type in (GeometryType.MAZE, GeometryType.NETWORK):
+            # Graph-based geometries (mazes, networks)
+            config = geometry.get_problem_config()
+            self.num_spatial_points = config["num_spatial_points"]
+            self.collocation_points = geometry.get_spatial_grid()
+            self.spatial_shape = config["spatial_shape"]
+            self.spatial_bounds = config.get("spatial_bounds")
+            self.spatial_discretization = config.get("spatial_discretization")
+            self._grid = None
+
+            # Store graph-specific data if available
+            if "graph_data" in config:
+                self.graph_data = config["graph_data"]
+
+            # Legacy 1D attributes (None for graphs)
+            self.xmin = None
+            self.xmax = None
+            self.Lx = None
+            self.Nx = None
+            self.dx = None  # Lowercase (official naming convention)
+            self.xSpace = None
+
+            self.domain_type = str(geometry.geometry_type.value)
+
         else:
             # Generic GeometryProtocol object - use spatial grid
             self.num_spatial_points = geometry.num_spatial_points

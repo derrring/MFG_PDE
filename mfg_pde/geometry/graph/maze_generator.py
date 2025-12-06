@@ -282,7 +282,7 @@ class PerfectMazeGenerator(GraphGeometry):
         # Generate maze immediately
         self.generate(seed=seed)
 
-    def generate(self, seed: int | None = None) -> Grid:
+    def generate(self, seed: int | None = None) -> PerfectMazeGenerator:
         """
         Generate a perfect maze.
 
@@ -290,7 +290,11 @@ class PerfectMazeGenerator(GraphGeometry):
             seed: Random seed for reproducibility
 
         Returns:
-            Generated maze grid
+            Self (the maze generator with populated grid)
+
+        Note:
+            Returns self to satisfy GeometryProtocol. Access the raw
+            Grid object via self.grid if needed.
         """
         if seed is not None:
             random.seed(seed)
@@ -306,7 +310,7 @@ class PerfectMazeGenerator(GraphGeometry):
         else:
             raise ValueError(f"Unknown algorithm: {self.algorithm}")
 
-        return self.grid
+        return self
 
     def _recursive_backtracking(self):
         """
@@ -589,8 +593,23 @@ class PerfectMazeGenerator(GraphGeometry):
         return maze
 
     # ============================================================================
-    # GraphGeometry implementation
+    # GraphGeometry implementation (with maze-specific overrides)
     # ============================================================================
+
+    @property
+    def dimension(self) -> int:
+        """
+        Spatial dimension for maze (always 2).
+
+        Overrides GraphGeometry.dimension which returns 0 for abstract graphs.
+        Mazes are spatially embedded grid graphs in 2D.
+        """
+        return 2
+
+    @property
+    def geometry_type(self) -> GeometryType:
+        """Type of geometry (MAZE for maze grids)."""
+        return GeometryType.MAZE
 
     @property
     def num_spatial_points(self) -> int:
