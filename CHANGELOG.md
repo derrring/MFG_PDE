@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2025-12-06
+
+### Changed
+
+- **Rename `PerfectMazeGenerator` → `MazeGeometry`**: Better reflects role as geometry class for MFG problems
+
+### Fixed
+
+- **MazeGeometry now satisfies GeometryProtocol**: Can be used directly with `MFGProblem`
+  - `generate()` returns `self` instead of `Grid`
+  - `dimension=2` (spatially embedded) instead of `0` (abstract graph)
+  - `geometry_type=MAZE` instead of `NETWORK`
+- **MAZE/NETWORK geometry handlers in MFGProblem**: Properly extracts `spatial_bounds` from graph geometries
+
+### Deprecated
+
+- **`fdm_bc_1d` module**: Migrated examples to unified BC API (`periodic_bc()` from `mfg_pde.geometry.boundary`)
+
+## [0.14.0] - 2025-12-01
+
 ### Removed - API Simplification (2025-11-23)
 
 **BREAKING CHANGES**: Removed unnecessary API layers to enforce clean 2-level architecture (Factory vs Expert).
