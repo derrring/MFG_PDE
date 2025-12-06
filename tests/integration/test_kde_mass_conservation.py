@@ -7,7 +7,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver as ParticleFPSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.boundary.fdm_bc_1d import no_flux_bc
+from mfg_pde.geometry import no_flux_bc
 
 
 def test_kde_normalization():
@@ -15,7 +15,7 @@ def test_kde_normalization():
 
     problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, sigma=1.0, coupling_coefficient=0.5)
 
-    bc = no_flux_bc()
+    bc = no_flux_bc(dimension=1)
 
     print("Test 1: With normalize_kde_output=False (current)")
     solver1 = ParticleFPSolver(

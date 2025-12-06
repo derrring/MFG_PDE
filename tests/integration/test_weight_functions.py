@@ -7,7 +7,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.boundary.fdm_bc_1d import no_flux_bc
+from mfg_pde.geometry import no_flux_bc
 
 
 def test_weight_functions():
@@ -19,7 +19,7 @@ def test_weight_functions():
     num_collocation_points = 5
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)
     boundary_indices = np.array([0, num_collocation_points - 1])
-    bc = no_flux_bc()
+    bc = no_flux_bc(dimension=1)
 
     # Test data
     M_simple = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.5
