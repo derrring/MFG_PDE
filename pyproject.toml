@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.13.6" # v0.13.6: GFDM composition pattern, kernels reorganization, smoke tests
+version = "0.14.0"  # v0.14.0: Hamiltonian constraints, RBF operators, SDF boundaries, JAX autodiff
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
