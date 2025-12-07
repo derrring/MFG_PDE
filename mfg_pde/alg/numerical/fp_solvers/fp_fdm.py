@@ -359,8 +359,9 @@ class FPFDMSolver(BaseFPSolver):
             effective_sigma = diffusion_field
         elif callable(diffusion_field):
             # State-dependent diffusion - Phase 2.2/2.4
-            # Route to callable solver (no need to set effective_sigma)
-            if self.dimension == 1:
+            # For 1D with conservative=False, use legacy callable solver
+            # For 1D with conservative=True or nD, use unified nD solver
+            if self.dimension == 1 and not self.conservative:
                 return self._solve_fp_1d_with_callable(
                     m_initial_condition=M_initial,
                     drift_field=effective_U,
@@ -368,8 +369,7 @@ class FPFDMSolver(BaseFPSolver):
                     show_progress=show_progress,
                 )
             else:
-                # nD callable diffusion (Phase 2.4)
-                # Pass to nD solver - will be evaluated per timestep
+                # nD or 1D conservative: use unified nD solver with callable diffusion
                 effective_sigma = diffusion_field
         else:
             raise TypeError(
