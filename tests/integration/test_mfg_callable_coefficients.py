@@ -24,10 +24,6 @@ class TestMFGCallableCoefficients:
     Both HJB-FDM and FP-FDM now support callable diffusion for 1D problems.
     """
 
-    @pytest.mark.xfail(
-        reason="Pre-existing: Porous medium diffusion causes solver instability (U_err=0.7, M_err=0.7 after 5 iter)",
-        strict=False,
-    )
     def test_mfg_with_callable_diffusion(self):
         """Test MFG with state-dependent diffusion: porous medium."""
         # Create problem
@@ -92,10 +88,6 @@ class TestMFGCallableCoefficients:
         assert M.shape == (problem.Nt + 1, problem.Nx + 1)
         assert np.all(M >= 0)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) introduced regression in callable diffusion handling",
-        strict=False,
-    )
     def test_mfg_callable_vs_constant_convergence(self):
         """Test that callable returning constant matches constant diffusion."""
         # Create problem

@@ -110,17 +110,8 @@ class TestFPFDMSolverBasicSolution:
         # Initial condition should be preserved (approximately, after non-negativity enforcement)
         assert np.allclose(m_result[0, :], m_initial, rtol=0.1)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: U shape mismatch with edge cases",
-        strict=False,
-    )
     def test_solve_fp_system_zero_timesteps(self, standard_problem):
         """Test behavior with zero time steps (Nt=0)."""
-        # Create problem with Nt=0 (results in 0 time steps)
-        boundary_conditions = BoundaryConditions(type="periodic")
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
-        domain.create_grid(num_points=51)
-        # Note: Edge case test - currently fails, needs investigation
         solver = FPFDMSolver(standard_problem)
 
         Nx = standard_problem.Nx + 1
@@ -132,17 +123,8 @@ class TestFPFDMSolverBasicSolution:
 
         assert m_result.shape == (0, Nx)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: U shape mismatch with edge cases",
-        strict=False,
-    )
     def test_solve_fp_system_one_timestep(self, standard_problem):
         """Test behavior with single time step (Nt=1)."""
-        # Create problem with Nt=1 (results in 1 time step)
-        boundary_conditions = BoundaryConditions(type="periodic")
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
-        domain.create_grid(num_points=51)
-        # Note: Edge case test - currently fails, needs investigation
         solver = FPFDMSolver(standard_problem)
 
         Nx = standard_problem.Nx + 1
@@ -182,10 +164,6 @@ class TestFPFDMSolverBoundaryConditions:
         # Mass should be preserved
         assert np.all(m_result >= -1e-10)  # Non-negative (with small tolerance)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: BC not enforced correctly",
-        strict=False,
-    )
     def test_dirichlet_boundary_conditions(self, standard_problem):
         """Test Dirichlet boundary conditions."""
         bc = BoundaryConditions(type="dirichlet", left_value=0.1, right_value=0.2)
