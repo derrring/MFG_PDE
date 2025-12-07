@@ -1463,6 +1463,13 @@ def _solve_timestep_full_nd(
         # Convert flat index to multi-index (i, j, k, ...)
         multi_idx = grid.get_multi_index(flat_idx)
 
+        # Extract local diffusion coefficient (scalar or from spatially varying array)
+        if isinstance(sigma, np.ndarray):
+            # For spatially varying diffusion, extract value at this grid point
+            sigma_local = float(sigma[multi_idx])
+        else:
+            sigma_local = sigma
+
         # Check if this is a boundary point
         is_boundary = _is_boundary_point(multi_idx, shape, ndim)
 
@@ -1490,7 +1497,7 @@ def _solve_timestep_full_nd(
                     shape,
                     ndim,
                     dt,
-                    sigma,
+                    sigma_local,
                     coupling_coefficient,
                     spacing,
                     u_flat,
@@ -1506,7 +1513,7 @@ def _solve_timestep_full_nd(
                     shape,
                     ndim,
                     dt,
-                    sigma,
+                    sigma_local,
                     coupling_coefficient,
                     spacing,
                     u_flat,
@@ -1524,7 +1531,7 @@ def _solve_timestep_full_nd(
                     shape,
                     ndim,
                     dt,
-                    sigma,
+                    sigma_local,
                     coupling_coefficient,
                     spacing,
                     u_flat,
@@ -1541,7 +1548,7 @@ def _solve_timestep_full_nd(
                     shape,
                     ndim,
                     dt,
-                    sigma,
+                    sigma_local,
                     coupling_coefficient,
                     spacing,
                     u_flat,
