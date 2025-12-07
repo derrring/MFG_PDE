@@ -681,7 +681,11 @@ def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]
     """
     # Modern geometry-based API
     if hasattr(problem, "geometry") and hasattr(problem.geometry, "coordinates"):
-        return problem.geometry.coordinates
+        coords = problem.geometry.coordinates
+        # For 1D, return single array; for nD, return tuple of arrays
+        if len(coords) == 1:
+            return coords[0]
+        return tuple(coords)
 
     # Legacy 1D API
     elif hasattr(problem, "xmin") and hasattr(problem, "xmax"):
