@@ -12,6 +12,13 @@ Submodules:
 - particle: Particle-based methods (Monte Carlo, MCMC, interpolation)
 """
 
+# Flux diagnostics for mass conservation analysis
+from mfg_pde.utils.numerical.flux_diagnostics import (
+    BoundaryFluxResult,
+    FluxDiagnostics,
+    FluxSummary,
+    compute_mass_conservation_error,
+)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
 from mfg_pde.utils.numerical.hjb_policy_iteration import (
     HJBPolicyProblem,
@@ -103,4 +110,9 @@ __all__ = [
     "MCMCResult",
     "MetropolisHastings",
     "HamiltonianMonteCarlo",
+    # Flux diagnostics (mass conservation)
+    "FluxDiagnostics",
+    "BoundaryFluxResult",
+    "FluxSummary",
+    "compute_mass_conservation_error",
 ]

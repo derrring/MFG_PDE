@@ -132,6 +132,68 @@ class SimpleGrid1D(CartesianGrid):
         """
         return np.array([self.xmin]), np.array([self.xmax])
 
+    @property
+    def coordinates(self) -> list[NDArray]:
+        """
+        Get coordinate arrays for each dimension (TensorProductGrid compatible).
+
+        Returns:
+            List containing single 1D coordinate array [x_coords]
+
+        Raises:
+            ValueError: If grid has not been created yet
+        """
+        if self._cached_grid is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+        return [np.array(self._cached_grid)]
+
+    def get_multi_index(self, flat_index: int) -> tuple[int]:
+        """
+        Convert flat index to 1D grid index (trivial for 1D).
+
+        For 1D grids, the flat index is identical to the spatial index.
+
+        Args:
+            flat_index: Flat index in [0, num_points)
+
+        Returns:
+            Tuple (i,) of grid index (single element tuple for consistency with nD)
+
+        Raises:
+            ValueError: If grid not yet created or flat_index out of range
+        """
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        if flat_index < 0 or flat_index >= self._cached_num_points:
+            raise ValueError(f"flat_index {flat_index} out of range [0, {self._cached_num_points})")
+
+        return (flat_index,)
+
+    def get_index(self, multi_index: tuple[int, ...]) -> int:
+        """
+        Convert 1D grid index tuple to flat index (trivial for 1D).
+
+        Inverse of get_multi_index().
+
+        Args:
+            multi_index: Tuple (i,) of grid index
+
+        Returns:
+            Flat index (equal to i for 1D)
+
+        Raises:
+            ValueError: If grid not yet created or index out of range
+        """
+        if self._cached_num_points is None:
+            raise ValueError("Grid not yet created. Call create_grid() first.")
+
+        (i,) = multi_index
+        if i < 0 or i >= self._cached_num_points:
+            raise ValueError(f"Grid index {i} out of range [0, {self._cached_num_points})")
+
+        return i
+
     def get_problem_config(self) -> dict:
         """
         Return configuration dict for MFGProblem initialization.
