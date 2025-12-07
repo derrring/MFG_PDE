@@ -1127,6 +1127,11 @@ def _solve_fp_nd_full_system(
     # Ensure non-negativity of initial condition
     M_solution[0] = np.maximum(M_solution[0], 0)
 
+    # Enforce Dirichlet BC on initial condition (for 1D problems)
+    if boundary_conditions is not None and boundary_conditions.type == "dirichlet" and ndim == 1:
+        M_solution[0, 0] = boundary_conditions.left_value
+        M_solution[0, -1] = boundary_conditions.right_value
+
     # Edge cases
     if Nt <= 1:
         return M_solution
@@ -1195,6 +1200,11 @@ def _solve_fp_nd_full_system(
 
         # Enforce non-negativity
         M_solution[k + 1] = np.maximum(M_solution[k + 1], 0)
+
+        # Enforce Dirichlet boundary conditions (for 1D problems)
+        if boundary_conditions.type == "dirichlet" and ndim == 1:
+            M_solution[k + 1, 0] = boundary_conditions.left_value
+            M_solution[k + 1, -1] = boundary_conditions.right_value
 
     return M_solution
 

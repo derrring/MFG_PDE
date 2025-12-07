@@ -182,10 +182,6 @@ class TestFPFDMSolverBoundaryConditions:
         # Mass should be preserved
         assert np.all(m_result >= -1e-10)  # Non-negative (with small tolerance)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: BC not enforced correctly",
-        strict=False,
-    )
     def test_dirichlet_boundary_conditions(self, standard_problem):
         """Test Dirichlet boundary conditions."""
         bc = BoundaryConditions(type="dirichlet", left_value=0.1, right_value=0.2)
