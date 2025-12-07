@@ -137,10 +137,6 @@ class TestMFGCallableCoefficients:
         assert np.allclose(U_callable, U_constant, rtol=0.1, atol=1e-2)
         assert np.allclose(M_callable, M_constant, rtol=0.1, atol=1e-2)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) introduced regression in array diffusion handling",
-        strict=False,
-    )
     def test_mfg_callable_diffusion_with_array(self):
         """Test MFG with array diffusion (non-callable) for comparison."""
         # Create problem

@@ -447,10 +447,6 @@ class TestFPFDMSolverArrayDiffusion:
     (shape, non-negativity) rather than strict mass conservation.
     """
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: inhomogeneous array shape error",
-        strict=False,
-    )
     def test_spatially_varying_diffusion_1d(self, standard_problem):
         """Test spatially varying diffusion: sigma(x) with periodic BC."""
         # Use periodic BC for better mass conservation with array diffusion
@@ -480,10 +476,6 @@ class TestFPFDMSolverArrayDiffusion:
         assert np.all(np.sum(M, axis=1) > 0.5)
         assert np.all(np.sum(M, axis=1) < 2.0)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: inhomogeneous array shape error",
-        strict=False,
-    )
     def test_spatiotemporal_diffusion_1d(self, standard_problem):
         """Test spatiotemporal diffusion: sigma(t, x)."""
         solver = FPFDMSolver(standard_problem)
@@ -515,10 +507,6 @@ class TestFPFDMSolverArrayDiffusion:
         # Mass conservation
         assert np.allclose(np.sum(M, axis=1), 1.0, atol=0.05)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: inhomogeneous array shape error",
-        strict=False,
-    )
     def test_array_diffusion_with_advection(self, standard_problem):
         """Test array diffusion with non-zero drift."""
         solver = FPFDMSolver(standard_problem)
@@ -548,10 +536,6 @@ class TestFPFDMSolverArrayDiffusion:
         assert np.all(np.sum(M, axis=1) > 0.5)
         assert np.all(np.sum(M, axis=1) < 2.0)
 
-    @pytest.mark.xfail(
-        reason="Conservative flux FDM (PR #383) regression: inhomogeneous array shape error",
-        strict=False,
-    )
     def test_array_diffusion_mass_conservation(self, standard_problem):
         """Test that mass is conserved with array diffusion."""
         solver = FPFDMSolver(standard_problem)
