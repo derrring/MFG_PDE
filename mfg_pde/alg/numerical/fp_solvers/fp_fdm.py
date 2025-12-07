@@ -1078,7 +1078,8 @@ def _solve_fp_nd_full_system(
     - D: diffusion operator (full multi-D Laplacian)
     """
     # Get problem dimensions
-    Nt = problem.Nt + 1
+    # Use U_solution shape for timestep count (allows flexible input sizes)
+    Nt = U_solution_for_drift.shape[0]
     ndim = problem.geometry.dimension
     shape = tuple(problem.geometry.get_grid_shape())
     dt = problem.dt
@@ -1111,14 +1112,20 @@ def _solve_fp_nd_full_system(
             sigma_base = problem.sigma
         tensor_base = None
 
-    # Validate input shapes
+    # Validate input shapes (spatial dimensions must match)
     assert m_initial_condition.shape == shape, (
         f"Initial condition shape {m_initial_condition.shape} doesn't match problem shape {shape}"
     )
-    expected_U_shape = (Nt, *shape)
-    assert U_solution_for_drift.shape == expected_U_shape, (
-        f"Value function shape {U_solution_for_drift.shape} doesn't match expected shape {expected_U_shape}"
-    )
+    # Only validate spatial dimensions of U_solution (timestep count is flexible)
+    if Nt > 0:
+        U_spatial_shape = U_solution_for_drift.shape[1:]
+        assert U_spatial_shape == shape, (
+            f"Value function spatial shape {U_spatial_shape} doesn't match problem shape {shape}"
+        )
+
+    # Edge case: zero timesteps - return empty array
+    if Nt == 0:
+        return np.zeros((0, *shape), dtype=np.float64)
 
     # Allocate solution array
     M_solution = np.zeros((Nt, *shape), dtype=np.float64)
