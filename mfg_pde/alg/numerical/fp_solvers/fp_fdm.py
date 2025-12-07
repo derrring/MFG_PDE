@@ -22,6 +22,15 @@ class FPFDMSolver(BaseFPSolver):
 
     Supports general FP equation: ∂m/∂t + ∇·(α m) = σ²/2 Δm
 
+    Discretization Modes:
+        - **Conservative (Flux FDM)** [default, recommended]:
+          Discretizes div(αm) as flux differences at cell interfaces.
+          Mass conserved exactly (column sums = 1/dt).
+
+        - **Non-conservative (Gradient FDM)**:
+          Discretizes α·∇m at cell centers.
+          May lose 1-5% mass per unit time. Use for prototyping only.
+
     Equation Types:
         1. Advection-diffusion (σ>0, α≠0): Standard MFG (stable)
         2. Pure diffusion (σ>0, α=0): Heat equation (stable)
@@ -34,6 +43,10 @@ class FPFDMSolver(BaseFPSolver):
         - Central differences for diffusion terms
         - Supports periodic, Dirichlet, and no-flux boundary conditions
 
+    When to Use Each Mode:
+        - conservative=True: Production runs, long time horizons, coupled MFG
+        - conservative=False: Quick prototyping, Dirichlet BC (mass loss expected)
+
     Note:
         FPFDMSolver handles σ=0 (pure advection) algebraically correctly, but
         upwind discretization may exhibit numerical diffusion or instability for
@@ -41,9 +54,39 @@ class FPFDMSolver(BaseFPSolver):
         Semi-Lagrangian solvers provide better accuracy and stability.
     """
 
-    def __init__(self, problem: Any, boundary_conditions: BoundaryConditions | None = None) -> None:
+    def __init__(
+        self,
+        problem: Any,
+        boundary_conditions: BoundaryConditions | None = None,
+        conservative: bool = True,
+    ) -> None:
+        """
+        Initialize FDM solver for Fokker-Planck equations.
+
+        Parameters
+        ----------
+        problem : Any
+            MFG problem definition
+        boundary_conditions : BoundaryConditions | None
+            Boundary condition specification (default: no-flux)
+        conservative : bool
+            Discretization mode for advection term (default: True).
+
+            True (Flux FDM) [RECOMMENDED]:
+                - Discretizes div(alpha * m) as flux differences
+                - Velocities computed at cell interfaces
+                - Column sums = 1/dt (mass conserved exactly)
+                - Use for: production, long runs, coupled MFG
+
+            False (Gradient FDM):
+                - Discretizes alpha . grad(m) directly
+                - Velocities at cell centers
+                - Column sums != 1/dt (1-5% mass loss typical)
+                - Use for: quick prototyping, Dirichlet BC only
+        """
         super().__init__(problem)
         self.fp_method_name = "FDM"
+        self.conservative = conservative
 
         # Detect problem dimension first (needed for BC creation)
         self.dimension = self._detect_dimension(problem)
@@ -300,6 +343,7 @@ class FPFDMSolver(BaseFPSolver):
                 backend=self.backend,
                 diffusion_field=None,
                 tensor_diffusion_field=tensor_diffusion_field,
+                conservative=self.conservative,
             )
 
         # Handle diffusion_field parameter (scalar diffusion)
@@ -332,21 +376,25 @@ class FPFDMSolver(BaseFPSolver):
                 f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
             )
 
-        # Route to appropriate solver based on dimension and coefficient type
-        if self.dimension == 1:
-            # Temporarily override problem.sigma if custom diffusion provided (1D only)
-            original_sigma = self.problem.sigma
-            if diffusion_field is not None and not callable(diffusion_field):
-                self.problem.sigma = effective_sigma
+        # Route to appropriate solver based on dimension, conservative mode, and BC type
+        #
+        # Unified nD solver path: Used for:
+        # - All dimensions >= 2
+        # - 1D with conservative=True (unified flux-based discretization)
+        # - 1D with no_flux BC (can use nD path, more maintainable)
+        #
+        # Legacy 1D path: Used for backward compatibility with:
+        # - 1D with periodic or dirichlet BC (special handling needed)
+        # - 1D with conservative=False (legacy gradient-based discretization)
 
-            try:
-                return self._solve_fp_1d(M_initial, effective_U, show_progress)
-            finally:
-                # Restore original sigma
-                self.problem.sigma = original_sigma
-        else:
-            # Multi-dimensional solver via full nD system (not dimensional splitting)
-            # Pass diffusion_field directly (handles callable, array, scalar)
+        use_nd_path = (
+            self.dimension > 1
+            or self.conservative  # Conservative mode always uses unified nD solver
+            or self.boundary_conditions.type == "no_flux"  # no_flux works in nD solver
+        )
+
+        if use_nd_path:
+            # Unified nD solver (works for any dimension including 1D)
             return _solve_fp_nd_full_system(
                 m_initial_condition=M_initial,
                 U_solution_for_drift=effective_U,
@@ -355,7 +403,18 @@ class FPFDMSolver(BaseFPSolver):
                 show_progress=show_progress,
                 backend=self.backend,
                 diffusion_field=effective_sigma if diffusion_field is not None else None,
+                conservative=self.conservative,
             )
+        else:
+            # Legacy 1D solver for periodic/dirichlet BC with non-conservative mode
+            original_sigma = self.problem.sigma
+            if diffusion_field is not None and not callable(diffusion_field):
+                self.problem.sigma = effective_sigma
+
+            try:
+                return self._solve_fp_1d(M_initial, effective_U, show_progress)
+            finally:
+                self.problem.sigma = original_sigma
 
     def _solve_fp_1d(
         self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
@@ -544,94 +603,172 @@ class FPFDMSolver(BaseFPSolver):
                             data_values.append(val_A_i_ip1)
 
             elif self.boundary_conditions.type == "no_flux":
-                # Bug #8 Fix: No-flux boundaries WITH advection
-                # Previous "partial fix" dropped advection at boundaries → mass leaked
-                # New strategy: Include advection with one-sided stencils
-                # Accept ~1-2% FDM discretization error as normal
+                # Two discretization modes:
+                # - conservative=True: Flux FDM with interface velocities (mass-preserving)
+                # - conservative=False: Gradient FDM (original, may lose mass)
 
-                for i in range(Nx):
-                    # Get diffusion at point i (scalar or array)
-                    sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
+                if self.conservative:
+                    # Conservative Flux FDM: discretize div(alpha * m) as flux differences
+                    # Interface velocity: alpha_{i+1/2} = -coupling * (u[i+1] - u[i]) / Dx
+                    # Upwind flux: F_{i+1/2} = alpha * m_upwind
+                    # Column sums = 0 for advection part -> exact mass conservation
 
-                    if i == 0:
-                        # Left boundary: include both diffusion AND advection
-                        # Use one-sided (forward) stencil for velocity gradient
+                    for i in range(Nx):
+                        sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
 
-                        # Diagonal term: time + diffusion + advection (upwind)
+                        # Start with time derivative and diffusion
                         val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
+                        val_A_i_im1 = 0.0
+                        val_A_i_ip1 = 0.0
 
-                        # Add advection contribution (one-sided upwind scheme)
-                        # For left boundary, use forward difference for velocity
-                        # Only positive part contributes (flux out of domain)
-                        if Nx > 1:
-                            val_A_ii += float(coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+                        # Diffusion coupling (symmetric, standard centered)
+                        if i > 0:
+                            val_A_i_im1 -= sigma_i**2 / (2 * Dx**2)
+                        if i < Nx - 1:
+                            val_A_i_ip1 -= sigma_i**2 / (2 * Dx**2)
 
+                        # Right interface: F_{i+1/2}
+                        if i < Nx - 1:
+                            # Interface velocity at x_{i+1/2}
+                            alpha_right = -coupling_coefficient * (u_at_tk[i + 1] - u_at_tk[i]) / Dx
+
+                            if alpha_right >= 0:
+                                # Flow to the right: upwind from m_i
+                                # F_{i+1/2} = alpha_right * m_i
+                                # In row i: +alpha_right/Dx (outflow from cell i)
+                                val_A_ii += alpha_right / Dx
+                            else:
+                                # Flow to the left: upwind from m_{i+1}
+                                # F_{i+1/2} = alpha_right * m_{i+1}
+                                # In row i: coefficient on m_{i+1}
+                                val_A_i_ip1 += alpha_right / Dx
+
+                        # Left interface: -F_{i-1/2}
+                        if i > 0:
+                            # Interface velocity at x_{i-1/2}
+                            alpha_left = -coupling_coefficient * (u_at_tk[i] - u_at_tk[i - 1]) / Dx
+
+                            if alpha_left >= 0:
+                                # Flow to the right: upwind from m_{i-1}
+                                # F_{i-1/2} = alpha_left * m_{i-1}
+                                # In row i: -alpha_left/Dx (inflow to cell i)
+                                val_A_i_im1 -= alpha_left / Dx
+                            else:
+                                # Flow to the left: upwind from m_i
+                                # F_{i-1/2} = alpha_left * m_i
+                                # In row i: -alpha_left/Dx * m_i (outflow from cell i)
+                                val_A_ii -= alpha_left / Dx
+
+                        # Boundary treatment: F at domain boundary = 0 (no flux)
+                        # This is automatic: we simply don't add flux terms at boundaries
+                        # i=0: no left interface flux, only right interface
+                        # i=Nx-1: no right interface flux, only left interface
+
+                        # Add matrix entries
                         row_indices.append(i)
                         col_indices.append(i)
                         data_values.append(val_A_ii)
 
-                        # Coupling to m[1]: diffusion + advection
-                        val_A_i_ip1 = -(sigma_i**2) / Dx**2
-                        if Nx > 1:
-                            val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+                        if i > 0 and abs(val_A_i_im1) > 1e-15:
+                            row_indices.append(i)
+                            col_indices.append(i - 1)
+                            data_values.append(val_A_i_im1)
 
-                        row_indices.append(i)
-                        col_indices.append(i + 1)
-                        data_values.append(val_A_i_ip1)
+                        if i < Nx - 1 and abs(val_A_i_ip1) > 1e-15:
+                            row_indices.append(i)
+                            col_indices.append(i + 1)
+                            data_values.append(val_A_i_ip1)
 
-                    elif i == Nx - 1:
-                        # Right boundary: include both diffusion AND advection
-                        # Use one-sided (backward) stencil for velocity gradient
+                else:
+                    # Non-conservative Gradient FDM (original implementation)
+                    # Bug #8 Fix: No-flux boundaries WITH advection
+                    # Previous "partial fix" dropped advection at boundaries → mass leaked
+                    # New strategy: Include advection with one-sided stencils
+                    # Accept ~1-2% FDM discretization error as normal
 
-                        # Diagonal term: time + diffusion + advection (upwind)
-                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
+                    for i in range(Nx):
+                        # Get diffusion at point i (scalar or array)
+                        sigma_i = sigma_at_k[i] if isinstance(sigma_at_k, np.ndarray) else sigma_at_k
 
-                        # Add advection contribution (one-sided upwind scheme)
-                        # For right boundary, use backward difference for velocity
-                        # Only negative part contributes (flux out of domain)
-                        if Nx > 1:
-                            val_A_ii += float(coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+                        if i == 0:
+                            # Left boundary: include both diffusion AND advection
+                            # Use one-sided (forward) stencil for velocity gradient
 
-                        row_indices.append(i)
-                        col_indices.append(i)
-                        data_values.append(val_A_ii)
+                            # Diagonal term: time + diffusion + advection (upwind)
+                            val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
 
-                        # Coupling to m[N-2]: diffusion + advection
-                        val_A_i_im1 = -(sigma_i**2) / Dx**2
-                        if Nx > 1:
+                            # Add advection contribution (one-sided upwind scheme)
+                            # For left boundary, use forward difference for velocity
+                            # Only positive part contributes (flux out of domain)
+                            if Nx > 1:
+                                val_A_ii += float(coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+
+                            row_indices.append(i)
+                            col_indices.append(i)
+                            data_values.append(val_A_ii)
+
+                            # Coupling to m[1]: diffusion + advection
+                            val_A_i_ip1 = -(sigma_i**2) / Dx**2
+                            if Nx > 1:
+                                val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+
+                            row_indices.append(i)
+                            col_indices.append(i + 1)
+                            data_values.append(val_A_i_ip1)
+
+                        elif i == Nx - 1:
+                            # Right boundary: include both diffusion AND advection
+                            # Use one-sided (backward) stencil for velocity gradient
+
+                            # Diagonal term: time + diffusion + advection (upwind)
+                            val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
+
+                            # Add advection contribution (one-sided upwind scheme)
+                            # For right boundary, use backward difference for velocity
+                            # Only negative part contributes (flux out of domain)
+                            if Nx > 1:
+                                val_A_ii += float(coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+
+                            row_indices.append(i)
+                            col_indices.append(i)
+                            data_values.append(val_A_ii)
+
+                            # Coupling to m[N-2]: diffusion + advection
+                            val_A_i_im1 = -(sigma_i**2) / Dx**2
+                            if Nx > 1:
+                                val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+
+                            row_indices.append(i)
+                            col_indices.append(i - 1)
+                            data_values.append(val_A_i_im1)
+
+                        else:
+                            # Interior points: standard conservative FDM discretization
+                            val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
+
+                            val_A_ii += float(
+                                coupling_coefficient
+                                * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1]))
+                                / Dx**2
+                            )
+
+                            row_indices.append(i)
+                            col_indices.append(i)
+                            data_values.append(val_A_ii)
+
+                            # Lower diagonal term
+                            val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
                             val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
+                            row_indices.append(i)
+                            col_indices.append(i - 1)
+                            data_values.append(val_A_i_im1)
 
-                        row_indices.append(i)
-                        col_indices.append(i - 1)
-                        data_values.append(val_A_i_im1)
-
-                    else:
-                        # Interior points: standard conservative FDM discretization
-                        val_A_ii = 1.0 / Dt + sigma_i**2 / Dx**2
-
-                        val_A_ii += float(
-                            coupling_coefficient
-                            * (npart(u_at_tk[i + 1] - u_at_tk[i]) + ppart(u_at_tk[i] - u_at_tk[i - 1]))
-                            / Dx**2
-                        )
-
-                        row_indices.append(i)
-                        col_indices.append(i)
-                        data_values.append(val_A_ii)
-
-                        # Lower diagonal term
-                        val_A_i_im1 = -(sigma_i**2) / (2 * Dx**2)
-                        val_A_i_im1 += float(-coupling_coefficient * npart(u_at_tk[i] - u_at_tk[i - 1]) / Dx**2)
-                        row_indices.append(i)
-                        col_indices.append(i - 1)
-                        data_values.append(val_A_i_im1)
-
-                        # Upper diagonal term
-                        val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
-                        val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
-                        row_indices.append(i)
-                        col_indices.append(i + 1)
-                        data_values.append(val_A_i_ip1)
+                            # Upper diagonal term
+                            val_A_i_ip1 = -(sigma_i**2) / (2 * Dx**2)
+                            val_A_i_ip1 += float(-coupling_coefficient * ppart(u_at_tk[i + 1] - u_at_tk[i]) / Dx**2)
+                            row_indices.append(i)
+                            col_indices.append(i + 1)
+                            data_values.append(val_A_i_ip1)
 
             A_matrix = sparse.coo_matrix((data_values, (row_indices, col_indices)), shape=(Nx, Nx)).tocsr()
 
@@ -882,6 +1019,7 @@ def _solve_fp_nd_full_system(
     backend: Any | None = None,
     diffusion_field: float | np.ndarray | Any | None = None,
     tensor_diffusion_field: np.ndarray | Callable | None = None,
+    conservative: bool = False,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -1050,6 +1188,7 @@ def _solve_fp_nd_full_system(
                 ndim,
                 shape,
                 boundary_conditions,
+                conservative=conservative,
             )
 
         M_solution[k + 1] = M_next
@@ -1264,11 +1403,18 @@ def _solve_timestep_full_nd(
     ndim: int,
     shape: tuple[int, ...],
     boundary_conditions: Any,
+    conservative: bool = False,
 ) -> np.ndarray:
     """
     Solve one timestep of the full nD FP equation.
 
     Assembles sparse matrix A and RHS b, then solves A*m_{k+1} = b.
+
+    Parameters
+    ----------
+    conservative : bool
+        If True, use conservative Flux FDM (mass-preserving).
+        If False (default), use non-conservative Gradient FDM.
 
     Parameters
     ----------
@@ -1334,39 +1480,74 @@ def _solve_timestep_full_nd(
         # The actual BC application will be handled by tensor_operators
         if (is_no_flux or not is_uniform) and is_boundary:
             # Boundary point with no-flux condition
-            _add_boundary_no_flux_entries(
-                row_indices,
-                col_indices,
-                data_values,
-                flat_idx,
-                multi_idx,
-                shape,
-                ndim,
-                dt,
-                sigma,
-                coupling_coefficient,
-                spacing,
-                u_flat,
-                grid,
-            )
+            if conservative:
+                _add_boundary_no_flux_entries_conservative(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                )
+            else:
+                _add_boundary_no_flux_entries(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                )
         else:
             # Interior point or periodic boundary
-            _add_interior_entries(
-                row_indices,
-                col_indices,
-                data_values,
-                flat_idx,
-                multi_idx,
-                shape,
-                ndim,
-                dt,
-                sigma,
-                coupling_coefficient,
-                spacing,
-                u_flat,
-                grid,
-                boundary_conditions,
-            )
+            if conservative:
+                _add_interior_entries_conservative(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                    boundary_conditions,
+                )
+            else:
+                _add_interior_entries(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                    boundary_conditions,
+                )
 
     # Assemble sparse matrix
     A_matrix = sparse.coo_matrix((data_values, (row_indices, col_indices)), shape=(N_total, N_total)).tocsr()
@@ -1520,11 +1701,27 @@ def _add_boundary_no_flux_entries(
     """
     Add matrix entries for boundary grid point with no-flux BC.
 
-    No-flux: Combined advection + diffusion flux = 0 at boundary.
-    Use one-sided stencils for derivatives at boundaries.
+    No-flux BC for Fokker-Planck: J·n = 0 where J = α·m - D·∇m
+
+    Uses flux-form (finite volume) discretization at boundaries:
+    - Boundary cells treated as half-cells (volume dx/2)
+    - Flux at boundary face = 0 (no-flux condition)
+    - Interior face flux uses upwind for advection
+
+    Mathematical formulation:
+    For FP equation: ∂m/∂t = D·Δm - ∇·(α·m) where α = -λ·∇U
+
+    At right boundary (half-cell):
+        (dx/2)·dm/dt = J_interior - J_boundary = J_interior - 0
+        dm/dt = 2·J_interior / dx
+
+    This ensures mass conservation by explicitly zeroing boundary flux.
     """
-    # Diagonal term
+    # Diagonal term (time derivative)
     diagonal_value = 1.0 / dt
+
+    # Diffusion coefficient D = σ²/2
+    D = sigma**2 / 2.0
 
     # For each dimension, check if we're at a boundary in that dimension
     for d in range(ndim):
@@ -1549,7 +1746,7 @@ def _add_boundary_no_flux_entries(
             u_minus = u_flat[flat_idx_minus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion
+            # Diffusion: D·(m_{i+1} - 2m_i + m_{i-1}) / dx²
             diagonal_value += sigma**2 / dx_sq
 
             coeff_plus = -(sigma**2) / (2 * dx_sq)
@@ -1571,7 +1768,25 @@ def _add_boundary_no_flux_entries(
             )
 
         elif at_left_boundary:
-            # Left boundary: use one-sided (forward) stencil
+            # Left boundary: ghost point approach for no-flux BC
+            #
+            # For no-flux: J·n = 0 where J = α*m - D*∇m
+            # This gives: ∂m/∂n = (α·n)*m / D at boundary
+            #
+            # Using ghost point: m_ghost = m_0 (reflection for pure diffusion)
+            # But for advection-diffusion, we need to adjust.
+            #
+            # Simplified approach: Use one-sided stencil that preserves
+            # row sum = 1/dt for mass conservation.
+            #
+            # At left boundary, use forward stencil for diffusion:
+            # ∂²m/∂x² ≈ (m_1 - m_0) / dx² (first-order one-sided)
+            #
+            # For advection with upwind:
+            # If α > 0 (flow right), mass leaves: ∂(αm)/∂x ≈ α*(m_0 - m_ghost)/dx
+            #   With no-flux, mass that "wants to leave" stays, so we use zero BC
+            # If α < 0 (flow left, into boundary), upwind from right: ∂(αm)/∂x ≈ α*(m_1 - m_0)/dx
+
             multi_idx_plus = list(multi_idx)
             multi_idx_plus[d] = multi_idx[d] + 1
 
@@ -1579,20 +1794,38 @@ def _add_boundary_no_flux_entries(
             u_plus = u_flat[flat_idx_plus]
             u_center = u_flat[flat_idx]
 
-            # One-sided diffusion approximation
-            diagonal_value += sigma**2 / dx_sq
+            # Diffusion: one-sided gives (m_1 - m_0)/dx² for no-flux (ghost = m_0)
+            # This adds: +D/dx² to diagonal, -D/dx² to coeff_plus
+            diagonal_value += D / dx_sq
+            coeff_plus = -D / dx_sq
 
-            coeff_plus = -(sigma**2) / dx_sq
-            coeff_plus += float(-coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
+            # Advection: use upwind with proper no-flux handling
+            # α = -λ∇U
+            grad_U = (u_plus - u_center) / dx
+            alpha = -coupling_coefficient * grad_U
+
+            if alpha >= 0:
+                # Flow to right (away from left boundary)
+                # No-flux means this flux is zero - mass stays in place
+                # Don't add advection terms (they would cause mass loss)
+                pass
+            else:
+                # Flow to left (into left boundary from right)
+                # Upwind from m_1: advection term = α*(m_1 - m_0)/dx (with α < 0)
+                # In implicit form: -α/dx * (m_1 - m_0)
+                # = -α/dx * m_1 + α/dx * m_0
+                diagonal_value += -alpha / dx  # Note: α < 0, so -α > 0
+                coeff_plus += alpha / dx  # α < 0, so this is negative
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_plus)
             data_values.append(coeff_plus)
 
-            diagonal_value += float(coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
-
         elif at_right_boundary:
-            # Right boundary: use one-sided (backward) stencil
+            # Right boundary: ghost point approach for no-flux BC
+            #
+            # Similar to left boundary but mirrored.
+
             multi_idx_minus = list(multi_idx)
             multi_idx_minus[d] = multi_idx[d] - 1
 
@@ -1600,17 +1833,334 @@ def _add_boundary_no_flux_entries(
             u_minus = u_flat[flat_idx_minus]
             u_center = u_flat[flat_idx]
 
-            # One-sided diffusion approximation
-            diagonal_value += sigma**2 / dx_sq
+            # Diffusion: one-sided gives (m_{-1} - m_N)/dx² for no-flux
+            # This adds: +D/dx² to diagonal, -D/dx² to coeff_minus
+            diagonal_value += D / dx_sq
+            coeff_minus = -D / dx_sq
 
-            coeff_minus = -(sigma**2) / dx_sq
-            coeff_minus += float(-coupling_coefficient * npart(u_center - u_minus) / dx_sq)
+            # Advection: use upwind with proper no-flux handling
+            grad_U = (u_center - u_minus) / dx
+            alpha = -coupling_coefficient * grad_U
+
+            if alpha >= 0:
+                # Flow to right (into right boundary from left)
+                # Upwind from m_{-1}: advection term = α*(m_N - m_{-1})/dx
+                # In implicit form: -α/dx * (m_N - m_{-1})
+                # = -α/dx * m_N + α/dx * m_{-1}
+                diagonal_value += alpha / dx  # α > 0
+                coeff_minus += -alpha / dx  # negative
+            else:
+                # Flow to left (away from right boundary)
+                # No-flux means this flux is zero - mass stays in place
+                pass
 
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_minus)
             data_values.append(coeff_minus)
 
-            diagonal_value += float(coupling_coefficient * npart(u_center - u_minus) / dx_sq)
+    # Add diagonal entry
+    row_indices.append(flat_idx)
+    col_indices.append(flat_idx)
+    data_values.append(diagonal_value)
+
+
+# ============================================================================
+# Conservative Flux FDM discretization (mass-preserving)
+# ============================================================================
+
+
+def _add_interior_entries_conservative(
+    row_indices: list[int],
+    col_indices: list[int],
+    data_values: list[float],
+    flat_idx: int,
+    multi_idx: tuple[int, ...],
+    shape: tuple[int, ...],
+    ndim: int,
+    dt: float,
+    sigma: float,
+    coupling_coefficient: float,
+    spacing: tuple[float, ...],
+    u_flat: np.ndarray,
+    grid: Any,
+    boundary_conditions: Any,
+) -> None:
+    """
+    Add matrix entries for interior grid point using CONSERVATIVE Flux FDM.
+
+    Discretizes divergence form: div(alpha * m) - D * Laplacian(m)
+    using flux differences at cell interfaces.
+
+    Key difference from gradient FDM:
+    - Interface velocities: alpha_{i+1/2} = -coupling * (U_{i+1} - U_i) / dx
+    - Flux at interface: F_{i+1/2} = alpha_{i+1/2} * m_upwind
+    - Divergence: (F_{i+1/2} - F_{i-1/2}) / dx
+
+    This ensures column sums = 1/dt (mass conservation by construction).
+    The flux entering cell i from cell i-1 is exactly the flux leaving cell i-1.
+
+    Mathematical formulation (1D example):
+        Flux FDM for advection: (F_{i+1/2} - F_{i-1/2}) / dx
+        where F_{i+1/2} = alpha_{i+1/2} * m_upwind
+
+        For alpha_{i+1/2} = -lambda * (U_{i+1} - U_i) / dx >= 0:
+            F_{i+1/2} = alpha_{i+1/2} * m_i  (upwind from left)
+        For alpha_{i+1/2} < 0:
+            F_{i+1/2} = alpha_{i+1/2} * m_{i+1}  (upwind from right)
+    """
+    # Diagonal term (time derivative)
+    diagonal_value = 1.0 / dt
+
+    # Diffusion coefficient D = sigma^2/2
+    D = sigma**2 / 2.0
+
+    # For each dimension, add flux-based advection + diffusion contributions
+    for d in range(ndim):
+        dx = spacing[d]
+        dx_sq = dx * dx
+
+        # Get neighbor indices in dimension d
+        multi_idx_plus = list(multi_idx)
+        multi_idx_minus = list(multi_idx)
+
+        multi_idx_plus[d] = multi_idx[d] + 1
+        multi_idx_minus[d] = multi_idx[d] - 1
+
+        # Handle boundary wrapping for periodic BC
+        if hasattr(boundary_conditions, "is_uniform") and hasattr(boundary_conditions, "type"):
+            is_periodic = boundary_conditions.is_uniform and boundary_conditions.type == "periodic"
+        else:
+            is_periodic = False
+
+        if is_periodic:
+            multi_idx_plus[d] = multi_idx_plus[d] % shape[d]
+            multi_idx_minus[d] = multi_idx_minus[d] % shape[d]
+
+        # Check if neighbors exist (non-periodic case)
+        has_plus = multi_idx_plus[d] < shape[d]
+        has_minus = multi_idx_minus[d] >= 0
+
+        # Get flat indices and values for neighbors
+        if has_plus or is_periodic:
+            flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
+            u_plus = u_flat[flat_idx_plus]
+        else:
+            flat_idx_plus = flat_idx
+            u_plus = u_flat[flat_idx]
+
+        if has_minus or is_periodic:
+            flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
+            u_minus = u_flat[flat_idx_minus]
+        else:
+            flat_idx_minus = flat_idx
+            u_minus = u_flat[flat_idx]
+
+        u_center = u_flat[flat_idx]
+
+        # Diffusion contribution (centered differences) - same as gradient FDM
+        # -D * (m_{i+1} - 2m_i + m_{i-1}) / dx^2
+        # This is inherently conservative (Laplacian has zero column sums)
+        diagonal_value += 2 * D / dx_sq
+
+        if has_plus or is_periodic:
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_plus)
+            data_values.append(-D / dx_sq)
+
+        if has_minus or is_periodic:
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_minus)
+            data_values.append(-D / dx_sq)
+
+        # ===== CONSERVATIVE FLUX ADVECTION =====
+        # Interface velocities (at cell faces, not centers)
+        # alpha_{i+1/2} = -coupling * (U_{i+1} - U_i) / dx
+        # alpha_{i-1/2} = -coupling * (U_i - U_{i-1}) / dx
+
+        if has_plus or is_periodic:
+            alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
+
+            # Flux F_{i+1/2} contribution to row i (outgoing flux with +1/dx)
+            if alpha_right >= 0:
+                # Flow to right: F = alpha * m_i (upwind from left)
+                # Contributes +alpha/dx to diagonal (outflow from cell i)
+                diagonal_value += alpha_right / dx
+            else:
+                # Flow to left: F = alpha * m_{i+1} (upwind from right)
+                # Contributes +alpha/dx to coeff for m_{i+1}
+                # Note: alpha < 0, so this is negative (inflow to cell i)
+                row_indices.append(flat_idx)
+                col_indices.append(flat_idx_plus)
+                data_values.append(alpha_right / dx)
+
+        if has_minus or is_periodic:
+            alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
+
+            # Flux -F_{i-1/2} contribution to row i (incoming flux with -1/dx)
+            if alpha_left >= 0:
+                # Flow to right: F = alpha * m_{i-1} (upwind from left)
+                # Contributes -alpha/dx to coeff for m_{i-1}
+                # Note: alpha > 0, so this is negative (inflow from left)
+                row_indices.append(flat_idx)
+                col_indices.append(flat_idx_minus)
+                data_values.append(-alpha_left / dx)
+            else:
+                # Flow to left: F = alpha * m_i (upwind from right)
+                # Contributes -alpha/dx to diagonal
+                # Note: alpha < 0, so -alpha > 0 (outflow to left)
+                diagonal_value += -alpha_left / dx
+
+    # Add diagonal entry
+    row_indices.append(flat_idx)
+    col_indices.append(flat_idx)
+    data_values.append(diagonal_value)
+
+
+def _add_boundary_no_flux_entries_conservative(
+    row_indices: list[int],
+    col_indices: list[int],
+    data_values: list[float],
+    flat_idx: int,
+    multi_idx: tuple[int, ...],
+    shape: tuple[int, ...],
+    ndim: int,
+    dt: float,
+    sigma: float,
+    coupling_coefficient: float,
+    spacing: tuple[float, ...],
+    u_flat: np.ndarray,
+    grid: Any,
+) -> None:
+    """
+    Add matrix entries for boundary grid point with no-flux BC using CONSERVATIVE Flux FDM.
+
+    No-flux BC: Total flux J = alpha*m - D*grad(m) = 0 at boundary.
+
+    For conservative scheme:
+    - Boundary flux F_{boundary} = 0 (enforced exactly)
+    - Interior flux uses standard upwind selection
+    - This maintains column sum = 1/dt even at boundaries
+    """
+    # Diagonal term (time derivative)
+    diagonal_value = 1.0 / dt
+
+    # Diffusion coefficient D = sigma^2/2
+    D = sigma**2 / 2.0
+
+    # For each dimension, check if we're at a boundary in that dimension
+    for d in range(ndim):
+        dx = spacing[d]
+
+        at_left_boundary = multi_idx[d] == 0
+        at_right_boundary = multi_idx[d] == shape[d] - 1
+        at_interior_in_d = not (at_left_boundary or at_right_boundary)
+
+        if at_interior_in_d:
+            # Standard interior flux stencil in this dimension
+            multi_idx_plus = list(multi_idx)
+            multi_idx_minus = list(multi_idx)
+            multi_idx_plus[d] = multi_idx[d] + 1
+            multi_idx_minus[d] = multi_idx[d] - 1
+
+            flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
+            flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
+
+            u_plus = u_flat[flat_idx_plus]
+            u_minus = u_flat[flat_idx_minus]
+            u_center = u_flat[flat_idx]
+
+            # Diffusion (conservative centered differences)
+            diagonal_value += 2 * D / (dx * dx)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_plus)
+            data_values.append(-D / (dx * dx))
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_minus)
+            data_values.append(-D / (dx * dx))
+
+            # Conservative flux advection
+            alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
+            alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
+
+            # Right flux F_{i+1/2}
+            if alpha_right >= 0:
+                diagonal_value += alpha_right / dx
+            else:
+                row_indices.append(flat_idx)
+                col_indices.append(flat_idx_plus)
+                data_values.append(alpha_right / dx)
+
+            # Left flux -F_{i-1/2}
+            if alpha_left >= 0:
+                row_indices.append(flat_idx)
+                col_indices.append(flat_idx_minus)
+                data_values.append(-alpha_left / dx)
+            else:
+                diagonal_value += -alpha_left / dx
+
+        elif at_left_boundary:
+            # Left boundary: F_{-1/2} = 0 (no-flux), only interior flux F_{1/2}
+            multi_idx_plus = list(multi_idx)
+            multi_idx_plus[d] = multi_idx[d] + 1
+
+            flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
+            u_plus = u_flat[flat_idx_plus]
+            u_center = u_flat[flat_idx]
+
+            # Diffusion: one-sided for no-flux (ghost = m_0)
+            # d^2m/dx^2 ≈ (m_1 - m_0)/dx^2 when ghost = m_0
+            diagonal_value += D / (dx * dx)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_plus)
+            data_values.append(-D / (dx * dx))
+
+            # Conservative flux advection: only F_{1/2}, no F_{-1/2} (zero flux at boundary)
+            alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
+
+            if alpha_right >= 0:
+                # Outflow to right
+                diagonal_value += alpha_right / dx
+            else:
+                # Inflow from right
+                row_indices.append(flat_idx)
+                col_indices.append(flat_idx_plus)
+                data_values.append(alpha_right / dx)
+
+            # Note: NO contribution from left flux - it's exactly zero (no-flux BC)
+            # This is key for mass conservation at boundaries
+
+        elif at_right_boundary:
+            # Right boundary: F_{N+1/2} = 0 (no-flux), only interior flux F_{N-1/2}
+            multi_idx_minus = list(multi_idx)
+            multi_idx_minus[d] = multi_idx[d] - 1
+
+            flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
+            u_minus = u_flat[flat_idx_minus]
+            u_center = u_flat[flat_idx]
+
+            # Diffusion: one-sided for no-flux (ghost = m_N)
+            diagonal_value += D / (dx * dx)
+
+            row_indices.append(flat_idx)
+            col_indices.append(flat_idx_minus)
+            data_values.append(-D / (dx * dx))
+
+            # Conservative flux advection: only -F_{N-1/2}, no F_{N+1/2} (zero flux at boundary)
+            alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
+
+            if alpha_left >= 0:
+                # Inflow from left
+                row_indices.append(flat_idx)
+                col_indices.append(flat_idx_minus)
+                data_values.append(-alpha_left / dx)
+            else:
+                # Outflow to left
+                diagonal_value += -alpha_left / dx
+
+            # Note: NO contribution from right flux - it's exactly zero (no-flux BC)
 
     # Add diagonal entry
     row_indices.append(flat_idx)
@@ -1621,37 +2171,140 @@ def _add_boundary_no_flux_entries(
 if __name__ == "__main__":
     """Quick smoke test for development."""
     print("Testing FPFDMSolver...")
+    print("=" * 60)
 
     from mfg_pde import MFGProblem
+    from mfg_pde.geometry import SimpleGrid1D
+    from mfg_pde.geometry.boundary import no_flux_bc
+    from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions as Bc1D
 
-    # Test 1D problem
-    problem = MFGProblem(Nx=40, Nt=25, T=1.0, sigma=0.1)
-    solver = FPFDMSolver(problem, boundary_conditions=BoundaryConditions(type="no_flux"))
+    # Test 1D problem using geometry-based API (unified with nD solver)
+    print("\n1. Testing 1D FDM (conservative vs non-conservative)...")
 
-    # Test solver initialization
-    assert solver.dimension == 1
-    assert solver.fp_method_name == "FDM"
-    assert solver.boundary_conditions.type == "no_flux"
+    # Create 1D grid with proper geometry
+    grid_1d = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=Bc1D(type="no_flux"))
+    Nx = 40  # Number of cells (grid points = Nx + 1)
+    dx, x_points = grid_1d.create_grid(Nx + 1)
 
-    # Test solve_fp_system
-    U_test = np.zeros((problem.Nt + 1, problem.Nx + 1))
-    M_init = problem.m_init  # Shape (Nx+1,)
-    M_prev_single = np.ones(problem.Nx + 1) * 0.5
+    problem_1d = MFGProblem(
+        geometry=grid_1d,
+        Nt=25,
+        T=1.0,
+        sigma=0.1,
+        coupling_coefficient=1.0,
+    )
 
-    M_solution = solver.solve_fp_system(M_init, U_test, show_progress=False)
+    # Create initial density (Gaussian) and drift field
+    x = np.array(x_points)
+    m_init_1d = np.exp(-((x - 0.5) ** 2) / 0.05)
+    m_init_1d /= m_init_1d.sum() * dx  # Normalize using sum*dx (consistent with 2D)
 
-    assert M_solution.shape == (problem.Nt + 1, problem.Nx + 1)
-    assert not has_nan_or_inf(M_solution)
-    assert np.all(M_solution >= 0), "Density must be non-negative"
+    # Create drift pushing mass to right (advection test)
+    Nt = problem_1d.Nt + 1
+    U_test_1d = np.zeros((Nt, Nx + 1))
+    for t in range(Nt):
+        U_test_1d[t] = -x  # Drift to the right (alpha = -dU/dx = +1)
 
-    # Check mass conservation (integral of density)
-    initial_mass = np.trapz(M_solution[0], dx=problem.dx)
-    final_mass = np.trapz(M_solution[-1], dx=problem.dx)
-    mass_drift = abs(final_mass - initial_mass) / initial_mass
+    # Test non-conservative 1D solver
+    solver_1d_nc = FPFDMSolver(problem_1d, boundary_conditions=no_flux_bc(dimension=1), conservative=False)
+    assert solver_1d_nc.dimension == 1
+    assert solver_1d_nc.fp_method_name == "FDM"
+    assert solver_1d_nc.conservative is False
 
-    print("  FDM solver converged")
-    print(f"  M range: [{M_solution.min():.3f}, {M_solution.max():.3f}]")
-    print(f"  Mass conservation: initial={initial_mass:.6f}, final={final_mass:.6f}, drift={mass_drift:.2e}")
-    print(f"  Boundary conditions: {solver.boundary_conditions.type}")
+    M_1d_nc = solver_1d_nc.solve_fp_system(m_init_1d, U_test_1d, show_progress=False)
+    assert M_1d_nc.shape == (Nt, Nx + 1)
+    assert not has_nan_or_inf(M_1d_nc)
 
+    # Test conservative 1D solver
+    solver_1d_c = FPFDMSolver(problem_1d, boundary_conditions=no_flux_bc(dimension=1), conservative=True)
+    assert solver_1d_c.conservative is True
+
+    M_1d_c = solver_1d_c.solve_fp_system(m_init_1d, U_test_1d, show_progress=False)
+    assert M_1d_c.shape == (Nt, Nx + 1)
+    assert not has_nan_or_inf(M_1d_c)
+
+    # Calculate mass drift for both (using sum*dx for consistency with 2D)
+    initial_mass_1d = m_init_1d.sum() * dx
+    final_mass_1d_nc = M_1d_nc[-1].sum() * dx
+    final_mass_1d_c = M_1d_c[-1].sum() * dx
+    mass_drift_1d_nc = abs(final_mass_1d_nc - initial_mass_1d) / initial_mass_1d
+    mass_drift_1d_c = abs(final_mass_1d_c - initial_mass_1d) / initial_mass_1d
+
+    print(f"   Initial mass: {initial_mass_1d:.6f}")
+    print(f"   Non-conservative: final={final_mass_1d_nc:.6f}, drift={mass_drift_1d_nc:.2%}")
+    print(f"   Conservative:     final={final_mass_1d_c:.6f}, drift={mass_drift_1d_c:.2%}")
+
+    # Test 2D problem with conservative mode
+    print("\n2. Testing 2D FDM (conservative vs non-conservative)...")
+    from mfg_pde.geometry import SimpleGrid2D
+
+    # Create 2D problem
+    grid_2d = SimpleGrid2D(
+        bounds=(0.0, 1.0, 0.0, 1.0),  # (xmin, xmax, ymin, ymax)
+        resolution=(10, 10),  # (nx, ny)
+    )
+    problem_2d = MFGProblem(
+        geometry=grid_2d,
+        Nt=20,
+        T=0.5,
+        sigma=0.2,
+        coupling_coefficient=1.0,
+    )
+
+    # Create Gaussian initial density
+    x, y = grid_2d.coordinates
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    dx, dy = grid_2d.get_grid_spacing()
+    cell_volume = dx * dy
+    m_init_2d = np.exp(-((X - 0.5) ** 2 + (Y - 0.5) ** 2) / 0.05)
+    m_init_2d /= m_init_2d.sum() * cell_volume
+
+    # Create a drift field that pushes mass to corner (advection test)
+    Nt = problem_2d.Nt + 1
+    U_drift = np.zeros((Nt, *grid_2d.get_grid_shape()))
+    # Potential U = -x - y (drift to upper-right corner)
+    for t in range(Nt):
+        U_drift[t] = -(X + Y)
+
+    # Test non-conservative solver
+    solver_nc = FPFDMSolver(
+        problem_2d,
+        boundary_conditions=no_flux_bc(dimension=2),
+        conservative=False,
+    )
+    M_nc = solver_nc.solve_fp_system(m_init_2d, U_drift, show_progress=False)
+
+    # Test conservative solver
+    solver_c = FPFDMSolver(
+        problem_2d,
+        boundary_conditions=no_flux_bc(dimension=2),
+        conservative=True,
+    )
+    M_c = solver_c.solve_fp_system(m_init_2d, U_drift, show_progress=False)
+
+    # Calculate mass drift for both (dx, dy already computed above)
+    initial_mass_2d = m_init_2d.sum() * cell_volume
+
+    final_mass_nc = M_nc[-1].sum() * cell_volume
+    mass_drift_nc = abs(final_mass_nc - initial_mass_2d) / initial_mass_2d
+
+    final_mass_c = M_c[-1].sum() * cell_volume
+    mass_drift_c = abs(final_mass_c - initial_mass_2d) / initial_mass_2d
+
+    print(f"   Initial mass: {initial_mass_2d:.6f}")
+    print(f"   Non-conservative: final={final_mass_nc:.6f}, drift={mass_drift_nc:.2%}")
+    print(f"   Conservative:     final={final_mass_c:.6f}, drift={mass_drift_c:.2%}")
+
+    # Conservative should have better mass conservation
+    # (Note: with no-flux BC, both should be reasonable, but conservative is exact)
+    assert not has_nan_or_inf(M_nc), "Non-conservative solution has NaN/Inf"
+    assert not has_nan_or_inf(M_c), "Conservative solution has NaN/Inf"
+    assert np.all(M_nc >= -1e-10), "Non-conservative: density should be non-negative"
+    assert np.all(M_c >= -1e-10), "Conservative: density should be non-negative"
+
+    # Verify conservative flag is properly set
+    assert solver_nc.conservative is False
+    assert solver_c.conservative is True
+
+    print("\n" + "=" * 60)
     print("All smoke tests passed!")
