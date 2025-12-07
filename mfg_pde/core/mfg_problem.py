@@ -1647,12 +1647,15 @@ class MFGProblem:
 
         # Get potential value (handle both 1D and nD indexing)
         if isinstance(x_idx, tuple) and hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
-            # nD case: convert multi-index to flat index
+            # nD case with multi-index tuple: convert to flat index
             flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
-            potential_cost_V_x = self.f_potential.flat[flat_idx]
+            potential_cost_V_x = float(self.f_potential.flat[flat_idx])
+        elif hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+            # nD case with flat integer index: use .flat accessor
+            potential_cost_V_x = float(self.f_potential.flat[x_idx])
         else:
             # 1D case: direct indexing
-            potential_cost_V_x = self.f_potential[x_idx]
+            potential_cost_V_x = float(self.f_potential[x_idx])
 
         coupling_density_m_x = m_at_x**2
 

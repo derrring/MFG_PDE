@@ -1,33 +1,31 @@
 """
-Tutorial 04: Particle Methods
+Tutorial 04: Advanced Solver Configuration
 
-Learn how to use particle-based solvers for the Fokker-Planck equation.
+Learn how to configure MFG solvers with custom parameters.
 
 What you'll learn:
-- The difference between grid-based (FDM) and particle-based (FP) solvers
-- How to configure particle methods using ConfigBuilder
-- When to use particles vs grids
-- How Kernel Density Estimation (KDE) works
+- How to use MFGSolverConfig for fine-grained control
+- How to compare different solver parameters
+- How to tune convergence settings
+- The SolverFactory API for advanced use cases
 
-Mathematical Background:
-    Particle methods solve the FP equation by simulating individual agents:
-    - Each particle follows: dX_t = -∇_p H(X_t, ∇u, m) dt + σ dW_t
-    - Density m is estimated from particles using KDE
-    - Advantages: Natural for high dimensions, handles complex geometries
-    - Disadvantages: Statistical noise, requires many particles
+Note: Particle methods are available in the research repository (MFG-Research)
+for specialized applications. This tutorial covers the standard grid-based
+solver configuration available in the core package.
 """
 
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.factory import ConfigBuilder
+from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.factory import SolverFactory
 
 # ==============================================================================
-# Step 1: Standard Grid-Based Solution
+# Step 1: Default Solution
 # ==============================================================================
 
 print("=" * 70)
-print("TUTORIAL 04: Particle Methods")
+print("TUTORIAL 04: Advanced Solver Configuration")
 print("=" * 70)
 print()
 
@@ -42,186 +40,193 @@ problem = MFGProblem(
     coupling_coefficient=0.3,
 )
 
-print("Solving with GRID-BASED methods (default)...")
+print("Solving with DEFAULT settings...")
 print("-" * 70)
 
-# Default configuration: FDM for both HJB and FP
-config_grid = ConfigBuilder().picard(max_iterations=30, tolerance=1e-4).solver_hjb("fdm").solver_fp("fdm").build()
-
-result_grid = problem.solve(config=config_grid, verbose=True)
+result_default = problem.solve(verbose=True)
 
 print()
-print(f"Grid-based: Converged in {result_grid.iterations} iterations")
-print(f"  Final residual: {result_grid.residual:.6e}")
+print(f"Default: Converged in {result_default.iterations} iterations")
+print(f"  Final error: {result_default.max_error:.6e}")
 print()
 
 # ==============================================================================
-# Step 2: Particle-Based Solution
+# Step 2: Custom Configuration with MFGSolverConfig
 # ==============================================================================
 
 print("=" * 70)
-print("Solving with PARTICLE METHODS...")
-print("-" * 70)
+print("CUSTOM CONFIGURATION")
+print("=" * 70)
 print()
 
-# Configure particle solver for FP equation
-# HJB still uses FDM (particles don't solve backward PDE well)
-config_particle = (
-    ConfigBuilder()
-    .picard(max_iterations=30, tolerance=1e-4)
-    .solver_hjb("fdm")
-    .solver_fp(
-        "particle",
-        num_particles=5000,  # Number of particles to simulate
-        kde_bandwidth="scott",  # Automatic bandwidth selection
-    )
-    .build()
+# MFGSolverConfig provides fine-grained control over solver behavior
+print("Creating custom configuration...")
+print()
+
+# Configuration with tighter tolerance
+config_tight = MFGSolverConfig(
+    picard_max_iterations=50,  # More iterations allowed
+    picard_tolerance=1e-6,  # Tighter convergence tolerance
 )
 
-result_particle = problem.solve(config=config_particle, verbose=True)
-
-print()
-print(f"Particle-based: Converged in {result_particle.iterations} iterations")
-print(f"  Final residual: {result_particle.residual:.6e}")
+print(f"Config: max_iterations={config_tight.picard_max_iterations}, tol={config_tight.picard_tolerance}")
 print()
 
-# ==============================================================================
-# Step 3: Compare Solutions
-# ==============================================================================
+# Create solver with custom config using SolverFactory
+solver_tight = SolverFactory.create_solver(problem, config=config_tight)
+result_tight = solver_tight.solve(verbose=True)
 
-print("=" * 70)
-print("COMPARISON: Particle vs Grid")
-print("=" * 70)
 print()
-
-# L2 error between solutions
-density_error = np.linalg.norm(result_particle.M - result_grid.M) / np.linalg.norm(result_grid.M)
-value_error = np.linalg.norm(result_particle.U - result_grid.U) / np.linalg.norm(result_grid.U)
-
-print("Relative L2 errors:")
-print(f"  Density (M): {density_error:.4e}")
-print(f"  Value (U):   {value_error:.4e}")
-print()
-
-# Mass conservation
-mass_grid = np.sum(result_grid.M[-1, :]) * problem.dx
-mass_particle = np.sum(result_particle.M[-1, :]) * problem.dx
-
-print("Final mass conservation:")
-print(f"  Grid:     {mass_grid:.6f}")
-print(f"  Particle: {mass_particle:.6f}")
+print(f"Tight tolerance: Converged in {result_tight.iterations} iterations")
+print(f"  Final error: {result_tight.max_error:.6e}")
 print()
 
 # ==============================================================================
-# Step 4: Particle Count Sensitivity
+# Step 3: Looser Tolerance for Speed
 # ==============================================================================
 
 print("=" * 70)
-print("PARTICLE COUNT SENSITIVITY")
+print("TOLERANCE VS SPEED TRADE-OFF")
 print("=" * 70)
 print()
 
-print("Testing different particle counts...")
-print("(This demonstrates the bias-variance tradeoff)")
-print()
+# Configuration with looser tolerance for faster (but less accurate) results
+config_fast = MFGSolverConfig(
+    picard_max_iterations=20,
+    picard_tolerance=1e-3,  # Looser tolerance
+)
 
-particle_counts = [500, 2000, 5000]
-errors = []
-
-for n_particles in particle_counts:
-    print(f"  n_particles = {n_particles:5d}... ", end="", flush=True)
-
-    config = (
-        ConfigBuilder()
-        .picard(max_iterations=30, tolerance=1e-4)
-        .solver_hjb("fdm")
-        .solver_fp("particle", num_particles=n_particles, kde_bandwidth="scott")
-        .build()
-    )
-
-    result = problem.solve(config=config, verbose=False)
-
-    error = np.linalg.norm(result.M - result_grid.M) / np.linalg.norm(result_grid.M)
-    errors.append(error)
-
-    print(f"Error: {error:.4e}")
+solver_fast = SolverFactory.create_solver(problem, config=config_fast)
+result_fast = solver_fast.solve(verbose=True)
 
 print()
-print("Observation: More particles → Better accuracy, but slower")
+print(f"Fast (loose tol): Converged in {result_fast.iterations} iterations")
+print(f"  Final error: {result_fast.max_error:.6e}")
 print()
 
 # ==============================================================================
-# Step 5: When to Use Particle Methods
+# Step 4: Compare Solutions
 # ==============================================================================
 
 print("=" * 70)
-print("WHEN TO USE PARTICLE METHODS")
+print("SOLUTION COMPARISON")
 print("=" * 70)
 print()
 
-print("USE PARTICLES when:")
-print("  ✓ High-dimensional problems (d ≥ 3)")
-print("  ✓ Complex/irregular geometries")
-print("  ✓ Sparse distributions (particles avoid empty regions)")
-print("  ✓ Stochastic problems with many noise dimensions")
+# Calculate differences between solutions
+diff_tight_default = np.linalg.norm(result_tight.M - result_default.M) / np.linalg.norm(result_default.M)
+diff_fast_default = np.linalg.norm(result_fast.M - result_default.M) / np.linalg.norm(result_default.M)
+
+print("Relative L2 differences from default:")
+print(f"  Tight tolerance vs Default: {diff_tight_default:.6e}")
+print(f"  Fast (loose) vs Default:    {diff_fast_default:.6e}")
 print()
 
-print("USE GRIDS (FDM) when:")
-print("  ✓ Low-dimensional problems (d ≤ 2)")
-print("  ✓ High accuracy required")
-print("  ✓ Smooth, regular geometries")
-print("  ✓ Computational budget is tight (fewer resources)")
-print()
+# Mass conservation check
+mass_default = np.sum(result_default.M[-1, :]) * problem.dx
+mass_tight = np.sum(result_tight.M[-1, :]) * problem.dx
+mass_fast = np.sum(result_fast.M[-1, :]) * problem.dx
 
-print("HYBRID APPROACH:")
-print("  ✓ Particle-based FP + Grid-based HJB (most common)")
-print("  ✓ Grid-based FP + Particle-based collocation for high-d")
+print("Final mass (should be ~1.0):")
+print(f"  Default:        {mass_default:.6f}")
+print(f"  Tight tolerance: {mass_tight:.6f}")
+print(f"  Fast:           {mass_fast:.6f}")
 print()
 
 # ==============================================================================
-# Step 6: Visualize
+# Step 5: Configuration Summary Table
+# ==============================================================================
+
+print("=" * 70)
+print("CONFIGURATION SUMMARY")
+print("=" * 70)
+print()
+
+configurations = [
+    ("Default", result_default, 1e-5),
+    ("Tight (1e-6)", result_tight, 1e-6),
+    ("Fast (1e-3)", result_fast, 1e-3),
+]
+
+print(f"{'Configuration':<20} {'Tolerance':<12} {'Iterations':<12} {'Final Error':<12}")
+print("-" * 70)
+
+for name, result, tol in configurations:
+    print(f"{name:<20} {tol:<12.0e} {result.iterations:<12} {result.max_error:.4e}")
+
+print()
+
+# ==============================================================================
+# Step 6: Best Practices
+# ==============================================================================
+
+print("=" * 70)
+print("CONFIGURATION BEST PRACTICES")
+print("=" * 70)
+print()
+
+print("Tolerance Selection Guide:")
+print()
+print("  Use Case                    | Recommended Tolerance")
+print("  " + "-" * 55)
+print("  Quick prototyping           | 1e-3 to 1e-4")
+print("  Standard research           | 1e-4 to 1e-5")
+print("  Publication quality         | 1e-6 to 1e-8")
+print("  Convergence studies         | Vary systematically")
+print()
+
+print("Performance Tips:")
+print("  - Start with default settings, then tune as needed")
+print("  - Use loose tolerance for initial exploration")
+print("  - Tighten tolerance for final results")
+print("  - Monitor convergence history to diagnose issues")
+print()
+
+# ==============================================================================
+# Step 7: Visualize (Optional)
 # ==============================================================================
 
 try:
     import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
     # Plot 1: Final density comparison
-    axes[0, 0].plot(problem.xSpace, result_grid.M[-1, :], "b-", linewidth=2, label="Grid (FDM)")
-    axes[0, 0].plot(problem.xSpace, result_particle.M[-1, :], "r--", linewidth=2, label="Particle", alpha=0.7)
-    axes[0, 0].set_xlabel("x")
-    axes[0, 0].set_ylabel("m(T, x)")
-    axes[0, 0].set_title("Final Density: Particle vs Grid")
-    axes[0, 0].legend()
-    axes[0, 0].grid(True, alpha=0.3)
+    axes[0].plot(problem.xSpace, result_default.M[-1, :], "b-", linewidth=2, label="Default")
+    axes[0].plot(problem.xSpace, result_tight.M[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
+    axes[0].plot(problem.xSpace, result_fast.M[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("m(T, x)")
+    axes[0].set_title("Final Density Comparison")
+    axes[0].legend()
+    axes[0].grid(True, alpha=0.3)
 
-    # Plot 2: Density evolution (particle)
-    X, T = np.meshgrid(problem.xSpace, problem.tSpace)
-    contour = axes[0, 1].contourf(X, T, result_particle.M, levels=20, cmap="viridis")
-    axes[0, 1].set_xlabel("x")
-    axes[0, 1].set_ylabel("t")
-    axes[0, 1].set_title(f"Particle Method Density (N={config_particle.fp_config.num_particles})")
-    plt.colorbar(contour, ax=axes[0, 1])
+    # Plot 2: Value function comparison
+    axes[1].plot(problem.xSpace, result_default.U[-1, :], "b-", linewidth=2, label="Default")
+    axes[1].plot(problem.xSpace, result_tight.U[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
+    axes[1].plot(problem.xSpace, result_fast.U[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("u(T, x)")
+    axes[1].set_title("Terminal Value Function")
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
 
-    # Plot 3: Error vs particle count
-    axes[1, 0].semilogy(particle_counts, errors, "o-", linewidth=2, markersize=8)
-    axes[1, 0].set_xlabel("Number of Particles")
-    axes[1, 0].set_ylabel("Relative L2 Error")
-    axes[1, 0].set_title("Accuracy vs Particle Count")
-    axes[1, 0].grid(True, alpha=0.3)
-
-    # Plot 4: Density difference (error heatmap)
-    diff = result_particle.M - result_grid.M
-    contour_diff = axes[1, 1].contourf(X, T, diff, levels=20, cmap="RdBu_r")
-    axes[1, 1].set_xlabel("x")
-    axes[1, 1].set_ylabel("t")
-    axes[1, 1].set_title("Density Difference: Particle - Grid")
-    plt.colorbar(contour_diff, ax=axes[1, 1])
+    # Plot 3: Convergence comparison (error vs iteration)
+    if hasattr(result_default, "error_history_M"):
+        axes[2].semilogy(result_default.error_history_M, "b-", label="Default", linewidth=2)
+    if hasattr(result_tight, "error_history_M"):
+        axes[2].semilogy(result_tight.error_history_M, "g--", label="Tight", linewidth=2)
+    if hasattr(result_fast, "error_history_M"):
+        axes[2].semilogy(result_fast.error_history_M, "r:", label="Fast", linewidth=2)
+    axes[2].set_xlabel("Iteration")
+    axes[2].set_ylabel("Error (log scale)")
+    axes[2].set_title("Convergence History")
+    axes[2].legend()
+    axes[2].grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig("examples/outputs/tutorials/04_particle_methods.png", dpi=150, bbox_inches="tight")
-    print("Saved plot to: examples/outputs/tutorials/04_particle_methods.png")
+    plt.savefig("examples/outputs/tutorials/04_solver_config.png", dpi=150, bbox_inches="tight")
+    print("Saved plot to: examples/outputs/tutorials/04_solver_config.png")
     print()
 
 except ImportError:
@@ -237,14 +242,14 @@ print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
 print("What you learned:")
-print("  1. How to configure particle methods with ConfigBuilder")
-print("  2. The difference between grid and particle solvers")
-print("  3. How particle count affects accuracy")
-print("  4. When to use particles vs grids")
+print("  1. How to use MFGSolverConfig for custom parameters")
+print("  2. How to use SolverFactory for advanced control")
+print("  3. The tolerance vs speed trade-off")
+print("  4. How to compare solutions with different settings")
 print()
 print("Key takeaway:")
-print("  Particle methods are a powerful tool for high-dimensional MFGs,")
-print("  but require careful tuning (num_particles, kde_bandwidth).")
+print("  Configuration choices affect both speed and accuracy.")
+print("  Start simple, then tune based on your specific needs.")
 print()
-print("Next: Tutorial 05 - ConfigBuilder System")
+print("Next: Tutorial 05 - Problem Types and Next Steps")
 print("=" * 70)

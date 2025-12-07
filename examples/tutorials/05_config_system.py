@@ -1,250 +1,264 @@
 """
-Tutorial 05: ConfigBuilder System
+Tutorial 05: Problem Variations and Next Steps
 
-Learn how to use the ConfigBuilder API to configure MFG solvers.
+Learn how to vary problem parameters and explore the solution space.
 
 What you'll learn:
-- How to build solver configurations with ConfigBuilder
-- How to choose between different solver backends (FDM, GFDM, particles)
-- How to configure coupling methods (Picard, Newton)
-- How to enable acceleration (JAX, GPU)
-- How to save and load configurations
+- How to create problem variations by changing parameters
+- How to compare solutions across different settings
+- How to analyze MFG solution outputs
+- Next steps for advanced usage
 
-The ConfigBuilder provides a fluent API for creating solver configurations.
-It's the recommended way to configure problem.solve().
+This tutorial wraps up the series and points you toward more advanced topics.
 """
 
+import numpy as np
+
 from mfg_pde import MFGProblem
-from mfg_pde.factory import ConfigBuilder
 
 # ==============================================================================
-# Step 1: Basic Configuration
+# Step 1: Problem Setup
 # ==============================================================================
 
 print("=" * 70)
-print("TUTORIAL 05: ConfigBuilder System")
+print("TUTORIAL 05: Problem Variations and Next Steps")
 print("=" * 70)
 print()
 
-problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=0.1, coupling_coefficient=0.5)
-
-print("METHOD 1: Default configuration (implicit)")
-print("-" * 70)
-
-# Without config, problem.solve() uses default:
-# - Picard iteration
-# - FDM for both HJB and FP
-# - Standard convergence criteria
-
-result_default = problem.solve(verbose=False)
-print(f"  Converged: {result_default.converged}")
-print(f"  Iterations: {result_default.iterations}")
+print("We'll explore how changing parameters affects MFG solutions.")
 print()
 
 # ==============================================================================
-# Step 2: Explicit Configuration
+# Step 2: Diffusion Parameter Study
 # ==============================================================================
 
-print("METHOD 2: Explicit configuration with ConfigBuilder")
-print("-" * 70)
+print("=" * 70)
+print("DIFFUSION PARAMETER STUDY")
+print("=" * 70)
 print()
 
-# Build configuration step-by-step
-config = (
-    ConfigBuilder()
-    .picard(  # Coupling method: Picard fixed-point iteration
-        max_iterations=30,  # Maximum number of iterations
-        tolerance=1e-4,  # Convergence tolerance
+print("Varying sigma (diffusion) changes how agents spread out.")
+print()
+
+# Test different diffusion coefficients
+sigma_values = [0.05, 0.15, 0.30]
+results_sigma = {}
+
+for sigma in sigma_values:
+    print(f"Solving with sigma={sigma}...")
+    problem = MFGProblem(
+        xmin=0.0,
+        xmax=1.0,
+        Nx=50,
+        T=1.0,
+        Nt=50,
+        sigma=sigma,
+        coupling_coefficient=0.5,
     )
-    .solver_hjb(  # HJB solver backend
-        "fdm",  # Finite Difference Method
-        scheme="upwind",  # Upwind scheme for stability
+    results_sigma[sigma] = problem.solve(verbose=False)
+    print(f"  Converged in {results_sigma[sigma].iterations} iterations")
+
+print()
+
+# ==============================================================================
+# Step 3: Coupling Strength Study
+# ==============================================================================
+
+print("=" * 70)
+print("COUPLING STRENGTH STUDY")
+print("=" * 70)
+print()
+
+print("Varying coupling_coefficient changes congestion effects.")
+print()
+
+# Test different coupling strengths
+coupling_values = [0.0, 0.5, 2.0]
+results_coupling = {}
+
+for coupling in coupling_values:
+    print(f"Solving with coupling={coupling}...")
+    problem = MFGProblem(
+        xmin=0.0,
+        xmax=1.0,
+        Nx=50,
+        T=1.0,
+        Nt=50,
+        sigma=0.15,
+        coupling_coefficient=coupling,
     )
-    .solver_fp(  # FP solver backend
-        "fdm",  # Finite Difference Method
-        scheme="lax_friedrichs",  # Lax-Friedrichs scheme
+    results_coupling[coupling] = problem.solve(verbose=False)
+    print(f"  Converged in {results_coupling[coupling].iterations} iterations")
+
+print()
+
+# ==============================================================================
+# Step 4: Grid Resolution Study
+# ==============================================================================
+
+print("=" * 70)
+print("GRID RESOLUTION STUDY")
+print("=" * 70)
+print()
+
+print("Finer grids increase accuracy but also computation time.")
+print()
+
+# Test different resolutions
+Nx_values = [25, 50, 100]
+results_grid = {}
+
+for Nx in Nx_values:
+    print(f"Solving with Nx={Nx} grid points...")
+    problem = MFGProblem(
+        xmin=0.0,
+        xmax=1.0,
+        Nx=Nx,
+        T=1.0,
+        Nt=Nx,  # Keep dt/dx ratio constant
+        sigma=0.15,
+        coupling_coefficient=0.5,
     )
-    .build()  # Create the configuration object
-)
+    results_grid[Nx] = problem.solve(verbose=False)
+    print(f"  Converged in {results_grid[Nx].iterations} iterations")
 
-print("Configuration built:")
-print(f"  Coupling: {config.coupling_config.method}")
-print(f"  HJB solver: {config.hjb_config.backend}")
-print(f"  FP solver: {config.fp_config.backend}")
-print()
-
-result_explicit = problem.solve(config=config, verbose=False)
-print(f"  Converged: {result_explicit.converged}")
-print(f"  Iterations: {result_explicit.iterations}")
 print()
 
 # ==============================================================================
-# Step 3: Advanced Solver Selection
+# Step 5: Solution Analysis
 # ==============================================================================
 
 print("=" * 70)
-print("ADVANCED SOLVER CONFIGURATIONS")
+print("SOLUTION ANALYSIS")
 print("=" * 70)
 print()
 
-# Configuration A: GFDM (Generalized Finite Difference Method)
-print("Config A: GFDM solvers (higher-order accuracy)")
-print("-" * 70)
-
-config_gfdm = ConfigBuilder().picard(max_iterations=30, tolerance=1e-4).solver_hjb("gfdm").solver_fp("gfdm").build()
-
-result_gfdm = problem.solve(config=config_gfdm, verbose=False)
-print(f"  Converged: {result_gfdm.converged} in {result_gfdm.iterations} iterations")
+print("Key outputs from any MFG solution:")
+print()
+print("  Attribute         | Description")
+print("  " + "-" * 50)
+print("  result.U          | Value function u(t,x)")
+print("  result.M          | Density m(t,x)")
+print("  result.converged  | Convergence status")
+print("  result.iterations | Number of iterations")
+print("  result.max_error  | Final convergence error")
 print()
 
-# Configuration B: Particle-based FP
-print("Config B: Hybrid (FDM HJB + Particle FP)")
-print("-" * 70)
+# Example analysis: mass conservation
+print("Mass Conservation Check (sigma variations):")
+for sigma, result in results_sigma.items():
+    # Create a problem with matching grid to get dx
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=sigma)
+    initial_mass = np.sum(result.M[0, :]) * problem.dx
+    final_mass = np.sum(result.M[-1, :]) * problem.dx
+    print(
+        f"  sigma={sigma}: Initial={initial_mass:.4f}, Final={final_mass:.4f}, Drift={abs(final_mass - initial_mass):.2e}"
+    )
 
-config_hybrid = (
-    ConfigBuilder()
-    .picard(max_iterations=30, tolerance=1e-4)
-    .solver_hjb("fdm")
-    .solver_fp("particle", num_particles=3000, kde_bandwidth="scott")
-    .build()
-)
-
-result_hybrid = problem.solve(config=config_hybrid, verbose=False)
-print(f"  Converged: {result_hybrid.converged} in {result_hybrid.iterations} iterations")
-print()
-
-# Configuration C: Policy iteration (for LQ problems)
-print("Config C: Policy Iteration (for LQ problems)")
-print("-" * 70)
-
-config_policy = ConfigBuilder().policy_iteration(max_iterations=10, tolerance=1e-5).solver_fp("fdm").build()
-
-result_policy = problem.solve(config=config_policy, verbose=False)
-print(f"  Converged: {result_policy.converged} in {result_policy.iterations} iterations")
 print()
 
 # ==============================================================================
-# Step 4: Acceleration Options
+# Step 6: Summary Table
 # ==============================================================================
 
 print("=" * 70)
-print("ACCELERATION OPTIONS")
+print("PARAMETER EFFECTS SUMMARY")
 print("=" * 70)
 print()
 
-print("JAX Acceleration (if available):")
-print("-" * 70)
+print("Effect of parameters on MFG solutions:")
+print()
+print("  Parameter              | High Value Effect")
+print("  " + "-" * 55)
+print("  sigma (diffusion)      | More spreading, smoother density")
+print("  coupling_coefficient   | Stronger congestion avoidance")
+print("  Nx (grid resolution)   | Higher accuracy, more computation")
+print("  T (time horizon)       | More time for dynamics to evolve")
+print()
+
+# ==============================================================================
+# Step 7: Visualization (Optional)
+# ==============================================================================
 
 try:
-    import jax  # noqa: F401
+    import matplotlib.pyplot as plt
 
-    config_jax = (
-        ConfigBuilder()
-        .picard(max_iterations=30, tolerance=1e-4)
-        .solver_hjb("fdm")
-        .solver_fp("fdm")
-        .acceleration("jax")  # Enable JAX acceleration
-        .build()
-    )
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-    print("  JAX available - acceleration enabled")
-    result_jax = problem.solve(config=config_jax, verbose=False)
-    print(f"  Converged: {result_jax.converged} in {result_jax.iterations} iterations")
+    # Create reference problem for grid
+    ref_problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=0.15)
+
+    # Plot 1: Diffusion comparison (final density)
+    for sigma, result in results_sigma.items():
+        axes[0, 0].plot(ref_problem.xSpace, result.M[-1, :], linewidth=2, label=f"sigma={sigma}")
+    axes[0, 0].set_xlabel("x")
+    axes[0, 0].set_ylabel("m(T, x)")
+    axes[0, 0].set_title("Effect of Diffusion on Final Density")
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+
+    # Plot 2: Coupling comparison (final density)
+    for coupling, result in results_coupling.items():
+        axes[0, 1].plot(ref_problem.xSpace, result.M[-1, :], linewidth=2, label=f"coupling={coupling}")
+    axes[0, 1].set_xlabel("x")
+    axes[0, 1].set_ylabel("m(T, x)")
+    axes[0, 1].set_title("Effect of Coupling on Final Density")
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+
+    # Plot 3: Value function comparison (diffusion)
+    for sigma, result in results_sigma.items():
+        axes[1, 0].plot(ref_problem.xSpace, result.U[0, :], linewidth=2, label=f"sigma={sigma}")
+    axes[1, 0].set_xlabel("x")
+    axes[1, 0].set_ylabel("u(0, x)")
+    axes[1, 0].set_title("Effect of Diffusion on Initial Value Function")
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+
+    # Plot 4: Value function comparison (coupling)
+    for coupling, result in results_coupling.items():
+        axes[1, 1].plot(ref_problem.xSpace, result.U[0, :], linewidth=2, label=f"coupling={coupling}")
+    axes[1, 1].set_xlabel("x")
+    axes[1, 1].set_ylabel("u(0, x)")
+    axes[1, 1].set_title("Effect of Coupling on Initial Value Function")
+    axes[1, 1].legend()
+    axes[1, 1].grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig("examples/outputs/tutorials/05_problem_variations.png", dpi=150, bbox_inches="tight")
+    print("Saved plot to: examples/outputs/tutorials/05_problem_variations.png")
+    print()
 
 except ImportError:
-    print("  JAX not available - skipping JAX acceleration")
-
-print()
-
-# ==============================================================================
-# Step 5: Configuration Comparison
-# ==============================================================================
-
-print("=" * 70)
-print("CONFIGURATION COMPARISON")
-print("=" * 70)
-print()
-
-configurations = {
-    "Default (FDM)": result_default,
-    "Explicit (FDM)": result_explicit,
-    "GFDM": result_gfdm,
-    "Hybrid (Particle)": result_hybrid,
-    "Policy Iteration": result_policy,
-}
-
-print(f"{'Configuration':<25} {'Converged':<12} {'Iterations':<12} {'Residual':<12}")
-print("-" * 70)
-
-for name, result in configurations.items():
-    print(f"{name:<25} {result.converged!s:<12} {result.iterations:<12} {result.max_error:.4e}")
-
-print()
+    print("Matplotlib not available - skipping visualization")
+    print()
 
 # ==============================================================================
-# Step 6: Configuration Best Practices
+# Step 8: Next Steps
 # ==============================================================================
 
 print("=" * 70)
-print("CONFIGURATION BEST PRACTICES")
+print("NEXT STEPS")
 print("=" * 70)
 print()
 
-print("General Guidelines:")
-print("  1. START SIMPLE: Use default config first, then customize")
-print("  2. MATCH PROBLEM: Choose solvers appropriate for your problem")
-print("  3. TUNE PARAMETERS: Adjust tolerances and iterations as needed")
-print("  4. TEST CONVERGENCE: Always check result.converged flag")
+print("You've completed the tutorial series! Here's what to explore next:")
 print()
-
-print("Solver Selection Guide:")
+print("1. EXAMPLES")
+print("   - examples/basic/     : Single-concept demonstrations")
+print("   - examples/advanced/  : Complex applications")
 print()
-print("  Problem Type              | Recommended Config")
-print("  " + "-" * 68)
-print("  1D/2D, smooth domain      | FDM (default)")
-print("  High-order accuracy       | GFDM")
-print("  3D+, complex geometry     | Particle FP + FDM HJB")
-print("  Linear-Quadratic          | Policy Iteration")
-print("  Stiff problems            | Semi-Lagrangian HJB")
+print("2. CUSTOM PROBLEMS")
+print("   - Subclass MFGProblem for custom Hamiltonians (Tutorial 02)")
+print("   - Define hamiltonian(), terminal_cost(), initial_density()")
 print()
-
-print("Performance Tips:")
-print("  - Use JAX acceleration for repeated solves")
-print("  - Use GPU backend for particle methods (if available)")
-print("  - Reduce grid resolution (Nx, Nt) for prototyping")
-print("  - Increase tolerance for faster (but less accurate) solves")
+print("3. HIGHER DIMENSIONS")
+print("   - Use spatial_bounds and spatial_discretization for 2D/3D")
+print("   - See Tutorial 03 for 2D examples")
 print()
-
-# ==============================================================================
-# Step 7: Save and Load Configurations
-# ==============================================================================
-
-print("=" * 70)
-print("SAVE AND LOAD CONFIGURATIONS")
-print("=" * 70)
-print()
-
-# Configurations can be saved to JSON for reproducibility
-print("Saving configuration to JSON...")
-
-config_to_save = (
-    ConfigBuilder()
-    .picard(max_iterations=50, tolerance=1e-5)
-    .solver_hjb("fdm", scheme="upwind")
-    .solver_fp("particle", num_particles=5000, kde_bandwidth="scott")
-    .build()
-)
-
-# Note: This would require implementing to_dict() method on config
-# For now, we document the pattern
-print("  Config attributes:")
-print(f"    coupling_config.max_iterations = {config_to_save.coupling_config.max_iterations}")
-print(f"    coupling_config.tolerance = {config_to_save.coupling_config.tolerance}")
-print(f"    hjb_config.backend = {config_to_save.hjb_config.backend}")
-print(f"    fp_config.backend = {config_to_save.fp_config.backend}")
-print()
-
-print("  (Full save/load functionality requires config.to_dict() implementation)")
+print("4. ADVANCED SOLVERS")
+print("   - MFG-Research repository for cutting-edge methods")
+print("   - Particle methods, neural networks, GFDM")
 print()
 
 # ==============================================================================
@@ -252,38 +266,22 @@ print()
 # ==============================================================================
 
 print("=" * 70)
-print("TUTORIAL COMPLETE")
-print("=" * 70)
-print()
-print("What you learned:")
-print("  1. How to use ConfigBuilder for creating solver configurations")
-print("  2. How to select between different solver backends")
-print("  3. How to choose coupling methods (Picard vs Policy Iteration)")
-print("  4. How to compare configurations and measure performance")
-print("  5. Best practices for configuration selection")
-print()
-print("Key Takeaways:")
-print("  - ConfigBuilder provides a clean, type-safe API")
-print("  - Different problems benefit from different solver choices")
-print("  - Always validate convergence before trusting results")
-print("  - Configuration is about trade-offs: speed vs accuracy")
-print()
-print("=" * 70)
 print("TUTORIAL SERIES COMPLETE!")
 print("=" * 70)
 print()
 print("You've completed all 5 tutorials:")
-print("  01: Hello MFG - Basic problem setup")
-print("  02: Custom Hamiltonian - Problem definition")
-print("  03: 2D Geometry - Multi-dimensional problems")
-print("  04: Particle Methods - Alternative solver backends")
-print("  05: ConfigBuilder System - Advanced configuration")
 print()
-print("Next steps:")
-print("  - Explore examples/basic/ for single-concept demos")
-print("  - Explore examples/advanced/ for complex applications")
-print("  - Read docs/ for mathematical theory and API reference")
-print("  - Join community discussions on GitHub")
+print("  01: Hello MFG           - Basic problem setup and solving")
+print("  02: Custom Hamiltonian  - Problem customization")
+print("  03: 2D Geometry         - Multi-dimensional problems")
+print("  04: Solver Config       - Advanced configuration")
+print("  05: Problem Variations  - Parameter studies and next steps")
+print()
+print("Key takeaways:")
+print("  - Use problem.solve() for the simplest workflow")
+print("  - Subclass MFGProblem for custom problems")
+print("  - Use MFGSolverConfig for advanced control")
+print("  - Always check result.converged before using solutions")
 print()
 print("Happy MFG solving!")
 print("=" * 70)
