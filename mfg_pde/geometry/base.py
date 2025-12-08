@@ -325,13 +325,11 @@ class Geometry(ABC):
             return np.zeros(len(points), dtype=bool)
 
         min_coords, max_coords = bounds_result
-        on_boundary = np.zeros(len(points), dtype=bool)
 
-        for i, p in enumerate(points):
-            for d in range(self.dimension):
-                if abs(p[d] - min_coords[d]) < tolerance or abs(p[d] - max_coords[d]) < tolerance:
-                    on_boundary[i] = True
-                    break
+        # Vectorized boundary check: any dimension at min or max boundary
+        near_min = np.abs(points - min_coords) < tolerance  # shape: (n, d)
+        near_max = np.abs(points - max_coords) < tolerance  # shape: (n, d)
+        on_boundary = np.any(near_min | near_max, axis=1)  # shape: (n,)
 
         return on_boundary
 
@@ -361,14 +359,26 @@ class Geometry(ABC):
         min_coords, max_coords = bounds_result
         tolerance = 1e-10
 
-        for i, p in enumerate(points):
-            for d in range(self.dimension):
-                if abs(p[d] - min_coords[d]) < tolerance:
-                    normals[i, d] = -1.0  # Outward normal at min boundary
-                    break
-                elif abs(p[d] - max_coords[d]) < tolerance:
-                    normals[i, d] = 1.0  # Outward normal at max boundary
-                    break
+        # Vectorized boundary detection
+        near_min = np.abs(points - min_coords) < tolerance  # shape: (n, d)
+        near_max = np.abs(points - max_coords) < tolerance  # shape: (n, d)
+
+        # For each point, find first dimension at boundary (prioritize min over max)
+        # Use argmax to get first True along dimension axis
+        min_boundary_dim = np.argmax(near_min, axis=1)  # First dim at min boundary
+        max_boundary_dim = np.argmax(near_max, axis=1)  # First dim at max boundary
+        has_min_boundary = np.any(near_min, axis=1)
+        has_max_boundary = np.any(near_max, axis=1)
+
+        # Set normals for points at min boundary
+        rows_min = np.where(has_min_boundary)[0]
+        if len(rows_min) > 0:
+            normals[rows_min, min_boundary_dim[rows_min]] = -1.0
+
+        # Set normals for points at max boundary (only if not already at min)
+        rows_max = np.where(has_max_boundary & ~has_min_boundary)[0]
+        if len(rows_max) > 0:
+            normals[rows_max, max_boundary_dim[rows_max]] = 1.0
 
         return normals
 
@@ -396,28 +406,24 @@ class Geometry(ABC):
 
         min_coords, max_coords = bounds_result
         projected = points.copy()
+        n_points = len(points)
+        d = self.dimension
 
-        for i, p in enumerate(points):
-            # Find nearest boundary
-            min_dist = float("inf")
-            best_proj = p.copy()
+        # Compute distances to all 2d boundaries (d min + d max) - shape: (n, 2d)
+        dist_to_min = np.abs(points - min_coords)  # shape: (n, d)
+        dist_to_max = np.abs(points - max_coords)  # shape: (n, d)
+        all_distances = np.hstack([dist_to_min, dist_to_max])  # shape: (n, 2d)
 
-            for d in range(self.dimension):
-                # Distance to min boundary
-                dist_min = abs(p[d] - min_coords[d])
-                if dist_min < min_dist:
-                    min_dist = dist_min
-                    best_proj = p.copy()
-                    best_proj[d] = min_coords[d]
+        # Find nearest boundary for each point
+        nearest_idx = np.argmin(all_distances, axis=1)  # shape: (n,)
 
-                # Distance to max boundary
-                dist_max = abs(p[d] - max_coords[d])
-                if dist_max < min_dist:
-                    min_dist = dist_max
-                    best_proj = p.copy()
-                    best_proj[d] = max_coords[d]
+        # Determine which dimension and which side (min or max)
+        is_min_boundary = nearest_idx < d
+        dim_idx = np.where(is_min_boundary, nearest_idx, nearest_idx - d)
 
-            projected[i] = best_proj
+        # Apply projection: set the relevant coordinate to boundary value
+        row_indices = np.arange(n_points)
+        projected[row_indices, dim_idx] = np.where(is_min_boundary, min_coords[dim_idx], max_coords[dim_idx])
 
         return projected
 
