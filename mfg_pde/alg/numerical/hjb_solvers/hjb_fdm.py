@@ -186,17 +186,17 @@ class HJBFDMSolver(BaseHJBSolver):
                 )
 
     def _detect_dimension(self, problem) -> int:
-        """Detect spatial dimension."""
-        # Try geometry.dimension first (unified interface)
+        """Detect spatial dimension from geometry (unified interface)."""
+        # Primary: Use geometry.dimension (standard for all modern problems)
         if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
             return problem.geometry.dimension
-        # Fall back to problem.dimension
+        # Fallback: problem.dimension attribute
         if hasattr(problem, "dimension"):
             return problem.dimension
-        # Legacy 1D detection
-        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
-            return 1
-        raise ValueError("Cannot determine problem dimension")
+        raise ValueError(
+            "Cannot determine problem dimension. "
+            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
+        )
 
     def solve_hjb_system(
         self,
