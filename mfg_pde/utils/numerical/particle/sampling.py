@@ -507,11 +507,11 @@ def integrate_gaussian_quadrature_mc(
     mean: NDArray, cov: NDArray, integrand: MCIntegrand, num_samples: int = 10000
 ) -> MCResult:
     """Monte Carlo integration with Gaussian distribution."""
-    dimension = len(mean)
-
-    # Create domain (6-sigma bounds)
+    # Create domain (6-sigma bounds) - vectorized
     sigma = np.sqrt(np.diag(cov))
-    domain = [(mean[i] - 6 * sigma[i], mean[i] + 6 * sigma[i]) for i in range(dimension)]
+    lower_bounds = mean - 6 * sigma
+    upper_bounds = mean + 6 * sigma
+    domain = list(zip(lower_bounds.tolist(), upper_bounds.tolist(), strict=True))
 
     # Gaussian importance function
     def gaussian_importance(x):

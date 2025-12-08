@@ -248,10 +248,10 @@ class TestHamiltonianGradientConstraints:
         # coupling_with_density / coupling_no_density = 2/1 = 2
         assert abs(val_with_density / val_no_density - 2.0) < 1e-10
 
-    def test_hamiltonian_constraints_empty_for_high_dim(self):
-        """Test that Hamiltonian constraints return empty for d > 3."""
+    def test_hamiltonian_constraints_for_high_dim(self):
+        """Test that Hamiltonian constraints work for d > 3 (nD support)."""
         problem = SimpleMFGProblem()
-        # 4D points (should return empty constraints)
+        # 4D points - nD generalization should handle this
         points = np.random.rand(50, 4)
 
         solver = HJBGFDMSolver(
@@ -288,8 +288,14 @@ class TestHamiltonianGradientConstraints:
             gamma=0.0,
         )
 
-        # Should return empty list for d > 3
-        assert len(constraints) == 0
+        # With nD support, should generate constraints for neighbors (excluding center)
+        # 6 neighbors minus 1 center = 5 constraints expected
+        assert len(constraints) == 5
+        # Each constraint should be a dict with 'type' and 'fun'
+        for c in constraints:
+            assert "type" in c
+            assert "fun" in c
+            assert c["type"] == "ineq"
 
 
 if __name__ == "__main__":

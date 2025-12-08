@@ -504,27 +504,51 @@ def compute_rhat(chains: NDArray) -> NDArray:
     if num_chains < 2:
         return np.ones(dimension)  # Cannot compute R-hat with single chain
 
-    rhat = np.zeros(dimension)
+    # Vectorized R-hat computation over all dimensions
+    # chains shape: (num_samples, num_chains, dimension)
 
-    for d in range(dimension):
-        # Chain means and overall mean
-        chain_means = np.mean(chains[:, :, d], axis=0)  # Shape: (num_chains,)
-        np.mean(chain_means)
+    # Chain means: mean over samples axis -> (num_chains, dimension)
+    chain_means = np.mean(chains, axis=0)
 
-        # Between-chain variance
-        B = num_samples * np.var(chain_means, ddof=1)
+    # Between-chain variance for each dimension
+    B = num_samples * np.var(chain_means, axis=0, ddof=1)  # shape: (dimension,)
 
-        # Within-chain variance
-        chain_vars = np.var(chains[:, :, d], axis=0, ddof=1)
-        W = np.mean(chain_vars)
+    # Within-chain variance: variance over samples for each chain/dim
+    chain_vars = np.var(chains, axis=0, ddof=1)  # shape: (num_chains, dimension)
+    W = np.mean(chain_vars, axis=0)  # shape: (dimension,)
 
-        # Pooled variance estimate
-        var_plus = ((num_samples - 1) * W + B) / num_samples
+    # Pooled variance estimate
+    var_plus = ((num_samples - 1) * W + B) / num_samples  # shape: (dimension,)
 
-        # R-hat
-        rhat[d] = np.sqrt(var_plus / W) if W > 0 else 1.0
+    # R-hat with safe division
+    rhat = np.where(W > 0, np.sqrt(var_plus / np.maximum(W, 1e-16)), 1.0)
 
     return rhat
+
+
+def _compute_chain_ess(chain_data: NDArray, num_samples: int) -> float:
+    """Compute ESS for a single chain (helper function)."""
+    # Compute autocorrelation (simplified)
+    autocorr = np.correlate(chain_data, chain_data, mode="full")
+    autocorr = autocorr[autocorr.size // 2 :]
+    if autocorr[0] != 0:
+        autocorr = autocorr / autocorr[0]
+    else:
+        return float(num_samples)  # No correlation if variance is zero
+
+    # Find cutoff where autocorrelation becomes negligible
+    cutoff = 1
+    max_lag = min(len(autocorr), num_samples // 4)
+    # Vectorized cutoff search: find first index where autocorr < 0.1
+    below_threshold = autocorr[1:max_lag] < 0.1
+    if np.any(below_threshold):
+        cutoff = np.argmax(below_threshold) + 1
+    else:
+        cutoff = max_lag
+
+    # Effective sample size for this chain
+    autocorr_sum = np.sum(autocorr[1:cutoff])
+    return num_samples / max(1 + 2 * autocorr_sum, 1e-16)
 
 
 def effective_sample_size(chains: NDArray) -> NDArray:
@@ -538,32 +562,18 @@ def effective_sample_size(chains: NDArray) -> NDArray:
         Effective sample size for each dimension
     """
     num_samples, num_chains, dimension = chains.shape
-    ess = np.zeros(dimension)
 
-    for d in range(dimension):
-        # Compute autocorrelation for each chain
-        total_eff_samples = 0
+    # Reshape to process all chain-dimension pairs at once
+    # (num_samples, num_chains, dimension) -> (num_samples, num_chains * dimension)
+    flat_chains = chains.reshape(num_samples, -1)
+    n_total = flat_chains.shape[1]  # num_chains * dimension
 
-        for c in range(num_chains):
-            chain_data = chains[:, c, d]
+    # Compute ESS for each flattened chain (still need loop for autocorrelation)
+    flat_ess = np.array([_compute_chain_ess(flat_chains[:, i], num_samples) for i in range(n_total)])
 
-            # Compute autocorrelation (simplified)
-            autocorr = np.correlate(chain_data, chain_data, mode="full")
-            autocorr = autocorr[autocorr.size // 2 :]
-            autocorr = autocorr / autocorr[0]
-
-            # Find cutoff where autocorrelation becomes negligible
-            cutoff = 1
-            for lag in range(1, min(len(autocorr), num_samples // 4)):
-                if autocorr[lag] < 0.1:  # Threshold for negligible correlation
-                    cutoff = lag
-                    break
-
-            # Effective sample size for this chain
-            chain_ess = num_samples / (1 + 2 * np.sum(autocorr[1:cutoff]))
-            total_eff_samples += chain_ess
-
-        ess[d] = total_eff_samples
+    # Reshape back to (num_chains, dimension) and sum over chains
+    ess_matrix = flat_ess.reshape(num_chains, dimension)
+    ess = np.sum(ess_matrix, axis=0)  # Sum ESS over chains for each dimension
 
     return ess
 

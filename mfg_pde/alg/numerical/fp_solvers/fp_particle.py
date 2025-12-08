@@ -422,11 +422,9 @@ class FPParticleSolver(BaseFPSolver):
         total_mass = np.sum(M_flat)
 
         if total_mass < 1e-14:
-            # Uniform fallback if density is zero
-            particles = np.zeros((num_particles, dimension))
-            for d in range(dimension):
-                xmin, xmax = coordinates[d][0], coordinates[d][-1]
-                particles[:, d] = np.random.uniform(xmin, xmax, num_particles)
+            # Uniform fallback if density is zero (vectorized)
+            bounds = np.array([[c[0], c[-1]] for c in coordinates])  # shape: (d, 2)
+            particles = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(num_particles, dimension))
             return particles
 
         probs = M_flat / total_mass
@@ -435,24 +433,22 @@ class FPParticleSolver(BaseFPSolver):
         try:
             flat_indices = np.random.choice(len(M_flat), size=num_particles, p=probs, replace=True)
         except ValueError:
-            # Fallback to uniform if probability is degenerate
-            particles = np.zeros((num_particles, dimension))
-            for d in range(dimension):
-                xmin, xmax = coordinates[d][0], coordinates[d][-1]
-                particles[:, d] = np.random.uniform(xmin, xmax, num_particles)
+            # Fallback to uniform if probability is degenerate (vectorized)
+            bounds = np.array([[c[0], c[-1]] for c in coordinates])  # shape: (d, 2)
+            particles = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(num_particles, dimension))
             return particles
 
         # Convert flat indices to multi-indices
         multi_indices = np.unravel_index(flat_indices, grid_shape)
 
-        # Get coordinates with sub-grid jitter for smoothness
-        particles = np.zeros((num_particles, dimension))
-        for d in range(dimension):
-            particles[:, d] = coordinates[d][multi_indices[d]]
-            # Add uniform jitter within grid cell
-            if len(coordinates[d]) > 1:
-                dx = coordinates[d][1] - coordinates[d][0]
-                particles[:, d] += np.random.uniform(-dx / 2, dx / 2, num_particles)
+        # Get coordinates with sub-grid jitter for smoothness (vectorized)
+        # Stack multi-indices into array for vectorized coordinate lookup
+        particles = np.column_stack([coordinates[d][multi_indices[d]] for d in range(dimension)])
+
+        # Compute grid spacings and add uniform jitter (vectorized)
+        spacings = np.array([c[1] - c[0] if len(c) > 1 else 0.0 for c in coordinates])
+        jitter = np.random.uniform(-0.5, 0.5, size=(num_particles, dimension)) * spacings
+        particles += jitter
 
         return particles
 

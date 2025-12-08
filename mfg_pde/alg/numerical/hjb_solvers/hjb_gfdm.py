@@ -329,11 +329,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         if xmin is not None and xmax is not None:
             return [(float(xmin), float(xmax))]
 
-        # Last resort: infer from collocation points
-        return [
-            (float(self.collocation_points[:, d].min()), float(self.collocation_points[:, d].max()))
-            for d in range(self.dimension)
-        ]
+        # Last resort: infer from collocation points (vectorized)
+        mins = self.collocation_points.min(axis=0)  # shape: (d,)
+        maxs = self.collocation_points.max(axis=0)  # shape: (d,)
+        return list(zip(mins.astype(float).tolist(), maxs.astype(float).tolist(), strict=True))
 
     def _build_neighborhood_structure(self):
         """
@@ -422,39 +421,34 @@ class HJBGFDMSolver(BaseHJBSolver):
                 and hasattr(self.boundary_conditions, "type")
                 and getattr(self.boundary_conditions, "type", None) == "no_flux"
             ):
-                # Add ghost particles for no-flux boundary conditions
+                # Add ghost particles for no-flux boundary conditions (vectorized, nD-compatible)
                 current_point = self.collocation_points[i]
+                bounds_array = np.array(self.domain_bounds)  # shape: (d, 2)
+                h = 0.1 * self.delta
 
-                # For 1D case, add ghost particles beyond boundaries
-                if self.dimension == 1:
-                    x = current_point[0]
-                    xmin, xmax = self.domain_bounds[0]
+                # Vectorized boundary detection across all dimensions
+                at_left = np.abs(current_point - bounds_array[:, 0]) < 1e-10
+                at_right = np.abs(current_point - bounds_array[:, 1]) < 1e-10
 
-                    # Check if near left boundary
-                    if abs(x - xmin) < 1e-10:
-                        # Add ghost particle symmetrically reflected across left boundary
-                        # For a point at x=0, place ghost at x = -h where h is a small distance
-                        h = 0.1 * self.delta  # Distance from boundary
-                        ghost_x = xmin - h
-                        ghost_point = np.array([ghost_x])
-                        ghost_distance = h
+                # Only create ghost particles if within delta range
+                if h < self.delta:
+                    # Get indices of dimensions at left/right boundaries
+                    left_dims = np.where(at_left)[0]
+                    right_dims = np.where(at_right)[0]
 
-                        if ghost_distance < self.delta:
-                            ghost_particles.append(ghost_point)
-                            ghost_distances.append(ghost_distance)
+                    # Create ghost particles for left boundaries (loop only over boundary dims)
+                    for d in left_dims:
+                        ghost_point = current_point.copy()
+                        ghost_point[d] = bounds_array[d, 0] - h
+                        ghost_particles.append(ghost_point)
+                        ghost_distances.append(h)
 
-                    # Check if near right boundary
-                    if abs(x - xmax) < 1e-10:
-                        # Add ghost particle symmetrically reflected across right boundary
-                        # For a point at x=1, place ghost at x = 1+h
-                        h = 0.1 * self.delta  # Distance from boundary
-                        ghost_x = xmax + h
-                        ghost_point = np.array([ghost_x])
-                        ghost_distance = h
-
-                        if ghost_distance < self.delta:
-                            ghost_particles.append(ghost_point)
-                            ghost_distances.append(ghost_distance)
+                    # Create ghost particles for right boundaries
+                    for d in right_dims:
+                        ghost_point = current_point.copy()
+                        ghost_point[d] = bounds_array[d, 1] + h
+                        ghost_particles.append(ghost_point)
+                        ghost_distances.append(h)
 
             # Combine regular neighbors and ghost particles
             all_points = list(neighbor_points)
@@ -894,9 +888,9 @@ class HJBGFDMSolver(BaseHJBSolver):
                 gamma=gamma,
             )
             constraints.extend(hamiltonian_constraints)
-        elif self.dimension == 1:
-            # Indirect constraints on Taylor coefficients (original approach)
-            # For 1D, we can analyze the finite difference stencil more precisely
+        else:
+            # Indirect constraints on Taylor coefficients (nD-compatible)
+            # Physics-based constraints for diffusion dominance and truncation error
             monotonicity_constraints = self._build_monotonicity_constraints(
                 A,
                 neighbor_indices,  # type: ignore[arg-type]
@@ -917,32 +911,44 @@ class HJBGFDMSolver(BaseHJBSolver):
             elif sum(beta) == 1:  # First derivative terms - reasonable for MFG
                 bounds.append((-20.0, 20.0))  # type: ignore[arg-type]  # Realistic gradient bounds
             elif sum(beta) == 2:  # Second derivative terms - key for monotonicity
-                if self.dimension == 1 and beta == (2,):
-                    # For 1D Laplacian: moderate diffusion bounds
+                # Check if diagonal second derivative (d²/dx_i²) vs cross derivative (d²/dx_i dx_j)
+                # Diagonal: beta has exactly one non-zero entry equal to 2 (e.g., (2,0,0) or (0,2,0))
+                is_diagonal_second_deriv = sum(1 for b in beta if b != 0) == 1 and max(beta) == 2
+                if is_diagonal_second_deriv:
+                    # Diagonal second derivatives (Laplacian components): moderate diffusion bounds
                     bounds.append((-100.0, 100.0))  # type: ignore[arg-type]  # Realistic diffusion bounds
                 else:
+                    # Cross derivatives: conservative bounds
                     bounds.append((-50.0, 50.0))  # type: ignore[arg-type]  # Conservative cross-derivative bounds
             else:
                 bounds.append((-2.0, 2.0))  # type: ignore[arg-type]  # Tight bounds for higher order terms
 
         # Only add monotonicity constraints when they are really needed
-        # Check if this point is near boundaries or critical regions
+        # Check if this point is near boundaries or critical regions (vectorized, nD-compatible)
         center_point = self.collocation_points[point_idx]
-        xmin, xmax = self.domain_bounds[0]
-        near_boundary = abs(center_point[0] - xmin) < 0.1 * self.delta or abs(center_point[0] - xmax) < 0.1 * self.delta
+        bounds_array = np.array(self.domain_bounds)  # shape: (d, 2)
+        threshold = 0.1 * self.delta
+        near_left = np.abs(center_point - bounds_array[:, 0]) < threshold
+        near_right = np.abs(center_point - bounds_array[:, 1]) < threshold
+        near_boundary = np.any(near_left | near_right)
 
-        # Add conservative constraint only if near boundary and needed
-        if near_boundary and self.dimension == 1:
+        # Add conservative constraint if near boundary
+        if near_boundary:
+            # Build list of diagonal second derivative indices
+            diag_second_deriv_indices = []
+            for k, beta in enumerate(self.multi_indices):
+                is_diagonal_second_deriv = sum(beta) == 2 and sum(1 for b in beta if b != 0) == 1
+                if is_diagonal_second_deriv:
+                    diag_second_deriv_indices.append(k)
 
-            def constraint_stability(x):
-                """Mild stability constraint near boundaries"""
-                # Ensure second derivative term doesn't become extreme
-                for k, beta in enumerate(self.multi_indices):
-                    if sum(beta) == 2 and beta == (2,):
-                        return 50.0 - abs(x[k])  # Should be positive (|coeff| < 50)
-                return 1.0  # Always satisfied if no second derivative
+            if diag_second_deriv_indices:
 
-            constraints.append({"type": "ineq", "fun": constraint_stability})
+                def constraint_stability(x, indices=diag_second_deriv_indices):
+                    """Mild stability constraint near boundaries (nD-compatible)"""
+                    # Ensure diagonal second derivative terms don't become extreme
+                    return min(50.0 - abs(x[k]) for k in indices)
+
+                constraints.append({"type": "ineq", "fun": constraint_stability})
 
         # Initial guess: unconstrained solution
         x0 = self._solve_unconstrained_fallback(taylor_data, b)
@@ -1550,83 +1556,87 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         constraints = []
 
-        if self.dimension == 1:
-            # Find indices for derivatives
-            laplacian_idx = None
-            first_deriv_idx = None
+        # Find indices for derivatives (nD-compatible)
+        # Diagonal second derivatives: d²/dx_i² (e.g., (2,0,0), (0,2,0), (0,0,2) in 3D)
+        laplacian_indices = []
+        # First derivatives: d/dx_i (e.g., (1,0,0), (0,1,0), (0,0,1) in 3D)
+        first_deriv_indices = []
 
+        for k, beta in enumerate(self.multi_indices):
+            if sum(beta) == 2 and sum(1 for b in beta if b != 0) == 1:
+                # Diagonal second derivative: exactly one non-zero entry equal to 2
+                laplacian_indices.append(k)
+            elif sum(beta) == 1:
+                # First derivative
+                first_deriv_indices.append(k)
+
+        if not laplacian_indices:
+            # No second derivatives in Taylor expansion - skip constraints
+            return constraints
+
+        # ===================================================================
+        # CONSTRAINT 1: Negative Laplacian (Diffusion Dominance)
+        # ===================================================================
+        # Physical motivation: For elliptic operators σ²/2 Δu,
+        # the diffusion term should have negative coefficient to produce
+        # proper M-matrix structure (diagonal ≤ 0).
+        # For nD: enforce sum of diagonal second derivatives ≤ 0
+
+        def constraint_laplacian_negative(x, indices=laplacian_indices):
+            """Enforce Laplacian components are negative (diffusion dominance)"""
+            # For proper elliptic discretization: Δu coefficients should be negative
+            laplacian_sum = sum(x[idx] for idx in indices)
+            return -laplacian_sum  # Should be positive (≥ 0)
+
+        constraints.append({"type": "ineq", "fun": constraint_laplacian_negative})
+
+        # ===================================================================
+        # CONSTRAINT 2: Gradient Boundedness (Prevent Advection Dominance)
+        # ===================================================================
+        # Physical motivation: Prevent first-order (advection) terms from
+        # overwhelming second-order (diffusion) terms, which can break
+        # M-matrix structure.
+
+        if first_deriv_indices:
+            # Get diffusion coefficient from problem
+            sigma = self._get_sigma_value(point_idx)
+            sigma_sq = sigma**2
+
+            def constraint_gradient_bounded(
+                x, grad_indices=first_deriv_indices, lap_indices=laplacian_indices, sig_sq=sigma_sq
+            ):
+                """Ensure gradient norm doesn't dominate Laplacian norm"""
+                # |∇u|² = Σ|∂u/∂x_i|²
+                gradient_norm_sq = sum(x[idx] ** 2 for idx in grad_indices)
+                gradient_norm = np.sqrt(gradient_norm_sq + 1e-20)
+
+                # |Δu| ~ sum of |d²u/dx_i²|
+                laplacian_mag = sum(abs(x[idx]) for idx in lap_indices) + 1e-10
+
+                # Adaptive bound: gradient shouldn't exceed σ²-scaled Laplacian
+                scale_factor = 10.0 * max(sig_sq, 0.1)
+                return scale_factor * laplacian_mag - gradient_norm
+
+            constraints.append({"type": "ineq", "fun": constraint_gradient_bounded})
+
+        # ===================================================================
+        # CONSTRAINT 3: Higher-Order Term Control (Truncation Error)
+        # ===================================================================
+        # Physical motivation: Third and higher derivatives represent
+        # truncation error. Keeping them small relative to the Laplacian
+        # improves accuracy and stability.
+
+        def constraint_higher_order_small(x, lap_indices=laplacian_indices):
+            """Keep higher-order terms small (truncation error control)"""
+            higher_order_norm = 0.0
             for k, beta in enumerate(self.multi_indices):
-                if beta == (2,):
-                    laplacian_idx = k
-                elif beta == (1,):
-                    first_deriv_idx = k
+                if sum(beta) >= 3:  # Third and higher derivatives
+                    higher_order_norm += abs(x[k])
+            # Higher-order terms should be smaller than Laplacian magnitude
+            laplacian_mag = sum(abs(x[idx]) for idx in lap_indices) + 1e-10
+            return laplacian_mag - higher_order_norm  # Should be positive
 
-            if laplacian_idx is None:
-                # No second derivative in Taylor expansion - skip constraints
-                return constraints
-
-            # ===================================================================
-            # CONSTRAINT 1: Negative Laplacian (Diffusion Dominance)
-            # ===================================================================
-            # Physical motivation: For elliptic operators σ²/2 ∂²u/∂x²,
-            # the diffusion term should have negative coefficient to produce
-            # proper M-matrix structure (diagonal ≤ 0).
-
-            def constraint_laplacian_negative(x):
-                """Enforce Laplacian coefficient is negative (diffusion dominance)"""
-                # For proper elliptic discretization: ∂²u/∂x² < 0
-                return -x[laplacian_idx]  # Should be positive (≥ 0)
-
-            constraints.append({"type": "ineq", "fun": constraint_laplacian_negative})
-
-            # ===================================================================
-            # CONSTRAINT 2: Gradient Boundedness (Prevent Advection Dominance)
-            # ===================================================================
-            # Physical motivation: Prevent first-order (advection) terms from
-            # overwhelming second-order (diffusion) terms, which can break
-            # M-matrix structure.
-            #
-            # ADAPTIVE SCALING: Use problem's diffusion coefficient σ to set
-            # physically meaningful bounds. For diffusion operator σ²/2 ∂²u/∂x²,
-            # gradient scale should be bounded relative to σ²|∂²u/∂x²|.
-
-            if first_deriv_idx is not None:
-                # Get diffusion coefficient from problem
-                sigma = self._get_sigma_value(point_idx)
-                sigma_sq = sigma**2
-
-                def constraint_gradient_bounded(x):
-                    """Ensure first derivative doesn't dominate second derivative"""
-                    # Physical scaling: |∂u/∂x| ~ O(1), |∂²u/∂x²| ~ O(σ²)
-                    # For proper elliptic operator balance: |∇u| ≤ C·σ²|Δu|
-                    laplacian_mag = abs(x[laplacian_idx]) + 1e-10
-                    gradient_mag = abs(x[first_deriv_idx])
-
-                    # Adaptive bound: gradient shouldn't exceed σ²-scaled Laplacian
-                    # Factor 10.0 allows for reasonable advection while preventing dominance
-                    scale_factor = 10.0 * max(sigma_sq, 0.1)  # Min scale for very small σ
-                    return scale_factor * laplacian_mag - gradient_mag
-
-                constraints.append({"type": "ineq", "fun": constraint_gradient_bounded})
-
-            # ===================================================================
-            # CONSTRAINT 3: Higher-Order Term Control (Truncation Error)
-            # ===================================================================
-            # Physical motivation: Third and higher derivatives represent
-            # truncation error. Keeping them small relative to the Laplacian
-            # improves accuracy and stability.
-
-            def constraint_higher_order_small(x):
-                """Keep higher-order terms small (truncation error control)"""
-                higher_order_norm = 0.0
-                for k, beta in enumerate(self.multi_indices):
-                    if sum(beta) >= 3:  # Third and higher derivatives
-                        higher_order_norm += abs(x[k])
-                # Higher-order terms should be smaller than second derivative
-                laplacian_mag = abs(x[laplacian_idx]) + 1e-10
-                return laplacian_mag - higher_order_norm  # Should be positive
-
-            constraints.append({"type": "ineq", "fun": constraint_higher_order_small})
+        constraints.append({"type": "ineq", "fun": constraint_higher_order_small})
 
         return constraints
 
@@ -1694,9 +1704,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         constraints = []
 
-        if self.dimension not in [1, 2, 3]:
-            # For higher dimensions, fall back to indirect constraints
-            return constraints
+        # Algorithm is dimension-agnostic: uses gradient dot product with direction vectors
+        # Works for any dimension d >= 1
 
         # Find gradient indices in multi_indices
         gradient_indices = []
