@@ -329,11 +329,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         if xmin is not None and xmax is not None:
             return [(float(xmin), float(xmax))]
 
-        # Last resort: infer from collocation points
-        return [
-            (float(self.collocation_points[:, d].min()), float(self.collocation_points[:, d].max()))
-            for d in range(self.dimension)
-        ]
+        # Last resort: infer from collocation points (vectorized)
+        mins = self.collocation_points.min(axis=0)  # shape: (d,)
+        maxs = self.collocation_points.max(axis=0)  # shape: (d,)
+        return list(zip(mins.astype(float).tolist(), maxs.astype(float).tolist(), strict=True))
 
     def _build_neighborhood_structure(self):
         """
@@ -422,37 +421,34 @@ class HJBGFDMSolver(BaseHJBSolver):
                 and hasattr(self.boundary_conditions, "type")
                 and getattr(self.boundary_conditions, "type", None) == "no_flux"
             ):
-                # Add ghost particles for no-flux boundary conditions (nD-compatible)
+                # Add ghost particles for no-flux boundary conditions (vectorized, nD-compatible)
                 current_point = self.collocation_points[i]
+                bounds_array = np.array(self.domain_bounds)  # shape: (d, 2)
+                h = 0.1 * self.delta
 
-                # For each dimension, check if at boundary and add ghost particle
-                for d in range(self.dimension):
-                    coord_d = current_point[d]
-                    xmin_d, xmax_d = self.domain_bounds[d]
+                # Vectorized boundary detection across all dimensions
+                at_left = np.abs(current_point - bounds_array[:, 0]) < 1e-10
+                at_right = np.abs(current_point - bounds_array[:, 1]) < 1e-10
 
-                    # Check if near left boundary in dimension d
-                    if abs(coord_d - xmin_d) < 1e-10:
-                        # Add ghost particle reflected across left boundary
-                        h = 0.1 * self.delta  # Distance from boundary
+                # Only create ghost particles if within delta range
+                if h < self.delta:
+                    # Get indices of dimensions at left/right boundaries
+                    left_dims = np.where(at_left)[0]
+                    right_dims = np.where(at_right)[0]
+
+                    # Create ghost particles for left boundaries (loop only over boundary dims)
+                    for d in left_dims:
                         ghost_point = current_point.copy()
-                        ghost_point[d] = xmin_d - h
-                        ghost_distance = h
+                        ghost_point[d] = bounds_array[d, 0] - h
+                        ghost_particles.append(ghost_point)
+                        ghost_distances.append(h)
 
-                        if ghost_distance < self.delta:
-                            ghost_particles.append(ghost_point)
-                            ghost_distances.append(ghost_distance)
-
-                    # Check if near right boundary in dimension d
-                    if abs(coord_d - xmax_d) < 1e-10:
-                        # Add ghost particle reflected across right boundary
-                        h = 0.1 * self.delta  # Distance from boundary
+                    # Create ghost particles for right boundaries
+                    for d in right_dims:
                         ghost_point = current_point.copy()
-                        ghost_point[d] = xmax_d + h
-                        ghost_distance = h
-
-                        if ghost_distance < self.delta:
-                            ghost_particles.append(ghost_point)
-                            ghost_distances.append(ghost_distance)
+                        ghost_point[d] = bounds_array[d, 1] + h
+                        ghost_particles.append(ghost_point)
+                        ghost_distances.append(h)
 
             # Combine regular neighbors and ghost particles
             all_points = list(neighbor_points)
@@ -928,14 +924,13 @@ class HJBGFDMSolver(BaseHJBSolver):
                 bounds.append((-2.0, 2.0))  # type: ignore[arg-type]  # Tight bounds for higher order terms
 
         # Only add monotonicity constraints when they are really needed
-        # Check if this point is near boundaries or critical regions (nD-compatible)
+        # Check if this point is near boundaries or critical regions (vectorized, nD-compatible)
         center_point = self.collocation_points[point_idx]
-        near_boundary = False
-        for d in range(self.dimension):
-            xmin_d, xmax_d = self.domain_bounds[d]
-            if abs(center_point[d] - xmin_d) < 0.1 * self.delta or abs(center_point[d] - xmax_d) < 0.1 * self.delta:
-                near_boundary = True
-                break
+        bounds_array = np.array(self.domain_bounds)  # shape: (d, 2)
+        threshold = 0.1 * self.delta
+        near_left = np.abs(center_point - bounds_array[:, 0]) < threshold
+        near_right = np.abs(center_point - bounds_array[:, 1]) < threshold
+        near_boundary = np.any(near_left | near_right)
 
         # Add conservative constraint if near boundary
         if near_boundary:
