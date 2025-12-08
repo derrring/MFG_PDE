@@ -199,7 +199,8 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Initialize unified QP solver from qp_utils
         # Map qp_solver parameter to QPSolver backend
-        qp_backend = "osqp" if qp_solver == "osqp" else "scipy-slsqp"
+        # Use "auto" to allow fallback to scipy when OSQP not installed
+        qp_backend = "auto" if qp_solver == "osqp" else "scipy-slsqp"
         self._qp_cache = QPCache(max_size=1000)
         self._qp_solver_instance = QPSolver(
             backend=qp_backend,
