@@ -70,53 +70,49 @@ def compute_advection_term_nd(
 
     advection = np.zeros_like(M)
 
-    if ndim == 2:
-        dx, dy = spacing
+    # General nD implementation using dimension loop
+    for d in range(ndim):
+        dx = spacing[d]
 
-        # Compute grad(U) with central differences for velocity field
-        grad_U_x = np.zeros_like(U)
-        grad_U_y = np.zeros_like(U)
+        # Compute grad(U) along dimension d with central differences
+        # Use np.gradient for general nD gradient computation
+        grad_U_d = np.gradient(U, dx, axis=d)
 
-        # Central differences with boundary handling
-        grad_U_x[:, 1:-1] = (U[:, 2:] - U[:, :-2]) / (2 * dx)
-        grad_U_y[1:-1, :] = (U[2:, :] - U[:-2, :]) / (2 * dy)
+        # Drift velocity: alpha_d = -coupling_coefficient * grad_U_d
+        alpha_d = -coupling_coefficient * grad_U_d
 
-        # Drift velocity: alpha = -lambda * grad(U)
-        alpha_x = -coupling_coefficient * grad_U_x
-        alpha_y = -coupling_coefficient * grad_U_y
+        # Compute flux: flux_d = alpha_d * M
+        flux_d = alpha_d * M
 
-        # Upwind scheme for advection: div(alpha * m)
-        # Use one-sided differences based on flow direction
+        # Upwind scheme for advection: compute forward and backward differences
+        # Forward difference: (flux[i+1] - flux[i]) / dx at position i
+        # Backward difference: (flux[i] - flux[i-1]) / dx at position i
+
+        # Create slice objects for axis-agnostic indexing
+        # For dimension d: we need flux[..., i+1, ...] - flux[..., i, ...]
+        slice_all = slice(None)
+        n_d = M.shape[d]
+
+        # Compute differences using np.diff along axis d
+        flux_diff = np.diff(flux_d, axis=d) / dx  # shape reduced by 1 along axis d
+
+        # Forward difference: result at positions 0 to n-2 (size n-1)
+        # We pad with zeros at the end (position n-1)
+        d_flux_forward = np.zeros_like(M)
+        slices_forward_dst = [slice_all] * ndim
+        slices_forward_dst[d] = slice(0, n_d - 1)
+        d_flux_forward[tuple(slices_forward_dst)] = flux_diff
+
+        # Backward difference: result at positions 1 to n-1 (size n-1)
+        # We pad with zeros at the beginning (position 0)
+        d_flux_backward = np.zeros_like(M)
+        slices_backward_dst = [slice_all] * ndim
+        slices_backward_dst[d] = slice(1, n_d)
+        d_flux_backward[tuple(slices_backward_dst)] = flux_diff
+
+        # Select based on velocity direction (upwind)
         # Positive velocity -> backward difference (upwind from left)
         # Negative velocity -> forward difference (upwind from right)
-
-        # X-direction upwind flux divergence
-        # Forward difference: (flux[i+1] - flux[i]) / dx
-        # Backward difference: (flux[i] - flux[i-1]) / dx
-        flux_x = alpha_x * M
-
-        # Compute both forward and backward differences
-        d_flux_x_forward = np.zeros_like(M)
-        d_flux_x_backward = np.zeros_like(M)
-        d_flux_x_forward[:, :-1] = (flux_x[:, 1:] - flux_x[:, :-1]) / dx
-        d_flux_x_backward[:, 1:] = (flux_x[:, 1:] - flux_x[:, :-1]) / dx
-
-        # Select based on velocity direction (upwind)
-        advection += np.where(alpha_x >= 0, d_flux_x_backward, d_flux_x_forward)
-
-        # Y-direction upwind flux divergence
-        flux_y = alpha_y * M
-
-        d_flux_y_forward = np.zeros_like(M)
-        d_flux_y_backward = np.zeros_like(M)
-        d_flux_y_forward[:-1, :] = (flux_y[1:, :] - flux_y[:-1, :]) / dy
-        d_flux_y_backward[1:, :] = (flux_y[1:, :] - flux_y[:-1, :]) / dy
-
-        # Select based on velocity direction (upwind)
-        advection += np.where(alpha_y >= 0, d_flux_y_backward, d_flux_y_forward)
-
-    else:
-        # General nD (placeholder)
-        raise NotImplementedError(f"Advection term not yet implemented for {ndim}D")
+        advection += np.where(alpha_d >= 0, d_flux_backward, d_flux_forward)
 
     return advection
