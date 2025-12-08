@@ -10,6 +10,7 @@ from scipy.linalg import lstsq
 from scipy.spatial.distance import cdist
 
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
+from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
 
 from .base_hjb import BaseHJBSolver
 
@@ -196,11 +197,22 @@ class HJBGFDMSolver(BaseHJBSolver):
         self.qp_warm_start = qp_warm_start
         self.qp_constraint_mode = qp_constraint_mode
 
-        # Warm-start cache: stores previous QP solutions per point
-        # Key: point_idx, Value: (solution vector, dual variables)
+        # Initialize unified QP solver from qp_utils
+        # Map qp_solver parameter to QPSolver backend
+        # Use "auto" to allow fallback to scipy when OSQP not installed
+        qp_backend = "auto" if qp_solver == "osqp" else "scipy-slsqp"
+        self._qp_cache = QPCache(max_size=1000)
+        self._qp_solver_instance = QPSolver(
+            backend=qp_backend,
+            enable_warm_start=qp_warm_start,
+            cache=self._qp_cache,
+        )
+
+        # Legacy warm-start cache (kept for backward compatibility, but unused)
         self._qp_warm_start_cache: dict[int, tuple[np.ndarray, np.ndarray | None]] = {}
 
-        # Initialize QP diagnostic statistics
+        # Initialize QP diagnostic statistics (extended from QPSolver.stats)
+        # These are GFDM-specific stats not covered by QPSolver
         self.qp_stats = {
             "total_qp_solves": 0,
             "qp_times": [],
@@ -828,33 +840,8 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         t0 = time.time()
 
-        try:
-            from scipy.optimize import minimize
-        except ImportError:
-            # Fallback to unconstrained if scipy not available
-            self.qp_stats["qp_fallbacks"] += 1
-            elapsed = time.time() - t0
-            self.qp_stats["qp_times"].append(elapsed)
-            return self._solve_unconstrained_fallback(taylor_data, b)
-
         A = taylor_data["A"]
         W = taylor_data["W"]
-        sqrt_W = taylor_data["sqrt_W"]
-        _n_neighbors, _n_coeffs = A.shape
-
-        # Define objective function: ||W^(1/2) A x - W^(1/2) b||^2
-        def objective(x):
-            residual = sqrt_W @ (A @ x - b)
-            return 0.5 * np.dot(residual, residual)
-
-        # Define gradient of objective
-        def gradient(x):
-            residual = A @ x - b
-            return A.T @ W @ residual
-
-        # Define Hessian of objective
-        def hessian(x):
-            return A.T @ W @ A
 
         # Analyze the stencil structure to determine appropriate constraints
         center_point = self.collocation_points[point_idx]
@@ -950,203 +937,44 @@ class HJBGFDMSolver(BaseHJBSolver):
 
                 constraints.append({"type": "ineq", "fun": constraint_stability})
 
-        # Initial guess: unconstrained solution
-        x0 = self._solve_unconstrained_fallback(taylor_data, b)
+        # Use unified QPSolver for the optimization
+        # QPSolver handles OSQP/scipy switching, warm-starting, and caching internally
+        try:
+            result_x = self._qp_solver_instance.solve_weighted_least_squares(
+                A=A,
+                b=b,
+                W=W,
+                bounds=bounds,
+                constraints=constraints,
+                point_id=point_idx,
+            )
 
-        # Try OSQP first if requested
-        if self.qp_solver == "osqp":
-            try:
-                # Compute P and q for OSQP formulation
-                # P = A'WA (Hessian), q = -A'Wb (linear term)
-                P = A.T @ W @ A
-                q = -A.T @ W @ b
+            # Sync statistics from QPSolver to GFDM-specific stats
+            self.qp_stats["total_qp_solves"] += 1
+            elapsed = time.time() - t0
+            self.qp_stats["qp_times"].append(elapsed)
 
-                # Call OSQP solver
-                result_x = self._solve_qp_with_osqp(P, q, bounds, constraints, x0, point_idx)
+            # Map QPSolver backend stats to GFDM stats
+            qp_stats = self._qp_solver_instance.stats
+            if qp_stats["osqp_solves"] > self.qp_stats["osqp_solves"]:
+                self.qp_stats["osqp_solves"] = qp_stats["osqp_solves"]
+            if qp_stats["slsqp_solves"] > self.qp_stats["slsqp_solves"]:
+                self.qp_stats["slsqp_solves"] = qp_stats["slsqp_solves"]
+            if qp_stats["lbfgsb_solves"] > self.qp_stats["lbfgsb_solves"]:
+                self.qp_stats["lbfgsb_solves"] = qp_stats["lbfgsb_solves"]
+            if qp_stats["successes"] > self.qp_stats["qp_successes"]:
+                self.qp_stats["qp_successes"] = qp_stats["successes"]
+            if qp_stats["failures"] > self.qp_stats["qp_failures"]:
+                self.qp_stats["qp_failures"] = qp_stats["failures"]
 
-                # Track statistics
-                self.qp_stats["total_qp_solves"] += 1
-                self.qp_stats["osqp_solves"] += 1
-                self.qp_stats["qp_successes"] += 1
-                elapsed = time.time() - t0
-                self.qp_stats["qp_times"].append(elapsed)
+            return result_x
 
-                return result_x
-
-            except ImportError:
-                # OSQP not available - fall back to scipy
-                import warnings
-
-                warnings.warn("OSQP not available, falling back to scipy", stacklevel=2)
-                self.qp_solver = "scipy"  # Switch permanently
-
-            except (RuntimeError, Exception):
-                # OSQP failed - fall back to scipy for this solve
-                self.qp_stats["osqp_failures"] += 1
-                # Continue to scipy solver below
-
-        # Solve constrained optimization with robust settings (scipy fallback)
-        if self.qp_solver == "scipy":
-            try:
-                # Try fast L-BFGS-B first if only bounds constraints
-                if len(constraints) == 0:
-                    self.qp_stats["lbfgsb_solves"] += 1
-                    result = minimize(
-                        objective,
-                        x0,
-                        method="L-BFGS-B",  # Faster for bounds-only problems
-                        jac=gradient,
-                        bounds=bounds,
-                        options={
-                            "maxiter": 50,
-                            "ftol": 1e-6,
-                            "gtol": 1e-6,
-                        },  # More robust settings
-                    )
-                else:
-                    # Use SLSQP for general constraints with robust settings
-                    self.qp_stats["slsqp_solves"] += 1
-                    result = minimize(
-                        objective,
-                        x0,
-                        method="SLSQP",  # Better for equality/inequality constraints
-                        jac=gradient,
-                        bounds=bounds,
-                        constraints=constraints,
-                        options={
-                            "maxiter": 40,
-                            "ftol": 1e-6,
-                            "eps": 1.4901161193847656e-08,
-                            "disp": False,
-                        },
-                    )
-
-                # Track QP solve statistics
-                self.qp_stats["total_qp_solves"] += 1
-                elapsed = time.time() - t0
-                self.qp_stats["qp_times"].append(elapsed)
-
-                if result.success:
-                    self.qp_stats["qp_successes"] += 1
-                    return result.x
-                else:
-                    # Fallback to unconstrained if optimization fails
-                    self.qp_stats["qp_failures"] += 1
-                    self.qp_stats["qp_fallbacks"] += 1
-                    return x0
-
-            except Exception:
-                # Fallback to unconstrained if any error occurs
-                self.qp_stats["qp_fallbacks"] += 1
-                elapsed = time.time() - t0
-                self.qp_stats["qp_times"].append(elapsed)
-                return x0
-
-    def _solve_qp_with_osqp(
-        self,
-        P: np.ndarray,
-        q: np.ndarray,
-        bounds: list,
-        monotonicity_constraints: list,
-        x0: np.ndarray,
-        point_idx: int,
-    ) -> np.ndarray:
-        """
-        Solve QP using OSQP solver for improved performance.
-
-        Solves: minimize (1/2) x' P x + q' x
-                subject to l <= A x <= u
-
-        Args:
-            P: Quadratic cost matrix (Hessian)
-            q: Linear cost vector
-            bounds: List of (lower, upper) bound tuples for each variable
-            monotonicity_constraints: List of constraint dicts (scipy format)
-            x0: Initial guess (fallback if warm-start not available)
-            point_idx: Collocation point index (for warm-start caching)
-
-        Returns:
-            Solution vector x
-
-        Raises:
-            ImportError: If OSQP not available
-            RuntimeError: If OSQP solve fails
-        """
-        import osqp
-
-        import scipy.sparse as sp
-
-        n = len(x0)
-
-        # Build constraint matrix and bounds
-        # Start with variable bounds (identity matrix rows)
-        constraint_rows = []
-        l_bounds = []
-        u_bounds = []
-
-        for i, (lb, ub) in enumerate(bounds):
-            # Add identity row for this variable's bounds
-            row = np.zeros(n)
-            row[i] = 1.0
-            constraint_rows.append(row)
-            l_bounds.append(lb if lb is not None else -np.inf)
-            u_bounds.append(ub if ub is not None else np.inf)
-
-        # Add monotonicity constraints (linearized if needed)
-        # For now, use Option A: bounds-only (skip nonlinear constraints)
-        # This is sufficient for most cases and much simpler
-
-        if constraint_rows:
-            A_constraint = sp.csc_matrix(np.vstack(constraint_rows))
-            lower_bounds = np.array(l_bounds)
-            upper_bounds = np.array(u_bounds)
-        else:
-            # No constraints
-            A_constraint = sp.csc_matrix((0, n))
-            lower_bounds = np.array([])
-            upper_bounds = np.array([])
-
-        # Convert P to sparse (CSC format for OSQP)
-        P_sparse = sp.csc_matrix(P)
-
-        # Set up OSQP problem
-        prob = osqp.OSQP()
-        prob.setup(
-            P=P_sparse,
-            q=q,
-            A=A_constraint,
-            l=lower_bounds,
-            u=upper_bounds,
-            verbose=False,
-            eps_abs=1e-6,
-            eps_rel=1e-6,
-            max_iter=10000,
-            polish=False,  # Disabled: polishing prints verbose messages even with verbose=False
-        )
-
-        # Apply warm-starting if enabled and cached solution available
-        if self.qp_warm_start and point_idx in self._qp_warm_start_cache:
-            x_prev, y_prev = self._qp_warm_start_cache[point_idx]
-            # Warm-start with previous solution
-            # OSQP uses both primal (x) and dual (y) variables for warm-starting
-            if y_prev is not None and len(y_prev) == len(lower_bounds):
-                prob.warm_start(x=x_prev, y=y_prev)
-            else:
-                # Only primal warm-start if dual not compatible
-                prob.warm_start(x=x_prev)
-
-        # Solve
-        result = prob.solve()
-
-        # Check status
-        if result.info.status != "solved":
-            raise RuntimeError(f"OSQP failed with status: {result.info.status}")
-
-        # Cache solution for next warm-start
-        if self.qp_warm_start:
-            self._qp_warm_start_cache[point_idx] = (result.x.copy(), result.y.copy())
-
-        return result.x
+        except Exception:
+            # Fallback to unconstrained if any error occurs
+            self.qp_stats["qp_fallbacks"] += 1
+            elapsed = time.time() - t0
+            self.qp_stats["qp_times"].append(elapsed)
+            return self._solve_unconstrained_fallback(taylor_data, b)
 
     def _solve_unconstrained_fallback(self, taylor_data: dict, b: np.ndarray) -> np.ndarray:
         """Fallback to unconstrained solution using SVD or normal equations."""
@@ -1178,6 +1006,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         Print comprehensive QP diagnostic statistics.
 
         Reports QP solve counts, timings, success rates, and solver usage.
+        Also includes QPSolver caching and warm-start statistics.
         Useful for understanding QP performance and bottlenecks.
         """
         if self.qp_stats is None or not self.qp_stats.get("total_qp_solves", 0):
@@ -1190,7 +1019,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Basic counts
         total_solves = self.qp_stats["total_qp_solves"]
-        print("\nQP Solve Summary:")
+        print("\nGFDM QP Solve Summary:")
         print(f"  Total QP solves:        {total_solves}")
         print(
             f"  Successful solves:      {self.qp_stats['qp_successes']} ({100 * self.qp_stats['qp_successes'] / max(total_solves, 1):.1f}%)"
@@ -1208,29 +1037,42 @@ class HJBGFDMSolver(BaseHJBSolver):
                 f"  Violations detected:    {self.qp_stats['violations_detected']} ({100 * self.qp_stats['violations_detected'] / max(self.qp_stats['points_checked'], 1):.1f}%)"
             )
 
-        # Solver breakdown
-        osqp = self.qp_stats.get("osqp_solves", 0)
-        slsqp = self.qp_stats["slsqp_solves"]
-        lbfgsb = self.qp_stats["lbfgsb_solves"]
-        print("\nSolver Usage:")
-        print(f"  OSQP:                   {osqp} ({100 * osqp / max(total_solves, 1):.1f}%)")
-        if self.qp_stats.get("osqp_failures", 0) > 0:
-            print(f"    OSQP failures:        {self.qp_stats['osqp_failures']}")
-        print(f"  scipy (SLSQP):          {slsqp} ({100 * slsqp / max(total_solves, 1):.1f}%)")
-        print(f"  scipy (L-BFGS-B):       {lbfgsb} ({100 * lbfgsb / max(total_solves, 1):.1f}%)")
-
-        # Timing statistics
+        # Timing statistics (GFDM-tracked)
         if self.qp_stats["qp_times"]:
-            import numpy as np
-
             times = np.array(self.qp_stats["qp_times"])
-            print("\nQP Solve Timing:")
+            print("\nGFDM QP Solve Timing:")
             print(f"  Total time:             {np.sum(times):.2f} s")
             print(f"  Mean time per solve:    {np.mean(times) * 1000:.2f} ms")
             print(f"  Median time per solve:  {np.median(times) * 1000:.2f} ms")
             print(f"  Min time per solve:     {np.min(times) * 1000:.2f} ms")
             print(f"  Max time per solve:     {np.max(times) * 1000:.2f} ms")
             print(f"  Std dev:                {np.std(times) * 1000:.2f} ms")
+
+        # Print QPSolver statistics (caching, warm-starting, backend usage)
+        if hasattr(self, "_qp_solver_instance") and self._qp_solver_instance is not None:
+            qps = self._qp_solver_instance.stats
+            print("\nQPSolver Backend Statistics:")
+            print(f"  OSQP:                   {qps['osqp_solves']}")
+            print(f"  scipy (SLSQP):          {qps['slsqp_solves']}")
+            print(f"  scipy (L-BFGS-B):       {qps['lbfgsb_solves']}")
+
+            # Warm-start stats
+            ws_total = qps["warm_starts"] + qps["cold_starts"]
+            if ws_total > 0:
+                print("\nWarm-Start Statistics:")
+                print(f"  Warm starts:            {qps['warm_starts']} ({100 * qps['warm_starts'] / ws_total:.1f}%)")
+                print(f"  Cold starts:            {qps['cold_starts']} ({100 * qps['cold_starts'] / ws_total:.1f}%)")
+
+            # Cache stats
+            if self._qp_cache is not None:
+                cache_total = qps["cache_hits"] + qps["cache_misses"]
+                if cache_total > 0:
+                    print("\nCache Statistics:")
+                    print(
+                        f"  Cache hits:             {qps['cache_hits']} ({100 * qps['cache_hits'] / cache_total:.1f}%)"
+                    )
+                    print(f"  Cache misses:           {qps['cache_misses']}")
+                    print(f"  Cache size:             {self._qp_cache.size} / {self._qp_cache.max_size}")
 
         print("=" * 80 + "\n")
 
