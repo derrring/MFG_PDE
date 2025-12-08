@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-# Use 1D FDM BoundaryConditions for MFGProblem (1D-focused class)
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+# Use unified nD-capable BoundaryConditions from conditions.py
+from mfg_pde.geometry.boundary.conditions import BoundaryConditions, periodic_bc
 from mfg_pde.types import HamiltonianJacobians
 
 # Import npart and ppart from the utils module
@@ -411,7 +411,7 @@ class MFGProblem:
         import warnings
 
         from mfg_pde.geometry import SimpleGrid1D
-        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+        from mfg_pde.geometry.boundary.conditions import periodic_bc
 
         # Emit deprecation warning for manual grid construction pattern
         warnings.warn(
@@ -432,7 +432,7 @@ class MFGProblem:
         Nx_scalar = Nx[0]
 
         # Create SimpleGrid1D geometry object (unified internal representation)
-        bc = BoundaryConditions(type="periodic")  # Default to periodic for backward compatibility
+        bc = periodic_bc(dimension=1)  # Default to periodic for backward compatibility
         geometry = SimpleGrid1D(xmin=xmin_scalar, xmax=xmax_scalar, boundary_conditions=bc)
         dx, _ = geometry.create_grid(num_points=Nx_scalar + 1)
 
@@ -529,9 +529,9 @@ class MFGProblem:
         if dimension == 1:
             # 1D case: use SimpleGrid1D
             from mfg_pde.geometry import SimpleGrid1D
-            from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+            from mfg_pde.geometry.boundary.conditions import periodic_bc
 
-            bc = BoundaryConditions(type="periodic")
+            bc = periodic_bc(dimension=1)
             geometry = SimpleGrid1D(xmin=spatial_bounds[0][0], xmax=spatial_bounds[0][1], boundary_conditions=bc)
             dx, _ = geometry.create_grid(num_points=spatial_discretization[0] + 1)
 
@@ -1915,7 +1915,7 @@ class MFGProblem:
             return self.components.boundary_conditions
         else:
             # Default periodic boundary conditions
-            return BoundaryConditions(type="periodic")
+            return periodic_bc(dimension=self.dimension)
 
     def get_potential_at_time(self, t_idx: int) -> np.ndarray:
         """Get potential function at specific time (for time-dependent potentials)."""

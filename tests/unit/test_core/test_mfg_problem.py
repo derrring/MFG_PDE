@@ -18,8 +18,11 @@ import numpy as np
 
 from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
 
+# Unified BC from conditions.py (current API)
+from mfg_pde.geometry.boundary.conditions import BoundaryConditions
+
 # Legacy 1D BC: testing compatibility with 1D MFG problems (deprecated in v0.14, remove in v1.0)
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions as LegacyBoundaryConditions
 
 # ===================================================================
 # Test MFGComponents Dataclass
@@ -341,14 +344,16 @@ def test_get_boundary_conditions_default():
 
 @pytest.mark.unit
 def test_get_boundary_conditions_custom():
-    """Test get_boundary_conditions with custom BC."""
-    custom_bc = BoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
+    """Test get_boundary_conditions with custom BC (legacy 1D BC backward compat)."""
+    # Uses legacy 1D BC to test backward compatibility
+    custom_bc = LegacyBoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
     components = MFGComponents(boundary_conditions=custom_bc)
     problem = MFGProblem(components=components)
 
     bc = problem.get_boundary_conditions()
 
-    assert isinstance(bc, BoundaryConditions)
+    # Custom BC is passed through as-is (legacy type)
+    assert isinstance(bc, LegacyBoundaryConditions)
     assert bc.type == "dirichlet"
 
 
