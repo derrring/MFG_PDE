@@ -3,6 +3,9 @@ Unit tests for GeometryProjector (Issue #257).
 
 Tests projection operations between different geometry discretizations,
 including particle↔grid and grid↔grid projections.
+
+Note: Uses legacy SimpleGrid1D/2D/3D APIs which are deprecated in v0.14.
+These tests validate legacy behavior until removal in v1.0.
 """
 
 import pytest
@@ -10,6 +13,9 @@ import pytest
 import numpy as np
 
 from mfg_pde.geometry import GeometryProjector, SimpleGrid1D, SimpleGrid2D, SimpleGrid3D
+
+# Suppress deprecation warnings for SimpleGrid classes in this test module
+pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
 
 
 class TestGeometryProjectorBasics:

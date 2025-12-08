@@ -3,10 +3,15 @@
 
 This module provides 1D regular grid specification for finite difference methods.
 Boundary conditions are managed in boundary_conditions_1d.py.
+
+.. deprecated:: 0.14
+    SimpleGrid1D is deprecated. Use TensorProductGrid with dimension=1 instead.
+    Will be removed in v1.0.
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -33,11 +38,21 @@ class SimpleGrid1D(CartesianGrid):
         """
         Initialize 1D domain.
 
+        .. deprecated:: 0.14
+            Use TensorProductGrid with dimension=1 and unified BoundaryConditions instead.
+
         Args:
             xmin: Left boundary of domain
             xmax: Right boundary of domain
             boundary_conditions: Boundary condition specification
         """
+        warnings.warn(
+            "SimpleGrid1D is deprecated since v0.14 and will be removed in v1.0. "
+            "Use TensorProductGrid with dimension=1 and unified BoundaryConditions instead. "
+            "See mfg_pde.geometry.grids.tensor_grid.TensorProductGrid.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if xmax <= xmin:
             raise ValueError("xmax must be greater than xmin")
 

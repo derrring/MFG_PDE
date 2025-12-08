@@ -3,10 +3,15 @@ Simple grid geometry for high-dimensional MFG problems.
 
 This module provides basic rectangular grid generation without external dependencies,
 suitable for regular domain problems and testing.
+
+.. deprecated:: 0.14
+    SimpleGrid2D is deprecated. Use TensorProductGrid with dimension=2 instead.
+    Will be removed in v1.0.
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -30,10 +35,20 @@ class SimpleGrid2D(CartesianGrid):
         """
         Initialize 2D grid.
 
+        .. deprecated:: 0.14
+            Use TensorProductGrid with dimension=2 instead.
+
         Args:
             bounds: (xmin, xmax, ymin, ymax)
             resolution: (nx, ny) number of intervals (grid points = nx+1, ny+1)
         """
+        warnings.warn(
+            "SimpleGrid2D is deprecated since v0.14 and will be removed in v1.0. "
+            "Use TensorProductGrid with dimension=2 instead. "
+            "See mfg_pde.geometry.grids.tensor_grid.TensorProductGrid.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._dimension = 2
         self.xmin, self.xmax, self.ymin, self.ymax = bounds
         self.nx, self.ny = resolution
