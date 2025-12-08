@@ -31,6 +31,7 @@ References:
 
 from __future__ import annotations
 
+import itertools
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -123,7 +124,8 @@ class SparseMatrixBuilder:
         elif self.grid.dimension == 3:
             return self._build_laplacian_3d(coefficients, boundary_conditions)
         else:
-            raise NotImplementedError(f"Laplacian not implemented for dimension {self.grid.dimension}")
+            # Use generalized nD implementation for d >= 4
+            return self._build_laplacian_nd(coefficients, boundary_conditions)
 
     def _build_laplacian_1d(
         self,
@@ -235,6 +237,66 @@ class SparseMatrixBuilder:
 
         return L.asformat(self.format)
 
+    def _build_laplacian_nd(
+        self,
+        coefficients: float | NDArray | None,
+        boundary_conditions: str,
+    ) -> sp.spmatrix:
+        """Build nD Laplacian with (2n+1)-point stencil for arbitrary dimension.
+
+        Generalizes 1D/2D/3D Laplacian to n dimensions using tensor product structure.
+        Uses (2n+1)-point stencil: center point + 2 neighbors per dimension.
+
+        Mathematical formulation:
+            Laplacian(u) = sum_d (d^2u/dx_d^2)
+            Discrete: L[i] = -2*sum_d(1/dx_d^2) * u[i] + sum_d(1/dx_d^2)*(u[i-e_d] + u[i+e_d])
+
+        Args:
+            coefficients: Diffusion coefficient D(x) (currently uniform only)
+            boundary_conditions: "dirichlet" or "neumann"
+
+        Returns:
+            Sparse matrix L of shape (N, N) representing -Laplacian operator
+        """
+        ndim = self.grid.dimension
+        num_points = self.grid.num_points
+        spacing = self.grid.spacing
+
+        L = sp.lil_matrix((self.N, self.N), dtype=self.dtype)
+
+        # Stencil coefficients: 1/dx_d^2 for each dimension
+        coeffs = [1.0 / (spacing[d] ** 2) for d in range(ndim)]
+        coeff_center = -2.0 * sum(coeffs)
+
+        # Iterate over all grid points using itertools.product
+        for multi_idx in itertools.product(*[range(n) for n in num_points]):
+            idx = self.grid.get_index(multi_idx)
+
+            # Check if interior point (all indices > 0 and < n_d - 1)
+            is_interior = all(0 < multi_idx[d] < num_points[d] - 1 for d in range(ndim))
+
+            if is_interior:
+                # Center coefficient
+                L[idx, idx] = coeff_center
+
+                # Off-diagonal entries: neighbors in each dimension
+                for d in range(ndim):
+                    # Neighbor in -d direction
+                    neighbor_minus = list(multi_idx)
+                    neighbor_minus[d] -= 1
+                    L[idx, self.grid.get_index(tuple(neighbor_minus))] = coeffs[d]
+
+                    # Neighbor in +d direction
+                    neighbor_plus = list(multi_idx)
+                    neighbor_plus[d] += 1
+                    L[idx, self.grid.get_index(tuple(neighbor_plus))] = coeffs[d]
+
+            # Boundary treatment
+            elif boundary_conditions in ("dirichlet", "neumann"):
+                L[idx, idx] = 1.0
+
+        return L.asformat(self.format)
+
     def build_gradient(self, direction: int = 0, order: int = 2) -> sp.spmatrix:
         """
         Build sparse gradient matrix for spatial derivative.
@@ -259,7 +321,8 @@ class SparseMatrixBuilder:
         elif self.grid.dimension == 3:
             return self._build_gradient_3d(direction, order)
         else:
-            raise NotImplementedError(f"Gradient not implemented for dimension {self.grid.dimension}")
+            # Use generalized nD implementation for d >= 4
+            return self._build_gradient_nd(direction, order)
 
     def _build_gradient_1d(self, order: int) -> sp.spmatrix:
         """Build 1D gradient matrix."""
@@ -343,6 +406,59 @@ class SparseMatrixBuilder:
                         elif k < nz - 1:
                             G[idx, idx] = -1 / h
                             G[idx, self.grid.get_index((i, j, k + 1))] = 1 / h
+
+        return G.asformat(self.format)
+
+    def _build_gradient_nd(self, direction: int, order: int) -> sp.spmatrix:
+        """Build nD gradient matrix along specified direction.
+
+        Generalizes 1D/2D/3D gradient to n dimensions using tensor product structure.
+
+        Mathematical formulation:
+            Gradient in direction d: du/dx_d
+            Central (order=2): (u[i+e_d] - u[i-e_d]) / (2*h_d)
+            Forward (order=1): (u[i+e_d] - u[i]) / h_d
+
+        Args:
+            direction: Spatial direction (0, 1, 2, ...)
+            order: Finite difference order (1=forward, 2=central)
+
+        Returns:
+            Sparse matrix G representing d/dx_d operator
+        """
+        num_points = self.grid.num_points
+        spacing = self.grid.spacing
+
+        G = sp.lil_matrix((self.N, self.N), dtype=self.dtype)
+
+        h = spacing[direction]
+        n_dir = num_points[direction]
+
+        # Iterate over all grid points using itertools.product
+        for multi_idx in itertools.product(*[range(n) for n in num_points]):
+            idx = self.grid.get_index(multi_idx)
+            i_dir = multi_idx[direction]  # Index in the gradient direction
+
+            if order == 2:
+                # Central difference: interior points only
+                if 0 < i_dir < n_dir - 1:
+                    # Neighbor in -direction
+                    neighbor_minus = list(multi_idx)
+                    neighbor_minus[direction] -= 1
+                    G[idx, self.grid.get_index(tuple(neighbor_minus))] = -1 / (2 * h)
+
+                    # Neighbor in +direction
+                    neighbor_plus = list(multi_idx)
+                    neighbor_plus[direction] += 1
+                    G[idx, self.grid.get_index(tuple(neighbor_plus))] = 1 / (2 * h)
+            else:
+                # Forward difference: all but last point in direction
+                if i_dir < n_dir - 1:
+                    G[idx, idx] = -1 / h
+
+                    neighbor_plus = list(multi_idx)
+                    neighbor_plus[direction] += 1
+                    G[idx, self.grid.get_index(tuple(neighbor_plus))] = 1 / h
 
         return G.asformat(self.format)
 
