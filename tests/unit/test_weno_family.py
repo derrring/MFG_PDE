@@ -10,6 +10,9 @@ Validates:
 4. Interface consistency across variants
 5. Strategic typing compliance
 
+Note: Uses legacy SimpleGrid1D API which is deprecated in v0.14.
+These tests validate legacy behavior until removal in v1.0.
+
 Usage:
     python -m pytest tests/unit/test_weno_family.py -v
 """
@@ -24,6 +27,9 @@ from mfg_pde.core.mfg_problem import MFGProblem
 # Legacy 1D BC: testing compatibility with 1D HJB solvers (deprecated in v0.14, remove in v1.0)
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
+
+# Suppress deprecation warnings for SimpleGrid classes in this test module
+pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
 
 
 class TestWenoFamilySolver:

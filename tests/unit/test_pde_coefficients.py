@@ -2,6 +2,9 @@
 Unit tests for PDE coefficient handling utilities.
 
 Tests CoefficientField abstraction for scalar, array, and callable coefficients.
+
+Note: Uses legacy SimpleGrid1D API which is deprecated in v0.14.
+These tests validate legacy behavior until removal in v1.0.
 """
 
 from __future__ import annotations
@@ -13,6 +16,9 @@ import numpy as np
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import SimpleGrid1D
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
+
+# Suppress deprecation warnings for SimpleGrid classes in this test module
+pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
 
 
 class TestCoefficientFieldScalar:

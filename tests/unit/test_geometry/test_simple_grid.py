@@ -4,6 +4,9 @@ Unit tests for Simple Grid Geometry
 
 Tests the SimpleGrid2D and SimpleGrid3D classes for mesh generation
 without external dependencies.
+
+Note: SimpleGrid classes are deprecated in v0.14 (use TensorProductGrid instead).
+These tests validate legacy behavior until removal in v1.0.
 """
 
 import tempfile
@@ -15,6 +18,9 @@ import numpy as np
 
 from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
 from mfg_pde.geometry.grids.grid_3d import SimpleGrid3D
+
+# Suppress deprecation warnings for SimpleGrid classes in this test module
+pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
 
 # ============================================================================
 # Test: SimpleGrid2D - Initialization
