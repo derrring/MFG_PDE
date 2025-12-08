@@ -193,6 +193,13 @@ class HJBFDMSolver(BaseHJBSolver):
         # Fallback: problem.dimension attribute
         if hasattr(problem, "dimension"):
             return problem.dimension
+        # Legacy: Infer from Nx/Ny/Nz attributes
+        if getattr(problem, "Nx", None) is not None:
+            if getattr(problem, "Nz", None) is not None:
+                return 3
+            if getattr(problem, "Ny", None) is not None:
+                return 2
+            return 1
         raise ValueError(
             "Cannot determine problem dimension. "
             "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
