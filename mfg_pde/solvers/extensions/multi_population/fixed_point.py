@@ -356,8 +356,8 @@ class _SinglePopulationAdapter:
             This is a helper method for fallback array creation.
         """
         # Try to extract spatial shape from problem
-        if hasattr(self._problem, "Nx"):
-            Nx = self._problem.Nx
+        Nx = getattr(self._problem, "Nx", None)
+        if Nx is not None:
             if isinstance(Nx, (list, tuple)):
                 return tuple(n + 1 for n in Nx)
             return (Nx + 1,)

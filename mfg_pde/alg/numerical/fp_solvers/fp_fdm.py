@@ -290,7 +290,8 @@ class FPFDMSolver(BaseFPSolver):
 
             # Create zero U field with appropriate shape
             if self.dimension == 1:
-                Nx = self.problem.Nx + 1 if hasattr(self.problem, "Nx") else self.problem.geometry.get_grid_shape()[0]
+                Nx_val = getattr(self.problem, "Nx", None)
+                Nx = Nx_val + 1 if Nx_val is not None else self.problem.geometry.get_grid_shape()[0]
                 effective_U = np.zeros((Nt, Nx))
             else:
                 grid_shape = self.problem.geometry.get_grid_shape()
