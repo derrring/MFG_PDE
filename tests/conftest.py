@@ -15,7 +15,7 @@ import numpy as np
 
 # Import main package components
 from mfg_pde import MFGProblem
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.config import MFGSolverConfig
 
 # =============================================================================
 # Test Configuration

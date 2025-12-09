@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 import pkg_resources
 
 if TYPE_CHECKING:
-    from mfg_pde.config.pydantic_config import MFGSolverConfig
+    from mfg_pde.config import MFGSolverConfig
     from mfg_pde.factory.solver_factory import SolverType
 
 logger = logging.getLogger(__name__)

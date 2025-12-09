@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.config import MFGSolverConfig
 from mfg_pde.factory.solver_factory import (
     SolverFactory,
     create_accurate_solver,
