@@ -119,15 +119,20 @@ class TensorProductGrid(CartesianGrid):
             )
 
         self._dimension = dimension
-        self.bounds = list(bounds)
-        self.num_points = list(num_points)
+        # Normalize to tuples internally for immutability (accepts both list and tuple input)
+        self._bounds = tuple((float(lo), float(hi)) for lo, hi in bounds)
+        self._num_points = tuple(int(n) for n in num_points)
         self.spacing_type = spacing_type
 
-        # Create coordinate arrays
+        # Create coordinate arrays using normalized values
         if spacing_type == "uniform":
-            self.coordinates = [np.linspace(bounds[i][0], bounds[i][1], num_points[i]) for i in range(self._dimension)]
+            self.coordinates = [
+                np.linspace(self._bounds[i][0], self._bounds[i][1], self._num_points[i]) for i in range(self._dimension)
+            ]
             self.spacing = [
-                (bounds[i][1] - bounds[i][0]) / (num_points[i] - 1) if num_points[i] > 1 else 0.0
+                (self._bounds[i][1] - self._bounds[i][0]) / (self._num_points[i] - 1)
+                if self._num_points[i] > 1
+                else 0.0
                 for i in range(self._dimension)
             ]
             self.is_uniform = True
@@ -147,14 +152,24 @@ class TensorProductGrid(CartesianGrid):
 
         # Validate coordinates
         for i, coords in enumerate(self.coordinates):
-            if len(coords) != num_points[i]:
-                raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {num_points[i]}")
+            if len(coords) != self._num_points[i]:
+                raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {self._num_points[i]}")
 
     # Geometry ABC implementation - properties
     @property
     def dimension(self) -> int:
         """Spatial dimension of the grid."""
         return self._dimension
+
+    @property
+    def bounds(self) -> tuple[tuple[float, float], ...]:
+        """Bounds per dimension as tuple of (min, max) pairs (immutable)."""
+        return self._bounds
+
+    @property
+    def num_points(self) -> tuple[int, ...]:
+        """Number of grid points per dimension (immutable)."""
+        return self._num_points
 
     @property
     def geometry_type(self) -> GeometryType:
@@ -194,18 +209,18 @@ class TensorProductGrid(CartesianGrid):
         """
         config = {
             "num_spatial_points": self.total_points(),
-            "spatial_shape": tuple(self.num_points),
-            "spatial_bounds": tuple(self.bounds),
-            "spatial_discretization": tuple(self.num_points),
+            "spatial_shape": self._num_points,
+            "spatial_bounds": self._bounds,
+            "spatial_discretization": self._num_points,
         }
 
         # Legacy 1D attributes (for backward compatibility with 1D solvers)
         if self._dimension == 1:
             config["legacy_1d_attrs"] = {
-                "xmin": self.bounds[0][0],
-                "xmax": self.bounds[0][1],
-                "Lx": self.bounds[0][1] - self.bounds[0][0],
-                "Nx": self.num_points[0],
+                "xmin": self._bounds[0][0],
+                "xmax": self._bounds[0][1],
+                "Lx": self._bounds[0][1] - self._bounds[0][0],
+                "Nx": self._num_points[0],
                 "Dx": self.spacing[0],
                 "xSpace": self.coordinates[0],
             }
@@ -349,11 +364,11 @@ class TensorProductGrid(CartesianGrid):
         else:
             factors = list(factor)
 
-        new_num_points = [(n - 1) * f + 1 for n, f in zip(self.num_points, factors, strict=False)]
+        new_num_points = [(n - 1) * f + 1 for n, f in zip(self._num_points, factors, strict=False)]
 
         return TensorProductGrid(
             dimension=self._dimension,
-            bounds=self.bounds,
+            bounds=self._bounds,
             num_points=new_num_points,
             spacing_type=self.spacing_type,
         )
@@ -373,11 +388,11 @@ class TensorProductGrid(CartesianGrid):
         else:
             factors = list(factor)
 
-        new_num_points = [(n - 1) // f + 1 for n, f in zip(self.num_points, factors, strict=False)]
+        new_num_points = [(n - 1) // f + 1 for n, f in zip(self._num_points, factors, strict=False)]
 
         return TensorProductGrid(
             dimension=self._dimension,
-            bounds=self.bounds,
+            bounds=self._bounds,
             num_points=new_num_points,
             spacing_type=self.spacing_type,
         )
@@ -433,8 +448,8 @@ class TensorProductGrid(CartesianGrid):
             >>> max_coords
             array([1., 2.])
         """
-        min_coords = np.array([b[0] for b in self.bounds])
-        max_coords = np.array([b[1] for b in self.bounds])
+        min_coords = np.array([b[0] for b in self._bounds])
+        max_coords = np.array([b[1] for b in self._bounds])
         return min_coords, max_coords
 
     # ============================================================================
@@ -471,7 +486,7 @@ class TensorProductGrid(CartesianGrid):
             >>> shape
             (10, 20)
         """
-        return tuple(self.num_points)
+        return self._num_points
 
     # ============================================================================
     # Solver Operation Interface (NEW - from Geometry ABC)
@@ -677,7 +692,7 @@ class TensorProductGrid(CartesianGrid):
         Dimension-agnostic: Flattens bounds and dispatches to appropriate factory.
         """
         # Flatten bounds to tuple format expected by factories
-        flat_bounds = tuple(coord for min_max in self.bounds for coord in min_max)
+        flat_bounds = tuple(coord for min_max in self._bounds for coord in min_max)
 
         # Dimension-specific factory dispatch
         factory_map = {
@@ -710,8 +725,8 @@ class TensorProductGrid(CartesianGrid):
         return (
             f"TensorProductGrid(\n"
             f"  dimension={self._dimension},\n"
-            f"  bounds={self.bounds},\n"
-            f"  num_points={self.num_points},\n"
+            f"  bounds={self._bounds},\n"
+            f"  num_points={self._num_points},\n"
             f"  spacing_type='{self.spacing_type}',\n"
             f"  total_points={self.total_points()}\n"
             f")"
@@ -724,14 +739,67 @@ if __name__ == "__main__":
 
     import numpy as np
 
-    # Test 2D grid creation
-    grid_2d = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], num_points=[11, 6])
+    # Test 2D grid creation with LIST input
+    print("\n1. Testing LIST input (normalized to tuple internally)...")
+    grid_list = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], num_points=[11, 6])
 
-    assert grid_2d.dimension == 2
-    assert grid_2d.total_points() == 11 * 6
-    assert len(grid_2d.coordinates) == 2
+    assert grid_list.dimension == 2
+    assert grid_list.total_points() == 11 * 6
+    assert isinstance(grid_list.bounds, tuple), "bounds should be tuple"
+    assert isinstance(grid_list.num_points, tuple), "num_points should be tuple"
+    assert isinstance(grid_list.bounds[0], tuple), "bounds elements should be tuple"
+    print(f"  bounds type: {type(grid_list.bounds).__name__}")
+    print(f"  num_points type: {type(grid_list.num_points).__name__}")
+    print(f"  bounds: {grid_list.bounds}")
+    print(f"  num_points: {grid_list.num_points}")
 
-    print(f"  2D grid: {grid_2d.num_points[0]}×{grid_2d.num_points[1]} = {grid_2d.total_points()} points")
+    # Test 2D grid creation with TUPLE input
+    print("\n2. Testing TUPLE input (should also work)...")
+    grid_tuple = TensorProductGrid(dimension=2, bounds=((0.0, 10.0), (0.0, 5.0)), num_points=(11, 6))
+
+    assert grid_tuple.dimension == 2
+    assert grid_tuple.total_points() == 11 * 6
+    assert isinstance(grid_tuple.bounds, tuple), "bounds should be tuple"
+    assert isinstance(grid_tuple.num_points, tuple), "num_points should be tuple"
+    print(f"  bounds type: {type(grid_tuple.bounds).__name__}")
+    print(f"  num_points type: {type(grid_tuple.num_points).__name__}")
+
+    # Verify both produce identical grids
+    print("\n3. Verifying both input types produce identical results...")
+    assert grid_list.bounds == grid_tuple.bounds
+    assert grid_list.num_points == grid_tuple.num_points
+    print("  List and tuple inputs produce identical grids")
+
+    # Test type normalization (int/float conversion)
+    print("\n4. Testing type normalization (int -> float for bounds, float -> int for num_points)...")
+    grid_norm = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[10.0])  # int bounds, float num_points
+    assert grid_norm.bounds == ((0.0, 1.0),), f"Expected ((0.0, 1.0),), got {grid_norm.bounds}"
+    assert grid_norm.num_points == (10,), f"Expected (10,), got {grid_norm.num_points}"
+    assert isinstance(grid_norm.bounds[0][0], float), "bounds values should be float"
+    assert isinstance(grid_norm.num_points[0], int), "num_points values should be int"
+    print(f"  bounds: {grid_norm.bounds} (floats)")
+    print(f"  num_points: {grid_norm.num_points} (ints)")
+
+    # Test immutability
+    print("\n5. Testing immutability of bounds/num_points...")
+    try:
+        grid_list.bounds[0] = (99.0, 99.0)
+        print("  ERROR: bounds should be immutable!")
+        raise AssertionError("Should have raised TypeError")
+    except TypeError:
+        print("  bounds is immutable (tuple)")
+
+    try:
+        grid_list.num_points[0] = 999
+        print("  ERROR: num_points should be immutable!")
+        raise AssertionError("Should have raised TypeError")
+    except TypeError:
+        print("  num_points is immutable (tuple)")
+
+    # Test basic grid functionality
+    print("\n6. Testing grid functionality...")
+    grid_2d = grid_list
+    print(f"  2D grid: {grid_2d.num_points[0]}x{grid_2d.num_points[1]} = {grid_2d.total_points()} points")
 
     # Test meshgrid
     X, Y = grid_2d.meshgrid()
@@ -756,4 +824,4 @@ if __name__ == "__main__":
 
     print(f"  Spacing: dx={grid_2d.spacing[0]:.2f}, dy={grid_2d.spacing[1]:.2f}")
 
-    print("Smoke tests passed!")
+    print("\nAll smoke tests passed!")

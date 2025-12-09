@@ -18,11 +18,8 @@ The geometry module is organized into specialized subdirectories:
   - `mesh_manager.py` - Mesh lifecycle management
   - `mesh_pipeline.py` - Gmsh → Meshio → PyVista integration
 
-- **`grids/`** - Simple Cartesian grid geometries (no external dependencies)
-  - `grid_1d.py` - 1D grids (`SimpleGrid1D`)
-  - `grid_2d.py` - 2D grids (`SimpleGrid2D`)
-  - `grid_3d.py` - 3D grids (`SimpleGrid3D`)
-  - `tensor_grid.py` - Tensor product grids (`TensorProductGrid`)
+- **`grids/`** - Cartesian grid geometries (no external dependencies)
+  - `tensor_grid.py` - Unified tensor product grids (`TensorProductGrid`) for all dimensions
 
 - **`graph/`** - Network and maze geometries
   - **Network geometries**: `network_geometry.py` - Graph-based domains (`BaseNetworkGeometry`, `GridNetwork`)
@@ -47,7 +44,7 @@ The geometry module is organized into specialized subdirectories:
 
 ### File Naming Conventions
 
-- **Grid files**: Organized by dimension (`grid_1d.py`, `grid_2d.py`, `grid_3d.py`)
+- **Grid files**: `tensor_grid.py` provides unified `TensorProductGrid` for all dimensions
 - **Maze files**: Prefixed with `maze_` (`maze_cellular_automata.py`, `maze_hybrid.py`)
 - **Network files**: Prefixed with `network_` (`network_geometry.py`)
 - **Boundary files**: Prefixed with `bc_` (`bc_2d.py`, `bc_manager.py`)
@@ -57,9 +54,7 @@ The geometry module is organized into specialized subdirectories:
 ```python
 # Public API imports (recommended)
 from mfg_pde.geometry import (
-    SimpleGrid2D,
-    SimpleGrid3D,
-    TensorProductGrid,
+    TensorProductGrid,  # Unified Cartesian grids for all dimensions
     BaseNetworkGeometry,
     GridNetwork,
     MeshData,
@@ -67,7 +62,7 @@ from mfg_pde.geometry import (
 )
 
 # Direct submodule imports (when needed)
-from mfg_pde.geometry.grids import SimpleGrid2D
+from mfg_pde.geometry.grids import TensorProductGrid
 from mfg_pde.geometry.graph import BaseNetworkGeometry
 from mfg_pde.geometry.meshes import MeshData
 from mfg_pde.geometry.boundary import BoundaryConditionManager2D
@@ -340,8 +335,7 @@ print(f"Average element quality: {quality['avg_quality']}")
   - `meshes.mesh_pipeline`: Gmsh integration pipeline
 
 - **Grids**: `mfg_pde.geometry.grids` - Cartesian grid geometries
-  - `grids.grid_1d`, `grids.grid_2d`, `grids.grid_3d`: Dimension-specific grids
-  - `grids.tensor_grid`: Tensor product grids
+  - `grids.tensor_grid`: Unified TensorProductGrid for all dimensions
 
 - **Graphs**: `mfg_pde.geometry.graph` - Network and maze geometries
   - `graph.network_geometry`: Network-based domains

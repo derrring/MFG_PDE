@@ -33,9 +33,9 @@ class MFGProblemProtocol(Protocol):
     Minimal protocol that ALL MFG problems must satisfy.
 
     This protocol is intentionally geometry-agnostic, working with:
-    - Cartesian grids (Domain1D, Domain2D, TensorProductGrid)
+    - Cartesian grids (TensorProductGrid)
+    - Unstructured meshes (Mesh2D, Mesh3D, AMR geometries)
     - Networks (NetworkMFGProblem)
-    - Unstructured meshes (AMR geometries)
     - Implicit domains (level set, SDF)
     - Custom geometries
 
@@ -190,9 +190,7 @@ class CartesianGridMFGProtocol(MFGProblemProtocol, Protocol):
     and other structured grid solvers.
 
     Only applies to problems with GeometryType.CARTESIAN_GRID:
-    - Domain1D, Domain2D, Domain3D
-    - TensorProductGrid
-    - SimpleGrid2D, SimpleGrid3D
+    - TensorProductGrid (unified grid for all dimensions)
 
     Does NOT apply to:
     - Networks (NetworkMFGProblem)

@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from jax import jit
 
     from mfg_pde.backends.base_backend import BaseBackend
-    from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
+    from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
     from mfg_pde.types.solver_types import JAXArray
 
 # Always define JAX_AVAILABLE at module level
@@ -124,21 +124,28 @@ class OneDimensionalAMRMesh:
 
     def __init__(
         self,
-        domain_1d: SimpleGrid1D,
+        domain_1d: TensorProductGrid,
         initial_num_intervals: int = 10,
         refinement_criteria: AMRRefinementCriteria | None = None,
         backend: BaseBackend | None = None,
     ):
         """
-        Initialize 1D AMR mesh from SimpleGrid1D.
+        Initialize 1D AMR mesh from TensorProductGrid.
 
         Args:
-            domain_1d: 1D domain specification
+            domain_1d: 1D TensorProductGrid domain specification
             initial_num_intervals: Initial number of intervals
             refinement_criteria: AMR refinement parameters
             backend: Computational backend
         """
+        if domain_1d.dimension != 1:
+            raise ValueError(f"Expected 1D domain, got dimension={domain_1d.dimension}")
         self.domain = domain_1d
+        # Extract bounds for 1D domain
+        bounds = domain_1d.get_bounds()
+        self._xmin = float(bounds[0][0])
+        self._xmax = float(bounds[1][0])
+        self._length = self._xmax - self._xmin
         self.initial_num_intervals = initial_num_intervals
         self.criteria = refinement_criteria or AMRRefinementCriteria()
         self.backend = backend
@@ -163,11 +170,11 @@ class OneDimensionalAMRMesh:
 
     def _build_initial_intervals(self):
         """Build initial uniform interval mesh."""
-        dx = self.domain.length / self.initial_num_intervals
+        dx = self._length / self.initial_num_intervals
 
         for i in range(self.initial_num_intervals):
-            x_min = self.domain.xmin + i * dx
-            x_max = self.domain.xmin + (i + 1) * dx
+            x_min = self._xmin + i * dx
+            x_max = self._xmin + (i + 1) * dx
 
             interval = Interval1D(interval_id=i, x_min=x_min, x_max=x_max, level=0)
 
@@ -416,7 +423,7 @@ class OneDimensionalAMRMesh:
             "max_level": self.max_level,
             "level_distribution": level_counts,
             "total_length": total_length,
-            "domain_length": self.domain.length,
+            "domain_length": self._length,
             "min_interval_width": min_width,
             "max_interval_width": max_width,
             "refinement_ratio": max_width / min_width if min_width > 0 else 1.0,
@@ -497,8 +504,7 @@ class OneDimensionalAMRMesh:
                 "max_level": self.max_level,
                 "total_refinements": len(self.refinement_history),
                 "original_intervals": self.initial_num_intervals,
-                "domain_bounds": [self.domain.xmin, self.domain.xmax],
-                "boundary_conditions": str(self.domain.boundary_conditions),
+                "domain_bounds": [self._xmin, self._xmax],
             },
         )
 
@@ -555,17 +561,17 @@ class OneDimensionalErrorEstimator(BaseErrorEstimator):
 
 # Factory function for 1D AMR
 def create_1d_amr_mesh(
-    domain_1d: SimpleGrid1D,
+    domain_1d: TensorProductGrid,
     initial_intervals: int = 10,
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     backend: BaseBackend | None = None,
 ) -> OneDimensionalAMRMesh:
     """
-    Create 1D AMR mesh from SimpleGrid1D.
+    Create 1D AMR mesh from TensorProductGrid.
 
     Args:
-        domain_1d: 1D domain specification
+        domain_1d: 1D TensorProductGrid domain specification
         initial_intervals: Initial number of intervals
         error_threshold: Error threshold for refinement
         max_levels: Maximum refinement levels
@@ -574,10 +580,15 @@ def create_1d_amr_mesh(
     Returns:
         OneDimensionalAMRMesh ready for adaptive refinement
     """
+    # Get domain bounds and compute length
+    bounds = domain_1d.get_bounds()
+    xmin, xmax = float(bounds[0][0]), float(bounds[1][0])
+    length = xmax - xmin
+
     criteria = AMRRefinementCriteria(
         error_threshold=error_threshold,
         max_refinement_levels=max_levels,
-        min_cell_size=domain_1d.length / (initial_intervals * 2**max_levels),
+        min_cell_size=length / (initial_intervals * 2**max_levels),
     )
 
     return OneDimensionalAMRMesh(

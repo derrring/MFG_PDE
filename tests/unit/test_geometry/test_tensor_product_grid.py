@@ -30,8 +30,8 @@ class TestInitialization:
         grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], num_points=[101])
 
         assert grid.dimension == 1
-        assert grid.bounds == [(0.0, 10.0)]
-        assert grid.num_points == [101]
+        assert grid.bounds == ((0.0, 10.0),)  # Normalized to tuple
+        assert grid.num_points == (101,)  # Normalized to tuple
         assert grid.is_uniform is True
         assert len(grid.coordinates) == 1
         assert len(grid.coordinates[0]) == 101
@@ -41,8 +41,8 @@ class TestInitialization:
         grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[11, 21])
 
         assert grid.dimension == 2
-        assert grid.bounds == [(0.0, 1.0), (0.0, 2.0)]
-        assert grid.num_points == [11, 21]
+        assert grid.bounds == ((0.0, 1.0), (0.0, 2.0))  # Normalized to tuple
+        assert grid.num_points == (11, 21)  # Normalized to tuple
         assert grid.is_uniform is True
         assert len(grid.coordinates) == 2
 
@@ -308,7 +308,7 @@ class TestRefinementCoarsening:
 
         fine_grid = grid.refine(2)
 
-        assert fine_grid.num_points == [21, 21]
+        assert fine_grid.num_points == (21, 21)  # Normalized to tuple
         assert fine_grid.bounds == grid.bounds
         assert fine_grid.dimension == grid.dimension
 
@@ -318,7 +318,7 @@ class TestRefinementCoarsening:
 
         fine_grid = grid.refine([2, 3])
 
-        assert fine_grid.num_points == [21, 31]
+        assert fine_grid.num_points == (21, 31)  # Normalized to tuple
 
     def test_refine_preserves_bounds(self) -> None:
         """Test that refinement preserves domain bounds."""
@@ -338,7 +338,7 @@ class TestRefinementCoarsening:
 
         coarse_grid = grid.coarsen(2)
 
-        assert coarse_grid.num_points == [11, 11]
+        assert coarse_grid.num_points == (11, 11)  # Normalized to tuple
         assert coarse_grid.bounds == grid.bounds
 
     def test_coarsen_per_dimension_factors(self) -> None:
@@ -347,7 +347,7 @@ class TestRefinementCoarsening:
 
         coarse_grid = grid.coarsen([2, 3])
 
-        assert coarse_grid.num_points == [11, 11]
+        assert coarse_grid.num_points == (11, 11)  # Normalized to tuple
 
     def test_refine_coarsen_consistency(self) -> None:
         """Test that refine and coarsen are (approximately) inverse operations."""
@@ -508,7 +508,7 @@ class TestEdgeCases:
         """Test grid with negative bounds."""
         grid = TensorProductGrid(dimension=2, bounds=[(-1.0, 1.0), (-2.0, 2.0)], num_points=[11, 21])
 
-        assert grid.bounds == [(-1.0, 1.0), (-2.0, 2.0)]
+        assert grid.bounds == ((-1.0, 1.0), (-2.0, 2.0))  # Normalized to tuple
         X, Y = grid.meshgrid()
         assert X[0, 0] == pytest.approx(-1.0)
         assert Y[0, 0] == pytest.approx(-2.0)

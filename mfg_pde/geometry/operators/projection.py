@@ -13,10 +13,10 @@ Key Components:
 
 Example:
     >>> # Particle FP + Grid HJB hybrid solver
-    >>> from mfg_pde.geometry import SimpleGrid2D
+    >>> from mfg_pde.geometry import TensorProductGrid
     >>> from mfg_pde.geometry.projection import GeometryProjector
     >>>
-    >>> hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+    >>> hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
     >>> # Assume particle_geometry exists with particles
     >>>
     >>> projector = GeometryProjector.create(
@@ -65,13 +65,13 @@ class ProjectionRegistry:
     type pairs, avoiding O(N²) implementations while supporting extensibility.
 
     Registration Pattern:
-        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D)
+        @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid)
         def optimized_grid2d_projector(source, target, values):
             # Optimized 2D grid-to-grid projection
             return projected_values
 
     Lookup Hierarchy:
-        1. Exact type match: SimpleGrid2D → SimpleGrid2D
+        1. Exact type match: TensorProductGrid → TensorProductGrid
         2. Category match: CartesianGrid → CartesianGrid (base classes)
         3. None if no match found (caller uses generic fallback)
 
@@ -86,15 +86,15 @@ class ProjectionRegistry:
         Decorator to register a specialized projector function.
 
         Args:
-            source_type: Source geometry type (e.g., SimpleGrid2D)
-            target_type: Target geometry type (e.g., SimpleGrid2D)
+            source_type: Source geometry type (e.g., TensorProductGrid)
+            target_type: Target geometry type (e.g., TensorProductGrid)
             direction: Projection direction ("hjb_to_fp" or "fp_to_hjb")
 
         Returns:
             Decorator function
 
         Example:
-            @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+            @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
             def fast_grid2d_interpolation(source, target, values, **kwargs):
                 # Optimized implementation
                 return projected_values
@@ -946,7 +946,7 @@ def _mesh_to_grid_delaunay(mesh_geo: BaseGeometry, grid_geo: BaseGeometry, mesh_
 
     Args:
         mesh_geo: Source FEM mesh (Mesh2D, Mesh3D, etc.)
-        grid_geo: Target regular grid (SimpleGrid2D, SimpleGrid3D, etc.)
+        grid_geo: Target regular grid (TensorProductGrid)
         mesh_values: Values at mesh vertices (N_vertices,)
         **kwargs: Additional arguments (unused)
 
@@ -963,10 +963,10 @@ def _mesh_to_grid_delaunay(mesh_geo: BaseGeometry, grid_geo: BaseGeometry, mesh_
         - Preserves C⁰ continuity (unlike nearest neighbor)
 
     Examples:
-        >>> from mfg_pde.geometry import Mesh2D, SimpleGrid2D
+        >>> from mfg_pde.geometry import Mesh2D, TensorProductGrid
         >>> mesh = Mesh2D(domain_type="rectangle", bounds=(0,1,0,1), mesh_size=0.05)
         >>> mesh.generate_mesh()
-        >>> grid = SimpleGrid2D(bounds=(0,1,0,1), resolution=(50,50))
+        >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[51, 51])
         >>> U_mesh = ...  # Values at mesh vertices
         >>> U_grid = _mesh_to_grid_delaunay(mesh, grid, U_mesh)
     """
@@ -1023,7 +1023,7 @@ def _grid_to_mesh_interpolation(
         u(v_j) = ∑_i u_i φ_i(v_j)  where v_j are mesh vertices
 
     Args:
-        grid_geo: Source regular grid (SimpleGrid2D, SimpleGrid3D, etc.)
+        grid_geo: Source regular grid (TensorProductGrid)
         mesh_geo: Target FEM mesh (Mesh2D, Mesh3D, etc.)
         grid_values: Values on grid (nx+1, ny+1, ...) or (N_grid,)
         **kwargs: Additional arguments (unused)
@@ -1038,8 +1038,8 @@ def _grid_to_mesh_interpolation(
         - Points outside grid domain use fill_value=0.0
 
     Examples:
-        >>> from mfg_pde.geometry import SimpleGrid2D, Mesh2D
-        >>> grid = SimpleGrid2D(bounds=(0,1,0,1), resolution=(50,50))
+        >>> from mfg_pde.geometry import TensorProductGrid, Mesh2D
+        >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[51, 51])
         >>> mesh = Mesh2D(domain_type="rectangle", bounds=(0,1,0,1), mesh_size=0.05)
         >>> mesh.generate_mesh()
         >>> U_grid = ...  # Values on grid
