@@ -19,7 +19,7 @@ Demonstrates using FEM unstructured mesh for one solver and regular grid for ano
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import Mesh2D, ProjectionRegistry, SimpleGrid2D
+from mfg_pde.geometry import Mesh2D, ProjectionRegistry, TensorProductGrid
 
 
 def demonstrate_fem_mesh_projection_basic():
@@ -44,14 +44,14 @@ def demonstrate_fem_mesh_projection_basic():
         mesh_data = mesh.generate_mesh()
         print(f"✓ Mesh generated: {mesh_data.num_vertices} vertices, {mesh_data.num_elements} elements")
     except ImportError:
-        print("⚠️  Gmsh not available - using demonstration with SimpleGrid instead")
+        print("⚠️  Gmsh not available - using demonstration with TensorProductGrid instead")
         print("   Install gmsh: pip install gmsh")
         # Fallback to grid for demonstration
-        mesh = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(20, 20))
+        mesh = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21])
         mesh_data = None
 
     # Create regular grid for HJB
-    grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+    grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 
     print(f"\nGrid points: {(50 + 1) * (51 + 1):,}")
     if mesh_data:
@@ -119,7 +119,7 @@ def register_specialized_fem_projections():
     print("  No manual registration needed for basic FEM mesh support")
 
     # Register Mesh → Grid projection with Delaunay interpolation
-    @ProjectionRegistry.register(Mesh2D, SimpleGrid2D, "fp_to_hjb")
+    @ProjectionRegistry.register(Mesh2D, TensorProductGrid, "fp_to_hjb")
     def mesh_to_grid_delaunay(mesh_geo, grid_geo, mesh_values, **kwargs):
         """
         Project from FEM mesh to regular grid using Delaunay interpolation.
@@ -165,7 +165,7 @@ def register_specialized_fem_projections():
         return grid_values_flat.reshape(grid_shape)
 
     # Register Grid → Mesh projection (already optimal with interpolation)
-    @ProjectionRegistry.register(SimpleGrid2D, Mesh2D, "hjb_to_fp")
+    @ProjectionRegistry.register(TensorProductGrid, Mesh2D, "hjb_to_fp")
     def grid_to_mesh_interpolation(grid_geo, mesh_geo, grid_values, **kwargs):
         """
         Project from regular grid to FEM mesh using bilinear interpolation.
@@ -190,8 +190,8 @@ def register_specialized_fem_projections():
         return mesh_values
 
     print("✓ Registered specialized projections:")
-    print("  - Mesh2D → SimpleGrid2D: Delaunay interpolation")
-    print("  - SimpleGrid2D → Mesh2D: Bilinear interpolation")
+    print("  - Mesh2D → TensorProductGrid: Delaunay interpolation")
+    print("  - TensorProductGrid → Mesh2D: Bilinear interpolation")
 
     # Verify registration
     registered = ProjectionRegistry.list_registered()
@@ -214,7 +214,7 @@ def demonstrate_fem_mesh_projection_optimized():
         mesh_size=0.05,
     )
 
-    grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+    grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 
     try:
         mesh_data = mesh.generate_mesh()

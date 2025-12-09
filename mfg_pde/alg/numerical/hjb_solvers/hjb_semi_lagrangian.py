@@ -158,7 +158,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             if not isinstance(problem.geometry, CartesianGrid):
                 raise ValueError(
-                    f"Multi-dimensional problem must have CartesianGrid geometry (SimpleGrid2D/3D or TensorProductGrid). "
+                    f"Multi-dimensional problem must have CartesianGrid geometry (TensorProductGrid). "
                     f"Got dimension={self.dimension}"
                 )
             self.grid = problem.geometry  # Geometry IS the grid

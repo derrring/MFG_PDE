@@ -430,7 +430,7 @@ def test_get_problem_info():
 
 @pytest.mark.unit
 @pytest.mark.skip(
-    reason="Test deprecated behavior. New geometry validation (SimpleGrid1D) correctly "
+    reason="Test deprecated behavior. New geometry validation (TensorProductGrid) correctly "
     "rejects Nx=0 because at least 2 points are needed to define a grid with spacing. "
     "Legacy API behavior is no longer supported."
 )
@@ -482,11 +482,11 @@ def test_module_exports_are_classes():
 @pytest.mark.unit
 def test_dual_geometry_specification():
     """Test MFGProblem with separate HJB and FP geometries (Issue #257)."""
-    from mfg_pde.geometry import SimpleGrid2D
+    from mfg_pde.geometry import TensorProductGrid
 
     # Create two different grids
-    hjb_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(50, 50))
-    fp_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(20, 20))
+    hjb_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[51, 51])
+    fp_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
 
     # Create problem with dual geometries
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
@@ -504,9 +504,9 @@ def test_dual_geometry_specification():
 @pytest.mark.unit
 def test_dual_geometry_backward_compatibility():
     """Test that unified geometry mode still works (backward compatibility)."""
-    from mfg_pde.geometry import SimpleGrid2D
+    from mfg_pde.geometry import TensorProductGrid
 
-    grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
+    grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[31, 31])
 
     # Create problem with unified geometry (old API)
     problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=0.1)
@@ -522,9 +522,9 @@ def test_dual_geometry_backward_compatibility():
 @pytest.mark.unit
 def test_dual_geometry_error_on_partial_specification():
     """Test that specifying only one of hjb_geometry/fp_geometry raises error."""
-    from mfg_pde.geometry import SimpleGrid2D
+    from mfg_pde.geometry import TensorProductGrid
 
-    grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
+    grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[31, 31])
 
     # Test with only hjb_geometry
     with pytest.raises(ValueError, match="both 'hjb_geometry' AND 'fp_geometry' must be specified"):
@@ -538,11 +538,11 @@ def test_dual_geometry_error_on_partial_specification():
 @pytest.mark.unit
 def test_dual_geometry_error_on_conflict():
     """Test that specifying both geometry and dual geometries raises error."""
-    from mfg_pde.geometry import SimpleGrid2D
+    from mfg_pde.geometry import TensorProductGrid
 
-    grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
-    grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(20, 20))
-    grid3 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+    grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[31, 31])
+    grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+    grid3 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
     # Test conflict: can't specify both geometry and dual geometries
     with pytest.raises(ValueError, match=r"Specify EITHER 'geometry'.*OR.*'hjb_geometry', 'fp_geometry'"):
@@ -552,10 +552,10 @@ def test_dual_geometry_error_on_conflict():
 @pytest.mark.unit
 def test_dual_geometry_projector_attributes():
     """Test that geometry projector has correct attributes."""
-    from mfg_pde.geometry import SimpleGrid2D
+    from mfg_pde.geometry import TensorProductGrid
 
-    hjb_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(50, 50))
-    fp_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
+    hjb_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[51, 51])
+    fp_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[31, 31])
 
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50))
 
@@ -573,17 +573,11 @@ def test_dual_geometry_projector_attributes():
 @pytest.mark.unit
 def test_dual_geometry_with_1d_grids():
     """Test dual geometry with 1D grids."""
-    from mfg_pde.geometry import SimpleGrid1D
-    from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-
-    bc = BoundaryConditions(type="periodic")
+    from mfg_pde.geometry import TensorProductGrid
 
     # Create two 1D grids with different resolutions
-    hjb_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-    hjb_grid.create_grid(num_points=101)  # Fine grid
-
-    fp_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-    fp_grid.create_grid(num_points=51)  # Coarse grid
+    hjb_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])  # Fine grid
+    fp_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])  # Coarse grid
 
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
 

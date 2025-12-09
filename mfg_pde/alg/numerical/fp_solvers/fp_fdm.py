@@ -1014,17 +1014,17 @@ if __name__ == "__main__":
     print("=" * 60)
 
     from mfg_pde import MFGProblem
-    from mfg_pde.geometry import SimpleGrid1D
+    from mfg_pde.geometry import TensorProductGrid
     from mfg_pde.geometry.boundary import no_flux_bc
-    from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions as Bc1D
 
     # Test 1D problem using geometry-based API (unified with nD solver)
     print("\n1. Testing 1D FDM (conservative vs non-conservative)...")
 
-    # Create 1D grid with proper geometry
-    grid_1d = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=Bc1D(type="no_flux"))
+    # Create 1D grid with TensorProductGrid
     Nx = 40  # Number of cells (grid points = Nx + 1)
-    dx, x_points = grid_1d.create_grid(Nx + 1)
+    grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[Nx + 1])
+    dx = grid_1d.get_mesh_spacing()[0]
+    x_points = grid_1d.get_spatial_grid()
 
     problem_1d = MFGProblem(
         geometry=grid_1d,
@@ -1076,12 +1076,12 @@ if __name__ == "__main__":
 
     # Test 2D problem with conservative mode
     print("\n2. Testing 2D FDM (conservative vs non-conservative)...")
-    from mfg_pde.geometry import SimpleGrid2D
 
     # Create 2D problem
-    grid_2d = SimpleGrid2D(
-        bounds=(0.0, 1.0, 0.0, 1.0),  # (xmin, xmax, ymin, ymax)
-        resolution=(10, 10),  # (nx, ny)
+    grid_2d = TensorProductGrid(
+        dimension=2,
+        bounds=[(0.0, 1.0), (0.0, 1.0)],  # [(xmin, xmax), (ymin, ymax)]
+        num_points=[11, 11],  # (nx+1, ny+1) grid points
     )
     problem_2d = MFGProblem(
         geometry=grid_2d,

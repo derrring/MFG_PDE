@@ -44,12 +44,14 @@ def demo_3d_geometry_with_boundary_conditions():
             mesh_data = domain.generate_mesh()
             logger.info(f"✅ Created 3D domain with {len(mesh_data.vertices)} vertices")
         except Exception as e:
-            logger.warning(f"Gmsh not available, using simple grid: {e}")
-            from mfg_pde.geometry.grids.grid_2d import SimpleGrid3D
+            logger.warning(f"Gmsh not available, using TensorProductGrid: {e}")
+            from mfg_pde.geometry import TensorProductGrid
 
-            domain = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(16, 16, 16))
+            domain = TensorProductGrid(
+                dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[17, 17, 17]
+            )
             mesh_data = domain.generate_mesh()
-            logger.info(f"✅ Created simple 3D grid with {len(mesh_data.vertices)} vertices")
+            logger.info(f"✅ Created 3D TensorProductGrid with {len(mesh_data.vertices)} vertices")
 
         # Create boundary condition manager
         bc_manager = BoundaryConditionManager3D()
@@ -78,9 +80,9 @@ def demo_adaptive_mesh_refinement():
 
     try:
         # Create initial coarse mesh
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid3D
+        from mfg_pde.geometry import TensorProductGrid
 
-        domain = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(8, 8, 8))
+        domain = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[9, 9, 9])
         mesh_data = domain.generate_mesh()
 
         logger.info(f"Initial mesh: {len(mesh_data.vertices)} vertices")

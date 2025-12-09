@@ -3,19 +3,13 @@ Unit tests for GeometryProjector (Issue #257).
 
 Tests projection operations between different geometry discretizations,
 including particle↔grid and grid↔grid projections.
-
-Note: Uses legacy SimpleGrid1D/2D/3D APIs which are deprecated in v0.14.
-These tests validate legacy behavior until removal in v1.0.
 """
 
 import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import GeometryProjector, SimpleGrid1D, SimpleGrid2D, SimpleGrid3D
-
-# Suppress deprecation warnings for SimpleGrid classes in this test module
-pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
+from mfg_pde.geometry import GeometryProjector, TensorProductGrid
 
 
 class TestGeometryProjectorBasics:
@@ -23,7 +17,7 @@ class TestGeometryProjectorBasics:
 
     def test_same_geometry_no_projection(self):
         """Test that same geometry returns identity projection."""
-        grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         projector = GeometryProjector(hjb_geometry=grid, fp_geometry=grid)
 
@@ -39,8 +33,8 @@ class TestGeometryProjectorBasics:
 
     def test_factory_create(self):
         """Test factory method."""
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(20, 20))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
 
         projector = GeometryProjector.create(hjb_geometry=grid1, fp_geometry=grid2)
 
@@ -54,17 +48,11 @@ class TestGrid1DProjections:
 
     def test_grid_to_grid_1d_interpolation(self):
         """Test 1D grid → grid interpolation."""
-        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-
-        bc = BoundaryConditions(type="periodic")
-
         # Coarse grid (HJB)
-        coarse_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        coarse_grid.create_grid(num_points=11)  # 11 points
+        coarse_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
 
         # Fine grid (FP)
-        fine_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        fine_grid.create_grid(num_points=21)  # 21 points
+        fine_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[21])
 
         projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
@@ -84,17 +72,11 @@ class TestGrid1DProjections:
 
     def test_grid_to_grid_1d_conservation(self):
         """Test that grid→grid projection preserves integral."""
-        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-
-        bc = BoundaryConditions(type="periodic")
-
         # Fine grid (FP solver) - 21 points
-        fine_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        fine_grid.create_grid(num_points=21)
+        fine_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[21])
 
         # Coarse grid (HJB solver) - 11 points
-        coarse_grid = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        coarse_grid.create_grid(num_points=11)
+        coarse_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
 
         # Setup projector: FP (fine) → HJB (coarse)
         projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
@@ -120,24 +102,24 @@ class TestGrid2DProjections:
 
     def test_grid_to_grid_2d_shape(self):
         """Test 2D grid → grid projection shape."""
-        grid_coarse = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid_fine = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        grid_coarse = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid_fine = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         projector = GeometryProjector(hjb_geometry=grid_coarse, fp_geometry=grid_fine)
 
         # Create test field on coarse grid
-        U_coarse = np.random.rand(6, 6)  # 5+1 points
+        U_coarse = np.random.rand(6, 6)
 
         # Project to fine grid
         U_fine = projector.project_hjb_to_fp(U_coarse)
 
         # Check output shape
-        assert U_fine.shape == (11, 11)  # 10+1 points
+        assert U_fine.shape == (11, 11)
 
     def test_grid_to_grid_2d_smooth_function(self):
         """Test 2D grid → grid interpolation accuracy."""
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(20, 20))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
 
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2)
 
@@ -163,8 +145,8 @@ class TestGrid3DProjections:
 
     def test_grid_to_grid_3d_shape(self):
         """Test 3D grid → grid projection shape."""
-        grid1 = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(3, 3, 3))
-        grid2 = SimpleGrid3D(bounds=(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), resolution=(6, 6, 6))
+        grid1 = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[4, 4, 4])
+        grid2 = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[7, 7, 7])
 
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2)
 
@@ -184,10 +166,10 @@ class TestParticleGridProjections:
     def test_fine_to_coarse_density_projection(self):
         """Test projecting from fine grid to coarse grid (simulates particle → grid)."""
         # Fine grid simulates particle locations
-        fine_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(50, 50))
+        fine_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[51, 51])
 
         # Coarse grid for HJB
-        coarse_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        coarse_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
@@ -214,8 +196,8 @@ class TestParticleGridProjections:
 
     def test_projection_preserves_peak_location(self):
         """Test that density peak location is preserved during projection."""
-        fine_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(30, 30))
-        coarse_grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        fine_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[31, 31])
+        coarse_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
@@ -245,8 +227,8 @@ class TestProjectionMethods:
 
     def test_auto_detection_grid_to_grid(self):
         """Test auto-detection chooses appropriate method for grid→grid."""
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2, projection_method="auto")
 
@@ -256,8 +238,8 @@ class TestProjectionMethods:
 
     def test_manual_method_override(self):
         """Test manual projection method override."""
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         # Force interpolation method
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2, projection_method="interpolation")
@@ -271,8 +253,8 @@ class TestEdgeCases:
 
     def test_empty_values(self):
         """Test projection with zero/empty values."""
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2)
 
@@ -284,8 +266,8 @@ class TestEdgeCases:
 
     def test_constant_field(self):
         """Test projection of constant field."""
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2)
 
@@ -317,26 +299,26 @@ class TestProjectionRegistry:
         from mfg_pde.geometry import ProjectionRegistry
 
         # Register a custom projector
-        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
         def custom_projector(source, target, values, **kwargs):
             return values * 2.0  # Double all values
 
         # Check it's registered
         registered = ProjectionRegistry.list_registered()
-        assert (SimpleGrid2D, SimpleGrid2D, "hjb_to_fp") in registered
+        assert (TensorProductGrid, TensorProductGrid, "hjb_to_fp") in registered
 
     def test_registry_lookup_exact_match(self):
         """Test registry lookup with exact type match."""
         from mfg_pde.geometry import ProjectionRegistry
 
         # Register custom projector
-        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
         def custom_projector(source, target, values, **kwargs):
             return values * 2.0
 
         # Create geometries
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
 
         # Lookup should find exact match
         func = ProjectionRegistry.get_projector(grid1, grid2, "hjb_to_fp")
@@ -348,15 +330,15 @@ class TestProjectionRegistry:
         from mfg_pde.geometry import GeometryProjector, ProjectionRegistry
 
         # Register custom projector that doubles values
-        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
         def double_values(source, target, values, **kwargs):
             # Note: Must return proper shape for target geometry
             # In this test, source and target have same resolution
             return values * 2.0
 
         # Create projector - should auto-detect and use registry
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2, projection_method="auto")
 
         # Check that registry method is selected
@@ -374,8 +356,8 @@ class TestProjectionRegistry:
         # Don't register anything - registry is empty
 
         # Create projector with different resolutions
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(10, 10))
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2, projection_method="auto")
 
         # Should fall back to built-in grid_interpolation
@@ -392,9 +374,9 @@ class TestProjectionRegistry:
         def cartesian_projector(source, target, values, **kwargs):
             return values * 3.0
 
-        # Test with SimpleGrid2D (which is a CartesianGrid)
-        grid1 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
-        grid2 = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        # Test with TensorProductGrid (which is a CartesianGrid)
+        grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
+        grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
 
         # Should find category match
         func = ProjectionRegistry.get_projector(grid1, grid2, "hjb_to_fp")
@@ -406,15 +388,15 @@ class TestProjectionRegistry:
         from mfg_pde.geometry import ProjectionRegistry
 
         # Register different functions for each direction
-        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
         def hjb_to_fp_func(source, target, values, **kwargs):
             return values * 2.0
 
-        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "fp_to_hjb")
+        @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "fp_to_hjb")
         def fp_to_hjb_func(source, target, values, **kwargs):
             return values * 3.0
 
-        grid = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(5, 5))
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[6, 6])
 
         # Check correct functions are returned for each direction
         func_hjb = ProjectionRegistry.get_projector(grid, grid, "hjb_to_fp")
@@ -428,7 +410,7 @@ class TestProjectionRegistry:
         from mfg_pde.geometry import ProjectionRegistry
 
         # Register something
-        @ProjectionRegistry.register(SimpleGrid2D, SimpleGrid2D, "hjb_to_fp")
+        @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
         def temp_func(source, target, values, **kwargs):
             return values
 

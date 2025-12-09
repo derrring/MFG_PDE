@@ -23,8 +23,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.geometry import SimpleGrid1D
-from mfg_pde.geometry.boundary import periodic_bc
+from mfg_pde.geometry import TensorProductGrid
 
 
 def scenario_porous_medium():
@@ -46,9 +45,7 @@ def scenario_porous_medium():
         return 0.1 * m
 
     # Create problem with geometry-based API
-    bc = periodic_bc()
-    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-    domain.create_grid(num_points=101)
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
 
     problem = MFGProblem(
         geometry=domain,
@@ -108,9 +105,7 @@ def scenario_crowd_dynamics():
         return D_min + (D_max - D_min) * (1 - m / m_max)
 
     # Create problem
-    bc = periodic_bc()
-    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-    domain.create_grid(num_points=101)
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
 
     problem = MFGProblem(
         geometry=domain,
@@ -164,9 +159,7 @@ def scenario_spatially_varying():
         return 0.05 + 0.1 * x
 
     # Create problem
-    bc = periodic_bc()
-    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-    domain.create_grid(num_points=101)
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
 
     problem = MFGProblem(
         geometry=domain,
