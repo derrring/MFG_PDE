@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.config import MFGSolverConfig
 
 if TYPE_CHECKING:
     from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
