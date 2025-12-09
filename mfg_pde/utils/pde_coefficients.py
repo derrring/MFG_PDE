@@ -689,10 +689,10 @@ def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]
 
     # Legacy 1D API
     elif hasattr(problem, "xmin") and hasattr(problem, "xmax"):
-        Nx = problem.Nx + 1 if hasattr(problem, "Nx") else None
-        if Nx is None:
+        Nx_val = getattr(problem, "Nx", None)
+        if Nx_val is None:
             raise AttributeError("Problem must have either geometry.coordinates or (xmin, xmax, Nx) attributes")
-        return np.linspace(problem.xmin, problem.xmax, Nx)
+        return np.linspace(problem.xmin, problem.xmax, Nx_val + 1)
 
     else:
         raise AttributeError("Problem must have either geometry.coordinates or (xmin, xmax, Nx) attributes")
