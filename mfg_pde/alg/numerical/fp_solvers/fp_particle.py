@@ -219,7 +219,7 @@ class FPParticleSolver(BaseFPSolver):
         else:
             raise ValueError(
                 "FPParticleSolver requires either a geometry object or legacy problem.Nx. "
-                "Create MFGProblem with geometry=SimpleGrid1D(...) or with Nx=... parameter."
+                "Create MFGProblem with geometry=TensorProductGrid(...) or with Nx=... parameter."
             )
 
         # Compute derived quantities

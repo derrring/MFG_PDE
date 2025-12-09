@@ -167,7 +167,7 @@ class FixedPointIterator(BaseMFGSolver):
                 grid_spacing = self.problem.geometry.get_grid_spacing()[0]  # For compatibility
                 time_step = self.problem.dt
             else:
-                raise ValueError("Problem geometry must be CartesianGrid (SimpleGrid2D/3D or TensorProductGrid)")
+                raise ValueError("Problem geometry must be CartesianGrid (TensorProductGrid)")
         elif hasattr(self.problem, "Nx") and self.problem.Nx is not None:
             # Old 1D interface (legacy)
             shape = (self.problem.Nx + 1,)

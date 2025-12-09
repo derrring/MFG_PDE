@@ -29,11 +29,10 @@ problem = MFGProblem(
 ### Modern API (Recommended)
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid1D
+from mfg_pde.geometry import TensorProductGrid
 
-# New way: geometry-first
-domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions='periodic')
-domain.create_grid(num_points=51)  # Nx+1 for consistency
+# New way: geometry-first with TensorProductGrid (unified API for all dimensions)
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 
 problem = MFGProblem(
     geometry=domain,
@@ -66,9 +65,9 @@ problem = MFGProblem(
 
 ## Deprecation Timeline
 
-### Phase 1: Soft Deprecation (v0.12.x - v0.13.x) ✅ **CURRENT**
+### Phase 1: Soft Deprecation (v0.12.x - v0.14.x) ✅ COMPLETED
 
-**Status**: In progress (v0.12.6)
+**Status**: Completed (v0.14.x)
 **Goal**: Warn users but maintain full backward compatibility
 
 **Completed**:
@@ -76,19 +75,25 @@ problem = MFGProblem(
 - [x] Add `DeprecationWarning` for manual grid construction in `MFGProblem`
 - [x] Provide clear migration path in warning messages
 - [x] Update `get_spatial_grid()` to handle both APIs
+- [x] Update all examples to use TensorProductGrid (PR #424)
+- [x] Update CI workflow examples to use TensorProductGrid (PR #424)
 
-**Remaining**:
+**Deferred to later**:
 - [ ] Mark legacy parameters with `deprecated=True` in docstrings
 - [ ] Add migration guide to documentation
-- [ ] Update all examples to use geometry-based API
 - [ ] Add "See Also" links from legacy API docs to modern API
 
-### Phase 2: Hard Deprecation (v0.15.x)
+### Phase 2: Hard Deprecation (v0.15.x) - IN PROGRESS
 
-**Status**: In Progress (v0.15.0)
+**Status**: In Progress (v0.15.1)
 **Goal**: Restrict legacy API usage, provide automatic migration tools
 
-**Tasks**:
+**Completed (PR #424)**:
+- [x] Migrate examples from SimpleGrid1D/2D/3D to TensorProductGrid
+- [x] Migrate test files to TensorProductGrid
+- [x] Update CI workflow code to use TensorProductGrid and public API imports
+
+**Remaining**:
 - [ ] Raise `FutureWarning` instead of `DeprecationWarning`
 - [ ] Add `strict_mode` flag to disable legacy API (opt-in for testing)
 - [ ] Create automated migration script: `python -m mfg_pde.migrate legacy_to_geometry`

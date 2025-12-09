@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 
 def run_multiresolution_example():
@@ -41,15 +41,17 @@ def run_multiresolution_example():
     # with congestion penalty
 
     # Geometry setup
-    domain = (0.0, 1.0, 0.0, 1.0)
-
     # Fine grid for HJB (need accuracy near target)
     hjb_resolution = (100, 100)
-    hjb_grid = SimpleGrid2D(bounds=domain, resolution=hjb_resolution)
+    hjb_grid = TensorProductGrid(
+        dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[hjb_resolution[0] + 1, hjb_resolution[1] + 1]
+    )
 
     # Coarse grid for FP (density is smooth)
     fp_resolution = (25, 25)
-    fp_grid = SimpleGrid2D(bounds=domain, resolution=fp_resolution)
+    fp_grid = TensorProductGrid(
+        dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[fp_resolution[0] + 1, fp_resolution[1] + 1]
+    )
 
     print("\nGeometry Configuration:")
     print(

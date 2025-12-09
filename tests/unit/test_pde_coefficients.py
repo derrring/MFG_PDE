@@ -2,9 +2,6 @@
 Unit tests for PDE coefficient handling utilities.
 
 Tests CoefficientField abstraction for scalar, array, and callable coefficients.
-
-Note: Uses legacy SimpleGrid1D API which is deprecated in v0.14.
-These tests validate legacy behavior until removal in v1.0.
 """
 
 from __future__ import annotations
@@ -14,11 +11,8 @@ import pytest
 import numpy as np
 
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import SimpleGrid1D
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
-
-# Suppress deprecation warnings for SimpleGrid classes in this test module
-pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
 
 
 class TestCoefficientFieldScalar:
@@ -313,11 +307,7 @@ class TestGetSpatialGrid:
 
     def test_geometry_based_api_1d(self):
         """Test grid extraction with geometry-based API (1D)."""
-        from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-
-        bc = BoundaryConditions(type="periodic")
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        domain.create_grid(num_points=51)
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=50, sigma=0.1)
 
         grid = get_spatial_grid(problem)

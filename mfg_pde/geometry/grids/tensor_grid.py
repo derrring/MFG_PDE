@@ -205,7 +205,7 @@ class TensorProductGrid(CartesianGrid):
                 "xmin": self.bounds[0][0],
                 "xmax": self.bounds[0][1],
                 "Lx": self.bounds[0][1] - self.bounds[0][0],
-                "Nx": self.num_points[0],
+                "Nx": self.num_points[0] - 1,  # Nx = intervals (num_points - 1)
                 "Dx": self.spacing[0],
                 "xSpace": self.coordinates[0],
             }

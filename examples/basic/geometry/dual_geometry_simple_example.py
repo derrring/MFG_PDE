@@ -14,7 +14,7 @@ Result: 4× speedup with minimal accuracy loss.
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 
 def example_1_multiresolution():
@@ -29,15 +29,13 @@ def example_1_multiresolution():
     print("=" * 70)
 
     # Domain: [0, 1] × [0, 1]
-    bounds = (0, 1, 0, 1)
+    # Fine grid for HJB: 101×101 points
+    hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
+    print(f"\nHJB Grid: 101×101 = {hjb_grid.num_spatial_points:,} points")
 
-    # Fine grid for HJB: 100×100 points
-    hjb_grid = SimpleGrid2D(bounds=bounds, resolution=(100, 100))
-    print(f"\nHJB Grid: {hjb_grid.nx}×{hjb_grid.ny} = {hjb_grid.num_spatial_points:,} points")
-
-    # Coarse grid for FP: 25×25 points
-    fp_grid = SimpleGrid2D(bounds=bounds, resolution=(25, 25))
-    print(f"FP Grid:  {fp_grid.nx}×{fp_grid.ny} = {fp_grid.num_spatial_points:,} points")
+    # Coarse grid for FP: 26×26 points
+    fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[26, 26])
+    print(f"FP Grid:  26×26 = {fp_grid.num_spatial_points:,} points")
     print(f"Speedup factor: ~{(100 / 25) ** 2:.1f}× in FP solver")
 
     # Terminal cost: distance to target (0.8, 0.8)
@@ -122,11 +120,9 @@ def example_2_compare_unified_vs_dual():
     print("Example 2: Unified vs Dual Geometry Comparison")
     print("=" * 70)
 
-    bounds = (0, 1, 0, 1)
-
     # APPROACH 1: Unified Geometry (traditional)
     print("\n--- Approach 1: Unified Geometry (Traditional) ---")
-    unified_grid = SimpleGrid2D(bounds=bounds, resolution=(50, 50))
+    unified_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 
     problem_unified = MFGProblem(
         geometry=unified_grid,  # Same geometry for both HJB and FP
@@ -146,8 +142,8 @@ def example_2_compare_unified_vs_dual():
 
     # APPROACH 2: Dual Geometry (new in v0.11.0)
     print("\n--- Approach 2: Dual Geometry (New) ---")
-    hjb_grid = SimpleGrid2D(bounds=bounds, resolution=(100, 100))
-    fp_grid = SimpleGrid2D(bounds=bounds, resolution=(25, 25))
+    hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
+    fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[26, 26])
 
     problem_dual = MFGProblem(
         hjb_geometry=hjb_grid,  # Fine for HJB
@@ -203,15 +199,13 @@ def example_3_different_resolutions():
     print("Example 3: Different Resolution Ratios")
     print("=" * 70)
 
-    bounds = (0, 1, 0, 1)
-
     # Test different resolution ratios
     ratios = [(100, 50), (100, 25), (100, 20)]
 
     print("\nTesting different HJB:FP resolution ratios:\n")
     for hjb_res, fp_res in ratios:
-        hjb_grid = SimpleGrid2D(bounds=bounds, resolution=(hjb_res, hjb_res))
-        fp_grid = SimpleGrid2D(bounds=bounds, resolution=(fp_res, fp_res))
+        hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[hjb_res + 1, hjb_res + 1])
+        fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[fp_res + 1, fp_res + 1])
 
         speedup = (hjb_res / fp_res) ** 2
 
@@ -235,11 +229,9 @@ def example_4_access_projector_directly():
     print("Example 4: Direct Projector Access")
     print("=" * 70)
 
-    from mfg_pde.geometry import SimpleGrid2D
-
     # Create geometries
-    fine_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(100, 100))
-    coarse_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(25, 25))
+    fine_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
+    coarse_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[26, 26])
 
     # Create problem
     problem = MFGProblem(hjb_geometry=fine_grid, fp_geometry=coarse_grid, T=1.0, Nt=50, sigma=0.05)

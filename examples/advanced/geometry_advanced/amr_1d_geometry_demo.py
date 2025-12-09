@@ -28,7 +28,7 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.factory import create_fast_solver
-from mfg_pde.geometry import SimpleGrid1D
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRMesh
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
@@ -126,9 +126,8 @@ def solve_mfg_with_amr(
 
     # Create base domain
     logger.info("Creating base 1D domain [0,1]")
-    from mfg_pde.geometry.boundary import periodic_bc
 
-    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=periodic_bc())
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[initial_num_intervals + 1])
 
     # Create refinement criteria
     refinement_criteria = AMRRefinementCriteria(
@@ -207,9 +206,8 @@ def solve_mfg_uniform(Nx: int = 100, T: float = 1.0, Nt: int = 50, sigma: float 
 
     # Create uniform domain
     logger.info(f"Creating 1D uniform domain ({Nx} points)")
-    from mfg_pde.geometry.boundary import periodic_bc
 
-    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=periodic_bc())
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[Nx])
 
     # Create MFG problem using geometry-first API
     logger.info("Creating MFG problem with uniform geometry...")

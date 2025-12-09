@@ -152,9 +152,7 @@ class HJBFDMSolver(BaseHJBSolver):
             from mfg_pde.geometry.base import CartesianGrid
 
             if not isinstance(problem.geometry, CartesianGrid):
-                raise ValueError(
-                    "nD FDM requires problem with CartesianGrid geometry (SimpleGrid2D/3D or TensorProductGrid)"
-                )
+                raise ValueError("nD FDM requires problem with CartesianGrid geometry (TensorProductGrid)")
 
             self.grid = problem.geometry  # Geometry IS the grid
             self.shape = tuple(self.grid.get_grid_shape())

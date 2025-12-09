@@ -4,9 +4,6 @@ Unit tests for FPFDMSolver - comprehensive coverage.
 
 Tests the Finite Difference Method (FDM) solver for Fokker-Planck equations
 with different boundary conditions (periodic, Dirichlet, no-flux).
-
-Note: Uses legacy SimpleGrid1D API which is deprecated in v0.14.
-These tests validate legacy behavior until removal in v1.0.
 """
 
 import pytest
@@ -15,13 +12,10 @@ import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
-# Legacy 1D BC: testing compatibility with 1D FDM solvers (deprecated in v0.14, remove in v1.0)
+# Legacy 1D BC for FDM solver boundary condition testing
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
-
-# Suppress deprecation warnings for SimpleGrid classes in this test module
-pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
 
 
 @pytest.fixture
@@ -32,11 +26,8 @@ def standard_problem():
     - Domain: [0, 1] with 51 grid points
     - Time: T=1.0 with 51 time steps
     - Diffusion: sigma=1.0
-    - Boundary: Periodic
     """
-    boundary_conditions = BoundaryConditions(type="periodic")
-    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
-    domain.create_grid(num_points=51)
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
     return MFGProblem(geometry=domain, T=1.0, Nt=51, sigma=1.0)
 
 
@@ -710,15 +701,13 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_diagonal_tensor_2d(self):
         """Test diagonal anisotropic tensor in 2D."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(30, 20))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[31, 21])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Diagonal tensor: fast horizontal, slow vertical
@@ -728,7 +717,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Zero drift (pure diffusion)
         U_solution = np.zeros((Nt, Nx, Ny))
@@ -739,20 +728,18 @@ class TestFPFDMSolverTensorDiffusion:
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)
         # Mass conservation
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.allclose(masses, 1.0, atol=0.1)
 
     def test_full_tensor_with_cross_diffusion(self):
         """Test full anisotropic tensor with off-diagonal terms."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(25, 25))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[26, 26])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Full tensor with cross-diffusion
@@ -762,7 +749,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.5) ** 2) / (2 * 0.1**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=Sigma, show_progress=False)
@@ -770,21 +757,19 @@ class TestFPFDMSolverTensorDiffusion:
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)
         # Verify solution stability
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.all(masses > 0.5)
         assert np.all(masses < 2.0)
 
     def test_spatially_varying_tensor(self):
         """Test spatially-varying tensor diffusion."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(25, 15))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[26, 16])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Spatially-varying tensor: orientation changes with position
@@ -801,7 +786,7 @@ class TestFPFDMSolverTensorDiffusion:
 
         # Initial condition
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=Sigma_spatial, show_progress=False)
@@ -809,20 +794,18 @@ class TestFPFDMSolverTensorDiffusion:
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)
         # Mass conservation with spatially varying tensor
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.allclose(masses, 1.0, atol=0.15)
 
     def test_callable_tensor(self):
         """Test callable state-dependent tensor: Sigma(t, x, m)."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(20, 15))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[21, 16])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
 
         # State-dependent tensor: anisotropy increases with density
         def crowd_anisotropic(t, x, m):
@@ -835,7 +818,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=crowd_anisotropic, show_progress=False)
@@ -845,15 +828,13 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_with_drift(self):
         """Test tensor diffusion combined with drift field."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(25, 25))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[26, 26])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Diagonal tensor
@@ -863,7 +844,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.3) ** 2 + (Y - 0.3) ** 2) / (2 * 0.1**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Non-zero drift (quadratic value function)
         U_solution = np.zeros((Nt, Nx, Ny))
@@ -880,15 +861,13 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_diffusion_mutual_exclusivity(self):
         """Test that tensor_diffusion_field and diffusion_field are mutually exclusive."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(25, 25))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[26, 26])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
 
         # Initial condition
         m_initial = np.ones((Nx, Ny)) / (Nx * Ny)
@@ -918,15 +897,13 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_psd_validation(self):
         """Test that non-PSD tensor raises error."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 1.0), resolution=(20, 20))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
 
         # Non-PSD tensor (negative eigenvalue)
         Sigma_bad = np.array([[0.2, 0.3], [0.3, -0.1]])  # Has negative eigenvalue
@@ -940,9 +917,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_diffusion_mass_conservation(self):
         """Test mass conservation with tensor diffusion."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(30, 20))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[31, 21])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=50, sigma=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
@@ -955,13 +930,13 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=Sigma, show_progress=False)
 
         # Check mass conservation at each timestep
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.allclose(masses, 1.0, atol=0.1)
 
 

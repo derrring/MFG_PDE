@@ -12,6 +12,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
 
 class TestHJBFDMSolverInitialization:
@@ -375,9 +376,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_2d(self):
         """Test HJB solver with constant diagonal tensor in 2D."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(15, 10))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[16, 11])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -413,9 +412,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_non_diagonal_tensor_warning(self):
         """Test that HJB solver warns for non-diagonal tensor."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(15, 10))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[16, 11])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -475,9 +472,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_spatially_varying(self):
         """Test HJB solver with spatially-varying diagonal tensor."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(15, 10))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[16, 11])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -518,9 +513,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_callable(self):
         """Test HJB solver with callable diagonal tensor Σ(t, x, m)."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(10, 8))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[11, 9])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -558,9 +551,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_mutual_exclusivity(self):
         """Test that tensor_diffusion_field and diffusion_field are mutually exclusive."""
-        from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
-
-        domain = SimpleGrid2D(bounds=(0.0, 1.0, 0.0, 0.6), resolution=(10, 8))
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], num_points=[11, 9])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")

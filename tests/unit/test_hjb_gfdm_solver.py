@@ -3,9 +3,6 @@
 Unit tests for HJBGFDMSolver - comprehensive coverage.
 
 Tests the GFDM (Generalized Finite Difference Method) solver for HJB equations.
-
-Note: Uses legacy SimpleGrid1D API which is deprecated in v0.14.
-These tests validate legacy behavior until removal in v1.0.
 """
 
 import pytest
@@ -14,13 +11,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-
-# Legacy 1D BC: testing compatibility with 1D HJB solvers (deprecated in v0.14, remove in v1.0)
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
-
-# Suppress deprecation warnings for SimpleGrid classes in this test module
-pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
+from mfg_pde.geometry import TensorProductGrid
 
 
 @pytest.fixture
@@ -31,11 +22,8 @@ def standard_problem():
     - Domain: [0, 1] with 51 grid points
     - Time: T=1.0 with 51 time steps
     - Diffusion: sigma=1.0
-    - Boundary: Periodic
     """
-    boundary_conditions = BoundaryConditions(type="periodic")
-    domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
-    domain.create_grid(num_points=51)
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
     return MFGProblem(geometry=domain, T=1.0, Nt=51, sigma=1.0)
 
 

@@ -26,8 +26,8 @@ import numpy as np
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary.conditions import no_flux_bc
-from mfg_pde.geometry.grids.grid_2d import SimpleGrid2D
 
 print("=" * 70)
 print("MFG with Diagonal Anisotropic Tensor Diffusion")
@@ -42,9 +42,10 @@ print("Setting up problem parameters...")
 print()
 
 # Create 2D domain: corridor [0, 1] × [0, 0.6]
-domain = SimpleGrid2D(
-    bounds=(0.0, 1.0, 0.0, 0.6),
-    resolution=(30, 20),  # Nx × Ny
+domain = TensorProductGrid(
+    dimension=2,
+    bounds=[(0.0, 1.0), (0.0, 0.6)],
+    num_points=[31, 21],  # Nx × Ny (resolution + 1)
 )
 
 problem = MFGProblem(

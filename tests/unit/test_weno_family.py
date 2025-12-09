@@ -10,9 +10,6 @@ Validates:
 4. Interface consistency across variants
 5. Strategic typing compliance
 
-Note: Uses legacy SimpleGrid1D API which is deprecated in v0.14.
-These tests validate legacy behavior until removal in v1.0.
-
 Usage:
     python -m pytest tests/unit/test_weno_family.py -v
 """
@@ -23,13 +20,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-
-# Legacy 1D BC: testing compatibility with 1D HJB solvers (deprecated in v0.14, remove in v1.0)
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-from mfg_pde.geometry.grids.grid_1d import SimpleGrid1D
-
-# Suppress deprecation warnings for SimpleGrid classes in this test module
-pytestmark = pytest.mark.filterwarnings("ignore:SimpleGrid.*deprecated:DeprecationWarning")
+from mfg_pde.geometry import TensorProductGrid
 
 
 class TestWenoFamilySolver:
@@ -38,9 +29,7 @@ class TestWenoFamilySolver:
     @pytest.fixture
     def simple_problem(self) -> MFGProblem:
         """Create simple MFG problem for testing using modern geometry-first API."""
-        boundary_conditions = BoundaryConditions(type="periodic")
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
-        domain.create_grid(num_points=33)  # Nx=32 -> 33 points
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[33])
         return MFGProblem(geometry=domain, T=0.1, Nt=10, sigma=0.1)
 
     @pytest.fixture
@@ -301,9 +290,7 @@ class TestWenoSolverIntegration:
     @pytest.fixture
     def integration_problem(self) -> MFGProblem:
         """Create MFG problem for integration testing using modern geometry-first API."""
-        boundary_conditions = BoundaryConditions(type="periodic")
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=boundary_conditions)
-        domain.create_grid(num_points=41)  # Nx=40 -> 41 points
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[41])
         return MFGProblem(geometry=domain, T=1.0, Nt=30, sigma=0.1)
 
     def test_solve_hjb_system_shape(self, integration_problem):

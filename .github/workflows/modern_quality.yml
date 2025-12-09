@@ -93,17 +93,15 @@ jobs:
         echo "🧠 Testing memory usage with small problem..."
         python -c "
         from mfg_pde import MFGProblem
-        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
+        from mfg_pde.geometry import TensorProductGrid
         from mfg_pde.utils.memory_management import MemoryMonitor
         import psutil
 
         # Test with small problem to ensure memory monitoring works
         monitor = MemoryMonitor(max_memory_gb=2.0)
 
-        # Create problem with modern API
-        bc = periodic_bc(dimension=1)
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        domain.create_grid(num_points=21)  # Nx+1
+        # Create problem with modern API (TensorProductGrid)
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[21])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.5)
 
         initial_memory = monitor.get_current_memory_gb()
@@ -145,13 +143,11 @@ jobs:
         echo "⚡ Testing performance regression..."
         python -c "
         from mfg_pde import MFGProblem
-        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
+        from mfg_pde.geometry import TensorProductGrid
         import time
 
-        # Create problem with modern API
-        bc = periodic_bc(dimension=1)
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        domain.create_grid(num_points=31)  # Nx+1
+        # Create problem with modern API (TensorProductGrid)
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[31])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=20, sigma=0.5)
 
         start_time = time.time()
@@ -243,8 +239,8 @@ jobs:
         echo "⚡ Quick API validation test..."
         python -c "
         from mfg_pde import MFGProblem
-        from mfg_pde.geometry import SimpleGrid1D, periodic_bc
-        from mfg_pde.config.pydantic_config import MFGSolverConfig
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.config import MFGSolverConfig
         from mfg_pde.alg.numerical.coupling import FixedPointIterator
         from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
         from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
@@ -255,10 +251,8 @@ jobs:
         process = psutil.Process(os.getpid())
         start_memory = process.memory_info().rss / 1024 / 1024  # MB
 
-        # Create problem with modern API
-        bc = periodic_bc(dimension=1)
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-        domain.create_grid(num_points=26)  # Nx+1
+        # Create problem with modern API (TensorProductGrid)
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[26])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=15, sigma=0.5)
 
         # Create config

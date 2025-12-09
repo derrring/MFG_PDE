@@ -215,7 +215,7 @@ def main():
     print("✓ Dimension-agnostic design verified for 1D, 2D, 3D")
     print()
     print("Next steps:")
-    print("1. Integrate with SimpleGrid2D for actual solver usage")
+    print("1. Integrate with TensorProductGrid for actual solver usage")
     print("2. Implement BC application in HJB and FP solvers")
     print("3. Test with full Protocol v1.4 implementation")
     print()
