@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.15.1"  # v0.15.1: Deprecation plan updated (v0.16.0 target)
+version = "0.15.2"  # v0.15.2: Phase 2 deprecation - TensorProductGrid migration complete
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
