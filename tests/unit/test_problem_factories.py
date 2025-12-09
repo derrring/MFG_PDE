@@ -3,6 +3,9 @@ Unit tests for unified problem factories (Phase 3.3).
 
 Tests the new factory functions that support both unified MFGProblem
 and legacy specialized problem classes.
+
+NOTE: Uses TensorProductGrid (unified geometry API) instead of deprecated
+Domain1D/Domain2D. See docs/development/LEGACY_API_DEPRECATION_PLAN.md.
 """
 
 import pytest
@@ -17,28 +20,19 @@ from mfg_pde.factory import (
     create_standard_problem,
     create_stochastic_problem,
 )
-
-# Legacy 1D BC: testing factory compatibility (deprecated in v0.14, remove in v1.0)
-from mfg_pde.geometry import Domain1D, Domain2D
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfg_pde.geometry import TensorProductGrid
 
 
 @pytest.fixture
 def simple_domain():
-    """Create simple 1D domain for testing."""
-    bc = BoundaryConditions("neumann", left_value=0.0, right_value=0.0)
-    domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-    domain.create_grid(num_points=51)  # Must create grid before use
-    return domain
+    """Create simple 1D domain for testing using TensorProductGrid."""
+    return TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 
 
 @pytest.fixture
 def simple_2d_domain():
-    """Create simple 2D domain for testing."""
-    bc = BoundaryConditions("neumann", left_value=0.0, right_value=0.0)
-    domain = Domain2D(xmin=[0.0, 0.0], xmax=[1.0, 1.0], boundary_conditions=bc)
-    domain.create_grid(num_points=[21, 21])  # Must create grid before use
-    return domain
+    """Create simple 2D domain for testing using TensorProductGrid."""
+    return TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
 
 
 @pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
@@ -203,8 +197,7 @@ def test_backward_compatibility_warning(simple_domain):
 def test_problem_type_detection():
     """Test automatic problem type detection."""
 
-    bc = BoundaryConditions("neumann", left_value=0.0, right_value=0.0)
-    domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 
     # Standard MFG
     components_standard = MFGComponents(
