@@ -707,7 +707,7 @@ class TestFPFDMSolverTensorDiffusion:
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Diagonal tensor: fast horizontal, slow vertical
@@ -717,7 +717,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Zero drift (pure diffusion)
         U_solution = np.zeros((Nt, Nx, Ny))
@@ -728,7 +728,7 @@ class TestFPFDMSolverTensorDiffusion:
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)
         # Mass conservation
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.allclose(masses, 1.0, atol=0.1)
 
     def test_full_tensor_with_cross_diffusion(self):
@@ -739,7 +739,7 @@ class TestFPFDMSolverTensorDiffusion:
         boundary_conditions = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Full tensor with cross-diffusion
@@ -749,7 +749,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.5) ** 2) / (2 * 0.1**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=Sigma, show_progress=False)
@@ -757,7 +757,7 @@ class TestFPFDMSolverTensorDiffusion:
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)
         # Verify solution stability
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.all(masses > 0.5)
         assert np.all(masses < 2.0)
 
@@ -769,7 +769,7 @@ class TestFPFDMSolverTensorDiffusion:
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Spatially-varying tensor: orientation changes with position
@@ -786,7 +786,7 @@ class TestFPFDMSolverTensorDiffusion:
 
         # Initial condition
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=Sigma_spatial, show_progress=False)
@@ -794,7 +794,7 @@ class TestFPFDMSolverTensorDiffusion:
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)
         # Mass conservation with spatially varying tensor
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.allclose(masses, 1.0, atol=0.15)
 
     def test_callable_tensor(self):
@@ -805,7 +805,7 @@ class TestFPFDMSolverTensorDiffusion:
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
 
         # State-dependent tensor: anisotropy increases with density
         def crowd_anisotropic(t, x, m):
@@ -818,7 +818,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=crowd_anisotropic, show_progress=False)
@@ -834,7 +834,7 @@ class TestFPFDMSolverTensorDiffusion:
         boundary_conditions = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
         Nt = problem.Nt + 1
 
         # Diagonal tensor
@@ -844,7 +844,7 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.3) ** 2 + (Y - 0.3) ** 2) / (2 * 0.1**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Non-zero drift (quadratic value function)
         U_solution = np.zeros((Nt, Nx, Ny))
@@ -867,7 +867,7 @@ class TestFPFDMSolverTensorDiffusion:
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
 
         # Initial condition
         m_initial = np.ones((Nx, Ny)) / (Nx * Ny)
@@ -903,7 +903,7 @@ class TestFPFDMSolverTensorDiffusion:
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-        Nx, Ny = domain.nx + 1, domain.ny + 1
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
 
         # Non-PSD tensor (negative eigenvalue)
         Sigma_bad = np.array([[0.2, 0.3], [0.3, -0.1]])  # Has negative eigenvalue
@@ -930,13 +930,13 @@ class TestFPFDMSolverTensorDiffusion:
         x_coords, y_coords = domain.coordinates
         X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
         m_initial = np.exp(-((X - 0.5) ** 2 + (Y - 0.3) ** 2) / (2 * 0.08**2))
-        m_initial /= np.sum(m_initial) * domain.dx * domain.dy
+        m_initial /= np.sum(m_initial) * domain.spacing[0] * domain.spacing[1]
 
         # Solve
         M = solver.solve_fp_system(m_initial, tensor_diffusion_field=Sigma, show_progress=False)
 
         # Check mass conservation at each timestep
-        masses = np.sum(M, axis=(1, 2)) * domain.dx * domain.dy
+        masses = np.sum(M, axis=(1, 2)) * domain.spacing[0] * domain.spacing[1]
         assert np.allclose(masses, 1.0, atol=0.1)
 
 
