@@ -2,9 +2,9 @@
 
 **Status**: Phase 2 In Progress
 **Target Removal**: v0.16.0
-**Current Version**: v0.15.0
+**Current Version**: v0.15.2
 **Created**: 2025-11-19
-**Last Updated**: 2025-12-09
+**Last Updated**: 2025-12-10
 
 ## Executive Summary
 
@@ -85,13 +85,15 @@ problem = MFGProblem(
 
 ### Phase 2: Hard Deprecation (v0.15.x) - IN PROGRESS
 
-**Status**: In Progress (v0.15.1)
+**Status**: In Progress (v0.15.2)
 **Goal**: Restrict legacy API usage, provide automatic migration tools
 
-**Completed (PR #424)**:
+**Completed (PR #424, v0.15.2)**:
 - [x] Migrate examples from SimpleGrid1D/2D/3D to TensorProductGrid
 - [x] Migrate test files to TensorProductGrid
 - [x] Update CI workflow code to use TensorProductGrid and public API imports
+- [x] Fix `get_problem_config()` to return `Nx` as intervals (num_points - 1)
+- [x] Standardize `Nx` semantics: `Nx` = intervals, `num_points` = grid points
 
 **Remaining**:
 - [ ] Raise `FutureWarning` instead of `DeprecationWarning`
@@ -430,6 +432,6 @@ See `docs/migration/LEGACY_TO_GEOMETRY_API.md` for full migration guide.
 
 ---
 
-**Last Updated**: 2025-12-09
+**Last Updated**: 2025-12-10
 **Responsible**: Core maintainers
 **Review Cycle**: Quarterly until v0.16.0 release
