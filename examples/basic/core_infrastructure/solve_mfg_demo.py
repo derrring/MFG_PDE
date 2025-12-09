@@ -84,14 +84,14 @@ def demo_direct_solver():
     from mfg_pde.alg.numerical.coupling import FixedPointIterator
     from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
     from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-    from mfg_pde.config import MFGSolverConfig
+    from mfg_pde.config.core import SolverConfig
 
     problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 
     # Create solvers directly
     hjb_solver = HJBFDMSolver(problem)
     fp_solver = FPParticleSolver(problem)
-    config = MFGSolverConfig()
+    config = SolverConfig()
 
     # Create iterator
     iterator = FixedPointIterator(

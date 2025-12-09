@@ -118,9 +118,9 @@ class PicardConfig(BaseModel):
         return self
 
 
-class SolverConfig(BaseModel):
+class MFGSolverConfig(BaseModel):
     """
-    Unified solver configuration.
+    Unified MFG solver configuration.
 
     This class specifies HOW to solve an MFG problem (algorithmic choices),
     not WHAT problem to solve (mathematical definition).
@@ -144,10 +144,10 @@ class SolverConfig(BaseModel):
     Examples
     --------
     >>> # From YAML file
-    >>> config = SolverConfig.from_yaml("config.yaml")
+    >>> config = MFGSolverConfig.from_yaml("config.yaml")
 
     >>> # Programmatically
-    >>> config = SolverConfig(
+    >>> config = MFGSolverConfig(
     ...     hjb=HJBConfig(method="fdm", accuracy_order=2),
     ...     fp=FPConfig(method="particle", num_particles=5000),
     ...     picard=PicardConfig(max_iterations=50, tolerance=1e-6)
@@ -181,7 +181,7 @@ class SolverConfig(BaseModel):
 
         Examples
         --------
-        >>> config = SolverConfig(...)
+        >>> config = MFGSolverConfig(...)
         >>> config.to_yaml("experiments/baseline.yaml")
         """
         from .io import save_solver_config
@@ -189,7 +189,7 @@ class SolverConfig(BaseModel):
         save_solver_config(self, path)
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> SolverConfig:
+    def from_yaml(cls, path: str | Path) -> MFGSolverConfig:
         """
         Load configuration from YAML file.
 
@@ -200,12 +200,12 @@ class SolverConfig(BaseModel):
 
         Returns
         -------
-        SolverConfig
+        MFGSolverConfig
             Validated solver configuration
 
         Examples
         --------
-        >>> config = SolverConfig.from_yaml("experiments/baseline.yaml")
+        >>> config = MFGSolverConfig.from_yaml("experiments/baseline.yaml")
         """
         from .io import load_solver_config
 
@@ -223,8 +223,11 @@ class SolverConfig(BaseModel):
         return self.model_dump(exclude_none=True, mode="json")
 
 
+# Backward compatibility alias
+SolverConfig = MFGSolverConfig
+
 # Forward references will be resolved after HJBConfig and FPConfig are imported
 from .mfg_methods import FPConfig, HJBConfig  # noqa: E402
 
 # Update forward references
-SolverConfig.model_rebuild()
+MFGSolverConfig.model_rebuild()

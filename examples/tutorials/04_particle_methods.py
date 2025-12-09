@@ -4,7 +4,7 @@ Tutorial 04: Advanced Solver Configuration
 Learn how to configure MFG solvers with custom parameters.
 
 What you'll learn:
-- How to use MFGSolverConfig for fine-grained control
+- How to use SolverConfig for fine-grained control
 - How to compare different solver parameters
 - How to tune convergence settings
 - The SolverFactory API for advanced use cases
@@ -17,7 +17,7 @@ solver configuration available in the core package.
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.config.core import PicardConfig, SolverConfig
 from mfg_pde.factory import SolverFactory
 
 # ==============================================================================
@@ -51,7 +51,7 @@ print(f"  Final error: {result_default.max_error:.6e}")
 print()
 
 # ==============================================================================
-# Step 2: Custom Configuration with MFGSolverConfig
+# Step 2: Custom Configuration with SolverConfig
 # ==============================================================================
 
 print("=" * 70)
@@ -59,17 +59,19 @@ print("CUSTOM CONFIGURATION")
 print("=" * 70)
 print()
 
-# MFGSolverConfig provides fine-grained control over solver behavior
+# SolverConfig provides fine-grained control over solver behavior
 print("Creating custom configuration...")
 print()
 
 # Configuration with tighter tolerance
-config_tight = MFGSolverConfig(
-    picard_max_iterations=50,  # More iterations allowed
-    picard_tolerance=1e-6,  # Tighter convergence tolerance
+config_tight = SolverConfig(
+    picard=PicardConfig(
+        max_iterations=50,  # More iterations allowed
+        tolerance=1e-6,  # Tighter convergence tolerance
+    )
 )
 
-print(f"Config: max_iterations={config_tight.picard_max_iterations}, tol={config_tight.picard_tolerance}")
+print(f"Config: max_iterations={config_tight.picard.max_iterations}, tol={config_tight.picard.tolerance}")
 print()
 
 # Create solver with custom config using SolverFactory
@@ -91,9 +93,11 @@ print("=" * 70)
 print()
 
 # Configuration with looser tolerance for faster (but less accurate) results
-config_fast = MFGSolverConfig(
-    picard_max_iterations=20,
-    picard_tolerance=1e-3,  # Looser tolerance
+config_fast = SolverConfig(
+    picard=PicardConfig(
+        max_iterations=20,
+        tolerance=1e-3,  # Looser tolerance
+    )
 )
 
 solver_fast = SolverFactory.create_solver(problem, config=config_fast)
@@ -242,7 +246,7 @@ print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
 print("What you learned:")
-print("  1. How to use MFGSolverConfig for custom parameters")
+print("  1. How to use SolverConfig for custom parameters")
 print("  2. How to use SolverFactory for advanced control")
 print("  3. The tolerance vs speed trade-off")
 print("  4. How to compare solutions with different settings")

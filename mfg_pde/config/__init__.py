@@ -39,8 +39,9 @@ from .core import (
     BackendConfig,
     BaseConfig,
     LoggingConfig,
+    MFGSolverConfig,
     PicardConfig,
-    SolverConfig,
+    SolverConfig,  # Backward compatibility alias for MFGSolverConfig
 )
 
 # YAML I/O
@@ -59,9 +60,8 @@ from .mfg_methods import (
     WENOConfig,
 )
 
-# Pydantic-based MFG solver config
+# Legacy config utilities
 from .pydantic_config import (
-    MFGSolverConfig,
     extract_legacy_parameters,
 )
 

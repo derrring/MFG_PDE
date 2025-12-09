@@ -1,17 +1,24 @@
 """
-Enhanced Pydantic-based configuration classes for MFG_PDE solvers.
+Legacy configuration classes for MFG_PDE solvers.
 
-This module provides MFGSolverConfig - the master solver configuration with
-automatic validation, serialization, and advanced numerical stability checks.
+NOTE: This module contains legacy configuration classes that have been superseded
+by the canonical MFGSolverConfig in mfg_pde.config.core.
 
-NOTE: The internal config classes (_NewtonConfig, _GFDMConfig, etc.) are prefixed
-with underscore to indicate they are internal to MFGSolverConfig and should not
-be used directly. For method-specific configs, use mfg_methods.py instead.
+For new code, use:
+    from mfg_pde.config.core import MFGSolverConfig, PicardConfig
 
-The canonical config classes are:
-- mfg_pde.config.mfg_methods: Method-specific configs (FDMConfig, GFDMConfig, etc.)
-- mfg_pde.config.core: Core solver configs (SolverConfig, PicardConfig, etc.)
-- This module: MFGSolverConfig (master solver config for legacy API)
+The internal config classes (_NewtonConfig, _GFDMConfig, etc.) are kept for
+backward compatibility with code that imports them directly.
+
+Migration Guide
+---------------
+Old (deprecated):
+    from mfg_pde.config.pydantic_config import MFGSolverConfig
+    config = MFGSolverConfig()  # emits DeprecationWarning
+
+New (recommended):
+    from mfg_pde.config.core import MFGSolverConfig
+    config = MFGSolverConfig()  # clean, no warning
 """
 
 from __future__ import annotations
@@ -279,34 +286,30 @@ class _FPConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
-class MFGSolverConfig(BaseModel):
+class LegacyMFGSolverConfig(BaseModel):
     """
-    Master MFG solver configuration with comprehensive validation.
+    Legacy MFG solver configuration with comprehensive validation.
 
     .. deprecated::
-        MFGSolverConfig is deprecated and will be removed in a future version.
-        Use SolverConfig from mfg_pde.config.core instead:
+        This class is deprecated and will be removed in a future version.
+        Use MFGSolverConfig from mfg_pde.config.core instead:
 
-        >>> from mfg_pde.config.core import SolverConfig
-        >>> config = SolverConfig(
-        ...     hjb=HJBConfig(method="fdm"),
-        ...     fp=FPConfig(method="fdm"),
+        >>> from mfg_pde.config.core import MFGSolverConfig, PicardConfig
+        >>> config = MFGSolverConfig(
         ...     picard=PicardConfig(max_iterations=100)
         ... )
 
-    Combines all solver configurations with cross-validation for
-    numerical stability, convergence properties, and physical constraints.
-
-    NOTE: This class uses internal config classes (_NewtonConfig, _HJBConfig, etc.)
-    that are specific to the legacy MFGSolverConfig API. For method-specific configs,
-    use the canonical classes from mfg_methods.py (HJBConfig, FPConfig, etc.).
+    This class is kept for backward compatibility with code that:
+    1. Uses the internal _*Config classes (_NewtonConfig, _HJBConfig, etc.)
+    2. Uses to_legacy_dict() method
+    3. Relies on the specific field structure
     """
 
     def model_post_init(self, __context: Any) -> None:
         """Emit deprecation warning on instantiation."""
         warnings.warn(
-            "MFGSolverConfig is deprecated and will be removed in a future version. "
-            "Use SolverConfig from mfg_pde.config.core instead.",
+            "LegacyMFGSolverConfig (imported as MFGSolverConfig from pydantic_config) "
+            "is deprecated. Use MFGSolverConfig from mfg_pde.config.core instead.",
             DeprecationWarning,
             stacklevel=3,
         )
@@ -452,3 +455,20 @@ GFDMConfig = _GFDMConfig
 ParticleConfig = _ParticleConfig
 HJBConfig = _HJBConfig
 FPConfig = _FPConfig
+
+# MFGSolverConfig: Import from the canonical location (core.py)
+# This ensures code importing from pydantic_config gets the modern class
+from mfg_pde.config.core import MFGSolverConfig  # noqa: E402
+
+# Also export the legacy version for code that explicitly needs it
+__all__ = [
+    "MFGSolverConfig",  # Canonical (from core.py)
+    "LegacyMFGSolverConfig",  # Deprecated legacy version
+    "NewtonConfig",
+    "PicardConfig",
+    "GFDMConfig",
+    "ParticleConfig",
+    "HJBConfig",
+    "FPConfig",
+    "extract_legacy_parameters",
+]
