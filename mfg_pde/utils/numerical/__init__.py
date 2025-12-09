@@ -34,6 +34,7 @@ from mfg_pde.utils.numerical.kernels import (
     WendlandKernel,
     create_kernel,
 )
+from mfg_pde.utils.numerical.monotonicity_stats import MonotonicityStats
 from mfg_pde.utils.numerical.nonlinear_solvers import FixedPointSolver, NewtonSolver, PolicyIterationSolver, SolverInfo
 
 # Re-export particle utilities for convenience
@@ -70,6 +71,8 @@ from mfg_pde.utils.numerical.sdf_utils import (
 __all__ = [
     # GFDM operators
     "GFDMOperator",
+    # Monotonicity tracking
+    "MonotonicityStats",
     # RBF operators
     "RBFOperator",
     "create_rbf_operator",
