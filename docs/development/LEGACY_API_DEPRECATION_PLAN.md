@@ -1,9 +1,10 @@
 # Legacy 1D API Deprecation Plan
 
-**Status**: Phase 1 In Progress
-**Target Removal**: v1.0.0
-**Current Version**: v0.12.6
+**Status**: Phase 2 In Progress
+**Target Removal**: v0.16.0
+**Current Version**: v0.15.0
 **Created**: 2025-11-19
+**Last Updated**: 2025-12-09
 
 ## Executive Summary
 
@@ -82,9 +83,9 @@ problem = MFGProblem(
 - [ ] Update all examples to use geometry-based API
 - [ ] Add "See Also" links from legacy API docs to modern API
 
-### Phase 2: Hard Deprecation (v0.14.x - v0.15.x)
+### Phase 2: Hard Deprecation (v0.15.x)
 
-**Status**: Planned (target: Q2 2026)
+**Status**: In Progress (v0.15.0)
 **Goal**: Restrict legacy API usage, provide automatic migration tools
 
 **Tasks**:
@@ -94,9 +95,9 @@ problem = MFGProblem(
 - [ ] Update CI to test with `strict_mode=True` for new code
 - [ ] Deprecate `get_spatial_grid()` fallback to legacy API
 
-### Phase 3: Removal (v1.0.0)
+### Phase 3: Removal (v0.16.0)
 
-**Status**: Target (Q4 2026 - Q1 2027)
+**Status**: Planned (target: Q1 2026)
 **Goal**: Remove legacy API entirely
 
 **Tasks**:
@@ -349,19 +350,19 @@ See `docs/migration/LEGACY_TO_GEOMETRY_API.md` for full migration guide.
 
 ## Success Metrics
 
-### Phase 1: Soft Deprecation (v0.12.x - v0.13.x)
+### Phase 1: Soft Deprecation (v0.12.x - v0.14.x) ✅ COMPLETED
 - [x] All new examples use geometry-based API
-- [ ] Documentation shows geometry-first as primary
-- [ ] <10% of examples use legacy API
+- [x] Documentation shows geometry-first as primary
+- [x] <10% of examples use legacy API
 - [ ] Migration guide published
 
-### Phase 2: Hard Deprecation (v0.14.x - v0.15.x)
+### Phase 2: Hard Deprecation (v0.15.x) - IN PROGRESS
 - [ ] Automated migration tool available
 - [ ] CI tests pass with `strict_mode=True`
 - [ ] All maintained examples migrated
 - [ ] <5% of user code uses legacy API (based on issue reports)
 
-### Phase 3: Removal (v1.0.0)
+### Phase 3: Removal (v0.16.0)
 - [ ] Legacy API code removed from codebase
 - [ ] All tests use geometry-based API
 - [ ] No backward compatibility shims remain
@@ -424,6 +425,6 @@ See `docs/migration/LEGACY_TO_GEOMETRY_API.md` for full migration guide.
 
 ---
 
-**Last Updated**: 2025-11-19
+**Last Updated**: 2025-12-09
 **Responsible**: Core maintainers
-**Review Cycle**: Quarterly until v1.0.0 release
+**Review Cycle**: Quarterly until v0.16.0 release

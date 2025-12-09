@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.14.1"  # v0.14.1: BC API migration, MazeGeometry fix
+version = "0.15.0"  # v0.15.0: Architecture documentation audit
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
