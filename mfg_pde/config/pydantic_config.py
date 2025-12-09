@@ -283,6 +283,17 @@ class MFGSolverConfig(BaseModel):
     """
     Master MFG solver configuration with comprehensive validation.
 
+    .. deprecated::
+        MFGSolverConfig is deprecated and will be removed in a future version.
+        Use SolverConfig from mfg_pde.config.core instead:
+
+        >>> from mfg_pde.config.core import SolverConfig
+        >>> config = SolverConfig(
+        ...     hjb=HJBConfig(method="fdm"),
+        ...     fp=FPConfig(method="fdm"),
+        ...     picard=PicardConfig(max_iterations=100)
+        ... )
+
     Combines all solver configurations with cross-validation for
     numerical stability, convergence properties, and physical constraints.
 
@@ -290,6 +301,15 @@ class MFGSolverConfig(BaseModel):
     that are specific to the legacy MFGSolverConfig API. For method-specific configs,
     use the canonical classes from mfg_methods.py (HJBConfig, FPConfig, etc.).
     """
+
+    def model_post_init(self, __context: Any) -> None:
+        """Emit deprecation warning on instantiation."""
+        warnings.warn(
+            "MFGSolverConfig is deprecated and will be removed in a future version. "
+            "Use SolverConfig from mfg_pde.config.core instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
 
     # Core solver configurations (using internal classes)
     newton: _NewtonConfig = Field(
