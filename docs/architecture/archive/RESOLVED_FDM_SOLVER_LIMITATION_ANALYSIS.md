@@ -1,8 +1,16 @@
-# FDM Solver Limitation: Cannot Use with 2D Maze
+# [RESOLVED] FDM Solver Limitation: Cannot Use with 2D Maze
+
+> **Resolution Note (2025-12-09)**: This analysis was based on incomplete understanding
+> of the codebase. FDM solvers actually DO support N-dimensional problems:
+> - `hjb_fdm.py`: Has full nD support via `_solve_hjb_nd()` using nonlinear solvers
+> - `fp_fdm.py`: Has full nD support via `solve_fp_nd_full_system()`
+>
+> The original concern was addressed. Issue #407 was closed as "not planned" because
+> the feature already exists. This document is archived for historical reference only.
 
 **Date**: 2025-10-30
 **Context**: Attempted pure FDM solver comparison for maze navigation problem
-**Status**: BLOCKED by architectural limitation
+**Status**: RESOLVED (FDM solvers support N-dimensional problems)
 
 ---
 
