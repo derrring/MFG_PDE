@@ -2053,49 +2053,6 @@ class HJBGFDMSolver(BaseHJBSolver):
             return int(collocation_idx * Nx / self.n_points)
 
 
-class MonotonicityStats:
-    """Track M-matrix property satisfaction statistics across solve."""
-
-    def __init__(self):
-        self.total_points = 0
-        self.monotone_points = 0
-        self.violations_by_point: dict[int, list[dict]] = {}
-        self.worst_violations: list[dict] = []
-
-    def record_point(self, point_idx: int, is_monotone: bool, diagnostics: dict):
-        """Record M-matrix verification result for a single point."""
-        self.total_points += 1
-        if is_monotone:
-            self.monotone_points += 1
-        else:
-            if point_idx not in self.violations_by_point:
-                self.violations_by_point[point_idx] = []
-            self.violations_by_point[point_idx].append(diagnostics)
-            self.worst_violations.append({"point_idx": point_idx, "severity": diagnostics["violation_severity"]})
-
-    def get_success_rate(self) -> float:
-        """Compute percentage of points satisfying M-matrix property."""
-        if self.total_points == 0:
-            return 0.0
-        return 100.0 * self.monotone_points / self.total_points
-
-    def get_summary(self) -> dict:
-        """Get summary statistics for M-matrix verification."""
-        success_rate = self.get_success_rate()
-        num_violating_points = len(self.violations_by_point)
-        max_violation = 0.0
-        if self.worst_violations:
-            max_violation = max(v["severity"] for v in self.worst_violations)
-
-        return {
-            "success_rate": success_rate,
-            "monotone_points": self.monotone_points,
-            "total_points": self.total_points,
-            "num_violating_points": num_violating_points,
-            "max_violation_severity": max_violation,
-        }
-
-
 if __name__ == "__main__":
     """Quick smoke test for development."""
     print("Testing HJBGFDMSolver...")
