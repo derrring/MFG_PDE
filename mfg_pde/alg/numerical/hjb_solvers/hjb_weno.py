@@ -538,6 +538,37 @@ class HJBWenoSolver(BaseHJBSolver):
 
         return u_new
 
+    def _evaluate_hamiltonian(self, x_idx: int, m_val: float, grad: float, direction: tuple[int, ...] = (1,)) -> float:
+        """
+        Evaluate the Hamiltonian at a point using problem.H() interface.
+
+        This method calls problem.H() if available, falling back to the default
+        quadratic MFG Hamiltonian H = |p|²/2 + m*p for backward compatibility.
+
+        Note: For dimensional splitting, only the partial gradient in the current
+        direction is provided. This assumes separable/isotropic Hamiltonians.
+
+        Args:
+            x_idx: Grid index for spatial position
+            m_val: Density value at this point
+            grad: Gradient value (partial derivative in the specified direction)
+            direction: Derivative direction tuple, e.g., (1,) for x, (0,1) for y
+
+        Returns:
+            Hamiltonian value H(x, grad, m)
+        """
+        # Try to use problem.H() interface
+        if hasattr(self.problem, "H") and callable(self.problem.H):
+            try:
+                derivs = {direction: grad}
+                return self.problem.H(x_idx, m_val, derivs=derivs)
+            except (TypeError, AttributeError):
+                # Fall through to default if problem.H() has incompatible signature
+                pass
+
+        # Default: standard quadratic MFG Hamiltonian H = |p|²/2 + m*p
+        return 0.5 * grad**2 + m_val * grad
+
     def _compute_hjb_rhs(self, u: np.ndarray, m: np.ndarray) -> np.ndarray:
         """
         Compute right-hand side of HJB equation using WENO discretization.
@@ -578,9 +609,8 @@ class HJBWenoSolver(BaseHJBSolver):
             # For simplicity in this demo, we use spatial index
             # In full implementation, would get actual x coordinate
 
-            # Standard quadratic Hamiltonian with congestion
-            # H = |∇u|²/2 + V(x,m) where V represents congestion effects
-            hamiltonian = 0.5 * u_x[i] ** 2 + m[i] * u_x[i]
+            # Evaluate Hamiltonian using problem interface (direction (1,) = x-derivative)
+            hamiltonian = self._evaluate_hamiltonian(i, m[i], u_x[i], direction=(1,))
 
             # RHS = -H + diffusion
             rhs[i] = -hamiltonian + (self.problem.sigma**2 / 2) * u_xx[i]
@@ -1084,9 +1114,9 @@ class HJBWenoSolver(BaseHJBSolver):
         u_yy[0] = u_yy[1]
         u_yy[-1] = u_yy[-2]
 
-        # Hamiltonian evaluation (simplified for Y-direction)
+        # Hamiltonian evaluation for Y-direction (direction (0,1) = y-derivative)
         for i in range(n):
-            hamiltonian = 0.5 * u_y[i] ** 2 + m[i] * u_y[i]
+            hamiltonian = self._evaluate_hamiltonian(i, m[i], u_y[i], direction=(0, 1))
             rhs[i] = -hamiltonian + (self.problem.sigma**2 / 2) * u_yy[i]
 
         return rhs
@@ -1208,9 +1238,9 @@ class HJBWenoSolver(BaseHJBSolver):
         u_zz[0] = u_zz[1]
         u_zz[-1] = u_zz[-2]
 
-        # Hamiltonian evaluation (simplified for Z-direction)
+        # Hamiltonian evaluation for Z-direction (direction (0,0,1) = z-derivative)
         for i in range(n):
-            hamiltonian = 0.5 * u_z[i] ** 2 + m[i] * u_z[i]
+            hamiltonian = self._evaluate_hamiltonian(i, m[i], u_z[i], direction=(0, 0, 1))
             rhs[i] = -hamiltonian + (self.problem.sigma**2 / 2) * u_zz[i]
 
         return rhs
