@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.15.0"  # v0.15.0: Architecture documentation audit
+version = "0.15.1"  # v0.15.1: Deprecation plan updated (v0.16.0 target)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
