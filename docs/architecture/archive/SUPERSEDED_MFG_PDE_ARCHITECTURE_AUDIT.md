@@ -1,4 +1,13 @@
-# MFG_PDE Architecture Audit: Comprehensive Refactoring Critique
+# [SUPERSEDED] MFG_PDE Architecture Audit: Comprehensive Refactoring Critique
+
+> **Superseded Note (2025-12-09)**: This audit contains outdated analysis. Key findings
+> have been addressed or found to be based on incomplete understanding:
+> - "FDM is 1D only" - INCORRECT: FDM solvers support N-dimensional problems
+>   (`hjb_fdm.py:_solve_hjb_nd`, `fp_fdm.py:solve_fp_nd_full_system`)
+> - The "6-12 month refactor" estimate was overstated
+>
+> This document is archived for historical reference. The codebase has evolved
+> significantly since this analysis. See current docs for accurate architecture info.
 
 **Date**: 2025-10-30
 **Purpose**: Validate refactoring proposal against actual MFG_PDE architecture
