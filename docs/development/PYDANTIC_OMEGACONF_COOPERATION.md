@@ -181,6 +181,7 @@ result = problem.solve(config=pydantic_config)
 OmegaConf excels at parameter sweeps:
 
 ```python
+from pathlib import Path
 from mfg_pde.config.omegaconf_manager import OmegaConfManager
 
 manager = OmegaConfManager()
@@ -195,16 +196,26 @@ sweep_params = {
 configs = manager.create_parameter_sweep(base_config, sweep_params)
 
 # Run experiments
-for cfg in configs:
+for i, cfg in enumerate(configs):
     pydantic_cfg = manager.create_pydantic_config(cfg)
+
+    # CRITICAL: Save effective config snapshot BEFORE solving
+    # This records actual execution parameters (not YAML interpolations)
+    output_dir = Path(cfg.experiment.output_dir) / f"run_{i:04d}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    save_effective_config(pydantic_cfg, output_dir / "resolved_config.json")
+
     result = problem.solve(config=pydantic_cfg)
-    # Save results with cfg.experiment.current_params metadata
+    # Save results alongside the resolved config
+    result.save(output_dir / "results.npz")
 ```
 
 **When to use**:
 - Systematic parameter studies
 - Grid search optimization
 - Reproducible research experiments
+
+**Key Practice**: Always call `save_effective_config()` before solver execution to ensure reproducibility.
 
 ---
 
@@ -563,19 +574,48 @@ def bridge(omega_cfg: HJBSchema) -> HJBConfig:
 
 Since renaming is a **breaking change**, implement with deprecation:
 
-**Phase 1 (v0.16)**: Add `*Schema` aliases alongside old names
+**Phase 1 (v0.16)**: Add `*Schema` as canonical names with deprecated aliases
 ```python
 # structured_schemas.py
+import warnings
+
 @dataclass
 class HJBSchema:  # New canonical name
     ...
 
-HJBConfig = HJBSchema  # Deprecated alias, emit warning on use
+# Deprecated aliases with warning mechanism
+def __getattr__(name: str):
+    """Emit DeprecationWarning when accessing old *Config names."""
+    _deprecated_aliases = {
+        "HJBConfig": "HJBSchema",
+        "FPConfig": "FPSchema",
+        "SolverConfig": "SolverSchema",
+        "NewtonConfig": "NewtonSchema",
+        "LoggingConfig": "LoggingSchema",
+        "ProblemConfig": "ProblemSchema",
+        "ExperimentConfig": "ExperimentSchema",
+        "DomainConfig": "DomainSchema",
+        "BoundaryConditionsConfig": "BoundaryConditionsSchema",
+        "InitialConditionConfig": "InitialConditionSchema",
+        "VisualizationConfig": "VisualizationSchema",
+        "MFGConfig": "MFGSchema",
+        "BeachProblemConfig": "BeachProblemSchema",
+    }
+    if name in _deprecated_aliases:
+        new_name = _deprecated_aliases[name]
+        warnings.warn(
+            f"{name} is deprecated, use {new_name} instead. "
+            f"Will be removed in v0.18.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[new_name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 ```
 
-**Phase 2 (v0.17)**: Emit `DeprecationWarning` for old names
+**Phase 2 (v0.17)**: Log warnings more prominently (INFO level)
 
-**Phase 3 (v0.18)**: Remove old names
+**Phase 3 (v0.18)**: Remove deprecated aliases and `__getattr__`
 
 ### 10.5 Complete Naming Convention (Strict Consistency)
 
@@ -673,6 +713,6 @@ assert all(name.endswith('Schema') for name in dir(schemas) if not name.startswi
 
 ---
 
-**Document Version**: 1.4
+**Document Version**: 1.5
 **Last Updated**: 2025-12-10
 **Related**: `docs/development/DEPRECATION_PLAN_v0.16.md`, Issue #28
