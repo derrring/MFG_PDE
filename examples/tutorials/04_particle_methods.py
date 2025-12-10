@@ -4,7 +4,7 @@ Tutorial 04: Advanced Solver Configuration
 Learn how to configure MFG solvers with custom parameters.
 
 What you'll learn:
-- How to use SolverConfig for fine-grained control
+- How to use MFGSolverConfig for fine-grained control
 - How to compare different solver parameters
 - How to tune convergence settings
 - The SolverFactory API for advanced use cases
@@ -17,7 +17,7 @@ solver configuration available in the core package.
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.config import PicardConfig, SolverConfig
+from mfg_pde.config import MFGSolverConfig, PicardConfig
 from mfg_pde.factory import SolverFactory
 
 # ==============================================================================
@@ -59,12 +59,12 @@ print("CUSTOM CONFIGURATION")
 print("=" * 70)
 print()
 
-# SolverConfig provides fine-grained control over solver behavior
+# MFGSolverConfig provides fine-grained control over solver behavior
 print("Creating custom configuration...")
 print()
 
 # Configuration with tighter tolerance
-config_tight = SolverConfig(
+config_tight = MFGSolverConfig(
     picard=PicardConfig(
         max_iterations=50,  # More iterations allowed
         tolerance=1e-6,  # Tighter convergence tolerance
@@ -93,7 +93,7 @@ print("=" * 70)
 print()
 
 # Configuration with looser tolerance for faster (but less accurate) results
-config_fast = SolverConfig(
+config_fast = MFGSolverConfig(
     picard=PicardConfig(
         max_iterations=20,
         tolerance=1e-3,  # Looser tolerance
@@ -246,7 +246,7 @@ print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
 print("What you learned:")
-print("  1. How to use SolverConfig for custom parameters")
+print("  1. How to use MFGSolverConfig for custom parameters")
 print("  2. How to use SolverFactory for advanced control")
 print("  3. The tolerance vs speed trade-off")
 print("  4. How to compare solutions with different settings")
