@@ -5,24 +5,26 @@ This module provides type-safe configuration schemas using dataclasses,
 solving the common problem of OmegaConf failing type checking by providing
 static type information that mypy can understand.
 
-⚠️ CRITICAL - Issue #28 Type Safety Solution ⚠️
-=============================================
-These dataclass schemas are the CORE solution for OmegaConf type checking errors.
+NAMING CONVENTION
+=================
+- **Pydantic** (`core.py`): `*Config` suffix - Runtime validation, API safety
+- **OmegaConf** (`structured_schemas.py`): `*Schema` suffix - YAML management, experiments
+
+See `docs/user/configuration_system.md` for the full architecture guide.
+
+Type Safety Solution (Issue #28)
+================================
+These dataclass schemas solve OmegaConf type checking errors:
 
 BEFORE (Type errors):
     conf: DictConfig = OmegaConf.load("config.yaml")
-    print(conf.problem.T)  # ❌ Mypy error: "DictConfig has no attribute 'problem'"
+    print(conf.problem.T)  # Mypy error: "DictConfig has no attribute 'problem'"
 
 AFTER (Type safe):
-    schema = OmegaConf.structured(MFGConfig)
+    schema = OmegaConf.structured(MFGSchema)
     file_conf = OmegaConf.load("config.yaml")
-    conf: MFGConfig = OmegaConf.merge(schema, file_conf)
-    print(conf.problem.T)  # ✅ Type safe, autocompletes!
-
-DO NOT modify these schemas without understanding the full typing implications.
-Reference Issue #28 for complete implementation context.
-
-Inspired by the structured configs pattern recommended for type-safe OmegaConf usage.
+    conf: MFGSchema = OmegaConf.merge(schema, file_conf)
+    print(conf.problem.T)  # Type safe, autocompletes!
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ from typing import Any
 
 
 @dataclass
-class BoundaryConditionsConfig:
+class BoundaryConditionsSchema:
     """Boundary conditions configuration schema."""
 
     type: str = "periodic"
@@ -41,7 +43,7 @@ class BoundaryConditionsConfig:
 
 
 @dataclass
-class InitialConditionConfig:
+class InitialConditionSchema:
     """Initial condition configuration schema."""
 
     type: str = "gaussian"
@@ -49,7 +51,7 @@ class InitialConditionConfig:
 
 
 @dataclass
-class DomainConfig:
+class DomainSchema:
     """Domain configuration schema."""
 
     x_min: float = 0.0
@@ -61,7 +63,7 @@ class DomainConfig:
 
 
 @dataclass
-class ProblemConfig:
+class ProblemSchema:
     """MFG problem configuration schema."""
 
     name: str = "base_mfg_problem"
@@ -69,14 +71,14 @@ class ProblemConfig:
     T: float = 1.0
     Nx: int = 50
     Nt: int = 30
-    domain: DomainConfig = field(default_factory=DomainConfig)
-    initial_condition: InitialConditionConfig = field(default_factory=InitialConditionConfig)
-    boundary_conditions: BoundaryConditionsConfig = field(default_factory=BoundaryConditionsConfig)
+    domain: DomainSchema = field(default_factory=DomainSchema)
+    initial_condition: InitialConditionSchema = field(default_factory=InitialConditionSchema)
+    boundary_conditions: BoundaryConditionsSchema = field(default_factory=BoundaryConditionsSchema)
     parameters: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
-class NewtonConfig:
+class NewtonSchema:
     """Newton solver configuration schema."""
 
     max_iterations: int = 20
@@ -85,17 +87,17 @@ class NewtonConfig:
 
 
 @dataclass
-class HJBConfig:
+class HJBSchema:
     """HJB solver configuration schema."""
 
     method: str = "gfdm"
     boundary_handling: str = "penalty"
     penalty_weight: float = 1000.0
-    newton: NewtonConfig = field(default_factory=NewtonConfig)
+    newton: NewtonSchema = field(default_factory=NewtonSchema)
 
 
 @dataclass
-class FPConfig:
+class FPSchema:
     """Fokker-Planck solver configuration schema."""
 
     method: str = "fdm"
@@ -103,7 +105,7 @@ class FPConfig:
 
 
 @dataclass
-class SolverConfig:
+class SolverSchema:
     """Solver configuration schema."""
 
     type: str = "fixed_point"
@@ -111,12 +113,12 @@ class SolverConfig:
     tolerance: float = 1e-6
     damping: float = 0.5
     backend: str = "numpy"
-    hjb: HJBConfig = field(default_factory=HJBConfig)
-    fp: FPConfig = field(default_factory=FPConfig)
+    hjb: HJBSchema = field(default_factory=HJBSchema)
+    fp: FPSchema = field(default_factory=FPSchema)
 
 
 @dataclass
-class LoggingConfig:
+class LoggingSchema:
     """Logging configuration schema."""
 
     level: str = "INFO"
@@ -124,7 +126,7 @@ class LoggingConfig:
 
 
 @dataclass
-class VisualizationConfig:
+class VisualizationSchema:
     """Visualization configuration schema."""
 
     enabled: bool = True
@@ -135,35 +137,35 @@ class VisualizationConfig:
 
 
 @dataclass
-class ExperimentConfig:
+class ExperimentSchema:
     """Experiment configuration schema."""
 
     name: str = "parameter_sweep"
     description: str = "Parameter sweep experiment"
     output_dir: str = "results"
-    logging: LoggingConfig = field(default_factory=LoggingConfig)
-    visualization: VisualizationConfig = field(default_factory=VisualizationConfig)
+    logging: LoggingSchema = field(default_factory=LoggingSchema)
+    visualization: VisualizationSchema = field(default_factory=VisualizationSchema)
     sweeps: dict[str, list[Any]] = field(default_factory=dict)
 
 
 @dataclass
-class MFGConfig:
+class MFGSchema:
     """Complete MFG configuration schema combining all components."""
 
-    problem: ProblemConfig = field(default_factory=ProblemConfig)
-    solver: SolverConfig = field(default_factory=SolverConfig)
-    experiment: ExperimentConfig = field(default_factory=ExperimentConfig)
+    problem: ProblemSchema = field(default_factory=ProblemSchema)
+    solver: SolverSchema = field(default_factory=SolverSchema)
+    experiment: ExperimentSchema = field(default_factory=ExperimentSchema)
 
 
 # Specialized configurations for common scenarios
 
 
 @dataclass
-class BeachProblemConfig:
+class BeachProblemSchema:
     """Towel on Beach problem configuration schema."""
 
-    problem: ProblemConfig = field(
-        default_factory=lambda: ProblemConfig(
+    problem: ProblemSchema = field(
+        default_factory=lambda: ProblemSchema(
             name="towel_on_beach",
             type="spatial_competition",
             T=2.0,
@@ -176,10 +178,32 @@ class BeachProblemConfig:
             },
         )
     )
-    solver: SolverConfig = field(default_factory=SolverConfig)
-    experiment: ExperimentConfig = field(default_factory=ExperimentConfig)
+    solver: SolverSchema = field(default_factory=SolverSchema)
+    experiment: ExperimentSchema = field(default_factory=ExperimentSchema)
 
 
 # Type aliases for convenience
-StructuredMFGConfig = MFGConfig
-StructuredBeachConfig = BeachProblemConfig
+StructuredMFGConfig = MFGSchema
+StructuredBeachConfig = BeachProblemSchema
+
+
+# Export list
+__all__ = [
+    # Schema classes
+    "BoundaryConditionsSchema",
+    "InitialConditionSchema",
+    "DomainSchema",
+    "ProblemSchema",
+    "NewtonSchema",
+    "HJBSchema",
+    "FPSchema",
+    "SolverSchema",
+    "LoggingSchema",
+    "VisualizationSchema",
+    "ExperimentSchema",
+    "MFGSchema",
+    "BeachProblemSchema",
+    # Type aliases
+    "StructuredMFGConfig",
+    "StructuredBeachConfig",
+]

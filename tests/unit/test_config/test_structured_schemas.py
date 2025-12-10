@@ -3,50 +3,50 @@
 Unit tests for mfg_pde/config/structured_schemas.py
 
 Tests comprehensive structured configuration schemas for OmegaConf including:
-- BoundaryConditionsConfig
-- InitialConditionConfig
-- DomainConfig
-- ProblemConfig
-- NewtonConfig
-- HJBConfig
-- FPConfig
-- SolverConfig
-- LoggingConfig
-- VisualizationConfig
-- ExperimentConfig
-- MFGConfig (top-level)
-- BeachProblemConfig (specialized)
+- BoundaryConditionsSchema
+- InitialConditionSchema
+- DomainSchema
+- ProblemSchema
+- NewtonSchema
+- HJBSchema
+- FPSchema
+- SolverSchema
+- LoggingSchema
+- VisualizationSchema
+- ExperimentSchema
+- MFGSchema (top-level)
+- BeachProblemSchema (specialized)
 """
 
 import pytest
 
 from mfg_pde.config.structured_schemas import (
-    BeachProblemConfig,
-    BoundaryConditionsConfig,
-    DomainConfig,
-    ExperimentConfig,
-    FPConfig,
-    HJBConfig,
-    InitialConditionConfig,
-    LoggingConfig,
-    MFGConfig,
-    NewtonConfig,
-    ProblemConfig,
-    SolverConfig,
+    BeachProblemSchema,
+    BoundaryConditionsSchema,
+    DomainSchema,
+    ExperimentSchema,
+    FPSchema,
+    HJBSchema,
+    InitialConditionSchema,
+    LoggingSchema,
+    MFGSchema,
+    NewtonSchema,
+    ProblemSchema,
+    SolverSchema,
     StructuredBeachConfig,
     StructuredMFGConfig,
-    VisualizationConfig,
+    VisualizationSchema,
 )
 
 # ===================================================================
-# Test BoundaryConditionsConfig
+# Test BoundaryConditionsSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_boundary_conditions_default():
-    """Test BoundaryConditionsConfig default values."""
-    config = BoundaryConditionsConfig()
+    """Test BoundaryConditionsSchema default values."""
+    config = BoundaryConditionsSchema()
     assert config.type == "periodic"
     assert config.left_value is None
     assert config.right_value is None
@@ -54,8 +54,8 @@ def test_boundary_conditions_default():
 
 @pytest.mark.unit
 def test_boundary_conditions_custom():
-    """Test BoundaryConditionsConfig with custom values."""
-    config = BoundaryConditionsConfig(
+    """Test BoundaryConditionsSchema with custom values."""
+    config = BoundaryConditionsSchema(
         type="dirichlet",
         left_value=0.0,
         right_value=1.0,
@@ -66,14 +66,14 @@ def test_boundary_conditions_custom():
 
 
 # ===================================================================
-# Test InitialConditionConfig
+# Test InitialConditionSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_initial_condition_default():
-    """Test InitialConditionConfig default values."""
-    config = InitialConditionConfig()
+    """Test InitialConditionSchema default values."""
+    config = InitialConditionSchema()
     assert config.type == "gaussian"
     assert isinstance(config.parameters, dict)
     assert len(config.parameters) == 0
@@ -81,22 +81,22 @@ def test_initial_condition_default():
 
 @pytest.mark.unit
 def test_initial_condition_custom():
-    """Test InitialConditionConfig with custom parameters."""
+    """Test InitialConditionSchema with custom parameters."""
     params = {"mean": 0.5, "std": 0.1}
-    config = InitialConditionConfig(type="custom", parameters=params)
+    config = InitialConditionSchema(type="custom", parameters=params)
     assert config.type == "custom"
     assert config.parameters == params
 
 
 # ===================================================================
-# Test DomainConfig
+# Test DomainSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_domain_config_default():
-    """Test DomainConfig default 1D domain."""
-    config = DomainConfig()
+    """Test DomainSchema default 1D domain."""
+    config = DomainSchema()
     assert config.x_min == 0.0
     assert config.x_max == 1.0
     assert config.y_min is None
@@ -107,16 +107,16 @@ def test_domain_config_default():
 
 @pytest.mark.unit
 def test_domain_config_custom_1d():
-    """Test DomainConfig custom 1D domain."""
-    config = DomainConfig(x_min=-1.0, x_max=2.0)
+    """Test DomainSchema custom 1D domain."""
+    config = DomainSchema(x_min=-1.0, x_max=2.0)
     assert config.x_min == -1.0
     assert config.x_max == 2.0
 
 
 @pytest.mark.unit
 def test_domain_config_2d():
-    """Test DomainConfig 2D domain."""
-    config = DomainConfig(
+    """Test DomainSchema 2D domain."""
+    config = DomainSchema(
         x_min=0.0,
         x_max=1.0,
         y_min=0.0,
@@ -128,8 +128,8 @@ def test_domain_config_2d():
 
 @pytest.mark.unit
 def test_domain_config_3d():
-    """Test DomainConfig 3D domain."""
-    config = DomainConfig(
+    """Test DomainSchema 3D domain."""
+    config = DomainSchema(
         x_min=0.0,
         x_max=1.0,
         y_min=0.0,
@@ -142,29 +142,29 @@ def test_domain_config_3d():
 
 
 # ===================================================================
-# Test ProblemConfig
+# Test ProblemSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_problem_config_default():
-    """Test ProblemConfig default values."""
-    config = ProblemConfig()
+    """Test ProblemSchema default values."""
+    config = ProblemSchema()
     assert config.name == "base_mfg_problem"
     assert config.type == "standard"
     assert config.T == 1.0
     assert config.Nx == 50
     assert config.Nt == 30
-    assert isinstance(config.domain, DomainConfig)
-    assert isinstance(config.initial_condition, InitialConditionConfig)
-    assert isinstance(config.boundary_conditions, BoundaryConditionsConfig)
+    assert isinstance(config.domain, DomainSchema)
+    assert isinstance(config.initial_condition, InitialConditionSchema)
+    assert isinstance(config.boundary_conditions, BoundaryConditionsSchema)
     assert isinstance(config.parameters, dict)
 
 
 @pytest.mark.unit
 def test_problem_config_custom():
-    """Test ProblemConfig with custom values."""
-    config = ProblemConfig(
+    """Test ProblemSchema with custom values."""
+    config = ProblemSchema(
         name="custom_problem",
         type="extended",
         T=2.0,
@@ -178,24 +178,24 @@ def test_problem_config_custom():
 
 @pytest.mark.unit
 def test_problem_config_nested_objects():
-    """Test ProblemConfig nested configuration objects."""
-    domain = DomainConfig(x_min=-1.0, x_max=1.0)
-    bc = BoundaryConditionsConfig(type="neumann")
-    config = ProblemConfig(domain=domain, boundary_conditions=bc)
+    """Test ProblemSchema nested configuration objects."""
+    domain = DomainSchema(x_min=-1.0, x_max=1.0)
+    bc = BoundaryConditionsSchema(type="neumann")
+    config = ProblemSchema(domain=domain, boundary_conditions=bc)
 
     assert config.domain.x_min == -1.0
     assert config.boundary_conditions.type == "neumann"
 
 
 # ===================================================================
-# Test NewtonConfig
+# Test NewtonSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_newton_config_default():
-    """Test NewtonConfig default values."""
-    config = NewtonConfig()
+    """Test NewtonSchema default values."""
+    config = NewtonSchema()
     assert config.max_iterations == 20
     assert config.tolerance == 1e-8
     assert config.line_search is True
@@ -203,8 +203,8 @@ def test_newton_config_default():
 
 @pytest.mark.unit
 def test_newton_config_custom():
-    """Test NewtonConfig with custom values."""
-    config = NewtonConfig(
+    """Test NewtonSchema with custom values."""
+    config = NewtonSchema(
         max_iterations=50,
         tolerance=1e-10,
         line_search=False,
@@ -215,25 +215,25 @@ def test_newton_config_custom():
 
 
 # ===================================================================
-# Test HJBConfig
+# Test HJBSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_hjb_config_default():
-    """Test HJBConfig default values."""
-    config = HJBConfig()
+    """Test HJBSchema default values."""
+    config = HJBSchema()
     assert config.method == "gfdm"
     assert config.boundary_handling == "penalty"
     assert config.penalty_weight == 1000.0
-    assert isinstance(config.newton, NewtonConfig)
+    assert isinstance(config.newton, NewtonSchema)
 
 
 @pytest.mark.unit
 def test_hjb_config_custom():
-    """Test HJBConfig with custom values."""
-    newton = NewtonConfig(max_iterations=30)
-    config = HJBConfig(
+    """Test HJBSchema with custom values."""
+    newton = NewtonSchema(max_iterations=30)
+    config = HJBSchema(
         method="fdm",
         boundary_handling="extrapolation",
         penalty_weight=500.0,
@@ -244,48 +244,48 @@ def test_hjb_config_custom():
 
 
 # ===================================================================
-# Test FPConfig
+# Test FPSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_fp_config_default():
-    """Test FPConfig default values."""
-    config = FPConfig()
+    """Test FPSchema default values."""
+    config = FPSchema()
     assert config.method == "fdm"
     assert config.upwind_scheme == "central"
 
 
 @pytest.mark.unit
 def test_fp_config_custom():
-    """Test FPConfig with custom values."""
-    config = FPConfig(method="dgm", upwind_scheme="lax_friedrichs")
+    """Test FPSchema with custom values."""
+    config = FPSchema(method="dgm", upwind_scheme="lax_friedrichs")
     assert config.method == "dgm"
     assert config.upwind_scheme == "lax_friedrichs"
 
 
 # ===================================================================
-# Test SolverConfig
+# Test SolverSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_solver_config_default():
-    """Test SolverConfig default values."""
-    config = SolverConfig()
+    """Test SolverSchema default values."""
+    config = SolverSchema()
     assert config.type == "fixed_point"
     assert config.max_iterations == 100
     assert config.tolerance == 1e-6
     assert config.damping == 0.5
     assert config.backend == "numpy"
-    assert isinstance(config.hjb, HJBConfig)
-    assert isinstance(config.fp, FPConfig)
+    assert isinstance(config.hjb, HJBSchema)
+    assert isinstance(config.fp, FPSchema)
 
 
 @pytest.mark.unit
 def test_solver_config_custom():
-    """Test SolverConfig with custom values."""
-    config = SolverConfig(
+    """Test SolverSchema with custom values."""
+    config = SolverSchema(
         type="newton",
         max_iterations=200,
         tolerance=1e-8,
@@ -297,45 +297,45 @@ def test_solver_config_custom():
 
 @pytest.mark.unit
 def test_solver_config_nested():
-    """Test SolverConfig with nested configurations."""
-    hjb = HJBConfig(method="spectral")
-    fp = FPConfig(method="particle")
-    config = SolverConfig(hjb=hjb, fp=fp)
+    """Test SolverSchema with nested configurations."""
+    hjb = HJBSchema(method="spectral")
+    fp = FPSchema(method="particle")
+    config = SolverSchema(hjb=hjb, fp=fp)
 
     assert config.hjb.method == "spectral"
     assert config.fp.method == "particle"
 
 
 # ===================================================================
-# Test LoggingConfig
+# Test LoggingSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_logging_config_default():
-    """Test LoggingConfig default values."""
-    config = LoggingConfig()
+    """Test LoggingSchema default values."""
+    config = LoggingSchema()
     assert config.level == "INFO"
     assert config.file is None
 
 
 @pytest.mark.unit
 def test_logging_config_custom():
-    """Test LoggingConfig with custom values."""
-    config = LoggingConfig(level="DEBUG", file="solver.log")
+    """Test LoggingSchema with custom values."""
+    config = LoggingSchema(level="DEBUG", file="solver.log")
     assert config.level == "DEBUG"
     assert config.file == "solver.log"
 
 
 # ===================================================================
-# Test VisualizationConfig
+# Test VisualizationSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_visualization_config_default():
-    """Test VisualizationConfig default values."""
-    config = VisualizationConfig()
+    """Test VisualizationSchema default values."""
+    config = VisualizationSchema()
     assert config.enabled is True
     assert config.save_plots is True
     assert config.plot_dir == "plots"
@@ -345,8 +345,8 @@ def test_visualization_config_default():
 
 @pytest.mark.unit
 def test_visualization_config_custom():
-    """Test VisualizationConfig with custom values."""
-    config = VisualizationConfig(
+    """Test VisualizationSchema with custom values."""
+    config = VisualizationSchema(
         enabled=False,
         save_plots=False,
         plot_dir="outputs",
@@ -360,9 +360,9 @@ def test_visualization_config_custom():
 
 @pytest.mark.unit
 def test_visualization_config_formats_mutable():
-    """Test VisualizationConfig formats list is independent."""
-    config1 = VisualizationConfig()
-    config2 = VisualizationConfig()
+    """Test VisualizationSchema formats list is independent."""
+    config1 = VisualizationSchema()
+    config2 = VisualizationSchema()
 
     config1.formats.append("pdf")
 
@@ -371,26 +371,26 @@ def test_visualization_config_formats_mutable():
 
 
 # ===================================================================
-# Test ExperimentConfig
+# Test ExperimentSchema
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_experiment_config_default():
-    """Test ExperimentConfig default values."""
-    config = ExperimentConfig()
+    """Test ExperimentSchema default values."""
+    config = ExperimentSchema()
     assert config.name == "parameter_sweep"
     assert config.description == "Parameter sweep experiment"
     assert config.output_dir == "results"
-    assert isinstance(config.logging, LoggingConfig)
-    assert isinstance(config.visualization, VisualizationConfig)
+    assert isinstance(config.logging, LoggingSchema)
+    assert isinstance(config.visualization, VisualizationSchema)
     assert isinstance(config.sweeps, dict)
 
 
 @pytest.mark.unit
 def test_experiment_config_custom():
-    """Test ExperimentConfig with custom values."""
-    config = ExperimentConfig(
+    """Test ExperimentSchema with custom values."""
+    config = ExperimentSchema(
         name="convergence_study",
         description="Test convergence rates",
         output_dir="data",
@@ -401,10 +401,10 @@ def test_experiment_config_custom():
 
 @pytest.mark.unit
 def test_experiment_config_nested():
-    """Test ExperimentConfig with nested configurations."""
-    logging = LoggingConfig(level="WARNING")
-    viz = VisualizationConfig(enabled=False)
-    config = ExperimentConfig(logging=logging, visualization=viz)
+    """Test ExperimentSchema with nested configurations."""
+    logging = LoggingSchema(level="WARNING")
+    viz = VisualizationSchema(enabled=False)
+    config = ExperimentSchema(logging=logging, visualization=viz)
 
     assert config.logging.level == "WARNING"
     assert config.visualization.enabled is False
@@ -412,39 +412,39 @@ def test_experiment_config_nested():
 
 @pytest.mark.unit
 def test_experiment_config_sweeps():
-    """Test ExperimentConfig with parameter sweeps."""
+    """Test ExperimentSchema with parameter sweeps."""
     sweeps = {
         "Nx": [50, 100, 200],
         "tolerance": [1e-6, 1e-8, 1e-10],
     }
-    config = ExperimentConfig(sweeps=sweeps)
+    config = ExperimentSchema(sweeps=sweeps)
 
     assert len(config.sweeps) == 2
     assert config.sweeps["Nx"] == [50, 100, 200]
 
 
 # ===================================================================
-# Test MFGConfig (Top-Level)
+# Test MFGSchema (Top-Level)
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_mfg_config_default():
-    """Test MFGConfig default values."""
-    config = MFGConfig()
-    assert isinstance(config.problem, ProblemConfig)
-    assert isinstance(config.solver, SolverConfig)
-    assert isinstance(config.experiment, ExperimentConfig)
+    """Test MFGSchema default values."""
+    config = MFGSchema()
+    assert isinstance(config.problem, ProblemSchema)
+    assert isinstance(config.solver, SolverSchema)
+    assert isinstance(config.experiment, ExperimentSchema)
 
 
 @pytest.mark.unit
 def test_mfg_config_custom():
-    """Test MFGConfig with custom nested configurations."""
-    problem = ProblemConfig(name="custom", T=3.0)
-    solver = SolverConfig(backend="jax")
-    experiment = ExperimentConfig(name="test")
+    """Test MFGSchema with custom nested configurations."""
+    problem = ProblemSchema(name="custom", T=3.0)
+    solver = SolverSchema(backend="jax")
+    experiment = ExperimentSchema(name="test")
 
-    config = MFGConfig(problem=problem, solver=solver, experiment=experiment)
+    config = MFGSchema(problem=problem, solver=solver, experiment=experiment)
 
     assert config.problem.name == "custom"
     assert config.problem.T == 3.0
@@ -454,8 +454,8 @@ def test_mfg_config_custom():
 
 @pytest.mark.unit
 def test_mfg_config_deep_nesting():
-    """Test MFGConfig with deeply nested configurations."""
-    config = MFGConfig()
+    """Test MFGSchema with deeply nested configurations."""
+    config = MFGSchema()
 
     # Access deeply nested values
     assert config.solver.hjb.newton.max_iterations == 20
@@ -465,8 +465,8 @@ def test_mfg_config_deep_nesting():
 
 @pytest.mark.unit
 def test_mfg_config_modification():
-    """Test MFGConfig values can be modified."""
-    config = MFGConfig()
+    """Test MFGSchema values can be modified."""
+    config = MFGSchema()
 
     # Modify nested values
     config.problem.T = 5.0
@@ -479,16 +479,16 @@ def test_mfg_config_modification():
 
 
 # ===================================================================
-# Test BeachProblemConfig (Specialized)
+# Test BeachProblemSchema (Specialized)
 # ===================================================================
 
 
 @pytest.mark.unit
 def test_beach_problem_config_default():
-    """Test BeachProblemConfig specialized configuration."""
-    config = BeachProblemConfig()
+    """Test BeachProblemSchema specialized configuration."""
+    config = BeachProblemSchema()
 
-    assert isinstance(config.problem, ProblemConfig)
+    assert isinstance(config.problem, ProblemSchema)
     assert config.problem.name == "towel_on_beach"
     assert config.problem.type == "spatial_competition"
     assert config.problem.T == 2.0
@@ -498,8 +498,8 @@ def test_beach_problem_config_default():
 
 @pytest.mark.unit
 def test_beach_problem_config_parameters():
-    """Test BeachProblemConfig has specialized parameters."""
-    config = BeachProblemConfig()
+    """Test BeachProblemSchema has specialized parameters."""
+    config = BeachProblemSchema()
 
     params = config.problem.parameters
     assert "stall_position" in params
@@ -512,10 +512,10 @@ def test_beach_problem_config_parameters():
 
 @pytest.mark.unit
 def test_beach_problem_config_has_solver():
-    """Test BeachProblemConfig includes solver configuration."""
-    config = BeachProblemConfig()
-    assert isinstance(config.solver, SolverConfig)
-    assert isinstance(config.experiment, ExperimentConfig)
+    """Test BeachProblemSchema includes solver configuration."""
+    config = BeachProblemSchema()
+    assert isinstance(config.solver, SolverSchema)
+    assert isinstance(config.experiment, ExperimentSchema)
 
 
 # ===================================================================
@@ -526,13 +526,13 @@ def test_beach_problem_config_has_solver():
 @pytest.mark.unit
 def test_type_alias_structured_mfg_config():
     """Test StructuredMFGConfig type alias."""
-    assert StructuredMFGConfig is MFGConfig
+    assert StructuredMFGConfig is MFGSchema
 
 
 @pytest.mark.unit
 def test_type_alias_structured_beach_config():
     """Test StructuredBeachConfig type alias."""
-    assert StructuredBeachConfig is BeachProblemConfig
+    assert StructuredBeachConfig is BeachProblemSchema
 
 
 @pytest.mark.unit
@@ -541,8 +541,8 @@ def test_type_alias_usage():
     config1 = StructuredMFGConfig()
     config2 = StructuredBeachConfig()
 
-    assert isinstance(config1, MFGConfig)
-    assert isinstance(config2, BeachProblemConfig)
+    assert isinstance(config1, MFGSchema)
+    assert isinstance(config2, BeachProblemSchema)
 
 
 # ===================================================================
@@ -555,17 +555,17 @@ def test_config_is_dataclass():
     """Test configurations are proper dataclasses."""
     import dataclasses
 
-    assert dataclasses.is_dataclass(MFGConfig)
-    assert dataclasses.is_dataclass(ProblemConfig)
-    assert dataclasses.is_dataclass(SolverConfig)
+    assert dataclasses.is_dataclass(MFGSchema)
+    assert dataclasses.is_dataclass(ProblemSchema)
+    assert dataclasses.is_dataclass(SolverSchema)
 
 
 @pytest.mark.unit
 def test_config_equality():
     """Test configuration equality comparison."""
-    config1 = ProblemConfig(name="test", T=2.0)
-    config2 = ProblemConfig(name="test", T=2.0)
-    config3 = ProblemConfig(name="test", T=3.0)
+    config1 = ProblemSchema(name="test", T=2.0)
+    config2 = ProblemSchema(name="test", T=2.0)
+    config3 = ProblemSchema(name="test", T=3.0)
 
     assert config1 == config2
     assert config1 != config3
@@ -576,7 +576,7 @@ def test_config_copy():
     """Test configuration can be copied."""
     from dataclasses import replace
 
-    original = ProblemConfig(name="original", T=1.0)
+    original = ProblemSchema(name="original", T=1.0)
     copied = replace(original, name="copied")
 
     assert copied.name == "copied"
@@ -593,26 +593,26 @@ def test_config_copy():
 def test_complete_configuration_scenario():
     """Test creating a complete configuration for a real scenario."""
     # Create a complete MFG configuration
-    config = MFGConfig(
-        problem=ProblemConfig(
+    config = MFGSchema(
+        problem=ProblemSchema(
             name="crowding_game",
             T=1.5,
             Nx=100,
             Nt=75,
-            domain=DomainConfig(x_min=-2.0, x_max=2.0),
-            boundary_conditions=BoundaryConditionsConfig(type="neumann"),
+            domain=DomainSchema(x_min=-2.0, x_max=2.0),
+            boundary_conditions=BoundaryConditionsSchema(type="neumann"),
         ),
-        solver=SolverConfig(
+        solver=SolverSchema(
             type="anderson",
             max_iterations=150,
             tolerance=1e-7,
             backend="torch",
-            hjb=HJBConfig(method="weno", boundary_handling="extrapolation"),
+            hjb=HJBSchema(method="weno", boundary_handling="extrapolation"),
         ),
-        experiment=ExperimentConfig(
+        experiment=ExperimentSchema(
             name="crowding_experiment",
             output_dir="results/crowding",
-            logging=LoggingConfig(level="DEBUG", file="crowding.log"),
+            logging=LoggingSchema(level="DEBUG", file="crowding.log"),
         ),
     )
 
