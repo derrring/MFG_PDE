@@ -1577,46 +1577,36 @@ class MFGProblem:
 
         # Use custom Hamiltonian if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_func is not None:
-            try:
-                # Check if custom function accepts 'derivs' or 'p_values'
-                sig = inspect.signature(self.components.hamiltonian_func)
-                params = list(sig.parameters.keys())
+            # Check if custom function accepts 'derivs' or 'p_values'
+            sig = inspect.signature(self.components.hamiltonian_func)
+            params = list(sig.parameters.keys())
 
-                if "derivs" in params:
-                    # New-style custom Hamiltonian
-                    result = self.components.hamiltonian_func(
-                        x_idx=x_idx,
-                        x_position=x_position,
-                        m_at_x=m_at_x,
-                        derivs=derivs,
-                        t_idx=t_idx,
-                        current_time=current_time,
-                        problem=self,
-                    )
-                else:
-                    # Legacy custom Hamiltonian - convert derivs to p_values
-                    from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
+            if "derivs" in params:
+                # New-style custom Hamiltonian
+                return self.components.hamiltonian_func(
+                    x_idx=x_idx,
+                    x_position=x_position,
+                    m_at_x=m_at_x,
+                    derivs=derivs,
+                    t_idx=t_idx,
+                    current_time=current_time,
+                    problem=self,
+                )
+            else:
+                # Legacy custom Hamiltonian - convert derivs to p_values
+                from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
 
-                    p_values_legacy = derivs_to_p_values_1d(derivs)
+                p_values_legacy = derivs_to_p_values_1d(derivs)
 
-                    result = self.components.hamiltonian_func(
-                        x_idx=x_idx,
-                        x_position=x_position,
-                        m_at_x=m_at_x,
-                        p_values=p_values_legacy,
-                        t_idx=t_idx,
-                        current_time=current_time,
-                        problem=self,
-                    )
-
-                return result
-
-            except Exception as e:
-                # Log error but return NaN to maintain solver stability
-                import logging
-
-                logging.getLogger(__name__).warning(f"Custom Hamiltonian evaluation failed at x_idx={x_idx}: {e}")
-                return np.nan
+                return self.components.hamiltonian_func(
+                    x_idx=x_idx,
+                    x_position=x_position,
+                    m_at_x=m_at_x,
+                    p_values=p_values_legacy,
+                    t_idx=t_idx,
+                    current_time=current_time,
+                    problem=self,
+                )
 
         # Default Hamiltonian implementation (uses tuple notation internally)
         p = derivs.get((1,), 0.0)  # Extract first derivative
@@ -1751,46 +1741,36 @@ class MFGProblem:
 
         # Use custom derivative if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_dm_func is not None:
-            try:
-                # Check if custom function accepts 'derivs' or 'p_values'
-                sig = inspect.signature(self.components.hamiltonian_dm_func)
-                params = list(sig.parameters.keys())
+            # Check if custom function accepts 'derivs' or 'p_values'
+            sig = inspect.signature(self.components.hamiltonian_dm_func)
+            params = list(sig.parameters.keys())
 
-                if "derivs" in params:
-                    # New-style custom derivative
-                    result = self.components.hamiltonian_dm_func(
-                        x_idx=x_idx,
-                        x_position=x_position,
-                        m_at_x=m_at_x,
-                        derivs=derivs,
-                        t_idx=t_idx,
-                        current_time=current_time,
-                        problem=self,
-                    )
-                else:
-                    # Legacy custom derivative - convert derivs to p_values
-                    from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
+            if "derivs" in params:
+                # New-style custom derivative
+                return self.components.hamiltonian_dm_func(
+                    x_idx=x_idx,
+                    x_position=x_position,
+                    m_at_x=m_at_x,
+                    derivs=derivs,
+                    t_idx=t_idx,
+                    current_time=current_time,
+                    problem=self,
+                )
+            else:
+                # Legacy custom derivative - convert derivs to p_values
+                from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
 
-                    p_values_legacy = derivs_to_p_values_1d(derivs)
+                p_values_legacy = derivs_to_p_values_1d(derivs)
 
-                    result = self.components.hamiltonian_dm_func(
-                        x_idx=x_idx,
-                        x_position=x_position,
-                        m_at_x=m_at_x,
-                        p_values=p_values_legacy,
-                        t_idx=t_idx,
-                        current_time=current_time,
-                        problem=self,
-                    )
-
-                return result
-
-            except Exception as e:
-                # Log error but return NaN
-                import logging
-
-                logging.getLogger(__name__).warning(f"Custom Hamiltonian derivative failed at x_idx={x_idx}: {e}")
-                return np.nan
+                return self.components.hamiltonian_dm_func(
+                    x_idx=x_idx,
+                    x_position=x_position,
+                    m_at_x=m_at_x,
+                    p_values=p_values_legacy,
+                    t_idx=t_idx,
+                    current_time=current_time,
+                    problem=self,
+                )
 
         # Default derivative implementation
         if np.isnan(m_at_x) or np.isinf(m_at_x):

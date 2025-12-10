@@ -377,5 +377,72 @@ class TestEdgeCases:
             pass  # Expected behavior
 
 
+class TestCustomComponentExceptionPropagation:
+    """Test that custom component exceptions propagate to user (not silently return NaN).
+
+    Verifies fix for issue #420: Silent failures in custom component evaluation.
+    """
+
+    def test_custom_hamiltonian_exception_propagates(self):
+        """Test that exceptions in custom Hamiltonian propagate to caller."""
+        from mfg_pde.core.mfg_problem import MFGComponents
+        from mfg_pde.geometry import TensorProductGrid
+
+        # Custom Hamiltonian that raises an exception
+        def broken_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+            raise ValueError("Intentional error in custom Hamiltonian")
+
+        def working_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+            return 0.0
+
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
+        components = MFGComponents(
+            hamiltonian_func=broken_hamiltonian,
+            hamiltonian_dm_func=working_dh_dm,
+            problem_type="custom",
+        )
+
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.1, components=components)
+
+        # Exception should propagate, not be silently caught
+        with pytest.raises(ValueError, match="Intentional error"):
+            problem.H(
+                x_idx=5,
+                m_at_x=1.0,
+                derivs={(1,): 0.5},
+                t_idx=0,
+            )
+
+    def test_custom_hamiltonian_dm_exception_propagates(self):
+        """Test that exceptions in custom dH/dm propagate to caller."""
+        from mfg_pde.core.mfg_problem import MFGComponents
+        from mfg_pde.geometry import TensorProductGrid
+
+        def working_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+            return 0.0
+
+        # Custom dH/dm that raises an exception
+        def broken_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+            raise RuntimeError("Intentional error in dH/dm")
+
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
+        components = MFGComponents(
+            hamiltonian_func=working_hamiltonian,
+            hamiltonian_dm_func=broken_dh_dm,
+            problem_type="custom",
+        )
+
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.1, components=components)
+
+        # Exception should propagate, not be silently caught
+        with pytest.raises(RuntimeError, match="Intentional error"):
+            problem.dH_dm(
+                x_idx=5,
+                m_at_x=1.0,
+                derivs={(1,): 0.5},
+                t_idx=0,
+            )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
