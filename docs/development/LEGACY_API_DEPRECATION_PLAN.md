@@ -83,24 +83,28 @@ problem = MFGProblem(
 - [ ] Add migration guide to documentation
 - [ ] Add "See Also" links from legacy API docs to modern API
 
-### Phase 2: Hard Deprecation (v0.15.x) - IN PROGRESS
+### Phase 2: Hard Deprecation (v0.15.x) ✅ COMPLETED
 
-**Status**: In Progress (v0.15.2)
-**Goal**: Restrict legacy API usage, provide automatic migration tools
+**Status**: Completed (v0.15.3)
+**Goal**: Restrict legacy API usage, remove deprecated classes
 
-**Completed (PR #424, v0.15.2)**:
+**Completed**:
 - [x] Migrate examples from SimpleGrid1D/2D/3D to TensorProductGrid
 - [x] Migrate test files to TensorProductGrid
 - [x] Update CI workflow code to use TensorProductGrid and public API imports
 - [x] Fix `get_problem_config()` to return `Nx` as intervals (num_points - 1)
 - [x] Standardize `Nx` semantics: `Nx` = intervals, `num_points` = grid points
+- [x] **Remove SimpleGrid1D/2D/3D classes entirely** (PR #425)
+  - Deleted: `grid_1d.py`, `grid_2d.py`, `grid_3d.py`
+  - Deleted: `tests/unit/test_geometry/test_simple_grid.py`
+  - Updated all docs to reference TensorProductGrid
+- [x] Update user-facing documentation (README, guides)
+- [x] Update mfg_pde/geometry/README.md module documentation
 
-**Remaining**:
-- [ ] Raise `FutureWarning` instead of `DeprecationWarning`
+**Deferred to Phase 3**:
+- [ ] Raise `FutureWarning` instead of `DeprecationWarning` for legacy xmin/xmax/Nx
 - [ ] Add `strict_mode` flag to disable legacy API (opt-in for testing)
 - [ ] Create automated migration script: `python -m mfg_pde.migrate legacy_to_geometry`
-- [ ] Update CI to test with `strict_mode=True` for new code
-- [ ] Deprecate `get_spatial_grid()` fallback to legacy API
 
 ### Phase 3: Removal (v0.16.0)
 
@@ -151,9 +155,8 @@ Migration script transforms:
 problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100)
 
 # After
-from mfg_pde.geometry import SimpleGrid1D
-domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions='periodic')
-domain.create_grid(num_points=51)
+from mfg_pde.geometry import TensorProductGrid
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 problem = MFGProblem(geometry=domain, T=1.0, Nt=100)
 ```
 
@@ -171,15 +174,15 @@ problem = MFGProblem(geometry=domain, T=1.0, Nt=100)
 
 ### 4. Test Suite Strategy
 
-**Dual Testing (Phase 1-2)**:
+**Dual Testing (Phase 1-2)** - COMPLETED:
 ```python
+# Legacy approach - now deleted (Phase 2)
 @pytest.mark.parametrize("api_style", ["legacy", "geometry"])
 def test_solver_with_both_apis(api_style):
     if api_style == "legacy":
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=50)
     else:
-        domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
-        domain.create_grid(num_points=31)
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[31])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=50)
 
     solver = MySolver(problem)
@@ -188,7 +191,8 @@ def test_solver_with_both_apis(api_style):
 ```
 
 **Geometry-Only Testing (Phase 3)**:
-- Remove `api_style` parameterization
+- ✅ All examples and tests now use TensorProductGrid
+- Remove `api_style` parameterization (done)
 - All tests use geometry-based API only
 
 ---
@@ -330,9 +334,8 @@ problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100)
 
 **New (recommended)**:
 ```python
-from mfg_pde.geometry import SimpleGrid1D
-domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
-domain.create_grid(num_points=51)
+from mfg_pde.geometry import TensorProductGrid
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 problem = MFGProblem(geometry=domain, T=1.0, Nt=100)
 ```
 

@@ -342,7 +342,7 @@ from mfg_pde.geometry.base_geometry import CartesianGrid
 @ProjectionRegistry.register(CartesianGrid, CartesianGrid, "hjb_to_fp")
 def conservative_projection(source, target, values, **kwargs):
     """Conservative projection for any CartesianGrid types."""
-    # Works for TensorProductGrid, TensorProductGrid, TensorProductGrid, TensorProductGrid, etc.
+    # Works for any TensorProductGrid (1D, 2D, 3D, nD)
     return projected_values
 ```
 
