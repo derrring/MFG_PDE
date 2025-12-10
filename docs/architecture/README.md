@@ -230,8 +230,7 @@ Located in `mfg_pde/alg/reinforcement/`:
 **Core**:
 - `BaseGeometry` - Abstract base
 - `Domain1D`, `Domain2D`, `Domain3D` - Standard domains
-- `TensorProductGrid` - Cartesian grids
-- `SimpleGrid` - Basic grid implementation
+- `TensorProductGrid` - Unified Cartesian grids (1D/2D/3D/nD)
 
 **Advanced**:
 - AMR (Adaptive Mesh Refinement): 4 files (1D, 2D quadtree, 2D triangular, 3D tetrahedral)
