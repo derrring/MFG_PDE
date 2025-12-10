@@ -65,6 +65,12 @@ from .mfg_methods import (
 # =============================================================================
 
 try:
+    # Bridge utilities for Pydantic-OmegaConf interoperability
+    from .bridge import (  # noqa: F401
+        bridge_to_pydantic,
+        load_effective_config,
+        save_effective_config,
+    )
     from .omegaconf_manager import (  # noqa: F401
         OmegaConfManager,
         create_omega_manager,
@@ -122,5 +128,9 @@ if OMEGACONF_AVAILABLE:
             "create_parameter_sweep_configs",
             "load_beach_config",
             "load_experiment_config",
+            # Bridge utilities
+            "bridge_to_pydantic",
+            "save_effective_config",
+            "load_effective_config",
         ]
     )
