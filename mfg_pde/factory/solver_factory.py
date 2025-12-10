@@ -124,10 +124,7 @@ class SolverFactory:
             updated_config.hjb.newton.max_iterations = kwargs["max_newton_iterations"]
         if "newton_tolerance" in kwargs:
             updated_config.hjb.newton.tolerance = kwargs["newton_tolerance"]
-        if "return_structured" in kwargs:
-            updated_config.return_structured = kwargs["return_structured"]
-        if "warm_start" in kwargs:
-            updated_config.warm_start = kwargs["warm_start"]
+        # Note: return_structured and warm_start were deprecated and removed from MFGSolverConfig
 
         # Particle-specific updates
         if "num_particles" in kwargs:
@@ -155,8 +152,7 @@ class SolverFactory:
             "picard_tolerance",
             "max_newton_iterations",
             "newton_tolerance",
-            "return_structured",
-            "warm_start",
+            # return_structured and warm_start were deprecated and removed
             "num_particles",
             "delta",
         }
