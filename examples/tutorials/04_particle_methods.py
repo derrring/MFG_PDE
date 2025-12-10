@@ -17,7 +17,7 @@ solver configuration available in the core package.
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.config.core import PicardConfig, SolverConfig
+from mfg_pde.config import PicardConfig, SolverConfig
 from mfg_pde.factory import SolverFactory
 
 # ==============================================================================
