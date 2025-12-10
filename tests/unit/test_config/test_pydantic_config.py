@@ -11,6 +11,7 @@ import warnings
 import pytest
 from pydantic import ValidationError
 
+from mfg_pde.config.core import PicardConfig as CorePicardConfig
 from mfg_pde.config.pydantic_config import (
     MFGSolverConfig,
     NewtonConfig,
@@ -160,88 +161,61 @@ class TestPicardConfig:
 
 
 class TestMFGSolverConfig:
-    """Test master MFG solver configuration."""
+    """Test master MFG solver configuration (canonical from core.py)."""
 
     def test_valid_configuration(self):
         """Test creation with valid nested configurations."""
-        newton_config = NewtonConfig(max_iterations=20, tolerance=1e-7)
-        picard_config = PicardConfig(max_iterations=30, tolerance=1e-5)
+        # Use CorePicardConfig for the canonical MFGSolverConfig
+        picard_config = CorePicardConfig(max_iterations=50, tolerance=1e-5, damping_factor=0.7)
 
-        config = MFGSolverConfig(
-            newton=newton_config,
-            picard=picard_config,
-            return_structured=True,
-            enable_warm_start=False,
-            convergence_tolerance=1e-6,
-            strict_convergence_errors=True,
-            experiment_name="test_experiment",
-        )
+        config = MFGSolverConfig(picard=picard_config)
 
-        assert config.newton.max_iterations == 20
-        assert config.picard.max_iterations == 30
-        assert config.return_structured is True
-        assert config.enable_warm_start is False
-        assert config.convergence_tolerance == 1e-6
-        assert config.strict_convergence_errors is True
-        assert config.experiment_name == "test_experiment"
+        assert config.picard.max_iterations == 50
+        assert config.picard.tolerance == 1e-5
+        assert config.picard.damping_factor == 0.7
 
     def test_default_nested_configurations(self):
         """Test that nested configurations use proper defaults."""
         config = MFGSolverConfig()
 
-        # Check nested defaults
-        assert config.newton.max_iterations == 30
-        assert config.newton.tolerance == 1e-6
-        assert config.picard.max_iterations == 20
-        assert config.picard.tolerance == 1e-3
+        # Check picard defaults (from core.py PicardConfig)
+        assert config.picard.max_iterations == 100
+        assert config.picard.tolerance == 1e-6
+        assert config.picard.damping_factor == 0.5
 
-        # Check top-level defaults
-        assert config.return_structured is True
-        assert config.enable_warm_start is False
-        assert config.convergence_tolerance == 1e-5
-        assert config.strict_convergence_errors is True
-        assert config.experiment_name is None
-        assert config.metadata == {}
+        # Check backend defaults
+        assert config.backend.type == "numpy"
+        assert config.backend.device == "cpu"
+        assert config.backend.precision == "float64"
 
-    def test_cross_validation_tolerance_hierarchy(self):
-        """Test cross-validation between tolerance levels."""
-        # Test that the validator works correctly
-        config = MFGSolverConfig(
-            convergence_tolerance=1e-4,
-            newton=NewtonConfig(tolerance=1e-3),  # Looser than global
-            picard=PicardConfig(tolerance=1e-3),  # Looser than global
+        # Check logging defaults
+        assert config.logging.level == "INFO"
+        assert config.logging.progress_bar is True
+
+    def test_hjb_and_fp_configs(self):
+        """Test HJB and FP nested configurations."""
+        config = MFGSolverConfig()
+
+        # HJB config should have defaults
+        assert hasattr(config, "hjb")
+        assert hasattr(config, "fp")
+
+    def test_picard_configuration(self):
+        """Test Picard configuration with custom values."""
+        picard = CorePicardConfig(
+            max_iterations=200,
+            tolerance=1e-8,
+            damping_factor=0.3,
+            anderson_memory=5,
+            verbose=True,
         )
+        config = MFGSolverConfig(picard=picard)
 
-        # Should work without warnings when component tolerances are looser
-        assert config.convergence_tolerance == 1e-4
-        assert config.newton.tolerance == 1e-3
-        assert config.picard.tolerance == 1e-3
-
-    def test_environment_variable_configuration(self):
-        """Test configuration from environment variables."""
-        # This would require setting environment variables in the test
-        # For now, just test that the env_prefix is set correctly
-        MFGSolverConfig()
-
-        # Check that the Config class has env_prefix set correctly
-        # In Pydantic v2, model_config can be a dict or ConfigDict
-        env_prefix = None
-        if hasattr(MFGSolverConfig.model_config, "env_prefix"):
-            env_prefix = MFGSolverConfig.model_config.env_prefix
-        elif isinstance(MFGSolverConfig.model_config, dict):
-            env_prefix = MFGSolverConfig.model_config.get("env_prefix")
-        assert env_prefix == "MFG_"
-
-    def test_metadata_handling(self):
-        """Test metadata dictionary handling."""
-        metadata = {"description": "Test configuration", "author": "pytest", "version": "1.0"}
-
-        config = MFGSolverConfig(metadata=metadata)
-        assert config.metadata == metadata
-
-        # Test that metadata can be updated
-        config.metadata["additional_info"] = "test"
-        assert "additional_info" in config.metadata
+        assert config.picard.max_iterations == 200
+        assert config.picard.tolerance == 1e-8
+        assert config.picard.damping_factor == 0.3
+        assert config.picard.anderson_memory == 5
+        assert config.picard.verbose is True
 
 
 class TestConfigurationEdgeCases:
@@ -250,34 +224,32 @@ class TestConfigurationEdgeCases:
     def test_invalid_nested_config_types(self):
         """Test error handling for invalid nested configuration types."""
         with pytest.raises(ValidationError):
-            MFGSolverConfig(newton="invalid_type")
+            MFGSolverConfig(picard="invalid_type")
 
         with pytest.raises(ValidationError):
-            MFGSolverConfig(picard=123)
+            MFGSolverConfig(backend=123)
 
     def test_partial_configuration_updates(self):
         """Test updating configurations partially."""
         config = MFGSolverConfig()
-        original_newton_tolerance = config.newton.tolerance
+        original_tolerance = config.picard.tolerance
 
-        # Update only Newton max_iterations
-        config.newton.max_iterations = 15
+        # Update only Picard max_iterations
+        config.picard.max_iterations = 150
 
         # Other values should remain unchanged
-        assert config.newton.tolerance == original_newton_tolerance
-        assert config.newton.max_iterations == 15
+        assert config.picard.tolerance == original_tolerance
+        assert config.picard.max_iterations == 150
 
-    def test_configuration_immutability_where_intended(self):
-        """Test that certain configuration aspects behave as expected."""
+    def test_configuration_serialization(self):
+        """Test that configuration can be serialized to YAML-compatible dict."""
         config = MFGSolverConfig()
 
-        # Should be able to modify mutable fields
-        config.experiment_name = "new_experiment"
-        assert config.experiment_name == "new_experiment"
-
-        # Metadata should be mutable
-        config.metadata["test_key"] = "test_value"
-        assert config.metadata["test_key"] == "test_value"
+        # Should be able to dump to dict
+        config_dict = config.model_dump_yaml()
+        assert isinstance(config_dict, dict)
+        assert "picard" in config_dict
+        assert "backend" in config_dict
 
     def test_configuration_validation_assignment(self):
         """Test validation on assignment if enabled."""
