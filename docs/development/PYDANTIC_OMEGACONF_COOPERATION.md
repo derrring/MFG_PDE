@@ -348,5 +348,153 @@ Need to configure MFG solver?
 
 ---
 
-**Document Version**: 1.0
+## 8. Known Trade-offs and Risks
+
+### 8.1 The Maintenance Tax (DRY Violation)
+
+**Trade-off**: Dual schemas violate DRY (Don't Repeat Yourself) principle.
+
+**Risk**: If adding a new parameter (e.g., `viscosity_coefficient`), developer must update:
+1. Pydantic model in `core.py`
+2. OmegaConf dataclass in `structured_schemas.py`
+3. Bridge mapping in `create_pydantic_config()`
+
+If schemas diverge (e.g., different default values), silent bugs can occur.
+
+**Mitigation**:
+- Strict code review for config changes
+- CI tests to verify schema consistency (planned)
+- Clear documentation of which fields exist in which schema
+
+### 8.2 Cognitive Load
+
+**Trade-off**: Multiple entry points increase learning curve.
+
+**Risk**: New users may be confused about which system to use:
+- "Should I edit `config.py` or `experiment.yaml`?"
+- "Why are there two `SolverConfig` classes?"
+
+**Mitigation**:
+- Decision tree (Appendix) guides users
+- Clear naming: Pydantic for "solver config", OmegaConf for "experiment config"
+- Consistent documentation patterns
+
+### 8.3 Runtime Conversion Overhead
+
+**Trade-off**: Mode 3/4 require config conversion at runtime.
+
+**Risk**: Negligible for PDE solvers (ms vs minutes), but problematic for high-frequency calls.
+
+**Mitigation**:
+- Convert once at experiment start, not in inner loops
+- Cache converted configs when running sweeps
+
+---
+
+## 9. Improvement Roadmap
+
+### Phase 1: Current State
+- Manual dual schema maintenance
+- Manual bridging via `create_pydantic_config()`
+- Requires developer discipline
+
+### Phase 2: Recommended Improvements (Medium Priority)
+
+#### 9.2.1 Generic Bridge Function
+
+Replace hardcoded mapping with generic adapter:
+
+```python
+from typing import TypeVar, Type
+from pydantic import BaseModel
+from omegaconf import DictConfig
+
+T = TypeVar("T", bound=BaseModel)
+
+def bridge(omega_cfg: DictConfig, pydantic_cls: Type[T]) -> T:
+    """Generic OmegaConf to Pydantic conversion with field mapping."""
+    # Auto-map matching fields
+    # Log warnings for unmatched fields
+    # Handle nested configs recursively
+    ...
+```
+
+**Value**: Open-Closed Principle compliance - new configs don't require bridge modifications.
+
+#### 9.2.2 Effective Config Snapshot (Critical for Reproducibility)
+
+**Problem**: Input YAML contains interpolations (`${...}`). Saving only input YAML makes reproduction difficult.
+
+**Solution**: Mandatory snapshot before solver execution:
+
+```python
+def save_effective_config(pydantic_config, output_path):
+    """Save resolved config with all defaults filled."""
+    # No interpolations, no missing fields
+    # Complete snapshot of actual execution parameters
+    config_dict = pydantic_config.model_dump(mode="json")
+    with open(output_path / "resolved_config.json", "w") as f:
+        json.dump(config_dict, f, indent=2)
+```
+
+**Rationale**:
+- Original YAML: Records user intent
+- Resolved JSON: Records actual execution parameters (including defaults)
+
+### Phase 3: Ideal State (Low Priority)
+
+#### 9.3.1 SSOT Automation (Single Source of Truth)
+
+Automated code generation to eliminate manual synchronization:
+
+**Option A (Code First)**: Generate OmegaConf dataclasses from Pydantic models
+```bash
+# CI pipeline step
+python scripts/generate_omegaconf_schemas.py --from pydantic --to structured_schemas.py
+```
+
+**Option B (Schema First)**: Define JSON Schema, generate both Pydantic and OmegaConf
+```bash
+# From canonical schema.json
+python scripts/generate_configs.py --schema config_schema.json
+```
+
+#### 9.3.2 Schema Consistency Tests
+
+```python
+# tests/test_config_sync.py
+def test_schema_field_consistency():
+    """Ensure Pydantic and OmegaConf schemas have matching fields."""
+    pydantic_fields = get_all_fields(MFGSolverConfig)
+    omega_fields = get_all_fields(SolverConfig)
+
+    # Check overlapping fields have compatible types and defaults
+    for field in pydantic_fields & omega_fields:
+        assert compatible_types(pydantic_fields[field], omega_fields[field])
+```
+
+---
+
+## 10. Summary
+
+**Architecture Assessment**: This dual-system approach represents **best practice** for scientific computing configuration:
+
+| Criterion | Assessment |
+|:----------|:-----------|
+| **Type Safety** | Excellent - double validation (YAML parse + runtime) |
+| **Maintainability** | Medium-High - dual schema overhead mitigated by clear boundaries |
+| **Extensibility** | Excellent - easy Hydra/MLflow integration path |
+| **User Experience** | Good - layered entry points for different user types |
+
+**Key Insight**: The "static vs dynamic" separation (Pydantic for strict runtime, OmegaConf for flexible YAML) avoids the "lowest common denominator" trap that plagues monolithic config systems.
+
+**Evolution Path**:
+1. **Now**: Manual maintenance with discipline
+2. **Next**: Generic bridge + effective config snapshots
+3. **Future**: Automated SSOT code generation
+
+---
+
+**Document Version**: 1.1
+**Last Updated**: 2025-12-10
 **Related**: `docs/development/DEPRECATION_PLAN_v0.16.md`, Issue #28
