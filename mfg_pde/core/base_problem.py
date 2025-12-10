@@ -190,9 +190,7 @@ class CartesianGridMFGProtocol(MFGProblemProtocol, Protocol):
     and other structured grid solvers.
 
     Only applies to problems with GeometryType.CARTESIAN_GRID:
-    - Domain1D, Domain2D, Domain3D
-    - TensorProductGrid
-    - SimpleGrid2D, SimpleGrid3D
+    - TensorProductGrid (all dimensions)
 
     Does NOT apply to:
     - Networks (NetworkMFGProblem)

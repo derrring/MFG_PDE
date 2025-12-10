@@ -220,9 +220,9 @@ class MFGProblem:
             )
 
             # Mode 6: Dual geometry (Issue #257) - Separate geometries for HJB and FP
-            from mfg_pde.geometry import SimpleGrid2D
-            hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))  # Fine grid for HJB
-            fp_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(20, 20))  # Coarse grid for FP
+            from mfg_pde.geometry import TensorProductGrid
+            hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])  # Fine grid for HJB
+            fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21])  # Coarse grid for FP
             problem = MFGProblem(
                 hjb_geometry=hjb_grid,
                 fp_geometry=fp_grid,
@@ -405,21 +405,19 @@ class MFGProblem:
 
         Note:
             This manual grid construction pattern is deprecated. Consider using
-            the geometry-first API with SimpleGrid1D or TensorProductGrid instead.
+            the geometry-first API with TensorProductGrid instead.
             See migration guide: docs/migration/GEOMETRY_PARAMETER_MIGRATION.md
         """
         import warnings
 
-        from mfg_pde.geometry import SimpleGrid1D
-        from mfg_pde.geometry.boundary.conditions import periodic_bc
+        from mfg_pde.geometry import TensorProductGrid
 
         # Emit deprecation warning for manual grid construction pattern
         warnings.warn(
             "Manual grid construction in MFGProblem is deprecated and will be "
             "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
-            "  from mfg_pde.geometry import SimpleGrid1D\n"
-            f"  domain = SimpleGrid1D(xmin={xmin[0]}, xmax={xmax[0]}, boundary_conditions='periodic')\n"
-            f"  domain.create_grid(num_points={Nx[0] + 1})\n"
+            "  from mfg_pde.geometry import TensorProductGrid\n"
+            f"  domain = TensorProductGrid(dimension=1, bounds=[({xmin[0]}, {xmax[0]})], num_points=[{Nx[0] + 1}])\n"
             f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
             "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
             DeprecationWarning,
@@ -431,10 +429,13 @@ class MFGProblem:
         xmax_scalar = xmax[0]
         Nx_scalar = Nx[0]
 
-        # Create SimpleGrid1D geometry object (unified internal representation)
-        bc = periodic_bc(dimension=1)  # Default to periodic for backward compatibility
-        geometry = SimpleGrid1D(xmin=xmin_scalar, xmax=xmax_scalar, boundary_conditions=bc)
-        dx, _ = geometry.create_grid(num_points=Nx_scalar + 1)
+        # Create TensorProductGrid geometry object (unified internal representation)
+        geometry = TensorProductGrid(
+            dimension=1,
+            bounds=[(xmin_scalar, xmax_scalar)],
+            num_points=[Nx_scalar + 1],
+        )
+        dx = geometry.dx[0] if hasattr(geometry, "dx") else (xmax_scalar - xmin_scalar) / Nx_scalar
 
         # Store geometry for unified interface
         self.geometry = geometry
@@ -525,75 +526,23 @@ class MFGProblem:
                 f"got {len(spatial_discretization)}"
             )
 
-        # Create appropriate geometry object based on dimension
+        # Create TensorProductGrid for all dimensions (unified approach)
+        from mfg_pde.geometry import TensorProductGrid
+
+        # Convert discretization to num_points (add 1 for point count vs intervals)
+        num_points = [n + 1 for n in spatial_discretization]
+        geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, num_points=num_points)
+
         if dimension == 1:
-            # 1D case: use SimpleGrid1D
-            from mfg_pde.geometry import SimpleGrid1D
-            from mfg_pde.geometry.boundary.conditions import periodic_bc
-
-            bc = periodic_bc(dimension=1)
-            geometry = SimpleGrid1D(xmin=spatial_bounds[0][0], xmax=spatial_bounds[0][1], boundary_conditions=bc)
-            dx, _ = geometry.create_grid(num_points=spatial_discretization[0] + 1)
-
             # Legacy 1D attributes
             self.xmin = spatial_bounds[0][0]
             self.xmax = spatial_bounds[0][1]
             self.Lx = self.xmax - self.xmin
             self.Nx = spatial_discretization[0]
-            self.dx = dx  # Lowercase (official naming convention)
+            self.dx = geometry.dx[0] if hasattr(geometry, "dx") else self.Lx / self.Nx
             self.xSpace = geometry.get_spatial_grid()
-
-        elif dimension == 2:
-            # 2D case: use SimpleGrid2D
-            from mfg_pde.geometry import SimpleGrid2D
-
-            bounds_flat = (
-                spatial_bounds[0][0],  # xmin
-                spatial_bounds[0][1],  # xmax
-                spatial_bounds[1][0],  # ymin
-                spatial_bounds[1][1],  # ymax
-            )
-            resolution = tuple(spatial_discretization)
-            geometry = SimpleGrid2D(bounds=bounds_flat, resolution=resolution)
-
-            # No legacy 1D attributes for 2D
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.dx = None  # Lowercase (official naming convention)
-            self.xSpace = None
-
-        elif dimension == 3:
-            # 3D case: use SimpleGrid3D
-            from mfg_pde.geometry import SimpleGrid3D
-
-            bounds_flat = (
-                spatial_bounds[0][0],  # xmin
-                spatial_bounds[0][1],  # xmax
-                spatial_bounds[1][0],  # ymin
-                spatial_bounds[1][1],  # ymax
-                spatial_bounds[2][0],  # zmin
-                spatial_bounds[2][1],  # zmax
-            )
-            resolution = tuple(spatial_discretization)
-            geometry = SimpleGrid3D(bounds=bounds_flat, resolution=resolution)
-
-            # No legacy 1D attributes for 3D
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.dx = None  # Lowercase (official naming convention)
-            self.xSpace = None
-
         else:
-            # 4D+: use TensorProductGrid (for now, until we have SimpleGridND)
-            from mfg_pde.geometry import TensorProductGrid
-
-            geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, num_points=spatial_discretization)
-
-            # No legacy 1D attributes for nD
+            # No legacy 1D attributes for 2D+
             self.xmin = None
             self.xmax = None
             self.Lx = None
@@ -763,7 +712,7 @@ class MFGProblem:
         """
         Initialize problem with geometry object implementing GeometryProtocol.
 
-        Accepts any geometry type: TensorProductGrid, SimpleGrid1D, BaseGeometry,
+        Accepts any geometry type: TensorProductGrid, BaseGeometry,
         ImplicitDomain, NetworkGeometry, etc.
 
         Args:
@@ -785,7 +734,7 @@ class MFGProblem:
         if not isinstance(geometry, GeometryProtocol):
             raise TypeError(
                 f"geometry must implement GeometryProtocol, got {type(geometry)}. "
-                f"Use TensorProductGrid, SimpleGrid1D, BaseGeometry, ImplicitDomain, or NetworkGeometry."
+                f"Use TensorProductGrid, BaseGeometry, ImplicitDomain, or NetworkGeometry."
             )
 
         # Validate geometry is properly implemented
