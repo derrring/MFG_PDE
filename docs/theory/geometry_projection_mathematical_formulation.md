@@ -307,10 +307,10 @@ where $C$ depends on boundary effects and kernel normalization.
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # Grid for HJB (50×50)
-hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 
 # Particles for FP (1000 agents)
 class ParticleGeometry:
@@ -353,10 +353,10 @@ m_particles_new = update_particles(u_particles)
 
 ```python
 # Coarse grid for FP (20×20)
-fp_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(20, 20))
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21])
 
 # Fine grid for HJB (100×100)
-hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(100, 100))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,
@@ -374,7 +374,7 @@ problem = MFGProblem(
 from mfg_pde.geometry import GeometryProjector, ProjectionRegistry, GridNetwork
 
 # Register custom network → grid projector
-@ProjectionRegistry.register(GridNetwork, SimpleGrid2D, "fp_to_hjb")
+@ProjectionRegistry.register(GridNetwork, TensorProductGrid, "fp_to_hjb")
 def network_to_grid_custom(network, grid, node_density, **kwargs):
     """Custom projection with edge-aware spreading."""
     node_positions = network.get_node_positions()
@@ -385,7 +385,7 @@ def network_to_grid_custom(network, grid, node_density, **kwargs):
 
     return grid_density
 
-# Now GeometryProjector will use this for GridNetwork → SimpleGrid2D
+# Now GeometryProjector will use this for GridNetwork → TensorProductGrid
 ```
 
 ## Integration with MFGProblem
@@ -464,8 +464,8 @@ problem.geometry_projector  # None if unified, GeometryProjector if dual
 **Accuracy Test:**
 ```python
 def test_grid_to_grid_1d_interpolation(self):
-    coarse_grid = SimpleGrid1D(num_points=11)
-    fine_grid = SimpleGrid1D(num_points=21)
+    coarse_grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+    fine_grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[21])
     projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
     # Linear function u(x) = x (exact for linear interpolation)
@@ -529,10 +529,10 @@ def gaussian_kde_gpu_2d(particles, grid, bandwidth, backend):
 ### 5. Implicit Geometry Support
 Add projections for high-dimensional implicit domains:
 ```python
-@ProjectionRegistry.register(ImplicitDomain, SimpleGrid3D, "fp_to_hjb")
+@ProjectionRegistry.register(ImplicitDomain, TensorProductGrid, "fp_to_hjb")
 def implicit_to_grid_3d(implicit_geo, grid, values, **kwargs):
-    """Project from high-D implicit to 3D grid via slicing."""
-    # Extract 3D slice from high-dimensional domain
+    """Project from high-D implicit to nD grid via slicing."""
+    # Extract nD slice from high-dimensional domain
     # Apply dimensionality reduction projection
 ```
 

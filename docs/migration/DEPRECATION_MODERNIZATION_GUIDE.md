@@ -32,11 +32,11 @@ problem = ExampleMFGProblem(Nx=50, xmin=0.0, xmax=1.0, Nt=25, T=1.0, sigma=0.1)
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid1D
+from mfg_pde.geometry import TensorProductGrid
 
 # Step 1: Create geometry with boundary conditions
-domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions='periodic')
-domain.create_grid(num_points=51)  # Note: Nx+1 points
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+# Note: TensorProductGrid replaces SimpleGrid1D/2D/3D (removed in v0.15.3)
 
 # Step 2: Create problem with geometry
 problem = MFGProblem(geometry=domain, T=1.0, Nt=25, sigma=0.1)
@@ -184,11 +184,11 @@ All classes in `mfg_pde/compat/legacy_problems.py`:
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid1D
+from mfg_pde.geometry import TensorProductGrid
 
 # Example: Crowd dynamics problem
-domain = SimpleGrid1D(xmin=0.0, xmax=1.0, boundary_conditions='periodic')
-domain.create_grid(num_points=101)
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
+# Note: TensorProductGrid replaces SimpleGrid1D/2D/3D (removed in v0.15.3)
 
 problem = MFGProblem(
     geometry=domain,
