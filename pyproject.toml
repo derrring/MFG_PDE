@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.15.2"  # v0.15.2: Phase 2 deprecation - TensorProductGrid migration complete
+version = "0.15.3"  # v0.15.3: OmegaConf schema rename (*Config → *Schema)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
