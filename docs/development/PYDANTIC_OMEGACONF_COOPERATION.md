@@ -1,678 +1,340 @@
 # Pydantic and OmegaConf Cooperation in MFG_PDE
 
-**Status**: [EVALUATION]
+**Status**: [APPROVED / ARCHITECTURE_V2]
 **Created**: 2025-12-10
-**Related Issues**: #28 (closed), #403 (in progress)
+**Last Updated**: 2025-12-10
+**Related Issues**: #28, #403
 
 ---
 
 ## 1. Executive Summary
 
-MFG_PDE has two configuration systems that serve **different but complementary** purposes:
+MFG_PDE employs a **Dual-System Configuration Architecture** to balance runtime safety with experimental flexibility.
 
-| System | Purpose | Primary Use Case |
-|:-------|:--------|:-----------------|
-| **Pydantic** (`core.py`) | Runtime validation, programmatic API | Solver configuration in code |
-| **OmegaConf** (`structured_schemas.py`) | YAML file management, experiments | Research experiments, parameter sweeps |
+| System | Role | Primary Responsibility |
+|:-------|:-----|:-----------------------|
+| **Pydantic** (`core.py`) | **The Gatekeeper** | Runtime validation, API safety, type strictness. |
+| **OmegaConf** (`structured_schemas.py`) | **The Orchestrator** | YAML management, CLI overrides, parameter sweeps. |
 
-**Key Principle**: These are not competing systems. They cooperate through clear interfaces.
+**Core Philosophy**: Pydantic validates *HOW* the solver runs (math correctness); OmegaConf manages *WHAT* experiment is running (user intent)[^1].
 
 ---
 
 ## 2. Current Architecture
 
-### 2.1 Pydantic Configuration (`mfg_pde/config/core.py`)
+### 2.1 Pydantic Configuration (The Kernel)
 
-The **canonical** solver configuration system:
+*File: `mfg_pde/config/core.py`*
+
+The **canonical** source of truth for solver instantiation. It enforces mathematical constraints (e.g., `tolerance > 0`).
 
 ```python
-from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig, PicardConfig
+from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig
 
+# Strict validation happens here
 config = MFGSolverConfig(
     hjb=HJBConfig(method="fdm", accuracy_order=2),
     fp=FPConfig(method="particle", num_particles=5000),
-    picard=PicardConfig(max_iterations=50, tolerance=1e-6),
 )
-
-# Use with solver
-result = problem.solve(config=config)
+# result = problem.solve(config=config)
 ```
 
-**Strengths**:
-- Strong runtime validation via Pydantic v2
-- IDE autocompletion and type checking
-- Model validators for cross-field validation
-- Direct integration with solver API
-- YAML serialization via `.to_yaml()` / `.from_yaml()`
+### 2.2 OmegaConf Configuration (The Interface)
 
-**Structure**:
-```
-MFGSolverConfig
-├── hjb: HJBConfig
-├── fp: FPConfig
-├── picard: PicardConfig
-├── backend: BackendConfig
-└── logging: LoggingConfig
-```
+*File: `mfg_pde/config/structured_schemas.py`*
 
-### 2.2 OmegaConf Configuration (`mfg_pde/config/structured_schemas.py`)
-
-**Experiment-oriented** configuration for YAML-based workflows:
+The **experiment-oriented** layer. It handles YAML parsing, interpolation, and merging.
 
 ```python
 from mfg_pde.config.omegaconf_manager import load_structured_mfg_config
 
-# Load from YAML with interpolation
+# Supports interpolation: ${experiment.output_dir}, merging, and CLI overrides
 config = load_structured_mfg_config("experiment.yaml")
-print(config.problem.T)  # Type-safe access
-print(config.solver.max_iterations)
-```
-
-**Strengths**:
-- YAML interpolation: `${experiment.output_dir}/plots`
-- Configuration composition: Merge multiple YAML files
-- Parameter sweeps: Automated grid search
-- Type safety via structured configs (Issue #28 solution)
-- Experiment management with metadata
-
-**Structure**:
-```
-MFGConfig
-├── problem: ProblemConfig
-│   ├── domain: DomainConfig
-│   ├── initial_condition: InitialConditionConfig
-│   └── boundary_conditions: BoundaryConditionsConfig
-├── solver: SolverConfig
-│   ├── hjb: HJBConfig
-│   └── fp: FPConfig
-└── experiment: ExperimentConfig
-    ├── logging: LoggingConfig
-    └── visualization: VisualizationConfig
 ```
 
 ---
 
 ## 3. Cooperation Modes
 
-### Mode 1: Pydantic-Only (Simple Scripts)
+### Mode 1: Pydantic-Only (Dev / Scripts)
 
-For simple usage where YAML complexity is unnecessary:
+*Direct instantiation.* Best for unit tests and simple scripts where file persistence is not required.
 
-```python
-from mfg_pde import MFGProblem
-from mfg_pde.config import MFGSolverConfig, PicardConfig
+### Mode 2: OmegaConf-Only (Pure YAML)
 
-# Direct Pydantic configuration
-config = MFGSolverConfig(
-    picard=PicardConfig(max_iterations=100, tolerance=1e-6)
-)
+*Standard usage.* Users interact with YAML files. The system validates structure via OmegaConf Schemas.
 
-problem = MFGProblem(...)
-result = problem.solve(config=config)
-```
+### Mode 3: The Bridge (Hybrid / Production)
 
-**When to use**:
-- Quick prototyping
-- Single-run scripts
-- When configuration doesn't need file persistence
-
-### Mode 2: OmegaConf-Only (Pure YAML Workflows)
-
-For experiment-driven research with YAML files:
-
-```yaml
-# experiments/crowd_motion.yaml
-problem:
-  name: crowd_evacuation
-  T: 2.0
-  Nx: 100
-  domain:
-    x_min: 0.0
-    x_max: 10.0
-
-solver:
-  type: fixed_point
-  max_iterations: 200
-  tolerance: 1e-7
-
-experiment:
-  name: crowd_study
-  output_dir: results/${experiment.name}
-```
+*The standard execution flow.* Load flexible YAML, convert to strict Pydantic for execution.
 
 ```python
-from mfg_pde.config.omegaconf_manager import load_structured_mfg_config
+# 1. Load Flexible Config (User Intent)
+omega_cfg = manager.load_config("experiment.yaml")
 
-config = load_structured_mfg_config("experiments/crowd_motion.yaml")
-# Use config.problem, config.solver, etc.
+# 2. Bridge: Convert to Strict Config (Execution Contract)
+pydantic_cfg = manager.bridge_to_pydantic(omega_cfg, MFGSolverConfig)
+
+# 3. Solve
+problem.solve(config=pydantic_cfg)
 ```
-
-**When to use**:
-- Reproducible experiments
-- Configuration version control
-- Parameter sweeps
-- Sharing configurations across team
-
-### Mode 3: OmegaConf to Pydantic Bridge (Hybrid)
-
-Load YAML via OmegaConf, convert to Pydantic for solver:
-
-```python
-from mfg_pde.config.omegaconf_manager import OmegaConfManager
-from mfg_pde.config import MFGSolverConfig
-
-manager = OmegaConfManager()
-omega_config = manager.load_config("experiment.yaml")
-
-# Convert to Pydantic for solver
-pydantic_config = manager.create_pydantic_config(omega_config)
-
-# Now use with solver
-result = problem.solve(config=pydantic_config)
-```
-
-**When to use**:
-- Need YAML features (interpolation, composition)
-- But solver requires Pydantic validation
-- Mixed workflow with both file-based and programmatic config
 
 ### Mode 4: Parameter Sweeps (Research)
 
-OmegaConf excels at parameter sweeps:
+*High-throughput experiments.* OmegaConf generates variations; Pydantic validates each one.
+
+**Requirement**: Every experiment run **MUST** save the `resolved_config.json` (Effective Config Snapshot).
 
 ```python
-from mfg_pde.config.omegaconf_manager import OmegaConfManager
+from pathlib import Path
 
-manager = OmegaConfManager()
-base_config = manager.load_config("baseline.yaml")
+# ... (sweep generation logic) ...
 
-# Create sweep configurations
-sweep_params = {
-    "problem.parameters.crowd_aversion": [0.5, 1.0, 1.5, 2.0],
-    "solver.tolerance": [1e-4, 1e-6, 1e-8],
-}
+for i, omega_sub_cfg in enumerate(configs):
+    # 1. Bridge to Pydantic (Validates math)
+    pydantic_cfg = manager.bridge_to_pydantic(omega_sub_cfg, MFGSolverConfig)
 
-configs = manager.create_parameter_sweep(base_config, sweep_params)
+    # 2. CRITICAL: Save Effective Snapshot
+    # This records the EXACT parameters used (defaults filled, interpolation resolved)
+    output_dir = Path(omega_sub_cfg.experiment.output_dir) / f"run_{i:04d}"
+    manager.save_effective_config(pydantic_cfg, output_dir)
 
-# Run experiments
-for cfg in configs:
-    pydantic_cfg = manager.create_pydantic_config(cfg)
-    result = problem.solve(config=pydantic_cfg)
-    # Save results with cfg.experiment.current_params metadata
-```
-
-**When to use**:
-- Systematic parameter studies
-- Grid search optimization
-- Reproducible research experiments
-
----
-
-## 4. Schema Comparison
-
-| Concept | Pydantic (`core.py`) | OmegaConf (`structured_schemas.py`) |
-|:--------|:--------------------|:------------------------------------|
-| **Solver iteration** | `PicardConfig` | `SolverConfig.max_iterations` |
-| **HJB method** | `HJBConfig.method` | `SolverConfig.hjb.method` |
-| **FP method** | `FPConfig.method` | `SolverConfig.fp.method` |
-| **Backend** | `BackendConfig.type` | `SolverConfig.backend` |
-| **Problem definition** | `MFGProblem` (code) | `ProblemConfig` (YAML) |
-| **Experiment metadata** | N/A | `ExperimentConfig` |
-
-**Note**: The schemas are intentionally different because they serve different purposes:
-- Pydantic: HOW to solve (algorithmic choices)
-- OmegaConf: WHAT to solve + HOW + experiment context
-
----
-
-## 5. Future Integration Opportunities
-
-### 5.1 Unified Schema (Not Recommended)
-
-One could unify the schemas, but this would:
-- Lose OmegaConf's interpolation features
-- Add complexity to Pydantic validation
-- Blur the separation of concerns
-
-**Recommendation**: Keep separate schemas with clear bridge.
-
-### 5.2 Bidirectional Conversion (Medium Priority)
-
-Currently: OmegaConf -> Pydantic (via `create_pydantic_config`)
-
-Could add: Pydantic -> OmegaConf for saving experiment results:
-
-```python
-# Hypothetical future API
-def save_experiment_config(pydantic_config, omega_config, results, output_path):
-    """Save complete experiment record."""
-    omega_config.experiment.final_config = pydantic_to_omega(pydantic_config)
-    omega_config.experiment.results = results.to_dict()
-    OmegaConf.save(omega_config, output_path)
-```
-
-### 5.3 Hydra Integration (Low Priority)
-
-Hydra builds on OmegaConf for CLI argument parsing:
-
-```bash
-# Hypothetical future CLI
-python run_experiment.py solver.tolerance=1e-8 problem.Nx=200
-```
-
-This would require:
-- Hydra dependency
-- CLI entry points
-- Config store setup
-
-**Status**: Low priority until user demand emerges.
-
-### 5.4 Config Builder Pattern (Implemented)
-
-The `MFGSolverConfig` docstring mentions a builder pattern:
-
-```python
-# Currently in docstring as example
-config = (
-    ConfigBuilder()
-    .solver_hjb(method="fdm", accuracy_order=2)
-    .solver_fp(method="particle", num_particles=5000)
-    .picard(max_iterations=50)
-    .build()
-)
-```
-
-**Status**: Example only, not implemented. Consider if user demand emerges.
-
----
-
-## 6. Recommendations
-
-### For Library Users
-
-| Use Case | Recommended Approach |
-|:---------|:--------------------|
-| Quick script | Pydantic directly |
-| Reproducible experiment | OmegaConf YAML |
-| Parameter sweep | OmegaConf + bridge to Pydantic |
-| Production deployment | Pydantic with validated config |
-
-### For Library Developers
-
-1. **Keep schemas separate**: Different purposes, different structures
-2. **Maintain bridge**: `OmegaConfManager.create_pydantic_config()` is the key integration point
-3. **Add bridges as needed**: Don't pre-optimize; add bidirectional conversion when needed
-4. **Document clearly**: Users should understand which system to use when
-
-### Migration Notes
-
-- `MFGSolverConfig` (Pydantic) is the **canonical** config for solvers
-- `structured_schemas.SolverConfig` (OmegaConf) is for **type-safe YAML** (Issue #28)
-- They have similar names but different purposes - this is intentional
-- Do not attempt to merge them without understanding both use cases
-
----
-
-## 7. Code References
-
-| File | Purpose |
-|:-----|:--------|
-| `mfg_pde/config/core.py` | Pydantic MFGSolverConfig (canonical) |
-| `mfg_pde/config/mfg_methods.py` | HJBConfig, FPConfig, etc. |
-| `mfg_pde/config/structured_schemas.py` | OmegaConf dataclass schemas |
-| `mfg_pde/config/omegaconf_manager.py` | OmegaConf manager with Pydantic bridge |
-| `mfg_pde/config/io.py` | YAML I/O for Pydantic configs |
-
----
-
-## Appendix: Decision Tree
-
-```
-Need to configure MFG solver?
-│
-├─ Single script, quick test?
-│  └─ Use Pydantic directly: MFGSolverConfig(...)
-│
-├─ Reproducible experiment with YAML?
-│  └─ Use OmegaConf: load_structured_mfg_config("config.yaml")
-│     └─ Need Pydantic validation?
-│        └─ Bridge: manager.create_pydantic_config(omega_config)
-│
-├─ Parameter sweep?
-│  └─ Use OmegaConf: manager.create_parameter_sweep(...)
-│     └─ Convert each to Pydantic for solver
-│
-└─ Production deployment?
-   └─ Use Pydantic with validated config from .from_yaml()
+    # 3. Execute
+    problem.solve(config=pydantic_cfg)
 ```
 
 ---
 
-## 8. Known Trade-offs and Risks
+## 4. Schema Strategy
 
-### 8.1 The Maintenance Tax (DRY Violation)
+| Feature | Pydantic (`*Config`) | OmegaConf (`*Schema`) |
+|:--------|:--------------------|:----------------------|
+| **Structure** | Nested by logic | Hierarchical by domain |
+| **Validation** | Strict (`AfterValidator`) | Structural (Types only) |
+| **Interpolation** | No | Yes (`${...}`) |
+| **Source** | Code / JSON | YAML / CLI |
 
-**Trade-off**: Dual schemas violate DRY (Don't Repeat Yourself) principle.
+**Note**: The schemas are **intentionally decoupled**.
 
-**Risk**: If adding a new parameter (e.g., `viscosity_coefficient`), developer must update:
-1. Pydantic model in `core.py`
-2. OmegaConf dataclass in `structured_schemas.py`
-3. Bridge mapping in `create_pydantic_config()`
-
-If schemas diverge (e.g., different default values), silent bugs can occur.
-
-**Mitigation**:
-- Strict code review for config changes
-- CI tests to verify schema consistency (planned)
-- Clear documentation of which fields exist in which schema
-
-### 8.2 Cognitive Load
-
-**Trade-off**: Multiple entry points increase learning curve.
-
-**Risk**: New users may be confused about which system to use:
-- "Should I edit `config.py` or `experiment.yaml`?"
-- "Why are there two `SolverConfig` classes?"
-
-**Mitigation**:
-- Decision tree (Appendix) guides users
-- Clear naming: Pydantic for "solver config", OmegaConf for "experiment config"
-- Consistent documentation patterns
-
-### 8.3 Runtime Conversion Overhead
-
-**Trade-off**: Mode 3/4 require config conversion at runtime.
-
-**Risk**: Negligible for PDE solvers (ms vs minutes), but problematic for high-frequency calls.
-
-**Mitigation**:
-- Convert once at experiment start, not in inner loops
-- Cache converted configs when running sweeps
+- **Pydantic** schema is the "Kernel API".
+- **OmegaConf** schema is the "User Interface".
 
 ---
 
-## 9. Improvement Roadmap
+## 5. Critical Implementation Details
 
-### Phase 1: Current State
-- Manual dual schema maintenance
-- Manual bridging via `create_pydantic_config()`
-- Requires developer discipline
+### 5.1 The Generic Bridge (Adapter Pattern)
 
-### Phase 2: Recommended Improvements (Medium Priority)
-
-#### 9.2.1 Generic Bridge Function
-
-Replace hardcoded mapping with generic adapter:
+Instead of hardcoded mapping, we employ a **Generic Adapter** to reduce maintenance overhead. This allows the bridge to support new configs automatically.
 
 ```python
 from typing import TypeVar, Type
 from pydantic import BaseModel
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 T = TypeVar("T", bound=BaseModel)
 
-def bridge(omega_cfg: DictConfig, pydantic_cls: Type[T]) -> T:
-    """Generic OmegaConf to Pydantic conversion with field mapping."""
-    # Auto-map matching fields
-    # Log warnings for unmatched fields
-    # Handle nested configs recursively
-    ...
+def bridge_to_pydantic(omega_cfg: DictConfig, pydantic_cls: Type[T]) -> T:
+    """
+    Generic adapter that converts OmegaConf dicts to Pydantic models.
+    """
+    # 1. Resolve all interpolations (${...})
+    OmegaConf.resolve(omega_cfg)
+
+    # 2. Convert to container (primitive dict)
+    container = OmegaConf.to_container(omega_cfg, resolve=True)
+
+    # 3. Validation & Instantiation (Pydantic takes over)
+    # Using model_validate for Pydantic V2
+    return pydantic_cls.model_validate(container)
 ```
 
-**Value**: Open-Closed Principle compliance - new configs don't require bridge modifications.
+### 5.2 Serialization & Reproducibility (The Snapshot Rule)
 
-#### 9.2.2 Effective Config Snapshot (Critical for Reproducibility)
+A scientific workflow requires two records:
 
-**Problem**: Input YAML contains interpolations (`${...}`). Saving only input YAML makes reproduction difficult.
+1. **Intent**: The input YAML (with variables).
+2. **Execution**: The resolved JSON (actual values used).
 
-**Solution**: Mandatory snapshot before solver execution:
+**Rule**: Every experiment run **MUST** save the **Effective Config Snapshot**.
 
 ```python
-def save_effective_config(pydantic_config, output_path):
+import json
+from pathlib import Path
+from pydantic import BaseModel
+
+def save_effective_config(pydantic_config: BaseModel, output_dir: Path) -> None:
     """Save resolved config with all defaults filled."""
-    # No interpolations, no missing fields
-    # Complete snapshot of actual execution parameters
+    output_dir.mkdir(parents=True, exist_ok=True)
     config_dict = pydantic_config.model_dump(mode="json")
-    with open(output_path / "resolved_config.json", "w") as f:
+    with open(output_dir / "resolved_config.json", "w") as f:
         json.dump(config_dict, f, indent=2)
 ```
 
-**Rationale**:
-- Original YAML: Records user intent
-- Resolved JSON: Records actual execution parameters (including defaults)
+---
 
-### Phase 3: Ideal State (Low Priority)
+## 6. Trade-offs and Mitigations
 
-#### 9.3.1 SSOT Automation (Single Source of Truth)
+### 6.1 The "Double Maintenance" Tax
 
-Automated code generation to eliminate manual synchronization:
+**Trade-off**: Adding a parameter requires updating both `core.py` and `structured_schemas.py`.
 
-**Option A (Code First)**: Generate OmegaConf dataclasses from Pydantic models
-```bash
-# CI pipeline step
-python scripts/generate_omegaconf_schemas.py --from pydantic --to structured_schemas.py
-```
+**Mitigation**: **Automated Consistency Tests**.
 
-**Option B (Schema First)**: Define JSON Schema, generate both Pydantic and OmegaConf
-```bash
-# From canonical schema.json
-python scripts/generate_configs.py --schema config_schema.json
-```
-
-#### 9.3.2 Schema Consistency Tests
+- We implement a pytest that inspects both classes via reflection.
+- If `MFGSolverConfig` has field `alpha` but `SolverSchema` (OmegaConf) misses it, the test **fails**.
 
 ```python
 # tests/test_config_sync.py
 def test_schema_field_consistency():
     """Ensure Pydantic and OmegaConf schemas have matching fields."""
     pydantic_fields = get_all_fields(MFGSolverConfig)
-    omega_fields = get_all_fields(SolverConfig)
+    omega_fields = get_all_fields(SolverSchema)
 
-    # Check overlapping fields have compatible types and defaults
+    # Check overlapping fields have compatible types
     for field in pydantic_fields & omega_fields:
         assert compatible_types(pydantic_fields[field], omega_fields[field])
 ```
 
+### 6.2 Runtime Overhead
+
+**Trade-off**: Conversion takes time.
+
+**Mitigation**: Conversion happens **once** at solver initialization (outer loop). It is strictly forbidden inside the time-stepping loop (inner loop).
+
 ---
 
-## 10. Naming Strategy for Config Classes
+## 7. Improvement Roadmap
 
-### 10.1 Current Problem: Naming Conflicts
+### Phase 1: Stabilization (Completed)
 
-The dual-system architecture creates **equivocal naming** where identical class names exist in both systems:
+- [x] Establish Pydantic V2 as the kernel Validator.
+- [x] Establish OmegaConf as the Experiment Manager.
 
-| Class Name | Pydantic Location | OmegaConf Location | Conflict? |
-|:-----------|:-----------------|:-------------------|:----------|
-| `NewtonConfig` | `mfg_methods.py:27` | `structured_schemas.py:79` | **Yes** |
-| `HJBConfig` | `mfg_methods.py:251` | `structured_schemas.py:88` | **Yes** |
-| `FPConfig` | `mfg_methods.py:302` | `structured_schemas.py:98` | **Yes** |
-| `LoggingConfig` | `core.py:29` | `structured_schemas.py:119` | **Yes** |
-| `SolverConfig` | `core.py` (alias) | `structured_schemas.py:106` | **Yes** |
-| `MFGSolverConfig` | `core.py:121` | - | No |
-| `ProblemConfig` | - | `structured_schemas.py:64` | No (OmegaConf only) |
+### Phase 2: Automation & Robustness (Current Focus)
 
-### 10.2 Why "Import-as Aliasing" is an Anti-Pattern
+- [ ] **Refactor**: Replace manual `create_pydantic_config` with **Generic Bridge** (Section 5.1).
+- [ ] **Feature**: Implement mandatory **Effective Config Snapshot** (Section 5.2).
+- [ ] **Renaming**: Execute the Global Rename Strategy (Section 8).
 
-The initial approach of using `import as` aliases has serious problems:
+### Phase 3: Code Generation (Future)
 
-#### A. The "Aliasing Tax"
+- [ ] **Codegen**: Explore generating OmegaConf dataclasses *automatically* from Pydantic models using `datamodel-code-generator` to remove the maintenance tax.
 
-This strategy shifts conflict resolution responsibility to users:
+---
+
+## 8. Naming Strategy for Config Classes (STRICT VERSION)
+
+### 8.1 The Core Problem: Ambiguity
+
+We face a naming dilemma where concepts exist in two forms:
+
+- **Runtime Logic**: Validated objects used by the solver (Pydantic).
+- **Data Structure**: Static blueprints used for YAML loading (OmegaConf).
+
+Using identical names or "import aliases" led to IDE confusion and cognitive load[^2].
+
+### 8.2 The Strategy: Strict Semantic Suffixes
+
+We enforce a **Universal Naming Convention** based on the layer where the class is defined. This rule applies **globally**.
+
+- **Pydantic Layer (`core.py`)** → Suffix: **`*Config`**
+    - Represents: *Active, validated entities.*
+- **OmegaConf Layer (`structured_schemas.py`)** → Suffix: **`*Schema`**
+    - Represents: *Passive, structural blueprints (DTOs).*
+
+### 8.3 Naming Table (Strict)
+
+| Concept | Pydantic Entity (Runtime) | OmegaConf Blueprint (YAML) | Status |
+|:--------|:--------------------------|:---------------------------|:-------|
+| **Solver Root** | `MFGSolverConfig` | `SolverSchema` | **Rename** |
+| **HJB Method** | `HJBConfig` | `HJBSchema` | **Rename** |
+| **FP Method** | `FPConfig` | `FPSchema` | **Rename** |
+| **Newton** | `NewtonConfig` | `NewtonSchema` | **Rename** |
+| **Logging** | `LoggingConfig` | `LoggingSchema` | **Rename** |
+| **Experiment** | *(N/A)* | `ExperimentSchema` | **Rename** |
+| **Problem** | *(N/A)* | `ProblemSchema` | **Rename** |
+| **Domain** | *(N/A)* | `DomainSchema` | **Rename** |
+| **Boundary Conditions** | *(N/A)* | `BoundaryConditionsSchema` | **Rename** |
+| **Initial Condition** | *(N/A)* | `InitialConditionSchema` | **Rename** |
+| **Visualization** | *(N/A)* | `VisualizationSchema` | **Rename** |
+| **MFG Root** | *(N/A)* | `MFGSchema` | **Rename** |
+| **Beach Problem** | *(N/A)* | `BeachProblemSchema` | **Rename** |
+
+### 8.4 Migration & Deprecation Plan
+
+To handle the renaming smoothly, we implement a module-level `__getattr__` hook in `structured_schemas.py` to warn users who are still importing the old names.
 
 ```python
-# User must remember to alias EVERY TIME
-from mfg_pde.config.structured_schemas import HJBConfig as YamlHJBConfig
-```
+# mfg_pde/config/structured_schemas.py
+import warnings
+from dataclasses import dataclass
 
-**Problems**:
-- Inconsistent aliases across codebase (Dev A: `YamlHJB`, Dev B: `HJB_Omega`)
-- Easy to forget, leading to silent bugs
-- Not enforceable by linters
-
-#### B. IDE Auto-Import Nightmare
-
-When typing `HJBConfig` and pressing Tab:
-- IDE shows **two identical options**
-- Wrong choice leads to confusing `ValidationError` at runtime
-- No visual distinction during development
-
-#### C. Semantic Mismatch
-
-If two classes have **different semantics**, they should have **different names**.
-
-### 10.3 Recommended Strategy: Schema Suffix
-
-**Principle**: Pydantic classes are runtime **Configs**; OmegaConf classes are structure **Schemas**.
-
-| Concept | Pydantic (keep as-is) | OmegaConf (rename) | Semantic |
-|:--------|:---------------------|:-------------------|:---------|
-| **Solver** | `MFGSolverConfig` | `SolverSchema` | Config = validated entity; Schema = YAML blueprint |
-| **HJB method** | `HJBConfig` | `HJBSchema` | Same distinction |
-| **FP method** | `FPConfig` | `FPSchema` | Same distinction |
-| **Logging** | `LoggingConfig` | `LoggingSchema` | Same distinction |
-| **Newton** | `NewtonConfig` | `NewtonSchema` | Same distinction |
-
-#### Benefits
-
-1. **Self-documenting**: Names explain their purpose without comments
-2. **IDE-friendly**: Auto-import works correctly
-3. **No aliasing**: Users never need `import as`
-4. **Semantic clarity**: `*Schema` = external structure definition; `*Config` = internal validated entity
-
-#### Clean Code Comparison
-
-**Before (Confusing - requires aliasing)**:
-```python
-from mfg_pde.config import HJBConfig
-from mfg_pde.config.structured_schemas import HJBConfig as YamlHJBConfig  # Must remember!
-
-def bridge(omega_cfg: YamlHJBConfig) -> HJBConfig:
-    ...
-```
-
-**After (Clear - self-documenting)**:
-```python
-from mfg_pde.config import HJBConfig
-from mfg_pde.config.structured_schemas import HJBSchema  # No alias needed
-
-def bridge(omega_cfg: HJBSchema) -> HJBConfig:
-    ...
-```
-
-### 10.4 Migration Plan
-
-Since renaming is a **breaking change**, implement with deprecation:
-
-**Phase 1 (v0.16)**: Add `*Schema` aliases alongside old names
-```python
-# structured_schemas.py
+# 1. Define New Canonical Names
 @dataclass
-class HJBSchema:  # New canonical name
-    ...
+class HJBSchema:
+    method: str = "fdm"
+    # ...
 
-HJBConfig = HJBSchema  # Deprecated alias, emit warning on use
+# 2. Implement Backward Compatibility Hook
+def __getattr__(name: str):
+    """
+    Allows imports of old names (e.g., HJBConfig) but warns the user.
+    """
+    DEPRECATED_MAP = {
+        "HJBConfig": "HJBSchema",
+        "FPConfig": "FPSchema",
+        "SolverConfig": "SolverSchema",
+        "NewtonConfig": "NewtonSchema",
+        "LoggingConfig": "LoggingSchema",
+        "ProblemConfig": "ProblemSchema",
+        "ExperimentConfig": "ExperimentSchema",
+        "DomainConfig": "DomainSchema",
+        "BoundaryConditionsConfig": "BoundaryConditionsSchema",
+        "InitialConditionConfig": "InitialConditionSchema",
+        "VisualizationConfig": "VisualizationSchema",
+        "MFGConfig": "MFGSchema",
+        "BeachProblemConfig": "BeachProblemSchema",
+    }
+
+    if name in DEPRECATED_MAP:
+        new_name = DEPRECATED_MAP[name]
+        warnings.warn(
+            f"'{name}' is deprecated and will be removed in v0.18. "
+            f"Please import '{new_name}' instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return globals()[new_name]
+
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 ```
 
-**Phase 2 (v0.17)**: Emit `DeprecationWarning` for old names
-
-**Phase 3 (v0.18)**: Remove old names
-
-### 10.5 Complete Naming Convention (Strict Consistency)
-
-**Principle**: ALL classes in a module follow the same suffix, regardless of current conflicts.
-
-| Layer | File | Suffix | Rationale |
-|:------|:-----|:-------|:----------|
-| **Pydantic** | `core.py`, `mfg_methods.py` | `*Config` | Runtime-validated entities |
-| **OmegaConf** | `structured_schemas.py` | `*Schema` | Static YAML blueprints (DTOs) |
-
-**Complete Mapping**:
-
-| Concept | Pydantic (`*Config`) | OmegaConf (`*Schema`) | Notes |
-|:--------|:--------------------|:---------------------|:------|
-| **Solver root** | `MFGSolverConfig` | `SolverSchema` | Main config container |
-| **HJB method** | `HJBConfig` | `HJBSchema` | HJB solver settings |
-| **FP method** | `FPConfig` | `FPSchema` | FP solver settings |
-| **Newton** | `NewtonConfig` | `NewtonSchema` | Newton iteration |
-| **Logging** | `LoggingConfig` | `LoggingSchema` | Logging settings |
-| **Problem definition** | *(future)* | `ProblemSchema` | **Renamed** from `ProblemConfig` |
-| **Experiment metadata** | *(N/A)* | `ExperimentSchema` | **Renamed** from `ExperimentConfig` |
-| **Domain** | *(N/A)* | `DomainSchema` | **Renamed** from `DomainConfig` |
-| **Boundary conditions** | *(N/A)* | `BoundaryConditionsSchema` | **Renamed** from `BoundaryConditionsConfig` |
-| **Initial condition** | *(N/A)* | `InitialConditionSchema` | **Renamed** from `InitialConditionConfig` |
-| **Visualization** | *(N/A)* | `VisualizationSchema` | **Renamed** from `VisualizationConfig` |
-
-**Why strict consistency matters**:
-1. **Cognitive load**: "All imports from `structured_schemas.py` end in `*Schema`"
-2. **Future-proofing**: No rename needed when Pydantic `ProblemConfig` is added
-3. **File semantics**: File named `structured_schemas.py` contains only `*Schema` classes
-4. **IDE clarity**: Auto-complete shows clear distinction
-
-### 10.6 Import Guidelines (After Migration)
-
-**For Solver Configuration** (programmatic API):
-```python
-# Canonical imports - use these for solver configuration
-from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig, PicardConfig
-```
-
-**For YAML Experiments** (OmegaConf):
-```python
-# Clean imports - ALL end in *Schema
-from mfg_pde.config.structured_schemas import (
-    SolverSchema,
-    HJBSchema,
-    FPSchema,
-    ProblemSchema,      # Renamed from ProblemConfig
-    ExperimentSchema,   # Renamed from ExperimentConfig
-)
-```
-
-**For Bridge Operations**:
-```python
-from mfg_pde.config import MFGSolverConfig  # Target (Pydantic)
-from mfg_pde.config.omegaconf_manager import OmegaConfManager  # Bridge
-from mfg_pde.config.structured_schemas import SolverSchema  # Source (OmegaConf)
-```
-
-**Verification**: After migration, the following should hold:
-```python
-# All imports from structured_schemas.py end in Schema
-import mfg_pde.config.structured_schemas as schemas
-assert all(name.endswith('Schema') for name in dir(schemas) if not name.startswith('_'))
-```
-
-### 10.7 Semantic Distinction Summary
-
-| Suffix | System | Meaning | Validation | Use Case |
-|:-------|:-------|:--------|:-----------|:---------|
-| `*Config` | Pydantic | Runtime-validated entity | Full (types, ranges, cross-field) | Solver execution |
-| `*Schema` | OmegaConf | YAML structure definition | Structural only | File loading, parameter sweeps |
-
-**Key Insight**: OmegaConf `*Schema` classes are **simpler** (YAML-friendly DTOs), while Pydantic `*Config` classes are **richer** (full validation). The bridge function maps Schema to Config, adding validation in the process.
+**Migration Timeline**:
+- **v0.16**: Rename classes, add `__getattr__` hook for backwards compatibility
+- **v0.17**: Emit INFO-level warnings in addition to DeprecationWarning
+- **v0.18**: Remove deprecated aliases
 
 ---
 
-## 11. Summary
+## 9. Conclusion
 
-**Architecture Assessment**: This dual-system approach represents **best practice** for scientific computing configuration:
+This architecture adopts a **"Loose Coupling, Tight Validation"** strategy.
 
-| Criterion | Assessment |
-|:----------|:-----------|
-| **Type Safety** | Excellent - double validation (YAML parse + runtime) |
-| **Maintainability** | Medium-High - dual schema overhead mitigated by clear boundaries |
-| **Extensibility** | Excellent - easy Hydra/MLflow integration path |
-| **User Experience** | Good - layered entry points for different user types |
+- **Loose Coupling** allows researchers to organize YAMLs however they like.
+- **Tight Validation** ensures the Math Kernel never receives invalid parameters.
 
-**Key Insight**: The "static vs dynamic" separation (Pydantic for strict runtime, OmegaConf for flexible YAML) avoids the "lowest common denominator" trap that plagues monolithic config systems.
-
-**Evolution Path**:
-1. **Now**: Manual maintenance with discipline
-2. **Next**: Generic bridge + effective config snapshots
-3. **Future**: Automated SSOT code generation
+By implementing the **Generic Bridge** and **Strict Naming Strategy** defined in this revision, `MFG_PDE` achieves production-grade robustness while maintaining research-grade flexibility.
 
 ---
 
-**Document Version**: 1.4
-**Last Updated**: 2025-12-10
-**Related**: `docs/development/DEPRECATION_PLAN_v0.16.md`, Issue #28
+## References
+
+[^1]: Martin Fowler. *Patterns of Enterprise Application Architecture*. Addison-Wesley Professional, 2002. (Separation of Concerns).
+
+[^2]: Robert C. Martin. *Clean Code: A Handbook of Agile Software Craftsmanship*. Prentice Hall, 2008. (Chapter 2: Meaningful Names).
+
+---
+
+**Document Version**: 2.0
+**Related**: `docs/development/DEPRECATION_PLAN_v0.16.md`, Issue #28, Issue #403
