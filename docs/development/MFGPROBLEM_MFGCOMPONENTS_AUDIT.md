@@ -1,9 +1,9 @@
 # MFGProblem and MFGComponents: Structure and Implementation Audit Report
 
 **Date**: 2025-12-09
-**Last audited**: 2025-12-09
+**Last audited**: 2025-12-10
 **Status**: [ANALYSIS]
-**Related Issues**: #417, #419, #420, #421
+**Related Issues**: #417, #419, ~~#420~~ (closed), #421
 
 ---
 
@@ -193,7 +193,7 @@ self.problem.sigma = old_sigma  # RESTORE
 
 | Priority | Action | Issue # | Status |
 |:---------|:-------|:--------|:-------|
-| P0 | Remove try/except that silences custom component errors | #420 | Open |
+| P0 | ~~Remove try/except that silences custom component errors~~ | #420 | [CLOSED] |
 | P1 | ~~Add docstrings explaining `derivs` tuple format~~ | - | [RESOLVED] Signatures now use `H(x, m, p, t)` |
 | P2 | Add context manager for sigma mutation (exception safety) | #419 | Open |
 | P3 | Split `mfg_problem.py` into `problem.py` + `components.py` + `validation.py` | #417 | Low priority |
@@ -209,7 +209,7 @@ The MFGProblem/MFGComponents architecture is **fundamentally sound**:
 - BC mechanism properly decoupled from grid representation
 
 **Critical audit items**:
-1. **Silent failures** (#420) - High risk, simple fix
+1. ~~**Silent failures** (#420)~~ - [CLOSED] Fixed
 2. ~~**Signature documentation**~~ - [RESOLVED] Now uses clear `H(x, m, p, t)` signature
 3. **Exception safety** (#419) - Low risk, defensive improvement
 
