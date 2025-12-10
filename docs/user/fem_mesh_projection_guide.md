@@ -19,7 +19,7 @@ The projection system automatically handles FEM meshes using nearest neighbor:
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import Mesh2D, SimpleGrid2D
+from mfg_pde.geometry import Mesh2D, TensorProductGrid
 
 # FEM mesh (unstructured, handles complex domains)
 mesh = Mesh2D(
@@ -31,7 +31,7 @@ mesh = Mesh2D(
 mesh_data = mesh.generate_mesh()
 
 # Regular grid (structured, efficient for HJB)
-grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+grid = TensorProductGrid(bounds=(0, 1, 0, 1), resolution=(50, 50))
 
 # Dual geometry problem (works immediately!)
 problem = MFGProblem(
@@ -57,11 +57,11 @@ For higher accuracy, register specialized Delaunay interpolation:
 ```python
 from scipy.interpolate import LinearNDInterpolator
 from scipy.spatial import KDTree
-from mfg_pde.geometry import ProjectionRegistry, Mesh2D, SimpleGrid2D
+from mfg_pde.geometry import ProjectionRegistry, Mesh2D, TensorProductGrid
 import numpy as np
 
 # Register once (e.g., in your project setup script)
-@ProjectionRegistry.register(Mesh2D, SimpleGrid2D, "fp_to_hjb")
+@ProjectionRegistry.register(Mesh2D, TensorProductGrid, "fp_to_hjb")
 def mesh_to_grid_delaunay(mesh_geo, grid_geo, mesh_values, **kwargs):
     """Project from FEM mesh to grid using Delaunay interpolation."""
 
@@ -85,7 +85,7 @@ def mesh_to_grid_delaunay(mesh_geo, grid_geo, mesh_values, **kwargs):
     # Reshape to grid
     return grid_values_flat.reshape(grid_geo.get_grid_shape())
 
-@ProjectionRegistry.register(SimpleGrid2D, Mesh2D, "hjb_to_fp")
+@ProjectionRegistry.register(TensorProductGrid, Mesh2D, "hjb_to_fp")
 def grid_to_mesh_interpolation(grid_geo, mesh_geo, grid_values, **kwargs):
     """Project from grid to mesh (bilinear interpolation)."""
     vertices = mesh_geo.get_spatial_grid()
@@ -130,7 +130,7 @@ mesh = Mesh2D(
 )
 
 # Regular grid for fast HJB
-grid = SimpleGrid2D(bounds=mesh.get_bounds(), resolution=(100, 100))
+grid = TensorProductGrid(bounds=mesh.get_bounds(), resolution=(100, 100))
 
 problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, ...)
 ```
@@ -152,7 +152,7 @@ amr_mesh = TriangularAMRMesh(
     max_refinement=5
 )
 
-grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+grid = TensorProductGrid(bounds=(0, 1, 0, 1), resolution=(50, 50))
 
 problem = MFGProblem(hjb_geometry=grid, fp_geometry=amr_mesh, ...)
 ```
@@ -171,7 +171,7 @@ mesh = Mesh2D(
     mesh_size=0.05
 )
 
-grid = SimpleGrid2D(bounds=mesh.get_bounds(), resolution=(100, 100))
+grid = TensorProductGrid(bounds=mesh.get_bounds(), resolution=(100, 100))
 
 problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, ...)
 ```
@@ -278,7 +278,7 @@ python examples/advanced/dual_geometry_fem_mesh.py
 For problems requiring strict mass conservation:
 
 ```python
-@ProjectionRegistry.register(Mesh2D, SimpleGrid2D, "fp_to_hjb")
+@ProjectionRegistry.register(Mesh2D, TensorProductGrid, "fp_to_hjb")
 def mesh_to_grid_conservative(mesh_geo, grid_geo, mesh_values, **kwargs):
     """Conservative L2 projection preserving integral."""
     # Compute mass matrix overlap integrals
@@ -292,7 +292,7 @@ def mesh_to_grid_conservative(mesh_geo, grid_geo, mesh_values, **kwargs):
 For high-accuracy requirements:
 
 ```python
-@ProjectionRegistry.register(Mesh2D, SimpleGrid2D, "fp_to_hjb")
+@ProjectionRegistry.register(Mesh2D, TensorProductGrid, "fp_to_hjb")
 def mesh_to_grid_quadratic(mesh_geo, grid_geo, mesh_values, **kwargs):
     """Quadratic interpolation using element shape functions."""
     # Use P2 finite element basis functions

@@ -2,14 +2,14 @@
 Geometry package for MFG_PDE: Professional mesh generation and complex domain support.
 
 This package implements comprehensive geometry management for MFG problems:
-- Cartesian grids (SimpleGrid1D/2D/3D): Regular finite difference grids
+- TensorProductGrid: Unified Cartesian grids for 1D/2D/3D/nD (recommended)
 - Unstructured meshes (Mesh2D/3D): FEM/FVM triangular/tetrahedral meshes via Gmsh
 - Implicit domains: High-dimensional meshfree domains with signed distance functions
 - Gmsh → Meshio → PyVista pipeline for professional mesh generation
 - Advanced boundary condition management for complex domains
 
 Key Components:
-- SimpleGrid1D/2D/3D: Regular Cartesian grids for finite difference methods
+- TensorProductGrid: Unified nD Cartesian grids for finite difference methods
 - Mesh2D/3D: Unstructured meshes for FEM/FVM (d≤3)
 - implicit: Meshfree geometry infrastructure for any dimension
   - Hyperrectangle: Axis-aligned boxes (O(d) sampling, no rejection!)
@@ -22,9 +22,11 @@ Key Components:
 - BoundaryManager: Advanced boundary condition management
 
 Discretization Methods:
-- Use SimpleGrid* for finite difference solvers
+- Use TensorProductGrid for finite difference solvers (all dimensions)
 - Use Mesh* (Gmsh) for FEM/FVM problems (d≤3)
 - Use implicit.* (SDF) for high-dimensional particle-collocation (d≥4)
+
+Note: SimpleGrid1D/2D/3D have been removed. Use TensorProductGrid instead.
 """
 
 from __future__ import annotations
@@ -109,9 +111,6 @@ from .graph.network_backend import NetworkBackendType, OperationType, get_backen
 from .graph.network_geometry import compute_network_statistics, create_network
 
 # Grid geometry - Import from subdirectories (canonical locations)
-from .grids.grid_1d import SimpleGrid1D
-from .grids.grid_2d import SimpleGrid2D
-from .grids.grid_3d import SimpleGrid3D
 from .grids.tensor_grid import TensorProductGrid
 
 # Implicit geometry
@@ -167,12 +166,10 @@ from .protocol import (
     validate_geometry,
 )
 
-# Legacy grid imports (from old file names)
-
 # Backward compatibility aliases (DEPRECATED - will be removed in v1.0.0)
 # Note: These aliases exist for backward compatibility. The warning is issued
 # at usage time via __getattr__ rather than import time to avoid spamming.
-Domain1D = SimpleGrid1D  # Use SimpleGrid1D instead
+Domain1D = TensorProductGrid  # Use TensorProductGrid instead
 Domain2D = Mesh2D  # Use Mesh2D instead
 Domain3D = Mesh3D  # Use Mesh3D instead
 
@@ -192,10 +189,7 @@ __all__ = [
     # Specific boundary condition types
     "DirichletBC2D",
     "DirichletBC3D",
-    # Geometry components (new naming convention)
-    "SimpleGrid1D",
-    "SimpleGrid2D",
-    "SimpleGrid3D",
+    # Geometry components
     "Mesh1D",
     "Mesh2D",
     "Mesh3D",

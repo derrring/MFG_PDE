@@ -17,7 +17,7 @@ solver configuration available in the core package.
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.config import MFGSolverConfig, PicardConfig
 from mfg_pde.factory import SolverFactory
 
 # ==============================================================================
@@ -51,7 +51,7 @@ print(f"  Final error: {result_default.max_error:.6e}")
 print()
 
 # ==============================================================================
-# Step 2: Custom Configuration with MFGSolverConfig
+# Step 2: Custom Configuration with SolverConfig
 # ==============================================================================
 
 print("=" * 70)
@@ -65,11 +65,13 @@ print()
 
 # Configuration with tighter tolerance
 config_tight = MFGSolverConfig(
-    picard_max_iterations=50,  # More iterations allowed
-    picard_tolerance=1e-6,  # Tighter convergence tolerance
+    picard=PicardConfig(
+        max_iterations=50,  # More iterations allowed
+        tolerance=1e-6,  # Tighter convergence tolerance
+    )
 )
 
-print(f"Config: max_iterations={config_tight.picard_max_iterations}, tol={config_tight.picard_tolerance}")
+print(f"Config: max_iterations={config_tight.picard.max_iterations}, tol={config_tight.picard.tolerance}")
 print()
 
 # Create solver with custom config using SolverFactory
@@ -92,8 +94,10 @@ print()
 
 # Configuration with looser tolerance for faster (but less accurate) results
 config_fast = MFGSolverConfig(
-    picard_max_iterations=20,
-    picard_tolerance=1e-3,  # Looser tolerance
+    picard=PicardConfig(
+        max_iterations=20,
+        tolerance=1e-3,  # Looser tolerance
+    )
 )
 
 solver_fast = SolverFactory.create_solver(problem, config=config_fast)

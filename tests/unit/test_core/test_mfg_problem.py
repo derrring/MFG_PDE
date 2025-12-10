@@ -224,7 +224,8 @@ def test_mfg_problem_with_custom_potential():
     assert problem.components is not None
     # Check potential was set using custom function
     expected = problem.xSpace**2
-    assert np.allclose(problem.f_potential, expected)
+    # Flatten both arrays for comparison (problem stores as 2D column vector)
+    assert np.allclose(np.ravel(problem.f_potential), np.ravel(expected))
 
 
 @pytest.mark.unit
@@ -243,7 +244,8 @@ def test_mfg_problem_with_custom_initial_density():
     # Normalize expected (same way as in MFGProblem.__init__)
     integral = np.sum(expected_unnormalized) * problem.dx
     expected = expected_unnormalized / integral
-    assert np.allclose(problem.m_init, expected)
+    # Flatten both arrays for comparison (problem stores as 2D column vector)
+    assert np.allclose(np.ravel(problem.m_init), np.ravel(expected))
 
 
 @pytest.mark.unit
@@ -259,7 +261,8 @@ def test_mfg_problem_with_custom_final_value():
     assert problem.is_custom is True
     # Check final value was set using custom function
     expected = np.sin(problem.xSpace * np.pi)
-    assert np.allclose(problem.u_fin, expected)
+    # Flatten both arrays for comparison (problem stores as 2D column vector)
+    assert np.allclose(np.ravel(problem.u_fin), np.ravel(expected))
 
 
 # ===================================================================

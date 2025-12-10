@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.config import MFGSolverConfig
 from mfg_pde.factory.solver_factory import (
     SolverFactory,
     SolverFactoryConfig,
@@ -144,15 +144,15 @@ def test_update_config_with_kwargs_particles():
 
 
 @pytest.mark.unit
-def test_update_config_with_kwargs_return_structured():
-    """Test updating return_structured flag."""
+def test_update_config_with_kwargs_picard_damping():
+    """Test updating picard damping factor."""
     base_config = MFGSolverConfig()
     updated = SolverFactory._update_config_with_kwargs(
         base_config,
-        return_structured=False,
+        max_picard_iterations=200,
     )
 
-    assert updated.return_structured is False
+    assert updated.picard.max_iterations == 200
 
 
 # ===================================================================

@@ -32,7 +32,7 @@ class Geometry(ABC):
     eliminating the need for separate protocol/adapter layers.
 
     All geometry types inherit from this class:
-    - Cartesian grids: Domain1D, TensorProductGrid, SimpleGrid2D/3D
+    - Cartesian grids: TensorProductGrid (all dimensions)
     - Unstructured meshes: Domain2D, Domain3D
     - Networks: NetworkGeometry
     - Adaptive meshes: AMR classes
@@ -491,7 +491,7 @@ class CartesianGrid(Geometry):
     Abstract base class for regular Cartesian grids.
 
     Extends Geometry with grid-specific properties that are guaranteed
-    to exist for structured grids (TensorProductGrid, Domain1D, SimpleGrid).
+    to exist for structured grids (TensorProductGrid).
 
     Grid Properties:
         - Regular spacing in each dimension

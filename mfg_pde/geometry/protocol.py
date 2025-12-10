@@ -268,8 +268,9 @@ def is_boundary_aware(geometry: object) -> bool:
         True if object implements GeometryProtocol, False otherwise
 
     Examples:
-        >>> from mfg_pde.geometry import SimpleGrid1D, Hyperrectangle
-        >>> is_boundary_aware(SimpleGrid1D(0, 1, 10))
+        >>> from mfg_pde.geometry import TensorProductGrid, Hyperrectangle
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> is_boundary_aware(grid)
         True
         >>> is_boundary_aware(Hyperrectangle([[0, 1], [0, 1]]))
         True
@@ -316,9 +317,9 @@ def detect_geometry_type(geometry: object) -> GeometryType:
         ValueError: If geometry type cannot be determined
 
     Examples:
-        >>> from mfg_pde.geometry import SimpleGrid1D
-        >>> domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
-        >>> detect_geometry_type(domain)
+        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> detect_geometry_type(grid)
         <GeometryType.CARTESIAN_GRID: 'cartesian_grid'>
 
         >>> from mfg_pde.geometry import NetworkGeometry
@@ -365,9 +366,9 @@ def is_geometry_compatible(geometry: object) -> bool:
         True if object implements GeometryProtocol, False otherwise
 
     Examples:
-        >>> from mfg_pde.geometry import SimpleGrid1D
-        >>> domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
-        >>> is_geometry_compatible(domain)
+        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> is_geometry_compatible(grid)
         True
 
         >>> is_geometry_compatible("not a geometry")
@@ -388,9 +389,9 @@ def validate_geometry(geometry: object) -> None:
         ValueError: If geometry has invalid properties
 
     Examples:
-        >>> from mfg_pde.geometry import SimpleGrid1D
-        >>> domain = SimpleGrid1D(xmin=0.0, xmax=1.0)
-        >>> validate_geometry(domain)  # No error
+        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> validate_geometry(grid)  # No error
 
         >>> validate_geometry("invalid")
         Traceback (most recent call last):

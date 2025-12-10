@@ -19,10 +19,10 @@ Dual geometry support allows you to solve the HJB and FP equations on **differen
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # Single geometry for both HJB and FP (traditional approach)
-grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 
 problem = MFGProblem(
     geometry=grid,  # Same geometry for HJB and FP
@@ -40,11 +40,11 @@ assert problem.geometry_projector is None  # No projection needed
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # Different geometries for HJB and FP
-hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(100, 100))  # Fine
-fp_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(20, 20))     # Coarse
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])  # Fine
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21])     # Coarse
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,  # Fine grid for value iteration
@@ -67,13 +67,13 @@ assert problem.geometry_projector is not None  # Created automatically
 
 ```python
 from mfg_pde import MFGProblem, solve_mfg
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # Fine grid for accurate HJB solution
-hjb_grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(200, 200))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[201, 201])
 
 # Coarse grid for fast FP evolution
-fp_grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(50, 50))
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[51, 51])
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,
@@ -100,10 +100,10 @@ print(f"FP solution shape: {result.M.shape}")   # (51, 51)
 ```python
 import numpy as np
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # Grid for HJB (Eulerian)
-hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 
 # Particle geometry for FP (Lagrangian)
 class ParticleGeometry:
@@ -160,10 +160,10 @@ U_particles = projector.project_hjb_to_fp(U_grid)
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D, GridNetwork
+from mfg_pde.geometry import TensorProductGrid, GridNetwork
 
 # Grid for HJB (continuous space)
-hjb_grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(100, 100))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[101, 101])
 
 # Network for FP (discrete corridors)
 fp_network = GridNetwork(
@@ -203,7 +203,7 @@ M_grid = projector.project_fp_to_hjb(M_nodes)  # Density on grid (101, 101)
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # High-dimensional particle system (e.g., 10D state space)
 class HighDimParticles:
@@ -220,7 +220,7 @@ class HighDimParticles:
         return 2  # Projected dimension
 
 # 2D grid for HJB (value function in reduced space)
-hjb_grid = SimpleGrid2D(bounds=(-3, 3, -3, 3), resolution=(50, 50))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(-3, 3), (-3, 3)], num_points=[51, 51])
 
 # High-D particles for FP (full state space)
 fp_particles = HighDimParticles(num_particles=10000, dimension=10)
@@ -297,10 +297,10 @@ If you have a custom geometry type, register specialized projections:
 ```python
 from mfg_pde.geometry import ProjectionRegistry
 
-@ProjectionRegistry.register(MyCustomGeometry, SimpleGrid2D, "hjb_to_fp")
+@ProjectionRegistry.register(MyCustomGeometry, TensorProductGrid, "hjb_to_fp")
 def custom_to_grid(custom_geo, grid_geo, values, **kwargs):
     """
-    Project from MyCustomGeometry to SimpleGrid2D.
+    Project from MyCustomGeometry to TensorProductGrid.
 
     Args:
         custom_geo: Source geometry
@@ -315,9 +315,9 @@ def custom_to_grid(custom_geo, grid_geo, values, **kwargs):
     grid_values = ...
     return grid_values
 
-@ProjectionRegistry.register(SimpleGrid2D, MyCustomGeometry, "fp_to_hjb")
+@ProjectionRegistry.register(TensorProductGrid, MyCustomGeometry, "fp_to_hjb")
 def grid_to_custom(grid_geo, custom_geo, values, **kwargs):
-    """Project from SimpleGrid2D to MyCustomGeometry."""
+    """Project from TensorProductGrid to MyCustomGeometry."""
     custom_values = ...
     return custom_values
 
@@ -342,7 +342,7 @@ from mfg_pde.geometry.base_geometry import CartesianGrid
 @ProjectionRegistry.register(CartesianGrid, CartesianGrid, "hjb_to_fp")
 def conservative_projection(source, target, values, **kwargs):
     """Conservative projection for any CartesianGrid types."""
-    # Works for SimpleGrid1D, SimpleGrid2D, SimpleGrid3D, TensorProductGrid, etc.
+    # Works for TensorProductGrid, TensorProductGrid, TensorProductGrid, TensorProductGrid, etc.
     return projected_values
 ```
 
@@ -507,17 +507,17 @@ if projector.hjb_to_fp_method == "registry":
 import numpy as np
 import matplotlib.pyplot as plt
 from mfg_pde import MFGProblem, solve_mfg
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # Problem: Evacuate building (10m × 10m) with exit at (0, 5)
 # Use fine grid for HJB (accurate value function near exit)
 # Use coarse grid for FP (fast density evolution)
 
 # Fine grid for HJB (need accuracy near exit)
-hjb_grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(200, 200))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[201, 201])
 
 # Coarse grid for FP (density is smooth)
-fp_grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(50, 50))
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[51, 51])
 
 # Terminal cost: distance to exit at (0, 5)
 def g(x, y):
@@ -647,13 +647,13 @@ class Particles3D:
     def get_dimension(self):
         return 2  # Projected dimension
 
-hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 fp_particles = Particles3D(...)
 
 problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_particles, ...)
 ```
 
-For true 3D, use `SimpleGrid3D` for HJB geometry.
+For true 3D, use `TensorProductGrid` for HJB geometry.
 
 ## Further Reading
 

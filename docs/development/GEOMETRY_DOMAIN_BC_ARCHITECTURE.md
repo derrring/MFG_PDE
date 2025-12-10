@@ -66,9 +66,14 @@ This document describes the relationship between geometry, domain, and boundary 
 | Type | Class | File | Use Case |
 |:-----|:------|:-----|:---------|
 | Cartesian Grid | `TensorProductGrid` | `grids/tensor_grid.py` | FDM, WENO, structured solvers |
-| Implicit Domain | `Hyperrectangle`, `Hypersphere`, `CSG` | `implicit/` | High-D particle methods |
+| Dimension-specific | `Grid1D`, `Grid2D`, `Grid3D` | `grids/grid_{1d,2d,3d}.py` | Legacy compatibility |
+| Implicit Domain | `ImplicitDomain` | `implicit/implicit_domain.py` | High-D particle methods |
+| Implicit Primitives | `Hyperrectangle`, `Hypersphere` | `implicit/hyperrectangle.py`, `hypersphere.py` | SDF building blocks |
+| CSG Operations | `UnionDomain`, `IntersectionDomain`, `DifferenceDomain` | `implicit/csg_operations.py` | Composite domains |
+| Point Cloud | `PointCloudDomain` | `implicit/point_cloud.py` | Scattered data domains |
 | Network | `BaseNetworkGeometry`, `GridNetwork` | `graph/network_geometry.py` | Graph MFG, traffic networks |
-| Unstructured Mesh | `Mesh2D`, `Mesh3D` | `meshes/` | FEM, complex geometries |
+| Maze Generation | `MazeGenerator`, `HybridMazeGenerator` | `graph/maze_*.py` | Maze-based MFG problems |
+| Unstructured Mesh | `Mesh1D`, `Mesh2D`, `Mesh3D` | `meshes/mesh_{1d,2d,3d}.py` | FEM, complex geometries |
 | AMR | `OneDimensionalAMRMesh`, `TriangularAMRMesh` | `amr/` | Adaptive refinement |
 
 ### 2.2 GeometryProtocol (`protocol.py`)
@@ -237,7 +242,8 @@ problem = MFGProblem(geometry=grid, boundary_conditions=bc, ...)
 ### 4.2 Path 2: Complex Domain (SDF-based)
 
 ```python
-from mfg_pde.geometry.implicit import Hyperrectangle, Hypersphere, DifferenceDomain
+from mfg_pde.geometry.implicit import Hyperrectangle, Hypersphere
+from mfg_pde.geometry.implicit.csg_operations import DifferenceDomain
 
 # 1. Create domain with obstacle
 room = Hyperrectangle(bounds=[(0, 10), (0, 5)])
@@ -312,42 +318,69 @@ mfg_pde/geometry/
 ├── __init__.py              # Public API exports
 ├── protocol.py              # GeometryProtocol, GeometryType
 ├── base.py                  # Geometry ABC
-├── README.md                # User documentation
+├── masks.py                 # Domain masking utilities
 │
 ├── grids/
-│   └── tensor_grid.py       # TensorProductGrid (unified nD)
+│   ├── __init__.py          # Grid exports
+│   ├── tensor_grid.py       # TensorProductGrid (unified nD, recommended)
+│   ├── grid_1d.py           # Grid1D (legacy)
+│   ├── grid_2d.py           # Grid2D (legacy)
+│   └── grid_3d.py           # Grid3D (legacy)
 │
 ├── boundary/
+│   ├── __init__.py          # Boundary exports
 │   ├── types.py             # BCType, BCSegment
-│   ├── conditions.py        # BoundaryConditions class
+│   ├── conditions.py        # BoundaryConditions class (modern, unified)
 │   ├── applicator_base.py   # BaseBCApplicator
 │   ├── applicator_fdm.py    # FDM applicator
 │   ├── applicator_fem.py    # FEM applicator
 │   ├── applicator_meshfree.py # Particle applicator
 │   ├── applicator_graph.py  # Graph applicator
-│   ├── fdm_bc_1d.py         # 1D FDM BC utilities
+│   ├── fdm_bc_1d.py         # 1D FDM BC utilities (deprecated, use conditions.py)
 │   ├── fem_bc_1d.py         # 1D FEM BC classes
 │   ├── fem_bc_2d.py         # 2D FEM BC classes
 │   └── fem_bc_3d.py         # 3D FEM BC classes
 │
 ├── implicit/
-│   └── implicit_geometry.py # SDF-based domains, CSG
+│   ├── __init__.py          # Implicit domain exports
+│   ├── implicit_domain.py   # ImplicitDomain base class
+│   ├── hyperrectangle.py    # Hyperrectangle SDF primitive
+│   ├── hypersphere.py       # Hypersphere SDF primitive
+│   ├── csg_operations.py    # CSG: Union, Intersection, Difference
+│   ├── point_cloud.py       # PointCloudDomain
+│   └── README.md            # Implicit geometry documentation
 │
 ├── graph/
-│   └── network_geometry.py  # Network/graph geometries
+│   ├── __init__.py          # Graph/network exports
+│   ├── network_geometry.py  # BaseNetworkGeometry, GridNetwork
+│   ├── network_backend.py   # Graph backend utilities
+│   ├── maze_generator.py    # Core maze generation
+│   ├── maze_config.py       # Maze configuration
+│   ├── maze_hybrid.py       # Hybrid maze generation
+│   ├── maze_recursive_division.py  # Recursive division algorithm
+│   ├── maze_voronoi.py      # Voronoi-based mazes
+│   ├── maze_cellular_automata.py   # Cellular automata mazes
+│   ├── maze_postprocessing.py      # Maze post-processing
+│   └── maze_utils.py        # Maze utilities
 │
 ├── meshes/
+│   ├── __init__.py          # Mesh exports
 │   ├── mesh_data.py         # Universal mesh container (MeshData)
 │   ├── mesh_manager.py      # Mesh lifecycle management
 │   ├── mesh_1d.py           # 1D unstructured mesh
 │   ├── mesh_2d.py           # 2D unstructured mesh
 │   └── mesh_3d.py           # 3D unstructured mesh
 │
-└── amr/
-    ├── amr_1d.py            # 1D interval refinement
-    ├── amr_quadtree_2d.py   # 2D quadtree AMR
-    ├── amr_triangular_2d.py # 2D triangular AMR
-    └── amr_tetrahedral_3d.py # 3D tetrahedral AMR
+├── amr/
+│   ├── __init__.py          # AMR exports
+│   ├── amr_1d.py            # 1D interval refinement
+│   ├── amr_quadtree_2d.py   # 2D quadtree AMR
+│   ├── amr_triangular_2d.py # 2D triangular AMR
+│   └── amr_tetrahedral_3d.py # 3D tetrahedral AMR
+│
+└── operators/
+    ├── __init__.py          # Operator exports
+    └── projection.py        # Projection operators
 ```
 
 ---
@@ -366,5 +399,5 @@ mfg_pde/geometry/
 ---
 
 *Generated: 2025-12-09*
-*Last audited: 2025-12-09*
+*Last audited: 2025-12-10*
 *Part of: MFG_PDE Deprecation Cleanup Phase 2*

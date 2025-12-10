@@ -3,6 +3,16 @@
 MFG Solver Factory
 
 Provides factory for creating MFG solvers with default configuration.
+
+Config Type Support
+-------------------
+The factory accepts both legacy MFGSolverConfig and the modern SolverConfig:
+
+- SolverConfig (recommended): Clean hierarchy from mfg_pde.config.core
+- MFGSolverConfig (deprecated): Legacy config with backward compatibility
+
+Both configs share compatible structure for the fields used by solvers
+(picard.max_iterations, picard.tolerance, etc.), enabling gradual migration.
 """
 
 from __future__ import annotations
@@ -11,13 +21,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfg_pde.config import MFGSolverConfig
 
 if TYPE_CHECKING:
     from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
     from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.core.mfg_problem import MFGProblem
-
 
 SolverType = Literal["fixed_point"]
 
@@ -115,10 +124,7 @@ class SolverFactory:
             updated_config.hjb.newton.max_iterations = kwargs["max_newton_iterations"]
         if "newton_tolerance" in kwargs:
             updated_config.hjb.newton.tolerance = kwargs["newton_tolerance"]
-        if "return_structured" in kwargs:
-            updated_config.return_structured = kwargs["return_structured"]
-        if "warm_start" in kwargs:
-            updated_config.warm_start = kwargs["warm_start"]
+        # Note: return_structured and warm_start were deprecated and removed from MFGSolverConfig
 
         # Particle-specific updates
         if "num_particles" in kwargs:
@@ -146,8 +152,7 @@ class SolverFactory:
             "picard_tolerance",
             "max_newton_iterations",
             "newton_tolerance",
-            "return_structured",
-            "warm_start",
+            # return_structured and warm_start were deprecated and removed
             "num_particles",
             "delta",
         }
