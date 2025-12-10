@@ -364,24 +364,6 @@ problem:
 
 ---
 
-## Migration Notes
-
-### From Old `*Config` Names (v0.15 and earlier)
-
-If you were importing OmegaConf schemas with `*Config` names, update to `*Schema`:
-
-```python
-# Old (deprecated, will be removed in v0.18)
-from mfg_pde.config.structured_schemas import HJBConfig, MFGConfig
-
-# New (v0.16+)
-from mfg_pde.config.structured_schemas import HJBSchema, MFGSchema
-```
-
-The old names still work but emit `DeprecationWarning`.
-
----
-
 ## Troubleshooting
 
 ### "DictConfig has no attribute 'X'"
