@@ -24,7 +24,6 @@ New (recommended):
 from __future__ import annotations
 
 import warnings
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -286,163 +285,6 @@ class _FPConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
-class LegacyMFGSolverConfig(BaseModel):
-    """
-    Legacy MFG solver configuration with comprehensive validation.
-
-    .. deprecated::
-        This class is deprecated and will be removed in a future version.
-        Use MFGSolverConfig from mfg_pde.config.core instead:
-
-        >>> from mfg_pde.config.core import MFGSolverConfig, PicardConfig
-        >>> config = MFGSolverConfig(
-        ...     picard=PicardConfig(max_iterations=100)
-        ... )
-
-    This class is kept for backward compatibility with code that:
-    1. Uses the internal _*Config classes (_NewtonConfig, _HJBConfig, etc.)
-    2. Uses to_legacy_dict() method
-    3. Relies on the specific field structure
-    """
-
-    def model_post_init(self, __context: Any) -> None:
-        """Emit deprecation warning on instantiation."""
-        warnings.warn(
-            "LegacyMFGSolverConfig (imported as MFGSolverConfig from pydantic_config) "
-            "is deprecated. Use MFGSolverConfig from mfg_pde.config.core instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-
-    # Core solver configurations (using internal classes)
-    newton: _NewtonConfig = Field(
-        default_factory=lambda: _NewtonConfig(
-            max_iterations=30, tolerance=1e-6, damping_factor=1.0, line_search=False, verbose=False
-        ),
-        description="Newton method configuration",
-    )
-    picard: _PicardConfig = Field(
-        default_factory=lambda: _PicardConfig(
-            max_iterations=20, tolerance=1e-3, damping_factor=0.5, adaptive_damping=False, verbose=False
-        ),
-        description="Picard iteration configuration",
-    )
-    hjb: _HJBConfig = Field(
-        default_factory=lambda: _HJBConfig(solver_type="gfdm_qp"), description="HJB solver configuration"
-    )
-    fp: _FPConfig = Field(
-        default_factory=lambda: _FPConfig(solver_type="fdm", time_integration="implicit_euler"),
-        description="FP solver configuration",
-    )
-
-    # Global solver settings
-    return_structured: bool = Field(True, description="Whether to return structured result objects")
-    enable_warm_start: bool = Field(False, description="Whether to enable warm start capability")
-    convergence_tolerance: float = Field(1e-5, gt=1e-12, le=1e-1, description="Global convergence tolerance")
-    strict_convergence_errors: bool = Field(
-        True,
-        description="Whether to raise exceptions for convergence failures (True) or issue warnings (False)",
-    )
-
-    # Metadata and tracking
-    experiment_name: str | None = Field(None, description="Name for experiment tracking")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
-    created_at: datetime = Field(default_factory=datetime.now, description="Configuration creation timestamp")
-
-    @model_validator(mode="after")
-    def validate_tolerance_hierarchy(self) -> MFGSolverConfig:
-        """Validate tolerance hierarchy across all methods."""
-        newton_tol = self.newton.tolerance
-        picard_tol = self.picard.tolerance
-        global_tol = self.convergence_tolerance
-
-        # Newton should be strictest, then global, then Picard
-        if newton_tol > global_tol:
-            warnings.warn(
-                f"Newton tolerance ({newton_tol:.2e}) > global tolerance ({global_tol:.2e})",
-                UserWarning,
-            )
-
-        if global_tol > picard_tol:
-            warnings.warn(
-                f"Global tolerance ({global_tol:.2e}) > Picard tolerance ({picard_tol:.2e})",
-                UserWarning,
-            )
-
-        return self
-
-    @field_validator("convergence_tolerance")
-    @classmethod
-    def validate_global_convergence(cls, v: float) -> float:
-        """Validate global convergence tolerance is reasonable."""
-        if v < 1e-10:
-            warnings.warn(
-                f"Very strict global tolerance ({v:.2e}) may be difficult to achieve",
-                UserWarning,
-            )
-        return v
-
-    def to_notebook_metadata(self) -> dict[str, Any]:
-        """Convert configuration to notebook metadata format."""
-        return {
-            "experiment_name": self.experiment_name,
-            "config_version": "2.0_pydantic",
-            "created_at": self.created_at.isoformat(),
-            "solver_config": self.dict(exclude={"created_at"}),
-            "validation_passed": True,
-        }
-
-    def to_legacy_dict(self) -> dict[str, Any]:
-        """Convert to legacy parameter format for backward compatibility."""
-        return {
-            # Newton parameters (new naming)
-            "max_newton_iterations": self.newton.max_iterations,
-            "newton_tolerance": self.newton.tolerance,
-            # Picard parameters (new naming)
-            "max_picard_iterations": self.picard.max_iterations,
-            "picard_tolerance": self.picard.tolerance,
-            # Legacy parameter names (for backward compatibility)
-            "NiterNewton": self.newton.max_iterations,
-            "l2errBoundNewton": self.newton.tolerance,
-            "max_iterations": self.picard.max_iterations,
-            "l2errBoundPicard": self.picard.tolerance,
-            "l2errBound": self.convergence_tolerance,
-            # Additional parameters
-            "return_structured": self.return_structured,
-            "enable_warm_start": self.enable_warm_start,
-        }
-
-    model_config = ConfigDict(validate_assignment=True, env_prefix="MFG_")
-
-
-def extract_legacy_parameters(config: MFGSolverConfig, **kwargs: Any) -> dict[str, Any]:
-    """
-    Extract legacy parameters from Pydantic config with automatic validation.
-
-    Args:
-        config: Pydantic MFGSolverConfig instance
-        **kwargs: Additional parameters to override
-
-    Returns:
-        Dictionary with legacy parameter names and validated values
-    """
-    # Start with validated Pydantic configuration
-    legacy_params = config.to_legacy_dict()
-
-    # Override with any additional kwargs (with validation warnings)
-    for key, value in kwargs.items():
-        if key in legacy_params:
-            original_value = legacy_params[key]
-            if original_value != value:
-                warnings.warn(
-                    f"Overriding validated parameter {key}: {original_value} -> {value}",
-                    UserWarning,
-                )
-        legacy_params[key] = value
-
-    return legacy_params
-
-
 # =============================================================================
 # BACKWARD COMPATIBILITY ALIASES
 # =============================================================================
@@ -460,15 +302,12 @@ FPConfig = _FPConfig
 # This ensures code importing from pydantic_config gets the modern class
 from mfg_pde.config.core import MFGSolverConfig  # noqa: E402
 
-# Also export the legacy version for code that explicitly needs it
 __all__ = [
     "MFGSolverConfig",  # Canonical (from core.py)
-    "LegacyMFGSolverConfig",  # Deprecated legacy version
     "NewtonConfig",
     "PicardConfig",
     "GFDMConfig",
     "ParticleConfig",
     "HJBConfig",
     "FPConfig",
-    "extract_legacy_parameters",
 ]

@@ -60,11 +60,6 @@ from .mfg_methods import (
     WENOConfig,
 )
 
-# Legacy config utilities
-from .pydantic_config import (
-    extract_legacy_parameters,
-)
-
 # =============================================================================
 # OPTIONAL: OmegaConf-based configuration management
 # =============================================================================
@@ -110,7 +105,6 @@ __all__ = [
     "validate_yaml_config",
     # MFG solver config
     "MFGSolverConfig",
-    "extract_legacy_parameters",
     # Array validation
     "ArrayValidationConfig",
     "CollocationConfig",
