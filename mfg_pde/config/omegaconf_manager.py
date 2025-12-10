@@ -15,7 +15,7 @@ If you encounter mypy errors like:
 
 DO NOT modify the import section! Instead:
 1. Use the structured config methods: load_structured_mfg_config(), load_mfg_config()
-2. Import proper types: from .structured_schemas import MFGConfig, TypedMFGConfig
+2. Import proper types: from .structured_schemas import MFGSchema, TypedMFGConfig
 3. Reference Issue #28 for complete implementation details
 4. The current import pattern with try/except and stub classes is CORRECT
 
@@ -105,8 +105,8 @@ else:
 
 from .pydantic_config import MFGSolverConfig
 from .structured_schemas import (
-    BeachProblemConfig,
-    MFGConfig,
+    BeachProblemSchema,
+    MFGSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -116,8 +116,8 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig as OmegaConfig
 
     # Use structured schemas for type safety
-    TypedMFGConfig = MFGConfig
-    TypedBeachConfig = BeachProblemConfig
+    TypedMFGConfig = MFGSchema
+    TypedBeachConfig = BeachProblemSchema
 else:
     OmegaConfig = Any
     TypedMFGConfig = Any
@@ -508,7 +508,7 @@ class OmegaConfManager:
     # === STRUCTURED CONFIG METHODS (Type-Safe) ===
 
     def load_structured_config(
-        self, config_path: str | Path, schema_cls: type = MFGConfig, **overrides: Any
+        self, config_path: str | Path, schema_cls: type = MFGSchema, **overrides: Any
     ) -> TypedMFGConfig:
         """
         Load configuration using structured schema for full type safety.
@@ -570,7 +570,7 @@ class OmegaConfManager:
         Returns:
             Fully typed MFG configuration object
         """
-        return self.load_structured_config(config_path, MFGConfig, **overrides)
+        return self.load_structured_config(config_path, MFGSchema, **overrides)
 
     def load_beach_config_structured(
         self, config_path: str | Path = "beach_problem.yaml", **overrides: Any
@@ -585,7 +585,7 @@ class OmegaConfManager:
         Returns:
             Fully typed Beach problem configuration object
         """
-        return self.load_structured_config(config_path, BeachProblemConfig, **overrides)  # type: ignore[return-value]
+        return self.load_structured_config(config_path, BeachProblemSchema, **overrides)  # type: ignore[return-value]
 
     def create_default_mfg_config(self) -> TypedMFGConfig:
         """
@@ -594,7 +594,7 @@ class OmegaConfManager:
         Returns:
             Default MFG configuration with full type safety
         """
-        return self._OmegaConf.structured(MFGConfig)
+        return self._OmegaConf.structured(MFGSchema)
 
     def validate_structured_config(self, config: TypedMFGConfig) -> bool:
         """

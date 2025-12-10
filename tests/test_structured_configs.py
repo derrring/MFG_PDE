@@ -21,7 +21,7 @@ try:
         load_structured_beach_config,
         load_structured_mfg_config,
     )
-    from mfg_pde.config.structured_schemas import BeachProblemConfig, MFGConfig
+    from mfg_pde.config.structured_schemas import BeachProblemSchema, MFGSchema
 
     OMEGACONF_AVAILABLE = True
 except ImportError:
@@ -52,8 +52,8 @@ class TestStructuredConfigs:
         assert config.solver.max_iterations == 100
 
     def test_mfg_config_schema(self):
-        """Test MFGConfig dataclass schema."""
-        config = MFGConfig()
+        """Test MFGSchema dataclass schema."""
+        config = MFGSchema()
 
         # Test that all required attributes exist
         assert hasattr(config.problem, "name")
@@ -70,8 +70,8 @@ class TestStructuredConfigs:
         assert config.experiment.name == "parameter_sweep"
 
     def test_beach_config_schema(self):
-        """Test BeachProblemConfig specialized schema."""
-        config = BeachProblemConfig()
+        """Test BeachProblemSchema specialized schema."""
+        config = BeachProblemSchema()
 
         # Test beach-specific parameters
         assert config.problem.name == "towel_on_beach"
