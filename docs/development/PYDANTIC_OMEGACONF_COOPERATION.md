@@ -475,7 +475,85 @@ def test_schema_field_consistency():
 
 ---
 
-## 10. Summary
+## 10. Naming Strategy for Config Classes
+
+### 10.1 Current Naming Conflicts
+
+The dual-system architecture creates **equivocal naming** where identical class names exist in both systems:
+
+| Class Name | Pydantic Location | OmegaConf Location | Conflict? |
+|:-----------|:-----------------|:-------------------|:----------|
+| `NewtonConfig` | `mfg_methods.py:27` | `structured_schemas.py:79` | **Yes** |
+| `HJBConfig` | `mfg_methods.py:251` | `structured_schemas.py:88` | **Yes** |
+| `FPConfig` | `mfg_methods.py:302` | `structured_schemas.py:98` | **Yes** |
+| `LoggingConfig` | `core.py:29` | `structured_schemas.py:119` | **Yes** |
+| `SolverConfig` | `core.py` (alias) | `structured_schemas.py:106` | **Yes** |
+| `MFGSolverConfig` | `core.py:121` | - | No |
+| `ProblemConfig` | - | `structured_schemas.py:64` | No (OmegaConf only) |
+
+### 10.2 Recommended Naming Strategy
+
+**Strategy: Module-based Disambiguation (Current)**
+
+Keep identical names, rely on explicit imports:
+
+```python
+# Pydantic configs (canonical for solver)
+from mfg_pde.config import HJBConfig, FPConfig, MFGSolverConfig
+
+# OmegaConf configs (for YAML experiments)
+from mfg_pde.config.structured_schemas import HJBConfig as YamlHJBConfig
+from mfg_pde.config.structured_schemas import SolverConfig as ExperimentSolverConfig
+```
+
+**Alternative Strategies (Not Implemented)**:
+
+| Strategy | Example | Pros | Cons |
+|:---------|:--------|:-----|:-----|
+| **Prefix by System** | `OmegaHJBConfig` | Clear distinction | Verbose names |
+| **Suffix by Purpose** | `HJBRuntimeConfig` / `HJBSchemaConfig` | Explicit purpose | Breaking change |
+| **Namespace Only** | Keep as-is | No code change | Import confusion |
+
+### 10.3 Import Guidelines
+
+**For Solver Configuration** (programmatic API):
+```python
+# Canonical imports - use these for solver configuration
+from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig, PicardConfig
+```
+
+**For YAML Experiments** (OmegaConf):
+```python
+# Use explicit qualified imports when mixing both systems
+from mfg_pde.config.structured_schemas import (
+    SolverConfig as YamlSolverConfig,
+    HJBConfig as YamlHJBConfig,
+    ProblemConfig,  # OmegaConf-only, no conflict
+)
+```
+
+**For Bridge Operations** (converting between systems):
+```python
+from mfg_pde.config import MFGSolverConfig  # Target (Pydantic)
+from mfg_pde.config.omegaconf_manager import OmegaConfManager  # Bridge
+from mfg_pde.config.structured_schemas import SolverConfig  # Source (OmegaConf)
+```
+
+### 10.4 Semantic Distinction
+
+Despite identical names, the configs have **different semantics**:
+
+| Concept | Pydantic (`mfg_methods.py`) | OmegaConf (`structured_schemas.py`) |
+|:--------|:---------------------------|:------------------------------------|
+| `HJBConfig` | Full method config with nested Newton/GFDM | Simple solver type + tolerance |
+| `FPConfig` | Full method config with particles/KDE | Simple solver type + time scheme |
+| `SolverConfig` | Alias for `MFGSolverConfig` | Container for HJB + FP + iteration params |
+
+**Key Insight**: OmegaConf schemas are **simpler** (YAML-friendly), while Pydantic schemas are **richer** (full validation). The bridge (`create_pydantic_config`) maps simple to rich.
+
+---
+
+## 11. Summary
 
 **Architecture Assessment**: This dual-system approach represents **best practice** for scientific computing configuration:
 
@@ -495,6 +573,6 @@ def test_schema_field_consistency():
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Last Updated**: 2025-12-10
 **Related**: `docs/development/DEPRECATION_PLAN_v0.16.md`, Issue #28
