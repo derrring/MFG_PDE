@@ -8,7 +8,7 @@
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **v0.14.0** - Production-ready MFG solver with GFDM monotonicity, RBF operators, JAX autodiff, and adaptive time-stepping
+> **v0.15.3** - Production-ready MFG solver with dual-system configuration (Pydantic + OmegaConf), GFDM monotonicity, and streamlined API
 
 ---
 
@@ -60,9 +60,9 @@ result = MFGProblem().solve()
 - [Examples](examples/) - Working code examples
 
 **Utilities & Guides**:
+- [Configuration System](docs/user/configuration_system.md) - Pydantic + OmegaConf dual architecture
 - [Particle Interpolation](docs/user/particle_interpolation.md) - Grid ↔ Particles
 - [SDF Utilities](docs/user/sdf_utilities.md) - Geometry and obstacles
-- [Migration Guide](docs/migration/PHASE_3_MIGRATION_GUIDE.md) - Upgrading from v0.8.x
 
 **For Developers**:
 - [Developer Guide](docs/development/) - Extending the framework
@@ -217,7 +217,7 @@ If you use MFG_PDE in your research:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={0.14.0},
+  version={0.15.3},
   url={https://github.com/derrring/MFG_PDE}
 }
 ```
