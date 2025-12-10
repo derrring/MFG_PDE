@@ -577,14 +577,36 @@ HJBConfig = HJBSchema  # Deprecated alias, emit warning on use
 
 **Phase 3 (v0.18)**: Remove old names
 
-### 10.5 Complete Naming Convention
+### 10.5 Complete Naming Convention (Strict Consistency)
 
-| Role | Naming Pattern | Example | Location |
-|:-----|:---------------|:--------|:---------|
-| **Runtime config (Pydantic)** | `*Config` | `HJBConfig`, `MFGSolverConfig` | `core.py`, `mfg_methods.py` |
-| **YAML schema (OmegaConf)** | `*Schema` | `HJBSchema`, `SolverSchema` | `structured_schemas.py` |
-| **Problem definition** | `*Config` | `ProblemConfig` | `structured_schemas.py` (OmegaConf-only, no conflict) |
-| **Experiment metadata** | `*Config` | `ExperimentConfig` | `structured_schemas.py` (OmegaConf-only, no conflict) |
+**Principle**: ALL classes in a module follow the same suffix, regardless of current conflicts.
+
+| Layer | File | Suffix | Rationale |
+|:------|:-----|:-------|:----------|
+| **Pydantic** | `core.py`, `mfg_methods.py` | `*Config` | Runtime-validated entities |
+| **OmegaConf** | `structured_schemas.py` | `*Schema` | Static YAML blueprints (DTOs) |
+
+**Complete Mapping**:
+
+| Concept | Pydantic (`*Config`) | OmegaConf (`*Schema`) | Notes |
+|:--------|:--------------------|:---------------------|:------|
+| **Solver root** | `MFGSolverConfig` | `SolverSchema` | Main config container |
+| **HJB method** | `HJBConfig` | `HJBSchema` | HJB solver settings |
+| **FP method** | `FPConfig` | `FPSchema` | FP solver settings |
+| **Newton** | `NewtonConfig` | `NewtonSchema` | Newton iteration |
+| **Logging** | `LoggingConfig` | `LoggingSchema` | Logging settings |
+| **Problem definition** | *(future)* | `ProblemSchema` | **Renamed** from `ProblemConfig` |
+| **Experiment metadata** | *(N/A)* | `ExperimentSchema` | **Renamed** from `ExperimentConfig` |
+| **Domain** | *(N/A)* | `DomainSchema` | **Renamed** from `DomainConfig` |
+| **Boundary conditions** | *(N/A)* | `BoundaryConditionsSchema` | **Renamed** from `BoundaryConditionsConfig` |
+| **Initial condition** | *(N/A)* | `InitialConditionSchema` | **Renamed** from `InitialConditionConfig` |
+| **Visualization** | *(N/A)* | `VisualizationSchema` | **Renamed** from `VisualizationConfig` |
+
+**Why strict consistency matters**:
+1. **Cognitive load**: "All imports from `structured_schemas.py` end in `*Schema`"
+2. **Future-proofing**: No rename needed when Pydantic `ProblemConfig` is added
+3. **File semantics**: File named `structured_schemas.py` contains only `*Schema` classes
+4. **IDE clarity**: Auto-complete shows clear distinction
 
 ### 10.6 Import Guidelines (After Migration)
 
@@ -596,12 +618,13 @@ from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig, PicardConfig
 
 **For YAML Experiments** (OmegaConf):
 ```python
-# Clean imports - no aliasing needed
+# Clean imports - ALL end in *Schema
 from mfg_pde.config.structured_schemas import (
     SolverSchema,
     HJBSchema,
     FPSchema,
-    ProblemConfig,  # OmegaConf-only, no conflict
+    ProblemSchema,      # Renamed from ProblemConfig
+    ExperimentSchema,   # Renamed from ExperimentConfig
 )
 ```
 
@@ -610,6 +633,13 @@ from mfg_pde.config.structured_schemas import (
 from mfg_pde.config import MFGSolverConfig  # Target (Pydantic)
 from mfg_pde.config.omegaconf_manager import OmegaConfManager  # Bridge
 from mfg_pde.config.structured_schemas import SolverSchema  # Source (OmegaConf)
+```
+
+**Verification**: After migration, the following should hold:
+```python
+# All imports from structured_schemas.py end in Schema
+import mfg_pde.config.structured_schemas as schemas
+assert all(name.endswith('Schema') for name in dir(schemas) if not name.startswith('_'))
 ```
 
 ### 10.7 Semantic Distinction Summary
@@ -643,6 +673,6 @@ from mfg_pde.config.structured_schemas import SolverSchema  # Source (OmegaConf)
 
 ---
 
-**Document Version**: 1.3
+**Document Version**: 1.4
 **Last Updated**: 2025-12-10
 **Related**: `docs/development/DEPRECATION_PLAN_v0.16.md`, Issue #28
