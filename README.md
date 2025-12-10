@@ -121,11 +121,11 @@ solver = QPSolver(backend="osqp", cache=QPCache(max_size=1000))
 
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfg_pde.geometry import TensorProductGrid
 
 # Multi-resolution: fine HJB + coarse FP (4-15× speedup)
-hjb_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(100, 100))
-fp_grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(25, 25))
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[26, 26])
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,  # Fine for accuracy
@@ -138,7 +138,7 @@ result = solve_mfg(problem, config="fast")
 ```
 
 ```python
-from mfg_pde.geometry import Mesh2D, SimpleGrid2D
+from mfg_pde.geometry import Mesh2D, TensorProductGrid
 
 # Complex domains: FEM mesh + regular grid
 mesh = Mesh2D(
@@ -150,7 +150,7 @@ mesh = Mesh2D(
 mesh.generate_mesh()
 
 problem = MFGProblem(
-    hjb_geometry=SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50)),
+    hjb_geometry=TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51]),
     fp_geometry=mesh,  # Handles obstacles naturally
     T=1.0, Nt=50, sigma=0.1
 )
