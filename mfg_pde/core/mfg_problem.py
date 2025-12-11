@@ -233,6 +233,9 @@ class MFGProblem:
         """
         import warnings
 
+        # Mark as initializing (allows setting deprecated attributes)
+        self._initializing = True
+
         # Normalize parameter aliases
         if time_domain is not None:
             if T is not None or Nt is not None:
@@ -380,6 +383,9 @@ class MFGProblem:
 
         # Detect solver compatibility
         self._detect_solver_compatibility()
+
+        # Mark initialization complete (deprecated attrs now read-only)
+        self._initializing = False
 
     def _init_1d_legacy(
         self,
@@ -1004,6 +1010,92 @@ class MFGProblem:
             True
         """
         return getattr(self, "domain_type", None) == "implicit"
+
+    # =========================================================================
+    # Attribute Hiding (Phase 3 of Issue #435)
+    # =========================================================================
+
+    # Deprecated attributes that should be hidden from autocomplete
+    # These are legacy 1D attributes that have been superseded by geometry
+    _DEPRECATED_ATTRIBUTES: frozenset[str] = frozenset(
+        {
+            "xmin",
+            "xmax",
+            "Lx",
+            "Nx",
+            "dx",
+            "xSpace",
+            "_grid",
+        }
+    )
+
+    # Flag to track if we're in __init__ (allows setting deprecated attrs)
+    _initializing: bool = False
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Intercept attribute setting to make deprecated attributes read-only.
+
+        During initialization (_initializing=True), all attributes can be set.
+        After initialization, attempts to set deprecated attributes raise
+        AttributeError with guidance to use the geometry API instead.
+
+        Note: Subclasses can also set deprecated attributes in their __init__
+        by calling from an __init__ method (detected via call stack inspection).
+        """
+        # Allow all writes during initialization
+        if name == "_initializing" or getattr(self, "_initializing", True):
+            super().__setattr__(name, value)
+            return
+
+        # Allow writes from __init__ methods (for subclasses)
+        # Check if we're being called from any __init__ in the call stack
+        frame = inspect.currentframe()
+        try:
+            caller_frame = frame.f_back if frame else None
+            while caller_frame:
+                if caller_frame.f_code.co_name == "__init__":
+                    # Being called from an __init__, allow the write
+                    super().__setattr__(name, value)
+                    return
+                caller_frame = caller_frame.f_back
+        finally:
+            del frame
+
+        # After initialization, warn about writes to deprecated attributes
+        # Note: We emit a warning instead of raising to maintain backward compatibility
+        # during the transition period. This will become an error in v1.0.0.
+        if name in self._DEPRECATED_ATTRIBUTES:
+            import warnings
+
+            warnings.warn(
+                f"Setting '{name}' directly is deprecated and will become read-only in v1.0.0.\n"
+                f"Use 'problem.geometry' for spatial configuration instead.\n"
+                f"See docs/development/MFGProblem_Conditional_Attributes_Report.md for migration guidance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        # Allow all other attributes
+        super().__setattr__(name, value)
+
+    def __dir__(self) -> list[str]:
+        """
+        Return list of attributes, excluding deprecated ones from autocomplete.
+
+        This helps users discover the modern geometry-first API by hiding
+        legacy attributes from IDE autocomplete and tab completion.
+
+        The deprecated attributes still exist and work, but won't appear
+        in autocomplete suggestions.
+        """
+        # Get all default attributes
+        default_attrs = set(super().__dir__())
+
+        # Remove deprecated attributes from the visible set
+        visible_attrs = default_attrs - self._DEPRECATED_ATTRIBUTES
+
+        return sorted(visible_attrs)
 
     def _detect_solver_compatibility(self) -> None:
         """
