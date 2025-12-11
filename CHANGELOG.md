@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.2] - 2025-12-12
+
+**Patch Release: Grid Interpolator Batched Points Fix**
+
+### Fixed
+
+- **Grid-to-grid interpolation** now works correctly (Issue #444)
+  - `TensorProductGrid.get_interpolator()` supports batched points (2D array of shape `(N, dim)`)
+  - Single point evaluation remains backward compatible (returns `float`)
+  - Projection between grids of different resolutions now works in 1D, 2D, and 3D
+
+### Changed
+
+- Fixed test assertions for 1D grids that used incorrect array shapes
+
 ## [0.16.1] - 2025-12-12
 
 **Patch Release: Nx/Nx_points Naming Consistency**

@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.16.1"  # v0.16.1: Nx/Nx_points naming consistency
+version = "0.16.2"  # v0.16.2: Grid interpolator batched points fix
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
