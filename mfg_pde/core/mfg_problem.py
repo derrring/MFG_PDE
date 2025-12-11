@@ -1079,6 +1079,52 @@ class MFGProblem:
         # Allow all other attributes
         super().__setattr__(name, value)
 
+    def __getattribute__(self, name: str) -> Any:
+        """
+        Intercept attribute access to warn when reading deprecated attributes.
+
+        This emits a DeprecationWarning when accessing legacy spatial attributes
+        like xmin, xmax, Nx, etc., guiding users to use the geometry API instead.
+        """
+        # Fast path: don't check for special/private attributes or during init
+        if name.startswith("_") or name in ("geometry", "domain_type", "dimension"):
+            return super().__getattribute__(name)
+
+        # Check if we're still initializing (avoid warnings during __init__)
+        try:
+            initializing = super().__getattribute__("_initializing")
+        except AttributeError:
+            initializing = True  # Not yet set, assume initializing
+
+        if not initializing:
+            # Get the deprecated attributes set (use super to avoid recursion)
+            try:
+                deprecated = super().__getattribute__("_DEPRECATED_ATTRIBUTES")
+                if name in deprecated:
+                    import warnings
+
+                    # Check if we're being called from internal code
+                    frame = inspect.currentframe()
+                    try:
+                        caller_frame = frame.f_back if frame else None
+                        if caller_frame:
+                            caller_file = caller_frame.f_code.co_filename
+                            # Don't warn for internal mfg_pde code
+                            if "mfg_pde" not in caller_file or "tests" in caller_file:
+                                warnings.warn(
+                                    f"Accessing '{name}' is deprecated. "
+                                    f"Use 'problem.geometry' for spatial information instead.\n"
+                                    f"This attribute will be removed in v1.0.0.",
+                                    DeprecationWarning,
+                                    stacklevel=2,
+                                )
+                    finally:
+                        del frame
+            except AttributeError:
+                pass  # _DEPRECATED_ATTRIBUTES not yet defined
+
+        return super().__getattribute__(name)
+
     def __dir__(self) -> list[str]:
         """
         Return list of attributes, excluding deprecated ones from autocomplete.
