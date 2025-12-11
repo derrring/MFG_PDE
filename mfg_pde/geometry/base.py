@@ -48,7 +48,7 @@ class Geometry(ABC):
         >>> from mfg_pde.geometry import TensorProductGrid, CartesianGrid
         >>> from mfg_pde.solvers import HJBFDMSolver
         >>>
-        >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[50,50])
+        >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[50,50])
         >>> problem = MFGProblem(geometry=grid, T=1.0, Nt=100)
         >>>
         >>> # Solver checks geometry type
@@ -174,7 +174,7 @@ class Geometry(ABC):
             int: Number of grid points / mesh vertices / graph nodes
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, num_points=[10, 20])
+            >>> grid = TensorProductGrid(dimension=2, Nx_points=[10, 20])
             >>> grid.num_spatial_points
             200
         """
@@ -342,7 +342,7 @@ class Geometry(ABC):
         Default implementation returns None (override in Cartesian grid classes).
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], num_points=[10,20])
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], Nx_points=[10,20])
             >>> dx = grid.get_grid_spacing()
             >>> dx
             [0.111..., 0.105...]
@@ -359,7 +359,7 @@ class Geometry(ABC):
         Default implementation returns None (override in Cartesian grid classes).
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, num_points=[10, 20])
+            >>> grid = TensorProductGrid(dimension=2, Nx_points=[10, 20])
             >>> shape = grid.get_grid_shape()
             >>> shape
             (10, 20)

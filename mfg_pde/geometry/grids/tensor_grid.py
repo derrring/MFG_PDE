@@ -45,18 +45,30 @@ class TensorProductGrid(CartesianGrid):
     Attributes:
         dimension: Spatial dimension (any positive integer)
         bounds: List of (min, max) tuples for each dimension
-        num_points: Number of grid points along each dimension (not intervals)
+        Nx: Number of intervals along each dimension (list)
+        Nx_points: Number of grid points along each dimension (Nx + 1)
+        num_points: Alias for Nx_points (deprecated, use Nx_points instead)
         coordinates: List of 1D coordinate arrays
         spacing: Grid spacing along each dimension (if uniform)
         is_uniform: Whether grid has uniform spacing in each dimension
 
     Example:
-        >>> # Create 2D grid: [0,10] × [0,5] with 101×51 points
+        >>> # Create 2D grid: [0,10] × [0,5] with 100×50 intervals (101×51 points)
         >>> grid = TensorProductGrid(
         ...     dimension=2,
         ...     bounds=[(0.0, 10.0), (0.0, 5.0)],
-        ...     num_points=[101, 51]
+        ...     Nx=[100, 50]  # intervals
         ... )
+        >>> grid.Nx          # [100, 50] - intervals
+        >>> grid.Nx_points   # [101, 51] - points
+
+        >>> # Alternative: specify points directly
+        >>> grid = TensorProductGrid(
+        ...     dimension=2,
+        ...     bounds=[(0.0, 10.0), (0.0, 5.0)],
+        ...     Nx_points=[101, 51]  # points
+        ... )
+
         >>> x, y = grid.meshgrid()  # Get coordinate matrices
         >>> flat_points = grid.flatten()  # Get all grid points as (N,2) array
 
@@ -64,7 +76,7 @@ class TensorProductGrid(CartesianGrid):
         >>> grid_4d = TensorProductGrid(
         ...     dimension=4,
         ...     bounds=[(0.0, 1.0)] * 4,
-        ...     num_points=[10] * 4  # 10^4 = 10,000 points
+        ...     Nx=[9] * 4  # 9 intervals per dim = 10^4 = 10,000 points
         ... )
     """
 
@@ -72,7 +84,10 @@ class TensorProductGrid(CartesianGrid):
         self,
         dimension: int,
         bounds: Sequence[tuple[float, float]],
-        num_points: Sequence[int],
+        *,
+        Nx: Sequence[int] | None = None,
+        Nx_points: Sequence[int] | None = None,
+        num_points: Sequence[int] | None = None,  # Deprecated alias for Nx_points
         spacing_type: str = "uniform",
         custom_coordinates: Sequence[NDArray] | None = None,
     ):
@@ -84,25 +99,59 @@ class TensorProductGrid(CartesianGrid):
                 Note: For d>3, grid requires O(N^d) memory/computation.
                 Consider meshfree methods for high-dimensional problems.
             bounds: List of (min, max) bounds for each dimension
-            num_points: Number of grid points along each dimension (not intervals).
-                For example, num_points=[101, 51] creates 100×50 intervals.
+            Nx: Number of intervals along each dimension.
+                For example, Nx=[100, 50] creates 101×51 grid points.
+            Nx_points: Number of grid points along each dimension.
+                For example, Nx_points=[101, 51] creates 100×50 intervals.
+            num_points: Deprecated alias for Nx_points. Use Nx_points instead.
             spacing_type: "uniform" or "custom"
             custom_coordinates: Optional list of 1D coordinate arrays
 
+        Note:
+            Must specify exactly one of: Nx, Nx_points, or num_points.
+            - Nx (intervals): Nx_points = Nx + 1
+            - Nx_points (points): Nx = Nx_points - 1
+
         Raises:
             ValueError: If dimension < 1
-            ValueError: If bounds/num_points length != dimension
+            ValueError: If bounds length != dimension
+            ValueError: If none or multiple of Nx/Nx_points/num_points specified
             UserWarning: If dimension > 3 (performance warning)
+            DeprecationWarning: If num_points is used (use Nx_points instead)
         """
         if dimension < 1:
             raise ValueError(f"Dimension must be positive, got {dimension}")
+
+        # Handle Nx vs Nx_points vs num_points
+        specified = sum(x is not None for x in [Nx, Nx_points, num_points])
+        if specified == 0:
+            raise ValueError("Must specify one of: Nx (intervals) or Nx_points (points)")
+        if specified > 1:
+            raise ValueError("Cannot specify multiple of: Nx, Nx_points, num_points")
+
+        if num_points is not None:
+            import warnings
+
+            warnings.warn(
+                "num_points is deprecated, use Nx_points instead. Will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            Nx_points = num_points
+
+        # Convert to internal storage (always store as points)
+        if Nx is not None:
+            self._Nx_points: list[int] = [n + 1 for n in Nx]
+        else:
+            assert Nx_points is not None
+            self._Nx_points = list(Nx_points)
 
         # Warn about performance for high dimensions
         if dimension > 3:
             import warnings
 
             total_points = 1
-            for n in num_points:
+            for n in self._Nx_points:
                 total_points *= n
 
             warnings.warn(
@@ -113,21 +162,22 @@ class TensorProductGrid(CartesianGrid):
                 stacklevel=2,
             )
 
-        if len(bounds) != dimension or len(num_points) != dimension:
+        if len(bounds) != dimension or len(self._Nx_points) != dimension:
             raise ValueError(
-                f"bounds and num_points must have length {dimension}, got {len(bounds)} and {len(num_points)}"
+                f"bounds and Nx/Nx_points must have length {dimension}, got {len(bounds)} and {len(self._Nx_points)}"
             )
 
         self._dimension = dimension
         self.bounds = list(bounds)
-        self.num_points = list(num_points)
         self.spacing_type = spacing_type
 
         # Create coordinate arrays
         if spacing_type == "uniform":
-            self.coordinates = [np.linspace(bounds[i][0], bounds[i][1], num_points[i]) for i in range(self._dimension)]
+            self.coordinates = [
+                np.linspace(bounds[i][0], bounds[i][1], self._Nx_points[i]) for i in range(self._dimension)
+            ]
             self.spacing = [
-                (bounds[i][1] - bounds[i][0]) / (num_points[i] - 1) if num_points[i] > 1 else 0.0
+                (bounds[i][1] - bounds[i][0]) / (self._Nx_points[i] - 1) if self._Nx_points[i] > 1 else 0.0
                 for i in range(self._dimension)
             ]
             self.is_uniform = True
@@ -147,8 +197,8 @@ class TensorProductGrid(CartesianGrid):
 
         # Validate coordinates
         for i, coords in enumerate(self.coordinates):
-            if len(coords) != num_points[i]:
-                raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {num_points[i]}")
+            if len(coords) != self._Nx_points[i]:
+                raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {self._Nx_points[i]}")
 
     # Geometry ABC implementation - properties
     @property
@@ -165,6 +215,29 @@ class TensorProductGrid(CartesianGrid):
     def num_spatial_points(self) -> int:
         """Total number of discrete spatial points."""
         return self.total_points()
+
+    # Nx/Nx_points consistent naming
+    @property
+    def Nx(self) -> list[int]:
+        """Number of intervals along each dimension (Nx_points - 1)."""
+        return [n - 1 for n in self._Nx_points]
+
+    @property
+    def Nx_points(self) -> list[int]:
+        """Number of grid points along each dimension."""
+        return self._Nx_points.copy()
+
+    @property
+    def num_points(self) -> list[int]:
+        """Deprecated: Use Nx_points instead. Number of grid points along each dimension."""
+        import warnings
+
+        warnings.warn(
+            "num_points is deprecated, use Nx_points instead. Will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._Nx_points.copy()
 
     def get_spatial_grid(self) -> NDArray:
         """
@@ -185,18 +258,18 @@ class TensorProductGrid(CartesianGrid):
         Returns:
             Dictionary with keys:
                 - num_spatial_points: Total number of points
-                - spatial_shape: Shape tuple (Nx, Ny, ...)
+                - spatial_shape: Shape tuple (Nx_points[0], Nx_points[1], ...)
                 - spatial_bounds: Bounds [(xmin, xmax), (ymin, ymax), ...]
-                - spatial_discretization: Number of points [Nx, Ny, ...]
+                - spatial_discretization: Number of points [Nx_points[0], ...]
                 - legacy_1d_attrs: Legacy 1D attributes (xmin, xmax, etc.) if 1D
 
         Added in v0.10.1 for polymorphic geometry handling.
         """
         config = {
             "num_spatial_points": self.total_points(),
-            "spatial_shape": tuple(self.num_points),
+            "spatial_shape": tuple(self._Nx_points),
             "spatial_bounds": tuple(self.bounds),
-            "spatial_discretization": tuple(self.num_points),
+            "spatial_discretization": tuple(self._Nx_points),
         }
 
         # Legacy 1D attributes (for backward compatibility with 1D solvers)
@@ -205,7 +278,7 @@ class TensorProductGrid(CartesianGrid):
                 "xmin": self.bounds[0][0],
                 "xmax": self.bounds[0][1],
                 "Lx": self.bounds[0][1] - self.bounds[0][0],
-                "Nx": self.num_points[0] - 1,  # Nx = intervals (num_points - 1)
+                "Nx": self._Nx_points[0] - 1,  # Nx = intervals (Nx_points - 1)
                 "Dx": self.spacing[0],
                 "xSpace": self.coordinates[0],
             }
@@ -253,9 +326,9 @@ class TensorProductGrid(CartesianGrid):
         Get total number of grid points.
 
         Returns:
-            N = ∏num_points[i]
+            N = ∏Nx_points[i]
         """
-        return int(np.prod(self.num_points))
+        return int(np.prod(self._Nx_points))
 
     def get_index(self, multi_index: Sequence[int]) -> int:
         """
@@ -268,7 +341,7 @@ class TensorProductGrid(CartesianGrid):
             Flat index for accessing 1D arrays
 
         Example:
-            >>> grid = TensorProductGrid(2, [(0,1), (0,1)], [10, 10])
+            >>> grid = TensorProductGrid(2, [(0,1), (0,1)], Nx=[10, 10])
             >>> flat_idx = grid.get_index((5, 3))  # Point (i=5, j=3)
         """
         if len(multi_index) != self._dimension:
@@ -278,7 +351,7 @@ class TensorProductGrid(CartesianGrid):
         stride = 1
         for i in reversed(range(self._dimension)):
             flat_idx += multi_index[i] * stride
-            stride *= self.num_points[i]
+            stride *= self._Nx_points[i]
 
         return flat_idx
 
@@ -293,7 +366,7 @@ class TensorProductGrid(CartesianGrid):
             Tuple (i, j, k) of indices in each dimension
 
         Example:
-            >>> grid = TensorProductGrid(2, [(0,1), (0,1)], [10, 10])
+            >>> grid = TensorProductGrid(2, [(0,1), (0,1)], Nx=[10, 10])
             >>> i, j = grid.get_multi_index(53)
         """
         if flat_index < 0 or flat_index >= self.total_points():
@@ -303,7 +376,7 @@ class TensorProductGrid(CartesianGrid):
         remaining = flat_index
         # Process dimensions in row-major order (C-order)
         for i in range(self._dimension):
-            stride = int(np.prod(self.num_points[i + 1 :])) if i < self._dimension - 1 else 1
+            stride = int(np.prod(self._Nx_points[i + 1 :])) if i < self._dimension - 1 else 1
             idx = remaining // stride
             indices.append(idx)
             remaining %= stride
@@ -341,20 +414,21 @@ class TensorProductGrid(CartesianGrid):
             New TensorProductGrid with refined resolution
 
         Example:
-            >>> grid = TensorProductGrid(2, [(0,1), (0,1)], [10, 10])
-            >>> fine_grid = grid.refine(2)  # Now 20×20 points
+            >>> grid = TensorProductGrid(2, [(0,1), (0,1)], Nx=[10, 10])
+            >>> fine_grid = grid.refine(2)  # Now 21×21 intervals (22×22 points)
         """
         if isinstance(factor, int):
             factors = [factor] * self._dimension
         else:
             factors = list(factor)
 
-        new_num_points = [(n - 1) * f + 1 for n, f in zip(self.num_points, factors, strict=False)]
+        # Refine intervals: (Nx_points - 1) * factor + 1 = new Nx_points
+        new_Nx_points = [(n - 1) * f + 1 for n, f in zip(self._Nx_points, factors, strict=False)]
 
         return TensorProductGrid(
             dimension=self._dimension,
             bounds=self.bounds,
-            num_points=new_num_points,
+            Nx_points=new_Nx_points,
             spacing_type=self.spacing_type,
         )
 
@@ -373,12 +447,13 @@ class TensorProductGrid(CartesianGrid):
         else:
             factors = list(factor)
 
-        new_num_points = [(n - 1) // f + 1 for n, f in zip(self.num_points, factors, strict=False)]
+        # Coarsen intervals: (Nx_points - 1) // factor + 1 = new Nx_points
+        new_Nx_points = [(n - 1) // f + 1 for n, f in zip(self._Nx_points, factors, strict=False)]
 
         return TensorProductGrid(
             dimension=self._dimension,
             bounds=self.bounds,
-            num_points=new_num_points,
+            Nx_points=new_Nx_points,
             spacing_type=self.spacing_type,
         )
 
@@ -406,7 +481,7 @@ class TensorProductGrid(CartesianGrid):
                 # Use average of left and right spacing
                 if idx == 0:
                     local_spacing = spacings[0]
-                elif idx == self.num_points[i] - 1:
+                elif idx == self._Nx_points[i] - 1:
                     local_spacing = spacings[-1]
                 else:
                     local_spacing = 0.5 * (spacings[idx - 1] + spacings[idx])
@@ -426,7 +501,7 @@ class TensorProductGrid(CartesianGrid):
             (min_coords, max_coords) tuple of arrays
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], num_points=[10,20])
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], Nx_points=[10,20])
             >>> min_coords, max_coords = grid.get_bounds()
             >>> min_coords
             array([0., 0.])
@@ -449,7 +524,7 @@ class TensorProductGrid(CartesianGrid):
             [dx1, dx2, ...] where dxi = (xmax_i - xmin_i) / (Ni - 1)
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], num_points=[11,21])
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], Nx_points=[11,21])
             >>> dx = grid.get_grid_spacing()
             >>> dx
             [0.1, 0.1]
@@ -463,15 +538,15 @@ class TensorProductGrid(CartesianGrid):
         Get number of grid points per dimension.
 
         Returns:
-            (Nx1, Nx2, ...) tuple of grid points
+            (Nx_points[0], Nx_points[1], ...) tuple of grid points
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, num_points=[10, 20])
+            >>> grid = TensorProductGrid(dimension=2, Nx_points=[10, 20])
             >>> shape = grid.get_grid_shape()
             >>> shape
             (10, 20)
         """
-        return tuple(self.num_points)
+        return tuple(self._Nx_points)
 
     # ============================================================================
     # Solver Operation Interface (NEW - from Geometry ABC)
@@ -485,7 +560,7 @@ class TensorProductGrid(CartesianGrid):
             Function with signature: (u: NDArray, idx: tuple[int, ...]) -> float
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[10,10])
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[10,10])
             >>> laplacian = grid.get_laplacian_operator()
             >>> u = np.random.rand(10, 10)
             >>> lap_value = laplacian(u, (5, 5))  # Laplacian at grid point (5,5)
@@ -514,7 +589,7 @@ class TensorProductGrid(CartesianGrid):
                 # Handle boundaries with clamping (Neumann-like BC)
                 idx_plus = list(idx)
                 idx_minus = list(idx)
-                idx_plus[dim] = min(idx[dim] + 1, self.num_points[dim] - 1)
+                idx_plus[dim] = min(idx[dim] + 1, self._Nx_points[dim] - 1)
                 idx_minus[dim] = max(idx[dim] - 1, 0)
 
                 # Central difference: (u[i+1] - 2*u[i] + u[i-1]) / dx²
@@ -532,7 +607,7 @@ class TensorProductGrid(CartesianGrid):
             Function with signature: (u: NDArray, idx: tuple[int, ...]) -> NDArray
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[10,10])
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[10,10])
             >>> gradient = grid.get_gradient_operator()
             >>> u = np.random.rand(10, 10)
             >>> grad_u = gradient(u, (5, 5))  # Returns [du/dx, du/dy]
@@ -563,7 +638,7 @@ class TensorProductGrid(CartesianGrid):
                 # Handle boundaries with clamping
                 idx_plus = list(idx)
                 idx_minus = list(idx)
-                idx_plus[dim] = min(idx[dim] + 1, self.num_points[dim] - 1)
+                idx_plus[dim] = min(idx[dim] + 1, self._Nx_points[dim] - 1)
                 idx_minus[dim] = max(idx[dim] - 1, 0)
 
                 # Central difference: (u[i+1] - u[i-1]) / (2*dx)
@@ -581,7 +656,7 @@ class TensorProductGrid(CartesianGrid):
             Function with signature: (u: NDArray, point: NDArray) -> float
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[10,10])
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[10,10])
             >>> interpolate = grid.get_interpolator()
             >>> u = np.random.rand(10, 10)
             >>> value = interpolate(u, np.array([0.5, 0.3]))  # Interpolate at (0.5, 0.3)
@@ -711,7 +786,7 @@ class TensorProductGrid(CartesianGrid):
             f"TensorProductGrid(\n"
             f"  dimension={self._dimension},\n"
             f"  bounds={self.bounds},\n"
-            f"  num_points={self.num_points},\n"
+            f"  Nx_points={self._Nx_points},\n"
             f"  spacing_type='{self.spacing_type}',\n"
             f"  total_points={self.total_points()}\n"
             f")"
@@ -724,14 +799,23 @@ if __name__ == "__main__":
 
     import numpy as np
 
-    # Test 2D grid creation
-    grid_2d = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], num_points=[11, 6])
+    # Test 2D grid creation with Nx (intervals)
+    grid_2d = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], Nx=[10, 5])
 
     assert grid_2d.dimension == 2
+    assert grid_2d.Nx == [10, 5]  # intervals
+    assert grid_2d.Nx_points == [11, 6]  # points
     assert grid_2d.total_points() == 11 * 6
     assert len(grid_2d.coordinates) == 2
 
-    print(f"  2D grid: {grid_2d.num_points[0]}×{grid_2d.num_points[1]} = {grid_2d.total_points()} points")
+    print(f"  2D grid (Nx=[10, 5]): {grid_2d.Nx_points[0]}x{grid_2d.Nx_points[1]} = {grid_2d.total_points()} points")
+
+    # Test with Nx_points directly
+    grid_2d_alt = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], Nx_points=[11, 6])
+    assert grid_2d_alt.Nx == [10, 5]
+    assert grid_2d_alt.Nx_points == [11, 6]
+
+    print(f"  2D grid (Nx_points=[11, 6]): Nx={grid_2d_alt.Nx}")
 
     # Test meshgrid
     X, Y = grid_2d.meshgrid()

@@ -395,7 +395,7 @@ class TestCustomComponentExceptionPropagation:
         def working_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
             return 0.0
 
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
         components = MFGComponents(
             hamiltonian_func=broken_hamiltonian,
             hamiltonian_dm_func=working_dh_dm,
@@ -425,7 +425,7 @@ class TestCustomComponentExceptionPropagation:
         def broken_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
             raise RuntimeError("Intentional error in dH/dm")
 
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
         components = MFGComponents(
             hamiltonian_func=working_hamiltonian,
             hamiltonian_dm_func=broken_dh_dm,

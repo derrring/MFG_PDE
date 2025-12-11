@@ -34,7 +34,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Create geometry (recommended)
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 
 # Create and solve
 problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
@@ -85,7 +85,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Create geometry
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 
 # Create and solve MFG problem
 problem = MFGProblem(geometry=domain, T=1.0, Nt=50)
@@ -134,8 +134,8 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Multi-resolution: fine HJB + coarse FP (4-15× speedup)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
-fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[26, 26])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[26, 26])
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,  # Fine for accuracy
@@ -160,7 +160,7 @@ mesh = Mesh2D(
 mesh.generate_mesh()
 
 problem = MFGProblem(
-    hjb_geometry=TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51]),
+    hjb_geometry=TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51]),
     fp_geometry=mesh,  # Handles obstacles naturally
     T=1.0, Nt=50, sigma=0.1
 )

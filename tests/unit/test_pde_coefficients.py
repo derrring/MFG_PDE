@@ -307,7 +307,7 @@ class TestGetSpatialGrid:
 
     def test_geometry_based_api_1d(self):
         """Test grid extraction with geometry-based API (1D)."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=50, sigma=0.1)
 
         grid = get_spatial_grid(problem)

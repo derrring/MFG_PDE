@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1] - 2025-12-12
+
+**Patch Release: Nx/Nx_points Naming Consistency**
+
+This release introduces consistent naming for spatial and temporal discretization:
+- `Nx` = number of intervals (consistent with `Nt`)
+- `Nx_points` = number of grid points (`Nx + 1`)
+- `Nt_points` = number of time points (`Nt + 1`)
+
+### Added
+
+- **`Nx` property** to `TensorProductGrid` - returns intervals per dimension
+- **`Nx_points` property** to `TensorProductGrid` - returns grid points per dimension
+- **`Nt_points` property** to `MFGProblem` - returns `Nt + 1`
+
+### Changed
+
+- `TensorProductGrid` constructor now accepts:
+  - `Nx=` for intervals (like `Nt`)
+  - `Nx_points=` for points
+  - `num_points=` (deprecated, use `Nx_points`)
+- Updated all codebase usages from `num_points=` to `Nx_points=`
+- Updated `NAMING_CONVENTIONS.md` to document the new convention
+
+### Deprecated
+
+- **`num_points` parameter and property** in `TensorProductGrid`
+  - Use `Nx_points` instead
+  - Will be removed in v1.0.0
+
 ## [0.16.0] - 2025-12-11
 
 **Feature Release: Geometry-First API Unification**

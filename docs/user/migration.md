@@ -389,7 +389,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Create geometry
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 
 # Create problem with geometry
 problem = MFGProblem(geometry=domain, T=1.0, Nt=20)

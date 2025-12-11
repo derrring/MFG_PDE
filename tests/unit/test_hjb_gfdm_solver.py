@@ -23,7 +23,7 @@ def standard_problem():
     - Time: T=1.0 with 51 time steps
     - Diffusion: sigma=1.0
     """
-    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
     return MFGProblem(geometry=domain, T=1.0, Nt=51, sigma=1.0)
 
 

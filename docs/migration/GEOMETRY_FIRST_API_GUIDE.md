@@ -45,7 +45,7 @@ from mfg_pde.core import MFGProblem
 geometry = TensorProductGrid(
     dimension=2,
     bounds=[(0.0, 10.0), (0.0, 5.0)],
-    num_points=[101, 51]
+    Nx_points=[101, 51]
 )
 
 # Create problem
@@ -133,7 +133,7 @@ from mfg_pde.core import MFGProblem
 geometry = TensorProductGrid(
     dimension=4,
     bounds=[(0.0, 1.0)] * 4,
-    num_points=[10, 10, 10, 10]  # 10^4 = 10,000 points
+    Nx_points=[10, 10, 10, 10]  # 10^4 = 10,000 points
 )
 
 problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
@@ -186,7 +186,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Create problem with geometry-first API
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 problem = MFGProblem(geometry=domain, T=1.0, Nt=10)
 
 # Access spatial information via geometry (RECOMMENDED)
@@ -262,7 +262,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 geometry = TensorProductGrid(
     dimension=2,
     bounds=[(0.0, 1.0), (0.0, 1.0)],
-    num_points=[51, 51]
+    Nx_points=[51, 51]
 )
 
 # Create problem
@@ -323,7 +323,7 @@ problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
 
 ```python
 # Create geometry once
-geometry = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[51, 51])
+geometry = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[51, 51])
 
 # Use for multiple problems with different parameters
 problem1 = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
@@ -334,7 +334,7 @@ problem2 = MFGProblem(geometry=geometry, T=2.0, Nt=20, sigma=0.2)
 
 ```python
 # Create coarse grid
-coarse = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[11, 11])
+coarse = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[11, 11])
 
 # Refine by factor of 2
 fine = coarse.refine(factor=2)  # Now 21×21

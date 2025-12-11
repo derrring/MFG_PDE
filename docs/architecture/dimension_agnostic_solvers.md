@@ -526,9 +526,9 @@ from mfg_pde.core.highdim_mfg_problem import (
 from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
 # Works for any dimension
-grid_2d = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[50, 50])
-grid_3d = TensorProductGrid(dimension=3, bounds=[(0,1)]*3, num_points=[30]*3)
-grid_4d = TensorProductGrid(dimension=4, bounds=[(0,1)]*4, num_points=[10]*4)
+grid_2d = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[50, 50])
+grid_3d = TensorProductGrid(dimension=3, bounds=[(0,1)]*3, Nx_points=[30]*3)
+grid_4d = TensorProductGrid(dimension=4, bounds=[(0,1)]*4, Nx_points=[10]*4)
 ```
 
 **Solver Interface**:

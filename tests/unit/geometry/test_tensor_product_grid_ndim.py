@@ -19,7 +19,7 @@ class TestNDimensionalGrids:
     def test_4d_grid_basic(self):
         """Test basic 4D grid creation."""
         grid = TensorProductGrid(
-            dimension=4, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[10, 10, 10, 10]
+            dimension=4, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10, 10, 10]
         )
 
         assert grid.dimension == 4
@@ -36,7 +36,7 @@ class TestNDimensionalGrids:
         grid = TensorProductGrid(
             dimension=5,
             bounds=[(0.0, 1.0)] * 5,
-            num_points=[5] * 5,  # 5^5 = 3,125 points
+            Nx_points=[5] * 5,  # 5^5 = 3,125 points
         )
 
         assert grid.dimension == 5
@@ -53,7 +53,7 @@ class TestNDimensionalGrids:
         grid = TensorProductGrid(
             dimension=6,
             bounds=[(0.0, 1.0)] * 6,
-            num_points=[3] * 6,  # 3^6 = 729 points
+            Nx_points=[3] * 6,  # 3^6 = 729 points
         )
 
         assert grid.dimension == 6
@@ -66,7 +66,7 @@ class TestNDimensionalGrids:
         grid = TensorProductGrid(
             dimension=10,
             bounds=[(0.0, 1.0)] * 10,
-            num_points=[2] * 10,  # 2^10 = 1,024 points
+            Nx_points=[2] * 10,  # 2^10 = 1,024 points
         )
 
         assert grid.dimension == 10
@@ -76,21 +76,21 @@ class TestNDimensionalGrids:
     def test_performance_warning(self):
         """Test that performance warning is issued for d>3."""
         with pytest.warns(UserWarning, match="O\\(N\\^d\\)"):
-            TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, num_points=[10] * 4)
+            TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, Nx_points=[10] * 4)
 
     def test_no_warning_for_2d(self):
         """Test that no warning is issued for d≤3."""
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # Turn warnings into errors
             # Should not raise
-            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0)] * 2, num_points=[50, 50])
+            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0)] * 2, Nx_points=[50, 50])
 
     def test_non_uniform_resolution_4d(self):
         """Test 4D grid with different resolution per dimension."""
         grid = TensorProductGrid(
             dimension=4,
             bounds=[(0.0, 1.0)] * 4,
-            num_points=[5, 10, 15, 20],  # Total: 15,000 points
+            Nx_points=[5, 10, 15, 20],  # Total: 15,000 points
         )
 
         assert grid.dimension == 4
@@ -104,7 +104,7 @@ class TestNDimensionalGrids:
 
     def test_meshgrid_4d(self):
         """Test meshgrid generation for 4D."""
-        grid = TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, num_points=[3, 4, 5, 6])
+        grid = TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, Nx_points=[3, 4, 5, 6])
 
         mesh = grid.meshgrid()
         assert len(mesh) == 4
@@ -115,7 +115,7 @@ class TestNDimensionalGrids:
 
     def test_total_points_calculation_4d(self):
         """Test total points calculation for 4D."""
-        grid = TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, num_points=[5, 6, 7, 8])
+        grid = TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, Nx_points=[5, 6, 7, 8])
 
         # Verify via flatten()
         flat_points = grid.flatten()
@@ -125,7 +125,7 @@ class TestNDimensionalGrids:
     def test_bounds_correctness_5d(self):
         """Test that grid points respect bounds in 5D."""
         bounds = [(0.0, 1.0), (-1.0, 1.0), (2.0, 3.0), (-0.5, 0.5), (10.0, 20.0)]
-        grid = TensorProductGrid(dimension=5, bounds=bounds, num_points=[4] * 5)
+        grid = TensorProductGrid(dimension=5, bounds=bounds, Nx_points=[4] * 5)
 
         flat_points = grid.flatten()
 
@@ -135,7 +135,7 @@ class TestNDimensionalGrids:
 
     def test_spacing_4d(self):
         """Test uniform spacing in 4D."""
-        grid = TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, num_points=[11] * 4)
+        grid = TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, Nx_points=[11] * 4)
 
         assert grid.is_uniform
         expected_spacing = 1.0 / 10.0  # (1.0 - 0.0) / (11 - 1)
@@ -148,22 +148,22 @@ class TestHighDimensionalEdgeCases:
     def test_negative_dimension_raises(self):
         """Test that negative dimension raises error."""
         with pytest.raises(ValueError, match="positive"):
-            TensorProductGrid(dimension=-1, bounds=[(0.0, 1.0)], num_points=[10])
+            TensorProductGrid(dimension=-1, bounds=[(0.0, 1.0)], Nx_points=[10])
 
     def test_zero_dimension_raises(self):
         """Test that zero dimension raises error."""
         with pytest.raises(ValueError, match="positive"):
-            TensorProductGrid(dimension=0, bounds=[], num_points=[])
+            TensorProductGrid(dimension=0, bounds=[], Nx_points=[])
 
     def test_bounds_dimension_mismatch(self):
         """Test that bounds/dimension mismatch raises error."""
         with pytest.raises(ValueError, match="must have length 4"):
-            TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 3, num_points=[10] * 4)
+            TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 3, Nx_points=[10] * 4)
 
     def test_num_points_dimension_mismatch(self):
         """Test that num_points/dimension mismatch raises error."""
         with pytest.raises(ValueError, match="must have length 4"):
-            TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, num_points=[10] * 3)
+            TensorProductGrid(dimension=4, bounds=[(0.0, 1.0)] * 4, Nx_points=[10] * 3)
 
 
 class TestBackwardCompatibility:
@@ -173,7 +173,7 @@ class TestBackwardCompatibility:
         """Test that 1D grids work without warnings."""
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[100])
+            grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[100])
 
         assert grid.dimension == 1
         assert grid.flatten().shape[0] == 100
@@ -182,7 +182,7 @@ class TestBackwardCompatibility:
         """Test that 2D grids work without warnings."""
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[50, 50])
+            grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[50, 50])
 
         assert grid.dimension == 2
         assert grid.flatten().shape[0] == 2500
@@ -191,7 +191,7 @@ class TestBackwardCompatibility:
         """Test that 3D grids work without warnings."""
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0)] * 3, num_points=[20, 20, 20])
+            grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0)] * 3, Nx_points=[20, 20, 20])
 
         assert grid.dimension == 3
         assert grid.flatten().shape[0] == 8000

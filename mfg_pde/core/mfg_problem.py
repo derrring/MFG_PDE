@@ -229,8 +229,8 @@ class MFGProblem:
 
             # Mode 6: Dual geometry (Issue #257) - Separate geometries for HJB and FP
             from mfg_pde.geometry import TensorProductGrid
-            hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])  # Fine grid for HJB
-            fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21])  # Coarse grid for FP
+            hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])  # Fine grid for HJB
+            fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[21, 21])  # Coarse grid for FP
             problem = MFGProblem(
                 hjb_geometry=hjb_grid,
                 fp_geometry=fp_grid,
@@ -425,7 +425,7 @@ class MFGProblem:
             "Manual grid construction in MFGProblem is deprecated and will be "
             "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
             "  from mfg_pde.geometry import TensorProductGrid\n"
-            f"  domain = TensorProductGrid(dimension=1, bounds=[({xmin[0]}, {xmax[0]})], num_points=[{Nx[0] + 1}])\n"
+            f"  domain = TensorProductGrid(dimension=1, bounds=[({xmin[0]}, {xmax[0]})], Nx_points=[{Nx[0] + 1}])\n"
             f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
             "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
             DeprecationWarning,
@@ -441,7 +441,7 @@ class MFGProblem:
         geometry = TensorProductGrid(
             dimension=1,
             bounds=[(xmin_scalar, xmax_scalar)],
-            num_points=[Nx_scalar + 1],
+            Nx_points=[Nx_scalar + 1],
         )
 
         # Store geometry for unified interface
@@ -504,7 +504,7 @@ class MFGProblem:
             "  geometry = TensorProductGrid(\n"
             f"      dimension={dimension},\n"
             f"      bounds={spatial_bounds},\n"
-            f"      num_points={spatial_discretization if spatial_discretization else [51] * dimension}\n"
+            f"      Nx_points={spatial_discretization if spatial_discretization else [51] * dimension}\n"
             "  )\n"
             f"  problem = MFGProblem(geometry=geometry, T={T}, Nt={Nt})\n\n"
             "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
@@ -524,9 +524,9 @@ class MFGProblem:
         # Create TensorProductGrid for all dimensions (unified approach)
         from mfg_pde.geometry import TensorProductGrid
 
-        # Convert discretization to num_points (add 1 for point count vs intervals)
-        num_points = [n + 1 for n in spatial_discretization]
-        geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, num_points=num_points)
+        # Convert discretization to Nx_points (add 1 for point count vs intervals)
+        Nx_points = [n + 1 for n in spatial_discretization]
+        geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, Nx_points=Nx_points)
 
         # Store geometry for unified interface
         self.geometry = geometry
@@ -916,6 +916,30 @@ class MFGProblem:
         return getattr(self, "domain_type", None) == "implicit"
 
     # =========================================================================
+    # Time Grid Properties
+    # =========================================================================
+
+    @property
+    def Nt_points(self) -> int:
+        """
+        Number of time grid points (Nt + 1).
+
+        Nt is the number of time intervals, while Nt_points is the number
+        of time grid points including both endpoints.
+
+        Returns:
+            Nt + 1 (number of time points)
+
+        Example:
+            >>> problem = MFGProblem(geometry=domain, T=1.0, Nt=10)
+            >>> problem.Nt         # 10 intervals
+            10
+            >>> problem.Nt_points  # 11 points
+            11
+        """
+        return self.Nt + 1
+
+    # =========================================================================
     # Deprecated Legacy Attributes (Computed Properties)
     # Phase 7 of Issue #435: These are computed from geometry for backward
     # compatibility. Access emits DeprecationWarning.
@@ -1253,15 +1277,15 @@ class MFGProblem:
                 # Handle both scalar and list forms
                 if isinstance(xmin, (int, float)):
                     bounds = [(float(xmin), float(xmax))]
-                    num_points = [int(Nx) + 1]
+                    Nx_points = [int(Nx) + 1]
                 else:
                     bounds = list(zip(xmin, xmax, strict=True))
-                    num_points = [n + 1 for n in Nx]
+                    Nx_points = [n + 1 for n in Nx]
 
                 state["geometry"] = TensorProductGrid(
                     dimension=len(bounds),
                     bounds=bounds,
-                    num_points=num_points,
+                    Nx_points=Nx_points,
                 )
             except (KeyError, ImportError) as e:
                 import warnings
