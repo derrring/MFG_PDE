@@ -8,7 +8,7 @@
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **v0.15.3** - Production-ready MFG solver with dual-system configuration (Pydantic + OmegaConf), GFDM monotonicity, and streamlined API
+> **v0.16.0** - Geometry-first API unification: `MFGProblem.geometry` is now always non-None, legacy attributes emit deprecation warnings
 
 ---
 
@@ -27,12 +27,18 @@ cd MFG_PDE
 pip install -e .
 ```
 
-### Your First MFG Solution (2 lines)
+### Your First MFG Solution
 
 ```python
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
-result = MFGProblem().solve()
+# Create geometry (recommended)
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+
+# Create and solve
+problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
+result = problem.solve()
 ```
 
 **That's it.** Check convergence with `result.converged` and access solutions via `result.U` and `result.M`.
@@ -76,9 +82,13 @@ result = MFGProblem().solve()
 
 ```python
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
+
+# Create geometry
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
 
 # Create and solve MFG problem
-problem = MFGProblem(T=1.0, Nt=50, Nx=100)
+problem = MFGProblem(geometry=domain, T=1.0, Nt=50)
 result = problem.solve()
 
 print(f"Converged: {result.converged} in {result.iterations} iterations")
