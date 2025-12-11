@@ -1,7 +1,7 @@
 # MFG_PDE Naming Conventions
 
-**Last Updated**: 2025-12-01
-**Status**: Current reference document
+**Last Updated**: 2025-12-12
+**Status**: Current reference document (v0.16.0+)
 **Related**: See sections on gradient notation for derivative indexing and array-based notation standard
 
 ---
@@ -19,8 +19,10 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 **When to use**: When code directly implements a textbook algorithm or specific mathematical formula.
 
 **Examples**:
-- `Nx`: Number of spatial intervals (not `num_intervals_x`)
+- `Nx`: Number of spatial intervals per dimension (array, e.g., `[50, 30]`)
+- `Nx_points`: Number of spatial grid points per dimension (`Nx + 1`)
 - `Nt`: Number of time intervals
+- `Nt_points`: Number of time grid points (`Nt + 1`)
 - `dx`: Spatial grid spacing Δx
 - `dt`: Time step size Δt
 - `sigma`: Diffusion coefficient σ
@@ -29,6 +31,8 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 - `tSpace`: Temporal grid array
 
 **Rationale**: Direct correspondence to mathematical notation makes algorithm validation straightforward.
+
+**Key Convention (v0.16.0+)**: `Nx` = intervals, `Nx_points` = points. This mirrors the `Nt`/`Nt_points` relationship.
 
 ### 2. Descriptive English for Configuration Parameters
 
@@ -252,17 +256,43 @@ dx = (xmax[0] - xmin[0]) / Nx[0]
 
 ## Discretization Parameters
 
-### ⚠️ CRITICAL CONVENTION: `N_*` Always Means Intervals, Never Points
+### ⚠️ CRITICAL CONVENTION: `N*` = Intervals, `N*_points` = Points (v0.16.0+)
 
-**Universal Rule**: All variables named `N_*` (e.g., `Nx`, `Ny`, `Nt`) represent **number of intervals**, not number of points/knots.
+**Universal Rule**:
+- Variables named `N*` (e.g., `Nx`, `Nt`) represent **number of intervals**
+- Variables named `N*_points` (e.g., `Nx_points`, `Nt_points`) represent **number of grid points**
+- Relationship: `N*_points = N* + 1` (includes both endpoints)
 
-**Grid Point Count**: Number of points = `N + 1` (includes both endpoints)
+| Dimension | Intervals Variable | Points Variable | Example |
+|-----------|-------------------|-----------------|---------|
+| Time | `Nt` | `Nt_points` | `Nt=100` → `Nt_points=101` |
+| Space (1D) | `Nx=[50]` | `Nx_points=[51]` | 50 intervals → 51 points |
+| Space (2D) | `Nx=[50, 30]` | `Nx_points=[51, 31]` | 50×30 intervals → 51×31 points |
 
-| Dimension | Variable | Meaning | Points | Example |
-|-----------|----------|---------|--------|---------|
-| Time | `Nt` | Number of time **intervals** | `Nt + 1` time points | `Nt=100` → 101 time points |
-| Space (1D) | `Nx` (as array) | Number of spatial **intervals** | `Nx[0] + 1` points | `Nx=[50]` → 51 spatial points |
-| Space (2D) | `Nx` (as array) | Number of **intervals** per dim | `(Nx[0]+1, Nx[1]+1)` points | `Nx=[50, 30]` → 51×31 = 1,581 points |
+**TensorProductGrid API (v0.16.0+)**:
+```python
+from mfg_pde.geometry import TensorProductGrid
+
+# Option 1: Specify intervals (like Nt)
+grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 30])
+# grid.Nx = [50, 30]        # intervals
+# grid.Nx_points = [51, 31]  # points
+
+# Option 2: Specify points directly
+grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[51, 31])
+# grid.Nx = [50, 30]        # intervals
+# grid.Nx_points = [51, 31]  # points
+
+# DEPRECATED: num_points (use Nx_points instead)
+grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[51, 31])  # Warns
+```
+
+**MFGProblem API**:
+```python
+problem = MFGProblem(geometry=grid, T=1.0, Nt=100)
+problem.Nt         # 100 intervals
+problem.Nt_points  # 101 points
+```
 
 **Common Mistake**:
 ```python
@@ -270,33 +300,35 @@ dx = (xmax[0] - xmin[0]) / Nx[0]
 Nx = 51  # 51 points
 dx = (xmax - xmin) / (Nx - 1)  # Incorrect!
 
-# ✅ CORRECT: Nx means intervals, points = Nx + 1
+# ✅ CORRECT: Nx means intervals, Nx_points = Nx + 1
 Nx = 50  # 50 intervals → 51 points
 dx = (xmax - xmin) / Nx  # Correct!
-num_points = Nx + 1  # 51 points
+Nx_points = Nx + 1  # 51 points
 ```
 
 **Why This Matters**:
-- **Consistency**: Finite difference stencils assume `N` intervals
+- **Consistency**: `Nx` and `Nt` have same semantics (intervals)
+- **Clarity**: `Nx_points` explicitly means grid points
 - **Grid spacing**: `dx = L / Nx` (NOT `L / (Nx-1)`)
-- **Arrays**: Solution arrays have shape `(Nt+1, Nx[0]+1, Nx[1]+1, ...)`
+- **Arrays**: Solution arrays have shape `(Nt_points, Nx_points[0], Nx_points[1], ...)`
 - **Interoperability**: All MFG_PDE solvers assume this convention
 
 ### Spatial Discretization
 
 | Parameter | Type | Meaning | Math | Example |
 |-----------|------|---------|------|---------|
-| `Nx` | **list[int]** | Number of **intervals** per dimension: `[Nx1, Nx2, ..., Nxd]` | N | `[50, 30]` |
+| `Nx` | **list[int]** | Number of **intervals** per dimension | N | `[50, 30]` |
+| `Nx_points` | **list[int]** | Number of **grid points** per dimension | N+1 | `[51, 31]` |
 | `xmin` | **list[float]** | Domain lower bounds | x_min | `[0.0, 0.0]` |
 | `xmax` | **list[float]** | Domain upper bounds | x_max | `[1.0, 1.0]` |
-| `dx` | **list[float]** | Grid spacing per dimension: `[dx1, dx2, ..., dxd]` | Δx | `[0.02, 0.033]` |
-| `Lx` | **list[float]** | Domain length per dimension: `[Lx1, Lx2, ..., Lxd]` | L | `[1.0, 1.0]` |
+| `dx` | **list[float]** | Grid spacing per dimension | Δx | `[0.02, 0.033]` |
+| `Lx` | **list[float]** | Domain length per dimension | L | `[1.0, 1.0]` |
 
 **Grid Convention**:
-- `Nxi` **intervals** → `Nxi+1` **grid points** (for each dimension i)
-- Grid spacing: `dxi = (xmax[i] - xmin[i]) / Nxi`
+- `Nx[i]` **intervals** → `Nx_points[i] = Nx[i]+1` **grid points** (for each dimension i)
+- Grid spacing: `dx[i] = (xmax[i] - xmin[i]) / Nx[i]`
 - Arrays include both boundaries
-- **Never** use `Nx` to represent number of points
+- **Use `Nx` for intervals, `Nx_points` for points** (never confuse them)
 
 **Example (2D)**:
 ```python
@@ -324,21 +356,23 @@ problem = MFGProblem(
 | Parameter | Type | Meaning | Math |
 |-----------|------|---------|------|
 | `Nt` | int | Number of time **intervals** | N_t |
+| `Nt_points` | int | Number of time **points** (`Nt + 1`) | N_t + 1 |
 | `T` | float | Terminal time | T |
 | `dt` | float | Time step size | Δt |
 | `tSpace` | ndarray | Time grid array | t_i |
 
 **Grid Convention**:
-- `Nt` **intervals** → `Nt+1` **time points** (includes t=0 and t=T)
+- `Nt` **intervals** → `Nt_points = Nt + 1` **time points** (includes t=0 and t=T)
 - Time step: `dt = T / Nt` (interval length)
-- Time grid: `tSpace = [0, dt, 2*dt, ..., T]` with `len(tSpace) = Nt + 1`
+- Time grid: `tSpace = [0, dt, 2*dt, ..., T]` with `len(tSpace) = Nt_points`
 
 **Example**:
 ```python
-Nt = 100  # 100 time intervals
-T = 1.0   # Final time
-dt = T / Nt  # = 0.01 (interval size)
-tSpace = np.linspace(0, T, Nt + 1)  # 101 time points
+problem = MFGProblem(geometry=grid, T=1.0, Nt=100)
+problem.Nt         # 100 time intervals
+problem.Nt_points  # 101 time points
+problem.dt         # = 0.01 (interval size)
+problem.tSpace     # np.linspace(0, 1.0, 101) - 101 time points
 ```
 
 ---
@@ -643,7 +677,7 @@ elif d == 2:
 
 ---
 
-## Geometry Parameters (v0.10.0+)
+## Geometry Parameters (v0.16.0+)
 
 ### GeometryProtocol Standard
 
@@ -657,22 +691,38 @@ All geometry classes implement:
 | `get_spatial_grid()` | np.ndarray | Spatial grid array |
 | `get_problem_config()` | dict | Configuration for MFGProblem |
 
+### TensorProductGrid (v0.16.0+)
+
+TensorProductGrid provides additional properties:
+
+| Property | Type | Meaning |
+|----------|------|---------|
+| `Nx` | list[int] | Number of intervals per dimension |
+| `Nx_points` | list[int] | Number of grid points per dimension (`Nx + 1`) |
+| `num_points` | list[int] | **DEPRECATED** - use `Nx_points` instead |
+
 **Example**:
 ```python
 from mfg_pde import MFGProblem
-from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+from mfg_pde.geometry import TensorProductGrid
 
-# Geometry-first API (v0.10.0+)
+# Geometry-first API with Nx_points (v0.16.0+)
 geometry = TensorProductGrid(
     dimension=2,
     bounds=[(0.0, 1.0), (0.0, 1.0)],
-    num_points=[51, 51]
+    Nx_points=[51, 51]  # Or Nx=[50, 50] for intervals
 )
 problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
 
 # Geometry provides configuration
 assert geometry.dimension == 2
+assert geometry.Nx == [50, 50]        # intervals
+assert geometry.Nx_points == [51, 51]  # points
 assert geometry.num_spatial_points == 51 * 51
+
+# MFGProblem provides time grid info
+assert problem.Nt == 100
+assert problem.Nt_points == 101
 ```
 
 ---
@@ -681,11 +731,12 @@ assert geometry.num_spatial_points == 51 * 51
 
 **Do not use** these legacy names (found in old code):
 
-| Old Name | New Name | Reason |
-|----------|----------|--------|
-| `thetaUM` | `damping_factor` | Unclear acronym |
-| `Niter_max` | `max_iterations` | Inconsistent capitalization |
-| `coefCT` | `coupling_coefficient` | Unclear acronym |
+| Old Name | New Name | Reason | Removal |
+|----------|----------|--------|---------|
+| `num_points` | `Nx_points` | Unclear (which N?) | v1.0.0 |
+| `thetaUM` | `damping_factor` | Unclear acronym | Legacy |
+| `Niter_max` | `max_iterations` | Inconsistent capitalization | Legacy |
+| `coefCT` | `coupling_coefficient` | Unclear acronym | Legacy |
 
 **Note**: Lowercase `dx`, `dt` are standard in mathematical and scientific computing. Use these in algorithm implementations, but `Dx`, `Dt` may appear in legacy contexts.
 
@@ -850,7 +901,7 @@ solver = FixedPointIterator(
 ```python
 geometry = TensorProductGrid(
     dimension=2,
-    num_points=[51, 51],          # NOT Nx (this is constructor param)
+    Nx_points=[51, 51],           # Points (or Nx=[50, 50] for intervals)
     bounds=[(0.0, 1.0), (0.0, 1.0)]
 )
 ```
@@ -889,4 +940,4 @@ When adding new parameters:
 
 ---
 
-**Authoritative Source**: This document reflects actual codebase standards as of v0.10.1
+**Authoritative Source**: This document reflects actual codebase standards as of v0.16.0
