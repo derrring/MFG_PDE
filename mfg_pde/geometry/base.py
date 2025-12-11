@@ -94,6 +94,76 @@ class Geometry(ABC):
         """
         ...
 
+    # ============================================================================
+    # Type Helper Properties (eliminates isinstance checks)
+    # ============================================================================
+
+    @property
+    def is_cartesian(self) -> bool:
+        """
+        Check if this is a Cartesian grid geometry.
+
+        Returns:
+            True if geometry_type is CARTESIAN_GRID
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid.is_cartesian
+            True
+            >>> network = create_network(NetworkType.RANDOM, 10)
+            >>> network.is_cartesian
+            False
+        """
+        return self.geometry_type == GeometryType.CARTESIAN_GRID
+
+    @property
+    def is_network(self) -> bool:
+        """
+        Check if this is a network/graph geometry.
+
+        Returns:
+            True if geometry_type is NETWORK
+
+        Examples:
+            >>> network = create_network(NetworkType.RANDOM, 10)
+            >>> network.is_network
+            True
+            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid.is_network
+            False
+        """
+        return self.geometry_type == GeometryType.NETWORK
+
+    @property
+    def is_mesh(self) -> bool:
+        """
+        Check if this is an unstructured mesh geometry.
+
+        Returns:
+            True if geometry_type is DOMAIN_2D or DOMAIN_3D
+
+        Examples:
+            >>> mesh = Domain2D(...)
+            >>> mesh.is_mesh
+            True
+        """
+        return self.geometry_type in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D)
+
+    @property
+    def is_implicit(self) -> bool:
+        """
+        Check if this is an implicit geometry (SDF-based).
+
+        Returns:
+            True if geometry_type is IMPLICIT
+
+        Examples:
+            >>> domain = Hyperrectangle(...)
+            >>> domain.is_implicit
+            True
+        """
+        return self.geometry_type == GeometryType.IMPLICIT
+
     @property
     @abstractmethod
     def num_spatial_points(self) -> int:
