@@ -8,7 +8,7 @@
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **v0.16.0** - Geometry-first API unification: `MFGProblem.geometry` is now always non-None, legacy attributes emit deprecation warnings
+> **v0.16.2** - Grid interpolator fix, Nx/Nx_points naming consistency, geometry-first API unification
 
 ---
 
@@ -227,7 +227,7 @@ If you use MFG_PDE in your research:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={0.15.3},
+  version={0.16.2},
   url={https://github.com/derrring/MFG_PDE}
 }
 ```
