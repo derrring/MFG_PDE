@@ -124,12 +124,14 @@ elif problem.is_network:
     pass
 ```
 
-### What Changed (Issue #435, PRs #436-#441)
+### What Changed (Issue #435, PRs #436-#443)
 
 1. **`problem.geometry` is never None** - Always set after initialization
-2. **Legacy attributes hidden from autocomplete** - `__dir__()` excludes them
-3. **Write protection** - Setting `problem.xmin = value` emits warning
-4. **Type safety** - `geometry` is typed as `GeometryProtocol`
+2. **Legacy attributes are computed properties** - Derive values from `self.geometry`
+3. **Legacy attributes hidden from autocomplete** - `__dir__()` excludes them
+4. **Write protection** - Setting `problem.xmin = value` emits warning (but works for backward compatibility)
+5. **Type safety** - `geometry` is typed as `GeometryProtocol`
+6. **Helper properties** - `is_cartesian`, `is_network`, `is_implicit` for type dispatch
 
 ### Migration
 
@@ -342,9 +344,11 @@ pytest tests/unit/your_test_file.py
 
 ## Tracking Progress
 
-**Current Status** (as of 2025-11-13):
+**Current Status** (as of 2025-12-11):
 - ✅ Modern API fully implemented
 - ✅ Dimension-agnostic boundary handler (PR #305, #306)
+- ✅ Geometry-first unification complete (Issue #435, PRs #436-#443)
+- ✅ Legacy attributes converted to computed properties (PR #443)
 - ⏳ Test file migration: 0/22 files converted
 - ⏳ Example migration: 0/10 files converted
 - ❌ v1.0.0 enforcement: Not yet implemented
