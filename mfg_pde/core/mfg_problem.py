@@ -233,6 +233,9 @@ class MFGProblem:
         """
         import warnings
 
+        # Mark as initializing (allows setting deprecated attributes)
+        self._initializing = True
+
         # Normalize parameter aliases
         if time_domain is not None:
             if T is not None or Nt is not None:
@@ -380,6 +383,9 @@ class MFGProblem:
 
         # Detect solver compatibility
         self._detect_solver_compatibility()
+
+        # Mark initialization complete (deprecated attrs now read-only)
+        self._initializing = False
 
     def _init_1d_legacy(
         self,
@@ -1004,6 +1010,69 @@ class MFGProblem:
             True
         """
         return getattr(self, "domain_type", None) == "implicit"
+
+    # =========================================================================
+    # Attribute Hiding (Phase 3 of Issue #435)
+    # =========================================================================
+
+    # Deprecated attributes that should be hidden from autocomplete
+    # These are legacy 1D attributes that have been superseded by geometry
+    _DEPRECATED_ATTRIBUTES: frozenset[str] = frozenset(
+        {
+            "xmin",
+            "xmax",
+            "Lx",
+            "Nx",
+            "dx",
+            "xSpace",
+            "_grid",
+        }
+    )
+
+    # Flag to track if we're in __init__ (allows setting deprecated attrs)
+    _initializing: bool = False
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Intercept attribute setting to make deprecated attributes read-only.
+
+        During initialization (_initializing=True), all attributes can be set.
+        After initialization, attempts to set deprecated attributes raise
+        AttributeError with guidance to use the geometry API instead.
+        """
+        # Allow all writes during initialization
+        if name == "_initializing" or getattr(self, "_initializing", True):
+            super().__setattr__(name, value)
+            return
+
+        # After initialization, block writes to deprecated attributes
+        if name in self._DEPRECATED_ATTRIBUTES:
+            raise AttributeError(
+                f"Cannot set '{name}': this attribute is deprecated and read-only.\n"
+                f"Use 'problem.geometry' for spatial configuration instead.\n"
+                f"See docs/development/MFGProblem_Conditional_Attributes_Report.md for migration guidance."
+            )
+
+        # Allow all other attributes
+        super().__setattr__(name, value)
+
+    def __dir__(self) -> list[str]:
+        """
+        Return list of attributes, excluding deprecated ones from autocomplete.
+
+        This helps users discover the modern geometry-first API by hiding
+        legacy attributes from IDE autocomplete and tab completion.
+
+        The deprecated attributes still exist and work, but won't appear
+        in autocomplete suggestions.
+        """
+        # Get all default attributes
+        default_attrs = set(super().__dir__())
+
+        # Remove deprecated attributes from the visible set
+        visible_attrs = default_attrs - self._DEPRECATED_ATTRIBUTES
+
+        return sorted(visible_attrs)
 
     def _detect_solver_compatibility(self) -> None:
         """
