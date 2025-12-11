@@ -653,28 +653,46 @@ class TensorProductGrid(CartesianGrid):
         Return linear interpolator for arbitrary points.
 
         Returns:
-            Function with signature: (u: NDArray, point: NDArray) -> float
+            Function with signature: (u: NDArray, points: NDArray) -> NDArray | float
+            - Single point (1D array of length dim): returns float
+            - Multiple points (2D array of shape (N, dim)): returns NDArray of shape (N,)
 
         Examples:
             >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[10,10])
             >>> interpolate = grid.get_interpolator()
             >>> u = np.random.rand(10, 10)
-            >>> value = interpolate(u, np.array([0.5, 0.3]))  # Interpolate at (0.5, 0.3)
+            >>> # Single point
+            >>> value = interpolate(u, np.array([0.5, 0.3]))  # Returns float
+            >>> # Multiple points (batched)
+            >>> values = interpolate(u, np.array([[0.5, 0.3], [0.2, 0.8]]))  # Returns NDArray
         """
 
-        def interpolate_linear(u: NDArray, point: NDArray) -> float:
+        def interpolate_linear(u: NDArray, points: NDArray) -> NDArray | float:
             """
-            Linear interpolation at arbitrary point.
+            Linear interpolation at arbitrary point(s).
 
             Args:
                 u: Solution array of shape self.grid_shape
-                point: Physical coordinates [x, y, z, ...]
+                points: Physical coordinates, either:
+                    - 1D array of length dim for single point
+                    - 2D array of shape (N, dim) for N points
 
             Returns:
-                Interpolated value
+                Interpolated value(s): float for single point, NDArray for multiple
             """
-            if len(point) != self._dimension:
-                raise ValueError(f"Point must have length {self._dimension}, got {len(point)}")
+            points = np.asarray(points)
+
+            # Handle single point (1D array)
+            if points.ndim == 1:
+                if len(points) != self._dimension:
+                    raise ValueError(f"Point must have length {self._dimension}, got {len(points)}")
+                single_point = True
+                points = points.reshape(1, -1)
+            else:
+                # Batched points (2D array)
+                if points.shape[1] != self._dimension:
+                    raise ValueError(f"Points must have shape (N, {self._dimension}), got {points.shape}")
+                single_point = False
 
             # Use scipy's RegularGridInterpolator for nD linear interpolation
             try:
@@ -685,7 +703,9 @@ class TensorProductGrid(CartesianGrid):
             interpolator = RegularGridInterpolator(
                 self.coordinates, u, method="linear", bounds_error=False, fill_value=0.0
             )
-            return float(interpolator(point))
+            result = interpolator(points)
+
+            return float(result[0]) if single_point else result
 
         return interpolate_linear
 

@@ -46,7 +46,6 @@ class TestGeometryProjectorBasics:
 class TestGrid1DProjections:
     """Test projections for 1D grids."""
 
-    @pytest.mark.xfail(reason="Issue #444: Grid-to-grid interpolation bug - interpolator expects single point")
     def test_grid_to_grid_1d_interpolation(self):
         """Test 1D grid → grid interpolation."""
         # Coarse grid (HJB)
@@ -58,20 +57,20 @@ class TestGrid1DProjections:
         projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
         # Create test function on coarse grid: u(x) = x (linear function for exact interpolation)
-        coarse_points = coarse_grid.get_spatial_grid()
+        # Note: For 1D grids, get_spatial_grid() returns (N, 1), but values should be 1D array
+        coarse_points = coarse_grid.get_spatial_grid().ravel()  # Shape (11,)
         U_coarse = coarse_points
 
         # Project to fine grid
         U_fine = projector.project_hjb_to_fp(U_coarse)
 
         # Verify interpolation accuracy
-        fine_points = fine_grid.get_spatial_grid()
+        fine_points = fine_grid.get_spatial_grid().ravel()  # Shape (21,)
         U_expected = fine_points
 
         # Linear interpolation should be exact for linear functions
         np.testing.assert_allclose(U_fine, U_expected, rtol=1e-10, atol=1e-12)
 
-    @pytest.mark.xfail(reason="Issue #444: Grid-to-grid interpolation bug - interpolator expects single point")
     def test_grid_to_grid_1d_conservation(self):
         """Test that grid→grid projection preserves integral."""
         # Fine grid (FP solver) - 21 points
@@ -84,7 +83,8 @@ class TestGrid1DProjections:
         projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
         # Create density on fine grid (FP)
-        points_fine = fine_grid.get_spatial_grid()
+        # Note: For 1D grids, use ravel() to get 1D arrays
+        points_fine = fine_grid.get_spatial_grid().ravel()  # Shape (21,)
         M_fine = np.exp(-((points_fine - 0.5) ** 2) / 0.1)  # Gaussian
         M_fine /= np.trapezoid(M_fine, points_fine)  # Normalize
 
@@ -92,7 +92,7 @@ class TestGrid1DProjections:
         M_coarse = projector.project_fp_to_hjb(M_fine)
 
         # Check integral preservation (approximately)
-        points_coarse = coarse_grid.get_spatial_grid()
+        points_coarse = coarse_grid.get_spatial_grid().ravel()  # Shape (11,)
         integral_fine = np.trapezoid(M_fine, points_fine)
         integral_coarse = np.trapezoid(M_coarse, points_coarse)
 
@@ -102,7 +102,6 @@ class TestGrid1DProjections:
 class TestGrid2DProjections:
     """Test projections for 2D grids."""
 
-    @pytest.mark.xfail(reason="Issue #444: Grid-to-grid interpolation bug - interpolator expects single point")
     def test_grid_to_grid_2d_shape(self):
         """Test 2D grid → grid projection shape."""
         grid_coarse = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6])
@@ -119,7 +118,6 @@ class TestGrid2DProjections:
         # Check output shape
         assert U_fine.shape == (11, 11)
 
-    @pytest.mark.xfail(reason="Issue #444: Grid-to-grid interpolation bug - interpolator expects single point")
     def test_grid_to_grid_2d_smooth_function(self):
         """Test 2D grid → grid interpolation accuracy."""
         grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
@@ -147,7 +145,6 @@ class TestGrid2DProjections:
 class TestGrid3DProjections:
     """Test projections for 3D grids."""
 
-    @pytest.mark.xfail(reason="Issue #444: Grid-to-grid interpolation bug - interpolator expects single point")
     def test_grid_to_grid_3d_shape(self):
         """Test 3D grid → grid projection shape."""
         grid1 = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[4, 4, 4])
@@ -256,7 +253,6 @@ class TestProjectionMethods:
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
-    @pytest.mark.xfail(reason="Issue #444: Grid-to-grid interpolation bug - interpolator expects single point")
     def test_empty_values(self):
         """Test projection with zero/empty values."""
         grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6])
@@ -270,7 +266,6 @@ class TestEdgeCases:
 
         np.testing.assert_array_equal(U_projected, np.zeros((11, 11)))
 
-    @pytest.mark.xfail(reason="Issue #444: Grid-to-grid interpolation bug - interpolator expects single point")
     def test_constant_field(self):
         """Test projection of constant field."""
         grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6])
