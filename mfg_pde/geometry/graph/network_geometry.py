@@ -13,13 +13,21 @@ Key concepts:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.sparse import csr_matrix, diags
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
+
+# Import base geometry class
+from mfg_pde.geometry.base import GraphGeometry
 
 # Import geometry protocol
 from mfg_pde.geometry.protocol import GeometryType
@@ -234,12 +242,21 @@ class NetworkData:
         return int(self.adjacency_matrix.getrow(node_id).sum())
 
 
-class BaseNetworkGeometry(ABC):
+class NetworkGeometry(GraphGeometry):
     """
     Abstract base class for network geometries in MFG problems.
 
     This class defines the interface for creating and managing
     network structures for Mean Field Games on graphs.
+
+    Inherits from GraphGeometry to participate in the geometry hierarchy:
+        Geometry -> GraphGeometry -> NetworkGeometry -> GridNetwork, etc.
+
+    Key features:
+        - Unified interface with MazeGeometry and other graph types
+        - Optional spatial embedding (node positions)
+        - Multiple backend support (igraph, networkx, networkit)
+        - Sparse matrix operations for efficiency
     """
 
     def __init__(
@@ -248,13 +265,16 @@ class BaseNetworkGeometry(ABC):
         network_type: NetworkType = NetworkType.CUSTOM,
         backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH,
     ):
-        self.num_nodes = num_nodes
+        self._num_nodes = num_nodes
         self.network_type = network_type
         self.network_data: NetworkData | None = None
         self.backend_preference = backend_preference
         self.backend_manager = get_backend_manager(backend_preference)
 
-    # GeometryProtocol implementation
+    # =========================================================================
+    # GraphGeometry abstract method implementations
+    # =========================================================================
+
     @property
     def dimension(self) -> int:
         """
@@ -262,10 +282,13 @@ class BaseNetworkGeometry(ABC):
 
         For networks, dimension represents the embedding space dimension
         if node_positions are available, or 1 (topological dimension) otherwise.
+
+        Note: This overrides GraphGeometry.dimension (which returns 0 for
+        topological dimension) because networks often have spatial embedding.
         """
         if self.network_data is not None and self.network_data.node_positions is not None:
             return self.network_data.node_positions.shape[1]
-        return 1  # Topological dimension for abstract networks
+        return 1  # Default for abstract networks
 
     @property
     def geometry_type(self) -> GeometryType:
@@ -275,7 +298,28 @@ class BaseNetworkGeometry(ABC):
     @property
     def num_spatial_points(self) -> int:
         """Total number of discrete spatial points (network nodes)."""
-        return self.num_nodes
+        return self._num_nodes
+
+    # Alias for backward compatibility
+    @property
+    def num_nodes(self) -> int:
+        """Number of nodes in the network (alias for num_spatial_points)."""
+        return self._num_nodes
+
+    @abstractmethod
+    def get_adjacency_matrix(self) -> NDArray:
+        """
+        Get adjacency matrix for the network.
+
+        Returns:
+            Adjacency matrix A of shape (N, N) where:
+                A[i,j] = weight of edge from node i to node j
+                A[i,j] = 0 if no edge exists
+
+        Note: Required by GraphGeometry ABC. Concrete implementations
+        should return the adjacency matrix from their network_data.
+        """
+        ...
 
     def get_spatial_grid(self) -> np.ndarray:
         """
@@ -303,15 +347,66 @@ class BaseNetworkGeometry(ABC):
     def compute_distance_matrix(self) -> np.ndarray:
         """Compute shortest path distances between all node pairs."""
 
-    def get_laplacian_operator(self, operator_type: str = "combinatorial") -> csr_matrix:
+    def get_node_positions(self) -> NDArray | None:
         """
-        Get graph Laplacian operator for MFG computations.
-
-        Args:
-            operator_type: Type of Laplacian ("combinatorial", "normalized", "random_walk")
+        Get physical coordinates for spatially-embedded networks.
 
         Returns:
-            Sparse Laplacian matrix
+            (N, d) array of node positions in R^d, or None if abstract network
+
+        Note: Overrides GraphGeometry.get_node_positions() which returns None.
+        """
+        if self.network_data is not None:
+            return self.network_data.node_positions
+        return None
+
+    def get_laplacian_operator(self) -> Callable[[NDArray, int], float]:
+        """
+        Return graph Laplacian operator for discrete diffusion.
+
+        Returns:
+            Function with signature: (u: NDArray, node_idx: int) -> float
+            Computing: (L u)[node_idx] = sum_j L[node_idx, j] * u[j]
+
+        Note: This is compatible with GraphGeometry's interface.
+        For sparse matrix operations, use get_sparse_laplacian() instead.
+        """
+        L = self.get_sparse_laplacian()  # Get sparse matrix form
+
+        def graph_laplacian_op(u: NDArray, node_idx: int) -> float:
+            """
+            Apply graph Laplacian to node.
+
+            Args:
+                u: Solution vector at nodes (N,)
+                node_idx: Node index
+
+            Returns:
+                Laplacian value: (L u)[node_idx]
+            """
+            return float(L.getrow(node_idx).dot(u))
+
+        return graph_laplacian_op
+
+    def get_sparse_laplacian(self, operator_type: str = "combinatorial") -> csr_matrix:
+        """
+        Get graph Laplacian as sparse matrix for efficient computations.
+
+        This method provides direct access to the sparse Laplacian matrix,
+        which is more efficient for matrix operations than the callable
+        interface from get_laplacian_operator().
+
+        Args:
+            operator_type: Type of Laplacian:
+                - "combinatorial": L = D - A (default)
+                - "normalized": L_norm = D^(-1/2) L D^(-1/2)
+                - "random_walk": L_rw = D^(-1) L
+
+        Returns:
+            Sparse Laplacian matrix (csr_matrix)
+
+        Raises:
+            ValueError: If network data not initialized or invalid operator_type
         """
         if self.network_data is None:
             raise ValueError("Network data not initialized. Call create_network() first.")
@@ -615,7 +710,7 @@ class BaseNetworkGeometry(ABC):
         return regions
 
 
-class GridNetwork(BaseNetworkGeometry):
+class GridNetwork(NetworkGeometry):
     """Grid/lattice network for MFG problems."""
 
     def __init__(
@@ -629,6 +724,12 @@ class GridNetwork(BaseNetworkGeometry):
         self.height = height or width
         self.periodic = periodic
         super().__init__(self.width * self.height, NetworkType.GRID, backend_preference)
+
+    def get_adjacency_matrix(self) -> NDArray:
+        """Get adjacency matrix for the grid network."""
+        if self.network_data is None:
+            raise ValueError("Network data not initialized. Call create_network() first.")
+        return self.network_data.adjacency_matrix.toarray()
 
     def create_network(self, **kwargs) -> NetworkData:
         """Create grid network using optimal backend."""
@@ -702,8 +803,8 @@ class GridNetwork(BaseNetworkGeometry):
         return distances
 
 
-class RandomNetwork(BaseNetworkGeometry):
-    """Random network (Erdős–Rényi model) for MFG problems."""
+class RandomNetwork(NetworkGeometry):
+    """Random network (Erdos-Renyi model) for MFG problems."""
 
     def __init__(
         self,
@@ -713,6 +814,12 @@ class RandomNetwork(BaseNetworkGeometry):
     ):
         self.connection_prob = connection_prob
         super().__init__(num_nodes, NetworkType.RANDOM, backend_preference)
+
+    def get_adjacency_matrix(self) -> NDArray:
+        """Get adjacency matrix for the random network."""
+        if self.network_data is None:
+            raise ValueError("Network data not initialized. Call create_network() first.")
+        return self.network_data.adjacency_matrix.toarray()
 
     def create_network(self, seed: int | None = None, **kwargs) -> NetworkData:
         """Create random network using optimal backend."""
@@ -773,8 +880,8 @@ class RandomNetwork(BaseNetworkGeometry):
             return distance_matrix
 
 
-class ScaleFreeNetwork(BaseNetworkGeometry):
-    """Scale-free network (Barabási–Albert model) for MFG problems."""
+class ScaleFreeNetwork(NetworkGeometry):
+    """Scale-free network (Barabasi-Albert model) for MFG problems."""
 
     def __init__(
         self,
@@ -784,6 +891,12 @@ class ScaleFreeNetwork(BaseNetworkGeometry):
     ):
         self.num_edges_per_node = num_edges_per_node
         super().__init__(num_nodes, NetworkType.SCALE_FREE, backend_preference)
+
+    def get_adjacency_matrix(self) -> NDArray:
+        """Get adjacency matrix for the scale-free network."""
+        if self.network_data is None:
+            raise ValueError("Network data not initialized. Call create_network() first.")
+        return self.network_data.adjacency_matrix.toarray()
 
     def create_network(self, seed: int | None = None, **kwargs) -> NetworkData:
         """Create scale-free network using optimal backend."""
@@ -906,7 +1019,7 @@ def create_network(
     num_nodes: int,
     backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH,
     **kwargs,
-) -> BaseNetworkGeometry:
+) -> NetworkGeometry:
     """
     Factory function for creating network geometries with backend selection.
 

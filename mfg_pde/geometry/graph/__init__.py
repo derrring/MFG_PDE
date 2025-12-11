@@ -20,15 +20,18 @@ from .network_backend import (
     set_preferred_backend,
 )
 from .network_geometry import (
-    BaseNetworkGeometry,
     GridNetwork,
     NetworkData,
+    NetworkGeometry,
     NetworkType,
     RandomNetwork,
     ScaleFreeNetwork,
     compute_network_statistics,
     create_network,
 )
+
+# Backward compatibility alias
+BaseNetworkGeometry = NetworkGeometry
 
 # Add maze_ prefixes for clarity
 maze_Geometry = MazeGeometry
@@ -45,7 +48,8 @@ __all__ = [
     # Network geometry
     "NetworkType",
     "NetworkData",
-    "BaseNetworkGeometry",
+    "NetworkGeometry",
+    "BaseNetworkGeometry",  # Backward compatibility alias
     "GridNetwork",
     "RandomNetwork",
     "ScaleFreeNetwork",
