@@ -1165,6 +1165,31 @@ def create_network(
         num_edges_per_node = kwargs.get("num_edges_per_node", 2)
         return ScaleFreeNetwork(num_nodes, num_edges_per_node, backend_preference)
 
+    elif network_type == NetworkType.CUSTOM:
+        # CUSTOM type requires either a graph or adjacency_matrix in kwargs
+        graph = kwargs.get("graph")
+        adjacency_matrix = kwargs.get("adjacency_matrix")
+        node_positions = kwargs.get("node_positions")
+
+        if graph is not None:
+            # Create from networkx graph (use keyword args to avoid position confusion)
+            return CustomNetwork.from_networkx(
+                graph,
+                node_positions=node_positions,
+                backend_preference=backend_preference,
+            )
+        elif adjacency_matrix is not None:
+            # Create from adjacency matrix
+            return CustomNetwork(
+                adjacency_matrix,
+                node_positions=node_positions,
+                backend_preference=backend_preference,
+            )
+        else:
+            raise ValueError(
+                "NetworkType.CUSTOM requires either 'graph' (networkx Graph) or 'adjacency_matrix' in kwargs"
+            )
+
     else:
         raise ValueError(f"Unsupported network type: {network_type}")
 
