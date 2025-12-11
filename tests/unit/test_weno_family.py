@@ -29,7 +29,7 @@ class TestWenoFamilySolver:
     @pytest.fixture
     def simple_problem(self) -> MFGProblem:
         """Create simple MFG problem for testing using modern geometry-first API."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[33])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[33])
         return MFGProblem(geometry=domain, T=0.1, Nt=10, sigma=0.1)
 
     @pytest.fixture
@@ -290,7 +290,7 @@ class TestWenoSolverIntegration:
     @pytest.fixture
     def integration_problem(self) -> MFGProblem:
         """Create MFG problem for integration testing using modern geometry-first API."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[41])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])
         return MFGProblem(geometry=domain, T=1.0, Nt=30, sigma=0.1)
 
     def test_solve_hjb_system_shape(self, integration_problem):

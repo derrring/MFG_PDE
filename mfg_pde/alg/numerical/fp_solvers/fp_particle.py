@@ -1453,7 +1453,7 @@ if __name__ == "__main__":
     geometry_2d = TensorProductGrid(
         dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],
-        num_points=[16, 16],
+        Nx_points=[16, 16],
     )
     problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, sigma=0.1)
 

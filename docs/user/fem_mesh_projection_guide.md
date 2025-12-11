@@ -314,7 +314,7 @@ def mesh_to_grid_quadratic(mesh_geo, grid_geo, mesh_values, **kwargs):
 from mfg_pde.geometry import Mesh3D, TensorProductGrid
 
 mesh3d = Mesh3D(domain_type="box", bounds=(0,1,0,1,0,1), mesh_size=0.1)
-grid3d = TensorProductGrid(dimension=3, bounds=[(0,1), (0,1), (0,1)], num_points=[31, 31, 31])
+grid3d = TensorProductGrid(dimension=3, bounds=[(0,1), (0,1), (0,1)], Nx_points=[31, 31, 31])
 
 problem = MFGProblem(hjb_geometry=grid3d, fp_geometry=mesh3d, ...)
 ```

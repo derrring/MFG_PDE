@@ -30,7 +30,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Create geometry (recommended approach)
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 
 # Create and solve
 problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
@@ -75,7 +75,7 @@ from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.factory import create_standard_solver
 
 # Create geometry
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 
 # Create problem with geometry
 problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
@@ -175,7 +175,7 @@ from mfg_pde.factory import create_standard_solver
 import numpy as np
 
 # Create geometry
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 
 # Define problem
 problem = MFGProblem(geometry=domain, T=1.0, Nt=50)
@@ -274,7 +274,7 @@ class MyMFGProblem(MFGProblem):
         return kinetic + congestion
 
 # Create geometry
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 
 # Use with factory API
 problem = MyMFGProblem(geometry=domain, T=1.0, Nt=20)
@@ -361,7 +361,7 @@ plt.show()
 3. **Tier 2 is default** - `create_standard_solver()` for most uses
 4. **Four lines to solve**:
    ```python
-   domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+   domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
    problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
    solver = create_standard_solver(problem, "fixed_point")
    result = solver.solve()

@@ -22,7 +22,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Single geometry for both HJB and FP (traditional approach)
-grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
+grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
 
 problem = MFGProblem(
     geometry=grid,  # Same geometry for HJB and FP
@@ -43,8 +43,8 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Different geometries for HJB and FP
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])  # Fine
-fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21])     # Coarse
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])  # Fine
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[21, 21])     # Coarse
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,  # Fine grid for value iteration
@@ -70,10 +70,10 @@ from mfg_pde import MFGProblem, solve_mfg
 from mfg_pde.geometry import TensorProductGrid
 
 # Fine grid for accurate HJB solution
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[201, 201])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], Nx_points=[201, 201])
 
 # Coarse grid for fast FP evolution
-fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[51, 51])
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], Nx_points=[51, 51])
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,
@@ -103,7 +103,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Grid for HJB (Eulerian)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
 
 # Particle geometry for FP (Lagrangian)
 class ParticleGeometry:
@@ -163,7 +163,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, GridNetwork
 
 # Grid for HJB (continuous space)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[101, 101])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], Nx_points=[101, 101])
 
 # Network for FP (discrete corridors)
 fp_network = GridNetwork(
@@ -220,7 +220,7 @@ class HighDimParticles:
         return 2  # Projected dimension
 
 # 2D grid for HJB (value function in reduced space)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(-3, 3), (-3, 3)], num_points=[51, 51])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(-3, 3), (-3, 3)], Nx_points=[51, 51])
 
 # High-D particles for FP (full state space)
 fp_particles = HighDimParticles(num_particles=10000, dimension=10)
@@ -514,10 +514,10 @@ from mfg_pde.geometry import TensorProductGrid
 # Use coarse grid for FP (fast density evolution)
 
 # Fine grid for HJB (need accuracy near exit)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[201, 201])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], Nx_points=[201, 201])
 
 # Coarse grid for FP (density is smooth)
-fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], num_points=[51, 51])
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], Nx_points=[51, 51])
 
 # Terminal cost: distance to exit at (0, 5)
 def g(x, y):
@@ -647,7 +647,7 @@ class Particles3D:
     def get_dimension(self):
         return 2  # Projected dimension
 
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
 fp_particles = Particles3D(...)
 
 problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_particles, ...)

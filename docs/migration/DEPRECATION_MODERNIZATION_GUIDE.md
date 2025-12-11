@@ -35,7 +35,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Step 1: Create geometry with boundary conditions
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 # Note: TensorProductGrid replaces SimpleGrid1D/2D/3D (removed in v0.15.3)
 
 # Step 2: Create problem with geometry
@@ -106,7 +106,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Create problem with geometry-first API
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 problem = MFGProblem(geometry=domain, T=1.0, Nt=10)
 
 # Access spatial information via geometry
@@ -249,7 +249,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Example: Crowd dynamics problem
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 # Note: TensorProductGrid replaces SimpleGrid1D/2D/3D (removed in v0.15.3)
 
 problem = MFGProblem(

@@ -101,7 +101,7 @@ jobs:
         monitor = MemoryMonitor(max_memory_gb=2.0)
 
         # Create problem with modern API (TensorProductGrid)
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[21])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.5)
 
         initial_memory = monitor.get_current_memory_gb()
@@ -147,7 +147,7 @@ jobs:
         import time
 
         # Create problem with modern API (TensorProductGrid)
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[31])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=20, sigma=0.5)
 
         start_time = time.time()
@@ -252,7 +252,7 @@ jobs:
         start_memory = process.memory_info().rss / 1024 / 1024  # MB
 
         # Create problem with modern API (TensorProductGrid)
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[26])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[26])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=15, sigma=0.5)
 
         # Create config

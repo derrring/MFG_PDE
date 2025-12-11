@@ -268,7 +268,7 @@ jobs:
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
 
         # Create problem with modern API (TensorProductGrid)
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[26])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[26])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=15, sigma=0.5)
 
         # Create config
@@ -392,7 +392,7 @@ jobs:
         import time
 
         # Create problem with modern API (TensorProductGrid)
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[21])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.5)
 
         # Test problem.solve() API
@@ -449,7 +449,7 @@ jobs:
         # Quick smoke test with modern API (TensorProductGrid)
         from mfg_pde import MFGProblem
         from mfg_pde.geometry import TensorProductGrid
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
+        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
         problem = MFGProblem(geometry=domain, T=1.0, Nt=5, sigma=0.5)
         result = problem.solve()
         print('✅ Package installation and basic functionality verified')

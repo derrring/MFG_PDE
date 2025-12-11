@@ -24,7 +24,7 @@ class TestMultiDimWorkflow2D:
         Solves -Δu = f on [0,1]×[0,1] with Dirichlet BC.
         """
         # 1. Create 2D grid
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[31, 31])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
 
         assert grid.dimension == 2
         assert grid.total_points() == 31 * 31
@@ -68,7 +68,7 @@ class TestMultiDimWorkflow2D:
 
     def test_2d_gradient_operators(self):
         """Test 2D gradient operators on quadratic function."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
         Gx = builder.build_gradient(direction=0, order=2)
@@ -94,7 +94,7 @@ class TestMultiDimWorkflow2D:
     def test_2d_time_dependent_diffusion(self):
         """Test 2D time-dependent diffusion equation."""
         # Spatial grid
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
         # Time parameters
         T = 0.1
@@ -136,7 +136,7 @@ class TestMultiDimWorkflow3D:
 
     def test_3d_laplacian_assembly(self):
         """Test 3D Laplacian construction and properties."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[11, 11, 11])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11, 11])
 
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
         L = builder.build_laplacian(boundary_conditions="dirichlet")
@@ -159,7 +159,7 @@ class TestMultiDimWorkflow3D:
 
     def test_3d_gradient_operators(self):
         """Test 3D gradient operators."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[11, 11, 11])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11, 11])
 
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
         Gx = builder.build_gradient(direction=0, order=2)
@@ -190,7 +190,7 @@ class TestMultiDimVisualization:
 
     def test_2d_visualization_creation(self):
         """Test basic 2D visualization object creation."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
         # Should work with 2D grid
         viz = MultiDimVisualizer(grid, backend="plotly")
@@ -199,7 +199,7 @@ class TestMultiDimVisualization:
 
     def test_3d_visualization_creation(self):
         """Test basic 3D visualization object creation."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[11, 11, 11])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11, 11])
 
         # Should work with 3D grid
         viz = MultiDimVisualizer(grid, backend="plotly")
@@ -208,7 +208,7 @@ class TestMultiDimVisualization:
 
     def test_invalid_dimension_visualization(self):
         """Test that 1D grid raises error for MultiDimVisualizer."""
-        grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[21])
+        grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
 
         # Should raise ValueError for 1D grid
         with pytest.raises(ValueError, match="requires 2D or 3D grid"):
@@ -220,7 +220,7 @@ class TestIterativeSolvers:
 
     def test_cg_solver_2d(self):
         """Test CG solver on 2D Poisson equation."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[31, 31])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
 
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
         L = builder.build_laplacian(boundary_conditions="dirichlet")
@@ -239,7 +239,7 @@ class TestIterativeSolvers:
 
     def test_gmres_solver_2d(self):
         """Test GMRES solver on 2D problem."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
         L = builder.build_laplacian(boundary_conditions="neumann")
@@ -262,7 +262,7 @@ class TestMemoryEfficiency:
 
     def test_2d_grid_memory_advantage(self):
         """Verify 2D tensor grid uses O(Nx+Ny) storage, not O(Nx*Ny)."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 10.0)], num_points=[100, 100])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 10.0)], Nx_points=[100, 100])
 
         # Coordinate storage
         coord_memory = sum(len(coords) for coords in grid.coordinates)
@@ -275,7 +275,7 @@ class TestMemoryEfficiency:
 
     def test_3d_grid_memory_advantage(self):
         """Verify 3D tensor grid uses O(Nx+Ny+Nz) storage."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[50, 50, 50])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[50, 50, 50])
 
         # Coordinate storage
         coord_memory = sum(len(coords) for coords in grid.coordinates)
@@ -292,7 +292,7 @@ class TestBoundaryConditions:
 
     def test_2d_neumann_bc_mass_conservation(self):
         """Test Neumann BC preserves mass in diffusion."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
         L = builder.build_laplacian(boundary_conditions="neumann")
@@ -319,7 +319,7 @@ class TestBoundaryConditions:
 
     def test_2d_dirichlet_bc_zero_boundary(self):
         """Test Dirichlet BC enforces zero on boundary in Poisson solve."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
         L = builder.build_laplacian(boundary_conditions="dirichlet")

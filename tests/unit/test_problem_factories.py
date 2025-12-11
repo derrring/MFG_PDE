@@ -26,13 +26,13 @@ from mfg_pde.geometry import TensorProductGrid
 @pytest.fixture
 def simple_domain():
     """Create simple 1D domain for testing using TensorProductGrid."""
-    return TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+    return TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 
 
 @pytest.fixture
 def simple_2d_domain():
     """Create simple 2D domain for testing using TensorProductGrid."""
-    return TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+    return TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
 
 @pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
@@ -197,7 +197,7 @@ def test_backward_compatibility_warning(simple_domain):
 def test_problem_type_detection():
     """Test automatic problem type detection."""
 
-    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
 
     # Standard MFG
     components_standard = MFGComponents(

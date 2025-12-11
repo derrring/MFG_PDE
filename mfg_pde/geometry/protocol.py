@@ -269,7 +269,7 @@ def is_boundary_aware(geometry: object) -> bool:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid, Hyperrectangle
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
         >>> is_boundary_aware(grid)
         True
         >>> is_boundary_aware(Hyperrectangle([[0, 1], [0, 1]]))
@@ -318,7 +318,7 @@ def detect_geometry_type(geometry: object) -> GeometryType:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
         >>> detect_geometry_type(grid)
         <GeometryType.CARTESIAN_GRID: 'cartesian_grid'>
 
@@ -367,7 +367,7 @@ def is_geometry_compatible(geometry: object) -> bool:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
         >>> is_geometry_compatible(grid)
         True
 
@@ -390,7 +390,7 @@ def validate_geometry(geometry: object) -> None:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
         >>> validate_geometry(grid)  # No error
 
         >>> validate_geometry("invalid")

@@ -27,28 +27,28 @@ class TestInitialization:
 
     def test_1d_uniform_grid(self) -> None:
         """Test 1D uniform grid initialization."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], num_points=[101])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], Nx_points=[101])
 
         assert grid.dimension == 1
         assert grid.bounds == [(0.0, 10.0)]
-        assert grid.num_points == [101]
+        assert grid.Nx_points == [101]
         assert grid.is_uniform is True
         assert len(grid.coordinates) == 1
         assert len(grid.coordinates[0]) == 101
 
     def test_2d_uniform_grid(self) -> None:
         """Test 2D uniform grid initialization."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[11, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], Nx_points=[11, 21])
 
         assert grid.dimension == 2
         assert grid.bounds == [(0.0, 1.0), (0.0, 2.0)]
-        assert grid.num_points == [11, 21]
+        assert grid.Nx_points == [11, 21]
         assert grid.is_uniform is True
         assert len(grid.coordinates) == 2
 
     def test_3d_uniform_grid(self) -> None:
         """Test 3D uniform grid initialization."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[11, 11, 11])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11, 11])
 
         assert grid.dimension == 3
         assert grid.total_points() == 11 * 11 * 11
@@ -57,20 +57,20 @@ class TestInitialization:
         """Test that invalid dimension raises ValueError."""
         # Dimension must be positive (dimension < 1 should raise)
         with pytest.raises(ValueError, match="Dimension must be positive"):
-            TensorProductGrid(dimension=0, bounds=[], num_points=[])
+            TensorProductGrid(dimension=0, bounds=[], Nx_points=[])
 
         with pytest.raises(ValueError, match="Dimension must be positive"):
-            TensorProductGrid(dimension=-1, bounds=[], num_points=[])
+            TensorProductGrid(dimension=-1, bounds=[], Nx_points=[])
 
     def test_mismatched_bounds_length_raises(self) -> None:
         """Test that mismatched bounds length raises ValueError."""
-        with pytest.raises(ValueError, match="bounds and num_points must have length 2"):
-            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0)], num_points=[10, 10])
+        with pytest.raises(ValueError, match="bounds and Nx/Nx_points must have length 2"):
+            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0)], Nx_points=[10, 10])
 
     def test_mismatched_num_points_length_raises(self) -> None:
-        """Test that mismatched num_points length raises ValueError."""
-        with pytest.raises(ValueError, match="bounds and num_points must have length 2"):
-            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10])
+        """Test that mismatched Nx_points length raises ValueError."""
+        with pytest.raises(ValueError, match="bounds and Nx/Nx_points must have length 2"):
+            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10])
 
     def test_custom_coordinates_grid(self) -> None:
         """Test grid with custom (non-uniform) coordinates."""
@@ -80,7 +80,7 @@ class TestInitialization:
         grid = TensorProductGrid(
             dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
-            num_points=[5, 3],
+            Nx_points=[5, 3],
             spacing_type="custom",
             custom_coordinates=[custom_x, custom_y],
         )
@@ -95,12 +95,12 @@ class TestInitialization:
     def test_custom_requires_coordinates(self) -> None:
         """Test that custom spacing type requires custom_coordinates."""
         with pytest.raises(ValueError, match="custom_coordinates required"):
-            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10], spacing_type="custom")
+            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10], spacing_type="custom")
 
     def test_unknown_spacing_type_raises(self) -> None:
         """Test that unknown spacing type raises ValueError."""
         with pytest.raises(ValueError, match="Unknown spacing_type"):
-            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10], spacing_type="invalid")
+            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10], spacing_type="invalid")
 
 
 # ============================================================================
@@ -113,39 +113,39 @@ class TestGridProperties:
 
     def test_total_points_1d(self) -> None:
         """Test total_points for 1D grid."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 
         assert grid.total_points() == 101
 
     def test_total_points_2d(self) -> None:
         """Test total_points for 2D grid."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 21])
 
         assert grid.total_points() == 11 * 21
 
     def test_total_points_3d(self) -> None:
         """Test total_points for 3D grid."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[10, 10, 10])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10, 10])
 
         assert grid.total_points() == 10 * 10 * 10
 
     def test_uniform_spacing_1d(self) -> None:
         """Test uniform spacing computation in 1D."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], num_points=[11])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], Nx_points=[11])
 
         assert grid.is_uniform is True
         assert grid.spacing[0] == pytest.approx(1.0)
 
     def test_uniform_spacing_2d(self) -> None:
         """Test uniform spacing computation in 2D."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[11, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], Nx_points=[11, 21])
 
         assert grid.spacing[0] == pytest.approx(0.1)
         assert grid.spacing[1] == pytest.approx(0.1)
 
     def test_repr_string(self) -> None:
         """Test string representation."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
         repr_str = repr(grid)
         assert "TensorProductGrid" in repr_str
@@ -163,7 +163,7 @@ class TestMeshgridAndFlatten:
 
     def test_meshgrid_1d(self) -> None:
         """Test meshgrid for 1D grid."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
 
         (X,) = grid.meshgrid()
 
@@ -173,7 +173,7 @@ class TestMeshgridAndFlatten:
 
     def test_meshgrid_2d_ij_indexing(self) -> None:
         """Test meshgrid for 2D grid with 'ij' indexing."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[3, 4])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], Nx_points=[3, 4])
 
         X, Y = grid.meshgrid(indexing="ij")
 
@@ -186,7 +186,7 @@ class TestMeshgridAndFlatten:
 
     def test_meshgrid_2d_xy_indexing(self) -> None:
         """Test meshgrid for 2D grid with 'xy' indexing."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[3, 4])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], Nx_points=[3, 4])
 
         X, Y = grid.meshgrid(indexing="xy")
 
@@ -195,7 +195,7 @@ class TestMeshgridAndFlatten:
 
     def test_flatten_1d(self) -> None:
         """Test flattening for 1D grid."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[11])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
 
         points = grid.flatten()
 
@@ -205,7 +205,7 @@ class TestMeshgridAndFlatten:
 
     def test_flatten_2d(self) -> None:
         """Test flattening for 2D grid."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[3, 4])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], Nx_points=[3, 4])
 
         points = grid.flatten()
 
@@ -216,7 +216,7 @@ class TestMeshgridAndFlatten:
 
     def test_flatten_3d(self) -> None:
         """Test flattening for 3D grid."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[2, 2, 2])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[2, 2, 2])
 
         points = grid.flatten()
 
@@ -233,7 +233,7 @@ class TestIndexConversion:
 
     def test_get_index_2d(self) -> None:
         """Test multi-index to flat index conversion in 2D."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
         # Test corner points
         assert grid.get_index((0, 0)) == 0
@@ -242,7 +242,7 @@ class TestIndexConversion:
 
     def test_get_index_3d(self) -> None:
         """Test multi-index to flat index conversion in 3D."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[10, 10, 10])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10, 10])
 
         assert grid.get_index((0, 0, 0)) == 0
         assert grid.get_index((9, 9, 9)) == 999
@@ -250,7 +250,7 @@ class TestIndexConversion:
 
     def test_get_multi_index_2d(self) -> None:
         """Test flat index to multi-index conversion in 2D."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
         assert grid.get_multi_index(0) == (0, 0)
         assert grid.get_multi_index(99) == (9, 9)
@@ -258,7 +258,7 @@ class TestIndexConversion:
 
     def test_get_multi_index_3d(self) -> None:
         """Test flat index to multi-index conversion in 3D."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[10, 10, 10])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10, 10])
 
         assert grid.get_multi_index(0) == (0, 0, 0)
         assert grid.get_multi_index(999) == (9, 9, 9)
@@ -266,7 +266,7 @@ class TestIndexConversion:
 
     def test_index_conversion_roundtrip(self) -> None:
         """Test that index conversions are inverses."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
         # Test several points
         for i in range(10):
@@ -278,14 +278,14 @@ class TestIndexConversion:
 
     def test_get_index_wrong_dimension_raises(self) -> None:
         """Test that wrong multi_index dimension raises ValueError."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
         with pytest.raises(ValueError, match="multi_index must have length 2"):
             grid.get_index((0, 0, 0))
 
     def test_get_multi_index_out_of_range_raises(self) -> None:
         """Test that out-of-range flat index raises ValueError."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
         with pytest.raises(ValueError, match="out of range"):
             grid.get_multi_index(100)
@@ -304,25 +304,25 @@ class TestRefinementCoarsening:
 
     def test_refine_uniform_factor(self) -> None:
         """Test refining grid with uniform factor."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
 
         fine_grid = grid.refine(2)
 
-        assert fine_grid.num_points == [21, 21]
+        assert fine_grid.Nx_points == [21, 21]
         assert fine_grid.bounds == grid.bounds
         assert fine_grid.dimension == grid.dimension
 
     def test_refine_per_dimension_factors(self) -> None:
         """Test refining grid with per-dimension factors."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
 
         fine_grid = grid.refine([2, 3])
 
-        assert fine_grid.num_points == [21, 31]
+        assert fine_grid.Nx_points == [21, 31]
 
     def test_refine_preserves_bounds(self) -> None:
         """Test that refinement preserves domain bounds."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], num_points=[11, 11])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], Nx_points=[11, 11])
 
         fine_grid = grid.refine(2)
 
@@ -334,29 +334,29 @@ class TestRefinementCoarsening:
 
     def test_coarsen_uniform_factor(self) -> None:
         """Test coarsening grid with uniform factor."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
         coarse_grid = grid.coarsen(2)
 
-        assert coarse_grid.num_points == [11, 11]
+        assert coarse_grid.Nx_points == [11, 11]
         assert coarse_grid.bounds == grid.bounds
 
     def test_coarsen_per_dimension_factors(self) -> None:
         """Test coarsening grid with per-dimension factors."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[21, 31])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 31])
 
         coarse_grid = grid.coarsen([2, 3])
 
-        assert coarse_grid.num_points == [11, 11]
+        assert coarse_grid.Nx_points == [11, 11]
 
     def test_refine_coarsen_consistency(self) -> None:
         """Test that refine and coarsen are (approximately) inverse operations."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
 
         fine_grid = grid.refine(2)
         recovered = fine_grid.coarsen(2)
 
-        assert recovered.num_points == grid.num_points
+        assert recovered.Nx_points == grid.Nx_points
 
 
 # ============================================================================
@@ -369,7 +369,7 @@ class TestSpacingQueries:
 
     def test_get_spacing_uniform_1d(self) -> None:
         """Test get_spacing for uniform 1D grid."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], num_points=[11])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], Nx_points=[11])
 
         spacing = grid.get_spacing(0)
 
@@ -377,7 +377,7 @@ class TestSpacingQueries:
 
     def test_get_spacing_uniform_2d(self) -> None:
         """Test get_spacing for uniform 2D grid."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[11, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], Nx_points=[11, 21])
 
         spacing_x = grid.get_spacing(0)
         spacing_y = grid.get_spacing(1)
@@ -390,7 +390,7 @@ class TestSpacingQueries:
         custom_x = np.array([0.0, 0.1, 0.3, 0.6, 1.0])
 
         grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], num_points=[5], spacing_type="custom", custom_coordinates=[custom_x]
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[5], spacing_type="custom", custom_coordinates=[custom_x]
         )
 
         spacings = grid.get_spacing(0)
@@ -404,7 +404,7 @@ class TestSpacingQueries:
 
     def test_get_spacing_invalid_dimension_raises(self) -> None:
         """Test that invalid dimension index raises ValueError."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[10, 10])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
         with pytest.raises(ValueError, match="dimension_idx 2 >= dimension 2"):
             grid.get_spacing(2)
@@ -420,7 +420,7 @@ class TestVolumeElement:
 
     def test_volume_element_uniform_1d(self) -> None:
         """Test volume element for uniform 1D grid."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], num_points=[11])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], Nx_points=[11])
 
         vol = grid.volume_element()
 
@@ -428,7 +428,7 @@ class TestVolumeElement:
 
     def test_volume_element_uniform_2d(self) -> None:
         """Test volume element for uniform 2D grid."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], num_points=[11, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 2.0)], Nx_points=[11, 21])
 
         vol = grid.volume_element()
 
@@ -436,7 +436,7 @@ class TestVolumeElement:
 
     def test_volume_element_uniform_3d(self) -> None:
         """Test volume element for uniform 3D grid."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[11, 11, 11])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11, 11])
 
         vol = grid.volume_element()
 
@@ -447,7 +447,7 @@ class TestVolumeElement:
         custom_x = np.array([0.0, 0.1, 0.3, 0.6, 1.0])
 
         grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], num_points=[5], spacing_type="custom", custom_coordinates=[custom_x]
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[5], spacing_type="custom", custom_coordinates=[custom_x]
         )
 
         with pytest.raises(ValueError, match="multi_index required"):
@@ -458,7 +458,7 @@ class TestVolumeElement:
         custom_x = np.array([0.0, 0.1, 0.3, 0.6, 1.0])
 
         grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], num_points=[5], spacing_type="custom", custom_coordinates=[custom_x]
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[5], spacing_type="custom", custom_coordinates=[custom_x]
         )
 
         # Test at first point
@@ -484,21 +484,21 @@ class TestEdgeCases:
 
     def test_single_point_grid(self) -> None:
         """Test grid with single point."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[1])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[1])
 
         assert grid.total_points() == 1
         assert grid.spacing[0] == 0.0  # Single point has zero spacing
 
     def test_two_point_grid(self) -> None:
         """Test grid with two points."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[2])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[2])
 
         assert grid.total_points() == 2
         assert grid.spacing[0] == pytest.approx(1.0)
 
     def test_asymmetric_2d_grid(self) -> None:
         """Test 2D grid with different resolutions in each dimension."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 101])
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 101])
 
         assert grid.total_points() == 11 * 101
         assert grid.spacing[0] == pytest.approx(0.1)
@@ -506,7 +506,7 @@ class TestEdgeCases:
 
     def test_negative_bounds(self) -> None:
         """Test grid with negative bounds."""
-        grid = TensorProductGrid(dimension=2, bounds=[(-1.0, 1.0), (-2.0, 2.0)], num_points=[11, 21])
+        grid = TensorProductGrid(dimension=2, bounds=[(-1.0, 1.0), (-2.0, 2.0)], Nx_points=[11, 21])
 
         assert grid.bounds == [(-1.0, 1.0), (-2.0, 2.0)]
         X, Y = grid.meshgrid()
@@ -515,6 +515,6 @@ class TestEdgeCases:
 
     def test_large_grid_total_points(self) -> None:
         """Test total_points calculation for large grid."""
-        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], num_points=[100, 100, 100])
+        grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx_points=[100, 100, 100])
 
         assert grid.total_points() == 1000000

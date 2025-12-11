@@ -54,7 +54,7 @@ from mfg_pde.visualization import MultiDimVisualizer
 grid = TensorProductGrid(
     dimension=2,
     bounds=[(0.0, 10.0), (0.0, 10.0)],  # [0,10] × [0,10]
-    num_points=[51, 51]  # 51×51 grid
+    Nx_points=[51, 51]  # 51×51 grid
 )
 
 # 2. Build sparse Laplacian
@@ -90,14 +90,14 @@ from mfg_pde.geometry import TensorProductGrid
 grid_2d = TensorProductGrid(
     dimension=2,
     bounds=[(0.0, L_x), (0.0, L_y)],
-    num_points=[Nx, Ny]
+    Nx_points=[Nx, Ny]
 )
 
 # 3D Grid
 grid_3d = TensorProductGrid(
     dimension=3,
     bounds=[(0.0, L_x), (0.0, L_y), (0.0, L_z)],
-    num_points=[Nx, Ny, Nz]
+    Nx_points=[Nx, Ny, Nz]
 )
 ```
 

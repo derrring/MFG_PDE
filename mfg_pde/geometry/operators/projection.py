@@ -16,7 +16,7 @@ Example:
     >>> from mfg_pde.geometry import TensorProductGrid
     >>> from mfg_pde.geometry.projection import GeometryProjector
     >>>
-    >>> hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
+    >>> hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
     >>> # Assume particle_geometry exists with particles
     >>>
     >>> projector = GeometryProjector.create(

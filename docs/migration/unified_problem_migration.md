@@ -233,7 +233,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Single geometry for both solvers (standard approach)
-grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
+grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
 
 problem = MFGProblem(
     geometry=grid,  # Same geometry for HJB and FP
@@ -254,10 +254,10 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Fine grid for HJB (needs accuracy for value function)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])
 
 # Coarse grid for FP (density is smooth)
-fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[26, 26])
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[26, 26])
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,  # Fine for HJB
@@ -293,7 +293,7 @@ mesh = Mesh2D(
 mesh.generate_mesh()  # Requires gmsh
 
 # Regular grid for HJB
-grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
+grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
 
 problem = MFGProblem(
     hjb_geometry=grid,  # Regular grid for fast HJB

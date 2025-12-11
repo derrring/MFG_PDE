@@ -1022,7 +1022,7 @@ if __name__ == "__main__":
 
     # Create 1D grid with TensorProductGrid
     Nx = 40  # Number of cells (grid points = Nx + 1)
-    grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[Nx + 1])
+    grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
     dx = grid_1d.get_mesh_spacing()[0]
     x_points = grid_1d.get_spatial_grid()
 
@@ -1081,7 +1081,7 @@ if __name__ == "__main__":
     grid_2d = TensorProductGrid(
         dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],  # [(xmin, xmax), (ymin, ymax)]
-        num_points=[11, 11],  # (nx+1, ny+1) grid points
+        Nx_points=[11, 11],  # (nx+1, ny+1) grid points
     )
     problem_2d = MFGProblem(
         geometry=grid_2d,
