@@ -435,6 +435,61 @@ See `docs/migration/LEGACY_TO_GEOMETRY_API.md` for full migration guide.
 
 ---
 
-**Last Updated**: 2025-12-10
+## Additional Deprecations
+
+### `BaseNetworkGeometry` Alias (PR #434)
+
+**Status**: Introduced in v0.15.x (PR #434)
+**Target Removal**: v0.17.0
+**Related Issue**: #433
+
+#### Background
+
+PR #434 refactored the network geometry hierarchy:
+- **Renamed**: `BaseNetworkGeometry` → `NetworkGeometry`
+- **Fixed**: `NetworkGeometry` now properly inherits from `GraphGeometry`
+- **Hierarchy**: `Geometry → GraphGeometry → NetworkGeometry → GridNetwork/RandomNetwork/ScaleFreeNetwork`
+
+A backward compatibility alias was added:
+```python
+# mfg_pde/geometry/graph/__init__.py
+BaseNetworkGeometry = NetworkGeometry  # Backward compatibility alias
+```
+
+#### Deprecation Timeline
+
+| Phase | Version | Status | Actions |
+|:------|:--------|:-------|:--------|
+| **Phase 1: Alias Added** | v0.15.x | COMPLETED | `BaseNetworkGeometry` alias created, both names work |
+| **Phase 2: Soft Deprecation** | v0.16.x | Planned | Add `DeprecationWarning` when importing `BaseNetworkGeometry` |
+| **Phase 3: Removal** | v0.17.0 | Planned | Remove `BaseNetworkGeometry` alias entirely |
+
+#### Migration
+
+**Old (deprecated)**:
+```python
+from mfg_pde.geometry.graph import BaseNetworkGeometry
+
+class MyNetwork(BaseNetworkGeometry):
+    ...
+```
+
+**New (recommended)**:
+```python
+from mfg_pde.geometry.graph import NetworkGeometry
+
+class MyNetwork(NetworkGeometry):
+    ...
+```
+
+#### Files Affected
+
+- `mfg_pde/geometry/graph/__init__.py` - alias definition
+- `mfg_pde/geometry/graph/network_geometry.py` - renamed class
+- User code inheriting from `BaseNetworkGeometry`
+
+---
+
+**Last Updated**: 2025-12-11
 **Responsible**: Core maintainers
 **Review Cycle**: Quarterly until v0.16.0 release
