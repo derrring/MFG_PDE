@@ -1151,6 +1151,74 @@ class MFGProblem:
 
         return sorted(visible_attrs)
 
+    def __repr__(self) -> str:
+        """
+        Return string representation using geometry-first API.
+
+        Avoids accessing deprecated attributes to prevent DeprecationWarning
+        spam in Jupyter notebooks and debuggers.
+        """
+        # Use geometry for spatial info, not deprecated attrs
+        geom_type = type(self.geometry).__name__ if self.geometry else "None"
+        dim = self.dimension if hasattr(self, "dimension") else "?"
+
+        return f"MFGProblem(geometry={geom_type}, dim={dim}, T={self.T}, Nt={self.Nt}, sigma={self.sigma})"
+
+    def __getstate__(self) -> dict[str, Any]:
+        """
+        Get state for pickling.
+
+        Returns the instance __dict__ for standard pickle behavior.
+        """
+        return self.__dict__.copy()
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """
+        Restore state from pickle with legacy migration support.
+
+        Handles legacy pickle files where geometry=None but legacy
+        attributes (xmin, xmax, Nx) are present. Reconstructs geometry
+        from these attributes for backward compatibility.
+        """
+        # Detect legacy format: geometry=None but has legacy 1D attrs
+        if state.get("geometry") is None and state.get("xmin") is not None:
+            try:
+                from mfg_pde.geometry import TensorProductGrid
+
+                # Reconstruct geometry from legacy attributes
+                xmin = state.get("xmin")
+                xmax = state.get("xmax")
+                Nx = state.get("Nx")
+
+                if xmin is None or xmax is None or Nx is None:
+                    raise KeyError("Missing required legacy fields (xmin, xmax, Nx)")
+
+                # Handle both scalar and list forms
+                if isinstance(xmin, (int, float)):
+                    bounds = [(float(xmin), float(xmax))]
+                    num_points = [int(Nx) + 1]
+                else:
+                    bounds = list(zip(xmin, xmax, strict=True))
+                    num_points = [n + 1 for n in Nx]
+
+                state["geometry"] = TensorProductGrid(
+                    dimension=len(bounds),
+                    bounds=bounds,
+                    num_points=num_points,
+                )
+            except (KeyError, ImportError) as e:
+                import warnings
+
+                warnings.warn(
+                    f"Unable to migrate legacy pickle format: {e}. "
+                    "This pickle file may be from an incompatible version. "
+                    "Consider recreating the MFGProblem.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+        self.__dict__.update(state)
+
     def _detect_solver_compatibility(self) -> None:
         """
         Detect which solver types are compatible with this problem.
