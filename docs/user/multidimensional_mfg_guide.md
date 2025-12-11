@@ -200,8 +200,8 @@ Gz = builder.build_gradient(direction=2, order=2)  # ∂/∂z
 
 # Compute gradient of function u
 u_flat = u.flatten()
-du_dx = (Gx @ u_flat).reshape(grid.num_points)
-du_dy = (Gy @ u_flat).reshape(grid.num_points)
+du_dx = (Gx @ u_flat).reshape(grid.Nx_points)
+du_dy = (Gy @ u_flat).reshape(grid.Nx_points)
 ```
 
 ### Solving Linear Systems
@@ -494,7 +494,7 @@ python examples/advanced/epidemic_modeling_2d_demo.py
 
 ```python
 # 1. Verify grid setup
-print(f"Grid: {grid.num_points}, Total: {grid.total_points()}")
+print(f"Grid: {grid.Nx_points}, Total: {grid.total_points()}")
 print(f"Spacing: {grid.spacing}")
 
 # 2. Check sparse matrix properties

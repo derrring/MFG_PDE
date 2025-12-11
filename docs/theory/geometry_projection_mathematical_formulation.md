@@ -310,7 +310,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 
 # Grid for HJB (50×50)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
 
 # Particles for FP (1000 agents)
 class ParticleGeometry:
@@ -353,10 +353,10 @@ m_particles_new = update_particles(u_particles)
 
 ```python
 # Coarse grid for FP (20×20)
-fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21])
+fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[21, 21])
 
 # Fine grid for HJB (100×100)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[101, 101])
+hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])
 
 problem = MFGProblem(
     hjb_geometry=hjb_grid,
@@ -464,8 +464,8 @@ problem.geometry_projector  # None if unified, GeometryProjector if dual
 **Accuracy Test:**
 ```python
 def test_grid_to_grid_1d_interpolation(self):
-    coarse_grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[11])
-    fine_grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], num_points=[21])
+    coarse_grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+    fine_grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[21])
     projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
     # Linear function u(x) = x (exact for linear interpolation)
