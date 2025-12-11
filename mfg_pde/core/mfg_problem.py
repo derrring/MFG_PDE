@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from mfg_pde.geometry.protocol import GeometryProtocol
+
 # Define a limit for values before squaring to prevent overflow within H
 VALUE_BEFORE_SQUARE_LIMIT = 1e150
 
@@ -78,6 +80,12 @@ class MFGProblem:
     - Custom usage: Accepts MFGComponents for full mathematical control
     """
 
+    # Type annotations for geometry attributes (Phase 6 of Issue #435)
+    # These are always non-None after __init__ completes
+    geometry: GeometryProtocol
+    hjb_geometry: GeometryProtocol | None
+    fp_geometry: GeometryProtocol | None
+
     @staticmethod
     def _normalize_to_array(
         value: int | float | list[int] | list[float] | None,
@@ -134,11 +142,11 @@ class MFGProblem:
         spatial_bounds: list[tuple[float, float]] | None = None,
         spatial_discretization: list[int] | None = None,
         # Complex geometry parameters (NEW)
-        geometry: Any | None = None,  # BaseGeometry
+        geometry: GeometryProtocol | None = None,
         obstacles: list | None = None,
         # Dual geometry parameters (Issue #257)
-        hjb_geometry: Any | None = None,  # Geometry for HJB solver
-        fp_geometry: Any | None = None,  # Geometry for FP solver
+        hjb_geometry: GeometryProtocol | None = None,
+        fp_geometry: GeometryProtocol | None = None,
         # Network parameters (NEW)
         network: Any | None = None,  # NetworkGraph
         # Time domain parameters
@@ -656,7 +664,7 @@ class MFGProblem:
         self,
         Nx: list[int] | None,
         spatial_bounds: list[tuple[float, float]] | None,
-        geometry: Any | None,
+        geometry: GeometryProtocol | None,
         network: Any | None,
     ) -> str:
         """
@@ -707,7 +715,7 @@ class MFGProblem:
 
     def _init_geometry(
         self,
-        geometry: Any,
+        geometry: GeometryProtocol,
         obstacles: list | None,
         T: float,
         Nt: int,
