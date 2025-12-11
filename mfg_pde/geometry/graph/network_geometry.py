@@ -272,6 +272,33 @@ class NetworkGeometry(GraphGeometry):
         self.backend_manager = get_backend_manager(backend_preference)
 
     # =========================================================================
+    # Pickle Support (Phase 5 of Issue #435)
+    # =========================================================================
+
+    def __getstate__(self) -> dict[str, Any]:
+        """
+        Get state for pickling.
+
+        Excludes backend_manager which contains module references that
+        cannot be pickled. It will be recreated on unpickling.
+        """
+        state = self.__dict__.copy()
+        # Remove unpickleable backend manager
+        state.pop("backend_manager", None)
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """
+        Restore state from pickle.
+
+        Recreates backend_manager from backend_preference.
+        """
+        self.__dict__.update(state)
+        # Recreate backend manager
+        backend_pref = getattr(self, "backend_preference", NetworkBackendType.IGRAPH)
+        self.backend_manager = get_backend_manager(backend_pref)
+
+    # =========================================================================
     # GraphGeometry abstract method implementations
     # =========================================================================
 
