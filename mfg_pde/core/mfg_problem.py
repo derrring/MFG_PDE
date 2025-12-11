@@ -952,6 +952,59 @@ class MFGProblem:
         self.obstacles = None
         self.has_obstacles = False
 
+    # =========================================================================
+    # Geometry Type Helper Properties (Phase 2 of Issue #435)
+    # =========================================================================
+
+    @property
+    def is_network(self) -> bool:
+        """
+        Check if this problem is defined on a network/graph domain.
+
+        Returns:
+            True if domain_type is "network", False otherwise.
+
+        Example:
+            >>> import networkx as nx
+            >>> G = nx.grid_2d_graph(5, 5)
+            >>> problem = MFGProblem(network=G, T=1.0, Nt=10)
+            >>> problem.is_network
+            True
+        """
+        return getattr(self, "domain_type", None) == "network"
+
+    @property
+    def is_cartesian(self) -> bool:
+        """
+        Check if this problem is defined on a Cartesian grid domain.
+
+        Returns:
+            True if domain_type is "grid", False otherwise.
+
+        Example:
+            >>> problem = MFGProblem(Nx=[50], xmin=[0.0], xmax=[1.0], T=1.0, Nt=10)
+            >>> problem.is_cartesian
+            True
+        """
+        return getattr(self, "domain_type", None) == "grid"
+
+    @property
+    def is_implicit(self) -> bool:
+        """
+        Check if this problem uses an implicit/complex geometry.
+
+        Returns:
+            True if domain_type is "implicit", False otherwise.
+
+        Example:
+            >>> from mfg_pde.geometry import ImplicitDomain
+            >>> domain = ImplicitDomain(...)  # Complex geometry
+            >>> problem = MFGProblem(geometry=domain, T=1.0, Nt=10)
+            >>> problem.is_implicit
+            True
+        """
+        return getattr(self, "domain_type", None) == "implicit"
+
     def _detect_solver_compatibility(self) -> None:
         """
         Detect which solver types are compatible with this problem.
