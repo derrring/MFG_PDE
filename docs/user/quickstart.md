@@ -27,9 +27,13 @@ pip install mfg-pde
 
 ```python
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
+
+# Create geometry (recommended approach)
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 
 # Create and solve
-problem = MFGProblem()
+problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
 result = problem.solve()
 
 # Access results
@@ -41,7 +45,7 @@ print(result.M.shape)  # Density
 
 **That's it!** The solver automatically:
 - Selects appropriate method (HJB-FDM + FP-Particle hybrid)
-- Chooses resolution based on dimension (100 for 1D, 50×50 for 2D)
+- Uses geometry for spatial discretization
 - Sets sensible defaults (max_iterations=100, tolerance=1e-4)
 
 ### Custom Parameters
@@ -67,10 +71,14 @@ result = problem.solve(
 
 ```python
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.factory import create_standard_solver
 
-# Create a standard MFG problem
-problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+# Create geometry
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+
+# Create problem with geometry
+problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
 ```
 
 ### Step 2: Create Solver
@@ -162,20 +170,25 @@ Use for specialized requirements (high-order accuracy, research applications).
 
 ```python
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.factory import create_standard_solver
+import numpy as np
+
+# Create geometry
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
 
 # Define problem
-problem = MFGProblem(Nx=100, Nt=50, T=1.0)
+problem = MFGProblem(geometry=domain, T=1.0, Nt=50)
 
 # Solve with default
 solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 
 # Verify mass conservation
-import numpy as np
+spacing = domain.spacing[0]  # Get grid spacing from geometry
 for t in range(problem.Nt + 1):
-    mass = np.sum(result.M[t, :]) * problem.Dx
-    print(f"t={t}: mass={mass:.15f}")  # Should be 1.000000000000000
+    mass = np.sum(result.M[t, :]) * spacing
+    print(f"t={t}: mass={mass:.15f}")  # Should be ~1.0
 ```
 
 ### Workflow 2: Method Comparison
@@ -237,13 +250,11 @@ Browse working examples:
 Define your own Hamiltonian:
 
 ```python
-from mfg_pde.core import BaseMFGProblem
+from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 import numpy as np
 
-class MyMFGProblem(BaseMFGProblem):
-    def __init__(self, Nx, Nt, T):
-        super().__init__(Nx, Nt, T)
-
+class MyMFGProblem(MFGProblem):
     def evaluate_hamiltonian(self, x, p, m, t):
         """
         Define H(x, p, m, t).
@@ -262,8 +273,11 @@ class MyMFGProblem(BaseMFGProblem):
         congestion = 0.2 * m * np.log(1 + m)
         return kinetic + congestion
 
+# Create geometry
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+
 # Use with factory API
-problem = MyMFGProblem(Nx=50, Nt=20, T=1.0)
+problem = MyMFGProblem(geometry=domain, T=1.0, Nt=20)
 solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
 ```
@@ -342,16 +356,18 @@ plt.show()
 
 **Key Takeaways**:
 
-1. **Factory API is primary** - Use `create_*_solver()` functions
-2. **Tier 2 is default** - `create_standard_solver()` for most uses
-3. **Three lines to solve**:
+1. **Geometry-first is recommended** - Create geometry, then problem
+2. **Factory API for advanced use** - Use `create_*_solver()` functions
+3. **Tier 2 is default** - `create_standard_solver()` for most uses
+4. **Four lines to solve**:
    ```python
-   problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+   domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+   problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
    solver = create_standard_solver(problem, "fixed_point")
    result = solver.solve()
    ```
-4. **Check convergence** - Always verify `result.converged`
-5. **Compare methods** - Use different tiers for benchmarking
+5. **Check convergence** - Always verify `result.converged`
+6. **Access spatial info via geometry** - Use `problem.geometry` methods
 
 **Next**: [Solver Selection Guide](SOLVER_SELECTION_GUIDE.md) for choosing the right tier.
 

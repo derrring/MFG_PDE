@@ -1,18 +1,24 @@
 # Geometry-First API Guide
 
-**Status**: ✅ Complete as of v0.10.0
-**Date**: 2025-11-05
+**Status**: ✅ Complete as of v0.16.0
+**Date**: 2025-12-11
+
+---
 
 ## Overview
 
-The geometry-first API is the new recommended way to construct MFG problems in MFG_PDE. Instead of manually specifying grid parameters in `MFGProblem`, you first create a geometry object and pass it to `MFGProblem`.
+The geometry-first API is the **recommended way** to construct MFG problems in MFG_PDE. Instead of manually specifying grid parameters in `MFGProblem`, you first create a geometry object and pass it to `MFGProblem`.
+
+As of v0.16.0, `MFGProblem.geometry` is **always non-None** after initialization, and all spatial information is derived from the geometry object. Legacy attributes (`xmin`, `xmax`, `Nx`, `dx`, etc.) emit `DeprecationWarning` when accessed.
 
 ## Key Benefits
 
 1. **Type Safety**: Geometry objects are validated at construction time
-2. **Reusability**: Same geometry can be used for multiple problems
-3. **Clarity**: Separation of spatial discretization from temporal/diffusion parameters
-4. **Flexibility**: Supports all geometry types through unified protocol
+2. **Single Source of Truth**: All spatial information derived from `problem.geometry`
+3. **Reusability**: Same geometry can be used for multiple problems
+4. **Clarity**: Separation of spatial discretization from temporal/diffusion parameters
+5. **Flexibility**: Supports all geometry types through unified protocol
+6. **Helper Properties**: `problem.is_cartesian`, `problem.is_network`, `problem.is_implicit` for type dispatch
 
 ## Available Geometry Types
 
@@ -163,7 +169,65 @@ class GeometryProtocol(Protocol):
     def get_spatial_grid(self) -> NDArray:
         """Get spatial grid representation as (N, dimension) array."""
         ...
+
+    def get_bounds(self) -> tuple[NDArray, NDArray] | None:
+        """Get (min_bounds, max_bounds) arrays, or None if unbounded."""
+        ...
 ```
+
+---
+
+## Accessing Spatial Information (v0.16.0+)
+
+**Modern pattern** - Use geometry methods:
+
+```python
+from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
+
+# Create problem with geometry-first API
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+problem = MFGProblem(geometry=domain, T=1.0, Nt=10)
+
+# Access spatial information via geometry (RECOMMENDED)
+bounds = problem.geometry.get_bounds()        # (min_array, max_array)
+grid = problem.geometry.get_spatial_grid()    # Spatial grid points
+num_points = problem.geometry.num_spatial_points  # Total grid points
+dim = problem.geometry.dimension              # Spatial dimension
+
+# Helper properties for type dispatch
+if problem.is_cartesian:
+    # TensorProductGrid-specific logic
+    spacing = problem.geometry.spacing  # Available on TensorProductGrid
+elif problem.is_network:
+    # NetworkGeometry-specific logic
+    pass
+elif problem.is_implicit:
+    # Implicit domain-specific logic
+    pass
+```
+
+**Deprecated pattern** - Legacy attributes emit warnings:
+
+```python
+# These emit DeprecationWarning (will be removed in v1.0.0)
+x_min = problem.xmin      # Use problem.geometry.get_bounds()[0][0] instead
+x_max = problem.xmax      # Use problem.geometry.get_bounds()[1][0] instead
+grid_size = problem.Nx    # Use problem.geometry.num_spatial_points - 1 instead
+spacing = problem.dx      # Compute from geometry or use TensorProductGrid.spacing
+grid = problem.xSpace     # Use problem.geometry.get_spatial_grid() instead
+```
+
+### Migration Table
+
+| Legacy Attribute | Modern Equivalent |
+|:-----------------|:------------------|
+| `problem.xmin` | `problem.geometry.get_bounds()[0][0]` |
+| `problem.xmax` | `problem.geometry.get_bounds()[1][0]` |
+| `problem.Nx` | `problem.geometry.num_spatial_points - 1` |
+| `problem.dx` | `problem.geometry.spacing[0]` (TensorProductGrid) |
+| `problem.xSpace` | `problem.geometry.get_spatial_grid()` |
+| `problem.Lx` | `bounds[1][0] - bounds[0][0]` where `bounds = problem.geometry.get_bounds()` |
 
 ## Migration Strategy
 

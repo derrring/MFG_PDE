@@ -1,9 +1,14 @@
-# Migration Guide - Upgrading to the Factory API
+# Migration Guide - Upgrading to the Modern API
 
-> **⚠️ Note**: This guide contains some outdated information. The primary API is now:
+> **⚠️ Note**: This guide contains some outdated information. The current recommended API is:
+> - **Geometry-first approach**: Create geometry, then problem
 > - `problem.solve()` - Primary API (on MFGProblem)
 > - `create_standard_solver(problem, "fixed_point")` - Factory API (advanced)
-> See [quickstart.md](quickstart.md) for current usage patterns.
+>
+> **Important (v0.16.0+)**: Legacy attributes (`xmin`, `xmax`, `Nx`, `dx`, etc.) now emit
+> `DeprecationWarning`. Use `problem.geometry` methods instead.
+>
+> See [quickstart.md](quickstart.md) and [GEOMETRY_FIRST_API_GUIDE.md](../migration/GEOMETRY_FIRST_API_GUIDE.md) for current patterns.
 
 **Smooth transition from old MFG_PDE API to the two-level factory-based API**
 
@@ -376,14 +381,24 @@ from mfg_pde.visualization.interactive_plots import create_plotly_visualizer
 
 ## Breaking Changes and Compatibility
 
-### Current API
+### Current API (v0.16.0+)
 
 ```python
-# Primary API (RECOMMENDED)
+# Primary API (RECOMMENDED) - Geometry-first approach
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
-problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+# Create geometry
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+
+# Create problem with geometry
+problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
 result = problem.solve()  # ✅ USE THIS
+
+# Access spatial info via geometry (NOT legacy attributes)
+bounds = problem.geometry.get_bounds()           # ✅ Modern
+grid = problem.geometry.get_spatial_grid()       # ✅ Modern
+# x_min = problem.xmin                           # ⚠️ DEPRECATED - emits warning
 
 # Factory API for advanced control
 from mfg_pde.factory import create_standard_solver
