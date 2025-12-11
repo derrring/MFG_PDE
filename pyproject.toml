@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.15.3"  # v0.15.3: OmegaConf schema rename (*Config → *Schema)
+version = "0.16.0"  # v0.16.0: Geometry-first API unification
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

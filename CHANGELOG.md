@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2025-12-11
+
+**Feature Release: Geometry-First API Unification**
+
+This release completes the geometry-first API unification for `MFGProblem`. The `geometry` attribute is now always non-None and serves as the single source of truth for all spatial information. Legacy attributes emit deprecation warnings but remain functional for backward compatibility.
+
+### Changed
+
+**Geometry-First API (Issue #435, PRs #436-#443)**
+
+- **`MFGProblem.geometry` is now always non-None** after initialization
+  - All four init paths (`_init_1d_legacy`, `_init_nd`, `_init_geometry`, `_init_network`) set geometry
+  - Legacy parameters (`xmin`, `xmax`, `Nx`) automatically create `TensorProductGrid`
+  - Network problems create appropriate `NetworkGeometry` subclass
+
+- **Legacy attributes converted to computed properties**
+  - `xmin`, `xmax`, `Lx`, `Nx`, `dx`, `xSpace`, `_grid` now derive from `self.geometry`
+  - Properties emit `DeprecationWarning` when accessed
+  - Setters allow backward-compatible assignment (stores to `_*_override`)
+  - Internal code uses helper methods to avoid triggering warnings
+
+- **Helper properties for geometry type dispatch**
+  - `problem.is_cartesian` - True for `TensorProductGrid`
+  - `problem.is_network` - True for `NetworkGeometry`
+  - `problem.is_implicit` - True for implicit/SDF geometries
+
+**OmegaConf Configuration (Issue #429, PRs #431-#432)**
+
+- **Renamed OmegaConf classes to `*Schema` suffix** for clear naming convention
+  - `MFGConfig` → `MFGSchema`
+  - `SolverConfig` → `SolverSchema`
+  - `HJBConfig` → `HJBSchema`
+  - `FPConfig` → `FPSchema`
+  - etc.
+
+- **Added Pydantic-OmegaConf bridge utilities**
+  - `bridge_to_pydantic()` - Generic adapter for OmegaConf → Pydantic conversion
+  - `save_effective_config()` - Save resolved config for reproducibility
+  - `load_effective_config()` - Load previously saved config
+
+### Deprecated
+
+- **Legacy attribute access** (`problem.xmin`, `problem.xmax`, `problem.Nx`, `problem.dx`, `problem.xSpace`)
+  - Use `problem.geometry.get_bounds()`, `problem.geometry.num_spatial_points`, `problem.geometry.get_spatial_grid()` instead
+  - Will be removed in v1.0.0
+
+### Documentation
+
+- Updated `GEOMETRY_FIRST_API_GUIDE.md` with migration table and v0.16.0 patterns
+- Updated `DEPRECATION_MODERNIZATION_GUIDE.md` with Phase 7 completion status
+- Updated `quickstart.md` to use geometry-first API in all examples
+- Updated `migration.md` with v0.16.0 current API section
+
 ## [0.14.1] - 2025-12-06
 
 ### Changed
