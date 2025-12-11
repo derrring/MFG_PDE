@@ -1013,6 +1013,122 @@ class ScaleFreeNetwork(NetworkGeometry):
             return distance_matrix
 
 
+class CustomNetwork(NetworkGeometry):
+    """
+    Custom network from an existing networkx graph or adjacency matrix.
+
+    This class wraps an existing graph structure to provide a NetworkGeometry
+    interface, enabling integration with MFGProblem's geometry-first API.
+
+    Example:
+        >>> import networkx as nx
+        >>> G = nx.grid_2d_graph(10, 10)
+        >>> geometry = CustomNetwork.from_networkx(G)
+        >>> problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
+    """
+
+    def __init__(
+        self,
+        adjacency_matrix: csr_matrix | np.ndarray,
+        node_positions: np.ndarray | None = None,
+        backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH,
+    ):
+        """
+        Create a custom network from an adjacency matrix.
+
+        Args:
+            adjacency_matrix: Sparse or dense adjacency matrix (N x N)
+            node_positions: Optional (N, d) array of node coordinates
+            backend_preference: Preferred backend for operations
+        """
+        # Convert to sparse if needed
+        if isinstance(adjacency_matrix, np.ndarray):
+            adjacency_matrix = csr_matrix(adjacency_matrix)
+
+        num_nodes = adjacency_matrix.shape[0]
+        super().__init__(num_nodes, NetworkType.CUSTOM, backend_preference)
+
+        self._adjacency_matrix = adjacency_matrix
+        self._node_positions = node_positions
+
+        # Create network immediately
+        self.create_network()
+
+    @classmethod
+    def from_networkx(
+        cls,
+        graph: nx.Graph,
+        node_positions: np.ndarray | None = None,
+        backend_preference: NetworkBackendType = NetworkBackendType.IGRAPH,
+    ) -> CustomNetwork:
+        """
+        Create CustomNetwork from a NetworkX graph.
+
+        Args:
+            graph: NetworkX graph object
+            node_positions: Optional node positions. If None and graph has 'pos'
+                           attribute, those positions will be used.
+            backend_preference: Preferred backend for operations
+
+        Returns:
+            CustomNetwork instance wrapping the graph
+        """
+        if not NETWORKX_AVAILABLE or nx is None:
+            raise ImportError("NetworkX is required for from_networkx()")
+
+        # Get adjacency matrix
+        adjacency_matrix = nx.adjacency_matrix(graph)
+
+        # Try to get positions from graph if not provided
+        if node_positions is None:
+            pos_dict = nx.get_node_attributes(graph, "pos")
+            if pos_dict:
+                # Convert position dict to array
+                nodes = list(graph.nodes())
+                node_positions = np.array([pos_dict[n] for n in nodes])
+
+        return cls(adjacency_matrix, node_positions, backend_preference)
+
+    def get_adjacency_matrix(self) -> np.ndarray:
+        """Get adjacency matrix as dense array."""
+        return self._adjacency_matrix.toarray()
+
+    def create_network(self, **kwargs) -> NetworkData:
+        """Create NetworkData from the stored adjacency matrix."""
+        # Count edges (for undirected: number of non-zero entries / 2)
+        num_edges = self._adjacency_matrix.nnz // 2
+
+        self.network_data = NetworkData(
+            adjacency_matrix=self._adjacency_matrix,
+            num_nodes=self._num_nodes,
+            num_edges=num_edges,
+            network_type=NetworkType.CUSTOM,
+            node_positions=self._node_positions,
+            backend_type=self.backend_preference,
+        )
+
+        return self.network_data
+
+    def compute_distance_matrix(self) -> np.ndarray:
+        """Compute shortest path distances using BFS."""
+        if not NETWORKX_AVAILABLE or nx is None:
+            raise ImportError("NetworkX required for shortest path computation")
+
+        G = nx.from_scipy_sparse_array(self._adjacency_matrix)
+
+        try:
+            return np.array(nx.floyd_warshall_numpy(G))
+        except AttributeError:
+            # Fallback for older NetworkX versions
+            paths = dict(nx.all_pairs_shortest_path_length(G))
+            n = len(G.nodes())
+            distance_matrix = np.full((n, n), np.inf)
+            for i, i_paths in paths.items():
+                for j, distance in i_paths.items():
+                    distance_matrix[i, j] = distance
+            return distance_matrix
+
+
 # Factory function for creating networks
 def create_network(
     network_type: str | NetworkType,

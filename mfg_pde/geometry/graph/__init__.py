@@ -20,6 +20,7 @@ from .network_backend import (
     set_preferred_backend,
 )
 from .network_geometry import (
+    CustomNetwork,
     GridNetwork,
     NetworkData,
     NetworkGeometry,
@@ -50,6 +51,7 @@ __all__ = [
     "NetworkData",
     "NetworkGeometry",
     "BaseNetworkGeometry",  # Backward compatibility alias
+    "CustomNetwork",
     "GridNetwork",
     "RandomNetwork",
     "ScaleFreeNetwork",

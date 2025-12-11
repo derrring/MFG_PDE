@@ -892,26 +892,38 @@ class MFGProblem:
             T, Nt: Time domain parameters
             sigma, coupling_coefficient: Physical parameters
         """
+        # Import CustomNetwork for geometry-first API
+        from mfg_pde.geometry.graph import CustomNetwork
+
         # Store network
         self.network = network
         self.dimension = "network"  # Special dimension indicator
         self.domain_type = "network"
 
-        # Get number of nodes
+        # Create CustomNetwork geometry from the network
         try:
             import networkx as nx
 
             if isinstance(network, nx.Graph):
+                # Create geometry from networkx graph
+                geometry = CustomNetwork.from_networkx(network)
                 self.num_nodes = network.number_of_nodes()
                 self.adjacency_matrix = nx.adjacency_matrix(network).toarray()
             else:
-                # Assume custom NetworkGraph type
+                # Assume custom NetworkGraph type with adjacency_matrix attribute
                 self.num_nodes = len(network.nodes)
                 self.adjacency_matrix = network.adjacency_matrix
+                # Create geometry from adjacency matrix
+                geometry = CustomNetwork(network.adjacency_matrix)
         except ImportError:
-            # Fallback: assume custom type
+            # NetworkX not available - assume custom type
             self.num_nodes = len(network.nodes)
             self.adjacency_matrix = network.adjacency_matrix
+            # Create geometry from adjacency matrix
+            geometry = CustomNetwork(network.adjacency_matrix)
+
+        # Store geometry (geometry-first API: never None)
+        self.geometry = geometry
 
         # Time domain
         self.T = T
@@ -925,6 +937,7 @@ class MFGProblem:
 
         # Spatial discretization (nodes)
         self.spatial_shape = (self.num_nodes,)
+        self.num_spatial_points = self.num_nodes  # For networks, spatial points = nodes
         self.spatial_bounds = None
         self.spatial_discretization = None
 
@@ -936,7 +949,6 @@ class MFGProblem:
         self.dx = None  # Lowercase (official naming convention)
         self.xSpace = None
         self._grid = None
-        self.geometry = None
         self.obstacles = None
         self.has_obstacles = False
 
@@ -1261,7 +1273,11 @@ class MFGProblem:
                 self._setup_default_initial_density()
 
         # Normalize initial density
-        if self.dimension == 1:
+        if self.dimension == "network":
+            # Network/graph: discrete probability mass, sum = 1
+            # No cell volume - just normalize sum to 1
+            integral_m_init = np.sum(self.m_init)
+        elif self.dimension == 1:
             # 1D normalization (original)
             integral_m_init = np.sum(self.m_init) * self.dx
         elif self.spatial_bounds is not None and self.spatial_discretization is not None:
@@ -1289,6 +1305,9 @@ class MFGProblem:
             # 1D: Use original default
             for i in range(self.spatial_shape[0]):
                 self.m_init[i] = self._m_initial(self.xSpace[i])
+        elif self.dimension == "network":
+            # Network/graph: uniform density on all nodes
+            self.m_init[:] = 1.0 / self.num_nodes
         else:
             # n-D: Gaussian at center of domain
             # Use geometry interface instead of deprecated _grid
