@@ -1039,11 +1039,28 @@ class MFGProblem:
         During initialization (_initializing=True), all attributes can be set.
         After initialization, attempts to set deprecated attributes raise
         AttributeError with guidance to use the geometry API instead.
+
+        Note: Subclasses can also set deprecated attributes in their __init__
+        by calling from an __init__ method (detected via call stack inspection).
         """
         # Allow all writes during initialization
         if name == "_initializing" or getattr(self, "_initializing", True):
             super().__setattr__(name, value)
             return
+
+        # Allow writes from __init__ methods (for subclasses)
+        # Check if we're being called from any __init__ in the call stack
+        frame = inspect.currentframe()
+        try:
+            caller_frame = frame.f_back if frame else None
+            while caller_frame:
+                if caller_frame.f_code.co_name == "__init__":
+                    # Being called from an __init__, allow the write
+                    super().__setattr__(name, value)
+                    return
+                caller_frame = caller_frame.f_back
+        finally:
+            del frame
 
         # After initialization, block writes to deprecated attributes
         if name in self._DEPRECATED_ATTRIBUTES:
