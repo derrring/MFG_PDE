@@ -1062,12 +1062,18 @@ class MFGProblem:
         finally:
             del frame
 
-        # After initialization, block writes to deprecated attributes
+        # After initialization, warn about writes to deprecated attributes
+        # Note: We emit a warning instead of raising to maintain backward compatibility
+        # during the transition period. This will become an error in v1.0.0.
         if name in self._DEPRECATED_ATTRIBUTES:
-            raise AttributeError(
-                f"Cannot set '{name}': this attribute is deprecated and read-only.\n"
+            import warnings
+
+            warnings.warn(
+                f"Setting '{name}' directly is deprecated and will become read-only in v1.0.0.\n"
                 f"Use 'problem.geometry' for spatial configuration instead.\n"
-                f"See docs/development/MFGProblem_Conditional_Attributes_Report.md for migration guidance."
+                f"See docs/development/MFGProblem_Conditional_Attributes_Report.md for migration guidance.",
+                DeprecationWarning,
+                stacklevel=2,
             )
 
         # Allow all other attributes
