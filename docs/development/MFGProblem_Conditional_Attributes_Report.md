@@ -1,10 +1,13 @@
 # MFGProblem Conditional Attributes: Architecture Decision Report
 
 **Issue**: [#417](https://github.com/derrring/MFG_PDE/issues/417)
-**Status**: Decision Confirmed - Modified Option B Approved
+**Implementation**: [#435](https://github.com/derrring/MFG_PDE/issues/435)
+**Status**: ✅ IMPLEMENTED (Phases 1-6 Complete)
 **Date**: 2025-12-11
 **Author**: Claude Code Analysis
 **Review**: Expert feedback received and incorporated
+
+> **Note**: This ADR has been fully implemented. See PRs #434, #436-#441 for code changes.
 
 ---
 
@@ -806,8 +809,18 @@ This ADR answers:
 
 ---
 
-**Next Steps**:
-1. Create Phase 0 documentation draft (geometry-first API design doc)
-2. Implement Phase 1: Wire existing `NetworkGeometry` into `MFGProblem._init_network()`
-3. Verify all 4 init paths set `self.geometry` to non-None GeometryProtocol instance
-4. Update issue #417 with corrected implementation tracking
+**Implementation Complete** (2025-12-11):
+
+| Phase | PR | Status |
+|-------|-----|--------|
+| Phase 1: Wire NetworkGeometry | #436 | ✅ |
+| Phase 2: Helper properties | #436 | ✅ |
+| Phase 3: Attribute hiding | #437 | ✅ |
+| Phase 4: Deprecation warnings | #438 | ✅ |
+| Phase 5: Serialization | #439, #441 | ✅ |
+| Phase 6: Type hints | #440, #441 | ✅ |
+| Phase 7: Removal | - | Future (v1.0.0) |
+
+**Remaining Work**:
+- Phase 0: User-facing documentation (deferred)
+- Phase 7: Remove deprecated attributes in v1.0.0
