@@ -241,9 +241,6 @@ class MFGProblem:
         """
         import warnings
 
-        # Mark as initializing (allows setting deprecated attributes)
-        self._initializing = True
-
         # Normalize parameter aliases
         if time_domain is not None:
             if T is not None or Nt is not None:
@@ -392,9 +389,6 @@ class MFGProblem:
         # Detect solver compatibility
         self._detect_solver_compatibility()
 
-        # Mark initialization complete (deprecated attrs now read-only)
-        self._initializing = False
-
     def _init_1d_legacy(
         self,
         xmin: list[float],
@@ -449,7 +443,6 @@ class MFGProblem:
             bounds=[(xmin_scalar, xmax_scalar)],
             num_points=[Nx_scalar + 1],
         )
-        dx = geometry.dx[0] if hasattr(geometry, "dx") else (xmax_scalar - xmin_scalar) / Nx_scalar
 
         # Store geometry for unified interface
         self.geometry = geometry
@@ -457,34 +450,22 @@ class MFGProblem:
         # Set dimension from geometry
         self.dimension = geometry.dimension
 
-        # Legacy 1D attributes (scalars for backward compatibility)
-        # Derived from geometry for consistency
-        self.xmin: float = xmin_scalar
-        self.xmax: float = xmax_scalar
-        self.Lx: float = xmax_scalar - xmin_scalar
-        self.Nx: int = Nx_scalar
-        self.dx: float = dx  # Lowercase (official naming convention)
-
         # Time domain
         self.T: float = T
         self.Nt: int = Nt
-        self.dt: float = T / Nt if Nt > 0 else 0.0  # Lowercase (official naming convention)
+        self.dt: float = T / Nt if Nt > 0 else 0.0
 
-        # Grid arrays (from geometry)
-        self.xSpace: np.ndarray = geometry.get_spatial_grid()
+        # Time grid
         self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Coefficients
         self.sigma: float = sigma
         self.coupling_coefficient: float = coupling_coefficient
 
-        # New n-D attributes for consistency (derived from geometry)
+        # N-D attributes (derived from geometry)
         self.spatial_shape = geometry.get_grid_shape()
         self.spatial_bounds = [(xmin_scalar, xmax_scalar)]
         self.spatial_discretization = [Nx_scalar]
-
-        # Grid object (deprecated, use self.geometry instead)
-        self._grid = None
 
         # Set domain type
         self.domain_type = "grid"
@@ -547,23 +528,6 @@ class MFGProblem:
         num_points = [n + 1 for n in spatial_discretization]
         geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, num_points=num_points)
 
-        if dimension == 1:
-            # Legacy 1D attributes
-            self.xmin = spatial_bounds[0][0]
-            self.xmax = spatial_bounds[0][1]
-            self.Lx = self.xmax - self.xmin
-            self.Nx = spatial_discretization[0]
-            self.dx = geometry.dx[0] if hasattr(geometry, "dx") else self.Lx / self.Nx
-            self.xSpace = geometry.get_spatial_grid()
-        else:
-            # No legacy 1D attributes for 2D+
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.dx = None  # Lowercase (official naming convention)
-            self.xSpace = None
-
         # Store geometry for unified interface
         self.geometry = geometry
 
@@ -587,15 +551,12 @@ class MFGProblem:
         # Time domain
         self.T: float = T
         self.Nt: int = Nt
-        self.dt: float = T / Nt if Nt > 0 else 0.0  # Lowercase (official naming convention)
+        self.dt: float = T / Nt if Nt > 0 else 0.0
         self.tSpace: np.ndarray = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Coefficients
         self.sigma: float = sigma
         self.coupling_coefficient: float = coupling_coefficient
-
-        # Grid object (deprecated, use self.geometry instead)
-        self._grid = None
 
         # Set domain type
         self.domain_type = "grid"
@@ -776,7 +737,6 @@ class MFGProblem:
         if geometry.geometry_type == GeometryType.CARTESIAN_GRID:
             # CARTESIAN_GRID: Can be TensorProductGrid or AMR mesh
             # Use polymorphic method to get configuration
-            self._grid = geometry
             config = geometry.get_problem_config()
 
             # Apply configuration from geometry
@@ -784,25 +744,6 @@ class MFGProblem:
             self.spatial_shape = config["spatial_shape"]
             self.spatial_bounds = config["spatial_bounds"]
             self.spatial_discretization = config["spatial_discretization"]
-
-            # Legacy 1D attributes (only if geometry provides them)
-            if config["legacy_1d_attrs"] is not None:
-                legacy = config["legacy_1d_attrs"]
-                self.xmin = legacy["xmin"]
-                self.xmax = legacy["xmax"]
-                self.Lx = legacy["Lx"]
-                self.Nx = legacy["Nx"]
-                # Handle both "Dx" and "dx" for backward compatibility during migration
-                self.dx = legacy.get("dx") or legacy.get("Dx")  # Lowercase (official naming convention)
-                self.xSpace = legacy["xSpace"]
-            else:
-                # AMR or higher dimensional grids
-                self.xmin = None
-                self.xmax = None
-                self.Lx = None
-                self.Nx = None
-                self.dx = None  # Lowercase (official naming convention)
-                self.xSpace = None
 
             self.domain_type = "grid"
 
@@ -816,15 +757,6 @@ class MFGProblem:
             self.spatial_shape = (self.num_spatial_points,)  # Unstructured
             self.spatial_bounds = None  # Not a regular grid
             self.spatial_discretization = None
-            self._grid = None
-
-            # Legacy 1D attributes (None for unstructured mesh)
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.dx = None  # Lowercase (official naming convention)
-            self.xSpace = None
 
             self.domain_type = "mesh"
 
@@ -835,15 +767,6 @@ class MFGProblem:
             self.spatial_shape = (self.num_spatial_points,)
             self.spatial_bounds = geometry.get_bounding_box()
             self.spatial_discretization = None
-            self._grid = None
-
-            # Legacy 1D attributes (None for implicit domain)
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.dx = None  # Lowercase (official naming convention)
-            self.xSpace = None
 
             self.domain_type = "implicit"
 
@@ -855,19 +778,10 @@ class MFGProblem:
             self.spatial_shape = config["spatial_shape"]
             self.spatial_bounds = config.get("spatial_bounds")
             self.spatial_discretization = config.get("spatial_discretization")
-            self._grid = None
 
             # Store graph-specific data if available
             if "graph_data" in config:
                 self.graph_data = config["graph_data"]
-
-            # Legacy 1D attributes (None for graphs)
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.dx = None  # Lowercase (official naming convention)
-            self.xSpace = None
 
             self.domain_type = str(geometry.geometry_type.value)
 
@@ -878,15 +792,6 @@ class MFGProblem:
             self.spatial_shape = (self.num_spatial_points,)
             self.spatial_bounds = None
             self.spatial_discretization = None
-            self._grid = None
-
-            # Legacy 1D attributes (None)
-            self.xmin = None
-            self.xmax = None
-            self.Lx = None
-            self.Nx = None
-            self.dx = None  # Lowercase (official naming convention)
-            self.xSpace = None
 
             self.domain_type = str(geometry.geometry_type.value)
 
@@ -954,15 +859,6 @@ class MFGProblem:
         self.num_spatial_points = self.num_nodes  # For networks, spatial points = nodes
         self.spatial_bounds = None
         self.spatial_discretization = None
-
-        # Legacy 1D attributes (None for network mode)
-        self.xmin = None
-        self.xmax = None
-        self.Lx = None
-        self.Nx = None
-        self.dx = None  # Lowercase (official naming convention)
-        self.xSpace = None
-        self._grid = None
         self.obstacles = None
         self.has_obstacles = False
 
@@ -1020,136 +916,297 @@ class MFGProblem:
         return getattr(self, "domain_type", None) == "implicit"
 
     # =========================================================================
-    # Attribute Hiding (Phase 3 of Issue #435)
+    # Deprecated Legacy Attributes (Computed Properties)
+    # Phase 7 of Issue #435: These are computed from geometry for backward
+    # compatibility. Access emits DeprecationWarning.
     # =========================================================================
 
-    # Deprecated attributes that should be hidden from autocomplete
-    # These are legacy 1D attributes that have been superseded by geometry
-    _DEPRECATED_ATTRIBUTES: frozenset[str] = frozenset(
-        {
-            "xmin",
-            "xmax",
-            "Lx",
-            "Nx",
-            "dx",
-            "xSpace",
-            "_grid",
-        }
-    )
-
-    # Flag to track if we're in __init__ (allows setting deprecated attrs)
-    _initializing: bool = False
-
-    def __setattr__(self, name: str, value: Any) -> None:
+    @property
+    def xmin(self) -> float | None:
         """
-        Intercept attribute setting to make deprecated attributes read-only.
+        DEPRECATED: Use problem.geometry.get_bounds() instead.
 
-        During initialization (_initializing=True), all attributes can be set.
-        After initialization, attempts to set deprecated attributes raise
-        AttributeError with guidance to use the geometry API instead.
-
-        Note: Subclasses can also set deprecated attributes in their __init__
-        by calling from an __init__ method (detected via call stack inspection).
+        Returns the minimum x-coordinate for 1D problems.
         """
-        # Allow all writes during initialization
-        if name == "_initializing" or getattr(self, "_initializing", True):
-            super().__setattr__(name, value)
-            return
+        import warnings
 
-        # Allow writes from __init__ methods (for subclasses)
-        # Check if we're being called from any __init__ in the call stack
-        frame = inspect.currentframe()
-        try:
-            caller_frame = frame.f_back if frame else None
-            while caller_frame:
-                if caller_frame.f_code.co_name == "__init__":
-                    # Being called from an __init__, allow the write
-                    super().__setattr__(name, value)
-                    return
-                caller_frame = caller_frame.f_back
-        finally:
-            del frame
+        warnings.warn(
+            "Accessing 'xmin' is deprecated. Use 'problem.geometry.get_bounds()[0][0]' instead. "
+            "This attribute will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # Check for stored value first (for backward compat with tests that set it)
+        if hasattr(self, "_xmin_override"):
+            return self._xmin_override
+        if self.geometry is not None and self.dimension == 1:
+            bounds = self.geometry.get_bounds()
+            if bounds is not None:
+                return float(bounds[0][0])
+        return None
 
-        # After initialization, warn about writes to deprecated attributes
-        # Note: We emit a warning instead of raising to maintain backward compatibility
-        # during the transition period. This will become an error in v1.0.0.
-        if name in self._DEPRECATED_ATTRIBUTES:
-            import warnings
+    @xmin.setter
+    def xmin(self, value: float | None) -> None:
+        """Allow setting for backward compatibility (with warning)."""
+        import warnings
 
-            warnings.warn(
-                f"Setting '{name}' directly is deprecated and will become read-only in v1.0.0.\n"
-                f"Use 'problem.geometry' for spatial configuration instead.\n"
-                f"See docs/development/MFGProblem_Conditional_Attributes_Report.md for migration guidance.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        warnings.warn(
+            "Setting 'xmin' is deprecated. Use geometry-first API instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._xmin_override = value
 
-        # Allow all other attributes
-        super().__setattr__(name, value)
-
-    def __getattribute__(self, name: str) -> Any:
+    @property
+    def xmax(self) -> float | None:
         """
-        Intercept attribute access to warn when reading deprecated attributes.
+        DEPRECATED: Use problem.geometry.get_bounds() instead.
 
-        This emits a DeprecationWarning when accessing legacy spatial attributes
-        like xmin, xmax, Nx, etc., guiding users to use the geometry API instead.
+        Returns the maximum x-coordinate for 1D problems.
         """
-        # Fast path: don't check for special/private attributes or during init
-        if name.startswith("_") or name in ("geometry", "domain_type", "dimension"):
-            return super().__getattribute__(name)
+        import warnings
 
-        # Check if we're still initializing (avoid warnings during __init__)
-        try:
-            initializing = super().__getattribute__("_initializing")
-        except AttributeError:
-            initializing = True  # Not yet set, assume initializing
+        warnings.warn(
+            "Accessing 'xmax' is deprecated. Use 'problem.geometry.get_bounds()[1][0]' instead. "
+            "This attribute will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if hasattr(self, "_xmax_override"):
+            return self._xmax_override
+        if self.geometry is not None and self.dimension == 1:
+            bounds = self.geometry.get_bounds()
+            if bounds is not None:
+                return float(bounds[1][0])
+        return None
 
-        if not initializing:
-            # Get the deprecated attributes set (use super to avoid recursion)
-            try:
-                deprecated = super().__getattribute__("_DEPRECATED_ATTRIBUTES")
-                if name in deprecated:
-                    import warnings
+    @xmax.setter
+    def xmax(self, value: float | None) -> None:
+        """Allow setting for backward compatibility (with warning)."""
+        import warnings
 
-                    # Check if we're being called from internal code
-                    frame = inspect.currentframe()
-                    try:
-                        caller_frame = frame.f_back if frame else None
-                        if caller_frame:
-                            caller_file = caller_frame.f_code.co_filename
-                            # Don't warn for internal mfg_pde code
-                            if "mfg_pde" not in caller_file or "tests" in caller_file:
-                                warnings.warn(
-                                    f"Accessing '{name}' is deprecated. "
-                                    f"Use 'problem.geometry' for spatial information instead.\n"
-                                    f"This attribute will be removed in v1.0.0.",
-                                    DeprecationWarning,
-                                    stacklevel=2,
-                                )
-                    finally:
-                        del frame
-            except AttributeError:
-                pass  # _DEPRECATED_ATTRIBUTES not yet defined
+        warnings.warn(
+            "Setting 'xmax' is deprecated. Use geometry-first API instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._xmax_override = value
 
-        return super().__getattribute__(name)
-
-    def __dir__(self) -> list[str]:
+    @property
+    def Lx(self) -> float | None:
         """
-        Return list of attributes, excluding deprecated ones from autocomplete.
+        DEPRECATED: Compute from geometry bounds instead.
 
-        This helps users discover the modern geometry-first API by hiding
-        legacy attributes from IDE autocomplete and tab completion.
-
-        The deprecated attributes still exist and work, but won't appear
-        in autocomplete suggestions.
+        Returns the domain length for 1D problems.
         """
-        # Get all default attributes
-        default_attrs = set(super().__dir__())
+        import warnings
 
-        # Remove deprecated attributes from the visible set
-        visible_attrs = default_attrs - self._DEPRECATED_ATTRIBUTES
+        warnings.warn(
+            "Accessing 'Lx' is deprecated. Compute from geometry bounds instead. "
+            "This attribute will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if hasattr(self, "_Lx_override"):
+            return self._Lx_override
+        if self.geometry is not None and self.dimension == 1:
+            bounds = self.geometry.get_bounds()
+            if bounds is not None:
+                return float(bounds[1][0] - bounds[0][0])
+        return None
 
-        return sorted(visible_attrs)
+    @Lx.setter
+    def Lx(self, value: float | None) -> None:
+        """Allow setting for backward compatibility (with warning)."""
+        import warnings
+
+        warnings.warn(
+            "Setting 'Lx' is deprecated. Use geometry-first API instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._Lx_override = value
+
+    @property
+    def Nx(self) -> int | None:
+        """
+        DEPRECATED: Use problem.geometry.num_spatial_points instead.
+
+        Returns the number of intervals (not points) for 1D problems.
+        """
+        import warnings
+
+        warnings.warn(
+            "Accessing 'Nx' is deprecated. Use 'problem.geometry.num_spatial_points - 1' for intervals. "
+            "This attribute will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if hasattr(self, "_Nx_override"):
+            return self._Nx_override
+        if self.geometry is not None and self.dimension == 1:
+            # Nx is number of intervals, num_spatial_points is number of points
+            return self.geometry.num_spatial_points - 1
+        return None
+
+    @Nx.setter
+    def Nx(self, value: int | None) -> None:
+        """Allow setting for backward compatibility (with warning)."""
+        import warnings
+
+        warnings.warn(
+            "Setting 'Nx' is deprecated. Use geometry-first API instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._Nx_override = value
+
+    @property
+    def dx(self) -> float | None:
+        """
+        DEPRECATED: Compute from geometry bounds and num_points instead.
+
+        Returns the grid spacing for 1D problems.
+        """
+        import warnings
+
+        warnings.warn(
+            "Accessing 'dx' is deprecated. Compute from geometry bounds and num_points instead. "
+            "This attribute will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if hasattr(self, "_dx_override"):
+            return self._dx_override
+        if self.geometry is not None and self.dimension == 1:
+            from mfg_pde.geometry import TensorProductGrid
+
+            if isinstance(self.geometry, TensorProductGrid):
+                return float(self.geometry.spacing[0])
+            else:
+                # Compute from bounds
+                bounds = self.geometry.get_bounds()
+                if bounds is not None:
+                    n_points = self.geometry.num_spatial_points
+                    if n_points > 1:
+                        return float((bounds[1][0] - bounds[0][0]) / (n_points - 1))
+        return None
+
+    @dx.setter
+    def dx(self, value: float | None) -> None:
+        """Allow setting for backward compatibility (with warning)."""
+        import warnings
+
+        warnings.warn(
+            "Setting 'dx' is deprecated. Use geometry-first API instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._dx_override = value
+
+    @property
+    def xSpace(self) -> np.ndarray | None:
+        """
+        DEPRECATED: Use problem.geometry.get_spatial_grid() instead.
+
+        Returns the spatial grid array.
+        """
+        import warnings
+
+        warnings.warn(
+            "Accessing 'xSpace' is deprecated. Use 'problem.geometry.get_spatial_grid()' instead. "
+            "This attribute will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if hasattr(self, "_xSpace_override"):
+            return self._xSpace_override
+        if self.geometry is not None:
+            return self.geometry.get_spatial_grid()
+        return None
+
+    @xSpace.setter
+    def xSpace(self, value: np.ndarray | None) -> None:
+        """Allow setting for backward compatibility (with warning)."""
+        import warnings
+
+        warnings.warn(
+            "Setting 'xSpace' is deprecated. Use geometry-first API instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._xSpace_override = value
+
+    @property
+    def _grid(self) -> Any:
+        """
+        DEPRECATED: Use problem.geometry instead.
+
+        Returns the geometry object (for backward compatibility).
+        """
+        import warnings
+
+        warnings.warn(
+            "Accessing '_grid' is deprecated. Use 'problem.geometry' instead. "
+            "This attribute will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if hasattr(self, "_grid_override"):
+            return self._grid_override
+        return self.geometry
+
+    @_grid.setter
+    def _grid(self, value: Any) -> None:
+        """Allow setting for backward compatibility (with warning)."""
+        import warnings
+
+        warnings.warn(
+            "Setting '_grid' is deprecated. Use geometry-first API instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._grid_override = value
+
+    # =========================================================================
+    # Internal Geometry Helpers (no deprecation warnings)
+    # These are for internal use only - external code should use geometry directly
+    # =========================================================================
+
+    def _get_domain_length(self) -> float | None:
+        """Get domain length for 1D problems (internal use, no warning)."""
+        if self.geometry is not None and self.dimension == 1:
+            bounds = self.geometry.get_bounds()
+            if bounds is not None:
+                return float(bounds[1][0] - bounds[0][0])
+        return None
+
+    def _get_spacing(self) -> float | None:
+        """Get grid spacing for 1D problems (internal use, no warning)."""
+        if self.geometry is not None and self.dimension == 1:
+            from mfg_pde.geometry import TensorProductGrid
+
+            if isinstance(self.geometry, TensorProductGrid):
+                return float(self.geometry.spacing[0])
+            else:
+                bounds = self.geometry.get_bounds()
+                if bounds is not None:
+                    n_points = self.geometry.num_spatial_points
+                    if n_points > 1:
+                        return float((bounds[1][0] - bounds[0][0]) / (n_points - 1))
+        return None
+
+    def _get_num_intervals(self) -> int | None:
+        """Get number of intervals for 1D problems (internal use, no warning)."""
+        if self.geometry is not None and self.dimension == 1:
+            return self.geometry.num_spatial_points - 1
+        return None
+
+    def _get_spatial_grid_internal(self) -> np.ndarray | None:
+        """Get spatial grid array (internal use, no warning)."""
+        if self.geometry is not None:
+            return self.geometry.get_spatial_grid()
+        return None
 
     def __repr__(self) -> str:
         """
@@ -1478,15 +1535,15 @@ class MFGProblem:
 
     def _potential(self, x: float) -> float:
         """Default potential function."""
+        Lx = self._get_domain_length() or 1.0  # Fallback to 1.0 if not 1D
         return 50 * (
-            0.1 * np.cos(x * 2 * np.pi / self.Lx)
-            + 0.25 * np.sin(x * 2 * np.pi / self.Lx)
-            + 0.1 * np.sin(x * 4 * np.pi / self.Lx)
+            0.1 * np.cos(x * 2 * np.pi / Lx) + 0.25 * np.sin(x * 2 * np.pi / Lx) + 0.1 * np.sin(x * 4 * np.pi / Lx)
         )
 
     def _u_final(self, x: float) -> float:
         """Default final value function."""
-        return 5 * (np.cos(x * 2 * np.pi / self.Lx) + 0.4 * np.sin(x * 4 * np.pi / self.Lx))
+        Lx = self._get_domain_length() or 1.0  # Fallback to 1.0 if not 1D
+        return 5 * (np.cos(x * 2 * np.pi / Lx) + 0.4 * np.sin(x * 4 * np.pi / Lx))
 
     def _m_initial(self, x: float) -> float:
         """Default initial density function."""
@@ -1524,10 +1581,11 @@ class MFGProblem:
             # Default problem - use built-in functions
             if self.dimension == 1:
                 # 1D default functions (original behavior)
+                spatial_grid = self._get_spatial_grid_internal()
                 for i in range(self.spatial_shape[0]):
-                    self.f_potential[i] = self._potential(self.xSpace[i])
-                    self.u_fin[i] = self._u_final(self.xSpace[i])
-                    self.m_init[i] = self._m_initial(self.xSpace[i])
+                    self.f_potential[i] = self._potential(spatial_grid[i])
+                    self.u_fin[i] = self._u_final(spatial_grid[i])
+                    self.m_init[i] = self._m_initial(spatial_grid[i])
             else:
                 # n-D default functions (simple defaults)
                 # Potential: zero (can be customized later)
@@ -1546,7 +1604,8 @@ class MFGProblem:
             integral_m_init = np.sum(self.m_init)
         elif self.dimension == 1:
             # 1D normalization (original)
-            integral_m_init = np.sum(self.m_init) * self.dx
+            dx = self._get_spacing() or 1.0
+            integral_m_init = np.sum(self.m_init) * dx
         elif self.spatial_bounds is not None and self.spatial_discretization is not None:
             # n-D normalization (integrate over all dimensions)
             # For tensor product grid: integral = sum(m) * prod(dx_i)
@@ -1570,8 +1629,9 @@ class MFGProblem:
         """Setup default initial density (Gaussian at center for n-D problems)."""
         if self.dimension == 1:
             # 1D: Use original default
+            spatial_grid = self._get_spatial_grid_internal()
             for i in range(self.spatial_shape[0]):
-                self.m_init[i] = self._m_initial(self.xSpace[i])
+                self.m_init[i] = self._m_initial(spatial_grid[i])
         elif self.dimension == "network":
             # Network/graph: uniform density on all nodes
             self.m_init[:] = 1.0 / self.num_nodes
@@ -1675,9 +1735,11 @@ class MFGProblem:
             return
 
         potential_func = self.components.potential_func
+        spatial_grid = self._get_spatial_grid_internal()
+        num_intervals = self._get_num_intervals() or 0
 
-        for i in range(self.Nx + 1):
-            x_i = self.xSpace[i]
+        for i in range(num_intervals + 1):
+            x_i = spatial_grid[i]
 
             # Check if potential depends on time
             sig = inspect.signature(potential_func)
@@ -1694,9 +1756,11 @@ class MFGProblem:
             return
 
         initial_func = self.components.initial_density_func
+        spatial_grid = self._get_spatial_grid_internal()
+        num_intervals = self._get_num_intervals() or 0
 
-        for i in range(self.Nx + 1):
-            x_i = self.xSpace[i]
+        for i in range(num_intervals + 1):
+            x_i = spatial_grid[i]
             self.m_init[i] = max(initial_func(x_i), 0.0)
 
     def _setup_custom_final_value(self):
@@ -1707,10 +1771,12 @@ class MFGProblem:
         final_func = self.components.final_value_func
 
         # Handle both 1D and nD cases
-        if self.dimension == 1 and self.Nx is not None:
-            # 1D case: use xSpace array
-            for i in range(self.Nx + 1):
-                x_i = self.xSpace[i]
+        num_intervals = self._get_num_intervals()
+        if self.dimension == 1 and num_intervals is not None:
+            # 1D case: use spatial grid
+            spatial_grid = self._get_spatial_grid_internal()
+            for i in range(num_intervals + 1):
+                x_i = spatial_grid[i]
                 self.u_fin[i] = final_func(x_i)
         elif hasattr(self, "geometry") and self.geometry is not None:
             # nD case: use geometry spatial grid
@@ -1801,11 +1867,13 @@ class MFGProblem:
                         x_position = None  # Custom Hamiltonian should not need it
                 else:
                     x_position = None  # Will be passed to custom Hamiltonian
-            elif self.xSpace is not None:
-                # 1D case: xSpace is 1D array, x_idx is scalar
-                x_position = self.xSpace[x_idx]
             else:
-                x_position = None
+                # 1D case: use spatial grid
+                spatial_grid = self._get_spatial_grid_internal()
+                if spatial_grid is not None:
+                    x_position = spatial_grid[x_idx]
+                else:
+                    x_position = None
 
         if current_time is None and t_idx is not None:
             current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
@@ -1965,11 +2033,13 @@ class MFGProblem:
                         x_position = None  # Custom Hamiltonian should not need it
                 else:
                     x_position = None  # Will be passed to custom Hamiltonian
-            elif self.xSpace is not None:
-                # 1D case: xSpace is 1D array, x_idx is scalar
-                x_position = self.xSpace[x_idx]
             else:
-                x_position = None
+                # 1D case: use spatial grid
+                spatial_grid = self._get_spatial_grid_internal()
+                if spatial_grid is not None:
+                    x_position = spatial_grid[x_idx]
+                else:
+                    x_position = None
 
         if current_time is None and t_idx is not None:
             current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
@@ -2053,8 +2123,9 @@ class MFGProblem:
 
         # Default Jacobian implementation (only for non-custom problems)
         if not self.is_custom:
-            Nx = self.Nx + 1
-            dx = self.dx
+            num_intervals = self._get_num_intervals() or 0
+            Nx = num_intervals + 1
+            dx = self._get_spacing() or 1.0
             coupling_coefficient = self.coupling_coefficient
 
             J_D_H = np.zeros(Nx)
@@ -2142,8 +2213,10 @@ class MFGProblem:
                 current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
                 potential_at_t = np.zeros_like(self.f_potential)
 
-                for i in range(self.Nx + 1):
-                    x_i = self.xSpace[i]
+                num_intervals = self._get_num_intervals() or 0
+                spatial_grid = self._get_spatial_grid_internal()
+                for i in range(num_intervals + 1):
+                    x_i = spatial_grid[i]
                     potential_at_t[i] = self.components.potential_func(x_i, current_time)
 
                 return potential_at_t
@@ -2158,6 +2231,17 @@ class MFGProblem:
 
     def get_problem_info(self) -> dict[str, Any]:
         """Get information about the problem."""
+        # Get domain info from geometry (modern API)
+        bounds = self.geometry.get_bounds() if self.geometry else None
+        domain_info = {
+            "dimension": self.dimension,
+            "num_spatial_points": self.geometry.num_spatial_points if self.geometry else None,
+        }
+        if bounds is not None and self.dimension == 1:
+            domain_info["xmin"] = float(bounds[0][0])
+            domain_info["xmax"] = float(bounds[1][0])
+            domain_info["Nx"] = self._get_num_intervals()
+
         if self.is_custom and self.components is not None:
             return {
                 "description": self.components.description,
@@ -2170,7 +2254,7 @@ class MFGProblem:
                 "has_jacobian": self.components.hamiltonian_jacobian_func is not None,
                 "has_coupling": self.components.coupling_func is not None,
                 "parameters": self.components.parameters,
-                "domain": {"xmin": self.xmin, "xmax": self.xmax, "Nx": self.Nx},
+                "domain": domain_info,
                 "time": {"T": self.T, "Nt": self.Nt},
                 "coefficients": {"sigma": self.sigma, "coupling_coefficient": self.coupling_coefficient},
             }
@@ -2186,7 +2270,7 @@ class MFGProblem:
                 "has_jacobian": False,
                 "has_coupling": False,
                 "parameters": {},
-                "domain": {"xmin": self.xmin, "xmax": self.xmax, "Nx": self.Nx},
+                "domain": domain_info,
                 "time": {"T": self.T, "Nt": self.Nt},
                 "coefficients": {"sigma": self.sigma, "coupling_coefficient": self.coupling_coefficient},
             }
@@ -2249,12 +2333,14 @@ class MFGProblem:
                 collocation_points = self.geometry.interior_points
             else:
                 # Fallback to grid-based points
-                x = np.linspace(self.xmin, self.xmax, self.Nx)
-                collocation_points = x.reshape(-1, 1)
+                bounds = self.geometry.get_bounds()
+                if bounds is not None:
+                    x = np.linspace(bounds[0][0], bounds[1][0], self.geometry.num_spatial_points)
+                    collocation_points = x.reshape(-1, 1)
+                else:
+                    raise ValueError("Cannot create collocation points: geometry has no bounds")
         else:
-            # Create grid points for 1D case
-            x = np.linspace(self.xmin, self.xmax, self.Nx)
-            collocation_points = x.reshape(-1, 1)
+            raise ValueError("Cannot create collocation points: geometry is required")
 
         # Create component solvers
         hjb_solver = HJBGFDMSolver(self, collocation_points)
