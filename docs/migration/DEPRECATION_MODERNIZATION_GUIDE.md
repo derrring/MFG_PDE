@@ -1,6 +1,6 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2025-11-13
+**Last Updated**: 2025-12-11
 **Target**: v1.0.0 (deprecated patterns will be restricted)
 **Status**: Active migration in progress
 
@@ -83,7 +83,67 @@ problem = MFGProblem(Nx=[50], xmin=[0.0], xmax=[1.0])  # Arrays
 
 ---
 
-## 3. StrategySelector Parameters (Low Priority)
+## 3. Legacy Attribute Access (High Priority) - NEW
+
+### Deprecated Pattern
+
+```python
+problem = MFGProblem(Nx=[50], xmin=[0.0], xmax=[1.0], T=1.0, Nt=10)
+
+# Accessing legacy attributes directly
+x_min = problem.xmin      # DeprecationWarning
+x_max = problem.xmax      # DeprecationWarning
+grid_size = problem.Nx    # DeprecationWarning
+spacing = problem.dx      # DeprecationWarning
+```
+
+**Deprecation**: These attributes now emit `DeprecationWarning` when accessed from external code. They will be removed in v1.0.0.
+
+### Modern Pattern
+
+```python
+from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
+
+# Create problem with geometry-first API
+domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
+problem = MFGProblem(geometry=domain, T=1.0, Nt=10)
+
+# Access spatial information via geometry
+bounds = problem.geometry.get_bounds()        # (min_array, max_array)
+grid = problem.geometry.get_spatial_grid()    # Spatial grid points
+num_points = problem.geometry.num_spatial_points  # Total grid points
+dim = problem.geometry.dimension              # Spatial dimension
+
+# Use helper properties
+if problem.is_cartesian:
+    # Cartesian grid-specific logic
+    pass
+elif problem.is_network:
+    # Network-specific logic
+    pass
+```
+
+### What Changed (Issue #435, PRs #436-#441)
+
+1. **`problem.geometry` is never None** - Always set after initialization
+2. **Legacy attributes hidden from autocomplete** - `__dir__()` excludes them
+3. **Write protection** - Setting `problem.xmin = value` emits warning
+4. **Type safety** - `geometry` is typed as `GeometryProtocol`
+
+### Migration
+
+| Old | New |
+|:----|:----|
+| `problem.xmin` | `problem.geometry.get_bounds()[0][0]` |
+| `problem.xmax` | `problem.geometry.get_bounds()[1][0]` |
+| `problem.Nx` | `problem.geometry.num_spatial_points` |
+| `problem.dx` | Compute from bounds and num_points |
+| `problem.xSpace` | `problem.geometry.get_spatial_grid()` |
+
+---
+
+## 4. StrategySelector Parameters (Low Priority)
 
 ### Deprecated Pattern
 
@@ -115,7 +175,7 @@ selector = StrategySelector(profiling_mode=ProfilingMode.SILENT)
 
 ---
 
-## 4. solve_mfg() Method Parameter (Medium Priority)
+## 5. solve_mfg() Method Parameter (Medium Priority)
 
 ### Deprecated Pattern
 
@@ -169,7 +229,7 @@ result = solver.solve()
 
 ---
 
-## 5. Legacy Problem Classes (Low Priority)
+## 6. Legacy Problem Classes (Low Priority)
 
 ### Deprecated Classes
 
@@ -245,6 +305,7 @@ class MyCustomProblem(MFGProblem):
 | Deprecated | Modern | Priority |
 |:-----------|:-------|:---------|
 | `ExampleMFGProblem(Nx=50, ...)` | `MFGProblem(geometry=domain, ...)` | High |
+| `problem.xmin`, `problem.Nx`, etc. | `problem.geometry.get_bounds()` | High |
 | `Nx=50` (scalar) | `Nx=[50]` (array) | Medium |
 | `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium |
 | `enable_profiling=True` | `profiling_mode=ProfilingMode.SILENT` | Low |
