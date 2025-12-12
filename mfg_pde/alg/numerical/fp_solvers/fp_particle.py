@@ -39,7 +39,7 @@ class ParticleMode(str, Enum):
     """Particle solver operating mode for FP-based solvers."""
 
     HYBRID = "hybrid"  # Sample own particles, output to grid via KDE (default)
-    COLLOCATION = "collocation"  # Use external particles, output on particles (no KDE)
+    # Note: COLLOCATION mode removed in v0.17.0. Use FPGFDMSolver instead.
 
 
 class FPParticleSolver(BaseFPSolver):
@@ -63,50 +63,34 @@ class FPParticleSolver(BaseFPSolver):
 
         # Convert string to enum if needed
         if isinstance(mode, str):
+            # Handle deprecated collocation mode
+            if mode == "collocation":
+                raise ValueError(
+                    "Collocation mode has been removed from FPParticleSolver.\n"
+                    "Use FPGFDMSolver instead for meshfree density evolution:\n\n"
+                    "    from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver\n"
+                    "    solver = FPGFDMSolver(problem, collocation_points=points)\n"
+                )
             mode = ParticleMode(mode)
         self.mode = mode
 
-        # Validate mode-specific parameters and configure solver
-        if mode == ParticleMode.COLLOCATION:
-            if external_particles is None:
-                raise ValueError(
-                    "Collocation mode requires external_particles. "
-                    "Pass the collocation points used by your HJB solver.\n"
-                    "Example: FPParticleSolver(problem, mode='collocation', external_particles=points)"
-                )
-            if external_particles.ndim != 2:
-                raise ValueError(
-                    f"external_particles must be 2D array (N_points, dimension), got shape {external_particles.shape}"
-                )
-
-            # WARN: Incomplete implementation
-            import warnings
-
+        # Validate mode-specific parameters
+        if external_particles is not None:
             warnings.warn(
-                "Collocation mode has an INCOMPLETE IMPLEMENTATION. "
-                "Density is frozen at the initial condition instead of evolving via the continuity equation. "
-                "This is physically incorrect for non-equilibrium problems. "
-                "Use mode='default' (KDE-based) for correct density evolution. "
-                "See Issue #240 for implementation status. "
-                "Expected completion: v1.0.0",
-                UserWarning,
+                "external_particles parameter is deprecated and ignored. "
+                "For meshfree density evolution, use FPGFDMSolver instead.",
+                DeprecationWarning,
                 stacklevel=2,
             )
 
-            self.collocation_points = external_particles.copy()
-            self.num_particles = len(external_particles)
-            self.fp_method_name = "Particle-Collocation"
-        else:  # HYBRID mode (default)
-            self.collocation_points = None
-            self.num_particles = num_particles
-            self.fp_method_name = "Particle"
+        # HYBRID mode (only supported mode)
+        self.num_particles = num_particles
+        self.fp_method_name = "Particle"
 
         self.kde_bandwidth = kde_bandwidth
 
         # Handle deprecated parameters
         if normalize_kde_output is not None or normalize_only_initial is not None:
-            import warnings
-
             warnings.warn(
                 "Parameters 'normalize_kde_output' and 'normalize_only_initial' are deprecated. "
                 "Use 'kde_normalization' instead with KDENormalization.NONE, KDENormalization.INITIAL_ONLY, or KDENormalization.ALL",
@@ -751,29 +735,26 @@ class FPParticleSolver(BaseFPSolver):
         """
         Solve FP system using particle method with unified API.
 
-        Modes:
-        - HYBRID (default): Sample own particles, output to grid via KDE
-          Strategy Selection: Automatically selects CPU/GPU/Hybrid based on problem size
-        - COLLOCATION: Use external particles, output on particles (no KDE)
-          Returns density on collocation points (true meshfree representation)
+        Uses KDE-based particle method: sample own particles, output to grid via KDE.
+        Strategy Selection: Automatically selects CPU/GPU/Hybrid based on problem size.
+
+        For meshfree density evolution on scattered points, use FPGFDMSolver instead.
 
         Args:
-            M_initial: Initial density m₀(x) (grid or particle-based depending on mode)
+            M_initial: Initial density m0(x) on grid
             m_initial_condition: DEPRECATED, use M_initial
             drift_field: Drift field specification (optional):
                 - None: Zero drift (pure diffusion)
-                - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
-                - Callable: Function α(t, x, m) -> drift (Phase 2)
+                - np.ndarray: Precomputed drift (e.g., -grad U / lambda for MFG)
+                - Callable: Function alpha(t, x, m) -> drift (Phase 2)
             diffusion_field: Diffusion specification (optional):
                 - None: Use problem.sigma (backward compatible)
                 - float: Constant isotropic diffusion
                 - np.ndarray/Callable: Phase 2
-            show_progress: Display progress bar (hybrid mode only)
+            show_progress: Display progress bar
 
         Returns:
-            M_solution: Density evolution
-                - HYBRID mode: (Nt, Nx) on grid
-                - COLLOCATION mode: (Nt, N_particles) on particles
+            M_solution: Density evolution on grid, shape (Nt+1, *grid_shape)
         """
         # Handle deprecated parameter name
         if m_initial_condition is not None:
@@ -798,12 +779,8 @@ class FPParticleSolver(BaseFPSolver):
             # Zero drift (pure diffusion): create zero U field for internal use
             params = self._get_grid_params()
             Nt = params["Nt"]
-            if self.mode == ParticleMode.COLLOCATION:
-                N_points = len(self.collocation_points)
-                effective_U = np.zeros((Nt, N_points))
-            else:
-                grid_shape = params["grid_shape"]
-                effective_U = np.zeros((Nt, *grid_shape))
+            grid_shape = params["grid_shape"]
+            effective_U = np.zeros((Nt, *grid_shape))
         elif isinstance(drift_field, np.ndarray):
             # Precomputed drift field (including MFG drift = -∇U/λ)
             effective_U = drift_field
@@ -848,37 +825,32 @@ class FPParticleSolver(BaseFPSolver):
         self._show_progress = show_progress
 
         try:
-            # Route to appropriate solver based on mode
-            if self.mode == ParticleMode.COLLOCATION:
-                # Collocation mode: particles → particles (no KDE)
-                return self._solve_fp_system_collocation(M_initial, effective_U)
-            else:
-                # Hybrid mode: particles → grid (existing behavior with strategy selection)
-                # Determine problem size for strategy selection
-                params = self._get_grid_params()
-                Nt = params["Nt"]
-                dimension = params["dimension"]
-                grid_shape = params["grid_shape"]
-                total_points = params["total_points"]
-                problem_size = (self.num_particles, total_points, Nt)
+            # Hybrid mode: particles -> grid (with strategy selection)
+            # Determine problem size for strategy selection
+            params = self._get_grid_params()
+            Nt = params["Nt"]
+            dimension = params["dimension"]
+            grid_shape = params["grid_shape"]
+            total_points = params["total_points"]
+            problem_size = (self.num_particles, total_points, Nt)
 
-                # Route based on dimension
-                if dimension == 1:
-                    # 1D: Use existing optimized solvers with strategy selection
-                    self.current_strategy = self.strategy_selector.select_strategy(
-                        backend=self.backend if (self.backend is not None and self.backend.name != "numpy") else None,
-                        problem_size=problem_size,
-                        strategy_hint="auto",
-                    )
+            # Route based on dimension
+            if dimension == 1:
+                # 1D: Use existing optimized solvers with strategy selection
+                self.current_strategy = self.strategy_selector.select_strategy(
+                    backend=self.backend if (self.backend is not None and self.backend.name != "numpy") else None,
+                    problem_size=problem_size,
+                    strategy_hint="auto",
+                )
 
-                    if self.current_strategy.name == "cpu":
-                        return self._solve_fp_system_cpu(M_initial, effective_U)
-                    else:
-                        return self._solve_fp_system_gpu(M_initial, effective_U)
+                if self.current_strategy.name == "cpu":
+                    return self._solve_fp_system_cpu(M_initial, effective_U)
                 else:
-                    # nD (d >= 2): Use new nD CPU solver
-                    # GPU nD solver not yet implemented
-                    return self._solve_fp_system_cpu_nd(M_initial, effective_U)
+                    return self._solve_fp_system_gpu(M_initial, effective_U)
+            else:
+                # nD (d >= 2): Use new nD CPU solver
+                # GPU nD solver not yet implemented
+                return self._solve_fp_system_cpu_nd(M_initial, effective_U)
         finally:
             # Restore original sigma
             self.problem.sigma = original_sigma
@@ -1289,127 +1261,6 @@ class FPParticleSolver(BaseFPSolver):
         # Store trajectory and convert to NumPy ONCE at end
         self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
         return self.backend.to_numpy(M_density_gpu)
-
-    def _solve_fp_system_collocation(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray
-    ) -> np.ndarray:
-        """
-        Solve FP system in collocation mode (meshfree particle output).
-
-        WARNING: INCOMPLETE IMPLEMENTATION
-            This method currently freezes density at the initial condition instead of
-            solving the continuity equation. Density does NOT evolve in time.
-
-            Current behavior (line 652): M[t+1] = M[0] for all t
-            Expected behavior: M[t+1] = M[t] - Δt * (divergence_term - diffusion_term)
-
-            See Issue #240 for implementation plan.
-            Estimated completion: v1.0.0 (target: ~3 days development)
-
-        Design Intent (not yet implemented):
-        - Particles FIXED at collocation points (Eulerian representation)
-        - Density should evolve via continuity equation: ∂m/∂t + ∇·(m α) = σ²/2 Δm
-        - NO KDE interpolation to grid
-        - Output: density evolution on collocation points
-
-        Current Limitations:
-        - Density frozen at initial condition (physically incorrect for non-equilibrium)
-        - No GFDM spatial operators (divergence, Laplacian)
-        - No time integration of continuity equation
-        - Tests validate API only, not physical correctness
-
-        Args:
-            m_initial_condition: Initial density on collocation points (N_particles,)
-            U_solution_for_drift: Value function on collocation points (Nt, N_particles)
-                (Currently unused - will be needed for drift computation)
-
-        Returns:
-            M_solution: Density on collocation points (Nt, N_particles)
-                WARNING: Currently returns M[0] repeated for all time steps
-
-        Note:
-            This incomplete implementation is sufficient for API testing but should NOT
-            be used for production MFG simulations. Use mode="default" (KDE-based) for
-            correct density evolution until Issue #240 is resolved.
-
-            Tracking: https://github.com/your-org/MFG_PDE/issues/240
-        """
-        # n_time_points = problem.Nt + 1 (number of time knots including t=0 and t=T)
-        # problem.Nt = number of time intervals
-        n_time_points = self.problem.Nt + 1
-        N_points = len(self.collocation_points)
-
-        # Validate input shapes
-        if m_initial_condition.shape != (N_points,):
-            raise ValueError(
-                f"m_initial_condition shape {m_initial_condition.shape} "
-                f"must match collocation_points count ({N_points},)"
-            )
-        if U_solution_for_drift.shape != (n_time_points, N_points):
-            raise ValueError(
-                f"U_solution_for_drift shape {U_solution_for_drift.shape} must be "
-                f"(n_time_points={n_time_points}, N_points={N_points})"
-            )
-
-        # Storage for density evolution on collocation points
-        M_solution = np.zeros((n_time_points, N_points))
-        M_solution[0, :] = m_initial_condition.copy()
-
-        # Time step: dt = T / Nt (T divided by number of intervals)
-        dt = self.problem.T / self.problem.Nt
-        sigma = self.problem.sigma
-        diffusion_coeff = 0.5 * sigma**2
-
-        # Import GFDM operators for spatial derivatives
-        from mfg_pde.utils.numerical.gfdm_operators import (
-            compute_divergence_gfdm,
-            compute_gradient_gfdm,
-            compute_laplacian_gfdm,
-        )
-
-        # Solve continuity equation: ∂m/∂t + ∇·(m α) = σ²/2 Δm
-        # Using GFDM operators for spatial derivatives on collocation points
-        # Forward FP loop: (n_time_points - 1) steps = problem.Nt intervals
-        for t_idx in range(n_time_points - 1):
-            m_current = M_solution[t_idx, :]
-
-            # Compute drift field α = -∇U at current time
-            U_current = U_solution_for_drift[t_idx, :]
-
-            # Compute gradient of value function using GFDM
-            grad_U = compute_gradient_gfdm(U_current, self.collocation_points)
-
-            # Drift field: α = -∇U
-            # Shape: (N_points, dimension)
-            drift_field = -grad_U
-
-            # Advection term: ∇·(m α)
-            divergence_term = compute_divergence_gfdm(drift_field, m_current, self.collocation_points)
-
-            # Diffusion term: σ²/2 Δm
-            laplacian_term = compute_laplacian_gfdm(m_current, self.collocation_points)
-            diffusion_term = diffusion_coeff * laplacian_term
-
-            # Forward Euler time stepping
-            # ∂m/∂t = -∇·(m α) + σ²/2 Δm
-            dm_dt = -divergence_term + diffusion_term
-
-            # Update density
-            M_solution[t_idx + 1, :] = m_current + dt * dm_dt
-
-            # Enforce non-negativity (physical constraint)
-            M_solution[t_idx + 1, :] = np.maximum(M_solution[t_idx + 1, :], 0.0)
-
-            # Optional: Renormalize to conserve mass
-            # (May need adjustment based on boundary conditions)
-            mass_current = np.sum(M_solution[t_idx + 1, :])
-            if mass_current > 0:
-                M_solution[t_idx + 1, :] *= np.sum(m_initial_condition) / mass_current
-
-        # Store particle trajectory (in collocation mode, particles are fixed)
-        self.M_particles_trajectory = np.tile(self.collocation_points, (n_time_points, 1, 1))
-
-        return M_solution
 
 
 if __name__ == "__main__":
