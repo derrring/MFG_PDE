@@ -160,7 +160,7 @@ examples/
 │   │   ├── semi_lagrangian_2d_enhancements.py
 │   │   ├── weno_family_comparison_demo.py
 │   │   ├── hybrid_fp_particle_hjb_fdm_demo.py
-│   │   └── particle_collocation_dual_mode_demo.py
+│   │   └── gfdm_meshfree_demo.py
 │   │
 │   ├── optimization/
 │   │   ├── primal_dual_constrained_example.py

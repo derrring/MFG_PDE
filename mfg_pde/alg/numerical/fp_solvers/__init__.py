@@ -17,7 +17,7 @@ from mfg_pde.alg.numerical.network_solvers import FPNetworkSolver
 from .base_fp import BaseFPSolver
 from .fp_fdm import FPFDMSolver
 from .fp_gfdm import FPGFDMSolver
-from .fp_particle import FPParticleSolver, KDENormalization, ParticleMode
+from .fp_particle import FPParticleSolver, KDENormalization
 
 __all__ = [
     "BaseFPSolver",
@@ -26,5 +26,4 @@ __all__ = [
     "FPNetworkSolver",  # Backward compat - prefer network_solvers import
     "FPParticleSolver",
     "KDENormalization",
-    "ParticleMode",
 ]

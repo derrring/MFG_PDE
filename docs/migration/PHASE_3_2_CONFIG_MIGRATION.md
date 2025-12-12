@@ -381,37 +381,31 @@ config = SolverConfig(
 )
 ```
 
-### Scenario 2: Particle Methods with Dual Modes
+### Scenario 2: Particle Methods
 
-**New Feature**: Particle solvers now support two modes:
-
-**Hybrid Mode** (default - sample particles, output to grid):
+**Particle solver** (sample particles, output to grid via KDE):
 ```python
 config = (
     ConfigBuilder()
     .solver_fp_particle(
         num_particles=5000,
-        mode="hybrid",  # Sample → Grid via KDE
         normalization="initial_only"
     )
     .build()
 )
 ```
 
-**Collocation Mode** (meshfree - external particles):
+**For meshfree density evolution on collocation points**, use `FPGFDMSolver`:
 ```python
+from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
 import numpy as np
 
-# Create config (mode can be set later)
-config = presets.high_dimensional_solver()
-
-# Set collocation mode with external particles (programmatically)
+# Create collocation points
 particles = np.random.uniform(0, 1, (1000, dim))
-config.fp.particle_config.mode = "collocation"
-config.fp.particle_config.external_particles = particles
-```
 
-**Note**: `external_particles` must be set programmatically (not via YAML) as it contains numpy arrays.
+# Use FPGFDMSolver for GFDM-based density evolution
+solver = FPGFDMSolver(problem, collocation_points=particles)
+```
 
 ### Scenario 3: Backend Configuration
 

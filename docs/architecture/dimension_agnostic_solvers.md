@@ -51,7 +51,7 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
       └─ Lagrangian adaptation → fixed collocation grid
 
 3. FULLY DYNAMIC GRID (Meshfree Lagrangian)
-   └─ Particle Collocation Dual Mode (research, external)
+   └─ Fully Lagrangian Particle Methods (research, external)
       └─ Location: mfg-research/algorithms/particle_collocation/
       └─ Particles carry solution, move throughout solve
 ```
@@ -383,7 +383,7 @@ where w_j are weights (e.g., inverse distance).
 
 ---
 
-## Method 4: Particle Collocation Dual Mode (Research, External)
+## Method 4: Fully Lagrangian Particle Methods (Research, External)
 
 ### Overview
 
@@ -392,6 +392,9 @@ where w_j are weights (e.g., inverse distance).
 **Implementation**: Research code in mfg-research repository
 
 **Location**: `mfg-research/algorithms/particle_collocation/`
+
+> **Note**: For basic meshfree density evolution in MFG_PDE, use `FPGFDMSolver`.
+> This section describes more advanced fully-Lagrangian research methods.
 
 ### Algorithm
 

@@ -35,21 +35,19 @@ class KDENormalization(str, Enum):
     ALL = "all"  # Normalize at every time step (default)
 
 
-class ParticleMode(str, Enum):
-    """Particle solver operating mode for FP-based solvers."""
-
-    HYBRID = "hybrid"  # Sample own particles, output to grid via KDE (default)
-    # Note: COLLOCATION mode removed in v0.17.0. Use FPGFDMSolver instead.
-
-
 class FPParticleSolver(BaseFPSolver):
+    """
+    Particle-based Fokker-Planck solver using Monte Carlo sampling and KDE.
+
+    This solver samples particles from the initial distribution, evolves them
+    using SDE dynamics, and reconstructs the density on a grid using KDE.
+
+    For meshfree density evolution on collocation points, use FPGFDMSolver instead.
+    """
+
     def __init__(
         self,
         problem: MFGProblem,
-        # Mode selection (new dual-mode capability)
-        mode: ParticleMode | str = ParticleMode.HYBRID,
-        external_particles: np.ndarray | None = None,
-        # Existing parameters
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
         kde_normalization: KDENormalization | str = KDENormalization.ALL,
@@ -58,12 +56,14 @@ class FPParticleSolver(BaseFPSolver):
         # Deprecated parameters for backward compatibility
         normalize_kde_output: bool | None = None,
         normalize_only_initial: bool | None = None,
+        # Legacy parameters (raise helpful errors)
+        mode: str | None = None,
+        external_particles: np.ndarray | None = None,
     ) -> None:
         super().__init__(problem)
 
-        # Convert string to enum if needed
-        if isinstance(mode, str):
-            # Handle deprecated collocation mode
+        # Handle deprecated mode parameter
+        if mode is not None:
             if mode == "collocation":
                 raise ValueError(
                     "Collocation mode has been removed from FPParticleSolver.\n"
@@ -71,10 +71,11 @@ class FPParticleSolver(BaseFPSolver):
                     "    from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver\n"
                     "    solver = FPGFDMSolver(problem, collocation_points=points)\n"
                 )
-            mode = ParticleMode(mode)
-        self.mode = mode
+            elif mode != "hybrid":
+                raise ValueError(f"Unknown mode: {mode}. FPParticleSolver only supports hybrid mode.")
+            # mode="hybrid" is accepted silently for backward compatibility
 
-        # Validate mode-specific parameters
+        # Handle deprecated external_particles parameter
         if external_particles is not None:
             warnings.warn(
                 "external_particles parameter is deprecated and ignored. "
@@ -83,7 +84,6 @@ class FPParticleSolver(BaseFPSolver):
                 stacklevel=2,
             )
 
-        # HYBRID mode (only supported mode)
         self.num_particles = num_particles
         self.fp_method_name = "Particle"
 
@@ -1271,12 +1271,11 @@ if __name__ == "__main__":
 
     # Test 1D problem with particle solver
     problem = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
-    solver = FPParticleSolver(problem, num_particles=1000, mode="hybrid")
+    solver = FPParticleSolver(problem, num_particles=1000)
 
     # Test solver initialization
     assert solver.fp_method_name == "Particle"
     assert solver.num_particles == 1000
-    assert solver.mode == ParticleMode.HYBRID
 
     # Test solve_fp_system
     import numpy as np
