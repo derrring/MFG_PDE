@@ -1,11 +1,12 @@
-"""MFG Components and Hamiltonian evaluation.
+"""MFG Components and evaluation mixins.
 
 This module contains:
 - MFGComponents: Dataclass for custom MFG problem definition
-- MFGComponentsMixin: Mixin providing Hamiltonian evaluation methods
+- HamiltonianMixin: Mixin providing Hamiltonian evaluation methods (H, dH_dm, potential)
+- ConditionsMixin: Mixin providing initial/final/boundary condition methods
 
 The mixin pattern allows MFGProblem to inherit these methods while keeping
-the component-related logic in a separate, focused module.
+the logic in separate, focused modules.
 """
 
 from __future__ import annotations
@@ -49,8 +50,11 @@ class MFGComponents:
     # Optional Jacobian for advanced solvers
     hamiltonian_jacobian_func: Callable | None = None  # Jacobian contribution
 
-    # Potential function V(x, t)
+    # Potential function V(x, t) - part of Hamiltonian
     potential_func: Callable | None = None  # V(x, t) -> float
+
+    # Coupling terms (for advanced MFG formulations)
+    coupling_func: Callable | None = None  # Additional coupling terms
 
     # Initial and final conditions
     initial_density_func: Callable | None = None  # m_0(x) -> float
@@ -58,9 +62,6 @@ class MFGComponents:
 
     # Boundary conditions
     boundary_conditions: BoundaryConditions | None = None
-
-    # Coupling terms (for advanced MFG formulations)
-    coupling_func: Callable | None = None  # Additional coupling terms
 
     # Problem parameters
     parameters: dict[str, Any] = field(default_factory=dict)
@@ -71,20 +72,21 @@ class MFGComponents:
 
 
 # ============================================================================
-# MFG Components Mixin - Hamiltonian and Component Methods
+# Hamiltonian Mixin - H, dH_dm, Jacobian, Coupling, Potential
 # ============================================================================
 
 
-class MFGComponentsMixin:
+class HamiltonianMixin:
     """
-    Mixin class providing Hamiltonian evaluation and component handling.
+    Mixin class providing Hamiltonian evaluation methods.
 
-    This mixin is inherited by MFGProblem and provides:
+    Provides:
     - H(): Hamiltonian evaluation
     - dH_dm(): Hamiltonian derivative w.r.t. density
     - get_hjb_hamiltonian_jacobian_contrib(): Jacobian for Newton methods
     - get_hjb_residual_m_coupling_term(): Coupling terms
-    - Component validation and setup methods
+    - _setup_custom_potential(): Potential initialization
+    - get_potential_at_time(): Time-dependent potential access
 
     Required attributes from the inheriting class:
     - components: MFGComponents | None
@@ -105,18 +107,14 @@ class MFGComponentsMixin:
     coupling_coefficient: float
     tSpace: np.ndarray
     f_potential: np.ndarray
-    m_init: np.ndarray
-    u_fin: np.ndarray
     spatial_shape: tuple
     dimension: int
 
-    def _validate_components(self) -> None:
-        """Validate that required components are provided."""
+    def _validate_hamiltonian_components(self) -> None:
+        """Validate Hamiltonian-related components."""
         if self.components is None:
-            raise ValueError("components is None but custom mode is enabled")
+            return
 
-        # Only validate Hamiltonians if at least one is provided
-        # If both are None, we'll use default implementations
         has_hamiltonian = self.components.hamiltonian_func is not None
         has_hamiltonian_dm = self.components.hamiltonian_dm_func is not None
 
@@ -131,16 +129,16 @@ class MFGComponentsMixin:
             self._validate_function_signature(
                 self.components.hamiltonian_func,
                 "hamiltonian_func",
-                ["x_idx", "m_at_x"],  # Base required params
-                gradient_param_required=True,  # Must have EITHER derivs OR p_values
+                ["x_idx", "m_at_x"],
+                gradient_param_required=True,
             )
 
         if has_hamiltonian_dm:
             self._validate_function_signature(
                 self.components.hamiltonian_dm_func,
                 "hamiltonian_dm_func",
-                ["x_idx", "m_at_x"],  # Base required params
-                gradient_param_required=True,  # Must have EITHER derivs OR p_values
+                ["x_idx", "m_at_x"],
+                gradient_param_required=True,
             )
 
     def _validate_function_signature(
@@ -158,7 +156,6 @@ class MFGComponentsMixin:
         sig = inspect.signature(func)
         params = list(sig.parameters.keys())
 
-        # Special handling for gradient notation migration
         if gradient_param_required:
             has_derivs = "derivs" in params
             has_p_values = "p_values" in params
@@ -170,13 +167,12 @@ class MFGComponentsMixin:
                     f"Current parameters: {params}"
                 )
 
-        # Check remaining required parameters
         missing = [p for p in expected_params if p not in params]
         if missing:
             raise ValueError(f"{name} must accept parameters: {expected_params}. Missing: {missing}")
 
     def _setup_custom_potential(self) -> None:
-        """Setup custom potential function."""
+        """Setup custom potential function (part of Hamiltonian)."""
         if self.components is None or self.components.potential_func is None:
             return
 
@@ -187,62 +183,29 @@ class MFGComponentsMixin:
         for i in range(num_intervals + 1):
             x_i = spatial_grid[i]
 
-            # Check if potential depends on time
             sig = inspect.signature(potential_func)
             if "t" in sig.parameters or "time" in sig.parameters:
-                # Time-dependent potential - use t=0 for initialization
                 self.f_potential[i] = potential_func(x_i, 0.0)
             else:
-                # Time-independent potential
                 self.f_potential[i] = potential_func(x_i)
 
-    def _setup_custom_initial_density(self) -> None:
-        """Setup custom initial density function."""
-        if self.components is None or self.components.initial_density_func is None:
-            return
+    def get_potential_at_time(self, t_idx: int) -> np.ndarray:
+        """Get potential function at specific time (for time-dependent potentials)."""
+        if self.is_custom and self.components is not None and self.components.potential_func is not None:
+            sig = inspect.signature(self.components.potential_func)
+            if "t" in sig.parameters or "time" in sig.parameters:
+                current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
+                potential_at_t = np.zeros_like(self.f_potential)
 
-        initial_func = self.components.initial_density_func
-        spatial_grid = self._get_spatial_grid_internal()
-        num_intervals = self._get_num_intervals() or 0
+                num_intervals = self._get_num_intervals() or 0
+                spatial_grid = self._get_spatial_grid_internal()
+                for i in range(num_intervals + 1):
+                    x_i = spatial_grid[i]
+                    potential_at_t[i] = self.components.potential_func(x_i, current_time)
 
-        for i in range(num_intervals + 1):
-            x_i = spatial_grid[i]
-            self.m_init[i] = max(initial_func(x_i), 0.0)
+                return potential_at_t
 
-    def _setup_custom_final_value(self) -> None:
-        """Setup custom final value function."""
-        if self.components is None or self.components.final_value_func is None:
-            return
-
-        final_func = self.components.final_value_func
-
-        # Handle both 1D and nD cases
-        num_intervals = self._get_num_intervals()
-        if self.dimension == 1 and num_intervals is not None:
-            # 1D case: use spatial grid
-            spatial_grid = self._get_spatial_grid_internal()
-            for i in range(num_intervals + 1):
-                x_i = spatial_grid[i]
-                self.u_fin[i] = final_func(x_i)
-        elif hasattr(self, "geometry") and self.geometry is not None:
-            # nD case: use geometry spatial grid
-            spatial_grid = self.geometry.get_spatial_grid()  # Shape: (N, d)
-            num_points = spatial_grid.shape[0]
-
-            # Apply function to each spatial point
-            for i in range(num_points):
-                x_i = spatial_grid[i]  # Point in d-dimensional space
-                self.u_fin.flat[i] = final_func(x_i)
-        else:
-            # Fallback: leave u_fin as initialized (zeros)
-            import warnings
-
-            warnings.warn(
-                "Cannot setup custom final value: dimension not 1D and no geometry available. "
-                "Using default u_fin initialization.",
-                UserWarning,
-                stacklevel=2,
-            )
+        return self.f_potential.copy()
 
     def H(
         self,
@@ -280,12 +243,10 @@ class MFGComponentsMixin:
         """
         import warnings
 
-        # Auto-detection and conversion
         if derivs is None and p_values is None:
             raise ValueError("Must provide either 'derivs' or 'p_values' to H()")
 
         if derivs is None:
-            # Legacy mode: convert p_values to derivs
             warnings.warn(
                 "p_values parameter is deprecated. Use derivs instead. "
                 "See docs/gradient_notation_standard.md for migration guide.",
@@ -298,23 +259,17 @@ class MFGComponentsMixin:
 
         # Compute x_position and current_time if not provided
         if x_position is None:
-            # Handle both 1D (scalar index) and nD (tuple index) cases
             if isinstance(x_idx, tuple):
-                # nD case: x_idx is multi-index like (i, j) for 2D
-                # Use geometry to get position if available
                 if hasattr(self, "geometry") and self.geometry is not None:
-                    # Convert multi-index to flat index
                     if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
-                        # Compute flat index from multi-index
                         flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
                         spatial_grid = self.geometry.get_spatial_grid()
                         x_position = spatial_grid[flat_idx]
                     else:
-                        x_position = None  # Custom Hamiltonian should not need it
+                        x_position = None
                 else:
-                    x_position = None  # Will be passed to custom Hamiltonian
+                    x_position = None
             else:
-                # 1D case: use spatial grid
                 spatial_grid = self._get_spatial_grid_internal()
                 if spatial_grid is not None:
                     x_position = spatial_grid[x_idx]
@@ -326,12 +281,10 @@ class MFGComponentsMixin:
 
         # Use custom Hamiltonian if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_func is not None:
-            # Check if custom function accepts 'derivs' or 'p_values'
             sig = inspect.signature(self.components.hamiltonian_func)
             params = list(sig.parameters.keys())
 
             if "derivs" in params:
-                # New-style custom Hamiltonian
                 return self.components.hamiltonian_func(
                     x_idx=x_idx,
                     x_position=x_position,
@@ -342,7 +295,6 @@ class MFGComponentsMixin:
                     problem=self,
                 )
             else:
-                # Legacy custom Hamiltonian - convert derivs to p_values
                 from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
 
                 p_values_legacy = derivs_to_p_values_1d(derivs)
@@ -357,13 +309,12 @@ class MFGComponentsMixin:
                     problem=self,
                 )
 
-        # Default Hamiltonian implementation (uses tuple notation internally)
-        p = derivs.get((1,), 0.0)  # Extract first derivative
+        # Default Hamiltonian: H = 0.5*c*|p|^2 - V(x) - m^2
+        p = derivs.get((1,), 0.0)
 
         if np.isnan(p) or np.isinf(p) or np.isnan(m_at_x) or np.isinf(m_at_x):
             return np.nan
 
-        # Use upwind scheme for default Hamiltonian
         npart_val = float(npart(p))
         ppart_val = float(ppart(p))
 
@@ -386,14 +337,11 @@ class MFGComponentsMixin:
 
         # Get potential value (handle both 1D and nD indexing)
         if isinstance(x_idx, tuple) and hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
-            # nD case with multi-index tuple: convert to flat index
             flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
             potential_cost_V_x = float(self.f_potential.flat[flat_idx])
         elif hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
-            # nD case with flat integer index: use .flat accessor
             potential_cost_V_x = float(self.f_potential.flat[x_idx])
         else:
-            # 1D case: direct indexing
             potential_cost_V_x = float(self.f_potential[x_idx])
 
         coupling_density_m_x = m_at_x**2
@@ -439,19 +387,13 @@ class MFGComponentsMixin:
 
         Returns:
             Derivative dH/dm at (x, m, p, t)
-
-        Note:
-            Provide EITHER derivs OR p_values. If both provided, derivs takes precedence.
-            p_values is deprecated and will be removed in a future version.
         """
         import warnings
 
-        # Auto-detection and conversion (same as H())
         if derivs is None and p_values is None:
             raise ValueError("Must provide either 'derivs' or 'p_values' to dH_dm()")
 
         if derivs is None:
-            # Legacy mode: convert p_values to derivs
             warnings.warn(
                 "p_values parameter is deprecated. Use derivs instead. "
                 "See docs/gradient_notation_standard.md for migration guide.",
@@ -464,23 +406,17 @@ class MFGComponentsMixin:
 
         # Compute x_position and current_time if not provided
         if x_position is None:
-            # Handle both 1D (scalar index) and nD (tuple index) cases
             if isinstance(x_idx, tuple):
-                # nD case: x_idx is multi-index like (i, j) for 2D
-                # Use geometry to get position if available
                 if hasattr(self, "geometry") and self.geometry is not None:
-                    # Convert multi-index to flat index
                     if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
-                        # Compute flat index from multi-index
                         flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
                         spatial_grid = self.geometry.get_spatial_grid()
                         x_position = spatial_grid[flat_idx]
                     else:
-                        x_position = None  # Custom Hamiltonian should not need it
+                        x_position = None
                 else:
-                    x_position = None  # Will be passed to custom Hamiltonian
+                    x_position = None
             else:
-                # 1D case: use spatial grid
                 spatial_grid = self._get_spatial_grid_internal()
                 if spatial_grid is not None:
                     x_position = spatial_grid[x_idx]
@@ -492,12 +428,10 @@ class MFGComponentsMixin:
 
         # Use custom derivative if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_dm_func is not None:
-            # Check if custom function accepts 'derivs' or 'p_values'
             sig = inspect.signature(self.components.hamiltonian_dm_func)
             params = list(sig.parameters.keys())
 
             if "derivs" in params:
-                # New-style custom derivative
                 return self.components.hamiltonian_dm_func(
                     x_idx=x_idx,
                     x_position=x_position,
@@ -508,7 +442,6 @@ class MFGComponentsMixin:
                     problem=self,
                 )
             else:
-                # Legacy custom derivative - convert derivs to p_values
                 from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
 
                 p_values_legacy = derivs_to_p_values_1d(derivs)
@@ -523,7 +456,7 @@ class MFGComponentsMixin:
                     problem=self,
                 )
 
-        # Default derivative implementation
+        # Default: dH/dm = 2m
         if np.isnan(m_at_x) or np.isinf(m_at_x):
             return np.nan
         return 2 * m_at_x
@@ -545,16 +478,8 @@ class MFGComponentsMixin:
 
         Returns:
             HamiltonianJacobians dataclass with diagonal, lower, upper components,
-            or None if not applicable (e.g., custom problem without Jacobian).
-
-        Example:
-            >>> jacobians = problem.get_hjb_hamiltonian_jacobian_contrib(U, t=10)
-            >>> if jacobians is not None:
-            ...     A_diag = jacobians.diagonal
-            ...     A_lower = jacobians.lower
-            ...     A_upper = jacobians.upper
+            or None if not applicable.
         """
-        # Use custom Jacobian if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_jacobian_func is not None:
             try:
                 return self.components.hamiltonian_jacobian_func(
@@ -567,7 +492,6 @@ class MFGComponentsMixin:
 
                 logging.getLogger(__name__).warning(f"Jacobian computation failed: {e}")
 
-        # Default Jacobian implementation (only for non-custom problems)
         if not self.is_custom:
             num_intervals = self._get_num_intervals() or 0
             Nx = num_intervals + 1
@@ -587,7 +511,6 @@ class MFGComponentsMixin:
                 ip1 = (i + 1) % Nx
                 im1 = (i - 1 + Nx) % Nx
 
-                # Derivatives of U_curr
                 p1_i = (U_curr[ip1] - U_curr[i]) / dx
                 p2_i = (U_curr[i] - U_curr[im1]) / dx
 
@@ -606,10 +529,7 @@ class MFGComponentsMixin:
         x_idx: int,
         t_idx_n: int,
     ) -> float | None:
-        """
-        Optional coupling term for residual computation.
-        """
-        # Use custom coupling if provided
+        """Optional coupling term for residual computation."""
         if self.is_custom and self.components is not None and self.components.coupling_func is not None:
             try:
                 return self.components.coupling_func(
@@ -624,9 +544,7 @@ class MFGComponentsMixin:
 
                 logging.getLogger(__name__).warning(f"Coupling term computation failed: {e}")
 
-        # Default coupling implementation (only for non-custom problems)
         if not self.is_custom:
-            # Extract scalar value (works for both NumPy and PyTorch)
             m_val = M_density_at_n_plus_1[x_idx]
             m_val = m_val.item() if hasattr(m_val, "item") else float(m_val)
             if np.isnan(m_val) or np.isinf(m_val):
@@ -641,6 +559,81 @@ class MFGComponentsMixin:
 
         return None
 
+
+# ============================================================================
+# Conditions Mixin - Initial, Final, Boundary Conditions
+# ============================================================================
+
+
+class ConditionsMixin:
+    """
+    Mixin class providing initial/final/boundary condition methods.
+
+    Provides:
+    - _setup_custom_initial_density(): Initial density setup
+    - _setup_custom_final_value(): Final value setup
+    - get_boundary_conditions(): Boundary condition access
+
+    Required attributes from the inheriting class:
+    - components: MFGComponents | None
+    - is_custom: bool
+    - m_init: np.ndarray
+    - u_fin: np.ndarray
+    - dimension: int
+    - _get_spatial_grid_internal(): method
+    - _get_num_intervals(): method
+    """
+
+    # Type hints for attributes expected from MFGProblem
+    components: MFGComponents | None
+    is_custom: bool
+    m_init: np.ndarray
+    u_fin: np.ndarray
+    dimension: int
+
+    def _setup_custom_initial_density(self) -> None:
+        """Setup custom initial density function m_0(x)."""
+        if self.components is None or self.components.initial_density_func is None:
+            return
+
+        initial_func = self.components.initial_density_func
+        spatial_grid = self._get_spatial_grid_internal()
+        num_intervals = self._get_num_intervals() or 0
+
+        for i in range(num_intervals + 1):
+            x_i = spatial_grid[i]
+            self.m_init[i] = max(initial_func(x_i), 0.0)
+
+    def _setup_custom_final_value(self) -> None:
+        """Setup custom final value function u_T(x)."""
+        if self.components is None or self.components.final_value_func is None:
+            return
+
+        final_func = self.components.final_value_func
+
+        num_intervals = self._get_num_intervals()
+        if self.dimension == 1 and num_intervals is not None:
+            spatial_grid = self._get_spatial_grid_internal()
+            for i in range(num_intervals + 1):
+                x_i = spatial_grid[i]
+                self.u_fin[i] = final_func(x_i)
+        elif hasattr(self, "geometry") and self.geometry is not None:
+            spatial_grid = self.geometry.get_spatial_grid()
+            num_points = spatial_grid.shape[0]
+
+            for i in range(num_points):
+                x_i = spatial_grid[i]
+                self.u_fin.flat[i] = final_func(x_i)
+        else:
+            import warnings
+
+            warnings.warn(
+                "Cannot setup custom final value: dimension not 1D and no geometry available. "
+                "Using default u_fin initialization.",
+                UserWarning,
+                stacklevel=2,
+            )
+
     def get_boundary_conditions(self) -> BoundaryConditions:
         """Get boundary conditions for the problem."""
         from mfg_pde.geometry.boundary.conditions import periodic_bc
@@ -648,25 +641,21 @@ class MFGComponentsMixin:
         if self.is_custom and self.components is not None and self.components.boundary_conditions is not None:
             return self.components.boundary_conditions
         else:
-            # Default periodic boundary conditions
             return periodic_bc(dimension=self.dimension)
 
-    def get_potential_at_time(self, t_idx: int) -> np.ndarray:
-        """Get potential function at specific time (for time-dependent potentials)."""
-        if self.is_custom and self.components is not None and self.components.potential_func is not None:
-            # Check if potential is time-dependent
-            sig = inspect.signature(self.components.potential_func)
-            if "t" in sig.parameters or "time" in sig.parameters:
-                # Recompute potential at current time
-                current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
-                potential_at_t = np.zeros_like(self.f_potential)
 
-                num_intervals = self._get_num_intervals() or 0
-                spatial_grid = self._get_spatial_grid_internal()
-                for i in range(num_intervals + 1):
-                    x_i = spatial_grid[i]
-                    potential_at_t[i] = self.components.potential_func(x_i, current_time)
+# ============================================================================
+# Backward Compatibility - Keep MFGComponentsMixin as alias
+# ============================================================================
 
-                return potential_at_t
 
-        return self.f_potential.copy()
+class MFGComponentsMixin(HamiltonianMixin, ConditionsMixin):
+    """
+    Combined mixin for backward compatibility.
+
+    Deprecated: Use HamiltonianMixin and ConditionsMixin separately.
+    """
+
+    def _validate_components(self) -> None:
+        """Validate all components (delegates to HamiltonianMixin)."""
+        self._validate_hamiltonian_components()

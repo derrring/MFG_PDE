@@ -8,7 +8,12 @@ Framework extensions (network, variational, multi-population) are in mfg_pde.ext
 from mfg_pde.geometry import BoundaryConditions
 
 from .base_problem import CartesianGridMFGProtocol, MFGProblemProtocol
-from .mfg_components import MFGComponents, MFGComponentsMixin
+from .mfg_components import (
+    ConditionsMixin,
+    HamiltonianMixin,
+    MFGComponents,
+    MFGComponentsMixin,  # Backward compatibility
+)
 from .mfg_problem import MFGProblem
 
 __all__ = [
@@ -20,7 +25,10 @@ __all__ = [
     # Base MFG problem
     "MFGProblem",
     "MFGComponents",
-    "MFGComponentsMixin",
+    # Mixins
+    "HamiltonianMixin",
+    "ConditionsMixin",
+    "MFGComponentsMixin",  # Backward compatibility
     # Capacity-constrained MFG
     "CapacityConstrainedMFGProblem",
     "CongestionModel",

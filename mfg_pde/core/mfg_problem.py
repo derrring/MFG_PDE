@@ -4,8 +4,12 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-# Import MFGComponents and MFGComponentsMixin from the dedicated module
-from mfg_pde.core.mfg_components import MFGComponents, MFGComponentsMixin
+# Import MFGComponents and mixins from the dedicated module
+from mfg_pde.core.mfg_components import (
+    ConditionsMixin,
+    HamiltonianMixin,
+    MFGComponents,
+)
 
 # Use unified nD-capable BoundaryConditions from conditions.py
 
@@ -20,7 +24,7 @@ if TYPE_CHECKING:
 # ============================================================================
 
 
-class MFGProblem(MFGComponentsMixin):
+class MFGProblem(HamiltonianMixin, ConditionsMixin):
     """
     Unified MFG problem class that can handle both predefined and custom formulations.
 
@@ -28,13 +32,19 @@ class MFGProblem(MFGComponentsMixin):
     - Default usage: Uses built-in Hamiltonian (standard MFG formulation)
     - Custom usage: Accepts MFGComponents for full mathematical control
 
-    Inherits Hamiltonian evaluation methods from MFGComponentsMixin:
+    Inherits from two mixins:
+
+    HamiltonianMixin (mathematical Hamiltonian):
     - H(): Hamiltonian function
     - dH_dm(): Hamiltonian derivative w.r.t. density
     - get_hjb_hamiltonian_jacobian_contrib(): Jacobian for Newton methods
     - get_hjb_residual_m_coupling_term(): Coupling terms
-    - get_boundary_conditions(): Boundary condition accessor
     - get_potential_at_time(): Time-dependent potential accessor
+
+    ConditionsMixin (problem setup):
+    - get_boundary_conditions(): Boundary condition accessor
+    - _setup_custom_initial_density(): Initial density setup
+    - _setup_custom_final_value(): Final value setup
     """
 
     # Type annotations for geometry attributes (Phase 6 of Issue #435)
@@ -341,7 +351,7 @@ class MFGProblem(MFGComponentsMixin):
 
         # Validate custom components if provided
         if self.is_custom:
-            self._validate_components()
+            self._validate_hamiltonian_components()
 
         # Detect solver compatibility
         self._detect_solver_compatibility()
@@ -1645,18 +1655,14 @@ class MFGProblem(MFGComponentsMixin):
                 # Fallback: uniform density
                 self.m_init[:] = 1.0
 
-    # Methods inherited from MFGComponentsMixin:
-    # - _validate_components()
-    # - _validate_function_signature()
-    # - _setup_custom_potential()
-    # - _setup_custom_initial_density()
-    # - _setup_custom_final_value()
-    # - H()
-    # - dH_dm()
-    # - get_hjb_hamiltonian_jacobian_contrib()
-    # - get_hjb_residual_m_coupling_term()
+    # Methods inherited from HamiltonianMixin:
+    # - H(), dH_dm(), get_hjb_hamiltonian_jacobian_contrib()
+    # - get_hjb_residual_m_coupling_term(), get_potential_at_time()
+    # - _setup_custom_potential(), _validate_hamiltonian_components()
+    #
+    # Methods inherited from ConditionsMixin:
     # - get_boundary_conditions()
-    # - get_potential_at_time()
+    # - _setup_custom_initial_density(), _setup_custom_final_value()
 
     def get_final_u(self) -> np.ndarray:
         return self.u_fin.copy()
