@@ -642,20 +642,3 @@ class ConditionsMixin:
             return self.components.boundary_conditions
         else:
             return periodic_bc(dimension=self.dimension)
-
-
-# ============================================================================
-# Backward Compatibility - Keep MFGComponentsMixin as alias
-# ============================================================================
-
-
-class MFGComponentsMixin(HamiltonianMixin, ConditionsMixin):
-    """
-    Combined mixin for backward compatibility.
-
-    Deprecated: Use HamiltonianMixin and ConditionsMixin separately.
-    """
-
-    def _validate_components(self) -> None:
-        """Validate all components (delegates to HamiltonianMixin)."""
-        self._validate_hamiltonian_components()

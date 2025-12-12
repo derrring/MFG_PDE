@@ -12,7 +12,6 @@ from .mfg_components import (
     ConditionsMixin,
     HamiltonianMixin,
     MFGComponents,
-    MFGComponentsMixin,  # Backward compatibility
 )
 from .mfg_problem import MFGProblem
 
@@ -28,7 +27,6 @@ __all__ = [
     # Mixins
     "HamiltonianMixin",
     "ConditionsMixin",
-    "MFGComponentsMixin",  # Backward compatibility
     # Capacity-constrained MFG
     "CapacityConstrainedMFGProblem",
     "CongestionModel",
