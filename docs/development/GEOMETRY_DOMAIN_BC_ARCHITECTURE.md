@@ -74,7 +74,7 @@ This document describes the relationship between geometry, domain, and boundary 
 | Network | `BaseNetworkGeometry`, `GridNetwork` | `graph/network_geometry.py` | Graph MFG, traffic networks |
 | Maze Generation | `MazeGenerator`, `HybridMazeGenerator` | `graph/maze_*.py` | Maze-based MFG problems |
 | Unstructured Mesh | `Mesh1D`, `Mesh2D`, `Mesh3D` | `meshes/mesh_{1d,2d,3d}.py` | FEM, complex geometries |
-| AMR | `OneDimensionalAMRMesh`, `TriangularAMRMesh` | `amr/` | Adaptive refinement |
+| AMR | `OneDimensionalAMRGrid`, `TriangularAMRMesh` | `amr/` | Adaptive refinement |
 
 ### 2.2 GeometryProtocol (`protocol.py`)
 

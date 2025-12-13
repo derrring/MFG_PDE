@@ -29,7 +29,7 @@ import numpy as np
 from mfg_pde import MFGProblem
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRMesh
+from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRGrid
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -139,7 +139,7 @@ def solve_mfg_with_amr(
 
     # Create AMR mesh
     logger.info(f"Creating 1D AMR mesh (initial intervals: {initial_num_intervals})")
-    amr_mesh = OneDimensionalAMRMesh(
+    amr_mesh = OneDimensionalAMRGrid(
         domain_1d=domain, initial_num_intervals=initial_num_intervals, refinement_criteria=refinement_criteria
     )
 

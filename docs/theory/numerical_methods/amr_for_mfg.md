@@ -611,7 +611,7 @@ class AMREnhancedSolver:
 
 #### Dimensional AMR Classes
 
-**1D AMR**: `OneDimensionalAMRMesh` - Interval-based hierarchical refinement
+**1D AMR**: `OneDimensionalAMRGrid` - Interval-based hierarchical refinement
 **2D Structured AMR**: `AdaptiveMesh` - Quadtree-based refinement
 **2D Triangular AMR**: `TriangularAMRMesh` - Uses MeshData infrastructure (future)
 
@@ -990,9 +990,9 @@ def create_amr_enhanced_solver(
 
 ### Dimensional AMR Classes
 
-#### 1D AMR: `OneDimensionalAMRMesh`
+#### 1D AMR: `OneDimensionalAMRGrid`
 ```python
-class OneDimensionalAMRMesh:
+class OneDimensionalAMRGrid:
     """1D adaptive mesh using interval-based hierarchical refinement."""
 
     def __init__(self, domain_1d: Domain1D, initial_num_intervals: int = 10,
@@ -1128,7 +1128,7 @@ def create_amr_mesh(
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     **kwargs
-) -> Union[OneDimensionalAMRMesh, AdaptiveMesh]:
+) -> Union[OneDimensionalAMRGrid, AdaptiveMesh]:
     """Create an adaptive mesh with specified parameters."""
 ```
 

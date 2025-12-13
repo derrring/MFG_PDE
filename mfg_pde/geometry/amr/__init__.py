@@ -9,7 +9,7 @@ Adaptive mesh refinement (AMR) for MFG problems.
     - GeometryProtocol: Compliant
     - Solver integration: NOT IMPLEMENTED
 
-    The AMR meshes can be created and refined, but HJB/FP solvers do not yet
+    The AMR grids can be created and refined, but HJB/FP solvers do not yet
     support adaptive mesh operations (interpolation between refinements,
     conservative mass transfer, time-stepping coordination).
 
@@ -19,7 +19,7 @@ This module provides AMR support for 1D, 2D, and 3D domains, enabling automatic
 grid refinement based on solution gradients and error estimation.
 
 Available classes:
-  - Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator (1D)
+  - Interval1D, OneDimensionalAMRGrid, OneDimensionalErrorEstimator (1D)
   - QuadTreeNode, QuadTreeMesh, QuadTreeErrorEstimator (2D structured)
   - TriangleElement, TriangularAMRMesh, TriangularMeshErrorEstimator (2D triangular)
   - TetrahedralElement, TetrahedralAMRMesh (3D)
@@ -32,8 +32,12 @@ Available classes:
 from .amr_1d import (
     AMRRefinementCriteria,
     Interval1D,
+    # New names (v0.16.6+)
+    OneDimensionalAMRGrid,
+    # Deprecated aliases (will be removed in v1.0.0)
     OneDimensionalAMRMesh,
     OneDimensionalErrorEstimator,
+    create_1d_amr_grid,
     create_1d_amr_mesh,
 )
 from .amr_quadtree_2d import (
@@ -48,10 +52,13 @@ __all__ = [
     "AMRRefinementCriteria",
     "BaseErrorEstimator",
     "GradientErrorEstimator",
-    # 1D
+    # 1D (new names)
     "Interval1D",
-    "OneDimensionalAMRMesh",
+    "OneDimensionalAMRGrid",
     "OneDimensionalErrorEstimator",
+    "create_1d_amr_grid",
+    # 1D (deprecated aliases)
+    "OneDimensionalAMRMesh",
     "create_1d_amr_mesh",
     # 2D Quadtree
     "QuadTreeNode",
