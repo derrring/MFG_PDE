@@ -254,8 +254,19 @@ class AdaptiveGeometry(Protocol):
     """
     Protocol for geometries supporting runtime mesh adaptation (AMR).
 
-    This is an orthogonal capability marker - a geometry can implement both
-    a base geometry ABC (CartesianGrid, UnstructuredMesh) AND AdaptiveGeometry.
+    This protocol defines the capability for adaptive mesh refinement.
+    All current AMR classes inherit from Geometry directly (not CartesianGrid
+    or UnstructuredMesh) because they refine existing partitions with dynamic,
+    non-uniform spacing rather than creating grids/meshes with predetermined
+    structure.
+
+    Inheritance Hierarchy:
+        Geometry (base ABC)
+        └── AMR classes (all inherit Geometry + implement AdaptiveGeometry):
+            ├── OneDimensionalAMRGrid (1D)
+            ├── QuadTreeAMRGrid (2D)
+            ├── TriangularAMRMesh (2D)
+            └── TetrahedralAMRMesh (3D)
 
     Use Cases:
         - Adaptive mesh refinement (AMR) for error-driven refinement
@@ -268,9 +279,10 @@ class AdaptiveGeometry(Protocol):
         ...     geometry.adapt(solution_data)
         ...     print(f"Refined to {geometry.num_leaf_cells} cells")
 
-        >>> # Type hint for solvers requiring AMR
-        >>> def solve_with_amr(geometry: CartesianGrid & AdaptiveGeometry):
-        ...     ...  # Python 3.12+ intersection type
+        >>> # Type hint using is_adaptive helper
+        >>> from mfg_pde.geometry.protocol import is_adaptive
+        >>> if is_adaptive(geometry):
+        ...     geometry.adapt(solution)
     """
 
     def refine(self, criteria: object) -> int:

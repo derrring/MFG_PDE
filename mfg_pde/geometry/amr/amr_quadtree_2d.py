@@ -4,6 +4,10 @@ Adaptive Mesh Refinement (AMR) implementation for MFG_PDE.
 This module provides quadtree-based adaptive mesh refinement capabilities
 for Mean Field Games problems, with support for error-based refinement
 and JAX acceleration.
+
+Updated: Issue #468 - Now inherits from Geometry ABC (all AMR classes inherit
+    from Geometry directly since they refine existing partitions rather than
+    creating grids with predetermined spacing).
 """
 
 from __future__ import annotations
@@ -14,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.geometry.base import CartesianGrid
+from mfg_pde.geometry.base import Geometry
 from mfg_pde.geometry.protocol import GeometryType
 
 # Apply TYPE_CHECKING isolation principle for JAX (same as OmegaConf pattern)
@@ -260,7 +264,7 @@ class GradientErrorEstimator(BaseErrorEstimator):
         return 10, 10
 
 
-class QuadTreeAMRGrid(CartesianGrid):
+class QuadTreeAMRGrid(Geometry):
     """
     Quadtree-based adaptive mesh refinement grid for 2D MFG problems.
 
@@ -268,11 +272,13 @@ class QuadTreeAMRGrid(CartesianGrid):
     refinement and coarsening based on solution error estimates.
 
     Inheritance:
-        CartesianGrid: Provides structured grid interface (hierarchical cells
-        maintain grid-like properties with dx, dy spacing)
+        Geometry: Base ABC for all geometries. AMR classes inherit from Geometry
+        directly (not CartesianGrid) because they refine existing partitions
+        with dynamic, non-uniform spacing rather than creating grids with
+        predetermined uniform spacing.
 
     Protocol Compliance:
-        - GeometryProtocol: Via CartesianGrid inheritance
+        - GeometryProtocol: Via Geometry inheritance
         - AdaptiveGeometry: Full implementation of AMR capability
 
     .. versionadded:: 0.16.6
@@ -381,7 +387,7 @@ class QuadTreeAMRGrid(CartesianGrid):
             "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
         }
 
-    # CartesianGrid abstract method implementations
+    # Geometry abstract method implementations
     def get_bounds(self) -> tuple[NDArray, NDArray]:
         """Get bounding box of the quadtree domain."""
         return (
@@ -389,11 +395,13 @@ class QuadTreeAMRGrid(CartesianGrid):
             np.array([self.x_max, self.y_max]),
         )
 
+    # Optional utility methods (not required by Geometry ABC)
     def get_grid_spacing(self) -> list[float]:
         """
-        Get representative grid spacing.
+        Get representative grid spacing (utility method).
 
-        For AMR grids, returns the finest cell spacing.
+        For AMR grids, returns the finest cell spacing. Note that AMR grids
+        have non-uniform spacing, so this is an approximation.
         """
         if not self.leaf_nodes:
             # Initial spacing before refinement
@@ -407,9 +415,10 @@ class QuadTreeAMRGrid(CartesianGrid):
 
     def get_grid_shape(self) -> tuple[int, ...]:
         """
-        Get effective grid shape.
+        Get effective grid shape (utility method).
 
         For AMR grids, returns (num_leaf_nodes,) since the grid is irregular.
+        This is not a tensor product shape.
         """
         return (len(self.leaf_nodes),)
 

@@ -19,27 +19,30 @@ This module provides AMR support for 1D, 2D, and 3D domains, enabling automatic
 grid refinement based on solution gradients and error estimation.
 
 Inheritance Hierarchy:
+    All AMR classes inherit directly from Geometry (base ABC), NOT from
+    CartesianGrid or UnstructuredMesh. This is because AMR classes refine
+    existing partitions with dynamic, non-uniform spacing rather than creating
+    grids/meshes with predetermined structure.
+
     Geometry (base ABC)
-    ├── CartesianGrid (structured grids with dx, dy, dz spacing)
-    │   ├── OneDimensionalAMRGrid (1D hierarchical intervals)
-    │   └── QuadTreeAMRGrid (2D hierarchical quadrants)
-    └── TriangularAMRMesh (2D unstructured triangular)
-    └── TetrahedralAMRMesh (3D unstructured tetrahedral)
+    ├── CartesianGrid (uniform structured grids - TensorProductGrid)
+    ├── UnstructuredMesh (FEM meshes created via Gmsh)
+    └── AMR classes (refine existing partitions):
+        ├── OneDimensionalAMRGrid (1D hierarchical intervals)
+        ├── QuadTreeAMRGrid (2D hierarchical quadrants)
+        ├── TriangularAMRMesh (2D triangular refinement)
+        └── TetrahedralAMRMesh (3D tetrahedral refinement)
 
-    Note: CartesianGrid and UnstructuredMesh are both subclasses of Geometry,
-    but they serve different purposes:
-    - CartesianGrid: Structured grids with regular spacing (dx, shape)
-    - UnstructuredMesh: FEM meshes created via Gmsh with mesh generation
-
-    The triangular/tetrahedral AMR classes inherit directly from Geometry
-    (not UnstructuredMesh) because they adapt existing meshes rather than
-    creating new ones via Gmsh.
+    Design rationale:
+    - CartesianGrid requires uniform spacing (dx, dy) - AMR has variable spacing
+    - UnstructuredMesh requires Gmsh mesh generation - AMR adapts existing meshes
+    - Future: Consider AdaptiveGeometry ABC if common AMR interface emerges
 
 Available classes:
   - Interval1D, OneDimensionalAMRGrid, OneDimensionalErrorEstimator (1D)
   - QuadTreeNode, QuadTreeAMRGrid, GradientErrorEstimator (2D structured)
   - TriangleElement, TriangularAMRMesh, TriangularMeshErrorEstimator (2D triangular)
-  - TetrahedralElement, TetrahedralAMRMesh (3D)
+  - TetrahedronElement, TetrahedralAMRMesh, TetrahedralErrorEstimator (3D)
   - AMRRefinementCriteria (shared configuration)
 """
 

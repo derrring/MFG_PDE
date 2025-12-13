@@ -7,7 +7,9 @@ completing the geometry module architecture by providing consistent AMR
 support across all dimensions (1D, 2D structured, 2D triangular).
 
 Updated: Issue #466 - Renamed to OneDimensionalAMRGrid.
-Updated: Issue #468 - Now inherits from CartesianGrid ABC (circular import fixed).
+Updated: Issue #468 - Now inherits from Geometry ABC (all AMR classes inherit
+    from Geometry directly since they refine existing partitions rather than
+    creating grids with predetermined spacing).
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.geometry.base import CartesianGrid
+from mfg_pde.geometry.base import Geometry
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
@@ -120,7 +122,7 @@ class Interval1D:
         return left_child, right_child
 
 
-class OneDimensionalAMRGrid(CartesianGrid):
+class OneDimensionalAMRGrid(Geometry):
     """
     1D Adaptive Mesh Refinement Grid for MFG problems.
 
@@ -129,10 +131,13 @@ class OneDimensionalAMRGrid(CartesianGrid):
     concerns like boundary conditions and conservative interpolation.
 
     Inheritance:
-        CartesianGrid: Provides structured grid interface
+        Geometry: Base ABC for all geometries. AMR classes inherit from Geometry
+        directly (not CartesianGrid) because they refine existing partitions
+        with dynamic, non-uniform spacing rather than creating grids with
+        predetermined uniform spacing.
 
     Protocol Compliance:
-        - GeometryProtocol: Via CartesianGrid inheritance
+        - GeometryProtocol: Via Geometry inheritance
         - AdaptiveGeometry: Full implementation of AMR capability
 
     Examples:

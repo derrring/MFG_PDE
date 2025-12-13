@@ -3,6 +3,10 @@ Tetrahedral Adaptive Mesh Refinement for 3D MFG Problems
 
 This module implements adaptive mesh refinement for tetrahedral meshes in 3D domains,
 enabling efficient solution of MFG problems with localized features or singularities.
+
+Updated: Issue #468 - Inherits from Geometry ABC (all AMR classes inherit
+    from Geometry directly since they refine existing partitions rather than
+    creating grids/meshes with predetermined structure).
 """
 
 from __future__ import annotations
@@ -192,15 +196,15 @@ class TetrahedralAMRMesh(Geometry):
     Adaptive mesh refinement for tetrahedral meshes in 3D.
 
     Inheritance:
-        Geometry: Provides base geometry interface
+        Geometry: Base ABC for all geometries. AMR classes inherit from Geometry
+        directly (not UnstructuredMesh) because they refine existing partitions
+        rather than creating new meshes via Gmsh. UnstructuredMesh requires
+        `create_gmsh_geometry()` and `generate_mesh()` methods which AMR classes
+        don't use.
 
     Protocol Compliance:
         - GeometryProtocol: Via Geometry inheritance
         - AdaptiveGeometry: Full implementation of AMR capability
-
-    Note:
-        Inherits from Geometry (not UnstructuredMesh) because this class
-        adapts existing meshes rather than creating them via Gmsh.
     """
 
     def __init__(self, initial_mesh: MeshData, max_refinement_level: int = 5):

@@ -4,6 +4,10 @@ Triangular AMR Integration with Existing MFG_PDE Geometry Infrastructure
 
 This module extends the AMR capabilities to work with triangular meshes,
 leveraging the existing MeshData and geometry infrastructure.
+
+Updated: Issue #468 - Inherits from Geometry ABC (all AMR classes inherit
+    from Geometry directly since they refine existing partitions rather than
+    creating grids/meshes with predetermined structure).
 """
 
 from __future__ import annotations
@@ -155,7 +159,11 @@ class TriangularAMRMesh(Geometry):
     by the existing Gmsh → Meshio → PyVista pipeline.
 
     Inheritance:
-        Geometry: Provides base geometry interface
+        Geometry: Base ABC for all geometries. AMR classes inherit from Geometry
+        directly (not UnstructuredMesh) because they refine existing partitions
+        rather than creating new meshes via Gmsh. UnstructuredMesh requires
+        `create_gmsh_geometry()` and `generate_mesh()` methods which AMR classes
+        don't use.
 
     Protocol Compliance:
         - GeometryProtocol: Via Geometry inheritance
