@@ -9,7 +9,9 @@ class MockMFGProblem:
     """Mock MFG problem for testing."""
 
     def __init__(self):
-        self.Nx = 10
+        # Nx is number of intervals, so Nx+1 is number of grid points
+        # With 10 collocation points, we need Nx=9 (so Nx+1=10 grid points)
+        self.Nx = 9
         self.Nt = 5
         self.Dx = 0.1
         self.Dt = 0.2
