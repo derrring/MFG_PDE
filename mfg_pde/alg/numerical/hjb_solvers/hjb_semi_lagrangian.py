@@ -25,12 +25,15 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.interpolate import RegularGridInterpolator, interp1d
-from scipy.linalg import solve_banded
 from scipy.optimize import minimize, minimize_scalar
 
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
 
 from .base_hjb import BaseHJBSolver
+from .hjb_sl_adi import (
+    adi_diffusion_step,
+    solve_crank_nicolson_diffusion_1d,
+)
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -1345,8 +1348,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         Solve diffusion step using Crank-Nicolson (unconditionally stable).
 
-        Solves: (I - θ*dt*σ²/2*L) u^n = (I + θ*dt*σ²/2*L) u*
-        where θ = 0.5 for Crank-Nicolson, L is the 1D Laplacian operator.
+        Delegates to hjb_sl_adi.solve_crank_nicolson_diffusion_1d.
 
         Args:
             U_star: Intermediate solution after advection step
@@ -1356,67 +1358,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Solution after implicit diffusion step
         """
-        Nx = len(U_star)
-        dx = self.x_grid[1] - self.x_grid[0]
-
-        # Diffusion coefficient: α = σ²/2 * dt/dx²
-        alpha = 0.5 * sigma**2 * dt / dx**2
-        theta = 0.5  # Crank-Nicolson parameter
-
-        # Build tridiagonal system: A * u^n = b
-        # where A = (I - θ*α*L), b = (I + (1-θ)*α*L) * u*
-
-        # Tridiagonal matrix coefficients
-        # Main diagonal: 1 + 2*θ*α
-        # Off-diagonals: -θ*α
-        main_diag = np.ones(Nx) * (1.0 + 2.0 * theta * alpha)
-        off_diag = np.ones(Nx - 1) * (-theta * alpha)
-
-        # Build banded matrix format for solve_banded (upper_diag, main_diag, lower_diag)
-        ab = np.zeros((3, Nx))
-        ab[0, 1:] = off_diag  # Upper diagonal
-        ab[1, :] = main_diag  # Main diagonal
-        ab[2, :-1] = off_diag  # Lower diagonal
-
-        # Build right-hand side: b = (I + (1-θ)*α*L) * u*
-        b = np.zeros(Nx)
-        for i in range(1, Nx - 1):
-            b[i] = (1.0 - 2.0 * (1.0 - theta) * alpha) * U_star[i] + (1.0 - theta) * alpha * (
-                U_star[i - 1] + U_star[i + 1]
-            )
-
-        # Boundary conditions (Neumann: du/dx = 0)
-        # Left boundary (i=0)
-        b[0] = (1.0 - (1.0 - theta) * alpha) * U_star[0] + (1.0 - theta) * alpha * U_star[1]
-        ab[1, 0] = 1.0 + theta * alpha  # Modified main diagonal
-        ab[0, 1] = -theta * alpha  # Upper diagonal
-
-        # Right boundary (i=Nx-1)
-        b[Nx - 1] = (1.0 - (1.0 - theta) * alpha) * U_star[Nx - 1] + (1.0 - theta) * alpha * U_star[Nx - 2]
-        ab[1, Nx - 1] = 1.0 + theta * alpha  # Modified main diagonal
-        ab[2, Nx - 2] = -theta * alpha  # Lower diagonal
-
-        # Solve tridiagonal system
-        u_new = solve_banded((1, 1), ab, b)
-
-        return u_new
+        return solve_crank_nicolson_diffusion_1d(U_star, dt, sigma, self.x_grid)
 
     def _adi_diffusion_step(self, U_star: np.ndarray, dt: float) -> np.ndarray:
         """
         Apply ADI (Alternating Direction Implicit) diffusion for nD grids.
 
-        Uses Peaceman-Rachford splitting for unconditional stability:
-        - For each dimension d, solve implicit diffusion in that direction
-        - Each direction is a set of independent 1D tridiagonal solves
-        - For full tensor diffusion, cross-derivative terms are added explicitly
-
-        For 2D with isotropic σ²:
-            Half-step x: (I - θα L_x) u^{1/2} = (I + θα L_y) u*
-            Half-step y: (I - θα L_y) u^{n}   = (I + θα L_x) u^{1/2}
-
-        For full tensor diffusion (σ_ij):
-            ADI handles diagonal terms implicitly, cross terms explicitly:
-            u^{n+1} = ADI_solve(u^n + dt * Σ_{i≠j} σ_ij ∂²u/∂x_i∂x_j)
+        Delegates to hjb_sl_adi.adi_diffusion_step.
 
         Args:
             U_star: Intermediate solution after advection step, shape (N1, N2, ..., Nd)
@@ -1429,274 +1377,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # For 1D, use standard Crank-Nicolson
             return self._solve_crank_nicolson_diffusion(U_star, dt, self.problem.sigma)
 
-        # Parse sigma into tensor form
-        sigma = self.problem.sigma
-        sigma_tensor = None  # Full tensor if non-diagonal
-
-        if isinstance(sigma, (int, float)):
-            # Isotropic: same sigma in all directions
-            sigma_vec = np.full(self.dimension, float(sigma))
-        elif hasattr(sigma, "ndim") and sigma.ndim == 1 and len(sigma) == self.dimension:
-            # Diagonal anisotropic: different sigma per direction
-            sigma_vec = np.asarray(sigma)
-        elif hasattr(sigma, "ndim") and sigma.ndim == 2:
-            # Full tensor diffusion
-            sigma_tensor = np.asarray(sigma)
-            sigma_vec = np.sqrt(np.diag(sigma_tensor))  # Diagonal part for ADI
-        else:
-            # Fallback to scalar
-            sigma_vec = np.full(self.dimension, 0.1)
-
-        # Ensure U_star is shaped correctly
-        if U_star.ndim == 1:
-            U_shaped = U_star.reshape(self._grid_shape)
-        else:
-            U_shaped = U_star.copy()
-
-        # Handle cross-derivative terms explicitly (for full tensor)
-        if sigma_tensor is not None:
-            U_shaped = self._apply_cross_diffusion_explicit(U_shaped, sigma_tensor, dt)
-
-        # Peaceman-Rachford ADI: cycle through dimensions
-        # Split dt evenly across dimensions for symmetric treatment
-        dt_per_dim = dt / self.dimension
-
-        U_current = U_shaped
-
-        for d in range(self.dimension):
-            # Solve implicit diffusion in dimension d
-            # α_d = (σ_d²/2) * dt / dx_d²
-            dx_d = self.spacing[d]
-            alpha_d = 0.5 * sigma_vec[d] ** 2 * dt_per_dim / dx_d**2
-            theta = 0.5  # Crank-Nicolson parameter
-
-            # Apply implicit solve along dimension d
-            U_current = self._solve_1d_diffusion_along_axis(U_current, d, alpha_d, theta)
-
-        # Return in original shape
-        if U_star.ndim == 1:
-            return U_current.ravel()
-        else:
-            return U_current
-
-    def _apply_cross_diffusion_explicit(self, U: np.ndarray, sigma_tensor: np.ndarray, dt: float) -> np.ndarray:
-        """
-        Apply cross-derivative diffusion terms explicitly.
-
-        For full tensor diffusion with off-diagonal terms σ_ij (i ≠ j),
-        we need to add: dt * Σ_{i<j} 2*σ_ij * ∂²u/∂x_i∂x_j
-
-        Uses central differences for mixed partial derivatives:
-            ∂²u/∂x_i∂x_j ≈ (u_{i+1,j+1} - u_{i+1,j-1} - u_{i-1,j+1} + u_{i-1,j-1}) / (4*dx_i*dx_j)
-
-        Args:
-            U: Solution array, shape (N1, N2, ..., Nd)
-            sigma_tensor: Full diffusion tensor, shape (d, d)
-            dt: Time step size
-
-        Returns:
-            Updated solution with cross-diffusion terms added
-        """
-        U_new = U.copy()
-        d = self.dimension
-
-        for i in range(d):
-            for j in range(i + 1, d):
-                # Off-diagonal coefficient
-                sigma_ij = sigma_tensor[i, j]
-                if abs(sigma_ij) < 1e-14:
-                    continue
-
-                dx_i = self.spacing[i]
-                dx_j = self.spacing[j]
-
-                # Compute mixed partial derivative using central differences
-                # Need to handle boundary carefully
-                mixed_deriv = self._compute_mixed_derivative(U, i, j, dx_i, dx_j)
-
-                # Add explicit contribution: dt * σ_ij * ∂²u/∂x_i∂x_j
-                # Factor of 2 because we only loop over i < j but tensor has both (i,j) and (j,i)
-                U_new += dt * 2.0 * sigma_ij * mixed_deriv
-
-        return U_new
-
-    def _compute_mixed_derivative(
-        self, U: np.ndarray, axis_i: int, axis_j: int, dx_i: float, dx_j: float
-    ) -> np.ndarray:
-        """
-        Compute mixed partial derivative ∂²u/∂x_i∂x_j using vectorized central differences.
-
-        Uses the formula:
-            ∂²u/∂x_i∂x_j ≈ (u_{+i,+j} - u_{+i,-j} - u_{-i,+j} + u_{-i,-j}) / (4*dx_i*dx_j)
-
-        Boundaries are set to zero (Neumann-compatible).
-
-        Args:
-            U: Solution array
-            axis_i, axis_j: Axes for the mixed derivative
-            dx_i, dx_j: Grid spacings
-
-        Returns:
-            Mixed derivative array, same shape as U
-        """
-        ndim = U.ndim
-        result = np.zeros_like(U)
-
-        # Build slicers for the four corner points
-        # Interior region: 1:-1 in both axis_i and axis_j directions
-        interior_slice = [slice(None)] * ndim
-        interior_slice[axis_i] = slice(1, -1)
-        interior_slice[axis_j] = slice(1, -1)
-
-        # u_{+i, +j}: shift +1 in axis_i, +1 in axis_j
-        slice_pp = [slice(None)] * ndim
-        slice_pp[axis_i] = slice(2, None)
-        slice_pp[axis_j] = slice(2, None)
-
-        # u_{+i, -j}: shift +1 in axis_i, -1 in axis_j
-        slice_pm = [slice(None)] * ndim
-        slice_pm[axis_i] = slice(2, None)
-        slice_pm[axis_j] = slice(None, -2)
-
-        # u_{-i, +j}: shift -1 in axis_i, +1 in axis_j
-        slice_mp = [slice(None)] * ndim
-        slice_mp[axis_i] = slice(None, -2)
-        slice_mp[axis_j] = slice(2, None)
-
-        # u_{-i, -j}: shift -1 in axis_i, -1 in axis_j
-        slice_mm = [slice(None)] * ndim
-        slice_mm[axis_i] = slice(None, -2)
-        slice_mm[axis_j] = slice(None, -2)
-
-        # Compute mixed derivative for interior points (vectorized)
-        result[tuple(interior_slice)] = (
-            U[tuple(slice_pp)] - U[tuple(slice_pm)] - U[tuple(slice_mp)] + U[tuple(slice_mm)]
-        ) / (4.0 * dx_i * dx_j)
-
-        return result
-
-    def _solve_1d_diffusion_along_axis(self, U: np.ndarray, axis: int, alpha: float, theta: float = 0.5) -> np.ndarray:
-        """
-        Solve 1D implicit diffusion along a specific axis using vectorized Thomas algorithm.
-
-        For each line along the axis, solve:
-            (I - θ*α*L) u_new = (I + (1-θ)*α*L) u_old
-
-        where L is the 1D Laplacian operator.
-
-        This implementation is fully vectorized - all lines are solved simultaneously
-        using batched tridiagonal solves, avoiding Python loops.
-
-        Args:
-            U: Solution array, shape (N1, N2, ..., Nd)
-            axis: Dimension along which to apply diffusion (0, 1, ..., d-1)
-            alpha: Diffusion parameter α = (σ²/2) * dt / dx²
-            theta: Implicitness parameter (0.5 = Crank-Nicolson)
-
-        Returns:
-            Updated solution array (in-place modification avoided)
-        """
-        N_axis = U.shape[axis]
-
-        # Move target axis to last position for easier vectorization
-        U_transposed = np.moveaxis(U, axis, -1)
-        original_shape = U_transposed.shape
-        n_lines = int(np.prod(original_shape[:-1]))
-
-        # Reshape to (n_lines, N_axis) for batched solve
-        U_2d = U_transposed.reshape(n_lines, N_axis)
-
-        # Tridiagonal coefficients (same for all lines)
-        main_coef = 1.0 + 2.0 * theta * alpha
-        off_coef = -theta * alpha
-
-        # RHS coefficients
-        main_rhs = 1.0 - 2.0 * (1.0 - theta) * alpha
-        off_rhs = (1.0 - theta) * alpha
-
-        # Build RHS vectorized: b = (I + (1-θ)*α*L) * u
-        # Shape: (n_lines, N_axis)
-        b = np.zeros_like(U_2d)
-
-        # Interior points (vectorized over all lines)
-        b[:, 1:-1] = main_rhs * U_2d[:, 1:-1] + off_rhs * (U_2d[:, :-2] + U_2d[:, 2:])
-
-        # Boundary conditions (Neumann: du/dx = 0)
-        b[:, 0] = (1.0 - (1.0 - theta) * alpha) * U_2d[:, 0] + off_rhs * U_2d[:, 1]
-        b[:, -1] = (1.0 - (1.0 - theta) * alpha) * U_2d[:, -1] + off_rhs * U_2d[:, -2]
-
-        # Solve tridiagonal systems using vectorized Thomas algorithm
-        U_new_2d = self._thomas_solve_batched(main_coef, off_coef, b, theta, alpha, N_axis)
-
-        # Reshape back and move axis to original position
-        U_new_transposed = U_new_2d.reshape(original_shape)
-        return np.moveaxis(U_new_transposed, -1, axis)
-
-    def _thomas_solve_batched(
-        self,
-        main_coef: float,
-        off_coef: float,
-        b: np.ndarray,
-        theta: float,
-        alpha: float,
-        N: int,
-    ) -> np.ndarray:
-        """
-        Vectorized Thomas algorithm for batched tridiagonal solves.
-
-        Solves multiple independent tridiagonal systems simultaneously:
-            A @ x = b for each row of b
-
-        where A is the same tridiagonal matrix for all systems.
-
-        Args:
-            main_coef: Main diagonal coefficient (interior points)
-            off_coef: Off-diagonal coefficient
-            b: Right-hand side, shape (n_lines, N)
-            theta: Implicitness parameter
-            alpha: Diffusion parameter
-            N: Size of each system
-
-        Returns:
-            Solution x, shape (n_lines, N)
-        """
-        n_lines = b.shape[0]
-
-        # Build full diagonal arrays with boundary modifications
-        main_diag = np.full(N, main_coef)
-        main_diag[0] = 1.0 + theta * alpha  # Neumann BC
-        main_diag[-1] = 1.0 + theta * alpha  # Neumann BC
-
-        upper_diag = np.full(N - 1, off_coef)
-        lower_diag = np.full(N - 1, off_coef)
-
-        # Forward elimination (vectorized over all lines)
-        # c' and d' arrays
-        c_prime = np.zeros(N - 1)
-        d_prime = np.zeros((n_lines, N))
-
-        # First element
-        c_prime[0] = upper_diag[0] / main_diag[0]
-        d_prime[:, 0] = b[:, 0] / main_diag[0]
-
-        # Forward sweep
-        for i in range(1, N - 1):
-            denom = main_diag[i] - lower_diag[i - 1] * c_prime[i - 1]
-            c_prime[i] = upper_diag[i] / denom
-            d_prime[:, i] = (b[:, i] - lower_diag[i - 1] * d_prime[:, i - 1]) / denom
-
-        # Last element
-        denom = main_diag[N - 1] - lower_diag[N - 2] * c_prime[N - 2]
-        d_prime[:, N - 1] = (b[:, N - 1] - lower_diag[N - 2] * d_prime[:, N - 2]) / denom
-
-        # Back substitution (vectorized)
-        x = np.zeros_like(b)
-        x[:, N - 1] = d_prime[:, N - 1]
-
-        for i in range(N - 2, -1, -1):
-            x[:, i] = d_prime[:, i] - c_prime[i] * x[:, i + 1]
-
-        return x
+        return adi_diffusion_step(
+            U_star,
+            dt,
+            self.problem.sigma,
+            self.spacing,
+            tuple(self._grid_shape),
+        )
 
     def get_solver_info(self) -> dict[str, Any]:
         """Return solver configuration information."""
