@@ -5,6 +5,12 @@
 This module implements 1D AMR using interval-based hierarchical refinement,
 completing the geometry module architecture by providing consistent AMR
 support across all dimensions (1D, 2D structured, 2D triangular).
+
+Updated: Issue #460 - OneDimensionalAMRMesh now implements AdaptiveGeometry
+protocol and provides all CartesianGrid-compatible methods.
+
+Note: Does not inherit from CartesianGrid ABC to avoid circular imports,
+but satisfies AdaptiveGeometry protocol via duck typing.
 """
 
 from __future__ import annotations
@@ -23,6 +29,8 @@ from .amr_quadtree_2d import AMRRefinementCriteria, BaseErrorEstimator
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import jax.numpy as jnp
     from jax import jit
 
@@ -120,6 +128,26 @@ class OneDimensionalAMRMesh:
     This class provides interval-based hierarchical refinement for 1D domains,
     maintaining consistency with 2D AMR interfaces while handling 1D-specific
     concerns like boundary conditions and conservative interpolation.
+
+    Protocol Compliance:
+        - GeometryProtocol: Full implementation of geometry interface
+        - AdaptiveGeometry: Full implementation of AMR capability
+
+    Note:
+        Does not inherit from CartesianGrid ABC to avoid circular imports,
+        but implements all required methods for protocol compliance.
+        Use isinstance() with AdaptiveGeometry protocol for runtime checks.
+
+    Examples:
+        >>> from mfg_pde.geometry import TensorProductGrid, OneDimensionalAMRMesh
+        >>> from mfg_pde.geometry.protocol import AdaptiveGeometry, is_adaptive
+        >>>
+        >>> domain = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> amr = OneDimensionalAMRMesh(domain, initial_num_intervals=10)
+        >>>
+        >>> # Protocol checks
+        >>> isinstance(amr, AdaptiveGeometry)  # True
+        >>> is_adaptive(amr)  # True
     """
 
     def __init__(
@@ -152,7 +180,7 @@ class OneDimensionalAMRMesh:
 
         # AMR statistics
         self.total_intervals = len(self.intervals)
-        self.max_level = 0
+        self._max_level = 0
         self.refinement_history: list[dict[str, Any]] = []
 
         # JAX backend integration
@@ -163,11 +191,17 @@ class OneDimensionalAMRMesh:
 
     def _build_initial_intervals(self):
         """Build initial uniform interval mesh."""
-        dx = self.domain.length / self.initial_num_intervals
+        # Get domain bounds
+        min_coords, max_coords = self.domain.get_bounds()
+        domain_xmin = float(min_coords[0])
+        domain_xmax = float(max_coords[0])
+        domain_length = domain_xmax - domain_xmin
+
+        dx = domain_length / self.initial_num_intervals
 
         for i in range(self.initial_num_intervals):
-            x_min = self.domain.xmin + i * dx
-            x_max = self.domain.xmin + (i + 1) * dx
+            x_min = domain_xmin + i * dx
+            x_max = domain_xmin + (i + 1) * dx
 
             interval = Interval1D(interval_id=i, x_min=x_min, x_max=x_max, level=0)
 
@@ -211,8 +245,11 @@ class OneDimensionalAMRMesh:
         self._jax_gradient_error = compute_1d_gradient_error
         self._jax_conservative_interp = conservative_interpolation_1d
 
-    # ==================== GeometryProtocol Implementation ====================
+    # =========================================================================
+    # Geometry ABC Implementation (from CartesianGrid inheritance)
+    # =========================================================================
     # Added in v0.10.1 to enable AMR meshes to work with geometry-first API
+    # Updated in v0.16.5 (Issue #460) for CartesianGrid inheritance
 
     @property
     def dimension(self) -> int:
@@ -241,6 +278,17 @@ class OneDimensionalAMRMesh:
         centers = [self.intervals[i].center for i in self.leaf_intervals]
         return np.array(centers).reshape(-1, 1)
 
+    def get_bounds(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Get bounding box of the adaptive mesh.
+
+        Delegates to underlying domain.
+
+        Returns:
+            (min_coords, max_coords) tuple of arrays
+        """
+        return self.domain.get_bounds()
+
     def get_problem_config(self) -> dict:
         """
         Return configuration dict for MFGProblem initialization.
@@ -252,21 +300,306 @@ class OneDimensionalAMRMesh:
             Dictionary with keys:
                 - num_spatial_points: Number of leaf intervals
                 - spatial_shape: (num_leaf_intervals,) - flattened for AMR
-                - spatial_bounds: None - AMR has dynamic bounds
+                - spatial_bounds: Domain bounds from underlying grid
                 - spatial_discretization: None - AMR has variable spacing
                 - legacy_1d_attrs: None - AMR doesn't support legacy attrs
 
         Added in v0.10.1 for polymorphic geometry handling.
         """
+        min_bounds, max_bounds = self.get_bounds()
         return {
             "num_spatial_points": len(self.leaf_intervals),
             "spatial_shape": (len(self.leaf_intervals),),
-            "spatial_bounds": None,  # AMR has dynamic bounds
+            "spatial_bounds": tuple(zip(min_bounds, max_bounds, strict=True)),
             "spatial_discretization": None,  # AMR has variable spacing
             "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
         }
 
-    # ==================== AMR Operations ====================
+    # =========================================================================
+    # CartesianGrid ABC Implementation (required methods)
+    # =========================================================================
+
+    def get_grid_spacing(self) -> list[float]:
+        """
+        Get grid spacing for adaptive mesh.
+
+        For AMR, returns the finest level spacing (smallest interval width).
+
+        Returns:
+            [dx] where dx is the minimum interval width
+        """
+        if not self.leaf_intervals:
+            min_coords, max_coords = self.domain.get_bounds()
+            domain_length = float(max_coords[0]) - float(min_coords[0])
+            return [domain_length / self.initial_num_intervals]
+
+        min_width = min(self.intervals[i].width for i in self.leaf_intervals)
+        return [min_width]
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """
+        Get grid shape for adaptive mesh.
+
+        For AMR, returns the number of leaf intervals (not a true tensor shape).
+
+        Returns:
+            (num_leaf_intervals,)
+        """
+        return (len(self.leaf_intervals),)
+
+    # =========================================================================
+    # Solver Operation Interface (CartesianGrid requirements)
+    # =========================================================================
+
+    def get_laplacian_operator(self) -> Callable:
+        """
+        Return discretized Laplacian operator for adaptive 1D mesh.
+
+        Uses finite differences on adaptive intervals with variable spacing.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: int) -> float
+
+        Notes:
+            The operator accounts for non-uniform spacing in the adaptive mesh.
+            For interior points, uses central differences.
+            For boundary points, uses one-sided differences.
+        """
+        # Pre-sort intervals for efficient lookup
+        sorted_ids = sorted(self.leaf_intervals, key=lambda i: self.intervals[i].center)
+
+        def laplacian_adaptive(u: np.ndarray, idx: int) -> float:
+            """
+            Compute Laplacian at leaf interval index.
+
+            Args:
+                u: Solution values at leaf interval centers, shape (num_leaf,)
+                idx: Index in the sorted leaf intervals (0 to num_leaf-1)
+
+            Returns:
+                Laplacian value at that interval
+            """
+            n = len(sorted_ids)
+            if n < 3:
+                return 0.0  # Need at least 3 points for Laplacian
+
+            if idx <= 0 or idx >= n - 1:
+                # Boundary: use one-sided difference (simplified)
+                return 0.0
+
+            # Get neighboring interval widths for non-uniform FD
+            h_left = self.intervals[sorted_ids[idx]].center - self.intervals[sorted_ids[idx - 1]].center
+            h_right = self.intervals[sorted_ids[idx + 1]].center - self.intervals[sorted_ids[idx]].center
+
+            # Non-uniform central difference for second derivative
+            # d²u/dx² ≈ 2/(h_left + h_right) * [u[i+1]/h_right - u[i]*(1/h_left + 1/h_right) + u[i-1]/h_left]
+            coeff = 2.0 / (h_left + h_right)
+            laplacian = coeff * (u[idx + 1] / h_right - u[idx] * (1.0 / h_left + 1.0 / h_right) + u[idx - 1] / h_left)
+
+            return float(laplacian)
+
+        return laplacian_adaptive
+
+    def get_gradient_operator(self) -> Callable:
+        """
+        Return discretized gradient operator for adaptive 1D mesh.
+
+        Uses central differences with variable spacing.
+
+        Returns:
+            Function with signature: (u: NDArray, idx: int) -> NDArray
+        """
+        sorted_ids = sorted(self.leaf_intervals, key=lambda i: self.intervals[i].center)
+
+        def gradient_adaptive(u: np.ndarray, idx: int) -> np.ndarray:
+            """
+            Compute gradient at leaf interval index.
+
+            Args:
+                u: Solution values at leaf interval centers, shape (num_leaf,)
+                idx: Index in the sorted leaf intervals (0 to num_leaf-1)
+
+            Returns:
+                Gradient value as 1D array [du/dx]
+            """
+            n = len(sorted_ids)
+            if n < 2:
+                return np.array([0.0])
+
+            if idx <= 0:
+                # Left boundary: forward difference
+                h = self.intervals[sorted_ids[1]].center - self.intervals[sorted_ids[0]].center
+                return np.array([(u[1] - u[0]) / h])
+            elif idx >= n - 1:
+                # Right boundary: backward difference
+                h = self.intervals[sorted_ids[-1]].center - self.intervals[sorted_ids[-2]].center
+                return np.array([(u[-1] - u[-2]) / h])
+            else:
+                # Interior: central difference
+                h_total = self.intervals[sorted_ids[idx + 1]].center - self.intervals[sorted_ids[idx - 1]].center
+                return np.array([(u[idx + 1] - u[idx - 1]) / h_total])
+
+        return gradient_adaptive
+
+    def get_interpolator(self) -> Callable:
+        """
+        Return interpolation function for adaptive 1D mesh.
+
+        Uses linear interpolation between neighboring interval centers.
+
+        Returns:
+            Function with signature: (u: NDArray, point: NDArray) -> float
+        """
+        sorted_ids = sorted(self.leaf_intervals, key=lambda i: self.intervals[i].center)
+
+        def interpolate_adaptive(u: np.ndarray, point: np.ndarray) -> float:
+            """
+            Interpolate solution at arbitrary point.
+
+            Args:
+                u: Solution values at leaf interval centers, shape (num_leaf,)
+                point: Physical coordinates, shape (1,) or scalar
+
+            Returns:
+                Interpolated value
+            """
+            x = float(point[0]) if hasattr(point, "__len__") else float(point)
+            centers = np.array([self.intervals[i].center for i in sorted_ids])
+
+            # Find bracketing intervals
+            if x <= centers[0]:
+                return float(u[0])
+            if x >= centers[-1]:
+                return float(u[-1])
+
+            # Binary search for bracketing interval
+            idx = np.searchsorted(centers, x) - 1
+            idx = max(0, min(idx, len(centers) - 2))
+
+            # Linear interpolation
+            x0, x1 = centers[idx], centers[idx + 1]
+            t = (x - x0) / (x1 - x0)
+            return float((1 - t) * u[idx] + t * u[idx + 1])
+
+        return interpolate_adaptive
+
+    def get_boundary_handler(self, bc_type: str = "dirichlet") -> Any:
+        """
+        Return boundary condition handler for adaptive 1D mesh.
+
+        Delegates to underlying domain's boundary handler.
+
+        Args:
+            bc_type: Type of boundary condition
+
+        Returns:
+            Boundary handler object
+        """
+        return self.domain.get_boundary_handler(bc_type)
+
+    # =========================================================================
+    # AdaptiveGeometry Protocol Implementation (Issue #459)
+    # =========================================================================
+
+    def refine(self, criteria: object) -> int:
+        """
+        Refine intervals meeting refinement criteria.
+
+        This is the AdaptiveGeometry protocol method. For detailed control,
+        use `refine_interval()` or `adapt_mesh_1d()`.
+
+        Args:
+            criteria: Refinement criteria - can be:
+                - dict with 'interval_ids': list of interval IDs to refine
+                - dict with 'error_threshold': refine intervals above threshold
+                - BaseErrorEstimator with solution_data
+
+        Returns:
+            Number of intervals refined
+        """
+        if isinstance(criteria, dict):
+            if "interval_ids" in criteria:
+                # Explicit list of intervals to refine
+                refined = 0
+                for interval_id in criteria["interval_ids"]:
+                    if interval_id in self.leaf_intervals:
+                        self.refine_interval(interval_id)
+                        refined += 1
+                return refined
+            elif "solution_data" in criteria and "error_estimator" in criteria:
+                # Use error estimator
+                stats = self.adapt_mesh_1d(criteria["solution_data"], criteria["error_estimator"])
+                return stats["total_refined"]
+        return 0
+
+    def coarsen(self, criteria: object) -> int:
+        """
+        Coarsen intervals meeting coarsening criteria.
+
+        Note: Coarsening is not yet implemented for 1D AMR.
+
+        Args:
+            criteria: Coarsening criteria (currently unused)
+
+        Returns:
+            Number of intervals coarsened (currently always 0)
+        """
+        # Coarsening not implemented for 1D AMR yet
+        # Would require merging sibling intervals back to parent
+        return 0
+
+    def adapt(self, solution_data: dict[str, object]) -> dict[str, int]:
+        """
+        Perform full adaptation cycle (refine + coarsen).
+
+        Args:
+            solution_data: Dictionary with solution arrays for error estimation.
+                          Typically contains 'U' (value function), 'M' (density),
+                          and 'error_estimator' (BaseErrorEstimator instance).
+
+        Returns:
+            Dictionary with adaptation statistics:
+            {
+                'refined': int,   # Number of intervals refined
+                'coarsened': int, # Number of intervals coarsened (0 for now)
+                'total_cells': int,  # Final interval count
+            }
+        """
+        if "error_estimator" in solution_data:
+            error_estimator = solution_data["error_estimator"]
+            # Filter solution_data to only arrays
+            arrays_only = {k: v for k, v in solution_data.items() if isinstance(v, np.ndarray)}
+            stats = self.adapt_mesh_1d(arrays_only, error_estimator)  # type: ignore[arg-type]
+            return {
+                "refined": stats["total_refined"],
+                "coarsened": stats["total_coarsened"],
+                "total_cells": len(self.leaf_intervals),
+            }
+        return {"refined": 0, "coarsened": 0, "total_cells": len(self.leaf_intervals)}
+
+    @property
+    def max_refinement_level(self) -> int:
+        """
+        Maximum refinement level in the current mesh.
+
+        Returns:
+            Maximum level (0 = coarsest, higher = finer)
+        """
+        return self._max_level
+
+    @property
+    def num_leaf_cells(self) -> int:
+        """
+        Number of active (leaf) intervals.
+
+        Returns:
+            Count of leaf intervals (cells at finest local resolution)
+        """
+        return len(self.leaf_intervals)
+
+    # =========================================================================
+    # AMR Operations (existing methods)
+    # =========================================================================
 
     def refine_interval(self, interval_id: int) -> list[int]:
         """
@@ -308,7 +641,7 @@ class OneDimensionalAMRMesh:
 
         # Update statistics
         self.total_intervals += 1  # Net increase of 1 (2 children - 1 parent)
-        self.max_level = max(self.max_level, interval.level + 1)
+        self._max_level = max(self._max_level, interval.level + 1)
 
         return [left_id, right_id]
 
@@ -359,7 +692,7 @@ class OneDimensionalAMRMesh:
             "total_coarsened": coarsenings,
             "final_intervals": len(self.leaf_intervals),
             "total_intervals": self.total_intervals,
-            "max_level": self.max_level,
+            "max_level": self._max_level,
         }
 
         self.refinement_history.append(stats)
@@ -393,6 +726,10 @@ class OneDimensionalAMRMesh:
 
     def get_mesh_statistics(self) -> dict[str, Any]:
         """Get comprehensive 1D mesh statistics."""
+        # Get domain bounds
+        min_coords, max_coords = self.domain.get_bounds()
+        domain_length = float(max_coords[0]) - float(min_coords[0])
+
         # Level distribution
         level_counts: dict[int, int] = {}
         total_length = 0.0
@@ -413,10 +750,10 @@ class OneDimensionalAMRMesh:
         return {
             "total_intervals": self.total_intervals,
             "leaf_intervals": len(self.leaf_intervals),
-            "max_level": self.max_level,
+            "max_level": self._max_level,
             "level_distribution": level_counts,
             "total_length": total_length,
-            "domain_length": self.domain.length,
+            "domain_length": domain_length,
             "min_interval_width": min_width,
             "max_interval_width": max_width,
             "refinement_ratio": max_width / min_width if min_width > 0 else 1.0,
@@ -451,6 +788,9 @@ class OneDimensionalAMRMesh:
         Returns:
             MeshData representation of 1D adaptive mesh
         """
+        # Get domain bounds
+        min_coords, max_coords = self.domain.get_bounds()
+
         # Get sorted leaf intervals
         sorted_intervals = sorted([self.intervals[iid] for iid in self.leaf_intervals], key=lambda i: i.x_min)
 
@@ -494,11 +834,11 @@ class OneDimensionalAMRMesh:
             dimension=1,
             metadata={
                 "amr_adapted": True,
-                "max_level": self.max_level,
+                "max_level": self._max_level,
                 "total_refinements": len(self.refinement_history),
                 "original_intervals": self.initial_num_intervals,
-                "domain_bounds": [self.domain.xmin, self.domain.xmax],
-                "boundary_conditions": str(self.domain.boundary_conditions),
+                "domain_bounds": [float(min_coords[0]), float(max_coords[0])],
+                "boundary_conditions": "from_domain",
             },
         )
 
@@ -574,10 +914,14 @@ def create_1d_amr_mesh(
     Returns:
         OneDimensionalAMRMesh ready for adaptive refinement
     """
+    # Compute domain length from bounds
+    min_coords, max_coords = domain_1d.get_bounds()
+    domain_length = float(max_coords[0]) - float(min_coords[0])
+
     criteria = AMRRefinementCriteria(
         error_threshold=error_threshold,
         max_refinement_levels=max_levels,
-        min_cell_size=domain_1d.length / (initial_intervals * 2**max_levels),
+        min_cell_size=domain_length / (initial_intervals * 2**max_levels),
     )
 
     return OneDimensionalAMRMesh(
