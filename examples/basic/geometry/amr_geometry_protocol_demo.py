@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRMesh
+from mfg_pde.geometry.amr.amr_1d import AMRRefinementCriteria, OneDimensionalAMRGrid
 from mfg_pde.geometry.amr.amr_quadtree_2d import AdaptiveMesh
 from mfg_pde.geometry.protocol import (
     is_geometry_compatible,
@@ -49,7 +49,7 @@ def demonstrate_protocol_compliance():
     refinement_criteria = AMRRefinementCriteria(
         max_refinement_levels=2, gradient_threshold=0.5, coarsening_threshold=0.25, min_cell_size=0.001
     )
-    amr_1d = OneDimensionalAMRMesh(
+    amr_1d = OneDimensionalAMRGrid(
         domain_1d=base_domain, initial_num_intervals=20, refinement_criteria=refinement_criteria
     )
     geometries.append(("1D AMR Mesh", amr_1d))
@@ -106,7 +106,7 @@ def demonstrate_polymorphic_config():
 
     base_domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[21])
     refinement_criteria = AMRRefinementCriteria(max_refinement_levels=2)
-    amr_1d = OneDimensionalAMRMesh(
+    amr_1d = OneDimensionalAMRGrid(
         domain_1d=base_domain, initial_num_intervals=20, refinement_criteria=refinement_criteria
     )
 
@@ -141,7 +141,7 @@ def visualize_amr_structure():
     refinement_criteria = AMRRefinementCriteria(
         max_refinement_levels=3, gradient_threshold=0.3, coarsening_threshold=0.15, min_cell_size=0.001
     )
-    amr_mesh = OneDimensionalAMRMesh(
+    amr_mesh = OneDimensionalAMRGrid(
         domain_1d=base_domain, initial_num_intervals=10, refinement_criteria=refinement_criteria
     )
 

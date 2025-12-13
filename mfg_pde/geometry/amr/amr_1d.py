@@ -6,16 +6,17 @@ This module implements 1D AMR using interval-based hierarchical refinement,
 completing the geometry module architecture by providing consistent AMR
 support across all dimensions (1D, 2D structured, 2D triangular).
 
-Updated: Issue #460 - OneDimensionalAMRMesh now implements AdaptiveGeometry
-protocol and provides all CartesianGrid-compatible methods.
+Updated: Issue #466 - Renamed to OneDimensionalAMRGrid.
 
-Note: Does not inherit from CartesianGrid ABC to avoid circular imports,
-but satisfies AdaptiveGeometry protocol via duck typing.
+Note: Cannot inherit from CartesianGrid ABC due to circular import:
+    amr_1d -> base -> meshes/__init__ -> mesh_1d -> base
+Uses duck typing for protocol compliance instead.
 """
 
 from __future__ import annotations
 
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -121,29 +122,30 @@ class Interval1D:
         return left_child, right_child
 
 
-class OneDimensionalAMRMesh:
+class OneDimensionalAMRGrid:
     """
-    1D Adaptive Mesh Refinement for MFG problems.
+    1D Adaptive Mesh Refinement Grid for MFG problems.
 
     This class provides interval-based hierarchical refinement for 1D domains,
     maintaining consistency with 2D AMR interfaces while handling 1D-specific
     concerns like boundary conditions and conservative interpolation.
 
-    Protocol Compliance:
-        - GeometryProtocol: Full implementation of geometry interface
-        - AdaptiveGeometry: Full implementation of AMR capability
+    Design Note:
+        Cannot inherit from CartesianGrid ABC due to circular import in the
+        geometry module. Implements all CartesianGrid methods via duck typing
+        for protocol compliance.
 
-    Note:
-        Does not inherit from CartesianGrid ABC to avoid circular imports,
-        but implements all required methods for protocol compliance.
-        Use isinstance() with AdaptiveGeometry protocol for runtime checks.
+    Protocol Compliance:
+        - GeometryProtocol: Full implementation (duck typing)
+        - AdaptiveGeometry: Full implementation of AMR capability
+        - CartesianGrid-compatible: All methods implemented
 
     Examples:
-        >>> from mfg_pde.geometry import TensorProductGrid, OneDimensionalAMRMesh
+        >>> from mfg_pde.geometry import TensorProductGrid, OneDimensionalAMRGrid
         >>> from mfg_pde.geometry.protocol import AdaptiveGeometry, is_adaptive
         >>>
         >>> domain = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
-        >>> amr = OneDimensionalAMRMesh(domain, initial_num_intervals=10)
+        >>> amr = OneDimensionalAMRGrid(domain, initial_num_intervals=10)
         >>>
         >>> # Protocol checks
         >>> isinstance(amr, AdaptiveGeometry)  # True
@@ -894,15 +896,15 @@ class OneDimensionalErrorEstimator(BaseErrorEstimator):
 
 
 # Factory function for 1D AMR
-def create_1d_amr_mesh(
+def create_1d_amr_grid(
     domain_1d: TensorProductGrid,
     initial_intervals: int = 10,
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     backend: BaseBackend | None = None,
-) -> OneDimensionalAMRMesh:
+) -> OneDimensionalAMRGrid:
     """
-    Create 1D AMR mesh from TensorProductGrid (1D).
+    Create 1D AMR grid from TensorProductGrid (1D).
 
     Args:
         domain_1d: 1D domain specification
@@ -912,7 +914,7 @@ def create_1d_amr_mesh(
         backend: Computational backend
 
     Returns:
-        OneDimensionalAMRMesh ready for adaptive refinement
+        OneDimensionalAMRGrid ready for adaptive refinement
     """
     # Compute domain length from bounds
     min_coords, max_coords = domain_1d.get_bounds()
@@ -924,9 +926,49 @@ def create_1d_amr_mesh(
         min_cell_size=domain_length / (initial_intervals * 2**max_levels),
     )
 
-    return OneDimensionalAMRMesh(
+    return OneDimensionalAMRGrid(
         domain_1d=domain_1d,
         initial_num_intervals=initial_intervals,
         refinement_criteria=criteria,
+        backend=backend,
+    )
+
+
+# =============================================================================
+# Backward Compatibility Aliases (deprecated, will be removed in v1.0.0)
+# =============================================================================
+
+
+def _deprecated_alias(name: str, new_name: str):
+    """Emit deprecation warning for old names."""
+    warnings.warn(
+        f"{name} is deprecated, use {new_name} instead. Will be removed in v1.0.0.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+class OneDimensionalAMRMesh(OneDimensionalAMRGrid):
+    """Deprecated alias for OneDimensionalAMRGrid."""
+
+    def __init__(self, *args, **kwargs):
+        _deprecated_alias("OneDimensionalAMRMesh", "OneDimensionalAMRGrid")
+        super().__init__(*args, **kwargs)
+
+
+def create_1d_amr_mesh(
+    domain_1d: TensorProductGrid,
+    initial_intervals: int = 10,
+    error_threshold: float = 1e-4,
+    max_levels: int = 5,
+    backend: BaseBackend | None = None,
+) -> OneDimensionalAMRGrid:
+    """Deprecated alias for create_1d_amr_grid."""
+    _deprecated_alias("create_1d_amr_mesh", "create_1d_amr_grid")
+    return create_1d_amr_grid(
+        domain_1d=domain_1d,
+        initial_intervals=initial_intervals,
+        error_threshold=error_threshold,
+        max_levels=max_levels,
         backend=backend,
     )

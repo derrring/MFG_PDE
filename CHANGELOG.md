@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Renamed** `OneDimensionalAMRMesh` → `OneDimensionalAMRGrid` (Issue #466)
+  - The class is a structured grid, not an unstructured mesh
+  - Backward compatibility alias `OneDimensionalAMRMesh` remains (deprecated)
+- **Renamed** `create_1d_amr_mesh()` → `create_1d_amr_grid()`
+  - Backward compatibility alias remains (deprecated)
+
+### Deprecated
+
+- `OneDimensionalAMRMesh` - use `OneDimensionalAMRGrid` instead
+- `create_1d_amr_mesh()` - use `create_1d_amr_grid()` instead
+
 ## [0.16.2] - 2025-12-12
 
 **Patch Release: Grid Interpolator Batched Points Fix**

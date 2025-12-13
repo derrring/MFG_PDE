@@ -32,7 +32,16 @@ Note: SimpleGrid1D/2D/3D have been removed. Use TensorProductGrid instead.
 from __future__ import annotations
 
 # AMR imports (from subdirectory - canonical locations)
-from .amr.amr_1d import Interval1D, OneDimensionalAMRMesh, OneDimensionalErrorEstimator, create_1d_amr_mesh
+from .amr.amr_1d import (
+    Interval1D,
+    # New names (v0.16.6+)
+    OneDimensionalAMRGrid,
+    # Deprecated aliases (will be removed in v1.0.0)
+    OneDimensionalAMRMesh,
+    OneDimensionalErrorEstimator,
+    create_1d_amr_grid,
+    create_1d_amr_mesh,
+)
 from .amr.amr_triangular_2d import (
     TriangleElement,
     TriangularAMRMesh,
@@ -231,9 +240,12 @@ __all__ = [
     "NetworkType",
     "NeumannBC2D",
     "NeumannBC3D",
-    # AMR components (legacy names from old file structure)
-    "OneDimensionalAMRMesh",
+    # AMR components (1D)
+    "OneDimensionalAMRGrid",
+    "OneDimensionalAMRMesh",  # Deprecated alias
     "OneDimensionalErrorEstimator",
+    "create_1d_amr_grid",
+    "create_1d_amr_mesh",  # Deprecated alias
     "OperationType",
     "PeriodicBC2D",
     "PeriodicBC3D",
