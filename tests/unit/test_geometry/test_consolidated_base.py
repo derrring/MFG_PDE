@@ -2,6 +2,7 @@
 Tests for unified Geometry ABC and consolidated geometry base classes.
 
 Part of: Issue #245 Phase 2 - Geometry Architecture Consolidation
+Updated: Added AdaptiveGeometry protocol tests (Issue #459)
 """
 
 import pytest
@@ -10,6 +11,7 @@ import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.base import CartesianGrid, Geometry
+from mfg_pde.geometry.protocol import AdaptiveGeometry, is_adaptive
 
 
 class TestGeometryProtocolCompliance:
@@ -289,6 +291,175 @@ class TestEdgeCases:
 
         with pytest.raises(ValueError, match="Point must have length 2"):
             interpolate(u, np.array([0.5]))  # 1D point for 2D grid
+
+
+class TestAdaptiveGeometryProtocol:
+    """Test AdaptiveGeometry protocol for AMR support (Issue #459)."""
+
+    def test_tensorproductgrid_is_not_adaptive(self):
+        """Regular TensorProductGrid does not implement AdaptiveGeometry."""
+        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
+
+        # Regular grids are not adaptive
+        assert not isinstance(grid, AdaptiveGeometry)
+        assert not is_adaptive(grid)
+
+    def test_is_adaptive_helper_function(self):
+        """Test is_adaptive() helper function."""
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
+
+        # is_adaptive should return False for non-adaptive geometries
+        assert is_adaptive(grid) is False
+        assert is_adaptive("not a geometry") is False
+        assert is_adaptive(None) is False
+
+    def test_mock_adaptive_geometry_compliance(self):
+        """Test that a mock adaptive geometry satisfies the protocol."""
+
+        class MockAdaptiveGrid:
+            """Mock adaptive geometry for protocol testing."""
+
+            def refine(self, criteria):
+                return 4  # Refined 4 cells
+
+            def coarsen(self, criteria):
+                return 2  # Coarsened 2 cells
+
+            def adapt(self, solution_data):
+                return {"refined": 4, "coarsened": 2, "total_cells": 102}
+
+            @property
+            def max_refinement_level(self):
+                return 3
+
+            @property
+            def num_leaf_cells(self):
+                return 100
+
+        mock = MockAdaptiveGrid()
+
+        # Mock should satisfy the protocol
+        assert isinstance(mock, AdaptiveGeometry)
+        assert is_adaptive(mock)
+
+        # Test method calls
+        assert mock.refine({}) == 4
+        assert mock.coarsen({}) == 2
+        result = mock.adapt({"u": None})
+        assert result["refined"] == 4
+        assert mock.max_refinement_level == 3
+        assert mock.num_leaf_cells == 100
+
+    def test_incomplete_adaptive_geometry_rejected(self):
+        """Test that incomplete implementations are rejected."""
+
+        class IncompleteAdaptive:
+            """Missing required methods."""
+
+            def refine(self, criteria):
+                return 0
+
+            # Missing: coarsen, adapt, max_refinement_level, num_leaf_cells
+
+        incomplete = IncompleteAdaptive()
+
+        # Should NOT satisfy the protocol
+        assert not isinstance(incomplete, AdaptiveGeometry)
+        assert not is_adaptive(incomplete)
+
+    def test_adaptive_geometry_protocol_is_orthogonal(self):
+        """Test that AdaptiveGeometry is orthogonal to base Geometry."""
+
+        class AdaptiveCartesianMock(CartesianGrid):
+            """Mock that implements both CartesianGrid and AdaptiveGeometry."""
+
+            def __init__(self):
+                # Minimal CartesianGrid initialization
+                self._dimension = 2
+                self._bounds = [(0.0, 1.0), (0.0, 1.0)]
+                self._Nx_points = [10, 10]
+
+            @property
+            def dimension(self):
+                return self._dimension
+
+            @property
+            def geometry_type(self):
+                from mfg_pde.geometry.protocol import GeometryType
+
+                return GeometryType.CARTESIAN_GRID
+
+            @property
+            def num_spatial_points(self):
+                return 100
+
+            def get_spatial_grid(self):
+                return np.zeros((100, 2))
+
+            def get_bounds(self):
+                return (np.array([0.0, 0.0]), np.array([1.0, 1.0]))
+
+            def get_problem_config(self):
+                return {}
+
+            def is_on_boundary(self, points, tolerance=1e-10):
+                return np.zeros(len(points), dtype=bool)
+
+            def get_boundary_normal(self, points):
+                return np.zeros_like(points)
+
+            def project_to_boundary(self, points):
+                return points
+
+            def project_to_interior(self, points):
+                return points
+
+            def get_boundary_regions(self):
+                return {"all": {}}
+
+            def get_grid_spacing(self):
+                return (0.1, 0.1)
+
+            def get_grid_shape(self):
+                return (10, 10)
+
+            def get_laplacian_operator(self):
+                return lambda u, idx: 0.0
+
+            def get_gradient_operator(self):
+                return lambda u, idx: np.zeros(2)
+
+            def get_interpolator(self):
+                return lambda u, point: 0.0
+
+            def get_boundary_handler(self, bc_type="dirichlet"):
+                return None
+
+            # AdaptiveGeometry methods
+            def refine(self, criteria):
+                return 4
+
+            def coarsen(self, criteria):
+                return 0
+
+            def adapt(self, solution_data):
+                return {"refined": 4, "coarsened": 0, "total_cells": 104}
+
+            @property
+            def max_refinement_level(self):
+                return 2
+
+            @property
+            def num_leaf_cells(self):
+                return 100
+
+        mock = AdaptiveCartesianMock()
+
+        # Should satisfy both protocols
+        assert isinstance(mock, Geometry)
+        assert isinstance(mock, CartesianGrid)
+        assert isinstance(mock, AdaptiveGeometry)
+        assert is_adaptive(mock)
 
 
 if __name__ == "__main__":
