@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.integrate import solve_ivp
-from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.optimize import minimize, minimize_scalar
 
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
@@ -33,6 +32,12 @@ from .base_hjb import BaseHJBSolver
 from .hjb_sl_adi import (
     adi_diffusion_step,
     solve_crank_nicolson_diffusion_1d,
+)
+from .hjb_sl_interpolation import (
+    interpolate_nearest_neighbor,
+    interpolate_value_1d,
+    interpolate_value_nd,
+    interpolate_value_rbf_fallback,
 )
 
 if TYPE_CHECKING:
@@ -1021,6 +1026,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         Interpolate value function at query point (supports 1D and nD).
 
+        Delegates to hjb_sl_interpolation module functions.
+
         Args:
             U_values: Value function on grid
                 - 1D: shape (Nx,)
@@ -1033,141 +1040,55 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             Interpolated value at query point
         """
         if self.dimension == 1:
-            # 1D interpolation: Use existing logic
-            x_query_scalar = float(x_query) if np.ndim(x_query) > 0 else x_query
-
-            if self.use_jax and self.interpolation_method == "linear":
-                return float(self._jax_interpolate(self.x_grid, U_values, x_query_scalar))
-
-            # Handle boundary cases
-            if x_query_scalar <= self.problem.xmin:
-                return U_values[0]
-            if x_query_scalar >= self.problem.xmax:
-                return U_values[-1]
-
-            try:
-                if self.interpolation_method == "linear":
-                    interpolator = interp1d(
-                        self.x_grid,
-                        U_values,
-                        kind="linear",
-                        bounds_error=False,
-                        fill_value="extrapolate",
-                    )
-                elif self.interpolation_method == "cubic":
-                    interpolator = interp1d(
-                        self.x_grid,
-                        U_values,
-                        kind="cubic",
-                        bounds_error=False,
-                        fill_value="extrapolate",
-                    )
-                else:
-                    interpolator = interp1d(
-                        self.x_grid,
-                        U_values,
-                        kind="linear",
-                        bounds_error=False,
-                        fill_value="extrapolate",
-                    )
-
-                return float(interpolator(x_query_scalar))
-
-            except Exception as e:
-                logger.debug(f"Interpolation failed at x={x_query_scalar}: {e}")
-                idx = np.argmin(np.abs(self.x_grid - x_query_scalar))
-                return U_values[idx]
+            # 1D interpolation
+            jax_fn = self._jax_interpolate if self.use_jax else None
+            return interpolate_value_1d(
+                U_values,
+                x_query,
+                self.x_grid,
+                method=self.interpolation_method,
+                xmin=self.problem.xmin,
+                xmax=self.problem.xmax,
+                use_jax=self.use_jax,
+                jax_interpolate_fn=jax_fn,
+            )
 
         else:
-            # nD interpolation: Use RegularGridInterpolator
+            # nD interpolation
+            grid_coords = tuple(self.grid.coordinates)
+            grid_shape = tuple(self._grid_shape)
+
             try:
-                # Ensure query point is the right shape
-                x_query_vec = np.atleast_1d(x_query)
-                if len(x_query_vec) != self.dimension:
-                    raise ValueError(f"Query point must have {self.dimension} coordinates, got {len(x_query_vec)}")
-
-                # Create nD interpolator
-                # TensorProductGrid.coordinates returns list of 1D grids for each dimension
-                grid_axes = tuple(self.grid.coordinates)  # (grid_x, grid_y) for 2D
-
-                # Reshape U_values to grid shape if needed
-                if U_values.ndim == 1:
-                    U_values_reshaped = U_values.reshape(self._grid_shape)
-                else:
-                    U_values_reshaped = U_values
-
-                # Determine interpolation method
-                # RegularGridInterpolator supports: 'linear', 'nearest', 'slinear', 'cubic', 'quintic'
-                method = "linear"
-                if self.interpolation_method == "cubic":
-                    method = "cubic"
-                elif self.interpolation_method == "quintic":
-                    method = "quintic"
-                elif self.interpolation_method in ["linear", "nearest", "slinear"]:
-                    method = self.interpolation_method
-
-                interpolator = RegularGridInterpolator(
-                    grid_axes,
-                    U_values_reshaped,
-                    method=method,
-                    bounds_error=False,
-                    fill_value=None,  # Extrapolate using nearest
+                return interpolate_value_nd(
+                    U_values,
+                    x_query,
+                    grid_coords,
+                    grid_shape,
+                    method=self.interpolation_method,
                 )
-
-                # Query at point (must be shape (1, dimension) for single point)
-                result = interpolator(x_query_vec.reshape(1, -1))
-                return float(result[0])
-
             except Exception as e:
                 logger.debug(f"nD interpolation failed at x={x_query}: {e}")
 
-                # Try RBF interpolation as fallback if enabled
+                # Try RBF fallback if enabled
                 if self.use_rbf_fallback:
                     try:
-                        # Create grid points array for RBF
-                        # Each row is a point: (x1, x2, ..., xn)
-                        grid_points_list = []
-                        for idx in range(self._num_points_total):
-                            multi_idx = self.grid.get_multi_index(idx)
-                            point = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
-                            grid_points_list.append(point)
-
-                        grid_points = np.array(grid_points_list)
-
-                        # Flatten U_values if needed
-                        if U_values.ndim == 1:
-                            U_flat = U_values
-                        else:
-                            U_flat = U_values.flatten()
-
-                        # Create RBF interpolator
-                        from scipy.interpolate import RBFInterpolator
-
-                        rbf = RBFInterpolator(grid_points, U_flat, kernel=self.rbf_kernel)
-
-                        # Query at departure point
-                        result = rbf(x_query_vec.reshape(1, -1))
-                        logger.debug(f"RBF fallback successful at x={x_query}")
-                        return float(result[0])
-
+                        return interpolate_value_rbf_fallback(
+                            U_values,
+                            x_query,
+                            grid_coords,
+                            grid_shape,
+                            rbf_kernel=self.rbf_kernel,
+                        )
                     except Exception as rbf_error:
                         logger.debug(f"RBF fallback failed: {rbf_error}")
 
                 # Final fallback: nearest neighbor
-                # Find closest grid point in each dimension
-                multi_idx = []
-                for d in range(self.dimension):
-                    # Find nearest index in this dimension
-                    distances = np.abs(self.grid.coordinates[d] - x_query_vec[d])
-                    nearest_idx = np.argmin(distances)
-                    multi_idx.append(nearest_idx)
-
-                # Convert to flat index and return value
-                if U_values.ndim == 1:
-                    flat_idx = self.grid.get_index(multi_idx)
-                    return U_values[flat_idx]
-                else:
-                    return U_values[tuple(multi_idx)]
+                return interpolate_nearest_neighbor(
+                    U_values,
+                    x_query,
+                    grid_coords,
+                    grid_shape,
+                )
 
     def _compute_diffusion_term(self, U_values: np.ndarray, idx: int | tuple) -> float:
         """
