@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.16.3"  # v0.16.3: Semi-Lagrangian solver modularization
+version = "0.16.4"  # v0.16.4: Convergence module reorganization
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
