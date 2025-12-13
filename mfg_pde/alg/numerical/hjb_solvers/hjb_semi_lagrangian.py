@@ -23,14 +23,27 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.integrate import solve_ivp
-from scipy.interpolate import RegularGridInterpolator, interp1d
-from scipy.linalg import solve_banded
 from scipy.optimize import minimize, minimize_scalar
 
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
 
 from .base_hjb import BaseHJBSolver
+from .hjb_sl_adi import (
+    adi_diffusion_step,
+    solve_crank_nicolson_diffusion_1d,
+)
+from .hjb_sl_characteristics import (
+    apply_boundary_conditions_1d,
+    apply_boundary_conditions_nd,
+    trace_characteristic_backward_1d,
+    trace_characteristic_backward_nd,
+)
+from .hjb_sl_interpolation import (
+    interpolate_nearest_neighbor,
+    interpolate_value_1d,
+    interpolate_value_nd,
+    interpolate_value_rbf_fallback,
+)
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -882,8 +895,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         Trace characteristic backward in time to find departure point (supports 1D and nD).
 
-        The characteristic equation is dx/dt = -∇_p H(x, p, m).
-        For standard MFG: dx/dt = -p, so X(t-dt) = x - p*dt.
+        Delegates to hjb_sl_characteristics module functions.
 
         Args:
             x_current: Current spatial position
@@ -901,122 +913,52 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         if self.dimension == 1:
             # 1D characteristic tracing
-            x_scalar = float(x_current) if np.ndim(x_current) > 0 else x_current
-            p_scalar = float(p_optimal) if np.ndim(p_optimal) > 0 else p_optimal
-
-            if self.use_jax:
-                return float(self._jax_solve_characteristic(x_scalar, p_scalar, dt))
-
-            if self.characteristic_solver == "explicit_euler":
-                # First-order: X(t-dt) = X(t) - p*dt
-                x_departure = x_scalar - p_scalar * dt
-            elif self.characteristic_solver == "rk2":
-                # Second-order Runge-Kutta (midpoint method)
-                # For characteristic dx/dt = -p(x), this reduces to
-                # X(t-dt) = X(t) - p(X(t))*dt for constant velocity field
-                # Provides higher accuracy when velocity varies spatially
-                k1 = -p_scalar
-                _x_mid = x_scalar + 0.5 * dt * k1
-                # For improved accuracy, could interpolate velocity at _x_mid
-                # For now, use same velocity (assumes locally constant field)
-                k2 = -p_scalar
-                x_departure = x_scalar + dt * k2
-            elif self.characteristic_solver == "rk4":
-                # Fourth-order Runge-Kutta using scipy.solve_ivp
-                # More robust than hand-coded RK4, uses adaptive stepping
-                def velocity_field(t, x):
-                    # Characteristic equation: dx/dt = -p (constant velocity assumption)
-                    return -p_scalar
-
-                # Integrate from t=0 to t=dt (forward in our coordinate system)
-                sol = solve_ivp(
-                    velocity_field,
-                    t_span=[0, dt],
-                    y0=[x_scalar],
-                    method="RK45",  # Adaptive 4th/5th order Runge-Kutta
-                    rtol=1e-6,
-                    atol=1e-8,
-                )
-                x_departure = sol.y[0, -1]
-            else:
-                x_departure = x_scalar - p_scalar * dt
+            jax_fn = self._jax_solve_characteristic if self.use_jax else None
+            x_departure = trace_characteristic_backward_1d(
+                x_current,
+                p_optimal,
+                dt,
+                method=self.characteristic_solver,
+                use_jax=self.use_jax,
+                jax_solve_fn=jax_fn,
+            )
 
             # Apply boundary conditions
+            bc_type = None
             if hasattr(self.problem, "boundary_conditions"):
-                x_departure = self._apply_boundary_conditions(x_departure)
-            else:
-                x_departure = np.clip(x_departure, self.problem.xmin, self.problem.xmax)
+                bc = getattr(self.problem, "boundary_conditions", None)
+                if bc is not None and hasattr(bc, "type"):
+                    bc_type = bc.type
 
-            return x_departure
+            return apply_boundary_conditions_1d(
+                x_departure,
+                xmin=self.problem.xmin,
+                xmax=self.problem.xmax,
+                bc_type=bc_type,
+            )
 
         else:
-            # nD characteristic tracing: X(t-dt) = X(t) - P*dt
-            x_vec = np.atleast_1d(x_current)
-            p_vec = np.atleast_1d(p_optimal)
+            # nD characteristic tracing
+            x_departure = trace_characteristic_backward_nd(
+                x_current,
+                p_optimal,
+                dt,
+                dimension=self.dimension,
+                method=self.characteristic_solver,
+            )
 
-            if len(x_vec) != self.dimension or len(p_vec) != self.dimension:
-                raise ValueError(
-                    f"x_current and p_optimal must have {self.dimension} components, got {len(x_vec)} and {len(p_vec)}"
-                )
-
-            if self.characteristic_solver == "explicit_euler":
-                # Vector Euler: X(t-dt) = X(t) - P*dt
-                x_departure = x_vec - p_vec * dt
-            elif self.characteristic_solver == "rk2":
-                # Vector RK2 (midpoint method)
-                # For characteristic dX/dt = -P(X), assuming locally constant P
-                k1 = -p_vec
-                _x_mid = x_vec + 0.5 * dt * k1
-                # Could interpolate velocity at _x_mid for better accuracy
-                k2 = -p_vec
-                x_departure = x_vec + dt * k2
-            elif self.characteristic_solver == "rk4":
-                # Vector RK4 using scipy.solve_ivp
-                # More robust than hand-coded RK4, uses adaptive stepping
-                def velocity_field(t, x):
-                    # Characteristic equation: dX/dt = -P (constant velocity assumption)
-                    return -p_vec
-
-                # Integrate from t=0 to t=dt (forward in our coordinate system)
-                sol = solve_ivp(
-                    velocity_field,
-                    t_span=[0, dt],
-                    y0=x_vec,
-                    method="RK45",  # Adaptive 4th/5th order Runge-Kutta
-                    rtol=1e-6,
-                    atol=1e-8,
-                )
-                x_departure = sol.y[:, -1]
-            else:
-                x_departure = x_vec - p_vec * dt
-
-            # Apply boundary conditions (clamp to domain bounds)
-            for d in range(self.dimension):
-                x_departure[d] = np.clip(x_departure[d], self.grid.bounds[d][0], self.grid.bounds[d][1])
-
-            return x_departure
-
-    def _apply_boundary_conditions(self, x: float) -> float:
-        """Apply boundary conditions to ensure x is in valid domain."""
-        if hasattr(self.problem, "boundary_conditions"):
-            bc = getattr(self.problem, "boundary_conditions", None)
-            if bc is None:
-                return x
-            if hasattr(bc, "type") and bc.type == "periodic":
-                # Periodic boundary conditions
-                length = self.problem.xmax - self.problem.xmin
-                while x < self.problem.xmin:
-                    x += length
-                while x > self.problem.xmax:
-                    x -= length
-                return x
-
-        # Default: clamp to domain
-        return np.clip(x, self.problem.xmin, self.problem.xmax)
+            # Apply boundary conditions
+            return apply_boundary_conditions_nd(
+                x_departure,
+                bounds=self.grid.bounds,
+                bc_type=None,  # nD clamping only for now
+            )
 
     def _interpolate_value(self, U_values: np.ndarray, x_query: np.ndarray | float) -> float:
         """
         Interpolate value function at query point (supports 1D and nD).
+
+        Delegates to hjb_sl_interpolation module functions.
 
         Args:
             U_values: Value function on grid
@@ -1030,141 +972,55 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             Interpolated value at query point
         """
         if self.dimension == 1:
-            # 1D interpolation: Use existing logic
-            x_query_scalar = float(x_query) if np.ndim(x_query) > 0 else x_query
-
-            if self.use_jax and self.interpolation_method == "linear":
-                return float(self._jax_interpolate(self.x_grid, U_values, x_query_scalar))
-
-            # Handle boundary cases
-            if x_query_scalar <= self.problem.xmin:
-                return U_values[0]
-            if x_query_scalar >= self.problem.xmax:
-                return U_values[-1]
-
-            try:
-                if self.interpolation_method == "linear":
-                    interpolator = interp1d(
-                        self.x_grid,
-                        U_values,
-                        kind="linear",
-                        bounds_error=False,
-                        fill_value="extrapolate",
-                    )
-                elif self.interpolation_method == "cubic":
-                    interpolator = interp1d(
-                        self.x_grid,
-                        U_values,
-                        kind="cubic",
-                        bounds_error=False,
-                        fill_value="extrapolate",
-                    )
-                else:
-                    interpolator = interp1d(
-                        self.x_grid,
-                        U_values,
-                        kind="linear",
-                        bounds_error=False,
-                        fill_value="extrapolate",
-                    )
-
-                return float(interpolator(x_query_scalar))
-
-            except Exception as e:
-                logger.debug(f"Interpolation failed at x={x_query_scalar}: {e}")
-                idx = np.argmin(np.abs(self.x_grid - x_query_scalar))
-                return U_values[idx]
+            # 1D interpolation
+            jax_fn = self._jax_interpolate if self.use_jax else None
+            return interpolate_value_1d(
+                U_values,
+                x_query,
+                self.x_grid,
+                method=self.interpolation_method,
+                xmin=self.problem.xmin,
+                xmax=self.problem.xmax,
+                use_jax=self.use_jax,
+                jax_interpolate_fn=jax_fn,
+            )
 
         else:
-            # nD interpolation: Use RegularGridInterpolator
+            # nD interpolation
+            grid_coords = tuple(self.grid.coordinates)
+            grid_shape = tuple(self._grid_shape)
+
             try:
-                # Ensure query point is the right shape
-                x_query_vec = np.atleast_1d(x_query)
-                if len(x_query_vec) != self.dimension:
-                    raise ValueError(f"Query point must have {self.dimension} coordinates, got {len(x_query_vec)}")
-
-                # Create nD interpolator
-                # TensorProductGrid.coordinates returns list of 1D grids for each dimension
-                grid_axes = tuple(self.grid.coordinates)  # (grid_x, grid_y) for 2D
-
-                # Reshape U_values to grid shape if needed
-                if U_values.ndim == 1:
-                    U_values_reshaped = U_values.reshape(self._grid_shape)
-                else:
-                    U_values_reshaped = U_values
-
-                # Determine interpolation method
-                # RegularGridInterpolator supports: 'linear', 'nearest', 'slinear', 'cubic', 'quintic'
-                method = "linear"
-                if self.interpolation_method == "cubic":
-                    method = "cubic"
-                elif self.interpolation_method == "quintic":
-                    method = "quintic"
-                elif self.interpolation_method in ["linear", "nearest", "slinear"]:
-                    method = self.interpolation_method
-
-                interpolator = RegularGridInterpolator(
-                    grid_axes,
-                    U_values_reshaped,
-                    method=method,
-                    bounds_error=False,
-                    fill_value=None,  # Extrapolate using nearest
+                return interpolate_value_nd(
+                    U_values,
+                    x_query,
+                    grid_coords,
+                    grid_shape,
+                    method=self.interpolation_method,
                 )
-
-                # Query at point (must be shape (1, dimension) for single point)
-                result = interpolator(x_query_vec.reshape(1, -1))
-                return float(result[0])
-
             except Exception as e:
                 logger.debug(f"nD interpolation failed at x={x_query}: {e}")
 
-                # Try RBF interpolation as fallback if enabled
+                # Try RBF fallback if enabled
                 if self.use_rbf_fallback:
                     try:
-                        # Create grid points array for RBF
-                        # Each row is a point: (x1, x2, ..., xn)
-                        grid_points_list = []
-                        for idx in range(self._num_points_total):
-                            multi_idx = self.grid.get_multi_index(idx)
-                            point = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
-                            grid_points_list.append(point)
-
-                        grid_points = np.array(grid_points_list)
-
-                        # Flatten U_values if needed
-                        if U_values.ndim == 1:
-                            U_flat = U_values
-                        else:
-                            U_flat = U_values.flatten()
-
-                        # Create RBF interpolator
-                        from scipy.interpolate import RBFInterpolator
-
-                        rbf = RBFInterpolator(grid_points, U_flat, kernel=self.rbf_kernel)
-
-                        # Query at departure point
-                        result = rbf(x_query_vec.reshape(1, -1))
-                        logger.debug(f"RBF fallback successful at x={x_query}")
-                        return float(result[0])
-
+                        return interpolate_value_rbf_fallback(
+                            U_values,
+                            x_query,
+                            grid_coords,
+                            grid_shape,
+                            rbf_kernel=self.rbf_kernel,
+                        )
                     except Exception as rbf_error:
                         logger.debug(f"RBF fallback failed: {rbf_error}")
 
                 # Final fallback: nearest neighbor
-                # Find closest grid point in each dimension
-                multi_idx = []
-                for d in range(self.dimension):
-                    # Find nearest index in this dimension
-                    distances = np.abs(self.grid.coordinates[d] - x_query_vec[d])
-                    nearest_idx = np.argmin(distances)
-                    multi_idx.append(nearest_idx)
-
-                # Convert to flat index and return value
-                if U_values.ndim == 1:
-                    flat_idx = self.grid.get_index(multi_idx)
-                    return U_values[flat_idx]
-                else:
-                    return U_values[tuple(multi_idx)]
+                return interpolate_nearest_neighbor(
+                    U_values,
+                    x_query,
+                    grid_coords,
+                    grid_shape,
+                )
 
     def _compute_diffusion_term(self, U_values: np.ndarray, idx: int | tuple) -> float:
         """
@@ -1345,8 +1201,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         Solve diffusion step using Crank-Nicolson (unconditionally stable).
 
-        Solves: (I - θ*dt*σ²/2*L) u^n = (I + θ*dt*σ²/2*L) u*
-        where θ = 0.5 for Crank-Nicolson, L is the 1D Laplacian operator.
+        Delegates to hjb_sl_adi.solve_crank_nicolson_diffusion_1d.
 
         Args:
             U_star: Intermediate solution after advection step
@@ -1356,66 +1211,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Solution after implicit diffusion step
         """
-        from scipy.linalg import solve_banded
-
-        Nx = len(U_star)
-        dx = self.x_grid[1] - self.x_grid[0]
-
-        # Diffusion coefficient: α = σ²/2 * dt/dx²
-        alpha = 0.5 * sigma**2 * dt / dx**2
-        theta = 0.5  # Crank-Nicolson parameter
-
-        # Build tridiagonal system: A * u^n = b
-        # where A = (I - θ*α*L), b = (I + (1-θ)*α*L) * u*
-
-        # Tridiagonal matrix coefficients
-        # Main diagonal: 1 + 2*θ*α
-        # Off-diagonals: -θ*α
-        main_diag = np.ones(Nx) * (1.0 + 2.0 * theta * alpha)
-        off_diag = np.ones(Nx - 1) * (-theta * alpha)
-
-        # Build banded matrix format for solve_banded (upper_diag, main_diag, lower_diag)
-        ab = np.zeros((3, Nx))
-        ab[0, 1:] = off_diag  # Upper diagonal
-        ab[1, :] = main_diag  # Main diagonal
-        ab[2, :-1] = off_diag  # Lower diagonal
-
-        # Build right-hand side: b = (I + (1-θ)*α*L) * u*
-        b = np.zeros(Nx)
-        for i in range(1, Nx - 1):
-            b[i] = (1.0 - 2.0 * (1.0 - theta) * alpha) * U_star[i] + (1.0 - theta) * alpha * (
-                U_star[i - 1] + U_star[i + 1]
-            )
-
-        # Boundary conditions (Neumann: du/dx = 0)
-        # Left boundary (i=0)
-        b[0] = (1.0 - (1.0 - theta) * alpha) * U_star[0] + (1.0 - theta) * alpha * U_star[1]
-        ab[1, 0] = 1.0 + theta * alpha  # Modified main diagonal
-        ab[0, 1] = -theta * alpha  # Upper diagonal
-
-        # Right boundary (i=Nx-1)
-        b[Nx - 1] = (1.0 - (1.0 - theta) * alpha) * U_star[Nx - 1] + (1.0 - theta) * alpha * U_star[Nx - 2]
-        ab[1, Nx - 1] = 1.0 + theta * alpha  # Modified main diagonal
-        ab[2, Nx - 2] = -theta * alpha  # Lower diagonal
-
-        # Solve tridiagonal system
-        u_new = solve_banded((1, 1), ab, b)
-
-        return u_new
+        return solve_crank_nicolson_diffusion_1d(U_star, dt, sigma, self.x_grid)
 
     def _adi_diffusion_step(self, U_star: np.ndarray, dt: float) -> np.ndarray:
         """
         Apply ADI (Alternating Direction Implicit) diffusion for nD grids.
 
-        Uses Peaceman-Rachford splitting for unconditional stability:
-        - For each dimension d, solve implicit diffusion in that direction
-        - Each direction is a set of independent 1D tridiagonal solves
-
-        For 2D with isotropic σ²:
-            Half-step x: (I - θα L_x) u^{1/2} = (I + θα L_y) u*
-            Half-step y: (I - θα L_y) u^{n}   = (I + θα L_x) u^{1/2}
-
-        For nD, we cycle through all dimensions sequentially.
+        Delegates to hjb_sl_adi.adi_diffusion_step.
 
         Args:
             U_star: Intermediate solution after advection step, shape (N1, N2, ..., Nd)
@@ -1428,125 +1230,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # For 1D, use standard Crank-Nicolson
             return self._solve_crank_nicolson_diffusion(U_star, dt, self.problem.sigma)
 
-        # Get sigma values for each dimension
-        sigma = self.problem.sigma
-        if isinstance(sigma, (int, float)):
-            # Isotropic: same sigma in all directions
-            sigma_vec = np.full(self.dimension, float(sigma))
-        elif hasattr(sigma, "ndim") and sigma.ndim == 1 and len(sigma) == self.dimension:
-            # Diagonal anisotropic: different sigma per direction
-            sigma_vec = np.asarray(sigma)
-        elif hasattr(sigma, "ndim") and sigma.ndim == 2:
-            # Full tensor: use diagonal elements (ADI approximation)
-            sigma_vec = np.sqrt(np.diag(sigma))  # sigma is σ², take sqrt if needed
-            if not self._adi_compatible:
-                logger.debug("Using diagonal approximation for non-diagonal diffusion tensor")
-        else:
-            # Fallback to scalar
-            sigma_vec = np.full(self.dimension, 0.1)
-
-        # Ensure U_star is shaped correctly
-        if U_star.ndim == 1:
-            U_shaped = U_star.reshape(self._grid_shape)
-        else:
-            U_shaped = U_star.copy()
-
-        # Peaceman-Rachford ADI: cycle through dimensions
-        # Split dt evenly across dimensions for symmetric treatment
-        dt_per_dim = dt / self.dimension
-
-        U_current = U_shaped.copy()
-
-        for d in range(self.dimension):
-            # Solve implicit diffusion in dimension d
-            # α_d = (σ_d²/2) * dt / dx_d²
-            dx_d = self.spacing[d]
-            alpha_d = 0.5 * sigma_vec[d] ** 2 * dt_per_dim / dx_d**2
-            theta = 0.5  # Crank-Nicolson parameter
-
-            # Apply implicit solve along dimension d
-            # This involves solving independent 1D systems along each line
-            U_current = self._solve_1d_diffusion_along_axis(U_current, d, alpha_d, theta)
-
-        # Return in original shape
-        if U_star.ndim == 1:
-            return U_current.ravel()
-        else:
-            return U_current
-
-    def _solve_1d_diffusion_along_axis(self, U: np.ndarray, axis: int, alpha: float, theta: float = 0.5) -> np.ndarray:
-        """
-        Solve 1D implicit diffusion along a specific axis using Thomas algorithm.
-
-        For each line along the axis, solve:
-            (I - θ*α*L) u_new = (I + (1-θ)*α*L) u_old
-
-        where L is the 1D Laplacian operator.
-
-        Args:
-            U: Solution array, shape (N1, N2, ..., Nd)
-            axis: Dimension along which to apply diffusion (0, 1, ..., d-1)
-            alpha: Diffusion parameter α = (σ²/2) * dt / dx²
-            theta: Implicitness parameter (0.5 = Crank-Nicolson)
-
-        Returns:
-            Updated solution array
-        """
-        U_new = np.empty_like(U)
-        N_axis = U.shape[axis]
-
-        # Build tridiagonal coefficients (same for all lines)
-        # Main diagonal: 1 + 2*θ*α
-        # Off-diagonals: -θ*α
-        main_coef = 1.0 + 2.0 * theta * alpha
-        off_coef = -theta * alpha
-
-        # RHS coefficients
-        main_rhs = 1.0 - 2.0 * (1.0 - theta) * alpha
-        off_rhs = (1.0 - theta) * alpha
-
-        # Build banded matrix format (upper, main, lower)
-        ab = np.zeros((3, N_axis))
-        ab[0, 1:] = off_coef  # Upper diagonal
-        ab[1, :] = main_coef  # Main diagonal
-        ab[2, :-1] = off_coef  # Lower diagonal
-
-        # Boundary conditions (Neumann: du/dx = 0)
-        ab[1, 0] = 1.0 + theta * alpha
-        ab[1, N_axis - 1] = 1.0 + theta * alpha
-
-        # Iterate over all lines perpendicular to this axis
-        # Use np.ndindex to iterate over indices in all OTHER dimensions
-        other_dims = [i for i in range(U.ndim) if i != axis]
-        other_shape = [U.shape[i] for i in other_dims]
-
-        for other_idx in np.ndindex(*other_shape):
-            # Build full index: insert axis index placeholder
-            full_idx = list(other_idx)
-            full_idx.insert(axis, slice(None))
-            full_idx = tuple(full_idx)
-
-            # Extract 1D line along this axis
-            u_line = U[full_idx].copy()
-
-            # Build RHS: b = (I + (1-θ)*α*L) * u_line
-            b = np.zeros(N_axis)
-
-            # Interior points
-            for i in range(1, N_axis - 1):
-                b[i] = main_rhs * u_line[i] + off_rhs * (u_line[i - 1] + u_line[i + 1])
-
-            # Boundary conditions (Neumann)
-            b[0] = (1.0 - (1.0 - theta) * alpha) * u_line[0] + off_rhs * u_line[1]
-            b[N_axis - 1] = (1.0 - (1.0 - theta) * alpha) * u_line[N_axis - 1] + off_rhs * u_line[N_axis - 2]
-
-            # Solve tridiagonal system
-            u_new_line = solve_banded((1, 1), ab, b)
-
-            # Store result
-            U_new[full_idx] = u_new_line
-
-        return U_new
+        return adi_diffusion_step(
+            U_star,
+            dt,
+            self.problem.sigma,
+            self.spacing,
+            tuple(self._grid_shape),
+        )
 
     def get_solver_info(self) -> dict[str, Any]:
         """Return solver configuration information."""
