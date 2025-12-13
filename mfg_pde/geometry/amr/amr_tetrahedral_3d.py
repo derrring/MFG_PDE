@@ -15,6 +15,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+from mfg_pde.geometry.base import Geometry
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
@@ -186,9 +187,20 @@ class TetrahedralErrorEstimator:
         return self._compute_element_volume(elem_idx) ** (1 / 3)
 
 
-class TetrahedralAMRMesh:
+class TetrahedralAMRMesh(Geometry):
     """
     Adaptive mesh refinement for tetrahedral meshes in 3D.
+
+    Inheritance:
+        Geometry: Provides base geometry interface
+
+    Protocol Compliance:
+        - GeometryProtocol: Via Geometry inheritance
+        - AdaptiveGeometry: Full implementation of AMR capability
+
+    Note:
+        Inherits from Geometry (not UnstructuredMesh) because this class
+        adapts existing meshes rather than creating them via Gmsh.
     """
 
     def __init__(self, initial_mesh: MeshData, max_refinement_level: int = 5):

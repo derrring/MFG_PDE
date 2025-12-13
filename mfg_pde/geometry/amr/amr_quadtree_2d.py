@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.base import CartesianGrid
 from mfg_pde.geometry.protocol import GeometryType
 
 # Apply TYPE_CHECKING isolation principle for JAX (same as OmegaConf pattern)
@@ -259,12 +260,19 @@ class GradientErrorEstimator(BaseErrorEstimator):
         return 10, 10
 
 
-class AdaptiveMesh:
+class AdaptiveMesh(CartesianGrid):
     """
     Adaptive mesh refinement system for MFG problems.
 
     This class manages a quadtree-based adaptive mesh with automatic
     refinement and coarsening based on solution error estimates.
+
+    Inheritance:
+        CartesianGrid: Provides structured grid interface
+
+    Protocol Compliance:
+        - GeometryProtocol: Via CartesianGrid inheritance
+        - AdaptiveGeometry: Full implementation of AMR capability
     """
 
     def __init__(

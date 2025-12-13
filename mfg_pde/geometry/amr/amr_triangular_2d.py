@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.base import Geometry
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
@@ -146,12 +147,23 @@ class TriangleElement:
         return a >= 0 and b >= 0 and c >= 0
 
 
-class TriangularAMRMesh:
+class TriangularAMRMesh(Geometry):
     """
     Triangular AMR mesh integrated with existing MFG_PDE geometry infrastructure.
 
     This class extends AMR capabilities to work with triangular meshes generated
     by the existing Gmsh → Meshio → PyVista pipeline.
+
+    Inheritance:
+        Geometry: Provides base geometry interface
+
+    Protocol Compliance:
+        - GeometryProtocol: Via Geometry inheritance
+        - AdaptiveGeometry: Full implementation of AMR capability
+
+    Note:
+        Inherits from Geometry (not UnstructuredMesh) because this class
+        adapts existing meshes rather than creating them via Gmsh.
     """
 
     def __init__(
