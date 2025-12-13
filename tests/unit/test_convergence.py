@@ -178,13 +178,13 @@ def test_oscillation_detector_add_samples():
 
 @pytest.mark.unit
 def test_oscillation_detector_insufficient_history():
-    """Test is_stabilized returns false with insufficient history."""
+    """Test is_below_threshold returns false with insufficient history."""
     detector = OscillationDetector(history_length=10)
 
     for _i in range(5):
         detector.add_sample(0.1)
 
-    is_stable, diagnostics = detector.is_stabilized(magnitude_threshold=1.0, stability_threshold=0.1)
+    is_stable, diagnostics = detector.is_below_threshold(mean_threshold=1.0, std_threshold=0.1)
 
     assert not is_stable
     assert diagnostics["status"] == "insufficient_history"
@@ -193,19 +193,19 @@ def test_oscillation_detector_insufficient_history():
 
 @pytest.mark.unit
 def test_oscillation_detector_stabilized():
-    """Test detection of stabilized oscillation."""
+    """Test detection of stabilized errors (below thresholds)."""
     detector = OscillationDetector(history_length=10)
 
     # Add 10 samples with small variation
     for i in range(10):
         detector.add_sample(0.05 + 0.001 * i)
 
-    is_stable, diagnostics = detector.is_stabilized(magnitude_threshold=0.1, stability_threshold=0.01)
+    is_stable, diagnostics = detector.is_below_threshold(mean_threshold=0.1, std_threshold=0.01)
 
     assert is_stable
-    assert diagnostics["magnitude_ok"]
-    assert diagnostics["stability_ok"]
-    assert diagnostics["mean_error"] < 0.1
+    assert diagnostics["mean_ok"]
+    assert diagnostics["std_ok"]
+    assert diagnostics["mean"] < 0.1
 
 
 @pytest.mark.unit
@@ -216,26 +216,26 @@ def test_oscillation_detector_not_stabilized_magnitude():
     for _i in range(10):
         detector.add_sample(0.5)  # High error
 
-    is_stable, diagnostics = detector.is_stabilized(magnitude_threshold=0.1, stability_threshold=0.1)
+    is_stable, diagnostics = detector.is_below_threshold(mean_threshold=0.1, std_threshold=0.1)
 
     assert not is_stable
-    assert not diagnostics["magnitude_ok"]
+    assert not diagnostics["mean_ok"]
 
 
 @pytest.mark.unit
 def test_oscillation_detector_not_stabilized_oscillation():
-    """Test detection of high oscillation."""
+    """Test detection of high oscillation (high std)."""
     detector = OscillationDetector(history_length=10)
 
     # Oscillating errors
     for i in range(10):
         detector.add_sample(0.01 + 0.2 * (i % 2))
 
-    is_stable, diagnostics = detector.is_stabilized(magnitude_threshold=1.0, stability_threshold=0.05)
+    is_stable, diagnostics = detector.is_below_threshold(mean_threshold=1.0, std_threshold=0.05)
 
     assert not is_stable
-    assert diagnostics["magnitude_ok"]
-    assert not diagnostics["stability_ok"]
+    assert diagnostics["mean_ok"]
+    assert not diagnostics["std_ok"]
 
 
 # =============================================================================
@@ -344,7 +344,7 @@ def test_advanced_convergence_monitor_initialization():
     assert monitor.wasserstein_tol == 1e-4
     assert monitor.kl_divergence_tol == 1e-3
     assert monitor.u_magnitude_tol == 1e-3
-    assert monitor.oscillation_detector.history_length == 10
+    assert monitor._error_tracker.history_length == 10
 
 
 @pytest.mark.unit
@@ -653,7 +653,7 @@ def test_edge_case_empty_history():
     """Test monitors handle empty history gracefully."""
     detector = OscillationDetector(history_length=10)
 
-    is_stable, diagnostics = detector.is_stabilized(magnitude_threshold=1.0, stability_threshold=0.1)
+    is_stable, diagnostics = detector.is_below_threshold(mean_threshold=1.0, std_threshold=0.1)
 
     assert not is_stable
     assert diagnostics["status"] == "insufficient_history"
@@ -794,14 +794,16 @@ def test_advanced_convergence_monitor_no_data():
 
 
 @pytest.mark.unit
-def test_advanced_convergence_monitor_plot_convergence_no_history():
-    """Test plotting with no convergence history."""
+def test_advanced_convergence_monitor_get_plot_data_no_history():
+    """Test getting plot data with no convergence history."""
     monitor = AdvancedConvergenceMonitor()
 
-    # Should handle gracefully
-    result = monitor.plot_convergence_history()
+    # Should return empty data structure
+    data = monitor.get_plot_data()
 
-    assert result is None
+    assert data["iterations"] == []
+    assert data["u_errors"] == []
+    assert data["wasserstein_distances"] == []
 
 
 @pytest.mark.unit
@@ -954,7 +956,7 @@ def test_adaptive_convergence_decorator_usage():
 
     solver = TestSolver()
 
-    assert hasattr(solver, "_adaptive_convergence_wrapper")
+    assert hasattr(solver, "_convergence_wrapper")
 
 
 # =============================================================================
@@ -977,7 +979,7 @@ def test_wrap_solver_with_adaptive_convergence():
 
     wrapped = wrap_solver_with_adaptive_convergence(solver, verbose=False)
 
-    assert hasattr(wrapped, "_adaptive_convergence_wrapper")
+    assert hasattr(wrapped, "_convergence_wrapper")
     assert wrapped is solver  # Modified in-place
 
 
@@ -1017,8 +1019,8 @@ def test_adaptive_convergence_decorator_with_parameters():
 
     solver = CustomSolver()
 
-    assert hasattr(solver, "_adaptive_convergence_wrapper")
-    wrapper = solver._adaptive_convergence_wrapper
+    assert hasattr(solver, "_convergence_wrapper")
+    wrapper = solver._convergence_wrapper
     assert wrapper.classical_tol == 1e-5
     assert wrapper.force_particle_mode is True
 

@@ -92,13 +92,26 @@ from .mfg_logging.logger import (
     log_validation_error,
 )
 from .numerical.convergence import (
+    # Backward compatibility aliases (deprecated)
     AdaptiveConvergenceWrapper,
     AdvancedConvergenceMonitor,
+    # New names (preferred)
+    ConvergenceConfig,
+    ConvergenceWrapper,
     DistributionComparator,
+    DistributionConvergenceMonitor,
     OscillationDetector,
     ParticleMethodDetector,
+    RollingConvergenceMonitor,
+    SolverTypeDetector,
+    StochasticConvergenceMonitor,
     adaptive_convergence,
+    calculate_error,
+    calculate_l2_convergence_metrics,
     create_default_monitor,
+    create_distribution_monitor,
+    create_rolling_monitor,
+    create_stochastic_monitor,
     test_particle_detection,
     wrap_solver_with_adaptive_convergence,
 )
@@ -280,9 +293,21 @@ __all__ = [
     "prescribed_drift",
     "density_dependent_drift",
     "composite_drift",
-    # Convergence monitoring
+    # Convergence monitoring (new names)
+    "ConvergenceConfig",
+    "ConvergenceWrapper",
+    "DistributionConvergenceMonitor",
+    "RollingConvergenceMonitor",
+    "SolverTypeDetector",
+    "calculate_error",
+    "calculate_l2_convergence_metrics",
+    "create_distribution_monitor",
+    "create_rolling_monitor",
+    # Convergence monitoring (deprecated aliases)
     "AdaptiveConvergenceWrapper",
     "AdvancedConvergenceMonitor",
+    "StochasticConvergenceMonitor",
+    "create_stochastic_monitor",
     # Geometry utilities (obstacles, SDF)
     "BoxObstacle",
     "CircleObstacle",
