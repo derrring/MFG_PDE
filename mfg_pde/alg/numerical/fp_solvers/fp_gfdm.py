@@ -71,6 +71,9 @@ class FPGFDMSolver(BaseFPSolver):
         delta: float | None = None,
         taylor_order: int = 2,
         weight_function: str = "wendland",
+        boundary_indices: set[int] | np.ndarray | None = None,
+        domain_bounds: list[tuple[float, float]] | None = None,
+        boundary_type: str | None = None,
     ):
         """
         Initialize GFDM-based FP solver.
@@ -82,6 +85,9 @@ class FPGFDMSolver(BaseFPSolver):
                    as 2x median nearest neighbor distance.
             taylor_order: Order of Taylor expansion (1 or 2)
             weight_function: Weight function type ("wendland", "gaussian", "uniform")
+            boundary_indices: Set/array of indices of boundary points (optional)
+            domain_bounds: List of (min, max) tuples for each dimension (optional)
+            boundary_type: Type of boundary condition ("no_flux" or None)
         """
         super().__init__(problem)
         self.fp_method_name = "GFDM"
@@ -99,12 +105,16 @@ class FPGFDMSolver(BaseFPSolver):
             delta = self._compute_adaptive_delta()
         self.delta = delta
 
-        # Create GFDM operator (precomputes neighbor structure and Taylor matrices)
+        # Create GFDM operator with optional boundary condition support
+        # GFDMOperator handles ghost particles for no-flux BC
         self.gfdm_operator = GFDMOperator(
             self.collocation_points,
             delta=self.delta,
             taylor_order=taylor_order,
             weight_function=weight_function,
+            boundary_indices=boundary_indices,
+            domain_bounds=domain_bounds,
+            boundary_type=boundary_type,
         )
 
     def _compute_adaptive_delta(self) -> float:

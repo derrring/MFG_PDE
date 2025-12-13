@@ -69,6 +69,9 @@ class GFDMOperator:
     This class provides efficient GFDM derivative computation by precomputing
     neighbor structure and Taylor expansion matrices once during initialization.
 
+    Supports optional boundary condition handling with ghost particles for
+    no-flux boundary conditions.
+
     Attributes:
         points: Collocation points, shape (n_points, dimension)
         n_points: Number of collocation points
@@ -76,6 +79,8 @@ class GFDMOperator:
         delta: Neighborhood radius
         taylor_order: Order of Taylor expansion (1 or 2)
         multi_indices: List of derivative multi-indices
+        boundary_indices: Set of point indices on the boundary
+        domain_bounds: Domain bounds for ghost particle placement
 
     Example:
         >>> import numpy as np
@@ -86,8 +91,17 @@ class GFDMOperator:
         >>> xx, yy = np.meshgrid(x, x)
         >>> points = np.column_stack([xx.ravel(), yy.ravel()])
         >>>
-        >>> # Create operator
+        >>> # Create operator (basic, no BC handling)
         >>> gfdm = GFDMOperator(points, delta=0.2, taylor_order=2)
+        >>>
+        >>> # Create operator with no-flux BC handling
+        >>> boundary_idx = {0, 9, 90, 99}  # Corner points
+        >>> gfdm_bc = GFDMOperator(
+        ...     points, delta=0.2, taylor_order=2,
+        ...     boundary_indices=boundary_idx,
+        ...     domain_bounds=[(0, 1), (0, 1)],
+        ...     boundary_type="no_flux"
+        ... )
         >>>
         >>> # Compute derivatives of f(x,y) = x² + y²
         >>> u = points[:, 0]**2 + points[:, 1]**2
@@ -102,6 +116,9 @@ class GFDMOperator:
         taylor_order: int = 2,
         weight_function: str = "wendland",
         weight_scale: float = 1.0,
+        boundary_indices: set[int] | None = None,
+        domain_bounds: list[tuple[float, float]] | None = None,
+        boundary_type: str | None = None,
     ):
         """
         Initialize GFDM operator with precomputed structure.
@@ -112,6 +129,9 @@ class GFDMOperator:
             taylor_order: Order of Taylor expansion (1 or 2)
             weight_function: Weight function type ("wendland", "gaussian", "uniform")
             weight_scale: Scale parameter for weight function
+            boundary_indices: Set of indices of boundary points (optional)
+            domain_bounds: List of (min, max) tuples for each dimension (optional)
+            boundary_type: Type of boundary condition ("no_flux" or None)
         """
         self.points = np.asarray(points)
         self.n_points, self.dimension = self.points.shape
@@ -120,11 +140,24 @@ class GFDMOperator:
         self.weight_function = weight_function
         self.weight_scale = weight_scale
 
+        # Boundary condition support
+        # Handle various input types for boundary_indices
+        if boundary_indices is None:
+            self.boundary_indices: set[int] = set()
+        elif isinstance(boundary_indices, set):
+            self.boundary_indices = boundary_indices
+        elif isinstance(boundary_indices, np.ndarray):
+            self.boundary_indices = {int(x) for x in boundary_indices} if boundary_indices.size > 0 else set()
+        else:
+            self.boundary_indices = set(boundary_indices)
+        self.domain_bounds = domain_bounds
+        self.boundary_type = boundary_type
+
         # Build multi-index set for Taylor expansion
         self.multi_indices = self._build_multi_indices()
         self.n_derivatives = len(self.multi_indices)
 
-        # Precompute neighbor structure
+        # Precompute neighbor structure (with optional ghost particles)
         self._build_neighborhoods()
 
         # Precompute Taylor matrices
@@ -149,7 +182,7 @@ class GFDMOperator:
         return multi_indices
 
     def _build_neighborhoods(self):
-        """Build δ-neighborhood structure for all points."""
+        """Build δ-neighborhood structure for all points, with optional ghost particles."""
         # Build KDTree for efficient neighbor queries
         tree = cKDTree(self.points)
 
@@ -165,14 +198,83 @@ class GFDMOperator:
             neighbor_points = self.points[neighbor_indices]
             distances = np.linalg.norm(neighbor_points - self.points[i], axis=1)
 
-            self.neighborhoods.append(
-                {
-                    "indices": neighbor_indices,
-                    "points": neighbor_points,
-                    "distances": distances,
-                    "size": len(neighbor_indices),
-                }
-            )
+            # Check if ghost particles are needed for boundary points
+            ghost_particles = []
+            ghost_distances = []
+            is_boundary = i in self.boundary_indices
+
+            if is_boundary and self.boundary_type == "no_flux" and self.domain_bounds is not None:
+                ghost_particles, ghost_distances = self._create_ghost_particles(i)
+
+            # Combine regular neighbors and ghost particles
+            if ghost_particles:
+                all_points = list(neighbor_points) + ghost_particles
+                all_distances = list(distances) + ghost_distances
+                all_indices = list(neighbor_indices) + [-1 - j for j in range(len(ghost_particles))]
+
+                self.neighborhoods.append(
+                    {
+                        "indices": np.array(all_indices),
+                        "points": np.array(all_points),
+                        "distances": np.array(all_distances),
+                        "size": len(all_points),
+                        "has_ghost": True,
+                        "ghost_count": len(ghost_particles),
+                    }
+                )
+            else:
+                self.neighborhoods.append(
+                    {
+                        "indices": neighbor_indices,
+                        "points": neighbor_points,
+                        "distances": distances,
+                        "size": len(neighbor_indices),
+                        "has_ghost": False,
+                        "ghost_count": 0,
+                    }
+                )
+
+    def _create_ghost_particles(self, point_idx: int) -> tuple[list[np.ndarray], list[float]]:
+        """
+        Create ghost particles for no-flux boundary conditions.
+
+        For a point on the boundary, creates ghost particles placed slightly
+        outside the domain to enforce zero normal derivative.
+
+        Args:
+            point_idx: Index of the boundary point
+
+        Returns:
+            Tuple of (ghost_particles, ghost_distances)
+        """
+        ghost_particles = []
+        ghost_distances = []
+
+        current_point = self.points[point_idx]
+        bounds_array = np.array(self.domain_bounds)  # shape: (d, 2)
+        h = 0.1 * self.delta  # Ghost particle distance from boundary
+
+        # Detect which boundaries this point is on
+        at_left = np.abs(current_point - bounds_array[:, 0]) < 1e-10
+        at_right = np.abs(current_point - bounds_array[:, 1]) < 1e-10
+
+        # Only create ghost particles if within delta range
+        if h < self.delta:
+            # Create ghost particles for left boundaries
+            for d in np.where(at_left)[0]:
+                ghost_point = current_point.copy()
+                ghost_point[d] = bounds_array[d, 0] - h
+                ghost_particles.append(ghost_point)
+                ghost_distances.append(h)
+
+            # Create ghost particles for right boundaries
+            for d in np.where(at_right)[0]:
+                ghost_point = current_point.copy()
+                ghost_point[d] = bounds_array[d, 1] + h
+                ghost_particles.append(ghost_point)
+                ghost_distances.append(h)
+
+        return ghost_particles, ghost_distances
 
     def _build_taylor_matrices(self):
         """Precompute Taylor expansion matrices for all points."""
@@ -258,9 +360,9 @@ class GFDMOperator:
         neighborhood = self.neighborhoods[point_idx]
         neighbor_indices = neighborhood["indices"]
 
-        # Function values
+        # Function values - handle ghost particles for no-flux BC
         u_center = u[point_idx]
-        u_neighbors = u[neighbor_indices]
+        u_neighbors = self._get_neighbor_values(u, point_idx, neighbor_indices)
         b = u_neighbors - u_center
 
         # Solve using SVD
@@ -276,6 +378,27 @@ class GFDMOperator:
 
         # Map to multi-indices
         return {beta: coeffs[k] for k, beta in enumerate(self.multi_indices)}
+
+    def _get_neighbor_values(self, u: np.ndarray, point_idx: int, neighbor_indices: np.ndarray) -> np.ndarray:
+        """
+        Get function values at neighbors, handling ghost particles.
+
+        For no-flux BC, ghost particles use mirrored values (same as center point).
+        This enforces zero normal derivative at the boundary.
+        """
+        u_neighbors = np.zeros(len(neighbor_indices))
+
+        for j, idx in enumerate(neighbor_indices):
+            if idx >= 0:
+                # Regular neighbor
+                u_neighbors[j] = u[idx]
+            else:
+                # Ghost particle - use center point value for no-flux BC
+                # This makes the function appear symmetric across the boundary,
+                # resulting in zero normal derivative
+                u_neighbors[j] = u[point_idx]
+
+        return u_neighbors
 
     def gradient(self, u: np.ndarray) -> np.ndarray:
         """
@@ -469,6 +592,47 @@ if __name__ == "__main__":
     hess_diag_error = np.mean(np.abs(hess_2d[interior_mask, 0, 0] - 2.0))
     hess_diag_error += np.mean(np.abs(hess_2d[interior_mask, 1, 1] - 2.0))
     print(f"     Hessian diagonal error: {hess_diag_error:.2e}")
+
+    # Test boundary condition support
+    print("\n[BC] Testing no-flux boundary conditions...")
+    x_bc = np.linspace(0, 1, 10)
+    xx_bc, yy_bc = np.meshgrid(x_bc, x_bc)
+    points_bc = np.column_stack([xx_bc.ravel(), yy_bc.ravel()])
+    n_side = 10
+
+    # Identify boundary points (on edges of unit square)
+    boundary_idx = set()
+    for i in range(len(points_bc)):
+        x, y = points_bc[i]
+        if abs(x) < 1e-10 or abs(x - 1) < 1e-10 or abs(y) < 1e-10 or abs(y - 1) < 1e-10:
+            boundary_idx.add(i)
+
+    print(f"     Boundary points: {len(boundary_idx)}/{len(points_bc)}")
+
+    # Create operator with no-flux BC
+    gfdm_bc = GFDMOperator(
+        points_bc,
+        delta=0.25,
+        taylor_order=2,
+        boundary_indices=boundary_idx,
+        domain_bounds=[(0, 1), (0, 1)],
+        boundary_type="no_flux",
+    )
+
+    # Check that boundary points have ghost particles
+    n_with_ghost = sum(1 for i in range(gfdm_bc.n_points) if gfdm_bc.neighborhoods[i].get("has_ghost", False))
+    print(f"     Points with ghost particles: {n_with_ghost}")
+    assert n_with_ghost > 0, "Expected some boundary points to have ghost particles"
+
+    # Test derivative computation still works
+    u_bc = points_bc[:, 0] ** 2 + points_bc[:, 1] ** 2
+    grad_bc = gfdm_bc.gradient(u_bc)
+    lap_bc = gfdm_bc.laplacian(u_bc)
+
+    # Check that we get finite results everywhere
+    assert np.all(np.isfinite(grad_bc)), "Gradient contains non-finite values"
+    assert np.all(np.isfinite(lap_bc)), "Laplacian contains non-finite values"
+    print("     All derivatives finite: OK")
 
     print("\nGFDMOperator smoke tests passed!")
 

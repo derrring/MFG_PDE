@@ -10,9 +10,14 @@ from scipy.linalg import lstsq
 from scipy.spatial.distance import cdist
 
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
+from mfg_pde.utils.numerical.particle.interpolation import (
+    interpolate_grid_to_particles,
+    interpolate_particles_to_grid,
+)
 from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
 
 from .base_hjb import BaseHJBSolver
+from .hjb_gfdm_monotonicity import MonotonicityMixin
 
 # Optional QP solver imports
 CVXPY_AVAILABLE = importlib.util.find_spec("cvxpy") is not None
@@ -23,7 +28,7 @@ if TYPE_CHECKING:
     from mfg_pde.geometry import BoundaryConditions
 
 
-class HJBGFDMSolver(BaseHJBSolver):
+class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
     """
     Generalized Finite Difference Method (GFDM) solver for HJB equations using collocation.
 
@@ -38,6 +43,8 @@ class HJBGFDMSolver(BaseHJBSolver):
     - "none": GFDM without QP constraints
     - "auto": Adaptive QP with M-matrix checking for monotonicity preservation
     - "always": Force QP at every point (for debugging and analysis)
+
+    Note: Monotonicity and QP constraint functionality is provided by MonotonicityMixin.
     """
 
     def __init__(
@@ -267,24 +274,33 @@ class HJBGFDMSolver(BaseHJBSolver):
             "max_delta_used": delta,
         }
 
-        # Create GFDMOperator for base derivative computation (composition pattern)
-        # This eliminates code duplication between GFDMOperator and HJBGFDMSolver
+        # Get boundary type for GFDMOperator
+        bc_type = None
+        if hasattr(self.boundary_conditions, "type"):
+            bc_type = getattr(self.boundary_conditions, "type", None)
+
+        # Create GFDMOperator with boundary condition support (composition pattern)
+        # GFDMOperator now handles ghost particles for no-flux BC
         self._gfdm_operator = GFDMOperator(
             points=collocation_points,
             delta=delta,
             taylor_order=taylor_order,
             weight_function=weight_function,
             weight_scale=weight_scale,
+            boundary_indices=self.boundary_indices,
+            domain_bounds=self.domain_bounds,
+            boundary_type=bc_type,
         )
 
         # Get multi-indices from GFDMOperator
         self.multi_indices = self._gfdm_operator.get_multi_indices()
         self.n_derivatives = len(self.multi_indices)
 
-        # Build neighborhood structure (extends GFDMOperator with ghost particles and adaptive delta)
+        # Build neighborhood structure - uses GFDMOperator's neighborhoods as base,
+        # only extends for points needing adaptive delta enlargement
         self._build_neighborhood_structure()
 
-        # Build Taylor matrices for extended neighborhoods (with ghost particles)
+        # Build Taylor matrices for extended neighborhoods
         self._build_taylor_matrices()
 
     def _compute_n_spatial_grid_points(self) -> int:
@@ -350,9 +366,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         Build δ-neighborhood structure for all collocation points.
 
-        Extends GFDMOperator's neighborhoods with:
-        - Ghost particles for boundary conditions
-        - Adaptive delta enlargement for insufficient neighbors
+        Uses GFDMOperator's neighborhoods (which now include ghost particles for BC)
+        and only extends for points needing adaptive delta enlargement.
         """
         self.neighborhoods = {}
 
@@ -363,22 +378,28 @@ class HJBGFDMSolver(BaseHJBSolver):
             distances = None
 
         for i in range(self.n_points):
-            # Start with GFDMOperator's neighborhood as base
+            # Start with GFDMOperator's neighborhood (already includes ghost particles for BC)
             base_neighborhood = self._gfdm_operator.get_neighborhood(i)
-            neighbor_indices = base_neighborhood["indices"].copy()
-            neighbor_points = base_neighborhood["points"].copy()
-            neighbor_distances = base_neighborhood["distances"].copy()
-            n_neighbors = len(neighbor_indices)
+            n_neighbors = base_neighborhood["size"]
 
-            delta_current = self.delta
-            delta_multiplier = 1.0
-            was_adapted = False
+            # Check if adaptive delta enlargement is needed
+            needs_adaptation = self.adaptive_neighborhoods and n_neighbors < self.k_min and distances is not None
 
-            # Adaptive delta enlargement if enabled and insufficient neighbors
-            if self.adaptive_neighborhoods and n_neighbors < self.k_min and distances is not None:
+            if needs_adaptation:
+                # Adaptive delta enlargement for insufficient neighbors
+                neighbor_indices = base_neighborhood["indices"].copy()
+                neighbor_points = base_neighborhood["points"].copy()
+                neighbor_distances = base_neighborhood["distances"].copy()
+
+                # Only count real neighbors (not ghost particles) for k_min check
+                real_neighbor_count = np.sum(neighbor_indices >= 0)
+
+                delta_current = self.delta
+                delta_multiplier = 1.0
+                was_adapted = False
                 max_delta = self.delta * self.max_delta_multiplier
 
-                while n_neighbors < self.k_min and delta_current < max_delta:
+                while real_neighbor_count < self.k_min and delta_current < max_delta:
                     # Enlarge delta by 20% increments
                     delta_multiplier *= 1.2
                     delta_current = self.delta * delta_multiplier
@@ -386,13 +407,25 @@ class HJBGFDMSolver(BaseHJBSolver):
                     # Recompute neighborhood with enlarged delta
                     neighbor_mask = distances[i, :] < delta_current
                     neighbor_indices = np.where(neighbor_mask)[0]
-                    n_neighbors = len(neighbor_indices)
+                    real_neighbor_count = len(neighbor_indices)
                     was_adapted = True
 
                 # Update neighborhood data for enlarged delta
                 if was_adapted:
                     neighbor_points = self.collocation_points[neighbor_indices]
                     neighbor_distances = distances[i, neighbor_indices]
+
+                    # Re-add ghost particles if this is a boundary point
+                    if base_neighborhood.get("has_ghost", False):
+                        ghost_particles, ghost_distances = self._gfdm_operator._create_ghost_particles(i)
+                        if ghost_particles:
+                            neighbor_points = np.vstack(
+                                [neighbor_points] + [gp.reshape(1, -1) for gp in ghost_particles]
+                            )
+                            neighbor_distances = np.concatenate([neighbor_distances, np.array(ghost_distances)])
+                            neighbor_indices = np.concatenate(
+                                [neighbor_indices, np.array([-1 - j for j in range(len(ghost_particles))])]
+                            )
 
                 # Track maximum delta used
                 if delta_current > self.adaptive_stats["max_delta_used"]:
@@ -407,80 +440,45 @@ class HJBGFDMSolver(BaseHJBSolver):
                             "base_delta": self.delta,
                             "adapted_delta": delta_current,
                             "delta_multiplier": delta_multiplier,
-                            "n_neighbors": n_neighbors,
+                            "n_neighbors": len(neighbor_indices),
                         }
                     )
 
                 # Warn if still insufficient neighbors
-                if n_neighbors < self.k_min:
-                    import warnings as _warnings  # Local import to avoid ruff F823 false positive
+                if real_neighbor_count < self.k_min:
+                    import warnings as _warnings
 
                     _warnings.warn(
                         f"Point {i}: Could not find {self.k_min} neighbors even with "
                         f"delta={delta_current:.4f} ({delta_multiplier:.2f}x base). "
-                        f"Only found {n_neighbors} neighbors. GFDM approximation may be poor.",
+                        f"Only found {real_neighbor_count} neighbors. GFDM approximation may be poor.",
                         UserWarning,
                         stacklevel=3,
                     )
 
-            # Check if this is a boundary point and add ghost particles if needed
-            is_boundary_point = i in self.boundary_indices
-            ghost_particles = []
-            ghost_distances = []
-
-            if (
-                is_boundary_point
-                and hasattr(self.boundary_conditions, "type")
-                and getattr(self.boundary_conditions, "type", None) == "no_flux"
-            ):
-                # Add ghost particles for no-flux boundary conditions (vectorized, nD-compatible)
-                current_point = self.collocation_points[i]
-                bounds_array = np.array(self.domain_bounds)  # shape: (d, 2)
-                h = 0.1 * self.delta
-
-                # Vectorized boundary detection across all dimensions
-                at_left = np.abs(current_point - bounds_array[:, 0]) < 1e-10
-                at_right = np.abs(current_point - bounds_array[:, 1]) < 1e-10
-
-                # Only create ghost particles if within delta range
-                if h < self.delta:
-                    # Get indices of dimensions at left/right boundaries
-                    left_dims = np.where(at_left)[0]
-                    right_dims = np.where(at_right)[0]
-
-                    # Create ghost particles for left boundaries (loop only over boundary dims)
-                    for d in left_dims:
-                        ghost_point = current_point.copy()
-                        ghost_point[d] = bounds_array[d, 0] - h
-                        ghost_particles.append(ghost_point)
-                        ghost_distances.append(h)
-
-                    # Create ghost particles for right boundaries
-                    for d in right_dims:
-                        ghost_point = current_point.copy()
-                        ghost_point[d] = bounds_array[d, 1] + h
-                        ghost_particles.append(ghost_point)
-                        ghost_distances.append(h)
-
-            # Combine regular neighbors and ghost particles
-            all_points = list(neighbor_points)
-            all_distances = list(neighbor_distances)
-            all_indices = list(neighbor_indices)
-
-            for j, ghost_point in enumerate(ghost_particles):
-                all_points.append(ghost_point)
-                all_distances.append(ghost_distances[j])
-                all_indices.append(-1 - j)  # Negative indices for ghost particles
-
-            # Store neighborhood information
-            self.neighborhoods[i] = {
-                "indices": np.array(all_indices),
-                "points": np.array(all_points),
-                "distances": np.array(all_distances),
-                "size": len(all_points),
-                "has_ghost": len(ghost_particles) > 0,
-                "ghost_count": len(ghost_particles),
-            }
+                # Store adapted neighborhood
+                self.neighborhoods[i] = {
+                    "indices": np.array(neighbor_indices) if isinstance(neighbor_indices, list) else neighbor_indices,
+                    "points": np.array(neighbor_points) if isinstance(neighbor_points, list) else neighbor_points,
+                    "distances": np.array(neighbor_distances)
+                    if isinstance(neighbor_distances, list)
+                    else neighbor_distances,
+                    "size": len(neighbor_indices),
+                    "has_ghost": base_neighborhood.get("has_ghost", False),
+                    "ghost_count": base_neighborhood.get("ghost_count", 0),
+                    "adapted": True,
+                }
+            else:
+                # Use GFDMOperator's neighborhood directly (no adaptation needed)
+                self.neighborhoods[i] = {
+                    "indices": base_neighborhood["indices"],
+                    "points": base_neighborhood["points"],
+                    "distances": base_neighborhood["distances"],
+                    "size": base_neighborhood["size"],
+                    "has_ghost": base_neighborhood.get("has_ghost", False),
+                    "ghost_count": base_neighborhood.get("ghost_count", 0),
+                    "adapted": False,
+                }
 
         # Report adaptive neighborhood statistics if enabled
         if self.adaptive_neighborhoods:
@@ -506,12 +504,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         Pre-compute Taylor expansion matrices A for all collocation points.
 
-        Uses self.multi_indices and self.n_derivatives set from GFDMOperator in __init__.
-        This method is still needed because HJBGFDMSolver's neighborhoods may include
-        ghost particles (for boundary conditions) that GFDMOperator doesn't handle.
+        Uses GFDMOperator's Taylor matrices when the neighborhood wasn't adapted,
+        only rebuilds for points that needed adaptive delta enlargement.
         """
         self.taylor_matrices: dict[int, np.ndarray] = {}
-        # Note: self.multi_indices and self.n_derivatives are set in __init__ from GFDMOperator
 
         for i in range(self.n_points):
             neighborhood = self.neighborhoods[i]
@@ -522,6 +518,34 @@ class HJBGFDMSolver(BaseHJBSolver):
                 self.taylor_matrices[i] = None
                 continue
 
+            # Check if we can reuse GFDMOperator's Taylor matrices
+            # (only if neighborhood wasn't adapted)
+            if not neighborhood.get("adapted", False):
+                base_taylor = self._gfdm_operator.get_taylor_data(i)
+                if base_taylor is not None:
+                    # Compute condition number safely
+                    S = base_taylor["S"]
+                    if len(S) > 0 and S[-1] > 1e-15:
+                        cond_num = S[0] / S[-1]
+                    else:
+                        cond_num = np.inf
+
+                    # Wrap GFDMOperator's format to HJBGFDMSolver's expected format
+                    self.taylor_matrices[i] = {  # type: ignore[assignment]
+                        "A": base_taylor["A"],
+                        "W": base_taylor["W"],
+                        "sqrt_W": base_taylor["sqrt_W"],
+                        "U": base_taylor["U"],
+                        "S": S,
+                        "Vt": base_taylor["Vt"],
+                        "rank": base_taylor["rank"],
+                        "condition_number": cond_num,
+                        "use_svd": True,
+                        "use_qr": False,
+                    }
+                    continue
+
+            # Need to build Taylor matrices for adapted neighborhoods
             # Build Taylor expansion matrix A
             A = np.zeros((n_neighbors, self.n_derivatives))
             center_point = self.collocation_points[i]
@@ -547,7 +571,6 @@ class HJBGFDMSolver(BaseHJBSolver):
             W = np.diag(weights)
 
             # Use SVD or QR decomposition to avoid condition number amplification
-            # Instead of forming A^T W A, use SVD or QR decomposition of sqrt(W) @ A
             sqrt_W = np.sqrt(W)
             WA = sqrt_W @ A
 
@@ -821,330 +844,10 @@ class HJBGFDMSolver(BaseHJBSolver):
             if saved_qp_level is not None:
                 self.qp_optimization_level = saved_qp_level
 
-    def _solve_monotone_constrained_qp(self, taylor_data: dict, b: np.ndarray, point_idx: int) -> np.ndarray:
-        """
-        Solve constrained quadratic programming problem for monotone derivative approximation.
-
-        Solves: min ||W^(1/2) A x - W^(1/2) b||^2
-        subject to: monotonicity constraints on finite difference weights
-
-        Args:
-            taylor_data: Dictionary containing precomputed matrices
-            b: Right-hand side vector
-            point_idx: Index of collocation point (for diagnostics)
-
-        Returns:
-            derivative_coeffs: Coefficients for derivative approximation
-        """
-        import time
-
-        t0 = time.time()
-
-        A = taylor_data["A"]
-        W = taylor_data["W"]
-
-        # Analyze the stencil structure to determine appropriate constraints
-        center_point = self.collocation_points[point_idx]
-        neighborhood = self.neighborhoods[point_idx]
-        neighbor_points = neighborhood["points"]
-        neighbor_indices = neighborhood["indices"]
-
-        # Set up constraints for monotonicity
-        constraints = []
-
-        # Build constraints based on constraint mode
-        if self.qp_constraint_mode == "hamiltonian":
-            # Direct Hamiltonian gradient constraints: dH/du_j >= 0
-            # Get gamma from problem (default 0 for standard problems)
-            gamma = getattr(self.problem, "gamma", 0.0)
-
-            # Get local density if available (for MFG coupling)
-            m_density = 0.0
-            if hasattr(self, "_current_density") and self._current_density is not None:
-                if point_idx < len(self._current_density):
-                    m_density = self._current_density[point_idx]
-
-            hamiltonian_constraints = self._build_hamiltonian_gradient_constraints(
-                A,
-                neighbor_indices,  # type: ignore[arg-type]
-                neighbor_points,  # type: ignore[arg-type]
-                center_point,
-                point_idx,
-                u_values=None,  # We don't have u during coefficient solve
-                m_density=m_density,
-                gamma=gamma,
-            )
-            constraints.extend(hamiltonian_constraints)
-        else:
-            # Indirect constraints on Taylor coefficients (nD-compatible)
-            # Physics-based constraints for diffusion dominance and truncation error
-            monotonicity_constraints = self._build_monotonicity_constraints(
-                A,
-                neighbor_indices,  # type: ignore[arg-type]
-                neighbor_points,  # type: ignore[arg-type]
-                center_point,
-                point_idx,
-            )
-            constraints.extend(monotonicity_constraints)
-
-        # Set up bounds for optimization variables
-        bounds = []
-
-        # For each coefficient, determine appropriate bounds based on physics
-        # Make bounds much more realistic for stable numerical computation
-        for _k, beta in enumerate(self.multi_indices):
-            if sum(beta) == 0:  # Constant term - no physical constraint
-                bounds.append((None, None))
-            elif sum(beta) == 1:  # First derivative terms - reasonable for MFG
-                bounds.append((-20.0, 20.0))  # type: ignore[arg-type]  # Realistic gradient bounds
-            elif sum(beta) == 2:  # Second derivative terms - key for monotonicity
-                # Check if diagonal second derivative (d²/dx_i²) vs cross derivative (d²/dx_i dx_j)
-                # Diagonal: beta has exactly one non-zero entry equal to 2 (e.g., (2,0,0) or (0,2,0))
-                is_diagonal_second_deriv = sum(1 for b in beta if b != 0) == 1 and max(beta) == 2
-                if is_diagonal_second_deriv:
-                    # Diagonal second derivatives (Laplacian components): moderate diffusion bounds
-                    bounds.append((-100.0, 100.0))  # type: ignore[arg-type]  # Realistic diffusion bounds
-                else:
-                    # Cross derivatives: conservative bounds
-                    bounds.append((-50.0, 50.0))  # type: ignore[arg-type]  # Conservative cross-derivative bounds
-            else:
-                bounds.append((-2.0, 2.0))  # type: ignore[arg-type]  # Tight bounds for higher order terms
-
-        # Only add monotonicity constraints when they are really needed
-        # Check if this point is near boundaries or critical regions (vectorized, nD-compatible)
-        center_point = self.collocation_points[point_idx]
-        bounds_array = np.array(self.domain_bounds)  # shape: (d, 2)
-        threshold = 0.1 * self.delta
-        near_left = np.abs(center_point - bounds_array[:, 0]) < threshold
-        near_right = np.abs(center_point - bounds_array[:, 1]) < threshold
-        near_boundary = np.any(near_left | near_right)
-
-        # Add conservative constraint if near boundary
-        if near_boundary:
-            # Build list of diagonal second derivative indices
-            diag_second_deriv_indices = []
-            for k, beta in enumerate(self.multi_indices):
-                is_diagonal_second_deriv = sum(beta) == 2 and sum(1 for b in beta if b != 0) == 1
-                if is_diagonal_second_deriv:
-                    diag_second_deriv_indices.append(k)
-
-            if diag_second_deriv_indices:
-
-                def constraint_stability(x, indices=diag_second_deriv_indices):
-                    """Mild stability constraint near boundaries (nD-compatible)"""
-                    # Ensure diagonal second derivative terms don't become extreme
-                    return min(50.0 - abs(x[k]) for k in indices)
-
-                constraints.append({"type": "ineq", "fun": constraint_stability})
-
-        # Use unified QPSolver for the optimization
-        # QPSolver handles OSQP/scipy switching, warm-starting, and caching internally
-        try:
-            result_x = self._qp_solver_instance.solve_weighted_least_squares(
-                A=A,
-                b=b,
-                W=W,
-                bounds=bounds,
-                constraints=constraints,
-                point_id=point_idx,
-            )
-
-            # Sync statistics from QPSolver to GFDM-specific stats
-            self.qp_stats["total_qp_solves"] += 1
-            elapsed = time.time() - t0
-            self.qp_stats["qp_times"].append(elapsed)
-
-            # Map QPSolver backend stats to GFDM stats
-            qp_stats = self._qp_solver_instance.stats
-            if qp_stats["osqp_solves"] > self.qp_stats["osqp_solves"]:
-                self.qp_stats["osqp_solves"] = qp_stats["osqp_solves"]
-            if qp_stats["slsqp_solves"] > self.qp_stats["slsqp_solves"]:
-                self.qp_stats["slsqp_solves"] = qp_stats["slsqp_solves"]
-            if qp_stats["lbfgsb_solves"] > self.qp_stats["lbfgsb_solves"]:
-                self.qp_stats["lbfgsb_solves"] = qp_stats["lbfgsb_solves"]
-            if qp_stats["successes"] > self.qp_stats["qp_successes"]:
-                self.qp_stats["qp_successes"] = qp_stats["successes"]
-            if qp_stats["failures"] > self.qp_stats["qp_failures"]:
-                self.qp_stats["qp_failures"] = qp_stats["failures"]
-
-            return result_x
-
-        except Exception:
-            # Fallback to unconstrained if any error occurs
-            self.qp_stats["qp_fallbacks"] += 1
-            elapsed = time.time() - t0
-            self.qp_stats["qp_times"].append(elapsed)
-            return self._solve_unconstrained_fallback(taylor_data, b)
-
-    def _solve_unconstrained_fallback(self, taylor_data: dict, b: np.ndarray) -> np.ndarray:
-        """Fallback to unconstrained solution using SVD or normal equations."""
-        if taylor_data.get("use_svd", False):
-            sqrt_W = taylor_data["sqrt_W"]
-            U = taylor_data["U"]
-            S = taylor_data["S"]
-            Vt = taylor_data["Vt"]
-
-            Wb = sqrt_W @ b
-            UT_Wb = U.T @ Wb
-            S_inv_UT_Wb = UT_Wb / S
-            return Vt.T @ S_inv_UT_Wb
-        elif taylor_data.get("AtWA_inv") is not None:
-            return taylor_data["AtWA_inv"] @ taylor_data["AtW"] @ b
-        else:
-            A = taylor_data["A"]
-            from scipy.linalg import lstsq
-
-            if A is not None and b is not None:
-                lstsq_result = lstsq(A, b)
-                coeffs = lstsq_result[0] if lstsq_result is not None else np.zeros(len(b))
-            else:
-                coeffs = np.zeros(len(b) if b is not None else 1)
-            return coeffs
-
-    def print_qp_diagnostics(self) -> None:
-        """
-        Print comprehensive QP diagnostic statistics.
-
-        Reports QP solve counts, timings, success rates, and solver usage.
-        Also includes QPSolver caching and warm-start statistics.
-        Useful for understanding QP performance and bottlenecks.
-        """
-        if self.qp_stats is None or not self.qp_stats.get("total_qp_solves", 0):
-            print("\nQP Diagnostics: No QP solves recorded")
-            return
-
-        print("\n" + "=" * 80)
-        print(f"QP DIAGNOSTICS - {self.hjb_method_name}")
-        print("=" * 80)
-
-        # Basic counts
-        total_solves = self.qp_stats["total_qp_solves"]
-        print("\nGFDM QP Solve Summary:")
-        print(f"  Total QP solves:        {total_solves}")
-        print(
-            f"  Successful solves:      {self.qp_stats['qp_successes']} ({100 * self.qp_stats['qp_successes'] / max(total_solves, 1):.1f}%)"
-        )
-        print(
-            f"  Failed solves:          {self.qp_stats['qp_failures']} ({100 * self.qp_stats['qp_failures'] / max(total_solves, 1):.1f}%)"
-        )
-        print(f"  Fallbacks:              {self.qp_stats['qp_fallbacks']}")
-
-        # M-matrix checking (for "auto" level)
-        if self.qp_stats["points_checked"] > 0:
-            print("\nM-Matrix Violation Detection ('auto' level):")
-            print(f"  Points checked:         {self.qp_stats['points_checked']}")
-            print(
-                f"  Violations detected:    {self.qp_stats['violations_detected']} ({100 * self.qp_stats['violations_detected'] / max(self.qp_stats['points_checked'], 1):.1f}%)"
-            )
-
-        # Timing statistics (GFDM-tracked)
-        if self.qp_stats["qp_times"]:
-            times = np.array(self.qp_stats["qp_times"])
-            print("\nGFDM QP Solve Timing:")
-            print(f"  Total time:             {np.sum(times):.2f} s")
-            print(f"  Mean time per solve:    {np.mean(times) * 1000:.2f} ms")
-            print(f"  Median time per solve:  {np.median(times) * 1000:.2f} ms")
-            print(f"  Min time per solve:     {np.min(times) * 1000:.2f} ms")
-            print(f"  Max time per solve:     {np.max(times) * 1000:.2f} ms")
-            print(f"  Std dev:                {np.std(times) * 1000:.2f} ms")
-
-        # Print QPSolver statistics (caching, warm-starting, backend usage)
-        if hasattr(self, "_qp_solver_instance") and self._qp_solver_instance is not None:
-            qps = self._qp_solver_instance.stats
-            print("\nQPSolver Backend Statistics:")
-            print(f"  OSQP:                   {qps['osqp_solves']}")
-            print(f"  scipy (SLSQP):          {qps['slsqp_solves']}")
-            print(f"  scipy (L-BFGS-B):       {qps['lbfgsb_solves']}")
-
-            # Warm-start stats
-            ws_total = qps["warm_starts"] + qps["cold_starts"]
-            if ws_total > 0:
-                print("\nWarm-Start Statistics:")
-                print(f"  Warm starts:            {qps['warm_starts']} ({100 * qps['warm_starts'] / ws_total:.1f}%)")
-                print(f"  Cold starts:            {qps['cold_starts']} ({100 * qps['cold_starts'] / ws_total:.1f}%)")
-
-            # Cache stats
-            if self._qp_cache is not None:
-                cache_total = qps["cache_hits"] + qps["cache_misses"]
-                if cache_total > 0:
-                    print("\nCache Statistics:")
-                    print(
-                        f"  Cache hits:             {qps['cache_hits']} ({100 * qps['cache_hits'] / cache_total:.1f}%)"
-                    )
-                    print(f"  Cache misses:           {qps['cache_misses']}")
-                    print(f"  Cache size:             {self._qp_cache.size} / {self._qp_cache.max_size}")
-
-        print("=" * 80 + "\n")
-
-    def _compute_fd_weights_from_taylor(self, taylor_data: dict, derivative_idx: int) -> np.ndarray | None:
-        """
-        Compute finite difference weights for a specific derivative.
-
-        For GFDM with weighted least squares, given:
-        - A: Taylor expansion matrix [n_neighbors, n_derivs]
-        - W: Weight matrix [n_neighbors, n_neighbors]
-        - We solve: min ||sqrt(W) @ (A @ D - b)||^2 to get D from b
-
-        To get weights w such that D^β = w @ b (where b = u_center - u_neighbors):
-        We need the β-th row of the solution operator (A^T W A)^{-1} A^T W
-
-        Args:
-            taylor_data: Precomputed Taylor matrices
-            derivative_idx: Index of derivative in multi_indices
-
-        Returns:
-            w: Array of finite difference weights [n_neighbors]
-                or None if computation fails
-        """
-        try:
-            if taylor_data.get("use_svd"):
-                # Use SVD decomposition
-                # We have: sqrt(W) @ A = U @ diag(S) @ Vt
-                # Solution operator: D = (A^T W A)^{-1} A^T W @ b
-                #                      = Vt.T @ diag(1/S^2) @ Vt @ Vt.T @ diag(S) @ U.T @ sqrt(W) @ b
-                #                      = Vt.T @ diag(1/S) @ U.T @ sqrt(W) @ b
-                # Weights for derivative β are β-th row of: Vt.T @ diag(1/S) @ U.T @ sqrt(W)
-
-                U = taylor_data["U"]
-                S = taylor_data["S"]
-                Vt = taylor_data["Vt"]
-                sqrt_W = taylor_data["sqrt_W"]
-
-                # Compute: weights_matrix = Vt.T @ diag(1/S) @ U.T @ sqrt(W)
-                # Shape: [n_derivs, n_neighbors]
-                weights_matrix = Vt.T @ np.diag(1.0 / S) @ U.T @ sqrt_W
-
-                # Extract β-th row
-                weights = weights_matrix[derivative_idx, :]
-                return weights
-
-            elif taylor_data.get("use_qr"):
-                # Use QR decomposition - fall back to normal equations
-                A = taylor_data["A"]
-                W = taylor_data["W"]
-                try:
-                    # Compute (A^T W A)^{-1} A^T W and extract row
-                    AtWA_inv = np.linalg.inv(A.T @ W @ A)
-                    weights_matrix = AtWA_inv @ A.T @ W
-                    weights = weights_matrix[derivative_idx, :]
-                    return weights
-                except np.linalg.LinAlgError:
-                    return None
-
-            elif taylor_data.get("AtWA_inv") is not None:
-                # Direct normal equations
-                AtWA_inv = taylor_data["AtWA_inv"]
-                W = taylor_data["W"]
-                A = taylor_data["A"]
-                weights_matrix = AtWA_inv @ A.T @ W
-                weights = weights_matrix[derivative_idx, :]
-                return weights
-
-            else:
-                return None
-
-        except Exception:
-            return None
+    # Note: _solve_monotone_constrained_qp moved to MonotonicityMixin
+    # Note: _solve_unconstrained_fallback moved to MonotonicityMixin
+    # Note: print_qp_diagnostics moved to MonotonicityMixin
+    # Note: _compute_fd_weights_from_taylor moved to MonotonicityMixin
 
     def _get_sigma_value(self, point_idx: int | None = None) -> float:
         """
@@ -1176,433 +879,10 @@ class HJBGFDMSolver(BaseHJBSolver):
             # Numeric sigma: use directly (with fallback to default)
             return float(getattr(self.problem, "sigma", 1.0))
 
-    def _check_monotonicity_violation(
-        self, D_coeffs: np.ndarray, point_idx: int = 0, use_adaptive: bool | None = None
-    ) -> bool:
-        """
-        Check if unconstrained Taylor coefficients violate monotonicity.
-
-        Unified method supporting both basic (strict) and adaptive (threshold-based) modes.
-
-        Args:
-            D_coeffs: Taylor derivative coefficients from unconstrained solve
-            point_idx: Collocation point index (for debugging)
-            use_adaptive: Override adaptive mode (deprecated parameter, always uses basic M-matrix check)
-
-        Returns:
-            True if QP constraints are needed
-
-        Mathematical Criteria (see docs/development/QP_MONOTONICITY_CRITERIA.md):
-            1. Laplacian negativity: D₂ < 0 (diffusion dominance)
-            2. Gradient boundedness: |D₁| ≤ C·σ²·|D₂| (prevent advection dominance)
-            3. Higher-order control: Σ|Dₖ| < |D₂| for order ≥ 3 (truncation error)
-
-        Modes:
-            - BASIC: Return True if ANY criterion violated
-            - ADAPTIVE: Return True if violation_severity > adaptive_threshold
-        """
-        # Find multi-index locations
-        laplacian_idx = None
-        gradient_idx = None
-
-        for k, beta in enumerate(self.multi_indices):
-            if sum(beta) == 2 and all(b <= 2 for b in beta):
-                if laplacian_idx is None:
-                    laplacian_idx = k
-            elif sum(beta) == 1:
-                if gradient_idx is None:
-                    gradient_idx = k
-
-        if laplacian_idx is None:
-            return False  # Cannot check monotonicity without Laplacian term
-
-        # Extract coefficients
-        D_laplacian = D_coeffs[laplacian_idx]
-        tolerance = 1e-12
-        laplacian_mag = abs(D_laplacian) + 1e-10
-
-        # Criterion 1: Laplacian Negativity (Diffusion Dominance)
-        violation_1 = D_laplacian >= -tolerance
-
-        # Criterion 2: Gradient Boundedness (Prevent Advection Dominance)
-        violation_2 = False
-        if gradient_idx is not None:
-            D_gradient = D_coeffs[gradient_idx]
-            sigma = self._get_sigma_value(point_idx)
-            scale_factor = 10.0 * max(sigma**2, 0.1)
-            gradient_mag = abs(D_gradient)
-            violation_2 = gradient_mag > scale_factor * laplacian_mag
-
-        # Criterion 3: Higher-Order Control (Truncation Error)
-        higher_order_norm = sum(abs(D_coeffs[k]) for k in range(len(D_coeffs)) if sum(self.multi_indices[k]) >= 3)
-        violation_3 = higher_order_norm > laplacian_mag
-
-        # Basic violation check (any criterion violated)
-        has_violation = violation_1 or violation_2 or violation_3
-
-        # Always use basic M-matrix check (adaptive parameter deprecated)
-        if not use_adaptive:
-            # BASIC MODE: Strict enforcement of all criteria
-            return has_violation
-
-        # ADAPTIVE MODE: Threshold-Based Decision
-        # Compute quantitative severity (0 = no violation, >0 = increasing severity)
-        severity = 0.0
-
-        # Severity 1: How positive is Laplacian (should be negative)
-        if violation_1:
-            severity = max(severity, D_laplacian + tolerance)
-
-        # Severity 2: Excess gradient relative to diffusion
-        if violation_2:
-            D_gradient = D_coeffs[gradient_idx]
-            sigma = self._get_sigma_value(point_idx)
-            scale_factor = 10.0 * max(sigma**2, 0.1)
-            gradient_mag = abs(D_gradient)
-            excess_gradient = gradient_mag / laplacian_mag - scale_factor
-            severity = max(severity, excess_gradient)
-
-        # Severity 3: Excess higher-order terms
-        if violation_3:
-            excess_higher_order = higher_order_norm / laplacian_mag - 1.0
-            severity = max(severity, excess_higher_order)
-
-        # Decision: use QP if M-matrix property is violated (severity > 0)
-        # This is the basic adaptive M-matrix checking
-        needs_qp = severity > 0.0
-
-        return needs_qp
-
-    def _check_m_matrix_property(
-        self, weights: np.ndarray, point_idx: int, tolerance: float = 1e-12
-    ) -> tuple[bool, dict]:
-        """
-        Verify M-matrix property for finite difference weights.
-
-        For a monotone scheme, the Laplacian weights must satisfy:
-        - Diagonal (center): w_center ≤ 0
-        - Off-diagonal (neighbors): w_j ≥ -tolerance for j ≠ center
-
-        Args:
-            weights: Finite difference weights [n_neighbors]
-            point_idx: Index of collocation point
-            tolerance: Small tolerance for numerical errors
-
-        Returns:
-            is_monotone: True if M-matrix property satisfied
-            diagnostics: Dictionary with detailed information
-        """
-        neighborhood = self.neighborhoods[point_idx]
-        neighbor_indices = neighborhood["indices"]
-
-        # Find center point index in neighborhood
-        center_idx_in_neighbors = None
-        center_point = self.collocation_points[point_idx]
-
-        for j, idx in enumerate(neighbor_indices):
-            if idx == -1:  # Ghost particle
-                # Check if this ghost is actually at center location
-                if np.allclose(neighborhood["points"][j], center_point):
-                    center_idx_in_neighbors = j
-                    break
-            elif idx == point_idx:
-                # Direct match
-                center_idx_in_neighbors = j
-                break
-            elif np.allclose(self.collocation_points[idx], center_point):
-                # Position match
-                center_idx_in_neighbors = j
-                break
-
-        if center_idx_in_neighbors is None:
-            # Center not found in neighborhood - unusual but possible
-            # Consider all weights as neighbors
-            w_center = 0.0
-            neighbor_weights = weights
-        else:
-            w_center = weights[center_idx_in_neighbors]
-            neighbor_weights = np.delete(weights, center_idx_in_neighbors)
-
-        # Check M-matrix conditions
-        center_ok = w_center <= tolerance  # Should be ≤ 0 (allow small positive for numerical error)
-        neighbors_ok = np.all(neighbor_weights >= -tolerance)  # Should be ≥ 0
-
-        is_monotone = center_ok and neighbors_ok
-
-        # Compute diagnostics
-        min_neighbor_weight = np.min(neighbor_weights) if len(neighbor_weights) > 0 else 0.0
-        num_violations = np.sum(neighbor_weights < -tolerance)
-
-        diagnostics = {
-            "is_monotone": is_monotone,
-            "center_ok": center_ok,
-            "neighbors_ok": neighbors_ok,
-            "w_center": float(w_center),
-            "min_neighbor_weight": float(min_neighbor_weight),
-            "max_neighbor_weight": float(np.max(neighbor_weights)) if len(neighbor_weights) > 0 else 0.0,
-            "num_violations": int(num_violations),
-            "num_neighbors": len(neighbor_weights),
-            "violation_severity": float(abs(min_neighbor_weight)) if min_neighbor_weight < -tolerance else 0.0,
-        }
-
-        return is_monotone, diagnostics
-
-    def _build_monotonicity_constraints(
-        self,
-        A: np.ndarray,
-        neighbor_indices: np.ndarray,
-        neighbor_points: np.ndarray,
-        center_point: np.ndarray,
-        point_idx: int,
-    ) -> list[dict]:
-        """
-        Build M-matrix monotonicity constraints for finite difference weights.
-
-        For a monotone scheme approximating the Laplacian ∂²u/∂x², the GFDM
-        finite difference weights w_j must satisfy the M-matrix property:
-        - Diagonal weight (center): w_center ≤ 0
-        - Off-diagonal weights (neighbors): w_j ≥ 0 for j ≠ center
-
-        Strategy:
-            This implementation uses INDIRECT constraints on Taylor coefficients D
-            rather than direct Hamiltonian gradient constraints ∂H/∂u_j ≥ 0.
-
-            The indirect approach is simpler but approximate. For stricter monotonicity,
-            use qp_constraint_mode="hamiltonian" which calls _build_hamiltonian_gradient_constraints().
-
-            Direct Hamiltonian gradient constraints (qp_constraint_mode="hamiltonian"):
-            --------------------------------------------------------------------------
-            For Hamiltonian H = 1/2|∇u|² + γm|∇u|² + V(x), enforce:
-
-                ∂H_h/∂u_j ≥ 0  for all j ≠ j_0
-
-            where H_h is the numerical Hamiltonian. This gives:
-
-                (1 + 2γm) (Σ_l c_{j_0,l} u_l) · c_{j_0,j} ≥ 0
-
-            These are LINEAR constraints on the finite difference coefficients c_{j_0,j},
-            which can be derived from the Taylor coefficients D through the relation:
-
-                w = β-th row of (A^T W A)^{-1} A^T W
-
-            The Hamiltonian approach is more direct and theoretically rigorous than the
-            indirect constraints on D.
-
-        Constraint Categories:
-            1. Diffusion dominance: ∂²u/∂x² coefficient should be negative
-            2. Gradient boundedness: ∂u/∂x shouldn't overwhelm diffusion
-            3. Truncation error control: Higher derivatives should be small
-
-        References:
-            Section 4.3-4.5 of particle-collocation theory document
-        """
-        constraints = []
-
-        # Find indices for derivatives (nD-compatible)
-        # Diagonal second derivatives: d²/dx_i² (e.g., (2,0,0), (0,2,0), (0,0,2) in 3D)
-        laplacian_indices = []
-        # First derivatives: d/dx_i (e.g., (1,0,0), (0,1,0), (0,0,1) in 3D)
-        first_deriv_indices = []
-
-        for k, beta in enumerate(self.multi_indices):
-            if sum(beta) == 2 and sum(1 for b in beta if b != 0) == 1:
-                # Diagonal second derivative: exactly one non-zero entry equal to 2
-                laplacian_indices.append(k)
-            elif sum(beta) == 1:
-                # First derivative
-                first_deriv_indices.append(k)
-
-        if not laplacian_indices:
-            # No second derivatives in Taylor expansion - skip constraints
-            return constraints
-
-        # ===================================================================
-        # CONSTRAINT 1: Negative Laplacian (Diffusion Dominance)
-        # ===================================================================
-        # Physical motivation: For elliptic operators σ²/2 Δu,
-        # the diffusion term should have negative coefficient to produce
-        # proper M-matrix structure (diagonal ≤ 0).
-        # For nD: enforce sum of diagonal second derivatives ≤ 0
-
-        def constraint_laplacian_negative(x, indices=laplacian_indices):
-            """Enforce Laplacian components are negative (diffusion dominance)"""
-            # For proper elliptic discretization: Δu coefficients should be negative
-            laplacian_sum = sum(x[idx] for idx in indices)
-            return -laplacian_sum  # Should be positive (≥ 0)
-
-        constraints.append({"type": "ineq", "fun": constraint_laplacian_negative})
-
-        # ===================================================================
-        # CONSTRAINT 2: Gradient Boundedness (Prevent Advection Dominance)
-        # ===================================================================
-        # Physical motivation: Prevent first-order (advection) terms from
-        # overwhelming second-order (diffusion) terms, which can break
-        # M-matrix structure.
-
-        if first_deriv_indices:
-            # Get diffusion coefficient from problem
-            sigma = self._get_sigma_value(point_idx)
-            sigma_sq = sigma**2
-
-            def constraint_gradient_bounded(
-                x, grad_indices=first_deriv_indices, lap_indices=laplacian_indices, sig_sq=sigma_sq
-            ):
-                """Ensure gradient norm doesn't dominate Laplacian norm"""
-                # |∇u|² = Σ|∂u/∂x_i|²
-                gradient_norm_sq = sum(x[idx] ** 2 for idx in grad_indices)
-                gradient_norm = np.sqrt(gradient_norm_sq + 1e-20)
-
-                # |Δu| ~ sum of |d²u/dx_i²|
-                laplacian_mag = sum(abs(x[idx]) for idx in lap_indices) + 1e-10
-
-                # Adaptive bound: gradient shouldn't exceed σ²-scaled Laplacian
-                scale_factor = 10.0 * max(sig_sq, 0.1)
-                return scale_factor * laplacian_mag - gradient_norm
-
-            constraints.append({"type": "ineq", "fun": constraint_gradient_bounded})
-
-        # ===================================================================
-        # CONSTRAINT 3: Higher-Order Term Control (Truncation Error)
-        # ===================================================================
-        # Physical motivation: Third and higher derivatives represent
-        # truncation error. Keeping them small relative to the Laplacian
-        # improves accuracy and stability.
-
-        def constraint_higher_order_small(x, lap_indices=laplacian_indices):
-            """Keep higher-order terms small (truncation error control)"""
-            higher_order_norm = 0.0
-            for k, beta in enumerate(self.multi_indices):
-                if sum(beta) >= 3:  # Third and higher derivatives
-                    higher_order_norm += abs(x[k])
-            # Higher-order terms should be smaller than Laplacian magnitude
-            laplacian_mag = sum(abs(x[idx]) for idx in lap_indices) + 1e-10
-            return laplacian_mag - higher_order_norm  # Should be positive
-
-        constraints.append({"type": "ineq", "fun": constraint_higher_order_small})
-
-        return constraints
-
-    def _build_hamiltonian_gradient_constraints(
-        self,
-        A: np.ndarray,
-        neighbor_indices: np.ndarray,
-        neighbor_points: np.ndarray,
-        center_point: np.ndarray,
-        point_idx: int,
-        u_values: np.ndarray | None = None,
-        m_density: float = 0.0,
-        gamma: float = 0.0,
-    ) -> list[dict]:
-        """
-        Build direct Hamiltonian gradient constraints for monotonicity.
-
-        For a monotone scheme, we require:
-            dH_h/du_j >= 0  for all neighbors j != j_0 (center)
-
-        For the standard MFG Hamiltonian H = 1/2|grad(u)|^2 + gamma*m*|grad(u)|^2 + V(x):
-            dH_h/du_j = (1 + 2*gamma*m) * (sum_l c_{j_0,l} * u_l) * c_{j_0,j}
-
-        Where c_{j_0,l} are the finite difference weights for gradient approximation.
-
-        The constraint dH_h/du_j >= 0 becomes:
-            (1 + 2*gamma*m) * grad_u * c_j >= 0  for each neighbor j
-
-        This is a LINEAR constraint on the finite difference coefficients c_j when
-        u_values are known, or a BILINEAR constraint when both u and c are unknowns.
-
-        For the GFDM formulation where we optimize Taylor coefficients D:
-            c_j = (D-matrix row for gradient) derived from Taylor expansion
-
-        The constraint becomes: D_grad * (x_j - x_0) / |x_j - x_0| >= 0
-        (positive gradient in direction toward neighbor j)
-
-        Args:
-            A: Taylor expansion matrix [n_neighbors, n_coeffs]
-            neighbor_indices: Indices of neighbor points
-            neighbor_points: Coordinates of neighbor points [n_neighbors, d]
-            center_point: Coordinates of center point [d]
-            point_idx: Index of center collocation point
-            u_values: Current value function estimates at all points (optional)
-            m_density: Local population density m(x) at center point
-            gamma: Coupling strength parameter gamma >= 0
-
-        Returns:
-            List of constraint dictionaries for scipy.optimize.minimize
-
-        Mathematical Derivation:
-            For H_h = 1/2 * (sum_l c_l * u_l)^2 + gamma*m*(sum_l c_l * u_l)^2 + V
-                    = (1/2 + gamma*m) * (sum_l c_l * u_l)^2 + V
-
-            dH_h/du_j = (1 + 2*gamma*m) * (sum_l c_l * u_l) * c_j
-
-            For monotonicity, we need dH_h/du_j >= 0 for j != j_0.
-
-            Case 1 (u known): Constraint is linear in c_j
-            Case 2 (u unknown): Use sign of (x_j - x_0) from discretization theory
-
-        References:
-            Barles-Souganidis (1991): Convergence of approximation schemes
-            Oberman (2006): Convergent difference schemes for degenerate elliptic
-        """
-        constraints = []
-
-        # Algorithm is dimension-agnostic: uses gradient dot product with direction vectors
-        # Works for any dimension d >= 1
-
-        # Find gradient indices in multi_indices
-        gradient_indices = []
-        for k, beta in enumerate(self.multi_indices):
-            if sum(beta) == 1:  # First derivative
-                gradient_indices.append((k, beta))
-
-        if not gradient_indices:
-            return constraints
-
-        # Compute coupling factor (1 + 2*gamma*m)
-        coupling_factor = 1.0 + 2.0 * gamma * m_density
-
-        # Build constraints for each neighbor
-        n_neighbors = len(neighbor_indices)
-        for j in range(n_neighbors):
-            # Skip center point (we don't constrain dH/du_center)
-            if neighbor_indices[j] == point_idx:
-                continue
-
-            # Direction from center to neighbor j
-            direction = neighbor_points[j] - center_point
-            dist = np.linalg.norm(direction)
-
-            if dist < 1e-12:
-                continue  # Skip degenerate neighbors
-
-            # Normalize direction
-            unit_direction = direction / dist
-
-            # Build constraint: coupling_factor * (D_grad dot unit_direction) >= 0
-            # In terms of Taylor coefficients D:
-            #   For 1D: D_{(1,)} * sign(x_j - x_0) >= 0
-            #   For 2D: D_{(1,0)} * (x_j - x_0)/|...| + D_{(0,1)} * (y_j - y_0)/|...| >= 0
-            #   For 3D: similar with z component
-
-            def make_constraint(grad_idx_list, unit_dir, cf):
-                """Factory function to create closure with correct values."""
-
-                def constraint_func(x):
-                    """Hamiltonian gradient constraint: dH/du_j >= 0."""
-                    grad_dot_dir = 0.0
-                    for k_idx, beta in grad_idx_list:
-                        # Find which dimension this gradient component is
-                        dim_idx = beta.index(1)  # Which dimension has the 1
-                        grad_dot_dir += x[k_idx] * unit_dir[dim_idx]
-                    # Return cf * grad_dot_dir >= 0 (should be non-negative)
-                    return cf * grad_dot_dir
-
-                return constraint_func
-
-            constraint_fn = make_constraint(gradient_indices, unit_direction, coupling_factor)
-            constraints.append({"type": "ineq", "fun": constraint_fn})
-
-        return constraints
+    # Note: _check_monotonicity_violation moved to MonotonicityMixin
+    # Note: _check_m_matrix_property moved to MonotonicityMixin
+    # Note: _build_monotonicity_constraints moved to MonotonicityMixin
+    # Note: _build_hamiltonian_gradient_constraints moved to MonotonicityMixin
 
     def solve_hjb_system(
         self,
@@ -1940,71 +1220,110 @@ class HJBGFDMSolver(BaseHJBSolver):
 
     def _map_grid_to_collocation(self, u_grid: np.ndarray) -> np.ndarray:
         """
-        Map values from regular grid to collocation points.
+        Map values from regular grid to collocation points using interpolation.
 
-        Uses nearest neighbor or linear interpolation.
+        Uses scipy RegularGridInterpolator via particle interpolation utilities.
+
+        Args:
+            u_grid: Values on regular grid, flattened to 1D
+
+        Returns:
+            Values at collocation points, shape (n_points,)
         """
-        # Placeholder implementation: Assume 1D for simplicity
-        # For production: use scipy.interpolate or custom interpolation
-        u_collocation = np.zeros(self.n_points)
-        for i in range(self.n_points):
-            # Find nearest grid point or interpolate
-            # Simple approach: nearest neighbor
-            idx = self._map_collocation_index_to_grid_index(i)
-            u_collocation[i] = u_grid[idx]
-        return u_collocation
+        # Get spatial shape from stored attribute or infer from grid size
+        if hasattr(self, "_output_spatial_shape"):
+            spatial_shape = self._output_spatial_shape
+        else:
+            # Assume 1D if not set
+            spatial_shape = (len(u_grid),)
+
+        # Reshape to spatial dimensions
+        u_grid_shaped = u_grid.reshape(spatial_shape)
+
+        # Squeeze singleton dimensions for proper interpolation
+        # e.g., (21, 1) -> (21,) for 1D problems
+        u_grid_squeezed = np.squeeze(u_grid_shaped)
+
+        # Format bounds for interpolation utility (matches squeezed dimensions)
+        grid_bounds = self._format_grid_bounds_for_interpolation()
+
+        return interpolate_grid_to_particles(
+            u_grid_squeezed,
+            grid_bounds=grid_bounds,
+            particle_positions=self.collocation_points,
+            method="linear",
+        )
 
     def _map_collocation_to_grid(self, u_collocation: np.ndarray) -> np.ndarray:
         """
-        Map values from collocation points to regular grid.
+        Map values from collocation points to regular grid using RBF interpolation.
 
-        Uses inverse interpolation or reconstruction.
+        Uses scipy RBFInterpolator via particle interpolation utilities.
+
+        Args:
+            u_collocation: Values at collocation points, shape (n_points,)
+
+        Returns:
+            Values on regular grid, flattened to 1D
         """
-        # If collocation points match grid size (including boundaries), return directly
-        # Otherwise, map to grid interior points (Nx)
-        Nx_grid = self._n_spatial_grid_points
-
-        # Check if collocation includes boundaries (Nx+1 points)
-        if self.n_points == Nx_grid + 1:
-            # Collocation points include boundaries - return all points
-            return u_collocation.copy()
-        elif self.n_points == Nx_grid:
-            # Collocation points are interior only - return as is
-            return u_collocation.copy()
+        # Get spatial shape from stored attribute or use default
+        if hasattr(self, "_output_spatial_shape"):
+            spatial_shape = self._output_spatial_shape
         else:
-            # Mismatch - interpolate to grid
-            u_grid = np.zeros(Nx_grid)
-            for j in range(Nx_grid):
-                if j < self.n_points:
-                    u_grid[j] = u_collocation[j]
-            return u_grid
+            # Fallback for 1D case
+            Nx_grid = self._n_spatial_grid_points
+            spatial_shape = (Nx_grid + 1,)
+
+        # Compute squeezed shape for interpolation (removes singleton dimensions)
+        # e.g., (21, 1) -> (21,) for 1D problems
+        non_singleton = tuple(s for s in spatial_shape if s > 1)
+        squeezed_shape = non_singleton if non_singleton else (spatial_shape[0],)
+
+        # Format bounds for interpolation utility
+        grid_bounds = self._format_grid_bounds_for_interpolation()
+
+        u_grid = interpolate_particles_to_grid(
+            u_collocation,
+            particle_positions=self.collocation_points,
+            grid_shape=squeezed_shape,
+            grid_bounds=grid_bounds,
+            method="rbf",
+            kernel="thin_plate_spline",
+        )
+
+        return u_grid.flatten()
+
+    def _format_grid_bounds_for_interpolation(self) -> tuple:
+        """Format domain_bounds for interpolation utility."""
+        if len(self.domain_bounds) == 1:
+            # 1D: return (xmin, xmax)
+            return self.domain_bounds[0]
+        else:
+            # nD: return tuple of (min, max) tuples
+            return tuple(self.domain_bounds)
 
     def _map_grid_to_collocation_batch(self, U_grid: np.ndarray) -> np.ndarray:
         """
         Batch version of _map_grid_to_collocation.
 
-        Handles nD spatial grids by flattening spatial dimensions.
-
         Args:
-            U_grid: Shape (Nt, ...) where ... represents arbitrary spatial dimensions
+            U_grid: Shape (Nt, ...) where ... represents spatial dimensions
 
         Returns:
             U_collocation: Shape (Nt, n_points)
         """
-        Nt = U_grid.shape[0]  # Extract time dimension (works for arbitrary spatial dimensions)
-
+        Nt = U_grid.shape[0]
         U_collocation = np.zeros((Nt, self.n_points))
+
         for n in range(Nt):
-            # Flatten spatial dimensions to 1D array for mapping
             u_grid_flat = U_grid[n].flatten()
             U_collocation[n, :] = self._map_grid_to_collocation(u_grid_flat)
+
         return U_collocation
 
     def _map_collocation_to_grid_batch(self, U_collocation: np.ndarray) -> np.ndarray:
         """
         Batch version of _map_collocation_to_grid.
-
-        Handles nD spatial grids by reshaping output to match original spatial dimensions.
 
         Args:
             U_collocation: Shape (Nt, n_points)
@@ -2012,45 +1331,25 @@ class HJBGFDMSolver(BaseHJBSolver):
         Returns:
             U_grid: Shape (Nt, ...) where ... matches original spatial shape
         """
-        Nt = U_collocation.shape[0]  # Extract time dimension
+        Nt = U_collocation.shape[0]
 
-        # Get the original spatial shape from stored attribute (set in solve_hjb_system)
+        # Get the original spatial shape
         if hasattr(self, "_output_spatial_shape"):
             spatial_shape = self._output_spatial_shape
-            # Total number of spatial grid points
-            n_spatial_points = np.prod(spatial_shape)
         else:
-            # Fallback for 1D case
             Nx_grid = self._n_spatial_grid_points
-            if self.n_points == Nx_grid + 1:
-                n_spatial_points = Nx_grid + 1
-            else:
-                n_spatial_points = Nx_grid
-            spatial_shape = (n_spatial_points,)
+            spatial_shape = (Nx_grid + 1,)
 
-        # Map each timestep from collocation to flattened grid
+        n_spatial_points = int(np.prod(spatial_shape))
+
+        # Map each timestep
         U_grid_flat = np.zeros((Nt, n_spatial_points))
         for n in range(Nt):
             U_grid_flat[n, :] = self._map_collocation_to_grid(U_collocation[n, :])
 
         # Reshape to original spatial dimensions
         output_shape = (Nt, *tuple(spatial_shape))
-        U_grid = U_grid_flat.reshape(output_shape)
-        return U_grid
-
-    def _map_collocation_index_to_grid_index(self, collocation_idx: int) -> int:
-        """
-        Map collocation point index to nearest grid index.
-
-        Placeholder: Assumes collocation points are aligned with grid.
-        """
-        # Simple 1D mapping
-        Nx = self._n_spatial_grid_points
-        if self.n_points == Nx:
-            return collocation_idx
-        else:
-            # Scale index
-            return int(collocation_idx * Nx / self.n_points)
+        return U_grid_flat.reshape(output_shape)
 
 
 if __name__ == "__main__":
