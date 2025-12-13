@@ -1,7 +1,8 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2025-12-11
-**Target**: v1.0.0 (deprecated patterns will be restricted)
+**Last Updated**: 2025-12-13
+**Current Version**: v0.16.2
+**Target**: v1.0.0 (deprecated patterns will be removed)
 **Status**: Active migration in progress
 
 ---
@@ -9,6 +10,66 @@
 ## Overview
 
 This guide documents deprecated usage patterns in MFG_PDE and provides migration paths to modern APIs. All deprecated patterns will continue to work until v1.0.0 but will emit deprecation warnings.
+
+---
+
+## Deprecation Timeline
+
+| Version | Milestone |
+|:--------|:----------|
+| v0.16.x | Current - deprecation warnings active |
+| **v0.17.0** | **Consolidate deprecations, stricter warnings** |
+| v0.18.x | Final warning period |
+| v1.0.0 | Remove all deprecated patterns |
+
+---
+
+## v0.17.0 Deprecation Summary
+
+### New Deprecations in v0.17
+
+#### 7. Convergence Module Renaming (PR #457)
+
+| Old Name | New Name | Status |
+|:---------|:---------|:-------|
+| `StochasticConvergenceMonitor` | `RollingConvergenceMonitor` | Deprecated |
+| `AdvancedConvergenceMonitor` | `DistributionConvergenceMonitor` | Deprecated |
+| `ParticleMethodDetector` | `SolverTypeDetector` | Deprecated |
+| `AdaptiveConvergenceWrapper` | `ConvergenceWrapper` | Deprecated |
+| `OscillationDetector` | `_ErrorHistoryTracker` (internal) | Deprecated |
+| `create_default_monitor()` | `create_distribution_monitor()` | Deprecated |
+| `create_stochastic_monitor()` | `create_rolling_monitor()` | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+from mfg_pde.utils.numerical.convergence import (
+    StochasticConvergenceMonitor,
+    AdvancedConvergenceMonitor,
+    create_default_monitor,
+)
+
+# New (preferred)
+from mfg_pde.utils.numerical.convergence import (
+    RollingConvergenceMonitor,
+    DistributionConvergenceMonitor,
+    create_distribution_monitor,
+)
+```
+
+### Existing Deprecations (Carried Forward)
+
+| Category | Deprecated | Modern | Priority |
+|:---------|:-----------|:-------|:---------|
+| Problem Construction | `ExampleMFGProblem(Nx=50, ...)` | `MFGProblem(geometry=domain, ...)` | High |
+| Legacy Attributes | `problem.xmin`, `problem.Nx`, etc. | `problem.geometry.get_bounds()` | High |
+| Scalar Parameters | `Nx=50` (scalar) | `Nx=[50]` (array) | Medium |
+| solve_mfg method | `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium |
+| Profiling API | `enable_profiling=True` | `profiling_mode=ProfilingMode.SILENT` | Low |
+| Legacy Problems | `ExampleMFGProblem`, etc. | `MFGProblem` + geometry | Low |
+| Geometry Aliases | `Domain1D`, `Domain2D`, `Domain3D` | `TensorProductGrid`, `Mesh2D`, `Mesh3D` | Low |
+| p_values parameter | `hamiltonian(t, x, m, p_values=...)` | `hamiltonian(t, x, m, derivs=...)` | Medium |
+| Lowercase params | `nx=50`, `nt=25` | `Nx=50`, `Nt=25` | Low |
 
 ---
 
@@ -304,14 +365,23 @@ class MyCustomProblem(MFGProblem):
 
 ## Quick Reference
 
-| Deprecated | Modern | Priority |
-|:-----------|:-------|:---------|
-| `ExampleMFGProblem(Nx=50, ...)` | `MFGProblem(geometry=domain, ...)` | High |
-| `problem.xmin`, `problem.Nx`, etc. | `problem.geometry.get_bounds()` | High |
-| `Nx=50` (scalar) | `Nx=[50]` (array) | Medium |
-| `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium |
-| `enable_profiling=True` | `profiling_mode=ProfilingMode.SILENT` | Low |
-| Legacy problem classes | `MFGProblem` + geometry | Low |
+| Category | Deprecated | Modern | Priority | Since |
+|:---------|:-----------|:-------|:---------|:------|
+| Problem | `ExampleMFGProblem(Nx=50, ...)` | `MFGProblem(geometry=domain, ...)` | High | v0.15 |
+| Problem | `problem.xmin`, `problem.Nx`, etc. | `problem.geometry.get_bounds()` | High | v0.16 |
+| Problem | `Nx=50` (scalar) | `Nx=[50]` (array) | Medium | v0.15 |
+| Problem | `hamiltonian(..., p_values=...)` | `hamiltonian(..., derivs=...)` | Medium | v0.16 |
+| Problem | `nx=50`, `nt=25` (lowercase) | `Nx=50`, `Nt=25` | Low | v0.16 |
+| Factory | `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium | v0.15 |
+| Strategy | `enable_profiling=True` | `profiling_mode=ProfilingMode.SILENT` | Low | v0.15 |
+| Legacy | `ExampleMFGProblem`, etc. | `MFGProblem` + geometry | Low | v0.15 |
+| Geometry | `Domain1D`, `Domain2D`, `Domain3D` | `TensorProductGrid`, `Mesh2D`, `Mesh3D` | Low | v0.15.3 |
+| Convergence | `StochasticConvergenceMonitor` | `RollingConvergenceMonitor` | Low | v0.17 |
+| Convergence | `AdvancedConvergenceMonitor` | `DistributionConvergenceMonitor` | Low | v0.17 |
+| Convergence | `ParticleMethodDetector` | `SolverTypeDetector` | Low | v0.17 |
+| Convergence | `AdaptiveConvergenceWrapper` | `ConvergenceWrapper` | Low | v0.17 |
+| Convergence | `create_default_monitor()` | `create_distribution_monitor()` | Low | v0.17 |
+| Convergence | `create_stochastic_monitor()` | `create_rolling_monitor()` | Low | v0.17 |
 
 ---
 
@@ -344,16 +414,24 @@ pytest tests/unit/your_test_file.py
 
 ## Tracking Progress
 
-**Current Status** (as of 2025-12-11):
+**Current Status** (as of 2025-12-13):
 - ✅ Modern API fully implemented
 - ✅ Dimension-agnostic boundary handler (PR #305, #306)
 - ✅ Geometry-first unification complete (Issue #435, PRs #436-#443)
 - ✅ Legacy attributes converted to computed properties (PR #443)
+- ✅ Convergence module reorganized with renamed classes (PR #457)
 - ⏳ Test file migration: 0/22 files converted
 - ⏳ Example migration: 0/10 files converted
 - ❌ v1.0.0 enforcement: Not yet implemented
 
-**Next Milestone**: Convert 2 test files to modern API as reference examples
+**Deprecation Counts by Version**:
+| Version | New Deprecations | Total Active |
+|:--------|:-----------------|:-------------|
+| v0.15.x | 6 patterns | 6 |
+| v0.16.x | 4 patterns | 10 |
+| **v0.17.x** | **6 patterns** | **16** |
+
+**Next Milestone**: v0.17.0 release with consolidated deprecation warnings
 
 ---
 
