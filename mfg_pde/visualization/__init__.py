@@ -88,6 +88,17 @@ except ImportError:
     nx = None  # type: ignore[assignment]
 
 # Enhanced network MFG visualization
+# Convergence plotting (standalone functions)
+from .convergence_plots import (
+    plot_convergence_rate,
+    plot_convergence_summary,
+    plot_distribution_evolution,
+    plot_error_history,
+    plot_from_monitor,
+    plot_mass_history,
+    plot_multi_error_history,
+    plot_wasserstein_history,
+)
 from .enhanced_network_plots import EnhancedNetworkMFGVisualizer, create_enhanced_network_visualizer
 
 # Core interactive visualization system
@@ -196,6 +207,15 @@ __all__ = [
     "offline",
     "output_file",
     "plot_convergence",
+    # Convergence plotting (standalone)
+    "plot_convergence_rate",
+    "plot_convergence_summary",
+    "plot_distribution_evolution",
+    "plot_error_history",
+    "plot_from_monitor",
+    "plot_mass_history",
+    "plot_multi_error_history",
+    "plot_wasserstein_history",
     "plot_mathematical_function",
     "plot_mfg_density",
     "plot_results",
