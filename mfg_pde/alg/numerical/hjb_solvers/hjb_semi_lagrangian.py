@@ -23,7 +23,6 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.integrate import solve_ivp
 from scipy.optimize import minimize, minimize_scalar
 
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
@@ -32,6 +31,12 @@ from .base_hjb import BaseHJBSolver
 from .hjb_sl_adi import (
     adi_diffusion_step,
     solve_crank_nicolson_diffusion_1d,
+)
+from .hjb_sl_characteristics import (
+    apply_boundary_conditions_1d,
+    apply_boundary_conditions_nd,
+    trace_characteristic_backward_1d,
+    trace_characteristic_backward_nd,
 )
 from .hjb_sl_interpolation import (
     interpolate_nearest_neighbor,
@@ -890,8 +895,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         Trace characteristic backward in time to find departure point (supports 1D and nD).
 
-        The characteristic equation is dx/dt = -∇_p H(x, p, m).
-        For standard MFG: dx/dt = -p, so X(t-dt) = x - p*dt.
+        Delegates to hjb_sl_characteristics module functions.
 
         Args:
             x_current: Current spatial position
@@ -909,118 +913,46 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         if self.dimension == 1:
             # 1D characteristic tracing
-            x_scalar = float(x_current) if np.ndim(x_current) > 0 else x_current
-            p_scalar = float(p_optimal) if np.ndim(p_optimal) > 0 else p_optimal
-
-            if self.use_jax:
-                return float(self._jax_solve_characteristic(x_scalar, p_scalar, dt))
-
-            if self.characteristic_solver == "explicit_euler":
-                # First-order: X(t-dt) = X(t) - p*dt
-                x_departure = x_scalar - p_scalar * dt
-            elif self.characteristic_solver == "rk2":
-                # Second-order Runge-Kutta (midpoint method)
-                # For characteristic dx/dt = -p(x), this reduces to
-                # X(t-dt) = X(t) - p(X(t))*dt for constant velocity field
-                # Provides higher accuracy when velocity varies spatially
-                k1 = -p_scalar
-                _x_mid = x_scalar + 0.5 * dt * k1
-                # For improved accuracy, could interpolate velocity at _x_mid
-                # For now, use same velocity (assumes locally constant field)
-                k2 = -p_scalar
-                x_departure = x_scalar + dt * k2
-            elif self.characteristic_solver == "rk4":
-                # Fourth-order Runge-Kutta using scipy.solve_ivp
-                # More robust than hand-coded RK4, uses adaptive stepping
-                def velocity_field(t, x):
-                    # Characteristic equation: dx/dt = -p (constant velocity assumption)
-                    return -p_scalar
-
-                # Integrate from t=0 to t=dt (forward in our coordinate system)
-                sol = solve_ivp(
-                    velocity_field,
-                    t_span=[0, dt],
-                    y0=[x_scalar],
-                    method="RK45",  # Adaptive 4th/5th order Runge-Kutta
-                    rtol=1e-6,
-                    atol=1e-8,
-                )
-                x_departure = sol.y[0, -1]
-            else:
-                x_departure = x_scalar - p_scalar * dt
+            jax_fn = self._jax_solve_characteristic if self.use_jax else None
+            x_departure = trace_characteristic_backward_1d(
+                x_current,
+                p_optimal,
+                dt,
+                method=self.characteristic_solver,
+                use_jax=self.use_jax,
+                jax_solve_fn=jax_fn,
+            )
 
             # Apply boundary conditions
+            bc_type = None
             if hasattr(self.problem, "boundary_conditions"):
-                x_departure = self._apply_boundary_conditions(x_departure)
-            else:
-                x_departure = np.clip(x_departure, self.problem.xmin, self.problem.xmax)
+                bc = getattr(self.problem, "boundary_conditions", None)
+                if bc is not None and hasattr(bc, "type"):
+                    bc_type = bc.type
 
-            return x_departure
+            return apply_boundary_conditions_1d(
+                x_departure,
+                xmin=self.problem.xmin,
+                xmax=self.problem.xmax,
+                bc_type=bc_type,
+            )
 
         else:
-            # nD characteristic tracing: X(t-dt) = X(t) - P*dt
-            x_vec = np.atleast_1d(x_current)
-            p_vec = np.atleast_1d(p_optimal)
+            # nD characteristic tracing
+            x_departure = trace_characteristic_backward_nd(
+                x_current,
+                p_optimal,
+                dt,
+                dimension=self.dimension,
+                method=self.characteristic_solver,
+            )
 
-            if len(x_vec) != self.dimension or len(p_vec) != self.dimension:
-                raise ValueError(
-                    f"x_current and p_optimal must have {self.dimension} components, got {len(x_vec)} and {len(p_vec)}"
-                )
-
-            if self.characteristic_solver == "explicit_euler":
-                # Vector Euler: X(t-dt) = X(t) - P*dt
-                x_departure = x_vec - p_vec * dt
-            elif self.characteristic_solver == "rk2":
-                # Vector RK2 (midpoint method)
-                # For characteristic dX/dt = -P(X), assuming locally constant P
-                k1 = -p_vec
-                _x_mid = x_vec + 0.5 * dt * k1
-                # Could interpolate velocity at _x_mid for better accuracy
-                k2 = -p_vec
-                x_departure = x_vec + dt * k2
-            elif self.characteristic_solver == "rk4":
-                # Vector RK4 using scipy.solve_ivp
-                # More robust than hand-coded RK4, uses adaptive stepping
-                def velocity_field(t, x):
-                    # Characteristic equation: dX/dt = -P (constant velocity assumption)
-                    return -p_vec
-
-                # Integrate from t=0 to t=dt (forward in our coordinate system)
-                sol = solve_ivp(
-                    velocity_field,
-                    t_span=[0, dt],
-                    y0=x_vec,
-                    method="RK45",  # Adaptive 4th/5th order Runge-Kutta
-                    rtol=1e-6,
-                    atol=1e-8,
-                )
-                x_departure = sol.y[:, -1]
-            else:
-                x_departure = x_vec - p_vec * dt
-
-            # Apply boundary conditions (clamp to domain bounds)
-            for d in range(self.dimension):
-                x_departure[d] = np.clip(x_departure[d], self.grid.bounds[d][0], self.grid.bounds[d][1])
-
-            return x_departure
-
-    def _apply_boundary_conditions(self, x: float) -> float:
-        """Apply boundary conditions to ensure x is in valid domain."""
-        if hasattr(self.problem, "boundary_conditions"):
-            bc = getattr(self.problem, "boundary_conditions", None)
-            if bc is None:
-                return x
-            if hasattr(bc, "type") and bc.type == "periodic":
-                # Periodic boundary conditions
-                length = self.problem.xmax - self.problem.xmin
-                while x < self.problem.xmin:
-                    x += length
-                while x > self.problem.xmax:
-                    x -= length
-                return x
-
-        # Default: clamp to domain
-        return np.clip(x, self.problem.xmin, self.problem.xmax)
+            # Apply boundary conditions
+            return apply_boundary_conditions_nd(
+                x_departure,
+                bounds=self.grid.bounds,
+                bc_type=None,  # nD clamping only for now
+            )
 
     def _interpolate_value(self, U_values: np.ndarray, x_query: np.ndarray | float) -> float:
         """
