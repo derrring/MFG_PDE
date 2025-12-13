@@ -153,6 +153,8 @@ from .operators.projection import ProjectionRegistry
 
 # Unified geometry protocol
 from .protocol import (
+    # Adaptive geometry protocol (AMR capability marker)
+    AdaptiveGeometry,
     # Boundary-aware protocol (for unified BC handling)
     BoundaryAwareProtocol,
     BoundaryType,
@@ -160,6 +162,7 @@ from .protocol import (
     GeometryProtocol,
     GeometryType,
     detect_geometry_type,
+    is_adaptive,
     is_boundary_aware,
     is_geometry_compatible,
     validate_boundary_aware,
@@ -201,9 +204,12 @@ __all__ = [
     # Unified geometry protocol
     "GeometryProtocol",
     "GeometryType",
+    # Adaptive geometry protocol (AMR capability)
+    "AdaptiveGeometry",
     # Boundary-aware protocol
     "BoundaryAwareProtocol",
     "BoundaryType",
+    "is_adaptive",
     "is_boundary_aware",
     "validate_boundary_aware",
     # Geometry projection (Issue #257)

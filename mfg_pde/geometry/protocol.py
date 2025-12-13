@@ -244,6 +244,115 @@ BoundaryAwareProtocol = GeometryProtocol  # Deprecated alias
 # =============================================================================
 
 
+# =============================================================================
+# Adaptive Geometry Protocol
+# =============================================================================
+
+
+@runtime_checkable
+class AdaptiveGeometry(Protocol):
+    """
+    Protocol for geometries supporting runtime mesh adaptation (AMR).
+
+    This is an orthogonal capability marker - a geometry can implement both
+    a base geometry ABC (CartesianGrid, UnstructuredMesh) AND AdaptiveGeometry.
+
+    Use Cases:
+        - Adaptive mesh refinement (AMR) for error-driven refinement
+        - Multi-resolution simulations
+        - Local refinement near singularities or boundaries
+
+    Examples:
+        >>> # Check if geometry supports adaptation
+        >>> if isinstance(geometry, AdaptiveGeometry):
+        ...     geometry.adapt(solution_data)
+        ...     print(f"Refined to {geometry.num_leaf_cells} cells")
+
+        >>> # Type hint for solvers requiring AMR
+        >>> def solve_with_amr(geometry: CartesianGrid & AdaptiveGeometry):
+        ...     ...  # Python 3.12+ intersection type
+    """
+
+    def refine(self, criteria: object) -> int:
+        """
+        Refine cells/elements meeting refinement criteria.
+
+        Args:
+            criteria: Refinement criteria (error threshold, region, etc.)
+                     Specific type depends on implementation.
+
+        Returns:
+            Number of cells/elements refined.
+
+        Notes:
+            - For CartesianGrid: subdivides cells (interval bisection, quadtree split)
+            - For UnstructuredMesh: refines elements (red-green, bisection)
+        """
+        ...
+
+    def coarsen(self, criteria: object) -> int:
+        """
+        Coarsen cells/elements meeting coarsening criteria.
+
+        Args:
+            criteria: Coarsening criteria (error threshold, region, etc.)
+                     Specific type depends on implementation.
+
+        Returns:
+            Number of cells/elements coarsened.
+
+        Notes:
+            - May not be supported by all adaptive geometries
+            - Returns 0 if coarsening not implemented
+        """
+        ...
+
+    def adapt(self, solution_data: dict[str, object]) -> dict[str, int]:
+        """
+        Perform full adaptation cycle (refine + coarsen).
+
+        Args:
+            solution_data: Dictionary with solution arrays for error estimation.
+                          Typically contains 'u' (value function), 'm' (density).
+
+        Returns:
+            Dictionary with adaptation statistics:
+            {
+                'refined': int,   # Number of cells refined
+                'coarsened': int, # Number of cells coarsened
+                'total_cells': int,  # Final cell count
+            }
+
+        Notes:
+            This is the main entry point for adaptive solvers.
+        """
+        ...
+
+    @property
+    def max_refinement_level(self) -> int:
+        """
+        Maximum refinement level in the current mesh.
+
+        Returns:
+            Maximum level (0 = coarsest, higher = finer).
+        """
+        ...
+
+    @property
+    def num_leaf_cells(self) -> int:
+        """
+        Number of active (leaf) cells/elements.
+
+        Returns:
+            Count of cells at the finest local resolution (not subdivided).
+
+        Notes:
+            - For tree-based AMR: leaf nodes only
+            - For element-based AMR: active elements only
+        """
+        ...
+
+
 class BoundaryType(Enum):
     """Type of boundary geometry."""
 
@@ -252,6 +361,31 @@ class BoundaryType(Enum):
     FACE = "face"  # 2D boundary (3D domain faces)
     IMPLICIT = "implicit"  # SDF-defined boundary (any dimension)
     NODE = "node"  # Graph node boundary
+
+
+def is_adaptive(geometry: object) -> bool:
+    """
+    Check if a geometry supports adaptive mesh refinement (AMR).
+
+    This is equivalent to checking if the geometry implements AdaptiveGeometry.
+
+    Args:
+        geometry: Object to check
+
+    Returns:
+        True if object implements AdaptiveGeometry protocol, False otherwise
+
+    Examples:
+        >>> from mfg_pde.geometry import TensorProductGrid, is_adaptive
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> is_adaptive(grid)  # Regular grids are not adaptive
+        False
+
+        >>> # Future: AdaptiveCartesianGrid would return True
+        >>> # is_adaptive(AdaptiveCartesianGrid(...))
+        >>> # True
+    """
+    return isinstance(geometry, AdaptiveGeometry)
 
 
 def is_boundary_aware(geometry: object) -> bool:
