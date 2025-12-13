@@ -18,11 +18,31 @@ Adaptive mesh refinement (AMR) for MFG problems.
 This module provides AMR support for 1D, 2D, and 3D domains, enabling automatic
 grid refinement based on solution gradients and error estimation.
 
+Inheritance Hierarchy:
+    All AMR classes inherit directly from Geometry (base ABC), NOT from
+    CartesianGrid or UnstructuredMesh. This is because AMR classes refine
+    existing partitions with dynamic, non-uniform spacing rather than creating
+    grids/meshes with predetermined structure.
+
+    Geometry (base ABC)
+    ├── CartesianGrid (uniform structured grids - TensorProductGrid)
+    ├── UnstructuredMesh (FEM meshes created via Gmsh)
+    └── AMR classes (refine existing partitions):
+        ├── OneDimensionalAMRGrid (1D hierarchical intervals)
+        ├── QuadTreeAMRGrid (2D hierarchical quadrants)
+        ├── TriangularAMRMesh (2D triangular refinement)
+        └── TetrahedralAMRMesh (3D tetrahedral refinement)
+
+    Design rationale:
+    - CartesianGrid requires uniform spacing (dx, dy) - AMR has variable spacing
+    - UnstructuredMesh requires Gmsh mesh generation - AMR adapts existing meshes
+    - Future: Consider AdaptiveGeometry ABC if common AMR interface emerges
+
 Available classes:
   - Interval1D, OneDimensionalAMRGrid, OneDimensionalErrorEstimator (1D)
-  - QuadTreeNode, QuadTreeMesh, QuadTreeErrorEstimator (2D structured)
+  - QuadTreeNode, QuadTreeAMRGrid, GradientErrorEstimator (2D structured)
   - TriangleElement, TriangularAMRMesh, TriangularMeshErrorEstimator (2D triangular)
-  - TetrahedralElement, TetrahedralAMRMesh (3D)
+  - TetrahedronElement, TetrahedralAMRMesh, TetrahedralErrorEstimator (3D)
   - AMRRefinementCriteria (shared configuration)
 """
 
@@ -41,10 +61,26 @@ from .amr_1d import (
     create_1d_amr_mesh,
 )
 from .amr_quadtree_2d import (
+    # Deprecated aliases (will be removed in v1.0.0)
     AdaptiveMesh,
+    # Error estimators
     BaseErrorEstimator,
     GradientErrorEstimator,
+    # New names (v0.16.6+)
+    QuadTreeAMRGrid,
     QuadTreeNode,
+    create_amr_mesh,
+    create_quadtree_amr_grid,
+)
+from .amr_tetrahedral_3d import (
+    TetrahedralAMRMesh,
+    TetrahedralErrorEstimator,
+    TetrahedronElement,
+)
+from .amr_triangular_2d import (
+    TriangleElement,
+    TriangularAMRMesh,
+    TriangularMeshErrorEstimator,
 )
 
 __all__ = [
@@ -60,7 +96,19 @@ __all__ = [
     # 1D (deprecated aliases)
     "OneDimensionalAMRMesh",
     "create_1d_amr_mesh",
-    # 2D Quadtree
+    # 2D Quadtree (new names)
     "QuadTreeNode",
+    "QuadTreeAMRGrid",
+    "create_quadtree_amr_grid",
+    # 2D Quadtree (deprecated aliases)
     "AdaptiveMesh",
+    "create_amr_mesh",
+    # 2D Triangular
+    "TriangleElement",
+    "TriangularAMRMesh",
+    "TriangularMeshErrorEstimator",
+    # 3D Tetrahedral
+    "TetrahedronElement",
+    "TetrahedralAMRMesh",
+    "TetrahedralErrorEstimator",
 ]

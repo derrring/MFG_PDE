@@ -3,6 +3,10 @@ Tetrahedral Adaptive Mesh Refinement for 3D MFG Problems
 
 This module implements adaptive mesh refinement for tetrahedral meshes in 3D domains,
 enabling efficient solution of MFG problems with localized features or singularities.
+
+Updated: Issue #468 - Inherits from Geometry ABC (all AMR classes inherit
+    from Geometry directly since they refine existing partitions rather than
+    creating grids/meshes with predetermined structure).
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+from mfg_pde.geometry.base import Geometry
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
@@ -186,9 +191,20 @@ class TetrahedralErrorEstimator:
         return self._compute_element_volume(elem_idx) ** (1 / 3)
 
 
-class TetrahedralAMRMesh:
+class TetrahedralAMRMesh(Geometry):
     """
     Adaptive mesh refinement for tetrahedral meshes in 3D.
+
+    Inheritance:
+        Geometry: Base ABC for all geometries. AMR classes inherit from Geometry
+        directly (not UnstructuredMesh) because they refine existing partitions
+        rather than creating new meshes via Gmsh. UnstructuredMesh requires
+        `create_gmsh_geometry()` and `generate_mesh()` methods which AMR classes
+        don't use.
+
+    Protocol Compliance:
+        - GeometryProtocol: Via Geometry inheritance
+        - AdaptiveGeometry: Full implementation of AMR capability
     """
 
     def __init__(self, initial_mesh: MeshData, max_refinement_level: int = 5):
@@ -282,6 +298,37 @@ class TetrahedralAMRMesh:
             "spatial_discretization": None,  # AMR has variable element sizes
             "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
         }
+
+    # Geometry abstract method implementations
+    def get_bounds(self) -> tuple[NDArray, NDArray] | None:
+        """Get bounding box of the tetrahedral mesh."""
+        if not self.points:
+            return None
+        return (self.points.min(axis=0), self.points.max(axis=0))
+
+    def get_laplacian_operator(self):
+        """Return Laplacian operator for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_laplacian_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_gradient_operator(self):
+        """Return gradient operator for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_gradient_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_interpolator(self):
+        """Return interpolator for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_interpolator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_boundary_handler(self):
+        """Return boundary handler for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_boundary_handler() not yet implemented. AMR solver integration is experimental."
+        )
 
     def refine_mesh(
         self, solution: np.ndarray, refinement_fraction: float = 0.3, error_method: str = "gradient_recovery"

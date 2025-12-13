@@ -7,10 +7,9 @@ completing the geometry module architecture by providing consistent AMR
 support across all dimensions (1D, 2D structured, 2D triangular).
 
 Updated: Issue #466 - Renamed to OneDimensionalAMRGrid.
-
-Note: Cannot inherit from CartesianGrid ABC due to circular import:
-    amr_1d -> base -> meshes/__init__ -> mesh_1d -> base
-Uses duck typing for protocol compliance instead.
+Updated: Issue #468 - Now inherits from Geometry ABC (all AMR classes inherit
+    from Geometry directly since they refine existing partitions rather than
+    creating grids with predetermined spacing).
 """
 
 from __future__ import annotations
@@ -22,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.base import Geometry
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
@@ -122,7 +122,7 @@ class Interval1D:
         return left_child, right_child
 
 
-class OneDimensionalAMRGrid:
+class OneDimensionalAMRGrid(Geometry):
     """
     1D Adaptive Mesh Refinement Grid for MFG problems.
 
@@ -130,24 +130,26 @@ class OneDimensionalAMRGrid:
     maintaining consistency with 2D AMR interfaces while handling 1D-specific
     concerns like boundary conditions and conservative interpolation.
 
-    Design Note:
-        Cannot inherit from CartesianGrid ABC due to circular import in the
-        geometry module. Implements all CartesianGrid methods via duck typing
-        for protocol compliance.
+    Inheritance:
+        Geometry: Base ABC for all geometries. AMR classes inherit from Geometry
+        directly (not CartesianGrid) because they refine existing partitions
+        with dynamic, non-uniform spacing rather than creating grids with
+        predetermined uniform spacing.
 
     Protocol Compliance:
-        - GeometryProtocol: Full implementation (duck typing)
+        - GeometryProtocol: Via Geometry inheritance
         - AdaptiveGeometry: Full implementation of AMR capability
-        - CartesianGrid-compatible: All methods implemented
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid, OneDimensionalAMRGrid
         >>> from mfg_pde.geometry.protocol import AdaptiveGeometry, is_adaptive
+        >>> from mfg_pde.geometry.base import CartesianGrid
         >>>
         >>> domain = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
         >>> amr = OneDimensionalAMRGrid(domain, initial_num_intervals=10)
         >>>
-        >>> # Protocol checks
+        >>> # Type checks
+        >>> isinstance(amr, CartesianGrid)  # True
         >>> isinstance(amr, AdaptiveGeometry)  # True
         >>> is_adaptive(amr)  # True
     """

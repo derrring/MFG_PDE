@@ -4,6 +4,10 @@ Triangular AMR Integration with Existing MFG_PDE Geometry Infrastructure
 
 This module extends the AMR capabilities to work with triangular meshes,
 leveraging the existing MeshData and geometry infrastructure.
+
+Updated: Issue #468 - Inherits from Geometry ABC (all AMR classes inherit
+    from Geometry directly since they refine existing partitions rather than
+    creating grids/meshes with predetermined structure).
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.base import Geometry
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 from mfg_pde.geometry.protocol import GeometryType
 
@@ -146,12 +151,27 @@ class TriangleElement:
         return a >= 0 and b >= 0 and c >= 0
 
 
-class TriangularAMRMesh:
+class TriangularAMRMesh(Geometry):
     """
     Triangular AMR mesh integrated with existing MFG_PDE geometry infrastructure.
 
     This class extends AMR capabilities to work with triangular meshes generated
     by the existing Gmsh → Meshio → PyVista pipeline.
+
+    Inheritance:
+        Geometry: Base ABC for all geometries. AMR classes inherit from Geometry
+        directly (not UnstructuredMesh) because they refine existing partitions
+        rather than creating new meshes via Gmsh. UnstructuredMesh requires
+        `create_gmsh_geometry()` and `generate_mesh()` methods which AMR classes
+        don't use.
+
+    Protocol Compliance:
+        - GeometryProtocol: Via Geometry inheritance
+        - AdaptiveGeometry: Full implementation of AMR capability
+
+    Note:
+        Inherits from Geometry (not UnstructuredMesh) because this class
+        adapts existing meshes rather than creating them via Gmsh.
     """
 
     def __init__(
@@ -258,6 +278,38 @@ class TriangularAMRMesh:
             "spatial_discretization": None,  # AMR has variable element sizes
             "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
         }
+
+    # Geometry abstract method implementations
+    def get_bounds(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """Get bounding box of the triangular mesh."""
+        if not self.vertices:
+            return None
+        vertices_array = np.array(list(self.vertices.values()))
+        return (vertices_array.min(axis=0), vertices_array.max(axis=0))
+
+    def get_laplacian_operator(self):
+        """Return Laplacian operator for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_laplacian_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_gradient_operator(self):
+        """Return gradient operator for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_gradient_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_interpolator(self):
+        """Return interpolator for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_interpolator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_boundary_handler(self):
+        """Return boundary handler for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_boundary_handler() not yet implemented. AMR solver integration is experimental."
+        )
 
     def refine_triangle(self, triangle_id: int, strategy: str = "red") -> list[int]:
         """

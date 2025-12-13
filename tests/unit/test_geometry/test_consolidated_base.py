@@ -466,12 +466,21 @@ class TestOneDimensionalAMRGrid:
     """Test OneDimensionalAMRGrid protocol compliance (Issue #460)."""
 
     def test_amr_1d_is_adaptive(self):
-        """OneDimensionalAMRGrid implements AdaptiveGeometry."""
+        """OneDimensionalAMRGrid implements AdaptiveGeometry and inherits Geometry.
+
+        Note: AMR classes inherit from Geometry directly (not CartesianGrid)
+        because they refine existing partitions with dynamic, non-uniform spacing.
+        """
         domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
         amr = OneDimensionalAMRGrid(domain, initial_num_intervals=10)
 
+        # AdaptiveGeometry protocol
         assert isinstance(amr, AdaptiveGeometry)
         assert is_adaptive(amr)
+
+        # Geometry inheritance (Issue #468 - changed from CartesianGrid to Geometry)
+        assert isinstance(amr, Geometry)
+        assert not isinstance(amr, CartesianGrid)  # AMR classes don't inherit CartesianGrid
 
     def test_amr_1d_geometry_properties(self):
         """OneDimensionalAMRGrid has required geometry properties."""
