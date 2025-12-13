@@ -260,19 +260,23 @@ class GradientErrorEstimator(BaseErrorEstimator):
         return 10, 10
 
 
-class AdaptiveMesh(CartesianGrid):
+class QuadTreeAMRGrid(CartesianGrid):
     """
-    Adaptive mesh refinement system for MFG problems.
+    Quadtree-based adaptive mesh refinement grid for 2D MFG problems.
 
-    This class manages a quadtree-based adaptive mesh with automatic
+    This class manages a quadtree-based adaptive grid with automatic
     refinement and coarsening based on solution error estimates.
 
     Inheritance:
-        CartesianGrid: Provides structured grid interface
+        CartesianGrid: Provides structured grid interface (hierarchical cells
+        maintain grid-like properties with dx, dy spacing)
 
     Protocol Compliance:
         - GeometryProtocol: Via CartesianGrid inheritance
         - AdaptiveGeometry: Full implementation of AMR capability
+
+    .. versionadded:: 0.16.6
+        Renamed from ``AdaptiveMesh`` for consistency with other AMR classes.
     """
 
     def __init__(
@@ -376,6 +380,62 @@ class AdaptiveMesh(CartesianGrid):
             "spatial_discretization": None,  # AMR has variable cell sizes
             "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
         }
+
+    # CartesianGrid abstract method implementations
+    def get_bounds(self) -> tuple[NDArray, NDArray]:
+        """Get bounding box of the quadtree domain."""
+        return (
+            np.array([self.x_min, self.y_min]),
+            np.array([self.x_max, self.y_max]),
+        )
+
+    def get_grid_spacing(self) -> list[float]:
+        """
+        Get representative grid spacing.
+
+        For AMR grids, returns the finest cell spacing.
+        """
+        if not self.leaf_nodes:
+            # Initial spacing before refinement
+            return [
+                (self.x_max - self.x_min) / self.initial_resolution[0],
+                (self.y_max - self.y_min) / self.initial_resolution[1],
+            ]
+        min_dx = min(node.dx for node in self.leaf_nodes)
+        min_dy = min(node.dy for node in self.leaf_nodes)
+        return [min_dx, min_dy]
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """
+        Get effective grid shape.
+
+        For AMR grids, returns (num_leaf_nodes,) since the grid is irregular.
+        """
+        return (len(self.leaf_nodes),)
+
+    def get_laplacian_operator(self) -> Any:
+        """Return Laplacian operator for quadtree AMR grid."""
+        raise NotImplementedError(
+            "QuadTreeAMRGrid.get_laplacian_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_gradient_operator(self) -> Any:
+        """Return gradient operator for quadtree AMR grid."""
+        raise NotImplementedError(
+            "QuadTreeAMRGrid.get_gradient_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_interpolator(self) -> Any:
+        """Return interpolator for quadtree AMR grid."""
+        raise NotImplementedError(
+            "QuadTreeAMRGrid.get_interpolator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_boundary_handler(self) -> Any:
+        """Return boundary handler for quadtree AMR grid."""
+        raise NotImplementedError(
+            "QuadTreeAMRGrid.get_boundary_handler() not yet implemented. AMR solver integration is experimental."
+        )
 
     def refine_mesh(self, solution_data: dict[str, NDArray]) -> int:
         """
@@ -631,14 +691,14 @@ if JAX_AVAILABLE:
         return jnp.maximum(grad_U, grad_M)
 
 
-def create_amr_mesh(
+def create_quadtree_amr_grid(
     domain_bounds: tuple[float, float, float, float],
     error_threshold: float = 1e-4,
     max_levels: int = 5,
     backend: str = "auto",
-) -> AdaptiveMesh:
+) -> QuadTreeAMRGrid:
     """
-    Factory function to create an adaptive mesh.
+    Factory function to create a quadtree AMR grid.
 
     Args:
         domain_bounds: (x_min, x_max, y_min, y_max)
@@ -647,7 +707,10 @@ def create_amr_mesh(
         backend: Backend type ("numpy", "jax", or "auto")
 
     Returns:
-        Configured AdaptiveMesh instance
+        Configured QuadTreeAMRGrid instance
+
+    .. versionadded:: 0.16.6
+        Renamed from ``create_amr_mesh`` for consistency.
     """
     from mfg_pde.backends import create_backend
 
@@ -660,9 +723,23 @@ def create_amr_mesh(
     # Create error estimator
     error_estimator = GradientErrorEstimator(backend_instance)
 
-    return AdaptiveMesh(
+    return QuadTreeAMRGrid(
         domain_bounds=domain_bounds,
         refinement_criteria=criteria,
         error_estimator=error_estimator,
         backend=backend_instance,
     )
+
+
+# Backward compatibility aliases (deprecated, will be removed in v1.0.0)
+AdaptiveMesh = QuadTreeAMRGrid
+"""
+.. deprecated:: 0.16.6
+    Use :class:`QuadTreeAMRGrid` instead. Will be removed in v1.0.0.
+"""
+
+create_amr_mesh = create_quadtree_amr_grid
+"""
+.. deprecated:: 0.16.6
+    Use :func:`create_quadtree_amr_grid` instead. Will be removed in v1.0.0.
+"""

@@ -271,6 +271,38 @@ class TriangularAMRMesh(Geometry):
             "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
         }
 
+    # Geometry abstract method implementations
+    def get_bounds(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """Get bounding box of the triangular mesh."""
+        if not self.vertices:
+            return None
+        vertices_array = np.array(list(self.vertices.values()))
+        return (vertices_array.min(axis=0), vertices_array.max(axis=0))
+
+    def get_laplacian_operator(self):
+        """Return Laplacian operator for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_laplacian_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_gradient_operator(self):
+        """Return gradient operator for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_gradient_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_interpolator(self):
+        """Return interpolator for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_interpolator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_boundary_handler(self):
+        """Return boundary handler for triangular AMR mesh."""
+        raise NotImplementedError(
+            "TriangularAMRMesh.get_boundary_handler() not yet implemented. AMR solver integration is experimental."
+        )
+
     def refine_triangle(self, triangle_id: int, strategy: str = "red") -> list[int]:
         """
         Refine a triangle using specified strategy.

@@ -295,6 +295,37 @@ class TetrahedralAMRMesh(Geometry):
             "legacy_1d_attrs": None,  # AMR doesn't support legacy 1D attributes
         }
 
+    # Geometry abstract method implementations
+    def get_bounds(self) -> tuple[NDArray, NDArray] | None:
+        """Get bounding box of the tetrahedral mesh."""
+        if not self.points:
+            return None
+        return (self.points.min(axis=0), self.points.max(axis=0))
+
+    def get_laplacian_operator(self):
+        """Return Laplacian operator for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_laplacian_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_gradient_operator(self):
+        """Return gradient operator for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_gradient_operator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_interpolator(self):
+        """Return interpolator for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_interpolator() not yet implemented. AMR solver integration is experimental."
+        )
+
+    def get_boundary_handler(self):
+        """Return boundary handler for tetrahedral AMR mesh."""
+        raise NotImplementedError(
+            "TetrahedralAMRMesh.get_boundary_handler() not yet implemented. AMR solver integration is experimental."
+        )
+
     def refine_mesh(
         self, solution: np.ndarray, refinement_fraction: float = 0.3, error_method: str = "gradient_recovery"
     ) -> bool:
