@@ -74,7 +74,7 @@ This document describes the relationship between geometry, domain, and boundary 
 | Network | `BaseNetworkGeometry`, `GridNetwork` | `graph/network_geometry.py` | Graph MFG, traffic networks |
 | Maze Generation | `MazeGenerator`, `HybridMazeGenerator` | `graph/maze_*.py` | Maze-based MFG problems |
 | Unstructured Mesh | `Mesh1D`, `Mesh2D`, `Mesh3D` | `meshes/mesh_{1d,2d,3d}.py` | FEM, complex geometries |
-| AMR | `OneDimensionalAMRGrid`, `TriangularAMRMesh` | `amr/` | Adaptive refinement |
+| AMR | `AdaptiveGeometry` (Protocol) | `amr/` | Future external library integration (pyAMReX, etc.) |
 
 ### 2.2 GeometryProtocol (`protocol.py`)
 
@@ -372,11 +372,7 @@ mfg_pde/geometry/
 │   └── mesh_3d.py           # 3D unstructured mesh
 │
 ├── amr/
-│   ├── __init__.py          # AMR exports
-│   ├── amr_1d.py            # 1D interval refinement
-│   ├── amr_quadtree_2d.py   # 2D quadtree AMR
-│   ├── amr_triangular_2d.py # 2D triangular AMR
-│   └── amr_tetrahedral_3d.py # 3D tetrahedral AMR
+│   └── __init__.py          # AMR stub for future external library integration (pyAMReX, etc.)
 │
 └── operators/
     ├── __init__.py          # Operator exports

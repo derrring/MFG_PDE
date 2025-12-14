@@ -94,15 +94,15 @@ reinforcement = [
     "gymnasium>=0.29",      # RL environments (successor to gym)
     "stable-baselines3>=2.0", # RL algorithms
     "tensorboard>=2.13",    # Training logs
-    "wandb",                # Experiment tracking
+    "wandb",                # Experiment tracking (planned)
 ]
 
 # Optimization approaches
 optimization = [
-    "cvxpy>=1.4",           # Convex optimization
-    "mosek",                # Commercial solver (optional)
-    "osqp>=0.6",            # OSQP solver
-    "clarabel>=0.5",        # Conic optimization
+    "cvxpy>=1.4",           # Convex optimization (planned)
+    "mosek",                # Commercial solver (planned, optional)
+    "osqp>=0.6",            # OSQP solver (used in qp_utils.py)
+    "clarabel>=0.5",        # Conic optimization (planned)
 ]
 
 # Configuration management
