@@ -94,8 +94,10 @@ def test_mfg_problem_default_initialization():
     assert problem.Nt == 51
     assert problem.dt == pytest.approx(1.0 / 51)
 
-    # Physical parameters
-    assert problem.sigma == 1.0
+    # Physical parameters (None → 0 for diffusion/drift)
+    assert problem.sigma == 0.0
+    assert problem.diffusion_field == 0.0
+    assert problem.drift_field == 0.0
     assert problem.coupling_coefficient == 0.5
 
     # Custom components
@@ -601,3 +603,209 @@ def test_dual_geometry_legacy_mode_compatibility():
     assert problem.fp_geometry is not None
     assert problem.hjb_geometry is problem.fp_geometry  # Unified mode
     assert problem.geometry_projector is None  # No projector for unified mode
+
+
+# ===================================================================
+# Test DiffusionField Support (Feature: diffusion-field-support)
+# ===================================================================
+
+
+@pytest.mark.unit
+def test_diffusion_field_none():
+    """Test MFGProblem with no diffusion (deterministic). None → 0."""
+    problem = MFGProblem(diffusion=None)
+
+    assert problem.diffusion_field == 0.0
+    assert problem.sigma == 0.0
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_diffusion_field_scalar():
+    """Test MFGProblem with scalar diffusion coefficient."""
+    problem = MFGProblem(diffusion=0.5)
+
+    assert problem.sigma == 0.5
+    assert problem.diffusion_field == 0.5
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_diffusion_field_array():
+    """Test MFGProblem with array diffusion coefficient (spatially varying)."""
+    # Create a spatially varying diffusion array
+    sigma_array = np.linspace(0.1, 1.0, 52)  # Nx+1 = 52 for Nx=51
+
+    problem = MFGProblem(sigma=sigma_array)
+
+    # Array should be stored in diffusion_field
+    assert isinstance(problem.diffusion_field, np.ndarray)
+    assert np.array_equal(problem.diffusion_field, sigma_array)
+
+    # Scalar sigma should be the mean for backward compatibility
+    assert problem.sigma == pytest.approx(np.mean(sigma_array))
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_diffusion_field_callable():
+    """Test MFGProblem with callable diffusion coefficient (state-dependent)."""
+
+    def sigma_func(t, x, m):
+        """State-dependent diffusion: higher diffusion in high-density regions."""
+        return 0.1 + 0.5 * m
+
+    problem = MFGProblem(sigma=sigma_func)
+
+    # Callable should be stored in diffusion_field
+    assert callable(problem.diffusion_field)
+    assert problem.diffusion_field is sigma_func
+
+    # Scalar sigma should default to 1.0 for callable
+    assert problem.sigma == 1.0
+    assert problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_diffusion_primary_parameter():
+    """Test that 'diffusion' is the primary parameter."""
+    problem = MFGProblem(diffusion=0.3)
+
+    assert problem.sigma == 0.3
+    assert problem.diffusion_field == 0.3
+
+
+@pytest.mark.unit
+def test_sigma_deprecated_alias():
+    """Test that 'sigma' is deprecated alias for 'diffusion'."""
+    import warnings
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        problem = MFGProblem(sigma=0.4)
+
+        # Check deprecation warning was raised
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+        assert "sigma" in str(deprecation_warnings[0].message)
+        assert "diffusion" in str(deprecation_warnings[0].message)
+
+    # Value should still work
+    assert problem.sigma == 0.4
+    assert problem.diffusion_field == 0.4
+
+
+@pytest.mark.unit
+def test_drift_field_none():
+    """Test MFGProblem with no drift field (default). None → 0."""
+    problem = MFGProblem()
+
+    assert problem.drift_field == 0.0
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_drift_field_array():
+    """Test MFGProblem with array drift field."""
+    # Create a drift field array
+    drift_array = np.ones(52) * 0.1  # Constant drift
+
+    problem = MFGProblem(drift=drift_array)
+
+    assert isinstance(problem.drift_field, np.ndarray)
+    assert np.array_equal(problem.drift_field, drift_array)
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_drift_field_scalar():
+    """Test MFGProblem with scalar drift (constant drift)."""
+    problem = MFGProblem(drift=0.05)
+
+    assert problem.drift_field == 0.05
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_drift_field_callable():
+    """Test MFGProblem with callable drift field."""
+
+    def drift_func(t, x, m):
+        """Drift towards high-density regions."""
+        return -0.1 * x
+
+    problem = MFGProblem(drift=drift_func)
+
+    assert callable(problem.drift_field)
+    assert problem.drift_field is drift_func
+    assert problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_get_diffusion_coefficient_field():
+    """Test get_diffusion_coefficient_field returns CoefficientField wrapper."""
+    problem = MFGProblem(sigma=0.5)
+
+    coeff_field = problem.get_diffusion_coefficient_field()
+
+    # Should return a CoefficientField instance
+    from mfg_pde.utils.pde_coefficients import CoefficientField
+
+    assert isinstance(coeff_field, CoefficientField)
+    assert coeff_field.name == "diffusion"
+
+
+@pytest.mark.unit
+def test_get_drift_coefficient_field():
+    """Test get_drift_coefficient_field returns CoefficientField wrapper."""
+    drift_array = np.ones(52) * 0.1
+    problem = MFGProblem(drift=drift_array)
+
+    coeff_field = problem.get_drift_coefficient_field()
+
+    # Should return a CoefficientField instance
+    from mfg_pde.utils.pde_coefficients import CoefficientField
+
+    assert isinstance(coeff_field, CoefficientField)
+    assert coeff_field.name == "drift"
+
+
+@pytest.mark.unit
+def test_has_state_dependent_coefficients_mixed():
+    """Test has_state_dependent_coefficients with mixed coefficient types."""
+
+    def sigma_func(t, x, m):
+        return 0.1 + 0.5 * m
+
+    # Scalar drift, callable diffusion
+    problem1 = MFGProblem(sigma=sigma_func, drift=np.zeros(52))
+    assert problem1.has_state_dependent_coefficients()
+
+    # Callable drift, scalar diffusion
+    def drift_func(t, x, m):
+        return -0.1 * x
+
+    problem2 = MFGProblem(sigma=0.5, drift=drift_func)
+    assert problem2.has_state_dependent_coefficients()
+
+    # Both scalar
+    problem3 = MFGProblem(sigma=0.5, drift=np.zeros(52))
+    assert not problem3.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_diffusion_field_with_geometry():
+    """Test DiffusionField support works with geometry-based API."""
+    from mfg_pde.geometry import TensorProductGrid
+
+    grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+
+    def sigma_func(t, x, m):
+        """2D state-dependent diffusion."""
+        return 0.1 + 0.1 * np.sum(x**2)
+
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=sigma_func)
+
+    assert callable(problem.diffusion_field)
+    assert problem.has_state_dependent_coefficients()
+    assert problem.dimension == 2
