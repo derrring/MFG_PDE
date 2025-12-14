@@ -94,8 +94,10 @@ def test_mfg_problem_default_initialization():
     assert problem.Nt == 51
     assert problem.dt == pytest.approx(1.0 / 51)
 
-    # Physical parameters
-    assert problem.sigma == 1.0
+    # Physical parameters (None → 0 for diffusion/drift)
+    assert problem.sigma == 0.0
+    assert problem.diffusion_field == 0.0
+    assert problem.drift_field == 0.0
     assert problem.coupling_coefficient == 0.5
 
     # Custom components
@@ -609,11 +611,20 @@ def test_dual_geometry_legacy_mode_compatibility():
 
 
 @pytest.mark.unit
-def test_diffusion_field_scalar():
-    """Test MFGProblem with scalar diffusion coefficient (default behavior)."""
-    problem = MFGProblem(sigma=0.5)
+def test_diffusion_field_none():
+    """Test MFGProblem with no diffusion (deterministic). None → 0."""
+    problem = MFGProblem(diffusion=None)
 
-    # Scalar sigma should be stored as-is
+    assert problem.diffusion_field == 0.0
+    assert problem.sigma == 0.0
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
+def test_diffusion_field_scalar():
+    """Test MFGProblem with scalar diffusion coefficient."""
+    problem = MFGProblem(diffusion=0.5)
+
     assert problem.sigma == 0.5
     assert problem.diffusion_field == 0.5
     assert not problem.has_state_dependent_coefficients()
@@ -686,10 +697,10 @@ def test_sigma_deprecated_alias():
 
 @pytest.mark.unit
 def test_drift_field_none():
-    """Test MFGProblem with no drift field (default)."""
+    """Test MFGProblem with no drift field (default). None → 0."""
     problem = MFGProblem()
 
-    assert problem.drift_field is None
+    assert problem.drift_field == 0.0
     assert not problem.has_state_dependent_coefficients()
 
 

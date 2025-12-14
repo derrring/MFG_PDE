@@ -164,14 +164,16 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                         Note: Both hjb_geometry and fp_geometry must be specified together
             network: NetworkGraph for network MFG problems
             T, Nt, time_domain: Time domain parameters (T, Nt) or tuple (T, Nt)
-            diffusion: Diffusion coefficient (primary parameter).
-                Supports multiple forms:
+            diffusion: Diffusion coefficient (primary parameter). None → 0 (deterministic).
+                Supports:
+                - None: No diffusion (deterministic dynamics)
                 - float: Constant isotropic diffusion σ²
                 - ndarray: Spatially/temporally varying diffusion
                 - Callable: State-dependent σ(t, x, m) -> float | ndarray
             sigma: Legacy alias for diffusion (deprecated, use diffusion instead).
-            drift: Optional drift field α(t, x, m) for FP equation.
+            drift: Drift field α(t, x, m) for FP equation. None → 0 (no drift).
                 Supports:
+                - None: No drift (no advection)
                 - float: Constant drift (same in all directions)
                 - ndarray: Precomputed drift array
                 - Callable: State-dependent α(t, x, m) -> float | ndarray
@@ -275,13 +277,17 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             )
             diffusion = sigma
 
-        # Set defaults for T, Nt, diffusion if not provided
+        # Set defaults for T, Nt if not provided
         if T is None:
             T = 1.0
         if Nt is None:
             Nt = 51
+
+        # Convert None to 0 for diffusion and drift (None = no diffusion/drift)
         if diffusion is None:
-            diffusion = 1.0
+            diffusion = 0.0
+        if drift is None:
+            drift = 0.0
 
         # Store the full diffusion field (may be float, array, or callable)
         # self.sigma will be the scalar/default for backward compatibility
