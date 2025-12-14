@@ -134,7 +134,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Physical parameters - support DiffusionField (float, array, or callable)
         diffusion: float | NDArray[np.floating] | Callable | None = None,  # Primary parameter
         sigma: float | NDArray[np.floating] | Callable | None = None,  # Legacy alias (deprecated)
-        drift_field: NDArray[np.floating] | Callable | None = None,  # Optional drift field
+        drift: NDArray[np.floating] | Callable | None = None,  # Optional drift field
         coupling_coefficient: float = 0.5,
         # Advanced
         components: MFGComponents | None = None,
@@ -170,7 +170,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 - ndarray: Spatially/temporally varying diffusion
                 - Callable: State-dependent σ(t, x, m) -> float | ndarray
             sigma: Legacy alias for diffusion (deprecated, use diffusion instead).
-            drift_field: Optional drift field α(t, x, m) for FP equation.
+            drift: Optional drift field α(t, x, m) for FP equation.
                 Supports:
                 - ndarray: Precomputed drift array
                 - Callable: State-dependent α(t, x, m) -> ndarray
@@ -251,7 +251,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 return -np.stack(grad_m, axis=-1)  # Move down gradient
             problem = MFGProblem(
                 geometry=domain,
-                drift_field=crowd_avoidance_drift,
+                drift=crowd_avoidance_drift,
                 time_domain=(1.0, 50)
             )
         """
@@ -286,7 +286,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # self.sigma will be the scalar/default for backward compatibility
         # self.diffusion_field stores the full field for advanced solvers
         self.diffusion_field = diffusion
-        self.drift_field = drift_field
+        self.drift_field = drift
 
         # Extract scalar sigma for backward compatibility
         # If diffusion is callable or array, use a representative scalar value

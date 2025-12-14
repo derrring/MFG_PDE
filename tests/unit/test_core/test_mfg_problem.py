@@ -699,7 +699,7 @@ def test_drift_field_array():
     # Create a drift field array
     drift_array = np.ones(52) * 0.1  # Constant drift
 
-    problem = MFGProblem(drift_field=drift_array)
+    problem = MFGProblem(drift=drift_array)
 
     assert isinstance(problem.drift_field, np.ndarray)
     assert np.array_equal(problem.drift_field, drift_array)
@@ -714,7 +714,7 @@ def test_drift_field_callable():
         """Drift towards high-density regions."""
         return -0.1 * x
 
-    problem = MFGProblem(drift_field=drift_func)
+    problem = MFGProblem(drift=drift_func)
 
     assert callable(problem.drift_field)
     assert problem.drift_field is drift_func
@@ -739,7 +739,7 @@ def test_get_diffusion_coefficient_field():
 def test_get_drift_coefficient_field():
     """Test get_drift_coefficient_field returns CoefficientField wrapper."""
     drift_array = np.ones(52) * 0.1
-    problem = MFGProblem(drift_field=drift_array)
+    problem = MFGProblem(drift=drift_array)
 
     coeff_field = problem.get_drift_coefficient_field()
 
@@ -758,18 +758,18 @@ def test_has_state_dependent_coefficients_mixed():
         return 0.1 + 0.5 * m
 
     # Scalar drift, callable diffusion
-    problem1 = MFGProblem(sigma=sigma_func, drift_field=np.zeros(52))
+    problem1 = MFGProblem(sigma=sigma_func, drift=np.zeros(52))
     assert problem1.has_state_dependent_coefficients()
 
     # Callable drift, scalar diffusion
     def drift_func(t, x, m):
         return -0.1 * x
 
-    problem2 = MFGProblem(sigma=0.5, drift_field=drift_func)
+    problem2 = MFGProblem(sigma=0.5, drift=drift_func)
     assert problem2.has_state_dependent_coefficients()
 
     # Both scalar
-    problem3 = MFGProblem(sigma=0.5, drift_field=np.zeros(52))
+    problem3 = MFGProblem(sigma=0.5, drift=np.zeros(52))
     assert not problem3.has_state_dependent_coefficients()
 
 
