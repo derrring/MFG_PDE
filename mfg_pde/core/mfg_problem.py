@@ -14,9 +14,12 @@ from mfg_pde.core.mfg_components import (
 # Use unified nD-capable BoundaryConditions from conditions.py
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import NDArray
 
     from mfg_pde.geometry.protocol import GeometryProtocol
+    from mfg_pde.types.pde_coefficients import DiffusionField, DriftField
 
 
 # ============================================================================
@@ -52,6 +55,14 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     geometry: GeometryProtocol
     hjb_geometry: GeometryProtocol | None
     fp_geometry: GeometryProtocol | None
+
+    # Type annotations for PDE coefficient fields
+    # sigma: float is the scalar diffusion for backward compatibility
+    # diffusion_field: DiffusionField stores the full field (float, array, or callable)
+    # drift_field: DriftField stores optional drift (array or callable)
+    sigma: float
+    diffusion_field: DiffusionField
+    drift_field: DriftField
 
     @staticmethod
     def _normalize_to_array(
@@ -120,9 +131,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         T: float | None = None,
         Nt: int | None = None,
         time_domain: tuple[float, int] | None = None,  # Alternative to T/Nt
-        # Physical parameters
-        sigma: float | None = None,
-        diffusion: float | None = None,  # Alias for sigma
+        # Physical parameters - support DiffusionField (float, array, or callable)
+        sigma: float | NDArray[np.floating] | Callable | None = None,
+        diffusion: float | NDArray[np.floating] | Callable | None = None,  # Alias for sigma
+        drift_field: NDArray[np.floating] | Callable | None = None,  # Optional drift field
         coupling_coefficient: float = 0.5,
         # Advanced
         components: MFGComponents | None = None,
@@ -152,7 +164,15 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                         Note: Both hjb_geometry and fp_geometry must be specified together
             network: NetworkGraph for network MFG problems
             T, Nt, time_domain: Time domain parameters (T, Nt) or tuple (T, Nt)
-            sigma, diffusion: Diffusion coefficient (sigma is standard name)
+            sigma, diffusion: Diffusion coefficient (sigma is standard name).
+                Supports multiple forms:
+                - float: Constant isotropic diffusion σ²
+                - ndarray: Spatially/temporally varying diffusion
+                - Callable: State-dependent σ(t, x, m) -> float | ndarray
+            drift_field: Optional drift field α(t, x, m) for FP equation.
+                Supports:
+                - ndarray: Precomputed drift array
+                - Callable: State-dependent α(t, x, m) -> ndarray
             coupling_coefficient: Control cost coefficient
             components: Optional MFGComponents for custom problem definition
             suppress_warnings: Suppress computational feasibility warnings
@@ -205,6 +225,34 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 diffusion=0.1
             )
             # Automatically creates geometry_projector for mapping between geometries
+
+            # Advanced: State-dependent diffusion (callable)
+            def density_dependent_diffusion(t, x, m):
+                return 0.1 * (1 + m)  # Higher diffusion in dense regions
+            problem = MFGProblem(
+                geometry=domain,
+                sigma=density_dependent_diffusion,
+                time_domain=(1.0, 50)
+            )
+
+            # Advanced: Spatially varying diffusion (array)
+            sigma_array = np.ones((51, 51)) * 0.1  # Base diffusion
+            sigma_array[20:30, 20:30] = 0.5  # Higher diffusion in center region
+            problem = MFGProblem(
+                geometry=domain,
+                sigma=sigma_array,
+                time_domain=(1.0, 50)
+            )
+
+            # Advanced: Custom drift field
+            def crowd_avoidance_drift(t, x, m):
+                grad_m = np.gradient(m)  # Density gradient
+                return -np.stack(grad_m, axis=-1)  # Move down gradient
+            problem = MFGProblem(
+                geometry=domain,
+                drift_field=crowd_avoidance_drift,
+                time_domain=(1.0, 50)
+            )
         """
         import warnings
 
@@ -226,6 +274,25 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             Nt = 51
         if sigma is None:
             sigma = 1.0
+
+        # Store the full diffusion field (may be float, array, or callable)
+        # self.sigma will be the scalar/default for backward compatibility
+        # self.diffusion_field stores the full field for advanced solvers
+        self.diffusion_field = sigma
+        self.drift_field = drift_field
+
+        # Extract scalar sigma for backward compatibility
+        # If sigma is callable or array, use a representative scalar value
+        if callable(sigma):
+            # Callable: store 1.0 as default, solvers should use diffusion_field
+            sigma_scalar = 1.0
+        elif isinstance(sigma, np.ndarray):
+            # Array: use mean value as representative scalar
+            sigma_scalar = float(np.mean(sigma))
+        else:
+            # Scalar: use directly
+            sigma_scalar = float(sigma)
+        sigma = sigma_scalar
 
         # Normalize spatial parameters to arrays (with deprecation warnings for scalars)
         # This enables dimension-agnostic code while maintaining backward compatibility
@@ -1198,6 +1265,83 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         if self.geometry is not None:
             return self.geometry.get_spatial_grid()
         return None
+
+    # =========================================================================
+    # PDE Coefficient Field Helpers
+    # =========================================================================
+
+    def get_diffusion_coefficient_field(self) -> Any:
+        """
+        Get a CoefficientField wrapper for the diffusion coefficient.
+
+        Returns a CoefficientField that handles scalar, array, and callable
+        diffusion coefficients uniformly. Use this in solvers instead of
+        directly accessing self.sigma.
+
+        Returns:
+            CoefficientField wrapping self.diffusion_field with self.sigma as default
+
+        Example:
+            >>> diffusion = problem.get_diffusion_coefficient_field()
+            >>> sigma_at_t = diffusion.evaluate_at(
+            ...     timestep_idx=5,
+            ...     grid=x_coords,
+            ...     density=m,
+            ...     dt=problem.dt
+            ... )
+        """
+        from mfg_pde.utils.pde_coefficients import CoefficientField
+
+        return CoefficientField(
+            field=self.diffusion_field,
+            default_value=self.sigma,
+            field_name="diffusion",
+            dimension=self.dimension,
+        )
+
+    def get_drift_coefficient_field(self) -> Any:
+        """
+        Get a CoefficientField wrapper for the drift field.
+
+        Returns a CoefficientField that handles array and callable drift
+        coefficients uniformly. Use this in solvers instead of directly
+        accessing self.drift_field.
+
+        Returns:
+            CoefficientField wrapping self.drift_field (default is zero drift)
+
+        Example:
+            >>> drift = problem.get_drift_coefficient_field()
+            >>> alpha_at_t = drift.evaluate_at(
+            ...     timestep_idx=5,
+            ...     grid=x_coords,
+            ...     density=m,
+            ...     dt=problem.dt
+            ... )
+        """
+        from mfg_pde.utils.pde_coefficients import CoefficientField
+
+        # Default drift is zero
+        default_drift = 0.0
+
+        return CoefficientField(
+            field=self.drift_field,
+            default_value=default_drift,
+            field_name="drift",
+            dimension=self.dimension,
+        )
+
+    def has_state_dependent_coefficients(self) -> bool:
+        """
+        Check if problem has state-dependent (callable) PDE coefficients.
+
+        Solvers may need to handle callable coefficients differently from
+        constant/precomputed ones (e.g., re-evaluate at each timestep).
+
+        Returns:
+            True if diffusion_field or drift_field is callable
+        """
+        return callable(self.diffusion_field) or callable(self.drift_field)
 
     def __repr__(self) -> str:
         """
