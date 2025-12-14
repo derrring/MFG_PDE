@@ -32,7 +32,7 @@ MFG_PDE/
 │   ├── visualization/        # Plotting and visualization
 │   ├── backends/             # Computational backends (NumPy/JAX/Numba)
 │   ├── workflow/             # Experiment management
-│   ├── accelerated/          # High-performance implementations
+│   ├── hooks/                # Solver hooks and callbacks
 │   └── meta/                 # Meta-programming framework
 │
 ├── examples/                 # Demonstration code

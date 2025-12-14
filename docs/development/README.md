@@ -1,7 +1,7 @@
 # MFG_PDE Development Documentation
 
-**Last Updated**: November 16, 2025
-**Status**: Production-Ready Framework with Strategic Typing Excellence
+**Last Updated**: December 14, 2025
+**Status**: Production-Ready Framework v0.16.7
 
 This directory contains comprehensive development documentation for MFG_PDE contributors and maintainers.
 
@@ -109,10 +109,11 @@ See [typing/](typing/) directory for complete documentation.
 ## 📊 **Framework Evolution Timeline**
 
 ### **2025 Major Milestones**
+- **v0.16.7** (Dec 2025) - BaseSolver convergence integration, ConvergenceConfig support
+- **v0.16.0** (Dec 2025) - Convergence module consolidation, Protocol-based checkers
+- **v0.15.0** (Nov 2025) - Architecture refactoring, unified config system
 - **v0.12.5** (Nov 2025) - Geometry module consolidation
 - **v0.12.0** (Oct 2025) - Strategic typing excellence complete
-- **v0.11.0** (Sep 2025) - Research-optimized CI/CD pipeline
-- **v0.10.0** (Aug 2025) - Documentation reorganization
 
 ### **Historical Development (2024-2025)**
 1. **v1.0** (2024-07-25) - Repository Reorganization
