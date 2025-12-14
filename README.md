@@ -8,7 +8,7 @@
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
-> **v0.16.7** - BaseSolver convergence integration, ConvergenceConfig support
+> **v0.16.8** - Documentation audit and cleanup
 
 ---
 
@@ -227,7 +227,7 @@ If you use MFG_PDE in your research:
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jeremy Jiongyi},
   year={2025},
-  version={0.16.7},
+  version={0.16.8},
   url={https://github.com/derrring/MFG_PDE}
 }
 ```
