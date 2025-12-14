@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.16.5"  # v0.16.5: AdaptiveGeometry protocol for AMR
+version = "0.16.6"  # v0.16.6: Cross-paradigm convergence module
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
