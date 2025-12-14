@@ -42,12 +42,11 @@ if RL_DEPENDENCIES_AVAILABLE:
         RLSolverResult,
     )
 
-    # Conditional imports for algorithms (will be implemented)
+    # Conditional imports for algorithms
     try:
         from .algorithms import (  # noqa: F401
             MeanFieldActorCritic,
             MeanFieldQLearning,
-            PopulationPPO,
         )
 
         ALGORITHMS_AVAILABLE = True
@@ -72,13 +71,12 @@ if RL_DEPENDENCIES_AVAILABLE:
                 "MeanFieldActorCritic",
                 # RL Algorithms for MFG
                 "MeanFieldQLearning",
-                "PopulationPPO",
             ]
         )
 
     # Solver categories for factory selection
     VALUE_BASED_RL_SOLVERS = ["MeanFieldQLearning"] if ALGORITHMS_AVAILABLE else []
-    ACTOR_CRITIC_RL_SOLVERS = ["MeanFieldActorCritic", "PopulationPPO"] if ALGORITHMS_AVAILABLE else []
+    ACTOR_CRITIC_RL_SOLVERS = ["MeanFieldActorCritic"] if ALGORITHMS_AVAILABLE else []
     ALL_RL_SOLVERS = VALUE_BASED_RL_SOLVERS + ACTOR_CRITIC_RL_SOLVERS
 
 else:

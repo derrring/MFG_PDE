@@ -139,22 +139,26 @@ problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, ...)
 
 **Problem**: Need fine mesh near boundaries, coarse elsewhere.
 
-**Solution**: FEM mesh with adaptive refinement + regular grid HJB.
+**Note**: AMR implementation was removed in v0.16.5. For adaptive mesh refinement,
+use external libraries directly:
+- **pyAMReX**: Block-structured AMR with GPU support
+- **Clawpack/AMRClaw**: Hyperbolic PDEs
+- **pyAMG**: Mesh adaptation for complex geometries
 
 ```python
-from mfg_pde.geometry import TriangularAMRMesh
+# For now, use manually refined meshes:
+from mfg_pde.geometry import Mesh2D, TensorProductGrid
 
-# Adaptive mesh (refines automatically near obstacles)
-amr_mesh = TriangularAMRMesh(
+# Create a fine mesh near boundaries manually
+mesh = Mesh2D(
     domain_type="rectangle",
     bounds=(0, 1, 0, 1),
-    initial_refinement=2,
-    max_refinement=5
+    mesh_size=0.02  # Fine resolution throughout
 )
 
-grid = TensorProductGrid(bounds=(0, 1, 0, 1), resolution=(50, 50))
+grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
 
-problem = MFGProblem(hjb_geometry=grid, fp_geometry=amr_mesh, ...)
+problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, ...)
 ```
 
 ### Use Case 3: CAD Import
@@ -212,7 +216,6 @@ vertices = mesh.get_spatial_grid()  # (N_vertices, dimension)
 # This works for:
 # - Mesh2D (triangular)
 # - Mesh3D (tetrahedral)
-# - TriangularAMRMesh (adaptive)
 # - Any custom mesh implementing UnstructuredMesh
 ```
 

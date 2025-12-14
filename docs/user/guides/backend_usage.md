@@ -44,16 +44,18 @@ result = solver.solve()  # Automatic XLA compilation
 
 ### **🌳 Adaptive Mesh Refinement (AMR)**
 ```python
-# BEST: Numba for imperative algorithms
-from mfg_pde.geometry import TriangularAMR
-from mfg_pde.utils.performance_optimization import create_performance_optimizer
+# AMR is planned for future integration with external libraries
+# Recommended: pyAMReX, Clawpack/AMRClaw, pyAMG, p4est
+# See mfg_pde.geometry.amr module for API stub
+from mfg_pde.geometry.amr import create_amr_grid, AMRNotImplementedError
 
-amr = TriangularAMR(use_numba=True)  # Numba-accelerated refinement
-optimizer = create_performance_optimizer()
-backend = optimizer["acceleration_backend"]
-backend.set_backend("numba")
+# Will raise AMRNotImplementedError with library recommendations
+# try:
+#     amr = create_amr_grid(...)
+# except AMRNotImplementedError as e:
+#     print(e)  # Suggests using pyAMReX directly
 ```
-**Why Numba**: Excellent for loops, conditionals, tree traversal algorithms.
+**Note**: AMR implementation was removed in v0.16.5. Use external libraries directly.
 
 ### **💾 Large-Scale Problems (Memory Constrained)**
 ```python
@@ -367,7 +369,7 @@ result = solver.solve()
 # Use different backends for different components
 torch_backend = create_backend("torch_mps")  # For neural components
 jax_backend = create_backend("jax")          # For pure math
-numba_backend = create_backend("numba")      # For AMR
+numba_backend = create_backend("numba")      # For numerical loops
 
 # Neural solver for learning components
 neural_solver = PINNSolver(problem, backend=torch_backend)
@@ -375,8 +377,8 @@ neural_solver = PINNSolver(problem, backend=torch_backend)
 # Mathematical solver for PDE kernels
 math_solver = JAXMFGSolver(problem, use_gpu=True)
 
-# AMR for mesh adaptation
-amr = TriangularAMR(use_numba=True)
+# Numba for loop-heavy algorithms
+# (AMR was removed - use external libraries like pyAMReX)
 ```
 
 ### **Development vs Production**

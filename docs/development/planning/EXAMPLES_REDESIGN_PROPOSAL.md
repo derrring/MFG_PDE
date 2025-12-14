@@ -128,7 +128,6 @@ examples/
 │   ├── geometry/
 │   │   ├── 2d_crowd_motion_fdm.py         # 2D rectangular domain
 │   │   ├── geometry_first_api_demo.py     # Geometry-first pattern
-│   │   ├── amr_geometry_protocol_demo.py  # AMR basics
 │   │   ├── dual_geometry_simple_example.py
 │   │   └── dual_geometry_multiresolution.py
 │   │
