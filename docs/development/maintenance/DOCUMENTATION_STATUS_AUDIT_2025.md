@@ -2,7 +2,7 @@
 
 **Audit Date**: July 31, 2025 (Historical - superseded by Dec 2025 audit)
 **Status**: ✅ **HISTORICAL** - Snapshot from July 2025
-**Note**: This is a historical audit. Current version is v0.16.7.
+**Note**: This is a historical audit. Current version is v0.16.8.
 
 ## 📋 **Audit Results**
 

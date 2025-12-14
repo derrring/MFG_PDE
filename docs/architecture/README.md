@@ -1,7 +1,7 @@
 # MFG_PDE Architecture Documentation
 
 **Last Updated**: 2025-12-14
-**Current Version**: v0.16.7
+**Current Version**: v0.16.8
 **Status**: Architecture stabilized, active development continues
 
 ---
@@ -49,7 +49,7 @@ This directory contains architecture documentation for MFG_PDE. Historical audit
    - Protocol-based checkers: `HJBConvergenceChecker`, `FPConvergenceChecker`, `MFGConvergenceChecker`
    - `ConvergenceConfig` for unified configuration
 
-2. **BaseSolver Integration** (v0.16.7)
+2. **BaseSolver Integration** (v0.16.8)
    - `BaseSolver` accepts `ConvergenceConfig`
    - Hooks pattern for iteration callbacks
    - Extensible via `_create_convergence_checker()` hook

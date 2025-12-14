@@ -1,7 +1,7 @@
 # MFG_PDE Documentation
 
 **Last Updated**: December 14, 2025
-**Version**: v0.16.2 - Current Release
+**Version**: v0.16.8 - Current Release
 **Status**: Production-Ready Framework with Validated Examples
 
 Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
@@ -33,9 +33,9 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 - **[Planning & Roadmaps](planning/)** - Strategic planning and project management
   - **[Roadmaps](planning/roadmaps/)** - Feature roadmaps and development plans
   - **[Quality Reports](planning/reports/)** - Assessments and status reports
-- **[Reference Documentation](reference/)** - Quick references and lookup guides
-  - **[Python Typing](reference/python_typing.md)** - Modern typing guide
-  - **[MyPy Usage](reference/mypy_usage.md)** - Type checking strategies
+- **[Typing Documentation](development/typing/)** - Type checking and typing guides
+  - **[Python Typing](development/typing/python_typing.md)** - Modern typing guide
+  - **[MyPy Usage](development/typing/mypy_usage.md)** - Type checking strategies
 - **[Source Reference](../mfg_pde/)** - Complete function and class documentation in source
 
 ---
@@ -151,10 +151,9 @@ docs/
 │   ├── strategy/                      # Strategic planning
 │   └── maintenance/                   # Maintenance procedures
 │
-├── reference/                         # 📖 QUICK REFERENCES (3 files)
-│   ├── python_typing.md               # Modern Python typing
-│   ├── mypy_usage.md                  # MyPy strategies
-│   └── typing_methodology.md          # Systematic typing approach
+├── migration/                         # 🔄 MIGRATION GUIDES
+│   ├── DEPRECATION_MODERNIZATION_GUIDE.md  # Deprecation patterns
+│   └── GEOMETRY_FIRST_API_GUIDE.md    # Geometry API migration
 │
 └── archive/                           # 📦 HISTORICAL CONTENT
     └── [Track B GPU acceleration history]
@@ -238,9 +237,9 @@ config = create_fast_config(
 - **Reports**: Quality assessments and status reports
 - **Governance**: Priority setting and decision-making
 
-#### **[Reference](reference/)**
-- **Quick Lookups**: Python typing, MyPy usage, methodologies
-- **Best Practices**: Type safety, testing, performance
+#### **[Migration](migration/)**
+- **API Evolution**: Deprecated patterns and modern alternatives
+- **Geometry API**: Transitioning to geometry-first patterns
 
 ---
 

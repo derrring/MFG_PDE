@@ -2,7 +2,7 @@
 
 **Status**: ✅ **HISTORICAL** - Cleanup completed July 2025
 **Date**: July 31, 2025
-**Note**: This is a historical record. Current version is v0.16.7.
+**Note**: This is a historical record. Current version is v0.16.8.
 
 This document summarizes the comprehensive cleanup performed on July 31, 2025, to maintain a clean, organized codebase.
 

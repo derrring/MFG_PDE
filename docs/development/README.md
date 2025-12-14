@@ -1,7 +1,7 @@
 # MFG_PDE Development Documentation
 
 **Last Updated**: December 14, 2025
-**Status**: Production-Ready Framework v0.16.7
+**Status**: Production-Ready Framework v0.16.8
 
 This directory contains comprehensive development documentation for MFG_PDE contributors and maintainers.
 
@@ -109,7 +109,7 @@ See [typing/](typing/) directory for complete documentation.
 ## 📊 **Framework Evolution Timeline**
 
 ### **2025 Major Milestones**
-- **v0.16.7** (Dec 2025) - BaseSolver convergence integration, ConvergenceConfig support
+- **v0.16.8** (Dec 2025) - BaseSolver convergence integration, ConvergenceConfig support
 - **v0.16.0** (Dec 2025) - Convergence module consolidation, Protocol-based checkers
 - **v0.15.0** (Nov 2025) - Architecture refactoring, unified config system
 - **v0.12.5** (Nov 2025) - Geometry module consolidation

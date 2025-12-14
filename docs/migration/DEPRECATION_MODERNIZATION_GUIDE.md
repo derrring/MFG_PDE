@@ -1,7 +1,7 @@
 # Deprecation Modernization Guide
 
 **Last Updated**: 2025-12-14
-**Current Version**: v0.16.7
+**Current Version**: v0.16.8
 **Target**: v1.0.0 (deprecated patterns will be removed)
 **Status**: Active migration in progress
 
