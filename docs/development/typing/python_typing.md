@@ -1,8 +1,8 @@
-# Modern Python Typing Guide for Scientific Computing (Python 3.9+)
+# Modern Python Typing Guide for Scientific Computing (Python 3.12+)
 
-**Date**: 2025-09-20
+**Date**: 2025-09-20 (Updated: 2025-12-14)
 **Context**: Best practices for type hints in scientific Python projects
-**Target**: Python 3.9+ with modern syntax
+**Target**: Python 3.12+ (MFG_PDE requires Python 3.12+)
 
 ## 🎯 **Executive Summary**
 
