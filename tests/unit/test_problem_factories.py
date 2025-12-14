@@ -6,6 +6,8 @@ and legacy specialized problem classes.
 
 NOTE: Uses TensorProductGrid (unified geometry API) instead of deprecated
 Domain1D/Domain2D. See docs/development/LEGACY_API_DEPRECATION_PLAN.md.
+
+Updated: December 2025 - Use new Hamiltonian signature with x_idx, m_at_x, derivs.
 """
 
 import pytest
@@ -35,14 +37,16 @@ def simple_2d_domain():
     return TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
 
-@pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
 def test_create_standard_problem(simple_domain):
     """Test standard MFG problem creation."""
 
-    def hamiltonian(x, p, m, t):
-        return 0.5 * p**2 + m
+    # New API: x_idx (int), m_at_x (float), derivs (tuple of arrays)
+    def hamiltonian(x_idx, m_at_x, derivs):
+        # derivs = (u_x,) for 1D
+        p = derivs[0] if len(derivs) > 0 else 0.0
+        return 0.5 * p**2 + m_at_x
 
-    def hamiltonian_dm(x, p, m, t):
+    def hamiltonian_dm(x_idx, m_at_x, derivs):
         return 1.0
 
     def terminal_cost(x):
@@ -65,10 +69,9 @@ def test_create_standard_problem(simple_domain):
     assert problem.components is not None
     assert problem.components.hamiltonian_func is not None
     assert problem.components.hamiltonian_dm_func is not None
-    assert problem.get_problem_type() == "standard"
+    assert problem.components.problem_type == "standard"
 
 
-@pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
 def test_create_lq_problem(simple_domain):
     """Test Linear-Quadratic MFG problem creation."""
 
@@ -91,7 +94,6 @@ def test_create_lq_problem(simple_domain):
     assert problem.components.hamiltonian_func is not None
 
 
-@pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
 def test_create_crowd_problem(simple_2d_domain):
     """Test crowd dynamics MFG problem creation."""
     target = np.array([0.8, 0.8])
@@ -110,14 +112,14 @@ def test_create_crowd_problem(simple_2d_domain):
     assert problem.components.potential_func is not None
 
 
-@pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
 def test_create_stochastic_problem(simple_domain):
     """Test stochastic MFG problem creation."""
 
-    def hamiltonian(x, p, m, t):
-        return 0.5 * p**2 + m
+    def hamiltonian(x_idx, m_at_x, derivs):
+        p = derivs[0] if len(derivs) > 0 else 0.0
+        return 0.5 * p**2 + m_at_x
 
-    def hamiltonian_dm(x, p, m, t):
+    def hamiltonian_dm(x_idx, m_at_x, derivs):
         return 1.0
 
     def terminal_cost(x):
@@ -141,19 +143,20 @@ def test_create_stochastic_problem(simple_domain):
 
     assert isinstance(problem, MFGProblem)
     assert problem.components is not None
-    assert problem.components.noise_intensity == 0.5
-    assert problem.components.common_noise_func is not None
-    assert problem.get_problem_type() == "stochastic"
+    # Stochastic parameters are stored in the parameters dict
+    assert problem.components.parameters.get("noise_intensity") == 0.5
+    assert problem.components.parameters.get("common_noise_func") is not None
+    assert problem.components.problem_type == "stochastic"
 
 
-@pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
 def test_create_mfg_problem_with_components(simple_domain):
     """Test main factory function with explicit components."""
 
-    def hamiltonian(x, p, m, t):
+    def hamiltonian(x_idx, m_at_x, derivs):
+        p = derivs[0] if len(derivs) > 0 else 0.0
         return 0.5 * p**2
 
-    def hamiltonian_dm(x, p, m, t):
+    def hamiltonian_dm(x_idx, m_at_x, derivs):
         return 0.0
 
     components = MFGComponents(
@@ -170,7 +173,6 @@ def test_create_mfg_problem_with_components(simple_domain):
     assert problem.components.problem_type == "standard"
 
 
-@pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
 def test_backward_compatibility_warning(simple_domain):
     """Test that legacy API triggers deprecation warning."""
 
@@ -193,7 +195,6 @@ def test_backward_compatibility_warning(simple_domain):
     assert problem is not None
 
 
-@pytest.mark.skip(reason="Factory signature validation issue - deferred to Phase 3.5")
 def test_problem_type_detection():
     """Test automatic problem type detection."""
 
@@ -201,20 +202,22 @@ def test_problem_type_detection():
 
     # Standard MFG
     components_standard = MFGComponents(
-        hamiltonian_func=lambda x, p, m, t: 0.5 * p**2,
-        hamiltonian_dm_func=lambda x, p, m, t: 0.0,
+        hamiltonian_func=lambda x_idx, m_at_x, derivs: 0.5 * (derivs[0] if len(derivs) > 0 else 0.0) ** 2,
+        hamiltonian_dm_func=lambda x_idx, m_at_x, derivs: 0.0,
+        problem_type="standard",
     )
     problem = MFGProblem(geometry=domain, components=components_standard)
-    assert problem.get_problem_type() == "standard"
+    assert problem.components.problem_type == "standard"
 
-    # Stochastic MFG (auto-detect from noise)
+    # Stochastic MFG (type set explicitly via problem_type)
     components_stochastic = MFGComponents(
-        hamiltonian_func=lambda x, p, m, t: 0.5 * p**2,
-        hamiltonian_dm_func=lambda x, p, m, t: 0.0,
-        noise_intensity=0.5,
+        hamiltonian_func=lambda x_idx, m_at_x, derivs: 0.5 * (derivs[0] if len(derivs) > 0 else 0.0) ** 2,
+        hamiltonian_dm_func=lambda x_idx, m_at_x, derivs: 0.0,
+        parameters={"noise_intensity": 0.5},
+        problem_type="stochastic",
     )
     problem = MFGProblem(geometry=domain, components=components_stochastic)
-    assert problem.get_problem_type() == "stochastic"
+    assert problem.components.problem_type == "stochastic"
 
 
 if __name__ == "__main__":
