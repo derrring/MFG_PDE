@@ -157,5 +157,5 @@ class DiffusionCallable(Protocol):
 
 
 # Type aliases for clarity in solver signatures
-DriftField = float | NDArray[np.floating] | DriftCallable | None
-DiffusionField = float | NDArray[np.floating] | DiffusionCallable | None
+DriftField = float | NDArray[np.floating] | DriftCallable | None  # None = no drift
+DiffusionField = float | NDArray[np.floating] | DiffusionCallable  # Always required (defaults to 1.0)
