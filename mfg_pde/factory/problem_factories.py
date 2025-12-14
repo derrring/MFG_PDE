@@ -601,16 +601,21 @@ def create_stochastic_problem(
     ...     common_noise=lambda t: np.sin(t)
     ... )
     """
+    # Store stochastic parameters in the parameters dict
+    stochastic_params = {
+        "noise_intensity": noise_intensity,
+        "common_noise_func": common_noise,
+        "idiosyncratic_noise_func": idiosyncratic_noise,
+        "correlation_matrix": correlation_matrix,
+    }
+
     components = MFGComponents(
         hamiltonian_func=hamiltonian,
         hamiltonian_dm_func=hamiltonian_dm,
         final_value_func=terminal_cost,
         initial_density_func=initial_density,
         potential_func=potential,
-        noise_intensity=noise_intensity,
-        common_noise_func=common_noise,
-        idiosyncratic_noise_func=idiosyncratic_noise,
-        correlation_matrix=correlation_matrix,
+        parameters=stochastic_params,
         problem_type="stochastic",
     )
 
@@ -771,13 +776,20 @@ def create_lq_problem(
     alpha = running_cost_control
     beta = running_cost_congestion
 
-    def hamiltonian(x: Any, p: Any, m: Any, t: float) -> float:
-        """LQ Hamiltonian: H = (α/2)|p|² + βm"""
+    def hamiltonian(x_idx: int, m_at_x: float, derivs: tuple) -> float:
+        """LQ Hamiltonian: H = (α/2)|p|² + βm
+
+        Args:
+            x_idx: Grid point index
+            m_at_x: Density value at point
+            derivs: Tuple of gradient arrays (u_x,) for 1D or (u_x, u_y) for 2D
+        """
         import numpy as np
 
-        return 0.5 * alpha * np.sum(p**2) + beta * m
+        p_squared = sum(np.sum(d**2) for d in derivs) if derivs else 0.0
+        return 0.5 * alpha * p_squared + beta * m_at_x
 
-    def hamiltonian_dm(x: Any, p: Any, m: Any, t: float) -> float:
+    def hamiltonian_dm(x_idx: int, m_at_x: float, derivs: tuple) -> float:
         """dH/dm = β"""
         return beta
 
@@ -859,12 +871,19 @@ def create_crowd_problem(
         target = np.asarray(target_location)
         target_func = lambda x: 0.5 * np.sum((x - target) ** 2)  # noqa: E731
 
-    def hamiltonian(x: Any, p: Any, m: Any, t: float) -> float:
-        """Crowd Hamiltonian"""
-        return 0.5 * alpha * np.sum(p**2) + beta * m
+    def hamiltonian(x_idx: int, m_at_x: float, derivs: tuple) -> float:
+        """Crowd Hamiltonian: H = (α/2)|p|² + βm
 
-    def hamiltonian_dm(x: Any, p: Any, m: Any, t: float) -> float:
-        """dH/dm"""
+        Args:
+            x_idx: Grid point index
+            m_at_x: Density value at point
+            derivs: Tuple of gradient arrays (u_x, u_y) for 2D
+        """
+        p_squared = sum(np.sum(d**2) for d in derivs) if derivs else 0.0
+        return 0.5 * alpha * p_squared + beta * m_at_x
+
+    def hamiltonian_dm(x_idx: int, m_at_x: float, derivs: tuple) -> float:
+        """dH/dm = β"""
         return beta
 
     def terminal_cost(x: Any) -> float:
