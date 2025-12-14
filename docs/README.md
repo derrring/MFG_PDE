@@ -1,7 +1,7 @@
 # MFG_PDE Documentation
 
-**Last Updated**: October 31, 2025
-**Version**: v0.8.0-phase2 - Current Development Release
+**Last Updated**: December 14, 2025
+**Version**: v0.16.2 - Current Release
 **Status**: Production-Ready Framework with Validated Examples
 
 Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
@@ -21,7 +21,7 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 ### **For Researchers**
 - **[Theory Documentation](theory/)** - Mathematical foundations and algorithms
   - **[Reinforcement Learning](theory/reinforcement_learning/)** - RL for MFG, continuous actions
-  - **[Numerical Methods](theory/numerical_methods/)** - AMR, semi-Lagrangian, Lagrangian
+  - **[Numerical Methods](theory/numerical_methods/)** - Semi-Lagrangian, Lagrangian methods
   - **[Mathematical Background](theory/foundations/mathematical_background.md)** - Core MFG theory
 - **[Advanced Examples](../examples/advanced/)** - Research-grade demonstrations
 - **[Interactive Notebooks](../examples/notebooks/)** - Jupyter-based exploration
@@ -81,7 +81,6 @@ docs/
 │   ├── quickstart.md                  # Quick start guide
 │   ├── core_objects.md                # Core MFG_PDE objects
 │   ├── guides/                        # Feature usage guides
-│   │   ├── amr_quick_reference.md     # AMR quick start
 │   │   ├── multi_population_quick_start.md  # Multi-population guide
 │   │   ├── backend_usage.md           # Computational backends
 │   │   ├── maze_generation.md         # Maze environments
@@ -111,10 +110,7 @@ docs/
 │   │   ├── evacuation_mfg_mathematical_formulation.md
 │   │   ├── coordination_games_mfg.md
 │   │   └── spatial_competition_mfg.md
-│   ├── numerical_methods/             # Numerical methods (8 files)
-│   │   ├── adaptive_mesh_refinement_guide.md
-│   │   ├── amr_mesh_types_analysis.md
-│   │   ├── amr_performance.md
+│   ├── numerical_methods/             # Numerical methods
 │   │   ├── semi_lagrangian_methods.md
 │   │   └── lagrangian_formulation.md
 │   ├── network_mfg/                   # Network MFG (1 file)
@@ -224,7 +220,7 @@ config = create_fast_config(
 
 #### **[Theory](theory/)**
 - **Mathematical Foundations**: HJB and FPK equations, convergence theory
-- **Numerical Methods**: Finite differences, particle methods, adaptive techniques
+- **Numerical Methods**: Finite differences, particle methods, semi-Lagrangian
 - **Reinforcement Learning**: Continuous action MFG, scalability analysis
 - **Applications**: Domain-specific formulations (anisotropic MFG, evacuation, coordination)
 
@@ -284,7 +280,7 @@ Aggressive cleanup and reorganization:
 1. **foundations/** - General theory, notation, convergence (6 files)
 2. **stochastic/** - Stochastic MFG, common noise (4 files)
 3. **applications/** - Domain-specific formulations (4 files)
-4. **numerical_methods/** - AMR, finite differences (8 files)
+4. **numerical_methods/** - Semi-Lagrangian, finite differences
 5. **network_mfg/** - Network/graph MFG (1 file)
 6. **continuous_control/** - Variational MFG (1 file)
 7. **reinforcement_learning/** - RL for MFG (13 files)
@@ -353,6 +349,6 @@ Complete framework documentation for achieving 100% type safety in scientific co
 
 ---
 
-**Documentation Version**: v2.3 - Documentation Consolidation + HDF5 Support
-**Last Major Update**: October 8, 2025
+**Documentation Version**: v2.4 - AMR Removed, External Library Integration
+**Last Major Update**: December 14, 2025
 **Maintenance**: Continuously updated with codebase evolution

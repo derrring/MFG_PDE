@@ -572,19 +572,12 @@ Existing solvers may use deprecated parameter names. These emit `DeprecationWarn
 
 ### AMR (Adaptive Mesh Refinement)
 
-**Canonical definition**: `mfg_pde/geometry/amr_quadtree_2d.py:AMRRefinementCriteria`
+**Status**: AMR implementation was removed in v0.16.2. Only a stub API remains for future library integration.
 
-| Parameter | Type | Default | Meaning |
-|-----------|------|---------|---------|
-| `max_refinement_levels` | int | 5 | Maximum refinement levels |
-| `gradient_threshold` | float | 0.1 | Gradient-based refinement threshold |
-| `coarsening_threshold` | float | 0.1 | Mesh coarsening threshold |
-| `error_threshold` | float | 1e-4 | Max solution error per cell |
-| `min_cell_size` | float | 1e-6 | Minimum cell size |
-
-**Common mistakes** (found in outdated docs):
-- ❌ `max_level` or `max_levels` → ✅ `max_refinement_levels`
-- ❌ `refinement_threshold` → ✅ `gradient_threshold`
+For adaptive mesh refinement, use external libraries:
+- pyAMReX: Block-structured AMR, GPU support
+- Clawpack/AMRClaw: Hyperbolic PDEs
+- pyAMG: Mesh adaptation for complex geometries
 
 ---
 
@@ -930,9 +923,8 @@ When adding new parameters:
 
 ## References
 
-- **GeometryProtocol**: `mfg_pde/geometry/geometry_protocol.py`
-- **AMR Parameters**: `mfg_pde/geometry/amr_quadtree_2d.py` (AMRRefinementCriteria)
-- **Tensor Grids**: `mfg_pde/geometry/tensor_product_grid.py`
+- **GeometryProtocol**: `mfg_pde/geometry/protocol.py`
+- **Tensor Grids**: `mfg_pde/geometry/grids/tensor_grid.py`
 - **Config Classes**: `mfg_pde/config/solver_config.py` (NewtonConfig, PicardConfig)
 - **Fixed Point Iterator**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
 - **HJB Solvers**: `mfg_pde/alg/numerical/hjb_solvers/` (hjb_fdm.py, hjb_semi_lagrangian.py, hjb_weno.py, hjb_gfdm.py, hjb_network.py)
@@ -940,4 +932,4 @@ When adding new parameters:
 
 ---
 
-**Authoritative Source**: This document reflects actual codebase standards as of v0.16.0
+**Authoritative Source**: This document reflects actual codebase standards as of v0.16.2

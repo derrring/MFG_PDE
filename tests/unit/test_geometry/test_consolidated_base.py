@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import OneDimensionalAMRGrid, TensorProductGrid
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.base import CartesianGrid, Geometry
 from mfg_pde.geometry.protocol import AdaptiveGeometry, is_adaptive
 
@@ -460,89 +460,6 @@ class TestAdaptiveGeometryProtocol:
         assert isinstance(mock, CartesianGrid)
         assert isinstance(mock, AdaptiveGeometry)
         assert is_adaptive(mock)
-
-
-class TestOneDimensionalAMRGrid:
-    """Test OneDimensionalAMRGrid protocol compliance (Issue #460)."""
-
-    def test_amr_1d_is_adaptive(self):
-        """OneDimensionalAMRGrid implements AdaptiveGeometry and inherits Geometry.
-
-        Note: AMR classes inherit from Geometry directly (not CartesianGrid)
-        because they refine existing partitions with dynamic, non-uniform spacing.
-        """
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
-        amr = OneDimensionalAMRGrid(domain, initial_num_intervals=10)
-
-        # AdaptiveGeometry protocol
-        assert isinstance(amr, AdaptiveGeometry)
-        assert is_adaptive(amr)
-
-        # Geometry inheritance (Issue #468 - changed from CartesianGrid to Geometry)
-        assert isinstance(amr, Geometry)
-        assert not isinstance(amr, CartesianGrid)  # AMR classes don't inherit CartesianGrid
-
-    def test_amr_1d_geometry_properties(self):
-        """OneDimensionalAMRGrid has required geometry properties."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
-        amr = OneDimensionalAMRGrid(domain, initial_num_intervals=10)
-
-        # Geometry properties
-        assert amr.dimension == 1
-        assert amr.num_spatial_points == 10
-        assert amr.num_leaf_cells == 10
-        assert amr.max_refinement_level == 0
-
-        # Grid-like properties
-        spacing = amr.get_grid_spacing()
-        assert len(spacing) == 1
-        assert np.isclose(spacing[0], 0.1, rtol=0.01)
-
-        shape = amr.get_grid_shape()
-        assert shape == (10,)
-
-    def test_amr_1d_refinement(self):
-        """OneDimensionalAMRGrid refinement works via AdaptiveGeometry protocol."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
-        amr = OneDimensionalAMRGrid(domain, initial_num_intervals=10)
-
-        initial_cells = amr.num_leaf_cells
-
-        # Refine using protocol method
-        refined = amr.refine({"interval_ids": [0]})
-        assert refined == 1
-        assert amr.num_leaf_cells == initial_cells + 1
-        assert amr.max_refinement_level == 1
-
-        # Test adapt (no-op without error estimator)
-        result = amr.adapt({})
-        assert result["total_cells"] == amr.num_leaf_cells
-
-    def test_amr_1d_operators(self):
-        """OneDimensionalAMRGrid provides working operators."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
-        amr = OneDimensionalAMRGrid(domain, initial_num_intervals=10)
-
-        # Get operators
-        laplacian = amr.get_laplacian_operator()
-        gradient = amr.get_gradient_operator()
-        interpolator = amr.get_interpolator()
-
-        # Test on simple function
-        u = np.sin(np.linspace(0, np.pi, amr.num_leaf_cells))
-
-        # Laplacian at interior point
-        lap_val = laplacian(u, 5)
-        assert isinstance(lap_val, float)
-
-        # Gradient at interior point
-        grad_val = gradient(u, 5)
-        assert grad_val.shape == (1,)
-
-        # Interpolation
-        interp_val = interpolator(u, np.array([0.5]))
-        assert isinstance(interp_val, float)
-        assert 0 < interp_val <= 1  # Should be somewhere on the sin curve
 
 
 if __name__ == "__main__":

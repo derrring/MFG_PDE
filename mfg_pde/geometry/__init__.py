@@ -31,23 +31,8 @@ Note: SimpleGrid1D/2D/3D have been removed. Use TensorProductGrid instead.
 
 from __future__ import annotations
 
-# AMR imports (from subdirectory - canonical locations)
-from .amr.amr_1d import (
-    Interval1D,
-    # New names (v0.16.6+)
-    OneDimensionalAMRGrid,
-    # Deprecated aliases (will be removed in v1.0.0)
-    OneDimensionalAMRMesh,
-    OneDimensionalErrorEstimator,
-    create_1d_amr_grid,
-    create_1d_amr_mesh,
-)
-from .amr.amr_triangular_2d import (
-    TriangleElement,
-    TriangularAMRMesh,
-    TriangularMeshErrorEstimator,
-    create_triangular_amr_mesh,
-)
+# AMR stub (for future library integration)
+from .amr import AdaptiveGeometry, AMRNotImplementedError, create_amr_grid, is_adaptive
 
 # Boundary conditions from subdirectories
 # Factory functions for uniform BCs
@@ -162,8 +147,6 @@ from .operators.projection import ProjectionRegistry
 
 # Unified geometry protocol
 from .protocol import (
-    # Adaptive geometry protocol (AMR capability marker)
-    AdaptiveGeometry,
     # Boundary-aware protocol (for unified BC handling)
     BoundaryAwareProtocol,
     BoundaryType,
@@ -171,7 +154,6 @@ from .protocol import (
     GeometryProtocol,
     GeometryType,
     detect_geometry_type,
-    is_adaptive,
     is_boundary_aware,
     is_geometry_compatible,
     validate_boundary_aware,
@@ -213,19 +195,20 @@ __all__ = [
     # Unified geometry protocol
     "GeometryProtocol",
     "GeometryType",
-    # Adaptive geometry protocol (AMR capability)
+    # AMR stub (for future library integration)
     "AdaptiveGeometry",
+    "AMRNotImplementedError",
+    "create_amr_grid",
+    "is_adaptive",
     # Boundary-aware protocol
     "BoundaryAwareProtocol",
     "BoundaryType",
-    "is_adaptive",
     "is_boundary_aware",
     "validate_boundary_aware",
     # Geometry projection (Issue #257)
     "GeometryProjector",
     "ProjectionRegistry",
     "GridNetwork",
-    "Interval1D",
     "MFGBoundaryHandler2D",
     "MFGBoundaryHandler3D",
     "MeshData",
@@ -240,12 +223,6 @@ __all__ = [
     "NetworkType",
     "NeumannBC2D",
     "NeumannBC3D",
-    # AMR components (1D)
-    "OneDimensionalAMRGrid",
-    "OneDimensionalAMRMesh",  # Deprecated alias
-    "OneDimensionalErrorEstimator",
-    "create_1d_amr_grid",
-    "create_1d_amr_mesh",  # Deprecated alias
     "OperationType",
     "PeriodicBC2D",
     "PeriodicBC3D",
@@ -255,10 +232,6 @@ __all__ = [
     "RobinBC3D",
     "ScaleFreeNetwork",
     "TensorProductGrid",
-    "TriangleElement",
-    # Legacy triangular AMR components
-    "TriangularAMRMesh",
-    "TriangularMeshErrorEstimator",
     # Implicit geometry (CSG operations)
     "ComplementDomain",
     "DifferenceDomain",
@@ -269,7 +242,6 @@ __all__ = [
     "UnionDomain",
     # Factory and utility functions
     "compute_network_statistics",
-    "create_1d_amr_mesh",
     # Boundary condition factory functions
     "create_box_boundary_conditions",
     "create_circle_boundary_conditions",
@@ -277,7 +249,6 @@ __all__ = [
     "create_rectangle_boundary_conditions",
     "create_sphere_boundary_conditions",
     "create_standard_boundary_names",
-    "create_triangular_amr_mesh",
     "detect_geometry_type",
     "dirichlet_bc",
     "get_backend_manager",

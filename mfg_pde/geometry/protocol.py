@@ -254,32 +254,20 @@ class AdaptiveGeometry(Protocol):
     """
     Protocol for geometries supporting runtime mesh adaptation (AMR).
 
-    This protocol defines the capability for adaptive mesh refinement.
-    All current AMR classes inherit from Geometry directly (not CartesianGrid
-    or UnstructuredMesh) because they refine existing partitions with dynamic,
-    non-uniform spacing rather than creating grids/meshes with predetermined
-    structure.
+    This protocol defines the interface for adaptive mesh refinement.
+    Future implementations will wrap external libraries such as:
+    - pyAMReX: Block-structured AMR, GPU support
+    - Clawpack/AMRClaw: Hyperbolic PDEs
+    - pyAMG: Mesh adaptation for complex geometries
 
-    Inheritance Hierarchy:
-        Geometry (base ABC)
-        └── AMR classes (all inherit Geometry + implement AdaptiveGeometry):
-            ├── OneDimensionalAMRGrid (1D)
-            ├── QuadTreeAMRGrid (2D)
-            ├── TriangularAMRMesh (2D)
-            └── TetrahedralAMRMesh (3D)
+    Status: NOT IMPLEMENTED - This is a placeholder for future development.
 
     Use Cases:
-        - Adaptive mesh refinement (AMR) for error-driven refinement
+        - Adaptive mesh refinement for error-driven refinement
         - Multi-resolution simulations
         - Local refinement near singularities or boundaries
 
     Examples:
-        >>> # Check if geometry supports adaptation
-        >>> if isinstance(geometry, AdaptiveGeometry):
-        ...     geometry.adapt(solution_data)
-        ...     print(f"Refined to {geometry.num_leaf_cells} cells")
-
-        >>> # Type hint using is_adaptive helper
         >>> from mfg_pde.geometry.protocol import is_adaptive
         >>> if is_adaptive(geometry):
         ...     geometry.adapt(solution)
@@ -359,8 +347,8 @@ class AdaptiveGeometry(Protocol):
             Count of cells at the finest local resolution (not subdivided).
 
         Notes:
-            - For tree-based AMR: leaf nodes only
-            - For element-based AMR: active elements only
+            - For tree-based: leaf nodes only
+            - For element-based: active elements only
         """
         ...
 
@@ -377,9 +365,7 @@ class BoundaryType(Enum):
 
 def is_adaptive(geometry: object) -> bool:
     """
-    Check if a geometry supports adaptive mesh refinement (AMR).
-
-    This is equivalent to checking if the geometry implements AdaptiveGeometry.
+    Check if a geometry supports adaptive mesh refinement.
 
     Args:
         geometry: Object to check
@@ -392,10 +378,6 @@ def is_adaptive(geometry: object) -> bool:
         >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
         >>> is_adaptive(grid)  # Regular grids are not adaptive
         False
-
-        >>> # Future: AdaptiveCartesianGrid would return True
-        >>> # is_adaptive(AdaptiveCartesianGrid(...))
-        >>> # True
     """
     return isinstance(geometry, AdaptiveGeometry)
 
