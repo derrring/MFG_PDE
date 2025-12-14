@@ -1064,7 +1064,7 @@ def _register_fem_mesh_projections():
 
     This function is called on module import if scipy is available.
     It registers Delaunay-based projections for all UnstructuredMesh types
-    (Mesh2D, Mesh3D, TriangularAMRMesh, etc.).
+    (Mesh2D, Mesh3D, etc.).
 
     Registered Projections:
         - UnstructuredMesh → CartesianGrid: Delaunay interpolation

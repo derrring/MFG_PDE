@@ -1,114 +1,48 @@
 """
-Adaptive mesh refinement (AMR) for MFG problems.
+Adaptive Mesh Refinement (AMR) - API stub for future library integration.
 
-.. warning::
-    **EXPERIMENTAL MODULE** - Infrastructure exists but solver integration is incomplete.
+This module provides a minimal API for AMR that will wrap external libraries
+when implemented. The actual AMR functionality is not yet available.
 
-    Status (2025-12):
-    - Data structures: Complete (1D intervals, 2D quadtree/triangular, 3D tetrahedral)
-    - GeometryProtocol: Compliant
-    - Solver integration: NOT IMPLEMENTED
+Recommended external libraries for future integration:
+- pyAMReX: Block-structured AMR, GPU support (https://github.com/AMReX-Codes/pyamrex)
+- Clawpack/AMRClaw: Hyperbolic PDEs, Berger-Oliger-Colella AMR
+- pyAMG: Mesh adaptation for complex 2D/3D geometries (Inria)
+- p4est: Scalable octree AMR
 
-    The AMR grids can be created and refined, but HJB/FP solvers do not yet
-    support adaptive mesh operations (interpolation between refinements,
-    conservative mass transfer, time-stepping coordination).
-
-    Use uniform grids for production work until solver integration is complete.
-
-This module provides AMR support for 1D, 2D, and 3D domains, enabling automatic
-grid refinement based on solution gradients and error estimation.
-
-Inheritance Hierarchy:
-    All AMR classes inherit directly from Geometry (base ABC), NOT from
-    CartesianGrid or UnstructuredMesh. This is because AMR classes refine
-    existing partitions with dynamic, non-uniform spacing rather than creating
-    grids/meshes with predetermined structure.
-
-    Geometry (base ABC)
-    ├── CartesianGrid (uniform structured grids - TensorProductGrid)
-    ├── UnstructuredMesh (FEM meshes created via Gmsh)
-    └── AMR classes (refine existing partitions):
-        ├── OneDimensionalAMRGrid (1D hierarchical intervals)
-        ├── QuadTreeAMRGrid (2D hierarchical quadrants)
-        ├── TriangularAMRMesh (2D triangular refinement)
-        └── TetrahedralAMRMesh (3D tetrahedral refinement)
-
-    Design rationale:
-    - CartesianGrid requires uniform spacing (dx, dy) - AMR has variable spacing
-    - UnstructuredMesh requires Gmsh mesh generation - AMR adapts existing meshes
-    - Future: Consider AdaptiveGeometry ABC if common AMR interface emerges
-
-Available classes:
-  - Interval1D, OneDimensionalAMRGrid, OneDimensionalErrorEstimator (1D)
-  - QuadTreeNode, QuadTreeAMRGrid, GradientErrorEstimator (2D structured)
-  - TriangleElement, TriangularAMRMesh, TriangularMeshErrorEstimator (2D triangular)
-  - TetrahedronElement, TetrahedralAMRMesh, TetrahedralErrorEstimator (3D)
-  - AMRRefinementCriteria (shared configuration)
+Status: NOT IMPLEMENTED - This is a placeholder for future development.
 """
 
-# Note: Runtime warning removed to avoid triggering on every package import.
-# The experimental status is documented in the module docstring above.
+from __future__ import annotations
 
-from .amr_1d import (
-    AMRRefinementCriteria,
-    Interval1D,
-    # New names (v0.16.6+)
-    OneDimensionalAMRGrid,
-    # Deprecated aliases (will be removed in v1.0.0)
-    OneDimensionalAMRMesh,
-    OneDimensionalErrorEstimator,
-    create_1d_amr_grid,
-    create_1d_amr_mesh,
-)
-from .amr_quadtree_2d import (
-    # Deprecated aliases (will be removed in v1.0.0)
-    AdaptiveMesh,
-    # Error estimators
-    BaseErrorEstimator,
-    GradientErrorEstimator,
-    # New names (v0.16.6+)
-    QuadTreeAMRGrid,
-    QuadTreeNode,
-    create_amr_mesh,
-    create_quadtree_amr_grid,
-)
-from .amr_tetrahedral_3d import (
-    TetrahedralAMRMesh,
-    TetrahedralErrorEstimator,
-    TetrahedronElement,
-)
-from .amr_triangular_2d import (
-    TriangleElement,
-    TriangularAMRMesh,
-    TriangularMeshErrorEstimator,
-)
+# Re-export protocol definitions from protocol.py
+from mfg_pde.geometry.protocol import AdaptiveGeometry, is_adaptive
+
+
+class AMRNotImplementedError(NotImplementedError):
+    """Raised when AMR functionality is called but not yet implemented."""
+
+    def __init__(self, backend: str = ""):
+        msg = "AMR is not yet implemented. "
+        if backend:
+            msg += f"Consider using {backend} directly. "
+        msg += "See mfg_pde.geometry.amr module docstring for recommended libraries."
+        super().__init__(msg)
+
+
+def create_amr_grid(*args, **kwargs):
+    """
+    Factory function for AMR grids - NOT YET IMPLEMENTED.
+
+    Raises:
+        AMRNotImplementedError: Always, as AMR is not yet implemented.
+    """
+    raise AMRNotImplementedError("pyAMReX")
+
 
 __all__ = [
-    # Shared
-    "AMRRefinementCriteria",
-    "BaseErrorEstimator",
-    "GradientErrorEstimator",
-    # 1D (new names)
-    "Interval1D",
-    "OneDimensionalAMRGrid",
-    "OneDimensionalErrorEstimator",
-    "create_1d_amr_grid",
-    # 1D (deprecated aliases)
-    "OneDimensionalAMRMesh",
-    "create_1d_amr_mesh",
-    # 2D Quadtree (new names)
-    "QuadTreeNode",
-    "QuadTreeAMRGrid",
-    "create_quadtree_amr_grid",
-    # 2D Quadtree (deprecated aliases)
-    "AdaptiveMesh",
-    "create_amr_mesh",
-    # 2D Triangular
-    "TriangleElement",
-    "TriangularAMRMesh",
-    "TriangularMeshErrorEstimator",
-    # 3D Tetrahedral
-    "TetrahedronElement",
-    "TetrahedralAMRMesh",
-    "TetrahedralErrorEstimator",
+    "AdaptiveGeometry",
+    "AMRNotImplementedError",
+    "create_amr_grid",
+    "is_adaptive",
 ]
