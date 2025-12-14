@@ -656,12 +656,32 @@ def test_diffusion_field_callable():
 
 
 @pytest.mark.unit
-def test_diffusion_alias():
-    """Test that 'diffusion' parameter works as alias for 'sigma'."""
+def test_diffusion_primary_parameter():
+    """Test that 'diffusion' is the primary parameter."""
     problem = MFGProblem(diffusion=0.3)
 
     assert problem.sigma == 0.3
     assert problem.diffusion_field == 0.3
+
+
+@pytest.mark.unit
+def test_sigma_deprecated_alias():
+    """Test that 'sigma' is deprecated alias for 'diffusion'."""
+    import warnings
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        problem = MFGProblem(sigma=0.4)
+
+        # Check deprecation warning was raised
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+        assert "sigma" in str(deprecation_warnings[0].message)
+        assert "diffusion" in str(deprecation_warnings[0].message)
+
+    # Value should still work
+    assert problem.sigma == 0.4
+    assert problem.diffusion_field == 0.4
 
 
 @pytest.mark.unit

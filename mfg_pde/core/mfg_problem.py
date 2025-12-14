@@ -132,8 +132,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         Nt: int | None = None,
         time_domain: tuple[float, int] | None = None,  # Alternative to T/Nt
         # Physical parameters - support DiffusionField (float, array, or callable)
-        sigma: float | NDArray[np.floating] | Callable | None = None,
-        diffusion: float | NDArray[np.floating] | Callable | None = None,  # Alias for sigma
+        diffusion: float | NDArray[np.floating] | Callable | None = None,  # Primary parameter
+        sigma: float | NDArray[np.floating] | Callable | None = None,  # Legacy alias (deprecated)
         drift_field: NDArray[np.floating] | Callable | None = None,  # Optional drift field
         coupling_coefficient: float = 0.5,
         # Advanced
@@ -164,11 +164,12 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                         Note: Both hjb_geometry and fp_geometry must be specified together
             network: NetworkGraph for network MFG problems
             T, Nt, time_domain: Time domain parameters (T, Nt) or tuple (T, Nt)
-            sigma, diffusion: Diffusion coefficient (sigma is standard name).
+            diffusion: Diffusion coefficient (primary parameter).
                 Supports multiple forms:
                 - float: Constant isotropic diffusion σ²
                 - ndarray: Spatially/temporally varying diffusion
                 - Callable: State-dependent σ(t, x, m) -> float | ndarray
+            sigma: Legacy alias for diffusion (deprecated, use diffusion instead).
             drift_field: Optional drift field α(t, x, m) for FP equation.
                 Supports:
                 - ndarray: Precomputed drift array
@@ -262,37 +263,42 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 raise ValueError("Specify EITHER (T, Nt) OR time_domain, not both")
             T, Nt = time_domain
 
-        if diffusion is not None:
-            if sigma is not None:
-                raise ValueError("Specify EITHER sigma OR diffusion, not both")
-            sigma = diffusion
+        # Handle sigma as legacy alias for diffusion
+        if sigma is not None:
+            if diffusion is not None:
+                raise ValueError("Specify EITHER diffusion OR sigma, not both")
+            warnings.warn(
+                "Parameter 'sigma' is deprecated. Use 'diffusion' instead. 'sigma' will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            diffusion = sigma
 
-        # Set defaults for T, Nt, sigma if not provided
+        # Set defaults for T, Nt, diffusion if not provided
         if T is None:
             T = 1.0
         if Nt is None:
             Nt = 51
-        if sigma is None:
-            sigma = 1.0
+        if diffusion is None:
+            diffusion = 1.0
 
         # Store the full diffusion field (may be float, array, or callable)
         # self.sigma will be the scalar/default for backward compatibility
         # self.diffusion_field stores the full field for advanced solvers
-        self.diffusion_field = sigma
+        self.diffusion_field = diffusion
         self.drift_field = drift_field
 
         # Extract scalar sigma for backward compatibility
-        # If sigma is callable or array, use a representative scalar value
-        if callable(sigma):
+        # If diffusion is callable or array, use a representative scalar value
+        if callable(diffusion):
             # Callable: store 1.0 as default, solvers should use diffusion_field
             sigma_scalar = 1.0
-        elif isinstance(sigma, np.ndarray):
+        elif isinstance(diffusion, np.ndarray):
             # Array: use mean value as representative scalar
-            sigma_scalar = float(np.mean(sigma))
+            sigma_scalar = float(np.mean(diffusion))
         else:
             # Scalar: use directly
-            sigma_scalar = float(sigma)
-        sigma = sigma_scalar
+            sigma_scalar = float(diffusion)
 
         # Normalize spatial parameters to arrays (with deprecation warnings for scalars)
         # This enables dimension-agnostic code while maintaining backward compatibility
@@ -349,6 +355,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         )
 
         # Dispatch to appropriate initializer
+        # Note: Pass sigma_scalar (the backward-compatible float value)
         if mode == "1d_legacy":
             # Mode 1: Legacy 1D
             if Lx is not None:
@@ -361,15 +368,21 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                     xmin_normalized = [0.0]
                 if xmax_normalized is None:
                     xmax_normalized = [1.0]
-            self._init_1d_legacy(xmin_normalized, xmax_normalized, Nx_normalized, T, Nt, sigma, coupling_coefficient)
+            self._init_1d_legacy(
+                xmin_normalized, xmax_normalized, Nx_normalized, T, Nt, sigma_scalar, coupling_coefficient
+            )
 
         elif mode == "nd_grid":
             # Mode 2: N-dimensional grid
-            self._init_nd(spatial_bounds, spatial_discretization, T, Nt, sigma, coupling_coefficient, suppress_warnings)
+            self._init_nd(
+                spatial_bounds, spatial_discretization, T, Nt, sigma_scalar, coupling_coefficient, suppress_warnings
+            )
 
         elif mode == "geometry":
             # Mode 3: Complex geometry
-            self._init_geometry(final_hjb_geometry, obstacles, T, Nt, sigma, coupling_coefficient, suppress_warnings)
+            self._init_geometry(
+                final_hjb_geometry, obstacles, T, Nt, sigma_scalar, coupling_coefficient, suppress_warnings
+            )
             # For dual geometry mode, store both geometries explicitly
             if self.geometry_projector is not None:
                 self.hjb_geometry = final_hjb_geometry
@@ -377,7 +390,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         elif mode == "network":
             # Mode 4: Network MFG
-            self._init_network(network, T, Nt, sigma, coupling_coefficient)
+            self._init_network(network, T, Nt, sigma_scalar, coupling_coefficient)
 
         elif mode == "default":
             # Default: 1D with default parameters
@@ -386,7 +399,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 UserWarning,
                 stacklevel=2,
             )
-            self._init_1d_legacy([0.0], [1.0], [51], T, Nt, sigma, coupling_coefficient)
+            self._init_1d_legacy([0.0], [1.0], [51], T, Nt, sigma_scalar, coupling_coefficient)
 
         else:
             raise ValueError(f"Unknown initialization mode: {mode}")
@@ -762,7 +775,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         self.tSpace = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Physical parameters
-        self.sigma = sigma
+        self.sigma = sigma  # Already sigma_scalar from __init__ dispatch
         self.coupling_coefficient = coupling_coefficient
 
         # Initialize spatial discretization based on geometry type
@@ -885,7 +898,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         self.tSpace = np.linspace(0, T, Nt + 1, endpoint=True)
 
         # Physical parameters
-        self.sigma = sigma
+        self.sigma = sigma  # Already sigma_scalar from __init__ dispatch
         self.coupling_coefficient = coupling_coefficient
 
         # Spatial discretization (nodes)
