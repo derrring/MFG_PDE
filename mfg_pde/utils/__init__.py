@@ -24,6 +24,36 @@ from . import mfg_logging as logging  # noqa: F401
 
 # Core utility functions (non-plotting)
 from .aux_func import npart, ppart
+from .convergence import (
+    # Backward compatibility aliases (deprecated)
+    AdaptiveConvergenceWrapper,
+    AdvancedConvergenceMonitor,
+    # NEW: Convergence checkers
+    ConvergenceChecker,
+    # New names (preferred)
+    ConvergenceConfig,
+    ConvergenceWrapper,
+    DistributionComparator,
+    DistributionConvergenceMonitor,
+    FPConvergenceChecker,
+    HJBConvergenceChecker,
+    MFGConvergenceChecker,
+    OscillationDetector,
+    ParticleMethodDetector,
+    RollingConvergenceMonitor,
+    SolverTypeDetector,
+    StochasticConvergenceMonitor,
+    adaptive_convergence,
+    calculate_error,
+    calculate_l2_convergence_metrics,
+    compute_norm,
+    create_default_monitor,
+    create_distribution_monitor,
+    create_rolling_monitor,
+    create_stochastic_monitor,
+    test_particle_detection,
+    wrap_solver_with_adaptive_convergence,
+)
 
 # Subdirectory imports
 from .data.validation import (
@@ -90,30 +120,6 @@ from .mfg_logging.logger import (
     log_solver_progress,
     log_solver_start,
     log_validation_error,
-)
-from .numerical.convergence import (
-    # Backward compatibility aliases (deprecated)
-    AdaptiveConvergenceWrapper,
-    AdvancedConvergenceMonitor,
-    # New names (preferred)
-    ConvergenceConfig,
-    ConvergenceWrapper,
-    DistributionComparator,
-    DistributionConvergenceMonitor,
-    OscillationDetector,
-    ParticleMethodDetector,
-    RollingConvergenceMonitor,
-    SolverTypeDetector,
-    StochasticConvergenceMonitor,
-    adaptive_convergence,
-    calculate_error,
-    calculate_l2_convergence_metrics,
-    create_default_monitor,
-    create_distribution_monitor,
-    create_rolling_monitor,
-    create_stochastic_monitor,
-    test_particle_detection,
-    wrap_solver_with_adaptive_convergence,
 )
 from .numerical.integration import get_integration_info, trapezoid
 from .numerical.particle.interpolation import (
@@ -308,6 +314,12 @@ __all__ = [
     "AdvancedConvergenceMonitor",
     "StochasticConvergenceMonitor",
     "create_stochastic_monitor",
+    # Convergence checkers (Protocol-based)
+    "ConvergenceChecker",
+    "HJBConvergenceChecker",
+    "FPConvergenceChecker",
+    "MFGConvergenceChecker",
+    "compute_norm",
     # Geometry utilities (obstacles, SDF)
     "BoxObstacle",
     "CircleObstacle",
