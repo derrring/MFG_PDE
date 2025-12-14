@@ -59,7 +59,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     # Type annotations for PDE coefficient fields
     # sigma: float is the scalar diffusion for backward compatibility
     # diffusion_field: DiffusionField stores the full field (float, array, or callable)
-    # drift_field: DriftField stores optional drift (array or callable)
+    # drift_field: DriftField stores optional drift (float, array, or callable)
     sigma: float
     diffusion_field: DiffusionField
     drift_field: DriftField
@@ -134,7 +134,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Physical parameters - support DiffusionField (float, array, or callable)
         diffusion: float | NDArray[np.floating] | Callable | None = None,  # Primary parameter
         sigma: float | NDArray[np.floating] | Callable | None = None,  # Legacy alias (deprecated)
-        drift: NDArray[np.floating] | Callable | None = None,  # Optional drift field
+        drift: float | NDArray[np.floating] | Callable | None = None,  # Optional drift field
         coupling_coefficient: float = 0.5,
         # Advanced
         components: MFGComponents | None = None,
@@ -172,8 +172,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             sigma: Legacy alias for diffusion (deprecated, use diffusion instead).
             drift: Optional drift field α(t, x, m) for FP equation.
                 Supports:
+                - float: Constant drift (same in all directions)
                 - ndarray: Precomputed drift array
-                - Callable: State-dependent α(t, x, m) -> ndarray
+                - Callable: State-dependent α(t, x, m) -> float | ndarray
             coupling_coefficient: Control cost coefficient
             components: Optional MFGComponents for custom problem definition
             suppress_warnings: Suppress computational feasibility warnings

@@ -707,6 +707,15 @@ def test_drift_field_array():
 
 
 @pytest.mark.unit
+def test_drift_field_scalar():
+    """Test MFGProblem with scalar drift (constant drift)."""
+    problem = MFGProblem(drift=0.05)
+
+    assert problem.drift_field == 0.05
+    assert not problem.has_state_dependent_coefficients()
+
+
+@pytest.mark.unit
 def test_drift_field_callable():
     """Test MFGProblem with callable drift field."""
 
