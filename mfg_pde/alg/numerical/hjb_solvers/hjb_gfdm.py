@@ -1067,21 +1067,32 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             # Approximate derivatives using GFDM
             derivs = self.approximate_derivatives(u_current, i)
 
-            # Extract gradient and Hessian
+            # Extract gradient and Hessian, convert to DerivativeTensors
             # For 1D: derivs[(1,)] is du/dx, derivs[(2,)] is d²u/dx²
             # For 2D: derivs[(1,0)] is du/dx, derivs[(0,1)] is du/dy, etc.
+            from mfg_pde.core.derivatives import DerivativeTensors
+
             d = self.problem.dimension  # Spatial dimension
             if d == 1:
                 p_value = derivs.get((1,), 0.0)
                 laplacian = derivs.get((2,), 0.0)
-                # Convert to derivs format for problem.H()
-                p_derivs = {(1,): p_value}
+                # Convert to DerivativeTensors format
+                grad = np.array([p_value])
+                hess = np.array([[derivs.get((2,), 0.0)]])
+                p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
             elif d == 2:
                 p_x = derivs.get((1, 0), 0.0)
                 p_y = derivs.get((0, 1), 0.0)
                 laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)
-                # Convert to derivs format for problem.H()
-                p_derivs = {(1, 0): p_x, (0, 1): p_y}
+                # Convert to DerivativeTensors format
+                grad = np.array([p_x, p_y])
+                hess = np.array(
+                    [
+                        [derivs.get((2, 0), 0.0), derivs.get((1, 1), 0.0)],
+                        [derivs.get((1, 1), 0.0), derivs.get((0, 2), 0.0)],
+                    ]
+                )
+                p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
             else:
                 msg = f"Dimension {d} not implemented"
                 raise NotImplementedError(msg)
