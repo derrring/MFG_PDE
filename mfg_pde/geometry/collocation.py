@@ -379,48 +379,141 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
         n_points: int,
         method: Literal["poisson_disk", "sobol", "uniform"] = "poisson_disk",
         seed: int | None = None,
+        refine_steps: int = 20,
     ) -> NDArray:
         """
-        Sample interior points using Poisson disk + rejection.
+        Sample interior points with particle repulsion refinement.
 
-        First generates well-spaced candidates, then rejects those outside domain.
+        Two-phase approach for non-convex domains:
+        1. Initial: Generate points via rejection sampling (fast, approximate)
+        2. Refine: Apply particle repulsion to achieve uniform coverage
+
+        The particle repulsion step solves the "thin wall" problem where
+        Euclidean-based methods fail to fill regions separated by obstacles.
+
+        Args:
+            n_points: Number of points to generate
+            method: Initial sampling method (refined regardless)
+            seed: Random seed
+            refine_steps: Number of particle repulsion iterations (0 to disable)
         """
         bounds = self._get_bounds()
-        config = MCConfig(seed=seed)
+        rng = np.random.RandomState(seed)
 
-        # Generate more candidates than needed (rejection will reduce)
-        oversample_factor = 2.0
-        n_candidates = int(n_points * oversample_factor)
+        # Phase 1: Initial sampling via rejection
+        points = self._sample_initial_rejection(n_points, bounds, rng)
 
-        if method == "poisson_disk":
-            sampler = PoissonDiskSampler(bounds, config)
-        elif method == "sobol":
-            sampler = QuasiMCSampler(bounds, config, "sobol")
-        else:
-            sampler = UniformMCSampler(bounds, config)
+        # Phase 2: Refine via particle repulsion (for well-spaced distribution)
+        if refine_steps > 0 and len(points) > 1:
+            points = self._refine_particle_repulsion(points, bounds, refine_steps)
 
+        logger.debug(f"ImplicitCollocation: {len(points)} points after {refine_steps} refinement steps")
+        return points
+
+    def _sample_initial_rejection(
+        self,
+        n_points: int,
+        bounds: list[tuple[float, float]],
+        rng: np.random.RandomState,
+    ) -> NDArray:
+        """Generate initial points via simple rejection sampling."""
         accepted = []
-        max_attempts = 10
+        max_attempts = n_points * 20
 
-        for _attempt in range(max_attempts):
-            candidates = sampler.sample(n_candidates)
-
-            # Check which points are inside (SDF < 0)
-            sdf_values = self.geometry.signed_distance(candidates)
-            inside_mask = sdf_values < 0
-            inside_points = candidates[inside_mask]
-
-            accepted.extend(inside_points.tolist())
-
+        for _ in range(max_attempts):
             if len(accepted) >= n_points:
                 break
+            candidate = np.array([rng.uniform(b[0], b[1]) for b in bounds])
+            if self.geometry.signed_distance(candidate.reshape(1, -1))[0] < 0:
+                accepted.append(candidate)
 
-            # Need more points
-            n_candidates = int((n_points - len(accepted)) * oversample_factor)
+        return np.array(accepted[:n_points])
 
-        result = np.array(accepted[:n_points])
-        logger.debug(f"ImplicitCollocation: generated {len(result)} interior points")
-        return result
+    def _refine_particle_repulsion(
+        self,
+        points: NDArray,
+        bounds: list[tuple[float, float]],
+        steps: int = 20,
+        dt: float = 0.1,
+    ) -> NDArray:
+        """
+        Refine point distribution using particle repulsion (energy minimization).
+
+        Minimizes the energy functional:
+            E = sum_{i!=j} 1/||x_i - x_j||^p + sum_i 1/d(x_i, boundary)^q
+
+        Points naturally "flow" into non-convex regions, solving the thin-wall
+        problem that plagues Poisson disk sampling.
+
+        Reference: Lloyd's relaxation / Centroidal Voronoi Tessellation
+        """
+        from scipy.spatial import cKDTree
+
+        N, d = points.shape
+        current = points.copy()
+
+        # Estimate interaction radius from point density
+        bbox_volume = np.prod([b[1] - b[0] for b in bounds])
+        target_spacing = (bbox_volume / N) ** (1.0 / d)
+        interaction_radius = 3.0 * target_spacing
+
+        for _step in range(steps):
+            forces = np.zeros_like(current)
+
+            # 1. Inter-particle repulsion (via KDTree for efficiency)
+            tree = cKDTree(current)
+            pairs = tree.query_pairs(r=interaction_radius)
+
+            for i, j in pairs:
+                diff = current[i] - current[j]
+                dist = np.linalg.norm(diff)
+                if dist < 1e-10:
+                    continue
+                # Repulsion: 1/r^2 kernel (adjustable)
+                force_mag = 1.0 / (dist**2 + 1e-6)
+                force_vec = (diff / dist) * force_mag
+                forces[i] += force_vec
+                forces[j] -= force_vec
+
+            # 2. Boundary repulsion (push away from walls)
+            sdf = self.geometry.signed_distance(current)
+            grad_sdf = self._compute_sdf_gradient(current)
+
+            # Repel from boundary: force proportional to 1/d^2
+            # Only apply when close to boundary (within target_spacing)
+            close_to_boundary = np.abs(sdf) < target_spacing
+            for i in np.where(close_to_boundary)[0]:
+                boundary_dist = np.abs(sdf[i])
+                if boundary_dist < 1e-10:
+                    boundary_dist = 1e-10
+                # Push inward (opposite to gradient which points outward)
+                force_mag = 0.5 / (boundary_dist**2)
+                forces[i] -= grad_sdf[i] * force_mag * np.sign(sdf[i])
+
+            # 3. Adaptive time step (reduce if forces are large)
+            max_force = np.max(np.linalg.norm(forces, axis=1))
+            effective_dt = min(dt, 0.5 * target_spacing / (max_force + 1e-10))
+
+            # 4. Update positions
+            current = current + forces * effective_dt
+
+            # 5. Project back to domain interior if pushed outside
+            sdf_new = self.geometry.signed_distance(current)
+            outside = sdf_new >= 0
+
+            if np.any(outside):
+                # Newton projection back to boundary, then slight inward push
+                grad = self._compute_sdf_gradient(current[outside])
+                grad_norm = np.linalg.norm(grad, axis=1, keepdims=True)
+                grad_norm = np.maximum(grad_norm, 1e-10)
+                # Project to boundary then push slightly inside
+                current[outside] -= (sdf_new[outside, np.newaxis] + 0.01 * target_spacing) * grad / grad_norm
+
+            # 6. Clamp to bounds
+            for i in range(d):
+                current[:, i] = np.clip(current[:, i], bounds[i][0] + 1e-6, bounds[i][1] - 1e-6)
+
+        return current
 
     def sample_boundary(
         self,
@@ -567,6 +660,7 @@ class CollocationSampler:
         n_points: int,
         method: Literal["poisson_disk", "sobol", "uniform"] = "poisson_disk",
         seed: int | None = None,
+        refine_steps: int = 20,
     ) -> NDArray:
         """
         Sample interior collocation points.
@@ -575,10 +669,17 @@ class CollocationSampler:
             n_points: Number of interior points
             method: Sampling method ("poisson_disk", "sobol", "uniform")
             seed: Random seed
+            refine_steps: Particle repulsion iterations (0 to disable)
 
         Returns:
             Interior points, shape (n_points, d)
         """
+        # Check if strategy supports refine_steps
+        import inspect
+
+        sig = inspect.signature(self._strategy.sample_interior)
+        if "refine_steps" in sig.parameters:
+            return self._strategy.sample_interior(n_points, method, seed, refine_steps)
         return self._strategy.sample_interior(n_points, method, seed)
 
     def sample_boundary(
