@@ -520,20 +520,35 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
         n_points: int,
         method: Literal["uniform", "poisson_disk"] = "uniform",
         seed: int | None = None,
+        refine_steps: int = 30,
     ) -> tuple[NDArray, NDArray, NDArray]:
         """
-        Sample boundary points using Newton projection to zero level set.
+        Sample boundary points with geodesic repulsion refinement.
 
         Algorithm:
         1. Generate interior seed points
         2. Project each to boundary via Newton iteration on SDF
-        3. Compute normals from SDF gradient
+        3. Refine: Apply tangential repulsion for uniform spacing along boundary
+        4. Compute normals from SDF gradient
+
+        The refinement step moves points along the boundary (tangent direction)
+        to achieve uniform spacing, solving clustering from projection.
+
+        Args:
+            n_points: Number of boundary points
+            method: Initial seed generation method
+            seed: Random seed
+            refine_steps: Boundary repulsion iterations (0 to disable)
         """
         # Generate seed points inside domain
-        seeds = self.sample_interior(n_points, method="sobol", seed=seed)
+        seeds = self.sample_interior(n_points, method="sobol", seed=seed, refine_steps=0)
 
         # Project to boundary
         boundary_points = self._project_to_boundary(seeds)
+
+        # Refine via tangential repulsion (geodesic relaxation)
+        if refine_steps > 0 and len(boundary_points) > 1:
+            boundary_points = self._refine_boundary_repulsion(boundary_points, refine_steps)
 
         # Compute normals from SDF gradient
         normals = self._compute_normals(boundary_points)
@@ -542,6 +557,82 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
         region_ids = np.zeros(len(boundary_points), dtype=int)
 
         return boundary_points, normals, region_ids
+
+    def _refine_boundary_repulsion(
+        self,
+        points: NDArray,
+        steps: int = 30,
+        dt: float = 0.05,
+    ) -> NDArray:
+        """
+        Refine boundary point distribution using tangential repulsion.
+
+        Points are constrained to the boundary manifold (SDF = 0).
+        Forces are projected to the tangent space before update.
+        After each step, points are re-projected to ensure SDF = 0.
+
+        This achieves uniform spacing along the boundary curve/surface.
+        """
+        from scipy.spatial import cKDTree
+
+        N, _ = points.shape
+        current = points.copy()
+
+        # Estimate target spacing from arc length / perimeter approximation
+        # Use mean distance between consecutive sorted points as estimate
+        target_spacing = self._estimate_boundary_spacing(current, N)
+        interaction_radius = 4.0 * target_spacing
+
+        for _step in range(steps):
+            forces = np.zeros_like(current)
+
+            # 1. Inter-particle repulsion (KDTree)
+            tree = cKDTree(current)
+            pairs = tree.query_pairs(r=interaction_radius)
+
+            for i, j in pairs:
+                diff = current[i] - current[j]
+                dist = np.linalg.norm(diff)
+                if dist < 1e-10:
+                    continue
+                # Repulsion: 1/r^2 kernel
+                force_mag = 1.0 / (dist**2 + 1e-6)
+                force_vec = (diff / dist) * force_mag
+                forces[i] += force_vec
+                forces[j] -= force_vec
+
+            # 2. Project forces to tangent space (remove normal component)
+            normals = self._compute_normals(current)
+            for i in range(N):
+                normal_component = np.dot(forces[i], normals[i]) * normals[i]
+                forces[i] = forces[i] - normal_component  # Tangential only
+
+            # 3. Adaptive time step
+            max_force = np.max(np.linalg.norm(forces, axis=1))
+            effective_dt = min(dt, 0.3 * target_spacing / (max_force + 1e-10))
+
+            # 4. Update positions (tangential movement)
+            current = current + forces * effective_dt
+
+            # 5. Re-project to boundary (maintain SDF = 0)
+            current = self._project_to_boundary(current, max_iter=5, tol=1e-7)
+
+        return current
+
+    def _estimate_boundary_spacing(self, points: NDArray, n_points: int) -> float:
+        """Estimate target spacing for boundary points."""
+        bounds = self._get_bounds()
+        d = len(bounds)
+
+        if d == 2:
+            # Rough perimeter estimate: sum of bounding box edges
+            perimeter = 2 * sum(b[1] - b[0] for b in bounds)
+            return perimeter / n_points
+        else:
+            # Higher dimensions: use bounding box surface area estimate
+            bbox_dims = np.array([b[1] - b[0] for b in bounds])
+            surface_area = 2 * sum(np.prod(np.delete(bbox_dims, i)) for i in range(d))
+            return (surface_area / n_points) ** (1.0 / (d - 1))
 
     def _project_to_boundary(
         self,
@@ -687,6 +778,7 @@ class CollocationSampler:
         n_points: int,
         method: Literal["uniform", "poisson_disk"] = "uniform",
         seed: int | None = None,
+        refine_steps: int = 30,
     ) -> tuple[NDArray, NDArray]:
         """
         Sample boundary collocation points.
@@ -695,11 +787,19 @@ class CollocationSampler:
             n_points: Number of boundary points
             method: Sampling method
             seed: Random seed
+            refine_steps: Boundary repulsion iterations (0 to disable)
 
         Returns:
             Tuple of (points, normals)
         """
-        points, normals, _ = self._strategy.sample_boundary(n_points, method, seed)
+        # Check if strategy supports refine_steps
+        import inspect
+
+        sig = inspect.signature(self._strategy.sample_boundary)
+        if "refine_steps" in sig.parameters:
+            points, normals, _ = self._strategy.sample_boundary(n_points, method, seed, refine_steps)
+        else:
+            points, normals, _ = self._strategy.sample_boundary(n_points, method, seed)
         return points, normals
 
     def generate_collocation(
