@@ -85,8 +85,8 @@ class TestHJBSemiLagrangianSolveHJBSystem:
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
-        # Output: solver adds +1 for terminal condition
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        # Output: same shape as input density (Nt+1 time points)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
         assert np.all(np.isfinite(U_solution))
 
     def test_solve_hjb_system_final_condition(self):
@@ -182,7 +182,7 @@ class TestHJBSemiLagrangianIntegration:
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_solver_with_gaussian_density(self):
         """Test solver with Gaussian density distribution."""
@@ -202,7 +202,7 @@ class TestHJBSemiLagrangianIntegration:
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
 
 class TestHJBSemiLagrangianSolverNotAbstract:
@@ -259,7 +259,7 @@ class TestCharacteristicTracingMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_rk2_produces_valid_solution(self):
         """Test that rk2 produces valid solution."""
@@ -274,7 +274,7 @@ class TestCharacteristicTracingMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_rk4_produces_valid_solution(self):
         """Test that rk4 with scipy.solve_ivp produces valid solution."""
@@ -289,7 +289,7 @@ class TestCharacteristicTracingMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_rk2_consistency_with_euler(self):
         """Test that rk2 produces consistent results with euler on smooth problems."""
@@ -383,7 +383,7 @@ class TestInterpolationMethods:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_cubic_consistency_with_linear(self):
         """Test that cubic interpolation is consistent with linear on smooth problems."""
@@ -490,7 +490,7 @@ class TestRBFInterpolationFallback:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_rbf_consistency_with_no_fallback(self):
         """Test that RBF fallback doesn't change results on well-behaved problems."""
@@ -537,7 +537,7 @@ class TestEnhancementsIntegration:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_rk4_with_rbf_fallback(self):
         """Test RK4 characteristic tracing with RBF fallback."""
@@ -554,7 +554,7 @@ class TestEnhancementsIntegration:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_all_enhancements_together(self):
         """Test all enhancements working together: RK4 + cubic + RBF."""
@@ -576,7 +576,7 @@ class TestEnhancementsIntegration:
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 2, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
 
     def test_enhanced_vs_baseline_consistency(self):
         """Test that enhanced configuration produces consistent results with baseline."""
