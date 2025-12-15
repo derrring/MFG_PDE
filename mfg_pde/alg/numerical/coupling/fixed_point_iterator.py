@@ -115,6 +115,23 @@ class FixedPointIterator(BaseMFGSolver):
         self._warm_start_U: np.ndarray | None = None
         self._warm_start_M: np.ndarray | None = None
 
+        # Cache signature info for solver interfaces (performance optimization)
+        self._hjb_sig_params: set[str] | None = None
+        self._fp_sig_params: set[str] | None = None
+        self._cache_solver_signatures()
+
+    def _cache_solver_signatures(self) -> None:
+        """Cache solver method signatures to avoid repeated inspect calls."""
+        import inspect
+
+        if hasattr(self.hjb_solver, "solve_hjb_system"):
+            sig = inspect.signature(self.hjb_solver.solve_hjb_system)
+            self._hjb_sig_params = set(sig.parameters.keys())
+
+        if hasattr(self.fp_solver, "solve_fp_system"):
+            sig = inspect.signature(self.fp_solver.solve_fp_system)
+            self._fp_sig_params = set(sig.parameters.keys())
+
     def solve(
         self,
         config: MFGSolverConfig | None = None,
@@ -272,14 +289,12 @@ class FixedPointIterator(BaseMFGSolver):
             # 1. Solve HJB backward with current M (disable inner progress bar when verbose)
             show_hjb_progress = not verbose
             if hasattr(self.hjb_solver, "solve_hjb_system"):
-                # Check if solve_hjb_system accepts show_progress and diffusion_field parameters
-                import inspect
-
-                sig = inspect.signature(self.hjb_solver.solve_hjb_system)
+                # Use cached signature info (computed once in __init__)
+                params = self._hjb_sig_params or set()
                 kwargs = {}
-                if "show_progress" in sig.parameters:
+                if "show_progress" in params:
                     kwargs["show_progress"] = show_hjb_progress
-                if "diffusion_field" in sig.parameters and self.diffusion_field is not None:
+                if "diffusion_field" in params and self.diffusion_field is not None:
                     kwargs["diffusion_field"] = self.diffusion_field
 
                 U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
@@ -289,12 +304,10 @@ class FixedPointIterator(BaseMFGSolver):
             # 2. Solve FP forward with new U (disable inner progress bar when verbose)
             show_fp_progress = not verbose
             if hasattr(self.fp_solver, "solve_fp_system"):
-                # Check if solve_fp_system accepts show_progress, drift_field, diffusion_field parameters
-                import inspect
-
-                sig = inspect.signature(self.fp_solver.solve_fp_system)
+                # Use cached signature info (computed once in __init__)
+                params = self._fp_sig_params or set()
                 kwargs = {}
-                if "show_progress" in sig.parameters:
+                if "show_progress" in params:
                     kwargs["show_progress"] = show_fp_progress
 
                 # Determine drift field: override or MFG drift from U
@@ -305,18 +318,18 @@ class FixedPointIterator(BaseMFGSolver):
                     # Standard MFG: drift from U
                     effective_drift = U_new
 
-                if "drift_field" in sig.parameters:
+                if "drift_field" in params:
                     kwargs["drift_field"] = effective_drift
                 else:
                     # Legacy: positional argument for U
                     # solve_fp_system(m_initial, U_drift, **kwargs)
                     pass  # Will use positional argument below
 
-                if "diffusion_field" in sig.parameters and self.diffusion_field is not None:
+                if "diffusion_field" in params and self.diffusion_field is not None:
                     kwargs["diffusion_field"] = self.diffusion_field
 
                 # Call with appropriate arguments
-                if "drift_field" in sig.parameters:
+                if "drift_field" in params:
                     M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
                 else:
                     # Legacy interface: second positional arg is U for drift

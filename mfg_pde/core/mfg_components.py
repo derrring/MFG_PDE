@@ -111,8 +111,13 @@ class HamiltonianMixin:
     spatial_shape: tuple
     dimension: int
 
+    # Cached signature parameters (set during validation)
+    _hamiltonian_has_derivs: bool | None = None
+    _hamiltonian_dm_has_derivs: bool | None = None
+    _potential_has_time: bool | None = None
+
     def _validate_hamiltonian_components(self) -> None:
-        """Validate Hamiltonian-related components."""
+        """Validate Hamiltonian-related components and cache signature info."""
         if self.components is None:
             return
 
@@ -125,7 +130,7 @@ class HamiltonianMixin:
         if has_hamiltonian_dm and not has_hamiltonian:
             raise ValueError("hamiltonian_func is required when hamiltonian_dm_func is provided")
 
-        # Validate function signatures only if Hamiltonians are provided
+        # Validate function signatures and CACHE signature info (perf optimization)
         if has_hamiltonian:
             self._validate_function_signature(
                 self.components.hamiltonian_func,
@@ -133,6 +138,9 @@ class HamiltonianMixin:
                 ["x_idx", "m_at_x"],
                 gradient_param_required=True,
             )
+            # Cache whether hamiltonian_func accepts 'derivs' parameter
+            sig = inspect.signature(self.components.hamiltonian_func)
+            self._hamiltonian_has_derivs = "derivs" in sig.parameters
 
         if has_hamiltonian_dm:
             self._validate_function_signature(
@@ -141,6 +149,14 @@ class HamiltonianMixin:
                 ["x_idx", "m_at_x"],
                 gradient_param_required=True,
             )
+            # Cache whether hamiltonian_dm_func accepts 'derivs' parameter
+            sig = inspect.signature(self.components.hamiltonian_dm_func)
+            self._hamiltonian_dm_has_derivs = "derivs" in sig.parameters
+
+        # Cache potential signature info
+        if self.components.potential_func is not None:
+            sig = inspect.signature(self.components.potential_func)
+            self._potential_has_time = "t" in sig.parameters or "time" in sig.parameters
 
     def _validate_function_signature(
         self, func: Callable, name: str, expected_params: list, gradient_param_required: bool = False
@@ -181,11 +197,15 @@ class HamiltonianMixin:
         spatial_grid = self._get_spatial_grid_internal()
         num_intervals = self._get_num_intervals() or 0
 
+        # Use cached signature info (set during validation)
+        has_time = self._potential_has_time
+        if has_time is None:
+            sig = inspect.signature(potential_func)
+            has_time = "t" in sig.parameters or "time" in sig.parameters
+
         for i in range(num_intervals + 1):
             x_i = spatial_grid[i]
-
-            sig = inspect.signature(potential_func)
-            if "t" in sig.parameters or "time" in sig.parameters:
+            if has_time:
                 self.f_potential[i] = potential_func(x_i, 0.0)
             else:
                 self.f_potential[i] = potential_func(x_i)
@@ -193,8 +213,13 @@ class HamiltonianMixin:
     def get_potential_at_time(self, t_idx: int) -> np.ndarray:
         """Get potential function at specific time (for time-dependent potentials)."""
         if self.is_custom and self.components is not None and self.components.potential_func is not None:
-            sig = inspect.signature(self.components.potential_func)
-            if "t" in sig.parameters or "time" in sig.parameters:
+            # Use cached signature info (set during validation) for performance
+            has_time = self._potential_has_time
+            if has_time is None:
+                sig = inspect.signature(self.components.potential_func)
+                has_time = "t" in sig.parameters or "time" in sig.parameters
+
+            if has_time:
                 current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
                 potential_at_t = np.zeros_like(self.f_potential)
 
@@ -307,10 +332,14 @@ class HamiltonianMixin:
 
         # Use custom Hamiltonian if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_func is not None:
-            sig = inspect.signature(self.components.hamiltonian_func)
-            params = list(sig.parameters.keys())
+            # Use cached signature info (set during validation) for performance
+            has_derivs = self._hamiltonian_has_derivs
+            if has_derivs is None:
+                # Fallback: compute if not cached (shouldn't happen after __init__)
+                sig = inspect.signature(self.components.hamiltonian_func)
+                has_derivs = "derivs" in sig.parameters
 
-            if "derivs" in params:
+            if has_derivs:
                 # Pass DerivativeTensors if available (new format), otherwise dict (legacy)
                 derivs_to_pass = derivs_tensor if derivs_tensor is not None else derivs
                 return self.components.hamiltonian_func(
@@ -481,10 +510,14 @@ class HamiltonianMixin:
 
         # Use custom derivative if provided
         if self.is_custom and self.components is not None and self.components.hamiltonian_dm_func is not None:
-            sig = inspect.signature(self.components.hamiltonian_dm_func)
-            params = list(sig.parameters.keys())
+            # Use cached signature info (set during validation) for performance
+            has_derivs = self._hamiltonian_dm_has_derivs
+            if has_derivs is None:
+                # Fallback: compute if not cached (shouldn't happen after __init__)
+                sig = inspect.signature(self.components.hamiltonian_dm_func)
+                has_derivs = "derivs" in sig.parameters
 
-            if "derivs" in params:
+            if has_derivs:
                 return self.components.hamiltonian_dm_func(
                     x_idx=x_idx,
                     x_position=x_position,
