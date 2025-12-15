@@ -119,6 +119,8 @@ class GFDMOperator:
         boundary_indices: set[int] | None = None,
         domain_bounds: list[tuple[float, float]] | None = None,
         boundary_type: str | None = None,
+        k_neighbors: int | None = None,
+        neighborhood_mode: str = "hybrid",
     ):
         """
         Initialize GFDM operator with precomputed structure.
@@ -132,6 +134,11 @@ class GFDMOperator:
             boundary_indices: Set of indices of boundary points (optional)
             domain_bounds: List of (min, max) tuples for each dimension (optional)
             boundary_type: Type of boundary condition ("no_flux" or None)
+            k_neighbors: Number of neighbors for k-NN mode (auto-computed if None)
+            neighborhood_mode: Neighborhood selection strategy:
+                - "radius": Use all points within delta (original behavior)
+                - "knn": Use exactly k nearest neighbors
+                - "hybrid": Use delta, but ensure at least k neighbors (default, most robust)
         """
         self.points = np.asarray(points)
         self.n_points, self.dimension = self.points.shape
@@ -139,6 +146,15 @@ class GFDMOperator:
         self.taylor_order = taylor_order
         self.weight_function = weight_function
         self.weight_scale = weight_scale
+        self.neighborhood_mode = neighborhood_mode
+
+        # Compute k_neighbors from Taylor order if not provided
+        n_derivatives = self._count_derivatives(self.dimension, taylor_order)
+        if k_neighbors is None:
+            # Need at least as many neighbors as derivatives for well-posed system
+            self.k_neighbors = n_derivatives + 1  # +1 for safety margin
+        else:
+            self.k_neighbors = max(k_neighbors, n_derivatives)
 
         # Boundary condition support
         # Handle various input types for boundary_indices
@@ -163,6 +179,13 @@ class GFDMOperator:
         # Precompute Taylor matrices
         self._build_taylor_matrices()
 
+    def _count_derivatives(self, dimension: int, order: int) -> int:
+        """Count number of derivatives for given dimension and order."""
+        # |B(d,p)| = sum_{k=1}^{p} C(d+k-1, k) = C(d+p, p) - 1
+        from math import comb
+
+        return comb(dimension + order, order) - 1
+
     def _build_multi_indices(self) -> list[tuple[int, ...]]:
         """Generate multi-index set B(d,p) = {β ∈ N^d : 0 < |β| ≤ p}."""
         d, p = self.dimension, self.taylor_order
@@ -182,21 +205,50 @@ class GFDMOperator:
         return multi_indices
 
     def _build_neighborhoods(self):
-        """Build δ-neighborhood structure for all points, with optional ghost particles."""
+        """
+        Build neighborhood structure for all points, with optional ghost particles.
+
+        Supports three modes:
+        - "radius": All points within delta (original behavior)
+        - "knn": Exactly k nearest neighbors
+        - "hybrid": Points within delta, but at least k neighbors (most robust)
+        """
         # Build KDTree for efficient neighbor queries
         tree = cKDTree(self.points)
 
-        # Query all neighbors within delta radius
         self.neighborhoods: list[dict] = []
+        self._hybrid_expanded_count = 0  # Track how many points needed k-NN fallback
 
         for i in range(self.n_points):
-            # Find neighbors within delta radius
-            neighbor_indices = tree.query_ball_point(self.points[i], self.delta)
-            neighbor_indices = np.array(neighbor_indices)
+            # Get neighbors based on mode
+            if self.neighborhood_mode == "knn":
+                # Pure k-NN mode: exactly k nearest
+                distances, neighbor_indices = tree.query(self.points[i], k=self.k_neighbors)
+                neighbor_indices = np.array(neighbor_indices)
+                distances = np.array(distances)
+            elif self.neighborhood_mode == "radius":
+                # Pure radius mode: all within delta
+                neighbor_indices = tree.query_ball_point(self.points[i], self.delta)
+                neighbor_indices = np.array(neighbor_indices)
+                neighbor_points = self.points[neighbor_indices]
+                distances = np.linalg.norm(neighbor_points - self.points[i], axis=1)
+            else:
+                # Hybrid mode (default): radius, but ensure at least k neighbors
+                neighbor_indices = tree.query_ball_point(self.points[i], self.delta)
+                neighbor_indices = np.array(neighbor_indices)
 
-            # Compute distances
+                if len(neighbor_indices) < self.k_neighbors:
+                    # Not enough neighbors within delta, use k-NN as fallback
+                    distances, neighbor_indices = tree.query(self.points[i], k=self.k_neighbors)
+                    neighbor_indices = np.array(neighbor_indices)
+                    distances = np.array(distances)
+                    self._hybrid_expanded_count += 1
+                else:
+                    neighbor_points = self.points[neighbor_indices]
+                    distances = np.linalg.norm(neighbor_points - self.points[i], axis=1)
+
+            # Get neighbor points (for all modes)
             neighbor_points = self.points[neighbor_indices]
-            distances = np.linalg.norm(neighbor_points - self.points[i], axis=1)
 
             # Check if ghost particles are needed for boundary points
             ghost_particles = []
@@ -233,6 +285,19 @@ class GFDMOperator:
                         "ghost_count": 0,
                     }
                 )
+
+        # Report hybrid mode statistics
+        if self.neighborhood_mode == "hybrid" and self._hybrid_expanded_count > 0:
+            import warnings
+
+            pct = 100.0 * self._hybrid_expanded_count / self.n_points
+            warnings.warn(
+                f"Hybrid neighborhood: {self._hybrid_expanded_count}/{self.n_points} points ({pct:.1f}%) "
+                f"had fewer than k={self.k_neighbors} neighbors within delta={self.delta:.4f}. "
+                f"Used k-NN fallback for these points.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     def _create_ghost_particles(self, point_idx: int) -> tuple[list[np.ndarray], list[float]]:
         """

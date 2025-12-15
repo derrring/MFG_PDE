@@ -72,6 +72,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         adaptive_neighborhoods: bool = False,
         k_min: int | None = None,
         max_delta_multiplier: float = 5.0,
+        # Hybrid neighborhood parameters
+        k_neighbors: int | None = None,
+        neighborhood_mode: str = "hybrid",
     ):
         """
         Initialize the GFDM HJB solver.
@@ -117,6 +120,12 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                 Limits delta growth to preserve GFDM locality. For very irregular distributions,
                 consider increasing to 10.0 (achieves 98%+ success) or increasing base delta instead.
                 Trade-off: Smaller limit = better theory, larger limit = better robustness.
+            k_neighbors: Number of neighbors for neighborhood selection (auto-computed if None).
+                When None, computed from Taylor order to ensure well-posed least squares.
+            neighborhood_mode: Neighborhood selection strategy:
+                - "radius": Use all points within delta (classic behavior)
+                - "knn": Use exactly k nearest neighbors
+                - "hybrid": Use delta, but ensure at least k neighbors (default, most robust)
         """
         super().__init__(problem)
 
@@ -290,6 +299,8 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             boundary_indices=self.boundary_indices,
             domain_bounds=self.domain_bounds,
             boundary_type=bc_type,
+            k_neighbors=k_neighbors,
+            neighborhood_mode=neighborhood_mode,
         )
 
         # Get multi-indices from GFDMOperator
