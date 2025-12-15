@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
 from mfg_pde.types import HamiltonianJacobians
 from mfg_pde.utils.aux_func import npart, ppart
 
@@ -246,7 +247,27 @@ class HamiltonianMixin:
         if derivs is None and p_values is None:
             raise ValueError("Must provide either 'derivs' or 'p_values' to H()")
 
-        if derivs is None:
+        # Preserve original DerivativeTensors for custom Hamiltonians
+        derivs_tensor: DerivativeTensors | None = None
+        if isinstance(derivs, DerivativeTensors):
+            derivs_tensor = derivs
+
+        # Handle DerivativeTensors input - convert to legacy dict format for default Hamiltonian
+        derivs_dict: dict[tuple[int, ...], float]
+        if isinstance(derivs, DerivativeTensors):
+            derivs_dict = to_multi_index_dict(derivs)
+        elif derivs is not None:
+            # Legacy dict format - emit deprecation warning
+            warnings.warn(
+                "Passing dict to H() is deprecated since v0.17.0. "
+                "Use DerivativeTensors instead: "
+                "derivs = DerivativeTensors.from_gradient(np.array([p_x, p_y])). "
+                "See docs/development/DERIVATIVE_TENSORS_MIGRATION.md",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            derivs_dict = derivs
+        elif p_values is not None:
             warnings.warn(
                 "p_values parameter is deprecated. Use derivs instead. "
                 "See docs/gradient_notation_standard.md for migration guide.",
@@ -255,7 +276,12 @@ class HamiltonianMixin:
             )
             from mfg_pde.compat.gradient_notation import ensure_tuple_notation
 
-            derivs = ensure_tuple_notation(p_values, dimension=1, u_value=0.0)
+            derivs_dict = ensure_tuple_notation(p_values, dimension=1, u_value=0.0)
+        else:
+            derivs_dict = {}
+
+        # Use dict for default Hamiltonian (legacy compatibility)
+        derivs = derivs_dict
 
         # Compute x_position and current_time if not provided
         if x_position is None:
@@ -285,11 +311,13 @@ class HamiltonianMixin:
             params = list(sig.parameters.keys())
 
             if "derivs" in params:
+                # Pass DerivativeTensors if available (new format), otherwise dict (legacy)
+                derivs_to_pass = derivs_tensor if derivs_tensor is not None else derivs
                 return self.components.hamiltonian_func(
                     x_idx=x_idx,
                     x_position=x_position,
                     m_at_x=m_at_x,
-                    derivs=derivs,
+                    derivs=derivs_to_pass,
                     t_idx=t_idx,
                     current_time=current_time,
                     problem=self,

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
 from mfg_pde.utils.pde_coefficients import CoefficientField
 
@@ -473,9 +474,16 @@ class HJBFDMSolver(BaseHJBSolver):
 
         return U_solution
 
-    def _compute_gradients_nd(self, U: NDArray) -> dict[tuple, NDArray]:
-        """Compute gradients using central differences."""
-        gradients = {(0,) * self.dimension: U}
+    def _compute_gradients_nd(self, U: NDArray) -> dict[int, NDArray]:
+        """Compute gradients using central differences.
+
+        Returns:
+            Dict mapping dimension index to gradient array for that dimension.
+            Key 0 = ∂u/∂x₀, Key 1 = ∂u/∂x₁, etc.
+            Also includes special key -1 for the function value U itself.
+        """
+        # Store gradients by dimension index for efficient access
+        gradients: dict[int, NDArray] = {-1: U}  # -1 = function value
 
         for d in range(self.dimension):
             h = self.spacing[d]
@@ -502,9 +510,8 @@ class HJBFDMSolver(BaseHJBSolver):
             # Concatenate
             grad_d = np.concatenate([grad_left, grad_interior, grad_right], axis=d)
 
-            # Store with multi-index key
-            multi_idx = tuple(1 if i == d else 0 for i in range(self.dimension))
-            gradients[multi_idx] = grad_d
+            # Store with dimension index as key
+            gradients[d] = grad_d
 
         return gradients
 
@@ -512,7 +519,7 @@ class HJBFDMSolver(BaseHJBSolver):
         self,
         U: NDArray,
         M: NDArray,
-        gradients: dict,
+        gradients: dict[int, NDArray],
         sigma_at_n: float | NDArray | None = None,
         Sigma_at_n: NDArray | None = None,
     ) -> NDArray:
@@ -524,7 +531,8 @@ class HJBFDMSolver(BaseHJBSolver):
         Args:
             U: Value function at current timestep
             M: Density at current timestep
-            gradients: Dictionary of gradient arrays
+            gradients: Dictionary mapping dimension index to gradient arrays.
+                       Key d = ∂u/∂xd, Key -1 = function value U.
             sigma_at_n: Scalar diffusion coefficient (None uses problem.sigma, float is constant, array is spatially varying)
             Sigma_at_n: Tensor diffusion coefficient (None or tensor array). If provided and diagonal, computes
                         H_viscosity = (1/2) Σᵢ σᵢ² pᵢ² separately and adds to running cost.
@@ -552,15 +560,12 @@ class HJBFDMSolver(BaseHJBSolver):
         for multi_idx in np.ndindex(self.shape):
             x_coords = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
             m_at_point = M[multi_idx]
-            derivs_at_point = {key: grad_array[multi_idx] for key, grad_array in gradients.items()}
 
-            # Extract gradient p
-            p = np.array(
-                [
-                    derivs_at_point.get(tuple(1 if i == d else 0 for i in range(self.dimension)), 0.0)
-                    for d in range(self.dimension)
-                ]
-            )
+            # Build gradient vector p from gradients dict
+            p = np.array([gradients[d][multi_idx] for d in range(self.dimension)])
+
+            # Build DerivativeTensors for Hamiltonian call
+            derivs = DerivativeTensors.from_gradient(p)
 
             if use_tensor_diffusion:
                 # Tensor diffusion mode
@@ -585,9 +590,8 @@ class HJBFDMSolver(BaseHJBSolver):
                     # We want:      H_running = (coupling/2)|p|² + V(x) + F(m)
                     #               H_total = H_viscosity + H_running
 
-                    # Control cost (always present)
-                    p_squared_norm = np.sum(p**2)
-                    H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
+                    # Control cost using DerivativeTensors
+                    H_control = 0.5 * self.problem.coupling_coefficient * derivs.grad_norm_squared
 
                     # Coupling term F(m) - typically G(m) where G'(m) = g(m)
                     # For standard MFG: F(m) = 0 (coupling is only through g(m) in FP)
@@ -617,9 +621,8 @@ class HJBFDMSolver(BaseHJBSolver):
                     # Compute viscosity with diagonal only: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
                     H_viscosity = 0.5 * np.sum(sigma_squared * p**2)
 
-                    # Compute running cost manually (same as diagonal case)
-                    p_squared_norm = np.sum(p**2)
-                    H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
+                    # Compute running cost using DerivativeTensors
+                    H_control = 0.5 * self.problem.coupling_coefficient * derivs.grad_norm_squared
                     H_coupling_m = 0.0
                     H_potential = 0.0
 
@@ -645,7 +648,13 @@ class HJBFDMSolver(BaseHJBSolver):
                     if hasattr(self.problem, "hamiltonian"):
                         H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
                     elif hasattr(self.problem, "H"):
-                        H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs_at_point)
+                        # Use new DerivativeTensors format, with legacy fallback
+                        try:
+                            H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs)
+                        except TypeError:
+                            # Legacy: convert to multi-index dict format
+                            legacy_derivs = to_multi_index_dict(derivs)
+                            H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=legacy_derivs)
                     else:
                         raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
                 finally:
@@ -655,7 +664,7 @@ class HJBFDMSolver(BaseHJBSolver):
         return H_values
 
     def _evaluate_hamiltonian_vectorized(
-        self, U: NDArray, M: NDArray, gradients: dict, sigma_at_n=None, Sigma_at_n=None
+        self, U: NDArray, M: NDArray, gradients: dict[int, NDArray], sigma_at_n=None, Sigma_at_n=None
     ) -> NDArray:
         """
         Vectorized Hamiltonian evaluation across all grid points (10-50x faster than point-by-point).
@@ -663,7 +672,8 @@ class HJBFDMSolver(BaseHJBSolver):
         Args:
             U: Value function at current timestep
             M: Density at current timestep
-            gradients: Dictionary of gradient arrays
+            gradients: Dictionary mapping dimension index to gradient arrays.
+                       Key d = ∂u/∂xd.
             sigma_at_n: Scalar diffusion coefficient
             Sigma_at_n: Tensor diffusion coefficient
 
@@ -681,12 +691,11 @@ class HJBFDMSolver(BaseHJBSolver):
         x_grid = np.stack([g.ravel() for g in coord_grids], axis=-1)  # (N_total, d)
 
         # Build p_grid: (N_total_points, dimension)
-        # Extract first-order derivatives for each spatial dimension
+        # Extract first-order derivatives for each spatial dimension using new format
         p_components = []
         for d in range(self.dimension):
-            deriv_key = tuple(1 if i == d else 0 for i in range(self.dimension))
-            if deriv_key in gradients:
-                p_components.append(gradients[deriv_key].ravel())
+            if d in gradients:
+                p_components.append(gradients[d].ravel())
             else:
                 p_components.append(np.zeros(x_grid.shape[0]))
         p_grid = np.stack(p_components, axis=-1)  # (N_total, d)
@@ -723,7 +732,7 @@ class HJBFDMSolver(BaseHJBSolver):
             # Compute viscosity term: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
             H_viscosity = 0.5 * np.sum(sigma_squared_grid * p_grid**2, axis=1)  # (N_total,)
 
-            # Compute running cost without viscosity
+            # Compute running cost without viscosity: |∇u|² = Σᵢ pᵢ²
             p_squared_norm = np.sum(p_grid**2, axis=1)  # (N_total,)
             H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
             H_coupling_m = 0.0  # Standard MFG has no direct m-coupling in H

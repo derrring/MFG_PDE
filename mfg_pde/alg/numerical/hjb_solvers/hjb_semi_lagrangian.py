@@ -48,6 +48,8 @@ from .hjb_sl_interpolation import (
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
+from mfg_pde.core.derivatives import DerivativeTensors
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -88,6 +90,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         interpolation_method: str = "linear",
         optimization_method: str = "brent",
         characteristic_solver: str = "explicit_euler",
+        diffusion_method: str = "adi",
         use_rbf_fallback: bool = True,
         rbf_kernel: str = "thin_plate_spline",
         use_jax: bool | None = None,
@@ -113,6 +116,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 - 'explicit_euler': First-order explicit Euler (fastest, least accurate)
                 - 'rk2': Second-order Runge-Kutta midpoint method
                 - 'rk4': Fourth-order Runge-Kutta via scipy.solve_ivp (most accurate)
+            diffusion_method: Method for handling diffusion term (default: 'adi')
+                - 'adi': ADI (Alternating Direction Implicit) splitting (default)
+                - 'explicit': Explicit Laplacian (simple, requires small dt)
+                - 'stochastic': Stochastic characteristic with Brownian motion (high-dim friendly)
+                - 'none': No diffusion (for testing or zero-diffusion problems)
             use_rbf_fallback: Use RBF interpolation as fallback for boundary cases
             rbf_kernel: RBF kernel function
                 - 'thin_plate_spline': Smooth, no free parameters (recommended)
@@ -140,6 +148,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         self.interpolation_method = interpolation_method
         self.optimization_method = optimization_method
         self.characteristic_solver = characteristic_solver
+        self.diffusion_method = diffusion_method
         self.use_rbf_fallback = use_rbf_fallback
         self.rbf_kernel = rbf_kernel
         self.tolerance = tolerance
@@ -177,7 +186,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             self.grid = problem.geometry  # Geometry IS the grid
             self.dt = problem.dt
             # Grid spacing: vector of spacings in each dimension
-            self.spacing = np.array(self.grid.get_grid_spacing())
+            self.dx = np.array(self.grid.get_grid_spacing())
             # Grid shape: use get_grid_shape() for CartesianGrid interface compatibility
             self._grid_shape = tuple(self.grid.get_grid_shape())
             self._num_points_total = int(np.prod(self._grid_shape))
@@ -288,7 +297,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # nD gradient computation
             grad_components = []
             for axis in range(self.dimension):
-                grad_axis = np.gradient(u_values, self.spacing[axis], axis=axis, edge_order=2)
+                grad_axis = np.gradient(u_values, self.dx[axis], axis=axis, edge_order=2)
                 grad_components.append(grad_axis)
 
             # CFL check
@@ -296,7 +305,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 grad = np.stack(grad_components, axis=0)
                 magnitude = np.sqrt(np.sum(grad**2, axis=0))
                 max_grad = np.max(magnitude)
-                min_spacing = np.min(self.spacing)
+                min_spacing = np.min(self.dx)
                 cfl = max_grad * self.dt / min_spacing
                 if cfl > 1.0:
                     logger.warning(
@@ -336,13 +345,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # nD CFL computation
             grad_components = []
             for axis in range(self.dimension):
-                grad_axis = np.gradient(u_values, self.spacing[axis], axis=axis, edge_order=2)
+                grad_axis = np.gradient(u_values, self.dx[axis], axis=axis, edge_order=2)
                 grad_components.append(grad_axis)
 
             grad = np.stack(grad_components, axis=0)
             magnitude = np.sqrt(np.sum(grad**2, axis=0))
             max_grad = np.max(magnitude)
-            dx_eff = np.min(self.spacing)
+            dx_eff = np.min(self.dx)
             cfl = max_grad * dt_target / dx_eff
 
         # Determine substeps needed
@@ -443,32 +452,33 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             raise ValueError("U_coupling_prev is required")
 
         # Handle multi-dimensional grids
+        # M_density has shape (Nt_points, *spatial_shape) where Nt_points = Nt + 1
         shape = M_density.shape
-        Nt = shape[0]
+        Nt_points = shape[0]  # Number of time points (includes t=0 and t=T)
         grid_shape = shape[1:]  # Remaining dimensions
 
-        # Output shape: (Nt + 1, *grid_shape) to include terminal condition at t=T
-        U_solution = np.zeros((Nt + 1, *grid_shape))
+        # Output shape: (Nt_points, *grid_shape) - same as input
+        U_solution = np.zeros((Nt_points, *grid_shape))
 
-        # Set final condition at t=T (index Nt)
-        U_solution[Nt] = U_terminal
+        # Set final condition at t=T (last index)
+        U_solution[-1] = U_terminal
 
         total_points = np.prod(grid_shape)
         if logger.isEnabledFor(logging.INFO):
             logger.info(
-                f"Starting semi-Lagrangian HJB solve: {Nt + 1} time steps (including terminal), {total_points} spatial points ({grid_shape})"
+                f"Starting semi-Lagrangian HJB solve: {Nt_points} time points, {total_points} spatial points ({grid_shape})"
             )
 
-        # Solve backward in time using semi-Lagrangian method (from Nt-1 down to 0)
+        # Solve backward in time using semi-Lagrangian method
+        # Loop from second-to-last index down to 0
         total_substeps_used = 0
-        for n in range(Nt - 1, -1, -1):
+        for n in range(Nt_points - 2, -1, -1):
             if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Solving time step {n}/{Nt - 1}")
+                logger.debug(f"Solving time step {n}/{Nt_points - 2}")
 
-            # For density and coupling, use min(n+1, Nt-1) to handle edge case at n=Nt-1
-            # where M_density and U_coupling_prev don't have index Nt
-            m_idx = min(n + 1, Nt - 1) if n + 1 >= Nt else n + 1
-            u_prev_idx = min(n, Nt - 1)
+            # Index for density and coupling arrays
+            m_idx = min(n + 1, Nt_points - 1)
+            u_prev_idx = min(n, Nt_points - 1)
 
             # Compute CFL and determine substeps needed for this time step
             cfl, n_substeps, dt_substep = self._compute_cfl_and_substeps(U_solution[n + 1], self.dt)
@@ -496,7 +506,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     # Check for numerical issues after each substep
                     if np.any(np.isnan(U_current) | np.isinf(U_current)):
                         error_msg = (
-                            f"Semi-Lagrangian solver failed at time step {n}/{Nt - 1}, "
+                            f"Semi-Lagrangian solver failed at time step {n}/{Nt_points - 2}, "
                             f"substep {substep + 1}/{n_substeps} with NaN/Inf values. "
                             f"CFL was {cfl:.2f}, using {n_substeps} substeps with dt={dt_substep:.6f}"
                         )
@@ -509,7 +519,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # Check for numerical issues
             if np.any(np.isnan(U_solution[n]) | np.isinf(U_solution[n])):
                 error_msg = (
-                    f"Semi-Lagrangian solver failed at time step {n}/{Nt - 1} with NaN/Inf values. "
+                    f"Semi-Lagrangian solver failed at time step {n}/{Nt_points - 2} with NaN/Inf values. "
                     "Possible causes:\n"
                     "  1. CFL condition violated (try smaller dt or enable adaptive_substepping=True)\n"
                     "  2. Grid too coarse for solution features\n"
@@ -566,17 +576,17 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     u_departure = self._interpolate_value(U_next, x_departure)
                     hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
-                    # Advection step: u* = u(X(t-dt)) - dt * H(x, p*, m)
-                    U_star[i] = u_departure - self.dt * hamiltonian_value
+                    # Advection step for backward HJB solve:
+                    # HJB: -∂u/∂t + H(x,∇u,m) - σ²/2 Δu = 0
+                    # Backward discretization: u^n = u^{n+1} + dt * H (diffusion handled separately)
+                    U_star[i] = u_departure + self.dt * hamiltonian_value
 
                 except Exception as e:
                     logger.warning(f"Error at grid point {i}: {e}")
                     U_star[i] = U_next[i]
 
-            # Step 2: Diffusion (Crank-Nicolson for unconditional stability)
-            # Solve: (I - 0.5*dt*sigma^2*L) u^n = (I + 0.5*dt*sigma^2*L) u*
-            # where L is the Laplacian operator
-            U_current = self._solve_crank_nicolson_diffusion(U_star, self.dt, self.problem.sigma)
+            # Step 2: Diffusion (using configured method)
+            U_current = self._apply_diffusion(U_star, self.dt)
 
             return U_current
 
@@ -631,8 +641,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 # Evaluate Hamiltonian
                 hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
-                # Advection step: u_star = u(X(t-dt)) - dt * H(x, p*, m)
-                u_star_val = u_departure - self.dt * hamiltonian_value
+                # Advection step for backward HJB solve:
+                # HJB: -∂u/∂t + H(x,∇u,m) - σ²/2 Δu = 0
+                # Backward discretization: u^n = u^{n+1} + dt * H (diffusion handled separately)
+                u_star_val = u_departure + self.dt * hamiltonian_value
 
                 # Check for numerical issues
                 if np.isnan(u_star_val) or np.isinf(u_star_val):
@@ -660,9 +672,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                         f"had NaN/Inf values at time step {time_idx}"
                     )
 
-            # Step 2: ADI diffusion pass
-            # Apply implicit diffusion using ADI (Peaceman-Rachford)
-            U_current_shaped = self._adi_diffusion_step(U_star, self.dt)
+            # Step 2: Diffusion pass (using configured method)
+            U_current_shaped = self._apply_diffusion(U_star, self.dt)
 
             # Return flattened if input was flattened
             if U_next.ndim == 1:
@@ -713,14 +724,15 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     u_departure = self._interpolate_value(U_next, x_departure)
                     hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
-                    U_star[i] = u_departure - dt * hamiltonian_value
+                    # Backward HJB: u^n = u^{n+1} + dt * H
+                    U_star[i] = u_departure + dt * hamiltonian_value
 
                 except Exception as e:
                     logger.warning(f"Error at grid point {i}: {e}")
                     U_star[i] = U_next[i]
 
             # Step 2: Diffusion with custom dt
-            U_current = self._solve_crank_nicolson_diffusion(U_star, dt, self.problem.sigma)
+            U_current = self._apply_diffusion(U_star, dt)
             return U_current
 
         else:
@@ -756,7 +768,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 u_departure = self._interpolate_value(U_next_shaped, x_departure)
                 hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
-                u_star_val = u_departure - dt * hamiltonian_value
+                # Backward HJB: u^n = u^{n+1} + dt * H
+                u_star_val = u_departure + dt * hamiltonian_value
 
                 if np.isnan(u_star_val) or np.isinf(u_star_val):
                     error_count += 1
@@ -773,7 +786,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     )
 
             # ADI diffusion with custom dt
-            U_current_shaped = self._adi_diffusion_step(U_star, dt)
+            U_current_shaped = self._apply_diffusion(U_star, dt)
 
             if U_next.ndim == 1:
                 return U_current_shaped.ravel()
@@ -1112,13 +1125,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                         u_center = U_shaped[tuple(idx_center)]
                         u_plus = U_shaped[tuple(idx_plus)]
                         # One-sided: (u_plus - u_center) / dx²
-                        second_deriv = (u_plus - u_center) / self.spacing[d] ** 2
+                        second_deriv = (u_plus - u_center) / self.dx[d] ** 2
                     else:  # at_upper_bound
                         idx_minus[d] = multi_idx[d] - 1
                         u_center = U_shaped[tuple(idx_center)]
                         u_minus = U_shaped[tuple(idx_minus)]
                         # One-sided: (u_center - u_minus) / dx²
-                        second_deriv = (u_center - u_minus) / self.spacing[d] ** 2
+                        second_deriv = (u_center - u_minus) / self.dx[d] ** 2
 
                 else:
                     # Interior: central difference
@@ -1130,7 +1143,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     u_minus = U_shaped[tuple(idx_minus)]
 
                     # Central: (u_plus - 2*u_center + u_minus) / dx²
-                    second_deriv = (u_plus - 2 * u_center + u_minus) / self.spacing[d] ** 2
+                    second_deriv = (u_plus - 2 * u_center + u_minus) / self.dx[d] ** 2
 
                 laplacian += second_deriv
 
@@ -1140,11 +1153,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         """
         Evaluate Hamiltonian H(x, p, m) at given point (supports 1D and nD).
 
+        Uses DerivativeTensors for consistency with all solvers.
+        See docs/NAMING_CONVENTIONS.md "Derivative Tensor Standard" section.
+
         Args:
             x: Spatial position
                 - 1D: scalar float
                 - nD: array of shape (dimension,)
-            p: Control/momentum value
+            p: Control/momentum value (gradient ∇u)
                 - 1D: scalar float
                 - nD: array of shape (dimension,)
             m: Density value
@@ -1153,49 +1169,122 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Hamiltonian value
         """
-        if self.dimension == 1:
-            # 1D Hamiltonian evaluation
-            x_scalar = float(x) if np.ndim(x) > 0 else x
-            p_scalar = float(p) if np.ndim(p) > 0 else p
+        # Build DerivativeTensors from gradient p
+        derivs = self._build_derivative_tensors(p)
 
+        # Compute x_idx for grid-based Hamiltonian calls
+        x_idx = self._position_to_index(x)
+
+        # Compute time value
+        t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
+
+        try:
+            # Try problem.H() with DerivativeTensors (preferred)
+            if hasattr(self.problem, "H"):
+                return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
+
+            # Try problem.hamiltonian() with derivs kwarg
+            elif hasattr(self.problem, "hamiltonian"):
+                return self.problem.hamiltonian(x_idx, m, derivs=derivs, t=t_value)
+
+            else:
+                # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
+                return self._default_hamiltonian(derivs, m)
+
+        except TypeError:
+            # Hamiltonian doesn't accept derivs kwarg, try legacy signature
             try:
-                # Try problem.hamiltonian() first (nD MFGProblem)
-                if hasattr(self.problem, "hamiltonian"):
-                    t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
-                    return self.problem.hamiltonian(x_scalar, m, p_scalar, t_value)
-                # Fall back to problem.H() for legacy MFGProblem
-                elif hasattr(self.problem, "H"):
-                    x_idx = int((x_scalar - self.problem.xmin) / self.dx)
-                    x_idx = np.clip(x_idx, 0, self.problem.Nx)
-                    derivs = {(0,): 0.0, (1,): p_scalar}
-                    return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
-                else:
-                    # Fallback: standard quadratic Hamiltonian
-                    return 0.5 * p_scalar**2 + getattr(self.problem, "coupling_coefficient", 0.5) * m
-            except Exception as e:
-                logger.debug(f"1D Hamiltonian evaluation failed: {e}, using fallback")
-                return 0.5 * p_scalar**2 + getattr(self.problem, "coupling_coefficient", 0.5) * m
-
-        else:
-            # nD Hamiltonian evaluation
-            p_vec = np.atleast_1d(p)
-
-            try:
-                # Call problem's Hamiltonian function if available
                 if hasattr(self.problem, "hamiltonian"):
                     x_vec = np.atleast_1d(x)
-                    t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
+                    p_vec = np.atleast_1d(p)
                     return self.problem.hamiltonian(x_vec, m, p_vec, t_value)
-                else:
-                    # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
-                    p_norm_sq = np.sum(p_vec**2)
-                    coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
-                    return 0.5 * p_norm_sq + coef_CT * m
+            except Exception:
+                pass
+            return self._default_hamiltonian(derivs, m)
 
-            except Exception as e:
-                logger.debug(f"nD Hamiltonian evaluation failed: {e}, using fallback")
-                p_norm_sq = np.sum(p_vec**2)
-                return 0.5 * p_norm_sq + getattr(self.problem, "coupling_coefficient", 0.5) * m
+        except Exception as e:
+            logger.debug(f"Hamiltonian evaluation failed: {e}, using fallback")
+            return self._default_hamiltonian(derivs, m)
+
+    def _build_derivative_tensors(self, p: np.ndarray | float) -> DerivativeTensors:
+        """
+        Build DerivativeTensors from gradient array/scalar.
+
+        Args:
+            p: Gradient value(s)
+                - 1D: scalar float
+                - nD: array of shape (dimension,)
+
+        Returns:
+            DerivativeTensors with gradient tensor
+        """
+        if self.dimension == 1:
+            p_scalar = float(p) if np.ndim(p) > 0 else p
+            grad = np.array([p_scalar])
+        else:
+            grad = np.atleast_1d(p).astype(float)
+
+        return DerivativeTensors.from_gradient(grad)
+
+    def _position_to_index(self, x: np.ndarray | float) -> int | tuple[int, ...]:
+        """
+        Convert spatial position to grid index.
+
+        Args:
+            x: Spatial position
+
+        Returns:
+            Grid index (int for 1D, tuple for nD)
+        """
+        # Get bounds from geometry (preferred) or legacy xmin/xmax
+        bounds = (
+            self.problem.geometry.bounds
+            if hasattr(self.problem, "geometry") and self.problem.geometry is not None
+            else None
+        )
+        grid_shape = self.problem.geometry.get_grid_shape() if bounds is not None else None
+
+        if self.dimension == 1:
+            x_scalar = float(x) if np.ndim(x) > 0 else x
+            if bounds is not None:
+                xmin = bounds[0][0]
+                Nx = grid_shape[0] - 1
+            else:
+                xmin = self.problem.xmin[0] if hasattr(self.problem.xmin, "__getitem__") else self.problem.xmin
+                Nx = self.problem.Nx[0] if hasattr(self.problem.Nx, "__getitem__") else self.problem.Nx
+            # dx is scalar for 1D
+            dx = self.dx if np.isscalar(self.dx) else self.dx[0]
+            x_idx = int((x_scalar - xmin) / dx)
+            return int(np.clip(x_idx, 0, Nx))
+        else:
+            x_vec = np.atleast_1d(x)
+            indices = []
+            for i in range(self.dimension):
+                if bounds is not None:
+                    xmin_i = bounds[i][0]
+                    Nx_i = grid_shape[i] - 1
+                else:
+                    xmin_i = self.problem.xmin[i]
+                    Nx_i = self.problem.Nx[i]
+                # dx is array for nD
+                dx_i = self.dx[i]
+                idx = int((x_vec[i] - xmin_i) / dx_i)
+                indices.append(int(np.clip(idx, 0, Nx_i)))
+            return tuple(indices)
+
+    def _default_hamiltonian(self, derivs: DerivativeTensors, m: float) -> float:
+        """
+        Default quadratic Hamiltonian H = |p|²/2 + C*m.
+
+        Args:
+            derivs: DerivativeTensors with gradient
+            m: Density value
+
+        Returns:
+            Hamiltonian value
+        """
+        coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
+        return 0.5 * derivs.grad_norm_squared + coef_CT * m
 
     def _solve_crank_nicolson_diffusion(self, U_star: np.ndarray, dt: float, sigma: float) -> np.ndarray:
         """
@@ -1234,9 +1323,82 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             U_star,
             dt,
             self.problem.sigma,
-            self.spacing,
+            self.dx,
             tuple(self._grid_shape),
         )
+
+    def _apply_diffusion(self, U_star: np.ndarray, dt: float) -> np.ndarray:
+        """
+        Apply diffusion step using the configured method.
+
+        Args:
+            U_star: Solution after advection step
+            dt: Time step size
+
+        Returns:
+            Solution after diffusion step
+        """
+        if self.diffusion_method == "none":
+            # No diffusion - just return advected solution
+            return U_star
+
+        elif self.diffusion_method == "explicit":
+            # Explicit Laplacian: u^n = u* + dt * σ²/2 * Δu*
+            # Simple but requires small dt for stability (dt < dx²/(2*d*σ²))
+            return self._explicit_diffusion_step(U_star, dt)
+
+        elif self.diffusion_method == "stochastic":
+            # Stochastic diffusion is handled in characteristic tracing
+            # by adding Brownian noise: X(t-dt) = x - p*dt + σ*√dt*ξ
+            # Here we just return the advected solution since diffusion
+            # was already incorporated in the stochastic characteristic
+            return U_star
+
+        else:  # "adi" (default)
+            if self.dimension == 1:
+                return self._solve_crank_nicolson_diffusion(U_star, dt, self.problem.sigma)
+            else:
+                return self._adi_diffusion_step(U_star, dt)
+
+    def _explicit_diffusion_step(self, U_star: np.ndarray, dt: float) -> np.ndarray:
+        """
+        Apply explicit diffusion step using discrete Laplacian.
+
+        Uses central differences for Laplacian:
+            Δu ≈ Σ_d (u_{i+1,d} - 2*u_i + u_{i-1,d}) / dx_d²
+
+        Note: This is conditionally stable. Requires:
+            dt < dx²/(2*d*σ²) where d is dimension
+
+        Args:
+            U_star: Solution after advection step
+            dt: Time step size
+
+        Returns:
+            Solution after explicit diffusion step
+        """
+        sigma = self.problem.sigma
+        sigma_sq_half = 0.5 * sigma**2
+
+        if self.dimension == 1:
+            dx = self.dx
+            # 1D Laplacian with Neumann BC
+            laplacian = np.zeros_like(U_star)
+            laplacian[1:-1] = (U_star[2:] - 2 * U_star[1:-1] + U_star[:-2]) / dx**2
+            # Neumann BC: du/dx = 0 at boundaries
+            laplacian[0] = (U_star[1] - U_star[0]) / dx**2
+            laplacian[-1] = (U_star[-2] - U_star[-1]) / dx**2
+        else:
+            # nD Laplacian
+            laplacian = np.zeros_like(U_star)
+            for d in range(self.dimension):
+                dx_d = self.dx[d]
+                # Second derivative along axis d
+                laplacian += np.gradient(np.gradient(U_star, dx_d, axis=d), dx_d, axis=d)
+
+        # Explicit update: u^n = u* + dt * σ²/2 * Δu*
+        U_new = U_star + dt * sigma_sq_half * laplacian
+        return U_new
 
     def get_solver_info(self) -> dict[str, Any]:
         """Return solver configuration information."""

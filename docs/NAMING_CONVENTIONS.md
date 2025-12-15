@@ -1,8 +1,8 @@
 # MFG_PDE Naming Conventions
 
-**Last Updated**: 2025-12-12
-**Status**: Current reference document (v0.16.0+)
-**Related**: See sections on gradient notation for derivative indexing and array-based notation standard
+**Last Updated**: 2025-12-15
+**Status**: Current reference document (v0.17.0+)
+**Related**: See "Derivative Tensor Standard" section for the canonical derivative representation
 
 ---
 
@@ -616,57 +616,198 @@ def solve(self) -> tuple[np.ndarray, np.ndarray]:
 
 ---
 
-## Gradient Notation Standard
+## Derivative Tensor Standard
 
-### Tuple Multi-Index Notation
+### ⚠️ CRITICAL: Unified Derivative Representation (v0.17.0+)
 
-For a function u(x₁, x₂, ..., xₙ), derivatives are indexed by tuples (α₁, α₂, ..., αₙ) where αᵢ is the derivative order with respect to xᵢ.
+MFG_PDE uses **tensor-based derivative representation** as the canonical standard. Derivatives of order p in dimension d are stored as tensors of shape `(d,) * p`.
 
-**Examples**:
+### DerivativeTensors Class
 
-**1D**: `u(x1)`
-- `derivs[(0,)] = u` - Function value
-- `derivs[(1,)] = ∂u/∂x1` - First derivative
-- `derivs[(2,)] = ∂²u/∂x1²` - Second derivative
+```python
+from mfg_pde.core import DerivativeTensors
 
-**2D**: `u(x1, x2)`
-- `derivs[(0, 0)] = u` - Function value
-- `derivs[(1, 0)] = ∂u/∂x1` - Gradient x1-component
-- `derivs[(0, 1)] = ∂u/∂x2` - Gradient x2-component
-- `derivs[(2, 0)] = ∂²u/∂x1²` - Hessian x1x1
-- `derivs[(0, 2)] = ∂²u/∂x2²` - Hessian x2x2
-- `derivs[(1, 1)] = ∂²u/∂x1∂x2` - Mixed derivative
+# Create from arrays
+grad = np.array([0.5, 0.3])                        # shape (2,)
+hess = np.array([[0.1, 0.05], [0.05, 0.2]])        # shape (2, 2)
+derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
 
-**3D**: `u(x1, x2, x3)`
-- `derivs[(1, 0, 0)] = ∂u/∂x1`
-- `derivs[(0, 1, 0)] = ∂u/∂x2`
-- `derivs[(0, 0, 1)] = ∂u/∂x3`
-- `derivs[(2, 0, 0)] = ∂²u/∂x1²`
-- `derivs[(1, 1, 0)] = ∂²u/∂x1∂x2`
+# Access by order
+derivs[1]              # Gradient tensor, shape (d,)
+derivs[2]              # Hessian tensor, shape (d, d)
+derivs[3]              # Third-order tensor, shape (d, d, d)
+
+# Access by name
+derivs.grad            # Same as derivs[1]
+derivs.hess            # Same as derivs[2]
+derivs.laplacian       # tr(∇²u) = Σᵢ ∂²u/∂xᵢ²
+derivs.grad_norm_squared  # |∇u|² = Σᵢ (∂u/∂xᵢ)²
+
+# Access individual components
+derivs.grad[0]         # ∂u/∂x₀
+derivs.hess[0, 1]      # ∂²u/∂x₀∂x₁
+derivs[3][1, 0, 0]     # ∂³u/∂x₁∂x₀∂x₀
+```
+
+### Tensor Shape Convention
+
+| Order p | Name | Shape | Access | Example |
+|---------|------|-------|--------|---------|
+| 0 | Value | scalar | `derivs.value` | `u` |
+| 1 | Gradient | `(d,)` | `derivs.grad[i]` | `∂u/∂xᵢ` |
+| 2 | Hessian | `(d, d)` | `derivs.hess[i, j]` | `∂²u/∂xᵢ∂xⱼ` |
+| 3 | Third | `(d, d, d)` | `derivs[3][i, j, k]` | `∂³u/∂xᵢ∂xⱼ∂xₖ` |
+| p | p-th order | `(d,) * p` | `derivs[p][i₁, ..., iₚ]` | `∂ᵖu/∂x_{i₁}...∂x_{iₚ}` |
+
+**Mathematical correspondence:**
+$$\text{derivs}[p][i_1, i_2, \ldots, i_p] = \frac{\partial^p u}{\partial x_{i_1} \partial x_{i_2} \cdots \partial x_{i_p}}$$
+
+### Examples by Dimension
+
+**1D** (`d=1`):
+```python
+derivs = DerivativeTensors.from_arrays(
+    grad=np.array([u_x]),           # shape (1,)
+    hess=np.array([[u_xx]]),        # shape (1, 1)
+)
+derivs.grad[0]      # u_x
+derivs.hess[0, 0]   # u_xx
+derivs.laplacian    # u_xx
+```
+
+**2D** (`d=2`):
+```python
+derivs = DerivativeTensors.from_arrays(
+    grad=np.array([u_x, u_y]),
+    hess=np.array([[u_xx, u_xy],
+                   [u_xy, u_yy]]),
+)
+derivs.grad[0]      # u_x
+derivs.grad[1]      # u_y
+derivs.hess[0, 0]   # u_xx
+derivs.hess[0, 1]   # u_xy
+derivs.hess[1, 1]   # u_yy
+derivs.laplacian    # u_xx + u_yy
+```
+
+**3D** (`d=3`):
+```python
+derivs = DerivativeTensors.from_arrays(
+    grad=np.array([u_x, u_y, u_z]),
+    hess=np.array([[u_xx, u_xy, u_xz],
+                   [u_xy, u_yy, u_yz],
+                   [u_xz, u_yz, u_zz]]),
+)
+derivs.grad[2]      # u_z
+derivs.hess[0, 2]   # u_xz
+derivs.laplacian    # u_xx + u_yy + u_zz
+```
 
 ### Benefits
 
-1. **Dimension-agnostic**: Works for 1D, 2D, 3D, nD without special cases
-2. **Type-safe**: Tuples are hashable and immutable
-3. **Mathematical clarity**: Direct correspondence to multi-index notation
-4. **No ambiguity**: `(1,0)` is unambiguous, `"dx"` vs `"x"` is not
-5. **Extensibility**: Higher-order derivatives naturally supported
+1. **Standard NumPy**: Native tensor operations, vectorizable
+2. **Order-agnostic**: Arbitrary derivative order p supported
+3. **Dimension-agnostic**: Works for any spatial dimension d
+4. **Efficient**: Array operations, no dict lookup overhead
+5. **Type-safe**: IDE knows `derivs.grad` is `ndarray`
+6. **Intuitive indexing**: `hess[i, j]` not `derivs[(i==1, j==1)]`
 
-### Implementation Example
+### Hamiltonian Function Signature
+
+**Standard signature (v0.17.0+)**:
 
 ```python
-# GFDM solver (hjb_gfdm.py:1544-1556)
-derivs = self.approximate_derivatives(u_current, i)
+from mfg_pde.core import DerivativeTensors
 
-if d == 1:
-    p = derivs.get((1,), 0.0)  # ∂u/∂x1
-    laplacian = derivs.get((2,), 0.0)  # ∂²u/∂x1²
-elif d == 2:
-    p_x1 = derivs.get((1, 0), 0.0)  # ∂u/∂x1
-    p_x2 = derivs.get((0, 1), 0.0)  # ∂u/∂x2
-    p = np.array([p_x1, p_x2])
-    laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)  # ∂²u/∂x1² + ∂²u/∂x2²
+def hamiltonian(
+    x_idx: int | tuple[int, ...],
+    m_at_x: float,
+    derivs: DerivativeTensors,
+    **kwargs
+) -> float:
+    """Compute Hamiltonian H(x, ∇u, m).
+
+    Args:
+        x_idx: Grid point index
+        m_at_x: Density m(x) at this point
+        derivs: DerivativeTensors containing grad, hess, etc.
+
+    Returns:
+        Hamiltonian value H(x, p, m)
+    """
 ```
+
+**Standard implementation** (dimension-agnostic):
+
+```python
+def hamiltonian(x_idx, m_at_x, derivs: DerivativeTensors, **kwargs) -> float:
+    """Quadratic Hamiltonian H = (1/2)|∇u|²."""
+    return 0.5 * derivs.grad_norm_squared
+
+# Or explicitly:
+def hamiltonian(x_idx, m_at_x, derivs: DerivativeTensors, **kwargs) -> float:
+    """Quadratic Hamiltonian H = (1/2)|∇u|²."""
+    return 0.5 * np.sum(derivs.grad ** 2)
+```
+
+**With Hessian (viscosity solution)**:
+
+```python
+def hamiltonian_with_viscosity(x_idx, m_at_x, derivs: DerivativeTensors, sigma: float = 0.1) -> float:
+    """H = (1/2)|∇u|² with viscosity term."""
+    H = 0.5 * derivs.grad_norm_squared
+    if derivs.hess is not None:
+        H -= 0.5 * sigma**2 * derivs.laplacian
+    return H
+```
+
+### Solver Usage
+
+**Current State (v0.17.0+)**: All solvers use `DerivativeTensors`.
+
+| Solver | Status |
+|--------|--------|
+| FDM | ✅ DerivativeTensors |
+| GFDM | ✅ DerivativeTensors |
+| WENO | ✅ DerivativeTensors |
+| Semi-Lagrangian | ✅ DerivativeTensors |
+| Network/DGM | ⚠️ AD-based, may differ |
+
+### Creating DerivativeTensors in Solvers
+
+```python
+# Common case: gradient only
+derivs = DerivativeTensors.from_gradient(grad_array)
+
+# With Hessian
+derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
+
+# Zero-initialized
+derivs = DerivativeTensors.zeros(dimension=2, max_order=2)
+```
+
+### Migration from Legacy Format
+
+**One-time conversion** from legacy `dict[tuple[int,...], float]`:
+
+```python
+from mfg_pde.core import from_multi_index_dict, to_multi_index_dict
+
+# Legacy format
+old_format = {(1, 0): 0.5, (0, 1): 0.3, (2, 0): 0.1, (1, 1): 0.05, (0, 2): 0.2}
+
+# Convert to new format
+derivs = from_multi_index_dict(old_format)
+derivs.grad   # array([0.5, 0.3])
+derivs.hess   # array([[0.1, 0.05], [0.05, 0.2]])
+
+# Convert back if needed (for compatibility)
+old = to_multi_index_dict(derivs)
+```
+
+### Reference Implementation
+
+See `mfg_pde/core/derivatives.py` for full implementation.
 
 ---
 
@@ -923,13 +1064,15 @@ When adding new parameters:
 
 ## References
 
+- **DerivativeTensors**: `mfg_pde/core/derivatives.py` (DerivativeTensors, from_multi_index_dict, to_multi_index_dict)
 - **GeometryProtocol**: `mfg_pde/geometry/protocol.py`
 - **Tensor Grids**: `mfg_pde/geometry/grids/tensor_grid.py`
 - **Config Classes**: `mfg_pde/config/solver_config.py` (NewtonConfig, PicardConfig)
 - **Fixed Point Iterator**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
 - **HJB Solvers**: `mfg_pde/alg/numerical/hjb_solvers/` (hjb_fdm.py, hjb_semi_lagrangian.py, hjb_weno.py, hjb_gfdm.py, hjb_network.py)
 - **FP Solvers**: `mfg_pde/alg/numerical/fp_solvers/` (fp_fdm.py, fp_particle.py, fp_network.py)
+- **Legacy Gradient Notation** (deprecated): `mfg_pde/compat/gradient_notation.py`
 
 ---
 
-**Authoritative Source**: This document reflects actual codebase standards as of v0.16.2
+**Authoritative Source**: This document reflects actual codebase standards as of v0.17.0
