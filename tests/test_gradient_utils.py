@@ -116,21 +116,21 @@ def test_check_derivs_format_tuple():
     """Test format detection for tuple notation."""
     derivs = {(1, 0): 0.5, (0, 1): 0.3}
     fmt = check_derivs_format(derivs)
-    assert fmt == "tuple"
+    assert fmt == "dict_tuple"
 
 
 def test_check_derivs_format_string_1d():
     """Test format detection for 1D string keys."""
     derivs = {"forward": 0.5, "backward": 0.4}
     fmt = check_derivs_format(derivs)
-    assert fmt == "string_1d"
+    assert fmt == "dict_string_1d"
 
 
 def test_check_derivs_format_string_2d():
     """Test format detection for 2D string keys."""
     derivs = {"x": 0.5, "y": 0.3}
     fmt = check_derivs_format(derivs)
-    assert fmt == "string_2d"
+    assert fmt == "dict_string_2d"
 
 
 def test_check_derivs_format_empty():

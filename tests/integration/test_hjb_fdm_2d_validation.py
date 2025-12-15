@@ -97,14 +97,15 @@ class TestHJBFDM2DBasic:
         # Compute gradients
         gradients = solver._compute_gradients_nd(U)
 
-        # Check gradient keys
-        assert (0, 0) in gradients  # Value
-        assert (1, 0) in gradients  # ∂u/∂x
-        assert (0, 1) in gradients  # ∂u/∂y
+        # Check gradient keys (new format uses integer dimension indices)
+        # Key -1 = function value U, Key 0 = ∂u/∂x₀, Key 1 = ∂u/∂x₁
+        assert -1 in gradients  # Value
+        assert 0 in gradients  # ∂u/∂x
+        assert 1 in gradients  # ∂u/∂y
 
         # Check gradient values (should be approximately 2x and 2y)
-        grad_x = gradients[(1, 0)]
-        grad_y = gradients[(0, 1)]
+        grad_x = gradients[0]
+        grad_y = gradients[1]
 
         # Interior points should have gradients ≈ 2x, 2y
         interior_x = grad_x[5, 5]
