@@ -581,6 +581,77 @@ class GFDMOperator:
         """Get Taylor matrix data for a point (for use by HJBGFDMSolver)."""
         return self.taylor_matrices[point_idx]
 
+    def get_derivative_weights(self, point_idx: int) -> dict | None:
+        """
+        Get derivative sensitivity weights for analytic Jacobian computation.
+
+        Returns the weights that map perturbations in neighbor u values to
+        perturbations in derivatives at point i:
+            δ(∂u/∂x_d)|_i = Σ_j w^grad_{d,j} δu_j
+            δ(Δu)|_i = Σ_j w^lap_j δu_j
+
+        Args:
+            point_idx: Index of the center point
+
+        Returns:
+            Dictionary with:
+            - "neighbor_indices": indices of neighbors (including center)
+            - "grad_weights": shape (dimension, n_neighbors), gradient sensitivity
+            - "lap_weights": shape (n_neighbors,), Laplacian sensitivity
+            - "center_idx_in_neighbors": position of center in neighbor list
+            Or None if Taylor data not available.
+        """
+        taylor_data = self.taylor_matrices[point_idx]
+        if taylor_data is None:
+            return None
+
+        neighborhood = self.neighborhoods[point_idx]
+        neighbor_indices = neighborhood["indices"]
+        n_neighbors = len(neighbor_indices)
+
+        # Compute weight matrix M = Vt.T @ diag(1/S) @ U.T @ sqrt_W
+        # Such that coeffs = M @ b, where b = u_neighbors - u_center
+        sqrt_W = taylor_data["sqrt_W"]
+        U = taylor_data["U"]
+        S = taylor_data["S"]
+        Vt = taylor_data["Vt"]
+
+        # M maps b (neighbor deviations) to Taylor coefficients
+        M = Vt.T @ np.diag(1.0 / S) @ U.T @ sqrt_W  # shape: (n_derivatives, n_neighbors)
+
+        # Gradient weights: for each dimension d, find the multi-index (0,...,1,...,0)
+        grad_weights = np.zeros((self.dimension, n_neighbors))
+        for d in range(self.dimension):
+            multi_idx = tuple(1 if j == d else 0 for j in range(self.dimension))
+            if multi_idx in self.multi_indices:
+                k = self.multi_indices.index(multi_idx)
+                # Weights for neighbors: M[k, :]
+                # Weight for center: -sum(M[k, :]) (since b = u_neighbors - u_center)
+                grad_weights[d, :] = M[k, :]
+
+        # Laplacian weights: sum of second derivatives
+        lap_weights = np.zeros(n_neighbors)
+        for d in range(self.dimension):
+            multi_idx = tuple(2 if j == d else 0 for j in range(self.dimension))
+            if multi_idx in self.multi_indices:
+                k = self.multi_indices.index(multi_idx)
+                lap_weights += M[k, :]
+
+        # Find center index in neighbors (if present, usually is)
+        center_in_neighbors = -1
+        for idx, n_idx in enumerate(neighbor_indices):
+            if n_idx == point_idx:
+                center_in_neighbors = idx
+                break
+
+        return {
+            "neighbor_indices": neighbor_indices,
+            "grad_weights": grad_weights,
+            "lap_weights": lap_weights,
+            "center_idx_in_neighbors": center_in_neighbors,
+            "weight_matrix": M,  # Full weight matrix for advanced use
+        }
+
     def get_multi_indices(self) -> list[tuple[int, ...]]:
         """Get the multi-index set used for derivatives."""
         return self.multi_indices

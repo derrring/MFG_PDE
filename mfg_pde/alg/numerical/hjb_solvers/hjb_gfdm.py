@@ -24,6 +24,7 @@ CVXPY_AVAILABLE = importlib.util.find_spec("cvxpy") is not None
 OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
 
 if TYPE_CHECKING:
+    from mfg_pde.core.derivatives import DerivativeTensors
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
 
@@ -1176,6 +1177,143 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         return residual
 
+    def _compute_dH_dp_fd(
+        self,
+        point_idx: int,
+        m_at_x: float,
+        derivs: DerivativeTensors,
+        time_idx: int,
+    ) -> np.ndarray:
+        """
+        Compute ∂H/∂p via finite difference on H.
+
+        Fallback for when user doesn't provide hamiltonian_dp_func.
+        For non-smooth H, this gives an element of the generalized Jacobian.
+
+        Args:
+            point_idx: Point index
+            m_at_x: Density value at point
+            derivs: Current derivative tensors (contains gradient p)
+            time_idx: Time index
+
+        Returns:
+            Array of shape (dimension,) with ∂H/∂p_d for each dimension d.
+        """
+        eps = 1e-7
+        d = self.problem.dimension
+        dH_dp = np.zeros(d)
+
+        # Get current gradient
+        p = derivs.grad.copy()
+
+        # Compute H at base point
+        H_base = self.problem.H(point_idx, m_at_x, derivs=derivs)
+
+        # Finite difference for each gradient component
+        for dim in range(d):
+            # Perturb gradient in dimension dim
+            p_plus = p.copy()
+            p_plus[dim] += eps
+
+            # Create perturbed DerivativeTensors
+            from mfg_pde.core.derivatives import DerivativeTensors
+
+            derivs_plus = DerivativeTensors.from_arrays(grad=p_plus, hess=derivs.hess)
+
+            # Evaluate H at perturbed point
+            H_plus = self.problem.H(point_idx, m_at_x, derivs=derivs_plus)
+
+            dH_dp[dim] = (H_plus - H_base) / eps
+
+        return dH_dp
+
+    def _compute_hjb_jacobian_analytic(
+        self,
+        u_current: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        time_idx: int,
+    ) -> np.ndarray:
+        """
+        Compute Jacobian using analytic formula with GFDM weights.
+
+        Formula: ∂R_i/∂u_j = (1/dt)δ_{ij} + (∂H/∂p)·(∂p_i/∂u_j) - (σ²/2)·(∂Δu_i/∂u_j)
+
+        Uses user-provided dH_dp if available, otherwise FD on H.
+        """
+        from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
+
+        n = self.n_points
+        d = self.problem.dimension
+        dt = self.problem.T / self.problem.Nt
+        jacobian = np.zeros((n, n))
+
+        for i in range(n):
+            # Get derivative weights from GFDM
+            weights = self._gfdm_operator.get_derivative_weights(i)
+            if weights is None:
+                continue  # Skip points without valid Taylor data
+
+            neighbor_indices = weights["neighbor_indices"]
+            grad_weights = weights["grad_weights"]  # shape (d, n_neighbors)
+            lap_weights = weights["lap_weights"]  # shape (n_neighbors,)
+
+            # Compute derivatives at point i
+            derivs_dict = self.approximate_derivatives(u_current, i)
+
+            # Build DerivativeTensors
+            if d == 1:
+                grad = np.array([derivs_dict.get((1,), 0.0)])
+                hess = np.array([[derivs_dict.get((2,), 0.0)]])
+            elif d == 2:
+                grad = np.array([derivs_dict.get((1, 0), 0.0), derivs_dict.get((0, 1), 0.0)])
+                hess = np.array(
+                    [
+                        [derivs_dict.get((2, 0), 0.0), derivs_dict.get((1, 1), 0.0)],
+                        [derivs_dict.get((1, 1), 0.0), derivs_dict.get((0, 2), 0.0)],
+                    ]
+                )
+            else:
+                # Fall back to numerical Jacobian for higher dimensions
+                continue
+
+            p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
+
+            # Get ∂H/∂p (user-provided or FD fallback)
+            dH_dp = self.problem.dH_dp(
+                x_idx=i,
+                m_at_x=m_n_plus_1[i],
+                derivs=to_multi_index_dict(p_derivs),
+                t_idx=time_idx,
+            )
+
+            if dH_dp is None:
+                # Fallback: compute via FD on H
+                dH_dp = self._compute_dH_dp_fd(i, m_n_plus_1[i], p_derivs, time_idx)
+
+            # Get sigma for diffusion term
+            sigma_val = self._get_sigma_value(i)
+            diffusion_coeff = 0.5 * sigma_val**2
+
+            # Build row i of Jacobian
+            # For neighbors: use GFDM weights directly
+            for k, j in enumerate(neighbor_indices):
+                if j < 0:
+                    continue  # Skip ghost particles
+
+                # ∂R_i/∂u_j = (∂H/∂p) · grad_weights[:, k] - diffusion * lap_weights[k]
+                jacobian[i, j] = np.dot(dH_dp, grad_weights[:, k]) - diffusion_coeff * lap_weights[k]
+
+            # For center point contribution: weights are -sum(row weights)
+            # because b = u_neighbors - u_center, so ∂b/∂u_center = -1
+            center_grad_weight = -np.sum(grad_weights, axis=1)
+            center_lap_weight = -np.sum(lap_weights)
+            jacobian[i, i] += np.dot(dH_dp, center_grad_weight) - diffusion_coeff * center_lap_weight
+
+            # Time derivative contribution: (1/dt) on diagonal
+            jacobian[i, i] += 1.0 / dt
+
+        return jacobian
+
     def _compute_hjb_jacobian(
         self,
         u_current: np.ndarray,
@@ -1187,11 +1325,18 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         """
         Compute Jacobian matrix for Newton iteration.
 
-        Uses finite differences to approximate ∂R/∂u where R is the residual.
+        Uses analytic Jacobian if dH_dp is available (faster),
+        otherwise falls back to finite differences on residual.
 
         Bug #15 fix: Disable QP in Jacobian computation to reduce QP calls from ~750k to ~7.5k.
         Jacobian only affects Newton convergence rate, not final monotonicity (enforced by residual).
         """
+        # Try analytic Jacobian first (faster if dH_dp available or FD on H)
+        # Only use for dimensions 1 and 2 for now
+        if self.problem.dimension <= 2:
+            return self._compute_hjb_jacobian_analytic(u_current, m_n_plus_1, time_idx)
+
+        # Fallback: numerical finite differences on full residual
         n = self.n_points
         jacobian = np.zeros((n, n))
 
@@ -1199,9 +1344,6 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         eps = 1e-7
 
         # Bug #15 fix: Temporarily disable QP for Jacobian computation
-        # This reduces QP invocations while maintaining monotonicity (enforced by residual)
-        # Jacobian finite differences are a numerical approximation tool for Newton's method
-        # and don't need monotonicity constraints. Only the residual evaluation needs QP.
         saved_qp_level = self.qp_optimization_level
         self.qp_optimization_level = "none"
 
