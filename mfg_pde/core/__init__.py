@@ -8,6 +8,11 @@ Framework extensions (network, variational, multi-population) are in mfg_pde.ext
 from mfg_pde.geometry import BoundaryConditions
 
 from .base_problem import CartesianGridMFGProtocol, MFGProblemProtocol
+from .derivatives import (
+    DerivativeTensors,
+    from_multi_index_dict,
+    to_multi_index_dict,
+)
 from .mfg_components import (
     ConditionsMixin,
     HamiltonianMixin,
@@ -21,6 +26,10 @@ __all__ = [
     # Core protocols
     "MFGProblemProtocol",
     "CartesianGridMFGProtocol",
+    # Derivative tensors
+    "DerivativeTensors",
+    "from_multi_index_dict",
+    "to_multi_index_dict",
     # Base MFG problem
     "MFGProblem",
     "MFGComponents",

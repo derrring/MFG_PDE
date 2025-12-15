@@ -42,6 +42,8 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
+
 from .base_hjb import BaseHJBSolver
 
 if TYPE_CHECKING:
@@ -557,16 +559,34 @@ class HJBWenoSolver(BaseHJBSolver):
         Returns:
             Hamiltonian value H(x, grad, m)
         """
-        # Try to use problem.H() interface
+        # Build partial gradient vector from direction
+        # direction (1,) = x, (0,1) = y, (0,0,1) = z
+        dimension = len(direction)
+        grad_vector = np.zeros(dimension)
+        # Find which dimension has the non-zero entry
+        for i, d in enumerate(direction):
+            if d == 1:
+                grad_vector[i] = grad
+                break
+
+        # Build DerivativeTensors
+        derivs = DerivativeTensors.from_gradient(grad_vector)
+
+        # Try to use problem.H() interface with DerivativeTensors
         if hasattr(self.problem, "H") and callable(self.problem.H):
             try:
-                derivs = {direction: grad}
                 return self.problem.H(x_idx, m_val, derivs=derivs)
-            except (TypeError, AttributeError):
-                # Fall through to default if problem.H() has incompatible signature
-                pass
+            except TypeError:
+                # Legacy: convert to multi-index dict format
+                try:
+                    legacy_derivs = to_multi_index_dict(derivs)
+                    return self.problem.H(x_idx, m_val, derivs=legacy_derivs)
+                except (TypeError, AttributeError):
+                    # Fall through to default if problem.H() has incompatible signature
+                    pass
 
         # Default: standard quadratic MFG Hamiltonian H = |p|²/2 + m*p
+        # For 1D partial: H = (1/2)|∂u/∂x_i|² + m * ∂u/∂x_i
         return 0.5 * grad**2 + m_val * grad
 
     def _compute_hjb_rhs(self, u: np.ndarray, m: np.ndarray) -> np.ndarray:
