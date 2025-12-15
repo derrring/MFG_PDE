@@ -294,6 +294,223 @@ class ImportanceMCSampler(MCSampler):
         return weights / np.sum(weights)  # Normalize
 
 
+class PoissonDiskSampler(MCSampler):
+    """
+    Poisson Disk Sampling using Bridson's algorithm.
+
+    Guarantees minimum distance between points, preventing ill-conditioned
+    GFDM stencils from point clustering. This is essential for meshfree
+    methods where point spacing affects numerical stability.
+
+    The algorithm uses a background grid for O(1) neighbor lookups,
+    achieving O(N) overall complexity.
+
+    Reference:
+        Bridson, R. "Fast Poisson disk sampling in arbitrary dimensions."
+        SIGGRAPH 2007.
+
+    Example:
+        >>> domain = [(0.0, 1.0), (0.0, 1.0)]
+        >>> config = MCConfig(seed=42)
+        >>> sampler = PoissonDiskSampler(domain, config, min_distance=0.05)
+        >>> points = sampler.sample(500)
+        >>> # All points have minimum separation >= 0.05
+    """
+
+    def __init__(
+        self,
+        domain: MCDomain,
+        config: MCConfig,
+        min_distance: float | None = None,
+        k_candidates: int = 30,
+    ):
+        """
+        Initialize Poisson Disk sampler.
+
+        Args:
+            domain: List of (min, max) bounds for each dimension
+            config: Monte Carlo configuration
+            min_distance: Minimum distance between points. If None, estimated
+                         from domain size and target sample count.
+            k_candidates: Number of candidate points to try around each active
+                         point before rejection. Higher values give denser
+                         packing but slower sampling. Default 30 is standard.
+        """
+        super().__init__(domain, config)
+        self.min_distance = min_distance
+        self.k_candidates = k_candidates
+
+        # Precompute domain extents
+        self._domain_min = np.array([b[0] for b in domain])
+        self._domain_max = np.array([b[1] for b in domain])
+        self._domain_size = self._domain_max - self._domain_min
+
+    def _estimate_min_distance(self, num_samples: int) -> float:
+        """Estimate minimum distance from target sample count."""
+        # For Poisson disk in d dimensions, approximate packing density
+        # gives r ~ (V / N)^(1/d) where V is volume
+        packing_factor = 0.7  # Conservative estimate
+        return packing_factor * (self.domain_volume / num_samples) ** (1.0 / self.dimension)
+
+    def _build_grid(self, r: float) -> tuple[NDArray, tuple[int, ...]]:
+        """
+        Build background grid for fast neighbor lookup.
+
+        Args:
+            r: Minimum distance
+
+        Returns:
+            Tuple of (grid array, grid shape)
+        """
+        # Cell size chosen so each cell can contain at most one point
+        cell_size = r / np.sqrt(self.dimension)
+
+        # Grid dimensions
+        grid_shape = tuple(max(1, int(np.ceil(s / cell_size))) for s in self._domain_size)
+
+        # Initialize grid with -1 (empty)
+        grid = np.full(grid_shape, -1, dtype=np.int32)
+
+        return grid, grid_shape, cell_size
+
+    def _point_to_grid_coords(self, point: NDArray, cell_size: float) -> tuple[int, ...]:
+        """Convert point coordinates to grid cell indices."""
+        coords = ((point - self._domain_min) / cell_size).astype(int)
+        # Clamp to valid range
+        coords = np.clip(coords, 0, np.array(self._grid_shape) - 1)
+        return tuple(coords)
+
+    def _is_valid_point(
+        self,
+        point: NDArray,
+        points: list[NDArray],
+        grid: NDArray,
+        cell_size: float,
+        r: float,
+    ) -> bool:
+        """
+        Check if a candidate point is valid (far enough from all neighbors).
+
+        Uses background grid for O(1) average case neighbor lookup.
+        """
+        # Check domain bounds
+        if np.any(point < self._domain_min) or np.any(point >= self._domain_max):
+            return False
+
+        # Get grid cell
+        cell_coords = self._point_to_grid_coords(point, cell_size)
+
+        # Check neighboring cells (within 2 cells in each direction)
+        r_squared = r * r
+
+        # Generate neighbor cell offsets
+        for offset in self._get_neighbor_offsets():
+            neighbor_coords = tuple(c + o for c, o in zip(cell_coords, offset, strict=True))
+
+            # Check bounds
+            if any(c < 0 or c >= s for c, s in zip(neighbor_coords, self._grid_shape, strict=True)):
+                continue
+
+            # Check if cell contains a point
+            point_idx = grid[neighbor_coords]
+            if point_idx >= 0:
+                # Check distance
+                existing_point = points[point_idx]
+                dist_squared = np.sum((point - existing_point) ** 2)
+                if dist_squared < r_squared:
+                    return False
+
+        return True
+
+    def _get_neighbor_offsets(self) -> list[tuple[int, ...]]:
+        """Generate all neighbor cell offsets within distance 2."""
+        if not hasattr(self, "_cached_offsets"):
+            # Generate all combinations of -2, -1, 0, 1, 2 for each dimension
+            from itertools import product
+
+            self._cached_offsets = list(product(range(-2, 3), repeat=self.dimension))
+        return self._cached_offsets
+
+    def sample(self, num_samples: int) -> NDArray:
+        """
+        Generate well-spaced points using Bridson's algorithm.
+
+        Args:
+            num_samples: Target number of samples. Actual count may be less
+                        if the domain cannot fit that many points with the
+                        given minimum distance.
+
+        Returns:
+            Array of shape (n_actual, dimension) with well-spaced points
+        """
+        # Determine minimum distance
+        r = self.min_distance
+        if r is None:
+            r = self._estimate_min_distance(num_samples)
+
+        # Build background grid
+        grid, self._grid_shape, cell_size = self._build_grid(r)
+
+        # Initialize with random first point
+        points: list[NDArray] = []
+        active_list: list[int] = []
+
+        first_point = self._domain_min + self.rng.random(self.dimension) * self._domain_size
+        points.append(first_point)
+        active_list.append(0)
+
+        # Mark grid cell
+        cell = self._point_to_grid_coords(first_point, cell_size)
+        grid[cell] = 0
+
+        # Main loop: process active points
+        while active_list and len(points) < num_samples:
+            # Pick random active point
+            active_idx = self.rng.randint(len(active_list))
+            point_idx = active_list[active_idx]
+            center = points[point_idx]
+
+            # Try k candidates around this point
+            found = False
+            for _ in range(self.k_candidates):
+                # Generate random point in annulus [r, 2r]
+                candidate = self._generate_annulus_point(center, r)
+
+                if self._is_valid_point(candidate, points, grid, cell_size, r):
+                    # Accept candidate
+                    new_idx = len(points)
+                    points.append(candidate)
+                    active_list.append(new_idx)
+
+                    # Mark grid
+                    cell = self._point_to_grid_coords(candidate, cell_size)
+                    grid[cell] = new_idx
+
+                    found = True
+                    break
+
+            if not found:
+                # Remove from active list
+                active_list.pop(active_idx)
+
+        result = np.array(points)
+        logger.debug(f"PoissonDisk: generated {len(result)} points (target: {num_samples})")
+
+        return result
+
+    def _generate_annulus_point(self, center: NDArray, r: float) -> NDArray:
+        """Generate random point in annulus [r, 2r] around center."""
+        # Generate random direction (uniform on unit sphere)
+        direction = self.rng.randn(self.dimension)
+        direction /= np.linalg.norm(direction)
+
+        # Generate random radius in [r, 2r]
+        # Use r * (1 + random) for uniform distribution in annulus
+        radius = r * (1.0 + self.rng.random())
+
+        return center + radius * direction
+
+
 class ControlVariates:
     """Control variates for variance reduction."""
 

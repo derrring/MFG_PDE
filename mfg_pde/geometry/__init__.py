@@ -74,6 +74,13 @@ from .boundary import (
     robin_bc,
 )
 
+# Collocation point generation
+from .collocation import (
+    CollocationPointSet,
+    CollocationSampler,
+    generate_collocation,
+)
+
 # Graph-based geometry (networks + mazes)
 from .graph import (
     BaseNetworkGeometry,
@@ -168,6 +175,10 @@ Domain2D = Mesh2D  # Use Mesh2D instead
 Domain3D = Mesh3D  # Use Mesh3D instead
 
 __all__ = [
+    # Collocation point generation
+    "CollocationPointSet",
+    "CollocationSampler",
+    "generate_collocation",
     # Multi-dimensional geometry components
     "BaseNetworkGeometry",
     # Boundary condition components
