@@ -300,6 +300,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         # only extends for points needing adaptive delta enlargement
         self._build_neighborhood_structure()
 
+        # Build reverse neighborhood map for sparse Jacobian (point j -> rows affected)
+        self._build_reverse_neighborhoods()
+
         # Build Taylor matrices for extended neighborhoods
         self._build_taylor_matrices()
 
@@ -499,6 +502,49 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                     UserWarning,
                     stacklevel=2,
                 )
+
+    def _build_reverse_neighborhoods(self) -> None:
+        """
+        Build reverse neighborhood map: for each point j, find all points i that have j in their neighborhood.
+
+        This enables sparse Jacobian computation - when perturbing u[j], only residuals at
+        points in reverse_neighborhoods[j] are affected.
+
+        Complexity: O(n * k) where k is average neighborhood size.
+        """
+        self._reverse_neighborhoods: dict[int, list[int]] = {j: [] for j in range(self.n_points)}
+
+        for i in range(self.n_points):
+            neighborhood = self.neighborhoods[i]
+            neighbor_indices = neighborhood["indices"]
+
+            # For each neighbor j of point i, add i to j's reverse neighborhood
+            for j in neighbor_indices:
+                if 0 <= j < self.n_points:  # Exclude ghost particles (negative indices)
+                    self._reverse_neighborhoods[j].append(i)
+
+        # Convert to arrays for faster access
+        self._reverse_neighborhoods = {j: np.array(rows, dtype=int) for j, rows in self._reverse_neighborhoods.items()}
+
+    def _get_affected_rows(self, j: int) -> np.ndarray:
+        """
+        Get rows affected by perturbing u[j] for sparse Jacobian.
+
+        Perturbing u[j] affects:
+        1. Row j (the point itself - its residual depends on its own value)
+        2. All rows i where j is in the neighborhood of i (j affects i's derivative approximation)
+
+        Returns:
+            Array of row indices affected by u[j]
+        """
+        # Get points that have j in their neighborhood
+        affected = self._reverse_neighborhoods.get(j, np.array([], dtype=int))
+
+        # Always include j itself (residual at j depends on u[j])
+        if j not in affected:
+            affected = np.append(affected, j)
+
+        return affected
 
     def _build_taylor_matrices(self):
         """
@@ -1149,16 +1195,24 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         self.qp_optimization_level = "none"
 
         try:
+            # Compute base residual ONCE (was incorrectly inside loop before)
+            residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+
             # Compute Jacobian by columns (perturbing each u[j])
+            # Sparse optimization: only compute affected rows (neighbors of j)
             for j in range(n):
                 u_plus = u_current.copy()
                 u_plus[j] += eps
 
-                # FIXED: Use actual u_n_plus_1 (not perturbed in Newton iteration)
-                residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
-                residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+                # Get rows affected by perturbing u[j] (j and its neighbors)
+                affected_rows = self._get_affected_rows(j)
 
-                jacobian[:, j] = (residual_plus - residual_base) / eps
+                # Compute residual only at affected points
+                residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
+
+                # Only update affected rows (sparse pattern)
+                for i in affected_rows:
+                    jacobian[i, j] = (residual_plus[i] - residual_base[i]) / eps
         finally:
             # Restore QP for residual evaluation
             self.qp_optimization_level = saved_qp_level
