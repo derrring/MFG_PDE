@@ -40,15 +40,21 @@ from mfg_pde.utils.pde_coefficients import CoefficientField
 
 # Import from responsibility-based modules per issue #388
 from .fp_fdm_advection import compute_advection_term_nd
-from .fp_fdm_alg_flux import add_interior_entries_conservative
-from .fp_fdm_bc import (
-    add_boundary_no_flux_entries,
-    add_boundary_no_flux_entries_conservative,
+from .fp_fdm_alg_divergence_centered import (
+    add_boundary_no_flux_entries_divergence_centered,
+    add_interior_entries_divergence_centered,
 )
-from .fp_fdm_operators import (
-    add_interior_entries,
-    is_boundary_point,
+from .fp_fdm_alg_divergence_upwind import add_interior_entries_divergence_upwind
+from .fp_fdm_alg_gradient_centered import (
+    add_boundary_no_flux_entries_gradient_centered,
+    add_interior_entries_gradient_centered,
 )
+from .fp_fdm_alg_gradient_upwind import (
+    add_boundary_no_flux_entries_gradient_upwind,
+    add_interior_entries_gradient_upwind,
+)
+from .fp_fdm_bc import add_boundary_no_flux_entries_divergence_upwind
+from .fp_fdm_operators import is_boundary_point
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -63,7 +69,9 @@ def solve_fp_nd_full_system(
     backend: Any | None = None,
     diffusion_field: float | np.ndarray | Any | None = None,
     tensor_diffusion_field: np.ndarray | Callable | None = None,
-    conservative: bool = False,
+    advection_scheme: str = "upwind",
+    # Deprecated parameter for backward compatibility
+    conservative: bool | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -97,8 +105,20 @@ def solve_fp_nd_full_system(
         - Callable: State-dependent diffusion D(t, x, m) -> float | ndarray
     tensor_diffusion_field : np.ndarray | Callable | None
         Tensor diffusion coefficient (Phase 3.0)
-    conservative : bool
-        If True, use conservative (flux-based) discretization
+    advection_scheme : str
+        Advection term discretization scheme. Options:
+        - "gradient_centered": Gradient form + central differences
+          (NOT conservative, oscillates for Peclet > 2)
+        - "gradient_upwind": Gradient form + upwind differences
+          (conservative via row sums, stable, O(dx))
+        - "divergence_centered": Divergence form + centered fluxes
+          (conservative via telescoping, oscillates for Peclet > 2)
+        - "divergence_upwind": Divergence form + upwind fluxes
+          (conservative via telescoping, stable, O(dx))
+        Legacy aliases: "centered"->"gradient_centered",
+        "upwind"->"gradient_upwind", "flux"->"divergence_upwind"
+    conservative : bool | None
+        DEPRECATED. Use advection_scheme instead.
 
     Returns
     -------
@@ -248,6 +268,7 @@ def solve_fp_nd_full_system(
                 ndim,
                 shape,
                 boundary_conditions,
+                advection_scheme=advection_scheme,
                 conservative=conservative,
             )
 
@@ -377,7 +398,8 @@ def solve_timestep_full_nd(
     ndim: int,
     shape: tuple[int, ...],
     boundary_conditions: Any,
-    conservative: bool = False,
+    advection_scheme: str = "upwind",
+    conservative: bool | None = None,
 ) -> np.ndarray:
     """
     Solve one timestep of the full nD FP equation.
@@ -408,15 +430,52 @@ def solve_timestep_full_nd(
         Grid shape (N1, N2, ..., Nd)
     boundary_conditions : Any
         Boundary condition specification
-    conservative : bool
-        If True, use conservative Flux FDM (mass-preserving).
-        If False (default), use non-conservative Gradient FDM.
+    advection_scheme : str
+        Advection term discretization scheme. Options:
+        - "gradient_centered": Gradient form + central differences
+          (NOT conservative, oscillates for Peclet > 2)
+        - "gradient_upwind": Gradient form + upwind differences
+          (conservative via row sums, stable, O(dx))
+        - "divergence_centered": Divergence form + centered fluxes
+          (conservative via telescoping, oscillates for Peclet > 2)
+        - "divergence_upwind": Divergence form + upwind fluxes
+          (conservative via telescoping, stable, O(dx))
+        Legacy aliases: "centered"->"gradient_centered",
+        "upwind"->"gradient_upwind", "flux"->"divergence_upwind"
+    conservative : bool | None
+        DEPRECATED. Use advection_scheme instead.
+        If True, maps to advection_scheme="flux".
+        If False, maps to advection_scheme="upwind".
 
     Returns
     -------
     np.ndarray
         Next density field. Shape: (N1, N2, ..., Nd)
     """
+    # Handle backward compatibility: conservative parameter overrides advection_scheme
+    if conservative is not None:
+        import warnings
+
+        warnings.warn(
+            "The 'conservative' parameter is deprecated. "
+            "Use advection_scheme='divergence_upwind' for conservative or 'gradient_upwind' for non-conservative.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        advection_scheme = "divergence_upwind" if conservative else "gradient_upwind"
+
+    # Map legacy scheme names to new names
+    scheme_aliases = {
+        "centered": "gradient_centered",
+        "upwind": "gradient_upwind",
+        "flux": "divergence_upwind",
+    }
+    advection_scheme = scheme_aliases.get(advection_scheme, advection_scheme)
+
+    # Validate scheme name
+    valid_schemes = {"gradient_centered", "gradient_upwind", "divergence_centered", "divergence_upwind"}
+    if advection_scheme not in valid_schemes:
+        raise ValueError(f"Unknown advection_scheme '{advection_scheme}'. Valid options: {sorted(valid_schemes)}")
     # Total number of unknowns
     N_total = int(np.prod(shape))
 
@@ -458,8 +517,9 @@ def solve_timestep_full_nd(
         # The actual BC application will be handled by tensor_operators
         if (is_no_flux or not is_uniform) and is_boundary:
             # Boundary point with no-flux condition
-            if conservative:
-                add_boundary_no_flux_entries_conservative(
+            # Select boundary function based on advection scheme
+            if advection_scheme == "gradient_centered":
+                add_boundary_no_flux_entries_gradient_centered(
                     row_indices,
                     col_indices,
                     data_values,
@@ -474,8 +534,40 @@ def solve_timestep_full_nd(
                     u_flat,
                     grid,
                 )
-            else:
-                add_boundary_no_flux_entries(
+            elif advection_scheme == "gradient_upwind":
+                add_boundary_no_flux_entries_gradient_upwind(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma_local,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                )
+            elif advection_scheme == "divergence_centered":
+                add_boundary_no_flux_entries_divergence_centered(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma_local,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                )
+            else:  # "divergence_upwind"
+                add_boundary_no_flux_entries_divergence_upwind(
                     row_indices,
                     col_indices,
                     data_values,
@@ -492,8 +584,9 @@ def solve_timestep_full_nd(
                 )
         else:
             # Interior point or periodic boundary
-            if conservative:
-                add_interior_entries_conservative(
+            # Select interior function based on advection scheme
+            if advection_scheme == "gradient_centered":
+                add_interior_entries_gradient_centered(
                     row_indices,
                     col_indices,
                     data_values,
@@ -509,8 +602,42 @@ def solve_timestep_full_nd(
                     grid,
                     boundary_conditions,
                 )
-            else:
-                add_interior_entries(
+            elif advection_scheme == "gradient_upwind":
+                add_interior_entries_gradient_upwind(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma_local,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                    boundary_conditions,
+                )
+            elif advection_scheme == "divergence_centered":
+                add_interior_entries_divergence_centered(
+                    row_indices,
+                    col_indices,
+                    data_values,
+                    flat_idx,
+                    multi_idx,
+                    shape,
+                    ndim,
+                    dt,
+                    sigma_local,
+                    coupling_coefficient,
+                    spacing,
+                    u_flat,
+                    grid,
+                    boundary_conditions,
+                )
+            else:  # "divergence_upwind"
+                add_interior_entries_divergence_upwind(
                     row_indices,
                     col_indices,
                     data_values,

@@ -1,26 +1,35 @@
-"""Conservative flux-based FDM discretization for FP equation.
+"""Divergence form with upwind flux selection for FP equation.
 
-This module provides the conservative (flux FDM) discretization scheme
-for the Fokker-Planck equation. This approach ensures exact mass conservation
-by discretizing divergence form using flux differences at cell interfaces.
+This module provides the conservative (divergence form) FDM discretization
+for the Fokker-Planck equation using upwind flux selection at cell interfaces.
+This approach ensures exact mass conservation via flux telescoping AND
+unconditional stability via upwind selection.
 
 Module structure per issue #388:
-    fp_fdm_alg_flux.py - Conservative flux discretization algorithms
+    fp_fdm_alg_divergence_upwind.py - Conservative flux discretization algorithms
 
 Functions:
-    add_interior_entries_conservative: Interior stencil for flux FDM
+    add_interior_entries_divergence_upwind: Interior stencil for flux FDM
+    add_interior_entries_conservative: Backward-compatible alias
 
 Mathematical Background:
-    Conservative scheme discretizes: div(alpha * m) as flux differences
-    at cell interfaces, ensuring column sums = 1/dt (mass conservation).
+    Divergence form discretizes: div(v * m) as flux differences at cell interfaces
 
-    Key difference from gradient FDM:
-    - Interface velocities: alpha_{i+1/2} = -coupling * (U_{i+1} - U_i) / dx
-    - Flux at interface: F_{i+1/2} = alpha_{i+1/2} * m_upwind
+    Key features:
+    - Interface velocities: v_{i+1/2} = -coupling * (U_{i+1} - U_i) / dx
+    - Flux at interface: F_{i+1/2} = v_{i+1/2} * m_upwind
     - Divergence: (F_{i+1/2} - F_{i-1/2}) / dx
 
     The flux entering cell i from cell i-1 is exactly the flux leaving cell i-1,
-    guaranteeing mass conservation by construction.
+    guaranteeing mass conservation by construction (flux telescoping).
+
+Comparison with other schemes:
+    | Scheme             | Conservative | Stable      | Accuracy |
+    |--------------------|--------------|-------------|----------|
+    | gradient_centered  | NO           | Peclet < 2  | O(dx^2)  |
+    | gradient_upwind    | YES (rows)   | Always      | O(dx)    |
+    | divergence_centered| YES (flux)   | Peclet < 2  | O(dx^2)  |
+    | divergence_upwind  | YES (flux)   | Always      | O(dx)    |
 """
 
 from __future__ import annotations
@@ -31,7 +40,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-def add_interior_entries_conservative(
+def add_interior_entries_divergence_upwind(
     row_indices: list[int],
     col_indices: list[int],
     data_values: list[float],
@@ -176,3 +185,8 @@ def add_interior_entries_conservative(
     row_indices.append(flat_idx)
     col_indices.append(flat_idx)
     data_values.append(diagonal_value)
+
+
+# Backward-compatible aliases
+add_interior_entries_conservative = add_interior_entries_divergence_upwind
+add_interior_entries_flux = add_interior_entries_divergence_upwind

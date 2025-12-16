@@ -1,18 +1,31 @@
 """Finite difference operators for FP equation discretization.
 
-This module provides the mathematical operations used in non-conservative
-(gradient-based) FDM discretization: interior stencils for diffusion and advection.
+This module provides common utilities and re-exports for the FDM discretization
+of the Fokker-Planck equation.
 
 Module structure per issue #388:
-    fp_fdm_operators.py - What mathematical operations (differential operators, stencils)
+    fp_fdm_operators.py - Common utilities and backward-compatible re-exports
+
+Advection Scheme Files (2x2 classification):
+    fp_fdm_alg_gradient_centered.py   - gradient_centered (NOT conservative)
+    fp_fdm_alg_gradient_upwind.py     - gradient_upwind (conservative via row sums)
+    fp_fdm_alg_divergence_centered.py - divergence_centered (conservative, oscillates)
+    fp_fdm_alg_divergence_upwind.py   - divergence_upwind (conservative via telescoping)
+
+Scheme Comparison:
+    | Scheme             | PDE Form   | Spatial | Conservative | Stable |
+    |--------------------|------------|---------|--------------|--------|
+    | gradient_centered  | v·grad(m)  | Central | NO           | Pe<2   |
+    | gradient_upwind    | v·grad(m)  | Upwind  | YES (rows)   | Always |
+    | divergence_centered| div(v*m)   | Central | YES (flux)   | Pe<2   |
+    | divergence_upwind  | div(v*m)   | Upwind  | YES (flux)   | Always |
 
 Functions:
     is_boundary_point: Utility to check if a point is on the boundary
-    add_interior_entries: Interior stencil for gradient FDM (non-conservative)
+    add_interior_entries: Re-export of gradient_upwind for backward compatibility
 
 Note:
     - Boundary condition enforcement is in fp_fdm_bc.py
-    - Conservative flux discretization is in fp_fdm_alg_flux.py
     - Advection term computation is in fp_fdm_advection.py
 """
 
@@ -20,7 +33,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from mfg_pde.utils.aux_func import npart, ppart
+# Re-export gradient_upwind scheme for backward compatibility
+from .fp_fdm_alg_gradient_upwind import add_interior_entries_gradient_upwind
 
 if TYPE_CHECKING:
     import numpy as np
@@ -48,97 +62,30 @@ def add_interior_entries(
     boundary_conditions: Any,
 ) -> None:
     """
-    Add matrix entries for interior grid point using non-conservative gradient FDM.
+    Add matrix entries for interior grid point using gradient_upwind FDM.
 
-    Discretizes:
-        (1/dt) m + div(m*v) - (sigma^2/2) Laplacian(m) = 0
+    This is a backward-compatible wrapper that calls add_interior_entries_gradient_upwind.
+    For explicit scheme selection, use:
+    - fp_fdm_alg_gradient_centered: add_interior_entries_gradient_centered (NOT conservative)
+    - fp_fdm_alg_gradient_upwind: add_interior_entries_gradient_upwind (conservative via rows)
+    - fp_fdm_alg_divergence_centered: add_interior_entries_divergence_centered (conservative, oscillates)
+    - fp_fdm_alg_divergence_upwind: add_interior_entries_divergence_upwind (conservative via telescoping)
 
-    Using upwind for advection and centered differences for diffusion.
-
-    Note: This is non-conservative discretization. For mass-preserving
-    discretization, use add_interior_entries_conservative from fp_fdm_alg_flux.py.
+    See individual module docstrings for mathematical details.
     """
-    # Diagonal term (accumulates contributions from all dimensions)
-    diagonal_value = 1.0 / dt
-
-    # For each dimension, add advection + diffusion contributions
-    for d in range(ndim):
-        dx = spacing[d]
-        dx_sq = dx * dx
-
-        # Get neighbor indices in dimension d
-        multi_idx_plus = list(multi_idx)
-        multi_idx_minus = list(multi_idx)
-
-        multi_idx_plus[d] = multi_idx[d] + 1
-        multi_idx_minus[d] = multi_idx[d] - 1
-
-        # Handle boundary wrapping for periodic BC
-        # Handle both legacy BC interface and new BoundaryConditionManager2D
-        if hasattr(boundary_conditions, "is_uniform") and hasattr(boundary_conditions, "type"):
-            is_periodic = boundary_conditions.is_uniform and boundary_conditions.type == "periodic"
-        else:
-            # For BoundaryConditionManager2D or unknown types, default to non-periodic
-            is_periodic = False
-
-        if is_periodic:
-            multi_idx_plus[d] = multi_idx_plus[d] % shape[d]
-            multi_idx_minus[d] = multi_idx_minus[d] % shape[d]
-
-        # Check if neighbors exist (non-periodic case)
-        has_plus = multi_idx_plus[d] < shape[d]
-        has_minus = multi_idx_minus[d] >= 0
-
-        if has_plus or is_periodic:
-            flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
-            u_plus = u_flat[flat_idx_plus]
-        else:
-            u_plus = u_flat[flat_idx]  # Use current value at boundary
-
-        if has_minus or is_periodic:
-            flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
-            u_minus = u_flat[flat_idx_minus]
-        else:
-            u_minus = u_flat[flat_idx]  # Use current value at boundary
-
-        u_center = u_flat[flat_idx]
-
-        # Diffusion contribution (centered differences)
-        # -sigma^2/(2dx^2) * (m_{i+1} - 2m_i + m_{i-1})
-        diagonal_value += sigma**2 / dx_sq
-
-        if has_plus or is_periodic:
-            # Coupling to m_{i+1,j}
-            coeff_plus = -(sigma**2) / (2 * dx_sq)
-
-            # Add advection upwind term
-            # For advection: -d/dx(m*v) where v = -coupling_coefficient * dU/dx
-            # Upwind: use ppart for positive velocity contribution
-            coeff_plus += float(-coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
-
-            row_indices.append(flat_idx)
-            col_indices.append(flat_idx_plus)
-            data_values.append(coeff_plus)
-
-            # Add advection contribution to diagonal
-            diagonal_value += float(coupling_coefficient * ppart(u_plus - u_center) / dx_sq)
-
-        if has_minus or is_periodic:
-            # Coupling to m_{i-1,j}
-            coeff_minus = -(sigma**2) / (2 * dx_sq)
-
-            # Add advection upwind term
-            # Upwind: use npart for negative velocity contribution
-            coeff_minus += float(-coupling_coefficient * npart(u_center - u_minus) / dx_sq)
-
-            row_indices.append(flat_idx)
-            col_indices.append(flat_idx_minus)
-            data_values.append(coeff_minus)
-
-            # Add advection contribution to diagonal
-            diagonal_value += float(coupling_coefficient * npart(u_center - u_minus) / dx_sq)
-
-    # Add diagonal entry
-    row_indices.append(flat_idx)
-    col_indices.append(flat_idx)
-    data_values.append(diagonal_value)
+    add_interior_entries_gradient_upwind(
+        row_indices,
+        col_indices,
+        data_values,
+        flat_idx,
+        multi_idx,
+        shape,
+        ndim,
+        dt,
+        sigma,
+        coupling_coefficient,
+        spacing,
+        u_flat,
+        grid,
+        boundary_conditions,
+    )

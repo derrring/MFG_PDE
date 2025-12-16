@@ -104,12 +104,16 @@ class TestNDGridMode:
                 spatial_discretization=[10, 10, 10, 10],
                 T=1.0,
                 Nt=50,
-                sigma=0.1,
+                diffusion=0.1,  # Use diffusion instead of deprecated sigma
             )
 
             # Should warn about high-dimensional complexity
-            assert len(w) >= 1
-            assert "O(N^d)" in str(w[0].message) or "dimension" in str(w[0].message).lower()
+            # Filter for UserWarning (not DeprecationWarning)
+            user_warnings = [
+                x for x in w if issubclass(x.category, UserWarning) and not issubclass(x.category, DeprecationWarning)
+            ]
+            assert len(user_warnings) >= 1
+            assert "O(N^d)" in str(user_warnings[0].message) or "dimension" in str(user_warnings[0].message).lower()
 
         assert problem.dimension == 4
         assert "particle" in problem.solver_compatible
