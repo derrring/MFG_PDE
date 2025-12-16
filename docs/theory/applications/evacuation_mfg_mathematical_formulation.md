@@ -348,13 +348,41 @@ where:
 - $c_j > 0$ is channeling strength at door $j$
 - $\beta > 0$ controls spatial extent
 
-**Remark 5.3**: Full mathematical treatment in `anisotropic_mfg_mathematical_formulation.md`.
+**Remark 5.3**: Full mathematical treatment in `docs/theory/applications/anisotropic_mfg_mathematical_formulation.md`.
 
 ---
 
 ## 6. Numerical Methods and Stability
 
-### 6.1 Semi-Lagrangian Scheme for Evacuation MFG
+### 6.1 FDM Scheme Pairing for MFG
+
+When using FDM solvers for both HJB and FP, the advection scheme selection is **mathematically determined** by the equation structure.
+
+**HJB (non-divergence form):** $-\partial_t u + \mathbf{b} \cdot \nabla u = 0$
+- Must use **Gradient schemes**: `gradient_upwind` or `gradient_centered`
+- Divergence schemes are structurally impossible (no flux to diverge)
+
+**FP (divergence form, adjoint of HJB):** $\partial_t m + \nabla \cdot (m \mathbf{b}) = 0$
+- Must use **Divergence schemes**: `divergence_upwind` or `divergence_centered`
+- Using gradient schemes is a type error that violates mass conservation
+
+**Required pairings:**
+| HJB Scheme | FP Scheme | Properties |
+|------------|-----------|------------|
+| `gradient_upwind` | `divergence_upwind` | Monotone, positivity-preserving |
+| `gradient_centered` | `divergence_centered` | Second-order, may oscillate |
+
+```python
+from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+
+hjb_solver = HJBFDMSolver(problem, advection_scheme="gradient_upwind")
+fp_solver = FPFDMSolver(problem, advection_scheme="divergence_upwind")
+```
+
+**Reference:** See `docs/theory/adjoint_discretization_mfg.md` §8 for detailed analysis.
+
+### 6.2 Semi-Lagrangian Scheme for Evacuation MFG
 
 **Algorithm 6.1 (Semi-Lagrangian + IMEX for Absorption)**[^14]:
 
@@ -379,7 +407,7 @@ where:
 The IMEX scheme is **unconditionally stable** for absorption term, with CFL condition only on transport:
 $$\Delta t \cdot \frac{\max |\nabla_p H|}{\Delta x} < 1$$
 
-### 6.2 Comparison of Approaches
+### 6.3 Comparison of Approaches
 
 | Approach | Mass Behavior | CFL Restriction | Stiffness | Production-Ready | Realism |
 |:---------|:--------------|:----------------|:----------|:-----------------|:--------|
@@ -444,19 +472,18 @@ $$\Delta t \cdot \frac{\max |\nabla_p H|}{\Delta x} < 1$$
 ### Code References
 
 **Examples**:
-- `examples/advanced/anisotropic_crowd_dynamics_2d/room_evacuation_two_doors.py` - Full simulation (Approach 2)
-- `examples/advanced/anisotropic_crowd_dynamics_2d/numerical_demo.py` - Production solver with metrics
-- `examples/advanced/anisotropic_crowd_dynamics_2d/README.md` - Usage guide
+- `examples/basic/geometry/2d_crowd_motion_fdm.py` - 2D crowd motion with FDM
+- `mfg-research/experiments/crowd_evacuation_2d/` - Full evacuation experiment (separate repo)
 
 **Theory Documents**:
-- `docs/theory/anisotropic_mfg_mathematical_formulation.md` - Anisotropic framework
-- `docs/theory/mathematical_background.md` §6 - Viscosity solutions background
-- `docs/theory/convergence_criteria.md` - Convergence analysis for MFG solvers
+- `docs/theory/applications/anisotropic_mfg_mathematical_formulation.md` - Anisotropic framework
+- `docs/theory/adjoint_discretization_mfg.md` - FDM scheme pairing, adjoint structure (§8)
+- `docs/theory/semi_lagrangian_methods_for_hjb.md` - Semi-Lagrangian methods
 
 **Core Solvers**:
-- `mfg_pde/alg/numerical/hjb_solvers/` - HJB equation solvers
-- `mfg_pde/alg/numerical/fp_solvers/` - Fokker-Planck solvers
-- `mfg_pde/alg/mfg_solvers/` - Coupled MFG iteration
+- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` - HJB FDM solver with `advection_scheme` parameter
+- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` - FP FDM solver with `advection_scheme` parameter
+- `mfg_pde/alg/numerical/coupling/` - Coupled MFG iteration (FixedPointIterator)
 
 ### Production Recommendations
 
@@ -464,15 +491,17 @@ For **practical evacuation simulations**, use:
 
 1. **Target Payoff Approach** (§3.2) with large terminal reward at exits
 2. **Congestion Hamiltonian** $H = \frac{1}{2}|p|^2 + \gamma m |p|^2$ with $\gamma \in [0.1, 0.5]$
-3. **Anisotropic Extensions** (§5) for realistic crowd channeling (optional)
+3. **Correct FDM Scheme Pairing** (§6.1): `gradient_upwind` (HJB) + `divergence_upwind` (FP)
 4. **Success Metric** $S(T)$ (Definition 3.11) for evacuation effectiveness
-5. **Standard Semi-Lagrangian Solver** (Algorithm 6.1 without absorption term)
+5. **Anisotropic Extensions** (§5) for realistic crowd channeling (optional)
 
-**Avoid** explicit absorption (Approach 1) for production use unless implementing IMEX schemes for stiffness management.
+**Avoid**:
+- Explicit absorption (Approach 1) unless implementing IMEX schemes
+- Using `gradient_*` schemes for FP (violates mass conservation)
 
 ---
 
-**Document Status**: Enhanced with mathematical rigor and footnoted references
-**Last Updated**: October 8, 2025
-**Version**: 2.0 (Enhanced)
+**Document Status**: Enhanced with FDM scheme pairing requirements
+**Last Updated**: December 2025
+**Version**: 2.1 (Added §6.1 FDM Scheme Pairing, fixed dead references)
 **Notation**: Follows `NOTATION_STANDARDS.md`
