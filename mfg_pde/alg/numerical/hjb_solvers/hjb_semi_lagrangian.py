@@ -938,10 +938,12 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             # Apply boundary conditions
             bc_type = None
-            if hasattr(self.problem, "boundary_conditions"):
-                bc = getattr(self.problem, "boundary_conditions", None)
-                if bc is not None and hasattr(bc, "type"):
-                    bc_type = bc.type
+            if hasattr(self.problem, "get_boundary_conditions"):
+                bc = self.problem.get_boundary_conditions()
+                if bc is not None and hasattr(bc, "default_bc"):
+                    bc_type_enum = bc.default_bc
+                    if bc_type_enum is not None:
+                        bc_type = bc_type_enum.value if hasattr(bc_type_enum, "value") else str(bc_type_enum)
 
             return apply_boundary_conditions_1d(
                 x_departure,
@@ -1061,24 +1063,22 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             if Nx <= 2:
                 return 0.0
 
-            # Handle boundary points
+            # Handle boundary points - get BC type once
+            bc_type = None
+            if hasattr(self.problem, "get_boundary_conditions"):
+                bc = self.problem.get_boundary_conditions()
+                if bc is not None and hasattr(bc, "default_bc") and bc.default_bc is not None:
+                    bc_type = bc.default_bc.value if hasattr(bc.default_bc, "value") else str(bc.default_bc)
+
             if i == 0:
-                if hasattr(self.problem, "boundary_conditions"):
-                    bc = getattr(self.problem, "boundary_conditions", None)
-                    if bc is not None and hasattr(bc, "type") and bc.type == "periodic":
-                        laplacian = (U_values[1] - 2 * U_values[0] + U_values[-1]) / self.dx**2
-                    else:
-                        laplacian = (U_values[1] - U_values[0]) / self.dx**2
+                if bc_type == "periodic":
+                    laplacian = (U_values[1] - 2 * U_values[0] + U_values[-1]) / self.dx**2
                 else:
                     laplacian = (U_values[1] - U_values[0]) / self.dx**2
 
             elif i == Nx - 1:
-                if hasattr(self.problem, "boundary_conditions"):
-                    bc = getattr(self.problem, "boundary_conditions", None)
-                    if bc is not None and hasattr(bc, "type") and bc.type == "periodic":
-                        laplacian = (U_values[0] - 2 * U_values[-1] + U_values[-2]) / self.dx**2
-                    else:
-                        laplacian = (U_values[-1] - U_values[-2]) / self.dx**2
+                if bc_type == "periodic":
+                    laplacian = (U_values[0] - 2 * U_values[-1] + U_values[-2]) / self.dx**2
                 else:
                     laplacian = (U_values[-1] - U_values[-2]) / self.dx**2
 

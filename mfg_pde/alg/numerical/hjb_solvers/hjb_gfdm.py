@@ -9,6 +9,9 @@ import numpy as np
 from scipy.linalg import lstsq
 from scipy.spatial.distance import cdist
 
+from mfg_pde.utils.numerical.differential_utils import (
+    compute_dH_dp,
+)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
 from mfg_pde.utils.numerical.particle.interpolation import (
     interpolate_grid_to_particles,
@@ -200,7 +203,13 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         # Boundary condition parameters
         self.boundary_indices = boundary_indices if boundary_indices is not None else np.array([])
-        self.boundary_conditions = boundary_conditions if boundary_conditions is not None else {}
+        # Get BC from parameter, or from problem if not provided
+        if boundary_conditions is not None:
+            self.boundary_conditions = boundary_conditions
+        elif hasattr(self.problem, "get_boundary_conditions"):
+            self.boundary_conditions = self.problem.get_boundary_conditions() or {}
+        else:
+            self.boundary_conditions = {}
         self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
 
         # QP optimization level (single source of truth for QP control)
@@ -285,9 +294,15 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         }
 
         # Get boundary type for GFDMOperator
+        # BoundaryConditions uses 'default_bc' attribute (BCType enum)
         bc_type = None
-        if hasattr(self.boundary_conditions, "type"):
-            bc_type = getattr(self.boundary_conditions, "type", None)
+        if hasattr(self.boundary_conditions, "default_bc"):
+            bc_type_enum = getattr(self.boundary_conditions, "default_bc", None)
+            if bc_type_enum is not None:
+                # Convert BCType enum to string for GFDMOperator
+                # GFDMOperator expects "no_flux" for Neumann BC
+                bc_name = bc_type_enum.value if hasattr(bc_type_enum, "value") else str(bc_type_enum)
+                bc_type = "no_flux" if bc_name.lower() == "neumann" else bc_name.lower()
 
         # Create GFDMOperator with boundary condition support (composition pattern)
         # GFDMOperator now handles ghost particles for no-flux BC
@@ -1125,35 +1140,11 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             # Approximate derivatives using GFDM
             derivs = self.approximate_derivatives(u_current, i)
 
-            # Extract gradient and Hessian, convert to DerivativeTensors
-            # For 1D: derivs[(1,)] is du/dx, derivs[(2,)] is d²u/dx²
-            # For 2D: derivs[(1,0)] is du/dx, derivs[(0,1)] is du/dy, etc.
-            from mfg_pde.core.derivatives import DerivativeTensors
+            # Convert multi-index derivatives dict to DerivativeTensors (nD support)
+            from mfg_pde.core.derivatives import from_multi_index_dict
 
-            d = self.problem.dimension  # Spatial dimension
-            if d == 1:
-                p_value = derivs.get((1,), 0.0)
-                laplacian = derivs.get((2,), 0.0)
-                # Convert to DerivativeTensors format
-                grad = np.array([p_value])
-                hess = np.array([[derivs.get((2,), 0.0)]])
-                p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
-            elif d == 2:
-                p_x = derivs.get((1, 0), 0.0)
-                p_y = derivs.get((0, 1), 0.0)
-                laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)
-                # Convert to DerivativeTensors format
-                grad = np.array([p_x, p_y])
-                hess = np.array(
-                    [
-                        [derivs.get((2, 0), 0.0), derivs.get((1, 1), 0.0)],
-                        [derivs.get((1, 1), 0.0), derivs.get((0, 2), 0.0)],
-                    ]
-                )
-                p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
-            else:
-                msg = f"Dimension {d} not implemented"
-                raise NotImplementedError(msg)
+            p_derivs = from_multi_index_dict(derivs, dimension=self.problem.dimension)
+            laplacian = p_derivs.laplacian or 0.0
 
             # Hamiltonian (user-provided)
             # problem.H() signature: H(x_idx, m_at_x, derivs, ...)
@@ -1182,50 +1173,38 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         point_idx: int,
         m_at_x: float,
         derivs: DerivativeTensors,
-        time_idx: int,
+        time_idx: int | None = None,
     ) -> np.ndarray:
         """
-        Compute ∂H/∂p via finite difference on H.
+        Compute dH/dp via finite differences on the Hamiltonian.
 
-        Fallback for when user doesn't provide hamiltonian_dp_func.
-        For non-smooth H, this gives an element of the generalized Jacobian.
+        Adapts the problem's H() interface to the generic compute_dH_dp utility.
 
         Args:
-            point_idx: Point index
-            m_at_x: Density value at point
-            derivs: Current derivative tensors (contains gradient p)
-            time_idx: Time index
+            point_idx: Collocation point index
+            m_at_x: Density value at the point
+            derivs: DerivativeTensors with current gradient/hessian
+            time_idx: Time index (currently unused, kept for API compatibility)
 
         Returns:
-            Array of shape (dimension,) with ∂H/∂p_d for each dimension d.
+            dH/dp array, shape (dim,)
         """
-        eps = 1e-7
-        d = self.problem.dimension
-        dH_dp = np.zeros(d)
 
-        # Get current gradient
-        p = derivs.grad.copy()
+        # Create wrapper that matches compute_dH_dp's expected H_func signature
+        def H_wrapper(x_idx, m, derivs):
+            return self.problem.H(x_idx, m, derivs=derivs)
 
-        # Compute H at base point
-        H_base = self.problem.H(point_idx, m_at_x, derivs=derivs)
+        # Extract gradient and hessian from DerivativeTensors
+        p = derivs.grad if derivs.grad is not None else np.zeros(self.problem.dimension)
+        hess = derivs.hess
 
-        # Finite difference for each gradient component
-        for dim in range(d):
-            # Perturb gradient in dimension dim
-            p_plus = p.copy()
-            p_plus[dim] += eps
-
-            # Create perturbed DerivativeTensors
-            from mfg_pde.core.derivatives import DerivativeTensors
-
-            derivs_plus = DerivativeTensors.from_arrays(grad=p_plus, hess=derivs.hess)
-
-            # Evaluate H at perturbed point
-            H_plus = self.problem.H(point_idx, m_at_x, derivs=derivs_plus)
-
-            dH_dp[dim] = (H_plus - H_base) / eps
-
-        return dH_dp
+        return compute_dH_dp(
+            H_func=H_wrapper,
+            x_idx=point_idx,
+            m=m_at_x,
+            p=p,
+            hess=hess,
+        )
 
     def _compute_hjb_jacobian_analytic(
         self,
@@ -1240,7 +1219,7 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         Uses user-provided dH_dp if available, otherwise FD on H.
         """
-        from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
+        from mfg_pde.core.derivatives import to_multi_index_dict
 
         n = self.n_points
         d = self.problem.dimension
@@ -1260,23 +1239,10 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             # Compute derivatives at point i
             derivs_dict = self.approximate_derivatives(u_current, i)
 
-            # Build DerivativeTensors
-            if d == 1:
-                grad = np.array([derivs_dict.get((1,), 0.0)])
-                hess = np.array([[derivs_dict.get((2,), 0.0)]])
-            elif d == 2:
-                grad = np.array([derivs_dict.get((1, 0), 0.0), derivs_dict.get((0, 1), 0.0)])
-                hess = np.array(
-                    [
-                        [derivs_dict.get((2, 0), 0.0), derivs_dict.get((1, 1), 0.0)],
-                        [derivs_dict.get((1, 1), 0.0), derivs_dict.get((0, 2), 0.0)],
-                    ]
-                )
-            else:
-                # Fall back to numerical Jacobian for higher dimensions
-                continue
+            # Build DerivativeTensors using nD infrastructure
+            from mfg_pde.core.derivatives import from_multi_index_dict
 
-            p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
+            p_derivs = from_multi_index_dict(derivs_dict, dimension=d)
 
             # Get ∂H/∂p (user-provided or FD fallback)
             dH_dp = self.problem.dH_dp(
