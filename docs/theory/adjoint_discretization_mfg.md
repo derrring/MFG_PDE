@@ -449,127 +449,281 @@ The adjoint relationship $A_{\text{FP}} = A_{\text{HJB}}^\top$ must hold **at ea
 3. **Transpose** to get $A_{\text{FP}} = A_{\text{HJB}}^\top$
 4. **Solve FP** using $A_{\text{FP}}$
 
-### 8.2 When Independent FP Schemes Are Valid
+### 8.2 The Scheme Selection Is Mathematically Determined
 
-The 4 FDM schemes in `mfg_pde` (gradient_centered, gradient_upwind, divergence_centered, divergence_upwind) are valid for:
+The choice of FDM scheme for HJB and FP is **not a matter of preference**. It is determined by the mathematical structure of the equations.
 
-- **Standalone FP equations** (not coupled to HJB)
-- **Testing and debugging** individual components
-- **Non-MFG applications** (pure advection-diffusion)
-- **Research comparisons** between discretization strategies
+#### Step 1: HJB Is Non-Divergence Form → Gradient Schemes Only
 
-### 8.3 When Adjoint Coupling Is Required
+The HJB equation describes the **value** of a state. Value is transported along optimal paths; it is **not a conserved quantity**:
 
-For **production MFG solvers** with coupled HJB-FP systems:
+$$
+\partial_t u + \mathbf{b} \cdot \nabla u = 0
+$$
 
-- Use adjoint construction to preserve variational structure
-- Ensures Newton convergence for the coupled system
-- Maintains mass conservation and positivity
-- Required for theoretical convergence guarantees
+**Mathematical Form:** The advection term is $\mathbf{b} \cdot \nabla u$ (gradient of $u$).
 
-### 8.4 Compatible HJB-FP Scheme Pairings (Without Automatic Transpose)
+**Numerical Consequence:** You **must** use a **Gradient Scheme** (finite difference on $\nabla u$).
 
-When users choose independent FP schemes (not using automatic transpose), they must respect the **duality of the operators**. The correct FP scheme is the **"Divergence" counterpart** of the "Gradient" scheme chosen for HJB.
+> **Divergence schemes are structurally impossible for HJB.** There is no flux to diverge because HJB is not a conservation law. You cannot rewrite $\mathbf{b} \cdot \nabla u$ as $\nabla \cdot (\cdots)$.
 
-#### The Pairing Rule: Integration by Parts
+#### Step 2: FP Is the Adjoint of HJB → Divergence Schemes Required
+
+The FP equation is the **adjoint** (dual) of the HJB equation. The adjoint operation (integration by parts) flips the differential operator:
+
+$$
+\langle \nabla u, \mathbf{v} \rangle_{L^2} = - \langle u, \nabla \cdot \mathbf{v} \rangle_{L^2}
+$$
+
+**The adjoint of a Gradient ($\nabla$) is a negative Divergence ($-\nabla \cdot$).**
+
+Because the HJB operator was a gradient operator, the FP operator **must** be a divergence operator:
+
+$$
+\partial_t m + \nabla \cdot (m \mathbf{b}) = 0
+$$
+
+**Numerical Consequence:** You **must** use a **Divergence Scheme** (conservative finite difference).
+
+> **Using gradient schemes for FP in MFG is a type error** - trying to solve a conservation law using a non-conservative operator. This violates mass conservation.
+
+#### Step 3: The Required Pairings
+
+You do not actually "choose" two separate schemes. You make **one** choice based on the physics (upwind vs. centered), and the rest follows from the mathematics:
+
+| Decision | HJB (Non-Divergence) | FP (Divergence) | Properties |
+|:---------|:---------------------|:----------------|:-----------|
+| **Stability first** | `gradient_upwind` | `divergence_upwind` | Monotone, positivity-preserving, mass-conserving |
+| **Accuracy first** | `gradient_centered` | `divergence_centered` | Second-order, may oscillate, mass-conserving |
+
+These are **mathematically necessary** pairings, not "compatible options".
+
+### 8.3 Available Schemes in `mfg_pde`
+
+**HJB Solver** (`HJBFDMSolver`):
+- `advection_scheme="gradient_upwind"` (default) - Godunov upwind, monotone
+- `advection_scheme="gradient_centered"` - Central differences, second-order
+
+**FP Solver** (`FPFDMSolver`):
+- `advection_scheme="divergence_upwind"` - **Required for MFG** with HJB `gradient_upwind`
+- `advection_scheme="divergence_centered"` - **Required for MFG** with HJB `gradient_centered`
+- `advection_scheme="gradient_upwind"` - For standalone/non-MFG use only
+- `advection_scheme="gradient_centered"` - For standalone/non-MFG use only
+
+> **Warning:** The gradient schemes for FP exist only for standalone advection-diffusion problems (not coupled MFG). Using them in MFG coupling is a formulation error.
+
+### 8.4 The Duality in Detail
+
+#### Integration by Parts: The Bridge Between Forms
 
 The pairing is dictated by **integration by parts**, which is the continuous equivalent of the matrix transpose:
 
 $$
-\int_{\Omega} \underbrace{(b \cdot \nabla u)}_{\text{Gradient Form}} \, m \, dx = - \int_{\Omega} u \, \underbrace{\nabla \cdot (b m)}_{\text{Divergence Form}} \, dx
+\int_{\Omega} \underbrace{(\mathbf{b} \cdot \nabla u)}_{\text{Gradient Form}} \, m \, dx = - \int_{\Omega} u \, \underbrace{\nabla \cdot (\mathbf{b} m)}_{\text{Divergence Form}} \, dx
 $$
 
 (with appropriate boundary conditions).
 
-#### Why HJB Uses Gradient Form
+At the discrete level, this becomes:
+- **HJB Jacobian:** $A_{\text{HJB}}$ (gradient stencil)
+- **FP Operator:** $A_{\text{FP}} = A_{\text{HJB}}^\top$ (divergence stencil via transpose)
 
-**HJB is a gradient equation.** The advection term comes from the Hamiltonian $H(x, \nabla u)$. The operator acts on the **gradient** of the solution:
+#### Why Gradient Schemes Violate Mass Conservation for FP
 
-$$
--\nu \Delta u + b \cdot \nabla u = f
-$$
-
-Therefore, HJB requires a **Gradient** scheme (`gradient_centered` or `gradient_upwind`).
-
-**Important:** Divergence schemes are **invalid for HJB** because HJB is not a conservation law.
-
-#### Why FP Uses Divergence Form
-
-**FP is a divergence equation.** The FP equation describes the conservation of probability mass. The operator acts on the **divergence** of the flux:
+Using `gradient_upwind` for FP discretizes $\mathbf{b} \cdot \nabla m$ instead of $\nabla \cdot (\mathbf{b} m)$:
 
 $$
-\partial_t m - \nu \Delta m - \nabla \cdot (b m) = 0
+\mathbf{b} \cdot \nabla m \neq \nabla \cdot (\mathbf{b} m)
 $$
 
-Therefore, FP requires a **Divergence** scheme (`divergence_centered` or `divergence_upwind`).
-
-#### The Error of Using Gradient Schemes for FP
-
-> **Formulation Error:** Using `gradient_upwind` for FP discretizes $b \cdot \nabla m$ instead of $\nabla \cdot (bm)$.
-
-This treats the density $m$ like a passive scalar field rather than a conserved quantity, **violating mass conservation**:
+The difference is $m \nabla \cdot \mathbf{b}$ (product rule). This treats density $m$ as a passive scalar rather than a conserved quantity:
 
 $$
 \frac{d}{dt} \int_\Omega m \, dx \neq 0 \quad \text{(mass not conserved)}
 $$
 
-#### The Correct Pairing Matrix
-
-| HJB Scheme (Primal) | Correct FP Scheme (Dual) | Why? |
-|:--------------------|:-------------------------|:-----|
-| `gradient_upwind` | `divergence_upwind` | Matches characteristic flow. Preserves stability and positivity. |
-| `gradient_centered` | `divergence_centered` | Preserves symmetric structure (though often unstable for convection). |
-| `divergence_*` | *(Invalid for HJB)* | HJB is not a conservation law. |
-
-#### Matching the Stencil (Upwind vs. Centered)
+#### Matching Upwind vs. Centered
 
 **Upwind ↔ Upwind:**
-- In HJB, "upwind" means looking in the direction the agent wants to move to update the value function $u$
-- In FP, "upwind" means moving the mass $m$ in that exact same direction
-- If HJB uses a **backward** difference (looking left because drift is positive), the discrete transpose becomes a **forward** flux difference for the density
-- Standard `divergence_upwind` implementations handle this flux splitting automatically
+- In HJB, "upwind" means looking in the direction the agent wants to move to update $u$
+- In FP, "upwind" means moving mass $m$ in that same direction
+- If HJB uses a **backward** difference, the transpose becomes a **forward** flux difference
+- Divergence upwind implementations handle this automatically
 
 **Centered ↔ Centered:**
-- If HJB uses central differences (only stable if viscosity is high relative to drift), the algebraic transpose is exactly a central difference divergence operator
+- Central differences for HJB transpose to central differences for FP
+- Only stable when viscosity dominates advection
 
-#### Recommended Default Pairing
+### 8.5 Usage Examples
 
-For most MFG problems:
+**Recommended for most MFG problems:**
 
 ```python
-# Recommended: gradient_upwind (HJB) + divergence_upwind (FP)
-hjb_solver = HJBFDMSolver(problem, scheme="gradient_upwind")
+# Stability-first: upwind pairing
+hjb_solver = HJBFDMSolver(problem, advection_scheme="gradient_upwind")
 fp_solver = FPFDMSolver(problem, advection_scheme="divergence_upwind")
 ```
 
-This pairing provides:
-- First-order accuracy in advection
-- Unconditional positivity for the density
-- Mass conservation via flux telescoping
-- Robustness for problems with sharp gradients or shocks
-
-For smooth problems where higher accuracy is desired:
+**For smooth problems where accuracy matters:**
 
 ```python
-# Alternative: gradient_centered (HJB) + divergence_centered (FP)
-hjb_solver = HJBFDMSolver(problem, scheme="gradient_centered")
+# Accuracy-first: centered pairing
+hjb_solver = HJBFDMSolver(problem, advection_scheme="gradient_centered")
 fp_solver = FPFDMSolver(problem, advection_scheme="divergence_centered")
 ```
 
-This pairing provides:
-- Second-order accuracy in advection
-- May produce oscillations near discontinuities
-- Suitable when solutions are known to be smooth
+### 8.6 Consequences of Incorrect Scheme Pairing
 
-#### Common Errors to Avoid
+What happens if the FDM scheme pairing violates the mathematical structure? This section analyzes the failure modes.
 
-| Configuration | Problem |
-|:--------------|:--------|
-| `gradient_upwind` (HJB) + `gradient_upwind` (FP) | **Formulation error.** FP should use divergence form. Breaks mass conservation. |
-| `gradient_upwind` (HJB) + `divergence_centered` (FP) | Breaks duality. May cause convergence issues in MFG iteration. |
-| `divergence_*` for HJB | **Invalid.** HJB is not a conservation law. |
+#### Case 1: Gradient Scheme for FP in MFG (Type Error)
 
-### 8.5 Current Implementation Status
+**Configuration:** `gradient_upwind` (HJB) + `gradient_upwind` (FP)
+
+**Mathematical Error:**
+
+You discretize the wrong operator:
+
+$$
+\text{Correct FP:} \quad \partial_t m + \nabla \cdot (\mathbf{b} m) = 0
+$$
+
+$$
+\text{What you solve:} \quad \partial_t m + \mathbf{b} \cdot \nabla m = 0
+$$
+
+These differ by the product rule:
+
+$$
+\nabla \cdot (\mathbf{b} m) = \mathbf{b} \cdot \nabla m + m (\nabla \cdot \mathbf{b})
+$$
+
+**Consequences:**
+
+1. **Mass conservation violated:**
+   $$
+   \frac{d}{dt} \int_\Omega m \, dx = -\int_\Omega m (\nabla \cdot \mathbf{b}) \, dx \neq 0
+   $$
+   The total mass drifts over time instead of remaining constant.
+
+2. **Adjoint relationship broken:** $A_{\text{FP}} \neq A_{\text{HJB}}^\top$
+
+3. **Positivity may fail:** Density can become negative in regions where drift is non-solenoidal.
+
+4. **Wrong steady state:** The fixed-point iteration may converge, but to a solution of the wrong PDE.
+
+**Observable Symptoms:**
+- Total mass $\sum_i m_i$ drifts from 1.0 over Picard iterations
+- Negative density values appear
+- Solution doesn't match analytical benchmarks
+- **Insidious:** Code runs without errors, producing plausible-looking but incorrect results
+
+#### Case 2: Mismatched Stencils (Upwind + Centered)
+
+**Configuration:** `gradient_upwind` (HJB) + `divergence_centered` (FP)
+
+**Mathematical Error:**
+
+Both operators discretize the correct PDE form, but the discrete adjoint relationship is broken:
+
+$$
+A_{\text{FP}}^{\text{centered}} \neq (A_{\text{HJB}}^{\text{upwind}})^\top
+$$
+
+The upwind HJB Jacobian has the structure:
+
+$$
+(A_{\text{HJB}})_{i,i-1} = -\frac{\nu}{h^2} - \frac{a_i^-}{h}, \quad
+(A_{\text{HJB}})_{i,i+1} = -\frac{\nu}{h^2} - \frac{a_i^+}{h}
+$$
+
+Its transpose would give an upwind divergence operator. But centered divergence has:
+
+$$
+(A_{\text{FP}}^{\text{centered}})_{i,i-1} = -\frac{\nu}{h^2} - \frac{a_{i-1}}{2h}, \quad
+(A_{\text{FP}}^{\text{centered}})_{i,i+1} = -\frac{\nu}{h^2} + \frac{a_{i+1}}{2h}
+$$
+
+**Consequences:**
+
+1. **Coupled Jacobian loses saddle-point structure:**
+   $$
+   J = \begin{pmatrix} A_{\text{HJB}} & -B \\ C & A_{\text{FP}} \end{pmatrix}
+   $$
+   where $A_{\text{FP}} \neq A_{\text{HJB}}^\top$. The off-diagonal symmetry required for efficient solution is lost.
+
+2. **Newton convergence degraded:** Quadratic convergence may reduce to linear or fail entirely.
+
+3. **Fixed-point iteration unstable:** The spectral radius of the iteration operator increases.
+
+**Observable Symptoms:**
+- Picard iteration requires many more iterations (10× or more)
+- Residual oscillates instead of decreasing monotonically
+- Newton method fails to converge or requires very small damping
+- Solution quality degrades as coupling strength increases
+
+#### Case 3: Divergence Scheme for HJB (Structural Impossibility)
+
+**Configuration:** Attempting `divergence_upwind` for HJB
+
+**Mathematical Error:**
+
+You're solving a fundamentally different equation:
+
+$$
+\text{Correct HJB:} \quad \partial_t u + \mathbf{b} \cdot \nabla u = 0 \quad \text{(advection of value)}
+$$
+
+$$
+\text{What you solve:} \quad \partial_t u + \nabla \cdot (\mathbf{b} u) = 0 \quad \text{(conservation of "value flux")}
+$$
+
+But value is **not** a conserved quantity. The value function $u$ represents the cost-to-go; it doesn't "flow" through the domain like mass does.
+
+**Consequences:**
+
+1. **Wrong PDE entirely:** The computed $u$ satisfies a conservation law that has no physical meaning for optimal control.
+
+2. **Optimal control is wrong:**
+   $$
+   \alpha^* = -\nabla_p H(x, \nabla u)
+   $$
+   Since $u$ is wrong, the gradient $\nabla u$ is wrong, and the control $\alpha^*$ sends agents in incorrect directions.
+
+3. **Boundary/terminal conditions violated:** The conservation form changes how boundary data propagates.
+
+**Observable Symptoms:**
+- Value function has incorrect shape and magnitude
+- Terminal condition $u(T, x) = G(x)$ is not satisfied accurately
+- Optimal trajectories don't reach intended targets
+- **This error is usually caught:** most implementations don't offer divergence schemes for HJB
+
+#### Summary: Failure Mode Classification
+
+| Mismatch Type | Adjoint $A_{\text{FP}} = A_{\text{HJB}}^\top$? | Mass Conserved? | Convergence | Solution |
+|:--------------|:----------------------------------------------|:----------------|:------------|:---------|
+| `gradient` + `gradient` | **Broken** | **No** | May converge | **Wrong PDE** |
+| `upwind` + `centered` | **Broken** | Yes | Slow/unstable | Degraded |
+| `centered` + `upwind` | **Broken** | Yes | Slow/unstable | Degraded |
+| `divergence` for HJB | N/A | N/A | N/A | **Wrong PDE** |
+| ✓ `gradient_upwind` + `divergence_upwind` | **Preserved** | **Yes** | Fast | Correct |
+| ✓ `gradient_centered` + `divergence_centered` | **Preserved** | **Yes** | Fast | Correct |
+
+#### The Insidious Nature of Case 1
+
+Case 1 (`gradient` + `gradient`) is the most dangerous because:
+
+1. **No runtime errors:** Code executes successfully
+2. **Plausible output:** Solutions look reasonable at first glance
+3. **Iterations converge:** Fixed-point may reach a steady state
+4. **But the answer is wrong:** You've solved a different PDE
+
+The only way to detect this error is:
+- Check mass conservation: $|\sum_i m_i^{(k)} - 1| > \epsilon$ growing over iterations
+- Compare against analytical solutions (when available)
+- Verify against known benchmarks
+
+### 8.7 Current Implementation Status
 
 The current `mfg_pde` implementation uses **independent FP schemes**, which:
 - Is simpler to implement and understand

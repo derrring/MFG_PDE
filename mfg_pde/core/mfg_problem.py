@@ -1828,11 +1828,22 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     # - get_boundary_conditions()
     # - _setup_custom_initial_density(), _setup_custom_final_value()
 
-    def get_final_u(self) -> np.ndarray:
+    def get_u_fin(self) -> np.ndarray:
+        """Get terminal condition u(T, x). Modern nD interface."""
         return self.u_fin.copy()
 
-    def get_initial_m(self) -> np.ndarray:
+    def get_m_init(self) -> np.ndarray:
+        """Get initial density m(0, x). Modern nD interface."""
         return self.m_init.copy()
+
+    # Legacy aliases for backward compatibility
+    def get_final_u(self) -> np.ndarray:
+        """Legacy alias for get_u_fin()."""
+        return self.get_u_fin()
+
+    def get_initial_m(self) -> np.ndarray:
+        """Legacy alias for get_m_init()."""
+        return self.get_m_init()
 
     def get_problem_info(self) -> dict[str, Any]:
         """Get information about the problem."""
