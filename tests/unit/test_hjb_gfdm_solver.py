@@ -233,15 +233,18 @@ class TestHJBGFDMSolverWeightFunctions:
         assert np.allclose(weights, 1.0)
 
     def test_invalid_weight_function(self, standard_problem):
-        """Test that invalid weight function raises error."""
+        """Test that invalid weight function raises error.
+
+        The error is raised during construction because the underlying
+        GFDMOperator validates weight functions when building Taylor matrices.
+        """
         problem = standard_problem
         x_coords = np.linspace(problem.xmin, problem.xmax, 10)
         collocation_points = x_coords.reshape(-1, 1)
 
-        # Create solver with invalid weight function and test
-        solver = HJBGFDMSolver(problem, collocation_points, weight_function="invalid")
+        # Error is raised during construction, not when calling _compute_weights
         with pytest.raises(ValueError, match="Unknown weight function"):
-            solver._compute_weights(np.array([0.1]))
+            HJBGFDMSolver(problem, collocation_points, weight_function="invalid")
 
 
 class TestHJBGFDMSolverDerivativeApproximation:
