@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import scipy.sparse as sparse
@@ -17,50 +17,71 @@ from .fp_fdm_time_stepping import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+# Advection scheme options for FDM (new 2x2 naming convention)
+# Format: {pde_form}_{spatial_scheme}
+# - pde_form: "gradient" (v·∇m) or "divergence" (∇·(vm))
+# - spatial_scheme: "centered" or "upwind"
+AdvectionScheme = Literal[
+    "gradient_centered",  # Non-conservative, oscillates for Peclet > 2
+    "gradient_upwind",  # Conservative (row sums), stable
+    "divergence_centered",  # Conservative (telescoping), oscillates for Peclet > 2
+    "divergence_upwind",  # Conservative (telescoping), stable
+    # Legacy aliases (backward compatible)
+    "centered",  # -> gradient_centered
+    "upwind",  # -> gradient_upwind
+    "flux",  # -> divergence_upwind
+]
+
 
 class FPFDMSolver(BaseFPSolver):
     """
     Finite Difference Method (FDM) solver for Fokker-Planck equations.
 
-    Supports general FP equation: ∂m/∂t + ∇·(α m) = σ²/2 Δm
+    Supports general FP equation: dm/dt + div(v*m) = (sigma^2/2) * Laplacian(m)
 
-    Discretization Modes:
-        - **Conservative (Flux FDM)** [default, recommended]:
-          Discretizes div(αm) as flux differences at cell interfaces.
-          Mass conserved exactly (column sums = 1/dt).
+    Advection Scheme Options (2x2 classification):
 
-        - **Non-conservative (Gradient FDM)**:
-          Discretizes α·∇m at cell centers.
-          May lose 1-5% mass per unit time. Use for prototyping only.
+        | Scheme             | PDE Form   | Spatial    | Conservative | Stable |
+        |--------------------|------------|------------|--------------|--------|
+        | gradient_centered  | v·grad(m)  | Central    | NO           | Pe<2   |
+        | gradient_upwind    | v·grad(m)  | Upwind     | YES (rows)   | Always |
+        | divergence_centered| div(v*m)   | Central    | YES (flux)   | Pe<2   |
+        | divergence_upwind  | div(v*m)   | Upwind     | YES (flux)   | Always |
 
-    Equation Types:
-        1. Advection-diffusion (σ>0, α≠0): Standard MFG (stable)
-        2. Pure diffusion (σ>0, α=0): Heat equation (stable)
-        3. Pure advection (σ=0, α≠0): Transport equation (works but may be unstable
-           for sharp fronts; consider WENO/SL solvers for better stability)
+        **gradient_centered**: Non-conservative form with central differences.
+            Second-order accurate but oscillates for Peclet > 2.
+            Use to demonstrate why conservative schemes are needed.
+
+        **gradient_upwind** [default]: Non-conservative form with upwind differences.
+            Mass-conservative via row sums = 1/dt. Stable but first-order.
+            Standard choice for most MFG applications.
+
+        **divergence_centered**: Conservative form with centered flux averaging.
+            Mass-conservative via flux telescoping. Oscillates for Peclet > 2.
+            Demonstrates that conservation alone doesn't guarantee stability.
+
+        **divergence_upwind**: Conservative form with upwind flux selection.
+            Mass-conservative via flux telescoping. Stable, first-order.
+            Best for sharp density fronts and strict conservation.
+
+    Legacy Aliases (backward compatible):
+        - "centered" -> "gradient_centered"
+        - "upwind" -> "gradient_upwind"
+        - "flux" -> "divergence_upwind"
 
     Numerical Scheme:
         - Implicit timestepping for stability
-        - Upwind scheme for advection terms
         - Central differences for diffusion terms
         - Supports periodic, Dirichlet, and no-flux boundary conditions
-
-    When to Use Each Mode:
-        - conservative=True: Production runs, long time horizons, coupled MFG
-        - conservative=False: Quick prototyping, Dirichlet BC (mass loss expected)
-
-    Note:
-        FPFDMSolver handles σ=0 (pure advection) algebraically correctly, but
-        upwind discretization may exhibit numerical diffusion or instability for
-        advection-dominated flows. For pure advection problems, WENO or
-        Semi-Lagrangian solvers provide better accuracy and stability.
     """
 
     def __init__(
         self,
         problem: Any,
         boundary_conditions: BoundaryConditions | None = None,
-        conservative: bool = True,
+        advection_scheme: AdvectionScheme = "upwind",
+        # Deprecated parameter for backward compatibility
+        conservative: bool | None = None,
     ) -> None:
         """
         Initialize FDM solver for Fokker-Planck equations.
@@ -71,24 +92,46 @@ class FPFDMSolver(BaseFPSolver):
             MFG problem definition
         boundary_conditions : BoundaryConditions | None
             Boundary condition specification (default: no-flux)
-        conservative : bool
-            Discretization mode for advection term (default: True).
+        advection_scheme : str
+            Advection term discretization (default: "gradient_upwind").
 
-            True (Flux FDM) [RECOMMENDED]:
-                - Discretizes div(alpha * m) as flux differences
-                - Velocities computed at cell interfaces
-                - Column sums = 1/dt (mass conserved exactly)
-                - Use for: production, long runs, coupled MFG
+            New scheme names (recommended):
+            - "gradient_centered": v·grad(m) with central diff, NOT conservative
+            - "gradient_upwind": v·grad(m) with upwind, conservative (row sums)
+            - "divergence_centered": div(v*m) with centered flux, conservative (telescoping)
+            - "divergence_upwind": div(v*m) with upwind flux, conservative (telescoping)
 
-            False (Gradient FDM):
-                - Discretizes alpha . grad(m) directly
-                - Velocities at cell centers
-                - Column sums != 1/dt (1-5% mass loss typical)
-                - Use for: quick prototyping, Dirichlet BC only
+            Legacy names (still supported):
+            - "centered" -> gradient_centered
+            - "upwind" -> gradient_upwind
+            - "flux" -> divergence_upwind
+
+        conservative : bool | None
+            DEPRECATED. Use advection_scheme instead.
+            True maps to "divergence_upwind", False maps to "gradient_upwind".
         """
         super().__init__(problem)
         self.fp_method_name = "FDM"
-        self.conservative = conservative
+
+        # Handle deprecated conservative parameter
+        if conservative is not None:
+            import warnings
+
+            warnings.warn(
+                "Parameter 'conservative' is deprecated. Use 'advection_scheme' instead. "
+                "conservative=True -> advection_scheme='flux', "
+                "conservative=False -> advection_scheme='upwind'",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            advection_scheme = "flux" if conservative else "upwind"
+
+        if advection_scheme not in ("centered", "upwind", "flux"):
+            raise ValueError(f"Invalid advection_scheme: {advection_scheme}. Must be 'centered', 'upwind', or 'flux'.")
+
+        self.advection_scheme = advection_scheme
+        # Keep conservative attribute for internal use (maps to scheme)
+        self.conservative = advection_scheme == "flux"
 
         # Detect problem dimension first (needed for BC creation)
         self.dimension = self._detect_dimension(problem)
