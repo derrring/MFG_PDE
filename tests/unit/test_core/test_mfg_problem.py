@@ -338,13 +338,14 @@ def test_mfg_problem_custom_hamiltonian():
 
 @pytest.mark.unit
 def test_get_boundary_conditions_default():
-    """Test get_boundary_conditions returns default periodic BC."""
+    """Test get_boundary_conditions returns default no_flux BC from geometry."""
     problem = MFGProblem()
 
     bc = problem.get_boundary_conditions()
 
+    # Default BC from geometry is no_flux (mass-conserving)
     assert isinstance(bc, BoundaryConditions)
-    assert bc.type == "periodic"
+    assert bc.type == "no_flux"
 
 
 @pytest.mark.unit
