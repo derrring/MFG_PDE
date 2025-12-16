@@ -425,7 +425,30 @@ class MFGSolver:
 | Issue | Description | Status |
 |-------|-------------|--------|
 | #493 | Geometry owns spatial BC (SSOT) | ✅ Implemented |
-| #494 | HJB ghost values for upwind | 🔴 TODO |
-| #495 | Optional BC dimension | 🔴 TODO |
-| #496 | Time parameter in BC applicators | 🔴 TODO |
-| - | Particle BC handler unification | 🔴 Not filed |
+| #494 | HJB ghost values for upwind | 🔴 HIGH |
+| #495 | Optional BC dimension | 🟡 MEDIUM |
+| #496 | Time parameter in BC applicators | 🟡 MEDIUM |
+| #497 | Particle SDF-based complex geometry | 🟡 MEDIUM |
+
+---
+
+## 9. Audit Status
+
+**Final Audit Verdict: APPROVED as Master Blueprint**
+
+### Verified Correct
+
+| Component | Verification |
+|-----------|--------------|
+| Dirichlet ghost: `u_g = 2g - u_in` | ✅ 2nd-order for cell-centered grids |
+| Neumann ghost: `u_g = u_in - 2Δx·flux` | ✅ Central difference correct |
+| Particle reflection: `X = 2·x_min - X` | ✅ Standard Euler-Maruyama |
+| HJB ghost-before-Hamiltonian | ✅ Optimal for upwind schemes |
+
+### Known Gaps (Tracked)
+
+| Gap | Issue | Risk |
+|-----|-------|------|
+| Particle handler ignores SDF regions | #497 | Medium |
+| Corner cases in particle reflection | #497 | Low (OK for rectangular) |
+| Time `t` passed to BC applicators | #496 | Medium |
