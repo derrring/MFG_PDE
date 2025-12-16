@@ -158,30 +158,15 @@ class FPFDMSolver(BaseFPSolver):
         # Detect problem dimension first (needed for BC creation)
         self.dimension = self._detect_dimension(problem)
 
-        # Boundary condition resolution hierarchy:
-        # 1. Explicit boundary_conditions parameter (highest priority)
-        # 2. Problem components BC (if available)
-        # 3. Grid geometry boundary handler (if available)
-        # 4. Default no-flux BC (fallback)
+        # Boundary condition resolution:
+        # 1. Explicit boundary_conditions parameter (highest priority - for standalone use)
+        # 2. problem.get_boundary_conditions() (delegates to geometry SSOT)
+        # 3. Default no-flux BC (fallback)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
-        elif hasattr(problem, "components") and problem.components is not None:
-            if problem.components.boundary_conditions is not None:
-                self.boundary_conditions = problem.components.boundary_conditions
-            else:
-                # No BC in components, use default
-                from mfg_pde.geometry.boundary import no_flux_bc
-
-                self.boundary_conditions = no_flux_bc(dimension=self.dimension)
-        elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
-            # Try to get BC from grid geometry (Phase 2 integration)
-            try:
-                self.boundary_conditions = problem.geometry.get_boundary_handler()
-            except Exception:
-                # Fallback if geometry BC retrieval fails
-                from mfg_pde.geometry.boundary import no_flux_bc
-
-                self.boundary_conditions = no_flux_bc(dimension=self.dimension)
+        elif hasattr(problem, "get_boundary_conditions") and callable(problem.get_boundary_conditions):
+            # Use centralized BC resolution (geometry SSOT → components → default)
+            self.boundary_conditions = problem.get_boundary_conditions()
         else:
             # Default to no-flux boundaries for mass conservation
             from mfg_pde.geometry.boundary import no_flux_bc

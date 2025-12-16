@@ -39,8 +39,8 @@ class TestFPFDMSolverInitialization:
         solver = FPFDMSolver(standard_problem)
 
         assert solver.fp_method_name == "FDM"
-        # Solver inherits BC from problem geometry (which is periodic in fixture)
-        assert solver.boundary_conditions.type == "periodic"
+        # Solver inherits BC from problem geometry (default is no_flux for mass conservation)
+        assert solver.boundary_conditions.type == "no_flux"
         assert solver.problem is standard_problem
 
     def test_initialization_with_periodic_bc(self, standard_problem):
@@ -265,8 +265,14 @@ class TestFPFDMSolverWithDrift:
         assert np.all(m_result >= -1e-10)
 
     def test_solve_with_quadratic_value_function(self, standard_problem):
-        """Test solution with quadratic value function."""
-        solver = FPFDMSolver(standard_problem)
+        """Test solution with quadratic value function and drift.
+
+        Uses periodic BC to ensure drift causes evolution (with no-flux BC
+        and uniform initial density, the solution stays uniform).
+        """
+        # Explicitly use periodic BC to test drift behavior
+        bc = BoundaryConditions(type="periodic")
+        solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         Nx = standard_problem.Nx + 1
         Nt = standard_problem.Nt + 1
@@ -279,7 +285,7 @@ class TestFPFDMSolverWithDrift:
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
-        # Solution should evolve
+        # Solution should evolve (with periodic BC, drift causes redistribution)
         assert not np.allclose(m_result[-1, :], m_result[0, :])
         # Should remain non-negative
         assert np.all(m_result >= -1e-10)

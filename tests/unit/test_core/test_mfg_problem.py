@@ -338,13 +338,18 @@ def test_mfg_problem_custom_hamiltonian():
 
 @pytest.mark.unit
 def test_get_boundary_conditions_default():
-    """Test get_boundary_conditions returns default periodic BC."""
+    """Test get_boundary_conditions returns default no-flux BC from geometry (SSOT).
+
+    Note: Default changed from periodic to no-flux in the geometry-owns-BC refactor.
+    Geometry is now the SSOT for spatial BC, with default no-flux (mass conserving).
+    """
     problem = MFGProblem()
 
     bc = problem.get_boundary_conditions()
 
     assert isinstance(bc, BoundaryConditions)
-    assert bc.type == "periodic"
+    # Default is now no-flux (mass conserving) from geometry SSOT
+    assert bc.type == "no_flux"
 
 
 @pytest.mark.unit

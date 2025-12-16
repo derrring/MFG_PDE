@@ -291,22 +291,35 @@ For **exit problems** (mixed BC on geometry):
 
 ### Phase 1: Add BC to Geometry
 
+**Hierarchy** (ensures complete engineering):
+```
+Geometry (ABC)                    ← Add get_boundary_conditions() with default
+    ├── CartesianGrid (ABC)       ← Inherits
+    │       └── TensorProductGrid ← Add boundary_conditions param
+    ├── NetworkGeometry           ← Inherits default
+    ├── Domain2D / Domain3D       ← Inherits default
+    └── ImplicitDomain            ← Inherits default
+```
+
+**Step 1a: Geometry ABC** (base.py) - default for ALL geometries
 ```python
-# geometry/grids/tensor_grid.py
+class Geometry(ABC):
+    def get_boundary_conditions(self) -> BoundaryConditions:
+        """Get spatial BC. Default: no-flux (mass conserving)."""
+        from mfg_pde.geometry.boundary import no_flux_bc
+        return no_flux_bc(dimension=self.dimension)
+```
+
+**Step 1b: TensorProductGrid** - optional custom BC
+```python
 class TensorProductGrid(CartesianGrid):
-    def __init__(
-        self,
-        dimension: int,
-        bounds: list[tuple[float, float]],
-        Nx: list[int],
-        boundary_conditions: BoundaryConditions | None = None,  # NEW
-    ):
-        ...
-        self._boundary_conditions = boundary_conditions or no_flux_bc(dimension)
+    def __init__(self, ..., boundary_conditions=None):
+        self._boundary_conditions = boundary_conditions
 
     def get_boundary_conditions(self) -> BoundaryConditions:
-        """Get spatial boundary conditions for this domain."""
-        return self._boundary_conditions
+        if self._boundary_conditions is not None:
+            return self._boundary_conditions
+        return super().get_boundary_conditions()
 ```
 
 ### Phase 2: Solvers Query Geometry

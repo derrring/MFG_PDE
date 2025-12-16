@@ -688,10 +688,40 @@ class ConditionsMixin:
             )
 
     def get_boundary_conditions(self) -> BoundaryConditions:
-        """Get boundary conditions for the problem."""
+        """
+        Get spatial boundary conditions for the problem.
+
+        Resolution order (SSOT principle with legacy backward compatibility):
+        1. Geometry with explicit BC - if geometry has explicitly set BC, use it (SSOT)
+        2. Components (legacy) - if MFGComponents has boundary_conditions, use it
+        3. Geometry default - if geometry exists, use its default BC
+        4. Default - periodic BC
+
+        This ensures both HJB and FP solvers see the same spatial BC
+        when querying via problem.get_boundary_conditions().
+        """
         from mfg_pde.geometry.boundary.conditions import periodic_bc
 
+        # Check geometry
+        has_geometry = hasattr(self, "geometry") and self.geometry is not None
+        has_geometry_bc_method = has_geometry and hasattr(self.geometry, "get_boundary_conditions")
+        has_explicit_bc = (
+            has_geometry
+            and hasattr(self.geometry, "has_explicit_boundary_conditions")
+            and self.geometry.has_explicit_boundary_conditions()
+        )
+
+        # Priority 1: Geometry with explicit BC (SSOT)
+        if has_explicit_bc:
+            return self.geometry.get_boundary_conditions()
+
+        # Priority 2: Components (legacy support)
         if self.is_custom and self.components is not None and self.components.boundary_conditions is not None:
             return self.components.boundary_conditions
-        else:
-            return periodic_bc(dimension=self.dimension)
+
+        # Priority 3: Geometry default (no-flux)
+        if has_geometry_bc_method:
+            return self.geometry.get_boundary_conditions()
+
+        # Priority 4: Default periodic BC
+        return periodic_bc(dimension=self.dimension)

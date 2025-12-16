@@ -128,19 +128,15 @@ class FPParticleSolver(BaseFPSolver):
         self.strategy_selector = StrategySelector(enable_profiling=True, verbose=False)
         self.current_strategy = None  # Will be set in solve_fp_system
 
-        # Boundary condition resolution hierarchy:
-        # 1. Explicit boundary_conditions parameter (highest priority)
-        # 2. Grid geometry boundary handler (if available)
+        # Boundary condition resolution:
+        # 1. Explicit boundary_conditions parameter (highest priority - for standalone use)
+        # 2. problem.get_boundary_conditions() (delegates to geometry SSOT)
         # 3. Default periodic BC (fallback for backward compatibility)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
-        elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
-            # Try to get BC from grid geometry (Phase 2 integration)
-            try:
-                self.boundary_conditions = problem.geometry.get_boundary_handler()
-            except Exception:
-                # Fallback if geometry BC retrieval fails
-                self.boundary_conditions = periodic_bc(dimension=1)
+        elif hasattr(problem, "get_boundary_conditions") and callable(problem.get_boundary_conditions):
+            # Use centralized BC resolution (geometry SSOT → components → default)
+            self.boundary_conditions = problem.get_boundary_conditions()
         else:
             # Default to periodic boundaries for backward compatibility
             self.boundary_conditions = periodic_bc(dimension=1)
