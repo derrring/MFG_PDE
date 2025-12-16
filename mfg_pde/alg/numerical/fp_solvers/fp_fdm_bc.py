@@ -13,9 +13,9 @@ Functions:
 
 Note:
     The scheme-specific boundary functions are now in their respective files:
-    - fp_fdm_alg_centered.py: add_boundary_no_flux_entries_gradient_centered
-    - fp_fdm_alg_upwind.py: add_boundary_no_flux_entries_gradient_upwind
-    - fp_fdm_alg_flux.py: (uses add_boundary_no_flux_entries_divergence_upwind below)
+    - fp_fdm_alg_gradient_centered.py: add_boundary_no_flux_entries_gradient_centered
+    - fp_fdm_alg_gradient_upwind.py: add_boundary_no_flux_entries_gradient_upwind
+    - fp_fdm_alg_divergence_upwind.py: (uses add_boundary_no_flux_entries_divergence_upwind below)
     - fp_fdm_alg_divergence_centered.py: add_boundary_no_flux_entries_divergence_centered
 
 Mathematical Background:

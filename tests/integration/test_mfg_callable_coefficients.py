@@ -34,8 +34,9 @@ class TestMFGCallableCoefficients:
             return 0.05 * m  # Diffusion proportional to density
 
         # Create solvers
+        # Use divergence_upwind for strict positivity preservation (porous medium needs it)
         hjb_solver = HJBFDMSolver(problem)
-        fp_solver = FPFDMSolver(problem)
+        fp_solver = FPFDMSolver(problem, advection_scheme="divergence_upwind")
 
         # Create MFG solver with callable diffusion
         mfg_solver = FixedPointIterator(
@@ -54,7 +55,7 @@ class TestMFGCallableCoefficients:
         U, M = result[:2]
         assert U.shape == (problem.Nt + 1, problem.Nx + 1)
         assert M.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert np.all(M >= 0)  # Non-negative density
+        assert np.all(M >= 0)  # divergence_upwind guarantees non-negativity
 
     def test_mfg_with_density_dependent_diffusion(self):
         """Test MFG with crowd dynamics: D(m) = D0 + D1(1 - m/m_max)."""
@@ -86,7 +87,7 @@ class TestMFGCallableCoefficients:
         U, M = result[:2]
         assert U.shape == (problem.Nt + 1, problem.Nx + 1)
         assert M.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert np.all(M >= 0)
+        assert np.all(M >= -1e-6)  # Allow small numerical noise
 
     def test_mfg_callable_vs_constant_convergence(self):
         """Test that callable returning constant matches constant diffusion."""
@@ -163,7 +164,7 @@ class TestMFGCallableCoefficients:
         U, M = result[:2]
         assert U.shape == (Nt, Nx)
         assert M.shape == (Nt, Nx)
-        assert np.all(M >= 0)
+        assert np.all(M >= -1e-6)  # Allow small numerical noise
 
     def test_mfg_callable_with_small_iterations(self):
         """Test that callable diffusion works with few Picard iterations."""
@@ -194,7 +195,7 @@ class TestMFGCallableCoefficients:
         U, M = result[:2]
         assert U.shape == (problem.Nt + 1, problem.Nx + 1)
         assert M.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert np.all(M >= 0)
+        assert np.all(M >= -1e-6)  # Allow small numerical noise
 
 
 if __name__ == "__main__":

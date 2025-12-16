@@ -6,7 +6,7 @@ This approach ensures exact mass conservation via flux telescoping AND
 unconditional stability via upwind selection.
 
 Module structure per issue #388:
-    fp_fdm_alg_flux.py - Conservative flux discretization algorithms
+    fp_fdm_alg_divergence_upwind.py - Conservative flux discretization algorithms
 
 Functions:
     add_interior_entries_divergence_upwind: Interior stencil for flux FDM

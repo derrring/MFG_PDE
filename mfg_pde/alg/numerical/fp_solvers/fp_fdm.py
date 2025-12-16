@@ -17,16 +17,16 @@ from .fp_fdm_time_stepping import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-# Advection scheme options for FDM (new 2x2 naming convention)
+# Advection scheme options for FDM (2x2 naming convention)
 # Format: {pde_form}_{spatial_scheme}
 # - pde_form: "gradient" (v·∇m) or "divergence" (∇·(vm))
 # - spatial_scheme: "centered" or "upwind"
 AdvectionScheme = Literal[
     "gradient_centered",  # Non-conservative, oscillates for Peclet > 2
-    "gradient_upwind",  # Conservative (row sums), stable
+    "gradient_upwind",  # Conservative (row sums), stable [DEFAULT]
     "divergence_centered",  # Conservative (telescoping), oscillates for Peclet > 2
     "divergence_upwind",  # Conservative (telescoping), stable
-    # Legacy aliases (backward compatible)
+    # Legacy aliases (DEPRECATED, will be removed in v1.0.0)
     "centered",  # -> gradient_centered
     "upwind",  # -> gradient_upwind
     "flux",  # -> divergence_upwind
@@ -64,7 +64,7 @@ class FPFDMSolver(BaseFPSolver):
             Mass-conservative via flux telescoping. Stable, first-order.
             Best for sharp density fronts and strict conservation.
 
-    Legacy Aliases (backward compatible):
+    Legacy Aliases (DEPRECATED, will be removed in v1.0.0):
         - "centered" -> "gradient_centered"
         - "upwind" -> "gradient_upwind"
         - "flux" -> "divergence_upwind"
@@ -79,7 +79,7 @@ class FPFDMSolver(BaseFPSolver):
         self,
         problem: Any,
         boundary_conditions: BoundaryConditions | None = None,
-        advection_scheme: AdvectionScheme = "upwind",
+        advection_scheme: AdvectionScheme = "gradient_upwind",
         # Deprecated parameter for backward compatibility
         conservative: bool | None = None,
     ) -> None:
@@ -95,13 +95,13 @@ class FPFDMSolver(BaseFPSolver):
         advection_scheme : str
             Advection term discretization (default: "gradient_upwind").
 
-            New scheme names (recommended):
+            Scheme names:
             - "gradient_centered": v·grad(m) with central diff, NOT conservative
-            - "gradient_upwind": v·grad(m) with upwind, conservative (row sums)
+            - "gradient_upwind": v·grad(m) with upwind, conservative (row sums) [DEFAULT]
             - "divergence_centered": div(v*m) with centered flux, conservative (telescoping)
             - "divergence_upwind": div(v*m) with upwind flux, conservative (telescoping)
 
-            Legacy names (still supported):
+            Legacy names (DEPRECATED, will be removed in v1.0.0):
             - "centered" -> gradient_centered
             - "upwind" -> gradient_upwind
             - "flux" -> divergence_upwind
@@ -110,28 +110,50 @@ class FPFDMSolver(BaseFPSolver):
             DEPRECATED. Use advection_scheme instead.
             True maps to "divergence_upwind", False maps to "gradient_upwind".
         """
+        import warnings
+
         super().__init__(problem)
         self.fp_method_name = "FDM"
 
         # Handle deprecated conservative parameter
         if conservative is not None:
-            import warnings
-
             warnings.warn(
                 "Parameter 'conservative' is deprecated. Use 'advection_scheme' instead. "
-                "conservative=True -> advection_scheme='flux', "
-                "conservative=False -> advection_scheme='upwind'",
+                "conservative=True -> advection_scheme='divergence_upwind', "
+                "conservative=False -> advection_scheme='gradient_upwind'. "
+                "Will be removed in v1.0.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            advection_scheme = "flux" if conservative else "upwind"
+            advection_scheme = "divergence_upwind" if conservative else "gradient_upwind"
 
-        if advection_scheme not in ("centered", "upwind", "flux"):
-            raise ValueError(f"Invalid advection_scheme: {advection_scheme}. Must be 'centered', 'upwind', or 'flux'.")
+        # Map legacy scheme names to new names
+        scheme_aliases = {
+            "centered": "gradient_centered",
+            "upwind": "gradient_upwind",
+            "flux": "divergence_upwind",
+        }
+
+        # Emit deprecation warning for legacy aliases
+        if advection_scheme in scheme_aliases:
+            new_name = scheme_aliases[advection_scheme]
+            warnings.warn(
+                f"advection_scheme='{advection_scheme}' is deprecated. "
+                f"Use advection_scheme='{new_name}' instead. "
+                f"Legacy aliases will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            advection_scheme = new_name
+
+        # Validate scheme name (only new names accepted after mapping)
+        valid_schemes = {"gradient_centered", "gradient_upwind", "divergence_centered", "divergence_upwind"}
+        if advection_scheme not in valid_schemes:
+            raise ValueError(f"Invalid advection_scheme: '{advection_scheme}'. Valid options: {sorted(valid_schemes)}")
 
         self.advection_scheme = advection_scheme
-        # Keep conservative attribute for internal use (maps to scheme)
-        self.conservative = advection_scheme == "flux"
+        # Keep conservative attribute for internal use (True for divergence forms)
+        self.conservative = advection_scheme in ("divergence_upwind", "divergence_centered")
 
         # Detect problem dimension first (needed for BC creation)
         self.dimension = self._detect_dimension(problem)

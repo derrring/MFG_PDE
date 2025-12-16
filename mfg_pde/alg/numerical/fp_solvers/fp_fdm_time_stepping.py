@@ -40,16 +40,16 @@ from mfg_pde.utils.pde_coefficients import CoefficientField
 
 # Import from responsibility-based modules per issue #388
 from .fp_fdm_advection import compute_advection_term_nd
-from .fp_fdm_alg_centered import (
-    add_boundary_no_flux_entries_gradient_centered,
-    add_interior_entries_gradient_centered,
-)
 from .fp_fdm_alg_divergence_centered import (
     add_boundary_no_flux_entries_divergence_centered,
     add_interior_entries_divergence_centered,
 )
-from .fp_fdm_alg_flux import add_interior_entries_divergence_upwind
-from .fp_fdm_alg_upwind import (
+from .fp_fdm_alg_divergence_upwind import add_interior_entries_divergence_upwind
+from .fp_fdm_alg_gradient_centered import (
+    add_boundary_no_flux_entries_gradient_centered,
+    add_interior_entries_gradient_centered,
+)
+from .fp_fdm_alg_gradient_upwind import (
     add_boundary_no_flux_entries_gradient_upwind,
     add_interior_entries_gradient_upwind,
 )
