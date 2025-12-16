@@ -391,18 +391,22 @@ Ghost cell extrapolation order must match interior scheme order:
 
 **Problem**: Creating padded arrays every timestep causes allocation overhead.
 
-**Solution**: Pre-allocated view-based memory model
+**Solution**: Pre-allocated arrays within each solver (not a base class)
 ```python
-class BoundaryAwareSolver:
+# Each solver manages its own pre-allocated state
+class HJBWENOSolver:
     def __init__(self, ...):
-        g = self.ghost_depth
-        self._U_padded = np.zeros((Nx + 2*g, Ny + 2*g))
-        self._U_interior = self._U_padded[g:-g, g:-g]  # Zero-copy view
+        g = 3  # WENO needs 3 ghost cells
+        self._U_padded = np.zeros((Nx + 2*g,))
+        self._U_interior = self._U_padded[g:-g]  # Zero-copy view
 
     def _apply_bc_in_place(self):
         """Update ghost cells without allocation."""
-        # Only touches boundary rim, not full array
+        bc = get_boundary_conditions(self.problem, self._bc)
+        # Solver-specific padding logic
 ```
+
+**Note**: A `BoundaryAwareSolver` base class was considered but rejected as premature abstraction. Each solver has different ghost depth and padding needs; a utility function is sufficient.
 
 ### 7.4 Validation: Method of Manufactured Solutions
 
@@ -430,46 +434,61 @@ Rigorous BC validation requires MMS:
 - [ ] Unit tests for matrix mass conservation (column sums = 0)
 - [ ] Mixed BC support for particle methods
 
-### 8.3 Phase 3: BoundaryAwareSolver Base Class (Priority: Medium)
-
-```python
-class BoundaryAwareSolver(ABC):
-    """Mandatory base class for grid-based solvers."""
-
-    bc_strict_mode: bool = False
-    ghost_cell_depth: int = 1
-
-    def _get_boundary_conditions(self) -> BoundaryConditions | None: ...
-    def _apply_bc_padding(self, field: np.ndarray) -> np.ndarray: ...
-    def _apply_bc_in_place(self) -> None: ...  # Pre-allocated
-    def _get_bc_type_at_boundary(self, boundary: str) -> BCType: ...
-
-    @abstractmethod
-    def _get_required_ghost_depth(self) -> int: ...
-```
-
-### 8.4 Phase 4: Advanced Features (Priority: Low)
+### 8.3 Phase 3: Advanced Features (Priority: Low)
 
 - [ ] Time-dependent BC values: $g(x, t)$
 - [ ] State-dependent BCs: $g(x, u)$
 - [ ] Adaptive ghost depth based on local Peclet number
 - [ ] Numba/Cython acceleration for ghost cell loops
 
-### 8.5 Neural/Variational Paradigm BCs (Priority: Medium)
+### 8.4 Neural/Variational Paradigm BCs (Priority: Medium)
 
 - [ ] Physics-Informed Neural Networks (PINNs): BC loss terms
 - [ ] Deep Galerkin Method (DGM): Boundary sampling
 - [ ] Actor-Critic RL: State space truncation
 
-### 8.6 Implementation Checklist
+### 8.5 Utility Function (Recommended Approach)
 
-| Task | Status | Assignee | Notes |
-|:-----|:-------|:---------|:------|
-| Corner logic audit | Pending | - | Verify all BC combinations |
-| WENO ghost depth verification | Pending | - | Confirm 3 cells needed |
-| FP matrix conservation tests | Pending | - | Column sum = 0 |
-| MMS validation tests | Pending | - | Per-solver convergence |
-| Pre-allocation prototype | Pending | - | Memory benchmark |
+Instead of a base class, use a shared utility function:
+
+```python
+# mfg_pde/geometry/boundary/utils.py
+def get_boundary_conditions(
+    problem,
+    explicit_bc: BoundaryConditions | None = None
+) -> BoundaryConditions | None:
+    """Standard BC retrieval - use in any solver."""
+    if explicit_bc is not None:
+        return explicit_bc
+    if hasattr(problem, 'get_boundary_conditions'):
+        return problem.get_boundary_conditions()
+    return None
+```
+
+Each solver calls this and implements its own padding. Code review ensures consistency.
+
+### 8.6 Canceled: BoundaryAwareSolver Base Class
+
+> **Status**: Canceled (2025-12-16)
+>
+> A `BoundaryAwareSolver` abstract base class was proposed to standardize BC handling.
+> This was rejected as **premature abstraction**:
+> - Each solver has ~10-20 lines of BC code; abstracting provides marginal value
+> - Different solvers need different ghost depths and padding strategies
+> - Issue #379 (BCTransforms) already showed "combinatorial explosion doesn't exist"
+> - Utility function + code review is sufficient
+>
+> See issue #486 for discussion.
+
+### 8.7 Implementation Checklist
+
+| Task | Status | Notes |
+|:-----|:-------|:------|
+| Corner logic audit | Pending | Verify all BC combinations |
+| WENO ghost depth verification | Pending | Confirm 3 cells needed |
+| FP matrix conservation tests | Pending | Column sum = 0 |
+| MMS validation tests | Pending | Per-solver convergence |
+| BC utility function | Pending | Simple shared helper |
 
 ---
 
