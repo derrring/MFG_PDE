@@ -449,11 +449,23 @@ The adjoint relationship $A_{\text{FP}} = A_{\text{HJB}}^\top$ must hold **at ea
 3. **Transpose** to get $A_{\text{FP}} = A_{\text{HJB}}^\top$
 4. **Solve FP** using $A_{\text{FP}}$
 
-### 8.2 When Independent FP Schemes Are Valid
+### 8.2 Available FDM Schemes in `mfg_pde`
 
-The 4 FDM schemes in `mfg_pde` (gradient_centered, gradient_upwind, divergence_centered, divergence_upwind) are valid for:
+Both HJB and FP solvers support selectable advection schemes:
 
-- **Standalone FP equations** (not coupled to HJB)
+**HJB Solver** (`HJBFDMSolver`):
+- `advection_scheme="gradient_upwind"` (default) - Godunov upwind, monotone
+- `advection_scheme="gradient_centered"` - Central differences, second-order
+
+**FP Solver** (`FPFDMSolver`):
+- `advection_scheme="gradient_upwind"` (default) - For standalone/non-MFG use
+- `advection_scheme="gradient_centered"` - For standalone/non-MFG use
+- `advection_scheme="divergence_upwind"` - For MFG coupling with HJB gradient_upwind
+- `advection_scheme="divergence_centered"` - For MFG coupling with HJB gradient_centered
+
+Independent scheme selection is valid for:
+
+- **Standalone equations** (HJB-only or FP-only, not coupled)
 - **Testing and debugging** individual components
 - **Non-MFG applications** (pure advection-diffusion)
 - **Research comparisons** between discretization strategies
