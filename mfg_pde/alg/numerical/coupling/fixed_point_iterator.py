@@ -189,19 +189,39 @@ class FixedPointIterator(BaseMFGSolver):
                 self.U = np.zeros((num_time_steps, *shape))
                 self.M = np.zeros((num_time_steps, *shape))
 
-            # Get initial density and terminal condition - handle both interfaces
-            if hasattr(self.problem, "get_initial_m"):
-                # Old 1D interface
+            # Get initial density and terminal condition
+            # Priority: get_m_init/get_u_fin (modern) > m_init/u_fin (attributes) > legacy
+            if hasattr(self.problem, "get_m_init") and callable(self.problem.get_m_init):
+                # Modern nD interface: get_m_init() / get_u_fin()
+                M_initial = self.problem.get_m_init()
+                U_terminal = self.problem.get_u_fin() if hasattr(self.problem, "get_u_fin") else np.zeros(shape)
+                # Reshape if needed
+                if M_initial.shape != shape:
+                    M_initial = M_initial.reshape(shape)
+                if U_terminal.shape != shape:
+                    U_terminal = U_terminal.reshape(shape)
+            elif hasattr(self.problem, "m_init") and self.problem.m_init is not None:
+                # Attribute-based interface: m_init / u_fin
+                M_initial = self.problem.m_init
+                U_terminal = self.problem.u_fin if hasattr(self.problem, "u_fin") else np.zeros(shape)
+                # Reshape if needed
+                if M_initial.shape != shape:
+                    M_initial = M_initial.reshape(shape)
+                if U_terminal.shape != shape:
+                    U_terminal = U_terminal.reshape(shape)
+            elif hasattr(self.problem, "get_initial_m") and callable(self.problem.get_initial_m):
+                # Legacy 1D interface: get_initial_m() / get_final_u()
                 M_initial = self.problem.get_initial_m()
                 U_terminal = self.problem.get_final_u()
-            else:
-                # New nD interface - evaluate on grid
+            elif hasattr(self.problem, "initial_density") and callable(self.problem.initial_density):
+                # Legacy nD interface: initial_density() / terminal_cost()
                 x_grid = self.problem.geometry.get_spatial_grid()
-                # Evaluate functions on spatial grid
                 M_initial = self.problem.initial_density(x_grid).reshape(shape)
                 U_terminal = self.problem.terminal_cost(x_grid).reshape(shape)
-                # Note: initial_density() should already return normalized density
-                # (integral = 1), so no renormalization needed here
+            else:
+                raise ValueError(
+                    "Problem must have get_m_init()/get_u_fin() methods, m_init/u_fin attributes, or legacy interface"
+                )
 
             if num_time_steps > 0:
                 # Set boundary conditions
