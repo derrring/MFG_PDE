@@ -338,27 +338,52 @@ class HamiltonianMixin:
                 )
 
         # Default Hamiltonian: H = 0.5*c*|p|^2 - V(x) - m^2
-        p = derivs.get((1,), 0.0)
+        # Use DerivativeTensors.grad_norm_squared if available (preferred)
+        # Fall back to legacy dict format for backward compatibility
+        if derivs_tensor is not None:
+            # Modern path: use DerivativeTensors directly
+            p_norm_sq = derivs_tensor.grad_norm_squared
+        else:
+            # Legacy path: compute from dict (for backward compatibility)
+            dimension = getattr(self, "dimension", 1)
+            if hasattr(self, "geometry") and hasattr(self.geometry, "dimension"):
+                dimension = self.geometry.dimension
 
-        if np.isnan(p) or np.isinf(p) or np.isnan(m_at_x) or np.isinf(m_at_x):
+            p_norm_sq = 0.0
+            if dimension == 1:
+                # 1D: gradient key is (1,)
+                p = derivs.get((1,), 0.0)
+                if np.isnan(p) or np.isinf(p):
+                    return np.nan
+                npart_val = float(npart(p))
+                ppart_val = float(ppart(p))
+                if abs(npart_val) > VALUE_BEFORE_SQUARE_LIMIT or abs(ppart_val) > VALUE_BEFORE_SQUARE_LIMIT:
+                    return np.nan
+                try:
+                    p_norm_sq = npart_val**2 + ppart_val**2
+                except OverflowError:
+                    return np.nan
+            else:
+                # nD: gradient keys are multi-index tuples with one 1 and rest 0s
+                for d in range(dimension):
+                    key = tuple(1 if i == d else 0 for i in range(dimension))
+                    p_d = derivs.get(key, 0.0)
+                    if np.isnan(p_d) or np.isinf(p_d):
+                        return np.nan
+                    if abs(p_d) > VALUE_BEFORE_SQUARE_LIMIT:
+                        return np.nan
+                    try:
+                        p_norm_sq += p_d**2
+                    except OverflowError:
+                        return np.nan
+
+        if np.isnan(m_at_x) or np.isinf(m_at_x):
             return np.nan
 
-        npart_val = float(npart(p))
-        ppart_val = float(ppart(p))
-
-        if abs(npart_val) > VALUE_BEFORE_SQUARE_LIMIT or abs(ppart_val) > VALUE_BEFORE_SQUARE_LIMIT:
+        if np.isinf(p_norm_sq) or np.isnan(p_norm_sq):
             return np.nan
 
-        try:
-            term_npart_sq = npart_val**2
-            term_ppart_sq = ppart_val**2
-        except OverflowError:
-            return np.nan
-
-        if np.isinf(term_npart_sq) or np.isnan(term_npart_sq) or np.isinf(term_ppart_sq) or np.isnan(term_ppart_sq):
-            return np.nan
-
-        hamiltonian_control_part = 0.5 * self.coupling_coefficient * (term_npart_sq + term_ppart_sq)
+        hamiltonian_control_part = 0.5 * self.coupling_coefficient * p_norm_sq
 
         if np.isinf(hamiltonian_control_part) or np.isnan(hamiltonian_control_part):
             return np.nan

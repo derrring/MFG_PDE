@@ -439,6 +439,70 @@ class HJBFDMSolver(BaseHJBSolver):
 
         return U_solution
 
+    def _compute_laplacian_nd(self, U: NDArray, sigma: float | NDArray | None = None) -> NDArray:
+        """
+        Compute the Laplacian Δu using central finite differences.
+
+        For the HJB equation: -∂u/∂t + H(∇u, m) - (σ²/2) Δu = 0
+        The diffusion term is (σ²/2) Δu.
+
+        Args:
+            U: Value function array, shape matching self.shape
+            sigma: Diffusion coefficient (None uses self.problem.sigma)
+
+        Returns:
+            Laplacian array, same shape as U
+        """
+        if sigma is None:
+            sigma = self.problem.sigma
+
+        laplacian = np.zeros_like(U)
+
+        for d in range(self.dimension):
+            h = self.spacing[d]
+            h_sq = h * h
+
+            # Create slice objects for shifting in dimension d
+            slices_center = [slice(None)] * self.dimension
+            slices_plus = [slice(None)] * self.dimension
+            slices_minus = [slice(None)] * self.dimension
+
+            # Interior points: standard central difference
+            slices_center[d] = slice(1, -1)
+            slices_plus[d] = slice(2, None)
+            slices_minus[d] = slice(None, -2)
+
+            laplacian[tuple(slices_center)] += (
+                U[tuple(slices_plus)] - 2 * U[tuple(slices_center)] + U[tuple(slices_minus)]
+            ) / h_sq
+
+            # Boundary: use one-sided second derivative (Neumann-compatible)
+            # Left boundary: U[0], U[1], U[2] -> (U[2] - 2*U[1] + U[0]) / h²
+            slices_left = [slice(None)] * self.dimension
+            slices_left[d] = slice(0, 1)
+            slices_left_p1 = [slice(None)] * self.dimension
+            slices_left_p1[d] = slice(1, 2)
+            slices_left_p2 = [slice(None)] * self.dimension
+            slices_left_p2[d] = slice(2, 3)
+
+            laplacian[tuple(slices_left)] += (
+                U[tuple(slices_left_p2)] - 2 * U[tuple(slices_left_p1)] + U[tuple(slices_left)]
+            ) / h_sq
+
+            # Right boundary
+            slices_right = [slice(None)] * self.dimension
+            slices_right[d] = slice(-1, None)
+            slices_right_m1 = [slice(None)] * self.dimension
+            slices_right_m1[d] = slice(-2, -1)
+            slices_right_m2 = [slice(None)] * self.dimension
+            slices_right_m2[d] = slice(-3, -2)
+
+            laplacian[tuple(slices_right)] += (
+                U[tuple(slices_right)] - 2 * U[tuple(slices_right_m1)] + U[tuple(slices_right_m2)]
+            ) / h_sq
+
+        return laplacian
+
     def _solve_single_timestep(
         self,
         U_next: NDArray,
@@ -450,8 +514,10 @@ class HJBFDMSolver(BaseHJBSolver):
         """
         Solve single HJB timestep using centralized nonlinear solver.
 
-        For fixed-point: Solves u = G(u) where G(u) = u_next - dt·H(∇u, m)
-        For Newton: Solves F(u) = 0 where F(u) = (u - u_next)/dt + H(∇u, m)
+        HJB equation: -∂u/∂t + H(∇u, m) - (σ²/2) Δu = 0
+
+        For fixed-point: Solves u = G(u) where G(u) = u_next - dt·(H - (σ²/2)Δu)
+        For Newton: Solves F(u) = 0 where F(u) = (u - u_next)/dt + H - (σ²/2)Δu
 
         Args:
             U_next: Value function at next timestep
@@ -460,21 +526,36 @@ class HJBFDMSolver(BaseHJBSolver):
             sigma_at_n: Scalar diffusion coefficient at current timestep (None, float, or array)
             Sigma_at_n: Tensor diffusion coefficient at current timestep (None or tensor array)
         """
+        # Get effective sigma for diffusion term
+        if sigma_at_n is None:
+            sigma_eff = self.problem.sigma
+        else:
+            sigma_eff = sigma_at_n
+
         if self.solver_type == "fixed_point":
             # Define fixed-point map G: u → u
+            # HJB (backward): -∂u/∂t - (σ²/2)Δu + H = 0
+            # => -(u_n - u_{n+1})/dt - (σ²/2)Δu_n + H_n = 0
+            # => u_n = u_{n+1} - dt*(σ²/2)Δu_n + dt*H_n
+            # => u_n = u_{n+1} + dt*(H_n - (σ²/2)Δu_n)  [diffusion SUBTRACTED]
             def G(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U)
                 H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
-                return U_next - self.dt * H_values
+                laplacian = self._compute_laplacian_nd(U, sigma_eff)
+                diffusion_term = 0.5 * sigma_eff**2 * laplacian
+                return U_next + self.dt * (H_values - diffusion_term)
 
             U_solution, info = self.nonlinear_solver.solve(G, U_guess)
 
         else:  # newton
             # Define residual F: u → residual
+            # F(u) = -(u - u_next)/dt - (σ²/2)Δu + H = 0
             def F(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U)
                 H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
-                return (U - U_next) / self.dt + H_values
+                laplacian = self._compute_laplacian_nd(U, sigma_eff)
+                diffusion_term = 0.5 * sigma_eff**2 * laplacian
+                return -(U - U_next) / self.dt - diffusion_term + H_values
 
             U_solution, info = self.nonlinear_solver.solve(F, U_guess)
 
