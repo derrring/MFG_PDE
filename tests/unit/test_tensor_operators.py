@@ -11,8 +11,6 @@ Tests the anisotropic diffusion operators in tensor_operators.py:
 
 from __future__ import annotations
 
-import pytest
-
 import numpy as np
 
 from mfg_pde.geometry.boundary import (
@@ -266,16 +264,17 @@ class TestNDDispatcher:
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
 
-    def test_3d_not_implemented(self):
-        """Test that 3D raises NotImplementedError."""
+    def test_3d_tensor_diffusion(self):
+        """Test that 3D tensor diffusion works (nD implementation)."""
         m = np.random.rand(5, 5, 5)
         dx = (0.1, 0.1, 0.1)
         sigma_tensor = 0.1 * np.eye(3)
 
-        bc = periodic_bc(dimension=2)
+        bc = periodic_bc(dimension=3)
 
-        with pytest.raises(NotImplementedError, match="General nD tensor diffusion"):
-            divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
+        result = divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
+        assert result.shape == m.shape
+        assert np.all(np.isfinite(result))
 
 
 class TestMassConservation:
