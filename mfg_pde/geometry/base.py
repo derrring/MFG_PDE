@@ -370,6 +370,55 @@ class Geometry(ABC):
     # Boundary Methods (mandatory - every domain has boundary)
     # ============================================================================
 
+    def get_boundary_conditions(self):
+        """
+        Get spatial boundary conditions for this geometry.
+
+        Returns the BC specification (what conditions to apply), distinct from
+        get_boundary_handler() which returns the applicator (how to apply).
+
+        This is the Single Source of Truth (SSOT) for spatial BC in MFG systems:
+        both HJB and FP solvers query the same geometry for consistent BCs.
+
+        Returns:
+            BoundaryConditions: Spatial BC specification
+
+        Default:
+            No-flux (Neumann with zero gradient) - mass conserving for FP,
+            natural BC for HJB. Subclasses can override or accept BC in constructor.
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> bc = grid.get_boundary_conditions()
+            >>> bc.is_uniform  # True (default is uniform no-flux)
+
+            >>> # Custom BC via TensorProductGrid constructor
+            >>> from mfg_pde.geometry.boundary import dirichlet_bc
+            >>> grid = TensorProductGrid(..., boundary_conditions=dirichlet_bc(0.0, dimension=2))
+            >>> bc = grid.get_boundary_conditions()
+            >>> bc.bc_type  # BCType.DIRICHLET
+        """
+        from mfg_pde.geometry.boundary.conditions import no_flux_bc
+
+        return no_flux_bc(dimension=self.dimension)
+
+    def has_explicit_boundary_conditions(self) -> bool:
+        """
+        Check if this geometry has explicitly specified boundary conditions.
+
+        Used by MFGProblem to determine BC priority:
+        1. If geometry has explicit BC → use it (SSOT)
+        2. If components has BC → use it (legacy support)
+        3. Otherwise → use geometry default
+
+        Returns:
+            True if BC were explicitly set (not using default)
+
+        Default implementation returns False. Subclasses that accept BC
+        in constructor should override to return True when BC is provided.
+        """
+        return False
+
     def is_on_boundary(
         self,
         points: NDArray,

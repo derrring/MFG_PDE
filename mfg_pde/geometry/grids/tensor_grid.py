@@ -31,6 +31,8 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from mfg_pde.geometry.boundary.conditions import BoundaryConditions
+
 
 class TensorProductGrid(CartesianGrid):
     """
@@ -51,6 +53,7 @@ class TensorProductGrid(CartesianGrid):
         coordinates: List of 1D coordinate arrays
         spacing: Grid spacing along each dimension (if uniform)
         is_uniform: Whether grid has uniform spacing in each dimension
+        boundary_conditions: Spatial BC specification (SSOT for MFG solvers)
 
     Example:
         >>> # Create 2D grid: [0,10] × [0,5] with 100×50 intervals (101×51 points)
@@ -90,6 +93,7 @@ class TensorProductGrid(CartesianGrid):
         num_points: Sequence[int] | None = None,  # Deprecated alias for Nx_points
         spacing_type: str = "uniform",
         custom_coordinates: Sequence[NDArray] | None = None,
+        boundary_conditions: BoundaryConditions | None = None,
     ):
         """
         Initialize tensor product grid.
@@ -106,6 +110,9 @@ class TensorProductGrid(CartesianGrid):
             num_points: Deprecated alias for Nx_points. Use Nx_points instead.
             spacing_type: "uniform" or "custom"
             custom_coordinates: Optional list of 1D coordinate arrays
+            boundary_conditions: Spatial BC specification (default: no-flux).
+                This is the SSOT for spatial BC - both HJB and FP solvers
+                query this geometry for consistent boundary conditions.
 
         Note:
             Must specify exactly one of: Nx, Nx_points, or num_points.
@@ -199,6 +206,16 @@ class TensorProductGrid(CartesianGrid):
         for i, coords in enumerate(self.coordinates):
             if len(coords) != self._Nx_points[i]:
                 raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {self._Nx_points[i]}")
+
+        # Store boundary conditions (SSOT for spatial BC)
+        # Validate dimension if BC provided
+        if boundary_conditions is not None:
+            if boundary_conditions.dimension != dimension:
+                raise ValueError(
+                    f"BoundaryConditions dimension ({boundary_conditions.dimension}) "
+                    f"does not match grid dimension ({dimension})"
+                )
+        self._boundary_conditions = boundary_conditions
 
     # Geometry ABC implementation - properties
     @property
@@ -430,6 +447,7 @@ class TensorProductGrid(CartesianGrid):
             bounds=self.bounds,
             Nx_points=new_Nx_points,
             spacing_type=self.spacing_type,
+            boundary_conditions=self._boundary_conditions,
         )
 
     def coarsen(self, factor: int | Sequence[int]) -> TensorProductGrid:
@@ -455,6 +473,7 @@ class TensorProductGrid(CartesianGrid):
             bounds=self.bounds,
             Nx_points=new_Nx_points,
             spacing_type=self.spacing_type,
+            boundary_conditions=self._boundary_conditions,
         )
 
     def volume_element(self, multi_index: Sequence[int] | None = None) -> float:
@@ -511,6 +530,44 @@ class TensorProductGrid(CartesianGrid):
         min_coords = np.array([b[0] for b in self.bounds])
         max_coords = np.array([b[1] for b in self.bounds])
         return min_coords, max_coords
+
+    def get_boundary_conditions(self):
+        """
+        Get spatial boundary conditions for this grid.
+
+        Returns stored BC if provided at construction, otherwise falls back
+        to parent class default (no-flux BC for mass conservation).
+
+        This is the Single Source of Truth (SSOT) for spatial BC in MFG systems.
+
+        Returns:
+            BoundaryConditions: Spatial BC specification
+
+        Examples:
+            >>> # Default BC (no-flux)
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1),(0,1)], Nx=[10,10])
+            >>> bc = grid.get_boundary_conditions()
+            >>> bc.is_uniform  # True
+
+            >>> # Custom BC
+            >>> from mfg_pde.geometry.boundary import dirichlet_bc
+            >>> grid = TensorProductGrid(..., boundary_conditions=dirichlet_bc(0.0, dimension=2))
+            >>> bc = grid.get_boundary_conditions()
+            >>> bc.bc_type.value  # 'dirichlet'
+        """
+        if self._boundary_conditions is not None:
+            return self._boundary_conditions
+        # Fall back to parent class default (no-flux)
+        return super().get_boundary_conditions()
+
+    def has_explicit_boundary_conditions(self) -> bool:
+        """
+        Check if this grid has explicitly specified boundary conditions.
+
+        Returns:
+            True if BC were provided in constructor, False if using default
+        """
+        return self._boundary_conditions is not None
 
     # ============================================================================
     # CartesianGrid ABC implementation (grid-specific utilities)
