@@ -467,7 +467,79 @@ For **production MFG solvers** with coupled HJB-FP systems:
 - Maintains mass conservation and positivity
 - Required for theoretical convergence guarantees
 
-### 8.4 Current Implementation Status
+### 8.4 Compatible HJB-FP Scheme Pairings (Without Automatic Transpose)
+
+When users choose independent FP schemes (not using automatic transpose), certain pairings are mathematically compatible based on the continuous adjoint relationship.
+
+#### The Continuous Adjoint Structure
+
+The HJB and FP equations have **dual differential forms**:
+
+| Equation | Natural Form | Differential Operator |
+|:---------|:-------------|:---------------------|
+| HJB | Gradient form | $-\nu \Delta u + v \cdot \nabla u = f$ |
+| FP | Divergence form | $-\nu \Delta m - \nabla \cdot (vm) = 0$ |
+
+The gradient operator $v \cdot \nabla$ and divergence operator $-\nabla \cdot (v \cdot)$ are formal $L^2$-adjoints:
+
+$$
+\langle v \cdot \nabla u, m \rangle = -\langle u, \nabla \cdot (vm) \rangle
+$$
+
+(with appropriate boundary conditions).
+
+#### Compatible Scheme Pairings
+
+The 4 FDM schemes form 2 natural pairs that preserve this adjoint structure:
+
+| HJB Scheme | FP Scheme | Adjoint Consistent | Recommended Use |
+|:-----------|:----------|:-------------------|:----------------|
+| `gradient_centered` | `divergence_centered` | Yes | Smooth solutions, higher accuracy |
+| `gradient_upwind` | `divergence_upwind` | Yes | Sharp gradients, positivity preservation |
+| `gradient_centered` | `gradient_centered` | **No** | Not recommended for coupled MFG |
+| `gradient_upwind` | `gradient_upwind` | **No** | Not recommended for coupled MFG |
+
+#### Why Pairing Matters
+
+1. **Gradient-Gradient pairings fail** because both operators use the same differential form:
+   - HJB: $v \cdot \nabla u$
+   - FP: $v \cdot \nabla m$ (wrong! should be $-\nabla \cdot (vm)$)
+   - This breaks the variational structure of the MFG system
+
+2. **Centered-Upwind mixing** (e.g., HJB `gradient_centered` + FP `divergence_upwind`) may work but lacks the symmetric consistency that matching schemes provide
+
+3. **Matching centered or upwind** ensures both equations use consistent approximation order and stability properties
+
+#### Recommended Default Pairing
+
+For most MFG problems:
+
+```python
+# Recommended: gradient_upwind (HJB) + divergence_upwind (FP)
+hjb_solver = HJBFDMSolver(problem, scheme="gradient_upwind")
+fp_solver = FPFDMSolver(problem, advection_scheme="divergence_upwind")
+```
+
+This pairing provides:
+- First-order accuracy in advection
+- Unconditional positivity for the density
+- Mass conservation via flux telescoping
+- Robustness for problems with sharp gradients or shocks
+
+For smooth problems where higher accuracy is desired:
+
+```python
+# Alternative: gradient_centered (HJB) + divergence_centered (FP)
+hjb_solver = HJBFDMSolver(problem, scheme="gradient_centered")
+fp_solver = FPFDMSolver(problem, advection_scheme="divergence_centered")
+```
+
+This pairing provides:
+- Second-order accuracy in advection
+- May produce oscillations near discontinuities
+- Suitable when solutions are known to be smooth
+
+### 8.5 Current Implementation Status
 
 The current `mfg_pde` implementation uses **independent FP schemes**, which:
 - Is simpler to implement and understand
