@@ -23,6 +23,9 @@ from mfg_pde.utils.pde_coefficients import CoefficientField
 from . import base_hjb
 from .base_hjb import BaseHJBSolver
 
+# Type alias for HJB advection schemes (gradient form only - HJB is not a conservation law)
+HJBAdvectionScheme = Literal["gradient_centered", "gradient_upwind"]
+
 
 def is_diagonal_tensor(Sigma: NDArray, rtol: float = 1e-10) -> bool:
     """
@@ -74,6 +77,7 @@ class HJBFDMSolver(BaseHJBSolver):
         self,
         problem: MFGProblem,
         solver_type: Literal["fixed_point", "newton"] = "newton",
+        advection_scheme: HJBAdvectionScheme = "gradient_upwind",
         damping_factor: float = 1.0,
         max_newton_iterations: int | None = None,
         newton_tolerance: float | None = None,
@@ -88,6 +92,10 @@ class HJBFDMSolver(BaseHJBSolver):
         Args:
             problem: MFG problem (1D or MFGProblem with spatial_bounds for nD)
             solver_type: 'fixed_point' or 'newton' (nD only, 1D always uses Newton)
+            advection_scheme: Discretization scheme for advection term:
+                - 'gradient_upwind': Godunov upwind (default, monotone, first-order)
+                - 'gradient_centered': Central differences (second-order, may oscillate)
+                For MFG coupling, use 'gradient_upwind' with FP 'divergence_upwind'.
             damping_factor: Damping ω ∈ (0,1] for fixed-point (recommend 0.5-0.8)
             max_newton_iterations: Max iterations per timestep
             newton_tolerance: Convergence tolerance
@@ -101,6 +109,13 @@ class HJBFDMSolver(BaseHJBSolver):
         from mfg_pde.backends import create_backend
 
         self.backend = create_backend(backend or "numpy")
+
+        # Validate and store advection scheme
+        valid_schemes = {"gradient_centered", "gradient_upwind"}
+        if advection_scheme not in valid_schemes:
+            raise ValueError(f"Invalid advection_scheme: '{advection_scheme}'. Valid options: {sorted(valid_schemes)}")
+        self.advection_scheme = advection_scheme
+        self.use_upwind = advection_scheme == "gradient_upwind"
 
         # Handle deprecated parameters
         if NiterNewton is not None:
@@ -331,6 +346,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 newton_tolerance=self.newton_tolerance,
                 backend=self.backend,
                 diffusion_field=diffusion_field,
+                use_upwind=self.use_upwind,
             )
         else:
             # Use nD solver with centralized nonlinear solver
@@ -475,7 +491,11 @@ class HJBFDMSolver(BaseHJBSolver):
         return U_solution
 
     def _compute_gradients_nd(self, U: NDArray) -> dict[int, NDArray]:
-        """Compute gradients using central differences.
+        """Compute gradients using selected advection scheme.
+
+        Supports two schemes:
+        - gradient_centered: Central differences (second-order accurate)
+        - gradient_upwind: Godunov upwind (first-order, monotone)
 
         Returns:
             Dict mapping dimension index to gradient array for that dimension.
@@ -487,28 +507,68 @@ class HJBFDMSolver(BaseHJBSolver):
 
         for d in range(self.dimension):
             h = self.spacing[d]
-            slices = [slice(None)] * self.dimension
 
-            # Interior: central difference
-            slices[d] = slice(1, -1)
-            slices_fwd = slices.copy()
-            slices_fwd[d] = slice(2, None)
-            slices_bwd = slices.copy()
-            slices_bwd[d] = slice(None, -2)
+            if self.use_upwind:
+                # Godunov upwind scheme: choose based on characteristic direction
+                # Forward difference: (U[i+1] - U[i]) / h
+                # Backward difference: (U[i] - U[i-1]) / h
+                # Select backward if p >= 0, forward if p < 0
 
-            grad_interior = (U[tuple(slices_fwd)] - U[tuple(slices_bwd)]) / (2 * h)
+                # Compute forward and backward differences
+                grad_forward = np.zeros_like(U)
+                grad_backward = np.zeros_like(U)
 
-            # Boundaries: one-sided differences
-            slices[d] = slice(0, 1)
-            slices_fwd[d] = slice(1, 2)
-            grad_left = (U[tuple(slices_fwd)] - U[tuple(slices)]) / h
+                # Forward difference: D^+ U = (U[i+1] - U[i]) / h
+                slices_curr = [slice(None)] * self.dimension
+                slices_next = [slice(None)] * self.dimension
+                slices_curr[d] = slice(None, -1)
+                slices_next[d] = slice(1, None)
+                grad_forward[tuple(slices_curr)] = (U[tuple(slices_next)] - U[tuple(slices_curr)]) / h
+                # Right boundary: use backward difference
+                slices_curr[d] = slice(-1, None)
+                slices_prev = [slice(None)] * self.dimension
+                slices_prev[d] = slice(-2, -1)
+                grad_forward[tuple(slices_curr)] = (U[tuple(slices_curr)] - U[tuple(slices_prev)]) / h
 
-            slices[d] = slice(-1, None)
-            slices_bwd[d] = slice(-2, -1)
-            grad_right = (U[tuple(slices)] - U[tuple(slices_bwd)]) / h
+                # Backward difference: D^- U = (U[i] - U[i-1]) / h
+                slices_curr = [slice(None)] * self.dimension
+                slices_prev = [slice(None)] * self.dimension
+                slices_curr[d] = slice(1, None)
+                slices_prev[d] = slice(None, -1)
+                grad_backward[tuple(slices_curr)] = (U[tuple(slices_curr)] - U[tuple(slices_prev)]) / h
+                # Left boundary: use forward difference
+                slices_curr[d] = slice(0, 1)
+                slices_next[d] = slice(1, 2)
+                grad_backward[tuple(slices_curr)] = (U[tuple(slices_next)] - U[tuple(slices_curr)]) / h
 
-            # Concatenate
-            grad_d = np.concatenate([grad_left, grad_interior, grad_right], axis=d)
+                # Godunov upwind selection: use central estimate for sign
+                grad_central = (grad_forward + grad_backward) / 2.0
+                grad_d = np.where(grad_central >= 0, grad_backward, grad_forward)
+
+            else:
+                # Central difference scheme (original implementation)
+                slices = [slice(None)] * self.dimension
+
+                # Interior: central difference
+                slices[d] = slice(1, -1)
+                slices_fwd = slices.copy()
+                slices_fwd[d] = slice(2, None)
+                slices_bwd = slices.copy()
+                slices_bwd[d] = slice(None, -2)
+
+                grad_interior = (U[tuple(slices_fwd)] - U[tuple(slices_bwd)]) / (2 * h)
+
+                # Boundaries: one-sided differences
+                slices[d] = slice(0, 1)
+                slices_fwd[d] = slice(1, 2)
+                grad_left = (U[tuple(slices_fwd)] - U[tuple(slices)]) / h
+
+                slices[d] = slice(-1, None)
+                slices_bwd[d] = slice(-2, -1)
+                grad_right = (U[tuple(slices)] - U[tuple(slices_bwd)]) / h
+
+                # Concatenate
+                grad_d = np.concatenate([grad_left, grad_interior, grad_right], axis=d)
 
             # Store with dimension index as key
             gradients[d] = grad_d

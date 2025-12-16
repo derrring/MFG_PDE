@@ -135,6 +135,40 @@ class TestHJBFDMSolverInitialization:
         # Backend should be NumPy backend
         assert hasattr(solver.backend, "array")
 
+    def test_advection_scheme_default(self):
+        """Test default advection_scheme is gradient_upwind."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50)
+        solver = HJBFDMSolver(problem)
+
+        assert solver.advection_scheme == "gradient_upwind"
+        assert solver.use_upwind is True
+
+    def test_advection_scheme_gradient_upwind(self):
+        """Test explicit gradient_upwind advection scheme."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50)
+        solver = HJBFDMSolver(problem, advection_scheme="gradient_upwind")
+
+        assert solver.advection_scheme == "gradient_upwind"
+        assert solver.use_upwind is True
+
+    def test_advection_scheme_gradient_centered(self):
+        """Test gradient_centered advection scheme."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50)
+        solver = HJBFDMSolver(problem, advection_scheme="gradient_centered")
+
+        assert solver.advection_scheme == "gradient_centered"
+        assert solver.use_upwind is False
+
+    def test_advection_scheme_invalid(self):
+        """Test that invalid advection_scheme raises ValueError."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50)
+
+        with pytest.raises(ValueError, match="Invalid advection_scheme"):
+            HJBFDMSolver(problem, advection_scheme="invalid_scheme")
+
+        with pytest.raises(ValueError, match="Invalid advection_scheme"):
+            HJBFDMSolver(problem, advection_scheme="divergence_upwind")  # FP scheme
+
 
 class TestHJBFDMSolverSolveHJBSystem:
     """Test the main solve_hjb_system method."""

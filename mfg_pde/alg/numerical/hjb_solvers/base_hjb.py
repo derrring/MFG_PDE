@@ -359,6 +359,7 @@ def compute_hjb_residual(
     t_idx_n: int,  # Time index for U_n
     backend=None,  # Backend for MPS/CUDA support
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
+    use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> np.ndarray:
     Nx = problem.Nx + 1
     dx = problem.dx
@@ -437,8 +438,8 @@ def compute_hjb_residual(
 
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
         # Calculate derivatives using tuple notation (Phase 3 migration)
-        # Use upwind=True for HJB FDM stability (Godunov upwind discretization)
-        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, dx, Nx, clip=False, upwind=True)
+        # Use upwind for HJB FDM stability (Godunov upwind discretization)
+        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, dx, Nx, clip=False, upwind=use_upwind)
 
         if np.any(np.isnan(list(derivs.values()))):
             Phi_U[i] = float("nan")
@@ -482,6 +483,7 @@ def compute_hjb_jacobian(
     t_idx_n: int,
     backend=None,  # Backend for MPS/CUDA support
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
+    use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> sparse.csr_matrix:
     Nx = problem.Nx + 1
     dx = problem.dx
@@ -550,7 +552,7 @@ def compute_hjb_jacobian(
             U_perturbed_m_i[i] -= eps
 
             # Use tuple notation for Jacobian (Phase 3 migration)
-            # Use upwind=True for consistency with residual computation
+            # Use upwind for consistency with residual computation
             derivs_p_i = _calculate_derivatives(
                 U_perturbed_p_i,
                 i,
@@ -558,7 +560,7 @@ def compute_hjb_jacobian(
                 Nx,
                 clip=True,
                 clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
-                upwind=True,
+                upwind=use_upwind,
             )
             derivs_m_i = _calculate_derivatives(
                 U_perturbed_m_i,
@@ -567,7 +569,7 @@ def compute_hjb_jacobian(
                 Nx,
                 clip=True,
                 clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
-                upwind=True,
+                upwind=use_upwind,
             )
 
             H_p_i = np.nan
@@ -597,7 +599,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
-                    upwind=True,
+                    upwind=use_upwind,
                 )
                 derivs_m_im1 = _calculate_derivatives(
                     U_perturbed_m_im1,
@@ -606,7 +608,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
-                    upwind=True,
+                    upwind=use_upwind,
                 )
                 H_p_im1 = np.nan
                 H_m_im1 = np.nan
@@ -632,7 +634,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
-                    upwind=True,
+                    upwind=use_upwind,
                 )
                 derivs_m_ip1 = _calculate_derivatives(
                     U_perturbed_m_ip1,
@@ -641,7 +643,7 @@ def compute_hjb_jacobian(
                     Nx,
                     clip=True,
                     clip_limit=P_VALUE_CLIP_LIMIT_FD_JAC,
-                    upwind=True,
+                    upwind=use_upwind,
                 )
                 H_p_ip1 = np.nan
                 H_m_ip1 = np.nan
@@ -686,6 +688,7 @@ def newton_hjb_step(
     t_idx_n: int,
     backend=None,  # Add backend parameter for MPS/CUDA support
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
+    use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> tuple[np.ndarray, float]:
     dx_norm = problem.dx if abs(problem.dx) > 1e-12 else 1.0
 
@@ -700,6 +703,7 @@ def newton_hjb_step(
         t_idx_n,
         backend,
         sigma_at_n,
+        use_upwind,
     )
     if has_nan_or_inf(residual_F_U, backend):
         return U_n_current_newton_iterate, np.inf
@@ -713,6 +717,7 @@ def newton_hjb_step(
         t_idx_n,
         backend,
         sigma_at_n,
+        use_upwind,
     )
     if np.any(np.isnan(jacobian_J_U.data)) or np.any(np.isinf(jacobian_J_U.data)):
         return U_n_current_newton_iterate, np.inf
@@ -762,6 +767,7 @@ def solve_hjb_timestep_newton(
     l2errBoundNewton: float | None = None,
     backend: BaseBackend | None = None,
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
+    use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
@@ -828,6 +834,7 @@ def solve_hjb_timestep_newton(
             t_idx_n,
             backend,  # Pass backend for MPS/CUDA support
             sigma_at_n,  # Pass diffusion field
+            use_upwind,  # Pass advection scheme flag
         )
 
         if has_nan_or_inf(U_n_next_newton_iterate, backend):
@@ -861,6 +868,7 @@ def solve_hjb_system_backward(
     l2errBoundNewton: float | None = None,
     backend: BaseBackend | None = None,
     diffusion_field: float | np.ndarray | None = None,  # Diffusion field
+    use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.
@@ -964,6 +972,7 @@ def solve_hjb_system_backward(
             t_idx_n=n_idx_hjb,
             backend=backend,  # Pass backend for acceleration
             sigma_at_n=sigma_at_n,  # Pass diffusion at time n
+            use_upwind=use_upwind,  # Pass advection scheme flag
         )
         backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
 
