@@ -755,6 +755,79 @@ class TestHJBFDMSolverGhostValueBC:
         assert U_solution.shape == (Nt, Nx, Ny)
         assert np.all(np.isfinite(U_solution))
 
+    def test_time_varying_dirichlet_bc(self):
+        """Test that time-varying Dirichlet BC receives correct time (Issue #496)."""
+        from mfg_pde.geometry.boundary import dirichlet_bc, get_ghost_values_nd
+
+        # Track times when BC is called
+        call_times = []
+
+        def time_varying_value(t):
+            call_times.append(t)
+            return np.sin(2 * np.pi * t)
+
+        # Create BC with time-varying value
+        bc = dirichlet_bc(dimension=2, value=time_varying_value)
+
+        # Create test field
+        field = np.array([[1.0, 2.0], [3.0, 4.0]])
+        spacing = (0.1, 0.1)
+
+        # Call at different times
+        for t in [0.0, 0.25, 0.5, 0.75]:
+            call_times.clear()
+            _ = get_ghost_values_nd(field, bc, spacing, time=t)
+
+            # Verify the function was called with correct time
+            # (Called once per dimension for Dirichlet)
+            assert len(call_times) == 2, f"Expected 2 calls at t={t}, got {len(call_times)}"
+            for call_t in call_times:
+                assert call_t == t, f"Expected time {t}, got {call_t}"
+
+    def test_hjb_solver_time_varying_bc(self):
+        """Test HJB solver with time-varying Dirichlet BC (Issue #496)."""
+        from mfg_pde.geometry.boundary import dirichlet_bc
+
+        # Track times when BC is called
+        call_times = []
+
+        def time_varying_value(t):
+            call_times.append(t)
+            return 0.0  # Simple value, we just want to track times
+
+        # Create 2D problem with time-varying BC
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8])
+        domain.boundary_conditions = dirichlet_bc(dimension=2, value=time_varying_value)
+
+        T = 0.4
+        Nt = 4
+        problem = MFGProblem(geometry=domain, T=T, Nt=Nt, sigma=0.1)
+        solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_upwind")
+
+        Nx, Ny = domain.get_grid_shape()
+        n_time_points = Nt + 1
+
+        M_density = np.ones((n_time_points, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((n_time_points, Nx, Ny))
+
+        # Clear call times and solve
+        call_times.clear()
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # Verify solution is valid
+        assert U_solution.shape == (n_time_points, Nx, Ny)
+        assert np.all(np.isfinite(U_solution))
+
+        # Verify that BC was called at different times (not always t=0)
+        # HJB solves backward, so times should be n*dt for n in [Nt-1, ..., 0]
+        # Check that we have calls at different times
+        unique_times = sorted(set(call_times))
+        assert len(unique_times) >= 2, (
+            f"Expected BC calls at multiple times, got times: {unique_times}. "
+            "This suggests time is not being passed correctly to BC."
+        )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
