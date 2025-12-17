@@ -1545,7 +1545,7 @@ if __name__ == "__main__":
     from mfg_pde import MFGProblem
 
     # Test 1D problem with uniform collocation points matching problem grid
-    problem_1d = MFGProblem(Nx=20, Nt=10, T=1.0, sigma=0.1)
+    problem_1d = MFGProblem(Nx=20, Nt=10, T=1.0, diffusion=0.1)
 
     # Use problem grid points as collocation points to avoid index mismatch
     collocation_points = problem_1d.xSpace.reshape(-1, 1)
@@ -1591,7 +1591,7 @@ if __name__ == "__main__":
     xx, yy = np.meshgrid(x_grid, y_grid)
     points_2d = np.column_stack([xx.ravel(), yy.ravel()])
 
-    problem_2d = MFGProblem(Nx=Nx_2d, Nt=5, T=1.0, sigma=0.1, dimension=2)
+    problem_2d = MFGProblem(Nx=Nx_2d, Nt=5, T=1.0, diffusion=0.1, dimension=2)
 
     solver_2d = HJBGFDMSolver(
         problem_2d,
