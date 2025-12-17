@@ -40,8 +40,8 @@ Physics determines **numerical values** at boundaries. Only activated when topol
 | Category | Common Names | Mathematical Form | Ghost Calculation |
 |----------|-------------|-------------------|-------------------|
 | **Hard Value** | Dirichlet, Absorbing, Exit | u = g | `u_ghost = 2g - u_inner` (cell-centered) |
-| **Slope** | Neumann, Reflective, Symmetric | ∂u/∂n = g | `u_ghost = u_inner ± dx·g` |
-| **Mixed** | Robin, No-Flux, Impedance | αu + β∂u/∂n = g | Solve algebraic equation |
+| **Slope** | Neumann, HJB-Reflective, Symmetric | ∂u/∂n = g | `u_ghost = u_inner ± dx·g` |
+| **Mixed** | Robin, FP-Reflective, FP-No-Flux | αu + β∂u/∂n = g | Solve algebraic equation |
 
 **Critical insight**: The same physical name (e.g., "no-flux") requires different discrete formulas depending on the equation being solved:
 
@@ -117,8 +117,6 @@ This is the right approach — encoding equation-specific physics in dedicated f
 
 **Current handling**: `np.pad` handles this implicitly via dimensional ordering.
 
-**Recommendation**: Document that ghost filling uses X→Y→Z order. For mixed BCs with different types per axis, verify corner values are sensible.
-
 ```
      y_ghost
         │
@@ -131,6 +129,15 @@ x_ghost─┼────┼────────┤
    └────┴────┴────────┘
 ```
 
+**Commutativity Warning**: For mixed BCs, the application order affects corner values:
+- Example: X-boundary has Dirichlet(u=1), Y-boundary has Dirichlet(u=0)
+- X→Y order: corner first gets value from X-rule, then Y-rule may overwrite
+- Y→X order: opposite result
+
+For most physical problems (continuous fields), corner values should be continuous and order doesn't matter. However, if BCs are discontinuous at corners (singularity), order becomes critical.
+
+**Standard**: Implementation uses **X→Y→Z order**. Document this explicitly in code comments.
+
 ### 3.2 Grid Alignment (Vertex vs Cell-Centered)
 
 **Issue**: The same physical BC has different discrete formulas for different grid types.
@@ -140,9 +147,11 @@ x_ghost─┼────┼────────┤
 | Dirichlet u=g | `u[0] = g` | `u_ghost = 2g - u[0]` |
 | Neumann ∂u/∂n=0 | `u_ghost = u[1]` | `u_ghost = u[0]` |
 
+**Conceptual clarification**: Discretization (Vertex vs Cell) is a **Grid property**, not a BC property. The BC calculator *consumes* this information from the grid context. When writing a new solver, the grid type must be passed to the BC applicator.
+
 **Current handling**: `GridType` enum exists but isn't always used consistently.
 
-**Recommendation**: All ghost cell functions should accept `grid_type` parameter. The `ghost_cell_fp_no_flux()` already does this correctly.
+**Recommendation**: All ghost cell functions should accept `grid_type` parameter. The `ghost_cell_fp_no_flux()` already does this correctly. Solvers must propagate grid context to BC applicators.
 
 ### 3.3 Time-Dependent BCs
 
@@ -165,9 +174,15 @@ def compute_ghost(u_inner, dx, *, context: dict = None):
 | Dirichlet | `u_ghost = 2g - u_inner` | Set row to `[0,...,1,...,0]`, b to `g` |
 | Neumann | `u_ghost = u_inner` | Modify diagonal and off-diagonal |
 
+**Two approaches for implicit BCs**:
+1. **Matrix Reduction**: Remove boundary DOFs from unknown vector (matrix shrinks)
+2. **Identity Row (Penalty)**: Keep boundary rows, set diagonal=1, RHS=g (matrix same size)
+
+**Recommendation**: Use **Identity Row approach** (option 2). It maintains index consistency between explicit and implicit solvers, reducing mapping complexity. The slight computational overhead is negligible.
+
 **Current handling**: `FEMApplicator` handles matrix modification. FDM implicit would need similar.
 
-**Recommendation**: If implicit FDM solvers are needed, add `apply_to_matrix(A, b)` interface to BC calculators.
+**Interface**: If implicit FDM solvers are needed, add `apply_to_matrix(A, b)` interface to BC calculators.
 
 ### 3.5 Unbounded Domains
 
@@ -181,14 +196,23 @@ def compute_ghost(u_inner, dx, *, context: dict = None):
 | HJB value | V → ∞ (often linear) | Linear extrapolation |
 | Waves | Outgoing | Absorbing BC / PML |
 
-**Linear extrapolation formula** (assumes d²u/dx² = 0 at boundary):
+**Linear extrapolation formula**:
 ```python
 u_ghost = 2*u[0] - u[1]  # Extrapolate from two interior points
 ```
 
+**Mathematical interpretation**: This is equivalent to the **Zero Second Derivative Condition** (d²u/dx² = 0 at boundary). The function is assumed to continue linearly beyond the grid.
+
+**Caveat for quadratic growth**: For HJB problems where the value function has quadratic growth (e.g., LQG control), linear extrapolation forces the second derivative to zero at the boundary, creating an artificial "kink". For such cases, **quadratic extrapolation** (d³u/dx³ = 0, using three interior points) may be more appropriate:
+```python
+u_ghost = 3*u[0] - 3*u[1] + u[2]  # Quadratic extrapolation
+```
+
 **Current handling**: Not explicitly implemented.
 
-**Recommendation**: Add `LinearExtrapolationBC` for HJB unbounded domains.
+**Recommendation**:
+- Short-term: Add `LinearExtrapolationBC` for general HJB unbounded domains
+- Long-term: Add `QuadraticExtrapolationBC` for LQG-type problems with quadratic value functions
 
 ### 3.6 Mixed BCs Per Dimension
 
@@ -198,6 +222,12 @@ u_ghost = 2*u[0] - u[1]  # Extrapolate from two interior points
 - `BoundaryConditions` supports mixed BCs via segments
 - `get_bc_type_at_boundary()` enables per-boundary queries
 - Particle solver uses `_get_topology_per_dimension()` for per-axis topology
+
+**Processing order**: For each axis, always check topology FIRST, then physics:
+1. Is this axis periodic? (both min and max must be periodic)
+2. If bounded, what physics applies to min boundary? To max boundary?
+
+This ensures topology-level decisions (wrap vs allocate ghost) are made before physics-level calculations.
 
 **Status**: Well-handled after Issue #486 Phase 2.
 
@@ -210,20 +240,23 @@ u_ghost = 2*u[0] - u[1]  # Extrapolate from two interior points
 When implementing BC handling, ask these questions in order:
 
 1. **Topology**: Is this axis periodic or bounded?
-   - Periodic → Copy from opposite boundary (no physics needed)
+   - Periodic → Copy from opposite boundary (no physics needed, done)
    - Bounded → Proceed to step 2
 
-2. **Discretization**: Is this vertex-centered or cell-centered?
-   - This determines the geometric relationship between ghost and boundary
+2. **Grid Context**: What is the grid type? (This is a Grid property, not BC property)
+   - Vertex-centered → Boundary point is at grid node
+   - Cell-centered → Boundary is at face between ghost and first interior cell
+   - **Action**: Pass grid type to BC calculator
 
 3. **Physics**: What physical constraint applies?
    - Map physical name to mathematical form (Dirichlet/Neumann/Robin)
    - Consider equation-specific variants (FP no-flux ≠ HJB reflective)
+   - **Action**: Select appropriate ghost cell formula
 
-4. **Context**: Any special considerations?
-   - Time dependence?
-   - Corners in 2D+?
-   - Matrix assembly for implicit?
+4. **Special Context**: Any additional considerations?
+   - Time dependence → Pass time to BC calculator
+   - Corners in 2D+ → Ensure X→Y→Z order
+   - Matrix assembly for implicit → Use `apply_to_matrix(A, b)` instead
 
 ### For Users
 
