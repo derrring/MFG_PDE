@@ -830,11 +830,15 @@ def _apply_corner_values_nd(padded: NDArray[np.floating], d: int) -> None:
     """
     Apply corner/edge values in nD using averaging.
 
-    Corners are points where multiple boundary faces intersect.
-    We average the ghost values from adjacent non-corner ghost cells.
+    Intersections are processed in order of decreasing codimension:
+    - First edges (2 boundary dims), using face ghost values
+    - Then corners (3+ boundary dims), using edge ghost values
+
+    This ordering ensures that each intersection can average values
+    from already-filled lower-codimension neighbors.
 
     For d=2: 4 corners (0D intersections of 1D edges)
-    For d=3: 12 edges (1D intersections) + 8 corners (0D intersections)
+    For d=3: 12 edges (1D lines) + 8 corners (0D points)
     For d>3: generalized intersection handling
 
     Args:
@@ -843,48 +847,49 @@ def _apply_corner_values_nd(padded: NDArray[np.floating], d: int) -> None:
     """
     padded_shape = padded.shape
 
-    # Iterate over all "corner" positions (positions where at least 2 dimensions
-    # are at their boundary - index 0 or -1)
-    for corner_idx in np.ndindex(*([3] * d)):
-        # corner_idx[i] in {0, 1, 2} maps to {0, middle, -1} in padded array
-        # Count how many dimensions are at boundary
-        boundary_count = sum(1 for c in corner_idx if c != 1)
+    # Process intersections in order of boundary_count (from 2 to d)
+    # This ensures edges are filled before corners, etc.
+    for target_boundary_count in range(2, d + 1):
+        # Iterate over all intersection configurations
+        for corner_idx in np.ndindex(*([3] * d)):
+            # corner_idx[i] in {0, 1, 2} maps to {low_boundary, interior, high_boundary}
+            boundary_count = sum(1 for c in corner_idx if c != 1)
 
-        if boundary_count < 2:
-            # Not a corner/edge - skip
-            continue
+            if boundary_count != target_boundary_count:
+                continue
 
-        # Build actual index in padded array
-        actual_idx = []
-        for i, c in enumerate(corner_idx):
-            if c == 0:
-                actual_idx.append(0)
-            elif c == 2:
-                actual_idx.append(padded_shape[i] - 1)
-            else:
-                # This dimension spans the interior - skip this index combination
-                # for corners we only care about boundary positions
-                break
-        else:
-            # All dimensions processed - this is a true corner point
-            actual_idx = tuple(actual_idx)
+            # Build slices for this intersection
+            # - Boundary dims: single index (0 or -1)
+            # - Interior dims: slice(1, -1) spanning interior
+            intersection_slice = []
+            for i, c in enumerate(corner_idx):
+                if c == 0:
+                    intersection_slice.append(0)
+                elif c == 2:
+                    intersection_slice.append(padded_shape[i] - 1)
+                else:
+                    intersection_slice.append(slice(1, -1))
 
-            # Average adjacent interior ghost cells
-            # Adjacent means: change exactly one boundary dimension to interior
-            neighbors = []
+            intersection_slice = tuple(intersection_slice)
+
+            # Find neighbor slices (one boundary dim moved to interior)
+            neighbor_values = []
             for i, c in enumerate(corner_idx):
                 if c != 1:  # This dimension is at boundary
-                    # Create neighbor index with this dimension moved to interior
-                    neighbor_idx = list(actual_idx)
+                    # Create neighbor slice with this dim moved to interior
+                    neighbor_slice = list(intersection_slice)
                     if c == 0:
-                        neighbor_idx[i] = 1  # Move from 0 to 1
+                        neighbor_slice[i] = 1  # Move from 0 to 1
                     else:
-                        neighbor_idx[i] = padded_shape[i] - 2  # Move from -1 to -2
-                    neighbors.append(tuple(neighbor_idx))
+                        neighbor_slice[i] = padded_shape[i] - 2  # Move from -1 to -2
+                    neighbor_values.append(padded[tuple(neighbor_slice)])
 
-            if neighbors:
-                avg_val = np.mean([padded[n] for n in neighbors])
-                padded[actual_idx] = avg_val
+            if neighbor_values:
+                # Average all neighbor values
+                # For edges: this is a 1D array of values
+                # For corners: this is a scalar
+                avg_val = np.mean(neighbor_values, axis=0)
+                padded[intersection_slice] = avg_val
 
 
 def apply_boundary_conditions_nd(
@@ -937,6 +942,8 @@ def apply_boundary_conditions_nd(
                     slices_int_high[axis] = slice(-2, -1)
                     padded[tuple(slices_low)] = 2 * g - padded[tuple(slices_int_low)]
                     padded[tuple(slices_high)] = 2 * g - padded[tuple(slices_int_high)]
+                # Apply corner/edge values
+                _apply_corner_values_nd(padded, d)
                 return padded
             elif bc_type in ["no_flux", "neumann"]:
                 return np.pad(field, 1, mode="edge")
@@ -968,6 +975,8 @@ def apply_boundary_conditions_nd(
                     slices_int_high[axis] = slice(-2, -1)
                     padded[tuple(slices_low)] = 2 * g - padded[tuple(slices_int_low)]
                     padded[tuple(slices_high)] = 2 * g - padded[tuple(slices_int_high)]
+                # Apply corner/edge values (edges first, then corners)
+                _apply_corner_values_nd(padded, d)
                 return padded
             elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
                 return np.pad(field, 1, mode="edge")
@@ -993,6 +1002,8 @@ def apply_boundary_conditions_nd(
                         slices_int_high[axis] = slice(-2, -1)
                         padded[tuple(slices_low)] = 2 * g_eff - padded[tuple(slices_int_low)]
                         padded[tuple(slices_high)] = 2 * g_eff - padded[tuple(slices_int_high)]
+                    # Apply corner/edge values
+                    _apply_corner_values_nd(padded, d)
                     return padded
                 else:
                     # General Robin - use Neumann-like ghost cells
@@ -1916,6 +1927,33 @@ if __name__ == "__main__":
     # Modification should reflect in padded
     assert buffer2.padded[2, 2] == 42.0, "Zero-copy failed"
     print("   PASS: Zero-copy interior view")
+
+    # Test 5: 3D edge/corner handling (Dirichlet)
+    print("\n5. Testing 3D edge/corner handling (Dirichlet)...")
+    field_3d = np.ones((3, 3, 3))
+    bc_3d_dir = dirichlet_bc(dimension=3, value=0.0)
+    bounds_3d = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
+    padded_3d_dir = apply_boundary_conditions_nd(field_3d, bc_3d_dir, bounds_3d)
+    # For Dirichlet g=0 with interior=1: ghost = 2*0 - 1 = -1
+    # Faces should be -1
+    assert np.allclose(padded_3d_dir[0, 2, 2], -1.0), "3D face ghost failed"
+    # Edges should be -1 (averaged from 2 faces, both -1)
+    assert np.allclose(padded_3d_dir[0, 0, 2], -1.0), "3D edge ghost failed"
+    # Corners should be -1 (averaged from 3 edges, all -1)
+    assert np.allclose(padded_3d_dir[0, 0, 0], -1.0), "3D corner ghost failed"
+    print("   PASS: 3D edge/corner handling (Dirichlet)")
+
+    # Test 6: 4D edge/corner handling (Dirichlet)
+    print("\n6. Testing 4D edge/corner handling (Dirichlet)...")
+    field_4d = np.ones((2, 2, 2, 2))
+    bc_4d = dirichlet_bc(dimension=4, value=0.0)
+    bounds_4d = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
+    padded_4d = apply_boundary_conditions_nd(field_4d, bc_4d, bounds_4d)
+    # Corner in 4D should still be -1
+    assert np.allclose(padded_4d[0, 0, 0, 0], -1.0), "4D corner ghost failed"
+    # Edge (2 dims at boundary)
+    assert np.allclose(padded_4d[0, 0, 1, 1], -1.0), "4D edge ghost failed"
+    print("   PASS: 4D edge/corner handling (Dirichlet)")
 
     print("\n" + "=" * 50)
     print("All smoke tests passed!")
