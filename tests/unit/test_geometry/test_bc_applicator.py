@@ -569,3 +569,116 @@ class TestInputValidation:
         field = np.ones((5, 5))
         with pytest.raises(ValueError, match="min < max"):
             apply_boundary_conditions_2d(field, mixed_bc_obj)
+
+
+class TestLazyDimensionBinding:
+    """Tests for lazy dimension binding (Issue #495)."""
+
+    def test_dirichlet_bc_no_dimension(self):
+        """Test creating Dirichlet BC without dimension."""
+        bc = dirichlet_bc(value=0.0)  # No dimension specified
+        assert bc.dimension is None
+        assert not bc.is_bound
+        assert str(bc) == "BoundaryConditions(unbound, dirichlet, value=0.0)"
+
+    def test_neumann_bc_no_dimension(self):
+        """Test creating Neumann BC without dimension."""
+        bc = neumann_bc(value=0.0)  # No dimension specified
+        assert bc.dimension is None
+        assert not bc.is_bound
+
+    def test_periodic_bc_no_dimension(self):
+        """Test creating Periodic BC without dimension."""
+        bc = periodic_bc()  # No dimension specified
+        assert bc.dimension is None
+        assert not bc.is_bound
+
+    def test_bind_dimension_explicit(self):
+        """Test explicit dimension binding via bind_dimension()."""
+        bc = dirichlet_bc(value=0.0)
+        assert bc.dimension is None
+
+        bc_2d = bc.bind_dimension(2)
+        assert bc_2d.dimension == 2
+        assert bc_2d.is_bound
+        assert str(bc_2d) == "BoundaryConditions(2D, dirichlet, value=0.0)"
+
+        # Original BC should be unchanged (immutable via replace)
+        assert bc.dimension is None
+
+    def test_bind_dimension_idempotent(self):
+        """Test that binding same dimension twice returns same BC."""
+        bc = dirichlet_bc(value=0.0, dimension=2)
+        bc_bound = bc.bind_dimension(2)
+
+        # Should return same object since dimension already matches
+        assert bc_bound is bc
+
+    def test_bind_dimension_mismatch_error(self):
+        """Test that binding different dimension raises error."""
+        bc = dirichlet_bc(value=0.0, dimension=2)
+
+        with pytest.raises(ValueError, match="BC dimension mismatch"):
+            bc.bind_dimension(3)
+
+    def test_grid_binds_dimension_automatically(self):
+        """Test that TensorProductGrid automatically binds dimension."""
+        from mfg_pde.geometry import TensorProductGrid
+
+        # Create BC without dimension
+        bc = dirichlet_bc(value=0.0)
+        assert bc.dimension is None
+
+        # Create grid with BC - dimension should be bound automatically
+        grid = TensorProductGrid(
+            dimension=2,
+            bounds=[(0.0, 1.0), (0.0, 1.0)],
+            Nx=[10, 10],
+            boundary_conditions=bc,
+        )
+
+        # Grid's stored BC should have dimension bound
+        stored_bc = grid.get_boundary_conditions()
+        assert stored_bc.dimension == 2
+        assert stored_bc.is_bound
+
+    def test_unbound_bc_cannot_apply(self):
+        """Test that unbound BC cannot be applied directly."""
+        bc = dirichlet_bc(value=0.0)  # No dimension
+
+        # Applicator requires dimension to compute ghost cells
+        with pytest.raises(ValueError, match="BC dimension not set"):
+            # This should fail because dimension is needed for ghost cell computation
+            bc._require_dimension("apply BC")
+
+    def test_explicit_dimension_still_works(self):
+        """Test that explicit dimension specification still works."""
+        bc = dirichlet_bc(value=0.0, dimension=2)
+        assert bc.dimension == 2
+        assert bc.is_bound
+
+        # Should work with apply_boundary_conditions_2d
+        field = np.ones((5, 5))
+        padded = apply_boundary_conditions_2d(field, bc)
+        assert padded.shape == (7, 7)
+
+    def test_validate_unbound_bc_warns(self):
+        """Test that validate() warns about unbound dimension."""
+        bc = dirichlet_bc(value=0.0)
+        _is_valid, warnings = bc.validate()
+
+        # Should have warning about dimension not set
+        assert any("Dimension not set" in w for w in warnings)
+
+    def test_backward_compatibility_dimension_default(self):
+        """Test backward compatibility with code that didn't specify dimension."""
+        # Before this change, dimension defaulted to 2
+        # Now dimension defaults to None, but existing code that passes dimension=2
+        # should still work identically
+        bc_explicit = dirichlet_bc(value=0.0, dimension=2)
+        assert bc_explicit.dimension == 2
+
+        # Code that uses the BC with a grid should work
+        field = np.ones((5, 5))
+        padded = apply_boundary_conditions_2d(field, bc_explicit)
+        assert padded.shape == (7, 7)
