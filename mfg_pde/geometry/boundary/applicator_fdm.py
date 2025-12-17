@@ -590,6 +590,13 @@ def _compute_ghost_value_enhanced(
         # Return interior value as fallback (will be handled separately)
         return interior_val
 
+    elif bc_type in [BCType.EXTRAPOLATION_LINEAR, BCType.EXTRAPOLATION_QUADRATIC]:
+        # Extrapolation BCs require access to multiple interior points
+        # This function only receives one interior value, so we fall back to Neumann
+        # For proper extrapolation, use the specialized handling in apply_boundary_conditions_1d
+        # or call ghost_cell_linear_extrapolation/ghost_cell_quadratic_extrapolation directly
+        return interior_val  # Fallback: zero gradient
+
     else:
         # Unknown type - use Neumann (zero gradient) as safe default
         return interior_val
@@ -1115,12 +1122,26 @@ def _apply_bc_1d(
         # Left BC
         point_left = np.array([x_min])
         bc_left = boundary_conditions.get_bc_at_point(point_left, "x_min")
-        padded[0] = _compute_ghost_value_enhanced(bc_left, field[0], dx, "min", point_left, time, config)
+        if bc_left.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
+            # Linear extrapolation: ghost = 2*u_0 - u_1
+            padded[0] = 2.0 * field[0] - field[1]
+        elif bc_left.bc_type == BCType.EXTRAPOLATION_QUADRATIC and len(field) >= 3:
+            # Quadratic extrapolation: ghost = 3*u_0 - 3*u_1 + u_2
+            padded[0] = 3.0 * field[0] - 3.0 * field[1] + field[2]
+        else:
+            padded[0] = _compute_ghost_value_enhanced(bc_left, field[0], dx, "min", point_left, time, config)
 
         # Right BC
         point_right = np.array([x_max])
         bc_right = boundary_conditions.get_bc_at_point(point_right, "x_max")
-        padded[-1] = _compute_ghost_value_enhanced(bc_right, field[-1], dx, "max", point_right, time, config)
+        if bc_right.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
+            # Linear extrapolation: ghost = 2*u_0 - u_1
+            padded[-1] = 2.0 * field[-1] - field[-2]
+        elif bc_right.bc_type == BCType.EXTRAPOLATION_QUADRATIC and len(field) >= 3:
+            # Quadratic extrapolation: ghost = 3*u_0 - 3*u_1 + u_2
+            padded[-1] = 3.0 * field[-1] - 3.0 * field[-2] + field[-3]
+        else:
+            padded[-1] = _compute_ghost_value_enhanced(bc_right, field[-1], dx, "max", point_right, time, config)
 
         return padded
 
