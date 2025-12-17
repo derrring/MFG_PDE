@@ -1746,7 +1746,7 @@ class GhostBuffer:
             buf[tuple(hi_ghost)] = buf[tuple(lo_interior)]
 
     def _update_bounded(self, **kwargs) -> None:
-        """Update ghost cells for bounded topology using calculator."""
+        """Update ghost cells for bounded topology using calculator (vectorized)."""
         if self._calculator is None:
             raise RuntimeError("Calculator is None for bounded topology")
 
@@ -1768,29 +1768,24 @@ class GhostBuffer:
             hi_interior = [slice(None)] * d
             hi_interior[axis] = slice(-2 * g, -g)
 
-            # Apply calculator to each boundary point
-            # Note: This is element-wise for simplicity. For vectorization,
-            # calculators should support array operations.
+            # Get interior arrays (views, not copies)
             interior_lo = buf[tuple(lo_interior)]
             interior_hi = buf[tuple(hi_interior)]
 
-            # For scalar calculators, iterate element-wise
-            ghost_lo = np.zeros_like(interior_lo)
-            ghost_hi = np.zeros_like(interior_hi)
-
-            for idx in np.ndindex(interior_lo.shape):
-                ghost_lo[idx] = self._calculator.compute(
-                    interior_value=float(interior_lo[idx]),
-                    dx=dx,
-                    side="min",
-                    **kwargs,
-                )
-                ghost_hi[idx] = self._calculator.compute(
-                    interior_value=float(interior_hi[idx]),
-                    dx=dx,
-                    side="max",
-                    **kwargs,
-                )
+            # VECTORIZED: Apply calculator to entire boundary array at once
+            # All Calculator implementations support NDArray via NumPy broadcasting
+            ghost_lo = self._calculator.compute(
+                interior_value=interior_lo,
+                dx=dx,
+                side="min",
+                **kwargs,
+            )
+            ghost_hi = self._calculator.compute(
+                interior_value=interior_hi,
+                dx=dx,
+                side="max",
+                **kwargs,
+            )
 
             buf[tuple(lo_ghost)] = ghost_lo
             buf[tuple(hi_ghost)] = ghost_hi

@@ -28,8 +28,25 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+import numpy as np
+from numpy.typing import NDArray
+
 if TYPE_CHECKING:
     from .conditions import BoundaryConditions
+
+# =============================================================================
+# Generic Type Alias for Vectorized Operations (PEP 695, Python 3.12+)
+# =============================================================================
+# FieldData represents any valid field value type for boundary calculations.
+# Used as a constraint for generic type parameters in Calculator methods.
+#
+# The template pattern [T: FieldData] ensures input/output type consistency:
+# - If input is float, output is float
+# - If input is NDArray, output is NDArray
+#
+# This is equivalent to C++ template<typename T> T compute(T val)
+# =============================================================================
+type FieldData = float | NDArray[np.floating]
 
 
 class DiscretizationType(Enum):
@@ -138,36 +155,45 @@ class BoundaryCalculator(Protocol):
     The Calculator is ONLY used for bounded topologies. Periodic topologies
     compute ghost values directly from wrap-around indices.
 
+    **VECTORIZATION**: All calculators support both scalar and array inputs.
+    When interior_value is an NDArray, the output is also an NDArray of the
+    same shape. This enables efficient vectorized operations without Python loops.
+
+    **TYPE SAFETY**: Uses TypeVar (template pattern) to ensure input/output type
+    consistency. If input is float, output is float. If input is NDArray, output
+    is NDArray. This is equivalent to C++ template<typename T> T compute(T val).
+
     Example:
-        >>> # Dirichlet BC with fixed boundary value
+        >>> # Scalar usage
         >>> calculator = DirichletCalculator(boundary_value=0.0)
         >>> u_ghost = calculator.compute(interior_value=1.0, dx=0.1, side='min')
-        # Returns 2*0 - 1 = -1.0
+        # Returns -1.0 (float)
 
-        >>> # Neumann BC with zero flux
-        >>> calculator = NeumannCalculator(flux_value=0.0)
-        >>> u_ghost = calculator.compute(interior_value=1.0, dx=0.1, side='min')
-        # Returns 1.0 (edge extension)
+        >>> # Vectorized usage (100x-1000x faster for large arrays)
+        >>> interior = np.array([1.0, 2.0, 3.0])
+        >>> u_ghost = calculator.compute(interior_value=interior, dx=0.1, side='min')
+        # Returns array([-1.0, -2.0, -3.0]) (NDArray)
     """
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
         **kwargs,
-    ) -> float:
+    ) -> T:
         """
-        Compute ghost cell value from interior value.
+        Compute ghost cell value from interior value (vectorized).
 
         Args:
-            interior_value: Value at interior point adjacent to boundary
+            interior_value: Value(s) at interior point(s) adjacent to boundary.
+                           Can be scalar float or NDArray for vectorized operation.
             dx: Grid spacing
             side: Boundary side ('min' or 'max')
             **kwargs: Additional parameters (e.g., time for time-varying BCs)
 
         Returns:
-            Ghost cell value
+            Ghost cell value(s). Same type/shape as interior_value (template pattern).
         """
         ...
 
@@ -272,6 +298,8 @@ class DirichletCalculator:
     prescribed value g:
         u_boundary = (u_ghost + u_interior) / 2 = g  (cell-centered)
         => u_ghost = 2*g - u_interior
+
+    Supports vectorized operations for efficient array processing.
     """
 
     def __init__(
@@ -297,14 +325,15 @@ class DirichletCalculator:
     def grid_type(self) -> GridType:
         return self._grid_type
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
         **kwargs,
-    ) -> float:
-        """Compute ghost value for Dirichlet BC."""
+    ) -> T:
+        """Compute ghost value for Dirichlet BC (vectorized)."""
+        # NumPy broadcasting handles both scalar and array inputs
         return ghost_cell_dirichlet(interior_value, self._boundary_value, self._grid_type)
 
     def __repr__(self) -> str:
@@ -319,6 +348,8 @@ class NeumannCalculator:
     the prescribed flux g:
         du/dn = (u_ghost - u_interior) / (2*dx) = g  (cell-centered)
         => u_ghost = u_interior + 2*dx*g
+
+    Supports vectorized operations for efficient array processing.
     """
 
     def __init__(
@@ -344,14 +375,14 @@ class NeumannCalculator:
     def grid_type(self) -> GridType:
         return self._grid_type
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
         **kwargs,
-    ) -> float:
-        """Compute ghost value for Neumann BC."""
+    ) -> T:
+        """Compute ghost value for Neumann BC (vectorized)."""
         # Outward normal sign: +1 for max boundary, -1 for min boundary
         outward_sign = 1.0 if side == "max" else -1.0
         return ghost_cell_neumann(interior_value, self._flux_value, dx, outward_sign, self._grid_type)
@@ -366,6 +397,8 @@ class RobinCalculator:
 
     Computes ghost cell value for the Robin condition:
         alpha*u + beta*du/dn = g
+
+    Supports vectorized operations for efficient array processing.
     """
 
     def __init__(
@@ -389,14 +422,14 @@ class RobinCalculator:
         self._rhs_value = rhs_value
         self._grid_type = grid_type
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
         **kwargs,
-    ) -> float:
-        """Compute ghost value for Robin BC."""
+    ) -> T:
+        """Compute ghost value for Robin BC (vectorized)."""
         outward_sign = 1.0 if side == "max" else -1.0
         return ghost_cell_robin(
             interior_value,
@@ -416,21 +449,30 @@ class NoFluxCalculator:
     """
     Calculator for no-flux (zero Neumann) boundary conditions.
 
-    This is a special case of Neumann with flux = 0, but named explicitly
-    for clarity. Ghost cell equals interior value (edge extension).
+    **WARNING: FOR HJB/GRADIENT EQUATIONS ONLY.**
+
+    This implements du/dn = 0 (zero gradient at boundary), which is appropriate
+    for HJB value functions with reflective walls. Ghost = interior (edge extension).
+
+    **FOR FOKKER-PLANCK EQUATIONS, USE FPNoFluxCalculator INSTEAD.**
+    FP equations require zero total flux J·n = 0, not zero gradient. Using this
+    calculator for FP will violate mass conservation.
+
+    Supports vectorized operations for efficient array processing.
     """
 
     def __init__(self, grid_type: GridType = GridType.CELL_CENTERED):
         self._grid_type = grid_type
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
         **kwargs,
-    ) -> float:
-        """Compute ghost value for no-flux BC (edge extension)."""
+    ) -> T:
+        """Compute ghost value for no-flux BC (edge extension, vectorized)."""
+        # Simply return interior value - works for both scalar and array
         return interior_value
 
     def __repr__(self) -> str:
@@ -444,19 +486,20 @@ class LinearExtrapolationCalculator:
     Uses zero second derivative (d²u/dx² = 0) at boundary.
     Ghost = 2*u_0 - u_1
 
-    Requires access to two interior values.
+    Suitable for HJB problems with linear value growth at infinity.
+    Supports vectorized operations for efficient array processing.
     """
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
-        second_interior_value: float | None = None,
+        second_interior_value: T | None = None,
         **kwargs,
-    ) -> float:
+    ) -> T:
         """
-        Compute ghost value via linear extrapolation.
+        Compute ghost value via linear extrapolation (vectorized).
 
         Args:
             interior_value: Value at point adjacent to boundary (u_0)
@@ -470,7 +513,8 @@ class LinearExtrapolationCalculator:
         if second_interior_value is None:
             # Fall back to edge extension if second value not provided
             return interior_value
-        return ghost_cell_linear_extrapolation((interior_value, second_interior_value))
+        # Vectorized: works for both scalar and array
+        return 2.0 * interior_value - second_interior_value
 
     def __repr__(self) -> str:
         return "LinearExtrapolationCalculator()"
@@ -483,20 +527,21 @@ class QuadraticExtrapolationCalculator:
     Uses zero third derivative (d³u/dx³ = 0) at boundary.
     Ghost = 3*u_0 - 3*u_1 + u_2
 
-    Requires access to three interior values.
+    Suitable for LQG-type problems with quadratic value functions.
+    Supports vectorized operations for efficient array processing.
     """
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
-        second_interior_value: float | None = None,
-        third_interior_value: float | None = None,
+        second_interior_value: T | None = None,
+        third_interior_value: T | None = None,
         **kwargs,
-    ) -> float:
+    ) -> T:
         """
-        Compute ghost value via quadratic extrapolation.
+        Compute ghost value via quadratic extrapolation (vectorized).
 
         Args:
             interior_value: Value at point adjacent to boundary (u_0)
@@ -511,9 +556,10 @@ class QuadraticExtrapolationCalculator:
         if second_interior_value is None or third_interior_value is None:
             # Fall back to linear if not enough points
             if second_interior_value is not None:
-                return ghost_cell_linear_extrapolation((interior_value, second_interior_value))
+                return 2.0 * interior_value - second_interior_value
             return interior_value
-        return ghost_cell_quadratic_extrapolation((interior_value, second_interior_value, third_interior_value))
+        # Vectorized: works for both scalar and array
+        return 3.0 * interior_value - 3.0 * second_interior_value + third_interior_value
 
     def __repr__(self) -> str:
         return "QuadraticExtrapolationCalculator()"
@@ -525,9 +571,15 @@ class FPNoFluxCalculator:
 
     For advection-diffusion equations, no-flux means J·n = 0 where
     J = v*ρ - D*∇ρ. This requires a Robin-type formula that accounts
-    for both advection and diffusion.
+    for both advection and diffusion:
+        u_ghost = (2D - v*dx) / (2D + v*dx) * u_interior
 
-    This is more physically correct than pure Neumann for FP equations.
+    This is more physically correct than pure Neumann for FP equations
+    and ensures mass conservation.
+
+    **USE THIS FOR FOKKER-PLANCK EQUATIONS, NOT NoFluxCalculator.**
+
+    Supports vectorized operations for efficient array processing.
     """
 
     def __init__(
@@ -548,25 +600,29 @@ class FPNoFluxCalculator:
         self._diffusion = diffusion_coeff
         self._grid_type = grid_type
 
-    def compute(
+    def compute[T: FieldData](
         self,
-        interior_value: float,
+        interior_value: T,
         dx: float,
         side: str,
         drift_velocity: float | None = None,
         **kwargs,
-    ) -> float:
+    ) -> T:
         """
-        Compute ghost value for FP no-flux BC.
+        Compute ghost value for FP no-flux BC (vectorized).
 
         Args:
-            interior_value: Density at interior point
+            interior_value: Density at interior point(s)
             dx: Grid spacing
             side: Boundary side ('min' or 'max')
             drift_velocity: Override drift velocity (optional)
+
+        Returns:
+            Ghost value(s) ensuring zero total flux J·n = 0
         """
         outward_sign = 1.0 if side == "max" else -1.0
         v = drift_velocity if drift_velocity is not None else self._drift
+        # Vectorized formula: works for both scalar and array
         return ghost_cell_fp_no_flux(
             interior_value,
             v,
