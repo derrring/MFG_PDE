@@ -1,0 +1,223 @@
+# Boundary Conditions Guide
+
+This guide explains how to specify and apply boundary conditions in MFG_PDE.
+
+## Quick Start
+
+```python
+from mfg_pde.geometry.boundary import (
+    dirichlet_bc,
+    neumann_bc,
+    periodic_bc,
+    no_flux_bc,
+    mixed_bc,
+    BCSegment,
+    BCType,
+)
+
+# Uniform BC (same on all boundaries)
+bc = neumann_bc(dimension=2)  # Zero-flux everywhere
+
+# Dirichlet with specific value
+bc = dirichlet_bc(dimension=2, value=0.0)
+
+# Periodic BC
+bc = periodic_bc(dimension=2)
+
+# Time-dependent BC
+bc = dirichlet_bc(dimension=2, value=lambda t: np.sin(t))
+```
+
+## BC Types
+
+| Type | Mathematical Form | Typical Use |
+|------|-------------------|-------------|
+| `DIRICHLET` | u = g | Fixed value at boundary |
+| `NEUMANN` | du/dn = g | Fixed flux at boundary |
+| `NO_FLUX` | du/dn = 0 | Reflecting/insulating boundary |
+| `ROBIN` | alpha*u + beta*du/dn = g | Mixed condition |
+| `PERIODIC` | u(x_min) = u(x_max) | Wrap-around domain |
+
+## Mixed Boundary Conditions
+
+For different BC types on different boundaries:
+
+```python
+from mfg_pde.geometry.boundary import mixed_bc, BCSegment, BCType
+import numpy as np
+
+# Define domain
+bounds = np.array([[0, 1], [0, 1]])  # Unit square
+
+# Exit at top (Dirichlet), walls elsewhere (Neumann)
+exit_bc = BCSegment(
+    name="exit",
+    bc_type=BCType.DIRICHLET,
+    value=0.0,
+    boundary="y_max",  # Top boundary
+)
+wall_bc = BCSegment(
+    name="wall",
+    bc_type=BCType.NEUMANN,
+    value=0.0,
+    # No boundary specified = default for remaining boundaries
+)
+
+bc = mixed_bc([exit_bc, wall_bc], dimension=2, domain_bounds=bounds)
+```
+
+## Boundary Naming Convention
+
+| Dimension | Boundaries |
+|-----------|------------|
+| 1D | `x_min`, `x_max` |
+| 2D | `x_min`, `x_max`, `y_min`, `y_max` |
+| 3D | `x_min`, `x_max`, `y_min`, `y_max`, `z_min`, `z_max` |
+| 4D+ | `dim0_min`, `dim0_max`, `dim1_min`, ... |
+
+## Ghost Cell Method (FDM)
+
+For finite difference methods, BCs are enforced via ghost cells:
+
+```python
+from mfg_pde.geometry.boundary import apply_boundary_conditions_2d
+
+# field has shape (Ny, Nx) - interior points only
+padded = apply_boundary_conditions_2d(field, bc, domain_bounds)
+# padded has shape (Ny+2, Nx+2) - includes ghost cells
+```
+
+### Ghost Cell Formulas
+
+For cell-centered grids with boundary at cell face:
+
+- **Dirichlet** (u = g): `u_ghost = 2*g - u_interior`
+- **Neumann** (du/dn = g): `u_ghost = u_interior + 2*dx*g` (outward normal)
+- **No-flux** (du/dn = 0): `u_ghost = u_interior`
+
+## Corner Handling
+
+When different BCs meet at corners (e.g., Dirichlet on one edge, Neumann on adjacent edge), the ghost cell value is computed using **averaging**:
+
+```
+corner_ghost = 0.5 * (adjacent_edge_ghost_1 + adjacent_edge_ghost_2)
+```
+
+### Why Averaging?
+
+1. **Numerical stability**: Avoids discontinuities at corners
+2. **BC agnostic**: Works for any combination of BC types
+3. **Smooth solutions**: Produces well-behaved ghost values
+
+### Corner Strategies (Advanced)
+
+For special cases, alternative strategies may be more appropriate:
+
+| Strategy | Description | When to Use |
+|----------|-------------|-------------|
+| **Average** (default) | Mean of adjacent ghost values | General purpose |
+| **Priority** | Dirichlet takes precedence over Neumann | Sharp BC interfaces |
+| **Extrapolate** | From interior points | When BCs don't dominate |
+
+The default averaging strategy is recommended for most MFG applications.
+
+## Time-Dependent BCs
+
+BCs can vary with time:
+
+```python
+# Time-varying Dirichlet
+def inlet_profile(t):
+    return 1.0 - np.exp(-t)
+
+bc = dirichlet_bc(dimension=2, value=inlet_profile)
+
+# Apply at specific time
+padded = apply_boundary_conditions_2d(field, bc, bounds, time=0.5)
+```
+
+For spatially-varying BCs:
+
+```python
+# Function of position and time
+def inlet_profile(point, time):
+    x, y = point
+    return np.sin(np.pi * y) * np.exp(-time)
+
+exit_bc = BCSegment(
+    name="exit",
+    bc_type=BCType.DIRICHLET,
+    value=inlet_profile,
+    boundary="x_max",
+)
+```
+
+## Lazy Dimension Binding
+
+BCs can be created without specifying dimension, then bound when attached to geometry:
+
+```python
+# Create BC without dimension
+bc = neumann_bc()  # dimension=None
+
+# Dimension auto-detected when used with geometry
+grid = TensorProductGrid(bounds=[[0,1], [0,1]], num_points=[51, 51])
+grid.boundary_conditions = bc  # Automatically binds to dimension=2
+```
+
+## Solver-Specific Notes
+
+### HJB Solvers (FDM, WENO, GFDM)
+
+Ghost values are used for upwind gradient computation:
+- At left boundary with rightward flow: backward difference uses ghost
+- At right boundary with leftward flow: forward difference uses ghost
+
+### FP Solvers (FDM)
+
+Ghost values ensure mass conservation at boundaries:
+- No-flux BC: ghost = interior (zero gradient)
+- Dirichlet BC: ghost reflects the boundary value
+
+### Particle Methods
+
+Particles are reflected at boundaries:
+- Normal reflection for no-flux
+- Absorption for Dirichlet (particle removed or reset)
+
+## Performance Tips
+
+1. **Pre-compute masks**: For mixed BCs, use `create_boundary_mask_2d()` to identify segments once
+2. **Avoid callable BCs when possible**: Constant values are faster
+3. **Use uniform BCs**: Simpler path, less overhead than mixed BCs
+
+## Common Issues
+
+### "BC dimension not set"
+
+```python
+# Wrong: using unbound BC
+bc = neumann_bc()  # dimension=None
+apply_boundary_conditions_2d(field, bc, bounds)  # Error!
+
+# Correct: bind dimension first
+bc = bc.bind_dimension(2)
+apply_boundary_conditions_2d(field, bc, bounds)  # Works
+```
+
+### "domain_bounds required for mixed BC"
+
+```python
+# Wrong: mixed BC without bounds
+bc = mixed_bc([seg1, seg2], dimension=2)
+apply_boundary_conditions_2d(field, bc)  # Error!
+
+# Correct: provide bounds
+apply_boundary_conditions_2d(field, bc, domain_bounds=bounds)
+```
+
+## See Also
+
+- `mfg_pde.geometry.boundary` module documentation
+- `docs/development/reports/BC_CORNER_LOGIC_AUDIT.md` - Technical details on corner handling
+- `docs/development/reports/BC_UNIFICATION_TECHNICAL_REPORT.md` - Architecture overview
