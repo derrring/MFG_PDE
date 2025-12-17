@@ -1,0 +1,296 @@
+# Boundary Condition Architecture Analysis
+
+**Status**: Technical Analysis
+**Date**: 2024-12
+**Related**: Issue #486 (BC Unification)
+
+---
+
+## Executive Summary
+
+This document analyzes the boundary condition (BC) architecture in MFG_PDE, synthesizing lessons learned from implementing FP solver BC integration. The key insight is that **boundary conditions involve three distinct concerns that are often conflated**:
+
+1. **Topology**: How space connects (periodic vs bounded)
+2. **Discretization**: Where values are stored (cell-centered vs vertex-centered)
+3. **Physics**: What values are prescribed (Dirichlet, Neumann, Robin, etc.)
+
+The current architecture handles these reasonably well through the applicator hierarchy, but lacks explicit conceptual separation. This document proposes a mental model and identifies edge cases for future development.
+
+---
+
+## 1. The Two-Layer Processing Model
+
+### Layer 1: Topology — "Where does data come from?"
+
+Topology determines **connectivity** — whether space wraps around or has edges.
+
+| Topology | Characteristic | Action | Ghost Source |
+|----------|---------------|--------|--------------|
+| **Periodic** | Space wraps (torus) | Wrap indexing | Copy from opposite boundary |
+| **Bounded** | Space has edges | Allocate ghost memory | Compute from physics |
+
+**Key constraint**: Periodic topology requires BOTH boundaries of an axis to be periodic. You cannot have periodic on left and Dirichlet on right — that's topologically incoherent.
+
+**Implementation note**: For periodic topology, no physics calculation is needed — it's pure data movement. This is why particle solvers only need topology, not physics.
+
+### Layer 2: Physics — "What value goes in the ghost cell?"
+
+Physics determines **numerical values** at boundaries. Only activated when topology is **Bounded**.
+
+| Category | Common Names | Mathematical Form | Ghost Calculation |
+|----------|-------------|-------------------|-------------------|
+| **Hard Value** | Dirichlet, Absorbing, Exit | u = g | `u_ghost = 2g - u_inner` (cell-centered) |
+| **Slope** | Neumann, Reflective, Symmetric | ∂u/∂n = g | `u_ghost = u_inner ± dx·g` |
+| **Mixed** | Robin, No-Flux, Impedance | αu + β∂u/∂n = g | Solve algebraic equation |
+
+**Critical insight**: The same physical name (e.g., "no-flux") requires different discrete formulas depending on the equation being solved:
+
+- **Heat equation no-flux**: Neumann (∂T/∂n = 0)
+- **Fokker-Planck no-flux**: Robin (zeroes total flux J = vρ - D∇ρ)
+- **HJB reflective**: Neumann (∂V/∂n = 0)
+
+---
+
+## 2. Current Architecture Mapping
+
+### What We Have
+
+```
+mfg_pde/geometry/boundary/
+├── types.py              # BCType enum (mixes topology + physics)
+├── conditions.py         # BoundaryConditions class
+├── applicator_base.py    # Base classes + ghost cell helpers
+├── applicator_fdm.py     # FDM ghost cell application
+├── applicator_fem.py     # FEM matrix modification
+├── applicator_meshfree.py # Particle reflection
+└── applicator_graph.py   # Graph node constraints
+```
+
+### BCType Enum Analysis
+
+```python
+class BCType(Enum):
+    # TOPOLOGY (affects connectivity)
+    PERIODIC = "periodic"      # Wraps around
+
+    # PHYSICS (affects values)
+    DIRICHLET = "dirichlet"    # u = g
+    NEUMANN = "neumann"        # ∂u/∂n = g
+    ROBIN = "robin"            # αu + β∂u/∂n = g
+    NO_FLUX = "no_flux"        # J·n = 0 (total flux)
+    REFLECTING = "reflecting"  # Particle reflection
+```
+
+**Observation**: `PERIODIC` is fundamentally different from the others — it's about topology, not physics. The others are all bounded-topology physics types.
+
+### Applicator Hierarchy
+
+The applicator pattern correctly separates concerns by discretization method:
+
+| Applicator | Discretization | Topology Handling | Physics Handling |
+|------------|---------------|-------------------|------------------|
+| `FDMApplicator` | Structured grid | Periodic wrap / ghost allocation | Ghost cell formulas |
+| `FEMApplicator` | Unstructured mesh | DOF identification | Matrix row modification |
+| `MeshfreeApplicator` | Particles | Wrap / reflect | Position clamping |
+| `GraphApplicator` | Graph nodes | Node identification | Value constraints |
+
+### Physics-Aware Ghost Functions
+
+The `applicator_base.py` correctly provides equation-specific ghost formulas:
+
+```python
+ghost_cell_dirichlet()      # Standard Dirichlet
+ghost_cell_neumann()        # Standard Neumann
+ghost_cell_robin()          # General Robin
+ghost_cell_fp_no_flux()     # FP-specific: zeroes total flux
+```
+
+This is the right approach — encoding equation-specific physics in dedicated functions.
+
+---
+
+## 3. Edge Cases and Hidden Complexity
+
+### 3.1 Corner Problem (2D/3D)
+
+**Issue**: In 2D+, ghost cells exist at corners, not just faces. Corner ghosts depend on both x and y boundary rules.
+
+**Current handling**: `np.pad` handles this implicitly via dimensional ordering.
+
+**Recommendation**: Document that ghost filling uses X→Y→Z order. For mixed BCs with different types per axis, verify corner values are sensible.
+
+```
+     y_ghost
+        │
+   ┌────┼────┬────────┐
+   │ ?? │ Ny │        │  <- Corner ghost: filled by Y-pass
+   ├────┼────┼────────┤      using X-ghost as "interior"
+   │ Gx │ G  │        │
+x_ghost─┼────┼────────┤
+   │    │    │        │
+   └────┴────┴────────┘
+```
+
+### 3.2 Grid Alignment (Vertex vs Cell-Centered)
+
+**Issue**: The same physical BC has different discrete formulas for different grid types.
+
+| BC Type | Vertex-Centered | Cell-Centered |
+|---------|-----------------|---------------|
+| Dirichlet u=g | `u[0] = g` | `u_ghost = 2g - u[0]` |
+| Neumann ∂u/∂n=0 | `u_ghost = u[1]` | `u_ghost = u[0]` |
+
+**Current handling**: `GridType` enum exists but isn't always used consistently.
+
+**Recommendation**: All ghost cell functions should accept `grid_type` parameter. The `ghost_cell_fp_no_flux()` already does this correctly.
+
+### 3.3 Time-Dependent BCs
+
+**Issue**: Current interface `compute_ghost(u_inner, dx)` doesn't support time-varying BCs like `u(boundary, t) = g(t)`.
+
+**Current handling**: Not explicitly supported.
+
+**Recommendation**: For future extension, consider:
+```python
+def compute_ghost(u_inner, dx, *, context: dict = None):
+    # context may contain: t, iteration, dt, etc.
+```
+
+### 3.4 Implicit Solver Matrix Assembly
+
+**Issue**: Implicit schemes (Au^{n+1} = b) don't use ghost cells — they modify matrix rows.
+
+| BC Type | Explicit (Ghost) | Implicit (Matrix) |
+|---------|-----------------|-------------------|
+| Dirichlet | `u_ghost = 2g - u_inner` | Set row to `[0,...,1,...,0]`, b to `g` |
+| Neumann | `u_ghost = u_inner` | Modify diagonal and off-diagonal |
+
+**Current handling**: `FEMApplicator` handles matrix modification. FDM implicit would need similar.
+
+**Recommendation**: If implicit FDM solvers are needed, add `apply_to_matrix(A, b)` interface to BC calculators.
+
+### 3.5 Unbounded Domains
+
+**Issue**: Many MFG problems are defined on R^d but computed on truncated domains.
+
+**Classification**: Unbounded = Bounded topology + special physics (extrapolation)
+
+| Equation | Far-field Behavior | Strategy |
+|----------|-------------------|----------|
+| Fokker-Planck | ρ → 0 | Dirichlet(0) at large L |
+| HJB value | V → ∞ (often linear) | Linear extrapolation |
+| Waves | Outgoing | Absorbing BC / PML |
+
+**Linear extrapolation formula** (assumes d²u/dx² = 0 at boundary):
+```python
+u_ghost = 2*u[0] - u[1]  # Extrapolate from two interior points
+```
+
+**Current handling**: Not explicitly implemented.
+
+**Recommendation**: Add `LinearExtrapolationBC` for HJB unbounded domains.
+
+### 3.6 Mixed BCs Per Dimension
+
+**Issue**: Different axes may have different BCs (e.g., periodic in x, Dirichlet in y).
+
+**Current handling**:
+- `BoundaryConditions` supports mixed BCs via segments
+- `get_bc_type_at_boundary()` enables per-boundary queries
+- Particle solver uses `_get_topology_per_dimension()` for per-axis topology
+
+**Status**: Well-handled after Issue #486 Phase 2.
+
+---
+
+## 4. Recommended Mental Model
+
+### For Developers
+
+When implementing BC handling, ask these questions in order:
+
+1. **Topology**: Is this axis periodic or bounded?
+   - Periodic → Copy from opposite boundary (no physics needed)
+   - Bounded → Proceed to step 2
+
+2. **Discretization**: Is this vertex-centered or cell-centered?
+   - This determines the geometric relationship between ghost and boundary
+
+3. **Physics**: What physical constraint applies?
+   - Map physical name to mathematical form (Dirichlet/Neumann/Robin)
+   - Consider equation-specific variants (FP no-flux ≠ HJB reflective)
+
+4. **Context**: Any special considerations?
+   - Time dependence?
+   - Corners in 2D+?
+   - Matrix assembly for implicit?
+
+### For Users
+
+When specifying BCs in config:
+
+```python
+# Uniform BC (same everywhere)
+bc = periodic_bc(dimension=2)  # Topology: periodic
+bc = no_flux_bc(dimension=2)   # Topology: bounded, Physics: no-flux
+
+# Mixed BC (different per boundary)
+bc = mixed_bc([
+    BCSegment(bc_type=BCType.PERIODIC, boundary="x_min"),
+    BCSegment(bc_type=BCType.PERIODIC, boundary="x_max"),
+    BCSegment(bc_type=BCType.DIRICHLET, boundary="y_min", value=0),
+    BCSegment(bc_type=BCType.NEUMANN, boundary="y_max", value=0),
+], dimension=2)
+```
+
+---
+
+## 5. Architecture Recommendations
+
+### Short-term (No Breaking Changes)
+
+1. **Documentation**: Add taxonomy comments to `BCType` enum explaining topology vs physics distinction
+
+2. **Validation**: Add warning when periodic BC is only on one side of an axis
+
+3. **Consistency**: Ensure all ghost functions accept `grid_type` parameter
+
+### Medium-term (Minor API Extension)
+
+4. **Unbounded support**: Add `LinearExtrapolationBC` for HJB on truncated domains
+
+5. **Context passing**: Extend ghost function signatures to support time-dependent BCs
+
+6. **Corner validation**: Add debug mode that validates corner ghost values in 2D+
+
+### Long-term (If Implicit FDM Needed)
+
+7. **Matrix interface**: Add `apply_to_matrix(A, b)` to `BoundaryCalculator` protocol
+
+---
+
+## 6. Summary Table
+
+| Aspect | Current Status | Risk Level | Recommendation |
+|--------|---------------|------------|----------------|
+| Topology/Physics separation | Implicit in code | Low | Document explicitly |
+| Grid alignment (V/C) | Partial support | **Medium** | Enforce in all ghost functions |
+| Corner handling | Auto via np.pad | Low | Validate in debug mode |
+| Time-dependent BCs | Not supported | Low | Extend when needed |
+| Unbounded domains | Not supported | **Medium** | Add extrapolation BC |
+| Mixed BCs | Fully supported | Low | Done in #486 |
+| Implicit matrix assembly | FEM only | Low | Add if FDM implicit needed |
+
+---
+
+## References
+
+1. LeVeque (2007). *Finite Difference Methods for ODEs and PDEs*. SIAM.
+2. Risken (1996). *The Fokker-Planck Equation*. Springer.
+3. Achdou & Capuzzo-Dolcetta (2010). Mean Field Games: Numerical Methods. *SIAM J. Numer. Anal.*
+4. Patankar (1980). *Numerical Heat Transfer and Fluid Flow*. CRC Press.
+
+---
+
+**Document History**:
+- 2024-12: Initial analysis based on Issue #486 Phase 2 implementation
