@@ -404,14 +404,97 @@ bc = mixed_bc([
 
 ---
 
+## 7. Mathematical Foundations: Beyond DNR
+
+### Is Dirichlet-Neumann-Robin Sufficient?
+
+**Short answer**: No. DNR only covers the "tame" cases for 2nd-order linear elliptic/parabolic equations on regular domains.
+
+For deeper analysis (Analysis, Geometry, Control Theory), many boundary conditions cannot be captured by DNR:
+
+### 7.1 Beyond DNR: The Full Spectrum
+
+| Category | Description | Mathematical Form | Example |
+|----------|-------------|-------------------|---------|
+| **Dynamic BC** | Time derivative on boundary | ∂ₜu + αu + β∂ₙu = g | Membrane with mass |
+| **Ventcel BC** | Tangential Laplacian on boundary | ∂ₜu + αu + β∂ₙu + γΔ_∂Ω u = g | Thin film diffusion |
+| **Non-local BC** | Integral over domain/boundary | u(x) = ∫_Ω K(x,y)u(y)dy | Radiation transfer |
+| **Free boundary** | Unknown boundary ∂Ω(t) | Stefan: [∂ₙu] = L·vₙ | Phase change |
+| **Obstacle problem** | Complementarity constraint | min(-Δu - f, u - ψ) = 0 | Optimal stopping in HJB |
+| **Higher-order** | Multiple conditions per point | u=0 and ∂ₙu=0 (clamped) | Biharmonic plate |
+| **Transmission** | Interface between media | [u] = 0, [k∂ₙu] = 0 | Multi-domain coupling |
+| **State constraint** | Viscosity solution at boundary | H(x,∇u) ≤ 0 (supersolution) | HJB with inflow |
+
+### 7.2 The Lopatinskij-Shapiro (LS) Condition
+
+The mathematical framework unifying all well-posed boundary value problems.
+
+**Core idea**: For a BVP to have unique solutions, the boundary operator B must "cover" the PDE operator L — their principal symbols must satisfy an algebraic compatibility condition.
+
+**Formal statement**: For elliptic operator L and boundary operator B, compute the Lopatinskij matrix from principal symbols. The BVP is well-posed iff det(Lopatinskij Matrix) ≠ 0.
+
+**What LS checks**:
+- Dirichlet, Neumann, Robin: ✅ Satisfy LS
+- Oblique derivative ∂_v u = g: ✅ iff v is not tangent to boundary
+- Arbitrary combinations: May or may not satisfy LS
+
+**Discrete analog**: GKS stability (Gustafsson-Kreiss-Sundström) is the LS condition for finite difference schemes.
+
+### 7.3 Architecture Assessment for LS Compatibility
+
+| LS Requirement | Current Design | Status | Gap |
+|----------------|----------------|--------|-----|
+| General linear constraint Bu=g | `compute_ghost` returns value | ⚠️ Partial | Assumes explicit u_ghost = f(u_inner) |
+| System coupling | Single variable | ❌ Missing | Coupled systems need state vector |
+| High-order equations | 1 ghost layer | ⚠️ Limited | 4th-order needs 2 ghost layers |
+| Well-posedness check | None | ❌ Missing | Could add det(LS) ≠ 0 validation |
+
+### 7.4 Cost-Benefit Analysis: Full LS Rewrite
+
+**Core trade-off**: Current architecture uses **explicit assignment** (u_ghost = f(u_inner)). Full LS compatibility requires **implicit solving** (solve Bu=g for ghost values).
+
+| Aspect | Current (Ghost Cell) | Full LS (Matrix Assembly) |
+|--------|---------------------|---------------------------|
+| Complexity | O(1) per ghost | O(n) local system solve |
+| Modularity | BC decoupled from solver | BC must know solver stencil |
+| User experience | Simple enum/config | Operator coefficient matrices |
+| Applicability | 95% of HJB/MFG problems | 100% of well-posed BVPs |
+
+**Recommendation**: Do NOT rewrite for full LS. Instead, adopt progressive enhancement:
+
+1. **Phase 1 (Current)**: Explicit ghost cell for DNR + physics-aware variants
+2. **Phase 2 (Future)**: Add "implicit corrector" for complex BCs (small local solves)
+3. **Phase 3 (Long-term)**: Matrix interface `apply_to_matrix(A, b)` for implicit solvers
+
+### 7.5 Extensibility Note
+
+The `BoundaryCalculator` interface supports arbitrary logic via the Strategy pattern. For LS-satisfying but complex BCs, users can implement custom calculators.
+
+**Documentation note for API**:
+> *"The `BoundaryCalculator` interface implements discrete realizations of boundary operators. While the architecture supports arbitrary logic, it is the user's responsibility to ensure the chosen operator satisfies the discrete Lopatinskij-Shapiro (GKS) condition for the specific PDE to guarantee numerical stability."*
+
+---
+
 ## References
 
+### Numerical Methods (Primary)
 1. LeVeque (2007). *Finite Difference Methods for ODEs and PDEs*. SIAM.
 2. Risken (1996). *The Fokker-Planck Equation*. Springer.
 3. Achdou & Capuzzo-Dolcetta (2010). Mean Field Games: Numerical Methods. *SIAM J. Numer. Anal.*
 4. Patankar (1980). *Numerical Heat Transfer and Fluid Flow*. CRC Press.
 
+### Lopatinskij-Shapiro Condition (Theory)
+5. Wloka, J. T. (1987). *Partial Differential Equations*. Cambridge University Press. — Chapter 4 on LS condition.
+6. Lions, J. L., & Magenes, E. (1972). *Non-Homogeneous Boundary Value Problems and Applications*. Springer. — Foundational.
+7. Evans, L. C. (2010). *Partial Differential Equations*. AMS. — Standard graduate text.
+
+### Discrete Stability (GKS Theory)
+8. Gustafsson, B., Kreiss, H. O., & Oliger, J. (1995). *Time Dependent Problems and Difference Methods*. Wiley. — Discrete LS analog.
+9. Trefethen, L. N. (1996). *Spectral Methods in MATLAB*. SIAM. — BC effects on spectral radius.
+
 ---
 
 **Document History**:
 - 2024-12: Initial analysis based on Issue #486 Phase 2 implementation
+- 2024-12: Added Four-Tier Constraint Taxonomy and Physical Intent mapping
+- 2024-12: Added Section 7 on mathematical foundations (LS condition, cost-benefit analysis)
