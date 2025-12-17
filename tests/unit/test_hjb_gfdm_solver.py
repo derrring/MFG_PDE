@@ -21,10 +21,10 @@ def standard_problem():
     Standard MFGProblem configuration:
     - Domain: [0, 1] with 51 grid points
     - Time: T=1.0 with 51 time steps
-    - Diffusion: sigma=1.0
+    - Diffusion: diffusion=1.0
     """
     domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
-    return MFGProblem(geometry=domain, T=1.0, Nt=51, sigma=1.0)
+    return MFGProblem(geometry=domain, T=1.0, Nt=51, diffusion=1.0)
 
 
 class TestHJBGFDMSolverInitialization:

@@ -412,7 +412,7 @@ class TestHJBFDMSolverDiagonalTensor:
     def test_diagonal_tensor_2d(self):
         """Test HJB solver with constant diagonal tensor in 2D."""
         domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
 
@@ -448,7 +448,7 @@ class TestHJBFDMSolverDiagonalTensor:
     def test_non_diagonal_tensor_warning(self):
         """Test that HJB solver warns for non-diagonal tensor."""
         domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
 
@@ -508,7 +508,7 @@ class TestHJBFDMSolverDiagonalTensor:
     def test_diagonal_tensor_spatially_varying(self):
         """Test HJB solver with spatially-varying diagonal tensor."""
         domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
 
@@ -549,7 +549,7 @@ class TestHJBFDMSolverDiagonalTensor:
     def test_diagonal_tensor_callable(self):
         """Test HJB solver with callable diagonal tensor Σ(t, x, m)."""
         domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[11, 9])
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
 
@@ -587,7 +587,7 @@ class TestHJBFDMSolverDiagonalTensor:
     def test_diagonal_tensor_mutual_exclusivity(self):
         """Test that tensor_diffusion_field and diffusion_field are mutually exclusive."""
         domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[11, 9])
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=3, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
 
@@ -680,7 +680,7 @@ class TestHJBFDMSolverGhostValueBC:
         # Set boundary conditions on geometry
         domain.boundary_conditions = no_flux_bc(dimension=2)
 
-        problem = MFGProblem(geometry=domain, T=0.1, Nt=5, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=5, diffusion=0.1)
         solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_upwind")
 
         # Get grid shape
@@ -707,7 +707,7 @@ class TestHJBFDMSolverGhostValueBC:
         domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8])
         domain.boundary_conditions = dirichlet_bc(dimension=2, value=0.0)
 
-        problem = MFGProblem(geometry=domain, T=0.1, Nt=3, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=3, diffusion=0.1)
         solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_upwind")
 
         # Test gradient computation directly
@@ -738,7 +738,7 @@ class TestHJBFDMSolverGhostValueBC:
         domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
         domain.boundary_conditions = no_flux_bc(dimension=2)
 
-        problem = MFGProblem(geometry=domain, T=0.1, Nt=3, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=3, diffusion=0.1)
         # Use centered scheme (non-upwind)
         solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_centered")
 
@@ -801,7 +801,7 @@ class TestHJBFDMSolverGhostValueBC:
 
         T = 0.4
         Nt = 4
-        problem = MFGProblem(geometry=domain, T=T, Nt=Nt, sigma=0.1)
+        problem = MFGProblem(geometry=domain, T=T, Nt=Nt, diffusion=0.1)
         solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_upwind")
 
         Nx, Ny = domain.get_grid_shape()

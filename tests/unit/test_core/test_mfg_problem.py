@@ -132,7 +132,7 @@ def test_mfg_problem_custom_time():
 @pytest.mark.unit
 def test_mfg_problem_custom_coefficients():
     """Test MFGProblem with custom coefficients."""
-    problem = MFGProblem(sigma=0.5, coupling_coefficient=0.8)
+    problem = MFGProblem(diffusion=0.5, coupling_coefficient=0.8)
 
     assert problem.sigma == 0.5
     assert problem.coupling_coefficient == 0.8
@@ -275,7 +275,7 @@ def test_mfg_problem_with_custom_final_value():
 @pytest.mark.unit
 def test_hamiltonian_h_default():
     """Test default Hamiltonian H computation."""
-    problem = MFGProblem(Nx=10, sigma=1.0, coupling_coefficient=0.5)
+    problem = MFGProblem(Nx=10, diffusion=1.0, coupling_coefficient=0.5)
 
     x_idx = 5
     m_at_x = 1.0
@@ -408,7 +408,7 @@ def test_get_initial_m():
 @pytest.mark.unit
 def test_get_problem_info():
     """Test get_problem_info returns comprehensive info dict."""
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100, sigma=0.5, coupling_coefficient=0.8)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100, diffusion=0.5, coupling_coefficient=0.8)
 
     info = problem.get_problem_info()
 
@@ -495,7 +495,7 @@ def test_dual_geometry_specification():
     fp_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
     # Create problem with dual geometries
-    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1)
 
     # Check that both geometries are stored
     assert problem.hjb_geometry is hjb_grid
@@ -515,7 +515,7 @@ def test_dual_geometry_backward_compatibility():
     grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
 
     # Create problem with unified geometry (old API)
-    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=0.1)
 
     # Check that both hjb_geometry and fp_geometry point to the same geometry
     assert problem.hjb_geometry is grid
@@ -585,7 +585,7 @@ def test_dual_geometry_with_1d_grids():
     hjb_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])  # Fine grid
     fp_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Coarse grid
 
-    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1)
 
     # Verify dual geometry setup
     assert problem.hjb_geometry is hjb_grid
@@ -683,7 +683,7 @@ def test_sigma_deprecated_alias():
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        problem = MFGProblem(sigma=0.4)
+        problem = MFGProblem(diffusion=0.4)
 
         # Check deprecation warning was raised
         deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
@@ -745,7 +745,7 @@ def test_drift_field_callable():
 @pytest.mark.unit
 def test_get_diffusion_coefficient_field():
     """Test get_diffusion_coefficient_field returns CoefficientField wrapper."""
-    problem = MFGProblem(sigma=0.5)
+    problem = MFGProblem(diffusion=0.5)
 
     coeff_field = problem.get_diffusion_coefficient_field()
 
@@ -786,11 +786,11 @@ def test_has_state_dependent_coefficients_mixed():
     def drift_func(t, x, m):
         return -0.1 * x
 
-    problem2 = MFGProblem(sigma=0.5, drift=drift_func)
+    problem2 = MFGProblem(diffusion=0.5, drift=drift_func)
     assert problem2.has_state_dependent_coefficients()
 
     # Both scalar
-    problem3 = MFGProblem(sigma=0.5, drift=np.zeros(52))
+    problem3 = MFGProblem(diffusion=0.5, drift=np.zeros(52))
     assert not problem3.has_state_dependent_coefficients()
 
 

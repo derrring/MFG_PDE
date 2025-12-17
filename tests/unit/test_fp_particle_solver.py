@@ -323,7 +323,7 @@ class TestFPParticleSolverNumericalProperties:
 
     def test_forward_time_propagation(self):
         """Test that solution is computed for all time steps."""
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30, sigma=0.3)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30, diffusion=0.3)
         solver = FPParticleSolver(problem, num_particles=2000)
 
         Nt = problem.Nt + 1

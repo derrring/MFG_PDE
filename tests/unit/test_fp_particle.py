@@ -24,7 +24,7 @@ class Simple2DMFGProblem(MFGProblem):
             Nx=20,
             Lx=1.0,
             xmin=0.0,
-            sigma=0.1,
+            diffusion=0.1,
             coupling_coefficient=0.5,
             dimension=2,
         )
