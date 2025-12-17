@@ -142,7 +142,12 @@ class FluxDiagnostics:
 
     @staticmethod
     def _get_boundary_names(dimension: int) -> list[str]:
-        """Get boundary names for given dimension."""
+        """Get boundary names for given dimension.
+
+        Returns names for the 2 * dimension boundary faces (min and max for each axis).
+        For dimensions 1-3, uses human-readable names for backward compatibility.
+        For dimension >= 4, uses systematic naming (dim0_min, dim0_max, ...).
+        """
         if dimension == 1:
             return ["left", "right"]
         elif dimension == 2:
@@ -150,7 +155,11 @@ class FluxDiagnostics:
         elif dimension == 3:
             return ["left", "right", "bottom", "top", "back", "front"]
         else:
-            raise ValueError(f"Unsupported dimension: {dimension}")
+            # General nD: dim0_min, dim0_max, dim1_min, dim1_max, ...
+            names = []
+            for d in range(dimension):
+                names.extend([f"dim{d}_min", f"dim{d}_max"])
+            return names
 
     def compute_boundary_flux(
         self,
@@ -190,7 +199,8 @@ class FluxDiagnostics:
         elif self.dimension == 2:
             result = self._compute_flux_2d(m, velocity_field, diffusion)
         else:
-            raise NotImplementedError(f"Flux diagnostics not implemented for {self.dimension}D")
+            # General nD implementation for dimension >= 3
+            result = self._compute_flux_nd(m, velocity_field, diffusion)
 
         # Track history
         self._flux_history.append(result)
@@ -200,7 +210,12 @@ class FluxDiagnostics:
         return result
 
     def _compute_velocity_from_u(self, u: NDArray, coupling: float) -> NDArray:
-        """Compute velocity field α = -∇u / coupling from value function."""
+        """Compute velocity field α = -∇u / coupling from value function.
+
+        Uses central differences in the interior and one-sided differences at boundaries.
+        Returns velocity as array with shape (*u.shape, dimension) for dimension >= 2,
+        or same shape as u for 1D.
+        """
         if self.dimension == 1:
             dx = self.spacing[0]
             # Central difference for interior, one-sided at boundaries
@@ -209,25 +224,44 @@ class FluxDiagnostics:
             alpha[0] = -(u[1] - u[0]) / (dx * coupling)
             alpha[-1] = -(u[-1] - u[-2]) / (dx * coupling)
             return alpha
-        elif self.dimension == 2:
-            dx, dy = self.spacing
-            alpha_x = np.zeros_like(u)
-            alpha_y = np.zeros_like(u)
-
-            # Interior: central differences
-            alpha_x[1:-1, :] = -(u[2:, :] - u[:-2, :]) / (2 * dx * coupling)
-            alpha_y[:, 1:-1] = -(u[:, 2:] - u[:, :-2]) / (2 * dy * coupling)
-
-            # Boundaries: one-sided
-            alpha_x[0, :] = -(u[1, :] - u[0, :]) / (dx * coupling)
-            alpha_x[-1, :] = -(u[-1, :] - u[-2, :]) / (dx * coupling)
-            alpha_y[:, 0] = -(u[:, 1] - u[:, 0]) / (dy * coupling)
-            alpha_y[:, -1] = -(u[:, -1] - u[:, -2]) / (dy * coupling)
-
-            # Return as tuple (will need adjustment for interface)
-            return np.stack([alpha_x, alpha_y], axis=-1)
         else:
-            raise NotImplementedError
+            # General nD implementation (dimension >= 2)
+            alpha_components = []
+
+            for d in range(self.dimension):
+                h = self.spacing[d]
+                alpha_d = np.zeros_like(u)
+
+                # Build slices for this dimension
+                # Interior: central difference
+                interior_slice = [slice(None)] * self.dimension
+                interior_slice[d] = slice(1, -1)
+                forward_slice = [slice(None)] * self.dimension
+                forward_slice[d] = slice(2, None)
+                backward_slice = [slice(None)] * self.dimension
+                backward_slice[d] = slice(None, -2)
+
+                alpha_d[tuple(interior_slice)] = -(u[tuple(forward_slice)] - u[tuple(backward_slice)]) / (
+                    2 * h * coupling
+                )
+
+                # Low boundary: forward one-sided difference
+                lo_slice = [slice(None)] * self.dimension
+                lo_slice[d] = 0
+                lo_next_slice = [slice(None)] * self.dimension
+                lo_next_slice[d] = 1
+                alpha_d[tuple(lo_slice)] = -(u[tuple(lo_next_slice)] - u[tuple(lo_slice)]) / (h * coupling)
+
+                # High boundary: backward one-sided difference
+                hi_slice = [slice(None)] * self.dimension
+                hi_slice[d] = -1
+                hi_prev_slice = [slice(None)] * self.dimension
+                hi_prev_slice[d] = -2
+                alpha_d[tuple(hi_slice)] = -(u[tuple(hi_slice)] - u[tuple(hi_prev_slice)]) / (h * coupling)
+
+                alpha_components.append(alpha_d)
+
+            return np.stack(alpha_components, axis=-1)
 
     def _compute_flux_1d(
         self,
@@ -359,6 +393,104 @@ class FluxDiagnostics:
         boundary_fluxes["top"] = J_top
         total_advection += float(np.sum(adv_top) * dx)
         total_diffusion += float(np.sum(diff_top) * dx)
+
+        # Net flux (sum of all boundary fluxes, all pointing outward)
+        net_flux = sum(boundary_fluxes.values())
+        is_conserved = abs(net_flux) < self.tolerance
+
+        return BoundaryFluxResult(
+            total_mass=total_mass,
+            boundary_fluxes=boundary_fluxes,
+            net_flux=float(net_flux),
+            advection_flux=float(total_advection),
+            diffusion_flux=float(total_diffusion),
+            is_conserved=is_conserved,
+            tolerance=self.tolerance,
+        )
+
+    def _compute_flux_nd(
+        self,
+        m: NDArray,
+        alpha: NDArray,
+        D: float | NDArray,
+    ) -> BoundaryFluxResult:
+        """Compute nD boundary flux for dimension >= 3.
+
+        J = α·m - D∇m
+
+        Integrates flux over each boundary face (2 faces per dimension).
+        For each dimension d, computes flux at x_d = min and x_d = max faces.
+        """
+        # Total mass: integrate over entire domain
+        cell_volume = float(np.prod(self.spacing))
+        total_mass = float(np.sum(m) * cell_volume)
+
+        # Handle velocity field shape: either scalar or vector (*shape, dimension)
+        if alpha.ndim == self.dimension:
+            # Scalar velocity field - use same value for all components
+            alpha_components = [alpha] * self.dimension
+        else:
+            # Vector velocity field: shape (*grid_shape, dimension)
+            alpha_components = [alpha[..., d] for d in range(self.dimension)]
+
+        # Diffusion coefficient
+        D_val = D if np.isscalar(D) else float(np.mean(D))
+
+        boundary_fluxes = {}
+        total_advection = 0.0
+        total_diffusion = 0.0
+
+        # Get boundary names for this dimension
+        boundary_names = self._boundary_names
+
+        # For each dimension d, compute flux at min and max faces
+        for d in range(self.dimension):
+            h_d = self.spacing[d]
+            alpha_d = alpha_components[d]
+
+            # Compute face area (product of spacings for all OTHER dimensions)
+            face_area = float(np.prod([self.spacing[i] for i in range(self.dimension) if i != d]))
+
+            # Build slices for boundary faces
+            lo_slice = [slice(None)] * self.dimension
+            lo_slice[d] = 0
+            lo_next_slice = [slice(None)] * self.dimension
+            lo_next_slice[d] = 1
+
+            hi_slice = [slice(None)] * self.dimension
+            hi_slice[d] = -1
+            hi_prev_slice = [slice(None)] * self.dimension
+            hi_prev_slice[d] = -2
+
+            # Low boundary (x_d = min): outward normal = -e_d
+            # J_lo = -α_d * m - D * (-∂m/∂x_d) = -α_d * m + D * ∂m/∂x_d
+            dm_lo = (m[tuple(lo_next_slice)] - m[tuple(lo_slice)]) / h_d
+            m_lo = m[tuple(lo_slice)]
+            alpha_lo = alpha_d[tuple(lo_slice)]
+
+            adv_lo = -alpha_lo * m_lo  # -α because normal points in -d direction
+            diff_lo = D_val * dm_lo  # Outward flux of diffusion
+
+            J_lo = float(np.sum(adv_lo + diff_lo) * face_area)
+            name_lo = boundary_names[2 * d]  # e.g., "left", "bottom", "back", "dim3_min"
+            boundary_fluxes[name_lo] = J_lo
+            total_advection += float(np.sum(adv_lo) * face_area)
+            total_diffusion += float(np.sum(diff_lo) * face_area)
+
+            # High boundary (x_d = max): outward normal = +e_d
+            # J_hi = α_d * m - D * ∂m/∂x_d
+            dm_hi = (m[tuple(hi_slice)] - m[tuple(hi_prev_slice)]) / h_d
+            m_hi = m[tuple(hi_slice)]
+            alpha_hi = alpha_d[tuple(hi_slice)]
+
+            adv_hi = alpha_hi * m_hi
+            diff_hi = -D_val * dm_hi
+
+            J_hi = float(np.sum(adv_hi + diff_hi) * face_area)
+            name_hi = boundary_names[2 * d + 1]  # e.g., "right", "top", "front", "dim3_max"
+            boundary_fluxes[name_hi] = J_hi
+            total_advection += float(np.sum(adv_hi) * face_area)
+            total_diffusion += float(np.sum(diff_hi) * face_area)
 
         # Net flux (sum of all boundary fluxes, all pointing outward)
         net_flux = sum(boundary_fluxes.values())
@@ -513,14 +645,13 @@ def compute_mass_conservation_error(
     cell_volume = float(np.prod(spacing))
 
     # Compute mass at each timestep
-    if M.ndim == 2:
-        # 1D: (Nt+1, Nx+1)
-        mass_history = np.sum(M, axis=1) * cell_volume
-    elif M.ndim == 3:
-        # 2D: (Nt+1, Nx+1, Ny+1)
-        mass_history = np.sum(M, axis=(1, 2)) * cell_volume
-    else:
-        raise ValueError(f"Unsupported array dimension: {M.ndim}")
+    # M has shape (Nt+1, *spatial_shape) where spatial_shape has ndim = len(spacing)
+    # Sum over all spatial dimensions (axes 1, 2, ..., M.ndim-1)
+    if M.ndim < 2:
+        raise ValueError(f"Array must have at least 2 dimensions (time + space), got {M.ndim}")
+
+    spatial_axes = tuple(range(1, M.ndim))  # (1,) for 1D, (1, 2) for 2D, etc.
+    mass_history = np.sum(M, axis=spatial_axes) * cell_volume
 
     initial_mass = mass_history[0]
     final_mass = mass_history[-1]
@@ -606,5 +737,60 @@ if __name__ == "__main__":
     print(f"   Final mass:   {stats['final_mass']:.6f}")
     print(f"   Drift:        {stats['mass_drift_percent']:.2f}%")
     print(f"   Conservative: {stats['is_conservative']}")
+
+    # Test 3D (using nD implementation)
+    print("\n4. Testing 3D flux computation (nD implementation)...")
+    Nx3, Ny3, Nz3 = 10, 10, 10
+    dx3, dy3, dz3 = 0.1, 0.1, 0.1
+    x3 = np.linspace(0, 1, Nx3 + 1)
+    y3 = np.linspace(0, 1, Ny3 + 1)
+    z3 = np.linspace(0, 1, Nz3 + 1)
+    X3, Y3, Z3 = np.meshgrid(x3, y3, z3, indexing="ij")
+
+    # 3D Gaussian density centered at (0.5, 0.5, 0.5)
+    m_3d = np.exp(-((X3 - 0.5) ** 2 + (Y3 - 0.5) ** 2 + (Z3 - 0.5) ** 2) / 0.05)
+    m_3d /= np.sum(m_3d) * dx3 * dy3 * dz3
+
+    # Zero velocity (pure diffusion)
+    alpha_3d = np.zeros((Nx3 + 1, Ny3 + 1, Nz3 + 1))
+
+    diag_3d = FluxDiagnostics(dimension=3, spacing=(dx3, dy3, dz3))
+    result_3d = diag_3d.compute_boundary_flux(m_3d, velocity_field=alpha_3d, diffusion=0.01)
+
+    print(f"   Total mass: {result_3d.total_mass:.6f}")
+    for name, flux in result_3d.boundary_fluxes.items():
+        print(f"   {name:8s}: {flux:+.4e}")
+    print(f"   Net flux:   {result_3d.net_flux:+.4e}")
+
+    # Test 4D (to verify truly general nD implementation)
+    print("\n5. Testing 4D flux computation (general nD)...")
+    N4 = 5  # Small grid for 4D
+    h4 = 0.2
+    grids_4d = [np.linspace(0, 1, N4 + 1) for _ in range(4)]
+    mesh_4d = np.meshgrid(*grids_4d, indexing="ij")
+
+    # 4D Gaussian centered at (0.5, 0.5, 0.5, 0.5)
+    r2_4d = sum((g - 0.5) ** 2 for g in mesh_4d)
+    m_4d = np.exp(-r2_4d / 0.1)
+    m_4d /= np.sum(m_4d) * h4**4
+
+    alpha_4d = np.zeros((N4 + 1,) * 4)
+
+    diag_4d = FluxDiagnostics(dimension=4, spacing=(h4,) * 4)
+    result_4d = diag_4d.compute_boundary_flux(m_4d, velocity_field=alpha_4d, diffusion=0.01)
+
+    print(f"   Total mass: {result_4d.total_mass:.6f}")
+    print(f"   Boundaries: {list(result_4d.boundary_fluxes.keys())}")
+    print(f"   Net flux:   {result_4d.net_flux:+.4e}")
+
+    # Test velocity computation from u in nD
+    print("\n6. Testing nD velocity from u computation...")
+    u_3d = X3**2 + Y3**2 + Z3**2  # Simple test function
+    diag_vel = FluxDiagnostics(dimension=3, spacing=(dx3, dy3, dz3))
+    vel_3d = diag_vel._compute_velocity_from_u(u_3d, coupling=1.0)
+    print(f"   Velocity shape: {vel_3d.shape}")
+    print(f"   Expected: {(*u_3d.shape, 3)}")
+    assert vel_3d.shape == (*u_3d.shape, 3), "Velocity shape mismatch"
+    print("   Shape check passed")
 
     print("\nAll smoke tests passed!")
