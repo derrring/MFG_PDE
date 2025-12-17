@@ -1,7 +1,7 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2025-12-14
-**Current Version**: v0.16.8
+**Last Updated**: 2025-12-17
+**Current Version**: v0.16.11
 **Target**: v1.0.0 (deprecated patterns will be removed)
 **Status**: Active migration in progress
 
@@ -21,6 +21,53 @@ This guide documents deprecated usage patterns in MFG_PDE and provides migration
 | **v0.17.0** | **Consolidate deprecations, stricter warnings** |
 | v0.18.x | Final warning period |
 | v1.0.0 | Remove all deprecated patterns |
+
+---
+
+## v0.16.11 Deprecation Summary (BC Architecture)
+
+### New Deprecations in v0.16.11
+
+#### 8. BC Calculator Renaming (PR #520, Issue #516)
+
+Physics-based naming for boundary condition calculators:
+
+| Old Name | New Name | Semantics |
+|:---------|:---------|:----------|
+| `NoFluxCalculator` | `ZeroGradientCalculator` | du/dn = 0 (edge extension) |
+| `FPNoFluxCalculator` | `ZeroFluxCalculator` | J·n = 0 (mass conservation) |
+
+**Why renamed**: The old names conflated two different physics:
+- `ZeroGradientCalculator`: Neumann BC, extends edge value (suitable for HJB)
+- `ZeroFluxCalculator`: Robin BC, ensures J·n = 0 (suitable for Fokker-Planck)
+
+These are equivalent only when drift velocity μ = 0.
+
+**Migration**:
+```python
+# Old (deprecated, will work until v0.19)
+from mfg_pde.geometry.boundary import NoFluxCalculator, FPNoFluxCalculator
+
+# New (preferred)
+from mfg_pde.geometry.boundary import ZeroGradientCalculator, ZeroFluxCalculator
+```
+
+#### 9. Legacy 1D FDM BoundaryConditions (Issue #516)
+
+| Old Name | New Name | Status |
+|:---------|:---------|:-------|
+| `BoundaryConditions1DFDM` | `BoundaryConditions` | Deprecated |
+| `LegacyBoundaryConditions1D` | `BoundaryConditions` | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+from mfg_pde.geometry.boundary import BoundaryConditions1DFDM
+
+# New (preferred)
+from mfg_pde.geometry.boundary import BoundaryConditions, neumann_bc
+bc = neumann_bc(dimension=1)
+```
 
 ---
 
@@ -382,6 +429,10 @@ class MyCustomProblem(MFGProblem):
 | Convergence | `AdaptiveConvergenceWrapper` | `ConvergenceWrapper` | Low | v0.17 |
 | Convergence | `create_default_monitor()` | `create_distribution_monitor()` | Low | v0.17 |
 | Convergence | `create_stochastic_monitor()` | `create_rolling_monitor()` | Low | v0.17 |
+| BC | `NoFluxCalculator` | `ZeroGradientCalculator` | Low | v0.16.11 |
+| BC | `FPNoFluxCalculator` | `ZeroFluxCalculator` | Low | v0.16.11 |
+| BC | `BoundaryConditions1DFDM` | `BoundaryConditions` | Low | v0.16.11 |
+| BC | `LegacyBoundaryConditions1D` | `BoundaryConditions` | Low | v0.16.11 |
 
 ---
 
@@ -414,12 +465,13 @@ pytest tests/unit/your_test_file.py
 
 ## Tracking Progress
 
-**Current Status** (as of 2025-12-13):
+**Current Status** (as of 2025-12-17):
 - ✅ Modern API fully implemented
 - ✅ Dimension-agnostic boundary handler (PR #305, #306)
 - ✅ Geometry-first unification complete (Issue #435, PRs #436-#443)
 - ✅ Legacy attributes converted to computed properties (PR #443)
 - ✅ Convergence module reorganized with renamed classes (PR #457)
+- ✅ BC Topology/Calculator composition (PR #520, Issue #516)
 - ⏳ Test file migration: 0/22 files converted
 - ⏳ Example migration: 0/10 files converted
 - ❌ v1.0.0 enforcement: Not yet implemented
@@ -429,7 +481,12 @@ pytest tests/unit/your_test_file.py
 |:--------|:-----------------|:-------------|
 | v0.15.x | 6 patterns | 6 |
 | v0.16.x | 4 patterns | 10 |
-| **v0.17.x** | **6 patterns** | **16** |
+| **v0.16.11** | **4 patterns (BC)** | **14** |
+| v0.17.x | 6 patterns | 20 |
+
+**Deprecation Timeline** (quick deprecation strategy - remove in 2-3 minor versions):
+- v0.16.11 deprecations → Remove in v0.19
+- v0.17.x deprecations → Remove in v0.20 or v1.0.0
 
 **Next Milestone**: v0.17.0 release with consolidated deprecation warnings
 

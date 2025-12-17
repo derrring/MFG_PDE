@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.16.10"  # v0.16.10: DerivativeTensors class for canonical derivative representation
+version = "0.16.11"  # v0.16.11: BC Topology/Calculator composition, physics-based naming
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
