@@ -1,9 +1,9 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2025-12-17
+**Last Updated**: 2025-12-18
 **Current Version**: v0.16.11
 **Target**: v1.0.0 (deprecated patterns will be removed)
-**Status**: Active migration in progress
+**Status**: ✅ Migration complete (tests, examples, mfg-research)
 
 ---
 
@@ -579,22 +579,30 @@ geometry.plot(mode='quality')
 
 ## Migration Strategy
 
-### Phase 1: Documentation (✅ Current)
+### Phase 1: Documentation (✅ Complete)
 - Document modern patterns (this guide)
 - Create migration examples in `examples/tutorials/`
 - Update README with modern usage
 
-### Phase 2: Controlled Test Conversion (Next)
+### Phase 2: Controlled Test Conversion (✅ Complete)
 - Convert 2-3 test files as reference examples
 - Verify no regressions
 - Document conversion pattern
 
-### Phase 3: Systematic Migration (v0.x.x series)
-- Batch convert remaining test files
-- Update all `examples/` to use modern API
-- Issue deprecation warnings for all legacy patterns
+### Phase 3: Systematic Migration (✅ Complete - 2025-12-18)
+- ✅ Batch convert remaining test files (55 files in MFG_PDE)
+- ✅ Update all `examples/` to use modern API
+- ✅ Migrate mfg-research repository (8 files)
+- ✅ Issue deprecation warnings for all legacy patterns
 
-### Phase 4: Enforcement (v1.0.0)
+**Migration patterns applied**:
+- `problem.xmin` → `problem.geometry.get_bounds()[0][0]`
+- `problem.xmax` → `problem.geometry.get_bounds()[1][0]`
+- `problem.dx` → `problem.geometry.get_grid_spacing()[0]`
+- `problem.Nx + 1` → `problem.geometry.get_grid_shape()[0]`
+- `sigma` → `diffusion` (parameter rename)
+
+### Phase 4: Enforcement (v1.0.0) - Pending
 - Remove deprecated constructors
 - Restrict manual grid construction
 - Legacy problem classes raise errors with migration hints
@@ -673,7 +681,7 @@ pytest tests/unit/your_test_file.py
 
 ## Tracking Progress
 
-**Current Status** (as of 2025-12-17):
+**Current Status** (as of 2025-12-18):
 - ✅ Modern API fully implemented
 - ✅ Dimension-agnostic boundary handler (PR #305, #306)
 - ✅ Geometry-first unification complete (Issue #435, PRs #436-#443)
@@ -681,9 +689,10 @@ pytest tests/unit/your_test_file.py
 - ✅ Convergence module reorganized with renamed classes (PR #457)
 - ✅ BC Topology/Calculator composition (PR #520, Issue #516)
 - ✅ **Comprehensive deprecation audit** (38 patterns documented)
-- ⏳ Test file migration: 0/22 files converted
-- ⏳ Example migration: 0/10 files converted
-- ❌ v1.0.0 enforcement: Not yet implemented
+- ✅ **Test file migration complete** (55 files in MFG_PDE)
+- ✅ **Example migration complete** (examples/, benchmarks/, tutorials/)
+- ✅ **mfg-research migration complete** (8 files)
+- ⏳ v1.0.0 enforcement: Not yet implemented
 
 **Deprecation Counts by Version** (comprehensive audit 2025-12-17):
 | Version | Category | Count | Total Active |
