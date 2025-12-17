@@ -73,6 +73,7 @@ from .applicator_fdm import (
     apply_boundary_conditions_3d,
     apply_boundary_conditions_nd,
     create_boundary_mask_2d,
+    get_ghost_values_nd,
 )
 
 # =============================================================================
@@ -210,6 +211,7 @@ __all__ = [
     "apply_boundary_conditions_3d",
     "apply_boundary_conditions_nd",
     "create_boundary_mask_2d",
+    "get_ghost_values_nd",
     # FEM Applicator - dispatchers
     "FEMApplicator",
     "MFGBoundaryHandlerFEM",

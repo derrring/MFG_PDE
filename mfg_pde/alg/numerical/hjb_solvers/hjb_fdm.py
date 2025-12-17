@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
+from mfg_pde.geometry.boundary import get_ghost_values_nd
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
 from mfg_pde.utils.pde_coefficients import CoefficientField
 
@@ -496,11 +497,14 @@ class HJBFDMSolver(BaseHJBSolver):
         return U_solution
 
     def _compute_gradients_nd(self, U: NDArray) -> dict[int, NDArray]:
-        """Compute gradients using selected advection scheme.
+        """Compute gradients using selected advection scheme with proper BC handling.
 
         Supports two schemes:
         - gradient_centered: Central differences (second-order accurate)
         - gradient_upwind: Godunov upwind (first-order, monotone)
+
+        Uses ghost values from boundary conditions for proper gradient computation
+        at domain boundaries, ensuring upwind schemes respect BCs.
 
         Returns:
             Dict mapping dimension index to gradient array for that dimension.
@@ -509,6 +513,9 @@ class HJBFDMSolver(BaseHJBSolver):
         """
         # Store gradients by dimension index for efficient access
         gradients: dict[int, NDArray] = {-1: U}  # -1 = function value
+
+        # Get ghost values from boundary conditions (if available)
+        ghost_values = self._get_ghost_values(U)
 
         for d in range(self.dimension):
             h = self.spacing[d]
@@ -524,34 +531,56 @@ class HJBFDMSolver(BaseHJBSolver):
                 grad_backward = np.zeros_like(U)
 
                 # Forward difference: D^+ U = (U[i+1] - U[i]) / h
+                # Interior points (not including right boundary)
                 slices_curr = [slice(None)] * self.dimension
                 slices_next = [slice(None)] * self.dimension
                 slices_curr[d] = slice(None, -1)
                 slices_next[d] = slice(1, None)
                 grad_forward[tuple(slices_curr)] = (U[tuple(slices_next)] - U[tuple(slices_curr)]) / h
-                # Right boundary: use backward difference
-                slices_curr[d] = slice(-1, None)
+
+                # Right boundary: use ghost value if available
+                slices_right = [slice(None)] * self.dimension
+                slices_right[d] = slice(-1, None)
                 slices_prev = [slice(None)] * self.dimension
                 slices_prev[d] = slice(-2, -1)
-                grad_forward[tuple(slices_curr)] = (U[tuple(slices_curr)] - U[tuple(slices_prev)]) / h
+                if ghost_values is not None and (d, 1) in ghost_values:
+                    # Use ghost value: (U_ghost - U[-1]) / h
+                    u_ghost_right = ghost_values[(d, 1)]
+                    grad_forward[tuple(slices_right)] = (
+                        np.expand_dims(u_ghost_right, axis=d) - U[tuple(slices_right)]
+                    ) / h
+                else:
+                    # Fallback: backward difference at right boundary
+                    grad_forward[tuple(slices_right)] = (U[tuple(slices_right)] - U[tuple(slices_prev)]) / h
 
                 # Backward difference: D^- U = (U[i] - U[i-1]) / h
+                # Interior points (not including left boundary)
                 slices_curr = [slice(None)] * self.dimension
                 slices_prev = [slice(None)] * self.dimension
                 slices_curr[d] = slice(1, None)
                 slices_prev[d] = slice(None, -1)
                 grad_backward[tuple(slices_curr)] = (U[tuple(slices_curr)] - U[tuple(slices_prev)]) / h
-                # Left boundary: use forward difference
-                slices_curr[d] = slice(0, 1)
+
+                # Left boundary: use ghost value if available
+                slices_left = [slice(None)] * self.dimension
+                slices_left[d] = slice(0, 1)
                 slices_next[d] = slice(1, 2)
-                grad_backward[tuple(slices_curr)] = (U[tuple(slices_next)] - U[tuple(slices_curr)]) / h
+                if ghost_values is not None and (d, 0) in ghost_values:
+                    # Use ghost value: (U[0] - U_ghost) / h
+                    u_ghost_left = ghost_values[(d, 0)]
+                    grad_backward[tuple(slices_left)] = (
+                        U[tuple(slices_left)] - np.expand_dims(u_ghost_left, axis=d)
+                    ) / h
+                else:
+                    # Fallback: forward difference at left boundary
+                    grad_backward[tuple(slices_left)] = (U[tuple(slices_next)] - U[tuple(slices_left)]) / h
 
                 # Godunov upwind selection: use central estimate for sign
                 grad_central = (grad_forward + grad_backward) / 2.0
                 grad_d = np.where(grad_central >= 0, grad_backward, grad_forward)
 
             else:
-                # Central difference scheme (original implementation)
+                # Central difference scheme with ghost cell BC handling
                 slices = [slice(None)] * self.dimension
 
                 # Interior: central difference
@@ -563,14 +592,31 @@ class HJBFDMSolver(BaseHJBSolver):
 
                 grad_interior = (U[tuple(slices_fwd)] - U[tuple(slices_bwd)]) / (2 * h)
 
-                # Boundaries: one-sided differences
-                slices[d] = slice(0, 1)
-                slices_fwd[d] = slice(1, 2)
-                grad_left = (U[tuple(slices_fwd)] - U[tuple(slices)]) / h
+                # Left boundary: use ghost value if available
+                slices_left = [slice(None)] * self.dimension
+                slices_left[d] = slice(0, 1)
+                slices_next = [slice(None)] * self.dimension
+                slices_next[d] = slice(1, 2)
+                if ghost_values is not None and (d, 0) in ghost_values:
+                    # Central diff: (U[1] - U_ghost) / (2*h)
+                    u_ghost_left = ghost_values[(d, 0)]
+                    grad_left = (U[tuple(slices_next)] - np.expand_dims(u_ghost_left, axis=d)) / (2 * h)
+                else:
+                    # Fallback: one-sided difference
+                    grad_left = (U[tuple(slices_next)] - U[tuple(slices_left)]) / h
 
-                slices[d] = slice(-1, None)
-                slices_bwd[d] = slice(-2, -1)
-                grad_right = (U[tuple(slices)] - U[tuple(slices_bwd)]) / h
+                # Right boundary: use ghost value if available
+                slices_right = [slice(None)] * self.dimension
+                slices_right[d] = slice(-1, None)
+                slices_prev = [slice(None)] * self.dimension
+                slices_prev[d] = slice(-2, -1)
+                if ghost_values is not None and (d, 1) in ghost_values:
+                    # Central diff: (U_ghost - U[-2]) / (2*h)
+                    u_ghost_right = ghost_values[(d, 1)]
+                    grad_right = (np.expand_dims(u_ghost_right, axis=d) - U[tuple(slices_prev)]) / (2 * h)
+                else:
+                    # Fallback: one-sided difference
+                    grad_right = (U[tuple(slices_right)] - U[tuple(slices_prev)]) / h
 
                 # Concatenate
                 grad_d = np.concatenate([grad_left, grad_interior, grad_right], axis=d)
@@ -579,6 +625,41 @@ class HJBFDMSolver(BaseHJBSolver):
             gradients[d] = grad_d
 
         return gradients
+
+    def _get_ghost_values(self, U: NDArray) -> dict[tuple[int, int], NDArray] | None:
+        """Get ghost values from geometry boundary conditions.
+
+        Returns ghost values for each boundary, or None if BCs not available.
+        Ghost values are computed once per timestep to ensure upwind schemes
+        respect boundary conditions at domain boundaries.
+
+        Args:
+            U: Value function at current timestep
+
+        Returns:
+            Dictionary mapping (dimension, side) to ghost value arrays,
+            or None if geometry doesn't have boundary conditions.
+        """
+        # Try to get boundary conditions from geometry
+        if not hasattr(self, "grid") or self.grid is None:
+            return None
+
+        # Check if geometry has boundary conditions
+        bc = None
+        if hasattr(self.grid, "boundary_conditions"):
+            bc = self.grid.boundary_conditions
+        elif hasattr(self.problem, "boundary_conditions"):
+            bc = self.problem.boundary_conditions
+
+        if bc is None:
+            return None
+
+        # Compute ghost values using the BC applicator
+        try:
+            return get_ghost_values_nd(U, bc, self.spacing)
+        except (ValueError, TypeError):
+            # BC not compatible with ghost value computation
+            return None
 
     def _evaluate_hamiltonian_nd(
         self,
