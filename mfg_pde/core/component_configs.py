@@ -35,6 +35,8 @@ class StandardMFGConfig:
         H(x, m, p, t) -> float. Agent Hamiltonian defining dynamics.
     hamiltonian_dm_func : Callable, optional
         dH/dm(x, m, p, t) -> float. Derivative w.r.t. density.
+    hamiltonian_dp_func : Callable, optional
+        dH/dp(x, m, p, t) -> array. Derivative w.r.t. momentum (for analytic Jacobian).
     hamiltonian_jacobian_func : Callable, optional
         Jacobian contribution for coupling terms.
     potential_func : Callable, optional
@@ -51,6 +53,7 @@ class StandardMFGConfig:
 
     hamiltonian_func: Callable | None = None
     hamiltonian_dm_func: Callable | None = None
+    hamiltonian_dp_func: Callable | None = None
     hamiltonian_jacobian_func: Callable | None = None
     potential_func: Callable | None = None
     initial_density_func: Callable | None = None

@@ -150,6 +150,14 @@ class MFGComponents:
         self.standard.hamiltonian_dm_func = value
 
     @property
+    def hamiltonian_dp_func(self) -> Callable | None:
+        return self.standard.hamiltonian_dp_func
+
+    @hamiltonian_dp_func.setter
+    def hamiltonian_dp_func(self, value: Callable | None):
+        self.standard.hamiltonian_dp_func = value
+
+    @property
     def hamiltonian_jacobian_func(self) -> Callable | None:
         return self.standard.hamiltonian_jacobian_func
 

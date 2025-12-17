@@ -9,6 +9,9 @@ import numpy as np
 from scipy.linalg import lstsq
 from scipy.spatial.distance import cdist
 
+from mfg_pde.utils.numerical.differential_utils import (
+    compute_dH_dp,
+)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
 from mfg_pde.utils.numerical.particle.interpolation import (
     interpolate_grid_to_particles,
@@ -24,6 +27,7 @@ CVXPY_AVAILABLE = importlib.util.find_spec("cvxpy") is not None
 OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
 
 if TYPE_CHECKING:
+    from mfg_pde.core.derivatives import DerivativeTensors
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
 
@@ -72,6 +76,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         adaptive_neighborhoods: bool = False,
         k_min: int | None = None,
         max_delta_multiplier: float = 5.0,
+        # Hybrid neighborhood parameters
+        k_neighbors: int | None = None,
+        neighborhood_mode: str = "hybrid",
     ):
         """
         Initialize the GFDM HJB solver.
@@ -117,6 +124,12 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                 Limits delta growth to preserve GFDM locality. For very irregular distributions,
                 consider increasing to 10.0 (achieves 98%+ success) or increasing base delta instead.
                 Trade-off: Smaller limit = better theory, larger limit = better robustness.
+            k_neighbors: Number of neighbors for neighborhood selection (auto-computed if None).
+                When None, computed from Taylor order to ensure well-posed least squares.
+            neighborhood_mode: Neighborhood selection strategy:
+                - "radius": Use all points within delta (classic behavior)
+                - "knn": Use exactly k nearest neighbors
+                - "hybrid": Use delta, but ensure at least k neighbors (default, most robust)
         """
         super().__init__(problem)
 
@@ -190,7 +203,13 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         # Boundary condition parameters
         self.boundary_indices = boundary_indices if boundary_indices is not None else np.array([])
-        self.boundary_conditions = boundary_conditions if boundary_conditions is not None else {}
+        # Get BC from parameter, or from problem if not provided
+        if boundary_conditions is not None:
+            self.boundary_conditions = boundary_conditions
+        elif hasattr(self.problem, "get_boundary_conditions"):
+            self.boundary_conditions = self.problem.get_boundary_conditions() or {}
+        else:
+            self.boundary_conditions = {}
         self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
 
         # QP optimization level (single source of truth for QP control)
@@ -275,9 +294,15 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         }
 
         # Get boundary type for GFDMOperator
+        # BoundaryConditions uses 'default_bc' attribute (BCType enum)
         bc_type = None
-        if hasattr(self.boundary_conditions, "type"):
-            bc_type = getattr(self.boundary_conditions, "type", None)
+        if hasattr(self.boundary_conditions, "default_bc"):
+            bc_type_enum = getattr(self.boundary_conditions, "default_bc", None)
+            if bc_type_enum is not None:
+                # Convert BCType enum to string for GFDMOperator
+                # GFDMOperator expects "no_flux" for Neumann BC
+                bc_name = bc_type_enum.value if hasattr(bc_type_enum, "value") else str(bc_type_enum)
+                bc_type = "no_flux" if bc_name.lower() == "neumann" else bc_name.lower()
 
         # Create GFDMOperator with boundary condition support (composition pattern)
         # GFDMOperator now handles ghost particles for no-flux BC
@@ -290,6 +315,8 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             boundary_indices=self.boundary_indices,
             domain_bounds=self.domain_bounds,
             boundary_type=bc_type,
+            k_neighbors=k_neighbors,
+            neighborhood_mode=neighborhood_mode,
         )
 
         # Get multi-indices from GFDMOperator
@@ -299,6 +326,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         # Build neighborhood structure - uses GFDMOperator's neighborhoods as base,
         # only extends for points needing adaptive delta enlargement
         self._build_neighborhood_structure()
+
+        # Build reverse neighborhood map for sparse Jacobian (point j -> rows affected)
+        self._build_reverse_neighborhoods()
 
         # Build Taylor matrices for extended neighborhoods
         self._build_taylor_matrices()
@@ -499,6 +529,49 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                     UserWarning,
                     stacklevel=2,
                 )
+
+    def _build_reverse_neighborhoods(self) -> None:
+        """
+        Build reverse neighborhood map: for each point j, find all points i that have j in their neighborhood.
+
+        This enables sparse Jacobian computation - when perturbing u[j], only residuals at
+        points in reverse_neighborhoods[j] are affected.
+
+        Complexity: O(n * k) where k is average neighborhood size.
+        """
+        self._reverse_neighborhoods: dict[int, list[int]] = {j: [] for j in range(self.n_points)}
+
+        for i in range(self.n_points):
+            neighborhood = self.neighborhoods[i]
+            neighbor_indices = neighborhood["indices"]
+
+            # For each neighbor j of point i, add i to j's reverse neighborhood
+            for j in neighbor_indices:
+                if 0 <= j < self.n_points:  # Exclude ghost particles (negative indices)
+                    self._reverse_neighborhoods[j].append(i)
+
+        # Convert to arrays for faster access
+        self._reverse_neighborhoods = {j: np.array(rows, dtype=int) for j, rows in self._reverse_neighborhoods.items()}
+
+    def _get_affected_rows(self, j: int) -> np.ndarray:
+        """
+        Get rows affected by perturbing u[j] for sparse Jacobian.
+
+        Perturbing u[j] affects:
+        1. Row j (the point itself - its residual depends on its own value)
+        2. All rows i where j is in the neighborhood of i (j affects i's derivative approximation)
+
+        Returns:
+            Array of row indices affected by u[j]
+        """
+        # Get points that have j in their neighborhood
+        affected = self._reverse_neighborhoods.get(j, np.array([], dtype=int))
+
+        # Always include j itself (residual at j depends on u[j])
+        if j not in affected:
+            affected = np.append(affected, j)
+
+        return affected
 
     def _build_taylor_matrices(self):
         """
@@ -1067,35 +1140,11 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             # Approximate derivatives using GFDM
             derivs = self.approximate_derivatives(u_current, i)
 
-            # Extract gradient and Hessian, convert to DerivativeTensors
-            # For 1D: derivs[(1,)] is du/dx, derivs[(2,)] is d²u/dx²
-            # For 2D: derivs[(1,0)] is du/dx, derivs[(0,1)] is du/dy, etc.
-            from mfg_pde.core.derivatives import DerivativeTensors
+            # Convert multi-index derivatives dict to DerivativeTensors (nD support)
+            from mfg_pde.core.derivatives import from_multi_index_dict
 
-            d = self.problem.dimension  # Spatial dimension
-            if d == 1:
-                p_value = derivs.get((1,), 0.0)
-                laplacian = derivs.get((2,), 0.0)
-                # Convert to DerivativeTensors format
-                grad = np.array([p_value])
-                hess = np.array([[derivs.get((2,), 0.0)]])
-                p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
-            elif d == 2:
-                p_x = derivs.get((1, 0), 0.0)
-                p_y = derivs.get((0, 1), 0.0)
-                laplacian = derivs.get((2, 0), 0.0) + derivs.get((0, 2), 0.0)
-                # Convert to DerivativeTensors format
-                grad = np.array([p_x, p_y])
-                hess = np.array(
-                    [
-                        [derivs.get((2, 0), 0.0), derivs.get((1, 1), 0.0)],
-                        [derivs.get((1, 1), 0.0), derivs.get((0, 2), 0.0)],
-                    ]
-                )
-                p_derivs = DerivativeTensors.from_arrays(grad=grad, hess=hess)
-            else:
-                msg = f"Dimension {d} not implemented"
-                raise NotImplementedError(msg)
+            p_derivs = from_multi_index_dict(derivs, dimension=self.problem.dimension)
+            laplacian = p_derivs.laplacian or 0.0
 
             # Hamiltonian (user-provided)
             # problem.H() signature: H(x_idx, m_at_x, derivs, ...)
@@ -1119,6 +1168,118 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         return residual
 
+    def _compute_dH_dp_fd(
+        self,
+        point_idx: int,
+        m_at_x: float,
+        derivs: DerivativeTensors,
+        time_idx: int | None = None,
+    ) -> np.ndarray:
+        """
+        Compute dH/dp via finite differences on the Hamiltonian.
+
+        Adapts the problem's H() interface to the generic compute_dH_dp utility.
+
+        Args:
+            point_idx: Collocation point index
+            m_at_x: Density value at the point
+            derivs: DerivativeTensors with current gradient/hessian
+            time_idx: Time index (currently unused, kept for API compatibility)
+
+        Returns:
+            dH/dp array, shape (dim,)
+        """
+
+        # Create wrapper that matches compute_dH_dp's expected H_func signature
+        def H_wrapper(x_idx, m, derivs):
+            return self.problem.H(x_idx, m, derivs=derivs)
+
+        # Extract gradient and hessian from DerivativeTensors
+        p = derivs.grad if derivs.grad is not None else np.zeros(self.problem.dimension)
+        hess = derivs.hess
+
+        return compute_dH_dp(
+            H_func=H_wrapper,
+            x_idx=point_idx,
+            m=m_at_x,
+            p=p,
+            hess=hess,
+        )
+
+    def _compute_hjb_jacobian_analytic(
+        self,
+        u_current: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        time_idx: int,
+    ) -> np.ndarray:
+        """
+        Compute Jacobian using analytic formula with GFDM weights.
+
+        Formula: ∂R_i/∂u_j = (1/dt)δ_{ij} + (∂H/∂p)·(∂p_i/∂u_j) - (σ²/2)·(∂Δu_i/∂u_j)
+
+        Uses user-provided dH_dp if available, otherwise FD on H.
+        """
+        from mfg_pde.core.derivatives import to_multi_index_dict
+
+        n = self.n_points
+        d = self.problem.dimension
+        dt = self.problem.T / self.problem.Nt
+        jacobian = np.zeros((n, n))
+
+        for i in range(n):
+            # Get derivative weights from GFDM
+            weights = self._gfdm_operator.get_derivative_weights(i)
+            if weights is None:
+                continue  # Skip points without valid Taylor data
+
+            neighbor_indices = weights["neighbor_indices"]
+            grad_weights = weights["grad_weights"]  # shape (d, n_neighbors)
+            lap_weights = weights["lap_weights"]  # shape (n_neighbors,)
+
+            # Compute derivatives at point i
+            derivs_dict = self.approximate_derivatives(u_current, i)
+
+            # Build DerivativeTensors using nD infrastructure
+            from mfg_pde.core.derivatives import from_multi_index_dict
+
+            p_derivs = from_multi_index_dict(derivs_dict, dimension=d)
+
+            # Get ∂H/∂p (user-provided or FD fallback)
+            dH_dp = self.problem.dH_dp(
+                x_idx=i,
+                m_at_x=m_n_plus_1[i],
+                derivs=to_multi_index_dict(p_derivs),
+                t_idx=time_idx,
+            )
+
+            if dH_dp is None:
+                # Fallback: compute via FD on H
+                dH_dp = self._compute_dH_dp_fd(i, m_n_plus_1[i], p_derivs, time_idx)
+
+            # Get sigma for diffusion term
+            sigma_val = self._get_sigma_value(i)
+            diffusion_coeff = 0.5 * sigma_val**2
+
+            # Build row i of Jacobian
+            # For neighbors: use GFDM weights directly
+            for k, j in enumerate(neighbor_indices):
+                if j < 0:
+                    continue  # Skip ghost particles
+
+                # ∂R_i/∂u_j = (∂H/∂p) · grad_weights[:, k] - diffusion * lap_weights[k]
+                jacobian[i, j] = np.dot(dH_dp, grad_weights[:, k]) - diffusion_coeff * lap_weights[k]
+
+            # For center point contribution: weights are -sum(row weights)
+            # because b = u_neighbors - u_center, so ∂b/∂u_center = -1
+            center_grad_weight = -np.sum(grad_weights, axis=1)
+            center_lap_weight = -np.sum(lap_weights)
+            jacobian[i, i] += np.dot(dH_dp, center_grad_weight) - diffusion_coeff * center_lap_weight
+
+            # Time derivative contribution: (1/dt) on diagonal
+            jacobian[i, i] += 1.0 / dt
+
+        return jacobian
+
     def _compute_hjb_jacobian(
         self,
         u_current: np.ndarray,
@@ -1130,11 +1291,18 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         """
         Compute Jacobian matrix for Newton iteration.
 
-        Uses finite differences to approximate ∂R/∂u where R is the residual.
+        Uses analytic Jacobian if dH_dp is available (faster),
+        otherwise falls back to finite differences on residual.
 
         Bug #15 fix: Disable QP in Jacobian computation to reduce QP calls from ~750k to ~7.5k.
         Jacobian only affects Newton convergence rate, not final monotonicity (enforced by residual).
         """
+        # Try analytic Jacobian first (faster if dH_dp available or FD on H)
+        # Only use for dimensions 1 and 2 for now
+        if self.problem.dimension <= 2:
+            return self._compute_hjb_jacobian_analytic(u_current, m_n_plus_1, time_idx)
+
+        # Fallback: numerical finite differences on full residual
         n = self.n_points
         jacobian = np.zeros((n, n))
 
@@ -1142,23 +1310,28 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         eps = 1e-7
 
         # Bug #15 fix: Temporarily disable QP for Jacobian computation
-        # This reduces QP invocations while maintaining monotonicity (enforced by residual)
-        # Jacobian finite differences are a numerical approximation tool for Newton's method
-        # and don't need monotonicity constraints. Only the residual evaluation needs QP.
         saved_qp_level = self.qp_optimization_level
         self.qp_optimization_level = "none"
 
         try:
+            # Compute base residual ONCE (was incorrectly inside loop before)
+            residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+
             # Compute Jacobian by columns (perturbing each u[j])
+            # Sparse optimization: only compute affected rows (neighbors of j)
             for j in range(n):
                 u_plus = u_current.copy()
                 u_plus[j] += eps
 
-                # FIXED: Use actual u_n_plus_1 (not perturbed in Newton iteration)
-                residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
-                residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+                # Get rows affected by perturbing u[j] (j and its neighbors)
+                affected_rows = self._get_affected_rows(j)
 
-                jacobian[:, j] = (residual_plus - residual_base) / eps
+                # Compute residual only at affected points
+                residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
+
+                # Only update affected rows (sparse pattern)
+                for i in affected_rows:
+                    jacobian[i, j] = (residual_plus[i] - residual_base[i]) / eps
         finally:
             # Restore QP for residual evaluation
             self.qp_optimization_level = saved_qp_level

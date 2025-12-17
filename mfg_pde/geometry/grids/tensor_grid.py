@@ -217,6 +217,9 @@ class TensorProductGrid(CartesianGrid):
                 )
         self._boundary_conditions = boundary_conditions
 
+        # Cache for flattened grid (computed lazily, perf optimization)
+        self._flattened_cache: NDArray | None = None
+
     # Geometry ABC implementation - properties
     @property
     def dimension(self) -> int:
@@ -329,14 +332,19 @@ class TensorProductGrid(CartesianGrid):
         Returns:
             Array of shape (N, dimension) where N = ∏num_points[i]
 
+        Note:
+            Result is cached for performance. Returns a copy of the cached array.
+
         Example:
             >>> grid = TensorProductGrid(2, [(0,1), (0,1)], [3, 3])
             >>> points = grid.flatten()
             >>> points.shape
             (9, 2)
         """
-        mesh = self.meshgrid(indexing="ij")
-        return np.column_stack([m.ravel() for m in mesh])
+        if self._flattened_cache is None:
+            mesh = self.meshgrid(indexing="ij")
+            self._flattened_cache = np.column_stack([m.ravel() for m in mesh])
+        return self._flattened_cache.copy()
 
     def total_points(self) -> int:
         """

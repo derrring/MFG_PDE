@@ -652,17 +652,166 @@ def _divergence_tensor_general_nd(
     """
     General nD tensor diffusion using component-wise stencils.
 
-    Implementation note:
-        This is a placeholder for full nD support.
-        For production use, consider optimized implementations or
-        using existing PDE libraries (e.g., FEniCS, Firedrake).
+    Computes ∇·(Σ∇m) = Σᵢ ∂/∂xᵢ (Σⱼ Σᵢⱼ ∂m/∂xⱼ) in arbitrary dimensions.
+
+    Algorithm:
+        1. Pad array with ghost cells for boundary conditions
+        2. For each flux direction i:
+           a. Compute gradients ∂m/∂xⱼ at i-faces for all j
+           b. Compute flux Fᵢ = Σⱼ Σᵢⱼ (∂m/∂xⱼ)
+        3. Sum divergences: Σᵢ (∂Fᵢ/∂xᵢ)
+
+    Args:
+        m: Density field with shape (N₁, N₂, ..., Nₐ)
+        sigma_tensor: Diffusion tensor
+            - Constant: (d, d) array
+            - Spatially varying: (N₁, ..., Nₐ, d, d) array
+        dx: Grid spacing tuple (dx₁, dx₂, ..., dxₐ)
+        boundary_conditions: BC specification
+
+    Returns:
+        Diffusion term with same shape as m
     """
-    raise NotImplementedError(
-        "General nD tensor diffusion (d>2) not yet implemented. "
-        "Supported dimensions: 1D (scalar) and 2D (full tensor). "
-        "For higher dimensions, consider using diagonal diffusion or "
-        "implementing problem-specific operators."
-    )
+    d = len(m.shape)
+    shape = m.shape
+
+    # Expand sigma_tensor to spatially-varying if constant
+    if sigma_tensor.ndim == 2:
+        # Constant tensor: broadcast to (*shape, d, d)
+        Sigma = np.broadcast_to(sigma_tensor, (*shape, d, d)).copy()
+    else:
+        Sigma = sigma_tensor
+
+    # Apply boundary conditions (pad with ghost cells)
+    bc_type = boundary_conditions.type.lower()
+    if bc_type == "periodic":
+        m_padded = np.pad(m, 1, mode="wrap")
+    elif bc_type == "dirichlet":
+        m_padded = np.pad(m, 1, mode="constant", constant_values=0.0)
+    elif bc_type in ["no_flux", "neumann"]:
+        m_padded = np.pad(m, 1, mode="edge")
+    else:
+        raise ValueError(f"Unsupported boundary condition: {bc_type}")
+
+    # Initialize result
+    result = np.zeros(shape, dtype=m.dtype)
+
+    # For each flux direction i, compute divergence contribution
+    for i in range(d):
+        # Build slices for computing gradient at i-faces
+        # i-faces have shape: (..., N_i + 1, ...) in dimension i
+
+        # Compute flux F_i = Σ_j Σ_ij * (∂m/∂x_j at i-faces)
+        flux_shape = list(shape)
+        flux_shape[i] += 1
+        F_i = np.zeros(flux_shape, dtype=m.dtype)
+
+        for j in range(d):
+            # Compute ∂m/∂x_j at i-faces
+
+            if i == j:
+                # Direct gradient in direction i at i-faces
+                # dm/dx_i = (m[..., k+1, ...] - m[..., k, ...]) / dx_i
+                # Using padded array: indices 0 to N_i+1 -> N_i+1 faces
+                slice_plus = [slice(1, -1)] * d
+                slice_minus = [slice(1, -1)] * d
+                slice_plus[i] = slice(1, None)  # indices 1 to N_i+2
+                slice_minus[i] = slice(None, -1)  # indices 0 to N_i+1
+                dm_dxj = (m_padded[tuple(slice_plus)] - m_padded[tuple(slice_minus)]) / dx[j]
+            else:
+                # Cross-derivative: ∂m/∂x_j at i-faces
+                # Compute gradient in j-direction and average across i-direction to get i-faces
+                #
+                # For face at position (k+1/2) in direction i, average gradients at cells k and k+1
+                # Gradient in j uses central diff: (m[j+1] - m[j-1]) / (2*dx_j)
+
+                # Build slices for cross-derivative at i-faces
+                # We need shape: flux_shape (with N_i+1 in dimension i)
+
+                # Gradient at i-face (k+1/2): average of gradient at cell k and k+1
+                # Cell k gradient: (m[j+1,k] - m[j-1,k]) / (2*dx_j)
+                # Cell k+1 gradient: (m[j+1,k+1] - m[j-1,k+1]) / (2*dx_j)
+
+                # In padded coords (all shifted by 1):
+                # Cell k uses i-index k+1, Cell k+1 uses i-index k+2
+                # j+1 uses j-index j+2, j-1 uses j-index j
+
+                # For i-faces from 0 to N_i (N_i+1 total), we need padded i-indices 1:N_i+2
+                # which is slice(1, -1) but including one more: slice(1, None) for right, slice(None, -1) for left
+
+                # Simpler approach: compute dm/dxj at all interior+ghost points, then interpolate to faces
+                slice_j_plus = [slice(1, -1)] * d
+                slice_j_minus = [slice(1, -1)] * d
+                slice_j_plus[j] = slice(2, None)
+                slice_j_minus[j] = slice(None, -2)
+
+                # Extend i-direction to include ghost cells for averaging
+                slice_j_plus[i] = slice(None)  # All i-indices including ghosts
+                slice_j_minus[i] = slice(None)
+
+                dm_dxj_extended = (m_padded[tuple(slice_j_plus)] - m_padded[tuple(slice_j_minus)]) / (2 * dx[j])
+                # Shape: (N_i+2, ...) with N_i+2 in dimension i
+
+                # Average to i-faces
+                slice_k = [slice(None)] * d
+                slice_k1 = [slice(None)] * d
+                slice_k[i] = slice(None, -1)  # indices 0 to N_i+1
+                slice_k1[i] = slice(1, None)  # indices 1 to N_i+2
+                dm_dxj = 0.5 * (dm_dxj_extended[tuple(slice_k)] + dm_dxj_extended[tuple(slice_k1)])
+
+            # Average Sigma_ij to i-faces
+            # Need N_i+1 faces in dimension i
+            Sigma_ij = Sigma[..., i, j]  # Shape: (*shape)
+
+            # Create face-valued array
+            face_shape = list(shape)
+            face_shape[i] += 1
+            Sigma_ij_faces = np.zeros(face_shape, dtype=Sigma.dtype)
+
+            # Interior faces (N_i-1 of them): average of neighboring cells
+            # Face k (for k=1..N_i-1) is average of cell k-1 and cell k
+            slice_interior_dest = [slice(None)] * d
+            slice_interior_dest[i] = slice(1, -1)  # N_i-1 interior faces
+
+            slice_cell_left = [slice(None)] * d
+            slice_cell_left[i] = slice(None, -1)  # cells 0..N_i-2
+
+            slice_cell_right = [slice(None)] * d
+            slice_cell_right[i] = slice(1, None)  # cells 1..N_i-1
+
+            # Average gives N_i-1 values for interior faces
+            Sigma_ij_faces[tuple(slice_interior_dest)] = 0.5 * (
+                Sigma_ij[tuple(slice_cell_left)] + Sigma_ij[tuple(slice_cell_right)]
+            )
+
+            # Boundary faces: use boundary cell values
+            slice_first_face = [slice(None)] * d
+            slice_first_face[i] = 0
+            slice_first_cell = [slice(None)] * d
+            slice_first_cell[i] = 0
+
+            slice_last_face = [slice(None)] * d
+            slice_last_face[i] = -1
+            slice_last_cell = [slice(None)] * d
+            slice_last_cell[i] = -1
+
+            Sigma_ij_faces[tuple(slice_first_face)] = Sigma_ij[tuple(slice_first_cell)]
+            Sigma_ij_faces[tuple(slice_last_face)] = Sigma_ij[tuple(slice_last_cell)]
+
+            # Add contribution to flux
+            F_i += Sigma_ij_faces * dm_dxj
+
+        # Compute divergence of F_i in direction i: (F_i[k+1] - F_i[k]) / dx_i
+        slice_plus_i = [slice(None)] * d
+        slice_minus_i = [slice(None)] * d
+        slice_plus_i[i] = slice(1, None)
+        slice_minus_i[i] = slice(None, -1)
+
+        div_F_i = (F_i[tuple(slice_plus_i)] - F_i[tuple(slice_minus_i)]) / dx[i]
+
+        result += div_F_i
+
+    return result
 
 
 if __name__ == "__main__":
@@ -671,7 +820,7 @@ if __name__ == "__main__":
 
     import numpy as np
 
-    from mfg_pde.geometry import BoundaryConditions
+    from mfg_pde.geometry.boundary.conditions import periodic_bc
 
     # Test 2D diagonal diffusion (isotropic case)
     Nx, Ny = 20, 15
@@ -687,7 +836,7 @@ if __name__ == "__main__":
     sigma_diag = np.array([0.1, 0.1])
 
     # Periodic boundary conditions
-    bc = BoundaryConditions(type="periodic")
+    bc = periodic_bc(dimension=2)
 
     # Compute divergence
     div_m = divergence_diagonal_diffusion_2d(m, sigma_diag, dx, dy, bc)
@@ -701,4 +850,43 @@ if __name__ == "__main__":
     # Test that Laplacian of Gaussian is negative (diffusion smooths peaks)
     assert div_m.sum() < 0, "Laplacian of Gaussian should be negative at peak"
 
-    print("Smoke tests passed!")
+    # Test 3D tensor diffusion (general nD implementation)
+    print("\n  Testing 3D tensor diffusion...")
+    Nx, Ny, Nz = 10, 10, 10
+    dx3, dy3, dz3 = 0.1, 0.1, 0.1
+
+    # Create 3D Gaussian
+    x3 = np.linspace(0, (Nx - 1) * dx3, Nx)
+    y3 = np.linspace(0, (Ny - 1) * dy3, Ny)
+    z3 = np.linspace(0, (Nz - 1) * dz3, Nz)
+    X3, Y3, Z3 = np.meshgrid(x3, y3, z3, indexing="ij")
+    m3 = np.exp(-((X3 - 0.5) ** 2 + (Y3 - 0.5) ** 2 + (Z3 - 0.5) ** 2) / 0.1)
+
+    # 3x3 diffusion tensor (isotropic for simplicity)
+    sigma_3d = 0.1 * np.eye(3)
+
+    # Test with nD function
+    bc3 = periodic_bc(dimension=3)
+    div_m3 = divergence_tensor_diffusion_nd(m3, sigma_3d, (dx3, dy3, dz3), bc3)
+
+    assert div_m3.shape == m3.shape, f"3D shape mismatch: {div_m3.shape} vs {m3.shape}"
+    assert not np.any(np.isnan(div_m3)), "NaN values in 3D divergence"
+    assert not np.any(np.isinf(div_m3)), "Inf values in 3D divergence"
+
+    print(f"  3D tensor diffusion: shape {div_m3.shape}, range [{div_m3.min():.3e}, {div_m3.max():.3e}]")
+
+    # Test 4D (to verify true nD capability)
+    print("\n  Testing 4D tensor diffusion...")
+    shape_4d = (5, 5, 5, 5)
+    dx_4d = (0.2, 0.2, 0.2, 0.2)
+    m4 = np.random.rand(*shape_4d)
+    sigma_4d = 0.1 * np.eye(4)
+
+    bc4 = periodic_bc(dimension=4)
+    div_m4 = divergence_tensor_diffusion_nd(m4, sigma_4d, dx_4d, bc4)
+
+    assert div_m4.shape == m4.shape, f"4D shape mismatch: {div_m4.shape} vs {m4.shape}"
+    assert not np.any(np.isnan(div_m4)), "NaN values in 4D divergence"
+    print(f"  4D tensor diffusion: shape {div_m4.shape}, range [{div_m4.min():.3e}, {div_m4.max():.3e}]")
+
+    print("\nAll smoke tests passed!")
