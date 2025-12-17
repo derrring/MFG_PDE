@@ -611,5 +611,150 @@ class TestHJBFDMSolverDiagonalTensor:
             )
 
 
+class TestHJBFDMSolverGhostValueBC:
+    """Test HJB FDM solver with ghost value boundary conditions (Issue #494)."""
+
+    def test_get_ghost_values_nd_dirichlet(self):
+        """Test get_ghost_values_nd for Dirichlet BC."""
+        from mfg_pde.geometry.boundary import dirichlet_bc, get_ghost_values_nd
+
+        # Create 2D field
+        field = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        bc = dirichlet_bc(dimension=2, value=0.0)
+        spacing = (0.1, 0.1)
+
+        ghosts = get_ghost_values_nd(field, bc, spacing)
+
+        # Check all boundaries have ghost values
+        assert (0, 0) in ghosts  # x_min
+        assert (0, 1) in ghosts  # x_max
+        assert (1, 0) in ghosts  # y_min
+        assert (1, 1) in ghosts  # y_max
+
+        # For Dirichlet g=0, cell-centered: u_ghost = 2*0 - u_interior = -u_interior
+        # Left boundary (axis 0): interior values are [1, 2, 3]
+        np.testing.assert_allclose(ghosts[(0, 0)], -np.array([1.0, 2.0, 3.0]))
+        # Right boundary (axis 0): interior values are [4, 5, 6]
+        np.testing.assert_allclose(ghosts[(0, 1)], -np.array([4.0, 5.0, 6.0]))
+
+    def test_get_ghost_values_nd_neumann(self):
+        """Test get_ghost_values_nd for Neumann/no-flux BC."""
+        from mfg_pde.geometry.boundary import get_ghost_values_nd, no_flux_bc
+
+        # Create 2D field
+        field = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        bc = no_flux_bc(dimension=2)
+        spacing = (0.1, 0.1)
+
+        ghosts = get_ghost_values_nd(field, bc, spacing)
+
+        # For no-flux (Neumann g=0): u_ghost = u_interior
+        # Left boundary (axis 0): interior values are [1, 2, 3]
+        np.testing.assert_allclose(ghosts[(0, 0)], np.array([1.0, 2.0, 3.0]))
+        # Right boundary (axis 0): interior values are [4, 5, 6]
+        np.testing.assert_allclose(ghosts[(0, 1)], np.array([4.0, 5.0, 6.0]))
+
+    def test_get_ghost_values_nd_periodic(self):
+        """Test get_ghost_values_nd for periodic BC."""
+        from mfg_pde.geometry.boundary import get_ghost_values_nd, periodic_bc
+
+        # Create 2D field
+        field = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        bc = periodic_bc(dimension=2)
+        spacing = (0.1, 0.1)
+
+        ghosts = get_ghost_values_nd(field, bc, spacing)
+
+        # For periodic: ghost = opposite boundary value
+        # Left ghost (axis 0) = right interior [4, 5, 6]
+        np.testing.assert_allclose(ghosts[(0, 0)], np.array([4.0, 5.0, 6.0]))
+        # Right ghost (axis 0) = left interior [1, 2, 3]
+        np.testing.assert_allclose(ghosts[(0, 1)], np.array([1.0, 2.0, 3.0]))
+
+    def test_hjb_solver_uses_ghost_values_with_geometry(self):
+        """Test that HJB solver uses ghost values when geometry has BCs."""
+        from mfg_pde.geometry.boundary import no_flux_bc
+
+        # Create problem with geometry that has BC
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
+        # Set boundary conditions on geometry
+        domain.boundary_conditions = no_flux_bc(dimension=2)
+
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=5, sigma=0.1)
+        solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_upwind")
+
+        # Get grid shape
+        Nx, Ny = domain.get_grid_shape()
+        Nt = problem.Nt + 1
+
+        # Create density and initial conditions
+        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt, Nx, Ny))
+
+        # Solve - should use ghost values for gradient computation at boundaries
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # Verify solution is valid
+        assert U_solution.shape == (Nt, Nx, Ny)
+        assert np.all(np.isfinite(U_solution))
+
+    def test_hjb_gradient_computation_with_ghost_values(self):
+        """Test that _get_ghost_values integrates correctly in gradient computation."""
+        from mfg_pde.geometry.boundary import dirichlet_bc
+
+        # Create 2D problem with Dirichlet BC
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8])
+        domain.boundary_conditions = dirichlet_bc(dimension=2, value=0.0)
+
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=3, sigma=0.1)
+        solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_upwind")
+
+        # Test gradient computation directly
+        Nx, Ny = domain.get_grid_shape()
+        U_test = np.random.rand(Nx, Ny)
+
+        # Call _compute_gradients_nd which should use ghost values
+        gradients = solver._compute_gradients_nd(U_test)
+
+        # Check gradient structure
+        assert 0 in gradients  # x gradient
+        assert 1 in gradients  # y gradient
+        assert -1 in gradients  # function value
+
+        # Verify gradient shapes
+        assert gradients[0].shape == U_test.shape
+        assert gradients[1].shape == U_test.shape
+
+        # Verify gradients are finite
+        assert np.all(np.isfinite(gradients[0]))
+        assert np.all(np.isfinite(gradients[1]))
+
+    def test_hjb_solver_centered_scheme_with_ghost_values(self):
+        """Test centered scheme gradient computation with ghost values."""
+        from mfg_pde.geometry.boundary import no_flux_bc
+
+        # Create 2D problem
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
+        domain.boundary_conditions = no_flux_bc(dimension=2)
+
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=3, sigma=0.1)
+        # Use centered scheme (non-upwind)
+        solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_centered")
+
+        Nx, Ny = domain.get_grid_shape()
+        Nt = problem.Nt + 1
+
+        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt, Nx, Ny))
+
+        # Should work without issues
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        assert U_solution.shape == (Nt, Nx, Ny)
+        assert np.all(np.isfinite(U_solution))
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

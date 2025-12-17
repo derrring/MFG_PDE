@@ -1236,6 +1236,151 @@ def apply_boundary_conditions_3d(
 
 
 # =============================================================================
+# Ghost Value Computation for HJB Upwind Schemes
+# =============================================================================
+
+
+def get_ghost_values_nd(
+    field: NDArray[np.floating],
+    boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
+    spacing: tuple[float, ...] | NDArray[np.floating],
+    config: GhostCellConfig | None = None,
+) -> dict[tuple[int, int], NDArray[np.floating]]:
+    """
+    Compute ghost values for each boundary without padding the array.
+
+    This function is designed for HJB upwind schemes that need ghost values
+    BEFORE computing the Hamiltonian. Unlike apply_boundary_conditions_nd
+    which returns a padded array, this returns ghost values separately.
+
+    For upwind schemes at boundary i=0:
+    - If drift v > 0 (flow from left): need ghost value u[-1] for backward diff
+    - If drift v < 0 (flow from right): use interior u[1] for forward diff
+
+    The ghost values are derived from BC type:
+    - Dirichlet: u_ghost = 2*g - u_interior (cell-centered)
+    - Neumann/No-flux: u_ghost = u_interior (zero derivative)
+    - Periodic: u_ghost = u_opposite_boundary
+
+    Args:
+        field: Interior field of shape (N_1, N_2, ..., N_d)
+        boundary_conditions: BC specification (unified or legacy)
+        spacing: Grid spacing for each dimension, tuple or array of length d
+        config: Ghost cell configuration (grid type)
+
+    Returns:
+        Dictionary mapping (dimension, side) to ghost value arrays:
+        - Key (d, 0): ghost values for left boundary of dimension d
+        - Key (d, 1): ghost values for right boundary of dimension d
+        Each ghost array has shape matching the boundary slice.
+
+    Example:
+        >>> u = np.array([[1, 2, 3], [4, 5, 6]])  # 2x3 field
+        >>> bc = dirichlet_bc(dimension=2, value=0.0)
+        >>> ghosts = get_ghost_values_nd(u, bc, spacing=(0.1, 0.1))
+        >>> ghosts[(0, 0)]  # Ghost for left boundary of dim 0 (shape: (3,))
+        >>> ghosts[(1, 1)]  # Ghost for right boundary of dim 1 (shape: (2,))
+    """
+    if config is None:
+        config = GhostCellConfig()
+
+    d = field.ndim
+    spacing = np.asarray(spacing)
+    if len(spacing) != d:
+        raise ValueError(f"Spacing length {len(spacing)} != field dimension {d}")
+
+    ghosts: dict[tuple[int, int], NDArray[np.floating]] = {}
+
+    # Determine BC type
+    bc_type, bc_value = _get_bc_type_and_value(boundary_conditions)
+
+    for axis in range(d):
+        dx = spacing[axis]
+
+        # Get interior values adjacent to boundaries
+        # Left boundary: interior value at index 0
+        slices_left = [slice(None)] * d
+        slices_left[axis] = 0
+        u_int_left = field[tuple(slices_left)]
+
+        # Right boundary: interior value at index -1
+        slices_right = [slice(None)] * d
+        slices_right[axis] = -1
+        u_int_right = field[tuple(slices_right)]
+
+        if bc_type == BCType.PERIODIC:
+            # Periodic: ghost = value from opposite boundary
+            ghosts[(axis, 0)] = u_int_right.copy()  # Left ghost = right interior
+            ghosts[(axis, 1)] = u_int_left.copy()  # Right ghost = left interior
+
+        elif bc_type == BCType.DIRICHLET:
+            g = bc_value if bc_value is not None else 0.0
+            if callable(g):
+                g = 0.0  # Uniform value for now
+
+            if config.grid_type == "vertex_centered":
+                # Vertex-centered: boundary is at grid point
+                ghosts[(axis, 0)] = np.full_like(u_int_left, g)
+                ghosts[(axis, 1)] = np.full_like(u_int_right, g)
+            else:
+                # Cell-centered: u_ghost = 2*g - u_interior
+                ghosts[(axis, 0)] = 2 * g - u_int_left
+                ghosts[(axis, 1)] = 2 * g - u_int_right
+
+        elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
+            # No-flux/Neumann: du/dn = 0 => u_ghost = u_interior
+            # For general Neumann du/dn = g:
+            # Left: u_ghost = u_int - 2*dx*g (inward normal)
+            # Right: u_ghost = u_int + 2*dx*g (outward normal)
+            g = bc_value if bc_value is not None else 0.0
+            if callable(g):
+                g = 0.0
+
+            ghosts[(axis, 0)] = u_int_left - 2 * dx * g
+            ghosts[(axis, 1)] = u_int_right + 2 * dx * g
+
+        elif bc_type == BCType.ROBIN:
+            # Robin: alpha*u + beta*du/dn = g
+            # For now, treat as Neumann-like
+            ghosts[(axis, 0)] = u_int_left.copy()
+            ghosts[(axis, 1)] = u_int_right.copy()
+
+        else:
+            # Default to Neumann-like (edge extension)
+            ghosts[(axis, 0)] = u_int_left.copy()
+            ghosts[(axis, 1)] = u_int_right.copy()
+
+    return ghosts
+
+
+def _get_bc_type_and_value(
+    boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
+) -> tuple[BCType, float | None]:
+    """Extract BC type and value from unified or legacy BC specification."""
+    if isinstance(boundary_conditions, LegacyBoundaryConditions1D):
+        bc_type_str = boundary_conditions.type.lower()
+        if bc_type_str == "periodic":
+            return BCType.PERIODIC, None
+        elif bc_type_str == "dirichlet":
+            return BCType.DIRICHLET, boundary_conditions.left_value
+        elif bc_type_str in ["no_flux", "neumann"]:
+            return BCType.NO_FLUX, 0.0
+        else:
+            return BCType.NO_FLUX, 0.0
+
+    if not isinstance(boundary_conditions, BoundaryConditions):
+        raise TypeError(f"Unsupported BC type: {type(boundary_conditions)}")
+
+    if boundary_conditions.is_uniform:
+        seg = boundary_conditions.segments[0]
+        return seg.bc_type, seg.value
+
+    # Mixed BC - return default type (first segment)
+    seg = boundary_conditions.segments[0]
+    return seg.bc_type, seg.value
+
+
+# =============================================================================
 # Class-Based FDM Applicator
 # =============================================================================
 
@@ -1371,6 +1516,7 @@ __all__ = [
     "apply_boundary_conditions_3d",
     "apply_boundary_conditions_nd",
     "create_boundary_mask_2d",
+    "get_ghost_values_nd",
     # Class-based API
     "FDMApplicator",
 ]
