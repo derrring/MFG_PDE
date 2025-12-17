@@ -56,10 +56,13 @@ from .applicator_base import (
     # Enums
     DiscretizationType,
     GridType,
-    # Ghost cell helpers
+    # Ghost cell helpers (2nd-order)
     ghost_cell_dirichlet,
     ghost_cell_neumann,
     ghost_cell_robin,
+    # High-order ghost cell extrapolation (4th/5th order for WENO)
+    high_order_ghost_dirichlet,
+    high_order_ghost_neumann,
 )
 
 # =============================================================================
@@ -190,6 +193,8 @@ __all__ = [
     "ghost_cell_dirichlet",
     "ghost_cell_neumann",
     "ghost_cell_robin",
+    "high_order_ghost_dirichlet",
+    "high_order_ghost_neumann",
     # Core types
     "BCType",
     "BCSegment",
