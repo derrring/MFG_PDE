@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
 
@@ -48,7 +50,8 @@ class BackendFactory:
         available = get_available_backends()
 
         # Problem size analysis
-        total_size = problem.Nx * problem.Nt
+        grid_shape = problem.geometry.get_grid_shape()
+        total_size = int(np.prod(grid_shape)) * problem.Nt
         is_large_problem = total_size > 100000
 
         # Backend selection logic
@@ -89,9 +92,11 @@ class BackendFactory:
                 start_time = time.perf_counter()
 
                 # Test array creation
-                U = backend.zeros((problem.Nx,))
-                M = backend.ones((problem.Nx,))
-                x_grid = backend.linspace(problem.xmin, problem.xmax, problem.Nx)
+                grid_shape = problem.geometry.get_grid_shape()
+                bounds = problem.geometry.get_bounds()
+                U = backend.zeros((grid_shape[0],))
+                M = backend.ones((grid_shape[0],))
+                x_grid = backend.linspace(bounds[0][0], bounds[1][0], grid_shape[0])
 
                 # Test basic operations
                 for _ in range(10):
@@ -128,7 +133,8 @@ class BackendFactory:
         Returns:
             Recommendations dictionary
         """
-        total_size = problem.Nx * problem.Nt
+        grid_shape = problem.geometry.get_grid_shape()
+        total_size = int(np.prod(grid_shape)) * problem.Nt
         available = get_available_backends()
 
         recommendations: dict[str, Any] = {

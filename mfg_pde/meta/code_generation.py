@@ -272,7 +272,7 @@ class Generated{solver_name}(BaseMFGSolver):
         if scheme.order == 2:
             return textwrap.dedent(
                 """
-            dx = self.problem.dx
+            dx = self.problem.geometry.get_grid_spacing()[0]
             if x_idx == 0:
                 # Forward difference at left boundary
                 grad = (-3*u[0] + 4*u[1] - u[2]) / (2*dx)
@@ -288,7 +288,7 @@ class Generated{solver_name}(BaseMFGSolver):
         elif scheme.order == 4:
             return textwrap.dedent(
                 """
-            dx = self.problem.dx
+            dx = self.problem.geometry.get_grid_spacing()[0]
             # Fourth-order central difference
             if x_idx < 2 or x_idx >= len(u)-2:
                 # Fall back to second-order near boundaries
@@ -308,7 +308,7 @@ class Generated{solver_name}(BaseMFGSolver):
         """Generate Laplacian computation code."""
         return textwrap.dedent(
             """
-        dx = self.problem.dx
+        dx = self.problem.geometry.get_grid_spacing()[0]
         if x_idx == 0 or x_idx == len(u)-1:
             # Boundary - use one-sided stencil or Neumann condition
             laplacian = 0.0
@@ -367,7 +367,7 @@ class Generated{solver_name}(BaseMFGSolver):
         """Generate divergence computation code."""
         return textwrap.dedent(
             """
-        dx = self.problem.dx
+        dx = self.problem.geometry.get_grid_spacing()[0]
         if x_idx == 0:
             # Forward difference
             div = (flux[1] - flux[0]) / dx
@@ -386,7 +386,7 @@ class Generated{solver_name}(BaseMFGSolver):
         return textwrap.dedent(
             """
         sigma = self.problem.sigma
-        dx = self.problem.dx
+        dx = self.problem.geometry.get_grid_spacing()[0]
 
         # Compute density gradient
         if x_idx == 0:

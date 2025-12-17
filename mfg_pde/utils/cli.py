@@ -382,7 +382,9 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
         solver_config = config["solver"]
         import numpy as np
 
-        collocation_points = np.linspace(problem.xmin, problem.xmax, problem.Nx).reshape(-1, 1)
+        bounds = problem.geometry.get_bounds()
+        grid_shape = problem.geometry.get_grid_shape()
+        collocation_points = np.linspace(bounds[0][0], bounds[1][0], grid_shape[0]).reshape(-1, 1)
 
         solver = create_solver(
             problem=problem,
