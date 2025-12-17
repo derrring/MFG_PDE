@@ -386,6 +386,197 @@ class MyCustomProblem(MFGProblem):
 
 ---
 
+## Additional Deprecations (Comprehensive Audit)
+
+### 10. Neural Network Configuration (PINN/DGM/DeepONet)
+
+#### PINN Normalization (base_pinn.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `use_batch_norm=True` | `normalization=NormalizationType.BATCH` | Deprecated |
+| `use_layer_norm=True` | `normalization=NormalizationType.LAYER` | Deprecated |
+
+#### PINN Training Mode (adaptive_training.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `enable_curriculum=True` | `training_mode=TrainingMode.CURRICULUM` | Deprecated |
+| `enable_multiscale=True` | `training_mode=TrainingMode.MULTISCALE` | Deprecated |
+| `enable_refinement=True` | `training_mode=TrainingMode.REFINEMENT` | Deprecated |
+
+#### DGM Variance Reduction (base_dgm.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `use_control_variates=True` | `variance_reduction=VarianceReduction.CONTROL_VARIATES` | Deprecated |
+| `use_importance_sampling=True` | `variance_reduction=VarianceReduction.IMPORTANCE_SAMPLING` | Deprecated |
+
+#### DeepONet Normalization (deeponet.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `use_batch_norm=True` | `normalization=NormalizationType.BATCH` | Deprecated |
+| `use_layer_norm=True` | `normalization=NormalizationType.LAYER` | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+config = PINNConfig(use_batch_norm=True)
+config = AdaptiveTrainingConfig(enable_curriculum=True)
+config = DGMConfig(use_control_variates=True)
+
+# New (preferred)
+from mfg_pde.alg.neural import NormalizationType, TrainingMode, VarianceReduction
+config = PINNConfig(normalization=NormalizationType.BATCH)
+config = AdaptiveTrainingConfig(training_mode=TrainingMode.CURRICULUM)
+config = DGMConfig(variance_reduction=VarianceReduction.CONTROL_VARIATES)
+```
+
+---
+
+### 11. HJB Solver Parameters (hjb_fdm.py, hjb_gfdm.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `NiterNewton` | `max_newton_iterations` | Deprecated |
+| `l2errBoundNewton` | `newton_tolerance` | Deprecated |
+| `M_density_evolution_from_FP` | `M_density` | Deprecated |
+| `M_density_evolution` | `M_density` | Deprecated |
+| `U_final_condition_at_T` | `U_terminal` | Deprecated |
+| `U_final_condition` | `U_terminal` | Deprecated |
+| `U_from_prev_picard` | `U_coupling_prev` | Deprecated |
+| `qp_optimization_level='balanced'` | `qp_optimization_level='auto'` | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+solver = HJBSolver(NiterNewton=10, l2errBoundNewton=1e-6)
+result = solver.solve(M_density_evolution_from_FP=density, U_final_condition_at_T=terminal)
+
+# New (preferred)
+solver = HJBSolver(max_newton_iterations=10, newton_tolerance=1e-6)
+result = solver.solve(M_density=density, U_terminal=terminal)
+```
+
+---
+
+### 12. Gradient Notation Module (compat/gradient_notation.py)
+
+The entire `mfg_pde.compat.gradient_notation` module is deprecated since v0.17.0.
+
+| Old | New | Status |
+|:----|:----|:-------|
+| `mfg_pde.compat.gradient_notation` | `mfg_pde.core.DerivativeTensors` | Deprecated |
+| `dict[tuple[int,...], float]` format | `DerivativeTensors` class | Deprecated |
+| `p_values` parameter | `derivs` parameter | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+from mfg_pde.compat.gradient_notation import tuple_to_string_keys
+p_values = {(1,): u_x, (2,): u_xx}  # Legacy dict format
+
+# New (preferred)
+from mfg_pde.core import DerivativeTensors, from_multi_index_dict
+derivs = DerivativeTensors(gradient=np.array([u_x]), hessian_diag=np.array([u_xx]))
+# Or convert: derivs = from_multi_index_dict(p_values)
+```
+
+---
+
+### 13. Problem Parameter: sigma → diffusion (mfg_problem.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `sigma=0.1` | `diffusion=0.1` | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+problem = MFGProblem(sigma=0.1, ...)
+
+# New (preferred)
+problem = MFGProblem(diffusion=0.1, ...)
+```
+
+---
+
+### 14. Type Aliases (types/arrays.py, types/solver_types.py)
+
+| Old Name | New Name | Status |
+|:---------|:---------|:-------|
+| `SpatialCoordinates` | `SpatialGrid` | Deprecated |
+| `TemporalCoordinates` | `TimeGrid` | Deprecated |
+| `LegacySolverReturn` | `SolverReturnTuple` | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+from mfg_pde.types import SpatialCoordinates, TemporalCoordinates
+
+# New (preferred)
+from mfg_pde.types import SpatialGrid, TimeGrid
+```
+
+---
+
+### 15. Backend Functions (backends/__init__.py)
+
+| Old Function | New Function | Status |
+|:-------------|:-------------|:-------|
+| `get_legacy_backend_list()` | `get_available_backends()` | Deprecated (v0.10) |
+
+**Migration**:
+```python
+# Old (deprecated)
+from mfg_pde.backends import get_legacy_backend_list
+backends = get_legacy_backend_list()
+
+# New (preferred)
+from mfg_pde.backends import get_available_backends
+backends = get_available_backends()
+```
+
+---
+
+### 16. Geometry Visualization Parameters (geometry/base.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `show_edges=True` | `mode='edges'` | Deprecated |
+| `show_quality=True` | `mode='quality'` | Deprecated |
+
+**Migration**:
+```python
+# Old (deprecated)
+geometry.plot(show_edges=True, show_quality=True)
+
+# New (preferred)
+geometry.plot(mode='edges')
+geometry.plot(mode='quality')
+```
+
+---
+
+### 17. Visualization Legacy Functions (visualization/legacy_plotting.py)
+
+| Old Function | New Function | Status |
+|:-------------|:-------------|:-------|
+| `legacy_myplot3d()` | Modern visualization system | Deprecated |
+| `legacy_plot_convergence()` | `plot_convergence()` with modern backend | Deprecated |
+| `legacy_plot_results()` | `plot_results()` with modern backend | Deprecated |
+
+---
+
+### 18. Dependencies Module (utils/dependencies.py)
+
+| Old Parameter | New Parameter | Status |
+|:--------------|:--------------|:-------|
+| `feature='plotting'` | `purpose='plotting'` | Deprecated |
+
+---
+
 ## Migration Strategy
 
 ### Phase 1: Documentation (✅ Current)
@@ -433,6 +624,23 @@ class MyCustomProblem(MFGProblem):
 | BC | `FPNoFluxCalculator` | `ZeroFluxCalculator` | Low | v0.16.11 |
 | BC | `BoundaryConditions1DFDM` | `BoundaryConditions` | Low | v0.16.11 |
 | BC | `LegacyBoundaryConditions1D` | `BoundaryConditions` | Low | v0.16.11 |
+| Neural | `use_batch_norm`, `use_layer_norm` | `normalization=...` | Low | v0.16 |
+| Neural | `enable_curriculum/multiscale/refinement` | `training_mode=...` | Low | v0.16 |
+| Neural | `use_control_variates/importance_sampling` | `variance_reduction=...` | Low | v0.16 |
+| HJB | `NiterNewton` | `max_newton_iterations` | Low | v0.16 |
+| HJB | `l2errBoundNewton` | `newton_tolerance` | Low | v0.16 |
+| HJB | `M_density_evolution_from_FP` | `M_density` | Low | v0.16 |
+| HJB | `U_final_condition_at_T` | `U_terminal` | Low | v0.16 |
+| HJB | `U_from_prev_picard` | `U_coupling_prev` | Low | v0.16 |
+| Compat | `mfg_pde.compat.gradient_notation` | `mfg_pde.core.DerivativeTensors` | Medium | v0.17 |
+| Problem | `sigma=0.1` | `diffusion=0.1` | Medium | v0.16 |
+| Types | `SpatialCoordinates` | `SpatialGrid` | Low | v0.16 |
+| Types | `TemporalCoordinates` | `TimeGrid` | Low | v0.16 |
+| Types | `LegacySolverReturn` | `SolverReturnTuple` | Low | v0.16 |
+| Backend | `get_legacy_backend_list()` | `get_available_backends()` | Low | v0.10 |
+| Geometry | `show_edges`, `show_quality` | `mode='edges'/'quality'` | Low | v0.16 |
+| Viz | `legacy_myplot3d()` etc. | Modern viz system | Low | v0.15 |
+| Deps | `feature='...'` | `purpose='...'` | Low | v0.16 |
 
 ---
 
@@ -472,20 +680,23 @@ pytest tests/unit/your_test_file.py
 - ✅ Legacy attributes converted to computed properties (PR #443)
 - ✅ Convergence module reorganized with renamed classes (PR #457)
 - ✅ BC Topology/Calculator composition (PR #520, Issue #516)
+- ✅ **Comprehensive deprecation audit** (38 patterns documented)
 - ⏳ Test file migration: 0/22 files converted
 - ⏳ Example migration: 0/10 files converted
 - ❌ v1.0.0 enforcement: Not yet implemented
 
-**Deprecation Counts by Version**:
-| Version | New Deprecations | Total Active |
-|:--------|:-----------------|:-------------|
-| v0.15.x | 6 patterns | 6 |
-| v0.16.x | 4 patterns | 10 |
-| **v0.16.11** | **4 patterns (BC)** | **14** |
-| v0.17.x | 6 patterns | 20 |
+**Deprecation Counts by Version** (comprehensive audit 2025-12-17):
+| Version | Category | Count | Total Active |
+|:--------|:---------|:------|:-------------|
+| v0.10 | Backend | 1 | 1 |
+| v0.15.x | Problem, Factory, Legacy | 6 | 7 |
+| v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | 27 |
+| **v0.16.11** | **BC Calculators** | **4** | **31** |
+| v0.17.x | Convergence, Gradient Notation | 7 | 38 |
 
 **Deprecation Timeline** (quick deprecation strategy - remove in 2-3 minor versions):
-- v0.16.11 deprecations → Remove in v0.19
+- v0.10-v0.15 deprecations → Remove in v0.18 or v1.0.0
+- v0.16.x deprecations → Remove in v0.19
 - v0.17.x deprecations → Remove in v0.20 or v1.0.0
 
 **Next Milestone**: v0.17.0 release with consolidated deprecation warnings
