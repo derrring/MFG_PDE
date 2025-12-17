@@ -141,6 +141,7 @@ from .applicator_graph import (
 from .applicator_meshfree import (
     MeshfreeApplicator,
     ParticleReflector,
+    SDFParticleBCHandler,
 )
 
 # Unified BoundaryConditions class and factory functions
@@ -255,6 +256,7 @@ __all__ = [
     # Meshfree Applicator
     "MeshfreeApplicator",
     "ParticleReflector",
+    "SDFParticleBCHandler",
     # Graph Applicator
     "GraphApplicator",
     "GraphBCConfig",
