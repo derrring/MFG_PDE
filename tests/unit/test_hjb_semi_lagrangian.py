@@ -64,9 +64,9 @@ class TestHJBSemiLagrangianInitialization:
         assert hasattr(solver, "x_grid")
         assert hasattr(solver, "dt")
         assert hasattr(solver, "dx")
-        assert len(solver.x_grid) == problem.Nx + 1
+        assert len(solver.x_grid) == problem.geometry.get_grid_shape()[0]
         assert np.isclose(solver.dt, problem.dt)
-        assert np.isclose(solver.dx, problem.dx)
+        assert np.isclose(solver.dx, problem.geometry.get_grid_spacing()[0])
 
 
 class TestHJBSemiLagrangianSolveHJBSystem:
@@ -78,15 +78,16 @@ class TestHJBSemiLagrangianSolveHJBSystem:
         solver = HJBSemiLagrangianSolver(problem)
 
         # Create inputs: Nx, Nt are intervals; knots = intervals + 1
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1))
-        U_final = np.zeros(problem.Nx + 1)
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points))
+        U_final = np.zeros(Nx_points)
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         # Output: same shape as input density (Nt+1 time points)
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
         assert np.all(np.isfinite(U_solution))
 
     def test_solve_hjb_system_final_condition(self):
@@ -95,10 +96,12 @@ class TestHJBSemiLagrangianSolveHJBSystem:
         solver = HJBSemiLagrangianSolver(problem)
 
         # Create inputs with specific final condition
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1))
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
-        U_final = 0.5 * (x_coords - problem.xmax) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points))
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        U_final = 0.5 * (x_coords - bounds[1][0]) ** 2
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
@@ -112,10 +115,12 @@ class TestHJBSemiLagrangianSolveHJBSystem:
         solver = HJBSemiLagrangianSolver(problem)
 
         # Create inputs
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1))
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points))
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = x_coords**2  # Quadratic final condition
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
@@ -133,10 +138,12 @@ class TestHJBSemiLagrangianNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=40)
         solver = HJBSemiLagrangianSolver(problem)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.5
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) * 0.5
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = np.sin(2 * np.pi * x_coords)
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
@@ -149,10 +156,12 @@ class TestHJBSemiLagrangianNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1))
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points))
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
@@ -170,19 +179,21 @@ class TestHJBSemiLagrangianIntegration:
         solver = HJBSemiLagrangianSolver(problem)
 
         # Uniform density
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
 
         # Simple final condition
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = (x_coords - 0.5) ** 2
 
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_solver_with_gaussian_density(self):
         """Test solver with Gaussian density distribution."""
@@ -190,19 +201,21 @@ class TestHJBSemiLagrangianIntegration:
         solver = HJBSemiLagrangianSolver(problem)
 
         # Gaussian density
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        bounds = problem.geometry.get_bounds()
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_profile = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_profile = m_profile / np.sum(m_profile)
         M_density = np.tile(m_profile, (problem.Nt + 1, 1))
 
-        U_final = np.zeros(problem.Nx + 1)
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_final = np.zeros(Nx_points)
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
 
 class TestHJBSemiLagrangianSolverNotAbstract:
@@ -251,45 +264,51 @@ class TestCharacteristicTracingMethods:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="explicit_euler", use_jax=False)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_rk2_produces_valid_solution(self):
         """Test that rk2 produces valid solution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk2", use_jax=False)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_rk4_produces_valid_solution(self):
         """Test that rk4 with scipy.solve_ivp produces valid solution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk4", use_jax=False)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_rk2_consistency_with_euler(self):
         """Test that rk2 produces consistent results with euler on smooth problems."""
@@ -297,10 +316,12 @@ class TestCharacteristicTracingMethods:
 
         # Solve with euler
         solver_euler = HJBSemiLagrangianSolver(problem, characteristic_solver="explicit_euler", use_jax=False)
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
         U_euler = solver_euler.solve_hjb_system(M_density, U_final, U_prev)
 
         # Solve with rk2
@@ -317,10 +338,12 @@ class TestCharacteristicTracingMethods:
 
         # Solve with euler
         solver_euler = HJBSemiLagrangianSolver(problem, characteristic_solver="explicit_euler", use_jax=False)
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
         U_euler = solver_euler.solve_hjb_system(M_density, U_final, U_prev)
 
         # Solve with rk4
@@ -348,7 +371,8 @@ class TestCharacteristicTracingMethods:
         # Should be finite
         assert np.isfinite(x_departure)
         # Should be within domain
-        assert problem.xmin <= x_departure <= problem.xmax
+        bounds = problem.geometry.get_bounds()
+        assert bounds[0][0] <= x_departure <= bounds[1][0]
 
 
 class TestInterpolationMethods:
@@ -375,15 +399,17 @@ class TestInterpolationMethods:
             problem, interpolation_method="cubic", characteristic_solver="rk2", use_jax=False
         )
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_cubic_consistency_with_linear(self):
         """Test that cubic interpolation is consistent with linear on smooth problems."""
@@ -393,10 +419,12 @@ class TestInterpolationMethods:
         solver_linear = HJBSemiLagrangianSolver(
             problem, interpolation_method="linear", characteristic_solver="rk2", use_jax=False
         )
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
         U_linear = solver_linear.solve_hjb_system(M_density, U_final, U_prev)
 
         # Solve with cubic
@@ -415,11 +443,13 @@ class TestInterpolationMethods:
         """Test that cubic interpolation produces smoother solutions."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=20)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         # Use steep gradients to test interpolation quality
         U_final = np.exp(-20 * (x_coords - 0.5) ** 2)
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         # Solve with linear
         solver_linear = HJBSemiLagrangianSolver(
@@ -481,25 +511,29 @@ class TestRBFInterpolationFallback:
             problem, use_rbf_fallback=True, rbf_kernel="thin_plate_spline", characteristic_solver="rk2", use_jax=False
         )
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         # Use steep gradient to potentially trigger RBF fallback
         U_final = np.exp(-20 * (x_coords - 0.5) ** 2)
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_rbf_consistency_with_no_fallback(self):
         """Test that RBF fallback doesn't change results on well-behaved problems."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=20)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         # Solve without RBF
         solver_no_rbf = HJBSemiLagrangianSolver(
@@ -529,15 +563,17 @@ class TestEnhancementsIntegration:
             problem, characteristic_solver="rk4", interpolation_method="cubic", use_jax=False
         )
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_rk4_with_rbf_fallback(self):
         """Test RK4 characteristic tracing with RBF fallback."""
@@ -546,15 +582,17 @@ class TestEnhancementsIntegration:
             problem, characteristic_solver="rk4", use_rbf_fallback=True, rbf_kernel="thin_plate_spline", use_jax=False
         )
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_all_enhancements_together(self):
         """Test all enhancements working together: RK4 + cubic + RBF."""
@@ -568,24 +606,28 @@ class TestEnhancementsIntegration:
             use_jax=False,
         )
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
     def test_enhanced_vs_baseline_consistency(self):
         """Test that enhanced configuration produces consistent results with baseline."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.3, Nt=20)
 
-        M_density = np.ones((problem.Nt + 1, problem.Nx + 1)) / problem.Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        M_density = np.ones((problem.Nt + 1, Nx_points)) / (Nx_points - 1)
+        bounds = problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((problem.Nt + 1, Nx_points))
 
         # Baseline configuration
         solver_baseline = HJBSemiLagrangianSolver(

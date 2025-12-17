@@ -118,7 +118,7 @@ def create_towel_beach_problem(
         Nx=Nx,
         T=T,
         Nt=Nt,
-        sigma=sigma,
+        diffusion=sigma,
         hamiltonian=hamiltonian,
         m_initial=initial_density_func,
     )
@@ -151,14 +151,16 @@ def plot_phase_transition(beach_length, stall_position):
             Nx=151,
             T=5.0,
             Nt=51,
-            sigma=0.3,
+            sigma=0.3,  # Function parameter still uses sigma
         )
 
         solver = create_standard_solver(problem)
         result = solver.solve(max_iterations=30, tolerance=1e-3)
 
         # Extract final equilibrium
-        x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        bounds = problem.geometry.get_bounds()
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_final = result.M[-1, :]
 
         # Plot

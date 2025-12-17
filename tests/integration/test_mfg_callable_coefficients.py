@@ -53,8 +53,9 @@ class TestMFGCallableCoefficients:
         # Verify result structure
         assert result is not None
         U, M = result[:2]
-        assert U.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        assert U.shape == (Nt_points, Nx_points)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)  # divergence_upwind guarantees non-negativity
 
     def test_mfg_with_density_dependent_diffusion(self):
@@ -85,8 +86,9 @@ class TestMFGCallableCoefficients:
 
         # Verify convergence
         U, M = result[:2]
-        assert U.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        assert U.shape == (Nt_points, Nx_points)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= -1e-6)  # Allow small numerical noise
 
     def test_mfg_callable_vs_constant_convergence(self):
@@ -136,13 +138,14 @@ class TestMFGCallableCoefficients:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, diffusion=0.1)
 
         # Spatially varying diffusion (higher at boundaries)
-        Nx = problem.Nx + 1
-        Nt = problem.Nt + 1
-        x_grid = np.linspace(problem.xmin, problem.xmax, Nx)
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        bounds = problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        x_grid = np.linspace(xmin, xmax, Nx_points)
         diffusion_array = 0.1 + 0.05 * np.abs(x_grid - 0.5)
 
         # Broadcast to all timesteps
-        diffusion_field = np.tile(diffusion_array, (Nt, 1))
+        diffusion_field = np.tile(diffusion_array, (Nt_points, 1))
 
         # Create solvers
         hjb_solver = HJBFDMSolver(problem)
@@ -162,8 +165,8 @@ class TestMFGCallableCoefficients:
 
         # Verify
         U, M = result[:2]
-        assert U.shape == (Nt, Nx)
-        assert M.shape == (Nt, Nx)
+        assert U.shape == (Nt_points, Nx_points)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= -1e-6)  # Allow small numerical noise
 
     def test_mfg_callable_with_small_iterations(self):
@@ -193,8 +196,9 @@ class TestMFGCallableCoefficients:
 
         # Verify it runs (may not converge, but should execute)
         U, M = result[:2]
-        assert U.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        assert U.shape == (Nt_points, Nx_points)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= -1e-6)  # Allow small numerical noise
 
 

@@ -178,18 +178,18 @@ class TestHJBFDMSolverSolveHJBSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
 
         # Create inputs
-        M_density = np.ones((Nt, Nx))
-        U_final = np.zeros(Nx)
-        U_prev = np.zeros((Nt, Nx))
+        M_density = np.ones((Nt_points, Nx_points))
+        U_final = np.zeros(Nx_points)
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt_points, Nx_points)
         assert np.all(np.isfinite(U_solution))
 
     def test_solve_hjb_system_final_condition(self):
@@ -197,14 +197,15 @@ class TestHJBFDMSolverSolveHJBSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
 
         # Create inputs with specific final condition
-        M_density = np.ones((Nt, Nx))
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
-        U_final = 0.5 * (x_coords - problem.xmax) ** 2
-        U_prev = np.zeros((Nt, Nx))
+        M_density = np.ones((Nt_points, Nx_points))
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        U_final = 0.5 * (x_coords - bounds[1][0]) ** 2
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
@@ -217,14 +218,15 @@ class TestHJBFDMSolverSolveHJBSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
 
         # Create inputs
-        M_density = np.ones((Nt, Nx))
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        M_density = np.ones((Nt_points, Nx_points))
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = x_coords**2  # Quadratic final condition
-        U_prev = np.zeros((Nt, Nx))
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
@@ -238,23 +240,24 @@ class TestHJBFDMSolverSolveHJBSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
 
         # Create Gaussian density
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_profile = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
-        M_density = np.tile(m_profile, (Nt, 1))
+        M_density = np.tile(m_profile, (Nt_points, 1))
 
-        U_final = np.zeros(Nx)
-        U_prev = np.zeros((Nt, Nx))
+        U_final = np.zeros(Nx_points)
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         # Solve
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt_points, Nx_points)
 
 
 class TestHJBFDMSolverNumericalProperties:
@@ -265,13 +268,14 @@ class TestHJBFDMSolverNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=40)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
 
-        M_density = np.ones((Nt, Nx)) * 0.5
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        M_density = np.ones((Nt_points, Nx_points)) * 0.5
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = np.sin(2 * np.pi * x_coords)
-        U_prev = np.zeros((Nt, Nx))
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
@@ -283,13 +287,14 @@ class TestHJBFDMSolverNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
 
-        M_density = np.ones((Nt, Nx))
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        M_density = np.ones((Nt_points, Nx_points))
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = 0.5 * (x_coords - 0.5) ** 2
-        U_prev = np.zeros((Nt, Nx))
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
@@ -305,16 +310,15 @@ class TestHJBFDMSolverParameterSensitivity:
     def test_different_newton_iterations(self):
         """Test solver with different Newton iteration counts."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=20)
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
 
         for n_iter in [10, 20, 30, 50]:
             solver = HJBFDMSolver(problem, max_newton_iterations=n_iter)
 
-            Nt = problem.Nt + 1
-            Nx = problem.Nx + 1
-
-            M_density = np.ones((Nt, Nx))
-            U_final = np.zeros(Nx)
-            U_prev = np.zeros((Nt, Nx))
+            M_density = np.ones((Nt_points, Nx_points))
+            U_final = np.zeros(Nx_points)
+            U_prev = np.zeros((Nt_points, Nx_points))
 
             U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
@@ -323,16 +327,15 @@ class TestHJBFDMSolverParameterSensitivity:
     def test_different_tolerances(self):
         """Test solver with different Newton tolerances."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=20)
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
 
         for tol in [1e-4, 1e-6, 1e-8]:
             solver = HJBFDMSolver(problem, newton_tolerance=tol)
 
-            Nt = problem.Nt + 1
-            Nx = problem.Nx + 1
-
-            M_density = np.ones((Nt, Nx))
-            U_final = np.zeros(Nx)
-            U_prev = np.zeros((Nt, Nx))
+            M_density = np.ones((Nt_points, Nx_points))
+            U_final = np.zeros(Nx_points)
+            U_prev = np.zeros((Nt_points, Nx_points))
 
             U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
@@ -347,46 +350,48 @@ class TestHJBFDMSolverIntegration:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
 
         # Uniform density
-        M_density = np.ones((Nt, Nx)) / Nx
+        M_density = np.ones((Nt_points, Nx_points)) / Nx_points
 
         # Simple final condition
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_final = (x_coords - 0.5) ** 2
 
-        U_prev = np.zeros((Nt, Nx))
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt_points, Nx_points)
 
     def test_solver_with_gaussian_density(self):
         """Test solver with Gaussian density distribution."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nt_points = problem.Nt_points
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
 
         # Gaussian density
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_profile = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_profile = m_profile / np.sum(m_profile)
-        M_density = np.tile(m_profile, (Nt, 1))
+        M_density = np.tile(m_profile, (Nt_points, 1))
 
-        U_final = np.zeros(Nx)
-        U_prev = np.zeros((Nt, Nx))
+        U_final = np.zeros(Nx_points)
+        U_prev = np.zeros((Nt_points, Nx_points))
 
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         # Should produce valid solution
         assert np.all(np.isfinite(U_solution))
-        assert U_solution.shape == (Nt, Nx)
+        assert U_solution.shape == (Nt_points, Nx_points)
 
 
 class TestHJBFDMSolverNotAbstract:
@@ -418,12 +423,12 @@ class TestHJBFDMSolverDiagonalTensor:
 
         # Get grid shape
         Nx, Ny = domain.get_grid_shape()
-        Nt = problem.Nt + 1
+        Nt_points = problem.Nt_points
 
         # Create dummy density and initial conditions
-        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
         U_final = np.zeros((Nx, Ny))
-        U_prev = np.zeros((Nt, Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
 
         # Diagonal tensor: fast horizontal, slow vertical
         Sigma = np.diag([0.15, 0.05])
@@ -441,7 +446,7 @@ class TestHJBFDMSolverDiagonalTensor:
             assert len(tensor_warnings) == 0, "Should not warn for diagonal tensor"
 
         # Verify solution shape and validity
-        assert U_solution.shape == (Nt, Nx, Ny)
+        assert U_solution.shape == (Nt_points, Nx, Ny)
         assert not np.any(np.isnan(U_solution))
         assert not np.any(np.isinf(U_solution))
 
@@ -454,12 +459,12 @@ class TestHJBFDMSolverDiagonalTensor:
 
         # Get grid shape
         Nx, Ny = domain.get_grid_shape()
-        Nt = problem.Nt + 1
+        Nt_points = problem.Nt_points
 
         # Create dummy density and initial conditions
-        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
         U_final = np.zeros((Nx, Ny))
-        U_prev = np.zeros((Nt, Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
 
         # Non-diagonal tensor with off-diagonal elements
         Sigma = np.array([[0.15, 0.02], [0.02, 0.05]])
@@ -477,7 +482,7 @@ class TestHJBFDMSolverDiagonalTensor:
             assert len(tensor_warnings) > 0, "Should warn for non-diagonal tensor"
 
         # Solution should still be computed (fallback to diagonal)
-        assert U_solution.shape == (Nt, Nx, Ny)
+        assert U_solution.shape == (Nt_points, Nx, Ny)
         assert not np.any(np.isnan(U_solution))
 
     def test_diagonal_tensor_is_diagonal_helper(self):
@@ -514,12 +519,12 @@ class TestHJBFDMSolverDiagonalTensor:
 
         # Get grid shape
         Nx, Ny = domain.get_grid_shape()
-        Nt = problem.Nt + 1
+        Nt_points = problem.Nt_points
 
         # Create dummy density and initial conditions
-        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
         U_final = np.zeros((Nx, Ny))
-        U_prev = np.zeros((Nt, Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
 
         # Spatially-varying diagonal tensor
         Sigma_spatial = np.zeros((Nx, Ny, 2, 2))
@@ -543,7 +548,7 @@ class TestHJBFDMSolverDiagonalTensor:
             assert len(tensor_warnings) == 0, "Should not warn for spatially-varying diagonal tensor"
 
         # Verify solution
-        assert U_solution.shape == (Nt, Nx, Ny)
+        assert U_solution.shape == (Nt_points, Nx, Ny)
         assert not np.any(np.isnan(U_solution))
 
     def test_diagonal_tensor_callable(self):
@@ -555,12 +560,12 @@ class TestHJBFDMSolverDiagonalTensor:
 
         # Get grid shape
         Nx, Ny = domain.get_grid_shape()
-        Nt = problem.Nt + 1
+        Nt_points = problem.Nt_points
 
         # Create dummy density and initial conditions
-        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
         U_final = np.zeros((Nx, Ny))
-        U_prev = np.zeros((Nt, Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
 
         # Callable diagonal tensor that varies with density
         def tensor_func(t, x, m):
@@ -581,7 +586,7 @@ class TestHJBFDMSolverDiagonalTensor:
             assert len(tensor_warnings) > 0, "Should warn for callable tensor"
 
         # Verify solution
-        assert U_solution.shape == (Nt, Nx, Ny)
+        assert U_solution.shape == (Nt_points, Nx, Ny)
         assert not np.any(np.isnan(U_solution))
 
     def test_diagonal_tensor_mutual_exclusivity(self):
@@ -593,12 +598,12 @@ class TestHJBFDMSolverDiagonalTensor:
 
         # Get grid shape
         Nx, Ny = domain.get_grid_shape()
-        Nt = problem.Nt + 1
+        Nt_points = problem.Nt_points
 
         # Create dummy density and initial conditions
-        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
         U_final = np.zeros((Nx, Ny))
-        U_prev = np.zeros((Nt, Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
 
         # Both tensor and scalar diffusion
         Sigma = np.diag([0.15, 0.05])
@@ -685,18 +690,18 @@ class TestHJBFDMSolverGhostValueBC:
 
         # Get grid shape
         Nx, Ny = domain.get_grid_shape()
-        Nt = problem.Nt + 1
+        Nt_points = problem.Nt_points
 
         # Create density and initial conditions
-        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
         U_final = np.zeros((Nx, Ny))
-        U_prev = np.zeros((Nt, Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
 
         # Solve - should use ghost values for gradient computation at boundaries
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
         # Verify solution is valid
-        assert U_solution.shape == (Nt, Nx, Ny)
+        assert U_solution.shape == (Nt_points, Nx, Ny)
         assert np.all(np.isfinite(U_solution))
 
     def test_hjb_gradient_computation_with_ghost_values(self):
@@ -743,16 +748,16 @@ class TestHJBFDMSolverGhostValueBC:
         solver = HJBFDMSolver(problem, solver_type="fixed_point", advection_scheme="gradient_centered")
 
         Nx, Ny = domain.get_grid_shape()
-        Nt = problem.Nt + 1
+        Nt_points = problem.Nt_points
 
-        M_density = np.ones((Nt, Nx, Ny)) * 0.5
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
         U_final = np.zeros((Nx, Ny))
-        U_prev = np.zeros((Nt, Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
 
         # Should work without issues
         U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
 
-        assert U_solution.shape == (Nt, Nx, Ny)
+        assert U_solution.shape == (Nt_points, Nx, Ny)
         assert np.all(np.isfinite(U_solution))
 
     def test_time_varying_dirichlet_bc(self):

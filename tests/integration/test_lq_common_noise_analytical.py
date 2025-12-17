@@ -78,7 +78,9 @@ class TestLQCommonNoiseAnalytical:
         )
 
         # Set initial density (Gaussian)
-        x = np.linspace(problem.xmin, problem.xmax, problem.Nx)
+        bounds = problem.geometry.get_bounds()
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         rho0 = np.exp(-(x**2) / 0.5)
         rho0 /= np.trapezoid(rho0, x)  # Normalize
         problem.rho0 = rho0
@@ -103,7 +105,9 @@ class TestLQCommonNoiseAnalytical:
         Returns:
             Tuple (u, m) with analytical solution
         """
-        x = np.linspace(problem.xmin, problem.xmax, problem.Nx)
+        bounds = problem.geometry.get_bounds()
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         t_grid = np.linspace(0, problem.T, problem.Nt + 1)
 
         # For LQ-MFG with this structure, analytical solution is:
@@ -111,8 +115,8 @@ class TestLQCommonNoiseAnalytical:
         # m(t, x) = Gaussian with time-varying variance
 
         # Simplified analytical solution (deterministic LQ-MFG)
-        u = np.zeros((problem.Nt + 1, problem.Nx))
-        m = np.zeros((problem.Nt + 1, problem.Nx))
+        u = np.zeros((problem.Nt + 1, Nx_points))
+        m = np.zeros((problem.Nt + 1, Nx_points))
 
         for i, t in enumerate(t_grid):
             tau = problem.T - t  # Time to terminal
@@ -229,11 +233,13 @@ class TestLQCommonNoiseAnalytical:
         u, m = self.analytical_solution_zero_noise(problem)
 
         # Check shapes
-        assert u.shape == (problem.Nt + 1, problem.Nx)
-        assert m.shape == (problem.Nt + 1, problem.Nx)
+        bounds = problem.geometry.get_bounds()
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        assert u.shape == (problem.Nt + 1, Nx_points)
+        assert m.shape == (problem.Nt + 1, Nx_points)
 
         # Check density normalization
-        x = np.linspace(problem.xmin, problem.xmax, problem.Nx)
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         for i in range(problem.Nt + 1):
             mass = np.trapezoid(m[i], x)
             assert np.abs(mass - 1.0) < 1e-6, f"Density at t={i} not normalized: mass={mass}"

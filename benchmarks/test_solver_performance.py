@@ -66,7 +66,9 @@ def test_particle_collocation_small_performance(benchmark, small_problem):
     ParticleCollocationSolver on a small grid suitable for CI.
     """
     # Create collocation points (required parameter)
-    x_collocation = np.linspace(small_problem.xmin, small_problem.xmax, small_problem.Nx + 1)
+    bounds = small_problem.geometry.get_bounds()
+    Nx_points = small_problem.geometry.get_grid_shape()[0]
+    x_collocation = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
 
     solver = ParticleCollocationSolver(
         problem=small_problem,
@@ -115,7 +117,9 @@ def test_particle_collocation_medium_performance(benchmark, medium_problem):
     longer to run. Marked as 'slow' for optional execution.
     """
     # Create collocation points (required parameter)
-    x_collocation = np.linspace(medium_problem.xmin, medium_problem.xmax, medium_problem.Nx + 1)
+    bounds = medium_problem.geometry.get_bounds()
+    Nx_points = medium_problem.geometry.get_grid_shape()[0]
+    x_collocation = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
 
     solver = ParticleCollocationSolver(
         problem=medium_problem,
@@ -163,7 +167,9 @@ def test_solver_creation_overhead(benchmark):
     negligible compared to solve time.
     """
     problem = MFGProblem(Nx=20, Nt=30)
-    x_collocation = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+    bounds = problem.geometry.get_bounds()
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    x_collocation = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
 
     def create_solver():
         return ParticleCollocationSolver(
@@ -192,13 +198,14 @@ def test_problem_creation_overhead(benchmark):
             Nx=40,
             T=1.0,
             Nt=50,
-            sigma=0.12,
+            diffusion=0.12,
             coupling_coefficient=0.02,
         )
 
     problem = benchmark(create_problem)
     assert problem is not None
-    assert problem.Nx == 40
+    Nx_intervals = problem.geometry.get_grid_shape()[0] - 1
+    assert Nx_intervals == 40
     assert problem.Nt == 50
 
 

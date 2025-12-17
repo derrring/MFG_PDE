@@ -127,9 +127,10 @@ print(f"  Fast (loose) vs Default:    {diff_fast_default:.6e}")
 print()
 
 # Mass conservation check
-mass_default = np.sum(result_default.M[-1, :]) * problem.dx
-mass_tight = np.sum(result_tight.M[-1, :]) * problem.dx
-mass_fast = np.sum(result_fast.M[-1, :]) * problem.dx
+dx = problem.geometry.get_grid_spacing()[0]
+mass_default = np.sum(result_default.M[-1, :]) * dx
+mass_tight = np.sum(result_tight.M[-1, :]) * dx
+mass_fast = np.sum(result_fast.M[-1, :]) * dx
 
 print("Final mass (should be ~1.0):")
 print(f"  Default:        {mass_default:.6f}")
@@ -196,9 +197,12 @@ try:
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
     # Plot 1: Final density comparison
-    axes[0].plot(problem.xSpace, result_default.M[-1, :], "b-", linewidth=2, label="Default")
-    axes[0].plot(problem.xSpace, result_tight.M[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
-    axes[0].plot(problem.xSpace, result_fast.M[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
+    bounds = problem.geometry.get_bounds()
+    Nx_points = problem.geometry.get_grid_shape()[1]
+    x_space = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+    axes[0].plot(x_space, result_default.M[-1, :], "b-", linewidth=2, label="Default")
+    axes[0].plot(x_space, result_tight.M[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
+    axes[0].plot(x_space, result_fast.M[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
     axes[0].set_xlabel("x")
     axes[0].set_ylabel("m(T, x)")
     axes[0].set_title("Final Density Comparison")
@@ -206,9 +210,9 @@ try:
     axes[0].grid(True, alpha=0.3)
 
     # Plot 2: Value function comparison
-    axes[1].plot(problem.xSpace, result_default.U[-1, :], "b-", linewidth=2, label="Default")
-    axes[1].plot(problem.xSpace, result_tight.U[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
-    axes[1].plot(problem.xSpace, result_fast.U[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
+    axes[1].plot(x_space, result_default.U[-1, :], "b-", linewidth=2, label="Default")
+    axes[1].plot(x_space, result_tight.U[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
+    axes[1].plot(x_space, result_fast.U[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
     axes[1].set_xlabel("x")
     axes[1].set_ylabel("u(T, x)")
     axes[1].set_title("Terminal Value Function")

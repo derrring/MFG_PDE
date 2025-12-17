@@ -112,8 +112,10 @@ def solve_lq_mfg_with_value_iteration():
     )
 
     print("\nProblem setup:")
-    print(f"  Domain: [{problem.xmin}, {problem.xmax}]")
-    print(f"  Grid: {problem.Nx + 1} spatial points")
+    bounds = problem.geometry.get_bounds()
+    grid_shape = problem.geometry.get_grid_shape()
+    print(f"  Domain: [{bounds[0][0]}, {bounds[1][0]}]")
+    print(f"  Grid: {grid_shape[0]} spatial points")
     print(f"  Time: {problem.Nt + 1} time steps")
     print(f"  Diffusion: σ = {problem.sigma}")
     print(f"  Control cost: {problem.coupling_coefficient}")
@@ -128,14 +130,16 @@ def solve_lq_mfg_with_value_iteration():
     )
 
     # Create test density (uniform for simplicity)
-    M_test = np.ones((problem.Nt + 1, problem.Nx + 1)) / (problem.Nx + 1)
+    grid_shape = problem.geometry.get_grid_shape()
+    M_test = np.ones((problem.Nt + 1, grid_shape[0])) / grid_shape[0]
 
     # Terminal condition: quadratic
-    x = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+    bounds = problem.geometry.get_bounds()
+    x = np.linspace(bounds[0][0], bounds[1][0], grid_shape[0])
     U_terminal = 0.5 * (x - 0.5) ** 2  # Cost to deviate from center
 
     # Initial guess
-    U_guess = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    U_guess = np.zeros((problem.Nt + 1, grid_shape[0]))
 
     # Solve with value iteration
     print("\nSolving with value iteration (fixed-point)...")
@@ -192,17 +196,16 @@ def demonstrate_policy_iteration_structure():
     print()
 
     # Compute optimal policy from value function
-    Nt, Nx_plus_1 = U_value.shape
-    Nx = Nx_plus_1 - 1
-    dx = problem.dx
+    Nt, Nx_points = U_value.shape
+    dx = problem.geometry.get_grid_spacing()[0]
 
     policy_from_value = np.zeros_like(U_value)
 
     for n in range(Nt):
-        for i in range(Nx_plus_1):
+        for i in range(Nx_points):
             if i == 0:
                 dudx = (U_value[n, i + 1] - U_value[n, i]) / dx
-            elif i == Nx:
+            elif i == Nx_points - 1:
                 dudx = (U_value[n, i] - U_value[n, i - 1]) / dx
             else:
                 dudx = (U_value[n, i + 1] - U_value[n, i - 1]) / (2 * dx)

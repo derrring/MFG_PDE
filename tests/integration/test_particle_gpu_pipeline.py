@@ -47,11 +47,13 @@ class TestParticleGPUPipeline:
         # Initial condition: Gaussian
         x = problem.xSpace
         m_initial = np.exp(-((x - 0.5) ** 2) / 0.1)
-        m_initial = m_initial / (np.sum(m_initial) * problem.dx)
+        dx = problem.geometry.get_grid_spacing()[0]
+        m_initial = m_initial / (np.sum(m_initial) * dx)
 
         # Drift field: simple linear
-        U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
-        for t in range(problem.Nt + 1):
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        U_drift = np.zeros((Nt_points, Nx_points))
+        for t in range(Nt_points):
             U_drift[t, :] = -((x - 0.5) ** 2)  # Quadratic potential
 
         # CPU solver
@@ -80,19 +82,19 @@ class TestParticleGPUPipeline:
         # Should match within stochastic tolerance
         # Particle methods are stochastic, so allow ~10% relative error
         assert M_cpu.shape == M_gpu.shape
-        assert M_cpu.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert M_cpu.shape == (Nt_points, Nx_points)
 
         # Mass conservation (both should integrate to ~1)
-        mass_cpu = np.sum(M_cpu, axis=1) * problem.dx
-        mass_gpu = np.sum(M_gpu, axis=1) * problem.dx
+        mass_cpu = np.sum(M_cpu, axis=1) * dx
+        mass_gpu = np.sum(M_gpu, axis=1) * dx
 
         np.testing.assert_allclose(mass_cpu, 1.0, rtol=0.2)  # Within 20%
         np.testing.assert_allclose(mass_gpu, 1.0, rtol=0.2)
 
         # Distributions should be similar (allow stochastic variation)
         # Compare mean particle positions over time
-        mean_cpu = np.sum(M_cpu * x[None, :], axis=1) * problem.dx
-        mean_gpu = np.sum(M_gpu * x[None, :], axis=1) * problem.dx
+        mean_cpu = np.sum(M_cpu * x[None, :], axis=1) * dx
+        mean_gpu = np.sum(M_gpu * x[None, :], axis=1) * dx
 
         # Means should track similarly (within 20% relative difference)
         np.testing.assert_allclose(mean_cpu, mean_gpu, rtol=0.3, atol=0.1)
@@ -109,9 +111,11 @@ class TestParticleGPUPipeline:
         )
 
         m_initial = np.exp(-(problem.xSpace**2) / 0.2)
-        m_initial = m_initial / (np.sum(m_initial) * problem.dx)
+        dx = problem.geometry.get_grid_spacing()[0]
+        m_initial = m_initial / (np.sum(m_initial) * dx)
 
-        U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        U_drift = np.zeros((Nt_points, Nx_points))
 
         backend = TorchBackend(device="mps")  # Test on actual MPS device
         solver = FPParticleSolver(
@@ -125,12 +129,12 @@ class TestParticleGPUPipeline:
         M_gpu = solver.solve_fp_system(m_initial, U_drift)
 
         # Basic validity checks
-        assert M_gpu.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert M_gpu.shape == (Nt_points, Nx_points)
         assert np.all(M_gpu >= 0)  # Density non-negative
         assert np.all(np.isfinite(M_gpu))  # No NaN/Inf
 
         # Mass conservation
-        mass = np.sum(M_gpu, axis=1) * problem.dx
+        mass = np.sum(M_gpu, axis=1) * dx
         np.testing.assert_allclose(mass, 1.0, rtol=0.3)
 
     def test_boundary_conditions_gpu(self):
@@ -144,8 +148,9 @@ class TestParticleGPUPipeline:
             sigma=0.15,
         )
 
-        m_initial = np.ones(problem.Nx + 1) / (problem.Nx + 1)
-        U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_drift = np.zeros((Nt_points, Nx_points))
 
         backend = TorchBackend(device="cpu")
 
@@ -161,7 +166,7 @@ class TestParticleGPUPipeline:
             M = solver.solve_fp_system(m_initial, U_drift)
 
             # Should complete without errors
-            assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+            assert M.shape == (Nt_points, Nx_points)
             assert np.all(M >= 0)
             assert np.all(np.isfinite(M))
 
@@ -184,9 +189,11 @@ class TestGPUPerformance:
         )
 
         m_initial = np.exp(-((problem.xSpace - 0.5) ** 2) / 0.1)
-        m_initial = m_initial / (np.sum(m_initial) * problem.dx)
+        dx = problem.geometry.get_grid_spacing()[0]
+        m_initial = m_initial / (np.sum(m_initial) * dx)
 
-        U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        U_drift = np.zeros((Nt_points, Nx_points))
 
         N = 10000  # Large particle count
 
@@ -219,7 +226,8 @@ class TestGPUPerformance:
 
         speedup = time_cpu / time_gpu
 
-        print(f"\nGPU Pipeline Performance (N={N}, Nt={problem.Nt}):")
+        Nt_points = problem.geometry.get_grid_shape()[0] - 1  # intervals
+        print(f"\nGPU Pipeline Performance (N={N}, Nt={Nt_points}):")
         print(f"  CPU time: {time_cpu:.2f}s")
         print(f"  GPU time: {time_gpu:.2f}s")
         print(f"  Speedup: {speedup:.2f}x")

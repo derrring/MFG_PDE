@@ -76,8 +76,9 @@ def main():
         _ = False  # converged
 
     # Compute mass conservation
-    dx = problem.dx
-    masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
+    dx = problem.geometry.get_grid_spacing()[0]
+    Nt_points = problem.geometry.get_grid_shape()[0]
+    masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(Nt_points)])
 
     print("\n" + "=" * 80)
     print("MASS CONSERVATION RESULTS")
@@ -146,11 +147,13 @@ def main():
     ax = axes[1, 1]
     ax.axis("off")
 
+    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+
     stats_text = f"""
 FAST TEST CONFIGURATION
 {"=" * 40}
 
-Grid: {problem.Nx + 1} × {problem.Nt + 1}
+Grid: {Nx_points} × {Nt_points}
 Particles: 500
 Iterations: 30 max
 Diffusion: σ = {problem.sigma}

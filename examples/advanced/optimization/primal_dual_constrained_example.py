@@ -446,8 +446,10 @@ def main():
         problem = create_multi_constraint_problem()
 
         logger.info("Problem created:")
-        logger.info(f"  Domain: [{problem.xmin}, {problem.xmax}] × [0, {problem.T}]")
-        logger.info(f"  Grid: {problem.Nx + 1} × {problem.Nt}")
+        bounds = problem.geometry.get_bounds()
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        logger.info(f"  Domain: [{bounds[0][0]}, {bounds[1][0]}] × [0, {problem.T}]")
+        logger.info(f"  Grid: {Nx_points} × {problem.Nt}")
         logger.info("  Constraints: obstacle + velocity + budget + capacity")
 
         # Solve with both methods

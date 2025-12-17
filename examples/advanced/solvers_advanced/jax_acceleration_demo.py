@@ -16,6 +16,7 @@ import numpy as np
 from mfg_pde.backends import create_backend
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.factory import print_backend_info
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.numpy_compat import trapezoid
 
@@ -40,10 +41,11 @@ class BarProblemJAX(MFGProblem):
     def f(self, x, u, m):
         """Running cost with congestion effects."""
         # Get total attendance by integrating density
+        dx = self.geometry.get_grid_spacing()[0]
         if hasattr(self, "_backend") and self._backend:
-            total_attendance = self._backend.trapezoid(m, dx=self.dx)
+            total_attendance = self._backend.trapezoid(m, dx=dx)
         else:
-            total_attendance = trapezoid(m, dx=self.dx)
+            total_attendance = trapezoid(m, dx=dx)
 
         # Congestion cost when attendance exceeds capacity
         congestion = max(0, total_attendance - self.capacity)
@@ -76,8 +78,9 @@ def benchmark_backends(problem_sizes=None, num_runs=3):
     for Nx in problem_sizes:
         logger.info(f"Benchmarking problem size Nx={Nx}")
 
-        # Create test problem
-        problem = BarProblemJAX(T=1.0, Nx=Nx, Nt=50, capacity=0.6)
+        # Create test problem using geometry-first API
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+        problem = BarProblemJAX(geometry=geometry, T=1.0, Nt=50, capacity=0.6)
 
         # Benchmark NumPy backend
         numpy_times = []
@@ -88,15 +91,18 @@ def benchmark_backends(problem_sizes=None, num_runs=3):
                 start_time = time.perf_counter()
 
                 # Simulate basic MFG operations
-                x_grid = backend.linspace(problem.xmin, problem.xmax, problem.Nx)
-                U = backend.zeros((problem.Nx,))
-                M = backend.ones((problem.Nx,))
-                M = M / backend.trapezoid(M, dx=problem.dx)  # Normalize
+                bounds = problem.geometry.get_bounds()
+                Nx_points = problem.geometry.get_grid_shape()[0]
+                dx = problem.geometry.get_grid_spacing()[0]
+                x_grid = backend.linspace(bounds[0][0], bounds[1][0], Nx_points)
+                U = backend.zeros((Nx_points,))
+                M = backend.ones((Nx_points,))
+                M = M / backend.trapezoid(M, dx=dx)  # Normalize
 
                 # Simulate solver iterations
                 for _ in range(20):
-                    U = backend.hjb_step(U, M, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
-                    M = backend.fpk_step(M, U, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
+                    U = backend.hjb_step(U, M, 0.01, dx, {"x_grid": x_grid, "sigma_sq": 0.01})
+                    M = backend.fpk_step(M, U, 0.01, dx, {"x_grid": x_grid, "sigma_sq": 0.01})
 
                 end_time = time.perf_counter()
                 numpy_times.append(end_time - start_time)
@@ -119,15 +125,18 @@ def benchmark_backends(problem_sizes=None, num_runs=3):
                 start_time = time.perf_counter()
 
                 # Simulate basic MFG operations (JAX version)
-                x_grid = backend.linspace(problem.xmin, problem.xmax, problem.Nx)
-                U = backend.zeros((problem.Nx,))
-                M = backend.ones((problem.Nx,))
-                M = M / backend.trapezoid(M, dx=problem.dx)
+                bounds = problem.geometry.get_bounds()
+                Nx_points = problem.geometry.get_grid_shape()[0]
+                dx = problem.geometry.get_grid_spacing()[0]
+                x_grid = backend.linspace(bounds[0][0], bounds[1][0], Nx_points)
+                U = backend.zeros((Nx_points,))
+                M = backend.ones((Nx_points,))
+                M = M / backend.trapezoid(M, dx=dx)
 
                 # Simulate solver iterations (JIT compilation on first run)
                 for _ in range(20):
-                    U = backend.hjb_step(U, M, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
-                    M = backend.fpk_step(M, U, 0.01, problem.dx, {"x_grid": x_grid, "sigma_sq": 0.01})
+                    U = backend.hjb_step(U, M, 0.01, dx, {"x_grid": x_grid, "sigma_sq": 0.01})
+                    M = backend.fpk_step(M, U, 0.01, dx, {"x_grid": x_grid, "sigma_sq": 0.01})
 
                 end_time = time.perf_counter()
                 jax_times.append(end_time - start_time)

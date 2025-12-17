@@ -22,9 +22,10 @@ def test_weight_functions():
     bc = no_flux_bc(dimension=1)
 
     # Test data
-    M_simple = np.ones((problem.Nt + 1, problem.Nx + 1)) * 0.5
-    U_terminal = np.zeros(problem.Nx + 1)
-    U_initial = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+    M_simple = np.ones((Nt_points, Nx_points)) * 0.5
+    U_terminal = np.zeros(Nx_points)
+    U_initial = np.zeros((Nt_points, Nx_points))
 
     weight_functions = ["uniform", "gaussian", "wendland", "inverse_distance"]
     results = {}

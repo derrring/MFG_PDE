@@ -149,8 +149,9 @@ print("Mass Conservation Check (sigma variations):")
 for sigma, result in results_sigma.items():
     # Create a problem with matching grid to get dx
     problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, diffusion=sigma)
-    initial_mass = np.sum(result.M[0, :]) * problem.dx
-    final_mass = np.sum(result.M[-1, :]) * problem.dx
+    dx = problem.geometry.get_grid_spacing()[0]
+    initial_mass = np.sum(result.M[0, :]) * dx
+    final_mass = np.sum(result.M[-1, :]) * dx
     print(
         f"  sigma={sigma}: Initial={initial_mass:.4f}, Final={final_mass:.4f}, Drift={abs(final_mass - initial_mass):.2e}"
     )

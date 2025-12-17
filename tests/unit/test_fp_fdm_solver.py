@@ -77,30 +77,31 @@ class TestFPFDMSolverBasicSolution:
         """Test that solve_fp_system returns correct shape."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
         # Create simple inputs
-        m_initial = np.ones(Nx) / Nx  # Normalized density
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points  # Normalized density
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
-        assert m_result.shape == (Nt, Nx)
+        assert m_result.shape == (Nt_points, Nx_points)
 
     def test_solve_fp_system_initial_condition_preserved(self, standard_problem):
         """Test that initial condition is preserved at t=0."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Create Gaussian initial condition
-        x_coords = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.0) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)  # Normalize
 
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -111,27 +112,29 @@ class TestFPFDMSolverBasicSolution:
         """Test behavior with zero time steps (Nt=0)."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        _Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((0, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((0, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
-        assert m_result.shape == (0, Nx)
+        assert m_result.shape == (0, Nx_points)
 
     def test_solve_fp_system_one_timestep(self, standard_problem):
         """Test behavior with single time step (Nt=1)."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        _Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((1, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((1, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
-        assert m_result.shape == (1, Nx)
+        assert m_result.shape == (1, Nx_points)
         # Should return initial condition (possibly with non-negativity enforcement)
         assert np.allclose(m_result[0, :], m_initial, rtol=0.1)
 
@@ -144,20 +147,20 @@ class TestFPFDMSolverBoundaryConditions:
         bc = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
         # Initial condition with support near boundaries
-        m_initial = np.zeros(Nx)
+        m_initial = np.zeros(Nx_points)
         m_initial[0] = 0.5
         m_initial[-1] = 0.5
 
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
         # With periodic BC, mass should wrap around
-        assert m_result.shape == (Nt, Nx)
+        assert m_result.shape == (Nt_points, Nx_points)
         # Mass should be preserved
         assert np.all(m_result >= -1e-10)  # Non-negative (with small tolerance)
 
@@ -166,16 +169,16 @@ class TestFPFDMSolverBoundaryConditions:
         bc = BoundaryConditions(type="dirichlet", left_value=0.1, right_value=0.2)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
         # Boundary values should be enforced at all time steps
-        for t in range(Nt):
+        for t in range(Nt_points):
             assert np.isclose(m_result[t, 0], 0.1, atol=1e-10)
             assert np.isclose(m_result[t, -1], 0.2, atol=1e-10)
 
@@ -184,21 +187,22 @@ class TestFPFDMSolverBoundaryConditions:
         bc = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Gaussian initial condition
-        x_coords = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.0) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
 
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
         # With no-flux BC, total mass should be approximately conserved
         initial_mass = np.sum(m_initial)
-        for t in range(Nt):
+        for t in range(Nt_points):
             final_mass = np.sum(m_result[t, :])
             # Allow some numerical error
             assert np.isclose(final_mass, initial_mass, rtol=0.1)
@@ -211,11 +215,11 @@ class TestFPFDMSolverNonNegativity:
         """Test that solution remains non-negative."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -226,12 +230,12 @@ class TestFPFDMSolverNonNegativity:
         """Test that negative values in initial condition are set to zero."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
         # Initial condition with some negative values
-        m_initial = np.random.randn(Nx)
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.random.randn(Nx_points)
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -246,16 +250,17 @@ class TestFPFDMSolverWithDrift:
         """Test solution with linear value function (constant drift)."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Gaussian initial condition at center
-        x_coords = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.0) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
 
         # Linear value function: U(t,x) = x (constant drift)
-        U_solution = np.tile(x_coords, (Nt, 1))
+        U_solution = np.tile(x_coords, (Nt_points, 1))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -268,14 +273,15 @@ class TestFPFDMSolverWithDrift:
         """Test solution with quadratic value function."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
-        x_coords = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
-        m_initial = np.ones(Nx) / Nx
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.ones(Nx_points) / Nx_points
 
         # Quadratic value function: U(t,x) = x^2 (linear drift)
-        U_solution = np.tile(x_coords**2, (Nt, 1))
+        U_solution = np.tile(x_coords**2, (Nt_points, 1))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -293,11 +299,11 @@ class TestFPFDMSolverEdgeCases:
         standard_problem.dt = 1e-20  # Very small timestep
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -306,14 +312,17 @@ class TestFPFDMSolverEdgeCases:
 
     def test_zero_spatial_step(self, standard_problem):
         """Test behavior when Dx is extremely small (but Nx > 1)."""
-        standard_problem.dx = 1e-20  # Very small spatial step
+        # Note: This test modifies problem.dx which is derived from geometry.
+        # For a proper test, create a new problem with tiny domain or many points.
+        # This test maintains legacy behavior for backward compatibility testing.
+        standard_problem.dx = 1e-20  # Very small spatial step (legacy attribute)
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -330,21 +339,24 @@ class TestFPFDMSolverEdgeCases:
         Single-point grids are not physically meaningful for PDEs
         (no spatial variation possible). The solver handles this gracefully
         by returning the initial condition propagated forward in time.
+
+        Note: This test modifies problem.Nx which is a legacy attribute.
+        Modern API would create a new problem with appropriate geometry.
         """
-        standard_problem.Nx = 0  # Results in Nx+1 = 1
+        standard_problem.Nx = 0  # Results in Nx+1 = 1 (legacy attribute)
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
         m_initial = np.array([1.0])
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Single-point grids are degenerate but solver handles them gracefully
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
         # With no spatial variation, the solution should remain constant
-        assert m_result.shape == (Nt, Nx)
+        assert m_result.shape == (Nt_points, Nx_points)
         assert np.all(np.isfinite(m_result))
 
 
@@ -356,20 +368,21 @@ class TestFPFDMSolverMassConservation:
         bc = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
-        x_coords = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.0) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
 
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
         # Check mass conservation at each time step
         initial_mass = np.sum(m_initial)
-        for t in range(Nt):
+        for t in range(Nt_points):
             current_mass = np.sum(m_result[t, :])
             assert np.isclose(current_mass, initial_mass, rtol=0.1)
 
@@ -378,11 +391,11 @@ class TestFPFDMSolverMassConservation:
         bc = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
@@ -428,11 +441,12 @@ class TestFPFDMSolverArrayDiffusion:
         bc = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Create spatially varying diffusion (moderate variation)
-        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         diffusion_array = 0.15 + 0.05 * np.abs(x_grid - 0.5)  # Moderate variation
 
         # Initial condition
@@ -440,12 +454,12 @@ class TestFPFDMSolverArrayDiffusion:
         m_initial /= np.sum(m_initial)
 
         # Zero drift (pure diffusion)
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve with array diffusion
         M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=diffusion_array)
 
-        assert M.shape == (Nt, Nx)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
         # Verify solution doesn't blow up (moderate mass drift is expected with variable diffusion)
         assert np.all(np.sum(M, axis=1) > 0.5)
@@ -455,15 +469,16 @@ class TestFPFDMSolverArrayDiffusion:
         """Test spatiotemporal diffusion: sigma(t, x)."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Create spatiotemporal diffusion (varying in time and space)
-        diffusion_field = np.zeros((Nt, Nx))
-        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
-        for t in range(Nt):
+        diffusion_field = np.zeros((Nt_points, Nx_points))
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        for t in range(Nt_points):
             # Diffusion increases over time, higher at boundaries
-            time_factor = 0.1 * (1 + 0.5 * t / Nt)
+            time_factor = 0.1 * (1 + 0.5 * t / Nt_points)
             space_factor = 1.0 + 0.3 * np.abs(x_grid - 0.5)
             diffusion_field[t, :] = time_factor * space_factor
 
@@ -472,12 +487,12 @@ class TestFPFDMSolverArrayDiffusion:
         m_initial /= np.sum(m_initial)
 
         # Zero drift
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve with array diffusion
         M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=diffusion_field)
 
-        assert M.shape == (Nt, Nx)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
         # Mass conservation
         assert np.allclose(np.sum(M, axis=1), 1.0, atol=0.05)
@@ -486,11 +501,12 @@ class TestFPFDMSolverArrayDiffusion:
         """Test array diffusion with non-zero drift."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Spatially varying diffusion (moderate variation)
-        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         diffusion_array = 0.2 + 0.05 * x_grid  # Moderate increase
 
         # Initial condition
@@ -498,14 +514,14 @@ class TestFPFDMSolverArrayDiffusion:
         m_initial /= np.sum(m_initial)
 
         # Non-zero drift (constant velocity to the right)
-        U_solution = np.zeros((Nt, Nx))
-        for t in range(Nt):
+        U_solution = np.zeros((Nt_points, Nx_points))
+        for t in range(Nt_points):
             U_solution[t, :] = -0.2 * x_grid  # Moderate drift
 
         # Solve with array diffusion and drift
         M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=diffusion_array)
 
-        assert M.shape == (Nt, Nx)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
         # Verify solution stability (no blow-up)
         assert np.all(np.sum(M, axis=1) > 0.5)
@@ -515,18 +531,19 @@ class TestFPFDMSolverArrayDiffusion:
         """Test that mass is conserved with array diffusion."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Spatially varying diffusion (non-uniform)
-        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         diffusion_array = 0.1 + 0.3 * (x_grid * (1 - x_grid))  # Parabolic profile
 
         # Initial condition (normalized)
-        m_initial = np.ones(Nx) / Nx
+        m_initial = np.ones(Nx_points) / Nx_points
 
         # Zero drift
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve
         M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=diffusion_array)
@@ -543,14 +560,14 @@ class TestFPFDMSolverArrayDiffusion:
         """Test that incorrect array shapes raise errors."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Wrong shape: 3D array
-        diffusion_3d = np.zeros((Nt, Nx, 2))
+        diffusion_3d = np.zeros((Nt_points, Nx_points, 2))
 
         with pytest.raises(ValueError, match=r"must be 1D.*or 2D"):
             solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=diffusion_3d)
@@ -563,25 +580,26 @@ class TestFPFDMSolverCallableDiffusion:
         """Test porous medium equation: D(m) = σ² m."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Porous medium diffusion: D = σ² m
         def porous_medium_diffusion(t, x, m):
             return 0.1 * m  # Diffusion proportional to density
 
         # Initial condition (Gaussian)
-        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
         m_initial /= np.sum(m_initial)
 
         # Zero drift
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve with callable diffusion
         M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=porous_medium_diffusion)
 
-        assert M.shape == (Nt, Nx)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
         # Verify solution stability
         assert np.all(np.sum(M, axis=1) > 0.5)
@@ -591,8 +609,9 @@ class TestFPFDMSolverCallableDiffusion:
         """Test density-dependent diffusion: D = D0 + D1 * (1 - m/m_max)."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # Crowd diffusion: lower diffusion in high-density regions
         def crowd_diffusion(t, x, m):
@@ -600,17 +619,17 @@ class TestFPFDMSolverCallableDiffusion:
             return 0.05 + 0.15 * (1 - m / m_max)
 
         # Initial condition
-        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
         m_initial /= np.sum(m_initial)
 
         # Zero drift
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve
         M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=crowd_diffusion)
 
-        assert M.shape == (Nt, Nx)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
         assert np.all(np.sum(M, axis=1) > 0.5)
 
@@ -618,60 +637,62 @@ class TestFPFDMSolverCallableDiffusion:
         """Test callable diffusion combined with drift field."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
 
         # State-dependent diffusion
         def state_diffusion(t, x, m):
             return 0.1 + 0.05 * m
 
         # Initial condition
-        x_grid = np.linspace(standard_problem.xmin, standard_problem.xmax, Nx)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_grid - 0.3) ** 2) / (2 * 0.1**2))
         m_initial /= np.sum(m_initial)
 
         # Drift field
-        U_solution = np.zeros((Nt, Nx))
-        for t in range(Nt):
+        U_solution = np.zeros((Nt_points, Nx_points))
+        for t in range(Nt_points):
             U_solution[t, :] = -0.1 * x_grid
 
         # Solve
         M = solver.solve_fp_system(m_initial, drift_field=U_solution, diffusion_field=state_diffusion)
 
-        assert M.shape == (Nt, Nx)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
 
     def test_callable_scalar_return(self, standard_problem):
         """Test callable that returns scalar (constant diffusion)."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
-        Nt = standard_problem.Nt + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
 
         # Callable returning scalar
         def constant_diffusion(t, x, m):
             return 0.2  # Constant for all x
 
         # Initial condition
-        m_initial = np.ones(Nx) / Nx
+        m_initial = np.ones(Nx_points) / Nx_points
 
         # Solve
         M = solver.solve_fp_system(m_initial, diffusion_field=constant_diffusion)
 
-        assert M.shape == (Nt, Nx)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
 
     def test_callable_validation_wrong_shape(self, standard_problem):
         """Test that callable returning wrong shape raises error."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        _Nt_points = standard_problem.Nt + 1
 
         # Callable returning wrong shape
         def bad_diffusion(t, x, m):
-            return np.ones(Nx + 10)  # Wrong shape
+            return np.ones(Nx_points + 10)  # Wrong shape
 
-        m_initial = np.ones(Nx) / Nx
+        m_initial = np.ones(Nx_points) / Nx_points
 
         # Should raise ValueError about shape
         with pytest.raises(ValueError, match="returned array with shape"):
@@ -681,7 +702,8 @@ class TestFPFDMSolverCallableDiffusion:
         """Test that callable returning NaN raises error."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        _Nt_points = standard_problem.Nt + 1
 
         # Callable returning NaN
         def nan_diffusion(t, x, m):
@@ -689,7 +711,7 @@ class TestFPFDMSolverCallableDiffusion:
             result[0] = np.nan  # Introduce NaN
             return result
 
-        m_initial = np.ones(Nx) / Nx
+        m_initial = np.ones(Nx_points) / Nx_points
 
         # Should raise ValueError about NaN
         with pytest.raises(ValueError, match="NaN or Inf"):
@@ -884,9 +906,10 @@ class TestFPFDMSolverTensorDiffusion:
         """Test that tensor diffusion in 1D raises NotImplementedError."""
         solver = FPFDMSolver(standard_problem)
 
-        Nx = standard_problem.Nx + 1
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        _Nt_points = standard_problem.Nt + 1
 
-        m_initial = np.ones(Nx) / Nx
+        m_initial = np.ones(Nx_points) / Nx_points
 
         # 1D tensor (should fail)
         Sigma = np.array([[0.2]])

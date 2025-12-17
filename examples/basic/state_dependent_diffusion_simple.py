@@ -65,8 +65,10 @@ def main():
         )
 
     print("\nProblem setup:")
-    print("  Domain: [0, 1]")
-    print(f"  Spatial points: {problem.Nx + 1}")
+    bounds = problem.geometry.get_bounds()
+    grid_shape = problem.geometry.get_grid_shape()
+    print(f"  Domain: [{bounds[0][0]}, {bounds[1][0]}]")
+    print(f"  Spatial points: {grid_shape[0]}")
     print(f"  Time horizon: T = {problem.T}")
     print(f"  Time steps: {problem.Nt}")
 
@@ -115,7 +117,9 @@ def main():
 def visualize_solution(result, problem):
     """Create visualization of the MFG solution."""
     # Create spatial grid
-    x = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+    bounds = problem.geometry.get_bounds()
+    grid_shape = problem.geometry.get_grid_shape()
+    x = np.linspace(bounds[0][0], bounds[1][0], grid_shape[0])
 
     # Create figure with 3 subplots
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
@@ -129,7 +133,8 @@ def visualize_solution(result, problem):
     ax.set_ylabel("Density m(T, x)")
     ax.set_title("Final Density Distribution")
     ax.grid(True, alpha=0.3)
-    ax.set_xlim([problem.xmin, problem.xmax])
+    bounds = problem.geometry.get_bounds()
+    ax.set_xlim([bounds[0][0], bounds[1][0]])
 
     # Plot 2: Value function at final time
     ax = axes[1]
@@ -139,7 +144,8 @@ def visualize_solution(result, problem):
     ax.set_ylabel("Value u(T, x)")
     ax.set_title("Final Value Function")
     ax.grid(True, alpha=0.3)
-    ax.set_xlim([problem.xmin, problem.xmax])
+    bounds = problem.geometry.get_bounds()
+    ax.set_xlim([bounds[0][0], bounds[1][0]])
 
     # Plot 3: Convergence history
     ax = axes[2]

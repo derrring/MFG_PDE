@@ -65,10 +65,12 @@ def benchmark_1d_solver(Nx=100, Nt=50, solver_type="newton"):
         solver = HJBFDMSolver(problem, solver_type="newton", max_newton_iterations=30, newton_tolerance=1e-6)
 
     # Create test inputs
-    M = np.ones((Nt + 1, Nx + 1)) / (Nx + 1)
-    x = np.linspace(problem.xmin, problem.xmax, Nx + 1)
+    bounds = problem.geometry.get_bounds()
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    M = np.ones((Nt + 1, Nx_points)) / Nx_points
+    x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
     U_terminal = 0.5 * x**2
-    U_guess = np.zeros((Nt + 1, Nx + 1))
+    U_guess = np.zeros((Nt + 1, Nx_points))
 
     # Benchmark
     start = time.time()
@@ -76,7 +78,7 @@ def benchmark_1d_solver(Nx=100, Nt=50, solver_type="newton"):
     elapsed = time.time() - start
 
     # Calculate stats
-    grid_points = (Nx + 1) * (Nt + 1)
+    grid_points = Nx_points * (Nt + 1)
     time_per_point = elapsed / grid_points * 1e6  # microseconds
 
     return {

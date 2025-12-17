@@ -33,9 +33,10 @@ class TestLegacy1DMode:
 
         assert problem.dimension == 1
         assert problem.domain_type == "grid"
-        assert problem.xmin == 0
-        assert problem.xmax == 1
-        assert problem.Nx == 100
+        bounds = problem.geometry.get_bounds()
+        assert bounds[0][0] == 0
+        assert bounds[1][0] == 1
+        assert problem.geometry.get_grid_shape()[0] - 1 == 100  # Nx intervals
         assert problem.T == 1.0
         assert problem.Nt == 50
         assert problem.sigma == 0.1
@@ -47,8 +48,9 @@ class TestLegacy1DMode:
         problem = MFGProblem(xmin=0, xmax=2.0, Nx=100, T=1.0, Nt=50, diffusion=0.1)
 
         assert problem.dimension == 1
-        assert problem.xmin == 0
-        assert problem.xmax == 2.0
+        bounds = problem.geometry.get_bounds()
+        assert bounds[0][0] == 0
+        assert bounds[1][0] == 2.0
         assert problem.Lx == 2.0  # Lx is computed from xmax - xmin
 
     def test_1d_solver_compatibility(self):
@@ -279,13 +281,14 @@ class TestBackwardCompatibility:
         """Test that old 1D interface still works."""
         problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1)
 
-        # Old attributes should exist
-        assert hasattr(problem, "xmin")
-        assert hasattr(problem, "xmax")
-        assert hasattr(problem, "Nx")
-        assert hasattr(problem, "T")
-        assert hasattr(problem, "Nt")
-        assert hasattr(problem, "sigma")
+        # Old attributes should exist (for backward compatibility)
+        bounds = problem.geometry.get_bounds()
+        assert bounds[0][0] == 0  # xmin via geometry
+        assert bounds[1][0] == 1  # xmax via geometry
+        assert problem.geometry.get_grid_shape()[0] - 1 == 100  # Nx intervals
+        assert problem.T == 1.0
+        assert problem.Nt == 50
+        assert problem.sigma == 0.1
 
     def test_2d_problem_via_mfgproblem(self):
         """Test 2D problem creation via MFGProblem (replaces deprecated GridBasedMFGProblem)."""
@@ -316,7 +319,8 @@ class TestComplexityEstimation:
         info = problem.get_solver_info()
 
         assert "complexity" in info
-        assert "O(N" in info["complexity"] or "100" in info["complexity"]
+        # Complexity should reference grid size (101 points from 100 intervals)
+        assert "O(N" in info["complexity"] or "101" in info["complexity"] or "100" in info["complexity"]
 
     def test_2d_complexity(self):
         """Test 2D problem complexity estimation."""

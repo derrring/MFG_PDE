@@ -130,6 +130,7 @@ def default_config():
 def deterministic_arrays():
     """Deterministic arrays for reproducible tests."""
     np.random.seed(42)  # Fixed seed for reproducibility
+    # Note: shapes match small_problem (Nx=10→11 points) and medium_problem (Nx=25→26 points)
     return {
         "U_small": np.random.rand(6, 11),  # (Nt+1, Nx+1) for small problem
         "M_small": np.random.rand(6, 11),
@@ -424,7 +425,8 @@ def suppress_warnings():
 def validate_mfg_solution(U, M, problem):
     """Validate that U and M arrays represent a valid MFG solution."""
     # Check dimensions
-    expected_shape = (problem.Nt + 1, problem.Nx + 1)
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    expected_shape = (problem.Nt + 1, Nx_points)
     assert U.shape == expected_shape, f"U shape {U.shape} != expected {expected_shape}"
     assert M.shape == expected_shape, f"M shape {M.shape} != expected {expected_shape}"
 
@@ -438,9 +440,10 @@ def validate_mfg_solution(U, M, problem):
     assert np.all(M >= -1e-10), f"M contains negative values: min={np.min(M)}"
 
     # Check mass conservation (approximately)
-    initial_mass = np.sum(problem.m_init) * problem.dx
+    dx = problem.geometry.get_grid_spacing()[0]
+    initial_mass = np.sum(problem.m_init) * dx
     for t in range(problem.Nt + 1):
-        current_mass = np.sum(M[t, :]) * problem.dx
+        current_mass = np.sum(M[t, :]) * dx
         mass_error = abs(current_mass - initial_mass)
         assert mass_error < 0.1, f"Mass conservation violated at t={t}: error={mass_error}"
 

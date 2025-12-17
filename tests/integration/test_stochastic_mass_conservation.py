@@ -110,7 +110,8 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
     monitor = ProbabilisticConvergenceMonitor(window_size=10, quantile=0.9)
 
     # Initialize
-    U = np.zeros((problem.Nt + 1, problem.Nx + 1))  # Terminal condition will be set by HJB solver
+    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+    U = np.zeros((Nt_points, Nx_points))  # Terminal condition will be set by HJB solver
     M = problem.m_init
 
     converged = False
@@ -166,8 +167,9 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
                 break
 
     # Compute masses
-    dx = problem.dx
-    masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
+    dx = problem.geometry.get_grid_spacing()[0]
+    Nt_points = problem.geometry.get_grid_shape()[0]
+    masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(Nt_points)])
 
     # Create result object
     class Result:

@@ -47,8 +47,10 @@ problem = MFGProblem(
 )
 
 print("Problem created:")
-print(f"  Domain: [{problem.xmin}, {problem.xmax}]")
-print(f"  Grid: {problem.Nx} spatial points, {problem.Nt} time steps")
+bounds = problem.geometry.get_bounds()
+grid_shape = problem.geometry.get_grid_shape()
+print(f"  Domain: [{bounds[0][0]}, {bounds[1][0]}]")
+print(f"  Grid: {grid_shape[0]} spatial points, {problem.Nt} time steps")
 print(f"  Diffusion σ = {problem.sigma}")
 print()
 
@@ -94,7 +96,8 @@ print(f"  M (density): {result.M.shape}")
 print()
 
 # Mass conservation check (important for validating the solution)
-total_mass = np.sum(result.M[-1, :]) * problem.dx
+dx = problem.geometry.get_grid_spacing()[0]
+total_mass = np.sum(result.M[-1, :]) * dx
 print(f"Final mass (should be ≈1.0): {total_mass:.6f}")
 print()
 

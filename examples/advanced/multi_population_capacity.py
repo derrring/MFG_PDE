@@ -222,7 +222,8 @@ def main():
 
     print("✓ Problem created")
     print(f"  - Populations: {problem.num_populations}")
-    print(f"  - Spatial points: {problem.Nx + 1}")
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    print(f"  - Spatial points: {Nx_points}")
     print(f"  - Time steps: {problem.Nt}")
     print(f"  - Coupling matrix:\n{problem.coupling_matrix}")
 

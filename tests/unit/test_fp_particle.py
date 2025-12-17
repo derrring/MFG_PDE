@@ -46,21 +46,23 @@ class TestFPParticleSolverBasic:
         problem = Simple2DMFGProblem()
         solver = FPParticleSolver(problem, num_particles=1000)
 
-        m0 = np.ones(problem.Nx + 1) / (problem.Nx + 1)
-        U = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        m0 = np.ones(Nx_points) / Nx_points
+        U = np.zeros((problem.Nt + 1, Nx_points))
 
         M = solver.solve_fp_system(m0, U, show_progress=False)
 
-        # Output shape should be (Nt+1, Nx+1) - grid output via KDE
-        assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+        # Output shape should be (Nt+1, Nx_points) - grid output via KDE
+        assert M.shape == (problem.Nt + 1, Nx_points)
 
     def test_non_negative_density(self):
         """Test that solver produces non-negative density."""
         problem = Simple2DMFGProblem()
         solver = FPParticleSolver(problem, num_particles=1000)
 
-        m0 = np.ones(problem.Nx + 1) / (problem.Nx + 1)
-        U = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        m0 = np.ones(Nx_points) / Nx_points
+        U = np.zeros((problem.Nt + 1, Nx_points))
 
         M = solver.solve_fp_system(m0, U, show_progress=False)
 

@@ -148,17 +148,17 @@ class TestFPParticleSolverSolveFPSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
         solver = FPParticleSolver(problem, num_particles=500)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
 
         # Create inputs
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
-        assert M_solution.shape == (Nt, Nx)
+        assert M_solution.shape == (Nt_points, Nx_points)
         assert np.all(np.isfinite(M_solution))
 
     def test_solve_fp_system_initial_condition(self):
@@ -166,22 +166,24 @@ class TestFPParticleSolverSolveFPSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20)
         solver = FPParticleSolver(problem, num_particles=2000)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+        dx = problem.geometry.get_grid_spacing()[0]
+        bounds = problem.geometry.get_bounds()
 
         # Create inputs with specific initial condition
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
-        m_initial = m_initial / np.sum(m_initial * problem.dx)
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = m_initial / np.sum(m_initial * dx)
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
         # Check that center of mass is approximately preserved
         # (KDE introduces smoothing but should preserve location)
-        cm_initial = np.sum(x_coords * m_initial * problem.dx)
-        cm_solution = np.sum(x_coords * M_solution[0, :] * problem.dx)
+        cm_initial = np.sum(x_coords * m_initial * dx)
+        cm_solution = np.sum(x_coords * M_solution[0, :] * dx)
         assert np.isclose(cm_initial, cm_solution, rtol=0.2)
 
     def test_solve_with_zero_drift(self):
@@ -189,11 +191,11 @@ class TestFPParticleSolverSolveFPSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -204,13 +206,14 @@ class TestFPParticleSolverSolveFPSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+        bounds = problem.geometry.get_bounds()
 
         # Create non-zero drift
-        m_initial = np.ones(Nx) / Nx
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
-        U_solution = np.tile(x_coords**2, (Nt, 1))
+        m_initial = np.ones(Nx_points) / Nx_points
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        U_solution = np.tile(x_coords**2, (Nt_points, 1))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -220,14 +223,14 @@ class TestFPParticleSolverSolveFPSystem:
         """Test solver with different numbers of particles."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
 
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+
         for num_particles in [100, 500, 1000]:
             solver = FPParticleSolver(problem, num_particles=num_particles)
 
-            Nt = problem.Nt + 1
-            Nx = problem.Nx + 1
-
-            m_initial = np.ones(Nx) / Nx
-            U_solution = np.zeros((Nt, Nx))
+            m_initial = np.ones(Nx_points) / Nx_points
+            U_solution = np.zeros((Nt_points, Nx_points))
 
             M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -238,11 +241,11 @@ class TestFPParticleSolverSolveFPSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500, kde_normalization=KDENormalization.NONE)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -253,11 +256,11 @@ class TestFPParticleSolverSolveFPSystem:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500, kde_normalization=KDENormalization.INITIAL_ONLY)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -270,11 +273,11 @@ class TestFPParticleSolverSolveFPSystem:
 
         assert solver.current_strategy is None  # Before solve
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         solver.solve_fp_system(m_initial, U_solution)
 
@@ -288,11 +291,11 @@ class TestFPParticleSolverSolveFPSystem:
 
         solver._time_step_counter = 999  # Set to non-zero
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         solver.solve_fp_system(m_initial, U_solution)
 
@@ -308,13 +311,15 @@ class TestFPParticleSolverNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=20)
         solver = FPParticleSolver(problem, num_particles=1000)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+        dx = problem.geometry.get_grid_spacing()[0]
+        bounds = problem.geometry.get_bounds()
 
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
-        m_initial = m_initial / np.sum(m_initial * problem.dx)
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = m_initial / np.sum(m_initial * dx)
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -326,20 +331,22 @@ class TestFPParticleSolverNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30, diffusion=0.3)
         solver = FPParticleSolver(problem, num_particles=2000)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+        dx = problem.geometry.get_grid_spacing()[0]
+        bounds = problem.geometry.get_bounds()
 
         # Concentrated initial condition
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.01**2))
-        m_initial = m_initial / np.sum(m_initial * problem.dx)
+        m_initial = m_initial / np.sum(m_initial * dx)
 
-        U_solution = np.zeros((Nt, Nx))
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
         # Solution should be computed for all time steps and remain finite
-        assert M_solution.shape == (Nt, Nx)
+        assert M_solution.shape == (Nt_points, Nx_points)
         assert np.all(np.isfinite(M_solution))
         # Verify solution exists at all time points (not all zeros)
         assert np.any(M_solution > 0)
@@ -349,21 +356,22 @@ class TestFPParticleSolverNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=20)
         solver = FPParticleSolver(problem, num_particles=2000, kde_normalization=KDENormalization.ALL)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
-        Dx = problem.dx
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+        dx = problem.geometry.get_grid_spacing()[0]
+        bounds = problem.geometry.get_bounds()
 
-        x_coords = np.linspace(problem.xmin, problem.xmax, Nx)
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
-        m_initial = m_initial / np.sum(m_initial * Dx)
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = m_initial / np.sum(m_initial * dx)
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
         # Check mass conservation across time (with relaxed tolerance for KDE)
-        initial_mass = np.sum(M_solution[0, :] * Dx)
-        for t in range(Nt):
-            current_mass = np.sum(M_solution[t, :] * Dx)
+        initial_mass = np.sum(M_solution[0, :] * dx)
+        for t in range(Nt_points):
+            current_mass = np.sum(M_solution[t, :] * dx)
             # Allow larger error for particle methods with KDE
             assert np.isclose(current_mass, initial_mass, rtol=0.3)
 
@@ -372,11 +380,11 @@ class TestFPParticleSolverNumericalProperties:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=20)
         solver = FPParticleSolver(problem, num_particles=1000)
 
-        Nt = problem.Nt + 1
-        Nx = problem.Nx + 1
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
 
-        m_initial = np.ones(Nx) / Nx
-        U_solution = np.zeros((Nt, Nx))
+        m_initial = np.ones(Nx_points) / Nx_points
+        U_solution = np.zeros((Nt_points, Nx_points))
 
         M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -404,6 +412,9 @@ class TestFPParticleSolverIntegration:
         """Test solver with various parameter configurations."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
 
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+
         configs = [
             {"num_particles": 500, "kde_normalization": KDENormalization.NONE},
             {"num_particles": 1000, "kde_normalization": KDENormalization.INITIAL_ONLY},
@@ -413,11 +424,8 @@ class TestFPParticleSolverIntegration:
         for config in configs:
             solver = FPParticleSolver(problem, **config)
 
-            Nt = problem.Nt + 1
-            Nx = problem.Nx + 1
-
-            m_initial = np.ones(Nx) / Nx
-            U_solution = np.zeros((Nt, Nx))
+            m_initial = np.ones(Nx_points) / Nx_points
+            U_solution = np.zeros((Nt_points, Nx_points))
 
             M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -427,17 +435,17 @@ class TestFPParticleSolverIntegration:
         """Test solver with different boundary condition types."""
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
 
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt_points
+
         bc_types = ["periodic", "no_flux"]
 
         for bc_type in bc_types:
             bc = BoundaryConditions(type=bc_type)
             solver = FPParticleSolver(problem, num_particles=500, boundary_conditions=bc)
 
-            Nt = problem.Nt + 1
-            Nx = problem.Nx + 1
-
-            m_initial = np.ones(Nx) / Nx
-            U_solution = np.zeros((Nt, Nx))
+            m_initial = np.ones(Nx_points) / Nx_points
+            U_solution = np.zeros((Nt_points, Nx_points))
 
             M_solution = solver.solve_fp_system(m_initial, U_solution)
 
@@ -452,10 +460,14 @@ class TestFPParticleSolverHelperMethods:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500)
 
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        dx = problem.geometry.get_grid_spacing()[0]
+        bounds = problem.geometry.get_bounds()
+
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_array = x_coords**2
 
-        gradient = solver._compute_gradient(U_array, problem.dx, use_backend=False)
+        gradient = solver._compute_gradient(U_array, dx, use_backend=False)
 
         # Should return finite gradient
         assert np.all(np.isfinite(gradient))
@@ -466,7 +478,10 @@ class TestFPParticleSolverHelperMethods:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500)
 
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
+
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_array = x_coords**2
 
         gradient = solver._compute_gradient(U_array, 0.0, use_backend=False)
@@ -479,9 +494,12 @@ class TestFPParticleSolverHelperMethods:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500, kde_normalization=KDENormalization.NONE)
 
-        M_array = np.random.rand(problem.Nx + 1) * 2.0  # Random unnormalized density
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        dx = problem.geometry.get_grid_spacing()[0]
 
-        normalized = solver._normalize_density(M_array, problem.dx, use_backend=False)
+        M_array = np.random.rand(Nx_points) * 2.0  # Random unnormalized density
+
+        normalized = solver._normalize_density(M_array, dx, use_backend=False)
 
         # Should not normalize (return as-is)
         assert np.allclose(normalized, M_array)
@@ -491,16 +509,19 @@ class TestFPParticleSolverHelperMethods:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500, kde_normalization=KDENormalization.INITIAL_ONLY)
 
-        M_array = np.random.rand(problem.Nx + 1) * 2.0
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        dx = problem.geometry.get_grid_spacing()[0]
+
+        M_array = np.random.rand(Nx_points) * 2.0
 
         # First call (time step 0) - should normalize
         solver._time_step_counter = 0
-        normalized_0 = solver._normalize_density(M_array, problem.dx, use_backend=False)
-        assert np.isclose(np.sum(normalized_0 * problem.dx), 1.0, rtol=0.1)
+        normalized_0 = solver._normalize_density(M_array, dx, use_backend=False)
+        assert np.isclose(np.sum(normalized_0 * dx), 1.0, rtol=0.1)
 
         # Second call (time step 1) - should not normalize
         solver._time_step_counter = 1
-        normalized_1 = solver._normalize_density(M_array, problem.dx, use_backend=False)
+        normalized_1 = solver._normalize_density(M_array, dx, use_backend=False)
         assert np.allclose(normalized_1, M_array)
 
     def test_normalize_density_all(self):
@@ -508,13 +529,16 @@ class TestFPParticleSolverHelperMethods:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.3, Nt=15)
         solver = FPParticleSolver(problem, num_particles=500, kde_normalization=KDENormalization.ALL)
 
-        M_array = np.random.rand(problem.Nx + 1) * 2.0
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        dx = problem.geometry.get_grid_spacing()[0]
+
+        M_array = np.random.rand(Nx_points) * 2.0
 
         # Should normalize at any time step
         for t in [0, 1, 5, 10]:
             solver._time_step_counter = t
-            normalized = solver._normalize_density(M_array, problem.dx, use_backend=False)
-            assert np.isclose(np.sum(normalized * problem.dx), 1.0, rtol=0.1)
+            normalized = solver._normalize_density(M_array, dx, use_backend=False)
+            assert np.isclose(np.sum(normalized * dx), 1.0, rtol=0.1)
 
 
 if __name__ == "__main__":

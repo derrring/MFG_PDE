@@ -82,19 +82,32 @@ def test_calculate_total_mass_single_time():
 
 
 def create_mock_problem():
-    """Create mock MFG problem for testing."""
+    """Create mock MFG problem for testing.
+
+    Note: This mock maintains legacy attributes (Nx, Nt, dx, xmin, xmax)
+    for backward compatibility with experiment_manager functions which
+    directly access these attributes.
+    """
     problem = Mock()
     problem.T = 1.0
-    problem.Nx = 11
-    problem.Nt = 21
+    problem.Nx = 10  # Number of space INTERVALS
+    problem.Nt = 20  # Number of time INTERVALS
     problem.dx = 0.1
     problem.dt = 0.05
     problem.xmin = 0.0
     problem.xmax = 1.0
     problem.sigma = 0.1
     problem.coupling_coefficient = 0.5
-    problem.tSpace = np.linspace(0, 1.0, 21)
-    problem.xSpace = np.linspace(0.0, 1.0, 11)
+    problem.tSpace = np.linspace(0, 1.0, 21)  # 21 time points (Nt+1)
+    problem.xSpace = np.linspace(0.0, 1.0, 11)  # 11 space points (Nx+1)
+
+    # Add geometry mock for geometry-first API
+    geometry = Mock()
+    geometry.get_grid_shape.return_value = (11,)  # Nx+1 points
+    geometry.get_grid_spacing.return_value = (0.1,)  # dx
+    geometry.get_bounds.return_value = ((0.0,), (1.0,))  # (xmin, xmax)
+    problem.geometry = geometry
+
     return problem
 
 
@@ -220,8 +233,8 @@ def test_save_experiment_data_filename_format():
         filename = Path(filepath).name
         # Should contain T, Nx, Nt, sigma, coupling_coefficient
         assert "T1.0" in filename
-        assert "Nx11" in filename
-        assert "Nt21" in filename
+        assert "Nx10" in filename
+        assert "Nt20" in filename
         assert "sig" in filename
         assert "ct" in filename
 
@@ -329,8 +342,8 @@ def test_load_experiment_data_problem_params():
 
         assert loaded_data is not None
         params = loaded_data["problem_params"]
-        assert params["Nx"] == 11
-        assert params["Nt"] == 21
+        assert params["Nx"] == 10  # Number of space INTERVALS
+        assert params["Nt"] == 20  # Number of time INTERVALS
         assert params["T"] == pytest.approx(1.0)
         assert params["sigma"] == pytest.approx(0.1)
 

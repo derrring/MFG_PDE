@@ -154,7 +154,7 @@ def create_santa_fe_problem(
         Nx=Nx,
         T=T,
         Nt=Nt,
-        sigma=sigma,
+        diffusion=sigma,
         hamiltonian=hamiltonian,
         m_initial=initial_density_func,
     )
@@ -248,13 +248,14 @@ def main():
         Nx=201,
         T=10.0,
         Nt=201,
-        sigma=0.5,
+        sigma=0.5,  # Still uses sigma parameter in function call
     )
 
+    bounds = problem.geometry.get_bounds()
     logger.info(f"  Time horizon: T = {problem.T}")
-    logger.info(f"  Preference space: θ ∈ [{problem.xmin}, {problem.xmax}]")
+    logger.info(f"  Preference space: θ ∈ [{bounds[0][0]}, {bounds[1][0]}]")
     logger.info("  Attendance threshold: 60%")
-    logger.info(f"  Preference diffusion: σ = {problem.sigma}")
+    logger.info(f"  Preference diffusion: σ = {problem.diffusion_coefficient}")
 
     # Solve
     logger.info("\n[2/3] Solving MFG system...")
