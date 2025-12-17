@@ -51,7 +51,21 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 # Import base class for inheritance
-from .applicator_base import BaseStructuredApplicator, GridType
+from .applicator_base import (
+    BaseStructuredApplicator,
+    BoundaryCalculator,
+    BoundedTopology,
+    DirichletCalculator,
+    GridType,
+    LinearExtrapolationCalculator,
+    NeumannCalculator,
+    PeriodicTopology,
+    QuadraticExtrapolationCalculator,
+    RobinCalculator,
+    Topology,
+    ZeroFluxCalculator,
+    ZeroGradientCalculator,
+)
 from .conditions import BoundaryConditions
 
 # Legacy import for backward compatibility
@@ -1570,6 +1584,169 @@ class FDMApplicator(BaseStructuredApplicator):
 # =============================================================================
 # Ghost Buffer with Topology/Calculator Composition (Issue #516)
 # =============================================================================
+
+
+def bc_to_topology_calculator(
+    bc: BoundaryConditions | LegacyBoundaryConditions1D,
+    shape: tuple[int, ...],
+    grid_type: GridType = GridType.CELL_CENTERED,
+    use_zero_flux: bool = False,
+    drift_velocity: float = 0.0,
+    diffusion_coeff: float = 1.0,
+) -> tuple[Topology, BoundaryCalculator | None]:
+    """
+    Convert BoundaryConditions to Topology + Calculator pair.
+
+    This is the bridge between the legacy BoundaryConditions API and the new
+    Topology/Calculator composition architecture (Issue #516).
+
+    **For NO_FLUX BC type, two physics-based options:**
+    - `use_zero_flux=False` (default): ZeroGradientCalculator (du/dn = 0)
+    - `use_zero_flux=True`: ZeroFluxCalculator (J·n = 0, mass conservation)
+
+    Args:
+        bc: Boundary condition specification (unified or legacy)
+        shape: Grid shape (interior points)
+        grid_type: Grid type for ghost cell formulas
+        use_zero_flux: If True, NO_FLUX BC uses ZeroFluxCalculator (J·n=0)
+                      for mass conservation. Default False uses ZeroGradientCalculator.
+        drift_velocity: For ZeroFluxCalculator, the normal drift component
+        diffusion_coeff: For ZeroFluxCalculator, the diffusion coefficient D = σ²/2
+
+    Returns:
+        Tuple of (Topology, Calculator | None). Calculator is None for periodic.
+
+    Examples:
+        >>> from mfg_pde.geometry.boundary import dirichlet_bc, no_flux_bc
+        >>> bc = dirichlet_bc(0.0, dimension=2)
+        >>> topology, calc = bc_to_topology_calculator(bc, shape=(100, 100))
+        >>> type(calc).__name__
+        'DirichletCalculator'
+
+        >>> # Zero gradient (default for HJB)
+        >>> bc = no_flux_bc(dimension=2)
+        >>> topo, calc = bc_to_topology_calculator(bc, (100, 100))
+        >>> type(calc).__name__
+        'ZeroGradientCalculator'
+
+        >>> # Zero flux (for FP mass conservation)
+        >>> topo, calc = bc_to_topology_calculator(bc, (100, 100), use_zero_flux=True)
+        >>> type(calc).__name__
+        'ZeroFluxCalculator'
+    """
+    dimension = len(shape)
+
+    def _get_no_flux_calculator() -> BoundaryCalculator:
+        """Select calculator based on physics requirement."""
+        if use_zero_flux:
+            return ZeroFluxCalculator(drift_velocity, diffusion_coeff, grid_type)
+        else:
+            return ZeroGradientCalculator(grid_type)
+
+    # Handle legacy BoundaryConditions from bc_1d module
+    if isinstance(bc, LegacyBoundaryConditions1D):
+        bc_type_str = bc.type.lower()
+        if bc_type_str == "periodic":
+            return PeriodicTopology(dimension, shape), None
+        elif bc_type_str == "dirichlet":
+            value = bc.left_value if bc.left_value is not None else 0.0
+            return BoundedTopology(dimension, shape), DirichletCalculator(value, grid_type)
+        elif bc_type_str in ("neumann", "no_flux"):
+            return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+        else:
+            # Default to zero gradient
+            return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+
+    # Handle unified BoundaryConditions
+    if not isinstance(bc, BoundaryConditions):
+        raise TypeError(f"Unsupported BC type: {type(bc)}")
+
+    # Only uniform BCs supported for now (mixed BC requires per-point dispatch)
+    if not bc.is_uniform:
+        raise NotImplementedError(
+            "Mixed BCs not yet supported in Topology/Calculator architecture. "
+            "Use PreallocatedGhostBuffer for mixed BCs."
+        )
+
+    seg = bc.segments[0]
+    bc_type = seg.bc_type
+
+    if bc_type == BCType.PERIODIC:
+        return PeriodicTopology(dimension, shape), None
+    elif bc_type == BCType.DIRICHLET:
+        value = seg.value if not callable(seg.value) else 0.0
+        return BoundedTopology(dimension, shape), DirichletCalculator(float(value), grid_type)
+    elif bc_type == BCType.NEUMANN:
+        flux = seg.value if not callable(seg.value) else 0.0
+        return BoundedTopology(dimension, shape), NeumannCalculator(float(flux), grid_type)
+    elif bc_type == BCType.NO_FLUX:
+        return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+    elif bc_type == BCType.ROBIN:
+        alpha = seg.alpha if hasattr(seg, "alpha") else 1.0
+        beta = seg.beta if hasattr(seg, "beta") else 0.0
+        rhs = seg.value if not callable(seg.value) else 0.0
+        return BoundedTopology(dimension, shape), RobinCalculator(alpha, beta, float(rhs), grid_type)
+    elif bc_type == BCType.EXTRAPOLATION_LINEAR:
+        return BoundedTopology(dimension, shape), LinearExtrapolationCalculator()
+    elif bc_type == BCType.EXTRAPOLATION_QUADRATIC:
+        return BoundedTopology(dimension, shape), QuadraticExtrapolationCalculator()
+    elif bc_type == BCType.REFLECTING:
+        # Reflecting BC for particles - use zero gradient for field solvers
+        return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+    else:
+        # Unknown type - default to zero gradient
+        return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+
+
+def create_ghost_buffer_from_bc(
+    bc: BoundaryConditions | LegacyBoundaryConditions1D,
+    shape: tuple[int, ...],
+    dx: float | tuple[float, ...],
+    ghost_depth: int = 1,
+    grid_type: GridType = GridType.CELL_CENTERED,
+    dtype: type = np.float64,
+    use_zero_flux: bool = False,
+    drift_velocity: float = 0.0,
+    diffusion_coeff: float = 1.0,
+) -> GhostBuffer:
+    """
+    Factory function to create GhostBuffer from BoundaryConditions.
+
+    This is the primary entry point for using the new Topology/Calculator
+    architecture with existing BoundaryConditions specifications.
+
+    Args:
+        bc: Boundary condition specification
+        shape: Interior grid shape
+        dx: Grid spacing (scalar or per-dimension tuple)
+        ghost_depth: Number of ghost cell layers
+        grid_type: Grid type for ghost cell formulas
+        dtype: Data type for buffer
+        use_zero_flux: If True, NO_FLUX BC uses ZeroFluxCalculator (J·n=0)
+                      for mass conservation. Default False uses ZeroGradientCalculator.
+        drift_velocity: For ZeroFluxCalculator, the normal drift component
+        diffusion_coeff: For ZeroFluxCalculator, the diffusion coefficient D = σ²/2
+
+    Returns:
+        GhostBuffer configured with appropriate Topology and Calculator
+
+    Examples:
+        >>> from mfg_pde.geometry.boundary import dirichlet_bc, no_flux_bc
+        >>> # Default (zero gradient)
+        >>> bc = dirichlet_bc(0.0, dimension=2)
+        >>> buffer = create_ghost_buffer_from_bc(bc, shape=(100, 100), dx=0.01)
+
+        >>> # Mass-conserving (zero total flux)
+        >>> bc = no_flux_bc(dimension=2)
+        >>> buffer = create_ghost_buffer_from_bc(
+        ...     bc, shape=(100, 100), dx=0.01,
+        ...     use_zero_flux=True, diffusion_coeff=0.5
+        ... )
+    """
+    topology, calculator = bc_to_topology_calculator(
+        bc, shape, grid_type, use_zero_flux, drift_velocity, diffusion_coeff
+    )
+    return GhostBuffer(topology, calculator, dx, ghost_depth, dtype)
 
 
 class GhostBuffer:

@@ -445,18 +445,18 @@ class RobinCalculator:
         return f"RobinCalculator(alpha={self._alpha}, beta={self._beta}, rhs={self._rhs_value})"
 
 
-class NoFluxCalculator:
+class ZeroGradientCalculator:
     """
-    Calculator for no-flux (zero Neumann) boundary conditions.
+    Calculator for zero gradient (du/dn = 0) boundary conditions.
 
-    **WARNING: FOR HJB/GRADIENT EQUATIONS ONLY.**
+    Implements edge extension: ghost = interior, ensuring du/dn = 0.
 
-    This implements du/dn = 0 (zero gradient at boundary), which is appropriate
-    for HJB value functions with reflective walls. Ghost = interior (edge extension).
+    Physical meaning: The field has no gradient normal to the boundary.
+    Use cases:
+    - HJB value functions at reflective walls
+    - Any field needing smooth extension at boundaries
 
-    **FOR FOKKER-PLANCK EQUATIONS, USE FPNoFluxCalculator INSTEAD.**
-    FP equations require zero total flux J·n = 0, not zero gradient. Using this
-    calculator for FP will violate mass conservation.
+    **For mass-conserving boundaries (FP equations), use ZeroFluxCalculator instead.**
 
     Supports vectorized operations for efficient array processing.
     """
@@ -471,12 +471,16 @@ class NoFluxCalculator:
         side: str,
         **kwargs,
     ) -> T:
-        """Compute ghost value for no-flux BC (edge extension, vectorized)."""
+        """Compute ghost value for zero gradient BC (edge extension, vectorized)."""
         # Simply return interior value - works for both scalar and array
         return interior_value
 
     def __repr__(self) -> str:
-        return "NoFluxCalculator()"
+        return "ZeroGradientCalculator()"
+
+
+# Backward compatibility alias
+NoFluxCalculator = ZeroGradientCalculator
 
 
 class LinearExtrapolationCalculator:
@@ -565,19 +569,21 @@ class QuadraticExtrapolationCalculator:
         return "QuadraticExtrapolationCalculator()"
 
 
-class FPNoFluxCalculator:
+class ZeroFluxCalculator:
     """
-    Calculator for Fokker-Planck no-flux (zero total flux) boundary conditions.
+    Calculator for zero total flux (J·n = 0) boundary conditions.
 
-    For advection-diffusion equations, no-flux means J·n = 0 where
-    J = v*ρ - D*∇ρ. This requires a Robin-type formula that accounts
-    for both advection and diffusion:
-        u_ghost = (2D - v*dx) / (2D + v*dx) * u_interior
+    For advection-diffusion equations, this ensures the total flux
+    J = v*ρ - D*∇ρ vanishes at the boundary, preserving mass conservation.
 
-    This is more physically correct than pure Neumann for FP equations
-    and ensures mass conservation.
+    Formula: u_ghost = (2D + v*dx) / (2D - v*dx) * u_interior
 
-    **USE THIS FOR FOKKER-PLANCK EQUATIONS, NOT NoFluxCalculator.**
+    Physical meaning: No mass/probability crosses the boundary.
+    Use cases:
+    - Fokker-Planck density with impermeable walls
+    - Any advection-diffusion equation requiring mass conservation
+
+    **For zero gradient (du/dn = 0), use ZeroGradientCalculator instead.**
 
     Supports vectorized operations for efficient array processing.
     """
@@ -633,7 +639,11 @@ class FPNoFluxCalculator:
         )
 
     def __repr__(self) -> str:
-        return f"FPNoFluxCalculator(drift={self._drift}, D={self._diffusion})"
+        return f"ZeroFluxCalculator(drift={self._drift}, D={self._diffusion})"
+
+
+# Backward compatibility alias
+FPNoFluxCalculator = ZeroFluxCalculator
 
 
 class BaseBCApplicator(ABC):
@@ -1134,14 +1144,17 @@ __all__ = [
     # Topology implementations
     "PeriodicTopology",
     "BoundedTopology",
-    # Calculator implementations
+    # Calculator implementations (physics-based naming)
     "DirichletCalculator",
     "NeumannCalculator",
     "RobinCalculator",
-    "NoFluxCalculator",
+    "ZeroGradientCalculator",  # du/dn = 0 (edge extension)
+    "ZeroFluxCalculator",  # J·n = 0 (mass conservation)
     "LinearExtrapolationCalculator",
     "QuadraticExtrapolationCalculator",
-    "FPNoFluxCalculator",
+    # Backward compatibility aliases
+    "NoFluxCalculator",  # -> ZeroGradientCalculator
+    "FPNoFluxCalculator",  # -> ZeroFluxCalculator
     # Base classes
     "BaseBCApplicator",
     "BaseStructuredApplicator",

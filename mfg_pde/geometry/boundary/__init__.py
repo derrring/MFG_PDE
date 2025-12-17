@@ -56,19 +56,22 @@ from .applicator_base import (
     BoundaryCalculator,
     # Topology implementations (Issue #516)
     BoundedTopology,
-    # Calculator implementations (Issue #516)
+    # Calculator implementations (physics-based naming)
     DirichletCalculator,
     # Enums
     DiscretizationType,
-    FPNoFluxCalculator,
+    FPNoFluxCalculator,  # -> ZeroFluxCalculator
     GridType,
     LinearExtrapolationCalculator,
     NeumannCalculator,
-    NoFluxCalculator,
+    # Backward compatibility aliases
+    NoFluxCalculator,  # -> ZeroGradientCalculator
     PeriodicTopology,
     QuadraticExtrapolationCalculator,
     RobinCalculator,
     Topology,
+    ZeroFluxCalculator,  # J·n = 0 (mass conservation)
+    ZeroGradientCalculator,  # du/dn = 0 (edge extension)
     # Physics-aware ghost cell (for advection-diffusion/FP)
     ghost_cell_advection_diffusion_no_flux,
     # Ghost cell helpers (2nd-order)
@@ -93,7 +96,9 @@ from .applicator_fdm import (
     apply_boundary_conditions_2d,
     apply_boundary_conditions_3d,
     apply_boundary_conditions_nd,
+    bc_to_topology_calculator,
     create_boundary_mask_2d,
+    create_ghost_buffer_from_bc,
     get_ghost_values_nd,
 )
 
@@ -245,8 +250,13 @@ __all__ = [
     "no_flux_bc",
     "robin_bc",
     "mixed_bc",
+    # Physics-based Calculator names (preferred)
+    "ZeroGradientCalculator",  # du/dn = 0 (edge extension)
+    "ZeroFluxCalculator",  # J·n = 0 (mass conservation)
     # FDM Applicator (Topology/Calculator composition - Issue #516)
     "GhostBuffer",
+    "bc_to_topology_calculator",
+    "create_ghost_buffer_from_bc",
     "FDMApplicator",
     "GhostCellConfig",
     "PreallocatedGhostBuffer",
