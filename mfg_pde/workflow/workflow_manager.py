@@ -623,7 +623,7 @@ class WorkflowManager:
         def example_solve(sigma, Nx=20, Nt=10):
             from mfg_pde import MFGProblem
 
-            problem = MFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
+            problem = MFGProblem(Nx=Nx, Nt=Nt, diffusion=sigma)
             result = problem.solve()
             return {
                 "converged": getattr(result, "converged", False),
