@@ -57,7 +57,7 @@ class TestHybridMassConservation:
             Nx=50,  # Moderate resolution
             T=1.0,
             Nt=20,
-            sigma=0.1,
+            diffusion=0.1,
             coupling_coefficient=1.0,  # Running cost coefficient
         )
 
@@ -195,7 +195,7 @@ class TestHybridMassConservationFast:
         """
         Quick smoke test: verify hybrid solver runs and produces reasonable output.
         """
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=10, sigma=0.1)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=10, diffusion=0.1)
 
         bc = no_flux_bc(dimension=1)
         problem.boundary_conditions = bc

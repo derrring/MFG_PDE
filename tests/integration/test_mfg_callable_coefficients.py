@@ -27,7 +27,7 @@ class TestMFGCallableCoefficients:
     def test_mfg_with_callable_diffusion(self):
         """Test MFG with state-dependent diffusion: porous medium."""
         # Create problem
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, sigma=0.1)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, diffusion=0.1)
 
         # Porous medium diffusion: D(m) = σ² m
         def porous_medium_diffusion(t, x, m):
@@ -60,7 +60,7 @@ class TestMFGCallableCoefficients:
     def test_mfg_with_density_dependent_diffusion(self):
         """Test MFG with crowd dynamics: D(m) = D0 + D1(1 - m/m_max)."""
         # Create problem
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, sigma=0.1)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, diffusion=0.1)
 
         # Crowd diffusion: lower diffusion in high-density regions
         def crowd_diffusion(t, x, m):
@@ -92,7 +92,7 @@ class TestMFGCallableCoefficients:
     def test_mfg_callable_vs_constant_convergence(self):
         """Test that callable returning constant matches constant diffusion."""
         # Create problem
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, sigma=0.15)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, diffusion=0.15)
 
         # Callable returning constant
         def constant_diffusion(t, x, m):
@@ -133,7 +133,7 @@ class TestMFGCallableCoefficients:
     def test_mfg_callable_diffusion_with_array(self):
         """Test MFG with array diffusion (non-callable) for comparison."""
         # Create problem
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, sigma=0.1)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, diffusion=0.1)
 
         # Spatially varying diffusion (higher at boundaries)
         Nx = problem.Nx + 1
@@ -169,7 +169,7 @@ class TestMFGCallableCoefficients:
     def test_mfg_callable_with_small_iterations(self):
         """Test that callable diffusion works with few Picard iterations."""
         # Create small problem
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.3, Nt=10, sigma=0.1)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.3, Nt=10, diffusion=0.1)
 
         # Simple state-dependent diffusion
         def state_diffusion(t, x, m):

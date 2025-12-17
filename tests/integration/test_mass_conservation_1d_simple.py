@@ -48,7 +48,7 @@ class TestMassConservation1DSimple:
             Nx=50,
             T=1.0,
             Nt=20,
-            sigma=0.1,
+            diffusion=0.1,
             coupling_coefficient=1.0,
         )
 
