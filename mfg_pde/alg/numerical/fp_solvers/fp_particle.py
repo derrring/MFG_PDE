@@ -23,8 +23,19 @@ except Exception:  # pragma: no cover - graceful fallback when SciPy missing
     SCIPY_AVAILABLE = False
 
 from mfg_pde.geometry.boundary.conditions import periodic_bc
+from mfg_pde.geometry.boundary.types import BCType
 
 from .base_fp import BaseFPSolver
+
+# Mapping from dimension index to boundary name prefix
+_DIM_TO_AXIS_PREFIX = {0: "x", 1: "y", 2: "z"}
+
+
+def _get_axis_prefix(dim_idx: int) -> str:
+    """Get axis prefix for dimension index (x, y, z, dim3, dim4, ...)."""
+    if dim_idx < 3:
+        return _DIM_TO_AXIS_PREFIX[dim_idx]
+    return f"dim{dim_idx}"
 
 
 class KDENormalization(str, Enum):
@@ -469,14 +480,75 @@ class FPParticleSolver(BaseFPSolver):
         # dX = sigma * dW where dW ~ N(0, sqrt(dt))
         return sigma * np.random.normal(0, np.sqrt(Dt), (num_particles, dimension))
 
+    def _get_topology_per_dimension(
+        self,
+        dimension: int,
+    ) -> list[str]:
+        """
+        Get grid topology for each dimension from boundary conditions.
+
+        This determines the INDEXING STRATEGY for particles, not the physical BC:
+        - "periodic": Space wraps around (particles use modular arithmetic)
+        - "bounded": Space has walls (particles reflect at boundaries)
+
+        Note: This is about topology (how space connects), not physics (what values
+        are prescribed). For particles, all non-periodic boundaries are treated as
+        reflecting walls, regardless of whether the underlying BC is Dirichlet,
+        Neumann, Robin, or no-flux.
+
+        Parameters
+        ----------
+        dimension : int
+            Number of spatial dimensions
+
+        Returns
+        -------
+        topologies : list[str]
+            Topology per dimension: ["periodic", "bounded", ...]
+        """
+        bc = self.boundary_conditions
+
+        # Default to bounded (reflecting walls) for all dimensions
+        topologies = ["bounded"] * dimension
+
+        if bc is None:
+            return topologies
+
+        # For uniform BCs, check if periodic
+        if hasattr(bc, "is_uniform") and bc.is_uniform:
+            if bc.type == "periodic":
+                return ["periodic"] * dimension
+            return topologies
+
+        # For mixed BCs, check per dimension
+        # Periodic requires BOTH min and max to be periodic (topological constraint)
+        if hasattr(bc, "get_bc_type_at_boundary"):
+            for d in range(dimension):
+                axis_prefix = _get_axis_prefix(d)
+                min_boundary = f"{axis_prefix}_min"
+                max_boundary = f"{axis_prefix}_max"
+
+                try:
+                    bc_min = bc.get_bc_type_at_boundary(min_boundary)
+                    bc_max = bc.get_bc_type_at_boundary(max_boundary)
+
+                    # Periodic topology requires both boundaries to be periodic
+                    if bc_min == BCType.PERIODIC and bc_max == BCType.PERIODIC:
+                        topologies[d] = "periodic"
+                    # All other cases: bounded topology (reflecting for particles)
+                except (KeyError, AttributeError):
+                    pass  # Keep default "bounded"
+
+        return topologies
+
     def _apply_boundary_conditions_nd(
         self,
         particles: np.ndarray,
         bounds: list[tuple[float, float]],
-        bc_type: str,
+        topology: str | list[str],
     ) -> np.ndarray:
         """
-        Apply boundary conditions per dimension.
+        Apply boundary handling per dimension based on topology.
 
         Parameters
         ----------
@@ -484,8 +556,9 @@ class FPParticleSolver(BaseFPSolver):
             Particle positions, shape (num_particles, dimension)
         bounds : list[tuple[float, float]]
             Bounds per dimension [(xmin, xmax), (ymin, ymax), ...]
-        bc_type : str
-            Boundary condition type: "periodic" or "no_flux"
+        topology : str or list[str]
+            Grid topology: "periodic" (wrap) or "bounded" (reflect).
+            Can be a single string (same for all dims) or per-dimension list.
 
         Returns
         -------
@@ -494,6 +567,12 @@ class FPParticleSolver(BaseFPSolver):
         """
         dimension = particles.shape[1] if particles.ndim > 1 else 1
 
+        # Handle per-dimension topologies
+        if isinstance(topology, str):
+            topologies = [topology] * dimension
+        else:
+            topologies = topology
+
         for d in range(dimension):
             xmin, xmax = bounds[d]
             Lx = xmax - xmin
@@ -501,11 +580,13 @@ class FPParticleSolver(BaseFPSolver):
             if Lx < 1e-14:
                 continue  # Skip degenerate dimension
 
-            if bc_type == "periodic":
-                # Wrap around boundaries
+            dim_topology = topologies[d] if d < len(topologies) else "bounded"
+
+            if dim_topology == "periodic":
+                # Periodic topology: wrap around
                 particles[:, d] = xmin + (particles[:, d] - xmin) % Lx
 
-            elif bc_type == "no_flux":
+            else:  # "bounded" -> reflecting walls
                 # Reflecting boundaries: use modular reflection for arbitrary displacement
                 # This handles particles that travel multiple domain widths in one step
                 # Uses "fold" reflection: position bounces back and forth within domain
@@ -947,11 +1028,12 @@ class FPParticleSolver(BaseFPSolver):
                 current_M_particles_t[n_time_idx, :] + alpha_optimal_at_particles * Dt + sigma_sde * dW
             )
 
-            # Apply boundary conditions to particles
-            if self.boundary_conditions.type == "periodic" and Lx > 1e-14:
+            # Apply boundary handling based on topology (supports mixed BCs)
+            topology_1d = self._get_topology_per_dimension(1)[0]
+            if topology_1d == "periodic" and Lx > 1e-14:
                 # Periodic boundaries: wrap around
                 current_M_particles_t[n_time_idx + 1, :] = xmin + (current_M_particles_t[n_time_idx + 1, :] - xmin) % Lx
-            elif self.boundary_conditions.type == "no_flux":
+            else:  # "bounded" -> reflecting walls
                 # Reflecting boundaries: use modular reflection for arbitrary displacement
                 # This handles particles that travel multiple domain widths in one step
                 particles = current_M_particles_t[n_time_idx + 1, :].copy()
@@ -1084,16 +1166,9 @@ class FPParticleSolver(BaseFPSolver):
             # Euler-Maruyama step: X_{t+1} = X_t + drift * dt + sigma * dW
             new_particles = particles_t + drift * Dt + dW
 
-            # Apply boundary conditions
-            # Handle different BC object types (1D has .type, 2D/3D has manager)
-            if self.boundary_conditions is None:
-                bc_type = "no_flux"
-            elif hasattr(self.boundary_conditions, "type"):
-                bc_type = self.boundary_conditions.type
-            else:
-                # For nD boundary condition managers, default to no_flux
-                bc_type = "no_flux"
-            new_particles = self._apply_boundary_conditions_nd(new_particles, bounds, bc_type)
+            # Apply boundary handling based on topology (per-dimension for mixed BCs)
+            topologies = self._get_topology_per_dimension(dimension)
+            new_particles = self._apply_boundary_conditions_nd(new_particles, bounds, topologies)
 
             current_particles[t_idx + 1] = new_particles
 
@@ -1241,10 +1316,13 @@ class FPParticleSolver(BaseFPSolver):
             # Euler-Maruyama update (GPU)
             X_particles_gpu[t + 1, :] = X_particles_gpu[t, :] + drift_gpu * Dt + noise_gpu
 
-            # Apply boundary conditions (GPU)
+            # Apply boundary handling (GPU, supports mixed BCs)
+            # Map topology to GPU bc_type: "bounded" -> "no_flux" for GPU function
+            topology_1d = self._get_topology_per_dimension(1)[0]
+            gpu_bc_type = "periodic" if topology_1d == "periodic" else "no_flux"
             if Lx > 1e-14:
                 X_particles_gpu[t + 1, :] = apply_boundary_conditions_gpu(
-                    X_particles_gpu[t + 1, :], xmin, xmax, self.boundary_conditions.type, self.backend
+                    X_particles_gpu[t + 1, :], xmin, xmax, gpu_bc_type, self.backend
                 )
 
             # Estimate density using internal GPU KDE (Phase 2.1 - no transfers!)
