@@ -555,6 +555,100 @@ class TestGridTypeConfiguration:
         assert np.isclose(padded[3, -1], 1.0)
 
 
+class TestExtrapolationBC:
+    """Tests for extrapolation boundary conditions (for unbounded domains)."""
+
+    def test_linear_extrapolation_function(self):
+        """Test ghost_cell_linear_extrapolation function directly."""
+        from mfg_pde.geometry.boundary import ghost_cell_linear_extrapolation
+
+        # Linear function: f(x) = 2x + 1
+        # At x=0: f(0)=1, at x=1: f(1)=3
+        # Extrapolated to x=-1: f(-1) = -1
+        u_0, u_1 = 1.0, 3.0  # Note: u_0 is at boundary, u_1 is one step inside
+        # For left boundary extrapolation: ghost = 2*u_0 - u_1 = 2*1 - 3 = -1
+        ghost = ghost_cell_linear_extrapolation((u_0, u_1))
+        assert np.isclose(ghost, -1.0)
+
+    def test_quadratic_extrapolation_function(self):
+        """Test ghost_cell_quadratic_extrapolation function directly."""
+        from mfg_pde.geometry.boundary import ghost_cell_quadratic_extrapolation
+
+        # Quadratic function: f(x) = x^2
+        # At x=0: f(0)=0, x=1: f(1)=1, x=2: f(2)=4
+        # Extrapolated to x=-1: f(-1) = 1
+        u_0, u_1, u_2 = 0.0, 1.0, 4.0
+        # For left boundary: ghost = 3*u_0 - 3*u_1 + u_2 = 0 - 3 + 4 = 1
+        ghost = ghost_cell_quadratic_extrapolation((u_0, u_1, u_2))
+        assert np.isclose(ghost, 1.0)
+
+    def test_linear_extrapolation_1d(self):
+        """Test linear extrapolation BC in 1D via apply_boundary_conditions_1d."""
+        from mfg_pde.geometry.boundary import (
+            BCSegment,
+            BCType,
+            BoundaryConditions,
+            apply_boundary_conditions_1d,
+        )
+
+        # Create a linear field: f(x) = x, on [0, 1] with 5 points
+        # x = [0, 0.25, 0.5, 0.75, 1.0]
+        # f = [0, 0.25, 0.5, 0.75, 1.0]
+        field = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+
+        # Use linear extrapolation on both ends
+        bc = BoundaryConditions(
+            dimension=1,
+            segments=[
+                BCSegment(name="left", bc_type=BCType.EXTRAPOLATION_LINEAR, boundary="x_min"),
+                BCSegment(name="right", bc_type=BCType.EXTRAPOLATION_LINEAR, boundary="x_max"),
+            ],
+            domain_bounds=np.array([[0.0, 1.0]]),
+        )
+
+        padded = apply_boundary_conditions_1d(field, bc)
+
+        # Left ghost: 2*field[0] - field[1] = 2*0 - 0.25 = -0.25
+        assert np.isclose(padded[0], -0.25)
+        # Right ghost: 2*field[-1] - field[-2] = 2*1.0 - 0.75 = 1.25
+        assert np.isclose(padded[-1], 1.25)
+
+    def test_quadratic_extrapolation_1d(self):
+        """Test quadratic extrapolation BC in 1D."""
+        from mfg_pde.geometry.boundary import (
+            BCSegment,
+            BCType,
+            BoundaryConditions,
+            apply_boundary_conditions_1d,
+        )
+
+        # Create a quadratic field: f(x) = x^2, on [0, 1] with 5 points
+        # x = [0, 0.25, 0.5, 0.75, 1.0]
+        # f = [0, 0.0625, 0.25, 0.5625, 1.0]
+        x = np.linspace(0, 1, 5)
+        field = x**2
+
+        # Use quadratic extrapolation on both ends
+        bc = BoundaryConditions(
+            dimension=1,
+            segments=[
+                BCSegment(name="left", bc_type=BCType.EXTRAPOLATION_QUADRATIC, boundary="x_min"),
+                BCSegment(name="right", bc_type=BCType.EXTRAPOLATION_QUADRATIC, boundary="x_max"),
+            ],
+            domain_bounds=np.array([[0.0, 1.0]]),
+        )
+
+        padded = apply_boundary_conditions_1d(field, bc)
+
+        # Left ghost: 3*f[0] - 3*f[1] + f[2]
+        expected_left = 3 * field[0] - 3 * field[1] + field[2]
+        assert np.isclose(padded[0], expected_left)
+
+        # Right ghost: 3*f[-1] - 3*f[-2] + f[-3]
+        expected_right = 3 * field[-1] - 3 * field[-2] + field[-3]
+        assert np.isclose(padded[-1], expected_right)
+
+
 class TestInputValidation:
     """Tests for input validation."""
 

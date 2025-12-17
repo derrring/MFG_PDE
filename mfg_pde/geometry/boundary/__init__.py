@@ -61,7 +61,10 @@ from .applicator_base import (
     # Ghost cell helpers (2nd-order)
     ghost_cell_dirichlet,
     ghost_cell_fp_no_flux,
+    # Extrapolation ghost cell (for unbounded domains)
+    ghost_cell_linear_extrapolation,
     ghost_cell_neumann,
+    ghost_cell_quadratic_extrapolation,
     ghost_cell_robin,
 )
 
@@ -196,6 +199,9 @@ __all__ = [
     # Physics-aware ghost cell (for advection-diffusion/FP)
     "ghost_cell_fp_no_flux",
     "ghost_cell_advection_diffusion_no_flux",
+    # Extrapolation ghost cell (for unbounded domains)
+    "ghost_cell_linear_extrapolation",
+    "ghost_cell_quadratic_extrapolation",
     # Core types
     "BCType",
     "BCSegment",

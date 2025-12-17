@@ -469,6 +469,95 @@ def ghost_cell_advection_diffusion_no_flux(
     )
 
 
+# =============================================================================
+# Extrapolation Ghost Cell Formulas (for unbounded domains)
+# =============================================================================
+
+
+def ghost_cell_linear_extrapolation(
+    interior_values: tuple[float, float],
+) -> float:
+    """
+    Compute ghost cell value using linear extrapolation.
+
+    This is equivalent to the **Zero Second Derivative Condition** (d²u/dx² = 0
+    at the boundary). The function is assumed to continue linearly beyond the
+    computational domain.
+
+    Mathematical derivation:
+        Let u_0 = first interior point, u_1 = second interior point
+        Linear extrapolation: u_ghost = 2*u_0 - u_1
+
+        This ensures: (u_ghost - 2*u_0 + u_1) / dx² = 0  (zero second derivative)
+
+    Use cases:
+        - HJB value functions on truncated unbounded domains
+        - Far-field boundary conditions where solution grows linearly
+        - Outflow boundaries in steady-state problems
+
+    Args:
+        interior_values: Tuple of (u_0, u_1) where u_0 is adjacent to ghost,
+                        u_1 is one cell further into the interior
+
+    Returns:
+        Ghost cell value from linear extrapolation
+
+    Example:
+        >>> # At right boundary with interior values
+        >>> u_ghost = ghost_cell_linear_extrapolation((u[-1], u[-2]))
+        >>> # At left boundary with interior values
+        >>> u_ghost = ghost_cell_linear_extrapolation((u[0], u[1]))
+
+    Note:
+        For problems with quadratic growth (e.g., LQG control), use
+        ghost_cell_quadratic_extrapolation() instead.
+    """
+    u_0, u_1 = interior_values
+    return 2.0 * u_0 - u_1
+
+
+def ghost_cell_quadratic_extrapolation(
+    interior_values: tuple[float, float, float],
+) -> float:
+    """
+    Compute ghost cell value using quadratic extrapolation.
+
+    This is equivalent to the **Zero Third Derivative Condition** (d³u/dx³ = 0
+    at the boundary). The function is assumed to continue quadratically beyond
+    the computational domain.
+
+    Mathematical derivation:
+        Let u_0, u_1, u_2 = three interior points (u_0 adjacent to ghost)
+        Quadratic extrapolation: u_ghost = 3*u_0 - 3*u_1 + u_2
+
+        This ensures the third derivative vanishes at the boundary.
+
+    Use cases:
+        - LQG-type HJB problems with quadratic value functions
+        - Problems where linear extrapolation creates artificial "kinks"
+        - Higher-accuracy far-field conditions
+
+    Args:
+        interior_values: Tuple of (u_0, u_1, u_2) where u_0 is adjacent to ghost,
+                        u_1 is one cell in, u_2 is two cells into interior
+
+    Returns:
+        Ghost cell value from quadratic extrapolation
+
+    Example:
+        >>> # At right boundary
+        >>> u_ghost = ghost_cell_quadratic_extrapolation((u[-1], u[-2], u[-3]))
+        >>> # At left boundary
+        >>> u_ghost = ghost_cell_quadratic_extrapolation((u[0], u[1], u[2]))
+
+    Note:
+        Requires at least 3 interior points. For smaller domains, use
+        ghost_cell_linear_extrapolation() instead.
+    """
+    u_0, u_1, u_2 = interior_values
+    return 3.0 * u_0 - 3.0 * u_1 + u_2
+
+
 __all__ = [
     # Enums
     "DiscretizationType",
@@ -488,4 +577,7 @@ __all__ = [
     # Physics-aware ghost cell (for advection-diffusion/FP)
     "ghost_cell_fp_no_flux",
     "ghost_cell_advection_diffusion_no_flux",
+    # Extrapolation ghost cell (for unbounded domains)
+    "ghost_cell_linear_extrapolation",
+    "ghost_cell_quadratic_extrapolation",
 ]
