@@ -342,6 +342,133 @@ def ghost_cell_robin(
     return (rhs_value - interior_value * coeff_interior) / coeff_ghost
 
 
+# =============================================================================
+# Physics-Aware Ghost Cell Formulas
+# =============================================================================
+# IMPORTANT LESSON: The discretized BC must match the physics, not just the
+# mathematical form. For advection-diffusion equations (like Fokker-Planck),
+# a "no-flux" BC means J·n = 0 where J = v*ρ - D*∇ρ.
+#
+# - Naive approach: Neumann (∂ρ/∂n = 0) only zeroes diffusion flux ❌
+# - Correct approach: Robin BC that zeroes TOTAL flux ✅
+#
+# This distinction is crucial for mass conservation in FP equations.
+# =============================================================================
+
+
+def ghost_cell_fp_no_flux(
+    interior_value: float,
+    drift_velocity: float,
+    diffusion_coeff: float,
+    dx: float,
+    outward_normal_sign: float = 1.0,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> float:
+    """
+    Compute ghost cell value for Fokker-Planck no-flux (zero total flux) BC.
+
+    IMPORTANT: For advection-diffusion equations like Fokker-Planck, a "no-flux"
+    BC means the TOTAL flux J = v*ρ - D*∇ρ = 0, not just ∂ρ/∂n = 0.
+
+    This requires a Robin-type ghost cell formula that accounts for both
+    advection and diffusion contributions to the flux.
+
+    Mathematical derivation:
+        Total flux: J = v*ρ - D*∂ρ/∂x
+        No-flux BC: J·n = 0 at boundary
+
+        At boundary (cell face for cell-centered):
+            v_n * ρ_face - D * (∂ρ/∂n)_face = 0
+
+        Using cell-centered discretization:
+            ρ_face ≈ (ρ_ghost + ρ_interior) / 2
+            ∂ρ/∂n ≈ (ρ_ghost - ρ_interior) / dx
+
+        Substituting and solving for ρ_ghost:
+            v_n * (ρ_ghost + ρ_interior)/2 = D * (ρ_ghost - ρ_interior)/dx
+            ρ_ghost = ρ_interior * (2D + v_n*dx) / (2D - v_n*dx)
+
+        Physical interpretation:
+            - When v_n > 0 (outflow): ρ_ghost > ρ_interior (diffusion opposes outflow)
+            - When v_n < 0 (inflow): ρ_ghost < ρ_interior (diffusion opposes inflow)
+            - When v_n = 0: ρ_ghost = ρ_interior (pure Neumann)
+
+    Args:
+        interior_value: Density at interior point ρ_interior
+        drift_velocity: Normal component of drift velocity v·n (positive = outward)
+        diffusion_coeff: Diffusion coefficient D = σ²/2
+        dx: Grid spacing
+        outward_normal_sign: +1 for max boundary (outward normal points positive),
+                            -1 for min boundary (outward normal points negative)
+        grid_type: Grid type (cell-centered or vertex-centered)
+
+    Returns:
+        Ghost cell value that ensures zero total flux at boundary
+
+    Example:
+        >>> # Left boundary with leftward drift (into boundary)
+        >>> rho_ghost = ghost_cell_fp_no_flux(
+        ...     interior_value=1.0,
+        ...     drift_velocity=-0.5,  # v < 0, drift toward left boundary
+        ...     diffusion_coeff=0.125,  # D = 0.5²/2
+        ...     dx=0.1,
+        ...     outward_normal_sign=-1.0  # Left boundary
+        ... )
+
+    References:
+        - Achdou & Laurière (2020): Mean Field Games and Applications, Section on FP BCs
+        - LeVeque (2002): Finite Volume Methods for Hyperbolic Problems
+    """
+    D = diffusion_coeff
+    v_n = drift_velocity * outward_normal_sign  # Normal velocity (positive = outward)
+
+    if grid_type == GridType.VERTEX_CENTERED:
+        # Vertex-centered: boundary at grid point
+        # ρ_ghost = ρ_interior * (D + v_n*dx) / (D - v_n*dx)
+        numerator = D + v_n * dx
+        denominator = D - v_n * dx
+    else:
+        # Cell-centered: boundary at cell face
+        # ρ_ghost = ρ_interior * (2*D + v_n*dx) / (2*D - v_n*dx)
+        numerator = 2.0 * D + v_n * dx
+        denominator = 2.0 * D - v_n * dx
+
+    # Handle edge case where denominator is near zero
+    # This happens when diffusion is very small and drift is large
+    if abs(denominator) < 1e-12:
+        # Fall back to pure advection limit: reflect density
+        return interior_value
+
+    return interior_value * (numerator / denominator)
+
+
+def ghost_cell_advection_diffusion_no_flux(
+    interior_value: float,
+    velocity_normal: float,
+    diffusion_coeff: float,
+    dx: float,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> float:
+    """
+    Alias for ghost_cell_fp_no_flux with clearer parameter naming.
+
+    This is the same as ghost_cell_fp_no_flux but with velocity_normal
+    already accounting for the boundary orientation (positive = outward flow).
+
+    Use this for general advection-diffusion equations where the no-flux BC
+    means zero total flux J = v*u - D*∇u = 0.
+    """
+    # velocity_normal is already v·n (positive = outward)
+    return ghost_cell_fp_no_flux(
+        interior_value=interior_value,
+        drift_velocity=velocity_normal,
+        diffusion_coeff=diffusion_coeff,
+        dx=dx,
+        outward_normal_sign=1.0,  # Already accounted for in velocity_normal
+        grid_type=grid_type,
+    )
+
+
 __all__ = [
     # Enums
     "DiscretizationType",
@@ -354,8 +481,11 @@ __all__ = [
     "BaseUnstructuredApplicator",
     "BaseMeshfreeApplicator",
     "BaseGraphApplicator",
-    # Ghost cell helpers
+    # Ghost cell helpers (2nd-order)
     "ghost_cell_dirichlet",
     "ghost_cell_neumann",
     "ghost_cell_robin",
+    # Physics-aware ghost cell (for advection-diffusion/FP)
+    "ghost_cell_fp_no_flux",
+    "ghost_cell_advection_diffusion_no_flux",
 ]

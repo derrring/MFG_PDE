@@ -56,8 +56,11 @@ from .applicator_base import (
     # Enums
     DiscretizationType,
     GridType,
-    # Ghost cell helpers
+    # Physics-aware ghost cell (for advection-diffusion/FP)
+    ghost_cell_advection_diffusion_no_flux,
+    # Ghost cell helpers (2nd-order)
     ghost_cell_dirichlet,
+    ghost_cell_fp_no_flux,
     ghost_cell_neumann,
     ghost_cell_robin,
 )
@@ -190,6 +193,9 @@ __all__ = [
     "ghost_cell_dirichlet",
     "ghost_cell_neumann",
     "ghost_cell_robin",
+    # Physics-aware ghost cell (for advection-diffusion/FP)
+    "ghost_cell_fp_no_flux",
+    "ghost_cell_advection_diffusion_no_flux",
     # Core types
     "BCType",
     "BCSegment",

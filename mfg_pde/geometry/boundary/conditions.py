@@ -264,6 +264,81 @@ class BoundaryConditions:
             priority=-1,
         )
 
+    def get_bc_type_at_boundary(self, boundary: str) -> BCType:
+        """
+        Get the BC type at a specific boundary (safe accessor for mixed BCs).
+
+        This method provides a safe way to query BC types for both uniform and mixed BCs.
+        For solvers that need to know the BC type at a specific boundary (e.g., "x_min",
+        "y_max"), this method handles the priority resolution for mixed BCs.
+
+        Args:
+            boundary: Boundary identifier (e.g., "x_min", "x_max", "y_min", "y_max")
+
+        Returns:
+            BCType at the specified boundary
+
+        Examples:
+            >>> bc = neumann_bc(dimension=2)
+            >>> bc.get_bc_type_at_boundary("x_min")
+            BCType.NEUMANN
+
+            >>> exit_seg = BCSegment(name="exit", bc_type=BCType.DIRICHLET, boundary="x_max")
+            >>> wall_seg = BCSegment(name="wall", bc_type=BCType.NEUMANN)
+            >>> bc = mixed_bc([exit_seg, wall_seg], dimension=2, domain_bounds=bounds)
+            >>> bc.get_bc_type_at_boundary("x_max")
+            BCType.DIRICHLET
+            >>> bc.get_bc_type_at_boundary("x_min")
+            BCType.NEUMANN
+        """
+        # For uniform BCs, return the single type
+        if self.is_uniform:
+            return self.segments[0].bc_type
+
+        # For mixed BCs, find the highest priority segment matching this boundary
+        for segment in self.segments:  # Already sorted by priority
+            if segment.boundary is None:
+                # Default segment matches all boundaries
+                return segment.bc_type
+            if segment.boundary == boundary:
+                return segment.bc_type
+
+        # No match - return default BC type
+        return self.default_bc
+
+    def get_bc_value_at_boundary(self, boundary: str, time: float = 0.0, point: np.ndarray | None = None) -> float:
+        """
+        Get the BC value at a specific boundary (safe accessor for mixed BCs).
+
+        Args:
+            boundary: Boundary identifier (e.g., "x_min", "x_max")
+            time: Current time for time-dependent BCs
+            point: Optional spatial point for spatially-varying BCs
+
+        Returns:
+            BC value at the specified boundary
+        """
+        # For uniform BCs, return the single value
+        if self.is_uniform:
+            seg = self.segments[0]
+            if callable(seg.value):
+                if point is not None:
+                    return seg.value(point, time)
+                return seg.value(time)
+            return seg.value
+
+        # For mixed BCs, find the highest priority segment
+        for segment in self.segments:
+            if segment.boundary is None or segment.boundary == boundary:
+                if callable(segment.value):
+                    if point is not None:
+                        return segment.value(point, time)
+                    return segment.value(time)
+                return segment.value
+
+        # No match - return default value
+        return self.default_value
+
     def identify_boundary_id(self, point: np.ndarray, tolerance: float = 1e-8) -> str | None:
         """
         Identify which boundary a point lies on.
