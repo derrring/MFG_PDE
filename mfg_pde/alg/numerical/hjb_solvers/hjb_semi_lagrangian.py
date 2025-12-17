@@ -1424,7 +1424,7 @@ if __name__ == "__main__":
 
     # Test 1: Solver initialization
     print("\n1. Testing solver initialization...")
-    problem = MFGProblem(Nx=50, Nt=100, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=50, Nt=100, T=1.0, diffusion=0.1)
     solver = HJBSemiLagrangianSolver(problem, interpolation_method="linear", optimization_method="brent")
 
     assert solver.dimension == 1

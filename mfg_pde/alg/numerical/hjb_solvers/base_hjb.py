@@ -1001,7 +1001,7 @@ if __name__ == "__main__":
     # Test that BaseHJBSolver is abstract
     from mfg_pde import MFGProblem
 
-    problem = MFGProblem(Nx=10, Nt=5, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=10, Nt=5, T=1.0, diffusion=0.1)
 
     try:
         base_solver = BaseHJBSolver(problem)

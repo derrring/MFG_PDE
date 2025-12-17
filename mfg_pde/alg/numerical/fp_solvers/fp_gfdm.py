@@ -55,7 +55,7 @@ class FPGFDMSolver(BaseFPSolver):
         >>> from mfg_pde import MFGProblem
         >>> from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
         >>>
-        >>> problem = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+        >>> problem = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
         >>> points = np.random.rand(100, 1)  # Scattered 1D points
         >>> solver = FPGFDMSolver(problem, collocation_points=points)
         >>>
@@ -231,7 +231,7 @@ if __name__ == "__main__":
 
     # Test 1D problem
     print("\n[1D] Testing 1D GFDM FP solver...")
-    problem = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
 
     # Create 1D collocation points
     points_1d = np.linspace(0, 1, 50).reshape(-1, 1)
@@ -267,7 +267,7 @@ if __name__ == "__main__":
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         Nx_points=[10, 10],
     )
-    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, sigma=0.1)
+    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, diffusion=0.1)
 
     # Create 2D scattered points
     np.random.seed(42)

@@ -1317,7 +1317,7 @@ if __name__ == "__main__":
     from mfg_pde import MFGProblem
 
     # Test 1D problem
-    problem_1d = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    problem_1d = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
 
     # Test standard WENO variant
     solver_1d = HJBWenoSolver(problem_1d, weno_variant="weno-z")
