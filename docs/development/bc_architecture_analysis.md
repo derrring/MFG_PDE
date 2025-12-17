@@ -18,7 +18,78 @@ The current architecture handles these reasonably well through the applicator hi
 
 ---
 
-## 1. The Two-Layer Processing Model
+## 1. The Four-Tier Constraint Taxonomy
+
+Before diving into implementation, we need a classification that transcends specific equations. The traditional Dirichlet/Neumann/Robin taxonomy is **mathematical**, but a **physical** taxonomy is more useful for architecture:
+
+### Tier 1: State Constraints — "Lock the value"
+Direct constraints on the primary variable.
+
+| Sub-Type | Physical Meaning | Examples |
+|----------|-----------------|----------|
+| Fixed State | Constant value | Ground voltage, fixed temperature |
+| Profile/Inlet | Prescribed function | Inlet velocity u(x,t), time-varying control |
+| No-Slip Wall | Vector field locked | Viscous wall (u=0) |
+
+### Tier 2: Gradient Constraints — "Lock the shape"
+Constraints on derivatives, expressing symmetry or smoothness.
+
+| Sub-Type | Physical Meaning | Examples |
+|----------|-----------------|----------|
+| Symmetry | Mirror plane | Slip wall, axis-symmetry |
+| Clamped | Angle locked | Fixed beam end |
+| Constant Slope | Prescribed gradient | Specified shear |
+
+### Tier 3: Flux/Conservation Constraints — "Lock the flow"
+Constraints on conserved quantities. **Most context-dependent** — requires knowing the physical flux J(u, ∇u).
+
+| Sub-Type | Physical Meaning | Examples |
+|----------|-----------------|----------|
+| No-Flux | Impermeable wall | FP reflecting, adiabatic |
+| Specified Flux | Prescribed inflow | Heat injection, current source |
+| Stress Balance | Force equilibrium | Free surface, pressure BC |
+
+### Tier 4: Artificial/Open Constraints — "Fake the infinity"
+Truncation of unbounded domains. Goal: let information flow out, don't reflect back.
+
+| Sub-Type | Physical Meaning | Examples |
+|----------|-----------------|----------|
+| Outflow | Free exit | Developed flow, HJB far-field |
+| Absorbing | Wave sink | Sommerfeld, PML |
+| Far-Field | Asymptotic match | u → u∞ |
+
+### The Two-Level Mapping Architecture
+
+This taxonomy suggests a **two-level mapping** design:
+
+```
+User Config (Physical Intent)     Solver Resolution (Mathematical Implementation)
+─────────────────────────────     ──────────────────────────────────────────────
+bc_type = "wall"            ──►   HJBSolver: NeumannBC(0)      [gradient lock]
+                                  FPSolver:  ZeroFluxRobinBC() [flux lock]
+
+bc_type = "outflow"         ──►   HJBSolver: LinearExtrapolationBC()
+                                  FPSolver:  DirichletBC(0)    [density→0]
+```
+
+The solver knows how to interpret physical intent based on its equation physics.
+
+### Physical Intent → Mathematical Implementation Table
+
+| Physical Intent | HJB (Value Function) | FP (Density) | Particles |
+|-----------------|---------------------|--------------|-----------|
+| **wall** | Neumann ∂V/∂n=0 | Robin (zero total flux) | Reflect |
+| **exit** | Dirichlet V=0 | Dirichlet ρ=0 | Absorb |
+| **symmetry** | Neumann ∂V/∂n=0 | Neumann ∂ρ/∂n=0 | Reflect |
+| **outflow** | Linear extrapolation | Dirichlet ρ→0 | Pass through |
+| **periodic** | Wrap (topology) | Wrap (topology) | Wrap |
+| **inlet** | Dirichlet V=g(x,t) | Dirichlet ρ=g(x,t) | Inject |
+
+This table shows why a single `BCType` enum is insufficient — the same physical word maps to different mathematics.
+
+---
+
+## 2. The Two-Layer Processing Model
 
 ### Layer 1: Topology — "Where does data come from?"
 
@@ -296,9 +367,26 @@ bc = mixed_bc([
 
 6. **Corner validation**: Add debug mode that validates corner ghost values in 2D+
 
-### Long-term (If Implicit FDM Needed)
+### Long-term (Architectural Evolution)
 
-7. **Matrix interface**: Add `apply_to_matrix(A, b)` to `BoundaryCalculator` protocol
+7. **Two-Level Mapping**: Introduce physical intent layer (wall/exit/outflow) that solvers interpret:
+   ```python
+   # User specifies physical intent
+   bc = BoundaryIntent(type="wall")
+
+   # Solver resolves to mathematical implementation
+   class HJBSolver:
+       def resolve_bc(self, intent):
+           if intent.type == "wall":
+               return NeumannBC(0)  # Gradient lock for HJB
+
+   class FPSolver:
+       def resolve_bc(self, intent):
+           if intent.type == "wall":
+               return ZeroFluxRobinBC(self.drift, self.sigma)  # Flux lock for FP
+   ```
+
+8. **Matrix interface**: Add `apply_to_matrix(A, b)` to `BoundaryCalculator` protocol (if implicit FDM needed)
 
 ---
 
