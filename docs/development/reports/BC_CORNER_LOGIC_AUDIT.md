@@ -74,6 +74,74 @@ def _apply_corner_values_nd(padded: NDArray[np.floating], d: int) -> None:
 - 3D: 12 edges (1D) + 8 corners (0D)
 - nD: 3^d - 2d - 1 intersections of various codimension
 
+## Mathematical Foundation: Codimension
+
+### Definition
+
+For a $d$-dimensional domain $\Omega \subset \mathbb{R}^d$, the **codimension** of a boundary intersection is the number of boundary hyperplanes that meet at that intersection:
+
+$$\text{codim}(S) = \text{number of boundary constraints defining } S$$
+
+Equivalently, for a structured grid with ghost cells:
+
+$$\text{codim} = \text{number of dimensions at boundary index (0 or } n-1\text{)}$$
+
+### Boundary Structure Hierarchy
+
+| Codimension | Geometric Object | Intrinsic Dimension | Count in $d$-D |
+|-------------|------------------|---------------------|----------------|
+| 0 | Interior | $d$ | 1 |
+| 1 | Faces | $d-1$ | $2d$ |
+| 2 | Edges (face intersections) | $d-2$ | $2d(d-1)$ |
+| 3 | Ridges | $d-3$ | $\binom{d}{3} \cdot 2^3$ |
+| $k$ | $k$-faces | $d-k$ | $\binom{d}{k} \cdot 2^k$ |
+| $d$ | Vertices (corners) | 0 | $2^d$ |
+
+**Examples:**
+- **2D**: 4 faces (edges), 4 corners (vertices)
+- **3D**: 6 faces, 12 edges, 8 corners
+- **4D**: 8 cells, 24 faces, 32 edges, 16 vertices
+
+### Processing Order Theorem
+
+**Theorem**: Ghost values must be computed in order of increasing codimension.
+
+**Proof sketch**: Let $S_k$ denote the set of boundary intersections with codimension $k$. For averaging-based ghost cell methods:
+
+1. Ghost values at $S_k$ are computed as averages of neighbors in $S_{k-1}$
+2. If $S_{k-1}$ values are not yet computed, averaging produces incorrect results
+3. Therefore, we must process $S_1 \to S_2 \to \cdots \to S_d$
+
+**Implementation**:
+```python
+for codim in range(2, d + 1):  # codim 1 (faces) already set
+    for intersection in get_intersections(codim):
+        neighbors = get_neighbors_with_codim(intersection, codim - 1)
+        intersection.value = mean(neighbors)
+```
+
+### Neighbor Relationship
+
+For an intersection $S$ with codimension $k$, its **codim-$(k-1)$ neighbors** are obtained by relaxing exactly one boundary constraint:
+
+$$N(S) = \{S' : \text{codim}(S') = k-1, \; S \subset \overline{S'}\}$$
+
+The number of such neighbors is exactly $k$ (one for each boundary constraint that can be relaxed).
+
+**Example (3D corner at origin)**:
+- Corner $(0, 0, 0)$ has codim 3
+- Neighbors: edges $(*, 0, 0)$, $(0, *, 0)$, $(0, 0, *)$ — each has codim 2
+- Each edge was computed from faces (codim 1)
+
+### Why This Matters for Dimension-Agnostic Code
+
+The codimension framework enables writing dimension-agnostic boundary handling:
+
+1. **No special cases**: Same algorithm works for 2D, 3D, 4D, ...
+2. **Correctness by construction**: Processing order guarantees valid averaging
+3. **Extensibility**: Adding support for new dimensions requires no code changes
+4. **Mathematical rigor**: Algorithm correctness follows from geometric principles
+
 ## Corner Strategy Options
 
 ### Option 1: Averaging (Current)
