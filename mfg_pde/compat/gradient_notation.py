@@ -246,7 +246,7 @@ def derivs_to_gradient_array(derivs: dict[tuple[int, ...], float], dimension: in
 
     Args:
         derivs: Dictionary with tuple keys
-        dimension: Spatial dimension (1, 2, or 3)
+        dimension: Spatial dimension (any positive integer)
 
     Returns:
         Gradient as ndarray of shape (dimension,)
@@ -256,21 +256,20 @@ def derivs_to_gradient_array(derivs: dict[tuple[int, ...], float], dimension: in
         >>> p = derivs_to_gradient_array(derivs, dimension=2)
         >>> p
         array([0.5, 0.3])
+
+        >>> # Works for any dimension
+        >>> derivs_4d = {(1,0,0,0): 0.1, (0,1,0,0): 0.2, (0,0,1,0): 0.3, (0,0,0,1): 0.4}
+        >>> p = derivs_to_gradient_array(derivs_4d, dimension=4)
+        >>> p
+        array([0.1, 0.2, 0.3, 0.4])
     """
-    if dimension == 1:
-        p = derivs.get((1,), 0.0)
-        return np.array([p])
-    elif dimension == 2:
-        p_x = derivs.get((1, 0), 0.0)
-        p_y = derivs.get((0, 1), 0.0)
-        return np.array([p_x, p_y])
-    elif dimension == 3:
-        p_x = derivs.get((1, 0, 0), 0.0)
-        p_y = derivs.get((0, 1, 0), 0.0)
-        p_z = derivs.get((0, 0, 1), 0.0)
-        return np.array([p_x, p_y, p_z])
-    else:
-        raise ValueError(f"Unsupported dimension: {dimension}. Must be 1, 2, or 3.")
+    # General nD implementation
+    result = np.zeros(dimension)
+    for i in range(dimension):
+        # Create multi-index key for partial derivative w.r.t. axis i
+        key = tuple(1 if j == i else 0 for j in range(dimension))
+        result[i] = derivs.get(key, 0.0)
+    return result
 
 
 def gradient_array_to_derivs(p: np.ndarray, u_value: float = 0.0) -> dict[tuple[int, ...], float]:
@@ -278,7 +277,7 @@ def gradient_array_to_derivs(p: np.ndarray, u_value: float = 0.0) -> dict[tuple[
     Convert gradient array to tuple-indexed derivatives.
 
     Args:
-        p: Gradient as ndarray of shape (d,) where d is dimension
+        p: Gradient as ndarray of shape (d,) where d is dimension (any positive integer)
         u_value: Function value u (optional)
 
     Returns:
@@ -289,29 +288,28 @@ def gradient_array_to_derivs(p: np.ndarray, u_value: float = 0.0) -> dict[tuple[
         >>> derivs = gradient_array_to_derivs(p, u_value=1.0)
         >>> derivs
         {(0, 0): 1.0, (1, 0): 0.5, (0, 1): 0.3}
+
+        >>> # Works for any dimension
+        >>> p = np.array([0.1, 0.2, 0.3, 0.4])
+        >>> derivs = gradient_array_to_derivs(p)
+        >>> derivs[(1, 0, 0, 0)]
+        0.1
     """
     d = len(p)
 
-    if d == 1:
-        return {
-            (0,): u_value,
-            (1,): float(p[0]),
-        }
-    elif d == 2:
-        return {
-            (0, 0): u_value,
-            (1, 0): float(p[0]),
-            (0, 1): float(p[1]),
-        }
-    elif d == 3:
-        return {
-            (0, 0, 0): u_value,
-            (1, 0, 0): float(p[0]),
-            (0, 1, 0): float(p[1]),
-            (0, 0, 1): float(p[2]),
-        }
-    else:
-        raise ValueError(f"Unsupported dimension: {d}. Must be 1, 2, or 3.")
+    # General nD implementation
+    result = {}
+
+    # Add function value with zero multi-index
+    zero_key = tuple([0] * d)
+    result[zero_key] = u_value
+
+    # Add gradient components
+    for i in range(d):
+        key = tuple(1 if j == i else 0 for j in range(d))
+        result[key] = float(p[i])
+
+    return result
 
 
 def check_derivs_format(derivs: dict | tuple | np.ndarray | None) -> str:
