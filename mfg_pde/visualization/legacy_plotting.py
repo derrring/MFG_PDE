@@ -86,11 +86,16 @@ def plot_results(problem, u, m, solver_name="Solver", prefix=None):
 
     Legacy function migrated from utils/plot_utils.py
     """
+    # Get spatial grid from geometry (1D), temporal from problem
+    xSpace = problem.geometry.coordinates[0]  # 1D spatial coordinates
+    tSpace = problem.tSpace  # Temporal grid is on problem, not geometry
+    dx = problem.geometry.get_grid_spacing()[0]
+
     # Subsample for plotting if desired
     kx = 2  # Example subsampling
     kt = 5  # Example subsampling
-    xSpacecut = problem.xSpace[::kx]
-    tSpacecut = problem.tSpace[::kt]
+    xSpacecut = xSpace[::kx]
+    tSpacecut = tSpace[::kt]
     ucut = u[::kt, ::kx]
     mcut = m[::kt, ::kx]
 
@@ -102,7 +107,7 @@ def plot_results(problem, u, m, solver_name="Solver", prefix=None):
 
     # Final density plot
     plt.figure()
-    plt.plot(problem.xSpace, m[-1, :])
+    plt.plot(xSpace, m[-1, :])
     plt.xlabel("x")
     plt.ylabel("m(T,x)")
     plt.title(f"Final Density m(T,x) ({solver_name})")
@@ -111,8 +116,8 @@ def plot_results(problem, u, m, solver_name="Solver", prefix=None):
 
     # Mass conservation plot
     plt.figure()
-    mtot = np.sum(m * problem.dx, axis=1)
-    plt.plot(problem.tSpace, mtot)
+    mtot = np.sum(m * dx, axis=1)
+    plt.plot(tSpace, mtot)
     plt.xlabel("t")
     plt.ylabel("Total Mass $\\int m(t)$")
     plt.title(f"Total Mass ({solver_name})")
