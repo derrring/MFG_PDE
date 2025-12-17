@@ -1,8 +1,8 @@
 # BC Corner Logic Audit Report
 
-**Issue**: #486 Phase 0a
+**Issue**: #486 Phase 0a, 0e
 **Date**: December 2025
-**Status**: Audit Complete
+**Status**: Audit Complete, Stateless Verified
 
 ## Executive Summary
 
@@ -144,6 +144,40 @@ Recommended additions:
 - `test_corner_convergence_2d`: Convergence rate at corners
 - `test_corner_3d_edges`: 3D edge ghost values
 - `test_corner_periodic_consistency`: Periodic BC corner wrapping
+
+## Stateless Verification (Phase 0e)
+
+**Status**: Verified ✅
+
+The ghost cell functions in `applicator_fdm.py` are confirmed to be **stateless**:
+
+### Properties Verified
+
+1. **No Global State**
+   - No `global` keyword usage
+   - No module-level mutable variables
+   - No class-level shared state
+
+2. **Input Immutability**
+   - `apply_boundary_conditions_1d()`: Input array unchanged ✅
+   - `apply_boundary_conditions_2d()`: Input array unchanged ✅
+   - `apply_boundary_conditions_3d()`: Input array unchanged ✅
+   - `apply_boundary_conditions_nd()`: Input array unchanged ✅
+
+3. **Determinism**
+   - Same input → same output (verified)
+   - No random state or time-dependent behavior
+
+4. **Side Effect Documentation**
+   - Internal `_apply_*` functions modify `padded` array in-place (documented)
+   - Public `apply_boundary_conditions_*` functions return new arrays
+
+### Implications for Solver Integration
+
+- Functions can be called multiple times safely
+- Thread-safe for parallel solver implementations
+- Compatible with JIT compilation (Numba/JAX)
+- No hidden state that could cause bugs in time-stepping loops
 
 ## Conclusion
 
