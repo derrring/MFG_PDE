@@ -156,13 +156,14 @@ def optimal_control_drift(
         grad_U = problem.compute_gradient(U)
     else:
         # Fallback: simple central difference
+        grid_spacing = problem.geometry.get_grid_spacing()
         if U.ndim == 2:
-            # 1D spatial: U is (Nt, Nx)
-            grad_U = np.gradient(U, problem.dx, axis=1)
+            # 1D spatial: U is (Nt, Nx_points)
+            grad_U = np.gradient(U, grid_spacing[0], axis=1)
         elif U.ndim == 3:
-            # 2D spatial: U is (Nt, Nx, Ny)
-            grad_U_x = np.gradient(U, problem.dx, axis=1)
-            grad_U_y = np.gradient(U, problem.dy, axis=2)
+            # 2D spatial: U is (Nt, Nx_points, Ny_points)
+            grad_U_x = np.gradient(U, grid_spacing[0], axis=1)
+            grad_U_y = np.gradient(U, grid_spacing[1], axis=2)
             grad_U = np.stack([grad_U_x, grad_U_y], axis=-1)
         else:
             raise NotImplementedError(f"Gradient for {U.ndim}D not implemented")

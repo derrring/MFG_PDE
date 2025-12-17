@@ -187,8 +187,9 @@ class PerformanceMonitor:
                 problem_size = {}
                 if args and hasattr(args[0], "problem"):
                     problem = args[0].problem
-                    if getattr(problem, "Nx", None) is not None:
-                        problem_size["Nx"] = problem.Nx
+                    if hasattr(problem, "geometry"):
+                        grid_shape = problem.geometry.get_grid_shape()
+                        problem_size["Nx"] = grid_shape[0] - 1  # intervals
                     if hasattr(problem, "Nt"):
                         problem_size["Nt"] = problem.Nt
 
@@ -428,10 +429,16 @@ def benchmark_solver(
     Returns:
         Benchmarking results dictionary
     """
+    # Extract problem size
+    Nx_intervals = 0
+    if hasattr(problem, "geometry"):
+        grid_shape = problem.geometry.get_grid_shape()
+        Nx_intervals = grid_shape[0] - 1
+
     results: dict[str, Any] = {
         "solver_class": solver_class.__name__,
         "problem_size": {
-            "Nx": getattr(problem, "Nx", 0),
+            "Nx": Nx_intervals,
             "Nt": getattr(problem, "Nt", 0),
         },
         "configurations": [],

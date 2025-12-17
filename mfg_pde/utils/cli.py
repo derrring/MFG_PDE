@@ -41,7 +41,7 @@ def create_base_parser() -> argparse.ArgumentParser:
     problem_group.add_argument("--Nt", type=int, default=50, help="Number of time steps")
     problem_group.add_argument("--xmin", type=float, default=0.0, help="Minimum spatial domain value")
     problem_group.add_argument("--xmax", type=float, default=1.0, help="Maximum spatial domain value")
-    problem_group.add_argument("--Nx", type=int, default=100, help="Number of spatial grid points")
+    problem_group.add_argument("--Nx", type=int, default=100, help="Number of spatial grid intervals")
 
     # Solver configuration
     solver_group = parser.add_argument_group("Solver Configuration")
@@ -236,13 +236,13 @@ def args_to_config(args: argparse.Namespace) -> dict[str, Any]:
     """
     config = {}
 
-    # Problem parameters
+    # Problem parameters (Nx is intervals, not points)
     config["problem"] = {
         "T": args.T,
         "Nt": args.Nt,
         "xmin": args.xmin,
         "xmax": args.xmax,
-        "Nx": args.Nx,
+        "Nx": args.Nx,  # intervals
     }
 
     # Solver parameters
