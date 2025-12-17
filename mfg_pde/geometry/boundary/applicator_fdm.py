@@ -1568,7 +1568,256 @@ class FDMApplicator(BaseStructuredApplicator):
 
 
 # =============================================================================
-# Pre-allocated Ghost Cell Buffer (Zero-Copy Design)
+# Ghost Buffer with Topology/Calculator Composition (Issue #516)
+# =============================================================================
+
+
+class GhostBuffer:
+    """
+    Ghost cell buffer using Topology/Calculator composition.
+
+    This is the structural foundation for the 2-layer BC architecture:
+    - Layer 1: Topology (Memory/Indexing) - periodic vs bounded connectivity
+    - Layer 2: Calculator (Physics Strategy) - ghost value computation
+
+    The separation enables:
+    - Same Calculator works with different grid topologies
+    - Same Topology works with different physics (Dirichlet, Neumann, etc.)
+    - Clean interface for FVM/FEM/Graph extensions
+
+    Usage:
+        >>> from mfg_pde.geometry.boundary.applicator_base import (
+        ...     BoundedTopology, DirichletCalculator, PeriodicTopology
+        ... )
+
+        >>> # Bounded domain with Dirichlet BC
+        >>> topology = BoundedTopology(dimension=2, shape=(100, 100))
+        >>> calculator = DirichletCalculator(boundary_value=0.0)
+        >>> buffer = GhostBuffer(topology, calculator, dx=0.1)
+
+        >>> # Set interior values
+        >>> buffer.interior[:] = initial_condition
+
+        >>> # Update ghosts (in-place, zero allocation)
+        >>> buffer.update()
+
+        >>> # Periodic domain (no calculator needed)
+        >>> topology = PeriodicTopology(dimension=2, shape=(100, 100))
+        >>> buffer = GhostBuffer(topology)  # Calculator ignored for periodic
+
+    See Also:
+        - PreallocatedGhostBuffer: Legacy interface with BoundaryConditions
+        - Issue #516: Topology/Calculator composition design
+    """
+
+    def __init__(
+        self,
+        topology: Topology,
+        calculator: BoundaryCalculator | None = None,
+        dx: float | tuple[float, ...] = 1.0,
+        ghost_depth: int = 1,
+        dtype: type = np.float64,
+    ):
+        """
+        Initialize ghost buffer with topology and calculator.
+
+        Args:
+            topology: Grid topology (PeriodicTopology or BoundedTopology)
+            calculator: Ghost value calculator (required for bounded, ignored for periodic)
+            dx: Grid spacing (scalar or tuple for each dimension)
+            ghost_depth: Number of ghost cells per boundary
+            dtype: Data type for the buffer
+
+        Raises:
+            ValueError: If bounded topology provided without calculator
+        """
+
+        self._topology = topology
+        self._calculator = calculator
+        self._ghost_depth = ghost_depth
+        self._dtype = dtype
+
+        # Validate: bounded topology requires calculator
+        if not topology.is_periodic and calculator is None:
+            raise ValueError(
+                "Bounded topology requires a BoundaryCalculator. "
+                "Use PeriodicTopology for periodic boundaries, or provide a calculator."
+            )
+
+        # Parse grid spacing
+        if isinstance(dx, (int, float)):
+            self._dx = tuple([float(dx)] * topology.dimension)
+        else:
+            self._dx = tuple(float(d) for d in dx)
+
+        if len(self._dx) != topology.dimension:
+            raise ValueError(
+                f"Grid spacing dimension {len(self._dx)} must match topology dimension {topology.dimension}"
+            )
+
+        # Compute shapes
+        self._interior_shape = topology.shape
+        self._dimension = topology.dimension
+        self._padded_shape = tuple(s + 2 * ghost_depth for s in self._interior_shape)
+
+        # Allocate buffer
+        self._buffer = np.zeros(self._padded_shape, dtype=dtype)
+
+        # Create interior slice (view, not copy)
+        self._interior_slices = tuple(slice(ghost_depth, -ghost_depth) for _ in range(self._dimension))
+
+    @property
+    def topology(self) -> Topology:
+        """Grid topology."""
+        return self._topology
+
+    @property
+    def calculator(self) -> BoundaryCalculator | None:
+        """Ghost value calculator (None for periodic topology)."""
+        return self._calculator
+
+    @property
+    def padded(self) -> NDArray[np.floating]:
+        """Full padded buffer including ghost cells."""
+        return self._buffer
+
+    @property
+    def interior(self) -> NDArray[np.floating]:
+        """View of interior region (no copy)."""
+        return self._buffer[self._interior_slices]
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Interior shape."""
+        return self._interior_shape
+
+    @property
+    def padded_shape(self) -> tuple[int, ...]:
+        """Padded shape including ghosts."""
+        return self._padded_shape
+
+    @property
+    def ghost_depth(self) -> int:
+        """Number of ghost cells per side."""
+        return self._ghost_depth
+
+    @property
+    def dx(self) -> tuple[float, ...]:
+        """Grid spacing for each dimension."""
+        return self._dx
+
+    def update(self, **kwargs) -> None:
+        """
+        Update ghost cells in-place based on current interior values.
+
+        This is the core zero-allocation operation. The update strategy
+        depends on topology type:
+        - Periodic: ghost = wrap-around (opposite boundary interior)
+        - Bounded: ghost = calculator.compute(interior, dx, side)
+
+        Args:
+            **kwargs: Additional arguments passed to calculator.compute()
+                     (e.g., time for time-dependent BCs, drift for FP no-flux)
+        """
+        if self._topology.is_periodic:
+            self._update_periodic()
+        else:
+            self._update_bounded(**kwargs)
+
+    def _update_periodic(self) -> None:
+        """Update ghost cells for periodic topology (wrap-around)."""
+        d = self._dimension
+        g = self._ghost_depth
+        buf = self._buffer
+
+        for axis in range(d):
+            # Low ghost = high interior
+            lo_ghost = [slice(None)] * d
+            lo_ghost[axis] = slice(0, g)
+            hi_interior = [slice(None)] * d
+            hi_interior[axis] = slice(-2 * g, -g)
+            buf[tuple(lo_ghost)] = buf[tuple(hi_interior)]
+
+            # High ghost = low interior
+            hi_ghost = [slice(None)] * d
+            hi_ghost[axis] = slice(-g, None)
+            lo_interior = [slice(None)] * d
+            lo_interior[axis] = slice(g, 2 * g)
+            buf[tuple(hi_ghost)] = buf[tuple(lo_interior)]
+
+    def _update_bounded(self, **kwargs) -> None:
+        """Update ghost cells for bounded topology using calculator."""
+        if self._calculator is None:
+            raise RuntimeError("Calculator is None for bounded topology")
+
+        d = self._dimension
+        g = self._ghost_depth
+        buf = self._buffer
+
+        for axis in range(d):
+            dx = self._dx[axis]
+
+            # Get interior and ghost slices
+            lo_ghost = [slice(None)] * d
+            lo_ghost[axis] = slice(0, g)
+            lo_interior = [slice(None)] * d
+            lo_interior[axis] = slice(g, 2 * g)
+
+            hi_ghost = [slice(None)] * d
+            hi_ghost[axis] = slice(-g, None)
+            hi_interior = [slice(None)] * d
+            hi_interior[axis] = slice(-2 * g, -g)
+
+            # Apply calculator to each boundary point
+            # Note: This is element-wise for simplicity. For vectorization,
+            # calculators should support array operations.
+            interior_lo = buf[tuple(lo_interior)]
+            interior_hi = buf[tuple(hi_interior)]
+
+            # For scalar calculators, iterate element-wise
+            ghost_lo = np.zeros_like(interior_lo)
+            ghost_hi = np.zeros_like(interior_hi)
+
+            for idx in np.ndindex(interior_lo.shape):
+                ghost_lo[idx] = self._calculator.compute(
+                    interior_value=float(interior_lo[idx]),
+                    dx=dx,
+                    side="min",
+                    **kwargs,
+                )
+                ghost_hi[idx] = self._calculator.compute(
+                    interior_value=float(interior_hi[idx]),
+                    dx=dx,
+                    side="max",
+                    **kwargs,
+                )
+
+            buf[tuple(lo_ghost)] = ghost_lo
+            buf[tuple(hi_ghost)] = ghost_hi
+
+    def reset(self, fill_value: float = 0.0) -> None:
+        """Reset buffer to a constant value."""
+        self._buffer.fill(fill_value)
+
+    def copy_to_interior(self, data: NDArray[np.floating]) -> None:
+        """Copy data to interior region."""
+        self.interior[:] = data
+
+    def __repr__(self) -> str:
+        calc_str = repr(self._calculator) if self._calculator else "None"
+        return (
+            f"GhostBuffer(topology={self._topology!r}, calculator={calc_str}, "
+            f"shape={self._interior_shape}, ghost_depth={self._ghost_depth})"
+        )
+
+
+# Type hint imports for forward references
+if TYPE_CHECKING:
+    from .applicator_base import BoundaryCalculator, Topology
+
+
+# =============================================================================
+# Pre-allocated Ghost Cell Buffer (Legacy Interface - Zero-Copy Design)
 # =============================================================================
 
 
@@ -1892,7 +2141,8 @@ __all__ = [
     "apply_boundary_conditions_nd",
     "create_boundary_mask_2d",
     "get_ghost_values_nd",
-    # Class-based API
+    # Class-based API (Topology/Calculator composition - Issue #516)
+    "GhostBuffer",
     "FDMApplicator",
     "PreallocatedGhostBuffer",
 ]

@@ -51,11 +51,24 @@ from .applicator_base import (
     BaseMeshfreeApplicator,
     BaseStructuredApplicator,
     BaseUnstructuredApplicator,
-    # Protocol
+    # Protocols
     BCApplicatorProtocol,
+    BoundaryCalculator,
+    # Topology implementations (Issue #516)
+    BoundedTopology,
+    # Calculator implementations (Issue #516)
+    DirichletCalculator,
     # Enums
     DiscretizationType,
+    FPNoFluxCalculator,
     GridType,
+    LinearExtrapolationCalculator,
+    NeumannCalculator,
+    NoFluxCalculator,
+    PeriodicTopology,
+    QuadraticExtrapolationCalculator,
+    RobinCalculator,
+    Topology,
     # Physics-aware ghost cell (for advection-diffusion/FP)
     ghost_cell_advection_diffusion_no_flux,
     # Ghost cell helpers (2nd-order)
@@ -73,6 +86,7 @@ from .applicator_base import (
 # =============================================================================
 from .applicator_fdm import (
     FDMApplicator,
+    GhostBuffer,
     GhostCellConfig,
     PreallocatedGhostBuffer,
     apply_boundary_conditions_1d,
@@ -188,11 +202,25 @@ __all__ = [
     "DiscretizationType",
     "GridType",
     "BCApplicatorProtocol",
+    "Topology",
+    "BoundaryCalculator",
     "BaseBCApplicator",
     "BaseStructuredApplicator",
     "BaseUnstructuredApplicator",
     "BaseMeshfreeApplicator",
     "BaseGraphApplicator",
+    # Topology implementations (Issue #516)
+    "PeriodicTopology",
+    "BoundedTopology",
+    # Calculator implementations (Issue #516)
+    "DirichletCalculator",
+    "NeumannCalculator",
+    "RobinCalculator",
+    "NoFluxCalculator",
+    "LinearExtrapolationCalculator",
+    "QuadraticExtrapolationCalculator",
+    "FPNoFluxCalculator",
+    # Ghost cell helper functions
     "ghost_cell_dirichlet",
     "ghost_cell_neumann",
     "ghost_cell_robin",
@@ -217,7 +245,8 @@ __all__ = [
     "no_flux_bc",
     "robin_bc",
     "mixed_bc",
-    # FDM Applicator
+    # FDM Applicator (Topology/Calculator composition - Issue #516)
+    "GhostBuffer",
     "FDMApplicator",
     "GhostCellConfig",
     "PreallocatedGhostBuffer",

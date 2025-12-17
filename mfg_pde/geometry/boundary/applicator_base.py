@@ -71,6 +71,515 @@ class BCApplicatorProtocol(Protocol):
         ...
 
 
+# =============================================================================
+# Topology/Calculator Composition (Semantic Dispatch Pattern)
+# =============================================================================
+# This is the structural foundation for the 2-layer BC architecture:
+#   Layer 1: Topology (Memory/Indexing) - how boundaries connect
+#   Layer 2: Calculator (Physics Strategy) - what values to use
+#
+# See Issue #516 and docs/development/bc_architecture_analysis.md
+# =============================================================================
+
+
+@runtime_checkable
+class Topology(Protocol):
+    """
+    Protocol for boundary topology (Layer 1 of 2-layer BC architecture).
+
+    Topology handles the structural/memory aspects of boundary conditions:
+    - Periodic: boundaries wrap around (u[-1] = u[n-1])
+    - Bounded: boundaries are physical edges requiring ghost values
+
+    This separation allows the same Calculator (physics) to work with
+    different grid connectivities.
+
+    Example:
+        >>> # Periodic domain - topology handles wrap-around
+        >>> topology = PeriodicTopology(dimension=2, shape=(100, 100))
+        >>> if topology.is_periodic:
+        ...     # Use np.pad(..., mode='wrap')
+        ...     pass
+
+        >>> # Bounded domain - need Calculator for ghost values
+        >>> topology = BoundedTopology(dimension=2, shape=(100, 100))
+        >>> if not topology.is_periodic:
+        ...     # Apply calculator.compute() for each boundary
+        ...     pass
+    """
+
+    @property
+    def is_periodic(self) -> bool:
+        """Whether this topology has periodic boundaries."""
+        ...
+
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension."""
+        ...
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Grid shape (interior points only)."""
+        ...
+
+
+@runtime_checkable
+class BoundaryCalculator(Protocol):
+    """
+    Protocol for ghost value computation (Layer 2 of 2-layer BC architecture).
+
+    Calculator handles the physics/value aspects of boundary conditions:
+    - Dirichlet: u_ghost = 2*g - u_interior
+    - Neumann: u_ghost = u_interior + 2*dx*g
+    - Robin: combination of above
+    - Extrapolation: polynomial continuation
+
+    The Calculator is ONLY used for bounded topologies. Periodic topologies
+    compute ghost values directly from wrap-around indices.
+
+    Example:
+        >>> # Dirichlet BC with fixed boundary value
+        >>> calculator = DirichletCalculator(boundary_value=0.0)
+        >>> u_ghost = calculator.compute(interior_value=1.0, dx=0.1, side='min')
+        # Returns 2*0 - 1 = -1.0
+
+        >>> # Neumann BC with zero flux
+        >>> calculator = NeumannCalculator(flux_value=0.0)
+        >>> u_ghost = calculator.compute(interior_value=1.0, dx=0.1, side='min')
+        # Returns 1.0 (edge extension)
+    """
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """
+        Compute ghost cell value from interior value.
+
+        Args:
+            interior_value: Value at interior point adjacent to boundary
+            dx: Grid spacing
+            side: Boundary side ('min' or 'max')
+            **kwargs: Additional parameters (e.g., time for time-varying BCs)
+
+        Returns:
+            Ghost cell value
+        """
+        ...
+
+
+# =============================================================================
+# Concrete Topology Implementations
+# =============================================================================
+
+
+class PeriodicTopology:
+    """
+    Periodic boundary topology.
+
+    In periodic topology, boundaries wrap around: the ghost cell at the
+    low boundary equals the interior value at the high boundary, and vice versa.
+
+    This is a MEMORY/INDEXING concept, not a physics concept. The Calculator
+    is NOT used for periodic boundaries - values come from wrap-around.
+    """
+
+    def __init__(self, dimension: int, shape: tuple[int, ...]):
+        """
+        Initialize periodic topology.
+
+        Args:
+            dimension: Spatial dimension (1, 2, 3, ...)
+            shape: Grid shape (interior points)
+        """
+        if len(shape) != dimension:
+            raise ValueError(f"Shape length {len(shape)} must match dimension {dimension}")
+        self._dimension = dimension
+        self._shape = shape
+
+    @property
+    def is_periodic(self) -> bool:
+        return True
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._shape
+
+    def __repr__(self) -> str:
+        return f"PeriodicTopology(dimension={self._dimension}, shape={self._shape})"
+
+
+class BoundedTopology:
+    """
+    Bounded (non-periodic) boundary topology.
+
+    In bounded topology, boundaries are physical edges that require ghost
+    values computed by a Calculator. The topology itself just marks that
+    boundaries exist - the Calculator provides the values.
+
+    This separation enables:
+    - Same Calculator works with any bounded grid
+    - Different Calculators can be swapped without changing topology
+    """
+
+    def __init__(self, dimension: int, shape: tuple[int, ...]):
+        """
+        Initialize bounded topology.
+
+        Args:
+            dimension: Spatial dimension (1, 2, 3, ...)
+            shape: Grid shape (interior points)
+        """
+        if len(shape) != dimension:
+            raise ValueError(f"Shape length {len(shape)} must match dimension {dimension}")
+        self._dimension = dimension
+        self._shape = shape
+
+    @property
+    def is_periodic(self) -> bool:
+        return False
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._shape
+
+    def __repr__(self) -> str:
+        return f"BoundedTopology(dimension={self._dimension}, shape={self._shape})"
+
+
+# =============================================================================
+# Concrete Calculator Implementations
+# =============================================================================
+
+
+class DirichletCalculator:
+    """
+    Calculator for Dirichlet (fixed value) boundary conditions.
+
+    Computes ghost cell value such that the boundary value equals the
+    prescribed value g:
+        u_boundary = (u_ghost + u_interior) / 2 = g  (cell-centered)
+        => u_ghost = 2*g - u_interior
+    """
+
+    def __init__(
+        self,
+        boundary_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Dirichlet calculator.
+
+        Args:
+            boundary_value: Prescribed value at boundary
+            grid_type: Grid type (cell-centered or vertex-centered)
+        """
+        self._boundary_value = boundary_value
+        self._grid_type = grid_type
+
+    @property
+    def boundary_value(self) -> float:
+        return self._boundary_value
+
+    @property
+    def grid_type(self) -> GridType:
+        return self._grid_type
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Compute ghost value for Dirichlet BC."""
+        return ghost_cell_dirichlet(interior_value, self._boundary_value, self._grid_type)
+
+    def __repr__(self) -> str:
+        return f"DirichletCalculator(boundary_value={self._boundary_value})"
+
+
+class NeumannCalculator:
+    """
+    Calculator for Neumann (fixed flux) boundary conditions.
+
+    Computes ghost cell value such that the normal derivative equals
+    the prescribed flux g:
+        du/dn = (u_ghost - u_interior) / (2*dx) = g  (cell-centered)
+        => u_ghost = u_interior + 2*dx*g
+    """
+
+    def __init__(
+        self,
+        flux_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Neumann calculator.
+
+        Args:
+            flux_value: Prescribed normal flux (du/dn)
+            grid_type: Grid type
+        """
+        self._flux_value = flux_value
+        self._grid_type = grid_type
+
+    @property
+    def flux_value(self) -> float:
+        return self._flux_value
+
+    @property
+    def grid_type(self) -> GridType:
+        return self._grid_type
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Compute ghost value for Neumann BC."""
+        # Outward normal sign: +1 for max boundary, -1 for min boundary
+        outward_sign = 1.0 if side == "max" else -1.0
+        return ghost_cell_neumann(interior_value, self._flux_value, dx, outward_sign, self._grid_type)
+
+    def __repr__(self) -> str:
+        return f"NeumannCalculator(flux_value={self._flux_value})"
+
+
+class RobinCalculator:
+    """
+    Calculator for Robin (mixed) boundary conditions.
+
+    Computes ghost cell value for the Robin condition:
+        alpha*u + beta*du/dn = g
+    """
+
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        beta: float = 0.0,
+        rhs_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Robin calculator.
+
+        Args:
+            alpha: Coefficient on u (Dirichlet weight)
+            beta: Coefficient on du/dn (Neumann weight)
+            rhs_value: Right-hand side value g
+            grid_type: Grid type
+        """
+        self._alpha = alpha
+        self._beta = beta
+        self._rhs_value = rhs_value
+        self._grid_type = grid_type
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Compute ghost value for Robin BC."""
+        outward_sign = 1.0 if side == "max" else -1.0
+        return ghost_cell_robin(
+            interior_value,
+            self._rhs_value,
+            self._alpha,
+            self._beta,
+            dx,
+            outward_sign,
+            self._grid_type,
+        )
+
+    def __repr__(self) -> str:
+        return f"RobinCalculator(alpha={self._alpha}, beta={self._beta}, rhs={self._rhs_value})"
+
+
+class NoFluxCalculator:
+    """
+    Calculator for no-flux (zero Neumann) boundary conditions.
+
+    This is a special case of Neumann with flux = 0, but named explicitly
+    for clarity. Ghost cell equals interior value (edge extension).
+    """
+
+    def __init__(self, grid_type: GridType = GridType.CELL_CENTERED):
+        self._grid_type = grid_type
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Compute ghost value for no-flux BC (edge extension)."""
+        return interior_value
+
+    def __repr__(self) -> str:
+        return "NoFluxCalculator()"
+
+
+class LinearExtrapolationCalculator:
+    """
+    Calculator for linear extrapolation boundary conditions.
+
+    Uses zero second derivative (d²u/dx² = 0) at boundary.
+    Ghost = 2*u_0 - u_1
+
+    Requires access to two interior values.
+    """
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        second_interior_value: float | None = None,
+        **kwargs,
+    ) -> float:
+        """
+        Compute ghost value via linear extrapolation.
+
+        Args:
+            interior_value: Value at point adjacent to boundary (u_0)
+            dx: Grid spacing (not used, but part of protocol)
+            side: Boundary side (not used, but part of protocol)
+            second_interior_value: Value at second interior point (u_1)
+
+        Returns:
+            Ghost value = 2*u_0 - u_1
+        """
+        if second_interior_value is None:
+            # Fall back to edge extension if second value not provided
+            return interior_value
+        return ghost_cell_linear_extrapolation((interior_value, second_interior_value))
+
+    def __repr__(self) -> str:
+        return "LinearExtrapolationCalculator()"
+
+
+class QuadraticExtrapolationCalculator:
+    """
+    Calculator for quadratic extrapolation boundary conditions.
+
+    Uses zero third derivative (d³u/dx³ = 0) at boundary.
+    Ghost = 3*u_0 - 3*u_1 + u_2
+
+    Requires access to three interior values.
+    """
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        second_interior_value: float | None = None,
+        third_interior_value: float | None = None,
+        **kwargs,
+    ) -> float:
+        """
+        Compute ghost value via quadratic extrapolation.
+
+        Args:
+            interior_value: Value at point adjacent to boundary (u_0)
+            dx: Grid spacing (not used)
+            side: Boundary side (not used)
+            second_interior_value: Value at second interior point (u_1)
+            third_interior_value: Value at third interior point (u_2)
+
+        Returns:
+            Ghost value = 3*u_0 - 3*u_1 + u_2
+        """
+        if second_interior_value is None or third_interior_value is None:
+            # Fall back to linear if not enough points
+            if second_interior_value is not None:
+                return ghost_cell_linear_extrapolation((interior_value, second_interior_value))
+            return interior_value
+        return ghost_cell_quadratic_extrapolation((interior_value, second_interior_value, third_interior_value))
+
+    def __repr__(self) -> str:
+        return "QuadraticExtrapolationCalculator()"
+
+
+class FPNoFluxCalculator:
+    """
+    Calculator for Fokker-Planck no-flux (zero total flux) boundary conditions.
+
+    For advection-diffusion equations, no-flux means J·n = 0 where
+    J = v*ρ - D*∇ρ. This requires a Robin-type formula that accounts
+    for both advection and diffusion.
+
+    This is more physically correct than pure Neumann for FP equations.
+    """
+
+    def __init__(
+        self,
+        drift_velocity: float = 0.0,
+        diffusion_coeff: float = 1.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize FP no-flux calculator.
+
+        Args:
+            drift_velocity: Normal component of drift (positive = outward)
+            diffusion_coeff: Diffusion coefficient D = σ²/2
+            grid_type: Grid type
+        """
+        self._drift = drift_velocity
+        self._diffusion = diffusion_coeff
+        self._grid_type = grid_type
+
+    def compute(
+        self,
+        interior_value: float,
+        dx: float,
+        side: str,
+        drift_velocity: float | None = None,
+        **kwargs,
+    ) -> float:
+        """
+        Compute ghost value for FP no-flux BC.
+
+        Args:
+            interior_value: Density at interior point
+            dx: Grid spacing
+            side: Boundary side ('min' or 'max')
+            drift_velocity: Override drift velocity (optional)
+        """
+        outward_sign = 1.0 if side == "max" else -1.0
+        v = drift_velocity if drift_velocity is not None else self._drift
+        return ghost_cell_fp_no_flux(
+            interior_value,
+            v,
+            self._diffusion,
+            dx,
+            outward_sign,
+            self._grid_type,
+        )
+
+    def __repr__(self) -> str:
+        return f"FPNoFluxCalculator(drift={self._drift}, D={self._diffusion})"
+
+
 class BaseBCApplicator(ABC):
     """
     Abstract base class for all BC applicators.
@@ -562,8 +1071,21 @@ __all__ = [
     # Enums
     "DiscretizationType",
     "GridType",
-    # Protocol
+    # Protocols
     "BCApplicatorProtocol",
+    "Topology",
+    "BoundaryCalculator",
+    # Topology implementations
+    "PeriodicTopology",
+    "BoundedTopology",
+    # Calculator implementations
+    "DirichletCalculator",
+    "NeumannCalculator",
+    "RobinCalculator",
+    "NoFluxCalculator",
+    "LinearExtrapolationCalculator",
+    "QuadraticExtrapolationCalculator",
+    "FPNoFluxCalculator",
     # Base classes
     "BaseBCApplicator",
     "BaseStructuredApplicator",
