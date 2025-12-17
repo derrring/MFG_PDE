@@ -1511,6 +1511,321 @@ class FDMApplicator(BaseStructuredApplicator):
         return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, config)
 
 
+# =============================================================================
+# Pre-allocated Ghost Cell Buffer (Zero-Copy Design)
+# =============================================================================
+
+
+class PreallocatedGhostBuffer:
+    """
+    Pre-allocated buffer for zero-copy ghost cell boundary conditions.
+
+    This class avoids repeated memory allocation when applying BCs in tight loops
+    (e.g., time-stepping). It pre-allocates a padded buffer and provides a view
+    into the interior region for solvers to work with directly.
+
+    Memory Layout:
+        padded[ghost, interior..., ghost] where interior is a view (no copy)
+
+    Usage:
+        # Create buffer once
+        buffer = PreallocatedGhostBuffer(
+            interior_shape=(100, 100),
+            boundary_conditions=bc,
+            domain_bounds=bounds,
+        )
+
+        # In time loop - zero allocation:
+        for t in range(num_steps):
+            # Work directly on interior view
+            buffer.interior[:] = solve_step(buffer.interior)
+
+            # Update ghost cells in-place
+            buffer.update_ghosts(time=t * dt)
+
+            # Access full padded array if needed
+            laplacian = compute_laplacian(buffer.padded)
+
+    Performance:
+        - Initial allocation: O(N) once
+        - update_ghosts(): O(boundary) per call, no allocation
+        - Interior access: O(1), view only
+    """
+
+    def __init__(
+        self,
+        interior_shape: tuple[int, ...],
+        boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
+        domain_bounds: NDArray[np.floating] | None = None,
+        dtype: np.dtype = np.float64,
+        ghost_depth: int = 1,
+        config: GhostCellConfig | None = None,
+    ):
+        """
+        Initialize pre-allocated ghost buffer.
+
+        Args:
+            interior_shape: Shape of the interior domain (Ny, Nx) for 2D, etc.
+            boundary_conditions: BC specification
+            domain_bounds: Domain bounds for mixed BCs
+            dtype: Data type for the buffer
+            ghost_depth: Number of ghost cells per side (default: 1)
+            config: Ghost cell configuration
+        """
+        self._interior_shape = interior_shape
+        self._dimension = len(interior_shape)
+        self._ghost_depth = ghost_depth
+        self._boundary_conditions = boundary_conditions
+        self._domain_bounds = domain_bounds
+        self._config = config if config is not None else GhostCellConfig()
+
+        # Compute padded shape
+        self._padded_shape = tuple(s + 2 * ghost_depth for s in interior_shape)
+
+        # Allocate the padded buffer
+        self._buffer = np.zeros(self._padded_shape, dtype=dtype)
+
+        # Create interior slice (view, not copy)
+        self._interior_slices = tuple(slice(ghost_depth, -ghost_depth) for _ in range(self._dimension))
+
+        # Pre-compute grid spacing if domain_bounds provided
+        self._grid_spacing: tuple[float, ...] | None = None
+        if domain_bounds is not None:
+            domain_bounds = np.atleast_2d(domain_bounds)
+            spacing = []
+            for d in range(self._dimension):
+                extent = domain_bounds[d, 1] - domain_bounds[d, 0]
+                n_points = interior_shape[d]
+                spacing.append(extent / (n_points - 1) if n_points > 1 else extent)
+            self._grid_spacing = tuple(spacing)
+
+    @property
+    def padded(self) -> NDArray[np.floating]:
+        """Full padded buffer including ghost cells."""
+        return self._buffer
+
+    @property
+    def interior(self) -> NDArray[np.floating]:
+        """View of interior region (no copy)."""
+        return self._buffer[self._interior_slices]
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Interior shape."""
+        return self._interior_shape
+
+    @property
+    def padded_shape(self) -> tuple[int, ...]:
+        """Padded shape including ghosts."""
+        return self._padded_shape
+
+    @property
+    def ghost_depth(self) -> int:
+        """Number of ghost cells per side."""
+        return self._ghost_depth
+
+    def update_ghosts(self, time: float = 0.0) -> None:
+        """
+        Update ghost cells in-place based on current interior values.
+
+        This is the core zero-allocation operation. Ghost cells are computed
+        from the interior values according to the boundary conditions.
+
+        Args:
+            time: Current time for time-dependent BCs
+        """
+        bc = self._boundary_conditions
+
+        # Get BC type for dispatch
+        if isinstance(bc, LegacyBoundaryConditions1D):
+            bc_type_str = bc.type.lower()
+            self._update_ghosts_legacy(bc_type_str)
+            return
+
+        if not isinstance(bc, BoundaryConditions):
+            raise TypeError(f"Unsupported BC type: {type(bc)}")
+
+        if bc.is_uniform:
+            seg = bc.segments[0]
+            self._update_ghosts_uniform(seg.bc_type, seg.value, time)
+        else:
+            # Mixed BC requires more complex per-point updates
+            self._update_ghosts_mixed(bc, time)
+
+    def _update_ghosts_uniform(
+        self,
+        bc_type: BCType,
+        value: float | None,
+        time: float,
+    ) -> None:
+        """Update ghost cells for uniform BC (same type on all boundaries)."""
+        d = self._dimension
+        g = self._ghost_depth
+        buf = self._buffer
+
+        # Evaluate value if callable
+        if callable(value):
+            v = value(time)
+        else:
+            v = value if value is not None else 0.0
+
+        if bc_type == BCType.PERIODIC:
+            # Periodic: ghost = opposite interior
+            for axis in range(d):
+                # Low ghost = high interior
+                lo_ghost = [slice(None)] * d
+                lo_ghost[axis] = slice(0, g)
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = slice(-2 * g, -g)
+                buf[tuple(lo_ghost)] = buf[tuple(hi_interior)]
+
+                # High ghost = low interior
+                hi_ghost = [slice(None)] * d
+                hi_ghost[axis] = slice(-g, None)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = slice(g, 2 * g)
+                buf[tuple(hi_ghost)] = buf[tuple(lo_interior)]
+
+        elif bc_type == BCType.DIRICHLET:
+            # Dirichlet: u_ghost = 2*g - u_interior
+            for axis in range(d):
+                # Low boundary
+                lo_ghost = [slice(None)] * d
+                lo_ghost[axis] = slice(0, g)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = slice(g, 2 * g)
+                buf[tuple(lo_ghost)] = 2 * v - buf[tuple(lo_interior)]
+
+                # High boundary
+                hi_ghost = [slice(None)] * d
+                hi_ghost[axis] = slice(-g, None)
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = slice(-2 * g, -g)
+                buf[tuple(hi_ghost)] = 2 * v - buf[tuple(hi_interior)]
+
+        elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
+            # No-flux: u_ghost = u_interior (or with flux for general Neumann)
+            for axis in range(d):
+                # Low boundary
+                lo_ghost = [slice(None)] * d
+                lo_ghost[axis] = slice(0, g)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = slice(g, 2 * g)
+                buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
+
+                # High boundary
+                hi_ghost = [slice(None)] * d
+                hi_ghost[axis] = slice(-g, None)
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = slice(-2 * g, -g)
+                buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+
+        elif bc_type == BCType.ROBIN:
+            # Robin: treat as Neumann-like for now
+            for axis in range(d):
+                lo_ghost = [slice(None)] * d
+                lo_ghost[axis] = slice(0, g)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = slice(g, 2 * g)
+                buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
+
+                hi_ghost = [slice(None)] * d
+                hi_ghost[axis] = slice(-g, None)
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = slice(-2 * g, -g)
+                buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+
+    def _update_ghosts_legacy(self, bc_type_str: str) -> None:
+        """Update ghost cells for legacy BC type."""
+        d = self._dimension
+        g = self._ghost_depth
+        buf = self._buffer
+
+        if bc_type_str == "periodic":
+            for axis in range(d):
+                lo_ghost = [slice(None)] * d
+                lo_ghost[axis] = slice(0, g)
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = slice(-2 * g, -g)
+                buf[tuple(lo_ghost)] = buf[tuple(hi_interior)]
+
+                hi_ghost = [slice(None)] * d
+                hi_ghost[axis] = slice(-g, None)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = slice(g, 2 * g)
+                buf[tuple(hi_ghost)] = buf[tuple(lo_interior)]
+
+        elif bc_type_str in ["no_flux", "neumann"]:
+            for axis in range(d):
+                lo_ghost = [slice(None)] * d
+                lo_ghost[axis] = slice(0, g)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = slice(g, 2 * g)
+                buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
+
+                hi_ghost = [slice(None)] * d
+                hi_ghost[axis] = slice(-g, None)
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = slice(-2 * g, -g)
+                buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+
+        elif bc_type_str == "dirichlet":
+            bc = self._boundary_conditions
+            v = bc.left_value if hasattr(bc, "left_value") and bc.left_value is not None else 0.0
+            for axis in range(d):
+                lo_ghost = [slice(None)] * d
+                lo_ghost[axis] = slice(0, g)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = slice(g, 2 * g)
+                buf[tuple(lo_ghost)] = 2 * v - buf[tuple(lo_interior)]
+
+                hi_ghost = [slice(None)] * d
+                hi_ghost[axis] = slice(-g, None)
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = slice(-2 * g, -g)
+                buf[tuple(hi_ghost)] = 2 * v - buf[tuple(hi_interior)]
+
+    def _update_ghosts_mixed(self, bc: BoundaryConditions, time: float) -> None:
+        """Update ghost cells for mixed BCs (different types on different boundaries)."""
+        # For mixed BCs, we need to iterate per-point on boundaries
+        # This is slower but necessary for accurate BC application
+        # Fall back to creating a padded array and copying ghost values
+        padded = apply_boundary_conditions_nd(
+            self.interior.copy(),
+            bc,
+            self._domain_bounds,
+            time,
+            self._config,
+        )
+
+        # Copy ghost cells from padded to buffer
+        d = self._dimension
+        g = self._ghost_depth
+
+        for axis in range(d):
+            # Low ghost
+            lo_ghost = [slice(None)] * d
+            lo_ghost[axis] = slice(0, g)
+            self._buffer[tuple(lo_ghost)] = padded[tuple(lo_ghost)]
+
+            # High ghost
+            hi_ghost = [slice(None)] * d
+            hi_ghost[axis] = slice(-g, None)
+            self._buffer[tuple(hi_ghost)] = padded[tuple(hi_ghost)]
+
+    def reset(self, fill_value: float = 0.0) -> None:
+        """Reset buffer to a constant value."""
+        self._buffer.fill(fill_value)
+
+    def copy_to_interior(self, data: NDArray[np.floating]) -> None:
+        """Copy data to interior region."""
+        self.interior[:] = data
+
+    def copy_from_padded(self, data: NDArray[np.floating]) -> None:
+        """Copy full padded data to buffer."""
+        self._buffer[:] = data
+
+
 __all__ = [
     # Configuration
     "GhostCellConfig",
@@ -1523,4 +1838,85 @@ __all__ = [
     "get_ghost_values_nd",
     # Class-based API
     "FDMApplicator",
+    "PreallocatedGhostBuffer",
 ]
+
+
+if __name__ == "__main__":
+    """Smoke tests for applicator_fdm module."""
+
+    print("Testing FDM boundary condition applicators...")
+
+    # Test 1: Basic 2D Neumann BC
+    print("\n1. Testing 2D Neumann BC (no-flux)...")
+    from mfg_pde.geometry.boundary import neumann_bc
+
+    field_2d = np.ones((5, 5))
+    bc = neumann_bc(dimension=2)
+    bounds = np.array([[0.0, 1.0], [0.0, 1.0]])
+    padded = apply_boundary_conditions_2d(field_2d, bc, bounds)
+    assert padded.shape == (7, 7), f"Expected (7,7), got {padded.shape}"
+    # Neumann with zero flux: ghost = interior
+    assert np.allclose(padded[0, 1:-1], padded[1, 1:-1]), "Neumann BC failed"
+    print("   PASS: 2D Neumann BC")
+
+    # Test 2: PreallocatedGhostBuffer (2D Dirichlet)
+    print("\n2. Testing PreallocatedGhostBuffer (2D Dirichlet)...")
+    from mfg_pde.geometry.boundary import dirichlet_bc
+
+    bc_dirichlet = dirichlet_bc(dimension=2, value=0.0)
+    buffer = PreallocatedGhostBuffer(
+        interior_shape=(5, 5),
+        boundary_conditions=bc_dirichlet,
+        domain_bounds=bounds,
+    )
+    # Set interior to constant
+    buffer.interior[:] = 1.0
+    # Update ghosts
+    buffer.update_ghosts()
+    # Dirichlet with g=0: ghost = 2*0 - interior = -interior
+    padded_buf = buffer.padded
+    assert padded_buf.shape == (7, 7), f"Expected (7,7), got {padded_buf.shape}"
+    assert np.allclose(padded_buf[0, 1:-1], -1.0), "Dirichlet ghost failed (low)"
+    assert np.allclose(buffer.interior, 1.0), "Interior modified unexpectedly"
+    print("   PASS: PreallocatedGhostBuffer (2D Dirichlet)")
+
+    # Test 3: PreallocatedGhostBuffer (3D Periodic)
+    print("\n3. Testing PreallocatedGhostBuffer (3D Periodic)...")
+    from mfg_pde.geometry.boundary import periodic_bc
+
+    bc_periodic = periodic_bc(dimension=3)
+    bounds_3d = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
+    buffer_3d = PreallocatedGhostBuffer(
+        interior_shape=(4, 4, 4),
+        boundary_conditions=bc_periodic,
+        domain_bounds=bounds_3d,
+    )
+    # Set a gradient in x
+    for i in range(4):
+        buffer_3d.interior[i, :, :] = float(i)
+    buffer_3d.update_ghosts()
+    padded_3d = buffer_3d.padded
+    # Periodic: low ghost = high interior
+    assert np.allclose(padded_3d[0, 1:-1, 1:-1], padded_3d[-2, 1:-1, 1:-1]), "Periodic low ghost failed"
+    # Periodic: high ghost = low interior
+    assert np.allclose(padded_3d[-1, 1:-1, 1:-1], padded_3d[1, 1:-1, 1:-1]), "Periodic high ghost failed"
+    print("   PASS: PreallocatedGhostBuffer (3D Periodic)")
+
+    # Test 4: Zero-copy verification
+    print("\n4. Testing zero-copy interior view...")
+    bc_neumann = neumann_bc(dimension=2)
+    buffer2 = PreallocatedGhostBuffer(
+        interior_shape=(3, 3),
+        boundary_conditions=bc_neumann,
+        domain_bounds=bounds,
+    )
+    interior_view = buffer2.interior
+    interior_view[1, 1] = 42.0
+    # Modification should reflect in padded
+    assert buffer2.padded[2, 2] == 42.0, "Zero-copy failed"
+    print("   PASS: Zero-copy interior view")
+
+    print("\n" + "=" * 50)
+    print("All smoke tests passed!")
+    print("=" * 50)

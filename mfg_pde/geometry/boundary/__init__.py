@@ -68,6 +68,7 @@ from .applicator_base import (
 from .applicator_fdm import (
     FDMApplicator,
     GhostCellConfig,
+    PreallocatedGhostBuffer,
     apply_boundary_conditions_1d,
     apply_boundary_conditions_2d,
     apply_boundary_conditions_3d,
@@ -207,6 +208,7 @@ __all__ = [
     # FDM Applicator
     "FDMApplicator",
     "GhostCellConfig",
+    "PreallocatedGhostBuffer",
     "apply_boundary_conditions_1d",
     "apply_boundary_conditions_2d",
     "apply_boundary_conditions_3d",
