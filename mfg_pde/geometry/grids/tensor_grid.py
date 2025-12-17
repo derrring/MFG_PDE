@@ -208,13 +208,10 @@ class TensorProductGrid(CartesianGrid):
                 raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {self._Nx_points[i]}")
 
         # Store boundary conditions (SSOT for spatial BC)
-        # Validate dimension if BC provided
+        # Use lazy binding to set/validate dimension
         if boundary_conditions is not None:
-            if boundary_conditions.dimension != dimension:
-                raise ValueError(
-                    f"BoundaryConditions dimension ({boundary_conditions.dimension}) "
-                    f"does not match grid dimension ({dimension})"
-                )
+            # bind_dimension returns a new BC with dimension set, or validates if already set
+            boundary_conditions = boundary_conditions.bind_dimension(dimension)
         self._boundary_conditions = boundary_conditions
 
         # Cache for flattened grid (computed lazily, perf optimization)

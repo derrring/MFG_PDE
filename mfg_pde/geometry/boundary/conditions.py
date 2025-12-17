@@ -28,7 +28,7 @@ Examples:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -55,7 +55,8 @@ class BoundaryConditions:
     - `mixed_bc()` for mixed BCs with multiple segments
 
     Attributes:
-        dimension: Spatial dimension of the problem (1, 2, 3, ...)
+        dimension: Spatial dimension of the problem (1, 2, 3, ...) or None for lazy binding.
+            When None, dimension will be inferred when BC is attached to a Geometry.
         segments: List of BC segments (ordered by priority)
         default_bc: Default BC type when no segment matches
         default_value: Default BC value when no segment matches
@@ -84,7 +85,7 @@ class BoundaryConditions:
         ...               domain_sdf=lambda x: np.linalg.norm(x) - 5.0)
     """
 
-    dimension: int
+    dimension: int | None = None
     segments: list[BCSegment] = field(default_factory=list)
     default_bc: BCType = BCType.PERIODIC
     default_value: float = 0.0
@@ -102,6 +103,66 @@ class BoundaryConditions:
     def __post_init__(self):
         """Sort segments by priority (highest first)."""
         self.segments.sort(key=lambda seg: seg.priority, reverse=True)
+
+    # =========================================================================
+    # Lazy dimension binding
+    # =========================================================================
+
+    @property
+    def is_bound(self) -> bool:
+        """Check if dimension has been bound (explicitly or via lazy binding)."""
+        return self.dimension is not None
+
+    def bind_dimension(self, dim: int) -> BoundaryConditions:
+        """
+        Bind dimension to this BC specification (lazy binding).
+
+        Called by Geometry when BC is attached. If dimension is already set,
+        validates consistency. Returns a new BoundaryConditions instance with
+        the bound dimension.
+
+        Args:
+            dim: Spatial dimension to bind
+
+        Returns:
+            BoundaryConditions with dimension set
+
+        Raises:
+            ValueError: If BC already has a different dimension
+
+        Example:
+            >>> bc = dirichlet_bc(value=0.0)  # dimension=None
+            >>> bc_2d = bc.bind_dimension(2)  # Now dimension=2
+            >>> assert bc_2d.dimension == 2
+        """
+        if self.dimension is not None and self.dimension != dim:
+            raise ValueError(
+                f"BC dimension mismatch: BC has dimension={self.dimension}, but geometry has dimension={dim}"
+            )
+        if self.dimension == dim:
+            return self  # Already bound to correct dimension
+        return replace(self, dimension=dim)
+
+    def _require_dimension(self, operation: str = "this operation") -> int:
+        """
+        Internal helper: require dimension to be bound before certain operations.
+
+        Args:
+            operation: Name of operation for error message
+
+        Returns:
+            Bound dimension
+
+        Raises:
+            ValueError: If dimension is not bound
+        """
+        if self.dimension is None:
+            raise ValueError(
+                f"BC dimension not set. Cannot perform {operation}. "
+                f"Either specify dimension in factory function (e.g., dirichlet_bc(dimension=2)) "
+                f"or attach BC to a Geometry to bind dimension automatically."
+            )
+        return self.dimension
 
     # =========================================================================
     # Properties to distinguish uniform vs mixed BCs
@@ -217,13 +278,14 @@ class BoundaryConditions:
         Returns:
             Boundary identifier string or None if not on boundary
         """
+        dimension = self._require_dimension("identify_boundary_id")
         point = np.asarray(point, dtype=float)
 
         # Method 1: Rectangular domain (axis-aligned detection)
         if self.domain_bounds is not None:
             axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
 
-            for axis_idx in range(self.dimension):
+            for axis_idx in range(dimension):
                 axis_name = axis_names.get(axis_idx, f"axis{axis_idx}")
 
                 # Check if on min boundary for this axis
@@ -291,11 +353,12 @@ class BoundaryConditions:
         Returns:
             True if point is on the boundary
         """
+        dimension = self._require_dimension("is_on_boundary")
         point = np.asarray(point, dtype=float)
 
         # Rectangular domain: check if on any axis boundary
         if self.domain_bounds is not None:
-            for axis_idx in range(self.dimension):
+            for axis_idx in range(dimension):
                 if abs(point[axis_idx] - self.domain_bounds[axis_idx, 0]) < tolerance:
                     return True
                 if abs(point[axis_idx] - self.domain_bounds[axis_idx, 1]) < tolerance:
@@ -320,6 +383,7 @@ class BoundaryConditions:
         Returns:
             Unit outward normal vector, or None if not available
         """
+        dimension = self._require_dimension("get_outward_normal")
         point = np.asarray(point, dtype=float)
 
         # SDF domain: use gradient
@@ -336,8 +400,8 @@ class BoundaryConditions:
             if boundary_id is None:
                 return None
 
-            normal = np.zeros(self.dimension)
-            for axis_idx in range(self.dimension):
+            normal = np.zeros(dimension)
+            for axis_idx in range(dimension):
                 axis_name = ["x", "y", "z", "w"][axis_idx] if axis_idx < 4 else f"axis{axis_idx}"
                 if boundary_id == f"{axis_name}_min":
                     normal[axis_idx] = -1.0
@@ -388,27 +452,32 @@ class BoundaryConditions:
         """
         warnings = []
 
+        # Check that dimension is set for full validation
+        if self.dimension is None:
+            warnings.append("Dimension not set. Some validation checks skipped.")
+
         # Check that at least one domain specification exists
         if self.domain_bounds is None and self.domain_sdf is None:
             warnings.append("Neither domain_bounds nor domain_sdf is set")
 
-        # Check segments have valid dimension (for rectangular domains)
-        for segment in self.segments:
-            if segment.region is not None:
-                max_axis = max(
-                    (k if isinstance(k, int) else 0 for k in segment.region),
-                    default=-1,
-                )
-                if max_axis >= self.dimension:
-                    warnings.append(f"Segment '{segment.name}' region exceeds dimension {self.dimension}")
-
-            # Check normal_direction dimension
-            if segment.normal_direction is not None:
-                if len(segment.normal_direction) != self.dimension:
-                    warnings.append(
-                        f"Segment '{segment.name}' normal_direction has wrong dimension: "
-                        f"expected {self.dimension}, got {len(segment.normal_direction)}"
+        # Check segments have valid dimension (for rectangular domains) - only if dimension is set
+        if self.dimension is not None:
+            for segment in self.segments:
+                if segment.region is not None:
+                    max_axis = max(
+                        (k if isinstance(k, int) else 0 for k in segment.region),
+                        default=-1,
                     )
+                    if max_axis >= self.dimension:
+                        warnings.append(f"Segment '{segment.name}' region exceeds dimension {self.dimension}")
+
+                # Check normal_direction dimension
+                if segment.normal_direction is not None:
+                    if len(segment.normal_direction) != self.dimension:
+                        warnings.append(
+                            f"Segment '{segment.name}' normal_direction has wrong dimension: "
+                            f"expected {self.dimension}, got {len(segment.normal_direction)}"
+                        )
 
         # Check for conflicting segments with same priority
         priority_groups = {}
@@ -421,9 +490,9 @@ class BoundaryConditions:
             if len(group) > 1:
                 warnings.append(f"Multiple segments with priority {priority}: {[s.name for s in group]}")
 
-        # Check boundary coverage for rectangular domains
+        # Check boundary coverage for rectangular domains - only if dimension is set
         # Warn if no segments cover certain boundaries (may indicate incomplete BC specification)
-        if self.domain_bounds is not None and not self.is_uniform:
+        if self.dimension is not None and self.domain_bounds is not None and not self.is_uniform:
             # Map axis index to standard names
             axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
 
@@ -474,13 +543,14 @@ class BoundaryConditions:
 
     def __str__(self) -> str:
         """String representation."""
+        dim_str = f"{self.dimension}D" if self.dimension is not None else "unbound"
         if self.is_uniform:
             seg = self.segments[0]
-            return f"BoundaryConditions({self.dimension}D, {seg.bc_type.value}, value={seg.value})"
+            return f"BoundaryConditions({dim_str}, {seg.bc_type.value}, value={seg.value})"
 
         # Mixed BC
         domain_type = "rectangular" if self.domain_bounds is not None else "SDF"
-        lines = [f"BoundaryConditions({self.dimension}D, mixed, {domain_type}):"]
+        lines = [f"BoundaryConditions({dim_str}, mixed, {domain_type}):"]
         for segment in self.segments:
             lines.append(f"  - {segment}")
         lines.append(f"  - Default: {self.default_bc.value} = {self.default_value}")
@@ -497,7 +567,7 @@ class BoundaryConditions:
 def uniform_bc(
     bc_type: str | BCType,
     value: float | Callable = 0.0,
-    dimension: int = 2,
+    dimension: int | None = None,
     domain_bounds: np.ndarray | None = None,
     alpha: float = 1.0,
     beta: float = 0.0,
@@ -508,7 +578,8 @@ def uniform_bc(
     Args:
         bc_type: BC type ("periodic", "dirichlet", "neumann", "robin", "no_flux")
         value: BC value (constant or callable(point, time))
-        dimension: Spatial dimension
+        dimension: Spatial dimension. If None, dimension will be inferred when
+            BC is attached to a Geometry (lazy binding).
         domain_bounds: Optional domain bounds array (dimension, 2)
         alpha: Robin coefficient for u term (only for Robin BC)
         beta: Robin coefficient for du/dn term (only for Robin BC)
@@ -536,12 +607,13 @@ def uniform_bc(
     )
 
 
-def periodic_bc(dimension: int = 2, domain_bounds: np.ndarray | None = None) -> BoundaryConditions:
+def periodic_bc(dimension: int | None = None, domain_bounds: np.ndarray | None = None) -> BoundaryConditions:
     """
     Create periodic boundary conditions.
 
     Args:
-        dimension: Spatial dimension
+        dimension: Spatial dimension. If None, dimension will be inferred when
+            BC is attached to a Geometry (lazy binding).
         domain_bounds: Optional domain bounds
 
     Returns:
@@ -552,7 +624,7 @@ def periodic_bc(dimension: int = 2, domain_bounds: np.ndarray | None = None) -> 
 
 def dirichlet_bc(
     value: float | Callable = 0.0,
-    dimension: int = 2,
+    dimension: int | None = None,
     domain_bounds: np.ndarray | None = None,
 ) -> BoundaryConditions:
     """
@@ -560,7 +632,8 @@ def dirichlet_bc(
 
     Args:
         value: Boundary value (constant or callable(point, time))
-        dimension: Spatial dimension
+        dimension: Spatial dimension. If None, dimension will be inferred when
+            BC is attached to a Geometry (lazy binding).
         domain_bounds: Optional domain bounds
 
     Returns:
@@ -571,7 +644,7 @@ def dirichlet_bc(
 
 def neumann_bc(
     value: float | Callable = 0.0,
-    dimension: int = 2,
+    dimension: int | None = None,
     domain_bounds: np.ndarray | None = None,
 ) -> BoundaryConditions:
     """
@@ -579,7 +652,8 @@ def neumann_bc(
 
     Args:
         value: Normal derivative value (constant or callable(point, time))
-        dimension: Spatial dimension
+        dimension: Spatial dimension. If None, dimension will be inferred when
+            BC is attached to a Geometry (lazy binding).
         domain_bounds: Optional domain bounds
 
     Returns:
@@ -588,14 +662,15 @@ def neumann_bc(
     return uniform_bc(BCType.NEUMANN, value=value, dimension=dimension, domain_bounds=domain_bounds)
 
 
-def no_flux_bc(dimension: int = 2, domain_bounds: np.ndarray | None = None) -> BoundaryConditions:
+def no_flux_bc(dimension: int | None = None, domain_bounds: np.ndarray | None = None) -> BoundaryConditions:
     """
     Create no-flux boundary conditions (zero normal derivative).
 
     Equivalent to Neumann BC with value=0. Common for Fokker-Planck equations.
 
     Args:
-        dimension: Spatial dimension
+        dimension: Spatial dimension. If None, dimension will be inferred when
+            BC is attached to a Geometry (lazy binding).
         domain_bounds: Optional domain bounds
 
     Returns:
@@ -608,7 +683,7 @@ def robin_bc(
     value: float | Callable = 0.0,
     alpha: float = 1.0,
     beta: float = 1.0,
-    dimension: int = 2,
+    dimension: int | None = None,
     domain_bounds: np.ndarray | None = None,
 ) -> BoundaryConditions:
     """
@@ -618,7 +693,8 @@ def robin_bc(
         value: RHS value g in alpha*u + beta*du/dn = g
         alpha: Coefficient of u
         beta: Coefficient of du/dn
-        dimension: Spatial dimension
+        dimension: Spatial dimension. If None, dimension will be inferred when
+            BC is attached to a Geometry (lazy binding).
         domain_bounds: Optional domain bounds
 
     Returns:
@@ -636,7 +712,7 @@ def robin_bc(
 
 def mixed_bc(
     segments: list[BCSegment],
-    dimension: int = 2,
+    dimension: int | None = None,
     domain_bounds: np.ndarray | None = None,
     domain_sdf: Callable[[np.ndarray], float] | None = None,
     default_bc: BCType = BCType.NEUMANN,
@@ -651,7 +727,8 @@ def mixed_bc(
 
     Args:
         segments: List of BCSegment defining BCs on different boundary parts
-        dimension: Spatial dimension
+        dimension: Spatial dimension. If None, dimension will be inferred when
+            BC is attached to a Geometry (lazy binding).
         domain_bounds: Domain bounds array (dimension, 2) for rectangular domains
         domain_sdf: Signed distance function for general/Lipschitz domains
         default_bc: Default BC type when no segment matches
