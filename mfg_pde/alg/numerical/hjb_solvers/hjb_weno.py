@@ -261,8 +261,8 @@ class HJBWenoSolver(BaseHJBSolver):
         # Legacy 1D MFGProblem
         elif self.dimension == 1:
             if getattr(self.problem, "Nx", None) is not None:
-                self.num_grid_points_x = self.problem.Nx + 1
-                self.grid_spacing_x = self.problem.dx
+                self.num_grid_points_x = self.problem.geometry.get_grid_shape()[0]
+                self.grid_spacing_x = self.problem.geometry.get_grid_spacing()[0]
             else:
                 self.num_grid_points_x = getattr(self.problem, "nx", 64) + 1
                 self.grid_spacing_x = getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
@@ -1481,7 +1481,7 @@ if __name__ == "__main__":
     from mfg_pde import MFGProblem
 
     # Test 1D problem
-    problem_1d = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
+    problem_1d = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
 
     # Test standard WENO variant
     solver_1d = HJBWenoSolver(problem_1d, weno_variant="weno-z")

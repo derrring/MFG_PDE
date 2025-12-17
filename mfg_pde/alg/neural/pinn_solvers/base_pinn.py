@@ -577,11 +577,12 @@ class PINNBase(BaseNeuralSolver, ABC):
             x_interior = self.problem.geometry.sample_interior(self.config.n_interior_points)
             x_interior = torch.from_numpy(x_interior).to(self.device, dtype=self.dtype)
         else:
-            # Default 1D sampling
+            # Default 1D sampling using geometry API
+            bounds = self.problem.geometry.get_bounds()
             x_interior = (
                 torch.rand(self.config.n_interior_points, 1, device=self.device, dtype=self.dtype)
-                * (self.problem.xmax - self.problem.xmin)
-                + self.problem.xmin
+                * (bounds[1][0] - bounds[0][0])
+                + bounds[0][0]
             )
 
         points["interior"] = (t_interior, x_interior)
@@ -598,10 +599,11 @@ class PINNBase(BaseNeuralSolver, ABC):
             n_left = self.config.n_boundary_points // 2
             n_right = self.config.n_boundary_points - n_left
 
+            bounds = self.problem.geometry.get_bounds()
             x_boundary = torch.cat(
                 [
-                    torch.full((n_left, 1), self.problem.xmin, device=self.device, dtype=self.dtype),
-                    torch.full((n_right, 1), self.problem.xmax, device=self.device, dtype=self.dtype),
+                    torch.full((n_left, 1), bounds[0][0], device=self.device, dtype=self.dtype),
+                    torch.full((n_right, 1), bounds[1][0], device=self.device, dtype=self.dtype),
                 ]
             )
 
@@ -612,10 +614,11 @@ class PINNBase(BaseNeuralSolver, ABC):
             x_initial = self.problem.geometry.sample_interior(self.config.n_initial_points)
             x_initial = torch.from_numpy(x_initial).to(self.device, dtype=self.dtype)
         else:
+            bounds = self.problem.geometry.get_bounds()
             x_initial = (
                 torch.rand(self.config.n_initial_points, 1, device=self.device, dtype=self.dtype)
-                * (self.problem.xmax - self.problem.xmin)
-                + self.problem.xmin
+                * (bounds[1][0] - bounds[0][0])
+                + bounds[0][0]
             )
 
         points["initial"] = x_initial
@@ -829,8 +832,9 @@ class PINNBase(BaseNeuralSolver, ABC):
         """
         # Default grid generation (can be overridden)
         nt, nx = 100, 100
+        bounds = self.problem.geometry.get_bounds()
         t_eval = np.linspace(0, self.problem.T, nt)
-        x_eval = np.linspace(self.problem.xmin, self.problem.xmax, nx)
+        x_eval = np.linspace(bounds[0][0], bounds[1][0], nx)
 
         T_eval, X_eval = np.meshgrid(t_eval, x_eval)
         t_flat = torch.from_numpy(T_eval.flatten().reshape(-1, 1)).to(self.device, dtype=self.dtype)

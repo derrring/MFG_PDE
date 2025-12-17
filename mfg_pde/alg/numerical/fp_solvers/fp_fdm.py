@@ -283,12 +283,13 @@ class FPFDMSolver(BaseFPSolver):
         >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.5)
 
         Spatially varying diffusion (higher at boundaries):
-        >>> x_grid = np.linspace(0, 1, problem.Nx + 1)
+        >>> Nx = problem.geometry.get_grid_shape()[0]
+        >>> x_grid = np.linspace(0, 1, Nx)
         >>> diffusion_array = 0.1 + 0.2 * np.abs(x_grid - 0.5)
         >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=diffusion_array)
 
         Spatiotemporal diffusion (time and space dependent):
-        >>> Nt, Nx = problem.Nt + 1, problem.Nx + 1
+        >>> Nt, Nx = problem.Nt + 1, problem.geometry.get_grid_shape()[0]
         >>> diffusion_field = np.zeros((Nt, Nx))
         >>> for t in range(Nt):
         ...     diffusion_field[t, :] = 0.1 * (1 + 0.5 * t / Nt)  # Increasing over time
@@ -488,17 +489,10 @@ class FPFDMSolver(BaseFPSolver):
         self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
     ) -> np.ndarray:
         """Original 1D FP solver implementation."""
-        # Handle both old 1D interface and new geometry-based interface
-        if getattr(self.problem, "Nx", None) is not None:
-            # Old 1D interface
-            Nx = self.problem.Nx + 1
-            Dx = self.problem.dx
-            Dt = self.problem.dt
-        else:
-            # Geometry-based interface (CartesianGrid)
-            Nx = self.problem.geometry.get_grid_shape()[0]
-            Dx = self.problem.geometry.get_grid_spacing()[0]
-            Dt = self.problem.dt
+        # Use geometry-based interface (geometry is always available)
+        Nx = self.problem.geometry.get_grid_shape()[0]
+        Dx = self.problem.geometry.get_grid_spacing()[0]
+        Dt = self.problem.dt
 
         # Infer number of time points from U_solution shape, not problem.Nt
         # n_time_points = number of time knots (including t=0 and t=T)
@@ -974,16 +968,11 @@ class FPFDMSolver(BaseFPSolver):
                 "Expected signature: (t: float, x: ndarray, m: ndarray) -> float | ndarray"
             )
 
-        # Get problem dimensions
-        if getattr(self.problem, "Nx", None) is not None:
-            Nx = self.problem.Nx + 1
-            Dt = self.problem.dt
-            xmin, xmax = self.problem.xmin, self.problem.xmax
-        else:
-            Nx = self.problem.geometry.get_grid_shape()[0]
-            Dt = self.problem.dt
-            domain = self.problem.geometry.domain
-            xmin, xmax = domain[0][0], domain[0][1]
+        # Get problem dimensions from geometry
+        Nx = self.problem.geometry.get_grid_shape()[0]
+        Dt = self.problem.dt
+        bounds = self.problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
 
         # Infer Nt from drift_field if provided, else use problem.Nt
         if drift_field is not None:

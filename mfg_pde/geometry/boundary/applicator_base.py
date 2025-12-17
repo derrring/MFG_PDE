@@ -28,8 +28,25 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+import numpy as np
+from numpy.typing import NDArray
+
 if TYPE_CHECKING:
     from .conditions import BoundaryConditions
+
+# =============================================================================
+# Generic Type Alias for Vectorized Operations (PEP 695, Python 3.12+)
+# =============================================================================
+# FieldData represents any valid field value type for boundary calculations.
+# Used as a constraint for generic type parameters in Calculator methods.
+#
+# The template pattern [T: FieldData] ensures input/output type consistency:
+# - If input is float, output is float
+# - If input is NDArray, output is NDArray
+#
+# This is equivalent to C++ template<typename T> T compute(T val)
+# =============================================================================
+type FieldData = float | NDArray[np.floating]
 
 
 class DiscretizationType(Enum):
@@ -69,6 +86,564 @@ class BCApplicatorProtocol(Protocol):
     def supports_bc_type(self, bc: BoundaryConditions) -> bool:
         """Check if this applicator supports the given BC specification."""
         ...
+
+
+# =============================================================================
+# Topology/Calculator Composition (Semantic Dispatch Pattern)
+# =============================================================================
+# This is the structural foundation for the 2-layer BC architecture:
+#   Layer 1: Topology (Memory/Indexing) - how boundaries connect
+#   Layer 2: Calculator (Physics Strategy) - what values to use
+#
+# See Issue #516 and docs/development/bc_architecture_analysis.md
+# =============================================================================
+
+
+@runtime_checkable
+class Topology(Protocol):
+    """
+    Protocol for boundary topology (Layer 1 of 2-layer BC architecture).
+
+    Topology handles the structural/memory aspects of boundary conditions:
+    - Periodic: boundaries wrap around (u[-1] = u[n-1])
+    - Bounded: boundaries are physical edges requiring ghost values
+
+    This separation allows the same Calculator (physics) to work with
+    different grid connectivities.
+
+    Example:
+        >>> # Periodic domain - topology handles wrap-around
+        >>> topology = PeriodicTopology(dimension=2, shape=(100, 100))
+        >>> if topology.is_periodic:
+        ...     # Use np.pad(..., mode='wrap')
+        ...     pass
+
+        >>> # Bounded domain - need Calculator for ghost values
+        >>> topology = BoundedTopology(dimension=2, shape=(100, 100))
+        >>> if not topology.is_periodic:
+        ...     # Apply calculator.compute() for each boundary
+        ...     pass
+    """
+
+    @property
+    def is_periodic(self) -> bool:
+        """Whether this topology has periodic boundaries."""
+        ...
+
+    @property
+    def dimension(self) -> int:
+        """Spatial dimension."""
+        ...
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Grid shape (interior points only)."""
+        ...
+
+
+@runtime_checkable
+class BoundaryCalculator(Protocol):
+    """
+    Protocol for ghost value computation (Layer 2 of 2-layer BC architecture).
+
+    Calculator handles the physics/value aspects of boundary conditions:
+    - Dirichlet: u_ghost = 2*g - u_interior
+    - Neumann: u_ghost = u_interior + 2*dx*g
+    - Robin: combination of above
+    - Extrapolation: polynomial continuation
+
+    The Calculator is ONLY used for bounded topologies. Periodic topologies
+    compute ghost values directly from wrap-around indices.
+
+    **VECTORIZATION**: All calculators support both scalar and array inputs.
+    When interior_value is an NDArray, the output is also an NDArray of the
+    same shape. This enables efficient vectorized operations without Python loops.
+
+    **TYPE SAFETY**: Uses TypeVar (template pattern) to ensure input/output type
+    consistency. If input is float, output is float. If input is NDArray, output
+    is NDArray. This is equivalent to C++ template<typename T> T compute(T val).
+
+    Example:
+        >>> # Scalar usage
+        >>> calculator = DirichletCalculator(boundary_value=0.0)
+        >>> u_ghost = calculator.compute(interior_value=1.0, dx=0.1, side='min')
+        # Returns -1.0 (float)
+
+        >>> # Vectorized usage (100x-1000x faster for large arrays)
+        >>> interior = np.array([1.0, 2.0, 3.0])
+        >>> u_ghost = calculator.compute(interior_value=interior, dx=0.1, side='min')
+        # Returns array([-1.0, -2.0, -3.0]) (NDArray)
+    """
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """
+        Compute ghost cell value from interior value (vectorized).
+
+        Args:
+            interior_value: Value(s) at interior point(s) adjacent to boundary.
+                           Can be scalar float or NDArray for vectorized operation.
+            dx: Grid spacing
+            side: Boundary side ('min' or 'max')
+            **kwargs: Additional parameters (e.g., time for time-varying BCs)
+
+        Returns:
+            Ghost cell value(s). Same type/shape as interior_value (template pattern).
+        """
+        ...
+
+
+# =============================================================================
+# Concrete Topology Implementations
+# =============================================================================
+
+
+class PeriodicTopology:
+    """
+    Periodic boundary topology.
+
+    In periodic topology, boundaries wrap around: the ghost cell at the
+    low boundary equals the interior value at the high boundary, and vice versa.
+
+    This is a MEMORY/INDEXING concept, not a physics concept. The Calculator
+    is NOT used for periodic boundaries - values come from wrap-around.
+    """
+
+    def __init__(self, dimension: int, shape: tuple[int, ...]):
+        """
+        Initialize periodic topology.
+
+        Args:
+            dimension: Spatial dimension (1, 2, 3, ...)
+            shape: Grid shape (interior points)
+        """
+        if len(shape) != dimension:
+            raise ValueError(f"Shape length {len(shape)} must match dimension {dimension}")
+        self._dimension = dimension
+        self._shape = shape
+
+    @property
+    def is_periodic(self) -> bool:
+        return True
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._shape
+
+    def __repr__(self) -> str:
+        return f"PeriodicTopology(dimension={self._dimension}, shape={self._shape})"
+
+
+class BoundedTopology:
+    """
+    Bounded (non-periodic) boundary topology.
+
+    In bounded topology, boundaries are physical edges that require ghost
+    values computed by a Calculator. The topology itself just marks that
+    boundaries exist - the Calculator provides the values.
+
+    This separation enables:
+    - Same Calculator works with any bounded grid
+    - Different Calculators can be swapped without changing topology
+    """
+
+    def __init__(self, dimension: int, shape: tuple[int, ...]):
+        """
+        Initialize bounded topology.
+
+        Args:
+            dimension: Spatial dimension (1, 2, 3, ...)
+            shape: Grid shape (interior points)
+        """
+        if len(shape) != dimension:
+            raise ValueError(f"Shape length {len(shape)} must match dimension {dimension}")
+        self._dimension = dimension
+        self._shape = shape
+
+    @property
+    def is_periodic(self) -> bool:
+        return False
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._shape
+
+    def __repr__(self) -> str:
+        return f"BoundedTopology(dimension={self._dimension}, shape={self._shape})"
+
+
+# =============================================================================
+# Concrete Calculator Implementations
+# =============================================================================
+
+
+class DirichletCalculator:
+    """
+    Calculator for Dirichlet (fixed value) boundary conditions.
+
+    Computes ghost cell value such that the boundary value equals the
+    prescribed value g:
+        u_boundary = (u_ghost + u_interior) / 2 = g  (cell-centered)
+        => u_ghost = 2*g - u_interior
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        boundary_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Dirichlet calculator.
+
+        Args:
+            boundary_value: Prescribed value at boundary
+            grid_type: Grid type (cell-centered or vertex-centered)
+        """
+        self._boundary_value = boundary_value
+        self._grid_type = grid_type
+
+    @property
+    def boundary_value(self) -> float:
+        return self._boundary_value
+
+    @property
+    def grid_type(self) -> GridType:
+        return self._grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for Dirichlet BC (vectorized)."""
+        # NumPy broadcasting handles both scalar and array inputs
+        return ghost_cell_dirichlet(interior_value, self._boundary_value, self._grid_type)
+
+    def __repr__(self) -> str:
+        return f"DirichletCalculator(boundary_value={self._boundary_value})"
+
+
+class NeumannCalculator:
+    """
+    Calculator for Neumann (fixed flux) boundary conditions.
+
+    Computes ghost cell value such that the normal derivative equals
+    the prescribed flux g:
+        du/dn = (u_ghost - u_interior) / (2*dx) = g  (cell-centered)
+        => u_ghost = u_interior + 2*dx*g
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        flux_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Neumann calculator.
+
+        Args:
+            flux_value: Prescribed normal flux (du/dn)
+            grid_type: Grid type
+        """
+        self._flux_value = flux_value
+        self._grid_type = grid_type
+
+    @property
+    def flux_value(self) -> float:
+        return self._flux_value
+
+    @property
+    def grid_type(self) -> GridType:
+        return self._grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for Neumann BC (vectorized)."""
+        # Outward normal sign: +1 for max boundary, -1 for min boundary
+        outward_sign = 1.0 if side == "max" else -1.0
+        return ghost_cell_neumann(interior_value, self._flux_value, dx, outward_sign, self._grid_type)
+
+    def __repr__(self) -> str:
+        return f"NeumannCalculator(flux_value={self._flux_value})"
+
+
+class RobinCalculator:
+    """
+    Calculator for Robin (mixed) boundary conditions.
+
+    Computes ghost cell value for the Robin condition:
+        alpha*u + beta*du/dn = g
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        beta: float = 0.0,
+        rhs_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Robin calculator.
+
+        Args:
+            alpha: Coefficient on u (Dirichlet weight)
+            beta: Coefficient on du/dn (Neumann weight)
+            rhs_value: Right-hand side value g
+            grid_type: Grid type
+        """
+        self._alpha = alpha
+        self._beta = beta
+        self._rhs_value = rhs_value
+        self._grid_type = grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for Robin BC (vectorized)."""
+        outward_sign = 1.0 if side == "max" else -1.0
+        return ghost_cell_robin(
+            interior_value,
+            self._rhs_value,
+            self._alpha,
+            self._beta,
+            dx,
+            outward_sign,
+            self._grid_type,
+        )
+
+    def __repr__(self) -> str:
+        return f"RobinCalculator(alpha={self._alpha}, beta={self._beta}, rhs={self._rhs_value})"
+
+
+class ZeroGradientCalculator:
+    """
+    Calculator for zero gradient (du/dn = 0) boundary conditions.
+
+    Implements edge extension: ghost = interior, ensuring du/dn = 0.
+
+    Physical meaning: The field has no gradient normal to the boundary.
+    Use cases:
+    - HJB value functions at reflective walls
+    - Any field needing smooth extension at boundaries
+
+    **For mass-conserving boundaries (FP equations), use ZeroFluxCalculator instead.**
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(self, grid_type: GridType = GridType.CELL_CENTERED):
+        self._grid_type = grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for zero gradient BC (edge extension, vectorized)."""
+        # Simply return interior value - works for both scalar and array
+        return interior_value
+
+    def __repr__(self) -> str:
+        return "ZeroGradientCalculator()"
+
+
+# Backward compatibility alias
+NoFluxCalculator = ZeroGradientCalculator
+
+
+class LinearExtrapolationCalculator:
+    """
+    Calculator for linear extrapolation boundary conditions.
+
+    Uses zero second derivative (d²u/dx² = 0) at boundary.
+    Ghost = 2*u_0 - u_1
+
+    Suitable for HJB problems with linear value growth at infinity.
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        second_interior_value: T | None = None,
+        **kwargs,
+    ) -> T:
+        """
+        Compute ghost value via linear extrapolation (vectorized).
+
+        Args:
+            interior_value: Value at point adjacent to boundary (u_0)
+            dx: Grid spacing (not used, but part of protocol)
+            side: Boundary side (not used, but part of protocol)
+            second_interior_value: Value at second interior point (u_1)
+
+        Returns:
+            Ghost value = 2*u_0 - u_1
+        """
+        if second_interior_value is None:
+            # Fall back to edge extension if second value not provided
+            return interior_value
+        # Vectorized: works for both scalar and array
+        return 2.0 * interior_value - second_interior_value
+
+    def __repr__(self) -> str:
+        return "LinearExtrapolationCalculator()"
+
+
+class QuadraticExtrapolationCalculator:
+    """
+    Calculator for quadratic extrapolation boundary conditions.
+
+    Uses zero third derivative (d³u/dx³ = 0) at boundary.
+    Ghost = 3*u_0 - 3*u_1 + u_2
+
+    Suitable for LQG-type problems with quadratic value functions.
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        second_interior_value: T | None = None,
+        third_interior_value: T | None = None,
+        **kwargs,
+    ) -> T:
+        """
+        Compute ghost value via quadratic extrapolation (vectorized).
+
+        Args:
+            interior_value: Value at point adjacent to boundary (u_0)
+            dx: Grid spacing (not used)
+            side: Boundary side (not used)
+            second_interior_value: Value at second interior point (u_1)
+            third_interior_value: Value at third interior point (u_2)
+
+        Returns:
+            Ghost value = 3*u_0 - 3*u_1 + u_2
+        """
+        if second_interior_value is None or third_interior_value is None:
+            # Fall back to linear if not enough points
+            if second_interior_value is not None:
+                return 2.0 * interior_value - second_interior_value
+            return interior_value
+        # Vectorized: works for both scalar and array
+        return 3.0 * interior_value - 3.0 * second_interior_value + third_interior_value
+
+    def __repr__(self) -> str:
+        return "QuadraticExtrapolationCalculator()"
+
+
+class ZeroFluxCalculator:
+    """
+    Calculator for zero total flux (J·n = 0) boundary conditions.
+
+    For advection-diffusion equations, this ensures the total flux
+    J = v*ρ - D*∇ρ vanishes at the boundary, preserving mass conservation.
+
+    Formula: u_ghost = (2D + v*dx) / (2D - v*dx) * u_interior
+
+    Physical meaning: No mass/probability crosses the boundary.
+    Use cases:
+    - Fokker-Planck density with impermeable walls
+    - Any advection-diffusion equation requiring mass conservation
+
+    **For zero gradient (du/dn = 0), use ZeroGradientCalculator instead.**
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        drift_velocity: float = 0.0,
+        diffusion_coeff: float = 1.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize FP no-flux calculator.
+
+        Args:
+            drift_velocity: Normal component of drift (positive = outward)
+            diffusion_coeff: Diffusion coefficient D = σ²/2
+            grid_type: Grid type
+        """
+        self._drift = drift_velocity
+        self._diffusion = diffusion_coeff
+        self._grid_type = grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        drift_velocity: float | None = None,
+        **kwargs,
+    ) -> T:
+        """
+        Compute ghost value for FP no-flux BC (vectorized).
+
+        Args:
+            interior_value: Density at interior point(s)
+            dx: Grid spacing
+            side: Boundary side ('min' or 'max')
+            drift_velocity: Override drift velocity (optional)
+
+        Returns:
+            Ghost value(s) ensuring zero total flux J·n = 0
+        """
+        outward_sign = 1.0 if side == "max" else -1.0
+        v = drift_velocity if drift_velocity is not None else self._drift
+        # Vectorized formula: works for both scalar and array
+        return ghost_cell_fp_no_flux(
+            interior_value,
+            v,
+            self._diffusion,
+            dx,
+            outward_sign,
+            self._grid_type,
+        )
+
+    def __repr__(self) -> str:
+        return f"ZeroFluxCalculator(drift={self._drift}, D={self._diffusion})"
+
+
+# Backward compatibility alias
+FPNoFluxCalculator = ZeroFluxCalculator
 
 
 class BaseBCApplicator(ABC):
@@ -534,12 +1109,244 @@ def high_order_ghost_neumann(
         return [u_ghost_1, u_ghost_2]
 
 
+# =============================================================================
+# Physics-Aware Ghost Cell Formulas
+# =============================================================================
+# IMPORTANT LESSON: The discretized BC must match the physics, not just the
+# mathematical form. For advection-diffusion equations (like Fokker-Planck),
+# a "no-flux" BC means J·n = 0 where J = v*ρ - D*∇ρ.
+#
+# - Naive approach: Neumann (∂ρ/∂n = 0) only zeroes diffusion flux
+# - Correct approach: Robin BC that zeroes TOTAL flux
+#
+# This distinction is crucial for mass conservation in FP equations.
+# =============================================================================
+
+
+def ghost_cell_fp_no_flux(
+    interior_value: float,
+    drift_velocity: float,
+    diffusion_coeff: float,
+    dx: float,
+    outward_normal_sign: float = 1.0,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> float:
+    """
+    Compute ghost cell value for Fokker-Planck no-flux (zero total flux) BC.
+
+    IMPORTANT: For advection-diffusion equations like Fokker-Planck, a "no-flux"
+    BC means the TOTAL flux J = v*ρ - D*∇ρ = 0, not just ∂ρ/∂n = 0.
+
+    This requires a Robin-type ghost cell formula that accounts for both
+    advection and diffusion contributions to the flux.
+
+    Mathematical derivation:
+        Total flux: J = v*ρ - D*∂ρ/∂x
+        No-flux BC: J·n = 0 at boundary
+
+        At boundary (cell face for cell-centered):
+            v_n * ρ_face - D * (∂ρ/∂n)_face = 0
+
+        Using cell-centered discretization:
+            ρ_face ≈ (ρ_ghost + ρ_interior) / 2
+            ∂ρ/∂n ≈ (ρ_ghost - ρ_interior) / dx
+
+        Substituting and solving for ρ_ghost:
+            v_n * (ρ_ghost + ρ_interior)/2 = D * (ρ_ghost - ρ_interior)/dx
+            ρ_ghost = ρ_interior * (2D + v_n*dx) / (2D - v_n*dx)
+
+        Physical interpretation:
+            - When v_n > 0 (outflow): ρ_ghost > ρ_interior (diffusion opposes outflow)
+            - When v_n < 0 (inflow): ρ_ghost < ρ_interior (diffusion opposes inflow)
+            - When v_n = 0: ρ_ghost = ρ_interior (pure Neumann)
+
+    Args:
+        interior_value: Density at interior point ρ_interior
+        drift_velocity: Normal component of drift velocity v·n (positive = outward)
+        diffusion_coeff: Diffusion coefficient D = σ²/2
+        dx: Grid spacing
+        outward_normal_sign: +1 for max boundary (outward normal points positive),
+                            -1 for min boundary (outward normal points negative)
+        grid_type: Grid type (cell-centered or vertex-centered)
+
+    Returns:
+        Ghost cell value that ensures zero total flux at boundary
+
+    Example:
+        >>> # Left boundary with leftward drift (into boundary)
+        >>> rho_ghost = ghost_cell_fp_no_flux(
+        ...     interior_value=1.0,
+        ...     drift_velocity=-0.5,  # v < 0, drift toward left boundary
+        ...     diffusion_coeff=0.125,  # D = 0.5²/2
+        ...     dx=0.1,
+        ...     outward_normal_sign=-1.0  # Left boundary
+        ... )
+
+    References:
+        - Achdou & Laurière (2020): Mean Field Games and Applications, Section on FP BCs
+        - LeVeque (2002): Finite Volume Methods for Hyperbolic Problems
+    """
+    D = diffusion_coeff
+    v_n = drift_velocity * outward_normal_sign  # Normal velocity (positive = outward)
+
+    if grid_type == GridType.VERTEX_CENTERED:
+        # Vertex-centered: boundary at grid point
+        # ρ_ghost = ρ_interior * (D + v_n*dx) / (D - v_n*dx)
+        numerator = D + v_n * dx
+        denominator = D - v_n * dx
+    else:
+        # Cell-centered: boundary at cell face
+        # ρ_ghost = ρ_interior * (2*D + v_n*dx) / (2*D - v_n*dx)
+        numerator = 2.0 * D + v_n * dx
+        denominator = 2.0 * D - v_n * dx
+
+    # Handle edge case where denominator is near zero
+    # This happens when diffusion is very small and drift is large
+    if abs(denominator) < 1e-12:
+        # Fall back to pure advection limit: reflect density
+        return interior_value
+
+    return interior_value * (numerator / denominator)
+
+
+def ghost_cell_advection_diffusion_no_flux(
+    interior_value: float,
+    velocity_normal: float,
+    diffusion_coeff: float,
+    dx: float,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> float:
+    """
+    Alias for ghost_cell_fp_no_flux with clearer parameter naming.
+
+    This is the same as ghost_cell_fp_no_flux but with velocity_normal
+    already accounting for the boundary orientation (positive = outward flow).
+
+    Use this for general advection-diffusion equations where the no-flux BC
+    means zero total flux J = v*u - D*∇u = 0.
+    """
+    # velocity_normal is already v·n (positive = outward)
+    return ghost_cell_fp_no_flux(
+        interior_value=interior_value,
+        drift_velocity=velocity_normal,
+        diffusion_coeff=diffusion_coeff,
+        dx=dx,
+        outward_normal_sign=1.0,  # Already accounted for in velocity_normal
+        grid_type=grid_type,
+    )
+
+
+# =============================================================================
+# Extrapolation Ghost Cell Formulas (for unbounded domains)
+# =============================================================================
+
+
+def ghost_cell_linear_extrapolation(
+    interior_values: tuple[float, float],
+) -> float:
+    """
+    Compute ghost cell value using linear extrapolation.
+
+    This is equivalent to the **Zero Second Derivative Condition** (d²u/dx² = 0
+    at the boundary). The function is assumed to continue linearly beyond the
+    computational domain.
+
+    Mathematical derivation:
+        Let u_0 = first interior point, u_1 = second interior point
+        Linear extrapolation: u_ghost = 2*u_0 - u_1
+
+        This ensures: (u_ghost - 2*u_0 + u_1) / dx² = 0  (zero second derivative)
+
+    Use cases:
+        - HJB value functions on truncated unbounded domains
+        - Far-field boundary conditions where solution grows linearly
+        - Outflow boundaries in steady-state problems
+
+    Args:
+        interior_values: Tuple of (u_0, u_1) where u_0 is adjacent to ghost,
+                        u_1 is one cell further into the interior
+
+    Returns:
+        Ghost cell value from linear extrapolation
+
+    Example:
+        >>> # At right boundary with interior values
+        >>> u_ghost = ghost_cell_linear_extrapolation((u[-1], u[-2]))
+        >>> # At left boundary with interior values
+        >>> u_ghost = ghost_cell_linear_extrapolation((u[0], u[1]))
+
+    Note:
+        For problems with quadratic growth (e.g., LQG control), use
+        ghost_cell_quadratic_extrapolation() instead.
+    """
+    u_0, u_1 = interior_values
+    return 2.0 * u_0 - u_1
+
+
+def ghost_cell_quadratic_extrapolation(
+    interior_values: tuple[float, float, float],
+) -> float:
+    """
+    Compute ghost cell value using quadratic extrapolation.
+
+    This is equivalent to the **Zero Third Derivative Condition** (d³u/dx³ = 0
+    at the boundary). The function is assumed to continue quadratically beyond
+    the computational domain.
+
+    Mathematical derivation:
+        Let u_0, u_1, u_2 = three interior points (u_0 adjacent to ghost)
+        Quadratic extrapolation: u_ghost = 3*u_0 - 3*u_1 + u_2
+
+        This ensures the third derivative vanishes at the boundary.
+
+    Use cases:
+        - LQG-type HJB problems with quadratic value functions
+        - Problems where linear extrapolation creates artificial "kinks"
+        - Higher-accuracy far-field conditions
+
+    Args:
+        interior_values: Tuple of (u_0, u_1, u_2) where u_0 is adjacent to ghost,
+                        u_1 is one cell in, u_2 is two cells into interior
+
+    Returns:
+        Ghost cell value from quadratic extrapolation
+
+    Example:
+        >>> # At right boundary
+        >>> u_ghost = ghost_cell_quadratic_extrapolation((u[-1], u[-2], u[-3]))
+        >>> # At left boundary
+        >>> u_ghost = ghost_cell_quadratic_extrapolation((u[0], u[1], u[2]))
+
+    Note:
+        Requires at least 3 interior points. For smaller domains, use
+        ghost_cell_linear_extrapolation() instead.
+    """
+    u_0, u_1, u_2 = interior_values
+    return 3.0 * u_0 - 3.0 * u_1 + u_2
+
+
 __all__ = [
     # Enums
     "DiscretizationType",
     "GridType",
-    # Protocol
+    # Protocols
     "BCApplicatorProtocol",
+    "Topology",
+    "BoundaryCalculator",
+    # Topology implementations
+    "PeriodicTopology",
+    "BoundedTopology",
+    # Calculator implementations (physics-based naming)
+    "DirichletCalculator",
+    "NeumannCalculator",
+    "RobinCalculator",
+    "ZeroGradientCalculator",  # du/dn = 0 (edge extension)
+    "ZeroFluxCalculator",  # J·n = 0 (mass conservation)
+    "LinearExtrapolationCalculator",
+    "QuadraticExtrapolationCalculator",
+    # Backward compatibility aliases
+    "NoFluxCalculator",  # -> ZeroGradientCalculator
+    "FPNoFluxCalculator",  # -> ZeroFluxCalculator
     # Base classes
     "BaseBCApplicator",
     "BaseStructuredApplicator",
@@ -553,4 +1360,10 @@ __all__ = [
     # High-order ghost cell extrapolation (4th/5th order for WENO)
     "high_order_ghost_dirichlet",
     "high_order_ghost_neumann",
+    # Physics-aware ghost cell (for advection-diffusion/FP)
+    "ghost_cell_fp_no_flux",
+    "ghost_cell_advection_diffusion_no_flux",
+    # Extrapolation ghost cell (for unbounded domains)
+    "ghost_cell_linear_extrapolation",
+    "ghost_cell_quadratic_extrapolation",
 ]

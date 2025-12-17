@@ -294,8 +294,11 @@ class JITSolverFactory:
         """Infer performance profile from problem characteristics."""
 
         # Estimate problem size
-        if getattr(problem, "Nx", None) is not None and getattr(problem, "Nt", None) is not None:
-            problem_size = problem.Nx * problem.Nt
+        if hasattr(problem, "geometry") and hasattr(problem, "Nt"):
+            import numpy as np
+
+            grid_shape = problem.geometry.get_grid_shape()
+            problem_size = int(np.prod(grid_shape)) * problem.Nt
         else:
             problem_size = 1000  # Default
 
@@ -371,8 +374,11 @@ def create_optimized_solver(
     factory = JITSolverFactory()
 
     # Create performance profile
-    if getattr(problem, "Nx", None) is not None and getattr(problem, "Nt", None) is not None:
-        problem_size = problem.Nx * problem.Nt
+    if hasattr(problem, "geometry") and hasattr(problem, "Nt"):
+        import numpy as np
+
+        grid_shape = problem.geometry.get_grid_shape()
+        problem_size = int(np.prod(grid_shape)) * problem.Nt
     else:
         problem_size = 1000
 
@@ -449,8 +455,11 @@ def adaptive_backend(backends: list[str] | None = None):
 
             if args and hasattr(args[0], "problem"):
                 solver = args[0]
-                if getattr(solver.problem, "Nx", None) is not None and getattr(solver.problem, "Nt", None) is not None:
-                    problem_size = solver.problem.Nx * solver.problem.Nt
+                if hasattr(solver.problem, "geometry") and hasattr(solver.problem, "Nt"):
+                    import numpy as np
+
+                    grid_shape = solver.problem.geometry.get_grid_shape()
+                    problem_size = int(np.prod(grid_shape)) * solver.problem.Nt
 
             # Select backend based on problem size
             if problem_size > 10000 and "jax" in backends:

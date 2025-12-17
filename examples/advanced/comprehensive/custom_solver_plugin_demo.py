@@ -69,37 +69,28 @@ class GradientDescentMFGSolver:
         self.max_iterations = max_iterations
         self.tolerance = tolerance
 
-        # Get problem dimensions (support both 1D legacy and nD unified interface)
-        if hasattr(problem, "Nx"):
-            # Legacy 1D interface
-            self.Nt = problem.Nt
-            self.Nx = problem.Nx
-            self.Dt = problem.dt
-            self.Dx = problem.dx
-            self.sigma = problem.sigma
-            # Get initial/final conditions
-            self.m_init = problem.get_initial_m()
-            self.g_final = problem.get_final_u()
-        elif hasattr(problem, "geometry") and hasattr(problem.geometry, "grid"):
-            # Unified nD interface (extract 1D case)
-            grid = problem.geometry.grid
-            if grid.ndim != 1:
-                raise ValueError("GradientDescentMFGSolver only supports 1D problems")
-            self.Nt = problem.Nt
-            self.Nx = grid.num_points[0] - 1  # Convert to legacy format
-            self.Dt = problem.dt
-            self.Dx = grid.spacing[0]
-            self.sigma = problem.sigma
-            # Evaluate initial/final conditions on grid
-            x_grid = grid.flatten()
-            self.m_init = problem.initial_density(x_grid)
-            self.g_final = problem.terminal_cost(x_grid)
-        else:
-            raise ValueError("Problem must have either legacy (Nx, Nt) or unified (geometry.grid) interface")
+        # Get problem dimensions using geometry-first API
+        grid_shape = problem.geometry.get_grid_shape()  # (Nt_points, Nx_points)
+        Nt_points = grid_shape[0]
+        Nx_points = grid_shape[1]
+
+        # Store dimensions (Nt, Nx are counts without +1)
+        self.Nt = Nt_points - 1
+        self.Nx = Nx_points - 1
+
+        # Get spatial/temporal spacing and diffusion coefficient
+        spacing = problem.geometry.get_grid_spacing()
+        self.Dt = spacing[0]  # Temporal spacing
+        self.Dx = spacing[1]  # Spatial spacing
+        self.sigma = problem.diffusion
+
+        # Get initial/final conditions
+        self.m_init = problem.get_initial_m()
+        self.g_final = problem.get_final_u()
 
         # Initialize solution arrays
-        self.U = np.zeros((self.Nt + 1, self.Nx + 1))
-        self.M = np.zeros((self.Nt + 1, self.Nx + 1))
+        self.U = np.zeros((Nt_points, Nx_points))
+        self.M = np.zeros((Nt_points, Nx_points))
 
         # Set boundary conditions
         self.M[0, :] = self.m_init
@@ -510,7 +501,8 @@ if __name__ == "__main__":
     from mfg_pde.core.plugin_system import get_plugin_manager
 
     problem = MFGProblem()  # Uses default 1D problem
-    print(f"\nTest problem: 1D, Nx={problem.Nx}, Nt={problem.Nt}, T={problem.T}")
+    grid_shape = problem.geometry.get_grid_shape()
+    print(f"\nTest problem: 1D, Nx={grid_shape[1] - 1}, Nt={grid_shape[0] - 1}, T={problem.T}")
 
     # Register plugin manually for testing
     plugin_manager = get_plugin_manager()

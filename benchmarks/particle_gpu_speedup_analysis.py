@@ -38,10 +38,12 @@ def benchmark_particle_solver(Nx: int, Nt: int, N_particles: int, device: str = 
     # Initial condition: Gaussian
     x = problem.xSpace
     m_initial = np.exp(-((x - 0.5) ** 2) / 0.1)
-    m_initial = m_initial / (np.sum(m_initial) * problem.dx)
+    dx = problem.geometry.get_grid_spacing()[0]
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    m_initial = m_initial / (np.sum(m_initial) * dx)
 
     # Drift field
-    U_drift = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    U_drift = np.zeros((problem.Nt + 1, Nx_points))
     for t in range(problem.Nt + 1):
         U_drift[t, :] = -((x - 0.5) ** 2)
 

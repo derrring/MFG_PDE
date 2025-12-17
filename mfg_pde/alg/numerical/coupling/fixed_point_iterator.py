@@ -174,24 +174,18 @@ class FixedPointIterator(BaseMFGSolver):
         # Get problem dimensions - handle both old 1D and new nD interfaces
         num_time_steps = self.problem.Nt + 1  # Renamed from Nt
 
-        # Detect problem shape - prefer geometry-based interface
-        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
-            # New geometry-based interface (CartesianGrid)
-            from mfg_pde.geometry.base import CartesianGrid
+        # Detect problem shape using geometry API
+        from mfg_pde.geometry.base import CartesianGrid
 
-            if isinstance(self.problem.geometry, CartesianGrid):
-                shape = tuple(self.problem.geometry.get_grid_shape())
-                grid_spacing = self.problem.geometry.get_grid_spacing()[0]  # For compatibility
-                time_step = self.problem.dt
-            else:
-                raise ValueError("Problem geometry must be CartesianGrid (TensorProductGrid)")
-        elif hasattr(self.problem, "Nx") and self.problem.Nx is not None:
-            # Old 1D interface (legacy)
-            shape = (self.problem.Nx + 1,)
-            grid_spacing = self.problem.dx  # Renamed from Dx
-            time_step = self.problem.dt  # Renamed from Dt
-        else:
-            raise ValueError("Problem must have either geometry or (Nx, Dx, Dt) attributes")
+        if not hasattr(self.problem, "geometry") or self.problem.geometry is None:
+            raise ValueError("Problem must have geometry attribute")
+
+        if not isinstance(self.problem.geometry, CartesianGrid):
+            raise ValueError("Problem geometry must be CartesianGrid (TensorProductGrid)")
+
+        shape = tuple(self.problem.geometry.get_grid_shape())
+        grid_spacing = self.problem.geometry.get_grid_spacing()[0]  # For compatibility
+        time_step = self.problem.dt
 
         # Initialize arrays (cold start or warm start)
         warm_start = self.get_warm_start_data()

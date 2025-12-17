@@ -30,7 +30,7 @@ class TestWenoFamilySolver:
     def simple_problem(self) -> MFGProblem:
         """Create simple MFG problem for testing using modern geometry-first API."""
         domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[33])
-        return MFGProblem(geometry=domain, T=0.1, Nt=10, sigma=0.1)
+        return MFGProblem(geometry=domain, T=0.1, Nt=10, diffusion=0.1)
 
     @pytest.fixture
     def test_values(self) -> np.ndarray:
@@ -162,7 +162,8 @@ class TestWenoFamilySolver:
         solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         # Create test data
-        x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
+        bounds = simple_problem.geometry.get_bounds()
+        x = np.linspace(bounds[0][0], bounds[1][0], simple_problem.geometry.get_grid_shape()[0])
         u_current = np.sin(2 * np.pi * x)
         m_current = np.ones_like(u_current) / len(u_current)
         dt = 0.001
@@ -181,7 +182,8 @@ class TestWenoFamilySolver:
         for method in methods:
             solver = HJBWenoSolver(simple_problem, weno_variant="weno5", time_integration=method)
 
-            x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
+            bounds = simple_problem.geometry.get_bounds()
+            x = np.linspace(bounds[0][0], bounds[1][0], simple_problem.geometry.get_grid_shape()[0])
             u_current = np.sin(2 * np.pi * x)
             m_current = np.ones_like(u_current) / len(u_current)
             dt = 0.001
@@ -209,7 +211,9 @@ class TestWenoFamilySolver:
         """Test stable time step computation."""
         solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
-        x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
+        bounds = simple_problem.geometry.get_bounds()
+        Nx_points = simple_problem.geometry.get_grid_shape()[0]
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         u_test = np.sin(2 * np.pi * x)
         m_test = np.ones_like(u_test) / len(u_test)
 
@@ -227,7 +231,9 @@ class TestWenoFamilySolver:
         solver = HJBWenoSolver(simple_problem, weno_variant="weno5")
 
         # Create data with boundary features
-        x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
+        bounds = simple_problem.geometry.get_bounds()
+        Nx_points = simple_problem.geometry.get_grid_shape()[0]
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         u_boundary = np.exp(-10 * (x - 0.1) ** 2) + np.exp(-10 * (x - 0.9) ** 2)
 
         # Test reconstruction near boundaries
@@ -242,7 +248,9 @@ class TestWenoFamilySolver:
         variants = ["weno5", "weno-z", "weno-m", "weno-js"]
 
         # Use smooth initial condition
-        x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
+        bounds = simple_problem.geometry.get_bounds()
+        Nx_points = simple_problem.geometry.get_grid_shape()[0]
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         u_initial = np.sin(2 * np.pi * x)
         m_initial = np.ones_like(u_initial) / len(u_initial)
         dt = 0.001
@@ -268,7 +276,9 @@ class TestWenoFamilySolver:
         solver = HJBWenoSolver(simple_problem, weno_variant=variant)
 
         # Basic functionality test
-        x = np.linspace(simple_problem.xmin, simple_problem.xmax, simple_problem.Nx + 1)
+        bounds = simple_problem.geometry.get_bounds()
+        Nx_points = simple_problem.geometry.get_grid_shape()[0]
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         u = np.sin(np.pi * x)
         m = np.ones_like(u) / len(u)
         dt = 0.001
@@ -291,14 +301,14 @@ class TestWenoSolverIntegration:
     def integration_problem(self) -> MFGProblem:
         """Create MFG problem for integration testing using modern geometry-first API."""
         domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])
-        return MFGProblem(geometry=domain, T=1.0, Nt=30, sigma=0.1)
+        return MFGProblem(geometry=domain, T=1.0, Nt=30, diffusion=0.1)
 
     def test_solve_hjb_system_shape(self, integration_problem):
         """Test that solve_hjb_system returns correct shape."""
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+        Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
         # Create inputs
         M_density = np.ones((Nt, Nx))
@@ -316,12 +326,13 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+        Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
         # Create inputs with specific final condition
         M_density = np.ones((Nt, Nx))
-        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
-        U_final = 0.5 * (x_coords - integration_problem.xmax) ** 2
+        bounds = integration_problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx)
+        U_final = 0.5 * (x_coords - bounds[1][0]) ** 2
         U_prev = np.zeros((Nt, Nx))
 
         # Solve
@@ -335,11 +346,12 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+        Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
         # Create inputs
         M_density = np.ones((Nt, Nx))
-        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        bounds = integration_problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx)
         U_final = x_coords**2  # Quadratic final condition
         U_prev = np.zeros((Nt, Nx))
 
@@ -354,10 +366,11 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+        Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
         # Create Gaussian density
-        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        bounds = integration_problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx)
         m_profile = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         M_density = np.tile(m_profile, (Nt, 1))
 
@@ -377,7 +390,7 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant=variant)
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+        Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
         M_density = np.ones((Nt, Nx))
         U_final = np.zeros(Nx)
@@ -393,13 +406,14 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+        Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
         # Uniform density
         M_density = np.ones((Nt, Nx)) / Nx
 
         # Simple final condition
-        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        bounds = integration_problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx)
         U_final = (x_coords - 0.5) ** 2
 
         U_prev = np.zeros((Nt, Nx))
@@ -415,10 +429,11 @@ class TestWenoSolverIntegration:
         solver = HJBWenoSolver(integration_problem, weno_variant="weno5")
 
         Nt = integration_problem.Nt + 1
-        Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+        Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
         M_density = np.ones((Nt, Nx)) * 0.5
-        x_coords = np.linspace(integration_problem.xmin, integration_problem.xmax, Nx)
+        bounds = integration_problem.geometry.get_bounds()
+        x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx)
         U_final = np.sin(2 * np.pi * x_coords)
         U_prev = np.zeros((Nt, Nx))
 
@@ -433,7 +448,7 @@ class TestWenoSolverIntegration:
             solver = HJBWenoSolver(integration_problem, weno_variant="weno5", cfl_number=cfl)
 
             Nt = integration_problem.Nt + 1
-            Nx = integration_problem.Nx + 1  # Standard convention: Nx intervals → Nx+1 grid points
+            Nx = integration_problem.geometry.get_grid_shape()[0]  # Nx+1 grid points
 
             M_density = np.ones((Nt, Nx))
             U_final = np.zeros(Nx)

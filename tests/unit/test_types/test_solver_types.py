@@ -553,8 +553,19 @@ def test_exception_hierarchy():
 
 @pytest.mark.unit
 def test_legacy_solver_return():
-    """Test LegacySolverReturn backward compatibility."""
-    from mfg_pde.types.solver_types import LegacySolverReturn
+    """Test LegacySolverReturn backward compatibility and deprecation warning."""
+    import warnings
+
+    # Test that deprecation warning is emitted
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        from mfg_pde.types.solver_types import LegacySolverReturn
+
+        # Check warning was issued
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+        assert "LegacySolverReturn" in str(deprecation_warnings[-1].message)
+        assert "SolverReturnTuple" in str(deprecation_warnings[-1].message)
 
     # LegacySolverReturn is an alias for SolverReturnTuple
     U = np.zeros((31, 51))

@@ -256,9 +256,28 @@ def test_density_array_matches_spatial_grid():
 
 @pytest.mark.unit
 def test_spatial_coordinates_deprecated_alias():
-    """Test SpatialCoordinates legacy alias."""
-    arr: SpatialCoordinates = np.linspace(0, 1, 51)
+    """Test SpatialCoordinates legacy alias emits deprecation warning."""
+    import warnings
 
+    # Test that deprecation warning is emitted
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        # Import locally to trigger warning
+        import importlib
+
+        import mfg_pde.types.arrays as arrays_module
+
+        importlib.reload(arrays_module)
+        _ = arrays_module.SpatialCoordinates
+
+        # Check warning was issued
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+        assert "SpatialCoordinates" in str(deprecation_warnings[-1].message)
+        assert "SpatialGrid" in str(deprecation_warnings[-1].message)
+
+    # Test functionality still works
+    arr: SpatialCoordinates = np.linspace(0, 1, 51)
     assert arr.shape == (51,)
     # Should be same as SpatialGrid
     arr2: SpatialGrid = arr
@@ -267,9 +286,27 @@ def test_spatial_coordinates_deprecated_alias():
 
 @pytest.mark.unit
 def test_temporal_coordinates_deprecated_alias():
-    """Test TemporalCoordinates legacy alias."""
-    arr: TemporalCoordinates = np.linspace(0, 2, 31)
+    """Test TemporalCoordinates legacy alias emits deprecation warning."""
+    import warnings
 
+    # Test that deprecation warning is emitted
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        import importlib
+
+        import mfg_pde.types.arrays as arrays_module
+
+        importlib.reload(arrays_module)
+        _ = arrays_module.TemporalCoordinates
+
+        # Check warning was issued
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+        assert "TemporalCoordinates" in str(deprecation_warnings[-1].message)
+        assert "TimeGrid" in str(deprecation_warnings[-1].message)
+
+    # Test functionality still works
+    arr: TemporalCoordinates = np.linspace(0, 2, 31)
     assert arr.shape == (31,)
     # Should be same as TimeGrid
     arr2: TimeGrid = arr

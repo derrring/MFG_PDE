@@ -90,8 +90,9 @@ class HJBPINNSolver(PINNBase):
         # Initialize base PINN
         super().__init__(problem, config, networks)
 
+        bounds = problem.geometry.get_bounds()
         print("Initialized HJB PINN solver")
-        print(f"  Problem domain: t ∈ [0, {self.terminal_time}], x ∈ [{problem.xmin}, {problem.xmax}]")
+        print(f"  Problem domain: t ∈ [0, {self.terminal_time}], x ∈ [{bounds[0][0]}, {bounds[1][0]}]")
         print(f"  Diffusion coefficient: σ = {self.sigma}")
 
     def _initialize_networks(self) -> None:
@@ -171,7 +172,8 @@ class HJBPINNSolver(PINNBase):
                 return torch.from_numpy(m0_np).to(self.device, dtype=self.dtype).reshape(-1, 1)
             else:
                 # Default to uniform density
-                return torch.ones_like(x) / (self.problem.xmax - self.problem.xmin)
+                bounds = self.problem.geometry.get_bounds()
+                return torch.ones_like(x) / (bounds[1][0] - bounds[0][0])
 
     def forward(self, t: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         """
@@ -373,8 +375,9 @@ class HJBPINNSolver(PINNBase):
         """Generate HJB solution on evaluation grid."""
         # Create evaluation grid
         nt, nx = 100, 100
+        bounds = self.problem.geometry.get_bounds()
         t_eval = np.linspace(0, self.problem.T, nt)
-        x_eval = np.linspace(self.problem.xmin, self.problem.xmax, nx)
+        x_eval = np.linspace(bounds[0][0], bounds[1][0], nx)
 
         T_grid, X_grid = np.meshgrid(t_eval, x_eval)
         t_flat = torch.from_numpy(T_grid.flatten().reshape(-1, 1)).to(self.device, dtype=self.dtype)
@@ -422,10 +425,10 @@ class HJBPINNSolver(PINNBase):
 
         # Sample test points
         n_test = 1000
+        bounds = self.problem.geometry.get_bounds()
         t_test = torch.rand(n_test, 1, device=self.device, dtype=self.dtype) * self.problem.T
         x_test = (
-            torch.rand(n_test, 1, device=self.device, dtype=self.dtype) * (self.problem.xmax - self.problem.xmin)
-            + self.problem.xmin
+            torch.rand(n_test, 1, device=self.device, dtype=self.dtype) * (bounds[1][0] - bounds[0][0]) + bounds[0][0]
         )
 
         with torch.no_grad():
@@ -435,18 +438,20 @@ class HJBPINNSolver(PINNBase):
             metrics["pde_residual_max"] = torch.max(torch.abs(pde_residuals["hjb"])).item()
 
             # Terminal condition error
-            x_terminal = torch.linspace(
-                self.problem.xmin, self.problem.xmax, 100, device=self.device, dtype=self.dtype
-            ).reshape(-1, 1)
+            bounds = self.problem.geometry.get_bounds()
+            x_terminal = torch.linspace(bounds[0][0], bounds[1][0], 100, device=self.device, dtype=self.dtype).reshape(
+                -1, 1
+            )
             terminal_loss = self.compute_terminal_condition_loss(x_terminal)
             metrics["terminal_condition_error"] = terminal_loss.item()
 
             # Boundary condition error
+            bounds = self.problem.geometry.get_bounds()
             t_boundary = torch.rand(100, 1, device=self.device, dtype=self.dtype) * self.problem.T
             x_boundary = torch.cat(
                 [
-                    torch.full((50, 1), self.problem.xmin, device=self.device, dtype=self.dtype),
-                    torch.full((50, 1), self.problem.xmax, device=self.device, dtype=self.dtype),
+                    torch.full((50, 1), bounds[0][0], device=self.device, dtype=self.dtype),
+                    torch.full((50, 1), bounds[1][0], device=self.device, dtype=self.dtype),
                 ]
             )
             boundary_loss = self.compute_boundary_loss(t_boundary, x_boundary)

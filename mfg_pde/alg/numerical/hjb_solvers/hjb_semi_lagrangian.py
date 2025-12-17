@@ -169,10 +169,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         # Precompute grid and time parameters (dimension-agnostic)
         if self.dimension == 1:
-            # 1D problem: Use legacy attributes
-            self.x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+            # 1D problem: Use geometry API
+            bounds = problem.geometry.get_bounds()
+            xmin, xmax = bounds[0][0], bounds[1][0]
+            Nx = problem.geometry.get_grid_shape()[0]
+            self.x_grid = np.linspace(xmin, xmax, Nx)
             self.dt = problem.dt
-            self.dx = problem.dx
+            self.dx = problem.geometry.get_grid_spacing()[0]
             self.grid = None  # No TensorProductGrid for 1D
         else:
             # nD problem: Use CartesianGrid interface
@@ -828,8 +831,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             def hamiltonian_objective(p):
                 derivs = {(0,): 0.0, (1,): p}
                 try:
-                    x_idx = int((x_scalar - self.problem.xmin) / self.dx)
-                    x_idx = np.clip(x_idx, 0, self.problem.Nx)
+                    bounds = self.problem.geometry.get_bounds()
+                    xmin = bounds[0][0]
+                    Nx = self.problem.geometry.get_grid_shape()[0] - 1
+                    x_idx = int((x_scalar - xmin) / self.dx)
+                    x_idx = np.clip(x_idx, 0, Nx)
                     return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
                 except Exception:
                     return np.inf
@@ -945,10 +951,12 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     if bc_type_enum is not None:
                         bc_type = bc_type_enum.value if hasattr(bc_type_enum, "value") else str(bc_type_enum)
 
+            bounds = self.problem.geometry.get_bounds()
+            xmin, xmax = bounds[0][0], bounds[1][0]
             return apply_boundary_conditions_1d(
                 x_departure,
-                xmin=self.problem.xmin,
-                xmax=self.problem.xmax,
+                xmin=xmin,
+                xmax=xmax,
                 bc_type=bc_type,
             )
 
@@ -989,13 +997,15 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if self.dimension == 1:
             # 1D interpolation
             jax_fn = self._jax_interpolate if self.use_jax else None
+            bounds = self.problem.geometry.get_bounds()
+            xmin, xmax = bounds[0][0], bounds[1][0]
             return interpolate_value_1d(
                 U_values,
                 x_query,
                 self.x_grid,
                 method=self.interpolation_method,
-                xmin=self.problem.xmin,
-                xmax=self.problem.xmax,
+                xmin=xmin,
+                xmax=xmax,
                 use_jax=self.use_jax,
                 jax_interpolate_fn=jax_fn,
             )
@@ -1250,8 +1260,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 xmin = bounds[0][0]
                 Nx = grid_shape[0] - 1
             else:
-                xmin = self.problem.xmin[0] if hasattr(self.problem.xmin, "__getitem__") else self.problem.xmin
-                Nx = self.problem.Nx[0] if hasattr(self.problem.Nx, "__getitem__") else self.problem.Nx
+                geom_bounds = self.problem.geometry.get_bounds()
+                xmin = geom_bounds[0][0]
+                Nx = self.problem.geometry.get_grid_shape()[0] - 1
             # dx is scalar for 1D
             dx = self.dx if np.isscalar(self.dx) else self.dx[0]
             x_idx = int((x_scalar - xmin) / dx)
@@ -1264,8 +1275,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     xmin_i = bounds[i][0]
                     Nx_i = grid_shape[i] - 1
                 else:
-                    xmin_i = self.problem.xmin[i]
-                    Nx_i = self.problem.Nx[i]
+                    geom_bounds = self.problem.geometry.get_bounds()
+                    xmin_i = geom_bounds[0][i]
+                    Nx_i = self.problem.geometry.get_grid_shape()[i] - 1
                 # dx is array for nD
                 dx_i = self.dx[i]
                 idx = int((x_vec[i] - xmin_i) / dx_i)
@@ -1424,7 +1436,7 @@ if __name__ == "__main__":
 
     # Test 1: Solver initialization
     print("\n1. Testing solver initialization...")
-    problem = MFGProblem(Nx=50, Nt=100, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=50, Nt=100, T=1.0, diffusion=0.1)
     solver = HJBSemiLagrangianSolver(problem, interpolation_method="linear", optimization_method="brent")
 
     assert solver.dimension == 1

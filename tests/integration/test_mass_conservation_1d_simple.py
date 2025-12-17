@@ -48,7 +48,7 @@ class TestMassConservation1DSimple:
             Nx=50,
             T=1.0,
             Nt=20,
-            sigma=0.1,
+            diffusion=0.1,
             coupling_coefficient=1.0,
         )
 
@@ -94,9 +94,10 @@ class TestMassConservation1DSimple:
         m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # Compute mass at each time step
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
+        Nt_points = problem.geometry.get_grid_shape()[0]
         masses = []
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
             masses.append(mass_t)
 
@@ -167,9 +168,10 @@ class TestMassConservation1DSimple:
         m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # Compute mass at each time step
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
+        Nt_points = problem.geometry.get_grid_shape()[0]
         masses = []
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
             masses.append(mass_t)
 
@@ -242,11 +244,12 @@ class TestMassConservation1DSimple:
             pytest.skip(f"GFDM solver raised exception: {str(e)[:100]}")
 
         # Compute masses for both methods
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
+        Nt_points = problem.geometry.get_grid_shape()[0]
         masses_fdm = []
         masses_gfdm = []
 
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass_fdm = compute_total_mass(result_1.M[t_idx, :], dx)
             mass_gfdm = compute_total_mass(result_2.M[t_idx, :], dx)
             masses_fdm.append(mass_fdm)

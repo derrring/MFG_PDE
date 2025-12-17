@@ -52,7 +52,7 @@ def create_challenging_mfg_problem() -> MFGProblem:
     )
 
     # Create sharp initial condition with discontinuous derivative
-    x = problem.xSpace
+    x = problem.geometry.get_spatial_grid()
 
     # Sharp Gaussian with discontinuous derivative at boundaries
     initial_u = np.exp(-50 * (x - 0.3) ** 2) + 0.5 * np.exp(-100 * (x - 0.7) ** 2)
@@ -64,8 +64,9 @@ def create_challenging_mfg_problem() -> MFGProblem:
     problem._custom_initial_u = initial_u
 
     logger.info("Created challenging MFG problem with sharp features")
-    logger.info(f"Grid: {problem.Nx} points, Time steps: {problem.Nt}")
-    logger.info(f"Diffusion σ = {problem.sigma}, Congestion = {problem.coupling_coefficient}")
+    Nx_intervals = problem.geometry.get_grid_shape()[0] - 1
+    logger.info(f"Grid: {Nx_intervals} intervals, Time steps: {problem.Nt}")
+    logger.info(f"Diffusion σ = {problem.diffusion}, Congestion = {problem.coupling_coefficient}")
 
     return problem
 

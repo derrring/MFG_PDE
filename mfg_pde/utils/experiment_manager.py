@@ -27,11 +27,11 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-def calculate_total_mass(M: np.ndarray, Dx: float) -> np.ndarray:
+def calculate_total_mass(M: np.ndarray, dx: float) -> np.ndarray:
     """Calculates the total mass for each time step."""
-    if Dx == 0:  # Handle Nx=1 case
+    if dx == 0:  # Handle single-point case
         return np.sum(M, axis=1) if M.ndim > 1 else np.array([np.sum(M)])
-    return np.sum(M * Dx, axis=1)
+    return np.sum(M * dx, axis=1)
 
 
 def save_experiment_data(
@@ -76,9 +76,11 @@ def save_experiment_data(
 
     # Construct filename with key parameters for easy identification
     # (Ensure parameters are sanitized for filenames if they contain special chars)
+    grid_shape = problem.geometry.get_grid_shape()
+    Nx_intervals = grid_shape[0] - 1
     filename_parts = [
         f"T{problem.T:.1f}",
-        f"Nx{problem.Nx}",
+        f"Nx{Nx_intervals}",
         f"Nt{problem.Nt}",
         f"sig{problem.sigma:.1e}",
         f"ct{problem.coupling_coefficient:.1e}",
@@ -88,16 +90,18 @@ def save_experiment_data(
     filename = "_".join(filename_parts) + ".npz"
     filepath = os.path.join(solver_output_dir, filename)
 
-    total_mass_vs_time = calculate_total_mass(M_solution, problem.dx)
+    dx = problem.geometry.get_grid_spacing()[0]
+    total_mass_vs_time = calculate_total_mass(M_solution, dx)
 
+    bounds = problem.geometry.get_bounds()
     problem_params_dict = {
-        "xmin": problem.xmin,
-        "xmax": problem.xmax,
-        "Nx": problem.Nx,
-        "Dx": problem.dx,
+        "xmin": bounds[0][0],
+        "xmax": bounds[1][0],
+        "Nx": Nx_intervals,
+        "dx": dx,
         "T": problem.T,
         "Nt": problem.Nt,
-        "Dt": problem.dt,
+        "dt": problem.dt,
         "sigma": problem.sigma,
         "coupling_coefficient": problem.coupling_coefficient,
         # Add other problem-specific parameters if they exist and are relevant

@@ -61,14 +61,16 @@ def run_hybrid_solver_with_monitoring(problem, bc, max_iterations=100, verbose=T
         print("=" * 80)
         print("HYBRID PARTICLE-GRID SOLVER WITH STOCHASTIC MONITORING")
         print("=" * 80)
-        print(f"\nProblem: Nx={problem.Nx + 1}, Nt={problem.Nt + 1}, T={problem.T}")
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        print(f"\nProblem: Nx={Nx_points}, Nt={problem.Nt + 1}, T={problem.T}")
         print("Particles: 1000, KDE normalization: ON")
         print("Boundary: No-flux Neumann")
         print("Convergence: Stochastic (median over window=10)")
         print()
 
     # Initialize
-    U = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    Nx_points_init = problem.geometry.get_grid_shape()[0]
+    U = np.zeros((problem.Nt + 1, Nx_points_init))
     M = problem.m_init.copy()
 
     # History tracking
@@ -93,7 +95,7 @@ def run_hybrid_solver_with_monitoring(problem, bc, max_iterations=100, verbose=T
         U_final = (
             problem.get_terminal_cost_array()
             if hasattr(problem, "get_terminal_cost_array")
-            else np.zeros(problem.Nx + 1)
+            else np.zeros(problem.geometry.get_grid_shape()[0])
         )
         U = hjb_solver.solve_hjb_system(M, U_final, U)
 
@@ -106,7 +108,7 @@ def run_hybrid_solver_with_monitoring(problem, bc, max_iterations=100, verbose=T
         iterations.append(iteration)
 
         # Compute mass at each time step
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
         mass_at_t = np.array([float(np.trapz(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
         masses.append(mass_at_t)
 
@@ -316,8 +318,8 @@ def visualize_results(U, M, convergence_info, masses, problem, mass_analysis):
 
     Problem Configuration:
     ----------------------
-    Grid: {problem.Nx + 1} × {problem.Nt + 1}    Particles: 1000
-    Domain: [0, 1] × [0, {problem.T}]    σ = {problem.sigma}
+    Grid: {problem.geometry.get_grid_shape()[0]} × {problem.Nt + 1}    Particles: 1000
+    Domain: [0, 1] × [0, {problem.T}]    σ = {problem.diffusion_coefficient}
     BC: No-flux Neumann    KDE: Scott's rule + normalization
 
     Convergence Results:

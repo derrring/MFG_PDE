@@ -57,7 +57,7 @@ class TestHybridMassConservation:
             Nx=50,  # Moderate resolution
             T=1.0,
             Nt=20,
-            sigma=0.1,
+            diffusion=0.1,
             coupling_coefficient=1.0,  # Running cost coefficient
         )
 
@@ -99,12 +99,12 @@ class TestHybridMassConservation:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 
         # Verify solution shapes
-        Nt, Nx = simple_1d_problem.Nt + 1, simple_1d_problem.Nx + 1
-        assert M.shape == (Nt, Nx), f"Expected M shape {(Nt, Nx)}, got {M.shape}"
+        Nt_points, Nx_points = simple_1d_problem.geometry.get_grid_shape()
+        assert M.shape == (Nt_points, Nx_points), f"Expected M shape {(Nt_points, Nx_points)}, got {M.shape}"
 
         # Compute mass at each time step
-        dx = simple_1d_problem.dx
-        masses = np.array([compute_total_mass(M[t, :], dx) for t in range(Nt)])
+        dx = simple_1d_problem.geometry.get_grid_spacing()[0]
+        masses = np.array([compute_total_mass(M[t, :], dx) for t in range(Nt_points)])
 
         # Initial and final masses
         initial_mass = masses[0]
@@ -167,9 +167,9 @@ class TestHybridMassConservation:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 
         # Compute masses
-        dx = simple_1d_problem.dx
-        Nt = simple_1d_problem.Nt + 1
-        masses = np.array([compute_total_mass(M[t, :], dx) for t in range(Nt)])
+        dx = simple_1d_problem.geometry.get_grid_spacing()[0]
+        Nt_points = simple_1d_problem.geometry.get_grid_shape()[0]
+        masses = np.array([compute_total_mass(M[t, :], dx) for t in range(Nt_points)])
 
         initial_mass = masses[0]
 
@@ -195,7 +195,7 @@ class TestHybridMassConservationFast:
         """
         Quick smoke test: verify hybrid solver runs and produces reasonable output.
         """
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=10, sigma=0.1)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=10, diffusion=0.1)
 
         bc = no_flux_bc(dimension=1)
         problem.boundary_conditions = bc
@@ -212,14 +212,15 @@ class TestHybridMassConservationFast:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 
         # Basic sanity checks
-        assert U.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        assert U.shape == (Nt_points, Nx_points)
+        assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= -1e-6), "Negative density detected"
         assert np.all(np.isfinite(M)), "Non-finite density values"
         assert np.all(np.isfinite(U)), "Non-finite value function"
 
         # Basic mass conservation check
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
         initial_mass = compute_total_mass(M[0, :], dx)
         final_mass = compute_total_mass(M[-1, :], dx)
 

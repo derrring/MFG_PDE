@@ -94,8 +94,9 @@ class FPPINNSolver(PINNBase):
         # Initialize base PINN
         super().__init__(problem, config, networks)
 
+        bounds = problem.geometry.get_bounds()
         print("Initialized FP PINN solver")
-        print(f"  Problem domain: t ∈ [0, {problem.T}], x ∈ [{problem.xmin}, {problem.xmax}]")
+        print(f"  Problem domain: t ∈ [0, {problem.T}], x ∈ [{bounds[0][0]}, {bounds[1][0]}]")
         print(f"  Diffusion coefficient: σ = {self.sigma}")
 
     def _initialize_networks(self) -> None:
@@ -323,7 +324,8 @@ class FPPINNSolver(PINNBase):
             total_mass = torch.sum(dx * m_avg)
         else:
             # Single point approximation
-            domain_size = self.problem.xmax - self.problem.xmin
+            bounds = self.problem.geometry.get_bounds()
+            domain_size = bounds[1][0] - bounds[0][0]
             total_mass = m_flat[0] * domain_size
 
         # Mass conservation loss: |∫m dx - target_mass|²
@@ -361,7 +363,8 @@ class FPPINNSolver(PINNBase):
             initial_loss = torch.mean((m_initial - m0_target) ** 2)
         else:
             # If no initial condition specified, assume uniform density
-            uniform_density = 1.0 / (self.problem.xmax - self.problem.xmin)
+            bounds = self.problem.geometry.get_bounds()
+            uniform_density = 1.0 / (bounds[1][0] - bounds[0][0])
             m0_target = torch.full_like(m_initial, uniform_density)
             initial_loss = torch.mean((m_initial - m0_target) ** 2)
 
@@ -473,8 +476,9 @@ class FPPINNSolver(PINNBase):
         """Generate FP solution on evaluation grid."""
         # Create evaluation grid
         nt, nx = 100, 100
+        bounds = self.problem.geometry.get_bounds()
         t_eval = np.linspace(0, self.problem.T, nt)
-        x_eval = np.linspace(self.problem.xmin, self.problem.xmax, nx)
+        x_eval = np.linspace(bounds[0][0], bounds[1][0], nx)
 
         T_grid, X_grid = np.meshgrid(t_eval, x_eval)
         t_flat = torch.from_numpy(T_grid.flatten().reshape(-1, 1)).to(self.device, dtype=self.dtype)
@@ -523,10 +527,10 @@ class FPPINNSolver(PINNBase):
 
         # Sample test points
         n_test = 1000
+        bounds = self.problem.geometry.get_bounds()
         t_test = torch.rand(n_test, 1, device=self.device, dtype=self.dtype) * self.problem.T
         x_test = (
-            torch.rand(n_test, 1, device=self.device, dtype=self.dtype) * (self.problem.xmax - self.problem.xmin)
-            + self.problem.xmin
+            torch.rand(n_test, 1, device=self.device, dtype=self.dtype) * (bounds[1][0] - bounds[0][0]) + bounds[0][0]
         )
 
         with torch.no_grad():
@@ -536,9 +540,10 @@ class FPPINNSolver(PINNBase):
             metrics["pde_residual_max"] = torch.max(torch.abs(pde_residuals["fp"])).item()
 
             # Initial condition error
-            x_initial = torch.linspace(
-                self.problem.xmin, self.problem.xmax, 100, device=self.device, dtype=self.dtype
-            ).reshape(-1, 1)
+            bounds = self.problem.geometry.get_bounds()
+            x_initial = torch.linspace(bounds[0][0], bounds[1][0], 100, device=self.device, dtype=self.dtype).reshape(
+                -1, 1
+            )
             initial_loss = self.compute_initial_loss(x_initial)
             metrics["initial_condition_error"] = initial_loss.item()
 

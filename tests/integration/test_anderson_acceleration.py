@@ -88,8 +88,9 @@ def run_solver(use_anderson: bool = False, backend: str | None = None):
     iterations = mfg_solver.iterations_run if hasattr(mfg_solver, "iterations_run") else 0
 
     # Mass conservation
-    dx = problem.dx
-    masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
+    dx = problem.geometry.get_grid_spacing()[1]  # Spatial spacing
+    Nt_points = problem.geometry.get_grid_shape()[0]  # Temporal grid points
+    masses = np.array([float(np.trapezoid(M[t, :], dx=dx)) for t in range(Nt_points)])
 
     print(f"Iterations: {iterations}")
     print(f"Time: {elapsed_time:.2f}s ({elapsed_time / iterations:.3f}s/iter)")

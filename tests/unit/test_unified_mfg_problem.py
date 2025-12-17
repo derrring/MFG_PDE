@@ -29,13 +29,14 @@ class TestLegacy1DMode:
 
     def test_basic_1d_problem(self):
         """Test basic 1D problem creation."""
-        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1)
 
         assert problem.dimension == 1
         assert problem.domain_type == "grid"
-        assert problem.xmin == 0
-        assert problem.xmax == 1
-        assert problem.Nx == 100
+        bounds = problem.geometry.get_bounds()
+        assert bounds[0][0] == 0
+        assert bounds[1][0] == 1
+        assert problem.geometry.get_grid_shape()[0] - 1 == 100  # Nx intervals
         assert problem.T == 1.0
         assert problem.Nt == 50
         assert problem.sigma == 0.1
@@ -44,16 +45,17 @@ class TestLegacy1DMode:
         """Test 1D problem with Lx parameter (alternative to xmin/xmax)."""
         # Note: Lx alias is specified in design but not yet implemented
         # For now, test the standard xmin/xmax interface
-        problem = MFGProblem(xmin=0, xmax=2.0, Nx=100, T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(xmin=0, xmax=2.0, Nx=100, T=1.0, Nt=50, diffusion=0.1)
 
         assert problem.dimension == 1
-        assert problem.xmin == 0
-        assert problem.xmax == 2.0
+        bounds = problem.geometry.get_bounds()
+        assert bounds[0][0] == 0
+        assert bounds[1][0] == 2.0
         assert problem.Lx == 2.0  # Lx is computed from xmax - xmin
 
     def test_1d_solver_compatibility(self):
         """Test solver compatibility for 1D problems."""
-        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1)
 
         assert "fdm" in problem.solver_compatible
         assert "semi_lagrangian" in problem.solver_compatible
@@ -71,7 +73,7 @@ class TestNDGridMode:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=100,
-            sigma=0.1,
+            diffusion=0.1,
         )
 
         assert problem.dimension == 2
@@ -89,7 +91,7 @@ class TestNDGridMode:
             spatial_discretization=[30, 30, 30],
             T=1.0,
             Nt=50,
-            sigma=0.1,
+            diffusion=0.1,
         )
 
         assert problem.dimension == 3
@@ -126,7 +128,7 @@ class TestNDGridMode:
             spatial_discretization=[100, 50],
             T=1.0,
             Nt=100,
-            sigma=0.05,
+            diffusion=0.05,
         )
 
         assert problem.spatial_discretization == [100, 50]
@@ -138,7 +140,7 @@ class TestNDGridMode:
             spatial_bounds=[(0, 1), (0, 1)],
             spatial_discretization=[50, 50],
             time_domain=(2.0, 200),
-            sigma=0.1,
+            diffusion=0.1,
         )
 
         assert problem.T == 2.0
@@ -162,25 +164,27 @@ class TestModeDetection:
 
     def test_unambiguous_1d_mode(self):
         """Test that 1D mode is detected correctly."""
-        problem = MFGProblem(Nx=100, T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(Nx=100, T=1.0, Nt=50, diffusion=0.1)
         assert problem.dimension == 1
 
     def test_unambiguous_nd_mode(self):
         """Test that N-D mode is detected correctly."""
-        problem = MFGProblem(spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, diffusion=0.1
+        )
         assert problem.dimension == 2
 
     def test_ambiguous_mode_raises_error(self):
         """Test that ambiguous initialization raises error."""
         with pytest.raises(ValueError, match="Ambiguous initialization"):
-            MFGProblem(Nx=100, spatial_bounds=[(0, 1)], spatial_discretization=[50], T=1.0, Nt=50, sigma=0.1)
+            MFGProblem(Nx=100, spatial_bounds=[(0, 1)], spatial_discretization=[50], T=1.0, Nt=50, diffusion=0.1)
 
     def test_missing_required_params_uses_defaults(self):
         """Test that missing parameters use defaults (no error)."""
         # MFGProblem has defaults for parameters, including default 1D domain
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            problem = MFGProblem(T=1.0, Nt=50, sigma=0.1)
+            problem = MFGProblem(T=1.0, Nt=50, diffusion=0.1)
 
             # Should warn about using default domain
             assert any("default" in str(x.message).lower() for x in w)
@@ -196,12 +200,14 @@ class TestSolverCompatibility:
 
     def test_fdm_compatibility_1d(self):
         """Test FDM compatibility with 1D grid."""
-        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1)
         assert "fdm" in problem.solver_compatible
 
     def test_fdm_compatibility_2d(self):
         """Test FDM compatibility with 2D grid."""
-        problem = MFGProblem(spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, diffusion=0.1
+        )
         assert "fdm" in problem.solver_compatible
 
     def test_fdm_incompatibility_4d(self):
@@ -213,7 +219,7 @@ class TestSolverCompatibility:
                 spatial_discretization=[10, 10, 10, 10],
                 T=1.0,
                 Nt=50,
-                sigma=0.1,
+                diffusion=0.1,
             )
 
         # FDM should still be marked as compatible (compatibility check is lenient)
@@ -222,12 +228,16 @@ class TestSolverCompatibility:
 
     def test_particle_compatibility(self):
         """Test particle solver compatibility."""
-        problem = MFGProblem(spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, diffusion=0.1
+        )
         assert "particle" in problem.solver_compatible
 
     def test_get_solver_info(self):
         """Test get_solver_info() method."""
-        problem = MFGProblem(spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, diffusion=0.1
+        )
 
         info = problem.get_solver_info()
 
@@ -245,7 +255,9 @@ class TestSolverCompatibility:
 
     def test_validate_solver_type_compatible(self):
         """Test validate_solver_type with compatible solver."""
-        problem = MFGProblem(spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, diffusion=0.1
+        )
 
         # Should not raise error
         problem.validate_solver_type("fdm")
@@ -253,7 +265,9 @@ class TestSolverCompatibility:
 
     def test_validate_solver_type_incompatible(self):
         """Test validate_solver_type with incompatible solver."""
-        problem = MFGProblem(spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=50, diffusion=0.1
+        )
 
         # Network solver should be incompatible with grid problems
         with pytest.raises(ValueError, match="incompatible"):
@@ -265,15 +279,16 @@ class TestBackwardCompatibility:
 
     def test_old_1d_interface(self):
         """Test that old 1D interface still works."""
-        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1)
 
-        # Old attributes should exist
-        assert hasattr(problem, "xmin")
-        assert hasattr(problem, "xmax")
-        assert hasattr(problem, "Nx")
-        assert hasattr(problem, "T")
-        assert hasattr(problem, "Nt")
-        assert hasattr(problem, "sigma")
+        # Old attributes should exist (for backward compatibility)
+        bounds = problem.geometry.get_bounds()
+        assert bounds[0][0] == 0  # xmin via geometry
+        assert bounds[1][0] == 1  # xmax via geometry
+        assert problem.geometry.get_grid_shape()[0] - 1 == 100  # Nx intervals
+        assert problem.T == 1.0
+        assert problem.Nt == 50
+        assert problem.sigma == 0.1
 
     def test_2d_problem_via_mfgproblem(self):
         """Test 2D problem creation via MFGProblem (replaces deprecated GridBasedMFGProblem)."""
@@ -283,7 +298,7 @@ class TestBackwardCompatibility:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=100,
-            sigma=0.1,
+            diffusion=0.1,
         )
 
         # Should create valid 2D problem
@@ -300,15 +315,18 @@ class TestComplexityEstimation:
 
     def test_1d_complexity(self):
         """Test 1D problem complexity estimation."""
-        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=0.1)
+        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1)
         info = problem.get_solver_info()
 
         assert "complexity" in info
-        assert "O(N" in info["complexity"] or "100" in info["complexity"]
+        # Complexity should reference grid size (101 points from 100 intervals)
+        assert "O(N" in info["complexity"] or "101" in info["complexity"] or "100" in info["complexity"]
 
     def test_2d_complexity(self):
         """Test 2D problem complexity estimation."""
-        problem = MFGProblem(spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=100, sigma=0.1)
+        problem = MFGProblem(
+            spatial_bounds=[(0, 1), (0, 1)], spatial_discretization=[50, 50], T=1.0, Nt=100, diffusion=0.1
+        )
         info = problem.get_solver_info()
 
         assert "complexity" in info
@@ -320,7 +338,9 @@ class TestComplexityEstimation:
         """Test that 4D problems warn about complexity."""
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            problem = MFGProblem(spatial_bounds=[(0, 1)] * 4, spatial_discretization=[10] * 4, T=1.0, Nt=50, sigma=0.1)
+            problem = MFGProblem(
+                spatial_bounds=[(0, 1)] * 4, spatial_discretization=[10] * 4, T=1.0, Nt=50, diffusion=0.1
+            )
 
             # Should warn about high-dimensional complexity
             warning_msgs = [str(x.message) for x in w]
@@ -337,7 +357,7 @@ class TestEdgeCases:
     def test_zero_dimension_raises_error(self):
         """Test that zero-dimension raises error."""
         with pytest.raises(ValueError):
-            MFGProblem(spatial_bounds=[], spatial_discretization=[], T=1.0, Nt=50, sigma=0.1)
+            MFGProblem(spatial_bounds=[], spatial_discretization=[], T=1.0, Nt=50, diffusion=0.1)
 
     def test_mismatched_dimensions_raises_error(self):
         """Test that mismatched dimensions raise error."""
@@ -347,14 +367,14 @@ class TestEdgeCases:
                 spatial_discretization=[50, 50, 50],  # 3D
                 T=1.0,
                 Nt=50,
-                sigma=0.1,
+                diffusion=0.1,
             )
 
     def test_negative_time_raises_error(self):
         """Test that negative time raises error or warning."""
         # Note: Current implementation may not validate this - test what actually happens
         try:
-            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=-1.0, Nt=50, sigma=0.1)
+            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=-1.0, Nt=50, diffusion=0.1)
             # If no error, just check that problem was created
             assert problem.T == -1.0  # May need validation in future
         except ValueError:
@@ -364,7 +384,7 @@ class TestEdgeCases:
         """Test that zero timesteps raises error or creates problem."""
         # Note: Current implementation may not validate this
         try:
-            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=0, sigma=0.1)
+            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=0, diffusion=0.1)
             # If no error, check problem was created
             assert problem.Nt == 0
         except (ValueError, ZeroDivisionError):
@@ -374,9 +394,9 @@ class TestEdgeCases:
         """Test that negative diffusion raises error or creates problem."""
         # Note: Current implementation may not validate this
         try:
-            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=-0.1)
+            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=-0.1)
             # If no error, check problem was created
-            assert problem.sigma == -0.1
+            assert problem.sigma == -0.1  # Access via deprecated alias still works
         except ValueError:
             pass  # Expected behavior
 
@@ -406,7 +426,7 @@ class TestCustomComponentExceptionPropagation:
             problem_type="custom",
         )
 
-        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.1, components=components)
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, diffusion=0.1, components=components)
 
         # Exception should propagate, not be silently caught
         with pytest.raises(ValueError, match="Intentional error"):
@@ -436,7 +456,7 @@ class TestCustomComponentExceptionPropagation:
             problem_type="custom",
         )
 
-        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.1, components=components)
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, diffusion=0.1, components=components)
 
         # Exception should propagate, not be silently caught
         with pytest.raises(RuntimeError, match="Intentional error"):

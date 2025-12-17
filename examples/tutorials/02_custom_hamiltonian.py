@@ -117,7 +117,8 @@ class CrowdEvacuationMFG(MFGProblem):
 print("Creating custom problem...")
 problem = CrowdEvacuationMFG(congestion_strength=2.0)
 
-print(f"  Domain: [{problem.xmin}, {problem.xmax}]")
+bounds = problem.geometry.get_bounds()
+print(f"  Domain: [{bounds[0][0]}, {bounds[1][0]}]")
 print(f"  Congestion strength: λ = {problem.congestion_strength}")
 print()
 
@@ -144,8 +145,10 @@ result_baseline = baseline.solve(verbose=False)
 
 # Measure evacuation efficiency
 # How much mass reaches the exit (x > 0.9) by final time?
-exit_mass_congested = np.sum(result.M[-1, problem.xSpace > 0.9]) * problem.dx
-exit_mass_baseline = np.sum(result_baseline.M[-1, baseline.xSpace > 0.9]) * baseline.dx
+dx = problem.geometry.get_grid_spacing()[0]
+dx_baseline = baseline.geometry.get_grid_spacing()[0]
+exit_mass_congested = np.sum(result.M[-1, problem.xSpace > 0.9]) * dx
+exit_mass_baseline = np.sum(result_baseline.M[-1, baseline.xSpace > 0.9]) * dx_baseline
 
 print(f"Mass at exit (with congestion):    {exit_mass_congested:.3f}")
 print(f"Mass at exit (without congestion): {exit_mass_baseline:.3f}")

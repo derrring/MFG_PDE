@@ -521,6 +521,133 @@ class TestGridTypeConfiguration:
         assert np.isclose(padded[3, 0], 0.0)
         assert np.isclose(padded[3, -1], 0.0)
 
+    def test_grid_type_enum(self):
+        """Test using GridType enum directly (not string)."""
+        from mfg_pde.geometry.boundary import GridType
+
+        field = np.ones((5, 5))
+        bc = dirichlet_bc(value=0.0, dimension=2)
+
+        # Using enum directly
+        config = GhostCellConfig(grid_type=GridType.VERTEX_CENTERED)
+        padded = apply_boundary_conditions_2d(field, bc, config=config)
+
+        # Vertex-centered: ghost = g
+        assert np.isclose(padded[3, 0], 0.0)
+
+        # Test cell-centered with enum
+        config2 = GhostCellConfig(grid_type=GridType.CELL_CENTERED)
+        padded2 = apply_boundary_conditions_2d(field, bc, config=config2)
+
+        # Cell-centered: ghost = 2*g - interior = -1
+        assert np.isclose(padded2[3, 0], -1.0)
+
+    def test_vertex_centered_neumann(self):
+        """Test Neumann BC with vertex-centered grid."""
+        field = np.ones((5, 5))
+        bc = neumann_bc(value=0.0, dimension=2)
+
+        config = GhostCellConfig(grid_type="vertex_centered")
+        padded = apply_boundary_conditions_2d(field, bc, config=config)
+
+        # Neumann with zero flux: ghost = interior (for both grid types)
+        assert np.isclose(padded[3, 0], 1.0)
+        assert np.isclose(padded[3, -1], 1.0)
+
+
+class TestExtrapolationBC:
+    """Tests for extrapolation boundary conditions (for unbounded domains)."""
+
+    def test_linear_extrapolation_function(self):
+        """Test ghost_cell_linear_extrapolation function directly."""
+        from mfg_pde.geometry.boundary import ghost_cell_linear_extrapolation
+
+        # Linear function: f(x) = 2x + 1
+        # At x=0: f(0)=1, at x=1: f(1)=3
+        # Extrapolated to x=-1: f(-1) = -1
+        u_0, u_1 = 1.0, 3.0  # Note: u_0 is at boundary, u_1 is one step inside
+        # For left boundary extrapolation: ghost = 2*u_0 - u_1 = 2*1 - 3 = -1
+        ghost = ghost_cell_linear_extrapolation((u_0, u_1))
+        assert np.isclose(ghost, -1.0)
+
+    def test_quadratic_extrapolation_function(self):
+        """Test ghost_cell_quadratic_extrapolation function directly."""
+        from mfg_pde.geometry.boundary import ghost_cell_quadratic_extrapolation
+
+        # Quadratic function: f(x) = x^2
+        # At x=0: f(0)=0, x=1: f(1)=1, x=2: f(2)=4
+        # Extrapolated to x=-1: f(-1) = 1
+        u_0, u_1, u_2 = 0.0, 1.0, 4.0
+        # For left boundary: ghost = 3*u_0 - 3*u_1 + u_2 = 0 - 3 + 4 = 1
+        ghost = ghost_cell_quadratic_extrapolation((u_0, u_1, u_2))
+        assert np.isclose(ghost, 1.0)
+
+    def test_linear_extrapolation_1d(self):
+        """Test linear extrapolation BC in 1D via apply_boundary_conditions_1d."""
+        from mfg_pde.geometry.boundary import (
+            BCSegment,
+            BCType,
+            BoundaryConditions,
+            apply_boundary_conditions_1d,
+        )
+
+        # Create a linear field: f(x) = x, on [0, 1] with 5 points
+        # x = [0, 0.25, 0.5, 0.75, 1.0]
+        # f = [0, 0.25, 0.5, 0.75, 1.0]
+        field = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+
+        # Use linear extrapolation on both ends
+        bc = BoundaryConditions(
+            dimension=1,
+            segments=[
+                BCSegment(name="left", bc_type=BCType.EXTRAPOLATION_LINEAR, boundary="x_min"),
+                BCSegment(name="right", bc_type=BCType.EXTRAPOLATION_LINEAR, boundary="x_max"),
+            ],
+            domain_bounds=np.array([[0.0, 1.0]]),
+        )
+
+        padded = apply_boundary_conditions_1d(field, bc)
+
+        # Left ghost: 2*field[0] - field[1] = 2*0 - 0.25 = -0.25
+        assert np.isclose(padded[0], -0.25)
+        # Right ghost: 2*field[-1] - field[-2] = 2*1.0 - 0.75 = 1.25
+        assert np.isclose(padded[-1], 1.25)
+
+    def test_quadratic_extrapolation_1d(self):
+        """Test quadratic extrapolation BC in 1D."""
+        from mfg_pde.geometry.boundary import (
+            BCSegment,
+            BCType,
+            BoundaryConditions,
+            apply_boundary_conditions_1d,
+        )
+
+        # Create a quadratic field: f(x) = x^2, on [0, 1] with 5 points
+        # x = [0, 0.25, 0.5, 0.75, 1.0]
+        # f = [0, 0.0625, 0.25, 0.5625, 1.0]
+        x = np.linspace(0, 1, 5)
+        field = x**2
+
+        # Use quadratic extrapolation on both ends
+        bc = BoundaryConditions(
+            dimension=1,
+            segments=[
+                BCSegment(name="left", bc_type=BCType.EXTRAPOLATION_QUADRATIC, boundary="x_min"),
+                BCSegment(name="right", bc_type=BCType.EXTRAPOLATION_QUADRATIC, boundary="x_max"),
+            ],
+            domain_bounds=np.array([[0.0, 1.0]]),
+        )
+
+        padded = apply_boundary_conditions_1d(field, bc)
+
+        # Left ghost: 3*f[0] - 3*f[1] + f[2]
+        expected_left = 3 * field[0] - 3 * field[1] + field[2]
+        assert np.isclose(padded[0], expected_left)
+
+        # Right ghost: 3*f[-1] - 3*f[-2] + f[-3]
+        expected_right = 3 * field[-1] - 3 * field[-2] + field[-3]
+        assert np.isclose(padded[-1], expected_right)
+
 
 class TestInputValidation:
     """Tests for input validation."""
@@ -830,3 +957,287 @@ class TestSDFParticleBCHandler:
         # Should be reflected back into box
         assert 0 <= X_result[0, 0] <= 1, "x should be in [0, 1]"
         assert 0 <= X_result[0, 1] <= 1, "y should be in [0, 1]"
+
+
+# =============================================================================
+# Topology/Calculator Composition Tests (Issue #516)
+# =============================================================================
+
+
+class TestTopologyClasses:
+    """Test Topology implementations (PeriodicTopology, BoundedTopology)."""
+
+    def test_periodic_topology_creation(self):
+        """Test PeriodicTopology initialization."""
+        from mfg_pde.geometry.boundary import PeriodicTopology
+
+        topo = PeriodicTopology(dimension=2, shape=(10, 15))
+        assert topo.is_periodic is True
+        assert topo.dimension == 2
+        assert topo.shape == (10, 15)
+
+    def test_bounded_topology_creation(self):
+        """Test BoundedTopology initialization."""
+        from mfg_pde.geometry.boundary import BoundedTopology
+
+        topo = BoundedTopology(dimension=3, shape=(5, 6, 7))
+        assert topo.is_periodic is False
+        assert topo.dimension == 3
+        assert topo.shape == (5, 6, 7)
+
+    def test_topology_dimension_shape_mismatch_error(self):
+        """Test that mismatched dimension and shape raises error."""
+        from mfg_pde.geometry.boundary import PeriodicTopology
+
+        with pytest.raises(ValueError, match="Shape length"):
+            PeriodicTopology(dimension=2, shape=(10, 15, 20))
+
+    def test_topology_repr(self):
+        """Test topology string representation."""
+        from mfg_pde.geometry.boundary import BoundedTopology, PeriodicTopology
+
+        periodic = PeriodicTopology(dimension=2, shape=(10, 10))
+        assert "PeriodicTopology" in repr(periodic)
+        assert "dimension=2" in repr(periodic)
+
+        bounded = BoundedTopology(dimension=2, shape=(10, 10))
+        assert "BoundedTopology" in repr(bounded)
+
+
+class TestCalculatorClasses:
+    """Test BoundaryCalculator implementations."""
+
+    def test_dirichlet_calculator(self):
+        """Test DirichletCalculator computes correct ghost values."""
+        from mfg_pde.geometry.boundary import DirichletCalculator
+
+        calc = DirichletCalculator(boundary_value=5.0)
+        # Cell-centered: u_ghost = 2*g - u_interior = 2*5 - 3 = 7
+        ghost = calc.compute(interior_value=3.0, dx=0.1, side="min")
+        assert np.isclose(ghost, 7.0)
+
+    def test_neumann_calculator_zero_flux(self):
+        """Test NeumannCalculator with zero flux (edge extension)."""
+        from mfg_pde.geometry.boundary import NeumannCalculator
+
+        calc = NeumannCalculator(flux_value=0.0)
+        ghost = calc.compute(interior_value=3.0, dx=0.1, side="min")
+        # Zero flux: ghost = interior
+        assert np.isclose(ghost, 3.0)
+
+    def test_neumann_calculator_nonzero_flux(self):
+        """Test NeumannCalculator with non-zero flux."""
+        from mfg_pde.geometry.boundary import NeumannCalculator
+
+        calc = NeumannCalculator(flux_value=1.0)
+        dx = 0.1
+
+        # For min side (outward_sign = -1): ghost = interior - 2*dx*g
+        ghost_min = calc.compute(interior_value=5.0, dx=dx, side="min")
+        expected_min = 5.0 - 2 * dx * 1.0  # = 4.8
+        assert np.isclose(ghost_min, expected_min)
+
+        # For max side (outward_sign = +1): ghost = interior + 2*dx*g
+        ghost_max = calc.compute(interior_value=5.0, dx=dx, side="max")
+        expected_max = 5.0 + 2 * dx * 1.0  # = 5.2
+        assert np.isclose(ghost_max, expected_max)
+
+    def test_robin_calculator(self):
+        """Test RobinCalculator for mixed boundary conditions."""
+        from mfg_pde.geometry.boundary import RobinCalculator
+
+        # Robin: alpha*u + beta*du/dn = g
+        # With alpha=1, beta=0, it reduces to Dirichlet: u = g
+        calc_dirichlet = RobinCalculator(alpha=1.0, beta=0.0, rhs_value=2.0)
+        ghost = calc_dirichlet.compute(interior_value=1.0, dx=0.1, side="min")
+        # Should behave like Dirichlet: ghost = 2*2 - 1 = 3
+        assert np.isclose(ghost, 3.0)
+
+    def test_no_flux_calculator(self):
+        """Test NoFluxCalculator (edge extension)."""
+        from mfg_pde.geometry.boundary import NoFluxCalculator
+
+        calc = NoFluxCalculator()
+        ghost = calc.compute(interior_value=7.5, dx=0.1, side="max")
+        assert np.isclose(ghost, 7.5)
+
+    def test_linear_extrapolation_calculator(self):
+        """Test LinearExtrapolationCalculator (zero second derivative)."""
+        from mfg_pde.geometry.boundary import LinearExtrapolationCalculator
+
+        calc = LinearExtrapolationCalculator()
+        # ghost = 2*u_0 - u_1 = 2*5 - 3 = 7
+        ghost = calc.compute(interior_value=5.0, dx=0.1, side="min", second_interior_value=3.0)
+        assert np.isclose(ghost, 7.0)
+
+    def test_quadratic_extrapolation_calculator(self):
+        """Test QuadraticExtrapolationCalculator (zero third derivative)."""
+        from mfg_pde.geometry.boundary import QuadraticExtrapolationCalculator
+
+        calc = QuadraticExtrapolationCalculator()
+        # ghost = 3*u_0 - 3*u_1 + u_2 = 3*5 - 3*3 + 1 = 7
+        ghost = calc.compute(
+            interior_value=5.0,
+            dx=0.1,
+            side="min",
+            second_interior_value=3.0,
+            third_interior_value=1.0,
+        )
+        assert np.isclose(ghost, 7.0)
+
+    def test_fp_no_flux_calculator(self):
+        """Test FPNoFluxCalculator (physics-aware zero total flux)."""
+        from mfg_pde.geometry.boundary import FPNoFluxCalculator
+
+        # Zero drift: reduces to Neumann (ghost = interior)
+        calc = FPNoFluxCalculator(drift_velocity=0.0, diffusion_coeff=1.0)
+        ghost = calc.compute(interior_value=3.0, dx=0.1, side="min")
+        assert np.isclose(ghost, 3.0)
+
+
+class TestGhostBuffer:
+    """Test GhostBuffer with Topology/Calculator composition."""
+
+    def test_ghost_buffer_periodic_2d(self):
+        """Test GhostBuffer with periodic topology in 2D."""
+        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+
+        topo = PeriodicTopology(dimension=2, shape=(5, 5))
+        buffer = GhostBuffer(topo)
+
+        # Set interior to a gradient
+        buffer.interior[:] = np.arange(25).reshape(5, 5)
+        buffer.update()
+
+        # Check periodic wrap-around
+        # Low ghost should equal high interior
+        np.testing.assert_array_equal(buffer.padded[0, 1:-1], buffer.padded[-2, 1:-1])
+        # High ghost should equal low interior
+        np.testing.assert_array_equal(buffer.padded[-1, 1:-1], buffer.padded[1, 1:-1])
+
+    def test_ghost_buffer_bounded_dirichlet_2d(self):
+        """Test GhostBuffer with bounded topology and Dirichlet BC."""
+        from mfg_pde.geometry.boundary import (
+            BoundedTopology,
+            DirichletCalculator,
+            GhostBuffer,
+        )
+
+        topo = BoundedTopology(dimension=2, shape=(5, 5))
+        calc = DirichletCalculator(boundary_value=0.0)
+        buffer = GhostBuffer(topo, calc, dx=0.1)
+
+        buffer.interior[:] = 1.0
+        buffer.update()
+
+        # Dirichlet g=0, interior=1: ghost = 2*0 - 1 = -1
+        assert np.allclose(buffer.padded[0, 1:-1], -1.0)
+        assert np.allclose(buffer.padded[-1, 1:-1], -1.0)
+        assert np.allclose(buffer.padded[1:-1, 0], -1.0)
+        assert np.allclose(buffer.padded[1:-1, -1], -1.0)
+
+    def test_ghost_buffer_bounded_neumann_2d(self):
+        """Test GhostBuffer with bounded topology and Neumann BC (zero flux)."""
+        from mfg_pde.geometry.boundary import (
+            BoundedTopology,
+            GhostBuffer,
+            NeumannCalculator,
+        )
+
+        topo = BoundedTopology(dimension=2, shape=(5, 5))
+        calc = NeumannCalculator(flux_value=0.0)
+        buffer = GhostBuffer(topo, calc, dx=0.1)
+
+        buffer.interior[:] = np.arange(25).reshape(5, 5).astype(float)
+        buffer.update()
+
+        # Zero Neumann: ghost = interior (edge extension)
+        np.testing.assert_array_almost_equal(buffer.padded[0, 1:-1], buffer.interior[0, :])
+
+    def test_ghost_buffer_bounded_requires_calculator(self):
+        """Test that bounded topology requires calculator."""
+        from mfg_pde.geometry.boundary import BoundedTopology, GhostBuffer
+
+        topo = BoundedTopology(dimension=2, shape=(5, 5))
+        with pytest.raises(ValueError, match="requires a BoundaryCalculator"):
+            GhostBuffer(topo)  # No calculator provided
+
+    def test_ghost_buffer_periodic_ignores_calculator(self):
+        """Test that periodic topology ignores calculator (uses wrap-around)."""
+        from mfg_pde.geometry.boundary import (
+            DirichletCalculator,
+            GhostBuffer,
+            PeriodicTopology,
+        )
+
+        topo = PeriodicTopology(dimension=2, shape=(5, 5))
+        calc = DirichletCalculator(boundary_value=999.0)  # Should be ignored
+        buffer = GhostBuffer(topo, calc)
+
+        buffer.interior[:] = np.arange(25).reshape(5, 5)
+        buffer.update()
+
+        # Should use wrap-around, not Dirichlet
+        # If Dirichlet were used, ghost would be 2*999 - interior
+        # With wrap-around, ghost[0] = interior[-1]
+        np.testing.assert_array_equal(buffer.padded[0, 1:-1], buffer.padded[-2, 1:-1])
+
+    def test_ghost_buffer_properties(self):
+        """Test GhostBuffer property accessors."""
+        from mfg_pde.geometry.boundary import (
+            BoundedTopology,
+            DirichletCalculator,
+            GhostBuffer,
+        )
+
+        topo = BoundedTopology(dimension=2, shape=(10, 15))
+        calc = DirichletCalculator(boundary_value=0.0)
+        buffer = GhostBuffer(topo, calc, dx=(0.1, 0.2), ghost_depth=2)
+
+        assert buffer.shape == (10, 15)
+        assert buffer.padded_shape == (14, 19)
+        assert buffer.ghost_depth == 2
+        assert buffer.dx == (0.1, 0.2)
+        assert buffer.topology is topo
+        assert buffer.calculator is calc
+
+    def test_ghost_buffer_reset(self):
+        """Test GhostBuffer reset method."""
+        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+
+        topo = PeriodicTopology(dimension=1, shape=(10,))
+        buffer = GhostBuffer(topo)
+
+        buffer.interior[:] = 5.0
+        buffer.reset(fill_value=0.0)
+
+        assert np.allclose(buffer.padded, 0.0)
+
+    def test_ghost_buffer_copy_to_interior(self):
+        """Test GhostBuffer copy_to_interior method."""
+        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+
+        topo = PeriodicTopology(dimension=2, shape=(3, 3))
+        buffer = GhostBuffer(topo)
+
+        data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=float)
+        buffer.copy_to_interior(data)
+
+        np.testing.assert_array_equal(buffer.interior, data)
+
+    def test_ghost_buffer_3d_periodic(self):
+        """Test GhostBuffer with 3D periodic topology."""
+        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+
+        topo = PeriodicTopology(dimension=3, shape=(4, 4, 4))
+        buffer = GhostBuffer(topo)
+
+        # Set a 3D gradient
+        for i in range(4):
+            buffer.interior[i, :, :] = float(i)
+
+        buffer.update()
+
+        # Check wrap-around on first axis
+        np.testing.assert_array_equal(buffer.padded[0, 1:-1, 1:-1], buffer.padded[-2, 1:-1, 1:-1])
+        np.testing.assert_array_equal(buffer.padded[-1, 1:-1, 1:-1], buffer.padded[1, 1:-1, 1:-1])

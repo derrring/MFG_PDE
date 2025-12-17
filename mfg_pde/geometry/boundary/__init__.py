@@ -51,14 +51,36 @@ from .applicator_base import (
     BaseMeshfreeApplicator,
     BaseStructuredApplicator,
     BaseUnstructuredApplicator,
-    # Protocol
+    # Protocols
     BCApplicatorProtocol,
+    BoundaryCalculator,
+    # Topology implementations (Issue #516)
+    BoundedTopology,
+    # Calculator implementations (physics-based naming)
+    DirichletCalculator,
     # Enums
     DiscretizationType,
+    FPNoFluxCalculator,  # -> ZeroFluxCalculator
     GridType,
+    LinearExtrapolationCalculator,
+    NeumannCalculator,
+    # Backward compatibility aliases
+    NoFluxCalculator,  # -> ZeroGradientCalculator
+    PeriodicTopology,
+    QuadraticExtrapolationCalculator,
+    RobinCalculator,
+    Topology,
+    ZeroFluxCalculator,  # J·n = 0 (mass conservation)
+    ZeroGradientCalculator,  # du/dn = 0 (edge extension)
+    # Physics-aware ghost cell (for advection-diffusion/FP)
+    ghost_cell_advection_diffusion_no_flux,
     # Ghost cell helpers (2nd-order)
     ghost_cell_dirichlet,
+    ghost_cell_fp_no_flux,
+    # Extrapolation ghost cell (for unbounded domains)
+    ghost_cell_linear_extrapolation,
     ghost_cell_neumann,
+    ghost_cell_quadratic_extrapolation,
     ghost_cell_robin,
     # High-order ghost cell extrapolation (4th/5th order for WENO)
     high_order_ghost_dirichlet,
@@ -70,13 +92,16 @@ from .applicator_base import (
 # =============================================================================
 from .applicator_fdm import (
     FDMApplicator,
+    GhostBuffer,
     GhostCellConfig,
     PreallocatedGhostBuffer,
     apply_boundary_conditions_1d,
     apply_boundary_conditions_2d,
     apply_boundary_conditions_3d,
     apply_boundary_conditions_nd,
+    bc_to_topology_calculator,
     create_boundary_mask_2d,
+    create_ghost_buffer_from_bc,
     get_ghost_values_nd,
 )
 
@@ -185,16 +210,37 @@ __all__ = [
     "DiscretizationType",
     "GridType",
     "BCApplicatorProtocol",
+    "Topology",
+    "BoundaryCalculator",
     "BaseBCApplicator",
     "BaseStructuredApplicator",
     "BaseUnstructuredApplicator",
     "BaseMeshfreeApplicator",
     "BaseGraphApplicator",
+    # Topology implementations (Issue #516)
+    "PeriodicTopology",
+    "BoundedTopology",
+    # Calculator implementations (Issue #516)
+    "DirichletCalculator",
+    "NeumannCalculator",
+    "RobinCalculator",
+    "NoFluxCalculator",
+    "LinearExtrapolationCalculator",
+    "QuadraticExtrapolationCalculator",
+    "FPNoFluxCalculator",
+    # Ghost cell helper functions
     "ghost_cell_dirichlet",
     "ghost_cell_neumann",
     "ghost_cell_robin",
+    # High-order ghost cell extrapolation (4th/5th order for WENO)
     "high_order_ghost_dirichlet",
     "high_order_ghost_neumann",
+    # Physics-aware ghost cell (for advection-diffusion/FP)
+    "ghost_cell_fp_no_flux",
+    "ghost_cell_advection_diffusion_no_flux",
+    # Extrapolation ghost cell (for unbounded domains)
+    "ghost_cell_linear_extrapolation",
+    "ghost_cell_quadratic_extrapolation",
     # Core types
     "BCType",
     "BCSegment",
@@ -210,7 +256,13 @@ __all__ = [
     "no_flux_bc",
     "robin_bc",
     "mixed_bc",
-    # FDM Applicator
+    # Physics-based Calculator names (preferred)
+    "ZeroGradientCalculator",  # du/dn = 0 (edge extension)
+    "ZeroFluxCalculator",  # J·n = 0 (mass conservation)
+    # FDM Applicator (Topology/Calculator composition - Issue #516)
+    "GhostBuffer",
+    "bc_to_topology_calculator",
+    "create_ghost_buffer_from_bc",
     "FDMApplicator",
     "GhostCellConfig",
     "PreallocatedGhostBuffer",

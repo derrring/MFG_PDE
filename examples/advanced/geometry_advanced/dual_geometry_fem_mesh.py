@@ -53,7 +53,8 @@ def demonstrate_fem_mesh_projection_basic():
     # Create regular grid for HJB
     grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51])
 
-    print(f"\nGrid points: {(50 + 1) * (51 + 1):,}")
+    grid_shape = grid.get_grid_shape()
+    print(f"\nGrid points: {grid_shape[0] * grid_shape[1]:,}")
     if mesh_data:
         print(f"Mesh vertices: {mesh_data.num_vertices:,}")
 
@@ -225,7 +226,7 @@ def demonstrate_fem_mesh_projection_optimized():
 
     # Create problem (will now use registered specialized projections)
     print("\nCreating MFG problem with optimized projections...")
-    problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, time_domain=(1.0, 50), diffusion=0.1)
 
     projector = problem.geometry_projector
     print("\nProjection methods selected:")

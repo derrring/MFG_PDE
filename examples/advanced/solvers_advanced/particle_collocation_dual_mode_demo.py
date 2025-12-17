@@ -73,8 +73,9 @@ def run_hybrid_mode_demo():
     print(f"  Collocation Points: {solver.collocation_points}")
 
     # Initial condition and value function on GRID
-    m0 = np.ones(problem.Nx + 1) / (problem.Nx + 1)
-    U = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    m0 = np.ones(Nx_points) / Nx_points
+    U = np.zeros((problem.Nt + 1, Nx_points))
 
     # Solve FP system
     M = solver.solve_fp_system(m0, U, show_progress=False)

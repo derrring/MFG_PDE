@@ -124,7 +124,7 @@ def test_analytical_convergence() -> dict[str, float]:
             return {"error": np.inf}
 
         # Compare with analytical solution at final time
-        x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        x_grid = problem.geometry.get_spatial_grid()
         u_analytical, m_analytical = AnalyticalSolution.linear_solution(x_grid, problem.T, problem.T)
 
         # Compute errors
@@ -179,7 +179,7 @@ def test_grid_convergence() -> dict[str, list]:
             result = solver.solve()
 
             # Compute error against analytical solution
-            x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+            x_grid = problem.geometry.get_spatial_grid()
             u_analytical, _ = AnalyticalSolution.linear_solution(x_grid, problem.T, problem.T)
 
             error = np.sqrt(np.trapz((result.U[-1, :] - u_analytical) ** 2, x_grid))
@@ -202,7 +202,7 @@ def test_grid_convergence() -> dict[str, list]:
             result = solver.solve()
 
             # Compute error against analytical solution
-            x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+            x_grid = problem.geometry.get_spatial_grid()
             u_analytical, _ = AnalyticalSolution.linear_solution(x_grid, problem.T, problem.T)
 
             error = np.sqrt(np.trapz((result.U[-1, :] - u_analytical) ** 2, x_grid))
@@ -301,7 +301,7 @@ def test_interpolation_methods() -> dict[str, float]:
 
             if hasattr(result, "U"):
                 # Compute solution quality metric
-                x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+                x_grid = problem.geometry.get_spatial_grid()
                 u_analytical, _ = AnalyticalSolution.linear_solution(x_grid, problem.T, problem.T)
                 error = np.sqrt(np.trapz((result.U[-1, :] - u_analytical) ** 2, x_grid))
 

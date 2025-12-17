@@ -39,8 +39,9 @@ class TestFDMSolversMFGIntegration:
         # Verify result structure
         assert result is not None
         U, M = result[:2]
-        assert U.shape == (problem.Nt + 1, problem.Nx + 1)
-        assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        assert U.shape == (Nt_points, Nx_points)
+        assert M.shape == (Nt_points, Nx_points)
 
     def test_fdm_mass_conservation(self):
         """Test that FDM FP solver conserves mass in MFG context."""
@@ -51,17 +52,21 @@ class TestFDMSolversMFGIntegration:
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
 
         # Create initial density
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        bounds = problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        Nx_points = problem.geometry.get_grid_shape()[1]
+        x_coords = np.linspace(xmin, xmax, Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
 
         # Solve FP with zero drift (should preserve mass)
-        U_zero = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        U_zero = np.zeros((Nt_points, Nx_points))
         M_solution = fp_solver.solve_fp_system(m_initial, U_zero)
 
         # Check mass conservation at all time steps
         initial_mass = np.sum(m_initial)
-        for t in range(problem.Nt + 1):
+        for t in range(Nt_points):
             current_mass = np.sum(M_solution[t, :])
             assert np.isclose(current_mass, initial_mass, rtol=0.1), f"Mass not conserved at t={t}"
 
@@ -143,7 +148,8 @@ class TestFDMSolversMFGIntegration:
 
         _U, M = result[:2]
         # Boundary conditions should be approximately enforced (relaxed tolerance for numerical effects)
-        for t in range(problem.Nt + 1):
+        Nt_points = problem.geometry.get_grid_shape()[0]
+        for t in range(Nt_points):
             assert np.isclose(M[t, 0], 0.0, atol=0.01)
             assert np.isclose(M[t, -1], 0.0, atol=0.01)
 
@@ -159,16 +165,18 @@ class TestFDMSolversCoupling:
         fp_solver = FPFDMSolver(problem)
 
         # Initial density
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        bounds = problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        Nx_points = problem.geometry.get_grid_shape()[1]
+        x_coords = np.linspace(xmin, xmax, Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
 
         # Solve HJB with given density
-        u_terminal = 0.5 * (x_coords - problem.xmax) ** 2
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))  # Initial guess for value function
-        U_solution = hjb_solver.solve_hjb_system(
-            m_initial.reshape(1, -1).repeat(problem.Nt + 1, axis=0), u_terminal, U_prev
-        )
+        u_terminal = 0.5 * (x_coords - xmax) ** 2
+        Nt_points = problem.geometry.get_grid_shape()[0]
+        U_prev = np.zeros((Nt_points, Nx_points))  # Initial guess for value function
+        U_solution = hjb_solver.solve_hjb_system(m_initial.reshape(1, -1).repeat(Nt_points, axis=0), u_terminal, U_prev)
 
         # Solve FP with computed value function
         M_solution = fp_solver.solve_fp_system(m_initial, U_solution)
@@ -222,14 +230,17 @@ class TestFDMSolversNumericalProperties:
         hjb_solver = HJBFDMSolver(problem)
 
         # Create simple density
-        m_initial = np.ones((problem.Nt + 1, problem.Nx + 1)) / (problem.Nx + 1)
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        m_initial = np.ones((Nt_points, Nx_points)) / Nx_points
 
         # Terminal condition
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
-        u_terminal = 0.5 * (x_coords - problem.xmax) ** 2
+        bounds = problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        x_coords = np.linspace(xmin, xmax, Nx_points)
+        u_terminal = 0.5 * (x_coords - xmax) ** 2
 
         # Solve HJB (need U_prev as initial guess)
-        U_prev = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        U_prev = np.zeros((Nt_points, Nx_points))
         U_solution = hjb_solver.solve_hjb_system(m_initial, u_terminal, U_prev)
 
         # Terminal condition should be approximately satisfied
@@ -242,12 +253,16 @@ class TestFDMSolversNumericalProperties:
         fp_solver = FPFDMSolver(problem)
 
         # Initial density
-        x_coords = np.linspace(problem.xmin, problem.xmax, problem.Nx + 1)
+        bounds = problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        Nx_points = problem.geometry.get_grid_shape()[1]
+        x_coords = np.linspace(xmin, xmax, Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
 
         # Zero drift
-        U_zero = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nt_points = problem.geometry.get_grid_shape()[0]
+        U_zero = np.zeros((Nt_points, Nx_points))
 
         # Solve FP
         M_solution = fp_solver.solve_fp_system(m_initial, U_zero)

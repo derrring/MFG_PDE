@@ -594,7 +594,9 @@ class ConvergenceWrapper:
         self._convergence_monitor = create_distribution_monitor(**self.advanced_convergence_kwargs)
 
         # Extract spatial grid for convergence analysis
-        x_grid = np.linspace(problem.xmin, problem.xmax, problem.Nx)
+        bounds = problem.geometry.get_bounds()
+        grid_shape = problem.geometry.get_grid_shape()
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], grid_shape[0])
 
         try:
             if self._original_solve is not None:

@@ -46,6 +46,7 @@ class TestStructuredConfigs:
 
         # Test default values
         assert config.problem.T == 1.0
+        # Nx represents intervals in config (legacy), not grid points
         assert config.problem.Nx == 50
         assert config.problem.Nt == 30
         assert config.solver.type == "fixed_point"
@@ -58,6 +59,7 @@ class TestStructuredConfigs:
         # Test that all required attributes exist
         assert hasattr(config.problem, "name")
         assert hasattr(config.problem, "T")
+        # Nx in config represents intervals (legacy convention)
         assert hasattr(config.problem, "Nx")
         assert hasattr(config.problem, "Nt")
         assert hasattr(config.solver, "type")
@@ -77,6 +79,7 @@ class TestStructuredConfigs:
         assert config.problem.name == "towel_on_beach"
         assert config.problem.type == "spatial_competition"
         assert config.problem.T == 2.0
+        # Nx in config represents intervals (legacy convention)
         assert config.problem.Nx == 80
         assert config.problem.Nt == 40
 
@@ -117,6 +120,7 @@ experiment:
             # Test that values were loaded correctly
             assert config.problem.name == "test_problem"
             assert config.problem.T == 3.0
+            # Nx in config represents intervals (legacy convention)
             assert config.problem.Nx == 100
             assert config.solver.max_iterations == 200
             assert config.solver.tolerance == 1e-8
@@ -270,6 +274,7 @@ experiment:
 
             # Test that loaded values maintain type safety
             assert isinstance(config.problem.T, (int, float))
+            # Nx in config represents intervals (legacy convention)
             assert isinstance(config.problem.Nx, int)
             assert isinstance(config.solver.tolerance, float)
             assert isinstance(config.experiment.logging.level, str)

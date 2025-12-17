@@ -31,8 +31,35 @@ from mfg_pde.utils.experiment_manager import (
 # ===================================================================
 
 
+class MockGeometry:
+    """Mock geometry object for testing."""
+
+    def __init__(self, xmin, xmax, Nx):
+        self.xmin = xmin
+        self.xmax = xmax
+        self.Nx_intervals = Nx  # Number of space intervals
+        self.Nx_points = Nx + 1  # Number of space points
+
+    def get_grid_shape(self):
+        """Return grid shape as (Nx_points,)."""
+        return (self.Nx_points,)
+
+    def get_grid_spacing(self):
+        """Return grid spacing as (dx,)."""
+        dx = (self.xmax - self.xmin) / self.Nx_intervals if self.Nx_intervals > 0 else 0.0
+        return (dx,)
+
+    def get_bounds(self):
+        """Return bounds as ((xmin,), (xmax,))."""
+        return ((self.xmin,), (self.xmax,))
+
+
 class MockMFGProblem:
-    """Minimal mock MFG problem for testing."""
+    """Minimal mock MFG problem for testing.
+
+    Note: This mock maintains legacy attributes (Nx, Nt, dx, xmin, xmax)
+    for backward compatibility with experiment_manager functions.
+    """
 
     def __init__(
         self,
@@ -58,6 +85,8 @@ class MockMFGProblem:
         # Nt+1 time points, Nx+1 space points
         self.tSpace = np.linspace(0, T, Nt + 1)
         self.xSpace = np.linspace(xmin, xmax, Nx + 1)
+        # Add geometry object for geometry-first API
+        self.geometry = MockGeometry(xmin, xmax, Nx)
 
 
 # ===================================================================

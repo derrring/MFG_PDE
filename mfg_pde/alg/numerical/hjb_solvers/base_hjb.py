@@ -110,47 +110,27 @@ class BaseHJBSolver(BaseNumericalSolver):
             >>> print(U.shape)  # (51, 101)
         """
         # Create uniform density for standalone mode (no MFG coupling)
-        if hasattr(self.problem, "Nx") and self.problem.Nx is not None:
-            # 1D problem
-            Nt, Nx = self.problem.Nt + 1, self.problem.Nx + 1
-            m_uniform = np.ones((Nt, Nx)) / (self.problem.xmax - self.problem.xmin)
+        # Using geometry-first API (works for any dimension)
+        Nt_points = self.problem.Nt + 1  # Time points (Nt intervals + 1)
 
-            # Get terminal condition from problem
-            U_terminal = self.problem.get_final_u()
+        # Get spatial info from geometry
+        spatial_shape = self.problem.geometry.get_grid_shape()  # tuple of Nx_points per dim
+        bounds = self.problem.geometry.get_bounds()
 
-            # Initial guess for nonlinear solver: repeat terminal condition
-            U_prev_picard = np.tile(U_terminal, (Nt, 1))
+        # Compute domain volume for normalization
+        volume = 1.0
+        for dim in range(len(spatial_shape)):
+            volume *= bounds[1][dim] - bounds[0][dim]
 
-        elif hasattr(self.problem, "spatial_shape") and self.problem.spatial_shape is not None:
-            # nD problem (2D, 3D, etc.)
-            Nt = self.problem.Nt + 1
-            spatial_shape = self.problem.spatial_shape
+        # Create uniform density: shape (Nt_points, *spatial_shape)
+        full_shape = (Nt_points, *spatial_shape)
+        m_uniform = np.ones(full_shape) / volume
 
-            # Compute domain volume for normalization
-            if hasattr(self.problem, "spatial_bounds") and self.problem.spatial_bounds:
-                volume = 1.0
-                for bounds in self.problem.spatial_bounds:
-                    volume *= bounds[1] - bounds[0]
-            else:
-                # Fallback if bounds not available
-                volume = 1.0
+        # Get terminal condition from problem
+        U_terminal = self.problem.get_final_u()
 
-            # Create uniform density: shape (Nt, *spatial_shape)
-            full_shape = (Nt, *spatial_shape)
-            m_uniform = np.ones(full_shape) / volume
-
-            # Get terminal condition from problem
-            U_terminal = self.problem.get_final_u()
-
-            # Initial guess for nonlinear solver: repeat terminal condition across time
-            U_prev_picard = np.tile(U_terminal, (Nt,) + (1,) * len(spatial_shape))
-
-        else:
-            # Complex geometry or network - not yet supported
-            raise NotImplementedError(
-                "Standalone solve() for geometry/network problems not yet implemented. "
-                "Use solve_hjb_system() directly with uniform density."
-            )
+        # Initial guess for nonlinear solver: repeat terminal condition across time
+        U_prev_picard = np.tile(U_terminal, (Nt_points,) + (1,) * len(spatial_shape))
 
         # Solve using the specific solver's implementation
         return self.solve_hjb_system(m_uniform, U_terminal, U_prev_picard)
@@ -361,8 +341,8 @@ def compute_hjb_residual(
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> np.ndarray:
-    Nx = problem.Nx + 1
-    dx = problem.dx
+    Nx = problem.geometry.get_grid_shape()[0]
+    dx = problem.geometry.get_grid_spacing()[0]
     dt = problem.dt
 
     # Handle diffusion field - NumPy will broadcast scalar automatically
@@ -485,8 +465,8 @@ def compute_hjb_jacobian(
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> sparse.csr_matrix:
-    Nx = problem.Nx + 1
-    dx = problem.dx
+    Nx = problem.geometry.get_grid_shape()[0]
+    dx = problem.geometry.get_grid_spacing()[0]
     dt = problem.dt
     eps = 1e-7
 
@@ -690,7 +670,8 @@ def newton_hjb_step(
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> tuple[np.ndarray, float]:
-    dx_norm = problem.dx if abs(problem.dx) > 1e-12 else 1.0
+    dx = problem.geometry.get_grid_spacing()[0]
+    dx_norm = dx if abs(dx) > 1e-12 else 1.0
 
     if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate, np.inf
@@ -725,7 +706,8 @@ def newton_hjb_step(
     delta_U = np.zeros_like(U_n_current_newton_iterate)
     l2_error_of_step = np.inf
     try:
-        if not jacobian_J_U.nnz > 0 and problem.Nx > 0:
+        Nx = problem.geometry.get_grid_shape()[0]
+        if not jacobian_J_U.nnz > 0 and Nx > 0:
             pass
         else:
             # Original notebook's RHS for Newton solve was effectively:
@@ -911,7 +893,7 @@ def solve_hjb_system_backward(
         newton_tolerance = 1e-6
 
     Nt = problem.Nt + 1
-    Nx = problem.Nx + 1
+    Nx = problem.geometry.get_grid_shape()[0]
 
     # Use backend.zeros() instead of xp.zeros() to ensure correct device
     if backend is not None:
@@ -1001,7 +983,7 @@ if __name__ == "__main__":
     # Test that BaseHJBSolver is abstract
     from mfg_pde import MFGProblem
 
-    problem = MFGProblem(Nx=10, Nt=5, T=1.0, sigma=0.1)
+    problem = MFGProblem(Nx=10, Nt=5, T=1.0, diffusion=0.1)
 
     try:
         base_solver = BaseHJBSolver(problem)

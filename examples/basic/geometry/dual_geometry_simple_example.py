@@ -234,7 +234,7 @@ def example_4_access_projector_directly():
     coarse_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], num_points=[26, 26])
 
     # Create problem
-    problem = MFGProblem(hjb_geometry=fine_grid, fp_geometry=coarse_grid, T=1.0, Nt=50, sigma=0.05)
+    problem = MFGProblem(hjb_geometry=fine_grid, fp_geometry=coarse_grid, T=1.0, Nt=50, diffusion=0.05)
 
     # Access projector directly
     projector = problem.geometry_projector

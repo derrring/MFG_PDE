@@ -69,7 +69,7 @@ def create_mfg_problem() -> MFGProblem:
         return gaussian / np.trapz(gaussian, x)
 
     # Create MFG problem
-    problem = MFGProblem(xmin=0.0, xmax=1.0, T=1.0, sigma=0.1, Nx=64)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, T=1.0, diffusion=0.1, Nx=64)
 
     # Set terminal and initial conditions
     problem.terminal_condition = terminal_condition
@@ -370,8 +370,9 @@ def main():
     problem = create_mfg_problem()
     config = create_pinn_config("fast")  # Use "standard" or "thorough" for better results
 
-    print(f"Problem domain: x ∈ [{problem.xmin}, {problem.xmax}], t ∈ [0, {problem.T}]")
-    print(f"Diffusion coefficient: σ = {problem.sigma}")
+    bounds = problem.geometry.get_bounds()
+    print(f"Problem domain: x ∈ [{bounds[0][0]}, {bounds[1][0]}], t ∈ [0, {problem.T}]")
+    print(f"Diffusion coefficient: σ = {problem.diffusion}")
     print(f"PINN configuration: {config.max_epochs} epochs, {config.hidden_layers} architecture")
 
     # Demonstrate individual solvers

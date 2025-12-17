@@ -34,7 +34,7 @@ class SimpleLQMFG2D(MFGProblem):
             Nx=30,
             Lx=1.0,
             xmin=0.0,
-            sigma=0.2,
+            diffusion=0.2,
             coupling_coefficient=0.5,
             dimension=2,
         )
@@ -63,13 +63,14 @@ class TestHJBGFDMWithParticleFP:
 
         fp_solver = FPParticleSolver(problem, num_particles=1000)
 
-        m0 = np.ones(problem.Nx + 1) / (problem.Nx + 1)
-        U = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        m0 = np.ones(Nx_points) / Nx_points
+        U = np.zeros((Nt_points, Nx_points))
 
         M = fp_solver.solve_fp_system(m0, U, show_progress=False)
 
         # Particle solver outputs on grid via KDE
-        assert M.shape == (problem.Nt + 1, problem.Nx + 1)
+        assert M.shape == (Nt_points, Nx_points)
 
     def test_mass_conservation_particle_fp(self):
         """Test mass conservation in particle FP solver."""
@@ -78,8 +79,9 @@ class TestHJBGFDMWithParticleFP:
         fp_solver = FPParticleSolver(problem, num_particles=2000)
 
         # Uniform initial density
-        m0 = np.ones(problem.Nx + 1) / (problem.Nx + 1)
-        U = np.zeros((problem.Nt + 1, problem.Nx + 1))
+        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        m0 = np.ones(Nx_points) / Nx_points
+        U = np.zeros((Nt_points, Nx_points))
 
         M = fp_solver.solve_fp_system(m0, U, show_progress=False)
 
@@ -114,13 +116,14 @@ class TestFPGFDMSolver:
 
         fp_solver = FPGFDMSolver(problem, collocation_points=points, delta=0.15)
 
+        Nt_points = problem.geometry.get_grid_shape()[0]
         m0 = np.ones(N_points) / N_points
-        U = np.zeros((problem.Nt + 1, N_points))
+        U = np.zeros((Nt_points, N_points))
 
         M = fp_solver.solve_fp_system(m0, U, show_progress=False)
 
         # GFDM solver outputs on collocation points
-        assert M.shape == (problem.Nt + 1, N_points)
+        assert M.shape == (Nt_points, N_points)
 
     def test_fp_gfdm_mass_conservation(self):
         """Test mass conservation in GFDM-based FP solver."""
@@ -132,13 +135,14 @@ class TestFPGFDMSolver:
 
         fp_solver = FPGFDMSolver(problem, collocation_points=points, delta=0.15)
 
+        Nt_points = problem.geometry.get_grid_shape()[0]
         m0 = np.ones(N_points) / N_points
-        U = np.zeros((problem.Nt + 1, N_points))
+        U = np.zeros((Nt_points, N_points))
 
         M = fp_solver.solve_fp_system(m0, U, show_progress=False)
 
         # Check mass conservation
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass = np.sum(M[t_idx, :])
             assert np.abs(mass - 1.0) < 1e-10
 
@@ -153,8 +157,9 @@ class TestFPGFDMSolver:
         solver = FPGFDMSolver(problem, collocation_points=points, delta=0.15)
 
         # Wrong m0 shape
+        Nt_points = problem.geometry.get_grid_shape()[0]
         m0_wrong = np.ones(50)
-        U_correct = np.zeros((problem.Nt + 1, N_points))
+        U_correct = np.zeros((Nt_points, N_points))
 
         with pytest.raises(ValueError, match="must match"):
             solver.solve_fp_system(m0_wrong, U_correct, show_progress=False)

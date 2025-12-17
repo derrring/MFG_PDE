@@ -60,7 +60,7 @@ def create_obstacle_avoidance_problem() -> LagrangianMFGProblem:
         obstacle_center=0.5,
         obstacle_radius=0.15,
         obstacle_penalty=1000.0,
-        sigma=0.1,
+        diffusion=0.1,
     )
 
 
@@ -118,7 +118,7 @@ def create_budget_constrained_problem() -> LagrangianMFGProblem:
         description="Budget-Constrained MFG",
     )
 
-    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30, sigma=0.1, components=components)
+    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30, diffusion=0.1, components=components)
 
 
 def create_social_distancing_problem() -> LagrangianMFGProblem:
@@ -188,7 +188,7 @@ def create_social_distancing_problem() -> LagrangianMFGProblem:
         description="Social Distancing MFG with Capacity Constraints",
     )
 
-    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=0.6, Nt=30, sigma=0.05, components=components)
+    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=0.6, Nt=30, diffusion=0.05, components=components)
 
 
 def solve_constrained_problem(problem: LagrangianMFGProblem, problem_name: str, max_iterations: int = 30) -> dict:
@@ -275,7 +275,8 @@ def solve_constrained_problem(problem: LagrangianMFGProblem, problem_name: str, 
 
 def create_obstacle_aware_initial_guess(problem: LagrangianMFGProblem) -> np.ndarray:
     """Create initial guess that avoids obstacles."""
-    density_guess = np.zeros((problem.Nt, problem.Nx + 1))
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    density_guess = np.zeros((problem.Nt, Nx_points))
 
     # Get obstacle parameters
     obstacle_center = problem.components.parameters.get("obstacle_center", 0.5)
@@ -301,7 +302,8 @@ def create_obstacle_aware_initial_guess(problem: LagrangianMFGProblem) -> np.nda
                 density_guess[i, j] = 1e-6  # Minimal density in obstacle region
 
         # Normalize
-        total_mass = trapezoid(density_guess[i, :], x=problem.x)
+        x_grid = problem.geometry.get_spatial_grid()
+        total_mass = trapezoid(density_guess[i, :], x=x_grid)
         if total_mass > 1e-12:
             density_guess[i, :] /= total_mass
 
@@ -310,16 +312,18 @@ def create_obstacle_aware_initial_guess(problem: LagrangianMFGProblem) -> np.nda
 
 def create_budget_aware_initial_guess(problem: LagrangianMFGProblem) -> np.ndarray:
     """Create initial guess that respects budget constraints."""
-    density_guess = np.zeros((problem.Nt, problem.Nx + 1))
+    Nx_points = problem.geometry.get_grid_shape()[0]
+    density_guess = np.zeros((problem.Nt, Nx_points))
 
     # Start with initial density
+    x_grid = problem.geometry.get_spatial_grid()
     if problem.components.initial_density_func:
-        initial_dist = np.array([problem.components.initial_density_func(x) for x in problem.x])
+        initial_dist = np.array([problem.components.initial_density_func(x) for x in x_grid])
     else:
-        initial_dist = np.ones(problem.Nx + 1)
+        initial_dist = np.ones(len(x_grid))
 
     # Normalize initial distribution
-    initial_dist = initial_dist / trapezoid(initial_dist, x=problem.x)
+    initial_dist = initial_dist / trapezoid(initial_dist, x=x_grid)
 
     # Evolve slowly to respect budget (slow movement = low control cost)
     for i, t in enumerate(problem.t):
@@ -334,8 +338,10 @@ def create_budget_aware_initial_guess(problem: LagrangianMFGProblem) -> np.ndarr
             x_original = x - shift
 
             # Interpolate from initial distribution
-            if problem.xmin <= x_original <= problem.xmax:
-                idx = (x_original - problem.xmin) / problem.dx
+            bounds = problem.geometry.get_bounds()
+            dx = problem.geometry.get_grid_spacing()[0]
+            if bounds[0][0] <= x_original <= bounds[1][0]:
+                idx = (x_original - bounds[0][0]) / dx
                 i_idx = int(idx)
                 alpha = idx - i_idx
 
@@ -354,7 +360,7 @@ def create_budget_aware_initial_guess(problem: LagrangianMFGProblem) -> np.ndarr
             density_guess[i, j] = 0.7 * density_value + 0.3 * diffusion_component
 
         # Normalize
-        total_mass = trapezoid(density_guess[i, :], x=problem.x)
+        total_mass = trapezoid(density_guess[i, :], x=x_grid)
         if total_mass > 1e-12:
             density_guess[i, :] /= total_mass
 
@@ -402,7 +408,8 @@ def analyze_constraint_satisfaction(problem: LagrangianMFGProblem, result: Varia
         analysis["max_density_violation"] = max(0.0, np.max(max_densities) - capacity_limit)
 
     # Check mass conservation
-    mass_over_time = [trapezoid(density[i, :], x=problem.x) for i in range(problem.Nt)]
+    x_grid = problem.geometry.get_spatial_grid()
+    mass_over_time = [trapezoid(density[i, :], x=x_grid) for i in range(problem.Nt)]
     analysis["mass_conservation_error"] = np.std(mass_over_time)
     analysis["final_mass"] = mass_over_time[-1]
 
@@ -445,7 +452,7 @@ def create_constraint_comparison_plots(solutions: list[dict]):
             else:
                 problem = create_social_distancing_problem()
 
-            x_grid = problem.x
+            x_grid = problem.geometry.get_spatial_grid()
             t_grid = problem.t
             density = result.optimal_flow
 

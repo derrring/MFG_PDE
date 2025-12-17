@@ -133,7 +133,9 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         self.time_grid = np.linspace(0, self.problem.T, self.config.num_time_steps)
         self.dt = self.time_grid[1] - self.time_grid[0]
 
-        self.spatial_grid = np.linspace(self.problem.xmin, self.problem.xmax, self.config.num_spatial_points)
+        bounds = self.problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        self.spatial_grid = np.linspace(xmin, xmax, self.config.num_spatial_points)
         self.dx = self.spatial_grid[1] - self.spatial_grid[0]
 
         self.logger.info(f"Sinkhorn discretization: {len(self.time_grid)}×{len(self.spatial_grid)} grid")
@@ -247,14 +249,17 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         """Initialize density evolution."""
         densities = np.zeros((len(self.time_grid), len(self.spatial_grid)))
 
+        bounds = self.problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+
         # Initial condition
         if hasattr(self.problem, "initial_density") and self.problem.initial_density is not None:
             for i, x in enumerate(self.spatial_grid):
                 densities[0, i] = self.problem.initial_density(x)
         else:
             # Default Gaussian
-            center = (self.problem.xmin + self.problem.xmax) / 2
-            width = (self.problem.xmax - self.problem.xmin) / 4
+            center = (xmin + xmax) / 2
+            width = (xmax - xmin) / 4
             densities[0, :] = np.exp(-((self.spatial_grid - center) ** 2) / (2 * width**2))
 
         # Normalize

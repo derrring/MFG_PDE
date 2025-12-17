@@ -24,7 +24,7 @@ def main():
 
     # Setup
     np.random.seed(42)
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=51, T=1.0, Nt=51, sigma=1.0, coupling_coefficient=0.5)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=51, T=1.0, Nt=51, diffusion=1.0, coupling_coefficient=0.5)
     bc = neumann_bc(dimension=1, value=0.0)
 
     fp_solver = FPParticleSolver(problem, num_particles=1000, normalize_kde_output=True, boundary_conditions=bc)
@@ -40,11 +40,12 @@ def main():
         _ = mfg_solver.solve(max_iterations=100, tolerance=1e-4, verbose=False)
 
     # Get final state from solver internals
+    Nx_points = problem.geometry.get_grid_shape()[0]
     M = fp_solver._m_current if hasattr(fp_solver, "_m_current") else problem.m_init
-    _ = hjb_solver._u_current if hasattr(hjb_solver, "_u_current") else np.zeros((problem.Nt + 1, problem.Nx + 1))
+    _ = hjb_solver._u_current if hasattr(hjb_solver, "_u_current") else np.zeros((problem.Nt + 1, Nx_points))
 
     # Compute masses
-    dx = problem.dx
+    dx = problem.geometry.get_grid_spacing()[0]
     masses = np.array([float(np.trapz(M[t, :], dx=dx)) for t in range(problem.Nt + 1)])
 
     print("✅ Computation complete")
@@ -104,8 +105,8 @@ def main():
     Problem Configuration:
     ---------------------
     Domain: [0, 1] × [0, 1]
-    Grid: {problem.Nx + 1} spatial × {problem.Nt + 1} temporal
-    Diffusion: σ = {problem.sigma}
+    Grid: {problem.geometry.get_grid_shape()[0]} spatial × {problem.Nt + 1} temporal
+    Diffusion: σ = {problem.diffusion_coefficient}
     Particles: 1000
     Boundary: No-flux Neumann
 

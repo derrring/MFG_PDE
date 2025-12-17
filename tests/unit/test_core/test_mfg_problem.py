@@ -86,8 +86,8 @@ def test_mfg_problem_default_initialization():
     assert problem.xmin == 0.0
     assert problem.xmax == 1.0
     assert problem.Lx == 1.0
-    assert problem.Nx == 51
-    assert problem.dx == pytest.approx(1.0 / 51)
+    assert problem.geometry.get_grid_shape()[0] - 1 == 51  # Nx intervals
+    assert problem.geometry.get_grid_spacing()[0] == pytest.approx(1.0 / 51)
 
     # Time parameters
     assert problem.T == 1.0
@@ -113,9 +113,9 @@ def test_mfg_problem_custom_domain():
     assert problem.xmin == -1.0
     assert problem.xmax == 2.0
     assert problem.Lx == 3.0
-    assert problem.Nx == 100
-    assert problem.dx == pytest.approx(3.0 / 100)
-    assert len(problem.xSpace) == 101  # Nx + 1
+    assert problem.geometry.get_grid_shape()[0] - 1 == 100  # Nx intervals
+    assert problem.geometry.get_grid_spacing()[0] == pytest.approx(3.0 / 100)
+    assert problem.geometry.get_grid_shape()[0] == 101  # Nx+1 points
 
 
 @pytest.mark.unit
@@ -132,7 +132,7 @@ def test_mfg_problem_custom_time():
 @pytest.mark.unit
 def test_mfg_problem_custom_coefficients():
     """Test MFGProblem with custom coefficients."""
-    problem = MFGProblem(sigma=0.5, coupling_coefficient=0.8)
+    problem = MFGProblem(diffusion=0.5, coupling_coefficient=0.8)
 
     assert problem.sigma == 0.5
     assert problem.coupling_coefficient == 0.8
@@ -143,7 +143,7 @@ def test_mfg_problem_spatial_grid():
     """Test MFGProblem spatial grid generation."""
     problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=10)
 
-    assert len(problem.xSpace) == 11  # Nx + 1 points
+    assert problem.geometry.get_grid_shape()[0] == 11  # Nx+1 points
     assert problem.xSpace[0] == 0.0
     assert problem.xSpace[-1] == 1.0
     # Check uniform spacing
@@ -176,7 +176,7 @@ def test_mfg_problem_default_potential():
 
     assert hasattr(problem, "f_potential")
     assert isinstance(problem.f_potential, np.ndarray)
-    assert len(problem.f_potential) == 11  # Nx + 1
+    assert len(problem.f_potential) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     # Check potential is non-zero (has spatial variation)
     assert not np.allclose(problem.f_potential, 0.0)
 
@@ -188,7 +188,7 @@ def test_mfg_problem_default_final_value():
 
     assert hasattr(problem, "u_fin")
     assert isinstance(problem.u_fin, np.ndarray)
-    assert len(problem.u_fin) == 11  # Nx + 1
+    assert len(problem.u_fin) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     # Check final value is non-zero
     assert not np.allclose(problem.u_fin, 0.0)
 
@@ -200,7 +200,7 @@ def test_mfg_problem_default_initial_density():
 
     assert hasattr(problem, "m_init")
     assert isinstance(problem.m_init, np.ndarray)
-    assert len(problem.m_init) == 11  # Nx + 1
+    assert len(problem.m_init) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     # Check initial density is non-negative
     assert np.all(problem.m_init >= 0.0)
     # Check it has some mass
@@ -244,7 +244,7 @@ def test_mfg_problem_with_custom_initial_density():
     # Check initial density was set using custom function and normalized
     expected_unnormalized = np.exp(-10 * (problem.xSpace - 0.5) ** 2)
     # Normalize expected (same way as in MFGProblem.__init__)
-    integral = np.sum(expected_unnormalized) * problem.dx
+    integral = np.sum(expected_unnormalized) * problem.geometry.get_grid_spacing()[0]
     expected = expected_unnormalized / integral
     # Flatten both arrays for comparison (problem stores as 2D column vector)
     assert np.allclose(np.ravel(problem.m_init), np.ravel(expected))
@@ -275,7 +275,7 @@ def test_mfg_problem_with_custom_final_value():
 @pytest.mark.unit
 def test_hamiltonian_h_default():
     """Test default Hamiltonian H computation."""
-    problem = MFGProblem(Nx=10, sigma=1.0, coupling_coefficient=0.5)
+    problem = MFGProblem(Nx=10, diffusion=1.0, coupling_coefficient=0.5)
 
     x_idx = 5
     m_at_x = 1.0
@@ -376,7 +376,7 @@ def test_get_potential_at_time():
     potential = problem.get_potential_at_time(t_idx=5)
 
     assert isinstance(potential, np.ndarray)
-    assert len(potential) == 11  # Nx + 1
+    assert len(potential) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     # Should match stored potential
     assert np.allclose(potential, problem.f_potential)
 
@@ -389,7 +389,7 @@ def test_get_final_u():
     u_final = problem.get_final_u()
 
     assert isinstance(u_final, np.ndarray)
-    assert len(u_final) == 11  # Nx + 1
+    assert len(u_final) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     assert np.allclose(u_final, problem.u_fin)
 
 
@@ -401,14 +401,14 @@ def test_get_initial_m():
     m_initial = problem.get_initial_m()
 
     assert isinstance(m_initial, np.ndarray)
-    assert len(m_initial) == 11  # Nx + 1
+    assert len(m_initial) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     assert np.allclose(m_initial, problem.m_init)
 
 
 @pytest.mark.unit
 def test_get_problem_info():
     """Test get_problem_info returns comprehensive info dict."""
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100, sigma=0.5, coupling_coefficient=0.8)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100, diffusion=0.5, coupling_coefficient=0.8)
 
     info = problem.get_problem_info()
 
@@ -422,7 +422,7 @@ def test_get_problem_info():
     # Check values
     assert info["domain"]["xmin"] == 0.0
     assert info["domain"]["xmax"] == 1.0
-    assert info["domain"]["Nx"] == 50
+    assert info["domain"]["Nx"] == 50  # Intervals, from legacy info
     assert info["time"]["T"] == 1.0
     assert info["time"]["Nt"] == 100
     assert info["coefficients"]["sigma"] == 0.5
@@ -495,7 +495,7 @@ def test_dual_geometry_specification():
     fp_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
     # Create problem with dual geometries
-    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1)
 
     # Check that both geometries are stored
     assert problem.hjb_geometry is hjb_grid
@@ -515,7 +515,7 @@ def test_dual_geometry_backward_compatibility():
     grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
 
     # Create problem with unified geometry (old API)
-    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=0.1)
 
     # Check that both hjb_geometry and fp_geometry point to the same geometry
     assert problem.hjb_geometry is grid
@@ -585,7 +585,7 @@ def test_dual_geometry_with_1d_grids():
     hjb_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])  # Fine grid
     fp_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Coarse grid
 
-    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1)
 
     # Verify dual geometry setup
     assert problem.hjb_geometry is hjb_grid
@@ -635,7 +635,8 @@ def test_diffusion_field_scalar():
 def test_diffusion_field_array():
     """Test MFGProblem with array diffusion coefficient (spatially varying)."""
     # Create a spatially varying diffusion array
-    sigma_array = np.linspace(0.1, 1.0, 52)  # Nx+1 = 52 for Nx=51
+    # Default Nx=51 intervals → 52 grid points
+    sigma_array = np.linspace(0.1, 1.0, 52)
 
     problem = MFGProblem(sigma=sigma_array)
 
@@ -678,20 +679,22 @@ def test_diffusion_primary_parameter():
 
 @pytest.mark.unit
 def test_sigma_deprecated_alias():
-    """Test that 'sigma' is deprecated alias for 'diffusion'."""
+    """Test that 'sigma' parameter is deprecated alias for 'diffusion'."""
     import warnings
 
+    # Using sigma= should emit a deprecation warning
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        problem = MFGProblem(sigma=0.4)
+        problem = MFGProblem(sigma=0.4)  # Deprecated parameter
 
-        # Check deprecation warning was raised
+        # Check deprecation warning was raised for using sigma=
         deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-        assert len(deprecation_warnings) >= 1
-        assert "sigma" in str(deprecation_warnings[0].message)
-        assert "diffusion" in str(deprecation_warnings[0].message)
+        assert len(deprecation_warnings) >= 1, "Expected deprecation warning when using sigma= parameter"
+        # At least one warning should mention sigma or diffusion
+        warning_messages = [str(w.message) for w in deprecation_warnings]
+        assert any("sigma" in msg or "diffusion" in msg for msg in warning_messages)
 
-    # Value should still work
+    # Value should still work via backward compat
     assert problem.sigma == 0.4
     assert problem.diffusion_field == 0.4
 
@@ -708,7 +711,7 @@ def test_drift_field_none():
 @pytest.mark.unit
 def test_drift_field_array():
     """Test MFGProblem with array drift field."""
-    # Create a drift field array
+    # Create a drift field array (default problem has 52 grid points)
     drift_array = np.ones(52) * 0.1  # Constant drift
 
     problem = MFGProblem(drift=drift_array)
@@ -745,7 +748,7 @@ def test_drift_field_callable():
 @pytest.mark.unit
 def test_get_diffusion_coefficient_field():
     """Test get_diffusion_coefficient_field returns CoefficientField wrapper."""
-    problem = MFGProblem(sigma=0.5)
+    problem = MFGProblem(diffusion=0.5)
 
     coeff_field = problem.get_diffusion_coefficient_field()
 
@@ -759,7 +762,7 @@ def test_get_diffusion_coefficient_field():
 @pytest.mark.unit
 def test_get_drift_coefficient_field():
     """Test get_drift_coefficient_field returns CoefficientField wrapper."""
-    drift_array = np.ones(52) * 0.1
+    drift_array = np.ones(52) * 0.1  # Default problem has 52 grid points
     problem = MFGProblem(drift=drift_array)
 
     coeff_field = problem.get_drift_coefficient_field()
@@ -778,19 +781,19 @@ def test_has_state_dependent_coefficients_mixed():
     def sigma_func(t, x, m):
         return 0.1 + 0.5 * m
 
-    # Scalar drift, callable diffusion
-    problem1 = MFGProblem(sigma=sigma_func, drift=np.zeros(52))
+    # Scalar drift, callable diffusion (default problem has 52 grid points)
+    problem1 = MFGProblem(diffusion=sigma_func, drift=np.zeros(52))
     assert problem1.has_state_dependent_coefficients()
 
     # Callable drift, scalar diffusion
     def drift_func(t, x, m):
         return -0.1 * x
 
-    problem2 = MFGProblem(sigma=0.5, drift=drift_func)
+    problem2 = MFGProblem(diffusion=0.5, drift=drift_func)
     assert problem2.has_state_dependent_coefficients()
 
     # Both scalar
-    problem3 = MFGProblem(sigma=0.5, drift=np.zeros(52))
+    problem3 = MFGProblem(diffusion=0.5, drift=np.zeros(52))
     assert not problem3.has_state_dependent_coefficients()
 
 
@@ -805,7 +808,7 @@ def test_diffusion_field_with_geometry():
         """2D state-dependent diffusion."""
         return 0.1 + 0.1 * np.sum(x**2)
 
-    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=sigma_func)
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=sigma_func)
 
     assert callable(problem.diffusion_field)
     assert problem.has_state_dependent_coefficients()

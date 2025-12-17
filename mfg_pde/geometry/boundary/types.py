@@ -138,6 +138,15 @@ class BCType(Enum):
         - FP density equation (field) -> NO_FLUX
         - Particle simulation -> REFLECTING
         - HJB value function -> NEUMANN (with g=0)
+
+    Extrapolation Types (for unbounded/truncated domains):
+        EXTRAPOLATION_LINEAR: Zero second derivative (d²u/dx² = 0)
+            - Use for HJB value functions with linear growth
+            - Ghost = 2*u_0 - u_1
+
+        EXTRAPOLATION_QUADRATIC: Zero third derivative (d³u/dx³ = 0)
+            - Use for LQG-type problems with quadratic value growth
+            - Ghost = 3*u_0 - 3*u_1 + u_2
     """
 
     DIRICHLET = "dirichlet"
@@ -146,6 +155,8 @@ class BCType(Enum):
     PERIODIC = "periodic"
     REFLECTING = "reflecting"
     NO_FLUX = "no_flux"
+    EXTRAPOLATION_LINEAR = "extrapolation_linear"
+    EXTRAPOLATION_QUADRATIC = "extrapolation_quadratic"
 
 
 @dataclass

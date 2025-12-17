@@ -46,12 +46,26 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 # Import base class for inheritance
-from .applicator_base import BaseStructuredApplicator, GridType
+from .applicator_base import (
+    BaseStructuredApplicator,
+    BoundaryCalculator,
+    BoundedTopology,
+    DirichletCalculator,
+    GridType,
+    LinearExtrapolationCalculator,
+    NeumannCalculator,
+    PeriodicTopology,
+    QuadraticExtrapolationCalculator,
+    RobinCalculator,
+    Topology,
+    ZeroFluxCalculator,
+    ZeroGradientCalculator,
+)
 from .conditions import BoundaryConditions
 
 # Legacy import for backward compatibility
@@ -75,11 +89,26 @@ if TYPE_CHECKING:
 class GhostCellConfig:
     """Configuration for ghost cell computation."""
 
-    # Grid type affects ghost cell formula
-    grid_type: Literal["cell_centered", "vertex_centered"] = "cell_centered"
+    # Grid type affects ghost cell formula (use GridType enum or string)
+    grid_type: GridType | str = GridType.CELL_CENTERED
 
     # For vertex-centered grids, boundary is at grid point
     # For cell-centered grids, boundary is at cell face (between ghost and interior)
+
+    def __post_init__(self) -> None:
+        """Convert string grid_type to enum for backward compatibility."""
+        if isinstance(self.grid_type, str):
+            self.grid_type = GridType.VERTEX_CENTERED if self.grid_type == "vertex_centered" else GridType.CELL_CENTERED
+
+    @property
+    def is_vertex_centered(self) -> bool:
+        """Check if grid is vertex-centered."""
+        return self.grid_type == GridType.VERTEX_CENTERED
+
+    @property
+    def is_cell_centered(self) -> bool:
+        """Check if grid is cell-centered."""
+        return self.grid_type == GridType.CELL_CENTERED
 
 
 def apply_boundary_conditions_2d(
@@ -187,7 +216,7 @@ def _apply_uniform_bc_2d(
         if callable(g):
             g = 0.0  # For uniform BC, use constant 0 if callable
 
-        if config.grid_type == "vertex_centered":
+        if config.is_vertex_centered:
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
@@ -260,7 +289,7 @@ def _apply_legacy_uniform_bc_2d(
     elif bc_type == "dirichlet":
         g = boundary_conditions.left_value if boundary_conditions.left_value is not None else 0.0
 
-        if config.grid_type == "vertex_centered":
+        if config.is_vertex_centered:
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
@@ -526,7 +555,7 @@ def _compute_ghost_value_enhanced(
 
     if bc_type == BCType.DIRICHLET:
         # u = g at boundary
-        if config.grid_type == "vertex_centered":
+        if config.is_vertex_centered:
             # Vertex-centered: boundary value is at grid point
             # Ghost cell mirrors the boundary value
             return g
@@ -574,6 +603,13 @@ def _compute_ghost_value_enhanced(
         # Periodic BC should not appear in mixed BC context
         # Return interior value as fallback (will be handled separately)
         return interior_val
+
+    elif bc_type in [BCType.EXTRAPOLATION_LINEAR, BCType.EXTRAPOLATION_QUADRATIC]:
+        # Extrapolation BCs require access to multiple interior points
+        # This function only receives one interior value, so we fall back to Neumann
+        # For proper extrapolation, use the specialized handling in apply_boundary_conditions_1d
+        # or call ghost_cell_linear_extrapolation/ghost_cell_quadratic_extrapolation directly
+        return interior_val  # Fallback: zero gradient
 
     else:
         # Unknown type - use Neumann (zero gradient) as safe default
@@ -1100,12 +1136,26 @@ def _apply_bc_1d(
         # Left BC
         point_left = np.array([x_min])
         bc_left = boundary_conditions.get_bc_at_point(point_left, "x_min")
-        padded[0] = _compute_ghost_value_enhanced(bc_left, field[0], dx, "min", point_left, time, config)
+        if bc_left.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
+            # Linear extrapolation: ghost = 2*u_0 - u_1
+            padded[0] = 2.0 * field[0] - field[1]
+        elif bc_left.bc_type == BCType.EXTRAPOLATION_QUADRATIC and len(field) >= 3:
+            # Quadratic extrapolation: ghost = 3*u_0 - 3*u_1 + u_2
+            padded[0] = 3.0 * field[0] - 3.0 * field[1] + field[2]
+        else:
+            padded[0] = _compute_ghost_value_enhanced(bc_left, field[0], dx, "min", point_left, time, config)
 
         # Right BC
         point_right = np.array([x_max])
         bc_right = boundary_conditions.get_bc_at_point(point_right, "x_max")
-        padded[-1] = _compute_ghost_value_enhanced(bc_right, field[-1], dx, "max", point_right, time, config)
+        if bc_right.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
+            # Linear extrapolation: ghost = 2*u_0 - u_1
+            padded[-1] = 2.0 * field[-1] - field[-2]
+        elif bc_right.bc_type == BCType.EXTRAPOLATION_QUADRATIC and len(field) >= 3:
+            # Quadratic extrapolation: ghost = 3*u_0 - 3*u_1 + u_2
+            padded[-1] = 3.0 * field[-1] - 3.0 * field[-2] + field[-3]
+        else:
+            padded[-1] = _compute_ghost_value_enhanced(bc_right, field[-1], dx, "max", point_right, time, config)
 
         return padded
 
@@ -1332,7 +1382,7 @@ def get_ghost_values_nd(
                 # Time-varying BC: call with current time
                 g = g(time)
 
-            if config.grid_type == "vertex_centered":
+            if config.is_vertex_centered:
                 # Vertex-centered: boundary is at grid point
                 ghosts[(axis, 0)] = np.full_like(u_int_left, g)
                 ghosts[(axis, 1)] = np.full_like(u_int_right, g)
@@ -1426,24 +1476,33 @@ class FDMApplicator(BaseStructuredApplicator):
     def __init__(
         self,
         dimension: int,
-        grid_type: str = "cell_centered",
+        grid_type: GridType | str = GridType.CELL_CENTERED,
     ):
         """
         Initialize FDM applicator.
 
         Args:
             dimension: Spatial dimension (1, 2, 3, or higher)
-            grid_type: Grid type ("cell_centered" or "vertex_centered")
+            grid_type: Grid type (GridType enum or string for backward compat)
         """
-        # Map string grid_type to enum
-        grid_type_enum = GridType.CELL_CENTERED if grid_type == "cell_centered" else GridType.VERTEX_CENTERED
+        # Handle both enum and string for backward compatibility
+        if isinstance(grid_type, str):
+            grid_type_enum = GridType.VERTEX_CENTERED if grid_type == "vertex_centered" else GridType.CELL_CENTERED
+        else:
+            grid_type_enum = grid_type
+
         super().__init__(dimension, grid_type_enum)
-        self._config = GhostCellConfig(grid_type=grid_type)
+        self._config = GhostCellConfig(grid_type=grid_type_enum)
 
     @property
-    def grid_type(self) -> str:
-        """Grid type (string for backward compatibility)."""
+    def grid_type(self) -> GridType:
+        """Grid type enum."""
         return self._config.grid_type
+
+    @property
+    def grid_type_str(self) -> str:
+        """Grid type as string (for backward compatibility)."""
+        return "vertex_centered" if self._config.is_vertex_centered else "cell_centered"
 
     def apply(
         self,
@@ -1523,7 +1582,414 @@ class FDMApplicator(BaseStructuredApplicator):
 
 
 # =============================================================================
-# Pre-allocated Ghost Cell Buffer (Zero-Copy Design)
+# Ghost Buffer with Topology/Calculator Composition (Issue #516)
+# =============================================================================
+
+
+def bc_to_topology_calculator(
+    bc: BoundaryConditions | LegacyBoundaryConditions1D,
+    shape: tuple[int, ...],
+    grid_type: GridType = GridType.CELL_CENTERED,
+    use_zero_flux: bool = False,
+    drift_velocity: float = 0.0,
+    diffusion_coeff: float = 1.0,
+) -> tuple[Topology, BoundaryCalculator | None]:
+    """
+    Convert BoundaryConditions to Topology + Calculator pair.
+
+    This is the bridge between the legacy BoundaryConditions API and the new
+    Topology/Calculator composition architecture (Issue #516).
+
+    **For NO_FLUX BC type, two physics-based options:**
+    - `use_zero_flux=False` (default): ZeroGradientCalculator (du/dn = 0)
+    - `use_zero_flux=True`: ZeroFluxCalculator (J·n = 0, mass conservation)
+
+    Args:
+        bc: Boundary condition specification (unified or legacy)
+        shape: Grid shape (interior points)
+        grid_type: Grid type for ghost cell formulas
+        use_zero_flux: If True, NO_FLUX BC uses ZeroFluxCalculator (J·n=0)
+                      for mass conservation. Default False uses ZeroGradientCalculator.
+        drift_velocity: For ZeroFluxCalculator, the normal drift component
+        diffusion_coeff: For ZeroFluxCalculator, the diffusion coefficient D = σ²/2
+
+    Returns:
+        Tuple of (Topology, Calculator | None). Calculator is None for periodic.
+
+    Examples:
+        >>> from mfg_pde.geometry.boundary import dirichlet_bc, no_flux_bc
+        >>> bc = dirichlet_bc(0.0, dimension=2)
+        >>> topology, calc = bc_to_topology_calculator(bc, shape=(100, 100))
+        >>> type(calc).__name__
+        'DirichletCalculator'
+
+        >>> # Zero gradient (default for HJB)
+        >>> bc = no_flux_bc(dimension=2)
+        >>> topo, calc = bc_to_topology_calculator(bc, (100, 100))
+        >>> type(calc).__name__
+        'ZeroGradientCalculator'
+
+        >>> # Zero flux (for FP mass conservation)
+        >>> topo, calc = bc_to_topology_calculator(bc, (100, 100), use_zero_flux=True)
+        >>> type(calc).__name__
+        'ZeroFluxCalculator'
+    """
+    dimension = len(shape)
+
+    def _get_no_flux_calculator() -> BoundaryCalculator:
+        """Select calculator based on physics requirement."""
+        if use_zero_flux:
+            return ZeroFluxCalculator(drift_velocity, diffusion_coeff, grid_type)
+        else:
+            return ZeroGradientCalculator(grid_type)
+
+    # Handle legacy BoundaryConditions from bc_1d module
+    if isinstance(bc, LegacyBoundaryConditions1D):
+        bc_type_str = bc.type.lower()
+        if bc_type_str == "periodic":
+            return PeriodicTopology(dimension, shape), None
+        elif bc_type_str == "dirichlet":
+            value = bc.left_value if bc.left_value is not None else 0.0
+            return BoundedTopology(dimension, shape), DirichletCalculator(value, grid_type)
+        elif bc_type_str in ("neumann", "no_flux"):
+            return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+        else:
+            # Default to zero gradient
+            return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+
+    # Handle unified BoundaryConditions
+    if not isinstance(bc, BoundaryConditions):
+        raise TypeError(f"Unsupported BC type: {type(bc)}")
+
+    # Only uniform BCs supported for now (mixed BC requires per-point dispatch)
+    if not bc.is_uniform:
+        raise NotImplementedError(
+            "Mixed BCs not yet supported in Topology/Calculator architecture. "
+            "Use PreallocatedGhostBuffer for mixed BCs."
+        )
+
+    seg = bc.segments[0]
+    bc_type = seg.bc_type
+
+    if bc_type == BCType.PERIODIC:
+        return PeriodicTopology(dimension, shape), None
+    elif bc_type == BCType.DIRICHLET:
+        value = seg.value if not callable(seg.value) else 0.0
+        return BoundedTopology(dimension, shape), DirichletCalculator(float(value), grid_type)
+    elif bc_type == BCType.NEUMANN:
+        flux = seg.value if not callable(seg.value) else 0.0
+        return BoundedTopology(dimension, shape), NeumannCalculator(float(flux), grid_type)
+    elif bc_type == BCType.NO_FLUX:
+        return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+    elif bc_type == BCType.ROBIN:
+        alpha = seg.alpha if hasattr(seg, "alpha") else 1.0
+        beta = seg.beta if hasattr(seg, "beta") else 0.0
+        rhs = seg.value if not callable(seg.value) else 0.0
+        return BoundedTopology(dimension, shape), RobinCalculator(alpha, beta, float(rhs), grid_type)
+    elif bc_type == BCType.EXTRAPOLATION_LINEAR:
+        return BoundedTopology(dimension, shape), LinearExtrapolationCalculator()
+    elif bc_type == BCType.EXTRAPOLATION_QUADRATIC:
+        return BoundedTopology(dimension, shape), QuadraticExtrapolationCalculator()
+    elif bc_type == BCType.REFLECTING:
+        # Reflecting BC for particles - use zero gradient for field solvers
+        return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+    else:
+        # Unknown type - default to zero gradient
+        return BoundedTopology(dimension, shape), _get_no_flux_calculator()
+
+
+def create_ghost_buffer_from_bc(
+    bc: BoundaryConditions | LegacyBoundaryConditions1D,
+    shape: tuple[int, ...],
+    dx: float | tuple[float, ...],
+    ghost_depth: int = 1,
+    grid_type: GridType = GridType.CELL_CENTERED,
+    dtype: type = np.float64,
+    use_zero_flux: bool = False,
+    drift_velocity: float = 0.0,
+    diffusion_coeff: float = 1.0,
+) -> GhostBuffer:
+    """
+    Factory function to create GhostBuffer from BoundaryConditions.
+
+    This is the primary entry point for using the new Topology/Calculator
+    architecture with existing BoundaryConditions specifications.
+
+    Args:
+        bc: Boundary condition specification
+        shape: Interior grid shape
+        dx: Grid spacing (scalar or per-dimension tuple)
+        ghost_depth: Number of ghost cell layers
+        grid_type: Grid type for ghost cell formulas
+        dtype: Data type for buffer
+        use_zero_flux: If True, NO_FLUX BC uses ZeroFluxCalculator (J·n=0)
+                      for mass conservation. Default False uses ZeroGradientCalculator.
+        drift_velocity: For ZeroFluxCalculator, the normal drift component
+        diffusion_coeff: For ZeroFluxCalculator, the diffusion coefficient D = σ²/2
+
+    Returns:
+        GhostBuffer configured with appropriate Topology and Calculator
+
+    Examples:
+        >>> from mfg_pde.geometry.boundary import dirichlet_bc, no_flux_bc
+        >>> # Default (zero gradient)
+        >>> bc = dirichlet_bc(0.0, dimension=2)
+        >>> buffer = create_ghost_buffer_from_bc(bc, shape=(100, 100), dx=0.01)
+
+        >>> # Mass-conserving (zero total flux)
+        >>> bc = no_flux_bc(dimension=2)
+        >>> buffer = create_ghost_buffer_from_bc(
+        ...     bc, shape=(100, 100), dx=0.01,
+        ...     use_zero_flux=True, diffusion_coeff=0.5
+        ... )
+    """
+    topology, calculator = bc_to_topology_calculator(
+        bc, shape, grid_type, use_zero_flux, drift_velocity, diffusion_coeff
+    )
+    return GhostBuffer(topology, calculator, dx, ghost_depth, dtype)
+
+
+class GhostBuffer:
+    """
+    Ghost cell buffer using Topology/Calculator composition.
+
+    This is the structural foundation for the 2-layer BC architecture:
+    - Layer 1: Topology (Memory/Indexing) - periodic vs bounded connectivity
+    - Layer 2: Calculator (Physics Strategy) - ghost value computation
+
+    The separation enables:
+    - Same Calculator works with different grid topologies
+    - Same Topology works with different physics (Dirichlet, Neumann, etc.)
+    - Clean interface for FVM/FEM/Graph extensions
+
+    Usage:
+        >>> from mfg_pde.geometry.boundary.applicator_base import (
+        ...     BoundedTopology, DirichletCalculator, PeriodicTopology
+        ... )
+
+        >>> # Bounded domain with Dirichlet BC
+        >>> topology = BoundedTopology(dimension=2, shape=(100, 100))
+        >>> calculator = DirichletCalculator(boundary_value=0.0)
+        >>> buffer = GhostBuffer(topology, calculator, dx=0.1)
+
+        >>> # Set interior values
+        >>> buffer.interior[:] = initial_condition
+
+        >>> # Update ghosts (in-place, zero allocation)
+        >>> buffer.update()
+
+        >>> # Periodic domain (no calculator needed)
+        >>> topology = PeriodicTopology(dimension=2, shape=(100, 100))
+        >>> buffer = GhostBuffer(topology)  # Calculator ignored for periodic
+
+    See Also:
+        - PreallocatedGhostBuffer: Legacy interface with BoundaryConditions
+        - Issue #516: Topology/Calculator composition design
+    """
+
+    def __init__(
+        self,
+        topology: Topology,
+        calculator: BoundaryCalculator | None = None,
+        dx: float | tuple[float, ...] = 1.0,
+        ghost_depth: int = 1,
+        dtype: type = np.float64,
+    ):
+        """
+        Initialize ghost buffer with topology and calculator.
+
+        Args:
+            topology: Grid topology (PeriodicTopology or BoundedTopology)
+            calculator: Ghost value calculator (required for bounded, ignored for periodic)
+            dx: Grid spacing (scalar or tuple for each dimension)
+            ghost_depth: Number of ghost cells per boundary
+            dtype: Data type for the buffer
+
+        Raises:
+            ValueError: If bounded topology provided without calculator
+        """
+
+        self._topology = topology
+        self._calculator = calculator
+        self._ghost_depth = ghost_depth
+        self._dtype = dtype
+
+        # Validate: bounded topology requires calculator
+        if not topology.is_periodic and calculator is None:
+            raise ValueError(
+                "Bounded topology requires a BoundaryCalculator. "
+                "Use PeriodicTopology for periodic boundaries, or provide a calculator."
+            )
+
+        # Parse grid spacing
+        if isinstance(dx, (int, float)):
+            self._dx = tuple([float(dx)] * topology.dimension)
+        else:
+            self._dx = tuple(float(d) for d in dx)
+
+        if len(self._dx) != topology.dimension:
+            raise ValueError(
+                f"Grid spacing dimension {len(self._dx)} must match topology dimension {topology.dimension}"
+            )
+
+        # Compute shapes
+        self._interior_shape = topology.shape
+        self._dimension = topology.dimension
+        self._padded_shape = tuple(s + 2 * ghost_depth for s in self._interior_shape)
+
+        # Allocate buffer
+        self._buffer = np.zeros(self._padded_shape, dtype=dtype)
+
+        # Create interior slice (view, not copy)
+        self._interior_slices = tuple(slice(ghost_depth, -ghost_depth) for _ in range(self._dimension))
+
+    @property
+    def topology(self) -> Topology:
+        """Grid topology."""
+        return self._topology
+
+    @property
+    def calculator(self) -> BoundaryCalculator | None:
+        """Ghost value calculator (None for periodic topology)."""
+        return self._calculator
+
+    @property
+    def padded(self) -> NDArray[np.floating]:
+        """Full padded buffer including ghost cells."""
+        return self._buffer
+
+    @property
+    def interior(self) -> NDArray[np.floating]:
+        """View of interior region (no copy)."""
+        return self._buffer[self._interior_slices]
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Interior shape."""
+        return self._interior_shape
+
+    @property
+    def padded_shape(self) -> tuple[int, ...]:
+        """Padded shape including ghosts."""
+        return self._padded_shape
+
+    @property
+    def ghost_depth(self) -> int:
+        """Number of ghost cells per side."""
+        return self._ghost_depth
+
+    @property
+    def dx(self) -> tuple[float, ...]:
+        """Grid spacing for each dimension."""
+        return self._dx
+
+    def update(self, **kwargs) -> None:
+        """
+        Update ghost cells in-place based on current interior values.
+
+        This is the core zero-allocation operation. The update strategy
+        depends on topology type:
+        - Periodic: ghost = wrap-around (opposite boundary interior)
+        - Bounded: ghost = calculator.compute(interior, dx, side)
+
+        Args:
+            **kwargs: Additional arguments passed to calculator.compute()
+                     (e.g., time for time-dependent BCs, drift for FP no-flux)
+        """
+        if self._topology.is_periodic:
+            self._update_periodic()
+        else:
+            self._update_bounded(**kwargs)
+
+    def _update_periodic(self) -> None:
+        """Update ghost cells for periodic topology (wrap-around)."""
+        d = self._dimension
+        g = self._ghost_depth
+        buf = self._buffer
+
+        for axis in range(d):
+            # Low ghost = high interior
+            lo_ghost = [slice(None)] * d
+            lo_ghost[axis] = slice(0, g)
+            hi_interior = [slice(None)] * d
+            hi_interior[axis] = slice(-2 * g, -g)
+            buf[tuple(lo_ghost)] = buf[tuple(hi_interior)]
+
+            # High ghost = low interior
+            hi_ghost = [slice(None)] * d
+            hi_ghost[axis] = slice(-g, None)
+            lo_interior = [slice(None)] * d
+            lo_interior[axis] = slice(g, 2 * g)
+            buf[tuple(hi_ghost)] = buf[tuple(lo_interior)]
+
+    def _update_bounded(self, **kwargs) -> None:
+        """Update ghost cells for bounded topology using calculator (vectorized)."""
+        if self._calculator is None:
+            raise RuntimeError("Calculator is None for bounded topology")
+
+        d = self._dimension
+        g = self._ghost_depth
+        buf = self._buffer
+
+        for axis in range(d):
+            dx = self._dx[axis]
+
+            # Get interior and ghost slices
+            lo_ghost = [slice(None)] * d
+            lo_ghost[axis] = slice(0, g)
+            lo_interior = [slice(None)] * d
+            lo_interior[axis] = slice(g, 2 * g)
+
+            hi_ghost = [slice(None)] * d
+            hi_ghost[axis] = slice(-g, None)
+            hi_interior = [slice(None)] * d
+            hi_interior[axis] = slice(-2 * g, -g)
+
+            # Get interior arrays (views, not copies)
+            interior_lo = buf[tuple(lo_interior)]
+            interior_hi = buf[tuple(hi_interior)]
+
+            # VECTORIZED: Apply calculator to entire boundary array at once
+            # All Calculator implementations support NDArray via NumPy broadcasting
+            ghost_lo = self._calculator.compute(
+                interior_value=interior_lo,
+                dx=dx,
+                side="min",
+                **kwargs,
+            )
+            ghost_hi = self._calculator.compute(
+                interior_value=interior_hi,
+                dx=dx,
+                side="max",
+                **kwargs,
+            )
+
+            buf[tuple(lo_ghost)] = ghost_lo
+            buf[tuple(hi_ghost)] = ghost_hi
+
+    def reset(self, fill_value: float = 0.0) -> None:
+        """Reset buffer to a constant value."""
+        self._buffer.fill(fill_value)
+
+    def copy_to_interior(self, data: NDArray[np.floating]) -> None:
+        """Copy data to interior region."""
+        self.interior[:] = data
+
+    def __repr__(self) -> str:
+        calc_str = repr(self._calculator) if self._calculator else "None"
+        return (
+            f"GhostBuffer(topology={self._topology!r}, calculator={calc_str}, "
+            f"shape={self._interior_shape}, ghost_depth={self._ghost_depth})"
+        )
+
+
+# Type hint imports for forward references
+if TYPE_CHECKING:
+    from .applicator_base import BoundaryCalculator, Topology
+
+
+# =============================================================================
+# Pre-allocated Ghost Cell Buffer (Legacy Interface - Zero-Copy Design)
 # =============================================================================
 
 
@@ -1847,7 +2313,8 @@ __all__ = [
     "apply_boundary_conditions_nd",
     "create_boundary_mask_2d",
     "get_ghost_values_nd",
-    # Class-based API
+    # Class-based API (Topology/Calculator composition - Issue #516)
+    "GhostBuffer",
     "FDMApplicator",
     "PreallocatedGhostBuffer",
 ]

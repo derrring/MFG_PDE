@@ -389,8 +389,10 @@ PERIODIC_MFG_TYPE = MFGType(
 def infer_mfg_type(problem) -> MFGType:
     """Infer MFG type from problem characteristics."""
     # Simple inference based on problem attributes
-    if hasattr(problem, "xmin") and hasattr(problem, "xmax"):
-        if problem.xmin == 0 and problem.xmax == 1:
+    if hasattr(problem, "geometry"):
+        bounds = problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        if xmin == 0 and xmax == 1:
             state_space = MathematicalSpace.UNIT_INTERVAL
         elif hasattr(problem, "periodic") and problem.periodic:
             state_space = MathematicalSpace.TORUS

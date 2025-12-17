@@ -13,7 +13,7 @@ from mfg_pde.geometry import no_flux_bc
 def test_kde_normalization():
     print("=== Testing KDE Mass Conservation ===")
 
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, sigma=1.0, coupling_coefficient=0.5)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, diffusion=1.0, coupling_coefficient=0.5)
 
     bc = no_flux_bc(dimension=1)
 
@@ -26,10 +26,12 @@ def test_kde_normalization():
         boundary_conditions=bc,
     )
 
-    U_zero = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+    U_zero = np.zeros((Nt_points, Nx_points))
     M_result1 = solver1.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero)
 
-    mass1 = np.sum(M_result1 * problem.dx, axis=1)
+    dx = problem.geometry.get_grid_spacing()[0]
+    mass1 = np.sum(M_result1 * dx, axis=1)
     print(f"  Initial mass: {mass1[0]:.6f}")
     print(f"  Final mass: {mass1[-1]:.6f}")
     print(f"  Mass loss: {mass1[0] - mass1[-1]:.6f} ({(mass1[0] - mass1[-1]) / mass1[0] * 100:.2f}%)")
@@ -45,7 +47,7 @@ def test_kde_normalization():
 
     M_result2 = solver2.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero)
 
-    mass2 = np.sum(M_result2 * problem.dx, axis=1)
+    mass2 = np.sum(M_result2 * dx, axis=1)
     print(f"  Initial mass: {mass2[0]:.6f}")
     print(f"  Final mass: {mass2[-1]:.6f}")
     print(f"  Mass loss: {mass2[0] - mass2[-1]:.6f} ({(mass2[0] - mass2[-1]) / mass2[0] * 100:.2f}%)")
@@ -61,7 +63,7 @@ def test_kde_normalization():
 
     M_result3 = solver3.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero)
 
-    mass3 = np.sum(M_result3 * problem.dx, axis=1)
+    mass3 = np.sum(M_result3 * dx, axis=1)
     print(f"  Initial mass: {mass3[0]:.6f}")
     print(f"  Final mass: {mass3[-1]:.6f}")
     print(f"  Mass loss: {mass3[0] - mass3[-1]:.6f} ({(mass3[0] - mass3[-1]) / mass3[0] * 100:.2f}%)")

@@ -224,7 +224,8 @@ class TestMassConservation1D:
         center_init = L / 4.0
         std = L / 8.0
         m0 = np.exp(-((xSpace - center_init) ** 2) / (2 * std**2))
-        m0 = m0 / (np.sum(m0) * problem.dx)  # Normalize
+        dx_norm = problem.geometry.get_grid_spacing()[0]
+        m0 = m0 / (np.sum(m0) * dx_norm)  # Normalize
         problem.initial_density = m0
 
         center_term = L / 2.0
@@ -287,18 +288,20 @@ class TestMassConservation1D:
         m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # DEBUG: Print actual shape and mass calculation
+        Nt_points_expected, Nx_points_expected = problem.geometry.get_grid_shape()
         print("\nDEBUG test_fp_particle_hjb_fdm:")
-        print(f"  result.M shape = {result.M.shape}, expected ({problem.Nt + 1}, {problem.Nx + 1})")
-        print(f"  problem.dx = {problem.dx:.6f}")
+        print(f"  result.M shape = {result.M.shape}, expected ({Nt_points_expected}, {Nx_points_expected})")
+        dx = problem.geometry.get_grid_spacing()[0]
+        print(f"  problem.dx = {dx:.6f}")
         print(
             f"  m_solution[0] stats: min={m_solution[0].min():.6f}, max={m_solution[0].max():.6f}, sum={m_solution[0].sum():.6f}"
         )
-        print(f"  sum(m_solution[0]) * Dx = {np.sum(m_solution[0]) * problem.dx:.6f}")
+        print(f"  sum(m_solution[0]) * Dx = {np.sum(m_solution[0]) * dx:.6f}")
 
         # Compute mass at each time step
-        dx = problem.dx
+        Nt_points = problem.geometry.get_grid_shape()[0]
         masses = []
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
             masses.append(mass_t)
 
@@ -379,9 +382,10 @@ class TestMassConservation1D:
         m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # Compute mass at each time step
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
+        Nt_points = problem.geometry.get_grid_shape()[0]
         masses = []
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
             masses.append(mass_t)
 
@@ -444,11 +448,12 @@ class TestMassConservation1D:
             pytest.skip("GFDM did not converge with tight tolerances (expected for particle methods)")
 
         # Compute masses for both methods
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
+        Nt_points = problem.geometry.get_grid_shape()[0]
         masses_fdm = []
         masses_gfdm = []
 
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass_fdm = compute_total_mass(result_1.M[t_idx, :], dx)
             mass_gfdm = compute_total_mass(result_2.M[t_idx, :], dx)
             masses_fdm.append(mass_fdm)
@@ -498,9 +503,10 @@ class TestMassConservation1D:
             pytest.skip(f"Solver convergence issue with {num_particles} particles: {str(e)[:100]}")
 
         # Compute masses
-        dx = problem.dx
+        dx = problem.geometry.get_grid_spacing()[0]
+        Nt_points = problem.geometry.get_grid_shape()[0]
         masses = []
-        for t_idx in range(problem.Nt + 1):
+        for t_idx in range(Nt_points):
             mass_t = compute_total_mass(result.M[t_idx, :], dx)
             masses.append(mass_t)
 
@@ -533,8 +539,8 @@ class TestMassConservation1D:
                     center = prob.Lx * cfrac
                     std = prob.Lx * sfrac
                     density = np.exp(-((x_values - center) ** 2) / (2 * std**2))
-                    dx = x_values[1] - x_values[0] if len(x_values) > 1 else 1.0
-                    total_mass = np.sum(density) * dx
+                    dx_local = x_values[1] - x_values[0] if len(x_values) > 1 else 1.0
+                    total_mass = np.sum(density) * dx_local
                     if total_mass > 1e-12:
                         density = density / total_mass
                     return density
@@ -561,8 +567,9 @@ class TestMassConservation1D:
                 pytest.skip(f"Solver convergence issue for {name}: {str(e)[:100]}")
 
             # Check mass conservation
-            dx = problem.dx
-            masses = [compute_total_mass(result.M[t, :], dx) for t in range(problem.Nt + 1)]
+            dx = problem.geometry.get_grid_spacing()[0]
+            Nt_points = problem.geometry.get_grid_shape()[0]
+            masses = [compute_total_mass(result.M[t, :], dx) for t in range(Nt_points)]
             max_error = np.max(np.abs(np.array(masses) - 1.0))
 
             print(f"\n{name}: Initial mass = {masses[0]:.6f}, Max error = {max_error:.6e}")

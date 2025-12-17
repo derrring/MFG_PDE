@@ -47,21 +47,25 @@ def main():
     solver = FPFDMSolver(problem)
 
     print("\nProblem setup:")
-    print(f"  Domain: x ∈ [0, {problem.Lx}]")
+    bounds = problem.geometry.get_bounds()
+    grid_shape = problem.geometry.get_grid_shape()
+    print(f"  Domain: x ∈ [{bounds[0][0]}, {bounds[1][0]}]")
     print(f"  Time: t ∈ [0, {problem.T}]")
-    print(f"  Grid: Nx={problem.Nx + 1}, Nt={problem.Nt + 1}")
+    print(f"  Grid: Nx={grid_shape[0]}, Nt={problem.Nt + 1}")
     print(f"  Diffusion: σ={problem.sigma}")
 
     # Initial condition: Narrow Gaussian peak
     x = problem.xSpace
-    x0 = problem.Lx / 2
+    bounds = problem.geometry.get_bounds()
+    dx = problem.geometry.get_grid_spacing()[0]
+    x0 = (bounds[0][0] + bounds[1][0]) / 2
     sigma0 = 0.15
     m0 = np.exp(-((x - x0) ** 2) / (2 * sigma0**2))
-    m0 = m0 / (np.sum(m0) * problem.dx)  # Normalize to unit mass
+    m0 = m0 / (np.sum(m0) * dx)  # Normalize to unit mass
 
     print(f"\nInitial condition: Gaussian centered at x={x0}")
     print(f"  Initial width: σ₀={sigma0}")
-    print(f"  Initial mass: {np.sum(m0) * problem.dx:.6f}")
+    print(f"  Initial mass: {np.sum(m0) * dx:.6f}")
 
     # Solve pure diffusion: drift_field=None means zero drift
     print("\nSolving pure diffusion (no advection)...")
@@ -72,11 +76,12 @@ def main():
     )
 
     # Verify mass conservation
-    final_mass = np.sum(M_solution[-1]) * problem.dx
+    dx = problem.geometry.get_grid_spacing()[0]
+    final_mass = np.sum(M_solution[-1]) * dx
     print("\nMass conservation:")
-    print(f"  Initial mass: {np.sum(m0) * problem.dx:.8f}")
+    print(f"  Initial mass: {np.sum(m0) * dx:.8f}")
     print(f"  Final mass:   {final_mass:.8f}")
-    print(f"  Error:        {abs(final_mass - np.sum(m0) * problem.dx):.2e}")
+    print(f"  Error:        {abs(final_mass - np.sum(m0) * dx):.2e}")
 
     # Visualize spreading
     _, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
@@ -89,12 +94,13 @@ def main():
         t = t_idx * problem.dt
         ax1.plot(x, M_solution[t_idx], color=colors[i], label=f"t={t:.2f}", linewidth=2)
 
+    bounds = problem.geometry.get_bounds()
     ax1.set_xlabel("x", fontsize=12)
     ax1.set_ylabel("m(t,x)", fontsize=12)
     ax1.set_title("Pure Diffusion: Gaussian Spreading Over Time", fontsize=13, fontweight="bold")
     ax1.legend(fontsize=10)
     ax1.grid(True, alpha=0.3)
-    ax1.set_xlim(0, problem.Lx)
+    ax1.set_xlim(bounds[0][0], bounds[1][0])
 
     # Add annotation
     ax1.text(
@@ -108,11 +114,12 @@ def main():
     )
 
     # Spacetime heatmap
+    bounds = problem.geometry.get_bounds()
     im = ax2.imshow(
         M_solution.T,
         aspect="auto",
         origin="lower",
-        extent=[0, problem.T, 0, problem.Lx],
+        extent=[0, problem.T, bounds[0][0], bounds[1][0]],
         cmap="hot",
         interpolation="bilinear",
     )
@@ -132,11 +139,13 @@ def main():
     print("=" * 70)
 
     # Measure spreading
+    dx = problem.geometry.get_grid_spacing()[0]
+
     def compute_width(m_profile):
         """Compute standard deviation (width) of density profile."""
-        total = np.sum(m_profile) * problem.dx
-        mean_x = np.sum(x * m_profile) * problem.dx / total
-        var_x = np.sum(((x - mean_x) ** 2) * m_profile) * problem.dx / total
+        total = np.sum(m_profile) * dx
+        mean_x = np.sum(x * m_profile) * dx / total
+        var_x = np.sum(((x - mean_x) ** 2) * m_profile) * dx / total
         return np.sqrt(var_x)
 
     width_initial = compute_width(M_solution[0])

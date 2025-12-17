@@ -88,15 +88,15 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         # Grid information
         self.x_grid = problem.x
         self.t_grid = problem.t
-        self.Nx = problem.Nx
+        self.Nx_points = problem.geometry.get_grid_shape()[0]
+        self.Nx = self.Nx_points - 1  # Number of intervals
         self.Nt = problem.Nt
-        self.dx = problem.dx
+        self.dx = problem.geometry.get_grid_spacing()[0]
         self.dt = problem.dt
 
         logger.info(f"Initialized {self.solver_name} solver")
         logger.info(f"  Problem: {problem.components.description}")
-        # Nt = intervals, so Nt+1 time points; Nx = intervals, so Nx+1 space points
-        logger.info(f"  Grid: {self.Nx + 1} × {self.Nt + 1} (space points × time points)")
+        logger.info(f"  Grid: {self.Nx_points} × {self.Nt + 1} (space points × time points)")
 
     @abstractmethod
     def solve(
@@ -124,8 +124,8 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         Evaluate the cost functional J[m,v].
 
         Args:
-            density_evolution: m(t,x) density field shape (Nt+1, Nx+1) - one row per time point
-            velocity_field: v(t,x) velocity field shape (Nt+1, Nx+1) - one row per time point
+            density_evolution: m(t,x) density field shape (Nt+1, Nx_points) - one row per time point
+            velocity_field: v(t,x) velocity field shape (Nt+1, Nx_points) - one row per time point
 
         Returns:
             Total cost value
@@ -162,16 +162,16 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         can be solved for v: mv = -∫(∂m/∂t - σ²/2 Δm) dx
 
         Args:
-            density_evolution: m(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
+            density_evolution: m(t,x) shape (Nt+1, Nx_points) - Nt+1 time points
 
         Returns:
-            velocity_field: v(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
+            velocity_field: v(t,x) shape (Nt+1, Nx_points) - Nt+1 time points
         """
         velocity_field = np.zeros_like(density_evolution)
         n_time_points = self.Nt + 1
 
         for i in range(1, n_time_points):  # Skip initial time (index 0)
-            for j in range(1, self.Nx):  # Skip boundaries
+            for j in range(1, self.Nx):  # Skip boundaries (interior points)
                 m = density_evolution[i, j]
 
                 if m > 1e-12:  # Avoid division by zero
@@ -200,8 +200,8 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         ||∂m/∂t + ∇·(mv) - σ²/2 Δm||₂
 
         Args:
-            density_evolution: m(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
-            velocity_field: v(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
+            density_evolution: m(t,x) shape (Nt+1, Nx_points) - Nt+1 time points
+            velocity_field: v(t,x) shape (Nt+1, Nx_points) - Nt+1 time points
 
         Returns:
             L2 norm of continuity equation residual
@@ -211,7 +211,7 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         residual = np.zeros((n_time_points - 1, self.Nx - 1))
 
         for i in range(1, n_time_points):
-            for j in range(1, self.Nx):
+            for j in range(1, self.Nx):  # Interior points: 1 to Nx-1 (since Nx = Nx_points - 1)
                 # Time derivative
                 dm_dt = (density_evolution[i, j] - density_evolution[i - 1, j]) / self.dt
 
@@ -236,7 +236,7 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         Check mass conservation: ∫m(t,x)dx = constant
 
         Args:
-            density_evolution: m(t,x) shape (Nt+1, Nx+1) - Nt+1 time points
+            density_evolution: m(t,x) shape (Nt+1, Nx_points) - Nt+1 time points
 
         Returns:
             Maximum mass conservation error over time
@@ -257,10 +257,13 @@ class BaseVariationalSolver(BaseOptimizationSolver):
                      "random" - random perturbation of uniform
 
         Returns:
-            Initial density evolution shape (Nt+1, Nx+1) - Nt+1 time points
+            Initial density evolution shape (Nt+1, Nx_points) - Nt+1 time points
         """
         n_time_points = self.Nt + 1
-        density_guess = np.zeros((n_time_points, self.Nx + 1))
+        density_guess = np.zeros((n_time_points, self.Nx_points))
+
+        xmin = self.problem.geometry.get_bounds()[0][0]
+        xmax = self.problem.geometry.get_bounds()[1][0]
 
         if strategy == "uniform":
             # Uniform density maintained over time
@@ -268,12 +271,12 @@ class BaseVariationalSolver(BaseOptimizationSolver):
                 if self.problem.components.initial_density_func:
                     density_guess[i, :] = [self.problem.components.initial_density_func(x) for x in self.x_grid]
                 else:
-                    density_guess[i, :] = 1.0 / (self.problem.xmax - self.problem.xmin)
+                    density_guess[i, :] = 1.0 / (xmax - xmin)
 
         elif strategy == "gaussian":
             # Gaussian spreading with diffusion
-            center = 0.5 * (self.problem.xmin + self.problem.xmax)
-            initial_width = 0.1 * (self.problem.xmax - self.problem.xmin)
+            center = 0.5 * (xmin + xmax)
+            initial_width = 0.1 * (xmax - xmin)
 
             for i, t in enumerate(self.t_grid):
                 # Width increases with time due to diffusion
@@ -285,10 +288,10 @@ class BaseVariationalSolver(BaseOptimizationSolver):
 
         elif strategy == "random":
             # Random perturbation of uniform
-            base_density = 1.0 / (self.problem.xmax - self.problem.xmin)
+            base_density = 1.0 / (xmax - xmin)
 
             for i in range(n_time_points):
-                perturbation = 0.1 * np.random.randn(self.Nx + 1)
+                perturbation = 0.1 * np.random.randn(self.Nx_points)
                 density_guess[i, :] = base_density * (1 + perturbation)
 
                 # Ensure positivity and normalization
@@ -302,13 +305,14 @@ class BaseVariationalSolver(BaseOptimizationSolver):
 
     def get_solver_info(self) -> dict[str, Any]:
         """Return solver information."""
+        bounds = self.problem.geometry.get_bounds()
         return {
             "solver_type": "Variational",
             "solver_name": self.solver_name,
             "problem_type": "Lagrangian MFG",
             "grid_size": {"Nx": self.Nx, "Nt": self.Nt},
             "domain": {
-                "spatial": [self.problem.xmin, self.problem.xmax],
+                "spatial": [bounds[0][0], bounds[1][0]],
                 "temporal": [0.0, self.problem.T],
             },
         }

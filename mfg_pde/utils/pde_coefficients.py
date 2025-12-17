@@ -656,8 +656,7 @@ def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]
     """
     Get spatial grid coordinates for coefficient evaluation.
 
-    Provides unified interface for both legacy 1D API (xmin, xmax, Nx)
-    and modern geometry-based API.
+    Uses geometry-based API for spatial grid access.
 
     Parameters
     ----------
@@ -668,31 +667,23 @@ def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]
     -------
     ndarray | tuple[ndarray, ...]
         Spatial coordinates:
-        - 1D: ndarray of shape (Nx,)
+        - 1D: ndarray of shape (Nx_points,)
         - nD: tuple of coordinate arrays for each dimension
 
     Examples
     --------
-    Legacy 1D problem:
+    1D problem:
     >>> grid = get_spatial_grid(problem)  # ndarray of x-coordinates
 
-    Geometry-based 2D problem:
+    2D problem:
     >>> grid = get_spatial_grid(problem)  # (x_coords, y_coords)
     """
-    # Modern geometry-based API
+    # Geometry-based API
     if hasattr(problem, "geometry") and hasattr(problem.geometry, "coordinates"):
         coords = problem.geometry.coordinates
         # For 1D, return single array; for nD, return tuple of arrays
         if len(coords) == 1:
             return coords[0]
         return tuple(coords)
-
-    # Legacy 1D API
-    elif hasattr(problem, "xmin") and hasattr(problem, "xmax"):
-        Nx_val = getattr(problem, "Nx", None)
-        if Nx_val is None:
-            raise AttributeError("Problem must have either geometry.coordinates or (xmin, xmax, Nx) attributes")
-        return np.linspace(problem.xmin, problem.xmax, Nx_val + 1)
-
     else:
-        raise AttributeError("Problem must have either geometry.coordinates or (xmin, xmax, Nx) attributes")
+        raise AttributeError("Problem must have geometry.coordinates attribute")
