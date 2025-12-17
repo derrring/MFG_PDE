@@ -199,21 +199,10 @@ class FPParticleSolver(BaseFPSolver):
             else:
                 coordinates = [np.linspace(bounds[d][0], bounds[d][1], grid_shape[d]) for d in range(dimension)]
 
-        # Fallback to legacy 1D API
-        elif self.problem.Nx is not None:
-            dimension = 1
-            Nx = self.problem.Nx + 1
-            grid_shape = (Nx,)
-            Dx = self.problem.dx if self.problem.dx is not None else 0.0
-            spacings = [Dx]
-            xmin = self.problem.xmin if self.problem.xmin is not None else 0.0
-            xmax = self.problem.xmax if self.problem.xmax is not None else 1.0
-            bounds = [(xmin, xmax)]
-            xSpace = self.problem.xSpace if self.problem.xSpace is not None else np.linspace(xmin, xmax, Nx)
-            coordinates = [xSpace]
         else:
+            # Geometry is always available after MFGProblem initialization
             raise ValueError(
-                "FPParticleSolver requires either a geometry object or legacy problem.Nx. "
+                "FPParticleSolver requires a geometry object. "
                 "Create MFGProblem with geometry=TensorProductGrid(...) or with Nx=... parameter."
             )
 
@@ -1358,12 +1347,13 @@ if __name__ == "__main__":
     # Test solve_fp_system
     import numpy as np
 
-    U_test = np.zeros((problem.Nt + 1, problem.Nx + 1))
+    Nx = problem.geometry.get_grid_shape()[0]
+    U_test = np.zeros((problem.Nt + 1, Nx))
     M_init = problem.m_init
 
     M_solution = solver.solve_fp_system(M_initial=M_init, drift_field=U_test)
 
-    assert M_solution.shape == (problem.Nt + 1, problem.Nx + 1)
+    assert M_solution.shape == (problem.Nt + 1, Nx)
     assert not np.any(np.isnan(M_solution))
     assert not np.any(np.isinf(M_solution))
     assert np.all(M_solution >= 0), "Density must be non-negative"
