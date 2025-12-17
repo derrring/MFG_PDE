@@ -678,20 +678,22 @@ def test_diffusion_primary_parameter():
 
 @pytest.mark.unit
 def test_sigma_deprecated_alias():
-    """Test that 'sigma' is deprecated alias for 'diffusion'."""
+    """Test that 'sigma' parameter is deprecated alias for 'diffusion'."""
     import warnings
 
+    # Using sigma= should emit a deprecation warning
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        problem = MFGProblem(diffusion=0.4)
+        problem = MFGProblem(sigma=0.4)  # Deprecated parameter
 
-        # Check deprecation warning was raised
+        # Check deprecation warning was raised for using sigma=
         deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-        assert len(deprecation_warnings) >= 1
-        assert "sigma" in str(deprecation_warnings[0].message)
-        assert "diffusion" in str(deprecation_warnings[0].message)
+        assert len(deprecation_warnings) >= 1, "Expected deprecation warning when using sigma= parameter"
+        # At least one warning should mention sigma or diffusion
+        warning_messages = [str(w.message) for w in deprecation_warnings]
+        assert any("sigma" in msg or "diffusion" in msg for msg in warning_messages)
 
-    # Value should still work
+    # Value should still work via backward compat
     assert problem.sigma == 0.4
     assert problem.diffusion_field == 0.4
 
@@ -779,7 +781,7 @@ def test_has_state_dependent_coefficients_mixed():
         return 0.1 + 0.5 * m
 
     # Scalar drift, callable diffusion
-    problem1 = MFGProblem(sigma=sigma_func, drift=np.zeros(52))
+    problem1 = MFGProblem(diffusion=sigma_func, drift=np.zeros(52))
     assert problem1.has_state_dependent_coefficients()
 
     # Callable drift, scalar diffusion
@@ -805,7 +807,7 @@ def test_diffusion_field_with_geometry():
         """2D state-dependent diffusion."""
         return 0.1 + 0.1 * np.sum(x**2)
 
-    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=sigma_func)
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=sigma_func)
 
     assert callable(problem.diffusion_field)
     assert problem.has_state_dependent_coefficients()

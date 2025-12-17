@@ -390,9 +390,9 @@ class TestEdgeCases:
         """Test that negative diffusion raises error or creates problem."""
         # Note: Current implementation may not validate this
         try:
-            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=-0.1)
+            problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=-0.1)
             # If no error, check problem was created
-            assert problem.sigma == -0.1
+            assert problem.sigma == -0.1  # Access via deprecated alias still works
         except ValueError:
             pass  # Expected behavior
 
