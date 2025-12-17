@@ -13,6 +13,8 @@ Usage:
 
 from __future__ import annotations
 
+import warnings
+
 from numpy.typing import NDArray
 
 # === Public Array Types (User-Facing) ===
@@ -108,5 +110,21 @@ Shape: (Nx+1,) for 1D, matches SpatialGrid shape
 # === Legacy Compatibility ===
 
 # Map old names to new standard names for backward compatibility
-SpatialCoordinates = SpatialGrid  # Deprecated alias
-TemporalCoordinates = TimeGrid  # Deprecated alias
+# These are accessed via __getattr__ to emit deprecation warnings
+_DEPRECATED_ALIASES = {
+    "SpatialCoordinates": ("SpatialGrid", SpatialGrid),
+    "TemporalCoordinates": ("TimeGrid", TimeGrid),
+}
+
+
+def __getattr__(name: str):
+    """Emit deprecation warnings for legacy type aliases."""
+    if name in _DEPRECATED_ALIASES:
+        new_name, value = _DEPRECATED_ALIASES[name]
+        warnings.warn(
+            f"'{name}' is deprecated, use '{new_name}' instead. This alias will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
