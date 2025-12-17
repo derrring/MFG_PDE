@@ -112,8 +112,11 @@ class BaseHJBSolver(BaseNumericalSolver):
         # Create uniform density for standalone mode (no MFG coupling)
         if hasattr(self.problem, "Nx") and self.problem.Nx is not None:
             # 1D problem
-            Nt, Nx = self.problem.Nt + 1, self.problem.Nx + 1
-            m_uniform = np.ones((Nt, Nx)) / (self.problem.xmax - self.problem.xmin)
+            Nt = self.problem.Nt + 1
+            Nx = self.problem.geometry.get_grid_shape()[0]
+            bounds = self.problem.geometry.get_bounds()
+            xmin, xmax = bounds[0][0], bounds[1][0]
+            m_uniform = np.ones((Nt, Nx)) / (xmax - xmin)
 
             # Get terminal condition from problem
             U_terminal = self.problem.get_final_u()
@@ -361,8 +364,8 @@ def compute_hjb_residual(
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> np.ndarray:
-    Nx = problem.Nx + 1
-    dx = problem.dx
+    Nx = problem.geometry.get_grid_shape()[0]
+    dx = problem.geometry.get_grid_spacing()[0]
     dt = problem.dt
 
     # Handle diffusion field - NumPy will broadcast scalar automatically
@@ -485,8 +488,8 @@ def compute_hjb_jacobian(
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> sparse.csr_matrix:
-    Nx = problem.Nx + 1
-    dx = problem.dx
+    Nx = problem.geometry.get_grid_shape()[0]
+    dx = problem.geometry.get_grid_spacing()[0]
     dt = problem.dt
     eps = 1e-7
 
@@ -690,7 +693,8 @@ def newton_hjb_step(
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
 ) -> tuple[np.ndarray, float]:
-    dx_norm = problem.dx if abs(problem.dx) > 1e-12 else 1.0
+    dx = problem.geometry.get_grid_spacing()[0]
+    dx_norm = dx if abs(dx) > 1e-12 else 1.0
 
     if has_nan_or_inf(U_n_current_newton_iterate, backend):
         return U_n_current_newton_iterate, np.inf
@@ -725,7 +729,8 @@ def newton_hjb_step(
     delta_U = np.zeros_like(U_n_current_newton_iterate)
     l2_error_of_step = np.inf
     try:
-        if not jacobian_J_U.nnz > 0 and problem.Nx > 0:
+        Nx = problem.geometry.get_grid_shape()[0]
+        if not jacobian_J_U.nnz > 0 and Nx > 0:
             pass
         else:
             # Original notebook's RHS for Newton solve was effectively:
@@ -911,7 +916,7 @@ def solve_hjb_system_backward(
         newton_tolerance = 1e-6
 
     Nt = problem.Nt + 1
-    Nx = problem.Nx + 1
+    Nx = problem.geometry.get_grid_shape()[0]
 
     # Use backend.zeros() instead of xp.zeros() to ensure correct device
     if backend is not None:

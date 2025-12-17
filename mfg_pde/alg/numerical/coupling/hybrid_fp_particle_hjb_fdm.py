@@ -239,7 +239,7 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
 
         # Get problem dimensions
         Nt = self.problem.Nt + 1
-        Nx = self.problem.Nx + 1
+        Nx = self.problem.geometry.get_grid_shape()[0]
 
         # Initialize solutions
         warm_start_init = self._get_warm_start_initialization()
@@ -260,7 +260,9 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         if hasattr(self.problem, "get_initial_m"):
             initial_density = self.problem.get_initial_m()
         else:
-            initial_density = np.ones(Nx) / self.problem.Lx if self.problem.dx > 1e-14 else np.ones(Nx)
+            dx = self.problem.geometry.get_grid_spacing()[0]
+            Lx = self.problem.geometry.get_bounds()[1][0] - self.problem.geometry.get_bounds()[0][0]
+            initial_density = np.ones(Nx) / Lx if dx > 1e-14 else np.ones(Nx)
 
         # Initialize with boundary conditions
         if warm_start_init is None:

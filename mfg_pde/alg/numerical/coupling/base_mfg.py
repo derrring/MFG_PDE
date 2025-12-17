@@ -79,15 +79,19 @@ class BaseMFGSolver(ABC):
         # Validate dimensions with enhanced error messages
         from mfg_pde.utils.exceptions import validate_array_dimensions
 
+        # Get expected shape from geometry
+        spatial_shape = tuple(self.problem.geometry.get_grid_shape())
+        expected_shape = (self.problem.Nt + 1, *spatial_shape)
+
         try:
             validate_array_dimensions(
                 U_prev,
-                expected_shape=(self.problem.Nt + 1, self.problem.Nx + 1),
+                expected_shape=expected_shape,
                 array_name="warm_start_U",
             )
             validate_array_dimensions(
                 M_prev,
-                expected_shape=(self.problem.Nt + 1, self.problem.Nx + 1),
+                expected_shape=expected_shape,
                 array_name="warm_start_M",
             )
         except Exception as e:
