@@ -682,3 +682,151 @@ class TestLazyDimensionBinding:
         field = np.ones((5, 5))
         padded = apply_boundary_conditions_2d(field, bc_explicit)
         assert padded.shape == (7, 7)
+
+
+class TestSDFParticleBCHandler:
+    """Tests for SDF-based particle BC handler (Issue #497)."""
+
+    def test_sdf_handler_creation(self):
+        """Test creating an SDF particle BC handler."""
+        from mfg_pde.geometry.boundary import SDFParticleBCHandler
+        from mfg_pde.utils.numerical import sdf_sphere
+
+        def circle_sdf(points):
+            return sdf_sphere(points, center=[0, 0], radius=1.0)
+
+        handler = SDFParticleBCHandler(circle_sdf, dimension=2)
+        assert handler.dimension == 2
+        assert handler.sdf is not None
+
+    def test_particles_inside_unchanged(self):
+        """Test that particles inside domain are unchanged."""
+        from mfg_pde.geometry.boundary import SDFParticleBCHandler
+        from mfg_pde.utils.numerical import sdf_sphere
+
+        def circle_sdf(points):
+            return sdf_sphere(points, center=[0, 0], radius=1.0)
+
+        handler = SDFParticleBCHandler(circle_sdf, dimension=2)
+
+        # Particles inside the unit circle
+        X_old = np.array([[0.0, 0.0], [0.3, 0.0], [0.0, 0.5]])
+        X_new = np.array([[0.1, 0.0], [0.4, 0.0], [0.0, 0.6]])
+
+        X_result, _ = handler.apply_bc(X_old, X_new)
+
+        # Should be unchanged (all inside)
+        np.testing.assert_array_almost_equal(X_result, X_new)
+
+    def test_particle_crossing_reflected(self):
+        """Test that particles crossing boundary are reflected."""
+        from mfg_pde.geometry.boundary import SDFParticleBCHandler
+        from mfg_pde.utils.numerical import sdf_sphere
+
+        def circle_sdf(points):
+            return sdf_sphere(points, center=[0, 0], radius=1.0)
+
+        handler = SDFParticleBCHandler(circle_sdf, dimension=2)
+
+        # One particle crosses the boundary
+        X_old = np.array([[0.9, 0.0]])  # Inside
+        X_new = np.array([[1.2, 0.0]])  # Outside
+
+        X_result, _ = handler.apply_bc(X_old, X_new)
+
+        # Should be reflected back inside
+        assert handler.sdf(X_result)[0] <= 0, "Reflected particle should be inside"
+
+    def test_velocity_reflection(self):
+        """Test that velocity is reflected at boundary."""
+        from mfg_pde.geometry.boundary import SDFParticleBCHandler
+        from mfg_pde.utils.numerical import sdf_sphere
+
+        def circle_sdf(points):
+            return sdf_sphere(points, center=[0, 0], radius=1.0)
+
+        handler = SDFParticleBCHandler(circle_sdf, dimension=2)
+
+        # Particle moving outward along x-axis
+        X_old = np.array([[0.9, 0.0]])  # Inside
+        X_new = np.array([[1.2, 0.0]])  # Outside
+        V = np.array([[1.0, 0.0]])  # Velocity toward boundary
+
+        _X_result, V_result = handler.apply_bc(X_old, X_new, velocities=V)
+
+        # Normal at x=1, y=0 is (1, 0), so velocity should reverse
+        assert V_result[0, 0] < 0, "x-velocity should reverse (reflect)"
+        np.testing.assert_almost_equal(V_result[0, 1], 0.0)
+
+    def test_contains_method(self):
+        """Test the contains() method."""
+        from mfg_pde.geometry.boundary import SDFParticleBCHandler
+        from mfg_pde.utils.numerical import sdf_sphere
+
+        def circle_sdf(points):
+            return sdf_sphere(points, center=[0, 0], radius=1.0)
+
+        handler = SDFParticleBCHandler(circle_sdf, dimension=2)
+
+        points = np.array([[0.0, 0.0], [0.5, 0.0], [2.0, 0.0]])
+        inside = handler.contains(points)
+
+        assert inside[0] is True or inside[0] == True  # noqa: E712 - Center inside
+        assert inside[1] is True or inside[1] == True  # noqa: E712 - Mid inside
+        assert inside[2] is False or inside[2] == False  # noqa: E712 - Outside
+
+    def test_multiple_particles_mixed(self):
+        """Test handling multiple particles with mixed inside/crossing."""
+        from mfg_pde.geometry.boundary import SDFParticleBCHandler
+        from mfg_pde.utils.numerical import sdf_sphere
+
+        def circle_sdf(points):
+            return sdf_sphere(points, center=[0, 0], radius=1.0)
+
+        handler = SDFParticleBCHandler(circle_sdf, dimension=2)
+
+        # Mix of inside moves and boundary crossings
+        X_old = np.array(
+            [
+                [0.0, 0.0],  # Stays inside
+                [0.9, 0.0],  # Will cross
+                [0.0, 0.5],  # Stays inside
+            ]
+        )
+        X_new = np.array(
+            [
+                [0.1, 0.0],  # Still inside
+                [1.2, 0.0],  # Crossed
+                [0.0, 0.6],  # Still inside
+            ]
+        )
+
+        X_result, _ = handler.apply_bc(X_old, X_new)
+
+        # All should end up inside
+        sdf_result = handler.sdf(X_result)
+        assert np.all(sdf_result <= 0), "All particles should be inside after BC"
+
+        # Non-crossing particles should be unchanged
+        np.testing.assert_array_almost_equal(X_result[0], X_new[0])
+        np.testing.assert_array_almost_equal(X_result[2], X_new[2])
+
+    def test_box_sdf(self):
+        """Test with box/rectangular SDF."""
+        from mfg_pde.geometry.boundary import SDFParticleBCHandler
+        from mfg_pde.utils.numerical import sdf_box
+
+        def box_sdf(points):
+            return sdf_box(points, bounds=[[0, 1], [0, 1]])
+
+        handler = SDFParticleBCHandler(box_sdf, dimension=2)
+
+        # Particle crossing right boundary
+        X_old = np.array([[0.9, 0.5]])
+        X_new = np.array([[1.2, 0.5]])
+
+        X_result, _ = handler.apply_bc(X_old, X_new)
+
+        # Should be reflected back into box
+        assert 0 <= X_result[0, 0] <= 1, "x should be in [0, 1]"
+        assert 0 <= X_result[0, 1] <= 1, "y should be in [0, 1]"

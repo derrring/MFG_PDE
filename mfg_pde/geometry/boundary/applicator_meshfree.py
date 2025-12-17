@@ -25,18 +25,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-import numpy as np
+    from numpy.typing import NDArray
 
 from mfg_pde.geometry.protocol import GeometryProtocol
 
 # Import base class for inheritance
 from .applicator_base import BaseMeshfreeApplicator
-
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
 
 
 class MeshfreeApplicator(BaseMeshfreeApplicator):
@@ -316,6 +315,207 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
         return self.geometry.get_boundary_regions()
 
 
+class SDFParticleBCHandler:
+    """
+    SDF-based particle boundary condition handler for complex geometry.
+
+    Uses signed distance functions to detect boundary crossings and perform
+    physics-based reflection with proper normal computation.
+
+    Unlike rectangular domain handlers that only check axis-aligned bounds,
+    this handler works with any geometry defined by an SDF function.
+
+    The SDF convention is: negative inside, zero on boundary, positive outside.
+
+    Examples:
+        >>> from mfg_pde.utils.numerical import sdf_sphere
+        >>> def circle_sdf(points):
+        ...     return sdf_sphere(points, center=[0, 0], radius=1.0)
+        >>> handler = SDFParticleBCHandler(circle_sdf, dimension=2)
+        >>>
+        >>> # Particles that crossed boundary get reflected
+        >>> X_old = np.array([[0.5, 0], [0.9, 0]])
+        >>> X_new = np.array([[0.6, 0], [1.2, 0]])  # Second one crossed
+        >>> X_reflected = handler.apply_bc(X_old, X_new)
+    """
+
+    def __init__(
+        self,
+        sdf: Callable[[NDArray], NDArray],
+        dimension: int,
+        max_bisection_iterations: int = 20,
+        bisection_tolerance: float = 1e-8,
+        epsilon: float = 1e-5,
+    ):
+        """
+        Initialize SDF-based particle BC handler.
+
+        Args:
+            sdf: Signed distance function. sdf(points) -> distances where
+                negative = inside, zero = boundary, positive = outside
+            dimension: Spatial dimension
+            max_bisection_iterations: Max iterations for boundary point bisection
+            bisection_tolerance: Tolerance for bisection convergence
+            epsilon: Finite difference step for gradient computation
+        """
+        self.sdf = sdf
+        self.dimension = dimension
+        self.max_bisection_iterations = max_bisection_iterations
+        self.bisection_tolerance = bisection_tolerance
+        self.epsilon = epsilon
+
+    def apply_bc(
+        self,
+        X_old: NDArray[np.floating],
+        X_new: NDArray[np.floating],
+        velocities: NDArray[np.floating] | None = None,
+    ) -> tuple[NDArray[np.floating], NDArray[np.floating] | None]:
+        """
+        Apply boundary conditions to particles that crossed the boundary.
+
+        For particles that moved from inside (sdf < 0) to outside (sdf > 0),
+        finds the exact boundary crossing point and reflects them back.
+
+        Args:
+            X_old: Previous particle positions, shape (N, d)
+            X_new: New particle positions (possibly outside), shape (N, d)
+            velocities: Optional particle velocities for elastic reflection
+
+        Returns:
+            Tuple of (X_corrected, velocities_corrected)
+            - X_corrected: Positions with boundary crossers reflected back
+            - velocities_corrected: Velocities with normal component reversed (if provided)
+        """
+        X_old = np.atleast_2d(X_old)
+        X_new = np.atleast_2d(X_new).copy()
+
+        if velocities is not None:
+            velocities = np.atleast_2d(velocities).copy()
+
+        # Evaluate SDF at old and new positions
+        sdf_old = self.sdf(X_old)
+        sdf_new = self.sdf(X_new)
+
+        # Detect boundary crossings: was inside (< 0), now outside (> 0)
+        crossed = (sdf_old < 0) & (sdf_new > 0)
+        crossed_indices = np.where(crossed)[0]
+
+        if len(crossed_indices) == 0:
+            return X_new, velocities
+
+        # Process each crossing particle
+        for i in crossed_indices:
+            # Find boundary intersection point via bisection
+            X_boundary = self._find_boundary_point(X_old[i], X_new[i])
+
+            # Compute outward normal at boundary point
+            normal = self._compute_normal(X_boundary)
+
+            # Compute penetration vector (from boundary to current position)
+            penetration = X_new[i] - X_boundary
+
+            # Reflect: X_reflected = X_boundary + (penetration - 2*(penetration·n)*n)
+            # This reflects the component of penetration normal to the boundary
+            normal_component = np.dot(penetration, normal)
+            X_new[i] = X_boundary + penetration - 2 * normal_component * normal
+
+            # If still outside after reflection, project to boundary
+            # (handles grazing angles and numerical issues)
+            if self.sdf(X_new[i].reshape(1, -1))[0] > 0:
+                X_new[i] = X_boundary
+
+            # Reflect velocity if provided (elastic collision)
+            if velocities is not None:
+                v_normal = np.dot(velocities[i], normal)
+                velocities[i] = velocities[i] - 2 * v_normal * normal
+
+        return X_new, velocities
+
+    def _find_boundary_point(
+        self,
+        p_inside: NDArray[np.floating],
+        p_outside: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """
+        Find boundary crossing point using bisection.
+
+        Args:
+            p_inside: Point inside domain (sdf < 0)
+            p_outside: Point outside domain (sdf > 0)
+
+        Returns:
+            Point on boundary (sdf ≈ 0) between p_inside and p_outside
+        """
+        a, b = 0.0, 1.0  # t parameter: p(t) = p_inside + t * (p_outside - p_inside)
+        direction = p_outside - p_inside
+
+        for _ in range(self.max_bisection_iterations):
+            t_mid = (a + b) / 2
+            p_mid = p_inside + t_mid * direction
+            sdf_mid = self.sdf(p_mid.reshape(1, -1))[0]
+
+            if abs(sdf_mid) < self.bisection_tolerance:
+                return p_mid
+
+            if sdf_mid < 0:
+                a = t_mid  # Still inside, move toward outside
+            else:
+                b = t_mid  # Outside, move toward inside
+
+        # Return best estimate
+        t_final = (a + b) / 2
+        return p_inside + t_final * direction
+
+    def _compute_normal(
+        self,
+        point: NDArray[np.floating],
+    ) -> NDArray[np.floating]:
+        """
+        Compute outward unit normal at a point using finite differences on SDF.
+
+        Args:
+            point: Point at which to compute normal, shape (d,)
+
+        Returns:
+            Unit outward normal vector, shape (d,)
+        """
+        point = point.reshape(1, -1)
+        grad = np.zeros(self.dimension)
+
+        for i in range(self.dimension):
+            p_plus = point.copy()
+            p_minus = point.copy()
+            p_plus[0, i] += self.epsilon
+            p_minus[0, i] -= self.epsilon
+
+            grad[i] = (self.sdf(p_plus)[0] - self.sdf(p_minus)[0]) / (2 * self.epsilon)
+
+        # Normalize
+        norm = np.linalg.norm(grad)
+        if norm > 1e-12:
+            return grad / norm
+        else:
+            # Degenerate case: return arbitrary unit vector
+            result = np.zeros(self.dimension)
+            result[0] = 1.0
+            return result
+
+    def contains(
+        self,
+        points: NDArray[np.floating],
+    ) -> NDArray[np.bool_]:
+        """
+        Check if points are inside the domain (sdf < 0).
+
+        Args:
+            points: Points to check, shape (N, d)
+
+        Returns:
+            Boolean array, True if inside domain
+        """
+        return self.sdf(np.atleast_2d(points)) < 0
+
+
 class ParticleReflector:
     """
     Optimized particle reflector for Lagrangian FP solvers.
@@ -410,4 +610,5 @@ class ParticleReflector:
 __all__ = [
     "MeshfreeApplicator",
     "ParticleReflector",
+    "SDFParticleBCHandler",
 ]
