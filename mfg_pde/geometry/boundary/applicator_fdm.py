@@ -46,7 +46,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -75,11 +75,26 @@ if TYPE_CHECKING:
 class GhostCellConfig:
     """Configuration for ghost cell computation."""
 
-    # Grid type affects ghost cell formula
-    grid_type: Literal["cell_centered", "vertex_centered"] = "cell_centered"
+    # Grid type affects ghost cell formula (use GridType enum or string)
+    grid_type: GridType | str = GridType.CELL_CENTERED
 
     # For vertex-centered grids, boundary is at grid point
     # For cell-centered grids, boundary is at cell face (between ghost and interior)
+
+    def __post_init__(self) -> None:
+        """Convert string grid_type to enum for backward compatibility."""
+        if isinstance(self.grid_type, str):
+            self.grid_type = GridType.VERTEX_CENTERED if self.grid_type == "vertex_centered" else GridType.CELL_CENTERED
+
+    @property
+    def is_vertex_centered(self) -> bool:
+        """Check if grid is vertex-centered."""
+        return self.grid_type == GridType.VERTEX_CENTERED
+
+    @property
+    def is_cell_centered(self) -> bool:
+        """Check if grid is cell-centered."""
+        return self.grid_type == GridType.CELL_CENTERED
 
 
 def apply_boundary_conditions_2d(
@@ -187,7 +202,7 @@ def _apply_uniform_bc_2d(
         if callable(g):
             g = 0.0  # For uniform BC, use constant 0 if callable
 
-        if config.grid_type == "vertex_centered":
+        if config.is_vertex_centered:
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
@@ -260,7 +275,7 @@ def _apply_legacy_uniform_bc_2d(
     elif bc_type == "dirichlet":
         g = boundary_conditions.left_value if boundary_conditions.left_value is not None else 0.0
 
-        if config.grid_type == "vertex_centered":
+        if config.is_vertex_centered:
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
@@ -526,7 +541,7 @@ def _compute_ghost_value_enhanced(
 
     if bc_type == BCType.DIRICHLET:
         # u = g at boundary
-        if config.grid_type == "vertex_centered":
+        if config.is_vertex_centered:
             # Vertex-centered: boundary value is at grid point
             # Ghost cell mirrors the boundary value
             return g
@@ -1332,7 +1347,7 @@ def get_ghost_values_nd(
                 # Time-varying BC: call with current time
                 g = g(time)
 
-            if config.grid_type == "vertex_centered":
+            if config.is_vertex_centered:
                 # Vertex-centered: boundary is at grid point
                 ghosts[(axis, 0)] = np.full_like(u_int_left, g)
                 ghosts[(axis, 1)] = np.full_like(u_int_right, g)
@@ -1426,24 +1441,33 @@ class FDMApplicator(BaseStructuredApplicator):
     def __init__(
         self,
         dimension: int,
-        grid_type: str = "cell_centered",
+        grid_type: GridType | str = GridType.CELL_CENTERED,
     ):
         """
         Initialize FDM applicator.
 
         Args:
             dimension: Spatial dimension (1, 2, 3, or higher)
-            grid_type: Grid type ("cell_centered" or "vertex_centered")
+            grid_type: Grid type (GridType enum or string for backward compat)
         """
-        # Map string grid_type to enum
-        grid_type_enum = GridType.CELL_CENTERED if grid_type == "cell_centered" else GridType.VERTEX_CENTERED
+        # Handle both enum and string for backward compatibility
+        if isinstance(grid_type, str):
+            grid_type_enum = GridType.VERTEX_CENTERED if grid_type == "vertex_centered" else GridType.CELL_CENTERED
+        else:
+            grid_type_enum = grid_type
+
         super().__init__(dimension, grid_type_enum)
-        self._config = GhostCellConfig(grid_type=grid_type)
+        self._config = GhostCellConfig(grid_type=grid_type_enum)
 
     @property
-    def grid_type(self) -> str:
-        """Grid type (string for backward compatibility)."""
+    def grid_type(self) -> GridType:
+        """Grid type enum."""
         return self._config.grid_type
+
+    @property
+    def grid_type_str(self) -> str:
+        """Grid type as string (for backward compatibility)."""
+        return "vertex_centered" if self._config.is_vertex_centered else "cell_centered"
 
     def apply(
         self,
