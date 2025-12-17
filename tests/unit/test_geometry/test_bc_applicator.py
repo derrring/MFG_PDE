@@ -521,6 +521,39 @@ class TestGridTypeConfiguration:
         assert np.isclose(padded[3, 0], 0.0)
         assert np.isclose(padded[3, -1], 0.0)
 
+    def test_grid_type_enum(self):
+        """Test using GridType enum directly (not string)."""
+        from mfg_pde.geometry.boundary import GridType
+
+        field = np.ones((5, 5))
+        bc = dirichlet_bc(value=0.0, dimension=2)
+
+        # Using enum directly
+        config = GhostCellConfig(grid_type=GridType.VERTEX_CENTERED)
+        padded = apply_boundary_conditions_2d(field, bc, config=config)
+
+        # Vertex-centered: ghost = g
+        assert np.isclose(padded[3, 0], 0.0)
+
+        # Test cell-centered with enum
+        config2 = GhostCellConfig(grid_type=GridType.CELL_CENTERED)
+        padded2 = apply_boundary_conditions_2d(field, bc, config=config2)
+
+        # Cell-centered: ghost = 2*g - interior = -1
+        assert np.isclose(padded2[3, 0], -1.0)
+
+    def test_vertex_centered_neumann(self):
+        """Test Neumann BC with vertex-centered grid."""
+        field = np.ones((5, 5))
+        bc = neumann_bc(value=0.0, dimension=2)
+
+        config = GhostCellConfig(grid_type="vertex_centered")
+        padded = apply_boundary_conditions_2d(field, bc, config=config)
+
+        # Neumann with zero flux: ghost = interior (for both grid types)
+        assert np.isclose(padded[3, 0], 1.0)
+        assert np.isclose(padded[3, -1], 1.0)
+
 
 class TestInputValidation:
     """Tests for input validation."""
