@@ -69,7 +69,7 @@ def create_mfg_problem() -> MFGProblem:
         return gaussian / np.trapz(gaussian, x)
 
     # Create MFG problem
-    problem = MFGProblem(xmin=0.0, xmax=1.0, T=1.0, sigma=0.1, Nx=64)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, T=1.0, diffusion=0.1, Nx=64)
 
     # Set terminal and initial conditions
     problem.terminal_condition = terminal_condition

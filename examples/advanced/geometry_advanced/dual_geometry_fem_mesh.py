@@ -225,7 +225,7 @@ def demonstrate_fem_mesh_projection_optimized():
 
     # Create problem (will now use registered specialized projections)
     print("\nCreating MFG problem with optimized projections...")
-    problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, time_domain=(1.0, 50), sigma=0.1)
+    problem = MFGProblem(hjb_geometry=grid, fp_geometry=mesh, time_domain=(1.0, 50), diffusion=0.1)
 
     projector = problem.geometry_projector
     print("\nProjection methods selected:")

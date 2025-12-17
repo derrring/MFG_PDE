@@ -60,7 +60,7 @@ def create_obstacle_avoidance_problem() -> LagrangianMFGProblem:
         obstacle_center=0.5,
         obstacle_radius=0.15,
         obstacle_penalty=1000.0,
-        sigma=0.1,
+        diffusion=0.1,
     )
 
 
@@ -118,7 +118,7 @@ def create_budget_constrained_problem() -> LagrangianMFGProblem:
         description="Budget-Constrained MFG",
     )
 
-    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30, sigma=0.1, components=components)
+    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=1.0, Nt=30, diffusion=0.1, components=components)
 
 
 def create_social_distancing_problem() -> LagrangianMFGProblem:
@@ -188,7 +188,7 @@ def create_social_distancing_problem() -> LagrangianMFGProblem:
         description="Social Distancing MFG with Capacity Constraints",
     )
 
-    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=0.6, Nt=30, sigma=0.05, components=components)
+    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=0.6, Nt=30, diffusion=0.05, components=components)
 
 
 def solve_constrained_problem(problem: LagrangianMFGProblem, problem_name: str, max_iterations: int = 30) -> dict:

@@ -144,7 +144,7 @@ def create_multi_constraint_problem() -> LagrangianMFGProblem:
         description="Multi-Constraint MFG with Obstacles, Budget, and Capacity Limits",
     )
 
-    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.4, Nt=20, sigma=0.1, components=components)
+    return LagrangianMFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.4, Nt=20, diffusion=0.1, components=components)
 
 
 def solve_with_penalty_method(problem: LagrangianMFGProblem) -> dict:

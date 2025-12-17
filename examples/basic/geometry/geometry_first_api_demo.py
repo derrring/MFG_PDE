@@ -38,7 +38,7 @@ def demo_tensor_product_grid():
     print(f"Total points: {geometry.num_spatial_points}")
 
     # Create problem
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
     print(f"\nProblem dimension: {problem.dimension}")
     print(f"Problem domain type: {problem.domain_type}")
@@ -69,7 +69,7 @@ def demo_domain_1d():
     print(f"Total points: {domain.num_spatial_points}")
 
     # Create problem
-    problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.1)
+    problem = MFGProblem(geometry=domain, T=1.0, Nt=10, diffusion=0.1)
 
     print(f"\nProblem dimension: {problem.dimension}")
     print(f"Time steps: {problem.Nt}")
@@ -99,7 +99,7 @@ def demo_hyperrectangle():
     print(f"  Exterior point [1.5, 0.5]: φ = {geometry.signed_distance(np.array([1.5, 0.5])):.4f} (> 0)")
 
     # Create problem
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
     print(f"\nProblem dimension: {problem.dimension}")
     print(f"Problem domain type: {problem.domain_type}")
@@ -130,7 +130,7 @@ def demo_hypersphere():
     print(f"  Boundary [1, 0]: φ = {geometry.signed_distance(np.array([1, 0])):.4f} (≈ 0)")
 
     # Create problem
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
     print(f"\nProblem dimension: {problem.dimension}")
     print(f"Problem domain type: {problem.domain_type}")
@@ -157,7 +157,7 @@ def demo_maze_geometry():
     print(f"Total cells: {geometry.num_spatial_points}")
 
     # Create problem
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
     print(f"\nProblem dimension: {problem.dimension}")
     print(f"Problem domain type: {problem.domain_type}")
@@ -190,7 +190,7 @@ def demo_high_dimensional():
     print("Consider meshfree methods or implicit domains for d > 3.")
 
     # Create problem
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
     print(f"\nProblem dimension: {problem.dimension}")
 
@@ -212,9 +212,9 @@ def demo_geometry_reuse():
     print(f"\nCreated geometry: {geometry.num_spatial_points} points")
 
     # Use for multiple problems with different parameters
-    problem1 = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1)
-    problem2 = MFGProblem(geometry=geometry, T=2.0, Nt=20, sigma=0.2)
-    problem3 = MFGProblem(geometry=geometry, T=0.5, Nt=5, sigma=0.05)
+    problem1 = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
+    problem2 = MFGProblem(geometry=geometry, T=2.0, Nt=20, diffusion=0.2)
+    problem3 = MFGProblem(geometry=geometry, T=0.5, Nt=5, diffusion=0.05)
 
     print("\nCreated 3 problems with same geometry:")
     print(f"  Problem 1: T={problem1.T}, Nt={problem1.Nt}, σ={problem1.sigma}")
@@ -246,8 +246,8 @@ def demo_geometry_refinement():
     print(f"Fine grid (4× refined): {fine.num_spatial_points} points")
 
     # Create problems at different resolutions
-    problem_coarse = MFGProblem(geometry=coarse, T=1.0, Nt=10, sigma=0.1)
-    problem_fine = MFGProblem(geometry=fine, T=1.0, Nt=10, sigma=0.1)
+    problem_coarse = MFGProblem(geometry=coarse, T=1.0, Nt=10, diffusion=0.1)
+    problem_fine = MFGProblem(geometry=fine, T=1.0, Nt=10, diffusion=0.1)
 
     print(f"\nCoarse problem: {problem_coarse.num_spatial_points} spatial points")
     print(f"Fine problem: {problem_fine.num_spatial_points} spatial points")

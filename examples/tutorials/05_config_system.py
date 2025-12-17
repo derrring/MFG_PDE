@@ -116,7 +116,7 @@ for Nx in Nx_values:
         Nx=Nx,
         T=1.0,
         Nt=Nx,  # Keep dt/dx ratio constant
-        sigma=0.15,
+        diffusion=0.15,
         coupling_coefficient=0.5,
     )
     results_grid[Nx] = problem.solve(verbose=False)
@@ -148,7 +148,7 @@ print()
 print("Mass Conservation Check (sigma variations):")
 for sigma, result in results_sigma.items():
     # Create a problem with matching grid to get dx
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=sigma)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, diffusion=sigma)
     initial_mass = np.sum(result.M[0, :]) * problem.dx
     final_mass = np.sum(result.M[-1, :]) * problem.dx
     print(
@@ -186,7 +186,7 @@ try:
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     # Create reference problem for grid
-    ref_problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, sigma=0.15)
+    ref_problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, diffusion=0.15)
 
     # Plot 1: Diffusion comparison (final density)
     for sigma, result in results_sigma.items():
