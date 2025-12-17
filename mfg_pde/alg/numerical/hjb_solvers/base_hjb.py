@@ -110,50 +110,27 @@ class BaseHJBSolver(BaseNumericalSolver):
             >>> print(U.shape)  # (51, 101)
         """
         # Create uniform density for standalone mode (no MFG coupling)
-        if hasattr(self.problem, "Nx") and self.problem.Nx is not None:
-            # 1D problem
-            Nt = self.problem.Nt + 1
-            Nx = self.problem.geometry.get_grid_shape()[0]
-            bounds = self.problem.geometry.get_bounds()
-            xmin, xmax = bounds[0][0], bounds[1][0]
-            m_uniform = np.ones((Nt, Nx)) / (xmax - xmin)
+        # Using geometry-first API (works for any dimension)
+        Nt_points = self.problem.Nt + 1  # Time points (Nt intervals + 1)
 
-            # Get terminal condition from problem
-            U_terminal = self.problem.get_final_u()
+        # Get spatial info from geometry
+        spatial_shape = self.problem.geometry.get_grid_shape()  # tuple of Nx_points per dim
+        bounds = self.problem.geometry.get_bounds()
 
-            # Initial guess for nonlinear solver: repeat terminal condition
-            U_prev_picard = np.tile(U_terminal, (Nt, 1))
+        # Compute domain volume for normalization
+        volume = 1.0
+        for dim in range(len(spatial_shape)):
+            volume *= bounds[1][dim] - bounds[0][dim]
 
-        elif hasattr(self.problem, "spatial_shape") and self.problem.spatial_shape is not None:
-            # nD problem (2D, 3D, etc.)
-            Nt = self.problem.Nt + 1
-            spatial_shape = self.problem.spatial_shape
+        # Create uniform density: shape (Nt_points, *spatial_shape)
+        full_shape = (Nt_points, *spatial_shape)
+        m_uniform = np.ones(full_shape) / volume
 
-            # Compute domain volume for normalization
-            if hasattr(self.problem, "spatial_bounds") and self.problem.spatial_bounds:
-                volume = 1.0
-                for bounds in self.problem.spatial_bounds:
-                    volume *= bounds[1] - bounds[0]
-            else:
-                # Fallback if bounds not available
-                volume = 1.0
+        # Get terminal condition from problem
+        U_terminal = self.problem.get_final_u()
 
-            # Create uniform density: shape (Nt, *spatial_shape)
-            full_shape = (Nt, *spatial_shape)
-            m_uniform = np.ones(full_shape) / volume
-
-            # Get terminal condition from problem
-            U_terminal = self.problem.get_final_u()
-
-            # Initial guess for nonlinear solver: repeat terminal condition across time
-            U_prev_picard = np.tile(U_terminal, (Nt,) + (1,) * len(spatial_shape))
-
-        else:
-            # Complex geometry or network - not yet supported
-            raise NotImplementedError(
-                "Standalone solve() for geometry/network problems not yet implemented. "
-                "Use solve_hjb_system() directly with uniform density."
-            )
+        # Initial guess for nonlinear solver: repeat terminal condition across time
+        U_prev_picard = np.tile(U_terminal, (Nt_points,) + (1,) * len(spatial_shape))
 
         # Solve using the specific solver's implementation
         return self.solve_hjb_system(m_uniform, U_terminal, U_prev_picard)

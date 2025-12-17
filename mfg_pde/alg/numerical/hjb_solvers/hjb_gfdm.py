@@ -258,10 +258,10 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         self.adaptive_neighborhoods = adaptive_neighborhoods
         self.max_delta_multiplier = max_delta_multiplier
 
-        # Cache grid size info from geometry (handles nD cases where problem.Nx may be None)
+        # Cache grid size info from geometry
         self._n_spatial_grid_points = self._compute_n_spatial_grid_points()
 
-        # Cache domain bounds from geometry or legacy attributes
+        # Cache domain bounds from geometry
         self.domain_bounds = self._get_domain_bounds()
 
         # Compute k_min from Taylor order if not provided
@@ -334,22 +334,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         self._build_taylor_matrices()
 
     def _compute_n_spatial_grid_points(self) -> int:
-        """Compute total number of spatial grid points from geometry.
-
-        Handles nD cases where problem.Nx may be None by using geometry info.
-        """
-        # For nD cases, prefer geometry (most reliable)
-        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
-            grid_shape = self.problem.geometry.get_grid_shape()
-            return int(np.prod(grid_shape))
-
-        # Fallback to problem.Nx (1D case only)
-        Nx = getattr(self.problem, "Nx", None)
-        if Nx is not None:
-            return Nx
-
-        # Last resort: use number of collocation points
-        return self.n_points
+        """Compute total number of spatial grid points from geometry."""
+        grid_shape = self.problem.geometry.get_grid_shape()
+        return int(np.prod(grid_shape))
 
     def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
         """Helper method to get boundary condition properties from either dict or dataclass."""
