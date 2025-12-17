@@ -1245,6 +1245,7 @@ def get_ghost_values_nd(
     boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
     spacing: tuple[float, ...] | NDArray[np.floating],
     config: GhostCellConfig | None = None,
+    time: float = 0.0,
 ) -> dict[tuple[int, int], NDArray[np.floating]]:
     """
     Compute ghost values for each boundary without padding the array.
@@ -1267,6 +1268,7 @@ def get_ghost_values_nd(
         boundary_conditions: BC specification (unified or legacy)
         spacing: Grid spacing for each dimension, tuple or array of length d
         config: Ghost cell configuration (grid type)
+        time: Current time for time-dependent BC values (default: 0.0)
 
     Returns:
         Dictionary mapping (dimension, side) to ghost value arrays:
@@ -1316,7 +1318,8 @@ def get_ghost_values_nd(
         elif bc_type == BCType.DIRICHLET:
             g = bc_value if bc_value is not None else 0.0
             if callable(g):
-                g = 0.0  # Uniform value for now
+                # Time-varying BC: call with current time
+                g = g(time)
 
             if config.grid_type == "vertex_centered":
                 # Vertex-centered: boundary is at grid point
@@ -1334,7 +1337,8 @@ def get_ghost_values_nd(
             # Right: u_ghost = u_int + 2*dx*g (outward normal)
             g = bc_value if bc_value is not None else 0.0
             if callable(g):
-                g = 0.0
+                # Time-varying flux: call with current time
+                g = g(time)
 
             ghosts[(axis, 0)] = u_int_left - 2 * dx * g
             ghosts[(axis, 1)] = u_int_right + 2 * dx * g

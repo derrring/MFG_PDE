@@ -435,8 +435,11 @@ class HJBFDMSolver(BaseHJBSolver):
             else:
                 sigma_at_n = None
 
+            # Compute current time for time-dependent BCs
+            t_current = n * self.dt
+
             # Solve nonlinear system using centralized solver
-            U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess, sigma_at_n, Sigma_at_n)
+            U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess, sigma_at_n, Sigma_at_n, time=t_current)
 
         return U_solution
 
@@ -447,6 +450,7 @@ class HJBFDMSolver(BaseHJBSolver):
         U_guess: NDArray,
         sigma_at_n: float | NDArray | None = None,
         Sigma_at_n: NDArray | None = None,
+        time: float = 0.0,
     ) -> NDArray:
         """
         Solve single HJB timestep using centralized nonlinear solver.
@@ -462,13 +466,14 @@ class HJBFDMSolver(BaseHJBSolver):
             U_guess: Initial guess for current timestep
             sigma_at_n: Scalar diffusion coefficient at current timestep (None, float, or array)
             Sigma_at_n: Tensor diffusion coefficient at current timestep (None or tensor array)
+            time: Current time for time-dependent BC values
         """
         if self.solver_type == "fixed_point":
             # Define fixed-point map G: u → u
             # HJB uses H which includes viscosity term (σ²/2)|∇u|²
             # Fixed-point iteration: u_n = u_{n+1} - dt·H(∇u_n, m)
             def G(U: NDArray) -> NDArray:
-                gradients = self._compute_gradients_nd(U)
+                gradients = self._compute_gradients_nd(U, time=time)
                 H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
                 return U_next - self.dt * H_values
 
@@ -478,7 +483,7 @@ class HJBFDMSolver(BaseHJBSolver):
             # Define residual F: u → residual
             # F(u) = (u - u_next)/dt + H(∇u, m) = 0
             def F(U: NDArray) -> NDArray:
-                gradients = self._compute_gradients_nd(U)
+                gradients = self._compute_gradients_nd(U, time=time)
                 H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
                 return (U - U_next) / self.dt + H_values
 
@@ -496,7 +501,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
         return U_solution
 
-    def _compute_gradients_nd(self, U: NDArray) -> dict[int, NDArray]:
+    def _compute_gradients_nd(self, U: NDArray, time: float = 0.0) -> dict[int, NDArray]:
         """Compute gradients using selected advection scheme with proper BC handling.
 
         Supports two schemes:
@@ -505,6 +510,10 @@ class HJBFDMSolver(BaseHJBSolver):
 
         Uses ghost values from boundary conditions for proper gradient computation
         at domain boundaries, ensuring upwind schemes respect BCs.
+
+        Args:
+            U: Value function at current timestep
+            time: Current time for time-dependent BC values
 
         Returns:
             Dict mapping dimension index to gradient array for that dimension.
@@ -515,7 +524,7 @@ class HJBFDMSolver(BaseHJBSolver):
         gradients: dict[int, NDArray] = {-1: U}  # -1 = function value
 
         # Get ghost values from boundary conditions (if available)
-        ghost_values = self._get_ghost_values(U)
+        ghost_values = self._get_ghost_values(U, time=time)
 
         for d in range(self.dimension):
             h = self.spacing[d]
@@ -626,7 +635,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
         return gradients
 
-    def _get_ghost_values(self, U: NDArray) -> dict[tuple[int, int], NDArray] | None:
+    def _get_ghost_values(self, U: NDArray, time: float = 0.0) -> dict[tuple[int, int], NDArray] | None:
         """Get ghost values from geometry boundary conditions.
 
         Returns ghost values for each boundary, or None if BCs not available.
@@ -635,6 +644,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
         Args:
             U: Value function at current timestep
+            time: Current time for time-dependent BC values
 
         Returns:
             Dictionary mapping (dimension, side) to ghost value arrays,
@@ -656,7 +666,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
         # Compute ghost values using the BC applicator
         try:
-            return get_ghost_values_nd(U, bc, self.spacing)
+            return get_ghost_values_nd(U, bc, self.spacing, time=time)
         except (ValueError, TypeError):
             # BC not compatible with ghost value computation
             return None
