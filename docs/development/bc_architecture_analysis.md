@@ -58,34 +58,78 @@ Truncation of unbounded domains. Goal: let information flow out, don't reflect b
 | Absorbing | Wave sink | Sommerfeld, PML |
 | Far-Field | Asymptotic match | u → u∞ |
 
-### The Two-Level Mapping Architecture
+### The Semantic Dispatch Pattern (Recommended Architecture)
 
-This taxonomy suggests a **two-level mapping** design:
+**Key insight**: Keep **2-layer execution** for runtime performance, use **4-tier classification** as semantic guidance for code organization and factory design.
 
+| Aspect | Layers | Purpose |
+|--------|--------|---------|
+| **Runtime Execution** | 2 layers | Fast: Topology → Calculator |
+| **Semantic Organization** | 4 tiers | Clear: State/Gradient/Flux/Artificial |
+
+This is the "sweet spot" — code runs fast (2 steps), logic stays clear (4-tier semantics).
+
+#### Runtime: Only 2 Layers Execute
+
+```python
+class GhostLayer:
+    def update(self, u):
+        # Layer 1: Topology (Memory/Indexing)
+        if self.topology.is_periodic:
+            self.apply_periodic(u)
+            return
+
+        # Layer 2: Calculator (Physics Strategy)
+        # Don't care if it's Tier 2 or 3 — just a Callable
+        u_ghost = self.calculator.compute(u)
+        self.fill_ghost(u_ghost)
 ```
-User Config (Physical Intent)     Solver Resolution (Mathematical Implementation)
-─────────────────────────────     ──────────────────────────────────────────────
-bc_type = "wall"            ──►   HJBSolver: NeumannBC(0)      [gradient lock]
-                                  FPSolver:  ZeroFluxRobinBC() [flux lock]
 
-bc_type = "outflow"         ──►   HJBSolver: LinearExtrapolationBC()
-                                  FPSolver:  DirichletBC(0)    [density→0]
+#### Configuration: 4 Tiers Guide Factory Design
+
+```python
+class BaseSolver:
+    def get_bc_strategy(self, bc_type: str) -> BoundaryCalculator:
+        if bc_type == "wall":
+            return self._resolve_wall_physics()
+        elif bc_type == "outflow":
+            return self._resolve_open_physics()
+
+class HJBSolver(BaseSolver):
+    def _resolve_wall_physics(self):
+        # Wall → Tier 2: Gradient Constraint
+        return NeumannBC(value=0.0)
+
+    def _resolve_open_physics(self):
+        # Open → Tier 4: Artificial Extrapolation
+        return LinearExtrapolationBC()
+
+class FPSolver(BaseSolver):
+    def _resolve_wall_physics(self):
+        # Wall → Tier 3: Flux Conservation
+        return ZeroFluxRobinBC(drift=self.drift, diffusion=self.sigma)
 ```
-
-The solver knows how to interpret physical intent based on its equation physics.
 
 ### Physical Intent → Mathematical Implementation Table
 
-| Physical Intent | HJB (Value Function) | FP (Density) | Particles |
-|-----------------|---------------------|--------------|-----------|
-| **wall** | Neumann ∂V/∂n=0 | Robin (zero total flux) | Reflect |
-| **exit** | Dirichlet V=0 | Dirichlet ρ=0 | Absorb |
-| **symmetry** | Neumann ∂V/∂n=0 | Neumann ∂ρ/∂n=0 | Reflect |
-| **outflow** | Linear extrapolation | Dirichlet ρ→0 | Pass through |
-| **periodic** | Wrap (topology) | Wrap (topology) | Wrap |
-| **inlet** | Dirichlet V=g(x,t) | Dirichlet ρ=g(x,t) | Inject |
+| Physical Intent | HJB (Value Function) | FP (Density) | Particles | Tier |
+|-----------------|---------------------|--------------|-----------|------|
+| **wall** | Neumann ∂V/∂n=0 | Robin (zero total flux) | Reflect | 2/3 |
+| **exit** | Dirichlet V=0 | Dirichlet ρ=0 | Absorb | 1 |
+| **symmetry** | Neumann ∂V/∂n=0 | Neumann ∂ρ/∂n=0 | Reflect | 2 |
+| **outflow** | Linear extrapolation | Dirichlet ρ→0 | Pass through | 4 |
+| **periodic** | Wrap (topology) | Wrap (topology) | Wrap | — |
+| **inlet** | Dirichlet V=g(x,t) | Dirichlet ρ=g(x,t) | Inject | 1 |
 
-This table shows why a single `BCType` enum is insufficient — the same physical word maps to different mathematics.
+This table shows why a single `BCType` enum is insufficient — the same physical word maps to different mathematics depending on the governing PDE.
+
+### Why Not Pure 4-Layer Execution?
+
+| Approach | Description | Verdict |
+|----------|-------------|---------|
+| **Pure 2-layer (Naive)** | Topology + Dirichlet/Neumann | ❌ Ambiguous — "reflective" means different things |
+| **Pure 4-layer (Complex)** | Pipeline: State→Grad→Flux→Artif | ❌ Over-engineered — 90% of cases use 1-2 tiers |
+| **2-layer exec + 4-tier semantics** | Fast runtime, clear organization | ✅ **Recommended** |
 
 ---
 
@@ -492,9 +536,14 @@ The `BoundaryCalculator` interface supports arbitrary logic via the Strategy pat
 8. Gustafsson, B., Kreiss, H. O., & Oliger, J. (1995). *Time Dependent Problems and Difference Methods*. Wiley. — Discrete LS analog.
 9. Trefethen, L. N. (1996). *Spectral Methods in MATLAB*. SIAM. — BC effects on spectral radius.
 
+### Software Architecture
+10. Gamma, E., et al. (1994). *Design Patterns: Elements of Reusable Object-Oriented Software*. — Factory Method, Strategy Pattern for Semantic Dispatch.
+11. LeVeque, R. J. (2002). *Finite Volume Methods for Hyperbolic Problems*. Cambridge. — BC-to-flux mapping varies by equation.
+
 ---
 
 **Document History**:
 - 2024-12: Initial analysis based on Issue #486 Phase 2 implementation
 - 2024-12: Added Four-Tier Constraint Taxonomy and Physical Intent mapping
 - 2024-12: Added Section 7 on mathematical foundations (LS condition, cost-benefit analysis)
+- 2024-12: Refined to "Semantic Dispatch Pattern" (2-layer execution + 4-tier semantics)
