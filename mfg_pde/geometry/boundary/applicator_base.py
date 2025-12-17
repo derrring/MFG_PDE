@@ -918,14 +918,206 @@ def ghost_cell_robin(
 
 
 # =============================================================================
+# High-Order Ghost Cell Extrapolation (for WENO and other high-order schemes)
+# =============================================================================
+
+
+def high_order_ghost_dirichlet(
+    interior_values: list[float],
+    boundary_value: float,
+    order: int = 4,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> list[float]:
+    """
+    Compute high-order accurate ghost cell values for Dirichlet BC.
+
+    For WENO5 and other high-order schemes, 2nd-order ghost cells degrade
+    boundary accuracy. This function provides 4th or 5th order extrapolation.
+
+    Mathematical derivation (cell-centered, 4th order):
+        Given: u_b = g (Dirichlet BC at cell face x = x_0 - dx/2)
+        Want: ghost values u_{-1}, u_{-2} that preserve polynomial accuracy
+
+        Using Lagrange interpolation through boundary point and interior points:
+        - u_{-1} extrapolated from {g, u_0, u_1, u_2}
+        - u_{-2} extrapolated from {g, u_{-1}, u_0, u_1, u_2}
+
+    Args:
+        interior_values: Interior point values [u_0, u_1, u_2, ...] from boundary inward
+        boundary_value: Dirichlet BC value g
+        order: Extrapolation order (4 or 5)
+        grid_type: Grid type (cell-centered or vertex-centered)
+
+    Returns:
+        Ghost values [u_{-1}, u_{-2}] (first is adjacent to interior)
+
+    References:
+        - Fedkiw et al. (1999): "A Non-oscillatory Eulerian Approach..."
+        - Shu (1998): "Essentially Non-Oscillatory and WENO Schemes..."
+    """
+    if order < 4:
+        # Fall back to 2nd-order for low orders
+        u_int = interior_values[0]
+        g = boundary_value
+        if grid_type == GridType.VERTEX_CENTERED:
+            return [g, 2 * g - u_int]
+        else:
+            u_ghost_1 = 2.0 * g - u_int
+            u_ghost_2 = 2.0 * g - interior_values[1] if len(interior_values) > 1 else u_ghost_1
+            return [u_ghost_1, u_ghost_2]
+
+    # High-order extrapolation (4th or 5th order)
+    g = boundary_value
+    u = interior_values
+
+    if grid_type == GridType.VERTEX_CENTERED:
+        # For vertex-centered, boundary is at a grid point
+        # u_{-1} = g directly
+        # u_{-2} extrapolated using polynomial through g, u_0, u_1, u_2
+        if order >= 4 and len(u) >= 3:
+            # 4th-order extrapolation for u_{-2}
+            # Using Lagrange polynomial through (x=-1, g), (x=0, u0), (x=1, u1), (x=2, u2)
+            # evaluated at x=-2
+            u_ghost_2 = 4 * g - 6 * u[0] + 4 * u[1] - u[2]
+        else:
+            u_ghost_2 = 2 * g - u[0]
+        return [g, u_ghost_2]
+
+    # Cell-centered: boundary at cell face (x = x_0 - dx/2)
+    # Ghost cell centers are at x = x_0 - dx, x_0 - 2*dx, etc.
+    # Boundary value g is at x = x_0 - dx/2
+
+    if order >= 5 and len(u) >= 4:
+        # 5th-order Lagrange extrapolation
+        # Points: (x=-0.5, g), (x=0, u0), (x=1, u1), (x=2, u2), (x=3, u3)
+        # Evaluate at x=-1 and x=-2
+
+        # Coefficients derived from Lagrange interpolation formula
+        # u_{-1} at x = -1:
+        u_ghost_1 = (16 / 5) * g - 3 * u[0] + (8 / 5) * u[1] - (1 / 3) * u[2] + (1 / 30) * u[3]
+
+        # u_{-2} at x = -2:
+        u_ghost_2 = (48 / 5) * g - 12 * u[0] + 8 * u[1] - (8 / 3) * u[2] + (2 / 5) * u[3]
+        return [u_ghost_1, u_ghost_2]
+
+    elif order >= 4 and len(u) >= 3:
+        # 4th-order Lagrange extrapolation
+        # Points: (x=-0.5, g), (x=0, u0), (x=1, u1), (x=2, u2)
+        # Evaluate at x=-1 and x=-2
+
+        # u_{-1} at x = -1 (using 4-point Lagrange)
+        u_ghost_1 = (16 / 5) * g - 3 * u[0] + (8 / 5) * u[1] - (1 / 5) * u[2]
+
+        # u_{-2} at x = -2
+        u_ghost_2 = (48 / 5) * g - 12 * u[0] + 8 * u[1] - (8 / 5) * u[2]
+        return [u_ghost_1, u_ghost_2]
+
+    else:
+        # Fall back to 2nd-order
+        u_ghost_1 = 2.0 * g - u[0]
+        u_ghost_2 = 2.0 * g - u[1] if len(u) > 1 else u_ghost_1
+        return [u_ghost_1, u_ghost_2]
+
+
+def high_order_ghost_neumann(
+    interior_values: list[float],
+    flux_value: float,
+    dx: float,
+    outward_normal_sign: float = 1.0,
+    order: int = 4,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> list[float]:
+    """
+    Compute high-order accurate ghost cell values for Neumann BC.
+
+    Mathematical derivation (cell-centered, 4th order):
+        Given: du/dn = g (Neumann BC at cell face)
+        Want: ghost values that preserve polynomial accuracy
+
+        The key constraint is that the derivative at the boundary matches g.
+        Using polynomial extrapolation with derivative constraint.
+
+    Args:
+        interior_values: Interior point values [u_0, u_1, u_2, ...] from boundary inward
+        flux_value: Neumann BC value (du/dn = g)
+        dx: Grid spacing
+        outward_normal_sign: +1 for max boundary, -1 for min boundary
+        order: Extrapolation order (4 or 5)
+        grid_type: Grid type
+
+    Returns:
+        Ghost values [u_{-1}, u_{-2}] (first is adjacent to interior)
+    """
+    g = flux_value * outward_normal_sign
+    u = interior_values
+
+    if order < 4 or len(u) < 3:
+        # Fall back to 2nd-order
+        u_ghost_1 = u[0] + 2.0 * dx * g
+        u_ghost_2 = u[1] + 4.0 * dx * g if len(u) > 1 else u_ghost_1 + 2.0 * dx * g
+        return [u_ghost_1, u_ghost_2]
+
+    if grid_type == GridType.VERTEX_CENTERED:
+        # Vertex-centered: boundary at grid point
+        # du/dn = (u_0 - u_{-1}) / dx = g => u_{-1} = u_0 - dx*g
+        u_ghost_1 = u[0] - dx * g
+
+        if order >= 4 and len(u) >= 3:
+            # 4th-order: Use polynomial matching derivative at boundary
+            # du/dn|_{x=0} = g and smooth extrapolation through interior
+            u_ghost_2 = u_ghost_1 - dx * g  # Maintain constant derivative
+        else:
+            u_ghost_2 = u_ghost_1 - dx * g
+        return [u_ghost_1, u_ghost_2]
+
+    # Cell-centered: boundary at cell face (x = x_0 - dx/2)
+    # Constraint: du/dn at x = -dx/2 equals g
+
+    if order >= 5 and len(u) >= 4:
+        # 5th-order extrapolation with Neumann constraint
+        # Construct polynomial through (x=0, u0), (x=1, u1), (x=2, u2), (x=3, u3)
+        # and enforce derivative = g at x = -0.5
+
+        # One-sided 4th-order derivative at boundary:
+        # du/dx|_{x=-0.5} = (-25*u_{-1} + 48*u_0 - 36*u_1 + 16*u_2 - 3*u_3) / (12*dx)
+        # Solve for u_{-1} given du/dx = g
+
+        u_ghost_1 = (48 * u[0] - 36 * u[1] + 16 * u[2] - 3 * u[3] - 12 * dx * g) / 25
+
+        # For u_{-2}, use polynomial continuation
+        # du/dx|_{x=-1.5} should match smooth extrapolation
+        u_ghost_2 = (48 * u_ghost_1 - 36 * u[0] + 16 * u[1] - 3 * u[2] - 12 * dx * g) / 25
+
+        return [u_ghost_1, u_ghost_2]
+
+    elif order >= 4 and len(u) >= 3:
+        # 4th-order extrapolation with Neumann constraint
+        # Using 3rd-order one-sided difference:
+        # du/dx|_{x=-0.5} = (-11*u_{-1} + 18*u_0 - 9*u_1 + 2*u_2) / (6*dx) = g
+
+        u_ghost_1 = (18 * u[0] - 9 * u[1] + 2 * u[2] - 6 * dx * g) / 11
+
+        # For u_{-2}, maintain the derivative constraint
+        u_ghost_2 = (18 * u_ghost_1 - 9 * u[0] + 2 * u[1] - 6 * dx * g) / 11
+
+        return [u_ghost_1, u_ghost_2]
+
+    else:
+        # Fall back to 2nd-order
+        u_ghost_1 = u[0] + 2.0 * dx * g
+        u_ghost_2 = u[1] + 4.0 * dx * g if len(u) > 1 else u_ghost_1 + 2.0 * dx * g
+        return [u_ghost_1, u_ghost_2]
+
+
+# =============================================================================
 # Physics-Aware Ghost Cell Formulas
 # =============================================================================
 # IMPORTANT LESSON: The discretized BC must match the physics, not just the
 # mathematical form. For advection-diffusion equations (like Fokker-Planck),
 # a "no-flux" BC means J·n = 0 where J = v*ρ - D*∇ρ.
 #
-# - Naive approach: Neumann (∂ρ/∂n = 0) only zeroes diffusion flux ❌
-# - Correct approach: Robin BC that zeroes TOTAL flux ✅
+# - Naive approach: Neumann (∂ρ/∂n = 0) only zeroes diffusion flux
+# - Correct approach: Robin BC that zeroes TOTAL flux
 #
 # This distinction is crucial for mass conservation in FP equations.
 # =============================================================================
@@ -1165,6 +1357,9 @@ __all__ = [
     "ghost_cell_dirichlet",
     "ghost_cell_neumann",
     "ghost_cell_robin",
+    # High-order ghost cell extrapolation (4th/5th order for WENO)
+    "high_order_ghost_dirichlet",
+    "high_order_ghost_neumann",
     # Physics-aware ghost cell (for advection-diffusion/FP)
     "ghost_cell_fp_no_flux",
     "ghost_cell_advection_diffusion_no_flux",

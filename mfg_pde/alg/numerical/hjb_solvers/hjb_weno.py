@@ -43,6 +43,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
+from mfg_pde.geometry.boundary import PreallocatedGhostBuffer, neumann_bc
 
 from .base_hjb import BaseHJBSolver
 
@@ -161,6 +162,10 @@ class HJBWenoSolver(BaseHJBSolver):
 
         # Setup dimension-specific grid information
         self._setup_dimensional_grid()
+
+        # Setup ghost cell buffer for boundary handling (composition pattern)
+        # WENO5 requires 2 ghost cells on each side for the 5-point stencil
+        self._setup_ghost_buffer()
 
         # Setup WENO coefficients (shared across variants)
         self._setup_weno_coefficients()
@@ -297,6 +302,90 @@ class HJBWenoSolver(BaseHJBSolver):
             if self.dimension >= 3:
                 self.num_grid_points_z = self.num_grid_points[2]
                 self.grid_spacing_z = self.grid_spacing[2]
+
+    def _setup_ghost_buffer(self) -> None:
+        """
+        Setup ghost cell buffer for boundary handling.
+
+        WENO5 requires a 5-point stencil (i-2 to i+2), which means 2 ghost cells
+        on each side to compute derivatives at boundary interior points.
+
+        Uses composition pattern: the solver holds a PreallocatedGhostBuffer
+        component rather than inheriting from a BoundaryAwareSolver base class.
+        """
+        # Ghost depth for WENO5: 2 cells on each side
+        self.ghost_depth = 2
+
+        # Get boundary conditions from problem/geometry if available
+        bc = self._get_boundary_conditions()
+
+        # Build domain bounds from grid information
+        domain_bounds = self._get_domain_bounds()
+
+        # Create ghost buffer for each dimension
+        # For 1D, interior_shape is (num_points,)
+        # For nD, we create per-dimension buffers for dimensional splitting
+        if self.dimension == 1:
+            interior_shape = (self.num_grid_points_x,)
+            self.ghost_buffer = PreallocatedGhostBuffer(
+                interior_shape=interior_shape,
+                boundary_conditions=bc,
+                domain_bounds=domain_bounds,
+                ghost_depth=self.ghost_depth,
+            )
+        else:
+            # For multi-D with dimensional splitting, we create 1D buffers on demand
+            # Store BC and bounds for later use
+            self._bc = bc
+            self._domain_bounds = domain_bounds
+            self.ghost_buffer = None  # Created per-sweep in multi-D
+
+    def _get_boundary_conditions(self):
+        """
+        Get boundary conditions from problem or geometry.
+
+        Falls back to Neumann (no-flux) BC if not specified.
+        """
+        # Try geometry first
+        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "boundary_conditions"):
+            bc = self.problem.geometry.boundary_conditions
+            if bc is not None:
+                return bc
+
+        # Try problem directly
+        if hasattr(self.problem, "boundary_conditions"):
+            bc = self.problem.boundary_conditions
+            if bc is not None:
+                return bc
+
+        # Default: Neumann (no-flux) BC - common for HJB problems
+        return neumann_bc(dimension=self.dimension)
+
+    def _get_domain_bounds(self) -> np.ndarray:
+        """Get domain bounds from problem/geometry."""
+        # Try CartesianGrid geometry
+        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "bounds"):
+            return np.array(self.problem.geometry.bounds)
+
+        # Try legacy problem attributes
+        bounds = []
+        for d in range(self.dimension):
+            if d == 0:
+                x_min = getattr(self.problem, "x_min", 0.0)
+                x_max = getattr(self.problem, "x_max", 1.0)
+                bounds.append([x_min, x_max])
+            elif d == 1:
+                y_min = getattr(self.problem, "y_min", 0.0)
+                y_max = getattr(self.problem, "y_max", 1.0)
+                bounds.append([y_min, y_max])
+            elif d == 2:
+                z_min = getattr(self.problem, "z_min", 0.0)
+                z_max = getattr(self.problem, "z_max", 1.0)
+                bounds.append([z_min, z_max])
+            else:
+                bounds.append([0.0, 1.0])  # Default unit interval
+
+        return np.array(bounds)
 
     def _setup_weno_coefficients(self) -> None:
         """Setup WENO reconstruction coefficients (shared across variants)."""
@@ -594,41 +683,44 @@ class HJBWenoSolver(BaseHJBSolver):
         Compute right-hand side of HJB equation using WENO discretization.
 
         RHS = -H(x, ∇u, m) + (σ²/2)Δu
+
+        Uses ghost cells for full 5th-order accuracy at boundaries.
         """
         n = len(u)
         rhs = np.zeros(n)
         dx = self.grid_spacing_x
+        g = self.ghost_depth  # 2 for WENO5
 
-        # Compute spatial derivatives using WENO reconstruction
+        # Apply boundary conditions via ghost buffer
+        # This gives us a padded array with ghost cells on each side
+        self.ghost_buffer.interior[:] = u
+        self.ghost_buffer.update_ghosts()
+        u_padded = self.ghost_buffer.padded  # Shape: (n + 2*g,)
+
+        # Compute spatial derivatives using WENO reconstruction on padded array
+        # Now we can use full WENO stencil at ALL interior points
         u_x = np.zeros(n)
 
-        for i in range(2, n - 2):  # Interior points with full stencil
+        for i in range(n):  # All interior points
+            # Index in padded array
+            i_pad = i + g
+
             # WENO reconstruction for derivative approximation
-            u_left, u_right = self._weno_reconstruction(u, i)
+            # Now uses full stencil without clamping at boundaries
+            u_left, u_right = self._weno_reconstruction_padded(u_padded, i_pad)
 
             # High-order central difference for first derivative
             u_x[i] = (u_right - u_left) / (2 * dx)
 
-        # Handle boundaries with lower-order approximations
-        u_x[0] = (-3 * u[0] + 4 * u[1] - u[2]) / (2 * dx)
-        u_x[1] = (u[2] - u[0]) / (2 * dx)
-        u_x[-2] = (u[-1] - u[-3]) / (2 * dx)
-        u_x[-1] = (u[-3] - 4 * u[-2] + 3 * u[-1]) / (2 * dx)
-
-        # Compute second derivative using central differences
+        # Compute second derivative using central differences on padded array
+        # With ghost cells, we can use standard central diff at all points
         u_xx = np.zeros(n)
-        for i in range(1, n - 1):
-            u_xx[i] = (u[i + 1] - 2 * u[i] + u[i - 1]) / dx**2
-
-        # Boundary conditions for second derivative
-        u_xx[0] = u_xx[1]
-        u_xx[-1] = u_xx[-2]
+        for i in range(n):
+            i_pad = i + g
+            u_xx[i] = (u_padded[i_pad + 1] - 2 * u_padded[i_pad] + u_padded[i_pad - 1]) / dx**2
 
         # Compute Hamiltonian and assemble RHS
         for i in range(n):
-            # For simplicity in this demo, we use spatial index
-            # In full implementation, would get actual x coordinate
-
             # Evaluate Hamiltonian using problem interface (direction (1,) = x-derivative)
             hamiltonian = self._evaluate_hamiltonian(i, m[i], u_x[i], direction=(1,))
 
@@ -636,6 +728,78 @@ class HJBWenoSolver(BaseHJBSolver):
             rhs[i] = -hamiltonian + (self.problem.sigma**2 / 2) * u_xx[i]
 
         return rhs
+
+    def _weno_reconstruction_padded(self, u_padded: np.ndarray, i: int) -> tuple[float, float]:
+        """
+        WENO reconstruction on padded array (no boundary clamping needed).
+
+        Args:
+            u_padded: Padded array with ghost cells
+            i: Index in padded array (must have valid stencil i-2 to i+2)
+
+        Returns:
+            (u_left, u_right): Reconstructed values at interface
+        """
+        # Get WENO weights using selected variant
+        w_plus, w_minus = self._compute_weno_weights_padded(u_padded, i)
+
+        # Extract 5-point stencil (no clamping - ghost cells ensure validity)
+        u = u_padded[i - 2 : i + 3]
+
+        # Reconstruct using weighted combination of sub-stencil polynomials
+        u_left = 0.0
+        u_right = 0.0
+
+        for k in range(3):
+            # Left reconstruction (positive direction)
+            u_left += w_plus[k] * np.dot(self.c_plus[k], u[k : k + 3])
+
+            # Right reconstruction (negative direction)
+            if k == 0:
+                u_vals = u[2::-1]  # [u2, u1, u0]
+            elif k == 1:
+                u_vals = u[3:0:-1]  # [u3, u2, u1]
+            else:  # k == 2
+                u_vals = u[4:1:-1]  # [u4, u3, u2]
+
+            u_right += w_minus[k] * np.dot(self.c_minus[k], u_vals)
+
+        return u_left, u_right
+
+    def _compute_weno_weights_padded(self, u_padded: np.ndarray, i: int) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Compute WENO weights on padded array (no boundary clamping).
+
+        Args:
+            u_padded: Padded array with ghost cells
+            i: Index in padded array
+
+        Returns:
+            (w_plus, w_minus): WENO weights for upwind and downwind reconstruction
+        """
+        # Extract 5-point stencil directly (ghost cells ensure validity)
+        u = u_padded[i - 2 : i + 3]
+
+        # Compute smoothness indicators (same for all variants)
+        beta = self._compute_smoothness_indicators(u)
+
+        # Select weight calculation based on variant
+        if self.weno_variant == "weno5" or self.weno_variant == "weno-js":
+            w_plus = self._compute_classic_weights(beta, self.d_plus)
+            w_minus = self._compute_classic_weights(beta[::-1], self.d_minus)
+        elif self.weno_variant == "weno-z":
+            tau = self._compute_tau_indicator(u)
+            w_plus = self._compute_z_weights(beta, tau, self.d_plus)
+            w_minus = self._compute_z_weights(beta[::-1], tau, self.d_minus)
+        elif self.weno_variant == "weno-m":
+            w_plus = self._compute_mapped_weights(beta, self.d_plus)
+            w_minus = self._compute_mapped_weights(beta[::-1], self.d_minus)
+        else:
+            # Fallback to classic
+            w_plus = self._compute_classic_weights(beta, self.d_plus)
+            w_minus = self._compute_classic_weights(beta[::-1], self.d_minus)
+
+        return w_plus, w_minus
 
     def _compute_dt_stable_1d(self, u: np.ndarray, m: np.ndarray) -> float:
         """Compute stable time step based on CFL and diffusion stability."""
