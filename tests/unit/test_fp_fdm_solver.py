@@ -963,5 +963,146 @@ class TestFPFDMSolverTensorDiffusion:
         assert np.allclose(masses, 1.0, atol=0.1)
 
 
+class TestFPFDMSolverCallableDrift:
+    """Test callable (state-dependent) drift_field support (Phase 2 - Issue #487)."""
+
+    def test_constant_drift_callable(self, standard_problem):
+        """Test constant drift via callable function."""
+        solver = FPFDMSolver(standard_problem)
+
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
+
+        # Constant drift pushing right
+        def constant_drift(t, x, m):
+            return 0.3 * np.ones_like(x)
+
+        # Initial condition (Gaussian)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.3) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve with callable drift
+        M = solver.solve_fp_system(m_initial, drift_field=constant_drift, show_progress=False)
+
+        assert M.shape == (Nt_points, Nx_points)
+        assert np.all(M >= 0)
+        # Solution should evolve
+        assert not np.allclose(M[0], M[-1])
+
+    def test_state_dependent_drift(self, standard_problem):
+        """Test state-dependent drift: alpha(t, x, m) depends on density."""
+        solver = FPFDMSolver(standard_problem)
+
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
+
+        # Density-dependent drift: move away from high density regions
+        def crowd_avoidance_drift(t, x, m):
+            # Gradient-like drift pushing toward low density
+            grad_m = np.gradient(m, x[1] - x[0] if len(x) > 1 else 1.0)
+            return -0.5 * grad_m
+
+        # Initial condition
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve
+        M = solver.solve_fp_system(m_initial, drift_field=crowd_avoidance_drift, show_progress=False)
+
+        assert M.shape == (Nt_points, Nx_points)
+        assert np.all(M >= 0)
+        # Verify mass conservation is approximately maintained
+        masses = np.sum(M, axis=1)
+        assert np.all(masses > 0.5)
+        assert np.all(masses < 2.0)
+
+    def test_time_dependent_drift(self, standard_problem):
+        """Test time-dependent drift: alpha(t, x, m) varies with time."""
+        solver = FPFDMSolver(standard_problem)
+
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
+
+        # Drift that oscillates over time
+        def oscillating_drift(t, x, m):
+            return 0.2 * np.sin(2 * np.pi * t) * np.ones_like(x)
+
+        # Initial condition
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve
+        M = solver.solve_fp_system(m_initial, drift_field=oscillating_drift, show_progress=False)
+
+        assert M.shape == (Nt_points, Nx_points)
+        assert np.all(M >= 0)
+
+    def test_callable_drift_with_callable_diffusion(self, standard_problem):
+        """Test callable drift combined with callable diffusion."""
+        solver = FPFDMSolver(standard_problem)
+
+        (Nx_points,) = standard_problem.geometry.get_grid_shape()
+        Nt_points = standard_problem.Nt + 1
+        bounds = standard_problem.geometry.get_bounds()
+
+        # Callable drift - use m for shape since x is coords list
+        def simple_drift(t, x, m):
+            return 0.2 * np.ones_like(m)
+
+        # Callable diffusion - use m for shape since x is coords list
+        def simple_diffusion(t, x, m):
+            return 0.1 * np.ones_like(m)
+
+        # Initial condition
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve
+        M = solver.solve_fp_system(
+            m_initial, drift_field=simple_drift, diffusion_field=simple_diffusion, show_progress=False
+        )
+
+        assert M.shape == (Nt_points, Nx_points)
+        assert np.all(M >= 0)
+
+    def test_callable_drift_2d(self):
+        """Test callable drift in 2D problem."""
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=10, diffusion=0.1)
+
+        solver = FPFDMSolver(problem)
+
+        Nx, Ny = domain.Nx_points
+
+        # Callable drift returning vector field
+        def vector_drift(t, coords, m):
+            x, y = coords
+            # Return vector drift: shape (2, Nx, Ny)
+            drift = np.zeros((2, len(x), len(y)))
+            drift[0] = 0.3 * np.ones((len(x), len(y)))  # x-drift
+            drift[1] = 0.0 * np.ones((len(x), len(y)))  # no y-drift (synthetic U limitation)
+            return drift
+
+        # Initial condition (Gaussian)
+        x_coords, y_coords = domain.coordinates
+        X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
+        m_initial = np.exp(-30 * ((X - 0.3) ** 2 + (Y - 0.5) ** 2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve with callable drift
+        M = solver.solve_fp_system(m_initial, drift_field=vector_drift, show_progress=False)
+
+        assert M.shape == (problem.Nt + 1, Nx, Ny)
+        assert np.all(np.isfinite(M))
+        assert np.all(M >= -1e-10)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

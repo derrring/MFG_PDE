@@ -240,6 +240,48 @@ class HamiltonianMixin:
 
         return self.f_potential.copy()
 
+    def _get_potential_at_index(self, x_idx: int | tuple[int, ...]) -> float:
+        """
+        Safely retrieve potential cost V(x) at given index.
+
+        Handles both grid-based (FDM) and meshfree (GFDM) methods.
+        Returns 0.0 if index is out of bounds (meshfree fallback).
+
+        Args:
+            x_idx: Grid index - either flat int or tuple for nD
+
+        Returns:
+            Potential value at index, or 0.0 if out of bounds
+        """
+        if self.f_potential is None:
+            return 0.0
+
+        # Normalize to flat index
+        flat_idx: int | None = None
+
+        if isinstance(x_idx, tuple):
+            if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+                # Multi-dimensional tuple index - convert to flat
+                # Use mode='clip' to avoid ValueError, then check bounds
+                try:
+                    flat_idx = int(np.ravel_multi_index(x_idx, self.spatial_shape, mode="raise"))
+                except ValueError:
+                    # Coordinate outside defined shape
+                    return 0.0
+            else:
+                # 1D tuple like (5,)
+                flat_idx = x_idx[0] if len(x_idx) > 0 else 0
+        else:
+            # Scalar index
+            flat_idx = int(x_idx)
+
+        # Single bounds check
+        if 0 <= flat_idx < self.f_potential.size:
+            return float(self.f_potential.flat[flat_idx])
+
+        # Out of bounds - meshfree method with index beyond grid
+        return 0.0
+
     def H(
         self,
         x_idx: int,
@@ -424,26 +466,15 @@ class HamiltonianMixin:
         if np.isinf(hamiltonian_control_part) or np.isnan(hamiltonian_control_part):
             return np.nan
 
-        # Get potential value (handle both 1D and nD indexing)
-        if isinstance(x_idx, tuple) and hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
-            flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
-            potential_cost_V_x = float(self.f_potential.flat[flat_idx])
-        elif hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
-            potential_cost_V_x = float(self.f_potential.flat[x_idx])
-        else:
-            potential_cost_V_x = float(self.f_potential[x_idx])
+        # Get potential value using safe lookup
+        potential_V = self._get_potential_at_index(x_idx)
 
-        coupling_density_m_x = m_at_x**2
+        coupling_m_sq = m_at_x**2
 
-        if (
-            np.isinf(potential_cost_V_x)
-            or np.isnan(potential_cost_V_x)
-            or np.isinf(coupling_density_m_x)
-            or np.isnan(coupling_density_m_x)
-        ):
+        if np.isinf(potential_V) or np.isnan(potential_V) or np.isinf(coupling_m_sq) or np.isnan(coupling_m_sq):
             return np.nan
 
-        result = hamiltonian_control_part - potential_cost_V_x - coupling_density_m_x
+        result = hamiltonian_control_part - potential_V - coupling_m_sq
 
         if np.isinf(result) or np.isnan(result):
             return np.nan

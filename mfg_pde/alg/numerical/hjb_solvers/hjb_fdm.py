@@ -642,6 +642,10 @@ class HJBFDMSolver(BaseHJBSolver):
         Ghost values are computed once per timestep to ensure upwind schemes
         respect boundary conditions at domain boundaries.
 
+        Uses the unified BC infrastructure from geometry/boundary/applicator_fdm.py.
+        When BCs are not available, gradient computation falls back to one-sided
+        stencils at boundaries (with a warning on first occurrence).
+
         Args:
             U: Value function at current timestep
             time: Current time for time-dependent BC values
@@ -652,6 +656,7 @@ class HJBFDMSolver(BaseHJBSolver):
         """
         # Try to get boundary conditions from geometry
         if not hasattr(self, "grid") or self.grid is None:
+            self._warn_no_bc_once("grid not available")
             return None
 
         # Check if geometry has boundary conditions
@@ -662,14 +667,33 @@ class HJBFDMSolver(BaseHJBSolver):
             bc = self.problem.boundary_conditions
 
         if bc is None:
+            self._warn_no_bc_once("no boundary_conditions attribute")
             return None
 
         # Compute ghost values using the BC applicator
         try:
             return get_ghost_values_nd(U, bc, self.spacing, time=time)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
             # BC not compatible with ghost value computation
+            self._warn_no_bc_once(f"BC computation failed: {e}")
             return None
+
+    def _warn_no_bc_once(self, reason: str) -> None:
+        """Emit warning about missing BC (once per solver instance)."""
+        if not hasattr(self, "_bc_warning_emitted"):
+            self._bc_warning_emitted = False
+
+        if not self._bc_warning_emitted:
+            import warnings
+
+            warnings.warn(
+                f"HJB FDM nD solver: Boundary conditions not available ({reason}). "
+                f"Using one-sided stencil fallback at boundaries. "
+                f"For proper BC handling, attach BoundaryConditions to geometry or problem.",
+                UserWarning,
+                stacklevel=4,
+            )
+            self._bc_warning_emitted = True
 
     def _evaluate_hamiltonian_nd(
         self,

@@ -541,5 +541,146 @@ class TestFPParticleSolverHelperMethods:
             assert np.isclose(np.sum(normalized * dx), 1.0, rtol=0.1)
 
 
+class TestFPParticleSolverCallableDrift:
+    """Test callable (state-dependent) drift_field support (Phase 2 - Issue #487)."""
+
+    def test_constant_drift_callable_1d(self):
+        """Test constant drift via callable function in 1D."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=25, diffusion=0.1)
+        solver = FPParticleSolver(problem, num_particles=1000)
+
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
+
+        # Constant drift pushing right
+        def constant_drift(t, x, m):
+            return 0.3 * np.ones_like(x)
+
+        # Initial condition (Gaussian centered at 0.3)
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.3) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve with callable drift
+        M = solver.solve_fp_system(M_initial=m_initial, drift_field=constant_drift, show_progress=False)
+
+        assert M.shape[1] == Nx_points
+        assert np.all(np.isfinite(M))
+        # Peak should move right
+        initial_peak = x_grid[np.argmax(M[0])]
+        final_peak = x_grid[np.argmax(M[-1])]
+        assert final_peak > initial_peak
+
+    def test_constant_drift_callable_2d(self):
+        """Test constant drift via callable function in 2D."""
+        from mfg_pde.geometry import TensorProductGrid
+
+        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+        problem = MFGProblem(geometry=domain, T=0.3, Nt=15, diffusion=0.05)
+        solver = FPParticleSolver(problem, num_particles=2000)
+
+        Nx, Ny = domain.num_points[0], domain.num_points[1]
+
+        # Diagonal drift pushing toward upper-right
+        def diagonal_drift(t, x, m):
+            # x is (N, 2) for 2D
+            drift = np.zeros_like(x)
+            drift[:, 0] = 0.4  # x-drift
+            drift[:, 1] = 0.4  # y-drift
+            return drift
+
+        # Initial condition (Gaussian centered at (0.3, 0.3))
+        x_coords, y_coords = domain.coordinates
+        X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
+        m_initial = np.exp(-30 * ((X - 0.3) ** 2 + (Y - 0.3) ** 2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve with callable drift
+        M = solver.solve_fp_system(M_initial=m_initial, drift_field=diagonal_drift, show_progress=False)
+
+        assert M.shape == (problem.Nt + 2, Nx, Ny)  # Shape depends on particle solver
+        assert np.all(np.isfinite(M))
+        # Center of mass should move diagonally
+        initial_com_x = np.sum(X * M[0]) / np.sum(M[0])
+        initial_com_y = np.sum(Y * M[0]) / np.sum(M[0])
+        final_com_x = np.sum(X * M[-1]) / np.sum(M[-1])
+        final_com_y = np.sum(Y * M[-1]) / np.sum(M[-1])
+        assert final_com_x > initial_com_x
+        assert final_com_y > initial_com_y
+
+    def test_state_dependent_drift_1d(self):
+        """Test state-dependent drift: alpha(t, x, m) depends on density."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=25, diffusion=0.1)
+        solver = FPParticleSolver(problem, num_particles=1000)
+
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
+
+        # Density-dependent drift: higher density -> lower drift
+        def crowd_aware_drift(t, x, m):
+            # Drift reduces where density is high
+            return 0.3 * (1 - 0.5 * m / (np.max(m) + 1e-10))
+
+        # Initial condition
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve
+        M = solver.solve_fp_system(M_initial=m_initial, drift_field=crowd_aware_drift, show_progress=False)
+
+        assert np.all(np.isfinite(M))
+        # Density should be non-negative (KDE ensures this)
+        assert np.all(M >= -1e-10)
+
+    def test_time_dependent_drift_1d(self):
+        """Test time-dependent drift: alpha(t, x, m) varies with time."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=1.0, Nt=30, diffusion=0.1)
+        solver = FPParticleSolver(problem, num_particles=1000)
+
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
+
+        # Drift that oscillates over time
+        def oscillating_drift(t, x, m):
+            return 0.3 * np.sin(2 * np.pi * t) * np.ones_like(x)
+
+        # Initial condition
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve
+        M = solver.solve_fp_system(M_initial=m_initial, drift_field=oscillating_drift, show_progress=False)
+
+        assert np.all(np.isfinite(M))
+        assert np.all(M >= -1e-10)
+
+    def test_callable_drift_with_array_diffusion(self):
+        """Test callable drift combined with array diffusion."""
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=20, diffusion=0.1)
+        solver = FPParticleSolver(problem, num_particles=1000)
+
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        bounds = problem.geometry.get_bounds()
+
+        # Callable drift
+        def simple_drift(t, x, m):
+            return 0.2 * np.ones_like(x)
+
+        # Initial condition
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        m_initial = np.exp(-((x_grid - 0.5) ** 2) / (2 * 0.1**2))
+        m_initial /= np.sum(m_initial)
+
+        # Solve with callable drift and constant scalar diffusion
+        M = solver.solve_fp_system(
+            M_initial=m_initial, drift_field=simple_drift, diffusion_field=0.15, show_progress=False
+        )
+
+        assert np.all(np.isfinite(M))
+        assert np.all(M >= -1e-10)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

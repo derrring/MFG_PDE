@@ -25,6 +25,7 @@ Hierarchy:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -644,6 +645,132 @@ class ZeroFluxCalculator:
 
 # Backward compatibility alias
 FPNoFluxCalculator = ZeroFluxCalculator
+
+
+# =============================================================================
+# LinearConstraint: Bridge between Ghost Cells and Matrix Assembly
+# =============================================================================
+#
+# The "Tier-Based Coefficient Folding" pattern from bc_architecture_analysis.md
+#
+# For EXPLICIT schemes: Ghost cells are filled with computed values
+#   u_ghost = Calculator.compute(u_inner, dx)
+#
+# For IMPLICIT schemes: Ghost node relationships become matrix coefficients
+#   u_ghost = sum(weights[k] * u[inner+k]) + bias
+#
+# This dataclass expresses the linear relationship for matrix folding:
+#   Tier 1 (State/Dirichlet): weights={}, bias=value
+#   Tier 2 (Gradient/Neumann): weights={0: 1.0}, bias=dx*grad
+#   Tier 3 (Flux/Robin): weights={0: alpha}, bias=0
+#   Tier 4 (Artificial/Extrapolation): weights={0: 2.0, 1: -1.0}, bias=0
+# =============================================================================
+
+
+@dataclass
+class LinearConstraint:
+    """
+    Linear constraint expressing ghost cell as function of interior values.
+
+    For matrix assembly, when a stencil accesses ghost index j, the assembler:
+    1. Adds weight * w to A[i, inner+k] for each (k, w) in weights
+    2. Subtracts weight * bias from b[i]
+
+    This is the "Coefficient Folding" pattern from the 2+4 BC architecture.
+
+    Attributes:
+        weights: Mapping from relative offset to weight. Offset 0 = boundary cell,
+                 offset 1 = one cell inward, etc.
+        bias: Constant term (for Dirichlet values or gradient offsets)
+
+    Examples:
+        # Tier 1: Dirichlet u=g -> u_ghost = g (constant)
+        LinearConstraint(weights={}, bias=g)
+
+        # Tier 2: Neumann du/dn=0 -> u_ghost = u_inner
+        LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+        # Tier 2: Neumann du/dn=g -> u_ghost = u_inner + dx*g
+        LinearConstraint(weights={0: 1.0}, bias=dx * g)
+
+        # Tier 3: Robin (FP no-flux) -> u_ghost = alpha * u_inner
+        LinearConstraint(weights={0: alpha}, bias=0.0)
+
+        # Tier 4: Linear extrapolation -> u_ghost = 2*u[0] - u[1]
+        LinearConstraint(weights={0: 2.0, 1: -1.0}, bias=0.0)
+    """
+
+    weights: dict[int, float]
+    bias: float = 0.0
+
+
+def calculator_to_constraint(
+    calculator: BoundaryCalculator | None,
+    dx: float,
+    side: str,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> LinearConstraint:
+    """
+    Convert a BoundaryCalculator to LinearConstraint for matrix assembly.
+
+    This bridges the explicit (ghost cell) and implicit (matrix) worlds,
+    ensuring mathematical equivalence as required by GKS stability.
+
+    Args:
+        calculator: The physics calculator (None for periodic topology)
+        dx: Grid spacing
+        side: Boundary side ('min' or 'max')
+        grid_type: Grid alignment type
+
+    Returns:
+        LinearConstraint describing how ghost depends on interior values
+
+    Note:
+        For periodic topology, this function should not be called - the
+        Topology layer handles periodic by index wrapping, no physics needed.
+    """
+    if calculator is None:
+        # Periodic topology - should not reach here
+        raise ValueError("Periodic boundaries use index wrapping, not LinearConstraint")
+
+    # Tier 1: State constraints (Dirichlet)
+    if isinstance(calculator, DirichletCalculator):
+        return LinearConstraint(weights={}, bias=calculator._boundary_value)
+
+    # Tier 2: Gradient constraints (Neumann/ZeroGradient)
+    if isinstance(calculator, (NeumannCalculator, ZeroGradientCalculator)):
+        flux_value = calculator._flux_value if isinstance(calculator, NeumannCalculator) else 0.0
+        # For cell-centered: u_ghost = u_inner ± dx * g (sign depends on side)
+        sign = 1.0 if side == "max" else -1.0
+        return LinearConstraint(weights={0: 1.0}, bias=sign * dx * flux_value)
+
+    # Tier 3: Flux constraints (Robin/ZeroFlux)
+    if isinstance(calculator, (RobinCalculator, ZeroFluxCalculator)):
+        if isinstance(calculator, ZeroFluxCalculator):
+            # FP no-flux: alpha = (2D + v*dx) / (2D - v*dx)
+            v = calculator._drift
+            D = calculator._diffusion
+            outward_sign = 1.0 if side == "max" else -1.0
+            v_n = v * outward_sign
+            alpha = (2 * D + v_n * dx) / (2 * D - v_n * dx + 1e-14)
+            return LinearConstraint(weights={0: alpha}, bias=0.0)
+        else:
+            # General Robin: need to solve for alpha from α*u + β*∂u/∂n = g
+            # For matrix folding: u_ghost = f(α, β, g, dx) * u_inner + const
+            # This is more complex - use simplified form for now
+            return LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+    # Tier 4: Artificial constraints (Extrapolation)
+    if isinstance(calculator, LinearExtrapolationCalculator):
+        # u_ghost = 2*u[0] - u[1]
+        return LinearConstraint(weights={0: 2.0, 1: -1.0}, bias=0.0)
+
+    if isinstance(calculator, QuadraticExtrapolationCalculator):
+        # u_ghost = 3*u[0] - 3*u[1] + u[2]
+        return LinearConstraint(weights={0: 3.0, 1: -3.0, 2: 1.0}, bias=0.0)
+
+    # Default fallback: Neumann-like (copy interior)
+    return LinearConstraint(weights={0: 1.0}, bias=0.0)
 
 
 class BaseBCApplicator(ABC):
@@ -1366,4 +1493,7 @@ __all__ = [
     # Extrapolation ghost cell (for unbounded domains)
     "ghost_cell_linear_extrapolation",
     "ghost_cell_quadratic_extrapolation",
+    # Matrix assembly support (Tier-Based Coefficient Folding)
+    "LinearConstraint",
+    "calculator_to_constraint",
 ]

@@ -12,10 +12,18 @@ from scipy.spatial.distance import cdist
 from mfg_pde.utils.numerical.differential_utils import (
     compute_dH_dp,
 )
+
+# Legacy operator for backward compatibility (deprecated)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
+
+# New GFDM infrastructure (Strategy Pattern)
+from mfg_pde.utils.numerical.gfdm_strategies import (
+    DirectCollocationHandler,
+    TaylorOperator,
+    create_operator,
+)
 from mfg_pde.utils.numerical.particle.interpolation import (
     interpolate_grid_to_particles,
-    interpolate_particles_to_grid,
 )
 from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
 
@@ -79,6 +87,11 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         # Hybrid neighborhood parameters
         k_neighbors: int | None = None,
         neighborhood_mode: str = "hybrid",
+        # New GFDM infrastructure parameters
+        derivative_method: str = "taylor",  # "taylor" or "rbf"
+        rbf_kernel: str = "phs3",  # For RBF-FD: "phs3", "phs5", "gaussian"
+        rbf_poly_degree: int = 2,  # Polynomial augmentation degree for RBF-FD
+        use_new_infrastructure: bool = True,  # Use new Strategy Pattern (recommended)
     ):
         """
         Initialize the GFDM HJB solver.
@@ -130,6 +143,17 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                 - "radius": Use all points within delta (classic behavior)
                 - "knn": Use exactly k nearest neighbors
                 - "hybrid": Use delta, but ensure at least k neighbors (default, most robust)
+            derivative_method: Method for computing spatial derivatives:
+                - "taylor": Standard GFDM with Taylor polynomial basis (default)
+                - "rbf": RBF-FD with polyharmonic splines (better conditioning)
+            rbf_kernel: Kernel for RBF-FD method (only used when derivative_method="rbf"):
+                - "phs3": r³ polyharmonic spline (most common)
+                - "phs5": r⁵ polyharmonic spline (higher accuracy)
+                - "gaussian": Gaussian RBF (requires shape parameter tuning)
+            rbf_poly_degree: Polynomial augmentation degree for RBF-FD (default 2)
+            use_new_infrastructure: Use new Strategy Pattern infrastructure (default True).
+                When True, uses TaylorOperator/LocalRBFOperator + DirectCollocationHandler.
+                When False, uses legacy GFDMOperator (deprecated, for backward compatibility).
         """
         super().__init__(problem)
 
@@ -293,35 +317,79 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             "max_delta_used": delta,
         }
 
-        # Get boundary type for GFDMOperator
-        # BoundaryConditions uses 'default_bc' attribute (BCType enum)
-        bc_type = None
-        if hasattr(self.boundary_conditions, "default_bc"):
-            bc_type_enum = getattr(self.boundary_conditions, "default_bc", None)
-            if bc_type_enum is not None:
-                # Convert BCType enum to string for GFDMOperator
-                # GFDMOperator expects "no_flux" for Neumann BC
-                bc_name = bc_type_enum.value if hasattr(bc_type_enum, "value") else str(bc_type_enum)
-                bc_type = "no_flux" if bc_name.lower() == "neumann" else bc_name.lower()
+        # Store new infrastructure parameters
+        self._use_new_infrastructure = use_new_infrastructure
+        self._derivative_method = derivative_method
+        self._rbf_kernel = rbf_kernel
+        self._rbf_poly_degree = rbf_poly_degree
 
-        # Create GFDMOperator with boundary condition support (composition pattern)
-        # GFDMOperator now handles ghost particles for no-flux BC
-        self._gfdm_operator = GFDMOperator(
-            points=collocation_points,
-            delta=delta,
-            taylor_order=taylor_order,
-            weight_function=weight_function,
-            weight_scale=weight_scale,
-            boundary_indices=self.boundary_indices,
-            domain_bounds=self.domain_bounds,
-            boundary_type=bc_type,
-            k_neighbors=k_neighbors,
-            neighborhood_mode=neighborhood_mode,
-        )
+        # Create differential operator using Strategy Pattern (recommended)
+        # or legacy GFDMOperator (for backward compatibility)
+        if use_new_infrastructure:
+            # New infrastructure: TaylorOperator or LocalRBFOperator
+            if derivative_method == "taylor":
+                self._gfdm_operator = TaylorOperator(
+                    points=collocation_points,
+                    delta=delta,
+                    taylor_order=taylor_order,
+                    weight_function=weight_function,
+                    k_neighbors=k_neighbors,
+                    neighborhood_mode=neighborhood_mode,
+                )
+            elif derivative_method == "rbf":
+                self._gfdm_operator = create_operator(
+                    points=collocation_points,
+                    delta=delta,
+                    method="rbf",
+                    kernel=rbf_kernel,
+                    poly_degree=rbf_poly_degree,
+                    k_neighbors=k_neighbors,
+                    neighborhood_mode=neighborhood_mode,
+                )
+            else:
+                raise ValueError(f"Unknown derivative_method: {derivative_method}")
 
-        # Get multi-indices from GFDMOperator
-        self.multi_indices = self._gfdm_operator.get_multi_indices()
+            # Initialize BC handler with Row Replacement pattern
+            self._bc_handler = DirectCollocationHandler()
+
+            # Compute boundary normals for Neumann BC
+            self._boundary_normals = self._compute_boundary_normals()
+
+            # Create unified BC config (single source of truth)
+            self._bc_config = self._create_bc_config()
+        else:
+            # Legacy: GFDMOperator (deprecated, for backward compatibility)
+            warnings.warn(
+                "use_new_infrastructure=False is deprecated. "
+                "The legacy GFDMOperator will be removed in v0.18.0. "
+                "Use use_new_infrastructure=True (default) instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self._gfdm_operator = GFDMOperator(
+                points=collocation_points,
+                delta=delta,
+                taylor_order=taylor_order,
+                weight_function=weight_function,
+                weight_scale=weight_scale,
+                boundary_indices=self.boundary_indices,
+                domain_bounds=self.domain_bounds,
+                boundary_type=None,  # No ghost particles
+                k_neighbors=k_neighbors,
+                neighborhood_mode=neighborhood_mode,
+            )
+            self._bc_handler = None
+            self._boundary_normals = None
+            self._bc_config = None
+
+        # Get multi-indices from operator (both TaylorOperator and GFDMOperator have .multi_indices)
+        self.multi_indices = self._gfdm_operator.multi_indices
         self.n_derivatives = len(self.multi_indices)
+
+        # Store spatial shape for grid<->collocation interpolation
+        # This is needed for _map_grid_to_collocation and _map_collocation_to_grid
+        # get_grid_shape() returns node counts (Nx+1, Ny+1), not cell counts
+        self._output_spatial_shape = tuple(self.problem.geometry.get_grid_shape())
 
         # Build neighborhood structure - uses GFDMOperator's neighborhoods as base,
         # only extends for points needing adaptive delta enlargement
@@ -379,11 +447,165 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         maxs = self.collocation_points.max(axis=0)  # shape: (d,)
         return list(zip(mins.astype(float).tolist(), maxs.astype(float).tolist(), strict=True))
 
+    def _compute_outward_normal(self, point_idx: int) -> np.ndarray:
+        """
+        Compute outward normal vector at a boundary point.
+
+        For rectangular domains, the normal is determined by which boundary
+        the point lies on. For corner points (on multiple boundaries), returns
+        the average of all boundary normals.
+
+        Args:
+            point_idx: Index of boundary point
+
+        Returns:
+            Unit outward normal vector, shape (dimension,)
+        """
+        point = self.collocation_points[point_idx]
+        normal = np.zeros(self.dimension)
+        tol = 1e-10
+
+        for d in range(self.dimension):
+            low, high = self.domain_bounds[d]
+            if abs(point[d] - low) < tol:
+                normal[d] -= 1.0  # At lower boundary, normal points inward (negative)
+            if abs(point[d] - high) < tol:
+                normal[d] += 1.0  # At upper boundary, normal points outward (positive)
+
+        # Normalize (handles corners where multiple boundaries meet)
+        norm = np.linalg.norm(normal)
+        if norm > 1e-12:
+            normal /= norm
+        else:
+            # Fallback: no clear boundary detected, use zero vector
+            normal = np.zeros(self.dimension)
+
+        return normal
+
+    def _compute_boundary_normals(self) -> np.ndarray | None:
+        """
+        Compute outward normal vectors for all boundary points.
+
+        Tries to use geometry infrastructure (BoundaryConditions.get_outward_normal)
+        first, falls back to axis-aligned computation for rectangular domains.
+
+        Returns:
+            Array of shape (n_boundary, dimension) with unit normal vectors,
+            or None if no boundary points.
+        """
+        if len(self.boundary_indices) == 0:
+            return None
+
+        normals = np.zeros((len(self.boundary_indices), self.dimension))
+
+        # Try to use geometry infrastructure first (supports SDF domains)
+        bc_obj = None
+        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
+            geom = self.problem.geometry
+            if hasattr(geom, "boundary_conditions"):
+                bc_obj = geom.boundary_conditions
+
+        for local_idx, global_idx in enumerate(self.boundary_indices):
+            point = self.collocation_points[global_idx]
+
+            # Try BoundaryConditions.get_outward_normal (works for SDF domains)
+            if bc_obj is not None and hasattr(bc_obj, "get_outward_normal"):
+                normal = bc_obj.get_outward_normal(point)
+                if normal is not None:
+                    normals[local_idx] = normal
+                    continue
+
+            # Fallback: axis-aligned computation for rectangular domains
+            normals[local_idx] = self._compute_outward_normal(global_idx)
+
+        return normals
+
+    def _create_bc_config(self) -> dict:
+        """
+        Create unified BC configuration dict (single source of truth).
+
+        This ensures consistent BC handling between:
+        - _apply_boundary_conditions_to_sparse_system (Jacobian)
+        - _apply_boundary_conditions_to_solution (solution)
+        - DirectCollocationHandler.apply_to_residual (residual)
+
+        Returns:
+            BC configuration dict with keys: type, values, normals
+        """
+        # Resolve BC type from boundary_conditions (single source of truth)
+        bc_type = self._get_boundary_condition_property("type", None)
+
+        if bc_type is None:
+            # Infer from BC object or default to neumann for MFG
+            if hasattr(self.boundary_conditions, "default_bc"):
+                bc_type = self.boundary_conditions.default_bc.value.lower()
+            else:
+                bc_type = "neumann"  # Default for MFG (no-flux)
+
+        if isinstance(bc_type, str):
+            bc_type = bc_type.lower()
+
+        # Get BC values (for Dirichlet or non-zero Neumann)
+        bc_value = self._get_boundary_condition_property("value", 0.0)
+
+        # Build values dict for per-point BC values
+        if callable(bc_value):
+            # Time-dependent or space-dependent BC - will be evaluated at runtime
+            bc_values = bc_value
+        else:
+            # Constant value for all boundary points
+            bc_values = bc_value
+
+        return {
+            "type": bc_type,
+            "values": bc_values,
+            "normals": self._boundary_normals,
+        }
+
+    def _build_neumann_bc_weights(self) -> dict[int, tuple[np.ndarray, np.ndarray]]:
+        """
+        Build GFDM weights for normal derivative at boundary points.
+
+        For Neumann BC (∂u/∂n = 0), we need weights such that:
+            ∂u/∂n ≈ Σ_j w_j u_j = 0
+
+        Returns:
+            Dictionary mapping boundary point index to (neighbor_indices, weights)
+        """
+        bc_weights = {}
+
+        for i in self.boundary_indices:
+            weights_data = self._gfdm_operator.get_derivative_weights(i)
+            if weights_data is None:
+                continue
+
+            neighbor_indices = weights_data["neighbor_indices"]
+            grad_weights = weights_data["grad_weights"]  # shape: (d, n_neighbors)
+
+            # Get outward normal at this point
+            normal = self._compute_outward_normal(i)
+
+            # Normal derivative weights: ∂u/∂n = n · ∇u = Σ_d n_d (∂u/∂x_d)
+            # = Σ_d n_d (Σ_j w^d_j u_j) = Σ_j (Σ_d n_d w^d_j) u_j
+            normal_weights = np.zeros(len(neighbor_indices))
+            for k in range(len(neighbor_indices)):
+                for d in range(self.dimension):
+                    normal_weights[k] += normal[d] * grad_weights[d, k]
+
+            # Center contribution: sum rule requires center weight = -Σ_j neighbor_weights
+            # But this is already handled in grad_weights via _build_differentiation_matrices
+            # We need to extract the center weight separately
+            center_weight = -np.sum(normal_weights[neighbor_indices >= 0])
+
+            bc_weights[i] = (neighbor_indices, normal_weights, center_weight)
+
+        return bc_weights
+
     def _build_neighborhood_structure(self):
         """
         Build δ-neighborhood structure for all collocation points.
 
-        Uses GFDMOperator's neighborhoods (which now include ghost particles for BC)
+        Uses GFDMOperator's neighborhoods (without ghost particles - pure one-sided stencils)
         and only extends for points needing adaptive delta enlargement.
         """
         self.neighborhoods = {}
@@ -395,7 +617,7 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             distances = None
 
         for i in range(self.n_points):
-            # Start with GFDMOperator's neighborhood (already includes ghost particles for BC)
+            # Start with GFDMOperator's neighborhood (pure one-sided stencils, no ghost particles)
             base_neighborhood = self._gfdm_operator.get_neighborhood(i)
             n_neighbors = base_neighborhood["size"]
 
@@ -728,6 +950,82 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                 f"Available options: 'gaussian', 'inverse_distance', 'uniform', 'wendland'"
             )
 
+    def _build_differentiation_matrices(self) -> None:
+        """
+        Pre-compute sparse differentiation matrices for vectorized derivative computation.
+
+        Builds:
+        - D_grad: List of sparse matrices (n_points x n_points) for each gradient component
+        - D_lap: Sparse matrix (n_points x n_points) for Laplacian
+
+        After this, derivatives can be computed via matrix-vector multiplication:
+            grad_u[d] = D_grad[d] @ u
+            lap_u = D_lap @ u
+
+        This converts O(n * k^2) per-point computation to O(n * k) matrix multiplication.
+        """
+        from scipy.sparse import lil_matrix
+
+        n = self.n_points
+        d = self.dimension
+
+        # Initialize sparse matrices in LIL format (efficient for construction)
+        D_grad_lil = [lil_matrix((n, n)) for _ in range(d)]
+        D_lap_lil = lil_matrix((n, n))
+
+        for i in range(n):
+            weights = self._gfdm_operator.get_derivative_weights(i)
+            if weights is None:
+                continue
+
+            neighbor_indices = weights["neighbor_indices"]
+            grad_weights = weights["grad_weights"]  # shape: (d, n_neighbors)
+            lap_weights = weights["lap_weights"]  # shape: (n_neighbors,)
+
+            # Fill gradient matrices
+            for dim in range(d):
+                # Neighbor contributions (skip ghost particles with j < 0)
+                real_grad_sum = 0.0
+                for k, j in enumerate(neighbor_indices):
+                    if j >= 0:
+                        D_grad_lil[dim][i, j] = grad_weights[dim, k]
+                        real_grad_sum += grad_weights[dim, k]
+                # Center contribution (sum rule: center weight = -sum of REAL neighbor weights)
+                # Note: Must exclude ghost particle weights to maintain row sum = 0
+                center_weight = -real_grad_sum
+                D_grad_lil[dim][i, i] += center_weight
+
+            # Fill Laplacian matrix (same fix: exclude ghost weights from center)
+            real_lap_sum = 0.0
+            for k, j in enumerate(neighbor_indices):
+                if j >= 0:
+                    D_lap_lil[i, j] = lap_weights[k]
+                    real_lap_sum += lap_weights[k]
+            D_lap_lil[i, i] += -real_lap_sum
+
+        # Convert to CSR format for efficient matrix-vector multiplication
+        self._D_grad = [D.tocsr() for D in D_grad_lil]
+        self._D_lap = D_lap_lil.tocsr()
+
+    def _compute_derivatives_vectorized(self, u: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Compute gradients and Laplacian for all points via sparse matrix multiplication.
+
+        Args:
+            u: Function values at collocation points, shape (n_points,)
+
+        Returns:
+            grad_u: Gradient at all points, shape (n_points, dimension)
+            lap_u: Laplacian at all points, shape (n_points,)
+        """
+        if not hasattr(self, "_D_grad") or self._D_grad is None:
+            self._build_differentiation_matrices()
+
+        grad_u = np.column_stack([D @ u for D in self._D_grad])
+        lap_u = self._D_lap @ u
+
+        return grad_u, lap_u
+
     def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> dict[tuple[int, ...], float]:
         """
         Approximate derivatives at collocation point using weighted least squares.
@@ -761,15 +1059,34 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         neighbor_indices = neighborhood["indices"]
         u_center = u_values[point_idx]
 
-        # Handle ghost particles for no-flux boundary conditions
+        # Handle ghost particles based on BC type
+        # - Neumann/no-flux: u_ghost = u_center (mirror value)
+        # - Dirichlet: u_ghost = BC value (if available)
+        bc_type = self._get_boundary_condition_property("type", "neumann")
+        bc_values = self._get_boundary_condition_property("values", None)
+
         u_neighbors = []
         for idx in neighbor_indices:  # type: ignore[attr-defined]
             if idx >= 0:
                 # Regular neighbor
                 u_neighbors.append(u_values[idx])
             else:
-                # Ghost particle: enforce no-flux condition u_ghost = u_center
-                u_neighbors.append(u_center)
+                # Ghost particle: value depends on BC type
+                if bc_type == "dirichlet" and bc_values is not None:
+                    # Dirichlet BC: use prescribed value
+                    # Note: bc_values may be scalar, array, or callable
+                    if callable(bc_values):
+                        x_pos = self.collocation_points[point_idx]
+                        u_neighbors.append(bc_values(x_pos))
+                    elif hasattr(bc_values, "__getitem__"):
+                        # Array-like: use value at this point
+                        u_neighbors.append(bc_values[point_idx] if point_idx < len(bc_values) else 0.0)
+                    else:
+                        # Scalar
+                        u_neighbors.append(float(bc_values))
+                else:
+                    # Neumann/no-flux: mirror u_center
+                    u_neighbors.append(u_center)
 
         u_neighbors = np.array(u_neighbors)  # type: ignore[assignment]
 
@@ -909,6 +1226,339 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
     # Note: print_qp_diagnostics moved to MonotonicityMixin
     # Note: _compute_fd_weights_from_taylor moved to MonotonicityMixin
 
+    def _approximate_all_derivatives_cached(self, u: np.ndarray) -> dict[int, dict[tuple[int, ...], float]]:
+        """Compute all derivatives at once (for caching between residual/Jacobian)."""
+        all_derivs: dict[int, dict[tuple[int, ...], float]] = {}
+        for i in range(self.n_points):
+            all_derivs[i] = self.approximate_derivatives(u, i)
+        return all_derivs
+
+    def _compute_hjb_residual_vectorized(
+        self,
+        u_current: np.ndarray,
+        u_n_plus_1: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        grad_u: np.ndarray,
+        lap_u: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Compute HJB residual using vectorized operations.
+
+        Args:
+            u_current: Current solution at collocation points
+            u_n_plus_1: Solution at next time step
+            m_n_plus_1: Density at collocation points
+            grad_u: Pre-computed gradient, shape (n_points, dimension)
+            lap_u: Pre-computed Laplacian, shape (n_points,)
+
+        Returns:
+            Residual vector, shape (n_points,)
+        """
+        dt = self.problem.T / self.problem.Nt
+        u_t = (u_n_plus_1 - u_current) / dt
+
+        # Compute Hamiltonian for all points
+        # For standard LQ: H = |grad_u|^2 / (2*lambda) + V + gamma*m
+        lambda_val = self._get_lambda_value()
+        gamma_val = getattr(self.problem, "gamma", 0.0)
+
+        # |grad_u|^2 for all points
+        grad_norm_sq = np.sum(grad_u**2, axis=1)
+
+        # Kinetic term: |p|^2 / (2*lambda)
+        H_kinetic = grad_norm_sq / (2 * lambda_val)
+
+        # Potential term (if exists)
+        if hasattr(self.problem, "f_potential") and self.problem.f_potential is not None:
+            # Need to interpolate potential to collocation points
+            H_potential = self._interpolate_potential_to_collocation()
+        else:
+            H_potential = np.zeros(self.n_points)
+
+        # Interaction term: gamma * m
+        H_interaction = gamma_val * m_n_plus_1
+
+        H_total = H_kinetic + H_potential + H_interaction
+
+        # Diffusion term: (sigma^2 / 2) * Laplacian
+        sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
+        diffusion_term = 0.5 * sigma**2 * lap_u
+
+        # HJB residual: -u_t + H - diffusion = 0
+        residual = -u_t + H_total - diffusion_term
+
+        return residual
+
+    def _interpolate_potential_to_collocation(self) -> np.ndarray:
+        """
+        Interpolate potential field to collocation points (cached).
+
+        Handles arbitrary dimensions by building grid axes from bounds.
+        """
+        if hasattr(self, "_potential_at_collocation"):
+            return self._potential_at_collocation
+
+        if not hasattr(self.problem, "f_potential") or self.problem.f_potential is None:
+            self._potential_at_collocation = np.zeros(self.n_points)
+            return self._potential_at_collocation
+
+        from scipy.interpolate import RegularGridInterpolator
+
+        potential = self.problem.f_potential
+        bounds = self.domain_bounds
+
+        # Validate potential shape matches dimension
+        if potential.ndim != self.dimension:
+            raise ValueError(
+                f"Potential array has {potential.ndim} dimensions but problem is "
+                f"{self.dimension}D. Potential shape: {potential.shape}"
+            )
+
+        # Build grid axes for each dimension
+        axes = []
+        for d in range(self.dimension):
+            xmin, xmax = bounds[d]
+            axes.append(np.linspace(xmin, xmax, potential.shape[d]))
+
+        # Handle 1D special case (needs flattening)
+        if self.dimension == 1:
+            potential = potential.flatten()
+
+        # Create interpolator and evaluate at collocation points
+        interp = RegularGridInterpolator(tuple(axes), potential, bounds_error=False, fill_value=0.0)
+        self._potential_at_collocation = interp(self.collocation_points)
+
+        return self._potential_at_collocation
+
+    def _compute_hjb_residual_with_cache(
+        self,
+        u_current: np.ndarray,
+        u_n_plus_1: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        time_idx: int,
+        cached_derivs: dict[int, dict[tuple[int, ...], float]],
+    ) -> np.ndarray:
+        """Compute HJB residual using pre-computed derivatives."""
+        from mfg_pde.core.derivatives import from_multi_index_dict
+
+        residual = np.zeros(self.n_points)
+        dimension = self.problem.dimension
+        dt = self.problem.T / self.problem.Nt
+        u_t = (u_n_plus_1 - u_current) / dt
+
+        for i in range(self.n_points):
+            x_pos = self.collocation_points[i]
+            derivs = cached_derivs[i]
+            p_derivs = from_multi_index_dict(derivs, dimension=dimension)
+            laplacian = p_derivs.laplacian or 0.0
+
+            H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
+            sigma_val = self._get_sigma_value(i)
+            diffusion_term = 0.5 * sigma_val**2 * laplacian
+            residual[i] = -u_t[i] + H - diffusion_term
+
+        return residual
+
+    def _compute_hjb_jacobian_vectorized(
+        self,
+        grad_u: np.ndarray,
+    ):
+        """
+        Compute sparse Jacobian using vectorized operations with pre-computed differentiation matrices.
+
+        For standard LQ Hamiltonian H = |p|²/(2λ), dH/dp = p/λ.
+        Jacobian structure: J = (1/dt)I + (1/λ) * Σ_d diag(p_d) @ D_grad[d] - (σ²/2) * D_lap
+
+        Args:
+            grad_u: Pre-computed gradient, shape (n_points, dimension)
+
+        Returns:
+            Sparse Jacobian matrix in CSR format
+        """
+        from scipy.sparse import diags, eye
+
+        if not hasattr(self, "_D_grad") or self._D_grad is None:
+            self._build_differentiation_matrices()
+
+        n = self.n_points
+        d = self.dimension
+        dt = self.problem.T / self.problem.Nt
+        lambda_val = self._get_lambda_value()
+        sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
+        diffusion_coeff = 0.5 * sigma**2
+
+        # Time derivative term: (1/dt) * I
+        jacobian = (1.0 / dt) * eye(n, format="csr")
+
+        # Hamiltonian gradient term: (1/λ) * Σ_d diag(p_d) @ D_grad[d]
+        # For LQ: dH/dp = p/λ, so ∂(dH/dp · ∇u)/∂u_j = (p/λ) · (∂∇u/∂u_j)
+        for dim in range(d):
+            p_d = grad_u[:, dim] / lambda_val  # dH/dp_d = p_d / λ
+            jacobian = jacobian + diags(p_d, format="csr") @ self._D_grad[dim]
+
+        # Diffusion term: -(σ²/2) * D_lap
+        jacobian = jacobian - diffusion_coeff * self._D_lap
+
+        return jacobian
+
+    def _compute_hjb_jacobian_sparse(
+        self,
+        u_current: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        time_idx: int,
+        cached_derivs: dict[int, dict[tuple[int, ...], float]],
+    ):
+        """Compute sparse Jacobian using pre-computed derivatives and GFDM weights."""
+        from scipy.sparse import lil_matrix
+
+        from mfg_pde.core.derivatives import from_multi_index_dict, to_multi_index_dict
+
+        n = self.n_points
+        d = self.problem.dimension
+        dt = self.problem.T / self.problem.Nt
+
+        # Pre-cache all derivative weights (avoids repeated method call overhead)
+        if not hasattr(self, "_cached_derivative_weights"):
+            self._cached_derivative_weights = [self._gfdm_operator.get_derivative_weights(i) for i in range(n)]
+
+        # Use LIL format for efficient construction
+        jacobian = lil_matrix((n, n))
+
+        for i in range(n):
+            weights = self._cached_derivative_weights[i]
+            if weights is None:
+                jacobian[i, i] = 1.0 / dt  # Fallback: identity
+                continue
+
+            neighbor_indices = weights["neighbor_indices"]
+            grad_weights = weights["grad_weights"]
+            lap_weights = weights["lap_weights"]
+
+            p_derivs = from_multi_index_dict(cached_derivs[i], dimension=d)
+
+            dH_dp = self.problem.dH_dp(
+                x_idx=i,
+                m_at_x=m_n_plus_1[i],
+                derivs=to_multi_index_dict(p_derivs),
+                t_idx=time_idx,
+            )
+            if dH_dp is None:
+                dH_dp = self._compute_dH_dp_fd(i, m_n_plus_1[i], p_derivs, time_idx)
+
+            sigma_val = self._get_sigma_value(i)
+            diffusion_coeff = 0.5 * sigma_val**2
+
+            # Neighbor contributions
+            for k, j in enumerate(neighbor_indices):
+                if j < 0:
+                    continue  # Skip ghost particles
+                val = np.dot(dH_dp, grad_weights[:, k]) - diffusion_coeff * lap_weights[k]
+                jacobian[i, j] = val
+
+            # Center point contribution
+            center_grad_weight = -np.sum(grad_weights, axis=1)
+            center_lap_weight = -np.sum(lap_weights)
+            jacobian[i, i] += np.dot(dH_dp, center_grad_weight) - diffusion_coeff * center_lap_weight
+            jacobian[i, i] += 1.0 / dt  # Time derivative
+
+        return jacobian.tocsr()
+
+    def _apply_boundary_conditions_to_sparse_system(self, jacobian_sparse, residual: np.ndarray, time_idx: int):
+        """
+        Apply boundary conditions to sparse Jacobian using Row Replacement pattern.
+
+        This implements the "Direct Collocation" approach recommended in GFDM literature:
+        - For interior points: PDE equation rows (already set)
+        - For boundary points: Replace PDE rows with BC equation rows
+
+        For Dirichlet: Row becomes identity (u_i = g)
+        For Neumann: Row becomes normal derivative operator (∂u/∂n = 0)
+        """
+        if len(self.boundary_indices) == 0:
+            return jacobian_sparse, residual
+
+        # Convert to LIL format for efficient row modification (O(nnz) not O(n²))
+        jac_lil = jacobian_sparse.tolil()
+        residual_bc = residual.copy()
+
+        # Apply BC directly on sparse matrix (avoid dense conversion)
+        bc_type = self._get_boundary_condition_property("type", "neumann")
+        bc_values = self._get_boundary_condition_property("values", {})
+        normals = self._bc_config.get("normals", None) if self._bc_config else None
+        dimension = self.dimension
+
+        for local_idx, i in enumerate(self.boundary_indices):
+            # Clear row (LIL supports efficient row clearing)
+            jac_lil[i, :] = 0.0
+
+            if bc_type == "dirichlet":
+                # Dirichlet: u = g
+                jac_lil[i, i] = 1.0
+                if isinstance(bc_values, dict):
+                    residual_bc[i] = bc_values.get(i, 0.0)
+                elif callable(bc_values):
+                    residual_bc[i] = bc_values(self.collocation_points[i])
+                else:
+                    residual_bc[i] = float(bc_values) if bc_values else 0.0
+
+            elif bc_type in ("neumann", "no_flux"):
+                # Neumann: du/dn = g
+                weights = self._gfdm_operator.get_derivative_weights(i)
+                if weights is None:
+                    jac_lil[i, i] = 1.0
+                    residual_bc[i] = 0.0
+                    continue
+
+                neighbor_indices = weights["neighbor_indices"]
+                grad_weights = weights["grad_weights"]
+
+                # Get normal vector
+                if normals is not None and local_idx < len(normals):
+                    normal = normals[local_idx]
+                else:
+                    normal = self._compute_outward_normal(i)
+
+                # Normal derivative: du/dn = n . grad(u)
+                center_weight = 0.0
+                for k, j in enumerate(neighbor_indices):
+                    if j >= 0 and j != i:
+                        weight = sum(normal[d] * grad_weights[d, k] for d in range(dimension))
+                        jac_lil[i, j] = weight
+                        center_weight -= weight
+
+                jac_lil[i, i] = center_weight
+
+                if isinstance(bc_values, dict):
+                    residual_bc[i] = bc_values.get(i, 0.0)
+                else:
+                    residual_bc[i] = 0.0  # No-flux default
+
+        return jac_lil.tocsr(), residual_bc
+
+    def _get_lambda_value(self) -> float:
+        """
+        Get control cost parameter lambda with validation.
+
+        Returns:
+            Positive lambda value
+
+        Raises:
+            ValueError: If lambda <= 0
+
+        Notes:
+            Lambda appears in the Hamiltonian as H = |p|²/(2λ) + ...
+            Division by lambda requires λ > 0.
+        """
+        lambda_val = getattr(self.problem, "lambda_", 1.0)
+        if lambda_val is None:
+            lambda_val = 1.0
+        if lambda_val <= 0:
+            raise ValueError(
+                f"Control cost parameter lambda_ must be positive, got {lambda_val}. "
+                f"Set problem.lambda_ to a positive value."
+            )
+        return float(lambda_val)
+
     def _get_sigma_value(self, point_idx: int | None = None) -> float:
         """
         Get diffusion coefficient value, handling both numeric and callable sigma.
@@ -1001,20 +1651,25 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             U_coupling_prev = U_from_prev_picard
 
         # Validate required parameters
-        if M_density is None:
-            raise ValueError("M_density is required")
         if U_terminal is None:
             raise ValueError("U_terminal is required")
-        if U_coupling_prev is None:
-            raise ValueError("U_coupling_prev is required")
 
         from mfg_pde.utils.progress import RichProgressBar
 
-        # Extract dimensions from input
-        # M_density has shape (n_time_points, *spatial) where n_time_points = problem.Nt + 1
+        # Determine n_time_points from available data or problem configuration
         # n_time_points = Nt + 1 (number of time knots including t=0 and t=T)
-        # There are Nt time intervals between the knots
-        n_time_points = M_density.shape[0]
+        if M_density is not None:
+            n_time_points = M_density.shape[0]
+        else:
+            n_time_points = self.problem.Nt + 1
+
+        # For standalone HJB (no MFG coupling), use defaults
+        if M_density is None:
+            # Default: uniform density (no coupling effect)
+            M_density = np.ones((n_time_points, *U_terminal.shape))
+        if U_coupling_prev is None:
+            # Default: zero coupling (pure HJB)
+            U_coupling_prev = np.zeros((n_time_points, *U_terminal.shape))
 
         # Store original spatial shape for reshaping output
         self._output_spatial_shape = M_density.shape[1:]
@@ -1068,27 +1723,52 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         time_idx: int,
     ) -> np.ndarray:
         """Solve HJB at one time step using Newton iteration."""
+        from scipy.sparse.linalg import spsolve
+
         u_current = u_n_plus_1.copy()
 
+        # Check if we can use vectorized path (standard LQ Hamiltonian)
+        is_custom = getattr(self.problem, "is_custom", False)
+        use_vectorized = not is_custom and self.qp_optimization_level == "none"
+
         for _newton_iter in range(self.max_newton_iterations):
-            # Compute residual
-            residual = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
+            if use_vectorized:
+                # Fast vectorized path for standard LQ Hamiltonian
+                grad_u, lap_u = self._compute_derivatives_vectorized(u_current)
 
-            # Check convergence
-            if np.linalg.norm(residual) < self.newton_tolerance:
-                break
+                # Vectorized residual
+                residual = self._compute_hjb_residual_vectorized(u_current, u_n_plus_1, m_n_plus_1, grad_u, lap_u)
 
-            # Compute Jacobian
-            jacobian = self._compute_hjb_jacobian(u_current, u_n_plus_1, u_prev_picard, m_n_plus_1, time_idx)
+                # Check convergence
+                if np.linalg.norm(residual) < self.newton_tolerance:
+                    break
 
-            # Apply boundary conditions
-            jacobian_bc, residual_bc = self._apply_boundary_conditions_to_system(jacobian, residual, time_idx)
+                # Vectorized Jacobian
+                jacobian_sparse = self._compute_hjb_jacobian_vectorized(grad_u)
+            else:
+                # Original per-point path for custom Hamiltonians or QP mode
+                all_derivs = self._approximate_all_derivatives_cached(u_current)
 
-            # Newton update with step size limiting
+                residual = self._compute_hjb_residual_with_cache(
+                    u_current, u_n_plus_1, m_n_plus_1, time_idx, all_derivs
+                )
+
+                if np.linalg.norm(residual) < self.newton_tolerance:
+                    break
+
+                jacobian_sparse = self._compute_hjb_jacobian_sparse(u_current, m_n_plus_1, time_idx, all_derivs)
+
+            # Apply boundary conditions (sparse-aware)
+            jacobian_bc, residual_bc = self._apply_boundary_conditions_to_sparse_system(
+                jacobian_sparse, residual, time_idx
+            )
+
+            # Newton update using sparse solver
             try:
-                delta_u = np.linalg.solve(jacobian_bc, -residual_bc)
-            except np.linalg.LinAlgError:
-                delta_u = np.linalg.pinv(jacobian_bc) @ (-residual_bc)
+                delta_u = spsolve(jacobian_bc, -residual_bc)
+            except Exception:
+                # Fallback to dense solver
+                delta_u = np.linalg.lstsq(jacobian_bc.toarray(), -residual_bc, rcond=None)[0]
 
             # Limit step size to prevent extreme updates
             max_step = 10.0  # Reasonable limit for value function updates
@@ -1111,7 +1791,10 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         time_idx: int,
     ) -> np.ndarray:
         """Compute HJB residual at collocation points."""
+        from mfg_pde.core.derivatives import from_multi_index_dict
+
         residual = np.zeros(self.n_points)
+        dimension = self.problem.dimension
 
         # Time derivative approximation (backward Euler)
         # For backward-in-time problems: ∂u/∂t ≈ (u_{n+1} - u_n) / dt
@@ -1121,22 +1804,20 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         u_t = (u_n_plus_1 - u_current) / dt
 
         for i in range(self.n_points):
-            # Get spatial coordinates (currently unused but kept for future extensions)
-            _ = self.collocation_points[i]
+            # Get spatial coordinates for this collocation point
+            x_pos = self.collocation_points[i]
 
             # Approximate derivatives using GFDM
             derivs = self.approximate_derivatives(u_current, i)
 
             # Convert multi-index derivatives dict to DerivativeTensors (nD support)
-            from mfg_pde.core.derivatives import from_multi_index_dict
-
-            p_derivs = from_multi_index_dict(derivs, dimension=self.problem.dimension)
+            p_derivs = from_multi_index_dict(derivs, dimension=dimension)
             laplacian = p_derivs.laplacian or 0.0
 
             # Hamiltonian (user-provided)
-            # problem.H() signature: H(x_idx, m_at_x, derivs, ...)
-            # For collocation points that align with grid, i is the grid index
-            H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs)
+            # problem.H() signature: H(x_idx, m_at_x, derivs, x_position=...)
+            # Pass x_position explicitly since collocation points may differ from geometry grid
+            H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
 
             # Diffusion coefficient
             # NOTE: HJB uses (σ²/2) factor from control theory (Pontryagin maximum principle)
@@ -1163,9 +1844,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         time_idx: int | None = None,
     ) -> np.ndarray:
         """
-        Compute dH/dp via finite differences on the Hamiltonian.
+        Compute dH/dp - analytical for standard LQ Hamiltonian, FD otherwise.
 
-        Adapts the problem's H() interface to the generic compute_dH_dp utility.
+        For standard LQ Hamiltonian H = |∇u|²/(2λ), dH/dp = p/λ analytically.
 
         Args:
             point_idx: Collocation point index
@@ -1176,13 +1857,22 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         Returns:
             dH/dp array, shape (dim,)
         """
-
-        # Create wrapper that matches compute_dH_dp's expected H_func signature
-        def H_wrapper(x_idx, m, derivs):
-            return self.problem.H(x_idx, m, derivs=derivs)
-
-        # Extract gradient and hessian from DerivativeTensors
         p = derivs.grad if derivs.grad is not None else np.zeros(self.problem.dimension)
+
+        # Fast path: for standard LQ Hamiltonian H = |p|²/(2λ), dH/dp = p/λ
+        lambda_val = getattr(self.problem, "lambda_", None)
+        if lambda_val is not None and lambda_val > 0:
+            # Check if using standard (non-custom) Hamiltonian
+            is_custom = getattr(self.problem, "is_custom", False)
+            if not is_custom:
+                return p / lambda_val
+
+        # Fallback: finite differences for custom Hamiltonians
+        x_pos = self.collocation_points[point_idx]
+
+        def H_wrapper(x_idx, m, derivs):
+            return self.problem.H(x_idx, m, derivs=derivs, x_position=x_pos)
+
         hess = derivs.hess
 
         return compute_dH_dp(
@@ -1206,7 +1896,7 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         Uses user-provided dH_dp if available, otherwise FD on H.
         """
-        from mfg_pde.core.derivatives import to_multi_index_dict
+        from mfg_pde.core.derivatives import from_multi_index_dict, to_multi_index_dict
 
         n = self.n_points
         d = self.problem.dimension
@@ -1227,8 +1917,6 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             derivs_dict = self.approximate_derivatives(u_current, i)
 
             # Build DerivativeTensors using nD infrastructure
-            from mfg_pde.core.derivatives import from_multi_index_dict
-
             p_derivs = from_multi_index_dict(derivs_dict, dimension=d)
 
             # Get ∂H/∂p (user-provided or FD fallback)
@@ -1285,9 +1973,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         Jacobian only affects Newton convergence rate, not final monotonicity (enforced by residual).
         """
         # Try analytic Jacobian first (faster if dH_dp available or FD on H)
-        # Only use for dimensions 1 and 2 for now
-        if self.problem.dimension <= 2:
-            return self._compute_hjb_jacobian_analytic(u_current, m_n_plus_1, time_idx)
+        # Analytic Jacobian uses GFDM weights directly - O(n·k) vs O(n²) for FD
+        # Works for any dimension since GFDM weights are dimension-agnostic
+        return self._compute_hjb_jacobian_analytic(u_current, m_n_plus_1, time_idx)
 
         # Fallback: numerical finite differences on full residual
         n = self.n_points
@@ -1327,36 +2015,32 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
     def _apply_boundary_conditions_to_solution(self, u: np.ndarray, time_idx: int) -> np.ndarray:
         """Apply boundary conditions directly to solution array."""
-        # Check boundary condition type
-        bc_type_val = self._get_boundary_condition_property("type", "dirichlet")
+        if len(self.boundary_indices) == 0:
+            return u
 
-        # Convert to lowercase for case-insensitive comparison
-        if isinstance(bc_type_val, str):
-            bc_type = bc_type_val.lower()
+        # Use unified BC config (single source of truth) when using new infrastructure
+        if self._use_new_infrastructure and self._bc_config is not None:
+            bc_type = self._bc_config["type"]
+            bc_values = self._bc_config["values"]
         else:
-            bc_type = "dirichlet"
+            # Legacy path: inconsistent defaults preserved for backward compatibility
+            bc_type_val = self._get_boundary_condition_property("type", "neumann")
+            bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else "neumann"
+            bc_values = self._get_boundary_condition_property("value", 0.0)
 
         if bc_type == "dirichlet":
             # For collocation points on boundaries, enforce Dirichlet values
-            if len(self.boundary_indices) > 0:
-                bc_value = self._get_boundary_condition_property("value", 0.0)
-                if callable(bc_value):
-                    # Time-dependent or space-dependent BC
-                    # time_idx ranges from 0 to Nt (inclusive), mapping to t=0 to t=T
-                    # current_time = T * time_idx / Nt
-                    current_time = self.problem.T * time_idx / self.problem.Nt
-                    for i in self.boundary_indices:
-                        u[i] = bc_value(self.collocation_points[i], current_time)
-                else:
-                    # Constant BC value
-                    u[self.boundary_indices] = bc_value
-            return u
-        elif bc_type == "neumann":
-            # Neumann conditions typically enforced weakly through residual
-            return u
-        else:
-            # Default: no modification
-            return u
+            if callable(bc_values):
+                # Time-dependent or space-dependent BC
+                current_time = self.problem.T * time_idx / self.problem.Nt
+                for i in self.boundary_indices:
+                    u[i] = bc_values(self.collocation_points[i], current_time)
+            else:
+                # Constant BC value
+                u[self.boundary_indices] = bc_values
+        # For Neumann: no direct solution modification (enforced via residual)
+
+        return u
 
     def _apply_boundary_conditions_to_system(
         self, jacobian: np.ndarray, residual: np.ndarray, time_idx: int
@@ -1365,29 +2049,36 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         Apply boundary conditions to the linear system J·δu = -R.
 
         For Dirichlet BC: Set row to identity and residual to zero.
-        For Neumann BC: Usually handled weakly (no modification).
+        For Neumann BC: Row Replacement with normal derivative operator.
         """
+        if len(self.boundary_indices) == 0:
+            return jacobian, residual
+
         jacobian_bc = jacobian.copy()
         residual_bc = residual.copy()
 
-        bc_type_val = self._get_boundary_condition_property("type", "dirichlet")
-        if isinstance(bc_type_val, str):
-            bc_type = bc_type_val.lower()
-        else:
-            bc_type = "dirichlet"
+        # Use new infrastructure with DirectCollocationHandler
+        if self._use_new_infrastructure and self._bc_handler is not None:
+            self._bc_handler.apply_to_matrix(
+                A=jacobian_bc,
+                b=residual_bc,
+                boundary_indices=self.boundary_indices,
+                operator=self._gfdm_operator,
+                bc_config=self._bc_config,
+            )
+            return jacobian_bc, residual_bc
+
+        # Legacy path (deprecated)
+        bc_type_val = self._get_boundary_condition_property("type", "neumann")
+        bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else "neumann"
 
         if bc_type == "dirichlet":
-            # Enforce Dirichlet BC by setting identity rows in Jacobian
-            if len(self.boundary_indices) > 0:
-                for i in self.boundary_indices:
-                    # Set Jacobian row to identity (δu_i = 0 enforced)
-                    jacobian_bc[i, :] = 0.0
-                    jacobian_bc[i, i] = 1.0
-                    # Set residual to zero (no update for boundary values)
-                    residual_bc[i] = 0.0
-            return jacobian_bc, residual_bc
-        else:
-            return jacobian_bc, residual_bc
+            for i in self.boundary_indices:
+                jacobian_bc[i, :] = 0.0
+                jacobian_bc[i, i] = 1.0
+                residual_bc[i] = 0.0
+
+        return jacobian_bc, residual_bc
 
     def _map_grid_to_collocation(self, u_grid: np.ndarray) -> np.ndarray:
         """
@@ -1427,9 +2118,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
     def _map_collocation_to_grid(self, u_collocation: np.ndarray) -> np.ndarray:
         """
-        Map values from collocation points to regular grid using RBF interpolation.
+        Map values from collocation points to regular grid using cached interpolation.
 
-        Uses scipy RBFInterpolator via particle interpolation utilities.
+        Uses pre-computed interpolation matrix for efficiency (O(n*m) vs O(n^3)).
 
         Args:
             u_collocation: Values at collocation points, shape (n_points,)
@@ -1437,32 +2128,96 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         Returns:
             Values on regular grid, flattened to 1D
         """
-        # Get spatial shape from stored attribute or use default
+        # Use cached interpolation matrix if available
+        if hasattr(self, "_interp_matrix") and self._interp_matrix is not None:
+            return self._interp_matrix @ u_collocation
+
+        # Fallback: build interpolation matrix on first call
+        self._build_interpolation_matrix()
+        return self._interp_matrix @ u_collocation
+
+    def _build_interpolation_matrix(self) -> None:
+        """
+        Pre-compute interpolation matrix for collocation->grid mapping.
+
+        Uses scipy LinearNDInterpolator with barycentric weights for efficiency.
+        The matrix is sparse due to triangulation locality.
+        """
+        from scipy.spatial import Delaunay
+
+        # Get spatial shape
         if hasattr(self, "_output_spatial_shape"):
             spatial_shape = self._output_spatial_shape
         else:
-            # Fallback for 1D case
             Nx_grid = self._n_spatial_grid_points
             spatial_shape = (Nx_grid + 1,)
 
-        # Compute squeezed shape for interpolation (removes singleton dimensions)
-        # e.g., (21, 1) -> (21,) for 1D problems
         non_singleton = tuple(s for s in spatial_shape if s > 1)
         squeezed_shape = non_singleton if non_singleton else (spatial_shape[0],)
 
-        # Format bounds for interpolation utility
         grid_bounds = self._format_grid_bounds_for_interpolation()
+        ndim = len(squeezed_shape)
 
-        u_grid = interpolate_particles_to_grid(
-            u_collocation,
-            particle_positions=self.collocation_points,
-            grid_shape=squeezed_shape,
-            grid_bounds=grid_bounds,
-            method="rbf",
-            kernel="thin_plate_spline",
-        )
+        # Create grid points
+        if ndim == 1:
+            xmin, xmax = grid_bounds if not isinstance(grid_bounds[0], (tuple, list)) else grid_bounds[0]
+            x = np.linspace(xmin, xmax, squeezed_shape[0])
+            grid_points = x.reshape(-1, 1)
+        elif ndim == 2:
+            (xmin, xmax), (ymin, ymax) = grid_bounds
+            x = np.linspace(xmin, xmax, squeezed_shape[0])
+            y = np.linspace(ymin, ymax, squeezed_shape[1])
+            X, Y = np.meshgrid(x, y, indexing="ij")
+            grid_points = np.column_stack([X.ravel(), Y.ravel()])
+        else:
+            (xmin, xmax), (ymin, ymax), (zmin, zmax) = grid_bounds
+            x = np.linspace(xmin, xmax, squeezed_shape[0])
+            y = np.linspace(ymin, ymax, squeezed_shape[1])
+            z = np.linspace(zmin, zmax, squeezed_shape[2])
+            X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+            grid_points = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
 
-        return u_grid.flatten()
+        n_grid = grid_points.shape[0]
+        n_coll = self.n_points
+
+        # Build interpolation matrix using Delaunay triangulation
+        # Each grid point is expressed as weighted sum of collocation points
+        try:
+            tri = Delaunay(self.collocation_points)
+            simplex_indices = tri.find_simplex(grid_points)
+
+            # Build sparse matrix
+            from scipy.sparse import lil_matrix
+
+            interp_matrix = lil_matrix((n_grid, n_coll))
+
+            for i, (pt, simplex_idx) in enumerate(zip(grid_points, simplex_indices, strict=True)):
+                if simplex_idx >= 0:
+                    # Point inside triangulation - use barycentric coords
+                    simplex = tri.simplices[simplex_idx]
+                    b = tri.transform[simplex_idx, :ndim].dot(pt - tri.transform[simplex_idx, ndim])
+                    bary = np.append(b, 1 - b.sum())
+                    for j, weight in zip(simplex, bary, strict=True):
+                        interp_matrix[i, j] = weight
+                else:
+                    # Point outside - use nearest neighbor
+                    from scipy.spatial import cKDTree
+
+                    if not hasattr(self, "_coll_tree"):
+                        self._coll_tree = cKDTree(self.collocation_points)
+                    _, nearest_idx = self._coll_tree.query(pt)
+                    interp_matrix[i, nearest_idx] = 1.0
+
+            self._interp_matrix = interp_matrix.tocsr()
+        except Exception:
+            # Fallback: use dense nearest-neighbor matrix
+            from scipy.spatial import cKDTree
+
+            tree = cKDTree(self.collocation_points)
+            _, nearest_indices = tree.query(grid_points)
+            interp_matrix = np.zeros((n_grid, n_coll))
+            interp_matrix[np.arange(n_grid), nearest_indices] = 1.0
+            self._interp_matrix = interp_matrix
 
     def _format_grid_bounds_for_interpolation(self) -> tuple:
         """Format domain_bounds for interpolation utility."""

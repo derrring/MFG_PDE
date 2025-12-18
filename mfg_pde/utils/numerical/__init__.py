@@ -20,17 +20,34 @@ from mfg_pde.utils.numerical.flux_diagnostics import (
     compute_mass_conservation_error,
 )
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
+
+# GFDM Strategy Pattern (modular operators and BC handlers)
+from mfg_pde.utils.numerical.gfdm_strategies import (
+    BoundaryHandler,
+    DifferentialOperator,
+    DirectCollocationHandler,
+    GhostNodeHandler,
+    LocalRBFOperator,
+    TaylorOperator,
+    UpwindOperator,
+    create_bc_handler,
+    create_operator,
+)
 from mfg_pde.utils.numerical.hjb_policy_iteration import (
     HJBPolicyProblem,
     create_lq_policy_problem,
     policy_iteration_hjb,
 )
+
+# Deprecated: Use LocalRBFOperator instead (v0.17.0)
 from mfg_pde.utils.numerical.kernel_rbf_operators import RBFOperator, create_rbf_operator
 
 # Kernels - general numerical functions (not particle-specific)
 from mfg_pde.utils.numerical.kernels import (
     CubicSplineKernel,
     GaussianKernel,
+    MultiquadricKernel,
+    PHSKernel,
     WendlandKernel,
     create_kernel,
 )
@@ -69,11 +86,21 @@ from mfg_pde.utils.numerical.sdf_utils import (
 )
 
 __all__ = [
-    # GFDM operators
+    # GFDM operators (legacy)
     "GFDMOperator",
+    # GFDM Strategy Pattern (modular)
+    "DifferentialOperator",
+    "BoundaryHandler",
+    "TaylorOperator",
+    "UpwindOperator",
+    "LocalRBFOperator",
+    "DirectCollocationHandler",
+    "GhostNodeHandler",
+    "create_operator",
+    "create_bc_handler",
     # Monotonicity tracking
     "MonotonicityStats",
-    # RBF operators
+    # RBF operators (deprecated v0.17.0 - use LocalRBFOperator)
     "RBFOperator",
     "create_rbf_operator",
     # HJB policy iteration
@@ -103,6 +130,8 @@ __all__ = [
     "GaussianKernel",
     "WendlandKernel",
     "CubicSplineKernel",
+    "MultiquadricKernel",
+    "PHSKernel",
     "create_kernel",
     # Monte Carlo (from particle submodule)
     "MCConfig",

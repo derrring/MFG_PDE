@@ -5,6 +5,24 @@ This module provides spatial differential operators on scattered particles using
 the Generalized Finite Difference Method (GFDM). GFDM approximates derivatives
 via weighted least squares fitting of local Taylor expansions.
 
+NOTE: Strategy Pattern Refactoring (Issue #524)
+-----------------------------------------------
+For NEW code, consider using the Strategy Pattern implementation in gfdm_strategies.py:
+
+    from mfg_pde.utils.numerical.gfdm_strategies import (
+        TaylorOperator,           # Clean GFDM without ghost particles
+        UpwindOperator,           # Flow-biased stencils for advection
+        DirectCollocationHandler, # Row Replacement for BC (RECOMMENDED)
+        create_operator,          # Factory function
+        create_bc_handler,        # Factory function
+    )
+
+The new module separates:
+- DifferentialOperator: Geometric derivative computation
+- BoundaryHandler: BC enforcement (Row Replacement vs Ghost Particles)
+
+GFDMOperator in this file is maintained for backward compatibility.
+
 Primary Interface: GFDMOperator class
 -------------------------------------
 The recommended way to use GFDM is through the GFDMOperator class, which
@@ -53,6 +71,7 @@ Updated: 2025-12-03 (Added GFDMOperator class)
 from __future__ import annotations
 
 import math
+import warnings
 
 import numpy as np
 from scipy.spatial import cKDTree
@@ -65,6 +84,15 @@ from scipy.spatial import cKDTree
 class GFDMOperator:
     """
     GFDM differential operator with precomputed structure.
+
+    .. deprecated:: 0.17.0
+        Use ``TaylorOperator`` from ``gfdm_strategies`` module instead:
+
+            from mfg_pde.utils.numerical.gfdm_strategies import TaylorOperator
+            op = TaylorOperator(points, delta=0.1, taylor_order=2)
+
+        For boundary conditions, use ``DirectCollocationHandler`` instead of
+        ghost particles.
 
     This class provides efficient GFDM derivative computation by precomputing
     neighbor structure and Taylor expansion matrices once during initialization.
@@ -140,6 +168,14 @@ class GFDMOperator:
                 - "knn": Use exactly k nearest neighbors
                 - "hybrid": Use delta, but ensure at least k neighbors (default, most robust)
         """
+        warnings.warn(
+            "GFDMOperator is deprecated since v0.17.0. "
+            "Use TaylorOperator from gfdm_strategies instead:\n"
+            "  from mfg_pde.utils.numerical.gfdm_strategies import TaylorOperator\n"
+            "  op = TaylorOperator(points, delta=0.1, taylor_order=2)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.points = np.asarray(points)
         self.n_points, self.dimension = self.points.shape
         self.delta = delta

@@ -118,14 +118,15 @@ class TestFPGFDMSolver:
 
         fp_solver = FPGFDMSolver(problem, collocation_points=points, delta=0.15)
 
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        # Use temporal grid size (Nt + 1), not spatial grid
+        n_time_points = problem.Nt + 1
         m0 = np.ones(N_points) / N_points
-        U = np.zeros((Nt_points, N_points))
+        U = np.zeros((n_time_points, N_points))
 
         M = fp_solver.solve_fp_system(m0, U, show_progress=False)
 
         # GFDM solver outputs on collocation points
-        assert M.shape == (Nt_points, N_points)
+        assert M.shape == (n_time_points, N_points)
 
     def test_fp_gfdm_mass_conservation(self):
         """Test mass conservation in GFDM-based FP solver."""
@@ -137,14 +138,15 @@ class TestFPGFDMSolver:
 
         fp_solver = FPGFDMSolver(problem, collocation_points=points, delta=0.15)
 
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        # Use temporal grid size (Nt + 1), not spatial grid
+        n_time_points = problem.Nt + 1
         m0 = np.ones(N_points) / N_points
-        U = np.zeros((Nt_points, N_points))
+        U = np.zeros((n_time_points, N_points))
 
         M = fp_solver.solve_fp_system(m0, U, show_progress=False)
 
         # Check mass conservation
-        for t_idx in range(Nt_points):
+        for t_idx in range(n_time_points):
             mass = np.sum(M[t_idx, :])
             assert np.abs(mass - 1.0) < 1e-10
 

@@ -208,6 +208,58 @@ class Kernel(ABC):
     def name(self) -> str:
         """Kernel name for identification."""
 
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Compute Laplacian of radially symmetric kernel at distance r.
+
+        For radially symmetric K(r):
+            Delta K = d²K/dr² + (d-1)/r * dK/dr
+
+        Default implementation uses finite differences. Subclasses can
+        override with analytical formulas for better accuracy.
+
+        Parameters
+        ----------
+        r : np.ndarray | float
+            Distance(s) from evaluation point.
+        h : float
+            Smoothing length.
+        dimension : int
+            Spatial dimension d.
+
+        Returns
+        -------
+        laplacian : np.ndarray | float
+            Laplacian Delta K at each r.
+        """
+        r = np.asarray(r, dtype=float)
+        scalar_input = r.ndim == 0
+        r = np.atleast_1d(r)
+        d = float(dimension)  # Ensure consistent float type for JAX/float32 compatibility
+
+        lap = np.zeros_like(r)
+        eps = 1e-6 * h  # Step size for finite differences
+
+        for i, ri in enumerate(r):
+            if ri < eps:
+                # At r=0, use L'Hopital's rule: lim (d-1)/r * dK/dr = (d-1) * d²K/dr²|_{r=0}
+                # So Delta K|_{r=0} = d * d²K/dr²|_{r=0}
+                K_0 = self(0.0, h)
+                K_eps = self(eps, h)
+                K_2eps = self(2 * eps, h)
+                d2K = (K_2eps - 2 * K_eps + K_0) / (eps**2)
+                lap[i] = d * d2K
+            else:
+                # Standard: Delta K = d²K/dr² + (d-1)/r * dK/dr
+                K_m = self(ri - eps, h)
+                K_0 = self(ri, h)
+                K_p = self(ri + eps, h)
+                d2K = (K_p - 2 * K_0 + K_m) / (eps**2)
+                dK = (K_p - K_m) / (2 * eps)
+                lap[i] = d2K + (d - 1) / ri * dK
+
+        return float(lap[0]) if scalar_input else lap
+
 
 # ============================================================================
 # Gaussian Kernel (Infinite Support)
@@ -256,6 +308,18 @@ class GaussianKernel(Kernel):
     @property
     def name(self) -> str:
         return "gaussian"
+
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for Gaussian kernel.
+
+        For K(r) = exp(-(r/h)²):
+            Delta K = (2/h²) * (2r²/h² - d) * K
+        """
+        d = float(dimension)  # Ensure consistent float type
+        q2 = (np.asarray(r) / h) ** 2
+        K = np.exp(-q2)
+        return (2 / h**2) * (2 * q2 - d) * K
 
 
 # ============================================================================
@@ -429,6 +493,86 @@ class WendlandKernel(Kernel):
     def name(self) -> str:
         return f"wendland_c{2 * self.k}"
 
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for Wendland kernel.
+
+        For K(r) = (1-q)^m * P(q) where q = r/h:
+            Delta K = d²K/dr² + (d-1)/r * dK/dr
+                    = (1/h²) * d²K/dq² + (d-1)/r * (1/h) * dK/dq
+
+        The derivatives are computed analytically from the polynomial structure.
+        """
+        r = np.asarray(r, dtype=float)
+        q = r / h
+        scalar_input = r.ndim == 0
+        q = np.atleast_1d(q)
+        r = np.atleast_1d(r)
+        dim = float(dimension)  # Ensure consistent float type
+
+        m = self.m
+        poly_val = self._eval_polynomial(q)
+
+        # First derivative P'(q)
+        if len(self.poly_coeffs) == 1:
+            poly_d1 = np.zeros_like(q)
+            poly_d2 = np.zeros_like(q)
+        else:
+            # P'(q) coefficients
+            n = len(self.poly_coeffs)
+            d1_coeffs = np.array([self.poly_coeffs[i] * (n - 1 - i) for i in range(n - 1)])
+            poly_d1 = np.zeros_like(q, dtype=float)
+            for coeff in d1_coeffs:
+                poly_d1 = poly_d1 * q + coeff
+
+            # P''(q) coefficients
+            if len(d1_coeffs) <= 1:
+                poly_d2 = np.zeros_like(q)
+            else:
+                n1 = len(d1_coeffs)
+                d2_coeffs = np.array([d1_coeffs[i] * (n1 - 1 - i) for i in range(n1 - 1)])
+                poly_d2 = np.zeros_like(q, dtype=float)
+                for coeff in d2_coeffs:
+                    poly_d2 = poly_d2 * q + coeff
+
+        # dK/dq = (1-q)^{m-1} * [-m*P(q) + (1-q)*P'(q)]
+        # Let A = -m*P(q) + (1-q)*P'(q)
+        A = -m * poly_val + (1 - q) * poly_d1
+
+        # d²K/dq² = d/dq[(1-q)^{m-1} * A]
+        #         = -(m-1)(1-q)^{m-2} * A + (1-q)^{m-1} * dA/dq
+        # where dA/dq = -m*P'(q) + (-1)*P'(q) + (1-q)*P''(q)
+        #             = -(m+1)*P'(q) + (1-q)*P''(q)
+        dA_dq = -(m + 1) * poly_d1 + (1 - q) * poly_d2
+
+        # Compute derivatives (inside support)
+        one_minus_q = 1 - q
+        inside = q < 1.0
+
+        dK_dq = np.where(inside, (one_minus_q ** (m - 1)) * A, 0.0)
+        d2K_dq2 = np.where(
+            inside & (one_minus_q > 0),
+            -(m - 1) * (one_minus_q ** (m - 2)) * A + (one_minus_q ** (m - 1)) * dA_dq,
+            0.0,
+        )
+
+        # Laplacian: Delta K = d²K/dr² + (d-1)/r * dK/dr
+        # = (1/h²) * d²K/dq² + (d-1)/r * (1/h) * dK/dq
+        # = (1/h²) * [d²K/dq² + (d-1)*h/r * dK/dq]
+        # = (1/h²) * [d²K/dq² + (d-1)/q * dK/dq]  (since r = q*h)
+        lap = np.zeros_like(q)
+        nonzero_q = (q > 1e-14) & inside
+        lap[nonzero_q] = (1 / h**2) * (d2K_dq2[nonzero_q] + (dim - 1) / q[nonzero_q] * dK_dq[nonzero_q])
+
+        # At q=0: use L'Hopital's rule
+        # lim_{q->0} (d-1)/q * dK/dq = (d-1) * d²K/dq²|_{q=0}
+        # So Delta K|_{q=0} = dim * d²K/dq²|_{q=0} / h²
+        at_zero = q <= 1e-14
+        if np.any(at_zero):
+            lap[at_zero] = dim * d2K_dq2[at_zero] / h**2
+
+        return float(lap[0]) if scalar_input else lap
+
 
 # ============================================================================
 # B-Spline Kernels
@@ -547,6 +691,57 @@ class CubicSplineKernel(Kernel):
     def name(self) -> str:
         return f"cubic_spline_{self.dimension}d"
 
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for cubic spline kernel.
+
+        Piecewise derivatives (W = unnormalized profile):
+            0 ≤ q < 1: W(q) = 1 - 1.5q² + 0.75q³
+                       W'(q) = -3q + 2.25q²
+                       W''(q) = -3 + 4.5q
+
+            1 ≤ q < 2: W(q) = 0.25(2-q)³
+                       W'(q) = -0.75(2-q)²
+                       W''(q) = 1.5(2-q)
+
+        Laplacian:
+            Δ K = (σ/h^{d+2}) * [W''(q) + (d-1)/q · W'(q)]
+        """
+        r = np.asarray(r, dtype=float)
+        scalar_input = r.ndim == 0
+        r = np.atleast_1d(r)
+        q = r / h
+        dim = float(dimension)  # Ensure consistent float type
+
+        W_d1 = np.zeros_like(q)
+        W_d2 = np.zeros_like(q)
+
+        # Region 1: 0 ≤ q < 1
+        mask1 = q < 1.0
+        W_d1 = np.where(mask1, -3 * q + 2.25 * q**2, W_d1)
+        W_d2 = np.where(mask1, -3 + 4.5 * q, W_d2)
+
+        # Region 2: 1 ≤ q < 2
+        mask2 = (q >= 1.0) & (q < 2.0)
+        W_d1 = np.where(mask2, -0.75 * ((2 - q) ** 2), W_d1)
+        W_d2 = np.where(mask2, 1.5 * (2 - q), W_d2)
+
+        inside = q < 2.0
+        lap = np.zeros_like(q)
+
+        # For q > 0
+        nonzero_q = inside & (q > 1e-14)
+        lap[nonzero_q] = W_d2[nonzero_q] + (dim - 1) / q[nonzero_q] * W_d1[nonzero_q]
+
+        # At q=0: Δ K ∝ d * W''(0) = d * (-3)
+        at_zero = q <= 1e-14
+        lap[at_zero] = dim * (-3.0)
+
+        # Apply normalization factor: σ/h^{d+2}
+        lap *= self.sigma / (h ** (self.dimension + 2))
+
+        return float(lap[0]) if scalar_input else lap
+
 
 class QuinticSplineKernel(Kernel):
     """
@@ -635,17 +830,112 @@ class QuinticSplineKernel(Kernel):
     def evaluate_with_derivative(
         self, r: np.ndarray | float, h: float
     ) -> tuple[np.ndarray | float, np.ndarray | float]:
-        """Evaluate quintic spline kernel and derivative."""
-        # Simplified: return kernel and zero derivative (full derivative is complex)
-        kernel = self(r, h)
-        # For quintic, derivative involves 4th powers - omitted for brevity
-        derivative = np.zeros_like(kernel)
+        """
+        Evaluate quintic spline kernel and derivative.
+
+        Derivatives use: d/dq[(a-q)^5] = -5(a-q)^4
+
+        Piecewise W'(q):
+            0 ≤ q < 1: W' = -5(3-q)⁴ + 30(2-q)⁴ - 75(1-q)⁴
+            1 ≤ q < 2: W' = -5(3-q)⁴ + 30(2-q)⁴
+            2 ≤ q < 3: W' = -5(3-q)⁴
+        """
+        q = np.asarray(r) / h
+        kernel = np.zeros_like(q, dtype=float)
+        W_d1 = np.zeros_like(q, dtype=float)
+
+        # Helper for safe powers
+        def pow5_safe(a: float, x: np.ndarray) -> np.ndarray:
+            return np.where(x < a, (a - x) ** 5, 0.0)
+
+        def pow4_safe(a: float, x: np.ndarray) -> np.ndarray:
+            return np.where(x < a, (a - x) ** 4, 0.0)
+
+        # Region 1: 0 ≤ q < 1
+        mask1 = q < 1.0
+        kernel = np.where(mask1, pow5_safe(3, q) - 6 * pow5_safe(2, q) + 15 * pow5_safe(1, q), kernel)
+        W_d1 = np.where(mask1, -5 * pow4_safe(3, q) + 30 * pow4_safe(2, q) - 75 * pow4_safe(1, q), W_d1)
+
+        # Region 2: 1 ≤ q < 2
+        mask2 = (q >= 1.0) & (q < 2.0)
+        kernel = np.where(mask2, pow5_safe(3, q) - 6 * pow5_safe(2, q), kernel)
+        W_d1 = np.where(mask2, -5 * pow4_safe(3, q) + 30 * pow4_safe(2, q), W_d1)
+
+        # Region 3: 2 ≤ q < 3
+        mask3 = (q >= 2.0) & (q < 3.0)
+        kernel = np.where(mask3, pow5_safe(3, q), kernel)
+        W_d1 = np.where(mask3, -5 * pow4_safe(3, q), W_d1)
+
+        # Apply normalization
+        kernel *= self.sigma / (h**self.dimension)
+        derivative = (self.sigma / (h ** (self.dimension + 1))) * W_d1
+
         return kernel, derivative
 
     @property
     def support_radius(self) -> float:
         """Compact support: K = 0 for r ≥ 3h."""
         return 3.0
+
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for quintic spline kernel.
+
+        Derivatives use: d²/dq²[(a-q)^5] = 20(a-q)³
+
+        Piecewise W''(q):
+            0 ≤ q < 1: W'' = 20(3-q)³ - 120(2-q)³ + 300(1-q)³
+            1 ≤ q < 2: W'' = 20(3-q)³ - 120(2-q)³
+            2 ≤ q < 3: W'' = 20(3-q)³
+
+        Laplacian:
+            Δ K = (σ/h^{d+2}) * [W''(q) + (d-1)/q · W'(q)]
+        """
+        r = np.asarray(r, dtype=float)
+        scalar_input = r.ndim == 0
+        r = np.atleast_1d(r)
+        q = r / h
+        dim = float(dimension)  # Ensure consistent float type
+
+        def pow4_safe(a: float, x: np.ndarray) -> np.ndarray:
+            return np.where(x < a, (a - x) ** 4, 0.0)
+
+        def pow3_safe(a: float, x: np.ndarray) -> np.ndarray:
+            return np.where(x < a, (a - x) ** 3, 0.0)
+
+        W_d1 = np.zeros_like(q)
+        W_d2 = np.zeros_like(q)
+
+        # Region 1: 0 ≤ q < 1
+        mask1 = q < 1.0
+        W_d1 = np.where(mask1, -5 * pow4_safe(3, q) + 30 * pow4_safe(2, q) - 75 * pow4_safe(1, q), W_d1)
+        W_d2 = np.where(mask1, 20 * pow3_safe(3, q) - 120 * pow3_safe(2, q) + 300 * pow3_safe(1, q), W_d2)
+
+        # Region 2: 1 ≤ q < 2
+        mask2 = (q >= 1.0) & (q < 2.0)
+        W_d1 = np.where(mask2, -5 * pow4_safe(3, q) + 30 * pow4_safe(2, q), W_d1)
+        W_d2 = np.where(mask2, 20 * pow3_safe(3, q) - 120 * pow3_safe(2, q), W_d2)
+
+        # Region 3: 2 ≤ q < 3
+        mask3 = (q >= 2.0) & (q < 3.0)
+        W_d1 = np.where(mask3, -5 * pow4_safe(3, q), W_d1)
+        W_d2 = np.where(mask3, 20 * pow3_safe(3, q), W_d2)
+
+        inside = q < 3.0
+        lap = np.zeros_like(q)
+
+        # For q > 0
+        nonzero_q = inside & (q > 1e-14)
+        lap[nonzero_q] = W_d2[nonzero_q] + (dim - 1) / q[nonzero_q] * W_d1[nonzero_q]
+
+        # At q=0: Δ K ∝ d * W''(0) = d * [20*27 - 120*8 + 300*1] = d * [540 - 960 + 300] = d * (-120)
+        at_zero = q <= 1e-14
+        lap[at_zero] = dim * (-120.0)
+
+        # Apply normalization factor: σ/h^{d+2}
+        lap *= self.sigma / (h ** (self.dimension + 2))
+
+        return float(lap[0]) if scalar_input else lap
 
     @property
     def name(self) -> str:
@@ -689,6 +979,41 @@ class CubicKernel(Kernel):
     def name(self) -> str:
         return "cubic"
 
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for cubic kernel K(r) = (1-q)³.
+
+        Derivatives (q = r/h):
+            K'(q) = -3(1-q)²
+            K''(q) = 6(1-q)
+
+        Laplacian:
+            Δ K = (1/h²)[K''(q) + (d-1)/q · K'(q)]
+                = (1/h²)[6(1-q) - 3(d-1)(1-q)²/q]
+        """
+        r = np.asarray(r, dtype=float)
+        scalar_input = r.ndim == 0
+        r = np.atleast_1d(r)
+        q = r / h
+        dim = float(dimension)  # Ensure consistent float type
+
+        inside = q < 1.0
+        one_minus_q = 1 - q
+
+        # K''(q) = 6(1-q), K'(q) = -3(1-q)²
+        K_d2 = 6 * one_minus_q
+        K_d1 = -3 * (one_minus_q**2)
+
+        lap = np.zeros_like(q)
+        nonzero_q = inside & (q > 1e-14)
+        lap[nonzero_q] = (1 / h**2) * (K_d2[nonzero_q] + (dim - 1) / q[nonzero_q] * K_d1[nonzero_q])
+
+        # At q=0: Δ K = d * K''(0) / h² = d * 6 / h² = 6d/h²
+        at_zero = inside & (q <= 1e-14)
+        lap[at_zero] = dim * 6.0 / h**2
+
+        return float(lap[0]) if scalar_input else lap
+
 
 class QuarticKernel(Kernel):
     """
@@ -722,6 +1047,280 @@ class QuarticKernel(Kernel):
     def name(self) -> str:
         return "quartic"
 
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for quartic kernel K(r) = (1-q)⁴.
+
+        Derivatives (q = r/h):
+            K'(q) = -4(1-q)³
+            K''(q) = 12(1-q)²
+
+        Laplacian:
+            Δ K = (1/h²)[K''(q) + (d-1)/q · K'(q)]
+                = (1/h²)[12(1-q)² - 4(d-1)(1-q)³/q]
+        """
+        r = np.asarray(r, dtype=float)
+        scalar_input = r.ndim == 0
+        r = np.atleast_1d(r)
+        q = r / h
+        dim = float(dimension)  # Ensure consistent float type
+
+        inside = q < 1.0
+        one_minus_q = 1 - q
+
+        # K''(q) = 12(1-q)², K'(q) = -4(1-q)³
+        K_d2 = 12 * (one_minus_q**2)
+        K_d1 = -4 * (one_minus_q**3)
+
+        lap = np.zeros_like(q)
+        nonzero_q = inside & (q > 1e-14)
+        lap[nonzero_q] = (1 / h**2) * (K_d2[nonzero_q] + (dim - 1) / q[nonzero_q] * K_d1[nonzero_q])
+
+        # At q=0: Δ K = d * K''(0) / h² = d * 12 / h² = 12d/h²
+        at_zero = inside & (q <= 1e-14)
+        lap[at_zero] = dim * 12.0 / h**2
+
+        return float(lap[0]) if scalar_input else lap
+
+
+# ============================================================================
+# Polyharmonic Spline Kernels (PHS-RBF)
+# ============================================================================
+
+
+class PHSKernel(Kernel):
+    """
+    Polyharmonic Spline (PHS) kernel for RBF-FD methods.
+
+    Mathematical Form:
+        phi(r) = r^m        for odd m (m = 1, 3, 5, 7, ...)
+        phi(r) = r^m log(r) for even m (m = 2, 4, 6, ...)
+
+    Common choices:
+        - m=1: Linear (phi = r)
+        - m=3: Cubic (phi = r^3), most common in RBF-FD
+        - m=5: Quintic (phi = r^5), higher accuracy
+
+    Key Properties:
+    - NO shape parameter to tune (unlike Gaussian/Wendland)
+    - Infinite support with algebraic decay
+    - Combined with polynomial augmentation for accuracy
+    - Conditionally positive definite (requires polynomial augmentation)
+
+    Polynomial Augmentation:
+        RBF-FD with PHS typically augments with polynomials of degree <= (m-1)/2
+        to ensure solvability. E.g., PHS m=3 augments with linear terms.
+
+    References:
+        - Fornberg, B., Flyer, N. (2015). "A Primer on Radial Basis Functions
+          with Applications to the Geosciences."
+        - Flyer, N., et al. (2016). "On the role of polynomials in RBF-FD
+          approximations: I. Interpolation and accuracy."
+
+    Example:
+        >>> kernel = PHSKernel(m=3)  # Cubic PHS
+        >>> r = np.array([0.0, 0.5, 1.0, 2.0])
+        >>> phi = kernel(r, h=1.0)  # h is ignored for PHS
+    """
+
+    def __init__(self, m: int = 3):
+        """
+        Initialize PHS kernel.
+
+        Parameters
+        ----------
+        m : int
+            Order of the polyharmonic spline. Must be positive integer.
+            - Odd m: phi(r) = r^m
+            - Even m: phi(r) = r^m log(r)
+            Common choices: m=3 (cubic), m=5 (quintic)
+        """
+        if m < 1:
+            raise ValueError(f"PHS order m must be >= 1, got {m}")
+        self.m = m
+        self._is_even = m % 2 == 0
+
+    def __call__(self, r: np.ndarray | float, h: float) -> np.ndarray | float:
+        """
+        Evaluate PHS kernel.
+
+        Note: The smoothing length h is ignored for PHS since there is
+        no shape parameter. It is accepted for API compatibility.
+        """
+        r = np.asarray(r, dtype=float)
+        # Avoid log(0) singularity
+        r_safe = np.maximum(r, 1e-14)
+
+        if self._is_even:
+            # Even m: r^m * log(r)
+            result = np.where(r > 1e-14, (r_safe**self.m) * np.log(r_safe), 0.0)
+        else:
+            # Odd m: r^m
+            result = r**self.m
+
+        return result
+
+    def evaluate_with_derivative(
+        self, r: np.ndarray | float, h: float
+    ) -> tuple[np.ndarray | float, np.ndarray | float]:
+        """
+        Evaluate PHS kernel and derivative.
+
+        For odd m: d(phi)/dr = m * r^(m-1)
+        For even m: d(phi)/dr = r^(m-1) * (m * log(r) + 1)
+        """
+        r = np.asarray(r, dtype=float)
+        r_safe = np.maximum(r, 1e-14)
+
+        if self._is_even:
+            kernel = np.where(r > 1e-14, (r_safe**self.m) * np.log(r_safe), 0.0)
+            # d/dr[r^m log(r)] = m * r^(m-1) * log(r) + r^(m-1) = r^(m-1) * (m*log(r) + 1)
+            derivative = np.where(r > 1e-14, (r_safe ** (self.m - 1)) * (self.m * np.log(r_safe) + 1), 0.0)
+        else:
+            kernel = r**self.m
+            # d/dr[r^m] = m * r^(m-1)
+            derivative = self.m * (r ** (self.m - 1)) if self.m > 1 else np.ones_like(r)
+
+        return kernel, derivative
+
+    @property
+    def support_radius(self) -> float:
+        """PHS has infinite support (algebraic decay, not exponential)."""
+        return np.inf
+
+    @property
+    def name(self) -> str:
+        return f"phs{self.m}"
+
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for PHS kernel.
+
+        For odd m, phi(r) = r^m:
+            Delta phi = m*(m + d - 2) * r^(m-2)
+
+        For even m, phi(r) = r^m * log(r):
+            Delta phi = r^(m-2) * [m*(m+d-2)*log(r) + (2m + d - 2)]
+
+        Note: h is ignored for PHS (no shape parameter).
+        """
+        r = np.asarray(r, dtype=float)
+        scalar_input = r.ndim == 0
+        r = np.atleast_1d(r)
+        m = self.m
+        dim = float(dimension)  # Ensure consistent float type
+
+        if self._is_even:
+            # Even m: phi = r^m * log(r)
+            # Delta phi = r^(m-2) * [m*(m+dim-2)*log(r) + (2m+dim-2)]
+            r_safe = np.maximum(r, 1e-14)
+            coeff_log = m * (m + dim - 2)
+            coeff_const = 2.0 * m + dim - 2.0
+
+            if m == 2:
+                # phi = r^2 * log(r)
+                # Delta phi = [2*dim*log(r) + (dim+2)]
+                lap = np.where(r > 1e-14, coeff_log * np.log(r_safe) + coeff_const, 0.0)
+            else:
+                # m >= 4: Delta phi = r^(m-2) * [m*(m+dim-2)*log(r) + (2m+dim-2)]
+                lap = np.where(
+                    r > 1e-14,
+                    (r_safe ** (m - 2)) * (coeff_log * np.log(r_safe) + coeff_const),
+                    0.0,
+                )
+            return float(lap[0]) if scalar_input else lap
+        else:
+            # Odd m: Delta phi = m*(m + dim - 2) * r^(m-2)
+            if m == 1:
+                # phi = r, Delta phi = (dim-1)/r which is singular at r=0
+                r_safe = np.maximum(r, 1e-14)
+                lap = np.where(r > 1e-14, (dim - 1) / r_safe, 0.0)
+            elif m == 2:
+                # phi = r^2, Delta phi = 2*dim (constant)
+                lap = np.full_like(r, 2.0 * dim)
+            else:
+                # m >= 3: Delta phi = m*(m + dim - 2) * r^(m-2)
+                lap = m * (m + dim - 2) * (r ** (m - 2))
+            return float(lap[0]) if scalar_input else lap
+
+
+# ============================================================================
+# Multiquadric Kernel
+# ============================================================================
+
+
+class MultiquadricKernel(Kernel):
+    """
+    Multiquadric (MQ) radial basis function: phi(r) = sqrt(1 + (r/h)^2).
+
+    Properties:
+    - Infinitely smooth (C^infinity)
+    - Infinite support (algebraic decay)
+    - Conditionally positive definite (order 1)
+    - Classic RBF, widely used in interpolation
+
+    Mathematical Form:
+        phi(r, h) = sqrt(1 + (r/h)^2)
+        d(phi)/dr = r / (h^2 * sqrt(1 + (r/h)^2))
+
+    Notes:
+    - Shape parameter h controls flatness (larger h = flatter)
+    - Good for smooth interpolation but can be ill-conditioned
+    - Often used with polynomial augmentation in RBF-FD
+
+    References:
+    - Hardy, R.L. (1971). "Multiquadric equations of topography and
+      other irregular surfaces."
+    """
+
+    def __call__(self, r: np.ndarray | float, h: float) -> np.ndarray | float:
+        """Evaluate multiquadric kernel."""
+        return np.sqrt(1 + (np.asarray(r) / h) ** 2)
+
+    def evaluate_with_derivative(
+        self, r: np.ndarray | float, h: float
+    ) -> tuple[np.ndarray | float, np.ndarray | float]:
+        """Evaluate multiquadric kernel and derivative."""
+        r = np.asarray(r)
+        phi = np.sqrt(1 + (r / h) ** 2)
+        dphi = r / (h**2 * phi)
+        return phi, dphi
+
+    @property
+    def support_radius(self) -> float:
+        """Multiquadric has infinite support."""
+        return np.inf
+
+    @property
+    def name(self) -> str:
+        return "multiquadric"
+
+    def laplacian(self, r: np.ndarray | float, h: float, dimension: int) -> np.ndarray | float:
+        """
+        Analytical Laplacian for multiquadric kernel.
+
+        For phi(r) = sqrt(1 + (r/h)^2):
+            Delta phi = (d-1)/(h^2 * phi) + 1/(h^2 * phi^3)
+                      = 1/(h^2 * phi) * [(d-1) + 1/phi^2]
+        """
+        r = np.asarray(r)
+        dim = float(dimension)  # Ensure consistent float type
+        q2 = (r / h) ** 2
+        phi = np.sqrt(1 + q2)
+        phi3 = phi**3
+
+        # d^2 phi/dr^2 = 1/(h^2 * phi^3)
+        d2phi = 1 / (h**2 * phi3)
+
+        # For r > 0: (dim-1)/r * dphi = (dim-1) / (h^2 * phi)
+        # At r=0: use L'Hopital -> dim * d^2phi/dr^2 = dim / h^2
+        lap = np.where(
+            r > 1e-14,
+            d2phi + (dim - 1) / (h**2 * phi),
+            dim / (h**2),
+        )
+        return lap
+
 
 # ============================================================================
 # Factory Function
@@ -737,6 +1336,11 @@ KernelType = Literal[
     "quintic_spline",
     "cubic",
     "quartic",
+    "phs1",
+    "phs3",
+    "phs5",
+    "phs7",
+    "multiquadric",
 ]
 
 
@@ -757,6 +1361,7 @@ def create_kernel(kernel_type: KernelType, dimension: int = 3) -> Kernel:
         - 'quintic_spline': Quintic B-spline (high accuracy)
         - 'cubic': Simple cubic polynomial
         - 'quartic': Simple quartic polynomial
+        - 'phs1', 'phs3', 'phs5', 'phs7': Polyharmonic splines (no shape parameter)
     dimension : int
         Spatial dimension (used for Wendland and spline kernels for normalization). Default: 3.
 
@@ -792,6 +1397,18 @@ def create_kernel(kernel_type: KernelType, dimension: int = 3) -> Kernel:
         return CubicSplineKernel(dimension=dimension)
     elif kernel_type == "quintic_spline":
         return QuinticSplineKernel(dimension=dimension)
+    # PHS kernels (no shape parameter)
+    elif kernel_type == "phs1":
+        return PHSKernel(m=1)
+    elif kernel_type == "phs3":
+        return PHSKernel(m=3)
+    elif kernel_type == "phs5":
+        return PHSKernel(m=5)
+    elif kernel_type == "phs7":
+        return PHSKernel(m=7)
+    # Multiquadric
+    elif kernel_type == "multiquadric":
+        return MultiquadricKernel()
     elif kernel_type in kernel_map:
         return kernel_map[kernel_type]()
     else:
@@ -803,5 +1420,10 @@ def create_kernel(kernel_type: KernelType, dimension: int = 3) -> Kernel:
             "wendland_c6",
             "cubic_spline",
             "quintic_spline",
+            "phs1",
+            "phs3",
+            "phs5",
+            "phs7",
+            "multiquadric",
         )
         raise ValueError(f"Unknown kernel type '{kernel_type}'. Valid options: {valid_types}")

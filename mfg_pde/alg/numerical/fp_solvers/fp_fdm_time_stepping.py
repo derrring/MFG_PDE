@@ -35,11 +35,17 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import scipy.sparse as sparse
 
-from mfg_pde.geometry import BoundaryConditions
+from mfg_pde.geometry.boundary import no_flux_bc
+from mfg_pde.geometry.boundary.applicator_base import (
+    LinearConstraint,
+)
 from mfg_pde.utils.pde_coefficients import CoefficientField
 
+if TYPE_CHECKING:
+    from mfg_pde.geometry import BoundaryConditions
+
 # Import from responsibility-based modules per issue #388
-from .fp_fdm_advection import compute_advection_term_nd
+from .fp_fdm_advection import compute_advection_from_drift_nd, compute_advection_term_nd
 from .fp_fdm_alg_divergence_centered import (
     add_boundary_no_flux_entries_divergence_centered,
     add_interior_entries_divergence_centered,
@@ -56,13 +62,297 @@ from .fp_fdm_alg_gradient_upwind import (
 from .fp_fdm_bc import add_boundary_no_flux_entries_divergence_upwind
 from .fp_fdm_operators import is_boundary_point
 
+
+def _get_bc_type(boundary_conditions: Any) -> str | None:
+    """
+    Get BC type string from boundary conditions object.
+
+    Supports both:
+    - Unified BoundaryConditions (conditions.py) with .type property
+    - Legacy BoundaryConditions1DFDM (fdm_bc_1d.py) with .type attribute
+
+    Args:
+        boundary_conditions: Any BC object
+
+    Returns:
+        BC type string (e.g., "periodic", "dirichlet", "no_flux") or None
+    """
+    if boundary_conditions is None:
+        return None
+
+    # Unified BC: has is_uniform property and type property
+    if hasattr(boundary_conditions, "is_uniform"):
+        try:
+            return boundary_conditions.type
+        except ValueError:
+            # Mixed BC - type property raises ValueError
+            return None
+
+    # Legacy BC: type is a direct attribute
+    return getattr(boundary_conditions, "type", None)
+
+
+def _get_bc_value(boundary_conditions: Any, boundary: str) -> float:
+    """
+    Get BC value at a specific boundary.
+
+    Supports both:
+    - Unified BoundaryConditions with get_bc_value_at_boundary()
+    - Legacy BoundaryConditions1DFDM with left_value/right_value
+
+    Args:
+        boundary_conditions: Any BC object
+        boundary: Boundary identifier ("x_min" or "x_max")
+
+    Returns:
+        BC value at the specified boundary
+    """
+    # Unified BC: has get_bc_value_at_boundary method
+    if hasattr(boundary_conditions, "get_bc_value_at_boundary"):
+        return boundary_conditions.get_bc_value_at_boundary(boundary)
+
+    # Legacy BC: use left_value/right_value
+    if boundary == "x_min":
+        return getattr(boundary_conditions, "left_value", 0.0)
+    elif boundary == "x_max":
+        return getattr(boundary_conditions, "right_value", 0.0)
+
+    return 0.0
+
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+def _build_diffusion_matrix_with_bc(
+    shape: tuple[int, ...],
+    spacing: tuple[float, ...],
+    D: float,
+    dt: float,
+    ndim: int,
+    bc_constraint_min: LinearConstraint | None = None,
+    bc_constraint_max: LinearConstraint | None = None,
+) -> tuple[sparse.csr_matrix, np.ndarray]:
+    """
+    Build implicit diffusion matrix using LinearConstraint pattern.
+
+    Implements the matrix assembly protocol from docs/development/matrix_assembly_bc_protocol.md.
+
+    The assembled system is: A @ m^{k+1} = b where:
+    - A contains (1/dt + diffusion terms)
+    - b is modified by BC bias terms
+
+    Phase 1 (Topology): Periodic BCs would use index wrapping (not handled here)
+    Phase 2 (Physics): Bounded BCs use coefficient folding via LinearConstraint
+
+    Parameters
+    ----------
+    shape : tuple[int, ...]
+        Grid shape (N1, N2, ..., Nd)
+    spacing : tuple[float, ...]
+        Grid spacing (dx, dy, ...)
+    D : float
+        Diffusion coefficient (D = σ²/2)
+    dt : float
+        Time step
+    ndim : int
+        Spatial dimension
+    bc_constraint_min : LinearConstraint, optional
+        BC constraint for min boundary (default: Neumann du/dn=0)
+    bc_constraint_max : LinearConstraint, optional
+        BC constraint for max boundary (default: Neumann du/dn=0)
+
+    Returns
+    -------
+    A : sparse.csr_matrix
+        Sparse matrix of shape (N_total, N_total)
+    b_bc : np.ndarray
+        RHS modification from BC bias terms
+
+    Notes
+    -----
+    The protocol's "Coefficient Folding" works as follows:
+    When stencil at row i accesses ghost column j:
+    1. Get LinearConstraint: u_ghost = sum(w_k * u[inner+k]) + bias
+    2. Fold weights: A[i, inner+k] += stencil_weight * w_k
+    3. Fold bias: b[i] -= stencil_weight * bias
+    """
+    N_total = int(np.prod(shape))
+
+    # Default BCs: Neumann (du/dn = 0) via ZeroGradientCalculator
+    if bc_constraint_min is None:
+        bc_constraint_min = LinearConstraint(weights={0: 1.0}, bias=0.0)
+    if bc_constraint_max is None:
+        bc_constraint_max = LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+    # Triplet lists for COO format (protocol Section 3.2 performance note)
+    row_indices = []
+    col_indices = []
+    data_values = []
+
+    # RHS modification from BC bias terms
+    b_bc = np.zeros(N_total)
+
+    for flat_idx in range(N_total):
+        multi_idx = np.unravel_index(flat_idx, shape)
+
+        # Diagonal entry: 1/dt + sum of diffusion diagonal contributions
+        diag_val = 1.0 / dt
+
+        for d in range(ndim):
+            dx = spacing[d]
+            stencil_weight = D / (dx**2)  # Weight for off-diagonal diffusion terms
+
+            # Add diffusion diagonal contribution (from interior formula)
+            diag_val += 2.0 * stencil_weight
+
+            # Process neighbors in dimension d
+            for offset, side in [(-1, "min"), (1, "max")]:
+                neighbor_idx = list(multi_idx)
+                neighbor_idx[d] += offset
+                neighbor_col = neighbor_idx[d]
+
+                # ============================================
+                # PHASE 2: PHYSICS FOLDING (bounded BCs)
+                # ============================================
+                if 0 <= neighbor_col < shape[d]:
+                    # Interior point - direct assignment
+                    neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), shape)
+                    row_indices.append(flat_idx)
+                    col_indices.append(neighbor_flat)
+                    data_values.append(-stencil_weight)
+                else:
+                    # Boundary point - apply coefficient folding
+                    constraint = bc_constraint_min if side == "min" else bc_constraint_max
+
+                    # Fold weights into matrix
+                    for rel_offset, fold_weight in constraint.weights.items():
+                        # Map relative offset to global index
+                        # For min boundary: rel_offset 0 -> multi_idx[d]=0
+                        # For max boundary: rel_offset 0 -> multi_idx[d]=shape[d]-1
+                        inner_idx = list(multi_idx)
+                        if side == "min":
+                            inner_idx[d] = rel_offset
+                        else:
+                            inner_idx[d] = shape[d] - 1 - rel_offset
+
+                        # Ensure index is valid
+                        if 0 <= inner_idx[d] < shape[d]:
+                            inner_flat = np.ravel_multi_index(tuple(inner_idx), shape)
+                            # Core formula: A[i, inner] += stencil_weight * fold_weight
+                            # Note: stencil_weight is negative for diffusion (-D/dx²)
+                            row_indices.append(flat_idx)
+                            col_indices.append(inner_flat)
+                            data_values.append(-stencil_weight * fold_weight)
+
+                    # Fold bias into RHS (note the sign!)
+                    # Original: -stencil_weight * (sum_of_weighted_terms + bias)
+                    # Moving bias to RHS: b[i] -= (-stencil_weight) * bias = b[i] += stencil_weight * bias
+                    b_bc[flat_idx] += stencil_weight * constraint.bias
+
+        # Add diagonal entry
+        row_indices.append(flat_idx)
+        col_indices.append(flat_idx)
+        data_values.append(diag_val)
+
+    # Build sparse matrix (COO -> CSR for efficient solving)
+    A = sparse.coo_matrix((data_values, (row_indices, col_indices)), shape=(N_total, N_total)).tocsr()
+
+    return A, b_bc
+
+
+def solve_timestep_explicit_with_drift(
+    M_current: np.ndarray,
+    drift: np.ndarray,
+    dt: float,
+    sigma: float | np.ndarray,
+    spacing: tuple[float, ...],
+    ndim: int,
+    bc_constraint_min: LinearConstraint | None = None,
+    bc_constraint_max: LinearConstraint | None = None,
+) -> np.ndarray:
+    """
+    Solve one timestep using semi-implicit scheme with direct drift.
+
+    Uses operator splitting (Lie splitting):
+    1. Implicit diffusion: (I - dt*σ²/2*Δ) m* = m^k
+    2. Explicit advection: m^{k+1} = m* - dt * div(α * m*)
+
+    This is unconditionally stable for diffusion while allowing direct drift.
+
+    Matrix assembly follows the LinearConstraint protocol from
+    docs/development/matrix_assembly_bc_protocol.md for proper BC integration.
+
+    Parameters
+    ----------
+    M_current : np.ndarray
+        Current density field
+    drift : np.ndarray
+        Drift field. For 1D: shape (N,). For nD: shape (ndim, N1, N2, ...)
+    dt : float
+        Time step
+    sigma : float or np.ndarray
+        Diffusion coefficient (scalar or spatially varying)
+    spacing : tuple[float, ...]
+        Grid spacing (dx, dy, ...)
+    ndim : int
+        Spatial dimension
+    bc_constraint_min : LinearConstraint, optional
+        BC constraint for min boundary (default: Neumann du/dn=0)
+    bc_constraint_max : LinearConstraint, optional
+        BC constraint for max boundary (default: Neumann du/dn=0)
+
+    Returns
+    -------
+    np.ndarray
+        Updated density at next timestep
+
+    Notes
+    -----
+    The BC handling uses the LinearConstraint pattern:
+    - Tier 2 (Neumann): weights={0: 1.0}, bias=0.0 (default)
+    - Tier 3 (Robin/No-flux): weights={0: alpha}, bias=0.0
+
+    For full FP no-flux BCs with advection, use ZeroFluxCalculator to get
+    the Robin coefficient that accounts for drift at boundaries.
+    """
+    # Get diffusion coefficient
+    if isinstance(sigma, np.ndarray):
+        # For spatially varying, use scalar approximation (mean)
+        sigma_val = float(np.mean(sigma))
+    else:
+        sigma_val = float(sigma)
+
+    D = 0.5 * sigma_val**2  # Diffusion coefficient
+    shape = M_current.shape
+
+    # Step 1: Implicit diffusion using LinearConstraint-based matrix assembly
+    A_diffusion, b_bc = _build_diffusion_matrix_with_bc(
+        shape=shape,
+        spacing=spacing,
+        D=D,
+        dt=dt,
+        ndim=ndim,
+        bc_constraint_min=bc_constraint_min,
+        bc_constraint_max=bc_constraint_max,
+    )
+
+    # RHS: m^k / dt + BC bias contributions
+    b_rhs = M_current.ravel() / dt + b_bc
+
+    # Solve implicit diffusion
+    M_star = sparse.linalg.spsolve(A_diffusion, b_rhs).reshape(shape)
+
+    # Step 2: Explicit advection using direct drift
+    advection_term = compute_advection_from_drift_nd(M_star, drift, spacing, ndim)
+    M_next = M_star - dt * advection_term
+
+    return M_next
+
+
 def solve_fp_nd_full_system(
     m_initial_condition: np.ndarray,
-    U_solution_for_drift: np.ndarray,
+    U_solution_for_drift: np.ndarray | None,
     problem: Any,
     boundary_conditions: BoundaryConditions | None = None,
     show_progress: bool = True,
@@ -70,6 +360,8 @@ def solve_fp_nd_full_system(
     diffusion_field: float | np.ndarray | Any | None = None,
     tensor_diffusion_field: np.ndarray | Callable | None = None,
     advection_scheme: str = "upwind",
+    # Callable drift support (Phase 2 - Issue #487)
+    drift_field: Callable | None = None,
     # Deprecated parameter for backward compatibility
     conservative: bool | None = None,
 ) -> np.ndarray:
@@ -86,9 +378,10 @@ def solve_fp_nd_full_system(
     ----------
     m_initial_condition : np.ndarray
         Initial density at t=0. Shape: (N1, N2, ..., Nd)
-    U_solution_for_drift : np.ndarray
+    U_solution_for_drift : np.ndarray | None
         Value function over time-space grid. Shape: (Nt+1, N1, N2, ..., Nd)
         Used to compute drift velocity v = -coupling_coefficient * grad(U)
+        Can be None if drift_field is provided.
     problem : MFGProblem
         The MFG problem definition with geometry and parameters
     boundary_conditions : BoundaryConditions | None
@@ -117,6 +410,13 @@ def solve_fp_nd_full_system(
           (conservative via telescoping, stable, O(dx))
         Legacy aliases: "centered"->"gradient_centered",
         "upwind"->"gradient_upwind", "flux"->"divergence_upwind"
+    drift_field : Callable | None
+        Optional callable drift field (Phase 2 - Issue #487):
+        - None: Use U_solution_for_drift to compute drift
+        - Callable: State-dependent drift α(t, x, m) -> ndarray
+          Signature: (t: float, x: list[ndarray], m: ndarray) -> ndarray
+          Returns drift vector field, shape (ndim, N1, N2, ..., Nd)
+          where ndim is spatial dimension.
     conservative : bool | None
         DEPRECATED. Use advection_scheme instead.
 
@@ -146,8 +446,6 @@ def solve_fp_nd_full_system(
     - D: diffusion operator (full multi-D Laplacian)
     """
     # Get problem dimensions
-    # Use U_solution shape for timestep count (allows flexible input sizes)
-    Nt = U_solution_for_drift.shape[0]
     ndim = problem.geometry.dimension
     shape = tuple(problem.geometry.get_grid_shape())
     dt = problem.dt
@@ -156,6 +454,19 @@ def solve_fp_nd_full_system(
     # Get grid spacing and geometry
     spacing = problem.geometry.get_grid_spacing()
     grid = problem.geometry  # Geometry IS the grid
+
+    # Determine if using callable drift (Phase 2 - Issue #487)
+    use_callable_drift = drift_field is not None and callable(drift_field)
+
+    # Determine timestep count
+    if U_solution_for_drift is not None:
+        # Use U_solution shape for timestep count (allows flexible input sizes)
+        Nt = U_solution_for_drift.shape[0]
+    elif use_callable_drift:
+        # When using callable drift, get Nt from problem
+        Nt = problem.Nt + 1
+    else:
+        raise ValueError("Either U_solution_for_drift must be provided or drift_field must be callable")
 
     # Handle tensor diffusion (Phase 3.0) vs scalar diffusion
     use_tensor_diffusion = tensor_diffusion_field is not None
@@ -185,7 +496,7 @@ def solve_fp_nd_full_system(
         f"Initial condition shape {m_initial_condition.shape} doesn't match problem shape {shape}"
     )
     # Only validate spatial dimensions of U_solution (timestep count is flexible)
-    if Nt > 0:
+    if U_solution_for_drift is not None and Nt > 0:
         U_spatial_shape = U_solution_for_drift.shape[1:]
         assert U_spatial_shape == shape, (
             f"Value function spatial shape {U_spatial_shape} doesn't match problem shape {shape}"
@@ -203,9 +514,11 @@ def solve_fp_nd_full_system(
     M_solution[0] = np.maximum(M_solution[0], 0)
 
     # Enforce Dirichlet BC on initial condition (for 1D problems)
-    if boundary_conditions is not None and boundary_conditions.type == "dirichlet" and ndim == 1:
-        M_solution[0, 0] = boundary_conditions.left_value
-        M_solution[0, -1] = boundary_conditions.right_value
+    # Uses helper functions for unified/legacy BC compatibility
+    bc_type = _get_bc_type(boundary_conditions)
+    if bc_type == "dirichlet" and ndim == 1:
+        M_solution[0, 0] = _get_bc_value(boundary_conditions, "x_min")
+        M_solution[0, -1] = _get_bc_value(boundary_conditions, "x_max")
 
     # Edge cases
     if Nt <= 1:
@@ -213,7 +526,7 @@ def solve_fp_nd_full_system(
 
     # Set default boundary conditions
     if boundary_conditions is None:
-        boundary_conditions = BoundaryConditions(type="no_flux")
+        boundary_conditions = no_flux_bc(dimension=ndim)
 
     # Progress bar for forward timesteps
     # n_time_points - 1 steps to go from t=0 to t=T
@@ -231,10 +544,22 @@ def solve_fp_nd_full_system(
     # Time evolution loop (forward in time)
     for k in timestep_range:
         M_current = M_solution[k]
-        U_current = U_solution_for_drift[k]
+        t_current = k * dt
+
+        # Determine drift source
+        if use_callable_drift:
+            # Evaluate callable drift directly
+            # Drift callable signature: (t, x_coords, m) -> drift_array
+            # For 1D: drift_array shape is (N,)
+            # For nD: drift_array shape is (ndim, N1, N2, ...) for vector drift
+            drift_values = drift_field(t_current, grid.coordinates, M_current)
+            U_current = None  # Not needed when drift is provided directly
+        else:
+            drift_values = None
+            U_current = U_solution_for_drift[k]
 
         if use_tensor_diffusion:
-            # Tensor diffusion path (Phase 3.0) - explicit timestepping
+            # Tensor diffusion path - explicit timestepping
             M_next = solve_timestep_tensor_explicit(
                 M_current,
                 U_current,
@@ -248,14 +573,27 @@ def solve_fp_nd_full_system(
                 shape,
                 boundary_conditions,
                 k,
+                drift=drift_values,
             )
-        else:
-            # Scalar diffusion path - implicit solver
-            # Determine diffusion at current timestep using CoefficientField abstraction
+        elif use_callable_drift:
+            # Callable drift with scalar diffusion - use explicit Forward Euler
+            # This avoids the mathematically incorrect synthetic U approach
             diffusion = CoefficientField(sigma_base, problem.sigma, "diffusion_field", dimension=ndim)
             sigma_at_k = diffusion.evaluate_at(timestep_idx=k, grid=grid.coordinates, density=M_current, dt=dt)
 
-            # Build and solve full nD system
+            M_next = solve_timestep_explicit_with_drift(
+                M_current,
+                drift_values,
+                dt,
+                sigma_at_k,
+                spacing,
+                ndim,
+            )
+        else:
+            # MFG-coupled mode: scalar diffusion + U-based drift - use implicit solver
+            diffusion = CoefficientField(sigma_base, problem.sigma, "diffusion_field", dimension=ndim)
+            sigma_at_k = diffusion.evaluate_at(timestep_idx=k, grid=grid.coordinates, density=M_current, dt=dt)
+
             M_next = solve_timestep_full_nd(
                 M_current,
                 U_current,
@@ -277,17 +615,17 @@ def solve_fp_nd_full_system(
         # Enforce non-negativity
         M_solution[k + 1] = np.maximum(M_solution[k + 1], 0)
 
-        # Enforce Dirichlet boundary conditions (for 1D problems)
-        if boundary_conditions.type == "dirichlet" and ndim == 1:
-            M_solution[k + 1, 0] = boundary_conditions.left_value
-            M_solution[k + 1, -1] = boundary_conditions.right_value
+        # Enforce Dirichlet BC (using unified/legacy compatible helper)
+        if bc_type == "dirichlet" and ndim == 1:
+            M_solution[k + 1, 0] = _get_bc_value(boundary_conditions, "x_min")
+            M_solution[k + 1, -1] = _get_bc_value(boundary_conditions, "x_max")
 
     return M_solution
 
 
 def solve_timestep_tensor_explicit(
     M_current: np.ndarray,
-    U_current: np.ndarray,
+    U_current: np.ndarray | None,
     problem: Any,
     dt: float,
     tensor_field: np.ndarray | Callable,
@@ -298,6 +636,7 @@ def solve_timestep_tensor_explicit(
     shape: tuple[int, ...],
     boundary_conditions: Any,
     timestep_idx: int,
+    drift: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Solve one timestep with tensor diffusion using explicit Forward Euler.
@@ -308,8 +647,8 @@ def solve_timestep_tensor_explicit(
     ----------
     M_current : np.ndarray
         Current density
-    U_current : np.ndarray
-        Current value function
+    U_current : np.ndarray or None
+        Current value function (for MFG coupling). None if drift is provided.
     problem : Any
         MFG problem
     dt : float
@@ -330,6 +669,8 @@ def solve_timestep_tensor_explicit(
         Boundary condition specification
     timestep_idx : int
         Current timestep index
+    drift : np.ndarray or None
+        Direct drift field (for standalone FP). If provided, U_current is ignored.
 
     Returns
     -------
@@ -376,9 +717,14 @@ def solve_timestep_tensor_explicit(
 
     # Compute advection term: div(alpha * m)
     # Use upwind scheme from fp_fdm_advection module
-    advection_term = compute_advection_term_nd(
-        M_current, U_current, coupling_coefficient, spacing, ndim, boundary_conditions
-    )
+    if drift is not None:
+        # Direct drift provided (standalone FP mode)
+        advection_term = compute_advection_from_drift_nd(M_current, drift, spacing, ndim)
+    else:
+        # MFG coupled mode: derive drift from U
+        advection_term = compute_advection_term_nd(
+            M_current, U_current, coupling_coefficient, spacing, ndim, boundary_conditions
+        )
 
     # Explicit Forward Euler update
     M_next = M_current + dt * (diffusion_term - advection_term)

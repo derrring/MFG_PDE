@@ -5,6 +5,21 @@ import numpy as np
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 
 
+class MockGeometry:
+    """Mock geometry for testing."""
+
+    def __init__(self, n_points: int = 10):
+        self._n_points = n_points
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """Return grid shape (1D with n_points)."""
+        return (self._n_points,)
+
+    def get_bounds(self) -> tuple[np.ndarray, np.ndarray]:
+        """Return domain bounds."""
+        return np.array([0.0]), np.array([1.0])
+
+
 class MockMFGProblem:
     """Mock MFG problem for testing."""
 
@@ -16,6 +31,7 @@ class MockMFGProblem:
         self.Dx = 0.1
         self.Dt = 0.2
         self.sigma = 0.1
+        self.geometry = MockGeometry(n_points=10)
 
     def H(self, x_idx, m_at_x, p_values, t_idx):
         """Simple quadratic Hamiltonian."""
