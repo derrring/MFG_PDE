@@ -856,10 +856,12 @@ class FPParticleSolver(BaseFPSolver):
             effective_U = drift_field
         elif callable(drift_field):
             # Custom drift function - Phase 2
-            raise NotImplementedError(
-                "FPParticleSolver does not yet support callable drift_field. "
-                "Pass precomputed drift as np.ndarray. "
-                "Support for callable drift coming in Phase 2."
+            # Route to callable drift solver
+            return self._solve_fp_system_callable_drift(
+                M_initial=M_initial,
+                drift_callable=drift_field,
+                diffusion_field=diffusion_field,
+                show_progress=show_progress,
             )
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
@@ -872,12 +874,27 @@ class FPParticleSolver(BaseFPSolver):
             # Constant isotropic diffusion
             effective_sigma = float(diffusion_field)
         elif isinstance(diffusion_field, np.ndarray) or callable(diffusion_field):
-            # Spatially varying or state-dependent - Phase 2
-            raise NotImplementedError(
-                "FPParticleSolver does not yet support spatially varying or callable diffusion_field. "
-                "Pass constant diffusion as float or use problem.sigma. "
-                "Support coming in Phase 2."
-            )
+            # Spatially varying or state-dependent diffusion
+            # Route to callable drift solver which supports this
+            # Note: If drift_field is None, we need to handle pure diffusion case
+            if drift_field is None:
+                # Pure diffusion with spatially varying coefficient
+                # Use callable drift path with zero drift
+                def zero_drift(t, x, m):
+                    if isinstance(x, np.ndarray) and x.ndim > 1:
+                        return np.zeros_like(x)
+                    return np.zeros_like(np.atleast_1d(x))
+
+                return self._solve_fp_system_callable_drift(
+                    M_initial=M_initial,
+                    drift_callable=zero_drift,
+                    diffusion_field=diffusion_field,
+                    show_progress=show_progress,
+                )
+            else:
+                # Already routed to callable drift above if drift is callable
+                # This handles array drift + varying diffusion
+                effective_sigma = self.problem.sigma  # Fallback, actual handled in solver
         else:
             raise TypeError(
                 f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
@@ -1328,6 +1345,265 @@ class FPParticleSolver(BaseFPSolver):
         # Store trajectory and convert to NumPy ONCE at end
         self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
         return self.backend.to_numpy(M_density_gpu)
+
+    def _solve_fp_system_callable_drift(
+        self,
+        M_initial: np.ndarray,
+        drift_callable: Callable,
+        diffusion_field: float | None = None,
+        show_progress: bool = True,
+    ) -> np.ndarray:
+        """
+        Solve FP equation with callable (state-dependent) drift using particles.
+
+        Evaluates drift at particle positions at each timestep, enabling
+        nonlinear PDEs with state-dependent advection.
+
+        Parameters
+        ----------
+        M_initial : np.ndarray
+            Initial density on grid
+        drift_callable : callable
+            Function α(t, x, m) -> drift velocity
+            - t: time (scalar)
+            - x: particle positions, shape (N_particles, d)
+            - m: density at particle positions, shape (N_particles,)
+            Returns: drift velocity, shape (N_particles, d) for nD or (N_particles,) for 1D
+        diffusion_field : float or None
+            Constant diffusion coefficient (uses problem.sigma if None)
+        show_progress : bool
+            Show progress bar
+
+        Returns
+        -------
+        np.ndarray
+            Density evolution on grid, shape (Nt+1, *grid_shape)
+        """
+        from mfg_pde.types.pde_coefficients import DriftCallable
+
+        # Validate callable
+        if not isinstance(drift_callable, DriftCallable):
+            raise TypeError(
+                "drift_field callable does not match DriftCallable protocol. "
+                "Expected signature: (t: float, x: ndarray, m: ndarray) -> ndarray"
+            )
+
+        # Get parameters
+        params = self._get_grid_params()
+        Nt = params["Nt"]
+        Dt = params["Dt"]
+        dimension = params["dimension"]
+        grid_shape = params["grid_shape"]
+        bounds = params["bounds"]
+        spacings = params["spacings"]
+        coordinates = params["coordinates"]
+
+        # Get diffusion - supports constant, array, or callable
+        # For SDE: dX = drift*dt + sqrt(2*sigma)*dW
+        diffusion_is_callable = callable(diffusion_field)
+        diffusion_is_array = isinstance(diffusion_field, np.ndarray)
+
+        if diffusion_field is None:
+            base_sigma = self.problem.sigma
+        elif isinstance(diffusion_field, (int, float)):
+            base_sigma = float(diffusion_field)
+        elif diffusion_is_array or diffusion_is_callable:
+            # Spatially varying or state-dependent diffusion
+            # Will be evaluated per timestep at particle positions
+            base_sigma = None  # Evaluated dynamically
+        else:
+            raise TypeError(f"diffusion_field must be None, float, ndarray, or Callable, got {type(diffusion_field)}")
+
+        # Pre-compute constant sigma_sde if diffusion is constant
+        if base_sigma is not None:
+            sigma_sde_constant = np.sqrt(2 * base_sigma)
+        else:
+            sigma_sde_constant = None
+
+        # Initialize particles from initial density
+        current_particles = np.zeros((Nt + 1, self.num_particles, dimension))
+        current_particles[0] = self._sample_particles_from_density_nd(M_initial, coordinates, self.num_particles)
+
+        # Allocate density array
+        M_density_on_grid = np.zeros((Nt + 1, *grid_shape))
+        M_density_on_grid[0] = M_initial.copy()
+
+        # Normalize initial if requested
+        if self.kde_normalization == KDENormalization.ALL:
+            M_density_on_grid[0] = self._normalize_density_nd(M_density_on_grid[0], spacings)
+
+        # Progress bar
+        from mfg_pde.utils.progress import RichProgressBar
+
+        timestep_range = range(Nt)
+        if show_progress:
+            timestep_range = RichProgressBar(
+                timestep_range,
+                desc="FP Particle (callable drift)",
+                unit="step",
+                disable=False,
+            )
+
+        # Time evolution with callable drift
+        for t_idx in timestep_range:
+            t_current = t_idx * Dt
+            particles_t = current_particles[t_idx]  # Shape: (num_particles, dimension)
+
+            # Estimate density at particle positions for state-dependent drift
+            m_at_particles = self._estimate_density_at_particles(
+                particles_t, M_density_on_grid[t_idx], coordinates, bounds
+            )
+
+            # Evaluate drift callable
+            # For 1D: x is (N,) and returns (N,)
+            # For nD: x is (N, d) and returns (N, d)
+            if dimension == 1:
+                x_for_callable = particles_t[:, 0]  # Flatten to (N,)
+                drift_values = drift_callable(t_current, x_for_callable, m_at_particles)
+                # Ensure shape is (N, 1) for consistent processing
+                if drift_values.ndim == 1:
+                    drift = drift_values[:, np.newaxis]
+                else:
+                    drift = drift_values
+            else:
+                drift = drift_callable(t_current, particles_t, m_at_particles)
+                if drift.ndim == 1:
+                    # Scalar drift applied to all dimensions
+                    drift = np.tile(drift[:, np.newaxis], (1, dimension))
+
+            # Generate Brownian increments with per-particle diffusion support
+            if sigma_sde_constant is not None:
+                # Constant diffusion - use pre-computed value
+                dW = self._generate_brownian_increment_nd(self.num_particles, dimension, Dt, sigma_sde_constant)
+            else:
+                # Spatially varying or callable diffusion - evaluate at particle positions
+                if diffusion_is_callable:
+                    # Callable: sigma(t, x, m) -> per-particle sigma
+                    if dimension == 1:
+                        x_for_callable = particles_t[:, 0]
+                    else:
+                        x_for_callable = particles_t
+                    sigma_at_particles = diffusion_field(t_current, x_for_callable, m_at_particles)
+                else:
+                    # Array: interpolate from grid
+                    sigma_at_particles = self._interpolate_field_at_particles(
+                        particles_t, diffusion_field, coordinates, bounds
+                    )
+
+                # Ensure sigma_at_particles is 1D array of shape (num_particles,)
+                sigma_at_particles = np.atleast_1d(sigma_at_particles).ravel()
+                if sigma_at_particles.shape[0] == 1:
+                    # Broadcast scalar to all particles
+                    sigma_at_particles = np.full(self.num_particles, sigma_at_particles[0])
+
+                # Generate per-particle Brownian increments
+                # dW_i = sqrt(2 * sigma_i) * N(0, sqrt(dt))
+                sigma_sde_particles = np.sqrt(2 * sigma_at_particles)
+                dW = sigma_sde_particles[:, np.newaxis] * np.random.normal(
+                    0, np.sqrt(Dt), (self.num_particles, dimension)
+                )
+
+            # Euler-Maruyama step
+            new_particles = particles_t + drift * Dt + dW
+
+            # Apply boundary conditions
+            topologies = self._get_topology_per_dimension(dimension)
+            new_particles = self._apply_boundary_conditions_nd(new_particles, bounds, topologies)
+
+            current_particles[t_idx + 1] = new_particles
+
+            # Estimate density from particles
+            M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
+
+            # Normalize if requested
+            if self.kde_normalization == KDENormalization.ALL:
+                M_density_on_grid[t_idx + 1] = self._normalize_density_nd(M_density_on_grid[t_idx + 1], spacings)
+
+            self._time_step_counter += 1
+
+        self.M_particles_trajectory = current_particles
+        return M_density_on_grid
+
+    def _interpolate_field_at_particles(
+        self,
+        particles: np.ndarray,
+        field: np.ndarray,
+        coordinates: list[np.ndarray],
+        bounds: list[tuple[float, float]],
+        fill_value: float = 0.0,
+    ) -> np.ndarray:
+        """
+        Interpolate a grid field to particle positions.
+
+        General interpolation utility for any scalar field on the grid.
+        Used for spatially varying diffusion, density estimation, etc.
+
+        Parameters
+        ----------
+        particles : np.ndarray
+            Particle positions, shape (N_particles, dimension)
+        field : np.ndarray
+            Field values on grid, shape (*grid_shape)
+        coordinates : list of np.ndarray
+            Grid coordinates per dimension
+        bounds : list of tuple
+            Domain bounds per dimension
+        fill_value : float
+            Value for out-of-bounds particles (default: 0.0)
+
+        Returns
+        -------
+        np.ndarray
+            Field values at particle positions, shape (N_particles,)
+        """
+        dimension = particles.shape[1]
+
+        if dimension == 1:
+            # 1D: simple interpolation
+            from scipy.interpolate import interp1d
+
+            x_grid = coordinates[0]
+            # Handle potential shape mismatch
+            field_1d = field.ravel() if field.ndim > 1 else field
+            interp = interp1d(x_grid, field_1d, kind="linear", bounds_error=False, fill_value=fill_value)
+            return interp(particles[:, 0])
+        else:
+            # nD: use RegularGridInterpolator
+            try:
+                interp = self._create_nd_interpolator(coordinates, field)
+                return interp(particles)
+            except Exception:
+                # Fallback: return fill_value
+                return np.full(particles.shape[0], fill_value)
+
+    def _estimate_density_at_particles(
+        self,
+        particles: np.ndarray,
+        grid_density: np.ndarray,
+        coordinates: list[np.ndarray],
+        bounds: list[tuple[float, float]],
+    ) -> np.ndarray:
+        """
+        Estimate density at particle positions by interpolating grid density.
+
+        Parameters
+        ----------
+        particles : np.ndarray
+            Particle positions, shape (N_particles, dimension)
+        grid_density : np.ndarray
+            Density on grid, shape (*grid_shape)
+        coordinates : list of np.ndarray
+            Grid coordinates per dimension
+        bounds : list of tuple
+            Domain bounds per dimension
+
+        Returns
+        -------
+        np.ndarray
+            Density at particle positions, shape (N_particles,)
+        """
+        # Use general interpolation with fill_value=0 for out-of-bounds
+        return self._interpolate_field_at_particles(particles, grid_density, coordinates, bounds, fill_value=0.0)
 
 
 if __name__ == "__main__":

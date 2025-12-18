@@ -11,6 +11,10 @@ from mfg_pde.utils.aux_func import npart, ppart
 
 from .base_fp import BaseFPSolver
 from .fp_fdm_time_stepping import (
+    _get_bc_type,
+    _get_bc_value,
+)
+from .fp_fdm_time_stepping import (
     solve_fp_nd_full_system as _solve_fp_nd_full_system,
 )
 
@@ -369,10 +373,17 @@ class FPFDMSolver(BaseFPSolver):
             effective_U = drift_field
         elif callable(drift_field):
             # Custom drift function - Phase 2
-            raise NotImplementedError(
-                "FPFDMSolver does not yet support callable drift_field. "
-                "Pass precomputed drift as np.ndarray. "
-                "Support for callable drift coming in Phase 2."
+            # Route to unified nD solver (works for all dimensions including 1D)
+            return _solve_fp_nd_full_system(
+                m_initial_condition=M_initial,
+                U_solution_for_drift=None,  # Not needed when drift_field is provided
+                problem=self.problem,
+                boundary_conditions=self.boundary_conditions,
+                show_progress=show_progress,
+                backend=self.backend,
+                diffusion_field=diffusion_field,
+                drift_field=drift_field,
+                advection_scheme=self.advection_scheme,
             )
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
@@ -459,7 +470,7 @@ class FPFDMSolver(BaseFPSolver):
         use_nd_path = (
             self.dimension > 1
             or self.conservative  # Conservative mode always uses unified nD solver
-            or self.boundary_conditions.type == "no_flux"  # no_flux works in nD solver
+            or _get_bc_type(self.boundary_conditions) == "no_flux"  # no_flux works in nD solver
         )
 
         if use_nd_path:
@@ -513,9 +524,9 @@ class FPFDMSolver(BaseFPSolver):
             m_sol[0, :] = m_initial_condition
             m_sol[0, :] = np.maximum(m_sol[0, :], 0)
             # Apply boundary conditions
-            if self.boundary_conditions.type == "dirichlet":
-                m_sol[0, 0] = self.boundary_conditions.left_value
-                m_sol[0, -1] = self.boundary_conditions.right_value
+            if _get_bc_type(self.boundary_conditions) == "dirichlet":
+                m_sol[0, 0] = _get_bc_value(self.boundary_conditions, "x_min")
+                m_sol[0, -1] = _get_bc_value(self.boundary_conditions, "x_max")
             return m_sol
 
         if self.backend is not None:
@@ -525,9 +536,10 @@ class FPFDMSolver(BaseFPSolver):
         m[0, :] = m_initial_condition
         m[0, :] = np.maximum(m[0, :], 0)
         # Apply boundary conditions to initial condition
-        if self.boundary_conditions.type == "dirichlet":
-            m[0, 0] = self.boundary_conditions.left_value
-            m[0, -1] = self.boundary_conditions.right_value
+        bc_type = _get_bc_type(self.boundary_conditions)
+        if bc_type == "dirichlet":
+            m[0, 0] = _get_bc_value(self.boundary_conditions, "x_min")
+            m[0, -1] = _get_bc_value(self.boundary_conditions, "x_max")
 
         # Pre-allocate lists for COO format, then convert to CSR
         row_indices: list[int] = []
@@ -580,7 +592,7 @@ class FPFDMSolver(BaseFPSolver):
             data_values.clear()
 
             # Handle different boundary conditions
-            if self.boundary_conditions.type == "periodic":
+            if bc_type == "periodic":
                 # Original periodic boundary implementation
                 for i in range(Nx):
                     # Get diffusion at point i (scalar or array)
@@ -620,7 +632,7 @@ class FPFDMSolver(BaseFPSolver):
                         col_indices.append(ip1)
                         data_values.append(val_A_i_ip1)
 
-            elif self.boundary_conditions.type == "dirichlet":
+            elif bc_type == "dirichlet":
                 # Dirichlet boundary conditions: m[0] = left_value, m[Nx-1] = right_value
                 for i in range(Nx):
                     if i == 0 or i == Nx - 1:
@@ -664,7 +676,7 @@ class FPFDMSolver(BaseFPSolver):
                             col_indices.append(i + 1)
                             data_values.append(val_A_i_ip1)
 
-            elif self.boundary_conditions.type == "no_flux":
+            elif bc_type == "no_flux":
                 # Two discretization modes:
                 # - conservative=True: Flux FDM with interface velocities (mass-preserving)
                 # - conservative=False: Gradient FDM (original, may lose mass)
@@ -838,10 +850,10 @@ class FPFDMSolver(BaseFPSolver):
             b_rhs = m[k_idx_fp, :] / Dt
 
             # Apply boundary conditions to RHS
-            if self.boundary_conditions.type == "dirichlet":
-                b_rhs[0] = self.boundary_conditions.left_value  # Left boundary
-                b_rhs[-1] = self.boundary_conditions.right_value  # Right boundary
-            elif self.boundary_conditions.type == "no_flux":
+            if bc_type == "dirichlet":
+                b_rhs[0] = _get_bc_value(self.boundary_conditions, "x_min")
+                b_rhs[-1] = _get_bc_value(self.boundary_conditions, "x_max")
+            elif bc_type == "no_flux":
                 # For no-flux boundaries, RHS remains as m[k]/Dt
                 # The no-flux condition is enforced through the matrix coefficients
                 pass
@@ -865,10 +877,10 @@ class FPFDMSolver(BaseFPSolver):
             m[k_idx_fp + 1, :] = m_next_step_raw
 
             # Ensure boundary conditions are satisfied
-            if self.boundary_conditions.type == "dirichlet":
-                m[k_idx_fp + 1, 0] = self.boundary_conditions.left_value
-                m[k_idx_fp + 1, -1] = self.boundary_conditions.right_value
-            elif self.boundary_conditions.type == "no_flux":
+            if bc_type == "dirichlet":
+                m[k_idx_fp + 1, 0] = _get_bc_value(self.boundary_conditions, "x_min")
+                m[k_idx_fp + 1, -1] = _get_bc_value(self.boundary_conditions, "x_max")
+            elif bc_type == "no_flux":
                 # No additional enforcement needed - no-flux is built into the discretization
                 # Ensure non-negativity
                 m[k_idx_fp + 1, :] = np.maximum(m[k_idx_fp + 1, :], 0)
@@ -993,9 +1005,9 @@ class FPFDMSolver(BaseFPSolver):
         m_solution[0, :] = np.maximum(m_solution[0, :], 0)
 
         # Apply boundary conditions to initial condition
-        if self.boundary_conditions.type == "dirichlet":
-            m_solution[0, 0] = self.boundary_conditions.left_value
-            m_solution[0, -1] = self.boundary_conditions.right_value
+        if _get_bc_type(self.boundary_conditions) == "dirichlet":
+            m_solution[0, 0] = _get_bc_value(self.boundary_conditions, "x_min")
+            m_solution[0, -1] = _get_bc_value(self.boundary_conditions, "x_max")
 
         # Progress bar for forward timesteps with callable diffusion
         # n_time_points - 1 steps to go from t=0 to t=T
@@ -1046,6 +1058,179 @@ class FPFDMSolver(BaseFPSolver):
 
                 # Call _solve_fp_1d for single timestep (Nt=2 gives one step)
                 # This reuses all the boundary condition logic
+                m_result = self._solve_fp_1d(
+                    m_initial_condition=m_current,
+                    U_solution_for_drift=U_temp,
+                    show_progress=False,
+                )
+
+                # Extract result at next timestep
+                m_solution[k + 1, :] = m_result[1, :]
+
+            finally:
+                # Restore original sigma
+                self.problem.sigma = original_sigma
+
+        return m_solution
+
+    def _solve_fp_1d_with_callable_drift(
+        self,
+        m_initial_condition: np.ndarray,
+        drift_callable: Callable,
+        diffusion_field: float | np.ndarray | Callable | None = None,
+        show_progress: bool = True,
+    ) -> np.ndarray:
+        """
+        Solve 1D FP equation with callable (state-dependent) drift.
+
+        Uses bootstrap strategy: evaluate drift callable at each timestep using
+        the current density m[k] to compute drift, then solve for m[k+1].
+
+        The drift is converted to an equivalent pseudo-U field where:
+            α = -∇U/λ  =>  U[i] ≈ -λ * cumsum(α) * dx
+
+        Parameters
+        ----------
+        m_initial_condition : np.ndarray
+            Initial density, shape (Nx,)
+        drift_callable : callable
+            Function α(t, x, m) -> drift velocity field
+            Signature: (float, np.ndarray, np.ndarray) -> np.ndarray
+        diffusion_field : float, np.ndarray, callable, or None
+            Diffusion coefficient (uses problem.sigma if None)
+        show_progress : bool
+            Show progress bar
+
+        Returns
+        -------
+        np.ndarray
+            Density evolution, shape (Nt, Nx)
+
+        Examples
+        --------
+        >>> # State-dependent drift: crowd avoidance
+        >>> def crowd_drift(t, x, m):
+        ...     grad_m = np.gradient(m, x[1] - x[0])
+        ...     return -0.5 * grad_m  # Move away from high density
+        >>> M = solver.solve_fp_system(m0, drift_field=crowd_drift)
+
+        >>> # Time-varying drift: oscillating field
+        >>> def oscillating_drift(t, x, m):
+        ...     return np.sin(2 * np.pi * t) * np.ones_like(x)
+        >>> M = solver.solve_fp_system(m0, drift_field=oscillating_drift)
+        """
+        from mfg_pde.types.pde_coefficients import DriftCallable
+
+        # Validate callable signature using protocol
+        if not isinstance(drift_callable, DriftCallable):
+            raise TypeError(
+                "drift_field callable does not match DriftCallable protocol. "
+                "Expected signature: (t: float, x: ndarray, m: ndarray) -> ndarray"
+            )
+
+        # Get problem dimensions from geometry
+        Nx = self.problem.geometry.get_grid_shape()[0]
+        Dt = self.problem.dt
+        Dx = self.problem.geometry.get_grid_spacing()[0]
+        bounds = self.problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+        coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
+
+        # Get number of time points
+        Nt = self.problem.Nt + 1
+
+        # Create spatial grid for callable evaluation
+        x_grid = np.linspace(xmin, xmax, Nx)
+
+        # Allocate solution array
+        if self.backend is not None:
+            m_solution = self.backend.zeros((Nt, Nx))
+        else:
+            m_solution = np.zeros((Nt, Nx))
+
+        m_solution[0, :] = m_initial_condition
+        m_solution[0, :] = np.maximum(m_solution[0, :], 0)
+
+        # Apply boundary conditions to initial condition
+        if _get_bc_type(self.boundary_conditions) == "dirichlet":
+            m_solution[0, 0] = _get_bc_value(self.boundary_conditions, "x_min")
+            m_solution[0, -1] = _get_bc_value(self.boundary_conditions, "x_max")
+
+        # Handle diffusion field
+        if diffusion_field is None:
+            sigma_base = self.problem.sigma
+            sigma_is_callable = False
+        elif callable(diffusion_field):
+            sigma_base = None
+            sigma_is_callable = True
+            diffusion_callable = diffusion_field
+        else:
+            sigma_base = diffusion_field
+            sigma_is_callable = False
+
+        # Progress bar for forward timesteps
+        from mfg_pde.utils.progress import RichProgressBar
+
+        timestep_range = range(Nt - 1)
+        if show_progress:
+            timestep_range = RichProgressBar(
+                timestep_range,
+                desc="FP (callable drift)",
+                unit="step",
+                disable=False,
+            )
+
+        # Bootstrap forward iteration: use m[k] to evaluate callable and compute m[k+1]
+        for k in timestep_range:
+            t_current = k * Dt
+            m_current = m_solution[k, :]
+
+            # Evaluate drift callable at current state
+            drift_at_k = drift_callable(t_current, x_grid, m_current)
+
+            # Validate drift output
+            drift_at_k = self._validate_callable_output(
+                drift_at_k,
+                expected_shape=(Nx,),
+                param_name="drift_field",
+                timestep=k,
+            )
+
+            # Convert drift velocity α to pseudo-U field
+            # If α = -∇U/λ, then ∇U = -λα
+            # Integrate: U[i] = U[0] - λ * Σ_{j=0}^{i-1} α[j] * dx
+            # We set U[0] = 0 (arbitrary constant)
+            pseudo_U = np.zeros(Nx)
+            pseudo_U[1:] = -coupling_coefficient * np.cumsum(drift_at_k[:-1]) * Dx
+
+            # Evaluate diffusion at current state if callable
+            if sigma_is_callable:
+                from mfg_pde.types.pde_coefficients import DiffusionCallable
+
+                if not isinstance(diffusion_callable, DiffusionCallable):
+                    raise TypeError("diffusion_field callable does not match DiffusionCallable protocol.")
+                sigma_at_k = diffusion_callable(t_current, x_grid, m_current)
+                sigma_at_k = self._validate_callable_output(
+                    sigma_at_k,
+                    expected_shape=(Nx,),
+                    param_name="diffusion_field",
+                    timestep=k,
+                )
+            else:
+                sigma_at_k = sigma_base
+
+            # Store original sigma and temporarily set to evaluated value
+            original_sigma = self.problem.sigma
+            self.problem.sigma = sigma_at_k
+
+            try:
+                # Create temporary arrays for single-step solve
+                m_temp = np.zeros((2, Nx))
+                m_temp[0, :] = m_current
+                U_temp = np.zeros((2, Nx))
+                U_temp[0, :] = pseudo_U
+
+                # Call _solve_fp_1d for single timestep
                 m_result = self._solve_fp_1d(
                     m_initial_condition=m_current,
                     U_solution_for_drift=U_temp,
