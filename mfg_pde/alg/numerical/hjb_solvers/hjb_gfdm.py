@@ -62,19 +62,36 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
     Implements BoundaryCapable protocol for unified BC handling (Issue #527).
 
-    Design Limitation - Adaptive Collocation (Issue #529):
-        Dynamically resampling collocation points between Picard/Newton iterations
-        is NOT recommended. This causes:
-        - Interpolation noise when mapping u(x) to new point locations
-        - Stencil weight fluctuations between iterations
-        - Convergence stall at error floor ~1e-5 (oscillatory residuals)
+    Collocation Point Strategies (Issue #529):
+        Three approaches exist for meshfree MFG with different trade-offs:
 
-        RECOMMENDATION: Use fixed collocation points throughout the solve.
-        Adaptive/moving collocation requires projection-free methods (research topic).
+        1. **Fixed Collocation** (RECOMMENDED):
+           - Collocation points remain fixed throughout the entire MFG solve
+           - Clean convergence, ~20 Picard iterations typical
+           - Eulerian perspective: solve PDEs on fixed spatial grid
 
-        Evidence: With identical setups, fixed collocation converges in ~20 iterations
-        while adaptive collocation stalls. This is an inherent algorithm design constraint,
-        not a bug.
+        2. **Adaptive Resampling Between m-Solves**:
+           - Resample collocation after each complete density solve
+           - Can improve resolution in high-density regions
+           - Requires careful interpolation of u to new points
+           - Trade-off: Better adaptivity vs interpolation overhead
+
+        3. **Fully Lagrangian MFG** (NOT RECOMMENDED):
+           - Move collocation points with the flow (like SPH particles)
+           - BREAKS THE CONTROL: Optimal control alpha* = -grad(u)/m depends on
+             grad(u) at FIXED spatial locations. If points move, the control
+             computed at the old location is not valid at the new location.
+           - The HJB equation is inherently Eulerian (defined on fixed space)
+           - Only valid for passive tracers, not controlled agents
+
+        **Within-Iteration Resampling** (FAILS):
+           - Resampling during Picard/Newton iterations causes:
+             - Interpolation noise when mapping u(x) to new points
+             - Stencil weight fluctuations between iterations
+             - Convergence stall at error floor ~1e-5
+
+        Evidence: Fixed collocation converges in ~20 iterations; adaptive
+        within-iteration resampling stalls. This is algorithm design, not a bug.
     """
 
     # BoundaryCapable protocol: Supported BC types
