@@ -340,7 +340,7 @@ class TestGetSpatialGrid:
 
         problem = MinimalProblem()
 
-        with pytest.raises(AttributeError, match="must have either geometry"):
+        with pytest.raises(AttributeError, match="must have geometry"):
             get_spatial_grid(problem)
 
 
