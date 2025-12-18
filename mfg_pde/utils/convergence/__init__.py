@@ -64,12 +64,14 @@ from .convergence_metrics import (
     ConvergenceConfig,
     # Core utilities
     DistributionComparator,
+    MomentConvergenceMonitor,
     RollingConvergenceMonitor,
     # Backward compatibility
     StochasticConvergenceMonitor,
     calculate_error,
     calculate_l2_convergence_metrics,
     # Factory
+    create_moment_monitor,
     create_rolling_monitor,
     create_stochastic_monitor,
 )
@@ -118,10 +120,12 @@ def _warn_deprecated(old_name: str, new_name: str) -> None:
 __all__ = [
     # General-purpose (convergence_metrics.py)
     "DistributionComparator",
+    "MomentConvergenceMonitor",
     "RollingConvergenceMonitor",
     "calculate_error",
     "calculate_l2_convergence_metrics",
     "ConvergenceConfig",
+    "create_moment_monitor",
     "create_rolling_monitor",
     # MFG-specific (convergence_monitors.py)
     "DistributionConvergenceMonitor",

@@ -505,6 +505,231 @@ def create_rolling_monitor(
 
 
 # =============================================================================
+# MOMENT-BASED CONVERGENCE MONITOR
+# =============================================================================
+
+
+class MomentConvergenceMonitor:
+    """
+    Convergence monitoring based on distribution moments.
+
+    For particle-based methods, comparing raw density fields is unreliable
+    due to sampling noise O(1/sqrt(N)). Instead, this monitor tracks
+    statistical moments (mean, variance) which are more robust to noise.
+
+    The distribution is considered converged when moments stabilize
+    within tolerance over a rolling window.
+    """
+
+    def __init__(
+        self,
+        mean_tolerance: float = 1e-3,
+        variance_tolerance: float = 1e-2,
+        window_size: int = 5,
+        min_iterations: int = 5,
+    ):
+        """
+        Initialize moment-based convergence monitor.
+
+        Args:
+            mean_tolerance: Relative tolerance for mean convergence
+            variance_tolerance: Relative tolerance for variance convergence
+            window_size: Number of iterations to check for stability
+            min_iterations: Minimum iterations before checking convergence
+        """
+        self.mean_tolerance = mean_tolerance
+        self.variance_tolerance = variance_tolerance
+        self.window_size = window_size
+        self.min_iterations = min_iterations
+
+        # History of moments
+        self.mean_history: list[np.ndarray] = []  # Per-timestep means
+        self.variance_history: list[np.ndarray] = []  # Per-timestep variances
+        self.iteration_count = 0
+
+    def add_iteration(
+        self,
+        M: np.ndarray,
+        grid_x: np.ndarray,
+        grid_y: np.ndarray | None = None,
+    ) -> None:
+        """
+        Add density field from an iteration and compute moments.
+
+        Args:
+            M: Density array, shape (Nt+1, Nx, Ny) or (Nt+1, Nx)
+            grid_x: Spatial grid in x direction
+            grid_y: Spatial grid in y direction (for 2D)
+        """
+        # Compute moments for each timestep
+        n_timesteps = M.shape[0]
+        means = np.zeros(n_timesteps)
+        variances = np.zeros(n_timesteps)
+
+        if grid_y is not None:
+            # 2D case
+            X, Y = np.meshgrid(grid_x, grid_y, indexing="ij")
+            dx = grid_x[1] - grid_x[0] if len(grid_x) > 1 else 1.0
+            dy = grid_y[1] - grid_y[0] if len(grid_y) > 1 else 1.0
+
+            for t in range(n_timesteps):
+                m_t = M[t]
+                # Normalize
+                total_mass = np.sum(m_t) * dx * dy
+                if total_mass > 1e-12:
+                    m_norm = m_t / total_mass
+                    # Mean position (center of mass)
+                    mean_x = np.sum(X * m_norm) * dx * dy
+                    mean_y = np.sum(Y * m_norm) * dx * dy
+                    means[t] = np.sqrt(mean_x**2 + mean_y**2)  # Distance from origin
+                    # Variance (spread)
+                    var_x = np.sum((X - mean_x) ** 2 * m_norm) * dx * dy
+                    var_y = np.sum((Y - mean_y) ** 2 * m_norm) * dx * dy
+                    variances[t] = var_x + var_y
+                else:
+                    means[t] = 0.0
+                    variances[t] = 0.0
+        else:
+            # 1D case
+            dx = grid_x[1] - grid_x[0] if len(grid_x) > 1 else 1.0
+            for t in range(n_timesteps):
+                m_t = M[t]
+                total_mass = np.sum(m_t) * dx
+                if total_mass > 1e-12:
+                    m_norm = m_t / total_mass
+                    means[t] = np.sum(grid_x * m_norm) * dx
+                    variances[t] = np.sum((grid_x - means[t]) ** 2 * m_norm) * dx
+                else:
+                    means[t] = 0.0
+                    variances[t] = 0.0
+
+        self.mean_history.append(means)
+        self.variance_history.append(variances)
+        self.iteration_count += 1
+
+    def get_moment_changes(self) -> dict[str, Any]:
+        """
+        Get relative changes in moments between last two iterations.
+
+        Returns:
+            Dictionary with mean and variance changes
+        """
+        if len(self.mean_history) < 2:
+            return {"status": "insufficient_history"}
+
+        mean_curr = self.mean_history[-1]
+        mean_prev = self.mean_history[-2]
+        var_curr = self.variance_history[-1]
+        var_prev = self.variance_history[-2]
+
+        # Relative changes (averaged over timesteps)
+        mean_denom = np.maximum(np.abs(mean_prev), 1e-12)
+        var_denom = np.maximum(np.abs(var_prev), 1e-12)
+
+        mean_change = np.mean(np.abs(mean_curr - mean_prev) / mean_denom)
+        var_change = np.mean(np.abs(var_curr - var_prev) / var_denom)
+
+        return {
+            "mean_change": float(mean_change),
+            "variance_change": float(var_change),
+            "mean_current": float(np.mean(mean_curr)),
+            "variance_current": float(np.mean(var_curr)),
+        }
+
+    def check_convergence(self) -> tuple[bool, dict[str, Any]]:
+        """
+        Check convergence based on moment stability.
+
+        Returns:
+            (converged, diagnostics)
+        """
+        if self.iteration_count < self.min_iterations:
+            return False, {
+                "status": "insufficient_iterations",
+                "iterations": self.iteration_count,
+                "required": self.min_iterations,
+            }
+
+        if len(self.mean_history) < self.window_size:
+            return False, {
+                "status": "insufficient_history",
+                "history_size": len(self.mean_history),
+                "required": self.window_size,
+            }
+
+        # Check stability over window
+        recent_means = self.mean_history[-self.window_size :]
+        recent_vars = self.variance_history[-self.window_size :]
+
+        # Compute max relative change in window
+        mean_changes = []
+        var_changes = []
+        for i in range(1, self.window_size):
+            mean_denom = np.maximum(np.abs(recent_means[i - 1]), 1e-12)
+            var_denom = np.maximum(np.abs(recent_vars[i - 1]), 1e-12)
+            mean_changes.append(np.mean(np.abs(recent_means[i] - recent_means[i - 1]) / mean_denom))
+            var_changes.append(np.mean(np.abs(recent_vars[i] - recent_vars[i - 1]) / var_denom))
+
+        max_mean_change = max(mean_changes)
+        max_var_change = max(var_changes)
+
+        mean_converged = max_mean_change < self.mean_tolerance
+        var_converged = max_var_change < self.variance_tolerance
+        converged = mean_converged and var_converged
+
+        diagnostics = {
+            "status": "converged" if converged else "not_converged",
+            "iterations": self.iteration_count,
+            "max_mean_change": float(max_mean_change),
+            "max_variance_change": float(max_var_change),
+            "mean_tolerance": self.mean_tolerance,
+            "variance_tolerance": self.variance_tolerance,
+            "mean_converged": mean_converged,
+            "variance_converged": var_converged,
+            "final_mean": float(np.mean(self.mean_history[-1])),
+            "final_variance": float(np.mean(self.variance_history[-1])),
+        }
+
+        return converged, diagnostics
+
+
+def create_moment_monitor(
+    mean_tolerance: float = 1e-3,
+    variance_tolerance: float = 1e-2,
+    window_size: int = 5,
+    **kwargs,
+) -> MomentConvergenceMonitor:
+    """
+    Create moment-based convergence monitor.
+
+    Args:
+        mean_tolerance: Relative tolerance for mean convergence
+        variance_tolerance: Relative tolerance for variance convergence
+        window_size: Window size for stability check
+        **kwargs: Additional parameters
+
+    Returns:
+        Configured MomentConvergenceMonitor
+
+    Usage:
+        monitor = create_moment_monitor()
+        for iteration in range(max_iterations):
+            # ... solve and get M ...
+            monitor.add_iteration(M, grid_x, grid_y)
+            converged, diagnostics = monitor.check_convergence()
+            if converged:
+                print(f"Moments converged: {diagnostics}")
+                break
+    """
+    return MomentConvergenceMonitor(
+        mean_tolerance=mean_tolerance,
+        variance_tolerance=variance_tolerance,
+        window_size=window_size,
+        **kwargs,
+    )
+
+
+# =============================================================================
 # BACKWARD COMPATIBILITY ALIASES
 # =============================================================================
 
