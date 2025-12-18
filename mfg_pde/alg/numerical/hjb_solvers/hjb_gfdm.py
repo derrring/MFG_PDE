@@ -63,35 +63,16 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
     Implements BoundaryCapable protocol for unified BC handling (Issue #527).
 
     Collocation Point Strategies (Issue #529):
-        Three approaches exist for meshfree MFG with different trade-offs:
+        Use FIXED collocation points throughout the MFG solve. Moving points
+        during iteration causes convergence stall due to interpolation noise
+        and stencil weight fluctuations.
 
-        1. **Fixed Collocation** (RECOMMENDED):
-           - Collocation points remain fixed throughout the entire MFG solve
-           - Clean convergence, ~20 Picard iterations typical
-           - Eulerian perspective: solve PDEs on fixed spatial grid
+        IMPORTANT: Fully Lagrangian MFG (moving collocation with the flow)
+        is MATHEMATICALLY INVALID because the optimal control alpha* = -grad(u)
+        requires grad(u) at FIXED spatial locations.
 
-        2. **Adaptive Resampling Between m-Solves**:
-           - Resample collocation after each complete density solve
-           - Can improve resolution in high-density regions
-           - Requires careful interpolation of u to new points
-           - Trade-off: Better adaptivity vs interpolation overhead
-
-        3. **Fully Lagrangian MFG** (NOT RECOMMENDED):
-           - Move collocation points with the flow (like SPH particles)
-           - BREAKS THE CONTROL: Optimal control alpha* = -grad(u)/m depends on
-             grad(u) at FIXED spatial locations. If points move, the control
-             computed at the old location is not valid at the new location.
-           - The HJB equation is inherently Eulerian (defined on fixed space)
-           - Only valid for passive tracers, not controlled agents
-
-        **Within-Iteration Resampling** (FAILS):
-           - Resampling during Picard/Newton iterations causes:
-             - Interpolation noise when mapping u(x) to new points
-             - Stencil weight fluctuations between iterations
-             - Convergence stall at error floor ~1e-5
-
-        Evidence: Fixed collocation converges in ~20 iterations; adaptive
-        within-iteration resampling stalls. This is algorithm design, not a bug.
+        See ``docs/theory/adaptive_collocation_analysis.md`` for detailed analysis
+        of three collocation strategies and why only fixed collocation is valid.
     """
 
     # BoundaryCapable protocol: Supported BC types

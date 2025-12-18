@@ -15,6 +15,7 @@
 - [Why HJB Needs Uniform Coverage](#why-hjb-needs-uniform-coverage) — Mathematical analysis
 - [Error Propagation Chain](#error-propagation-in-mfg-solving-chain) — Complete error flow
 - [Why Moving Collocation Fails for GFDM](#why-moving-collocation-is-bad-even-for-gfdm) — GFDM-specific issues
+- [Three Collocation Strategies](#three-collocation-strategies-for-meshfree-mfg) — Fixed, Adaptive, Lagrangian analysis
 - [The Solution: Hybrid Eulerian-Lagrangian](#the-solution-hybrid-eulerian-lagrangian-architecture) — Recommended architecture
 - [Conclusion](#conclusion)
 - [References](#references)
@@ -273,6 +274,71 @@ GFDM stencil quality depends on point configuration. Random resampling can creat
 | Adaptive collocation | ❌ Not this | Causes more problems than it solves |
 
 **GFDM's scattered-point capability is for static irregular geometries, not dynamic point clouds.**
+
+---
+
+## Three Collocation Strategies for Meshfree MFG
+
+Before presenting the recommended solution, we classify the three possible collocation strategies and analyze why only one is mathematically valid for MFG.
+
+### Strategy 1: Fixed Collocation (RECOMMENDED)
+
+**Definition**: Collocation points remain fixed throughout the entire MFG solve (all Picard iterations).
+
+**Properties**:
+- Eulerian perspective: solve PDEs on fixed spatial grid
+- Stencils precomputed once, reused for all iterations
+- Clean convergence (~20 Picard iterations typical)
+- No interpolation errors between iterations
+
+**When to use**: Always the default choice for production MFG solvers.
+
+### Strategy 2: Adaptive Resampling Between m-Solves
+
+**Definition**: Resample collocation points after each complete FP solve (between major MFG coupling steps), not during Picard iterations.
+
+**Properties**:
+- Can improve resolution in high-density regions
+- Requires careful interpolation of $u$ to new points
+- Introduces controlled interpolation error at resampling events
+- Trade-off: Better adaptivity vs interpolation overhead
+
+**When to use**: When density varies dramatically over the domain and fixed uniform resolution is wasteful. Resample infrequently (every 10+ iterations or on convergence stall).
+
+**Implementation notes**:
+- Use smooth interpolation (not nearest-neighbor)
+- Blend old/new points rather than full replacement
+- Verify convergence resumed after resampling
+
+### Strategy 3: Fully Lagrangian MFG (MATHEMATICALLY INVALID)
+
+**Definition**: Move collocation points with the flow (like SPH particles tracking fluid elements).
+
+**Why this BREAKS the MFG control problem**:
+
+The optimal control in MFG is derived from the value function:
+$$\alpha^*(t, x) = -\frac{1}{\lambda} \nabla_x u(t, x)$$
+
+This formula requires evaluating $\nabla u$ at a **fixed spatial location** $x$. The control tells an agent "if you are at position $x$ at time $t$, this is your optimal action."
+
+**The fundamental problem**: If collocation points move with the flow:
+
+1. **Gradient becomes meaningless**: The gradient $\nabla u$ computed at the old location $x_0$ is not valid after the point moves to $x_1$. You cannot differentiate a function at a point where you no longer have the function values.
+
+2. **Spatial inconsistency**: Two agents at the same physical location $x$ would receive different controls depending on which Lagrangian particle they're associated with—violating the mean-field assumption that all agents at the same location behave identically.
+
+3. **HJB is inherently Eulerian**: The HJB equation $-\partial_t u + H(x, \nabla u, m) = 0$ is defined on the fixed spatial domain $\Omega$. The value function $u(t,x)$ answers "what is the optimal cost-to-go from location $x$?"—a question about a fixed point in space, not a moving particle.
+
+4. **Control depends on where you ARE, not where you WERE**: An agent's optimal action depends on its current position. If you computed $\nabla u$ at the particle's previous location, you're giving the agent outdated navigation instructions.
+
+**The only valid use of Lagrangian particles**: Passive tracer transport where particles follow a **prescribed** velocity field (not an optimal control). This is useful for:
+- Visualizing flow fields
+- Solving the forward FP equation via SDE simulation
+- Monte Carlo density estimation
+
+But NOT for computing the backward HJB solution that determines the optimal control.
+
+**Mathematical analogy**: Fully Lagrangian MFG is like trying to navigate with a GPS that only updates your position when you're not moving. The map (value function) must be defined on fixed coordinates to provide useful navigation instructions.
 
 ---
 
