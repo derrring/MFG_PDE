@@ -295,9 +295,42 @@ def compute_ghost(u_inner, dx, *, context: dict = None):
 
 **Recommendation**: Use **Identity Row approach** (option 2). It maintains index consistency between explicit and implicit solvers, reducing mapping complexity. The slight computational overhead is negligible.
 
-**Current handling**: `FEMApplicator` handles matrix modification. FDM implicit would need similar.
+#### Tier-Based Coefficient Folding (Implementation)
 
-**Interface**: If implicit FDM solvers are needed, add `apply_to_matrix(A, b)` interface to BC calculators.
+The `LinearConstraint` dataclass and `calculator_to_constraint()` function in `applicator_base.py` bridge the explicit/implicit worlds:
+
+```python
+from mfg_pde.geometry.boundary.applicator_base import LinearConstraint, calculator_to_constraint
+
+# Each Tier maps to a LinearConstraint pattern:
+# Tier 1 (State):    LinearConstraint(weights={}, bias=g)           # Move to RHS
+# Tier 2 (Gradient): LinearConstraint(weights={0: 1.0}, bias=dx*g)  # Fold to neighbor
+# Tier 3 (Flux):     LinearConstraint(weights={0: alpha}, bias=0)   # Weighted fold
+# Tier 4 (Artificial): LinearConstraint(weights={0: 2, 1: -1}, bias=0)  # Multi-point
+
+# Matrix assembler usage:
+for i in range(N):
+    for offset, stencil_weight in stencil:
+        j = i + offset
+        if is_ghost(j):
+            # 1. Layer 1: Topology check
+            if is_periodic(j):
+                j_wrapped = j % N
+                A[i, j_wrapped] += stencil_weight
+            else:
+                # 2. Layer 2: Get physics constraint
+                constraint = calculator_to_constraint(calculator, dx, side)
+                # 3. Fold weights into matrix
+                for k, w in constraint.weights.items():
+                    inner_idx = get_inner_index(j, k)
+                    A[i, inner_idx] += stencil_weight * w
+                # 4. Fold bias into RHS
+                b[i] -= stencil_weight * constraint.bias
+```
+
+**Current handling**: `FEMApplicator` handles matrix modification. The `LinearConstraint` pattern provides a unified interface for FDM implicit as well.
+
+**Interface**: The `calculator_to_constraint()` function converts any `BoundaryCalculator` to a `LinearConstraint` for matrix folding.
 
 ### 3.5 Unbounded Domains
 
@@ -519,6 +552,12 @@ The `BoundaryCalculator` interface supports arbitrary logic via the Strategy pat
 
 ---
 
+## Related Documents
+
+- **Matrix Assembly Protocol**: See `matrix_assembly_bc_protocol.md` for the complete technical specification of implicit solver integration with the 2+4 BC architecture.
+
+---
+
 ## References
 
 ### Numerical Methods (Primary)
@@ -547,3 +586,4 @@ The `BoundaryCalculator` interface supports arbitrary logic via the Strategy pat
 - 2024-12: Added Four-Tier Constraint Taxonomy and Physical Intent mapping
 - 2024-12: Added Section 7 on mathematical foundations (LS condition, cost-benefit analysis)
 - 2024-12: Refined to "Semantic Dispatch Pattern" (2-layer execution + 4-tier semantics)
+- 2025-12: Added LinearConstraint implementation for Tier-Based Coefficient Folding
