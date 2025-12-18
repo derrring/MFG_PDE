@@ -1,9 +1,9 @@
 # Deprecation Modernization Guide
 
 **Last Updated**: 2025-12-18
-**Current Version**: v0.16.11
+**Current Version**: v0.16.12
 **Target**: v1.0.0 (deprecated patterns will be removed)
-**Status**: ✅ Migration complete (tests, examples, mfg-research)
+**Status**: ✅ Migration complete, v0.10-v0.15 deprecations removed
 
 ---
 
@@ -619,9 +619,9 @@ geometry.plot(mode='quality')
 | Problem | `hamiltonian(..., p_values=...)` | `hamiltonian(..., derivs=...)` | Medium | v0.16 |
 | Problem | `nx=50`, `nt=25` (lowercase) | `Nx=50`, `Nt=25` | Low | v0.16 |
 | Factory | `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium | v0.15 |
-| Strategy | `enable_profiling=True` | `profiling_mode=ProfilingMode.SILENT` | Low | v0.15 |
+| ~~Strategy~~ | ~~`enable_profiling=True`~~ | ~~`profiling_mode=ProfilingMode.SILENT`~~ | ~~Low~~ | ~~v0.15~~ **REMOVED v0.16.12** |
 | Legacy | `ExampleMFGProblem`, etc. | `MFGProblem` + geometry | Low | v0.15 |
-| Geometry | `Domain1D`, `Domain2D`, `Domain3D` | `TensorProductGrid`, `Mesh2D`, `Mesh3D` | Low | v0.15.3 |
+| ~~Geometry~~ | ~~`Domain1D`, `Domain2D`, `Domain3D`~~ | ~~`TensorProductGrid`, `Mesh2D`, `Mesh3D`~~ | ~~Low~~ | ~~v0.15.3~~ **REMOVED v0.16.12** |
 | Convergence | `StochasticConvergenceMonitor` | `RollingConvergenceMonitor` | Low | v0.17 |
 | Convergence | `AdvancedConvergenceMonitor` | `DistributionConvergenceMonitor` | Low | v0.17 |
 | Convergence | `ParticleMethodDetector` | `SolverTypeDetector` | Low | v0.17 |
@@ -645,7 +645,7 @@ geometry.plot(mode='quality')
 | Types | `SpatialCoordinates` | `SpatialGrid` | Low | v0.16 |
 | Types | `TemporalCoordinates` | `TimeGrid` | Low | v0.16 |
 | Types | `LegacySolverReturn` | `SolverReturnTuple` | Low | v0.16 |
-| Backend | `get_legacy_backend_list()` | `get_available_backends()` | Low | v0.10 |
+| ~~Backend~~ | ~~`get_legacy_backend_list()`~~ | ~~`get_available_backends()`~~ | ~~Low~~ | ~~v0.10~~ **REMOVED v0.16.12** |
 | Geometry | `show_edges`, `show_quality` | `mode='edges'/'quality'` | Low | v0.16 |
 | Viz | `legacy_myplot3d()` etc. | Modern viz system | Low | v0.15 |
 | Deps | `feature='...'` | `purpose='...'` | Low | v0.16 |
@@ -694,18 +694,24 @@ pytest tests/unit/your_test_file.py
 - ✅ **mfg-research migration complete** (8 files)
 - ⏳ v1.0.0 enforcement: Not yet implemented
 
-**Deprecation Counts by Version** (comprehensive audit 2025-12-17):
-| Version | Category | Count | Total Active |
-|:--------|:---------|:------|:-------------|
-| v0.10 | Backend | 1 | 1 |
-| v0.15.x | Problem, Factory, Legacy | 6 | 7 |
-| v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | 27 |
-| **v0.16.11** | **BC Calculators** | **4** | **31** |
-| v0.17.x | Convergence, Gradient Notation | 7 | 38 |
+**Deprecation Counts by Version** (updated 2025-12-18):
+| Version | Category | Count | Status |
+|:--------|:---------|:------|:-------|
+| ~~v0.10~~ | ~~Backend~~ | ~~1~~ | **REMOVED in v0.16.12** |
+| ~~v0.15.x~~ | ~~Problem, Factory, Legacy~~ | ~~6~~ | **REMOVED in v0.16.12** |
+| v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | Active |
+| v0.16.11 | BC Calculators | 4 | Active |
+| v0.17.x | Convergence, Gradient Notation | 7 | Active |
 
-**Deprecation Timeline** (quick deprecation strategy - remove in 2-3 minor versions):
-- v0.10-v0.15 deprecations → Remove in v0.18 or v1.0.0
-- v0.16.x deprecations → Remove in v0.19
+**Total Active**: 31 patterns (down from 38)
+
+**Removed in v0.16.12**:
+- `get_legacy_backend_list()` → Use `get_available_backends()` (v0.10)
+- `Domain1D`, `Domain2D`, `Domain3D` → Use `TensorProductGrid`, `Mesh2D`, `Mesh3D` (v0.15)
+- `enable_profiling`, `verbose` params → Use `profiling_mode` enum (v0.15)
+
+**Deprecation Timeline**:
+- v0.16.x deprecations → Remove in v0.19 or v1.0.0
 - v0.17.x deprecations → Remove in v0.20 or v1.0.0
 
 **Next Milestone**: v0.17.0 release with consolidated deprecation warnings

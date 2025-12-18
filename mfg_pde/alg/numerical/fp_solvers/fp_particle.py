@@ -136,7 +136,7 @@ class FPParticleSolver(BaseFPSolver):
         # Initialize strategy selector for intelligent pipeline selection
         from mfg_pde.backends.strategies.strategy_selector import StrategySelector
 
-        self.strategy_selector = StrategySelector(enable_profiling=True, verbose=False)
+        self.strategy_selector = StrategySelector(profiling_mode="silent")
         self.current_strategy = None  # Will be set in solve_fp_system
 
         # Boundary condition resolution hierarchy:

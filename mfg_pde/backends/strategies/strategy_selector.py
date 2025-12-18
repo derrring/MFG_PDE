@@ -29,9 +29,9 @@ class ProfilingMode(Enum):
         >>> selector = StrategySelector(profiling_mode=ProfilingMode.DISABLED)
     """
 
-    DISABLED = auto()  # No profiling: enable_profiling=False
-    SILENT = auto()  # Profiling without console output: enable_profiling=True, verbose=False
-    VERBOSE = auto()  # Profiling with console output: enable_profiling=True, verbose=True
+    DISABLED = auto()  # No profiling
+    SILENT = auto()  # Profiling without console output
+    VERBOSE = auto()  # Profiling with console output
 
 
 class StrategySelector:
@@ -59,9 +59,6 @@ class StrategySelector:
     def __init__(
         self,
         profiling_mode: ProfilingMode | str = ProfilingMode.SILENT,
-        *,
-        enable_profiling: bool | None = None,
-        verbose: bool | None = None,
     ):
         """
         Initialize strategy selector.
@@ -71,38 +68,12 @@ class StrategySelector:
         profiling_mode : ProfilingMode or str, default=ProfilingMode.SILENT
             Profiling mode: ProfilingMode.DISABLED, .SILENT, or .VERBOSE
             Can also pass strings: "disabled", "silent", "verbose"
-        enable_profiling : bool, optional (deprecated)
-            Deprecated: Use profiling_mode instead
-        verbose : bool, optional (deprecated)
-            Deprecated: Use profiling_mode instead
 
         Examples
         --------
-        >>> # New API (recommended)
         >>> selector = StrategySelector(profiling_mode=ProfilingMode.VERBOSE)
         >>> selector = StrategySelector(profiling_mode="silent")
-        >>>
-        >>> # Old API (deprecated but still works)
-        >>> selector = StrategySelector(enable_profiling=True, verbose=False)
         """
-        # Handle backward compatibility
-        if enable_profiling is not None or verbose is not None:
-            import warnings
-
-            warnings.warn(
-                "Parameters 'enable_profiling' and 'verbose' are deprecated. "
-                "Use 'profiling_mode' instead: ProfilingMode.DISABLED, .SILENT, or .VERBOSE",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # Convert old API to new
-            if enable_profiling is False:
-                profiling_mode = ProfilingMode.DISABLED
-            elif verbose is True:
-                profiling_mode = ProfilingMode.VERBOSE
-            else:
-                profiling_mode = ProfilingMode.SILENT
-
         # Handle string mode
         if isinstance(profiling_mode, str):
             mode_map = {
@@ -303,11 +274,8 @@ class AdaptiveStrategySelector(StrategySelector):
     def __init__(
         self,
         profiling_mode: ProfilingMode | str = ProfilingMode.SILENT,
-        *,
-        enable_profiling: bool | None = None,
-        verbose: bool | None = None,
     ):
-        super().__init__(profiling_mode, enable_profiling=enable_profiling, verbose=verbose)
+        super().__init__(profiling_mode)
         self.performance_history: dict[str, list[float]] = {}
 
     def record_performance(self, strategy_name: str, problem_size: tuple, elapsed_time: float):

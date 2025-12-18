@@ -167,13 +167,6 @@ from .protocol import (
     validate_geometry,
 )
 
-# Backward compatibility aliases (DEPRECATED - will be removed in v1.0.0)
-# Note: These aliases exist for backward compatibility. The warning is issued
-# at usage time via __getattr__ rather than import time to avoid spamming.
-Domain1D = TensorProductGrid  # Use TensorProductGrid instead
-Domain2D = Mesh2D  # Use Mesh2D instead
-Domain3D = Mesh3D  # Use Mesh3D instead
-
 __all__ = [
     # Collocation point generation
     "CollocationPointSet",
@@ -198,10 +191,6 @@ __all__ = [
     "Mesh1D",
     "Mesh2D",
     "Mesh3D",
-    # Backward compatibility aliases
-    "Domain1D",
-    "Domain2D",
-    "Domain3D",
     "GeometricBoundaryCondition",
     # Unified geometry protocol
     "GeometryProtocol",

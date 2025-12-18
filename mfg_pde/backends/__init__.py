@@ -234,23 +234,6 @@ except ImportError:
     pass  # JAX is optional
 
 
-# Backward compatibility functions for legacy code (DEPRECATED - will be removed in v1.0.0)
-def get_legacy_backend_list():
-    """
-    Legacy function for backward compatibility.
-
-    .. deprecated:: v0.10.0
-        `get_legacy_backend_list` is deprecated and will be removed in v1.0.0.
-        Use :func:`get_available_backends` instead.
-    """
-    warnings.warn(
-        "get_legacy_backend_list is deprecated and will be removed in v1.0.0. Use get_available_backends() instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return get_available_backends()
-
-
 # Ensure essential backends are always available for compatibility
 def ensure_numpy_backend():
     """Ensure NumPy backend is always available for compatibility."""

@@ -5,7 +5,6 @@ Tests backend registration, discovery, creation, and auto-selection logic.
 """
 
 import logging
-import warnings
 
 import pytest
 
@@ -322,26 +321,6 @@ class TestGetBackendInfo:
             assert "devices" in info["jax_info"]
             assert "default_device" in info["jax_info"]
             assert "has_gpu" in info["jax_info"]
-
-
-class TestBackwardCompatibility:
-    """Test backward compatibility functions."""
-
-    def test_get_legacy_backend_list_deprecated(self):
-        """Test that legacy function raises deprecation warning."""
-        from mfg_pde.backends import get_legacy_backend_list
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            result = get_legacy_backend_list()
-
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert "deprecated" in str(w[0].message).lower()
-
-            # Should still return valid data
-            assert isinstance(result, dict)
-            assert result["numpy"] is True
 
 
 class TestEnsureNumpyBackend:
