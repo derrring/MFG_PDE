@@ -22,7 +22,8 @@ def test_weight_functions():
     bc = no_flux_bc(dimension=1)
 
     # Test data
-    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+    (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+    Nt_points = problem.Nt + 1  # Temporal grid points
     M_simple = np.ones((Nt_points, Nx_points)) * 0.5
     U_terminal = np.zeros(Nx_points)
     U_initial = np.zeros((Nt_points, Nx_points))

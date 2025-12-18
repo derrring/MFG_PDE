@@ -51,7 +51,8 @@ class TestParticleGPUPipeline:
         m_initial = m_initial / (np.sum(m_initial) * dx)
 
         # Drift field: simple linear
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         U_drift = np.zeros((Nt_points, Nx_points))
         for t in range(Nt_points):
             U_drift[t, :] = -((x - 0.5) ** 2)  # Quadratic potential
@@ -114,7 +115,8 @@ class TestParticleGPUPipeline:
         dx = problem.geometry.get_grid_spacing()[0]
         m_initial = m_initial / (np.sum(m_initial) * dx)
 
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         U_drift = np.zeros((Nt_points, Nx_points))
 
         backend = TorchBackend(device="mps")  # Test on actual MPS device
@@ -148,7 +150,8 @@ class TestParticleGPUPipeline:
             sigma=0.15,
         )
 
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         m_initial = np.ones(Nx_points) / Nx_points
         U_drift = np.zeros((Nt_points, Nx_points))
 
@@ -192,7 +195,8 @@ class TestGPUPerformance:
         dx = problem.geometry.get_grid_spacing()[0]
         m_initial = m_initial / (np.sum(m_initial) * dx)
 
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         U_drift = np.zeros((Nt_points, Nx_points))
 
         N = 10000  # Large particle count

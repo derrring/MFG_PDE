@@ -18,6 +18,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.geometry import TensorProductGrid
 
 
 class ProblemWithCallableSigma:
@@ -29,6 +30,7 @@ class ProblemWithCallableSigma:
         self.xmax = 1.0
         self.T = 1.0
         self.Nt = 10
+        self.geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
 
     def sigma(self, x):
         """Spatially-varying diffusion coefficient."""
@@ -61,6 +63,7 @@ class ProblemWithNumericSigma:
         self.T = 1.0
         self.Nt = 10
         self.sigma = 0.1  # Numeric constant
+        self.geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
 
     def hamiltonian(self, x, m, p, t):
         """Simple quadratic Hamiltonian."""
@@ -85,6 +88,7 @@ class ProblemWithNu:
         self.T = 1.0
         self.Nt = 10
         self.nu = 0.1  # Legacy attribute
+        self.geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
 
     def hamiltonian(self, x, m, p, t):
         """Simple quadratic Hamiltonian."""
@@ -201,6 +205,7 @@ class TestBug15CallableSigma:
             xmax = 1.0
             T = 1.0
             Nt = 10
+            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
 
             def hamiltonian(self, x, m, p, t):
                 return 0.5 * np.sum(p**2)

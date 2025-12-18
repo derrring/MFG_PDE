@@ -34,7 +34,7 @@ class TestHJBGFDMSolverInitialization:
         """Test basic solver initialization."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -72,7 +72,7 @@ class TestHJBGFDMSolverInitialization:
         """Test backward compatibility with deprecated parameter names."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -88,7 +88,7 @@ class TestHJBGFDMSolverInitialization:
         """Test different QP optimization levels."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -324,7 +324,7 @@ class TestHJBGFDMSolverMappingMethods:
         """Test mapping from grid to collocation points."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -346,7 +346,7 @@ class TestHJBGFDMSolverMappingMethods:
         """Test mapping from collocation points to grid."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -364,7 +364,7 @@ class TestHJBGFDMSolverMappingMethods:
         """Test that batch mapping is consistent with single mapping."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -391,7 +391,7 @@ class TestHJBGFDMSolverSolveHJBSystem:
         """Test that solve_hjb_system returns correct shape."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -418,7 +418,7 @@ class TestHJBGFDMSolverSolveHJBSystem:
         """Test that final condition is preserved."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
@@ -447,7 +447,7 @@ class TestHJBGFDMSolverIntegration:
         """Test solver works with standard MFGProblem."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
-        _Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 

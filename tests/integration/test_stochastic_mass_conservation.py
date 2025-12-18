@@ -110,7 +110,8 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
     monitor = ProbabilisticConvergenceMonitor(window_size=10, quantile=0.9)
 
     # Initialize
-    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+    (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+    Nt_points = problem.Nt + 1  # Temporal grid points
     U = np.zeros((Nt_points, Nx_points))  # Terminal condition will be set by HJB solver
     M = problem.m_init
 

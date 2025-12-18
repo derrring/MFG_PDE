@@ -147,7 +147,8 @@ def main():
     ax = axes[1, 1]
     ax.axis("off")
 
-    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+    (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+    Nt_points = problem.Nt + 1  # Temporal grid points
 
     stats_text = f"""
 FAST TEST CONFIGURATION

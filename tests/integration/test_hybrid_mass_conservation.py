@@ -99,7 +99,8 @@ class TestHybridMassConservation:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 
         # Verify solution shapes
-        Nt_points, Nx_points = simple_1d_problem.geometry.get_grid_shape()
+        (Nx_points,) = simple_1d_problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = simple_1d_problem.Nt + 1  # Temporal grid points
         assert M.shape == (Nt_points, Nx_points), f"Expected M shape {(Nt_points, Nx_points)}, got {M.shape}"
 
         # Compute mass at each time step
@@ -212,7 +213,8 @@ class TestHybridMassConservationFast:
             pytest.skip(f"Solver raised exception: {str(e)[:100]}")
 
         # Basic sanity checks
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         assert U.shape == (Nt_points, Nx_points)
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= -1e-6), "Negative density detected"

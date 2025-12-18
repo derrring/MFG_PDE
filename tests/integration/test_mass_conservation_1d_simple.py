@@ -95,7 +95,7 @@ class TestMassConservation1DSimple:
 
         # Compute mass at each time step
         dx = problem.geometry.get_grid_spacing()[0]
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt + 1  # Temporal grid points (not spatial)
         masses = []
         for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
@@ -169,7 +169,7 @@ class TestMassConservation1DSimple:
 
         # Compute mass at each time step
         dx = problem.geometry.get_grid_spacing()[0]
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt + 1  # Temporal grid points (not spatial)
         masses = []
         for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
@@ -245,7 +245,7 @@ class TestMassConservation1DSimple:
 
         # Compute masses for both methods
         dx = problem.geometry.get_grid_spacing()[0]
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt + 1  # Temporal grid points (not spatial)
         masses_fdm = []
         masses_gfdm = []
 

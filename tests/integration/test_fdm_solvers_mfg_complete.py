@@ -39,7 +39,8 @@ class TestFDMSolversMFGIntegration:
         # Verify result structure
         assert result is not None
         U, M = result[:2]
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         assert U.shape == (Nt_points, Nx_points)
         assert M.shape == (Nt_points, Nx_points)
 
@@ -54,13 +55,14 @@ class TestFDMSolversMFGIntegration:
         # Create initial density
         bounds = problem.geometry.get_bounds()
         xmin, xmax = bounds[0][0], bounds[1][0]
-        Nx_points = problem.geometry.get_grid_shape()[1]
+        Nx_points = problem.geometry.get_grid_shape()[0]
         x_coords = np.linspace(xmin, xmax, Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
 
         # Solve FP with zero drift (should preserve mass)
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         U_zero = np.zeros((Nt_points, Nx_points))
         M_solution = fp_solver.solve_fp_system(m_initial, U_zero)
 
@@ -167,7 +169,7 @@ class TestFDMSolversCoupling:
         # Initial density
         bounds = problem.geometry.get_bounds()
         xmin, xmax = bounds[0][0], bounds[1][0]
-        Nx_points = problem.geometry.get_grid_shape()[1]
+        Nx_points = problem.geometry.get_grid_shape()[0]
         x_coords = np.linspace(xmin, xmax, Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)
@@ -230,7 +232,8 @@ class TestFDMSolversNumericalProperties:
         hjb_solver = HJBFDMSolver(problem)
 
         # Create simple density
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         m_initial = np.ones((Nt_points, Nx_points)) / Nx_points
 
         # Terminal condition
@@ -255,7 +258,7 @@ class TestFDMSolversNumericalProperties:
         # Initial density
         bounds = problem.geometry.get_bounds()
         xmin, xmax = bounds[0][0], bounds[1][0]
-        Nx_points = problem.geometry.get_grid_shape()[1]
+        Nx_points = problem.geometry.get_grid_shape()[0]
         x_coords = np.linspace(xmin, xmax, Nx_points)
         m_initial = np.exp(-((x_coords - 0.5) ** 2) / (2 * 0.1**2))
         m_initial = m_initial / np.sum(m_initial)

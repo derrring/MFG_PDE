@@ -63,7 +63,8 @@ class TestHJBGFDMWithParticleFP:
 
         fp_solver = FPParticleSolver(problem, num_particles=1000)
 
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         m0 = np.ones(Nx_points) / Nx_points
         U = np.zeros((Nt_points, Nx_points))
 
@@ -79,7 +80,8 @@ class TestHJBGFDMWithParticleFP:
         fp_solver = FPParticleSolver(problem, num_particles=2000)
 
         # Uniform initial density
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         m0 = np.ones(Nx_points) / Nx_points
         U = np.zeros((Nt_points, Nx_points))
 

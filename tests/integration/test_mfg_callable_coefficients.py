@@ -53,7 +53,8 @@ class TestMFGCallableCoefficients:
         # Verify result structure
         assert result is not None
         U, M = result[:2]
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         assert U.shape == (Nt_points, Nx_points)
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)  # divergence_upwind guarantees non-negativity
@@ -86,7 +87,8 @@ class TestMFGCallableCoefficients:
 
         # Verify convergence
         U, M = result[:2]
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         assert U.shape == (Nt_points, Nx_points)
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= -1e-6)  # Allow small numerical noise
@@ -138,7 +140,8 @@ class TestMFGCallableCoefficients:
         problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=30, T=0.5, Nt=20, diffusion=0.1)
 
         # Spatially varying diffusion (higher at boundaries)
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         bounds = problem.geometry.get_bounds()
         xmin, xmax = bounds[0][0], bounds[1][0]
         x_grid = np.linspace(xmin, xmax, Nx_points)
@@ -196,7 +199,8 @@ class TestMFGCallableCoefficients:
 
         # Verify it runs (may not converge, but should execute)
         U, M = result[:2]
-        Nt_points, Nx_points = problem.geometry.get_grid_shape()
+        (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+        Nt_points = problem.Nt + 1  # Temporal grid points
         assert U.shape == (Nt_points, Nx_points)
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= -1e-6)  # Allow small numerical noise

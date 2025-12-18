@@ -26,7 +26,8 @@ def test_kde_normalization():
         boundary_conditions=bc,
     )
 
-    Nt_points, Nx_points = problem.geometry.get_grid_shape()
+    (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
+    Nt_points = problem.Nt + 1  # Temporal grid points
     U_zero = np.zeros((Nt_points, Nx_points))
     M_result1 = solver1.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero)
 
