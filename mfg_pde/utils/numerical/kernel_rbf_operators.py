@@ -1,9 +1,28 @@
 """
 RBF-based Differential Operators for Meshfree Methods.
 
+.. deprecated:: 0.17.0
+    This module is deprecated. Use LocalRBFOperator from gfdm_strategies.py instead.
+    Global RBF with dense N×N matrices does not scale for practical problem sizes.
+
+    Migration::
+
+        # Old (deprecated)
+        from mfg_pde.utils.numerical import RBFOperator
+        rbf = RBFOperator(points, kernel_type='gaussian')
+
+        # New (recommended)
+        from mfg_pde.utils.numerical import LocalRBFOperator
+        rbf = LocalRBFOperator(points, delta=0.1, kernel='phs3')
+
 This module provides Radial Basis Function (RBF) differentiation matrices
 for computing spatial derivatives on scattered points. Unlike GFDM which uses
 local weighted least squares, RBF methods build global interpolation matrices.
+
+Distinction from LocalRBFOperator:
+---------------------------------
+- **RBFOperator** (this module): Dense N×N matrices, global interpolation [DEPRECATED]
+- **LocalRBFOperator** (gfdm_strategies.py): Sparse stencil-based, local RBF-FD [RECOMMENDED]
 
 Key Features:
 - Uses existing kernel infrastructure from mfg_pde.utils.numerical.kernels
@@ -43,16 +62,13 @@ Created: 2025-12-05
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from mfg_pde.utils.numerical.kernels import (
-    GaussianKernel,
-    WendlandKernel,
-    create_kernel,
-)
+from mfg_pde.utils.numerical.kernels import create_kernel
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -62,8 +78,11 @@ class RBFOperator:
     """
     RBF-based differential operator for scattered points.
 
-    This class builds RBF interpolation and differentiation matrices once
+    This class builds dense N×N RBF interpolation and differentiation matrices
     during initialization, then provides efficient derivative computation.
+    All nodes influence all other nodes (global interpolation).
+
+    For local stencil-based RBF-FD, see LocalRBFOperator in gfdm_strategies.py.
 
     Attributes:
         points: Collocation points, shape (n_points, dimension)
@@ -76,7 +95,7 @@ class RBFOperator:
 
     Example:
         >>> import numpy as np
-        >>> from mfg_pde.utils.numerical.rbf_operators import RBFOperator
+        >>> from mfg_pde.utils.numerical import RBFOperator
         >>>
         >>> # Create 2D scattered points
         >>> points = np.random.rand(100, 2)
@@ -108,6 +127,9 @@ class RBFOperator:
         """
         Initialize RBF operator with precomputed matrices.
 
+        .. deprecated:: 0.17.0
+            Use LocalRBFOperator instead for scalable RBF-FD computation.
+
         Args:
             points: Collocation points, shape (n_points, dimension)
             kernel_type: Type of kernel/RBF to use. Options:
@@ -127,6 +149,12 @@ class RBFOperator:
             polynomial_degree: Degree of polynomial augmentation (0, 1, or 2).
                 Only used if use_polynomial=True.
         """
+        warnings.warn(
+            "RBFOperator is deprecated since v0.17.0. "
+            "Use LocalRBFOperator from gfdm_strategies.py instead for scalable RBF-FD.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.points = np.asarray(points)
         self.n_points, self.dimension = self.points.shape
         self.kernel_type = kernel_type
@@ -220,13 +248,13 @@ class RBFOperator:
         """
         Build RBF derivative matrices for Laplacian and gradient.
 
-        For Gaussian RBF phi(r) = exp(-(epsilon*r)^2):
-            d phi/dx_k = -2 * epsilon^2 * (x_k - x_k') * phi(r)
-            Delta phi = -2 * epsilon^2 * d * phi(r) + 4 * epsilon^4 * r^2 * phi(r)
-                      = 2 * epsilon^2 * phi(r) * (2 * epsilon^2 * r^2 - d)
+        Uses the unified kernel interface:
+        - kernel.laplacian(r, h, dimension) for analytical Laplacian
+        - kernel.evaluate_with_derivative(r, h) for analytical gradient
 
-        For Wendland kernels, derivatives are computed via the kernel's
-        evaluate_with_derivative method.
+        Mathematical background for radially symmetric phi(r):
+        - Gradient: d phi/dx_k = (dphi/dr) * (x_k - x_k') / r
+        - Laplacian: Delta phi = d^2 phi/dr^2 + (d-1)/r * dphi/dr
         """
         h = self.shape_parameter
         d = self.dimension
@@ -235,139 +263,24 @@ class RBFOperator:
         self.laplacian_matrix = np.zeros((self.n_points, self.n_points))
         self.gradient_matrices = [np.zeros((self.n_points, self.n_points)) for _ in range(d)]
 
-        if isinstance(self.kernel, GaussianKernel):
-            self._build_gaussian_derivative_matrices(h, d)
-        elif isinstance(self.kernel, WendlandKernel):
-            self._build_wendland_derivative_matrices(h, d)
-        else:
-            # Generic finite-difference approximation for other kernels
-            self._build_fd_derivative_matrices(h, d)
+        # Vectorized Laplacian computation using kernel.laplacian()
+        lap_values = self.kernel.laplacian(self.distance_matrix, h, d)
+        self.laplacian_matrix = np.asarray(lap_values)
 
-    def _build_gaussian_derivative_matrices(self, h: float, d: int):
-        """
-        Build derivative matrices for Gaussian RBF.
-
-        For Gaussian phi(r) = exp(-(r/h)^2):
-            d phi/dr = -2r/h^2 * phi
-            d phi/dx_k = d phi/dr * (x_k - x_k')/r = -2(x_k - x_k')/h^2 * phi
-
-        Laplacian:
-            Delta phi = (4r^2/h^4 - 2d/h^2) * phi
-        """
+        # Gradient computation using kernel.evaluate_with_derivative()
         for i in range(self.n_points):
             for j in range(self.n_points):
-                r = self.distance_matrix[i, j]
-                phi = self.A[i, j] - self.regularization * (1 if i == j else 0)
-
                 if i == j:
-                    # At center: Delta phi(0) = -2d/h^2 (limit as r -> 0)
-                    self.laplacian_matrix[i, j] = -2 * d / (h**2)
-                    # Gradient is 0 at center
+                    # Gradient is 0 at center (by symmetry)
                     continue
 
-                # Laplacian
-                self.laplacian_matrix[i, j] = phi * (4 * r**2 / h**4 - 2 * d / h**2)
-
-                # Gradient
-                dx = self.points[i] - self.points[j]
-                for k in range(d):
-                    self.gradient_matrices[k][i, j] = -2 * dx[k] / h**2 * phi
-
-    def _build_wendland_derivative_matrices(self, h: float, d: int):
-        """
-        Build derivative matrices for Wendland kernels.
-
-        Uses the kernel's evaluate_with_derivative method.
-        For Wendland: phi(r,h) has compact support [0, h].
-
-        Mathematical note:
-        For radially symmetric phi(r) in d dimensions:
-            Delta phi = d^2 phi/dr^2 + (d-1)/r * d phi/dr
-
-        At r=0, using L'Hopital's rule:
-            lim_{r->0} (d-1)/r * dphi/dr = (d-1) * d^2 phi/dr^2|_{r=0}
-
-        So:
-            Delta phi|_{r=0} = d * d^2 phi/dr^2|_{r=0}
-        """
-        for i in range(self.n_points):
-            for j in range(self.n_points):
                 r = self.distance_matrix[i, j]
+                _, dphi_dr = self.kernel.evaluate_with_derivative(r, h)
 
-                if r >= h:
-                    # Outside support
-                    continue
-
-                # Use numerical derivatives for robustness
-                eps = 1e-6 * h
-
-                if i == j or r < eps:
-                    # At center - compute d^2 phi/dr^2|_{r=0} numerically
-                    # Using second-order central difference: f''(0) ≈ (f(h) - 2f(0) + f(-h))/h^2
-                    # But phi is symmetric, so: f''(0) ≈ 2*(f(eps) - f(0))/eps^2
-                    phi_0 = self.kernel(0.0, h)
-                    phi_eps = self.kernel(eps, h)
-                    d2phi_dr2 = 2 * (phi_eps - phi_0) / (eps**2)
-
-                    # Delta phi|_{r=0} = d * d^2 phi/dr^2|_{r=0}
-                    self.laplacian_matrix[i, j] = d * d2phi_dr2
-                    continue
-
-                # General case: r > 0
-                phi = self.kernel(r, h)
-                phi_plus = self.kernel(min(r + eps, h - 1e-10), h)
-                phi_minus = self.kernel(max(r - eps, 1e-10), h)
-
-                # First derivative
-                dphi_dr = (phi_plus - phi_minus) / (2 * eps)
-
-                # Second derivative
-                d2phi_dr2 = (phi_plus - 2 * phi + phi_minus) / (eps**2)
-
-                # Laplacian
-                self.laplacian_matrix[i, j] = d2phi_dr2 + (d - 1) / r * dphi_dr
-
-                # Gradient: d phi/dx_k = dphi/dr * (x_k - x_k')/r
+                # Gradient: d phi/dx_k = (dphi/dr) * (x_k - x_k') / r
                 dx = self.points[i] - self.points[j]
                 for k in range(d):
-                    self.gradient_matrices[k][i, j] = dphi_dr * dx[k] / r
-
-    def _build_fd_derivative_matrices(self, h: float, d: int):
-        """
-        Build derivative matrices using finite differences (fallback).
-
-        For kernels without analytical derivatives, use numerical differentiation.
-        """
-        eps = 1e-8 * h
-
-        for i in range(self.n_points):
-            for j in range(self.n_points):
-                r = self.distance_matrix[i, j]
-                phi = self.A[i, j] - self.regularization * (1 if i == j else 0)
-
-                if i == j:
-                    # Numerical second derivative at r=0
-                    phi_eps = self.kernel(eps, h)
-                    phi_0 = self.kernel(0.0, h)
-                    d2phi = (phi_eps - 2 * phi_0 + phi_eps) / eps**2
-                    self.laplacian_matrix[i, j] = d * d2phi
-                    continue
-
-                # First derivative via central difference on r
-                phi_plus = self.kernel(r + eps, h)
-                phi_minus = self.kernel(max(r - eps, 0), h)
-                dphi_dr = (phi_plus - phi_minus) / (2 * eps)
-
-                # Second derivative
-                d2phi_dr2 = (phi_plus - 2 * phi + phi_minus) / eps**2
-
-                # Laplacian
-                self.laplacian_matrix[i, j] = d2phi_dr2 + (d - 1) / r * dphi_dr
-
-                # Gradient
-                dx = self.points[i] - self.points[j]
-                for k in range(d):
-                    self.gradient_matrices[k][i, j] = dphi_dr * dx[k] / r
+                    self.gradient_matrices[k][i, j] = float(dphi_dr) * dx[k] / r
 
     def laplacian(self, u: NDArray[np.float64]) -> NDArray[np.float64]:
         """
@@ -486,7 +399,7 @@ def create_rbf_operator(
     **kwargs,
 ) -> RBFOperator:
     """
-    Factory function to create RBF operator instances.
+    Factory function to create RBFOperator instances.
 
     Args:
         points: Collocation points, shape (n_points, dimension)
