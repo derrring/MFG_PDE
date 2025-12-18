@@ -54,6 +54,7 @@ from .applicator_base import (
     # Protocols
     BCApplicatorProtocol,
     BoundaryCalculator,
+    BoundaryCapable,
     # Topology implementations (Issue #516)
     BoundedTopology,
     # Calculator implementations (physics-based naming)
@@ -187,6 +188,15 @@ from .conditions import (
 )
 
 # =============================================================================
+# BC Dispatch (unified entry point for solvers)
+# =============================================================================
+from .dispatch import (
+    apply_bc,
+    get_applicator_for_geometry,
+    validate_bc_compatibility,
+)
+
+# =============================================================================
 # Legacy/Deprecated (backward compatibility - will be removed in v1.0.0)
 # =============================================================================
 # 1D FDM boundary conditions (simple left/right specification)
@@ -210,6 +220,7 @@ __all__ = [
     "DiscretizationType",
     "GridType",
     "BCApplicatorProtocol",
+    "BoundaryCapable",
     "Topology",
     "BoundaryCalculator",
     "BaseBCApplicator",
@@ -327,4 +338,8 @@ __all__ = [
     # 1D FDM boundary conditions
     "BoundaryConditions1DFDM",
     "LegacyBoundaryConditions1D",  # Backward compat alias
+    # BC Dispatch (unified entry point for solvers - Issue #527)
+    "apply_bc",
+    "get_applicator_for_geometry",
+    "validate_bc_compatibility",
 ]

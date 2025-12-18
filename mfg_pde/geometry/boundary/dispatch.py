@@ -1,0 +1,293 @@
+"""
+Unified boundary condition dispatch for solvers.
+
+This module provides a single entry point for BC application that:
+1. Auto-detects geometry type and dimension
+2. Selects the appropriate applicator
+3. Handles BC validation and caching
+
+This is the recommended interface for solvers that implement BoundaryCapable.
+
+Usage:
+    >>> from mfg_pde.geometry.boundary.dispatch import apply_bc, get_applicator_for_geometry
+    >>>
+    >>> # Simple usage: auto-detect everything
+    >>> padded_field = apply_bc(geometry, field, boundary_conditions)
+    >>>
+    >>> # For repeated application (performance): get reusable applicator
+    >>> applicator = get_applicator_for_geometry(geometry, bc)
+    >>> padded_field_1 = applicator.apply(field_1)
+    >>> padded_field_2 = applicator.apply(field_2)
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from .applicator_base import DiscretizationType
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from mfg_pde.geometry.protocol import GeometryProtocol
+
+    from .conditions import BoundaryConditions
+
+
+def get_applicator_for_geometry(
+    geometry: GeometryProtocol,
+    discretization: DiscretizationType | str = DiscretizationType.FDM,
+) -> object:
+    """
+    Get the appropriate BC applicator for a geometry.
+
+    This factory function selects the right applicator class based on:
+    1. Geometry dimension
+    2. Discretization type (FDM, FEM, GFDM, etc.)
+
+    Args:
+        geometry: Geometry object implementing GeometryProtocol
+        discretization: Discretization method. Options:
+            - DiscretizationType.FDM (default): Ghost cell method
+            - DiscretizationType.GFDM: Meshfree collocation
+            - DiscretizationType.FEM: Matrix modification
+            - DiscretizationType.GRAPH: Network boundaries
+
+    Returns:
+        Appropriate applicator instance
+
+    Example:
+        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> from mfg_pde.geometry.boundary.dispatch import get_applicator_for_geometry
+        >>>
+        >>> grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[11, 11])
+        >>> applicator = get_applicator_for_geometry(grid)
+        >>> # applicator is an FDMApplicator
+    """
+    # Normalize discretization type
+    if isinstance(discretization, str):
+        discretization = DiscretizationType(discretization.upper())
+
+    dim = geometry.dimension
+
+    if discretization == DiscretizationType.FDM:
+        from .applicator_fdm import FDMApplicator
+
+        return FDMApplicator(dimension=dim)
+
+    elif discretization == DiscretizationType.GFDM:
+        # GFDM uses meshfree applicator
+        from .applicator_meshfree import MeshfreeApplicator
+
+        return MeshfreeApplicator(geometry=geometry)
+
+    elif discretization == DiscretizationType.FEM:
+        from .applicator_fem import FEMApplicator
+
+        return FEMApplicator(dimension=dim)
+
+    elif discretization == DiscretizationType.GRAPH:
+        from .applicator_graph import GraphApplicator
+
+        # Get node count from geometry
+        if hasattr(geometry, "num_nodes"):
+            num_nodes = geometry.num_nodes
+        elif hasattr(geometry, "num_spatial_points"):
+            num_nodes = geometry.num_spatial_points
+        else:
+            raise ValueError("Graph geometry must have num_nodes or num_spatial_points")
+        return GraphApplicator(num_nodes=num_nodes)
+
+    elif discretization == DiscretizationType.MESHFREE:
+        from .applicator_meshfree import MeshfreeApplicator
+
+        return MeshfreeApplicator(geometry=geometry)
+
+    else:
+        raise ValueError(f"Unsupported discretization type: {discretization}")
+
+
+def apply_bc(
+    geometry: GeometryProtocol,
+    field: NDArray[np.floating],
+    boundary_conditions: BoundaryConditions,
+    *,
+    time: float = 0.0,
+    discretization: DiscretizationType | str = DiscretizationType.FDM,
+    ghost_depth: int = 1,
+) -> NDArray[np.floating]:
+    """
+    Apply boundary conditions to a field using geometry-appropriate method.
+
+    This is the unified entry point for BC application. It:
+    1. Detects geometry dimension and type
+    2. Selects the appropriate applicator
+    3. Applies BCs and returns the result
+
+    Args:
+        geometry: Geometry object implementing GeometryProtocol
+        field: Field array to apply BCs to (interior values)
+        boundary_conditions: BC specification
+        time: Time for time-dependent BCs (default: 0.0)
+        discretization: Discretization method (default: FDM)
+        ghost_depth: Ghost cell depth for FDM (default: 1)
+
+    Returns:
+        Field with BCs applied (padded for FDM, modified for FEM/GFDM)
+
+    Example:
+        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> from mfg_pde.geometry.boundary import neumann_bc
+        >>> from mfg_pde.geometry.boundary.dispatch import apply_bc
+        >>>
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> field = np.ones(11)
+        >>> bc = neumann_bc(dimension=1)
+        >>> padded = apply_bc(grid, field, bc)
+        >>> # padded.shape == (13,) for ghost_depth=1
+
+    Performance Note:
+        For repeated application (e.g., time-stepping), use
+        get_applicator_for_geometry() to get a reusable applicator
+        instead of calling apply_bc() repeatedly.
+    """
+    # Normalize discretization type
+    if isinstance(discretization, str):
+        discretization = DiscretizationType(discretization.upper())
+
+    # Get domain bounds from geometry
+    bounds = geometry.get_bounds()
+    if bounds is None:
+        # Unbounded domain - use field range or default
+        domain_bounds = None
+    else:
+        min_coords, max_coords = bounds
+        domain_bounds = np.column_stack([min_coords, max_coords])
+
+    if discretization == DiscretizationType.FDM:
+        # Use dimension-specific FDM applicators
+        dim = geometry.dimension
+
+        if dim == 1:
+            from .applicator_fdm import apply_boundary_conditions_1d
+
+            return apply_boundary_conditions_1d(
+                field,
+                boundary_conditions,
+                domain_bounds=domain_bounds,
+                time=time,
+            )
+        elif dim == 2:
+            from .applicator_fdm import apply_boundary_conditions_2d
+
+            return apply_boundary_conditions_2d(
+                field,
+                boundary_conditions,
+                domain_bounds=domain_bounds,
+                time=time,
+            )
+        elif dim == 3:
+            from .applicator_fdm import apply_boundary_conditions_3d
+
+            return apply_boundary_conditions_3d(
+                field,
+                boundary_conditions,
+                domain_bounds=domain_bounds,
+                time=time,
+            )
+        else:
+            from .applicator_fdm import apply_boundary_conditions_nd
+
+            return apply_boundary_conditions_nd(
+                field,
+                boundary_conditions,
+                domain_bounds=domain_bounds,
+                time=time,
+            )
+
+    elif discretization in (DiscretizationType.GFDM, DiscretizationType.MESHFREE):
+        # Meshfree: use MeshfreeApplicator
+        from .applicator_meshfree import MeshfreeApplicator
+
+        applicator = MeshfreeApplicator(geometry=geometry)
+        # MeshfreeApplicator applies BCs differently (modifies at collocation points)
+        return applicator.apply_dirichlet(field, boundary_conditions)
+
+    elif discretization == DiscretizationType.FEM:
+        # FEM: would modify matrix/rhs, not field directly
+        raise NotImplementedError(
+            "FEM BC application requires matrix/rhs modification. Use FEMApplicator.apply(matrix, rhs, mesh) instead."
+        )
+
+    else:
+        raise ValueError(f"Unsupported discretization type: {discretization}")
+
+
+def validate_bc_compatibility(
+    boundary_conditions: BoundaryConditions,
+    geometry: GeometryProtocol,
+    discretization: DiscretizationType | str = DiscretizationType.FDM,
+) -> list[str]:
+    """
+    Validate that boundary conditions are compatible with geometry and discretization.
+
+    Args:
+        boundary_conditions: BC specification to validate
+        geometry: Target geometry
+        discretization: Discretization method
+
+    Returns:
+        List of warning/error messages (empty if valid)
+
+    Example:
+        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> from mfg_pde.geometry.boundary import robin_bc
+        >>> from mfg_pde.geometry.boundary.dispatch import validate_bc_compatibility
+        >>>
+        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> bc = robin_bc(dimension=1, alpha=1.0, beta=1.0)
+        >>> issues = validate_bc_compatibility(bc, grid, discretization="FDM")
+        >>> # Robin BC is supported for FDM, so issues == []
+    """
+    issues = []
+
+    # Normalize discretization
+    if isinstance(discretization, str):
+        discretization = DiscretizationType(discretization.upper())
+
+    # Check dimension match
+    if boundary_conditions.dimension != geometry.dimension:
+        issues.append(
+            f"Dimension mismatch: BC dimension ({boundary_conditions.dimension}) "
+            f"!= geometry dimension ({geometry.dimension})"
+        )
+
+    # Check BC type support by discretization
+    from .types import BCType
+
+    bc_type = boundary_conditions.default_bc if hasattr(boundary_conditions, "default_bc") else None
+
+    if discretization == DiscretizationType.FDM:
+        # FDM supports: Dirichlet, Neumann, Robin, Periodic, No-flux
+        unsupported_fdm = {BCType.REFLECTING}  # Reflecting is for particles
+        if bc_type in unsupported_fdm:
+            issues.append(f"BC type {bc_type} is not supported for FDM discretization")
+
+    elif discretization in (DiscretizationType.GFDM, DiscretizationType.MESHFREE):
+        # GFDM: primarily Dirichlet and Neumann
+        limited_gfdm = {BCType.ROBIN, BCType.REFLECTING}
+        if bc_type in limited_gfdm:
+            issues.append(
+                f"BC type {bc_type} has limited support for GFDM/Meshfree. Consider Dirichlet or Neumann instead."
+            )
+
+    return issues
+
+
+__all__ = [
+    "apply_bc",
+    "get_applicator_for_geometry",
+    "validate_bc_compatibility",
+]
