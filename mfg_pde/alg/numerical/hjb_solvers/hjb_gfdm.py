@@ -61,6 +61,20 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
     Note: Monotonicity and QP constraint functionality is provided by MonotonicityMixin.
 
     Implements BoundaryCapable protocol for unified BC handling (Issue #527).
+
+    Design Limitation - Adaptive Collocation (Issue #529):
+        Dynamically resampling collocation points between Picard/Newton iterations
+        is NOT recommended. This causes:
+        - Interpolation noise when mapping u(x) to new point locations
+        - Stencil weight fluctuations between iterations
+        - Convergence stall at error floor ~1e-5 (oscillatory residuals)
+
+        RECOMMENDATION: Use fixed collocation points throughout the solve.
+        Adaptive/moving collocation requires projection-free methods (research topic).
+
+        Evidence: With identical setups, fixed collocation converges in ~20 iterations
+        while adaptive collocation stalls. This is an inherent algorithm design constraint,
+        not a bug.
     """
 
     # BoundaryCapable protocol: Supported BC types

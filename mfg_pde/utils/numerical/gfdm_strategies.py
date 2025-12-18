@@ -284,6 +284,19 @@ class TaylorOperator(DifferentialOperator):
 
     Use `get_weights_at_point(i)` to inspect weights and check row sums.
 
+    Boundary Conditioning (Issue #529):
+    -----------------------------------
+    Near domain boundaries, stencils become poorly conditioned due to:
+    - Asymmetric neighbor distribution (truncated by boundary)
+    - Fewer available neighbors
+    - Translation invariance loss (row sum violation)
+
+    Use `get_boundary_conditioning_analysis(domain_bounds)` to diagnose if
+    boundary points cause ill-conditioning. If so, consider:
+    - Increasing delta (neighborhood radius)
+    - Using adaptive neighborhoods
+    - Adding ghost nodes via BoundaryHandler
+
     Attributes:
         _points: Collocation points, shape (n_points, dimension)
         _n_points: Number of collocation points
