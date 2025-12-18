@@ -89,6 +89,91 @@ class BCApplicatorProtocol(Protocol):
         ...
 
 
+@runtime_checkable
+class BoundaryCapable(Protocol):
+    """
+    Protocol for solvers that support boundary condition handling.
+
+    This protocol standardizes how solvers declare and use boundary conditions,
+    enabling:
+    1. Capability discovery - what BC types a solver supports
+    2. Configuration - setting BCs via a uniform interface
+    3. Infrastructure integration - automatic applicator selection
+
+    **Integration Levels** (from BC_CAPABILITY_MATRIX.md):
+    - **Low gap**: Solver fully uses geometry/boundary/ infrastructure
+    - **Medium gap**: Solver uses some infrastructure (e.g., factory functions)
+    - **High gap**: Solver has custom BC handling (integration candidate)
+
+    Example implementation for a solver:
+        >>> class MyFDMSolver:
+        ...     _SUPPORTED_BC_TYPES = frozenset({
+        ...         BCType.DIRICHLET, BCType.NEUMANN, BCType.PERIODIC, BCType.NO_FLUX
+        ...     })
+        ...
+        ...     @property
+        ...     def supported_bc_types(self) -> frozenset[BCType]:
+        ...         return self._SUPPORTED_BC_TYPES
+        ...
+        ...     @property
+        ...     def boundary_conditions(self) -> BoundaryConditions | None:
+        ...         return self._bc
+        ...
+        ...     @boundary_conditions.setter
+        ...     def boundary_conditions(self, bc: BoundaryConditions | None) -> None:
+        ...         if bc is not None:
+        ...             self._validate_bc_support(bc)
+        ...         self._bc = bc
+        ...
+        ...     @property
+        ...     def discretization_type(self) -> DiscretizationType:
+        ...         return DiscretizationType.FDM
+
+    Relationship to other protocols:
+        - BCApplicatorProtocol: For applicator classes that apply BCs
+        - BoundaryCapable: For solver classes that USE applicators (this protocol)
+        - BoundaryCalculator: For computing ghost cell values (Layer 2)
+    """
+
+    @property
+    def supported_bc_types(self) -> frozenset:
+        """
+        BC types this solver can handle.
+
+        Returns:
+            frozenset of BCType values the solver supports.
+
+        Note:
+            Use frozenset for immutability. Implementations should define
+            this as a class attribute for efficiency:
+                _SUPPORTED_BC_TYPES = frozenset({BCType.DIRICHLET, BCType.NEUMANN})
+        """
+        ...
+
+    @property
+    def boundary_conditions(self) -> BoundaryConditions | None:
+        """
+        Current boundary condition configuration.
+
+        Returns:
+            BoundaryConditions object or None if not configured.
+        """
+        ...
+
+    @property
+    def discretization_type(self) -> DiscretizationType:
+        """
+        Discretization method this solver uses.
+
+        Used to select the appropriate applicator class:
+        - FDM -> FDMApplicator (ghost cells)
+        - FEM -> FEMApplicator (matrix modification)
+        - MESHFREE/GFDM -> MeshfreeApplicator (collocation/particles)
+        - GRAPH -> GraphApplicator (network BCs)
+        """
+        ...
+
+
 # =============================================================================
 # Topology/Calculator Composition (Semantic Dispatch Pattern)
 # =============================================================================
@@ -1458,6 +1543,7 @@ __all__ = [
     "GridType",
     # Protocols
     "BCApplicatorProtocol",
+    "BoundaryCapable",
     "Topology",
     "BoundaryCalculator",
     # Topology implementations

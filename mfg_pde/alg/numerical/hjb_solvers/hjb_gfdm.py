@@ -9,6 +9,8 @@ import numpy as np
 from scipy.linalg import lstsq
 from scipy.spatial.distance import cdist
 
+# BC types for BoundaryCapable protocol implementation (Issue #527)
+from mfg_pde.geometry.boundary import BCType, DiscretizationType
 from mfg_pde.utils.numerical.differential_utils import (
     compute_dH_dp,
 )
@@ -57,7 +59,28 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
     - "always": Force QP at every point (for debugging and analysis)
 
     Note: Monotonicity and QP constraint functionality is provided by MonotonicityMixin.
+
+    Implements BoundaryCapable protocol for unified BC handling (Issue #527).
     """
+
+    # BoundaryCapable protocol: Supported BC types
+    _SUPPORTED_BC_TYPES: frozenset = frozenset(
+        {
+            BCType.DIRICHLET,
+            BCType.NEUMANN,
+            BCType.NO_FLUX,  # Same as Neumann with g=0
+        }
+    )
+
+    @property
+    def supported_bc_types(self) -> frozenset:
+        """BC types this solver supports (BoundaryCapable protocol)."""
+        return self._SUPPORTED_BC_TYPES
+
+    @property
+    def discretization_type(self) -> DiscretizationType:
+        """Discretization method (BoundaryCapable protocol)."""
+        return DiscretizationType.GFDM
 
     def __init__(
         self,
