@@ -33,15 +33,27 @@ This document maps boundary condition support across all numerical solvers in MF
 
 ## Infrastructure Integration Level
 
-| Solver | Uses `geometry/boundary/` | Implementation | Integration Gap |
-|--------|:-------------------------:|----------------|-----------------|
-| **HJB FDM** | ✅ `get_ghost_values_nd` | Ghost cells via PreallocatedGhostBuffer | Low |
-| **HJB GFDM** | ⚠️ Type annotations only | Custom normal-based weights | **High** |
-| **HJB Semi-Lagrangian** | ⚠️ `periodic_bc` only | Characteristic clamping | Medium |
-| **HJB WENO** | ✅ `PreallocatedGhostBuffer` | Ghost cells (depth=2) | Low |
-| **FP FDM** | ✅ Factory functions | Delegates to `fp_fdm_time_stepping` | Low |
-| **FP Particle** | ⚠️ `periodic_bc` factory | Custom particle reflection | Medium |
-| **FP GFDM** | ❌ None | Custom `boundary_type` string | **High** |
+| Solver | Uses `geometry/boundary/` | BoundaryCapable | Implementation | Integration Gap |
+|--------|:-------------------------:|:---------------:|----------------|-----------------|
+| **HJB FDM** | ✅ `get_ghost_values_nd` | ❌ | Ghost cells via PreallocatedGhostBuffer | Low |
+| **HJB GFDM** | ⚠️ Type annotations only | ✅ | Custom normal-based weights | **Medium** |
+| **HJB Semi-Lagrangian** | ⚠️ `periodic_bc` only | ❌ | Characteristic clamping | Medium |
+| **HJB WENO** | ✅ `PreallocatedGhostBuffer` | ❌ | Ghost cells (depth=2) | Low |
+| **FP FDM** | ✅ Factory functions | ❌ | Delegates to `fp_fdm_time_stepping` | Low |
+| **FP Particle** | ⚠️ `periodic_bc` factory | ❌ | Custom particle reflection | Medium |
+| **FP GFDM** | ❌ None | ❌ | Custom `boundary_type` string | **High** |
+
+### Integration Status (Issue #527)
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | BoundaryCapable protocol, dispatch.py, documentation | ✅ Complete |
+| Phase 2 | Central application point (`Geometry.apply_bc()`) | ❌ Not started |
+| Phase 3 | GFDM/Solver delegation to applicators | ❌ Not started |
+| Phase 4 | Advanced BC types (Robin, Mixed, High-order) | ❌ Not started |
+
+**Note**: `dispatch.py` contains `apply_bc()`, `get_applicator_for_geometry()` but these are
+not yet wired into solvers. Phase 2-4 will complete the integration.
 
 ---
 
