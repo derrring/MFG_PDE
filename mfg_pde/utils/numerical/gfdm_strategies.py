@@ -597,7 +597,8 @@ class TaylorOperator(DifferentialOperator):
             examples = ill_conditioned_points[:3]
             cond_stats = self.get_condition_numbers()
             msg_lines = [
-                f"TaylorOperator: {n_issues}/{self._n_points} points have ill-conditioned stencils (cond > {cond_threshold:.0e}).",
+                f"TaylorOperator: {n_issues}/{self._n_points} points have ill-conditioned stencils "
+                f"(cond > {cond_threshold:.0e}).",
                 f"  Condition number stats: min={cond_stats['min']:.1e}, max={cond_stats['max']:.1e}, "
                 f"median={cond_stats['median']:.1e}",
             ]
@@ -841,6 +842,135 @@ class TaylorOperator(DifferentialOperator):
             "median": float(np.median(finite_values)) if len(finite_values) > 0 else np.inf,
             "n_ill_conditioned": int(np.sum(values > 1e12)),
             "n_failed": int(np.sum(np.isinf(values))),
+        }
+
+    def get_boundary_conditioning_analysis(
+        self,
+        domain_bounds: np.ndarray | None = None,
+        boundary_tolerance: float | None = None,
+    ) -> dict:
+        """
+        Analyze condition numbers by boundary proximity (Issue #529).
+
+        Near domain boundaries, stencils have asymmetric neighbor distributions
+        which often causes ill-conditioning. This method helps diagnose whether
+        boundary points are the source of conditioning issues.
+
+        Args:
+            domain_bounds: Domain bounds, shape (dimension, 2) with [min, max] per axis.
+                          If None, inferred from point cloud bounding box.
+            boundary_tolerance: Distance threshold for "near boundary" classification.
+                              If None, defaults to 1.5 * delta.
+
+        Returns:
+            Dictionary with:
+            - 'interior_stats': Condition stats for interior points
+            - 'boundary_stats': Condition stats for boundary-adjacent points
+            - 'boundary_indices': Indices of points near boundary
+            - 'interior_indices': Indices of interior points
+            - 'boundary_fraction': Fraction of points near boundary
+            - 'boundary_ill_conditioned_rate': Rate of ill-conditioning at boundary
+            - 'interior_ill_conditioned_rate': Rate of ill-conditioning in interior
+            - 'diagnosis': String describing the conditioning pattern
+
+        Example:
+            >>> operator = TaylorOperator(points, delta=0.1)
+            >>> analysis = operator.get_boundary_conditioning_analysis()
+            >>> if analysis['boundary_ill_conditioned_rate'] > 0.5:
+            ...     print("Consider increasing delta near boundaries")
+        """
+        if boundary_tolerance is None:
+            boundary_tolerance = 1.5 * self.delta
+
+        # Determine domain bounds
+        if domain_bounds is None:
+            # Infer from point cloud with small margin
+            mins = np.min(self._points, axis=0)
+            maxs = np.max(self._points, axis=0)
+            domain_bounds = np.column_stack([mins, maxs])
+        else:
+            domain_bounds = np.asarray(domain_bounds)
+            if domain_bounds.shape[1] != 2:
+                domain_bounds = domain_bounds.T  # Handle (2, d) format
+
+        # Classify points as boundary-adjacent or interior
+        boundary_mask = np.zeros(self._n_points, dtype=bool)
+        for d in range(self._dimension):
+            near_min = self._points[:, d] - domain_bounds[d, 0] < boundary_tolerance
+            near_max = domain_bounds[d, 1] - self._points[:, d] < boundary_tolerance
+            boundary_mask |= near_min | near_max
+
+        boundary_indices = np.where(boundary_mask)[0]
+        interior_indices = np.where(~boundary_mask)[0]
+
+        # Get condition numbers
+        cond_stats = self.get_condition_numbers()
+        cond_values = cond_stats["values"]
+
+        # Compute stats for each group
+        def compute_group_stats(indices: np.ndarray, values: np.ndarray) -> dict:
+            if len(indices) == 0:
+                return {
+                    "count": 0,
+                    "min": np.inf,
+                    "max": np.inf,
+                    "mean": np.inf,
+                    "median": np.inf,
+                    "n_ill_conditioned": 0,
+                    "ill_conditioned_rate": 0.0,
+                }
+            group_values = values[indices]
+            finite_values = group_values[np.isfinite(group_values)]
+            n_ill = int(np.sum(group_values > 1e12))
+            return {
+                "count": len(indices),
+                "min": float(np.min(finite_values)) if len(finite_values) > 0 else np.inf,
+                "max": float(np.max(finite_values)) if len(finite_values) > 0 else np.inf,
+                "mean": float(np.mean(finite_values)) if len(finite_values) > 0 else np.inf,
+                "median": float(np.median(finite_values)) if len(finite_values) > 0 else np.inf,
+                "n_ill_conditioned": n_ill,
+                "ill_conditioned_rate": n_ill / len(indices) if len(indices) > 0 else 0.0,
+            }
+
+        boundary_stats = compute_group_stats(boundary_indices, cond_values)
+        interior_stats = compute_group_stats(interior_indices, cond_values)
+
+        # Generate diagnosis
+        diagnosis_parts = []
+        if boundary_stats["count"] > 0:
+            b_rate = boundary_stats["ill_conditioned_rate"]
+            i_rate = interior_stats["ill_conditioned_rate"] if interior_stats["count"] > 0 else 0.0
+
+            if b_rate > 0.5 and b_rate > 2 * i_rate:
+                diagnosis_parts.append(
+                    f"Boundary stencils are primary issue ({b_rate:.0%} ill-conditioned vs {i_rate:.0%} interior). "
+                    "Consider: (1) increasing delta near boundaries, (2) using adaptive delta, "
+                    "(3) adding explicit boundary layer points."
+                )
+            elif b_rate > 0.2:
+                diagnosis_parts.append(
+                    f"Moderate boundary conditioning issues ({b_rate:.0%} ill-conditioned). "
+                    "Monitor for numerical instabilities."
+                )
+
+        if interior_stats["count"] > 0 and interior_stats["ill_conditioned_rate"] > 0.1:
+            diagnosis_parts.append(
+                f"Interior points also have issues ({interior_stats['ill_conditioned_rate']:.0%} ill-conditioned). "
+                "Consider: (1) increasing base delta, (2) using RBF-FD instead of Taylor."
+            )
+
+        if not diagnosis_parts:
+            diagnosis_parts.append("Stencil conditioning is acceptable.")
+
+        return {
+            "interior_stats": interior_stats,
+            "boundary_stats": boundary_stats,
+            "boundary_indices": boundary_indices,
+            "interior_indices": interior_indices,
+            "boundary_fraction": len(boundary_indices) / self._n_points if self._n_points > 0 else 0.0,
+            "boundary_ill_conditioned_rate": boundary_stats["ill_conditioned_rate"],
+            "interior_ill_conditioned_rate": interior_stats["ill_conditioned_rate"],
+            "diagnosis": " ".join(diagnosis_parts),
         }
 
 
