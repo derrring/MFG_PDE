@@ -51,7 +51,11 @@ from mfg_pde.utils.numerical.kernels import (
     WendlandKernel,
     create_kernel,
 )
-from mfg_pde.utils.numerical.monotonicity_stats import MonotonicityStats
+from mfg_pde.utils.numerical.monotonicity_stats import (
+    MonotonicityStats,
+    get_m_matrix_diagnostic_string,
+    verify_m_matrix_property,
+)
 from mfg_pde.utils.numerical.nonlinear_solvers import FixedPointSolver, NewtonSolver, PolicyIterationSolver, SolverInfo
 
 # Re-export particle utilities for convenience
@@ -100,6 +104,8 @@ __all__ = [
     "create_bc_handler",
     # Monotonicity tracking
     "MonotonicityStats",
+    "verify_m_matrix_property",
+    "get_m_matrix_diagnostic_string",
     # RBF operators (deprecated v0.17.0 - use LocalRBFOperator)
     "RBFOperator",
     "create_rbf_operator",
