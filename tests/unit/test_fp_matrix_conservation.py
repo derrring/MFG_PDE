@@ -406,5 +406,284 @@ class TestFPMatrixDivergenceSchemes:
         # Placeholder for future implementation
 
 
+class TestLinearConstraintMatrixAssembly:
+    """
+    Test LinearConstraint-based matrix assembly.
+
+    These tests verify the implementation of the matrix assembly protocol
+    from docs/development/matrix_assembly_bc_protocol.md.
+
+    The key principle is Algebraic-Geometric Equivalence:
+    - Explicit solver (ghost cells) and implicit solver (matrix folding)
+      must produce identical numerical results.
+    """
+
+    def test_neumann_bc_via_linear_constraint(self):
+        """Test Neumann BC using LinearConstraint coefficient folding."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+            _build_diffusion_matrix_with_bc,
+        )
+        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+
+        # Setup
+        Nx = 11
+        dx = 0.1
+        dt = 0.01
+        D = 0.05  # diffusion coefficient
+
+        shape = (Nx,)
+        spacing = (dx,)
+        ndim = 1
+
+        # Neumann BC: du/dn = 0 -> u_ghost = u_inner (Tier 2)
+        neumann_constraint = LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+        A, b_bc = _build_diffusion_matrix_with_bc(
+            shape=shape,
+            spacing=spacing,
+            D=D,
+            dt=dt,
+            ndim=ndim,
+            bc_constraint_min=neumann_constraint,
+            bc_constraint_max=neumann_constraint,
+        )
+
+        # Check matrix shape
+        assert A.shape == (Nx, Nx), f"Expected ({Nx}, {Nx}), got {A.shape}"
+
+        # Check b_bc is zero for homogeneous Neumann
+        np.testing.assert_allclose(b_bc, 0.0, atol=1e-14)
+
+        # Check row sums (should equal 1/dt for implicit scheme)
+        row_sums = np.array(A.sum(axis=1)).flatten()
+        np.testing.assert_allclose(
+            row_sums,
+            1.0 / dt,
+            rtol=1e-10,
+            err_msg="Row sums should equal 1/dt",
+        )
+
+    def test_dirichlet_bc_via_linear_constraint(self):
+        """Test Dirichlet BC using LinearConstraint coefficient folding."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+            _build_diffusion_matrix_with_bc,
+        )
+        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+
+        # Setup
+        Nx = 11
+        dx = 0.1
+        dt = 0.01
+        D = 0.05
+
+        shape = (Nx,)
+        spacing = (dx,)
+        ndim = 1
+
+        # Dirichlet BC: u = g at boundary (Tier 1)
+        # For cell-centered: u_ghost = 2*g - u_inner
+        # LinearConstraint: weights={0: -1.0}, bias=2*g
+        g_left = 1.0
+        g_right = 2.0
+        dirichlet_left = LinearConstraint(weights={0: -1.0}, bias=2 * g_left)
+        dirichlet_right = LinearConstraint(weights={0: -1.0}, bias=2 * g_right)
+
+        A, b_bc = _build_diffusion_matrix_with_bc(
+            shape=shape,
+            spacing=spacing,
+            D=D,
+            dt=dt,
+            ndim=ndim,
+            bc_constraint_min=dirichlet_left,
+            bc_constraint_max=dirichlet_right,
+        )
+
+        # Check matrix shape
+        assert A.shape == (Nx, Nx)
+
+        # Check b_bc has non-zero entries at boundaries
+        # The bias terms should contribute to b_bc[0] and b_bc[-1]
+        assert b_bc[0] != 0.0, "Left boundary should have BC contribution"
+        assert b_bc[-1] != 0.0, "Right boundary should have BC contribution"
+
+    def test_linear_extrapolation_bc_via_linear_constraint(self):
+        """Test linear extrapolation BC using LinearConstraint (Tier 4)."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+            _build_diffusion_matrix_with_bc,
+        )
+        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+
+        # Setup
+        Nx = 11
+        dx = 0.1
+        dt = 0.01
+        D = 0.05
+
+        shape = (Nx,)
+        spacing = (dx,)
+        ndim = 1
+
+        # Linear extrapolation: u_ghost = 2*u[0] - u[1]
+        # For left boundary: weights={0: 2.0, 1: -1.0}
+        # For right boundary: weights={0: 2.0, 1: -1.0} (relative to boundary-adjacent)
+        linear_extrap = LinearConstraint(weights={0: 2.0, 1: -1.0}, bias=0.0)
+
+        A, b_bc = _build_diffusion_matrix_with_bc(
+            shape=shape,
+            spacing=spacing,
+            D=D,
+            dt=dt,
+            ndim=ndim,
+            bc_constraint_min=linear_extrap,
+            bc_constraint_max=linear_extrap,
+        )
+
+        # Check matrix shape
+        assert A.shape == (Nx, Nx)
+
+        # Check b_bc is zero for extrapolation (no bias)
+        np.testing.assert_allclose(b_bc, 0.0, atol=1e-14)
+
+        # Matrix should be non-singular (solvable)
+        m_test = np.ones(Nx)
+        b_test = m_test / dt
+        m_result = sparse.linalg.spsolve(A, b_test)
+        assert not np.any(np.isnan(m_result)), "Matrix should be solvable"
+
+    def test_2d_neumann_bc_via_linear_constraint(self):
+        """Test 2D Neumann BC using LinearConstraint."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+            _build_diffusion_matrix_with_bc,
+        )
+        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+
+        # Setup
+        Nx, Ny = 6, 6
+        dx, dy = 0.1, 0.1
+        dt = 0.01
+        D = 0.05
+
+        shape = (Nx, Ny)
+        spacing = (dx, dy)
+        ndim = 2
+
+        # Neumann BC
+        neumann = LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+        A, b_bc = _build_diffusion_matrix_with_bc(
+            shape=shape,
+            spacing=spacing,
+            D=D,
+            dt=dt,
+            ndim=ndim,
+            bc_constraint_min=neumann,
+            bc_constraint_max=neumann,
+        )
+
+        N_total = Nx * Ny
+        assert A.shape == (N_total, N_total)
+
+        # Check b_bc is zero
+        np.testing.assert_allclose(b_bc, 0.0, atol=1e-14)
+
+        # Check row sums
+        row_sums = np.array(A.sum(axis=1)).flatten()
+        np.testing.assert_allclose(
+            row_sums,
+            1.0 / dt,
+            rtol=1e-10,
+            err_msg="Row sums should equal 1/dt in 2D",
+        )
+
+    def test_mass_conservation_with_linear_constraint_neumann(self):
+        """Test mass conservation using LinearConstraint-based matrix assembly."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+            _build_diffusion_matrix_with_bc,
+        )
+        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+
+        # Setup
+        Nx = 21
+        dx = 1.0 / (Nx - 1)
+        dt = 0.01
+        sigma = 0.5
+        D = sigma**2 / 2.0
+
+        shape = (Nx,)
+        spacing = (dx,)
+        ndim = 1
+
+        # Initial Gaussian density
+        x = np.linspace(0, 1, Nx)
+        m0 = np.exp(-((x - 0.5) ** 2) / 0.1)
+        m0 = m0 / (np.sum(m0) * dx)  # Normalize
+
+        initial_mass = np.sum(m0) * dx
+
+        # Neumann BC for mass conservation
+        neumann = LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+        A, b_bc = _build_diffusion_matrix_with_bc(
+            shape=shape,
+            spacing=spacing,
+            D=D,
+            dt=dt,
+            ndim=ndim,
+            bc_constraint_min=neumann,
+            bc_constraint_max=neumann,
+        )
+
+        # Evolve for multiple timesteps
+        m = m0.copy()
+        for _ in range(10):
+            b_rhs = m / dt + b_bc
+            m = sparse.linalg.spsolve(A, b_rhs)
+
+        final_mass = np.sum(m) * dx
+
+        np.testing.assert_allclose(
+            final_mass,
+            initial_mass,
+            rtol=1e-10,
+            err_msg="Mass should be conserved with Neumann BC",
+        )
+
+    def test_calculator_to_constraint_conversion(self):
+        """Test conversion from Calculator to LinearConstraint."""
+        from mfg_pde.geometry.boundary.applicator_base import (
+            DirichletCalculator,
+            NeumannCalculator,
+            ZeroFluxCalculator,
+            ZeroGradientCalculator,
+            calculator_to_constraint,
+        )
+
+        dx = 0.1
+
+        # Tier 1: Dirichlet -> bias only
+        dirichlet = DirichletCalculator(boundary_value=5.0)
+        constraint = calculator_to_constraint(dirichlet, dx, side="min")
+        assert constraint.weights == {}
+        assert constraint.bias == 5.0
+
+        # Tier 2: Neumann -> weight=1.0, bias depends on flux
+        neumann = NeumannCalculator(flux_value=0.0)
+        constraint = calculator_to_constraint(neumann, dx, side="min")
+        assert constraint.weights == {0: 1.0}
+        assert constraint.bias == 0.0
+
+        # Tier 2: ZeroGradient -> weight=1.0, bias=0.0
+        zero_grad = ZeroGradientCalculator()
+        constraint = calculator_to_constraint(zero_grad, dx, side="min")
+        assert constraint.weights == {0: 1.0}
+        assert constraint.bias == 0.0
+
+        # Tier 3: ZeroFlux -> Robin coefficient
+        zero_flux = ZeroFluxCalculator(drift_velocity=0.1, diffusion_coeff=0.5)
+        constraint = calculator_to_constraint(zero_flux, dx, side="max")
+        assert 0 in constraint.weights  # Should have weight for boundary cell
+        assert constraint.bias == 0.0  # No bias term
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
