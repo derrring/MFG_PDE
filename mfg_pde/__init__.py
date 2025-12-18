@@ -57,11 +57,10 @@ from .solvers.variational import (  # noqa: E402
 # Geometry system for 2D/3D complex domains (optional dependency)
 try:
     from .geometry import (
-        BaseGeometry,  # noqa: F401
         BoundaryManager,  # noqa: F401
-        Domain2D,  # noqa: F401
-        Domain3D,  # noqa: F401
         GeometricBoundaryCondition,  # noqa: F401
+        Mesh2D,  # noqa: F401
+        Mesh3D,  # noqa: F401
         MeshData,  # noqa: F401
         MeshManager,  # noqa: F401
         MeshPipeline,  # noqa: F401
@@ -159,11 +158,10 @@ __all__ = [
 if GEOMETRY_SYSTEM_AVAILABLE:
     __all__.extend(
         [
-            "BaseGeometry",
             "BoundaryManager",
-            "Domain2D",
-            "Domain3D",
             "GeometricBoundaryCondition",
+            "Mesh2D",
+            "Mesh3D",
             "MeshData",
             "MeshManager",
             "MeshPipeline",

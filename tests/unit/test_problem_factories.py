@@ -4,8 +4,8 @@ Unit tests for unified problem factories (Phase 3.3).
 Tests the new factory functions that support both unified MFGProblem
 and legacy specialized problem classes.
 
-NOTE: Uses TensorProductGrid (unified geometry API) instead of deprecated
-Domain1D/Domain2D. See docs/development/LEGACY_API_DEPRECATION_PLAN.md.
+NOTE: Uses TensorProductGrid (unified geometry API) for grid geometries.
+For unstructured meshes, use Mesh2D/Mesh3D.
 
 Updated: December 2025 - Use new Hamiltonian signature with x_idx, m_at_x, derivs.
 """

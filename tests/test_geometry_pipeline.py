@@ -15,7 +15,7 @@ import numpy as np
 # Add MFG_PDE to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mfg_pde.geometry import BoundaryManager, Domain2D, MeshData
+from mfg_pde.geometry import BoundaryManager, Mesh2D, MeshData
 
 
 class TestMeshData:
@@ -98,12 +98,12 @@ class TestMeshData:
             )
 
 
-class TestDomain2D:
-    """Test the Domain2D geometry class."""
+class TestMesh2D:
+    """Test the Mesh2D geometry class."""
 
     def test_rectangle_domain_creation(self):
         """Test rectangular domain creation."""
-        domain = Domain2D(domain_type="rectangle", bounds=(0.0, 2.0, 0.0, 1.0), mesh_size=0.5)
+        domain = Mesh2D(domain_type="rectangle", bounds=(0.0, 2.0, 0.0, 1.0), mesh_size=0.5)
 
         assert domain.domain_type == "rectangle"
         assert domain.dimension == 2
@@ -115,7 +115,7 @@ class TestDomain2D:
 
     def test_circle_domain_creation(self):
         """Test circular domain creation."""
-        domain = Domain2D(domain_type="circle", center=(0.5, 0.5), radius=0.4, mesh_size=0.1)
+        domain = Mesh2D(domain_type="circle", center=(0.5, 0.5), radius=0.4, mesh_size=0.1)
 
         assert domain.domain_type == "circle"
         assert domain.center == (0.5, 0.5)
@@ -125,7 +125,7 @@ class TestDomain2D:
         """Test polygonal domain creation."""
         vertices = [(0, 0), (1, 0), (1, 1), (0, 1)]
 
-        domain = Domain2D(domain_type="polygon", vertices=vertices, mesh_size=0.2)
+        domain = Mesh2D(domain_type="polygon", vertices=vertices, mesh_size=0.2)
 
         assert domain.domain_type == "polygon"
         assert domain.vertices == vertices
@@ -133,11 +133,11 @@ class TestDomain2D:
     def test_polygon_validation(self):
         """Test polygon validation with insufficient vertices."""
         with pytest.raises(ValueError, match="at least 3 vertices"):
-            Domain2D(domain_type="polygon", vertices=[(0, 0), (1, 0)], mesh_size=0.2)  # Only 2 vertices
+            Mesh2D(domain_type="polygon", vertices=[(0, 0), (1, 0)], mesh_size=0.2)  # Only 2 vertices
 
     def test_rectangle_bounds(self):
         """Test bounds computation for rectangular domain."""
-        domain = Domain2D(domain_type="rectangle", bounds=(1.0, 3.0, 2.0, 4.0), mesh_size=0.1)
+        domain = Mesh2D(domain_type="rectangle", bounds=(1.0, 3.0, 2.0, 4.0), mesh_size=0.1)
 
         min_coords, max_coords = domain.bounds
         np.testing.assert_array_equal(min_coords, [1.0, 2.0])
@@ -145,7 +145,7 @@ class TestDomain2D:
 
     def test_circle_bounds(self):
         """Test bounds computation for circular domain."""
-        domain = Domain2D(domain_type="circle", center=(1.0, 2.0), radius=0.5, mesh_size=0.1)
+        domain = Mesh2D(domain_type="circle", center=(1.0, 2.0), radius=0.5, mesh_size=0.1)
 
         min_coords, max_coords = domain.bounds
         np.testing.assert_array_equal(min_coords, [0.5, 1.5])
@@ -155,7 +155,7 @@ class TestDomain2D:
         """Test bounds computation for polygonal domain."""
         vertices = [(0, 1), (2, 0), (3, 3), (1, 2)]
 
-        domain = Domain2D(domain_type="polygon", vertices=vertices, mesh_size=0.1)
+        domain = Mesh2D(domain_type="polygon", vertices=vertices, mesh_size=0.1)
 
         min_coords, max_coords = domain.bounds
         np.testing.assert_array_equal(min_coords, [0, 0])
@@ -252,11 +252,11 @@ class TestBoundaryManager:
 
 def test_geometry_package_import():
     """Test that the geometry package imports correctly."""
-    from mfg_pde.geometry import BoundaryManager, Domain2D, MeshData
+    from mfg_pde.geometry import BoundaryManager, Mesh2D, MeshData
 
     # Test that classes are available
     assert MeshData is not None
-    assert Domain2D is not None
+    assert Mesh2D is not None
     assert BoundaryManager is not None
 
 
@@ -268,7 +268,7 @@ def test_main_package_geometry_import():
     if hasattr(mfg_pde, "GEOMETRY_SYSTEM_AVAILABLE"):
         # If geometry system is available, test imports
         if mfg_pde.GEOMETRY_SYSTEM_AVAILABLE:
-            assert hasattr(mfg_pde, "Domain2D")
+            assert hasattr(mfg_pde, "Mesh2D")
             assert hasattr(mfg_pde, "MeshData")
         else:
             # If not available, that's okay too (missing optional dependencies)

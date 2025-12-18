@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mfg_pde import MFGComponents  # noqa: E402
 from mfg_pde.core.highdim_mfg_problem import HighDimMFGProblem, HybridMFGSolver  # noqa: E402
-from mfg_pde.geometry import Domain3D  # noqa: E402
+from mfg_pde.geometry import Mesh3D  # noqa: E402
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger  # noqa: E402
 
 # Configure logging
@@ -54,7 +54,7 @@ class CrowdEvacuation3D(HighDimMFGProblem):
         num_timesteps: int = 50,
     ):
         # Create 3D box geometry with potential obstacles
-        geometry = Domain3D(
+        geometry = Mesh3D(
             domain_type="box",
             bounds=(0.0, box_size, 0.0, box_size, 0.0, box_size),
             holes=obstacles or [],
@@ -329,7 +329,7 @@ def run_3d_box_demonstration():
         logger.info(f"   Total DOF: {problem.mesh_data.num_vertices * problem.Nt}")
 
         logger.info("\n🎯 High-Dimensional MFG Infrastructure:")
-        logger.info("   ✅ Domain3D geometry")
+        logger.info("   ✅ Mesh3D geometry")
         logger.info("   ✅ Tetrahedral mesh generation")
         logger.info("   ✅ Multi-dimensional solver integration")
         logger.info("   ✅ Hybrid solver strategies")

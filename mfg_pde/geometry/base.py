@@ -33,7 +33,7 @@ class Geometry(ABC):
 
     All geometry types inherit from this class:
     - Cartesian grids: TensorProductGrid (all dimensions)
-    - Unstructured meshes: Domain2D, Domain3D
+    - Unstructured meshes: Mesh2D, Mesh3D
     - Networks: NetworkGeometry
     - Adaptive meshes: AMR classes
     - Implicit domains: Level set, SDF
@@ -143,7 +143,7 @@ class Geometry(ABC):
             True if geometry_type is DOMAIN_2D or DOMAIN_3D
 
         Examples:
-            >>> mesh = Domain2D(...)
+            >>> mesh = Mesh2D(...)
             >>> mesh.is_mesh
             True
         """
@@ -703,7 +703,7 @@ class UnstructuredMesh(Geometry):
         """
         Create geometry using Gmsh API.
 
-        Must be implemented by subclasses (Domain2D, Domain3D).
+        Must be implemented by subclasses (Mesh2D, Mesh3D).
         """
         ...
 

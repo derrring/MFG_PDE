@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mfg_pde.config import OmegaConfManager
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryManager, Domain2D, MeshPipeline
+from mfg_pde.geometry import BoundaryManager, Mesh2D, MeshPipeline
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.polars_integration import create_analysis_dataframe
 
@@ -46,7 +46,7 @@ class MFGProblem2D(MFGProblem):
         """
 
         # Create 2D geometry
-        self.geometry = Domain2D(**geometry_config)
+        self.geometry = Mesh2D(**geometry_config)
         self.mesh_data = self.geometry.generate_mesh()
 
         # Setup boundary conditions

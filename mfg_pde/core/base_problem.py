@@ -33,7 +33,7 @@ class MFGProblemProtocol(Protocol):
     Minimal protocol that ALL MFG problems must satisfy.
 
     This protocol is intentionally geometry-agnostic, working with:
-    - Cartesian grids (Domain1D, Domain2D, TensorProductGrid)
+    - Cartesian grids (TensorProductGrid, Mesh1D, Mesh2D, Mesh3D)
     - Networks (NetworkMFGProblem)
     - Unstructured meshes (AMR geometries)
     - Implicit domains (level set, SDF)

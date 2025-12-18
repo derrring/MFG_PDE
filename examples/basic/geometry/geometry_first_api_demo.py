@@ -7,7 +7,7 @@ the geometry-first API introduced in v0.10.0.
 
 This example shows:
 1. TensorProductGrid (structured grid)
-2. Domain1D (1D with boundary conditions)
+2. TensorProductGrid 1D (with boundary conditions)
 3. Hyperrectangle (implicit box domain)
 4. Hypersphere (implicit sphere domain)
 5. MazeGeometry (maze-based grid)
@@ -48,33 +48,34 @@ def demo_tensor_product_grid():
     print("\n✓ TensorProductGrid working correctly")
 
 
-def demo_domain_1d():
-    """Demonstrate Domain1D with boundary conditions."""
+def demo_tensor_product_grid_1d():
+    """Demonstrate TensorProductGrid for 1D with boundary conditions."""
     print("\n" + "=" * 70)
-    print("2. Domain1D (1D with Boundary Conditions)")
+    print("2. TensorProductGrid 1D (with Boundary Conditions)")
     print("=" * 70)
 
     from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.geometry import Domain1D
+    from mfg_pde.geometry import TensorProductGrid
     from mfg_pde.geometry.boundary import periodic_bc
 
-    # Create 1D periodic domain with proper BoundaryConditions object
-    bc = periodic_bc()
-    domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions=bc)
-    domain.create_grid(num_points=101)
+    # Create 1D grid: [0,1] with 101 points
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
 
-    print(f"\nGeometry: {domain.geometry_type}")
-    print(f"Dimension: {domain.dimension}")
-    print(f"Boundary conditions: {domain.boundary_conditions}")
-    print(f"Total points: {domain.num_spatial_points}")
+    # Create periodic boundary conditions
+    bc = periodic_bc(dimension=1)
 
-    # Create problem
-    problem = MFGProblem(geometry=domain, T=1.0, Nt=10, diffusion=0.1)
+    print(f"\nGeometry: {geometry.geometry_type}")
+    print(f"Dimension: {geometry.dimension}")
+    print(f"Total points: {geometry.num_spatial_points}")
+    print(f"Boundary conditions: {bc}")
+
+    # Create problem with boundary conditions
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1, bc=bc)
 
     print(f"\nProblem dimension: {problem.dimension}")
     print(f"Time steps: {problem.Nt}")
 
-    print("\n✓ Domain1D working correctly")
+    print("\n✓ TensorProductGrid 1D working correctly")
 
 
 def demo_hyperrectangle():
@@ -269,7 +270,7 @@ def main():
 
     try:
         demo_tensor_product_grid()
-        demo_domain_1d()
+        demo_tensor_product_grid_1d()
         demo_hyperrectangle()
         demo_hypersphere()
         demo_maze_geometry()
