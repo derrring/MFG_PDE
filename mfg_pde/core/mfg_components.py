@@ -580,10 +580,10 @@ class HamiltonianMixin:
                     problem=self,
                 )
 
-        # Default: dH/dm = 2m
+        # Default: dH/dm = -2m
         if np.isnan(m_at_x) or np.isinf(m_at_x):
             return np.nan
-        return 2 * m_at_x
+        return -2.0 * m_at_x
 
     def dH_dp(
         self,
