@@ -799,6 +799,7 @@ class FPParticleSolver(BaseFPSolver):
         drift_field: np.ndarray | Callable | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        drift_is_precomputed: bool = False,
         # Deprecated parameter name for backward compatibility
         m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:
@@ -815,8 +816,13 @@ class FPParticleSolver(BaseFPSolver):
             m_initial_condition: DEPRECATED, use M_initial
             drift_field: Drift field specification (optional):
                 - None: Zero drift (pure diffusion)
-                - np.ndarray: Precomputed drift (e.g., -grad U / lambda for MFG)
+                - np.ndarray: If drift_is_precomputed=False (default), this is U(t,x) and gradient will be computed.
+                             If drift_is_precomputed=True, this is α(t,x,d) vector field (Nt, *grid_shape, d).
                 - Callable: Function alpha(t, x, m) -> drift (Phase 2)
+            drift_is_precomputed: If True, drift_field is treated as precomputed drift vector α(t,x).
+                                  If False (default), drift_field is treated as value function U(t,x) and
+                                  drift is computed as α = -coupling_coefficient * ∇U.
+                                  Use True to preserve high-precision gradients from GFDM or other meshfree methods.
             diffusion_field: Diffusion specification (optional):
                 - None: Use problem.sigma (backward compatible)
                 - float: Constant isotropic diffusion
@@ -908,8 +914,9 @@ class FPParticleSolver(BaseFPSolver):
         # Reset time step counter for normalization logic
         self._time_step_counter = 0
 
-        # Store show_progress for use in methods
+        # Store show_progress and drift_is_precomputed for use in methods
         self._show_progress = show_progress
+        self._drift_is_precomputed = drift_is_precomputed
 
         try:
             # Hybrid mode: particles -> grid (with strategy selection)
@@ -1145,26 +1152,50 @@ class FPParticleSolver(BaseFPSolver):
 
         # Main time evolution loop
         for t_idx in timestep_range:
-            # Get value function at current time
-            U_t = U_solution_for_drift[t_idx]
-
-            # Compute gradient of U on the grid (list of d arrays, one per dimension)
-            gradients = self._compute_gradient_nd(U_t, spacings, use_backend=False)
-
-            # Interpolate gradients to particle positions
+            # Get drift field at current time
+            drift_or_U_t = U_solution_for_drift[t_idx]
             particles_t = current_particles[t_idx]  # Shape: (num_particles, dimension)
-            grad_at_particles = np.zeros((self.num_particles, dimension))
 
-            for d in range(dimension):
-                try:
-                    interp = self._create_nd_interpolator(coordinates, gradients[d])
-                    grad_at_particles[:, d] = interp(particles_t)
-                except Exception:
-                    # Fallback: zero gradient
-                    grad_at_particles[:, d] = 0.0
+            # Check if drift is precomputed or needs to be computed from U
+            if self._drift_is_precomputed:
+                # Drift is already computed (e.g., from GFDM: α = -D_p H(x,m,∇u))
+                # drift_or_U_t has shape (*grid_shape, dimension)
+                # Need to interpolate vector field to particle positions
+                drift_at_particles = np.zeros((self.num_particles, dimension))
 
-            # Compute drift: alpha = -coupling_coefficient * grad(U)
-            drift = -coupling_coefficient * grad_at_particles
+                for d in range(dimension):
+                    try:
+                        # Extract d-th component of drift vector field
+                        drift_d = drift_or_U_t[..., d]  # Shape: (*grid_shape,)
+                        interp = self._create_nd_interpolator(coordinates, drift_d)
+                        drift_at_particles[:, d] = interp(particles_t)
+                    except Exception:
+                        # Fallback: zero drift
+                        drift_at_particles[:, d] = 0.0
+
+                # Use precomputed drift directly (no coupling_coefficient multiplication)
+                drift = drift_at_particles
+
+            else:
+                # Traditional path: drift_or_U_t is value function U, compute gradient
+                U_t = drift_or_U_t  # For clarity
+
+                # Compute gradient of U on the grid (list of d arrays, one per dimension)
+                gradients = self._compute_gradient_nd(U_t, spacings, use_backend=False)
+
+                # Interpolate gradients to particle positions
+                grad_at_particles = np.zeros((self.num_particles, dimension))
+
+                for d in range(dimension):
+                    try:
+                        interp = self._create_nd_interpolator(coordinates, gradients[d])
+                        grad_at_particles[:, d] = interp(particles_t)
+                    except Exception:
+                        # Fallback: zero gradient
+                        grad_at_particles[:, d] = 0.0
+
+                # Compute drift: alpha = -coupling_coefficient * grad(U)
+                drift = -coupling_coefficient * grad_at_particles
 
             # Generate Brownian increments
             dW = self._generate_brownian_increment_nd(self.num_particles, dimension, Dt, sigma_sde)
