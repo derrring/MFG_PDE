@@ -16,8 +16,10 @@ Operator Hierarchy:
         hessian(u)        : scalar → tensor   ∇²u = [∂²u/∂xᵢ∂xⱼ]
 
     Coefficient Operators:
-        diffusion(u, σ)   : scalar → scalar   σ²Δu (isotropic)
-        tensor_diffusion(u, Σ) : scalar → scalar   ∇·(Σ∇u) (anisotropic)
+        diffusion(u, coeff) : scalar → scalar   ∇·(Σ∇u)
+            - coeff=scalar σ  → isotropic:  σ²Δu
+            - coeff=(d,d)     → anisotropic: ∇·(Σ∇u)
+            - coeff=(*,d,d)   → spatially varying
 
     Transport:
         advection(m, v)   : scalar → scalar   v·∇m or ∇·(vm)
@@ -27,7 +29,7 @@ Design Principles:
 - BC-aware: All operators handle boundary conditions via ghost cells
 - Backend-agnostic: Work with numpy or GPU backends
 - Scheme-configurable: Support central, upwind, high-order schemes
-- Performance: Numba JIT for compute-intensive operators
+- Performance: Numba JIT for 2D anisotropic diffusion (3-5x speedup)
 
 Mathematical Note:
 -----------------
@@ -40,8 +42,7 @@ continuous identities:
 Usage:
 ------
     from mfg_pde.utils.numerical.tensor_calculus import (
-        gradient, divergence, laplacian, hessian,
-        diffusion, tensor_diffusion, advection,
+        gradient, divergence, laplacian, hessian, diffusion, advection,
     )
 
     # Compute gradient
@@ -50,8 +51,11 @@ Usage:
     # Compute Laplacian with BC
     lap_u = laplacian(u, spacings, bc=neumann_bc)
 
-    # Anisotropic diffusion
-    diff = tensor_diffusion(m, Sigma, spacings, bc=bc)
+    # Isotropic diffusion: σ = 0.1
+    diff = diffusion(m, 0.1, spacings)
+
+    # Anisotropic diffusion: Σ = [[0.2, 0], [0, 0.05]]
+    diff = diffusion(m, Sigma, spacings, bc=bc)
 
 References:
 -----------
@@ -457,55 +461,131 @@ def hessian(
 
 
 # =============================================================================
-# Coefficient Operators: Isotropic Diffusion
+# Coefficient Operators: Diffusion (Unified)
 # =============================================================================
 
 
 def diffusion(
     u: NDArray,
-    sigma: float | NDArray,
+    coeff: float | NDArray,
     spacings: list[float] | tuple[float, ...],
-    bc: BoundaryConditions | None = None,
+    bc: BoundaryConditions | MixedBoundaryConditions | None = None,
     backend: ArrayBackend | None = None,
+    domain_bounds: NDArray | None = None,
     time: float = 0.0,
 ) -> NDArray:
     """
-    Compute isotropic diffusion σ²Δu.
+    Compute diffusion ∇·(Σ∇u) with automatic dispatch based on coefficient type.
 
-    This is a convenience wrapper for σ² * laplacian(u).
-    For spatially-varying σ(x), use tensor_diffusion with Σ = σ²I.
+    This is the unified diffusion operator that handles both isotropic and
+    anisotropic cases. The coefficient type determines the computation:
+
+        - scalar σ      → isotropic:  σ²Δu = ∇·(σ²I∇u)
+        - (d,d) matrix  → anisotropic: ∇·(Σ∇u) with constant tensor
+        - (*shape,d,d)  → spatially varying anisotropic diffusion
 
     Parameters
     ----------
     u : NDArray
-        Scalar field.
-    sigma : float or NDArray
-        Diffusion coefficient. If array, must broadcast with u.
+        Scalar field, shape (N0, N1, ..., Nd-1).
+    coeff : float | NDArray
+        Diffusion coefficient:
+        - scalar σ: Treated as σ² for isotropic diffusion (Σ = σ²I)
+        - (d, d) array: Constant diffusion tensor Σ
+        - (*u.shape, d, d) array: Spatially varying tensor Σ(x)
     spacings : list[float]
-        Grid spacing per dimension.
+        Grid spacing per dimension [h0, h1, ..., hd-1].
     bc : BoundaryConditions, optional
         Boundary conditions.
     backend : ArrayBackend, optional
-        GPU backend.
+        GPU backend. Uses numpy if None.
+    domain_bounds : NDArray, optional
+        Domain bounds for mixed BCs.
     time : float
         Current time for time-dependent BCs.
 
     Returns
     -------
     NDArray
-        Diffusion term σ²Δu.
+        Diffusion term ∇·(Σ∇u), same shape as u.
+
+    Notes
+    -----
+    For isotropic diffusion with scalar σ, the fast path uses the Laplacian:
+        σ²Δu = σ²(∂²u/∂x² + ∂²u/∂y² + ...)
+
+    For anisotropic diffusion with tensor Σ, the full operator is computed:
+        ∇·(Σ∇u) = Σᵢ ∂/∂xᵢ (Σⱼ Σᵢⱼ ∂u/∂xⱼ)
+
+    Uses Numba JIT for 2D anisotropic case when available.
+
+    Examples
+    --------
+    >>> # Isotropic diffusion: σ = 0.1
+    >>> diff = diffusion(u, 0.1, [dx, dy])
+    >>>
+    >>> # Anisotropic: stronger in x than y
+    >>> Sigma = np.array([[0.2, 0.0], [0.0, 0.05]])
+    >>> diff = diffusion(u, Sigma, [dx, dy], bc=bc)
+    >>>
+    >>> # Spatially varying
+    >>> Sigma_field = np.zeros((*u.shape, 2, 2))
+    >>> Sigma_field[..., 0, 0] = sigma_x  # σ_xx(x,y)
+    >>> Sigma_field[..., 1, 1] = sigma_y  # σ_yy(x,y)
+    >>> diff = diffusion(u, Sigma_field, [dx, dy])
     """
-    lap = laplacian(u, spacings, bc=bc, backend=backend, time=time)
+    d = u.ndim
 
-    if isinstance(sigma, np.ndarray):
-        return sigma * sigma * lap
+    # Dispatch based on coefficient type
+    if np.isscalar(coeff):
+        # Isotropic: σ²Δu (fast path)
+        lap = laplacian(u, spacings, bc=bc, backend=backend, time=time)
+        return float(coeff) ** 2 * lap
+
+    coeff = np.asarray(coeff)
+
+    if coeff.ndim == 0:
+        # 0-d array (scalar wrapped in array)
+        lap = laplacian(u, spacings, bc=bc, backend=backend, time=time)
+        return float(coeff) ** 2 * lap
+
+    if coeff.ndim == 1 and len(coeff) == d:
+        # Diagonal tensor: [σ_0², σ_1², ...] → Σ = diag(σ²)
+        # Convert to full tensor for uniform handling
+        Sigma = np.diag(coeff)
+        return _diffusion_tensor(u, Sigma, spacings, bc, domain_bounds, time)
+
+    if coeff.ndim == 2 and coeff.shape == (d, d):
+        # Constant tensor Σ
+        return _diffusion_tensor(u, coeff, spacings, bc, domain_bounds, time)
+
+    if coeff.shape == (*u.shape, d, d):
+        # Spatially varying tensor Σ(x)
+        return _diffusion_tensor(u, coeff, spacings, bc, domain_bounds, time)
+
+    raise ValueError(
+        f"Invalid coefficient shape {coeff.shape} for {d}D field. "
+        f"Expected scalar, ({d},), ({d},{d}), or {(*u.shape, d, d)}."
+    )
+
+
+def _diffusion_tensor(
+    u: NDArray,
+    Sigma: NDArray,
+    spacings: list[float] | tuple[float, ...],
+    bc: BoundaryConditions | MixedBoundaryConditions | None,
+    domain_bounds: NDArray | None,
+    time: float,
+) -> NDArray:
+    """Internal: dispatch tensor diffusion by dimension."""
+    d = u.ndim
+
+    if d == 1:
+        return _tensor_diffusion_1d(u, Sigma, spacings[0], bc)
+    elif d == 2:
+        return _tensor_diffusion_2d(u, Sigma, spacings[0], spacings[1], bc, domain_bounds, time)
     else:
-        return sigma * sigma * lap
-
-
-# =============================================================================
-# Coefficient Operators: Anisotropic (Tensor) Diffusion
-# =============================================================================
+        return _tensor_diffusion_nd(u, Sigma, tuple(spacings), bc)
 
 
 def tensor_diffusion(
@@ -519,50 +599,22 @@ def tensor_diffusion(
     """
     Compute anisotropic diffusion ∇·(Σ∇u).
 
-    Handles full tensor diffusion with cross-terms:
-        ∇·(Σ∇u) = Σᵢ ∂/∂xᵢ (Σⱼ Σᵢⱼ ∂u/∂xⱼ)
+    .. deprecated:: 0.18.0
+        Use ``diffusion(u, Sigma, ...)`` instead. This function is kept
+        for backward compatibility and will be removed in v1.0.
 
-    Parameters
-    ----------
-    u : NDArray
-        Scalar field, shape (N0, N1, ..., Nd-1).
-    Sigma : NDArray
-        Diffusion tensor:
-        - Constant: shape (d, d)
-        - Spatially varying: shape (*u.shape, d, d)
-    spacings : list[float]
-        Grid spacing per dimension.
-    bc : BoundaryConditions, optional
-        Boundary conditions.
-    domain_bounds : NDArray, optional
-        Domain bounds for mixed BCs.
-    time : float
-        Current time for time-dependent BCs.
-
-    Returns
-    -------
-    NDArray
-        Diffusion term ∇·(Σ∇u), same shape as u.
-
-    Notes
-    -----
-    For isotropic diffusion (Σ = σ²I), use diffusion() for efficiency.
-    This function uses Numba JIT for 2D when available.
-
-    Examples
+    See Also
     --------
-    >>> # Anisotropic: stronger diffusion in x than y
-    >>> Sigma = np.array([[0.2, 0.0], [0.0, 0.05]])
-    >>> diff = tensor_diffusion(m, Sigma, [dx, dy], bc=bc)
+    diffusion : Unified diffusion operator (recommended).
     """
-    d = u.ndim
+    import warnings
 
-    if d == 1:
-        return _tensor_diffusion_1d(u, Sigma, spacings[0], bc)
-    elif d == 2:
-        return _tensor_diffusion_2d(u, Sigma, spacings[0], spacings[1], bc, domain_bounds, time)
-    else:
-        return _tensor_diffusion_nd(u, Sigma, tuple(spacings), bc)
+    warnings.warn(
+        "tensor_diffusion is deprecated, use diffusion(u, Sigma, ...) instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return diffusion(u, Sigma, spacings, bc=bc, domain_bounds=domain_bounds, time=time)
 
 
 # =============================================================================
@@ -1179,17 +1231,34 @@ if __name__ == "__main__":
     assert error_hyy < 1e-10, f"Hessian H_yy error too large: {error_hyy}"
     assert error_hxy < 1e-10, f"Hessian H_xy error too large: {error_hxy}"
 
-    # Test tensor diffusion
-    print("\n[Tensor Diffusion] Testing...")
+    # Test diffusion (unified operator)
+    print("\n[Diffusion] Testing unified operator...")
     from mfg_pde.geometry.boundary.conditions import periodic_bc
 
     bc = periodic_bc(dimension=2)
     m = np.exp(-((X - 1.0) ** 2 + (Y - 0.75) ** 2) / 0.1)
-    Sigma = np.array([[0.1, 0.0], [0.0, 0.1]])
-    diff = tensor_diffusion(m, Sigma, [dx, dy], bc=bc)
-    print(f"  Tensor diffusion shape: {diff.shape}, range: [{diff.min():.3e}, {diff.max():.3e}]")
-    assert diff.shape == m.shape
-    assert not np.any(np.isnan(diff))
+
+    # Isotropic: scalar coefficient
+    diff_iso = diffusion(m, 0.1, [dx, dy], bc=bc)
+    print(f"  Isotropic (σ=0.1): shape={diff_iso.shape}, range=[{diff_iso.min():.3e}, {diff_iso.max():.3e}]")
+    assert diff_iso.shape == m.shape
+    assert not np.any(np.isnan(diff_iso))
+
+    # Anisotropic: (d,d) matrix coefficient
+    Sigma = np.array([[0.1, 0.0], [0.0, 0.05]])
+    diff_aniso = diffusion(m, Sigma, [dx, dy], bc=bc)
+    print(f"  Anisotropic (Σ): shape={diff_aniso.shape}, range=[{diff_aniso.min():.3e}, {diff_aniso.max():.3e}]")
+    assert diff_aniso.shape == m.shape
+    assert not np.any(np.isnan(diff_aniso))
+
+    # Diagonal shorthand: [σ_x², σ_y²]
+    diff_diag = diffusion(m, np.array([0.1, 0.05]), [dx, dy], bc=bc)
+    print(f"  Diagonal [σx², σy²]: shape={diff_diag.shape}")
+    assert diff_diag.shape == m.shape
+    # Should match anisotropic with diagonal Σ
+    error_diag = np.max(np.abs(diff_diag - diff_aniso))
+    print(f"  Diagonal vs Anisotropic error: {error_diag:.2e}")
+    assert error_diag < 1e-10, "Diagonal and anisotropic should match"
 
     # Test advection
     print("\n[Advection] Testing...")
