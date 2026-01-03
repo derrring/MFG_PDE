@@ -1,0 +1,552 @@
+"""
+Fictitious Play Iterator for Mean Field Games
+
+Implements the Fictitious Play algorithm for solving MFG systems.
+Unlike standard Picard iteration with fixed damping, Fictitious Play uses
+a decaying learning rate that provably converges for potential MFGs.
+
+Key advantages over fixed-point iteration:
+- Proven convergence for potential MFGs (even when Picard fails)
+- Noise suppression through Cesaro averaging
+- Robust for long time horizons where fixed damping oscillates
+
+Mathematical background:
+    Standard Picard: m_{n+1} = (1-alpha) * m_n + alpha * L(m_n)  [fixed alpha]
+    Fictitious Play: m_{n+1} = (1 - 1/(n+1)) * m_n + (1/(n+1)) * L(m_n)
+
+    This is equivalent to the Cesaro mean: m_n = (1/n) * sum_{k=1}^{n} L(m_{k-1})
+
+    The decaying step size suppresses stochastic noise from particle methods.
+
+References:
+    Cardaliaguet, P., & Hadikhanloo, S. (2017). Learning in mean field games:
+        the fictitious play. ESAIM: Control, Optimisation and Calculus of
+        Variations, 23(2), 569-591.
+
+    Perrin, S., et al. (2020). Fictitious play for mean field games:
+        Continuous time analysis and applications. NeurIPS 2020.
+"""
+
+from __future__ import annotations
+
+import time
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+
+from mfg_pde.utils.solver_result import SolverResult
+
+from .base_mfg import BaseMFGSolver
+from .fixed_point_utils import (
+    check_convergence_criteria,
+    initialize_cold_start,
+    preserve_initial_condition,
+    preserve_terminal_condition,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+    from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.config import MFGSolverConfig
+    from mfg_pde.problem.base_mfg_problem import MFGProblem
+
+
+# Learning rate schedule functions
+def harmonic_schedule(k: int) -> float:
+    """Harmonic learning rate: alpha(k) = 1 / (k + 1)."""
+    return 1.0 / (k + 1)
+
+
+def sqrt_schedule(k: int) -> float:
+    """Square root learning rate: alpha(k) = 1 / sqrt(k + 1)."""
+    return 1.0 / np.sqrt(k + 1)
+
+
+def polynomial_schedule(k: int, power: float = 0.6) -> float:
+    """Polynomial learning rate: alpha(k) = 1 / (k + 1)^power."""
+    return 1.0 / (k + 1) ** power
+
+
+LEARNING_RATE_SCHEDULES: dict[str, Callable[[int], float]] = {
+    "harmonic": harmonic_schedule,
+    "sqrt": sqrt_schedule,
+    "polynomial": lambda k: polynomial_schedule(k, power=0.6),
+}
+
+
+class FictitiousPlayIterator(BaseMFGSolver):
+    """
+    Fictitious Play iterator for MFG systems.
+
+    Implements the Fictitious Play algorithm which is proven to converge for
+    potential Mean Field Games, even when standard Picard iteration fails.
+
+    Key differences from FixedPointIterator:
+    1. Decaying learning rate: alpha(k) = 1/(k+1) instead of fixed damping
+    2. Only average M (density): HJB solves full best-response each iteration
+    3. Cesaro averaging suppresses particle noise over iterations
+
+    Args:
+        problem: MFG problem definition
+        hjb_solver: HJB solver instance
+        fp_solver: FP solver instance
+        learning_rate_schedule: Schedule type or callable
+            - "harmonic": 1/(k+1) - standard fictitious play (default)
+            - "sqrt": 1/sqrt(k+1) - faster initial progress
+            - "polynomial": 1/(k+1)^0.6 - balanced rate
+            - Callable[[int], float]: Custom schedule function
+        config: Configuration object (optional)
+        initial_learning_rate: Learning rate for first iteration (default 1.0)
+        min_learning_rate: Minimum learning rate floor (default 0.01)
+        damp_value_function: Whether to also damp U (default False)
+            - False: Pure fictitious play (damp only M)
+            - True: Hybrid approach (damp both U and M)
+        backend: Backend name ('numpy', 'torch', 'jax', etc.)
+        diffusion_field: Optional diffusion override
+        drift_field: Optional drift override for non-MFG problems
+
+    Example:
+        >>> from mfg_pde.alg.numerical.coupling import FictitiousPlayIterator
+        >>>
+        >>> solver = FictitiousPlayIterator(
+        ...     problem=problem,
+        ...     hjb_solver=hjb_solver,
+        ...     fp_solver=fp_solver,
+        ...     learning_rate_schedule="harmonic",
+        ... )
+        >>> result = solver.solve(max_iterations=100, tolerance=1e-4)
+    """
+
+    def __init__(
+        self,
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
+        learning_rate_schedule: str | Callable[[int], float] = "harmonic",
+        config: MFGSolverConfig | None = None,
+        initial_learning_rate: float = 1.0,
+        min_learning_rate: float = 0.01,
+        damp_value_function: bool = False,
+        backend: str | None = None,
+        diffusion_field: float | np.ndarray | Any | None = None,
+        drift_field: np.ndarray | Any | None = None,
+    ):
+        super().__init__(problem)
+        self.backend = backend
+        self.hjb_solver = hjb_solver
+        self.fp_solver = fp_solver
+        self.config = config
+
+        # Fictitious play parameters
+        self.initial_learning_rate = initial_learning_rate
+        self.min_learning_rate = min_learning_rate
+        self.damp_value_function = damp_value_function
+
+        # Set up learning rate schedule
+        if isinstance(learning_rate_schedule, str):
+            if learning_rate_schedule not in LEARNING_RATE_SCHEDULES:
+                raise ValueError(
+                    f"Unknown learning rate schedule: {learning_rate_schedule}. "
+                    f"Available: {list(LEARNING_RATE_SCHEDULES.keys())}"
+                )
+            self._lr_schedule_fn = LEARNING_RATE_SCHEDULES[learning_rate_schedule]
+            self._lr_schedule_name = learning_rate_schedule
+        else:
+            self._lr_schedule_fn = learning_rate_schedule
+            self._lr_schedule_name = "custom"
+
+        # PDE coefficient overrides
+        self.diffusion_field = diffusion_field
+        self.drift_field = drift_field
+
+        # State arrays (initialized in solve)
+        self.U: np.ndarray | None = None
+        self.M: np.ndarray | None = None
+
+        # Convergence tracking
+        self.l2distu_abs: np.ndarray | None = None
+        self.l2distm_abs: np.ndarray | None = None
+        self.l2distu_rel: np.ndarray | None = None
+        self.l2distm_rel: np.ndarray | None = None
+        self.learning_rate_history: list[float] = []
+        self.iterations_run = 0
+
+        # Warm start support
+        self._warm_start_U: np.ndarray | None = None
+        self._warm_start_M: np.ndarray | None = None
+
+        # Cache signature info for solver interfaces
+        self._hjb_sig_params: set[str] | None = None
+        self._fp_sig_params: set[str] | None = None
+        self._cache_solver_signatures()
+
+    def _cache_solver_signatures(self) -> None:
+        """Cache solver method signatures to avoid repeated inspect calls."""
+        import inspect
+
+        if hasattr(self.hjb_solver, "solve_hjb_system"):
+            sig = inspect.signature(self.hjb_solver.solve_hjb_system)
+            self._hjb_sig_params = set(sig.parameters.keys())
+
+        if hasattr(self.fp_solver, "solve_fp_system"):
+            sig = inspect.signature(self.fp_solver.solve_fp_system)
+            self._fp_sig_params = set(sig.parameters.keys())
+
+    def get_learning_rate(self, iteration: int) -> float:
+        """
+        Compute learning rate for given iteration.
+
+        Args:
+            iteration: Current iteration number (0-indexed)
+
+        Returns:
+            Learning rate alpha in (0, 1]
+        """
+        # Apply schedule
+        alpha = self._lr_schedule_fn(iteration)
+
+        # Scale by initial rate and clamp to minimum
+        alpha = self.initial_learning_rate * alpha
+        alpha = max(alpha, self.min_learning_rate)
+
+        return alpha
+
+    def solve(
+        self,
+        config: MFGSolverConfig | None = None,
+        max_iterations: int | None = None,
+        tolerance: float | None = None,
+        return_tuple: bool = False,
+        **kwargs: Any,
+    ) -> SolverResult | tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
+        """
+        Solve coupled MFG system using Fictitious Play.
+
+        Args:
+            config: Solver configuration (overrides instance config)
+            max_iterations: Maximum iterations (legacy parameter)
+            tolerance: Convergence tolerance (legacy parameter)
+            return_tuple: Return legacy tuple format instead of SolverResult
+            **kwargs: Additional parameters for backward compatibility
+
+        Returns:
+            SolverResult object (or tuple if return_tuple=True)
+        """
+        # Use provided config or fall back to instance config
+        solve_config = config or self.config
+
+        # Parameter resolution (config > explicit args > instance defaults)
+        if solve_config is not None:
+            final_max_iterations = solve_config.picard.max_iterations
+            final_tolerance = solve_config.picard.tolerance
+            verbose = solve_config.picard.verbose
+        else:
+            final_max_iterations = (
+                max_iterations or kwargs.get("max_picard_iterations") or kwargs.get("Niter_max") or 100
+            )
+            final_tolerance = tolerance or kwargs.get("picard_tolerance") or kwargs.get("l2errBoundPicard") or 1e-6
+            verbose = kwargs.get("verbose", True)
+
+        # Get problem dimensions
+        num_time_steps = self.problem.Nt + 1
+
+        # Detect problem shape using geometry API
+        from mfg_pde.geometry.base import CartesianGrid
+
+        if not hasattr(self.problem, "geometry") or self.problem.geometry is None:
+            raise ValueError("Problem must have geometry attribute")
+
+        if not isinstance(self.problem.geometry, CartesianGrid):
+            raise ValueError("Problem geometry must be CartesianGrid (TensorProductGrid)")
+
+        shape = tuple(self.problem.geometry.get_grid_shape())
+        grid_spacing = self.problem.geometry.get_grid_spacing()[0]
+        time_step = self.problem.dt
+
+        # Initialize arrays (cold start or warm start)
+        warm_start = self.get_warm_start_data()
+        if warm_start is not None:
+            self.U, self.M = warm_start
+        else:
+            # Cold start initialization
+            if self.backend is not None:
+                self.U = self.backend.zeros((num_time_steps, *shape))
+                self.M = self.backend.zeros((num_time_steps, *shape))
+            else:
+                self.U = np.zeros((num_time_steps, *shape))
+                self.M = np.zeros((num_time_steps, *shape))
+
+            # Get initial density and terminal condition
+            if hasattr(self.problem, "get_m_init") and callable(self.problem.get_m_init):
+                M_initial = self.problem.get_m_init()
+                U_terminal = self.problem.get_u_fin() if hasattr(self.problem, "get_u_fin") else np.zeros(shape)
+                if M_initial.shape != shape:
+                    M_initial = M_initial.reshape(shape)
+                if U_terminal.shape != shape:
+                    U_terminal = U_terminal.reshape(shape)
+            elif hasattr(self.problem, "m_init") and self.problem.m_init is not None:
+                M_initial = self.problem.m_init
+                U_terminal = self.problem.u_fin if hasattr(self.problem, "u_fin") else np.zeros(shape)
+                if M_initial.shape != shape:
+                    M_initial = M_initial.reshape(shape)
+                if U_terminal.shape != shape:
+                    U_terminal = U_terminal.reshape(shape)
+            elif hasattr(self.problem, "get_initial_m") and callable(self.problem.get_initial_m):
+                M_initial = self.problem.get_initial_m()
+                U_terminal = self.problem.get_final_u()
+            elif hasattr(self.problem, "initial_density") and callable(self.problem.initial_density):
+                x_grid = self.problem.geometry.get_spatial_grid()
+                M_initial = self.problem.initial_density(x_grid).reshape(shape)
+                U_terminal = self.problem.terminal_cost(x_grid).reshape(shape)
+            else:
+                raise ValueError(
+                    "Problem must have get_m_init()/get_u_fin() methods, m_init/u_fin attributes, or legacy interface"
+                )
+
+            if num_time_steps > 0:
+                if len(shape) == 1:
+                    self.M[0, :] = M_initial
+                    self.U[num_time_steps - 1, :] = U_terminal
+                else:
+                    self.M[0] = M_initial
+                    self.U[num_time_steps - 1] = U_terminal
+
+                self.U, self.M = initialize_cold_start(self.U, self.M, M_initial, U_terminal, num_time_steps)
+
+        # Initialize error tracking
+        self.l2distu_abs = np.ones(final_max_iterations)
+        self.l2distm_abs = np.ones(final_max_iterations)
+        self.l2distu_rel = np.ones(final_max_iterations)
+        self.l2distm_rel = np.ones(final_max_iterations)
+        self.learning_rate_history = []
+        self.iterations_run = 0
+
+        # Main Fictitious Play iteration loop
+        converged = False
+        convergence_reason = "Maximum iterations reached"
+
+        # Progress bar
+        from mfg_pde.utils.progress import RichProgressBar
+
+        iter_range = range(final_max_iterations)
+        if verbose:
+            iter_range = RichProgressBar(
+                iter_range,
+                desc="Fictitious Play",
+                unit="iter",
+                disable=False,
+            )
+
+        for k in iter_range:
+            iter_start = time.time()
+
+            U_old = self.U.copy()
+            M_old = self.M.copy()
+
+            # Compute learning rate for this iteration
+            alpha = self.get_learning_rate(k)
+            self.learning_rate_history.append(alpha)
+
+            # 1. Solve HJB backward - FULL best response (no damping on U)
+            show_hjb_progress = not verbose
+            if hasattr(self.hjb_solver, "solve_hjb_system"):
+                params = self._hjb_sig_params or set()
+                hjb_kwargs: dict[str, Any] = {}
+                if "show_progress" in params:
+                    hjb_kwargs["show_progress"] = show_hjb_progress
+                if "diffusion_field" in params and self.diffusion_field is not None:
+                    hjb_kwargs["diffusion_field"] = self.diffusion_field
+
+                # Solve HJB with current averaged M
+                U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **hjb_kwargs)
+            else:
+                U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
+
+            # 2. Solve FP forward with new U
+            show_fp_progress = not verbose
+            if hasattr(self.fp_solver, "solve_fp_system"):
+                params = self._fp_sig_params or set()
+                fp_kwargs: dict[str, Any] = {}
+                if "show_progress" in params:
+                    fp_kwargs["show_progress"] = show_fp_progress
+
+                effective_drift = self.drift_field if self.drift_field is not None else U_new
+
+                if "drift_field" in params:
+                    fp_kwargs["drift_field"] = effective_drift
+                if "diffusion_field" in params and self.diffusion_field is not None:
+                    fp_kwargs["diffusion_field"] = self.diffusion_field
+
+                if "drift_field" in params:
+                    M_candidate = self.fp_solver.solve_fp_system(M_initial, **fp_kwargs)
+                else:
+                    M_candidate = self.fp_solver.solve_fp_system(M_initial, effective_drift, **fp_kwargs)
+            else:
+                M_candidate = self.fp_solver.solve_fp_system(M_initial, U_new)
+
+            # 3. Fictitious Play update: average M with decaying learning rate
+            # This is the key difference from fixed-point iteration
+            # m_{n+1} = (1 - alpha_n) * m_n + alpha_n * m_candidate
+            self.M = (1 - alpha) * M_old + alpha * M_candidate
+
+            # Optionally damp U as well (hybrid mode)
+            if self.damp_value_function:
+                self.U = (1 - alpha) * U_old + alpha * U_new
+            else:
+                # Pure fictitious play: use full best response for U
+                self.U = U_new
+
+            # Preserve boundary conditions
+            self.M = preserve_initial_condition(self.M, M_initial)
+            self.U = preserve_terminal_condition(self.U, U_terminal)
+
+            # Calculate convergence metrics
+            from mfg_pde.utils.numerical.convergence import calculate_l2_convergence_metrics
+
+            metrics = calculate_l2_convergence_metrics(self.U, U_old, self.M, M_old, grid_spacing, time_step)
+            self.l2distu_abs[k] = metrics["l2distu_abs"]
+            self.l2distu_rel[k] = metrics["l2distu_rel"]
+            self.l2distm_abs[k] = metrics["l2distm_abs"]
+            self.l2distm_rel[k] = metrics["l2distm_rel"]
+
+            iter_time = time.time() - iter_start
+            self.iterations_run = k + 1
+
+            # Update progress bar
+            if verbose and hasattr(iter_range, "set_postfix"):
+                iter_range.set_postfix(
+                    U_err=f"{self.l2distu_rel[k]:.2e}",
+                    M_err=f"{self.l2distm_rel[k]:.2e}",
+                    alpha=f"{alpha:.3f}",
+                    t=f"{iter_time:.1f}s",
+                )
+            elif not verbose:
+                print(f"--- Fictitious Play Iteration {k + 1}/{final_max_iterations} ---")
+                print(f"  Learning rate: {alpha:.4f}")
+                print(f"  Errors: U={self.l2distu_rel[k]:.2e}, M={self.l2distm_rel[k]:.2e}")
+                print(f"  Time: {iter_time:.3f}s")
+
+            # Check convergence
+            converged, convergence_reason = check_convergence_criteria(
+                self.l2distu_rel[k],
+                self.l2distm_rel[k],
+                self.l2distu_abs[k],
+                self.l2distm_abs[k],
+                final_tolerance,
+            )
+
+            if converged:
+                if verbose and hasattr(iter_range, "write"):
+                    iter_range.write(convergence_reason)
+                elif not verbose:
+                    print(convergence_reason)
+                break
+
+        # Construct result
+        result = SolverResult(
+            U=self.U,
+            M=self.M,
+            iterations=self.iterations_run,
+            error_history_U=self.l2distu_abs[: self.iterations_run],
+            error_history_M=self.l2distm_abs[: self.iterations_run],
+            solver_name=self.name,
+            converged=converged,
+            metadata={
+                "convergence_reason": convergence_reason,
+                "l2distu_rel": self.l2distu_rel[: self.iterations_run],
+                "l2distm_rel": self.l2distm_rel[: self.iterations_run],
+                "learning_rate_schedule": self._lr_schedule_name,
+                "learning_rate_history": self.learning_rate_history,
+                "damp_value_function": self.damp_value_function,
+            },
+        )
+
+        if return_tuple:
+            return (
+                self.U,
+                self.M,
+                self.iterations_run,
+                self.l2distu_rel[: self.iterations_run],
+                self.l2distm_rel[: self.iterations_run],
+            )
+        else:
+            return result
+
+    @property
+    def name(self) -> str:
+        """Solver name for diagnostics."""
+        return "FictitiousPlayIterator"
+
+    def get_convergence_data(self) -> dict[str, np.ndarray | list[float]]:
+        """Get convergence diagnostics including learning rate history."""
+        return {
+            "l2distu_abs": self.l2distu_abs[: self.iterations_run] if self.l2distu_abs is not None else np.array([]),
+            "l2distm_abs": self.l2distm_abs[: self.iterations_run] if self.l2distm_abs is not None else np.array([]),
+            "l2distu_rel": self.l2distu_rel[: self.iterations_run] if self.l2distu_rel is not None else np.array([]),
+            "l2distm_rel": self.l2distm_rel[: self.iterations_run] if self.l2distm_rel is not None else np.array([]),
+            "learning_rate_history": self.learning_rate_history,
+        }
+
+    def set_warm_start_data(self, U_init: np.ndarray, M_init: np.ndarray) -> None:
+        """Set warm start initialization data."""
+        self._warm_start_U = U_init
+        self._warm_start_M = M_init
+
+    def get_warm_start_data(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """Get warm start initialization data."""
+        if self._warm_start_U is not None and self._warm_start_M is not None:
+            return (self._warm_start_U, self._warm_start_M)
+        return None
+
+    def clear_warm_start_data(self) -> None:
+        """Clear warm start data."""
+        self._warm_start_U = None
+        self._warm_start_M = None
+
+    def get_results(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Get the computed solution arrays.
+
+        Returns:
+            Tuple of (U, M) solution arrays
+
+        Raises:
+            RuntimeError: If no solution has been computed yet
+        """
+        if self.U is None or self.M is None:
+            raise RuntimeError("No solution computed. Call solve() first.")
+        return self.U, self.M
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing FictitiousPlayIterator...")
+
+    # Test class availability
+    assert FictitiousPlayIterator is not None
+    print("  FictitiousPlayIterator class available")
+
+    # Test learning rate schedules
+    print("\n  Learning rate schedules:")
+    for name, fn in LEARNING_RATE_SCHEDULES.items():
+        rates = [fn(k) for k in [0, 1, 4, 9, 29, 99]]
+        print(
+            f"    {name}: k=0:{rates[0]:.3f}, k=1:{rates[1]:.3f}, k=4:{rates[2]:.3f}, "
+            f"k=9:{rates[3]:.3f}, k=29:{rates[4]:.3f}, k=99:{rates[5]:.3f}"
+        )
+
+    # Verify harmonic schedule matches theory
+    alpha_1 = harmonic_schedule(0)  # k=0 -> alpha = 1/(0+1) = 1.0
+    alpha_2 = harmonic_schedule(1)  # k=1 -> alpha = 1/(1+1) = 0.5
+    alpha_10 = harmonic_schedule(9)  # k=9 -> alpha = 1/10 = 0.1
+    alpha_100 = harmonic_schedule(99)  # k=99 -> alpha = 1/100 = 0.01
+
+    assert abs(alpha_1 - 1.0) < 1e-10, f"Expected 1.0, got {alpha_1}"
+    assert abs(alpha_2 - 0.5) < 1e-10, f"Expected 0.5, got {alpha_2}"
+    assert abs(alpha_10 - 0.1) < 1e-10, f"Expected 0.1, got {alpha_10}"
+    assert abs(alpha_100 - 0.01) < 1e-10, f"Expected 0.01, got {alpha_100}"
+    print("  Harmonic schedule verified")
+
+    print("\nSmoke tests passed!")
